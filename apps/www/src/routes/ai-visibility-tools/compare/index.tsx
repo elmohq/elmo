@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
 import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
-import { comparePairs, comparePairSlug, compareSets, compareSetSlug } from "@/lib/competitors";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
+import { comparePairSlug, comparePairs, compareSetSlug, compareSets } from "@/lib/competitors";
+import { breadcrumbJsonLd, canonicalUrl, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "Compare AI Visibility Tools Head-to-Head · Elmo";
 const description =

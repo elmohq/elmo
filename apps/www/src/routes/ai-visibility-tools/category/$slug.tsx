@@ -1,8 +1,4 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
-import { Faq } from "@/components/faq";
-import { ToolGrid } from "@/components/tool-list";
 import {
 	DirectoryBackLink,
 	DirectoryElmoBanner,
@@ -10,18 +6,22 @@ import {
 	DirectorySection,
 	ElmoCta,
 } from "@/components/directory-shell";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
+import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
+import { ToolGrid } from "@/components/tool-list";
 import {
-	getCategoryBySlug,
-	getCategoryElmoPitch,
-	getComparisonSlug,
-	toolsInCategory,
-	getCategoryVerdict,
-	getCategoryFaqs,
 	CATEGORY_HEADINGS,
 	type Competitor,
 	type CompetitorCategory,
+	getCategoryBySlug,
+	getCategoryElmoPitch,
+	getCategoryFaqs,
+	getCategoryVerdict,
+	getComparisonSlug,
+	toolsInCategory,
 } from "@/lib/competitors";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/category/$slug")({
 	head: ({ params }) => {

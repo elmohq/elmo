@@ -1,12 +1,13 @@
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
-import { Faq } from "@/components/faq";
 import { ElmoCta } from "@/components/directory-shell";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd, howToJsonLd } from "@/lib/seo";
+import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
+import { type AiSearchEngine, aiSearchEngines, getAiSearchEngine } from "@/data/ai-search-engines";
 import type { FaqItem } from "@/lib/faqs";
-import { getAiSearchEngine, aiSearchEngines, type AiSearchEngine } from "@/data/ai-search-engines";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, howToJsonLd, ogMeta } from "@/lib/seo";
 
 function engineFaqs(e: AiSearchEngine): FaqItem[] {
 	return [
@@ -108,7 +109,7 @@ function EnginePage() {
 							<p className="mt-2 leading-relaxed text-zinc-600">{engine.tracking}</p>
 							<div className="mt-4">
 								<Link
-									to="/docs"
+									{...SELF_HOST_LINK}
 									className="inline-flex h-9 items-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
 								>
 									Start tracking with Elmo

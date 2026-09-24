@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
 	computeFanoutAnalysis,
-	promptKeywords,
-	normTok,
-	UNAVAILABLE_SENTINEL,
 	type FanoutBreakdownRow,
 	type FanoutModelTotalRow,
+	normTok,
+	promptKeywords,
+	UNAVAILABLE_SENTINEL,
 } from "@/lib/fanout-analysis";
 
 const promptMap = new Map<string, string>([
@@ -66,7 +66,7 @@ describe("computeFanoutAnalysis", () => {
 	it("computes overall totals and coverage", () => {
 		expect(a.totalQueries).toBe(10);
 		expect(a.uniqueQueries).toBe(3);
-		expect(a.coverageRate).toBe(40); // 4 brand mentions / 10 instances
+		expect(a.coverageRate).toBe(0.4); // 4 brand mentions / 10 instances
 		expect(a.totalRuns).toBe(19);
 		expect(a.fanoutRuns).toBe(10);
 		expect(a.avgPerExecution).toBe(1); // 10 / 10

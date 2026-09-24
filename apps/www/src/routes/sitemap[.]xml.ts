@@ -1,24 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { source } from "@/lib/source";
-import { blogSource } from "@/lib/blog";
-import { listLegalPages } from "@/lib/legal";
-import {
-	competitors,
-	getComparisonSlug,
-	isLowDR,
-	comparePairs,
-	comparePairSlug,
-	compareSets,
-	compareSetSlug,
-	indexedCompetitors,
-	indexableFeatureKeys,
-	FEATURE_SLUGS,
-	indexableCategories,
-	CATEGORY_SLUGS,
-} from "@/lib/competitors";
-import { glossaryTerms } from "@/data/glossary";
-import { aiSearchEngines } from "@/data/ai-search-engines";
 import { aeoVerticals } from "@/data/aeo-verticals";
+import { aiSearchEngines } from "@/data/ai-search-engines";
+import { glossaryTerms } from "@/data/glossary";
+import { blogSource } from "@/lib/blog";
+import {
+	CATEGORY_SLUGS,
+	comparePairSlug,
+	comparePairs,
+	compareSetSlug,
+	compareSets,
+	competitors,
+	FEATURE_SLUGS,
+	getComparisonSlug,
+	indexableCategories,
+	indexableFeatureKeys,
+	indexedCompetitors,
+	isLowDR,
+} from "@/lib/competitors";
+import { listLegalPages } from "@/lib/legal";
+import { source } from "@/lib/source";
 
 const SITE_URL = "https://www.elmohq.com";
 
@@ -36,6 +36,8 @@ interface SitemapEntry {
 
 const staticPages: SitemapEntry[] = [
 	{ path: "/", changefreq: "weekly", priority: 1.0 },
+	{ path: "/answer-engine-optimization", changefreq: "monthly", priority: 0.9 },
+	{ path: "/generative-engine-optimization", changefreq: "monthly", priority: 0.9 },
 	{ path: "/features", changefreq: "monthly", priority: 0.8 },
 	{ path: "/pricing", changefreq: "monthly", priority: 0.8 },
 	{ path: "/off-site-aeo", changefreq: "monthly", priority: 0.8 },
@@ -43,6 +45,7 @@ const staticPages: SitemapEntry[] = [
 	{ path: "/roadmap", changefreq: "weekly", priority: 0.7 },
 	{ path: "/docs", changefreq: "weekly", priority: 0.9 },
 	{ path: "/blog", changefreq: "weekly", priority: 0.7 },
+	{ path: "/statistics", changefreq: "weekly", priority: 0.8 },
 	{ path: "/ai-visibility-tools", changefreq: "weekly", priority: 0.8 },
 	{ path: "/vision", changefreq: "monthly", priority: 0.6 },
 	{ path: "/brand", changefreq: "monthly", priority: 0.5 },
@@ -112,7 +115,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 					...indexableCategories.map((cat) => ({
 						path: `/ai-visibility-tools/category/${CATEGORY_SLUGS[cat]}`,
 						changefreq: "monthly",
-						priority: 0.5,
+						priority: CATEGORY_SLUGS[cat] === "open-source" ? 0.9 : 0.5,
 					})),
 				];
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+
 /**
  * Benchmark: Postgres analytics query performance.
  *
@@ -12,9 +13,9 @@
  *   pnpm tsx --env-file=../../.env scripts/benchmark-postgres-analytics.ts --brands=3
  */
 
-import * as pgRead from "../src/lib/postgres-read";
-import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
+import * as pgRead from "../src/lib/postgres-read";
 
 const db = drizzle(process.env.DATABASE_URL!);
 
@@ -100,22 +101,6 @@ async function benchBrand(brandId: string, runCount: number, hasCitations: boole
 	results.push(await bench("getPromptsFirstEvaluatedAt", () => pgRead.getPromptsFirstEvaluatedAt(brandId, promptIds)));
 
 	results.push(
-		await bench("getPromptDailyStats", () => pgRead.getPromptDailyStats(firstPromptId, fromDate, toDate, tz)),
-	);
-
-	results.push(
-		await bench("getPromptCompetitorDailyStats", () =>
-			pgRead.getPromptCompetitorDailyStats(firstPromptId, fromDate, toDate, tz),
-		),
-	);
-
-	results.push(
-		await bench("getPromptWebQueriesForMapping", () =>
-			pgRead.getPromptWebQueriesForMapping(firstPromptId, fromDate, toDate, tz),
-		),
-	);
-
-	results.push(
 		await bench("getPromptMentionSummary", () => pgRead.getPromptMentionSummary(firstPromptId, fromDate, toDate, tz)),
 	);
 
@@ -184,12 +169,6 @@ async function main(): Promise<void> {
 		const brandResults = await benchBrand(brand.brand_id, brand.run_count, hasCitations);
 		allResults.push(...brandResults);
 	}
-
-	// === Admin queries (run once) ===
-	console.log("\n### Admin queries\n");
-
-	allResults.push(await bench("getAdminRunsOverTime", () => pgRead.getAdminRunsOverTime()));
-	allResults.push(await bench("getAdminBrandRunStats", () => pgRead.getAdminBrandRunStats()));
 
 	// ============================================================================
 	// Output

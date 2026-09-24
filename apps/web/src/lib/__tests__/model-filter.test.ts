@@ -1,12 +1,11 @@
-import { describe, expect, it } from "vitest";
 import {
 	ALL_MODELS_VALUE,
-	getAvailableModels,
 	labelForModelFilter,
 	parseModelFilter,
-	type TrackedTarget,
 	targetFilterValue,
-} from "@/lib/model-filter";
+} from "@workspace/config/model-filter";
+import { describe, expect, it } from "vitest";
+import { getAvailableModels, type TrackedTarget } from "@/lib/model-filter";
 
 const target = (model: string, premium = false): TrackedTarget => ({
 	value: targetFilterValue(model, premium),
@@ -27,11 +26,7 @@ describe("getAvailableModels", () => {
 	});
 
 	it("prepends 'all' when several are tracked", () => {
-		expect(getAvailableModels([target("chatgpt"), target("claude")])).toEqual([
-			ALL_MODELS_VALUE,
-			"chatgpt",
-			"claude",
-		]);
+		expect(getAvailableModels([target("chatgpt"), target("claude")])).toEqual([ALL_MODELS_VALUE, "chatgpt", "claude"]);
 	});
 
 	it("preserves the caller's ordering", () => {

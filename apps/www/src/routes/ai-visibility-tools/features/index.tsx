@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
 import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
 import {
 	FEATURE_CATEGORIES,
 	FEATURE_SLUGS,
+	type FeatureKey,
 	getFeatureLabel,
 	indexableFeatureKeys,
 	toolsWithFeature,
-	type FeatureKey,
 } from "@/lib/competitors";
+import { breadcrumbJsonLd, canonicalUrl, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "AI Visibility Tools by Feature · Elmo";
 const description =

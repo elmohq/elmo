@@ -1,12 +1,12 @@
 import * as Sentry from "@sentry/node";
-import type { Job, PgBoss } from "pg-boss";
 import { getDeployment } from "@workspace/deployment";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
-import { processPromptJob, type ProcessPromptData } from "./jobs/process-prompt";
-import { generateReportJob, type GenerateReportData } from "./jobs/generate-report";
-import { scheduleMaintenanceJob, type ScheduleMaintenanceData } from "./jobs/schedule-maintenance";
-import { syncAuth0MembershipsJob, type SyncAuth0MembershipsData } from "./jobs/sync-auth0-memberships";
-import { analyzeBrandJob, type AnalyzeBrandData } from "./jobs/analyze-brand";
+import type { Job, PgBoss } from "pg-boss";
+import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
+import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
+import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
+import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
+import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/sync-auth0-memberships";
 
 /**
  * Wraps a pg-boss handler to report errors to Sentry before re-throwing.

@@ -1,8 +1,9 @@
 import { bdclient } from "@brightdata/sdk";
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
-import { type Citation, extractCitationsFromBrightdata, extractTextFromBrightdata } from "../../text-extraction";
+import { extractCitationsFromBrightdata, extractTextFromBrightdata } from "../../text-extraction";
+import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import { type Attempt, nonEmptyStrings, pollDelay, retryTransient, sleep } from "./scrape-shared";
 
 // Google AI Overview isn't a Web Scraper dataset — it's the AI summary block on
 // a normal Google results page, fetched through BrightData's SERP API instead of
@@ -41,87 +42,79 @@ const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
  * to the same BRIGHTDATA_API_TOKEN — no dataset id or extra credential. The
  * parsed SERP carries an `ai_overview` object when Google shows one.
  */
-async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 	const zone = process.env.BRIGHTDATA_SERP_ZONE ?? "sdk_serp";
 	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=us&hl=en`;
 
-	let lastError = "";
-	for (let attempt = 0; attempt < 3; attempt++) {
-		const res = await fetch(BRIGHTDATA_REQUEST_URL, {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
-				"Content-Type": "application/json",
-			},
-			// `method: "GET"` tells BrightData how to fetch the target URL — without
-			// it the response comes back empty. `format: "raw"` returns the brd_json
-			// SERP directly as the body.
-			body: JSON.stringify({ zone, url, method: "GET", format: "raw" }),
-		});
-		const text = await res.text();
-
-		let parsed: unknown;
-		if (res.ok && text.trim()) {
-			try {
-				parsed = JSON.parse(text);
-			} catch {
-				// fall through to retry — a non-JSON body is a transient edge/error page
-			}
-		}
-
-		if (parsed !== undefined) {
-			const citations = extractCitationsFromBrightdata(parsed);
-			return {
-				rawOutput: parsed,
-				textContent: extractTextFromBrightdata(parsed),
-				// The SERP API doesn't expose the query expansion behind the overview;
-				// mark it unavailable when sources prove a live result, else empty.
-				webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
-				citations,
-				modelVersion: "brightdata-serp",
-			};
-		}
-
-		lastError = `${res.status} ${text.slice(0, 200)}`.trim();
-		await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
-	}
-	throw new Error(`BrightData SERP request failed after 3 attempts — ${lastError}`);
+	return retryTransient(
+		() => attemptGoogleAiOverview(zone, url),
+		(lastError) => `BrightData SERP request failed after 3 attempts — ${lastError}`,
+	);
 }
 
-function normalizeAnswer(record: Record<string, any>): string {
+async function attemptGoogleAiOverview(zone: string, url: string): Promise<Attempt<ScrapeResult>> {
+	const res = await fetch(BRIGHTDATA_REQUEST_URL, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
+			"Content-Type": "application/json",
+		},
+		// `method: "GET"` tells BrightData how to fetch the target URL — without
+		// it the response comes back empty. `format: "raw"` returns the brd_json
+		// SERP directly as the body.
+		body: JSON.stringify({ zone, url, method: "GET", format: "raw" }),
+	});
+	const text = await res.text();
+
+	let parsed: unknown;
+	if (res.ok && text.trim()) {
+		try {
+			parsed = JSON.parse(text);
+		} catch {
+			// fall through to retry — a non-JSON body is a transient edge/error page
+		}
+	}
+	if (parsed === undefined) return { error: `${res.status} ${text.slice(0, 200)}`.trim() };
+
+	const citations = extractCitationsFromBrightdata(parsed);
+	return {
+		result: {
+			rawOutput: parsed,
+			textContent: extractTextFromBrightdata(parsed),
+			// The SERP API doesn't expose the query expansion behind the overview;
+			// mark it unavailable when sources prove a live result, else empty.
+			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
+			citations,
+			modelVersion: "brightdata-serp",
+		},
+	};
+}
+
+function findAnswer(record: Record<string, any>): string | null {
 	for (const key of ["answer_text_markdown", "answer_text", "answer", "response_raw", "response", "text", "content"]) {
 		if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
 	}
-	return JSON.stringify(record).slice(0, 2000);
+	return null;
 }
 
-function extractSources(record: Record<string, any>): Citation[] {
-	const citations: Citation[] = [];
-	const seen = new Set<string>();
-	let idx = 0;
+function rowError(record: Record<string, any>): string | null {
+	const parts = [record.error, record.error_code]
+		.map((value) => (typeof value === "string" ? value.trim() : value ? JSON.stringify(value) : ""))
+		.filter(Boolean);
+	return parts.length > 0 ? parts.join(" — ") : null;
+}
 
-	for (const field of ["citations", "links_attached", "sources"]) {
-		const arr = record[field];
-		if (!Array.isArray(arr)) continue;
-		for (const item of arr) {
-			const url = typeof item === "string" ? item : item?.url;
-			if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
-			if (seen.has(url)) continue;
-			seen.add(url);
-			try {
-				const parsed = new URL(url);
-				citations.push({
-					url,
-					title: item?.title ?? undefined,
-					domain: parsed.hostname.replace(/^www\./, ""),
-					citationIndex: idx++,
-				});
-			} catch (e) {
-				console.warn(`BrightData: skipping invalid citation URL: ${url}`, e);
-			}
-		}
-	}
-	return citations;
+/** Exported for tests. `include_errors=true` means a ready snapshot can carry a
+ *  per-input failure in place of an answer. */
+export function readAnswer(record: Record<string, any>, subject: string): string {
+	const answer = findAnswer(record);
+	if (answer) return answer;
+	const error = rowError(record);
+	throw new Error(
+		error
+			? `BrightData ${subject} returned an error row: ${error}`
+			: `BrightData ${subject} returned a row with no answer`,
+	);
 }
 
 /**
@@ -141,18 +134,10 @@ function extractSources(record: Record<string, any>): Citation[] {
  */
 export function extractWebQueries(record: Record<string, any>): string[] {
 	// web_search_query is a direct array of strings
-	if (Array.isArray(record.web_search_query)) {
-		return record.web_search_query.filter((q: any) => typeof q === "string" && q.trim());
-	}
+	if (Array.isArray(record.web_search_query)) return nonEmptyStrings(record.web_search_query);
 	// search_model_queries may be nested in metadata (e.g. chatgpt)
 	const smq = record.metadata?.search_model_queries ?? record.search_model_queries;
-	if (smq?.queries && Array.isArray(smq.queries)) {
-		return smq.queries.filter((q: any) => typeof q === "string" && q.trim());
-	}
-	if (Array.isArray(smq)) {
-		return smq.filter((q: any) => typeof q === "string" && q.trim());
-	}
-	return [];
+	return nonEmptyStrings(smq?.queries ?? smq);
 }
 
 export const brightdata: Provider = {
@@ -161,9 +146,7 @@ export const brightdata: Provider = {
 	access: "scraped",
 	docsAnchor: "brightdata",
 
-	isConfigured() {
-		return !!getCredential("BRIGHTDATA_API_TOKEN");
-	},
+	isConfigured: configuredWhen("BRIGHTDATA_API_TOKEN"),
 
 	validateTarget(config: ModelConfig) {
 		// Google AI Overview goes through the SERP API, not a dataset collector.
@@ -202,39 +185,16 @@ export const brightdata: Provider = {
 		let snapshotId: string | undefined;
 		let consumed = false;
 		try {
-			const triggerRes = await fetch(
-				`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
-				{
-					method: "POST",
-					headers: {
-						Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify([
-						{
-							url: BD_BASE_URL[model] ?? "",
-							prompt,
-							index: 1,
-							...(model === "chatgpt" ? { web_search: options?.webSearch ?? false } : {}),
-						},
-					]),
-				},
-			);
-
-			if (!triggerRes.ok) {
-				throw new Error(`BrightData trigger failed (${triggerRes.status}): ${await triggerRes.text()}`);
-			}
-
-			({ snapshot_id: snapshotId } = (await triggerRes.json()) as { snapshot_id: string });
+			snapshotId = await triggerSnapshot(datasetId, model, prompt, options?.webSearch ?? false);
 			await pollUntilReady(snapshotId);
 			const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
 			consumed = true;
 
 			const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
-			const answer = normalizeAnswer(record);
+			const answer = readAnswer(record, `${model} snapshot ${snapshotId}`);
 
 			const webQueries = extractWebQueries(record);
-			const citations = extractSources(record);
+			const citations = extractCitationsFromBrightdata(record);
 
 			// Drop large HTML fields that aren't used for extraction.
 			// Keeps all structured data (shopping, recommendations, citations, etc.)
@@ -244,16 +204,10 @@ export const brightdata: Provider = {
 			return {
 				rawOutput,
 				textContent: answer,
-				// Only mark web queries as "unavailable" when web search was enabled
-				// and citations exist but no query strings were exposed.
-				// When web search is disabled, webQueries is always empty.
-				webQueries: options?.webSearch
-					? webQueries.length > 0
-						? webQueries
-						: citations.length > 0
-							? [WEB_QUERIES_UNAVAILABLE]
-							: []
-					: [],
+				webQueries: reportedWebQueries(webQueries, {
+					webSearch: options?.webSearch ?? false,
+					searchProven: citations.length > 0,
+				}),
 				citations,
 				modelVersion: record?.model ?? undefined,
 			};
@@ -270,26 +224,56 @@ export const brightdata: Provider = {
 	},
 };
 
+async function triggerSnapshot(datasetId: string, model: string, prompt: string, webSearch: boolean): Promise<string> {
+	const response = await fetch(
+		`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
+		{
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify([
+				{
+					url: BD_BASE_URL[model] ?? "",
+					prompt,
+					index: 1,
+					// ChatGPT is the only chatbot with a web search toggle.
+					...(model === "chatgpt" ? { web_search: webSearch } : {}),
+				},
+			]),
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error(`BrightData trigger failed (${response.status}): ${await response.text()}`);
+	}
+	const { snapshot_id } = (await response.json()) as { snapshot_id: string };
+	return snapshot_id;
+}
+
 /** Terminal failure statuses from datasets/v3/progress. Anything else —
  *  running, building, "starting", queued, or a status BrightData adds later —
  *  is treated as "still working" so a degraded scraper or an unrecognized
  *  status string doesn't fail the run on the very first poll. */
 const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
 
-async function pollUntilReady(snapshotId: string): Promise<void> {
-	const maxAttempts = 60;
-	const BASE_DELAY = 2000;
-	const MAX_DELAY = 10000;
+/** BrightData publishes no collection deadline, so this is sized past the
+ *  slowest error row a stuck input has been seen to produce — not to any
+ *  documented limit. Too low and their reason never reaches us. */
+const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
-	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+async function pollUntilReady(snapshotId: string): Promise<void> {
+	const deadline = Date.now() + POLL_TIMEOUT_MS;
+
+	for (let attempt = 0; Date.now() < deadline; attempt++) {
 		const status = await getSnapshotStatus(snapshotId);
 		if (status === "ready") return;
 		if (TERMINAL_FAILURE.has(status)) {
 			throw new Error(`BrightData snapshot ${snapshotId} ${status}`);
 		}
 
-		const delay = Math.min(BASE_DELAY * 2 ** Math.floor(attempt / 5), MAX_DELAY);
-		await new Promise((resolve) => setTimeout(resolve, delay));
+		await sleep(pollDelay(attempt));
 	}
 
 	throw new Error(`BrightData snapshot ${snapshotId} timed out`);

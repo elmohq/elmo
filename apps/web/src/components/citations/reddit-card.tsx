@@ -1,12 +1,12 @@
-import { useMemo, useState } from "react";
+import { IconChevronDown, IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
+import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Badge } from "@workspace/ui/components/badge";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { IconExternalLink, IconInfoCircle, IconChevronDown } from "@tabler/icons-react";
-import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useMemo, useState } from "react";
 import { extractSubreddit, formatUrlForDisplay } from "@/components/citations/shared";
 import type { CitationData } from "@/components/citations/types";
+import { ListPagination, usePagedList } from "@/components/list-pagination";
 
 const SUBREDDITS_PAGE_SIZE = 8;
 
@@ -14,6 +14,30 @@ const SUBREDDITS_PAGE_SIZE = 8;
  *  A substring match would also catch lookalikes such as
  *  "notreddit.com" or "reddit.com.evil.net" (CodeQL js/incomplete-url-substring-sanitization). */
 const isRedditDomain = (domain: string) => domain === "reddit.com" || domain.endsWith(".reddit.com");
+
+interface SubredditTally {
+	count: number;
+	newPages: number;
+	totalPages: number;
+	urls: { url: string; title?: string; count: number; isNew?: boolean }[];
+}
+
+function groupBySubreddit(specificUrls: CitationData["specificUrls"]): Map<string, SubredditTally> {
+	const bySubreddit = new Map<string, SubredditTally>();
+	for (const cited of specificUrls) {
+		if (!isRedditDomain(cited.domain)) continue;
+		const subreddit = extractSubreddit(cited.url);
+		if (!subreddit) continue;
+
+		const tally = bySubreddit.get(subreddit) ?? { count: 0, newPages: 0, totalPages: 0, urls: [] };
+		tally.count += cited.count;
+		tally.totalPages += 1;
+		if (cited.isNew) tally.newPages += 1;
+		tally.urls.push({ url: cited.url, title: cited.title, count: cited.count, isNew: cited.isNew });
+		bySubreddit.set(subreddit, tally);
+	}
+	return bySubreddit;
+}
 
 export function useSubredditData(
 	specificUrls: CitationData["specificUrls"],
@@ -27,36 +51,7 @@ export function useSubredditData(
 				.filter(Boolean) ?? [],
 		);
 
-		const map = new Map<
-			string,
-			{
-				count: number;
-				newPages: number;
-				totalPages: number;
-				urls: { url: string; title?: string; count: number; isNew?: boolean }[];
-			}
-		>();
-		for (const u of specificUrls) {
-			if (!isRedditDomain(u.domain)) continue;
-			const sub = extractSubreddit(u.url);
-			if (!sub) continue;
-			const existing = map.get(sub);
-			if (existing) {
-				existing.count += u.count;
-				existing.totalPages += 1;
-				if (u.isNew) existing.newPages += 1;
-				existing.urls.push({ url: u.url, title: u.title, count: u.count, isNew: u.isNew });
-			} else {
-				map.set(sub, {
-					count: u.count,
-					newPages: u.isNew ? 1 : 0,
-					totalPages: 1,
-					urls: [{ url: u.url, title: u.title, count: u.count, isNew: u.isNew }],
-				});
-			}
-		}
-
-		return Array.from(map.entries())
+		return Array.from(groupBySubreddit(specificUrls).entries())
 			.map(([name, data]) => ({
 				name,
 				count: data.count,

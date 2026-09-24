@@ -1,13 +1,15 @@
 import { createOpenAI, openai } from "@ai-sdk/openai";
-import { generateText, Output } from "ai";
+import { generateText, type InferToolOutput } from "ai";
 import { getCredential } from "../../secrets";
 import { extractCitationsFromOpenAI, extractTextFromOpenAI } from "../../text-extraction";
 import {
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
+	configuredWhen,
 	OPENAI_WEB_SEARCH_CONTEXT_SIZE,
 	OPENAI_WEB_SEARCH_MAX_TOOL_CALLS,
 	RESEARCH_WEB_SEARCH_CONTEXT_SIZE,
 	RESEARCH_WEB_SEARCH_MAX_USES,
+	reportedWebQueries,
 	warnIfOutputCapped,
 } from "../config";
 import type {
@@ -17,6 +19,8 @@ import type {
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
+import { structuredResearch } from "./ai-sdk";
+import { nonEmptyStrings } from "./scrape-shared";
 
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
@@ -26,13 +30,26 @@ function getOpenAIResponsesModel(model: string) {
 	return provider.responses(model);
 }
 
+type WebSearchOutput = InferToolOutput<ReturnType<typeof openai.tools.webSearch>>;
+
+/**
+ * The web-search tool runs on OpenAI's side, so the query it actually issued
+ * comes back on the tool *result*, not the call — the call's input is empty.
+ * A single search reports `query`; a fanned-out one reports `queries`.
+ *
+ * `tools` is only passed when web search is on, so the compiler can't tie a
+ * result back to the tool that produced it and types `output` as `unknown`;
+ * callers establish that link by matching `toolName` first. The shape itself is
+ * the SDK's, so a renamed field still fails the build here.
+ */
+function webSearchQueries(output: unknown): string[] {
+	const action = (output as WebSearchOutput).action;
+	if (action?.type !== "search") return [];
+	return nonEmptyStrings([action.query, ...(action.queries ?? [])]);
+}
+
 async function runOpenAI(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
-	const tools: Record<string, any> = {};
-	if (options?.webSearch) {
-		tools.web_search = openai.tools.webSearch({
-			searchContextSize: OPENAI_WEB_SEARCH_CONTEXT_SIZE,
-		}) as any;
-	}
+	const webSearch = options?.webSearch === true;
 
 	const result = await generateText({
 		// Routed through getOpenAIResponsesModel (not the bare `openai` global,
@@ -40,10 +57,12 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		model: getOpenAIResponsesModel(model),
 		prompt,
 		maxOutputTokens: API_PROVIDER_MAX_OUTPUT_TOKENS["openai-api"],
-		toolChoice: Object.keys(tools).length > 0 ? "auto" : "none",
-		...(Object.keys(tools).length > 0 ? { tools } : {}),
-		...(Object.keys(tools).length > 0
-			? { providerOptions: { openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } } }
+		toolChoice: webSearch ? "auto" : "none",
+		...(webSearch
+			? {
+					tools: { web_search: openai.tools.webSearch({ searchContextSize: OPENAI_WEB_SEARCH_CONTEXT_SIZE }) },
+					providerOptions: { openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } },
+				}
 			: {}),
 	});
 
@@ -52,9 +71,9 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 	// The AI SDK doesn't populate result.response.body for the Responses API, so
 	// rebuild the raw output from the parsed result (text + web-search sources)
 	// in the "output" shape the OpenAI extractors expect.
-	const annotations = (result.sources ?? [])
-		.filter((s: any) => s.sourceType === "url" && s.url)
-		.map((s: any) => ({ type: "url_citation", url: s.url, title: s.title }));
+	const annotations = result.sources
+		.filter((source) => source.sourceType === "url")
+		.map((source) => ({ type: "url_citation", url: source.url, title: source.title }));
 	const rawOutput = {
 		output: [
 			{
@@ -64,18 +83,13 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		],
 	};
 
-	// Search queries, when the model ran web search. The SDK doesn't reliably
-	// surface the raw query, so fall back to "unavailable" (a soft signal).
-	const webQueries: string[] = [];
-	for (const part of result.content ?? []) {
-		const q = (part as any)?.input?.query ?? (part as any)?.action?.query;
-		if (typeof q === "string") webQueries.push(q);
-	}
-	if (options?.webSearch && webQueries.length === 0) webQueries.push("unavailable");
+	const webQueries = result.content.flatMap((part) =>
+		part.type === "tool-result" && part.toolName === "web_search" ? webSearchQueries(part.output) : [],
+	);
 
 	return {
 		rawOutput,
-		webQueries,
+		webQueries: reportedWebQueries(webQueries, { webSearch: options?.webSearch ?? false }),
 		textContent: extractTextFromOpenAI(rawOutput),
 		citations: extractCitationsFromOpenAI(rawOutput),
 		modelVersion: model,
@@ -88,9 +102,7 @@ export const openaiApi: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
-	isConfigured() {
-		return !!getCredential("OPENAI_API_KEY");
-	},
+	isConfigured: configuredWhen("OPENAI_API_KEY"),
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;
@@ -102,22 +114,18 @@ export const openaiApi: Provider = {
 		schema,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
-		const result = await generateText({
-			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
+		const object = await structuredResearch(getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL), {
+			prompt,
+			schema,
 			...(webSearch
 				? {
 						tools: {
-							web_search: openai.tools.webSearch({ searchContextSize: RESEARCH_WEB_SEARCH_CONTEXT_SIZE }) as any,
+							web_search: openai.tools.webSearch({ searchContextSize: RESEARCH_WEB_SEARCH_CONTEXT_SIZE }),
 						},
+						providerOptions: { openai: { maxToolCalls: RESEARCH_WEB_SEARCH_MAX_USES } },
 					}
 				: {}),
-			...(webSearch ? { providerOptions: { openai: { maxToolCalls: RESEARCH_WEB_SEARCH_MAX_USES } } } : {}),
-			output: Output.object({ schema }),
-			prompt,
 		});
-		return {
-			object: result.output as T,
-			modelVersion: DEFAULT_RESEARCH_MODEL,
-		};
+		return { object, modelVersion: DEFAULT_RESEARCH_MODEL };
 	},
 };

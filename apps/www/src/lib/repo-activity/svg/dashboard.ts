@@ -8,7 +8,7 @@
 
 import { MAX_CONTRIB_AVATARS } from "../constants";
 import type { RepoActivityData } from "../types";
-import { DISPLAY_FAMILY, avatarRow, fmt, hairline, monotonePath, svgDoc, text } from "./primitives";
+import { avatarRow, DISPLAY_FAMILY, fmt, hairline, monotonePath, svgDoc, text } from "./primitives";
 import { areaDistribution, eyebrow, ratioBar } from "./shared";
 
 const W = 840;

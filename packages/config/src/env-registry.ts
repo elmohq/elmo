@@ -161,6 +161,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
 	},
 	{
+		name: "SEARCHAPI_API_KEY",
+		scope: "server",
+		requiredBy: "dynamic-scrape-targets",
+		provider: "searchapi",
+		description: "SearchApi.io API key.",
+	},
+	{
 		name: "OLOSTEP_API_KEY",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
@@ -343,12 +350,6 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		requiredBy: "optional",
 		wwwOnly: true,
 		description: "Vercel Blob token (www competitor screenshots).",
-	},
-	{
-		name: "DBOS_SYSTEM_DATABASE_URL",
-		scope: "server",
-		requiredBy: "optional",
-		description: "Override for the DBOS system database URL (read by the DBOS runtime).",
 	},
 	{
 		name: "SENTRY_DSN",

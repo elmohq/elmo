@@ -24,51 +24,105 @@ pnpm build
 
 # Build only the web app
 pnpm --filter @workspace/web build
+
+# Type check every package
+pnpm turbo check-types
 ```
 
 ## Testing
 
 ```bash
-# Run all tests
+# Run the unit tests across every package
 pnpm test
 
-# Watch mode for web app tests
-pnpm --filter @workspace/web test:watch
+# Run the tests for scripts/, which sits outside the workspace
+pnpm test:scripts
+```
+
+Storybook stories double as browser tests. They run in Vitest's browser mode, so
+they need a browser installed before the first run:
+
+```bash
+pnpm --filter @workspace/web exec playwright install chromium
+pnpm --filter @workspace/web test:storybook
+```
+
+### End-to-End Tests
+
+`.github/workflows/e2e.yaml` is the source of truth for E2E orchestration — it
+stands up one Dockerized container per deployment mode, seeds them, and runs the
+suites in order. Replay the whole thing locally with
+[act](https://github.com/nektos/act):
+
+```bash
+pnpm test:e2e-local
+```
+
+The scripts below each run one mode's suite against a stack that workflow has
+already brought up, which is what you want when iterating on a single spec:
+
+```bash
+# Playwright specs
+pnpm test:e2e
+pnpm test:e2e:cloud
+pnpm test:e2e:whitelabel
+pnpm test:e2e:demo
+
+# Bruno API suites
+pnpm test:api
+pnpm test:api:cloud
+pnpm test:api:demo
 ```
 
 ## Code Quality
 
 ```bash
-# Run Biome linter
+# Check formatting, lint and import order — the same check CI runs
 pnpm lint
+
+# Fix everything Biome can fix on its own
+pnpm lint:fix
 
 # Format code with Biome
 pnpm format
 
 # Find unused exports and dependencies
 pnpm knip
+
+# Lint the hand-written OpenAPI document
+pnpm lint:spec
+
+# Check every dependency's license against the MIT-compatible allow-list
+pnpm license-check
 ```
 
 Always run `pnpm format` before committing to ensure consistent code style across the codebase.
 
 ## Database
 
-```bash
-# Navigate to the web app
-cd apps/web
+`drizzle.config.ts` and the migrations live in `packages/lib`, so Drizzle runs
+against that package:
 
+```bash
 # Generate a new migration after schema changes
-pnpm drizzle-kit generate
+pnpm --filter @workspace/lib exec drizzle-kit generate
 
 # Run pending migrations
-pnpm drizzle-kit migrate
+pnpm --filter @workspace/lib exec drizzle-kit migrate
 ```
+
+Apply schema changes with `drizzle-kit migrate` only. See
+[Architecture](/docs/developer-guide/architecture#database) for why `drizzle-kit
+push` is unsafe against a deployment.
 
 ## Component Stories
 
 ```bash
-# Start Ladle dev server
-pnpm --filter @workspace/web ladle
+# Start the Storybook dev server on port 6006
+pnpm --filter @workspace/web storybook
+
+# Build the static Storybook
+pnpm --filter @workspace/web storybook:build
 ```
 
 ## CLI Development

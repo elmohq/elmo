@@ -1,5 +1,43 @@
 # e2e
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [e2543e8]
+  - @workspace/lib@0.4.1
+
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies [f6e90d9]
+- Updated dependencies [99f537c]
+- Updated dependencies [c9142f7]
+- Updated dependencies [aa8c80d]
+  - @workspace/lib@0.4.0
+
+## 0.3.0
+
+### Patch Changes
+
+- Updated dependencies [1f32756]
+- Updated dependencies [d4e5db4]
+- Updated dependencies [9633ca2]
+- Updated dependencies [78593b9]
+- Updated dependencies [1f32756]
+- Updated dependencies [1f32756]
+- Updated dependencies [78593b9]
+- Updated dependencies [78593b9]
+- Updated dependencies [f87d2e2]
+- Updated dependencies [58ff775]
+- Updated dependencies [1f46b62]
+- Updated dependencies [1c4d39c]
+- Updated dependencies [78593b9]
+- Updated dependencies [78593b9]
+- Updated dependencies [78593b9]
+  - @workspace/lib@0.3.0
+
 ## 0.2.19
 
 ## 0.2.18

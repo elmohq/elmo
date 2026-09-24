@@ -8,11 +8,11 @@ import { olostep } from "./registry/olostep";
 import { openaiApi } from "./registry/openai-api";
 import { openrouter } from "./registry/openrouter";
 import { oxylabs } from "./registry/oxylabs";
+import { searchapi } from "./registry/searchapi";
 import { stub } from "./registry/stub";
 import type { ModelConfig, Provider, ProviderAccess } from "./types";
 
-export { STATUS_TARGETS } from "@workspace/config/scrape-targets";
-export { parseScrapeTargets, validateScrapeTargets } from "./config";
+export { validateScrapeTargets } from "./config";
 export { selectTargetsForBrand } from "./runner";
 export type {
 	ModelConfig,
@@ -26,6 +26,7 @@ export type {
 } from "./types";
 
 const providerMap: Record<string, Provider> = {
+	searchapi,
 	olostep,
 	brightdata,
 	oxylabs,

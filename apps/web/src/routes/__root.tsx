@@ -1,26 +1,28 @@
 /// <reference types="vite/client" />
-import { useEffect, useState } from "react";
-import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
-import { NotFound } from "@/router-default-components";
-import { TanStackDevtools } from "@tanstack/react-devtools";
-import type { QueryClient } from "@tanstack/react-query";
-import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants";
-import type { DeploymentMode } from "@workspace/config/types";
-import type { MissingEnvVar } from "@workspace/config/env";
-import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
-import MissingEnvPage from "@/components/missing-env-page";
-import { usesWordmarkFont } from "@/components/logo";
-import queryDevtools from "@/integrations/tanstack-query/devtools";
-import { initAnalytics } from "@/lib/posthog";
-import { initClarity } from "@/lib/clarity";
-import { getConsentRegion } from "@/lib/consent-region";
-import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
-import { legalUrl } from "@workspace/config/legal";
-import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
-import appCss from "../styles.css?url";
+
 // Preloaded so the wordmark font downloads in parallel with the CSS rather than
 // after it. Must resolve to the same emitted asset as the @font-face src.
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import type { QueryClient } from "@tanstack/react-query";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants";
+import type { MissingEnvVar } from "@workspace/config/env";
+import { legalUrl } from "@workspace/config/legal";
+import type { DeploymentMode } from "@workspace/config/types";
+import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
+import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
+import { useEffect, useState } from "react";
+import { usesWordmarkFont } from "@/components/logo";
+import MissingEnvPage from "@/components/missing-env-page";
+import { NotFoundPage } from "@/components/not-found-page";
+import queryDevtools from "@/integrations/tanstack-query/devtools";
+import { initClarity } from "@/lib/clarity";
+import { rootConfigQuery } from "@/lib/config/queries";
+import { initCrisp } from "@/lib/crisp";
+import { initAnalytics } from "@/lib/posthog";
+import type { PublicClientConfig } from "@/server/config";
+import appCss from "../styles.css?url";
 
 // clientConfig and envValidation are optional because the router renders against
 // its base context — which has neither — until this route's beforeLoad resolves.
@@ -36,29 +38,9 @@ interface RouterContext {
 	consentRegion?: boolean | null;
 }
 
-// Client-side cache for config data — avoids HTTP round-trips on every SPA navigation.
-// The server deliberately doesn't cache: `hasUsers` (and with it `canRegister`)
-// flips the first time someone signs up, and a module-scope cache in a
-// long-lived server process would keep serving the pre-signup answer — leaving
-// /auth/register reachable on a bootstrapped instance until the next restart.
-let cachedRootData: {
-	clientConfig: PublicClientConfig;
-	envValidation: { mode: DeploymentMode; missing: MissingEnvVar[]; isValid: boolean };
-	consentRegion: boolean | null;
-} | null = null;
-
 export const Route = createRootRouteWithContext<RouterContext>()({
-	notFoundComponent: NotFound,
-	beforeLoad: async () => {
-		if (cachedRootData) return cachedRootData;
-		const [clientConfig, envValidation, consentRegion] = await Promise.all([
-			getClientConfig(),
-			getEnvValidationStateFn(),
-			getConsentRegion(),
-		]);
-		if (typeof window !== "undefined") cachedRootData = { clientConfig, envValidation, consentRegion };
-		return { clientConfig, envValidation, consentRegion };
-	},
+	notFoundComponent: NotFoundPage,
+	beforeLoad: ({ context }) => context.queryClient.ensureQueryData(rootConfigQuery),
 	head: ({ match }) => {
 		const branding = match.context?.clientConfig?.branding;
 		const analytics = match.context?.clientConfig?.analytics;
@@ -181,6 +163,11 @@ function RootComponent() {
 			for (const stop of stops) stop?.();
 		};
 	}, [posthogKey, clarityProjectId, asksForConsent, consentRegion]);
+
+	useEffect(() => {
+		if (!clientConfig) return;
+		initCrisp(clientConfig.analytics?.crispWebsiteId, clientConfig.mode);
+	}, [clientConfig]);
 
 	// Only swap in the missing-env page once we actually know env is invalid —
 	// envValidation is absent while a navigation's root beforeLoad is in flight.

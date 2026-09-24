@@ -7,7 +7,7 @@ export function getPageImage(slugs: string[]) {
 	};
 }
 
-export function getMarketingOgImage(opts: { title: string; description?: string }): string {
+export function getMarketingOgImage(opts: { title: string; description?: string; label?: string }): string {
 	// The rendered card already shows the "elmo" logo, so a "Pricing · Elmo" or
 	// "Elmo · Open Source AI Visibility" title would render the brand
 	// twice. Strip the brand prefix/suffix here. The og:title meta keeps the
@@ -16,5 +16,6 @@ export function getMarketingOgImage(opts: { title: string; description?: string 
 	const params = new URLSearchParams();
 	params.set("title", cleanTitle);
 	if (opts.description) params.set("description", opts.description);
+	if (opts.label) params.set("label", opts.label);
 	return `/og.png?${params.toString()}`;
 }

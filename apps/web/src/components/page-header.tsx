@@ -1,7 +1,6 @@
-import { ReactNode } from "react";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import type { ReactNode } from "react";
 
 interface PageHeaderProps {
 	title: string;
@@ -28,15 +27,6 @@ export function PageHeader({ title, subtitle, infoContent, children }: PageHeade
 				<p className="text-muted-foreground mt-1">{subtitle}</p>
 			</div>
 			{children}
-		</div>
-	);
-}
-
-export function PageHeaderTitleSkeleton() {
-	return (
-		<div className="mb-4 space-y-2">
-			<Skeleton className="h-9 w-48" />
-			<Skeleton className="h-5 w-80" />
 		</div>
 	);
 }

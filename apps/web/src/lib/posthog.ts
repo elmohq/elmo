@@ -1,5 +1,5 @@
-import type { PostHog } from "posthog-js";
 import { onAnalyticsConsent } from "@workspace/ui/lib/cookie-consent";
+import type { PostHog } from "posthog-js";
 
 const POSTHOG_HOST = "https://var.elmohq.com";
 

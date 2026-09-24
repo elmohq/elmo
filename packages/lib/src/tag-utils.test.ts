@@ -1,13 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { SYSTEM_TAGS } from "./db/schema";
 import {
-	isSystemTag,
-	isPromptBranded,
 	computeSystemTags,
+	getEffectiveBrandedStatus,
+	isPromptBranded,
+	isSystemTag,
 	normalizeTag,
 	sanitizeUserTags,
-	getEffectiveBrandedStatus,
 } from "./tag-utils";
-import { SYSTEM_TAGS } from "./db/schema";
 
 describe("tag-utils", () => {
 	describe("isSystemTag", () => {

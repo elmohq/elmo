@@ -1,0 +1,25 @@
+meta {
+  name: filtering by another tenant's brand returns nothing
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{nikeBrandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  brandId: {{nikeBrandId}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.total: eq 0
+  res.body.prompts: isEmpty
+}

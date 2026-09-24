@@ -1,8 +1,8 @@
-import type { ComponentPropsWithoutRef } from "react";
 import { useRouteContext } from "@tanstack/react-router";
-import { cn } from "@workspace/ui/lib/utils";
 import { DEFAULT_APP_ICON, DEFAULT_APP_NAME } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
+import { cn } from "@workspace/ui/lib/utils";
+import type { ComponentPropsWithoutRef } from "react";
 
 interface LogoProps extends ComponentPropsWithoutRef<"div"> {
 	iconClassName?: string;

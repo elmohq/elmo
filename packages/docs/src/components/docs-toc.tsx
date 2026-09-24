@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { cn } from "@workspace/ui/lib/utils";
-import { AnchorProvider, ScrollProvider, TOCItem, useActiveAnchors, type TOCItemType } from "fumadocs-core/toc";
+import { AnchorProvider, ScrollProvider, TOCItem, type TOCItemType, useActiveAnchors } from "fumadocs-core/toc";
 import { useOnChange } from "fumadocs-core/utils/use-on-change";
+import { useCallback, useEffect, useRef } from "react";
 
 function TocThumb({ containerRef }: { containerRef: React.RefObject<HTMLElement | null> }) {
 	const thumbRef = useRef<HTMLDivElement>(null);
 	const active = useActiveAnchors();
 
-	function update() {
+	const update = useCallback(() => {
 		const container = containerRef.current;
 		const element = thumbRef.current;
 		if (!container || !element) return;
@@ -32,7 +32,7 @@ function TocThumb({ containerRef }: { containerRef: React.RefObject<HTMLElement 
 
 		element.style.setProperty("--toc-top", `${upper}px`);
 		element.style.setProperty("--toc-height", `${lower - upper}px`);
-	}
+	}, [containerRef, active]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -40,7 +40,7 @@ function TocThumb({ containerRef }: { containerRef: React.RefObject<HTMLElement 
 		const observer = new ResizeObserver(update);
 		observer.observe(container);
 		return () => observer.disconnect();
-	}, [containerRef]);
+	}, [containerRef, update]);
 
 	useOnChange(active, update);
 

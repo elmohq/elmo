@@ -49,6 +49,7 @@ declare global {
 			readonly ANTHROPIC_API_KEY: string;
 			readonly MISTRAL_API_KEY?: string;
 			readonly OPENROUTER_API_KEY?: string;
+			readonly SEARCHAPI_API_KEY?: string;
 			readonly OLOSTEP_API_KEY?: string;
 			readonly BRIGHTDATA_API_TOKEN?: string;
 			readonly OXYLABS_USERNAME?: string;
@@ -71,7 +72,6 @@ declare global {
 			readonly DEFAULT_BRAND_DOMAINS?: string;
 			readonly CLOUD_SIGNUP_ALLOWLIST?: string;
 			readonly ENVIRONMENT?: string;
-			readonly DBOS_SYSTEM_DATABASE_URL?: string;
 			readonly SENTRY_DSN?: string;
 			readonly SENTRY_ORG?: string;
 			readonly SENTRY_PROJECT?: string;

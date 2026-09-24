@@ -202,7 +202,10 @@ describe("computeMaintenanceDecisions", () => {
 					plan: mixed,
 					lastRunAtByKey: new Map([
 						[targetKey(CHATGPT), new Date(NOW.getTime() - 7 * HOUR)],
-						[targetKey({ model: "claude", provider: "anthropic-api", webSearch: true }), new Date(NOW.getTime() - 2 * HOUR)],
+						[
+							targetKey({ model: "claude", provider: "anthropic-api", webSearch: true }),
+							new Date(NOW.getTime() - 2 * HOUR),
+						],
 					]),
 				}),
 			],

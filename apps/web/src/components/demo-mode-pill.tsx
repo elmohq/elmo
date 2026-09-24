@@ -1,7 +1,7 @@
-import { useRouteContext } from "@tanstack/react-router";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export function DemoModePill() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };

@@ -16,14 +16,12 @@
  * the brand_opportunities table (append-only) and served as-is until the latest
  * is older than REFRESH_AFTER_DAYS, so a normal page load doesn't trigger an LLM call.
  */
-import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schema";
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import { extractDomain } from "@/lib/domain-categories";
+import { type CitationCategory, extractDomain } from "@/lib/domain-categories";
 import { categorizeDomain } from "@/lib/domain-categories.server";
 import {
 	getBrandMentionRateByModel,
@@ -35,15 +33,38 @@ import {
 	type PerPromptRunStats,
 } from "@/lib/postgres-read";
 import { isBrandedPrompt } from "@/lib/prompt-tags";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { resolveLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
-// ============================================================================
-// Structured output (LLM) — the server enriches it before the page renders it.
-// ============================================================================
+/** First occurrence of each entry, by whatever `key` identifies it. */
+function distinctBy<T>(items: T[], key: (item: T) => string): T[] {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		const id = key(item);
+		if (seen.has(id)) return false;
+		seen.add(id);
+		return true;
+	});
+}
 
-export const CATEGORIES = ["creation", "existing-content", "outreach", "social"] as const;
+const normalizeText = (text: string) => text.trim().toLowerCase();
+
+export function withoutRepeats(report: OpportunitiesReport): OpportunitiesReport {
+	return {
+		...report,
+		summary: distinctBy(report.summary, normalizeText),
+		risks: distinctBy(report.risks, normalizeText),
+		opportunities: distinctBy(report.opportunities, (o) => normalizeText(o.title)).map((o) => ({
+			...o,
+			relatedPrompts: distinctBy(o.relatedPrompts, (p) => normalizeText(p.text)),
+			yourCitations: distinctBy(o.yourCitations, (c) => c.url),
+			competitorCitations: distinctBy(o.competitorCitations, (c) => c.url),
+		})),
+	};
+}
+
+const CATEGORIES = ["creation", "existing-content", "outreach", "social"] as const;
 
 const OpportunitySchema = z.object({
 	category: z
@@ -66,7 +87,7 @@ const OpportunitySchema = z.object({
 		.describe("The tracked prompts (verbatim, exactly as written in the data) this helps. May be empty."),
 });
 
-export const opportunitiesSchema = z.object({
+const opportunitiesSchema = z.object({
 	summary: z
 		.array(z.string())
 		.describe(
@@ -104,18 +125,14 @@ export interface OpportunitiesReport extends Omit<RawReport, "opportunities"> {
 	opportunities: ReportOpportunity[];
 }
 
-export type OpportunitiesReason = "insufficient-data" | null;
+type OpportunitiesReason = "insufficient-data" | null;
 export interface OpportunitiesResponse {
 	report: OpportunitiesReport | null;
 	reason: OpportunitiesReason;
 	generatedFor: { brandName: string } | null;
 	lastEvaluatedAt: string | null;
+	model: string | null;
 }
-
-// ============================================================================
-// Guidance — fed to the model as system context. Rephrased for this task; do not
-// treat as a verbatim copy of any source. No brand names here — data comes below.
-// ============================================================================
 
 const GUIDANCE = `You are an AI-visibility (AEO) strategist advising a content/marketing team that does NOT know how this tool computes its numbers. From the brand's tracked answer data, produce a prioritized, practical set of opportunities to get the brand cited more often in AI assistant answers (ChatGPT, Perplexity, Google AI, Claude, Copilot).
 
@@ -154,10 +171,6 @@ const TASK = `Using ONLY the data above, return the structured output:
 - opportunities: 8-12 prioritized opportunities (highest impact first), each sorted into a category, with a plain-language "why" (the motivation, for a non-expert) and the tracked prompts it helps (verbatim). Spread them across the categories the data supports — don't force all four.
 - risks: 2-4 short caveats (hard-to-win areas or tactics to avoid).`;
 
-// ============================================================================
-// Digest builder
-// ============================================================================
-
 const TOP_PROMPTS = 30;
 const pct = (v: number) => Math.round(v * 100);
 
@@ -180,13 +193,6 @@ function modelToPlatform(model: string): string {
 	if (m.startsWith("gpt") || m.startsWith("o1") || m.startsWith("o3") || m.startsWith("o4") || m.includes("chatgpt"))
 		return "ChatGPT";
 	return model;
-}
-
-function resolveRange(lookback: "1w" | "1m", timezone: string) {
-	return getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
-		fromDateStr: string;
-		toDateStr: string;
-	};
 }
 
 /** Top competitor (by mentions) per prompt, with rate = mentions / runs. */
@@ -227,20 +233,13 @@ interface Digest {
 	citationsByPrompt: Map<string, DigestCitation[]>;
 }
 
-/** Assemble the deterministic digest text + the structured bits the server needs
- * to enrich the LLM output. Returns null if there isn't enough data. */
-async function buildDigest(brandId: string, timezoneParam: string): Promise<Digest | null> {
-	const timezone = resolveTimezone(timezoneParam);
-	const r30 = resolveRange("1m", timezone);
-	const r7 = resolveRange("1w", timezone);
-
-	const prompts = await resolveFilteredPrompts(brandId, {});
-	if (prompts.length === 0) return null;
-	const promptIds = prompts.map((p) => p.id);
-	const isBranded = new Map(prompts.map((p) => [p.id, isBrandedPrompt(p)]));
-	const promptText = new Map(prompts.map((p) => [p.id, p.value]));
-	const tagsByPrompt = new Map(prompts.map((p) => [p.id, p.tags ?? []]));
-
+async function loadDigestData(
+	brandId: string,
+	timezone: string,
+	promptIds: string[],
+	windows: { r30: { fromDateStr: string; toDateStr: string }; r7: { fromDateStr: string; toDateStr: string } },
+) {
+	const { r30, r7 } = windows;
 	const [brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel] = await Promise.all([
 		db
 			.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })
@@ -259,52 +258,171 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 		getPerPromptDailyCompetitorMentions(brandId, r7.fromDateStr, r7.toDateStr, timezone, promptIds),
 		getBrandMentionRateByModel(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
 	]);
+	return { brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel };
+}
 
-	const totalRuns = run30.reduce((s, r) => s + r.runs, 0);
-	if (totalRuns === 0) return null;
-
-	const brandName = brandRows[0]?.name ?? "the brand";
+function resolveOwnership(
+	brand: { website: string | null; additionalDomains: string[] | null } | undefined,
+	competitorRows: { domains: string[] | null }[],
+) {
 	const brandDomains = new Set(
-		[extractDomain(brandRows[0]?.website || ""), ...(brandRows[0]?.additionalDomains || []).map(extractDomain)].filter(
-			Boolean,
-		),
+		[extractDomain(brand?.website || ""), ...(brand?.additionalDomains || []).map(extractDomain)].filter(Boolean),
 	);
 	const competitorDomains = new Set(
 		competitorRows.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),
 	);
 	const catOf = (domain: string) => categorizeDomain(domain, brandDomains, competitorDomains);
 	const ownerOf = (domain: string): CitationOwner => {
-		const c = catOf(domain);
-		return c === "brand" ? "brand" : c === "competitor" ? "competitor" : "other";
+		const category = catOf(domain);
+		if (category === "brand" || category === "competitor") return category;
+		return "other";
 	};
+	return { catOf, ownerOf };
+}
+
+/** How many of a prompt's non-brand citation domains the digest line names. */
+const MAX_CITED_VIA_DOMAINS = 3;
+
+const TOP_THIRD_PARTY_DOMAINS = 10;
+const TOP_COMMUNITY_DOMAINS = 5;
+const TOP_COMPETITOR_PAGES = 8;
+
+function groupByPrompt<Row extends { prompt_id: string }, T>(rows: Row[], project: (row: Row) => T): Map<string, T[]> {
+	const byPrompt = new Map<string, T[]>();
+	for (const row of rows) {
+		const list = byPrompt.get(row.prompt_id) ?? [];
+		list.push(project(row));
+		byPrompt.set(row.prompt_id, list);
+	}
+	return byPrompt;
+}
+
+function promptDigestLine(facts: {
+	rank: number;
+	text: string;
+	branded: boolean;
+	tags: string[];
+	brand30: number;
+	brand7: number;
+	leader30: { name: string; rate: number };
+	leader7: { name: string; rate: number };
+	difficulty: string;
+	citedVia: string[];
+}): string {
+	const leader = facts.leader30.name
+		? `${facts.leader30.name} ${pct(facts.leader30.rate)}% (7d ${pct(facts.leader7.rate)}%)`
+		: "no competitor cited";
+	const tags = facts.tags.length ? ` [${facts.tags.join(", ")}]` : "";
+	const citedVia = facts.citedVia.length ? facts.citedVia.join(", ") : "no citations yet";
+	return `${facts.rank}. ${facts.branded ? "*" : ""}"${facts.text}"${tags} — you ${pct(facts.brand30)}% (7d ${pct(facts.brand7)}%), top rival ${leader}, difficulty ${facts.difficulty}; cited via: ${citedVia}`;
+}
+
+function summarizeCitationLandscape(
+	pages: { domain: string; title: string | null; count: number }[],
+	catOf: (domain: string) => CitationCategory,
+) {
+	const byDomain = new Map<string, { count: number; title: string | null; cat: CitationCategory }>();
+	const mix = { brand: 0, competitor: 0, community: 0, thirdParty: 0 };
+	for (const row of pages) {
+		const cat = catOf(row.domain);
+		const current = byDomain.get(row.domain);
+		if (current) current.count += row.count;
+		else byDomain.set(row.domain, { count: row.count, title: row.title, cat });
+		if (cat === "brand") mix.brand += row.count;
+		else if (cat === "competitor") mix.competitor += row.count;
+		else if (cat === "social") mix.community += row.count;
+		else mix.thirdParty += row.count;
+	}
+
+	const entries = [...byDomain.entries()].map(([domain, value]) => ({ domain, ...value }));
+	const topWhere = (limit: number, keep: (cat: CitationCategory) => boolean) =>
+		entries
+			.filter((entry) => keep(entry.cat))
+			.sort((a, b) => b.count - a.count)
+			.slice(0, limit);
+
+	return {
+		mix,
+		totalCites: mix.brand + mix.competitor + mix.community + mix.thirdParty || 1,
+		thirdPartyTop: topWhere(
+			TOP_THIRD_PARTY_DOMAINS,
+			(cat) => cat !== "brand" && cat !== "competitor" && cat !== "social",
+		),
+		communityTop: topWhere(TOP_COMMUNITY_DOMAINS, (cat) => cat === "social"),
+		competitorPages: topWhere(TOP_COMPETITOR_PAGES, (cat) => cat === "competitor"),
+	};
+}
+
+function summarizePlatformVisibility(byModel: { model: string; runs: number; brand_mentioned_count: number }[]) {
+	const byPlatform = new Map<string, { runs: number; mentioned: number }>();
+	let allRuns = 0;
+	let allMentioned = 0;
+	for (const row of byModel) {
+		if (row.runs <= 0) continue;
+		allRuns += row.runs;
+		allMentioned += row.brand_mentioned_count;
+		const platform = modelToPlatform(row.model);
+		const current = byPlatform.get(platform) ?? { runs: 0, mentioned: 0 };
+		current.runs += row.runs;
+		current.mentioned += row.brand_mentioned_count;
+		byPlatform.set(platform, current);
+	}
+	return {
+		platformLines: [...byPlatform.entries()].map(([platform, v]) => `${platform} ${pct(v.mentioned / v.runs)}%`),
+		overallVis: allRuns > 0 ? allMentioned / allRuns : 0,
+	};
+}
+
+/** Assemble the deterministic digest text + the structured bits the server needs
+ * to enrich the LLM output. Returns null if there isn't enough data. */
+async function buildDigest(brandId: string, timezoneParam: string): Promise<Digest | null> {
+	const timezone = resolveTimezone(timezoneParam);
+	const r30 = resolveLookbackRange("1m", timezone);
+	const r7 = resolveLookbackRange("1w", timezone);
+
+	const prompts = await resolveFilteredPrompts(brandId, {});
+	if (prompts.length === 0) return null;
+	const promptIds = prompts.map((p) => p.id);
+	const isBranded = new Map(prompts.map((p) => [p.id, isBrandedPrompt(p)]));
+	const promptText = new Map(prompts.map((p) => [p.id, p.value]));
+	const tagsByPrompt = new Map(prompts.map((p) => [p.id, p.tags ?? []]));
+
+	const { brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel } = await loadDigestData(
+		brandId,
+		timezone,
+		promptIds,
+		{ r30, r7 },
+	);
+
+	const totalRuns = run30.reduce((s, r) => s + r.runs, 0);
+	if (totalRuns === 0) return null;
+
+	const brandName = brandRows[0]?.name ?? "the brand";
+	const { catOf, ownerOf } = resolveOwnership(brandRows[0], competitorRows);
 
 	const run30By = new Map(run30.map((r) => [r.prompt_id, r]));
 	const run7By = new Map(run7.map((r) => [r.prompt_id, r]));
 	const leader30 = topCompetitorByPrompt(comp30, run30By);
 	const leader7 = topCompetitorByPrompt(comp7, run7By);
 
-	const dailyByPrompt = new Map<string, DailyDomainCount[]>();
-	for (const row of daily30) {
-		let list = dailyByPrompt.get(row.prompt_id);
-		if (!list) {
-			list = [];
-			dailyByPrompt.set(row.prompt_id, list);
-		}
-		list.push({ date: String(row.date), domain: row.domain, count: Number(row.count) });
-	}
+	const dailyByPrompt = groupByPrompt(daily30, (row) => ({
+		date: String(row.date),
+		domain: row.domain,
+		count: Number(row.count),
+	}));
 
 	// Per-prompt cited pages (URL-level), tagged by owner — powers both the
 	// "cited via" digest line and the per-opportunity drill-downs.
-	const citationsByPrompt = new Map<string, DigestCitation[]>();
-	for (const row of pages30) {
-		if (!row.url) continue;
-		let list = citationsByPrompt.get(row.prompt_id);
-		if (!list) {
-			list = [];
-			citationsByPrompt.set(row.prompt_id, list);
-		}
-		list.push({ title: row.title, domain: row.domain, url: row.url, count: row.count, owner: ownerOf(row.domain) });
-	}
+	const citationsByPrompt = groupByPrompt(
+		pages30.filter((row) => row.url),
+		(row): DigestCitation => ({
+			title: row.title,
+			domain: row.domain,
+			url: row.url as string,
+			count: row.count,
+			owner: ownerOf(row.domain),
+		}),
+	);
 
 	// Rank prompts by the gap to the leading competitor (30d); branded flagged.
 	const ranked = promptIds
@@ -316,71 +434,29 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 		.sort((a, b) => b.gap - a.gap)
 		.slice(0, TOP_PROMPTS);
 
-	const queryLines = ranked.map(({ pid }, i) => {
-		const brand30 = run30By.get(pid)?.brand_mention_rate ?? 0;
-		const brand7 = run7By.get(pid)?.brand_mention_rate ?? 0;
-		const l30 = leader30.get(pid) ?? { name: "", rate: 0 };
-		const l7 = leader7.get(pid) ?? { name: "", rate: 0 };
-		const stability = stabilityScore(computeVolatility(dailyByPrompt.get(pid) ?? []).weightedVolatility);
-		const difficulty = difficultyLabel(stability);
-		const tags = tagsByPrompt.get(pid) ?? [];
-		const citedVia = [
-			...new Set((citationsByPrompt.get(pid) ?? []).filter((c) => c.owner !== "brand").map((c) => c.domain)),
-		].slice(0, 3);
-		const leaderStr = l30.name ? `${l30.name} ${pct(l30.rate)}% (7d ${pct(l7.rate)}%)` : "no competitor cited";
-		const tagStr = tags.length ? ` [${tags.join(", ")}]` : "";
-		return `${i + 1}. ${isBranded.get(pid) ? "*" : ""}"${promptText.get(pid)}"${tagStr} — you ${pct(brand30)}% (7d ${pct(brand7)}%), top rival ${leaderStr}, difficulty ${difficulty}; cited via: ${citedVia.length ? citedVia.join(", ") : "no citations yet"}`;
-	});
+	const queryLines = ranked.map(({ pid }, i) =>
+		promptDigestLine({
+			rank: i + 1,
+			text: promptText.get(pid) ?? "",
+			branded: isBranded.get(pid) ?? false,
+			tags: tagsByPrompt.get(pid) ?? [],
+			brand30: run30By.get(pid)?.brand_mention_rate ?? 0,
+			brand7: run7By.get(pid)?.brand_mention_rate ?? 0,
+			leader30: leader30.get(pid) ?? { name: "", rate: 0 },
+			leader7: leader7.get(pid) ?? { name: "", rate: 0 },
+			difficulty: difficultyLabel(stabilityScore(computeVolatility(dailyByPrompt.get(pid) ?? []).weightedVolatility)),
+			citedVia: [
+				...new Set((citationsByPrompt.get(pid) ?? []).filter((c) => c.owner !== "brand").map((c) => c.domain)),
+			].slice(0, MAX_CITED_VIA_DOMAINS),
+		}),
+	);
 
-	// Global citation landscape: aggregate cited pages to domains by category.
-	const domainAgg = new Map<string, { count: number; title: string | null; cat: ReturnType<typeof catOf> }>();
-	const mix = { brand: 0, competitor: 0, community: 0, thirdParty: 0 };
-	for (const row of pages30) {
-		const cat = catOf(row.domain);
-		const cur = domainAgg.get(row.domain);
-		if (cur) cur.count += row.count;
-		else domainAgg.set(row.domain, { count: row.count, title: row.title, cat });
-		if (cat === "brand") mix.brand += row.count;
-		else if (cat === "competitor") mix.competitor += row.count;
-		else if (cat === "social") mix.community += row.count;
-		else mix.thirdParty += row.count;
-	}
-	const totalCites = mix.brand + mix.competitor + mix.community + mix.thirdParty || 1;
-	const sortByCount = (a: { count: number }, b: { count: number }) => b.count - a.count;
-	const entries = [...domainAgg.entries()].map(([domain, v]) => ({ domain, ...v }));
+	const { mix, totalCites, thirdPartyTop, communityTop, competitorPages } = summarizeCitationLandscape(pages30, catOf);
+	const { platformLines, overallVis } = summarizePlatformVisibility(byModel);
+	const brandedCount = [...isBranded.values()].filter(Boolean).length;
+
 	const fmtDomain = (e: { domain: string; title: string | null }) =>
 		e.title ? `${e.domain} ("${e.title}")` : e.domain;
-
-	const thirdPartyTop = entries
-		.filter((e) => e.cat !== "brand" && e.cat !== "competitor" && e.cat !== "social")
-		.sort(sortByCount)
-		.slice(0, 10);
-	const communityTop = entries
-		.filter((e) => e.cat === "social")
-		.sort(sortByCount)
-		.slice(0, 5);
-	const competitorPages = entries
-		.filter((e) => e.cat === "competitor")
-		.sort(sortByCount)
-		.slice(0, 8);
-
-	// Per-platform + overall visibility (30d), aggregated from the tracked models.
-	const platformAgg = new Map<string, { runs: number; mentioned: number }>();
-	let allRuns = 0;
-	let allMentioned = 0;
-	for (const m of byModel) {
-		if (m.runs <= 0) continue;
-		allRuns += m.runs;
-		allMentioned += m.brand_mentioned_count;
-		const platform = modelToPlatform(m.model);
-		const cur = platformAgg.get(platform) ?? { runs: 0, mentioned: 0 };
-		cur.runs += m.runs;
-		cur.mentioned += m.brand_mentioned_count;
-		platformAgg.set(platform, cur);
-	}
-	const platformLines = [...platformAgg.entries()].map(([p, v]) => `${p} ${pct(v.mentioned / v.runs)}%`);
-	const brandedCount = [...isBranded.values()].filter(Boolean).length;
-	const overallVis = allRuns > 0 ? allMentioned / allRuns : 0;
 
 	const text = [
 		`BRAND: ${brandName}`,
@@ -437,17 +513,18 @@ const MAX_GENERATION_ATTEMPTS = 3;
  * attach each opportunity's cited pages split into the brand's vs competitors'. */
 function enrichReport(raw: RawReport, digest: Digest): OpportunitiesReport {
 	const idByText = new Map(digest.prompts.map((p) => [p.value.trim().toLowerCase(), p.id]));
-	return {
+
+	return withoutRepeats({
 		...raw,
 		opportunities: raw.opportunities.map((o) => {
 			const relatedPrompts: ReportPrompt[] = o.relatedPrompts.map((text) => ({
 				text,
-				promptId: idByText.get(text.trim().toLowerCase()) ?? null,
+				promptId: idByText.get(normalizeText(text)) ?? null,
 			}));
 			const ids = relatedPrompts.map((p) => p.promptId).filter((id): id is string => id !== null);
 			return { ...o, relatedPrompts, ...citationsForPrompts(ids, digest.citationsByPrompt) };
 		}),
-	};
+	});
 }
 
 /** Generate the report, retrying until the model's output satisfies the schema.
@@ -466,56 +543,55 @@ async function generateValidReport(prompt: string): Promise<{ report: RawReport;
 	return null;
 }
 
-// ============================================================================
-// Server function
-// ============================================================================
-
-export const getOpportunitiesFn = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string(), timezone: z.string().default("UTC") }))
-	.handler(async ({ data }): Promise<OpportunitiesResponse> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-
-		// Serve the most recent stored report while it's fresh. Every generation is
-		// kept (append-only); we regenerate only when the latest is stale.
-		const [latest] = await db
-			.select()
-			.from(brandOpportunities)
-			.where(eq(brandOpportunities.brandId, data.brandId))
-			.orderBy(desc(brandOpportunities.createdAt))
-			.limit(1);
-		const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
-		const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
-		if (latest && isFresh) {
-			return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
-		}
-
-		const digest = await buildDigest(data.brandId, data.timezone);
-		if (!digest) {
-			if (latest)
-				return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
-			return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt };
-		}
-
-		const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
-		const generated = await generateValidReport(prompt);
-		if (!generated) {
-			// Couldn't get a schema-valid report — serve the last good one if we have it.
-			if (latest)
-				return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
-			throw new Error("Failed to generate a valid opportunities report");
-		}
-
-		const report = enrichReport(generated.report, digest);
-		const [savedReport] = await db
-			.insert(brandOpportunities)
-			.values({ brandId: data.brandId, report, model: generated.model })
-			.returning({ createdAt: brandOpportunities.createdAt });
-
-		return {
-			report,
-			reason: null,
-			generatedFor: { brandName: digest.brandName },
-			lastEvaluatedAt: savedReport?.createdAt.toISOString() ?? null,
-		};
+/**
+ * Generation is inline and synchronous — there is no queue, so a caller either
+ * gets the current report or waits for the one it just caused. The freshness
+ * gate is what bounds the spend.
+ */
+export async function resolveOpportunities(brandId: string, timezone = "UTC"): Promise<OpportunitiesResponse> {
+	const [latest] = await db
+		.select()
+		.from(brandOpportunities)
+		.where(eq(brandOpportunities.brandId, brandId))
+		.orderBy(desc(brandOpportunities.createdAt))
+		.limit(1);
+	const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
+	const servedModel = latest?.model ?? null;
+	const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
+	const serveStored = () => ({
+		report: withoutRepeats(latest.report as OpportunitiesReport),
+		reason: null,
+		generatedFor: null,
+		lastEvaluatedAt,
+		model: servedModel,
 	});
+	if (latest && isFresh) return serveStored();
+
+	const digest = await buildDigest(brandId, timezone);
+	if (!digest) {
+		if (latest) return serveStored();
+		return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt, model: null };
+	}
+
+	const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
+	const generated = await generateValidReport(prompt);
+	if (!generated) {
+		// No schema-valid report; serve the last good one if there is one.
+		if (latest) return serveStored();
+		throw new Error("Failed to generate a valid opportunities report");
+	}
+
+	const report = enrichReport(generated.report, digest);
+	const [savedReport] = await db
+		.insert(brandOpportunities)
+		.values({ brandId, report, model: generated.model })
+		.returning({ createdAt: brandOpportunities.createdAt });
+
+	return {
+		report,
+		reason: null,
+		generatedFor: { brandName: digest.brandName },
+		lastEvaluatedAt: savedReport?.createdAt.toISOString() ?? null,
+		model: generated.model,
+	};
+}

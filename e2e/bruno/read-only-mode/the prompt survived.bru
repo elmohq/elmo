@@ -1,0 +1,24 @@
+meta {
+  name: nothing the refused writes touched actually changed
+  type: http
+  seq: 8
+  tags: [
+    demo
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{promptId}}
+  res.body.enabled: isTruthy
+}

@@ -8,9 +8,9 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
 import { analyzeBrand, cleanOnboardingUrl } from "@workspace/lib/onboarding";
-import { createApiHandler } from "@/lib/api/handler";
+import { z } from "zod";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 
 const analyzeBody = z.object({
 	// Mirrors the checks inside analyzeBrand so an unparseable or unfetchable
@@ -34,8 +34,9 @@ const analyzeBody = z.object({
 
 export const Route = createFileRoute("/api/v1/tools/analyze")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			POST: createApiHandler({
+				adminOnly: true,
 				body: analyzeBody,
 				handle: async ({ body }) => {
 					return await analyzeBrand({
@@ -46,6 +47,6 @@ export const Route = createFileRoute("/api/v1/tools/analyze")({
 					});
 				},
 			}),
-		},
+		}),
 	},
 });

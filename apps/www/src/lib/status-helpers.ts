@@ -51,6 +51,7 @@ export function formatProvider(provider: string) {
 		cloro: "Cloro",
 		brightdata: "BrightData",
 		oxylabs: "Oxylabs",
+		searchapi: "SearchApi",
 		olostep: "Olostep",
 		dataforseo: "DataForSEO",
 		"openai-api": "OpenAI API",
@@ -81,8 +82,8 @@ export function providerCategory(provider: string, model: string, version?: stri
 
 // The matrix columns split into two kinds of route: Model APIs (Direct API,
 // OpenRouter, DataForSEO API) call an LLM inference endpoint, while AI Search
-// Scrapers (Cloro, BrightData, Oxylabs, Olostep, DataForSEO Scraper) scrape a
-// live web surface.
+// Scrapers (Cloro, BrightData, Oxylabs, SearchApi, Olostep, DataForSEO Scraper)
+// scrape a live web surface.
 export const MODEL_API_CATEGORIES = ["direct-api", "openrouter", "dataforseo-api"];
 
 // Models that only exist as a scraped web surface. Google's AI Mode and AI
@@ -99,6 +100,7 @@ const PROVIDER_MODELS: Record<string, Set<string>> = {
 	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
+	searchapi: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	// Google AI Mode and AI Overview come from the SERP endpoints, ChatGPT and
 	// Gemini from the LLM Scraper API — all four scrape a live surface. There is
@@ -113,7 +115,7 @@ export type CellAvailability = "tracked" | "untracked" | "unavailable";
 // Classify a model × provider-category combination independent of run data:
 // "tracked" when Elmo runs it, "unavailable" when the combination can't exist,
 // "untracked" when it could exist but Elmo doesn't currently run it.
-export function cellAvailability(model: string, provider: string, hasTarget: boolean): CellAvailability {
+function cellAvailability(model: string, provider: string, hasTarget: boolean): CellAvailability {
 	if (hasTarget) return "tracked";
 	// Categories with a fixed collector list reach only those surfaces.
 	const reachable = PROVIDER_MODELS[provider];
@@ -133,6 +135,7 @@ export const PROVIDER_FILTER_ORDER = [
 	"cloro",
 	"brightdata",
 	"oxylabs",
+	"searchapi",
 	"olostep",
 	"dataforseo-scraper",
 ];
@@ -144,6 +147,7 @@ export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	cloro: "Cloro",
 	brightdata: "BrightData",
 	oxylabs: "Oxylabs",
+	searchapi: "SearchApi",
 	olostep: "Olostep",
 	"dataforseo-scraper": "DataForSEO Scraper",
 };
@@ -236,7 +240,7 @@ export function rateTier(rate: number | null): RateTier {
 }
 
 // The most recent deduped run for a target, or null if it has never run.
-export function latestOf(entries: StatusEntry[]): StatusEntry | null {
+function latestOf(entries: StatusEntry[]): StatusEntry | null {
 	const deduped = dedupeEntries(entries);
 	return deduped.length ? deduped[deduped.length - 1] : null;
 }

@@ -4,15 +4,15 @@ import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline' https://var.elmohq.com",
-		"style-src 'self' 'unsafe-inline'",
+		"script-src 'self' 'unsafe-inline' https://var.elmohq.com https://*.crisp.chat",
+		"style-src 'self' 'unsafe-inline' https://*.crisp.chat",
 		"img-src 'self' data: https:",
-		"font-src 'self' data:",
-		"connect-src 'self' https://var.elmohq.com https://*.mux.com https://*.litix.io",
-		"media-src 'self' blob: https://*.mux.com",
-		"worker-src 'self' blob:",
+		"font-src 'self' data: https://*.crisp.chat",
+		"connect-src 'self' https://var.elmohq.com https://*.mux.com https://*.litix.io https://*.crisp.chat wss://*.relay.crisp.chat wss://*.relay.rescue.crisp.chat",
+		"media-src 'self' blob: https://*.mux.com https://*.crisp.chat",
+		"worker-src 'self' blob: https://*.crisp.chat",
 		// YouTube embeds in blog posts (privacy-enhanced youtube-nocookie host).
-		"frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com",
+		"frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://*.crisp.chat",
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
@@ -31,28 +31,79 @@ function addSecurityHeaders(response: Response): Response {
 	return response;
 }
 
-// Serve the raw markdown for a docs page from the existing /llms.mdx/docs/*
-// route. Three things resolve to the same markdown, all via an internal rewrite
-// (the URL the client sees never changes — no redirect):
-//   • /docs/foo.md  and  /docs/foo.mdx  — explicit suffix, always markdown
-//   • /docs/foo  with `Accept: text/markdown` — content negotiation for agents
-// Pages are resolved by slug, so the `.md` suffix works even though every
-// source file is `.mdx`. See https://fumadocs.dev/docs/integrations/llms#accept
-const { rewrite: stripMdSuffix } = rewritePath("/docs{/*path}.md", "/llms.mdx/docs{/*path}");
-const { rewrite: stripMdxSuffix } = rewritePath("/docs{/*path}.mdx", "/llms.mdx/docs{/*path}");
-const { rewrite: toMarkdownRoute } = rewritePath("/docs{/*path}", "/llms.mdx/docs{/*path}");
+const DISCOVERY_LINKS = [
+	`</.well-known/agent-skills/index.json>; rel="agent-skills"`,
+	`</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`,
+	`</.well-known/ard.json>; rel="ard"`,
+	`</api/openapi.json>; rel="service-desc"`,
+	`</docs>; rel="service-doc"; type="text/html"`,
+	`</llms.txt>; rel="describedby"; type="text/plain"`,
+	`</sitemap.xml>; rel="sitemap"; type="application/xml"`,
+	`<https://status.elmohq.com/>; rel="status"; type="text/html"`,
+	`<https://github.com/elmohq/elmo/blob/main/LICENSE.md>; rel="license"`,
+].join(", ");
+
+function isDiscoverable(response: Response): boolean {
+	const type = response.headers.get("Content-Type") ?? "";
+	return type.startsWith("text/html") || type.startsWith("text/markdown");
+}
+
+function addDiscoveryLinks(response: Response, markdownAlternate?: string): void {
+	if (!isDiscoverable(response)) return;
+	const links = markdownAlternate
+		? `${DISCOVERY_LINKS}, <${markdownAlternate}>; rel="alternate"; type="text/markdown"`
+		: DISCOVERY_LINKS;
+	response.headers.set("Link", links);
+}
+
+const MARKDOWN_SOURCES = [
+	{ base: "/docs", indexIsPage: true },
+	{ base: "/blog", indexIsPage: false },
+].map(({ base, indexIsPage }) => ({
+	base,
+	indexIsPage,
+	stripMd: rewritePath(`${base}{/*path}.md`, `/llms.mdx${base}{/*path}`).rewrite,
+	stripMdx: rewritePath(`${base}{/*path}.mdx`, `/llms.mdx${base}{/*path}`).rewrite,
+	toMarkdown: rewritePath(`${base}{/*path}`, `/llms.mdx${base}{/*path}`).rewrite,
+}));
+
+function suffixedMarkdownRoute(path: string): string | undefined {
+	for (const source of MARKDOWN_SOURCES) {
+		const target = source.stripMd(path) || source.stripMdx(path);
+		if (target) return target;
+	}
+}
+
+function negotiableMarkdownRoute(path: string): string | undefined {
+	for (const { base, indexIsPage, toMarkdown } of MARKDOWN_SOURCES) {
+		if (path === base && !indexIsPage) continue;
+		if (path !== base && !path.startsWith(`${base}/`)) continue;
+		const target = toMarkdown(path);
+		if (target) return target;
+	}
+}
+
+function withAcceptHtml(request: Request): Request {
+	const headers = new Headers(request.headers);
+	headers.set("Accept", "text/html");
+	return new Request(request.url, { method: request.method, headers, signal: request.signal });
+}
 
 // Keep permanent redirects server-side so backlinks and ranking signals reach
 // the canonical replacement rather than a client-rendered not-found page.
 const PERMANENT_REDIRECTS: Record<string, string> = {
+	"/blog/answer-engine-optimization": "/answer-engine-optimization",
 	"/blog/best-open-source-aeo-tools": "/ai-visibility-tools/category/open-source",
+	"/blog/generative-ai-for-marketing": "/blog/ai-for-seo",
+	"/blog/track-brand-ai-search": "/answer-engine-optimization",
+	"/blog/what-is-generative-seo": "/generative-engine-optimization",
+	"/docs/mcp": "/docs/api/mcp",
 	// The URLs people (and ad platforms, and app stores) guess for these.
 	"/terms": "/legal/terms",
 	"/privacy": "/legal/privacy",
 	"/cookies": "/legal/cookies",
 	"/subprocessors": "/legal/subprocessors",
 };
-
 export default createServerEntry({
 	async fetch(request) {
 		const url = new URL(request.url);
@@ -64,24 +115,23 @@ export default createServerEntry({
 		}
 
 		// An explicit .md / .mdx suffix always serves markdown, ignoring Accept.
-		let target = stripMdSuffix(path) || stripMdxSuffix(path);
+		let target = suffixedMarkdownRoute(path);
 
-		// A bare docs page negotiates HTML vs. markdown on the Accept header.
-		const negotiable = !target && (path === "/docs" || path.startsWith("/docs/"));
-		if (negotiable && isMarkdownPreferred(request)) {
-			target = toMarkdownRoute(path);
-		}
+		const negotiable = target ? undefined : negotiableMarkdownRoute(path);
+		const wantsMarkdown = !target && isMarkdownPreferred(request);
+		if (negotiable && wantsMarkdown) target = negotiable;
 
 		let req = request;
 		if (target) {
 			url.pathname = target;
 			req = new Request(url, request);
+		} else if (wantsMarkdown && (request.method === "GET" || request.method === "HEAD")) {
+			req = withAcceptHtml(request);
 		}
 
 		const response = await handler.fetch(req);
-		// A bare docs URL can resolve to either HTML or markdown depending on
-		// the Accept header, so shared caches must key on it.
 		if (negotiable) response.headers.set("Vary", "Accept");
+		addDiscoveryLinks(response, negotiable ? `${path}.md` : undefined);
 		return addSecurityHeaders(response);
 	},
 });

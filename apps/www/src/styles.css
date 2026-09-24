@@ -11,6 +11,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@layer base {
+	ol,
+	ul,
+	menu {
+		list-style-type: "";
+	}
+}
+
 @theme inline {
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -160,4 +168,8 @@
 .prose tbody td:first-child,
 .prose tfoot td:first-child {
 	padding-inline-start: 0.571429em;
+}
+
+mux-player::part(center play button) {
+	filter: drop-shadow(0 8px 24px rgba(37, 99, 235, 0.35));
 }

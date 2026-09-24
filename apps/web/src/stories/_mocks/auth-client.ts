@@ -11,6 +11,7 @@ type SubscriptionResult = { error: { message?: string } | null };
 
 let _delayMs = 0;
 let _error: string | null = null;
+let _ssoError: string | null = null;
 const _calls: { method: string; args: unknown }[] = [];
 
 /** Hold the call open so a story can show the in-flight spinner. */
@@ -27,9 +28,15 @@ export function getMockSubscriptionCalls() {
 	return _calls;
 }
 
+/** Make the SSO handoff fail, so the whitelabel story can show its retry screen. */
+export function setMockSsoError(message: string | null) {
+	_ssoError = message;
+}
+
 export function resetMockAuthClient() {
 	_delayMs = 0;
 	_error = null;
+	_ssoError = null;
 	_calls.length = 0;
 }
 
@@ -47,8 +54,15 @@ export const authClient = {
 		restore: (args: unknown) => respond("restore", args),
 		list: async () => ({ data: [], error: null }),
 	},
-	signIn: { email: async () => ({ error: null }), social: async () => ({ error: null }) },
+	signIn: {
+		email: async () => ({ error: null }),
+		social: async () => ({ error: null }),
+		sso: async () => ({ error: _ssoError ? { message: _ssoError } : null }),
+	},
 	signUp: { email: async () => ({ error: null }) },
+	requestPasswordReset: async () => ({ error: null }),
+	resetPassword: async () => ({ error: null }),
+	sendVerificationEmail: async () => ({ error: null }),
 	signOut: async () => ({ error: null }),
 	useSession: () => ({ data: null, isPending: false }),
 	organization: {

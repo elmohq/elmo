@@ -1,28 +1,24 @@
 import { useMemo } from "react";
+import { ContentGapsCard } from "@/components/citations/content-gaps-card";
+import { GoogleShoppingCard } from "@/components/citations/google-shopping-card";
+import { RecentChangesCard } from "@/components/citations/recent-changes-card";
+import { RedditCard, useSubredditData } from "@/components/citations/reddit-card";
+import { CATEGORY_META, PAGE_TYPE_META } from "@/components/citations/shared";
+import { CitationStatsCards } from "@/components/citations/stats-cards";
+import { TopDomainsCard } from "@/components/citations/top-domains-card";
+import { TopUrlsCard } from "@/components/citations/top-urls-card";
+import { TrendAreaChart } from "@/components/citations/trend-area-chart";
+import type { CitationData } from "@/components/citations/types";
 import {
-	type CitationCategory,
 	CATEGORY_CONFIG,
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
+	type CitationCategory,
+	type CitationPageType,
 	PAGE_TYPE_CONFIG,
 } from "@/lib/domain-categories";
-import type { CitationData } from "@/components/citations/types";
-import { CATEGORY_META, PAGE_TYPE_META } from "@/components/citations/shared";
-import { CitationStatsCards } from "@/components/citations/stats-cards";
-import { TrendAreaChart } from "@/components/citations/trend-area-chart";
-import { RecentChangesCard } from "@/components/citations/recent-changes-card";
-import { ContentGapsCard } from "@/components/citations/content-gaps-card";
-import { TopDomainsCard } from "@/components/citations/top-domains-card";
-import { TopUrlsCard } from "@/components/citations/top-urls-card";
-import { GoogleShoppingCard } from "@/components/citations/google-shopping-card";
-import { RedditCard, useSubredditData } from "@/components/citations/reddit-card";
 
-export type {
-	CitationData,
-	GoogleModuleData,
-	GoogleProductRow,
-	GoogleQueryRow,
-} from "@/components/citations/types";
+export type { CitationData } from "@/components/citations/types";
 
 interface CitationsDisplayProps {
 	citationData: CitationData;
@@ -35,37 +31,25 @@ interface CitationsDisplayProps {
 	onCompetitorAdded?: () => void;
 }
 
-/** Composes the citation sections. Each card owns its own in-card filter
- *  state (search, tabs, pagination); this component only derives the data
- *  every section shares. Section visibility keys off the UNFILTERED data —
- *  in-card filters must never hide a whole section (issue #322). */
-export function CitationsDisplay({
-	citationData,
-	brandId,
-	brandName,
-	showStats = false,
-	maxDomains = 10,
-	maxUrls = 20,
-	days = 7,
-	onCompetitorAdded,
-}: CitationsDisplayProps) {
-	// Match the last point of the Citation Categories chart exactly (smoothed daily
-	// brand share), falling back to the window aggregate if there's no time series.
+/**
+ * What every citation section keys off. Which categories and page types appear
+ * is derived from the RAW aggregates (categoryCounts / pageTypeDistribution),
+ * not the smoothed % time series: a tiny category that rounds to 0% on every
+ * day would otherwise vanish from both the chart keys and the tab filters
+ * despite having real citations (and being filterable in the URL list). The
+ * same lists feed the tab filters and the chart `keys`, so the two stay
+ * consistent.
+ */
+function useCitationSections(citationData: CitationData) {
+	// Match the last point of the Citation Categories chart exactly (smoothed
+	// daily brand share), falling back to the window aggregate when there is no
+	// time series.
 	const lastTrendPoint = citationData.citationTimeSeries?.[citationData.citationTimeSeries.length - 1];
-	const brandShare = lastTrendPoint
-		? (lastTrendPoint.brand ?? 0)
-		: citationData.totalCitations > 0
+	const windowShare =
+		citationData.totalCitations > 0
 			? Math.round((citationData.categoryCounts.brand / citationData.totalCitations) * 100)
 			: 0;
 
-	const hasGaps = !!(citationData.competitorOnlyPrompts && citationData.competitorOnlyPrompts.length > 0 && brandId);
-
-	// Single source of truth for which categories / page types appear. Derived from
-	// the RAW aggregates (categoryCounts / pageTypeDistribution), NOT the smoothed %
-	// time series: a tiny category that rounds to 0% on every day would otherwise
-	// vanish from both the chart keys and the tab filters despite having real
-	// citations (and being filterable in the URL list). The same lists feed the tab
-	// filters and the chart `keys`, so the two stay consistent.
 	const chartSourceCategories = useMemo(
 		() => CITATION_CATEGORIES.filter((c: CitationCategory) => (citationData.categoryCounts[c] ?? 0) > 0),
 		[citationData.categoryCounts],
@@ -76,6 +60,7 @@ export function CitationsDisplay({
 		);
 		return CITATION_PAGE_TYPES.filter((p) => present.has(p));
 	}, [citationData.pageTypeDistribution]);
+
 	const urlSourceTabs = useMemo<{ key: string; label: string }[]>(
 		() => [
 			{ key: "all", label: "All Sources" },
@@ -83,7 +68,6 @@ export function CitationsDisplay({
 		],
 		[chartSourceCategories],
 	);
-	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
 	const urlPageTypeTabs = useMemo<{ key: string; label: string }[]>(
 		() => [
 			{ key: "all", label: "All Page Types" },
@@ -92,16 +76,109 @@ export function CitationsDisplay({
 		[chartPageTypes],
 	);
 
+	const changed = citationData.whatsChanged;
+	const totalChanges = changed
+		? changed.newUrls.length +
+			changed.droppedUrls.length +
+			changed.titleChanges.length +
+			changed.newDomains.length +
+			changed.droppedDomains.length
+		: 0;
+
+	return {
+		brandShare: lastTrendPoint ? (lastTrendPoint.brand ?? 0) : windowShare,
+		chartSourceCategories,
+		chartPageTypes,
+		urlSourceTabs,
+		urlPageTypeTabs,
+		// An empty change set reads as no change set: nothing downstream
+		// distinguishes them, so the section is resolved here rather than at
+		// every render site.
+		whatsChanged: totalChanges > 0 ? changed : undefined,
+	};
+}
+
+/** The two "over time" area charts. Each renders only once its series exists. */
+function CitationTrendCharts({
+	citationData,
+	chartSourceCategories,
+	chartPageTypes,
+}: {
+	citationData: CitationData;
+	chartSourceCategories: CitationCategory[];
+	chartPageTypes: CitationPageType[];
+}) {
+	const sourceSeries = citationData.citationTimeSeries ?? [];
+	const pageTypeSeries = citationData.pageTypeTimeSeries ?? [];
+
+	return (
+		<>
+			{sourceSeries.length > 0 && (
+				<TrendAreaChart
+					title="Citation Categories"
+					tooltip="Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section)."
+					data={sourceSeries as unknown as Array<Record<string, number | string>>}
+					keys={chartSourceCategories}
+					meta={CATEGORY_META}
+				/>
+			)}
+
+			{pageTypeSeries.length > 0 && (
+				<TrendAreaChart
+					title="Citation Page Types"
+					tooltip="Share of citations by page type over time — what kind of page each citation points to, inferred from the URL and title."
+					data={pageTypeSeries as unknown as Array<Record<string, number | string>>}
+					keys={chartPageTypes}
+					meta={PAGE_TYPE_META}
+				/>
+			)}
+		</>
+	);
+}
+
+/** Recent Changes and Content Gaps share a row when both are present, and
+ *  each takes the full width on its own. */
+function ChangesAndGapsRow({
+	whatsChanged,
+	contentGaps,
+	days,
+}: {
+	whatsChanged: CitationData["whatsChanged"];
+	contentGaps: NonNullable<CitationData["competitorOnlyPrompts"]>;
+	days: number;
+}) {
+	const hasGaps = contentGaps.length > 0;
+	if (!whatsChanged && !hasGaps) return null;
+
+	return (
+		<div className={whatsChanged && hasGaps ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" : "contents"}>
+			{whatsChanged && <RecentChangesCard whatsChanged={whatsChanged} days={days} />}
+			{hasGaps && <ContentGapsCard prompts={contentGaps} />}
+		</div>
+	);
+}
+
+/** Composes the citation sections. Each card owns its own in-card filter
+ *  state (search, tabs, pagination); this component only derives the data
+ *  every section shares. Section visibility keys off the UNFILTERED data —
+ *  in-card filters must never hide a whole section. */
+export function CitationsDisplay({
+	citationData,
+	brandId,
+	brandName,
+	showStats = false,
+	maxDomains = 10,
+	maxUrls = 20,
+	days = 7,
+	onCompetitorAdded,
+}: CitationsDisplayProps) {
+	const { brandShare, chartSourceCategories, chartPageTypes, urlSourceTabs, urlPageTypeTabs, whatsChanged } =
+		useCitationSections(citationData);
+	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
+
+	const contentGaps = citationData.competitorOnlyPrompts ?? [];
 	const googleModule = citationData.googleModule;
 	const subredditData = useSubredditData(citationData.specificUrls, citationData.whatsChanged);
-	const whatsChanged = citationData.whatsChanged;
-	const totalChanges = whatsChanged
-		? whatsChanged.newUrls.length +
-			whatsChanged.droppedUrls.length +
-			whatsChanged.titleChanges.length +
-			whatsChanged.newDomains.length +
-			whatsChanged.droppedDomains.length
-		: 0;
 
 	// Bail out only AFTER every hook above has run unconditionally (Rules of Hooks).
 	if (citationData.totalCitations === 0) return null;
@@ -116,37 +193,13 @@ export function CitationsDisplay({
 				/>
 			)}
 
-			{/* Citation Categories over time */}
-			{citationData.citationTimeSeries && citationData.citationTimeSeries.length > 0 && (
-				<TrendAreaChart
-					title="Citation Categories"
-					tooltip="Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section)."
-					data={(citationData.citationTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
-					keys={chartSourceCategories}
-					meta={CATEGORY_META}
-				/>
-			)}
+			<CitationTrendCharts
+				citationData={citationData}
+				chartSourceCategories={chartSourceCategories}
+				chartPageTypes={chartPageTypes}
+			/>
 
-			{/* Citation Page Types over time */}
-			{citationData.pageTypeTimeSeries && citationData.pageTypeTimeSeries.length > 0 && (
-				<TrendAreaChart
-					title="Citation Page Types"
-					tooltip="Share of citations by page type over time — what kind of page each citation points to, inferred from the URL and title."
-					data={(citationData.pageTypeTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
-					keys={chartPageTypes}
-					meta={PAGE_TYPE_META}
-				/>
-			)}
-
-			{/* Recent Changes + Content Gaps (side by side) */}
-			{(totalChanges > 0 || hasGaps) && (
-				<div
-					className={totalChanges > 0 && hasGaps ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" : "contents"}
-				>
-					{totalChanges > 0 && whatsChanged && <RecentChangesCard whatsChanged={whatsChanged} days={days} />}
-					{hasGaps && <ContentGapsCard prompts={citationData.competitorOnlyPrompts!} brandId={brandId!} />}
-				</div>
-			)}
+			<ChangesAndGapsRow whatsChanged={whatsChanged} contentGaps={contentGaps} days={days} />
 
 			{/* Top Cited Domains */}
 			{citationData.domainDistribution.length > 0 && (
@@ -168,7 +221,6 @@ export function CitationsDisplay({
 					sourceTabs={urlSourceTabs}
 					pageTypeTabs={urlPageTypeTabs}
 					maxUrls={maxUrls}
-					brandId={brandId}
 					brandName={brandName}
 					brandShare={brandShare}
 					brandIsCited={citationData.categoryCounts.brand > 0}
@@ -176,9 +228,7 @@ export function CitationsDisplay({
 			)}
 
 			{/* Google Shopping */}
-			{googleModule && googleModule.shopping.products.length > 0 && (
-				<GoogleShoppingCard googleModule={googleModule} brandId={brandId} />
-			)}
+			{googleModule && googleModule.shopping.products.length > 0 && <GoogleShoppingCard googleModule={googleModule} />}
 
 			{/* Top Cited Subreddits */}
 			{subredditData.length > 0 && <RedditCard subreddits={subredditData} />}

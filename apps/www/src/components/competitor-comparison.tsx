@@ -1,20 +1,20 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { Check, X, ExternalLink, ArrowLeft } from "lucide-react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ExternalLink, X } from "lucide-react";
 import {
-	FEATURE_CATEGORIES,
-	ELMO_FEATURES,
 	CATEGORY_LABELS,
-	isLowDR,
-	getPopularityGrade,
-	getScreenshotUrl,
+	type Competitor,
+	ELMO_FEATURES,
+	FEATURE_CATEGORIES,
+	type FeatureKey,
 	getComparisonFaqs,
 	getComparisonVerdict,
-	type Competitor,
-	type FeatureKey,
+	getPopularityGrade,
+	getScreenshotUrl,
+	isLowDR,
 } from "@/lib/competitors";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { Faq } from "./faq";
 
 function FeatureRow({ label, elmo, competitor }: { label: string; elmo: boolean; competitor: boolean }) {
@@ -37,21 +37,32 @@ function FeatureRow({ label, elmo, competitor }: { label: string; elmo: boolean;
 	);
 }
 
-export function CompetitorComparison({ competitor }: { competitor: Competitor }) {
+function diffFeatures(competitor: Competitor): {
+	elmoOnlyFeatures: string[];
+	competitorOnlyFeatures: string[];
+	sharedFeatures: string[];
+} {
 	const elmoOnlyFeatures: string[] = [];
 	const competitorOnlyFeatures: string[] = [];
 	const sharedFeatures: string[] = [];
 
-	for (const [catKey, cat] of Object.entries(FEATURE_CATEGORIES)) {
-		for (const featureKey of Object.keys(cat.features)) {
-			const k = featureKey as FeatureKey;
-			const elmoHas = ELMO_FEATURES[k] ?? false;
-			const compHas = competitor.features[k] ?? false;
-			if (elmoHas && !compHas) elmoOnlyFeatures.push(cat.features[k].label);
-			if (!elmoHas && compHas) competitorOnlyFeatures.push(cat.features[k].label);
-			if (elmoHas && compHas) sharedFeatures.push(cat.features[k].label);
+	for (const category of Object.values(FEATURE_CATEGORIES)) {
+		for (const featureKey of Object.keys(category.features)) {
+			const key = featureKey as FeatureKey;
+			const label = category.features[key].label;
+			const elmoHas = ELMO_FEATURES[key] ?? false;
+			const competitorHas = competitor.features[key] ?? false;
+			if (elmoHas && competitorHas) sharedFeatures.push(label);
+			else if (elmoHas) elmoOnlyFeatures.push(label);
+			else if (competitorHas) competitorOnlyFeatures.push(label);
 		}
 	}
+
+	return { elmoOnlyFeatures, competitorOnlyFeatures, sharedFeatures };
+}
+
+export function CompetitorComparison({ competitor }: { competitor: Competitor }) {
+	const { elmoOnlyFeatures, competitorOnlyFeatures, sharedFeatures } = diffFeatures(competitor);
 
 	return (
 		<>
@@ -311,7 +322,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						brand.
 					</p>
 					<div className="mt-8 flex flex-wrap justify-center gap-3">
-						<Link to="/docs" className={buttonVariants({ size: "sm" })}>
+						<Link {...SELF_HOST_LINK} className={buttonVariants({ size: "sm" })}>
 							Deploy Elmo
 						</Link>
 						<a

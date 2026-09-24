@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
-import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
+import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";

@@ -1,7 +1,7 @@
-import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
 
 interface VisibilityTimeSeriesPoint {
 	date: string;

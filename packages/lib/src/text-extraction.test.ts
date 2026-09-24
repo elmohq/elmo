@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	CITATION_TITLE_MAX_LENGTH,
 	extractCitations,
 	extractCitationsFromBrightdata,
 	extractCitationsFromDataforseoLlm,
@@ -14,6 +15,7 @@ import {
 	extractTextFromGoogle,
 	extractTextFromOpenAI,
 	extractTextFromOxylabs,
+	normalizeCitationTitle,
 } from "./text-extraction";
 
 /** A minimal DataForSEO AI Optimization "LLM Responses" payload. */
@@ -685,6 +687,45 @@ describe("text-extraction", () => {
 		});
 	});
 
+	describe("searchapi", () => {
+		const AI_OVERVIEW = {
+			ai_overview: {
+				markdown: "The **Brooks Ghost** is a well-reviewed beginner shoe.",
+				reference_links: [
+					{ index: 0, title: "Best beginner shoes", link: "https://www.runnersworld.com/beginner-shoes" },
+				],
+			},
+		};
+
+		it("reads a chatbot answer and the pages it cited", () => {
+			const rawOutput = {
+				markdown: "The **Marshall Stockwell III** is a well-reviewed speaker.",
+				reference_links: [{ index: 0, title: "Review", link: "https://www.techradar.com/stockwell-iii" }],
+				web_results: [{ position: 1, title: "Roundup", link: "https://www.whathifi.com/roundup" }],
+			};
+			expect(extractTextContent(rawOutput, "searchapi")).toBe(
+				"The **Marshall Stockwell III** is a well-reviewed speaker.",
+			);
+			// `web_results` is what ChatGPT retrieved, not what it cited.
+			expect(extractCitations(rawOutput, "searchapi").map((c) => c.domain)).toEqual(["techradar.com"]);
+		});
+
+		it("unwraps the AI Overview from the result page around it", () => {
+			expect(extractTextContent(AI_OVERVIEW, "searchapi")).toContain("Brooks Ghost");
+			expect(extractCitations(AI_OVERVIEW, "searchapi").map((c) => c.domain)).toEqual(["runnersworld.com"]);
+		});
+
+		it("falls back to the typed blocks when an answer carries no markdown", () => {
+			const rawOutput = {
+				text_blocks: [
+					{ type: "header", answer: "Blockchain" },
+					{ type: "unordered_list", items: [{ type: "paragraph", answer: "A distributed ledger." }] },
+				],
+			};
+			expect(extractTextContent(rawOutput, "searchapi")).toBe("Blockchain\n\nA distributed ledger.");
+		});
+	});
+
 	describe("extractCitationsFromBrightdata", () => {
 		it("extracts AI Overview references by href, trims title noise, and de-dupes", () => {
 			const rawOutput = {
@@ -742,6 +783,47 @@ describe("text-extraction", () => {
 
 		it("should return empty array for unknown model group", () => {
 			expect(extractCitations({}, "unknown")).toEqual([]);
+		});
+	});
+
+	describe("citation titles", () => {
+		it("keeps titles that are already a sensible length", () => {
+			expect(normalizeCitationTitle("A perfectly normal page title")).toBe("A perfectly normal page title");
+		});
+
+		it("treats a missing or empty title as absent", () => {
+			expect(normalizeCitationTitle(undefined)).toBeUndefined();
+			expect(normalizeCitationTitle("")).toBeUndefined();
+			expect(normalizeCitationTitle(12345)).toBeUndefined();
+		});
+
+		it("bounds titles so an oversized one cannot fail the citation insert", () => {
+			const bodyText = "x".repeat(11_325);
+			expect(normalizeCitationTitle(bodyText)).toHaveLength(CITATION_TITLE_MAX_LENGTH);
+		});
+
+		it("truncates on whole characters so multi-byte titles stay valid", () => {
+			const truncated = normalizeCitationTitle("\u{1D518}".repeat(CITATION_TITLE_MAX_LENGTH + 50));
+			expect(truncated).toBe("\u{1D518}".repeat(CITATION_TITLE_MAX_LENGTH));
+		});
+
+		it("bounds titles arriving from a provider payload", () => {
+			const citations = extractCitationsFromOpenAI({
+				output: [
+					{
+						type: "message",
+						content: [
+							{
+								type: "output_text",
+								text: "answer",
+								annotations: [{ type: "url_citation", url: "https://example.com/manual.pdf", title: "y".repeat(8000) }],
+							},
+						],
+					},
+				],
+			});
+			expect(citations).toHaveLength(1);
+			expect(citations[0].title).toHaveLength(CITATION_TITLE_MAX_LENGTH);
 		});
 	});
 });

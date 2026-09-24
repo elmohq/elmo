@@ -1,42 +1,42 @@
+import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { createFileRoute } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
+import { Badge } from "@workspace/ui/components/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
+import { ArrowUpRight } from "lucide-react";
+import { type CSSProperties, Fragment, type ReactNode, useState } from "react";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { Footer } from "@/components/footer";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
+import { Navbar } from "@/components/navbar";
 import { externalRel } from "@/lib/external-link";
+import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
 import { getStatusData } from "@/lib/status";
 import {
 	buildStatusMatrix,
+	type CellAvailability,
 	dedupeEntries,
 	formatLatency,
 	formatModel,
 	formatProvider,
 	getLatest,
-	parseTarget,
-	passRate,
+	type MatrixCell,
+	type MetricStats,
 	MODEL_API_CATEGORIES,
 	PROVIDER_FILTER_LABELS,
 	PROVIDER_FILTER_ORDER,
+	parseTarget,
+	passRate,
 	providerCategory,
 	providerColumnLabel,
 	providerPhrase,
-	rateTier,
-	runStats,
-	unavailableReason,
-	type CellAvailability,
-	type MatrixCell,
-	type MetricStats,
 	type RateTier,
 	type RunStats,
+	rateTier,
+	runStats,
 	type StatusEntry,
 	type TargetStatus,
+	unavailableReason,
 } from "@/lib/status-helpers";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@workspace/ui/components/chart";
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Badge } from "@workspace/ui/components/badge";
-import { ArrowUpRight } from "lucide-react";
-import { Fragment, useState, useRef, useEffect, type CSSProperties, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 
 const title = "Provider Status · Elmo";
 const description = "Real-time status and performance monitoring for AI search provider integrations.";
@@ -101,9 +101,7 @@ const HATCH_BG =
 
 // ─── Tooltips ─────────────────────────────────────────────────────────────
 
-// One fixed width per tooltip kind: the stat columns line up from cell to cell,
-// and a trigger can keep the tooltip inside the viewport on hover without having
-// to measure it first.
+// One fixed width per tooltip kind, so the stat columns line up from cell to cell.
 const TIP_WIDTH = 344;
 const RUN_TIP_WIDTH = 208;
 
@@ -128,67 +126,34 @@ function HoverTip({
 	style?: CSSProperties;
 	children?: ReactNode;
 }) {
-	const [open, setOpen] = useState(false);
-	const [pos, setPos] = useState({ x: 0, y: 0 });
-	const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	const cancelClose = () => {
-		if (closeTimer.current) {
-			clearTimeout(closeTimer.current);
-			closeTimer.current = null;
-		}
-	};
-	useEffect(() => cancelClose, []);
-
-	const show = (el: HTMLElement) => {
-		const rect = el.getBoundingClientRect();
-		const half = width / 2;
-		const margin = 8;
-		setPos({
-			x: Math.min(Math.max(rect.left + rect.width / 2, half + margin), window.innerWidth - half - margin),
-			y: rect.top,
-		});
-		cancelClose();
-		setOpen(true);
-	};
-	const hide = () => {
-		cancelClose();
-		if (interactive) closeTimer.current = setTimeout(() => setOpen(false), 150);
-		else setOpen(false);
-	};
-
 	return (
-		<>
-			<button
-				type="button"
-				aria-label={label}
-				tabIndex={tabIndex}
-				className={`w-full cursor-default ${className}`}
-				style={style}
-				onMouseEnter={(e) => show(e.currentTarget)}
-				onMouseLeave={hide}
-				onFocus={(e) => show(e.currentTarget)}
-				onBlur={hide}
-			>
-				{children}
-			</button>
-			{open &&
-				createPortal(
-					// The wrapper's bottom padding bridges the gap to the trigger, so the
-					// pointer can reach an interactive tooltip without it closing.
-					<div
-						className={`fixed z-50 pb-1.5 ${interactive ? "" : "pointer-events-none"}`}
-						style={{ left: pos.x, top: pos.y, width, transform: "translate(-50%, -100%)" }}
-						onMouseEnter={cancelClose}
-						onMouseLeave={hide}
-					>
-						<div className="rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-950 shadow-xl">
+		<TooltipPrimitive.Provider delay={0} closeDelay={0}>
+			<TooltipPrimitive.Root disableHoverablePopup={!interactive}>
+				<TooltipPrimitive.Trigger
+					render={
+						<button
+							type="button"
+							aria-label={label}
+							tabIndex={tabIndex}
+							className={`w-full cursor-default ${className}`}
+							style={style}
+						/>
+					}
+				>
+					{children}
+				</TooltipPrimitive.Trigger>
+				<TooltipPrimitive.Portal>
+					<TooltipPrimitive.Positioner side="top" sideOffset={6} collisionPadding={8} className="isolate z-50">
+						<TooltipPrimitive.Popup
+							style={{ width }}
+							className="rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-950 shadow-xl"
+						>
 							{tip}
-						</div>
-					</div>,
-					document.body,
-				)}
-		</>
+						</TooltipPrimitive.Popup>
+					</TooltipPrimitive.Positioner>
+				</TooltipPrimitive.Portal>
+			</TooltipPrimitive.Root>
+		</TooltipPrimitive.Provider>
 	);
 }
 
@@ -334,82 +299,131 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 	);
 }
 
-function LatencyChart({ data }: { data: TargetStatus[] }) {
-	// Merge all targets into a time-series chart
-	// Bucket by ~6 hours for a clean chart
-	const allTimestamps = new Set<string>();
-	const seriesMeta: Record<string, { modelLabel: string; providerLabel: string }> = {};
+const LATENCY_COLORS = [
+	"hsl(221, 83%, 53%)",
+	"hsl(142, 71%, 45%)",
+	"hsl(38, 92%, 50%)",
+	"hsl(0, 84%, 60%)",
+	"hsl(262, 83%, 58%)",
+	"hsl(174, 72%, 40%)",
+	"hsl(330, 81%, 60%)",
+	"hsl(200, 98%, 39%)",
+	"hsl(47, 95%, 53%)",
+	"hsl(15, 75%, 55%)",
+];
+
+type SeriesMeta = Record<string, { modelLabel: string; providerLabel: string }>;
+
+/** Median smooths the outliers within a bucket. */
+function latencyBucketRow(ts: number, values: Record<string, number[]>): Record<string, any> {
+	const row: Record<string, any> = {
+		time: new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "numeric" }),
+	};
+	for (const [name, latencies] of Object.entries(values)) {
+		latencies.sort((a, b) => a - b);
+		row[name] = latencies[Math.floor(latencies.length / 2)];
+	}
+	return row;
+}
+
+/** All targets merged into one series, bucketed by ~6 hours over the last 7 days. */
+function buildLatencySeries(data: TargetStatus[]) {
+	const seriesMeta: SeriesMeta = {};
 	const targetNames = data.map((d) => {
 		const { model, provider } = parseTarget(d.target);
 		const name = `${formatModel(model)} (${formatProvider(provider)})`;
-		if (!seriesMeta[name])
-			seriesMeta[name] = {
-				modelLabel: formatModel(model),
-				providerLabel: formatProvider(provider),
-			};
+		seriesMeta[name] ??= { modelLabel: formatModel(model), providerLabel: formatProvider(provider) };
 		return name;
 	});
 
 	const bucketMs = 6 * 60 * 60 * 1000;
-	const now = Date.now();
-	const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-
+	const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 	const bucketMap: Record<number, Record<string, number[]>> = {};
 
-	for (let i = 0; i < data.length; i++) {
-		const deduped = dedupeEntries(data[i].entries);
-		const name = targetNames[i];
-		for (const entry of deduped) {
+	data.forEach((target, i) => {
+		for (const entry of dedupeEntries(target.entries)) {
 			if (entry.status !== "pass") continue;
 			const t = new Date(entry.ts).getTime();
 			if (t < sevenDaysAgo) continue;
 			const bucket = Math.floor(t / bucketMs) * bucketMs;
-			if (!bucketMap[bucket]) bucketMap[bucket] = {};
-			if (!bucketMap[bucket][name]) bucketMap[bucket][name] = [];
-			bucketMap[bucket][name].push(entry.latency);
+			bucketMap[bucket] ??= {};
+			bucketMap[bucket][targetNames[i]] ??= [];
+			bucketMap[bucket][targetNames[i]].push(entry.latency);
 		}
-	}
+	});
 
 	const chartData = Object.entries(bucketMap)
 		.sort(([a], [b]) => Number(a) - Number(b))
-		.map(([ts, values]) => {
-			const row: Record<string, any> = {
-				time: new Date(Number(ts)).toLocaleDateString(undefined, {
-					month: "short",
-					day: "numeric",
-					hour: "numeric",
-				}),
-			};
-			for (const [name, latencies] of Object.entries(values)) {
-				// Use median to smooth outliers
-				latencies.sort((a, b) => a - b);
-				row[name] = latencies[Math.floor(latencies.length / 2)];
-			}
-			return row;
-		});
+		.map(([ts, values]) => latencyBucketRow(Number(ts), values));
+
+	return { chartData, targetNames, seriesMeta };
+}
+
+/** Groups the hovered bucket by model; within each model, providers are listed
+ *  fastest-first. Model groups follow the same order as the page's sections
+ *  (alphabetical). */
+function LatencyTooltip({
+	active,
+	payload,
+	label,
+	seriesMeta,
+}: {
+	active?: boolean;
+	payload?: any[];
+	label?: string;
+	seriesMeta: SeriesMeta;
+}) {
+	if (!active || !payload?.length) return null;
+
+	const groups: Record<string, { providerLabel: string; color: string; value: number }[]> = {};
+	for (const item of payload) {
+		if (item.value == null) continue;
+		const meta = seriesMeta[item.name] ?? { modelLabel: item.name, providerLabel: item.name };
+		groups[meta.modelLabel] ??= [];
+		groups[meta.modelLabel].push({ providerLabel: meta.providerLabel, color: item.color, value: item.value as number });
+	}
+
+	const ordered = Object.entries(groups)
+		.map(([modelLabel, rows]) => ({ modelLabel, rows: rows.sort((a, b) => a.value - b.value) }))
+		.sort((a, b) => a.modelLabel.localeCompare(b.modelLabel));
+	if (ordered.length === 0) return null;
+
+	return (
+		<div className="border-border/50 bg-background min-w-[11rem] rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+			<div className="font-medium mb-1.5">{label}</div>
+			<div className="grid gap-2">
+				{ordered.map((group) => (
+					<div key={group.modelLabel}>
+						<div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+							{group.modelLabel}
+						</div>
+						<div className="grid gap-1">
+							{group.rows.map((row) => (
+								<div key={row.providerLabel} className="flex items-center gap-2">
+									<div className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: row.color }} />
+									<span className="flex-1 text-zinc-600">{row.providerLabel}</span>
+									<span className="font-mono font-medium tabular-nums">{formatLatency(row.value)}</span>
+								</div>
+							))}
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
+	);
+}
+
+function LatencyChart({ data }: { data: TargetStatus[] }) {
+	const { chartData, targetNames, seriesMeta } = buildLatencySeries(data);
 
 	if (chartData.length === 0) {
 		return <div className="py-12 text-center text-sm text-zinc-600">No latency data for the current selection.</div>;
 	}
 
-	const colors = [
-		"hsl(221, 83%, 53%)",
-		"hsl(142, 71%, 45%)",
-		"hsl(38, 92%, 50%)",
-		"hsl(0, 84%, 60%)",
-		"hsl(262, 83%, 58%)",
-		"hsl(174, 72%, 40%)",
-		"hsl(330, 81%, 60%)",
-		"hsl(200, 98%, 39%)",
-		"hsl(47, 95%, 53%)",
-		"hsl(15, 75%, 55%)",
-	];
-
-	const config: ChartConfig = {};
 	const uniqueNames = [...new Set(targetNames)];
-	uniqueNames.forEach((name, i) => {
-		config[name] = { label: name, color: colors[i % colors.length] };
-	});
+	const config: ChartConfig = Object.fromEntries(
+		uniqueNames.map((name, i) => [name, { label: name, color: LATENCY_COLORS[i % LATENCY_COLORS.length] }]),
+	);
 
 	return (
 		<ChartContainer config={config} className="h-[400px] w-full">
@@ -421,63 +435,13 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 					tickFormatter={(v) => formatLatency(v)}
 					label={{ value: "Latency", angle: -90, position: "insideLeft", style: { fontSize: 12 } }}
 				/>
-				<ChartTooltip
-					content={({ active, payload, label }: any) => {
-						if (!active || !payload?.length) return null;
-						// Group the hovered bucket by model; within each model list
-						// providers fastest-first. Model groups follow the same order
-						// as the page's sections (alphabetical).
-						const groups: Record<string, { providerLabel: string; color: string; value: number }[]> = {};
-						for (const item of payload as any[]) {
-							if (item.value == null) continue;
-							const meta = seriesMeta[item.name] ?? {
-								modelLabel: item.name,
-								providerLabel: item.name,
-							};
-							(groups[meta.modelLabel] ??= []).push({
-								providerLabel: meta.providerLabel,
-								color: item.color,
-								value: item.value as number,
-							});
-						}
-						const ordered = Object.entries(groups)
-							.map(([modelLabel, rows]) => ({
-								modelLabel,
-								rows: rows.sort((a, b) => a.value - b.value),
-							}))
-							.sort((a, b) => a.modelLabel.localeCompare(b.modelLabel));
-						if (ordered.length === 0) return null;
-						return (
-							<div className="border-border/50 bg-background min-w-[11rem] rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
-								<div className="font-medium mb-1.5">{label}</div>
-								<div className="grid gap-2">
-									{ordered.map((group) => (
-										<div key={group.modelLabel}>
-											<div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-												{group.modelLabel}
-											</div>
-											<div className="grid gap-1">
-												{group.rows.map((row) => (
-													<div key={row.providerLabel} className="flex items-center gap-2">
-														<div className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: row.color }} />
-														<span className="flex-1 text-zinc-600">{row.providerLabel}</span>
-														<span className="font-mono font-medium tabular-nums">{formatLatency(row.value)}</span>
-													</div>
-												))}
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
-						);
-					}}
-				/>
+				<ChartTooltip content={(props: any) => <LatencyTooltip {...props} seriesMeta={seriesMeta} />} />
 				{uniqueNames.map((name, i) => (
 					<Line
 						key={name}
 						type="monotone"
 						dataKey={name}
-						stroke={colors[i % colors.length]}
+						stroke={LATENCY_COLORS[i % LATENCY_COLORS.length]}
 						strokeWidth={2}
 						dot={false}
 						connectNulls
@@ -499,17 +463,6 @@ function StatWithSparkline({
 	stats: MetricStats | null;
 	entries: StatusEntry[];
 }) {
-	const [show, setShow] = useState(false);
-	const triggerRef = useRef<HTMLButtonElement>(null);
-	const [pos, setPos] = useState({ x: 0, y: 0 });
-
-	useEffect(() => {
-		if (show && triggerRef.current) {
-			const rect = triggerRef.current.getBoundingClientRect();
-			setPos({ x: rect.left + rect.width / 2, y: rect.top });
-		}
-	}, [show]);
-
 	const inlineLabel = metric.inlineLabel ?? metric.label;
 	const formatInline = metric.formatInline ?? metric.format;
 	const value = stats ? formatInline(stats.avg) : "—";
@@ -548,98 +501,98 @@ function StatWithSparkline({
 	const yMax = max + padding;
 
 	return (
-		<>
-			<button
-				ref={triggerRef}
-				type="button"
-				className="cursor-default underline decoration-dotted underline-offset-2 opacity-70 hover:opacity-100 transition-opacity"
-				onMouseEnter={() => setShow(true)}
-				onMouseLeave={() => setShow(false)}
-			>
-				{inlineLabel}: {value}
-			</button>
-			{show &&
-				createPortal(
-					<div
-						className="pointer-events-none fixed z-50 rounded-md border border-zinc-200 bg-white px-2 pt-2 pb-1 text-xs text-zinc-950 shadow-lg"
-						style={{ left: pos.x, top: pos.y, transform: "translate(-50%, calc(-100% - 6px))" }}
-					>
-						<div className="px-1 font-medium">{metric.label}</div>
-						{/* The pill shows the average, so the tooltip names all four rather than repeating one. */}
-						<div className="mt-0.5 grid grid-cols-2 gap-x-3 px-1 text-[11px] text-zinc-500">
-							{STAT_COLUMNS.map((column) => (
-								<div key={column.label} className="flex justify-between gap-2">
-									<span>{column.label.toLowerCase()}</span>
-									<span className="font-mono tabular-nums text-zinc-600">{metric.format(column.of(stats))}</span>
-								</div>
-							))}
-						</div>
-						<div className="mt-1" style={{ width: 220, height: 90 }}>
-							<ResponsiveContainer width="100%" height="100%">
-								<LineChart data={chartData} margin={{ top: 4, right: 30, bottom: 2, left: 4 }}>
-									<CartesianGrid strokeDasharray="3 3" vertical={false} />
-									<XAxis
-										dataKey="ts"
-										ticks={[chartData[0].ts, chartData[chartData.length - 1].ts]}
-										interval={0}
-										tick={(props: any) => {
-											const { x, y, payload } = props;
-											const d = new Date(payload.value);
-											const date = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-											const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-											return (
-												<g transform={`translate(${x},${y})`}>
-													<text
-														x={0}
-														y={0}
-														dy={11}
-														textAnchor="middle"
-														fontSize={10}
-														fill="currentColor"
-														className="fill-muted-foreground"
-													>
-														{date}
-													</text>
-													<text
-														x={0}
-														y={0}
-														dy={22}
-														textAnchor="middle"
-														fontSize={9}
-														fill="currentColor"
-														className="fill-muted-foreground"
-													>
-														{time}
-													</text>
-												</g>
-											);
-										}}
-										height={32}
-									/>
-									<YAxis
-										tick={{ fontSize: 9 }}
-										tickFormatter={metric.format}
-										width={40}
-										domain={[isInteger ? Math.floor(yMin) : yMin, isInteger ? Math.ceil(yMax) : yMax]}
-										allowDecimals={!isInteger}
-									/>
-									<Line
-										type="monotone"
-										dataKey="v"
-										stroke={metric.color}
-										strokeWidth={1.5}
-										dot={sparkData.length <= 3}
-										connectNulls
-										isAnimationActive={false}
-										strokeDasharray={sparkData.length === 1 ? "4 3" : undefined}
-									/>
-								</LineChart>
-							</ResponsiveContainer>
-						</div>
-					</div>,
-					document.body,
-				)}
-		</>
+		<TooltipPrimitive.Provider delay={0} closeDelay={0}>
+			<TooltipPrimitive.Root disableHoverablePopup>
+				<TooltipPrimitive.Trigger
+					render={
+						<button
+							type="button"
+							className="cursor-default underline decoration-dotted underline-offset-2 opacity-70 hover:opacity-100 transition-opacity"
+						/>
+					}
+				>
+					{inlineLabel}: {value}
+				</TooltipPrimitive.Trigger>
+				<TooltipPrimitive.Portal>
+					<TooltipPrimitive.Positioner side="top" sideOffset={6} collisionPadding={8} className="isolate z-50">
+						<TooltipPrimitive.Popup className="rounded-md border border-zinc-200 bg-white px-2 pt-2 pb-1 text-xs text-zinc-950 shadow-lg">
+							<div className="px-1 font-medium">{metric.label}</div>
+							{/* The pill shows the average, so the tooltip names all four rather than repeating one. */}
+							<div className="mt-0.5 grid grid-cols-2 gap-x-3 px-1 text-[11px] text-zinc-500">
+								{STAT_COLUMNS.map((column) => (
+									<div key={column.label} className="flex justify-between gap-2">
+										<span>{column.label.toLowerCase()}</span>
+										<span className="font-mono tabular-nums text-zinc-600">{metric.format(column.of(stats))}</span>
+									</div>
+								))}
+							</div>
+							<div className="mt-1" style={{ width: 220, height: 90 }}>
+								<ResponsiveContainer width="100%" height="100%">
+									<LineChart data={chartData} margin={{ top: 4, right: 30, bottom: 2, left: 4 }}>
+										<CartesianGrid strokeDasharray="3 3" vertical={false} />
+										<XAxis
+											dataKey="ts"
+											ticks={[chartData[0].ts, chartData[chartData.length - 1].ts]}
+											interval={0}
+											tick={(props: any) => {
+												const { x, y, payload } = props;
+												const d = new Date(payload.value);
+												const date = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+												const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+												return (
+													<g transform={`translate(${x},${y})`}>
+														<text
+															x={0}
+															y={0}
+															dy={11}
+															textAnchor="middle"
+															fontSize={10}
+															fill="currentColor"
+															className="fill-muted-foreground"
+														>
+															{date}
+														</text>
+														<text
+															x={0}
+															y={0}
+															dy={22}
+															textAnchor="middle"
+															fontSize={9}
+															fill="currentColor"
+															className="fill-muted-foreground"
+														>
+															{time}
+														</text>
+													</g>
+												);
+											}}
+											height={32}
+										/>
+										<YAxis
+											tick={{ fontSize: 9 }}
+											tickFormatter={metric.format}
+											width={40}
+											domain={[isInteger ? Math.floor(yMin) : yMin, isInteger ? Math.ceil(yMax) : yMax]}
+											allowDecimals={!isInteger}
+										/>
+										<Line
+											type="monotone"
+											dataKey="v"
+											stroke={metric.color}
+											strokeWidth={1.5}
+											dot={sparkData.length <= 3}
+											connectNulls
+											isAnimationActive={false}
+											strokeDasharray={sparkData.length === 1 ? "4 3" : undefined}
+										/>
+									</LineChart>
+								</ResponsiveContainer>
+							</div>
+						</TooltipPrimitive.Popup>
+					</TooltipPrimitive.Positioner>
+				</TooltipPrimitive.Portal>
+			</TooltipPrimitive.Root>
+		</TooltipPrimitive.Provider>
 	);
 }
 
@@ -1006,10 +959,7 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 									/>
 								))}
 								<div />
-								<MatrixSummaryCell
-									title={`${formatModel(model)} · All Providers`}
-									targets={matrix.rowTargets(model)}
-								/>
+								<MatrixSummaryCell title={`${formatModel(model)} · All Providers`} targets={matrix.rowTargets(model)} />
 							</Fragment>
 						))}
 						<div className="col-span-full h-2" />

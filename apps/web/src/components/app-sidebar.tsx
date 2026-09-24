@@ -1,24 +1,25 @@
-import * as React from "react";
-import { Link, useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
 import {
-	IconDashboard,
-	IconChartBar,
-	IconSpeakerphone,
-	IconSitemap,
-	IconTarget,
-	IconLink,
+	IconBriefcase,
 	IconBuilding,
 	IconBuildings,
-	IconListDetails,
+	IconChartBar,
+	IconCode,
 	IconCpu,
-	IconTable,
-	IconReport,
-	IconTimeline,
-	IconTool,
-	IconUsers,
 	IconCreditCard,
+	IconDashboard,
+	IconKey,
+	IconLink,
+	IconListDetails,
+	IconPlugConnected,
+	IconSitemap,
+	IconSpeakerphone,
+	IconTarget,
+	IconUsers,
 } from "@tabler/icons-react";
+import { Link } from "@tanstack/react-router";
+import type { FeaturesConfig } from "@workspace/config/types";
+import { brandLinkParams, orgLinkParams } from "@workspace/lib/app-urls";
+import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
 import {
 	Sidebar,
@@ -30,168 +31,109 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
-import { NavMain, type NavGroup } from "@/components/nav-main";
-import { NavUser } from "@/components/nav-user";
-import { NavAppInfo } from "@/components/nav-app-info";
 import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
-import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import { NavAppInfo } from "@/components/nav-app-info";
+import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
+import { NavUser } from "@/components/nav-user";
+import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { useViewer } from "@/hooks/use-route-context";
+import { adminNavItems } from "@/lib/admin-nav";
+import type { OrganizationSummary } from "@/lib/organizations/types";
+import type { ShellScope } from "@/lib/shell-scope";
 
-/**
- * How much of the app the shell around this page can reach:
- *  - "brand":   a brand's own pages, plus admin for those who have it
- *  - "admin":   the admin section only (there is no brand in scope)
- *  - "account": nothing — the page is a gate the user has to clear first, so the
- *               only things worth offering are who they are and how to leave
- */
-export type SidebarScope = "brand" | "admin" | "account";
+export type AppSidebarProps = ShellScope;
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-	isAdmin?: boolean;
-	hasReportAccess?: boolean;
-	scope?: SidebarScope;
-	/** Brand data from route loader — avoids a separate client-side fetch */
-	brand?: BrandWithPrompts | null;
+function organizationGroups(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup[] {
+	const params = orgLinkParams(organization);
+	const items: NavItem[] = [
+		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase, exact: true },
+		{ title: "Brands", link: { to: "/app/org/$org/settings/brands", params }, icon: IconBuildings },
+	];
+
+	if (features?.teamInvites) {
+		items.push({ title: "Team", link: { to: "/app/org/$org/settings/members", params }, icon: IconUsers });
+	}
+
+	if (features?.billing) {
+		items.push({ title: "Billing", link: { to: "/app/org/$org/settings/billing", params }, icon: IconCreditCard });
+	}
+
+	items.push({ title: "API Keys", link: { to: "/app/org/$org/settings/api-keys", params }, icon: IconKey });
+
+	return [
+		{ label: "Organization Settings", items },
+		{
+			label: "Docs",
+			items: [
+				{ title: "API", link: { to: "/app/org/$org/settings/api", params }, icon: IconCode },
+				{ title: "MCP", link: { to: "/app/org/$org/settings/mcp", params }, icon: IconPlugConnected },
+			],
+		},
+	];
 }
 
-export function AppSidebar({
-	isAdmin = false,
-	hasReportAccess = false,
-	scope = "brand",
-	brand,
-	...props
-}: AppSidebarProps) {
+function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts): NavGroup[] {
+	const params = brandLinkParams(organization, brand);
+	const dashboard: NavItem[] = [
+		{ title: "Overview", link: { to: "/app/org/$org/brand/$brand", params }, icon: IconDashboard, exact: true },
+	];
+
+	if (brand.onboarded) {
+		dashboard.push(
+			{ title: "Visibility", link: { to: "/app/org/$org/brand/$brand/visibility", params }, icon: IconChartBar },
+			{
+				title: "Share of Voice",
+				link: { to: "/app/org/$org/brand/$brand/share-of-voice", params },
+				icon: IconSpeakerphone,
+			},
+			{ title: "Query Fan-Out", link: { to: "/app/org/$org/brand/$brand/query-fan-out", params }, icon: IconSitemap },
+			{ title: "Citations", link: { to: "/app/org/$org/brand/$brand/citations", params }, icon: IconLink },
+			{ title: "Opportunities", link: { to: "/app/org/$org/brand/$brand/opportunities", params }, icon: IconTarget },
+		);
+	}
+
+	const groups: NavGroup[] = [{ label: "Dashboard", items: dashboard }];
+
+	if (brand.onboarded) {
+		groups.push({
+			label: "Settings",
+			items: [
+				{ title: "Brand", link: { to: "/app/org/$org/brand/$brand/settings/brand", params }, icon: IconBuilding },
+				{
+					title: "Competitors",
+					link: { to: "/app/org/$org/brand/$brand/settings/competitors", params },
+					icon: IconBuildings,
+				},
+				{
+					title: "Prompts",
+					link: { to: "/app/org/$org/brand/$brand/settings/prompts", params },
+					icon: IconListDetails,
+				},
+				{ title: "LLMs", link: { to: "/app/org/$org/brand/$brand/settings/llms", params }, icon: IconCpu },
+			],
+		});
+	}
+
+	return groups;
+}
+
+export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const { isAdmin, hasReportAccess } = useViewer();
+	const features = useDeploymentFeatures();
 	// Reports are disabled entirely in cloud; hide the nav entry there.
-	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
+	const reportsEnabled = features?.reportGeneration ?? true;
 
 	// A gate page offers no destinations: every link would either 404 or bounce
 	// the user straight back to the gate.
-	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
+	const adminItems = section === "account" ? [] : adminNavItems({ isAdmin, hasReportAccess, reportsEnabled });
 
-	const groups: NavGroup[] = [];
-
-	// Dashboard section - only show if we have a brand context
-	if (scope === "brand") {
-		const dashboardItems = [
-			{
-				title: "Overview",
-				url: "/",
-				icon: IconDashboard,
-			},
-		];
-
-		// Only show Visibility and Citations if the brand is onboarded
-		if (brand?.onboarded) {
-			dashboardItems.push(
-				{
-					title: "Visibility",
-					url: "/visibility",
-					icon: IconChartBar,
-				},
-				{
-					title: "Share of Voice",
-					url: "/share-of-voice",
-					icon: IconSpeakerphone,
-				},
-				{
-					title: "Query Fan-Out",
-					url: "/query-fan-out",
-					icon: IconSitemap,
-				},
-				{
-					title: "Citations",
-					url: "/citations",
-					icon: IconLink,
-				},
-				{
-					title: "Opportunities",
-					url: "/opportunities",
-					icon: IconTarget,
-				},
-			);
-		}
-
-		groups.push({
-			label: "Dashboard",
-			items: dashboardItems,
-		});
-
-		// Settings section - only show if onboarded
-		if (brand?.onboarded) {
-			groups.push({
-				label: "Settings",
-				items: [
-					{
-						title: "Brand",
-						url: "/settings/brand",
-						icon: IconBuilding,
-					},
-					{
-						title: "Competitors",
-						url: "/settings/competitors",
-						icon: IconBuildings,
-					},
-					{
-						title: "Prompts",
-						url: "/settings/prompts",
-						icon: IconListDetails,
-					},
-					{
-						title: "LLMs",
-						url: "/settings/llms",
-						icon: IconCpu,
-					},
-					...(context.clientConfig?.features.teamInvites
-						? [{ title: "Team", url: "/settings/members", icon: IconUsers }]
-						: []),
-					...(context.clientConfig?.features.billing
-						? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }]
-						: []),
-				],
-			});
-		}
-	}
-
-	// Admin section
-	if (showAdminSection) {
-		const reportsItem = {
-			title: "Reports",
-			url: "/reports",
-			icon: IconReport,
-			absolute: true,
-		};
-		const adminItems = isAdmin
-			? [
-					{
-						title: "Brands",
-						url: "/admin",
-						icon: IconTable,
-						absolute: true,
-					},
-					...(reportsEnabled ? [reportsItem] : []),
-					{
-						title: "Workflows",
-						url: "/admin/workflows",
-						icon: IconTimeline,
-						absolute: true,
-					},
-					{
-						title: "Tools",
-						url: "/admin/tools",
-						icon: IconTool,
-						absolute: true,
-					},
-				]
-			: [reportsItem];
-
-		groups.push({
-			label: "Admin",
-			items: adminItems,
-		});
-	}
-
+	const groups: NavGroup[] = [
+		...(section === "brand" && organization && brand ? brandGroups(organization, brand) : []),
+		...(section === "organization" && organization ? organizationGroups(organization, features) : []),
+		...(section === "admin" && adminItems.length > 0 ? [{ label: "Admin", items: adminItems }] : []),
+	];
 	const brandmark = (
 		<>
 			<Logo iconClassName="!size-5" />
@@ -202,13 +144,13 @@ export function AppSidebar({
 	);
 
 	return (
-		<Sidebar variant="inset" {...props}>
+		<Sidebar variant="inset">
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
 						{/* On a gate page the mark still says whose product this is, but it
 						    leads nowhere — /app would redirect right back here. */}
-						{scope === "account" ? (
+						{section === "account" ? (
 							<div className="flex items-center gap-2 p-2">{brandmark}</div>
 						) : (
 							<SidebarMenuButton size="lg" render={<Link to="/app" onClick={() => setOpenMobile(false)} />}>
@@ -222,7 +164,7 @@ export function AppSidebar({
 				<NavMain groups={groups} />
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser canSwitchBrand={scope !== "account"} />
+				<NavUser showOrganizations={section !== "account"} adminItems={section === "admin" ? [] : adminItems} />
 				<NavAppInfo />
 			</SidebarFooter>
 		</Sidebar>

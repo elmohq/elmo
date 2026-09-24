@@ -2,15 +2,12 @@
  * /admin/tools — Admin utility for running the onboarding analysis against an
  * arbitrary website without going through the wizard.
  */
-import { useState } from "react";
+
 import { createFileRoute } from "@tanstack/react-router";
-import { getAppName } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
-import { Label } from "@workspace/ui/components/label";
+import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { Badge } from "@workspace/ui/components/badge";
-import { Spinner } from "@workspace/ui/components/spinner";
+import { Button } from "@workspace/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import {
 	Dialog,
 	DialogContent,
@@ -19,9 +16,14 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
-import { Sparkles, Copy, Check } from "lucide-react";
+import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { Check, Copy, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { pageHead } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { adminAnalyzeBrandFn } from "@/server/admin";
-import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 
 function AnalyzeBrandDialog() {
 	const [open, setOpen] = useState(false);
@@ -31,6 +33,7 @@ function AnalyzeBrandDialog() {
 	const [error, setError] = useState<string | null>(null);
 	const [result, setResult] = useState<OnboardingSuggestion | null>(null);
 	const [copied, setCopied] = useState(false);
+	const writeError = useWriteErrorMessage();
 
 	const handleAnalyze = async () => {
 		if (!website.trim()) {
@@ -49,7 +52,7 @@ function AnalyzeBrandDialog() {
 			});
 			setResult(data);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(writeError(err, "An error occurred"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -225,12 +228,8 @@ function TagSection({ title, items }: { title: string; items: string[] }) {
 }
 
 export const Route = createFileRoute("/_authed/admin/tools")({
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [{ title: `Tools · ${appName}` }, { name: "description", content: "Brand onboarding analysis." }],
-		};
-	},
+	staticData: { crumb: "Tools" },
+	head: pageHead({ description: "Brand onboarding analysis." }),
 	component: ToolsPage,
 });
 

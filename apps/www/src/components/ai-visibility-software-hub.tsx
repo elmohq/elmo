@@ -90,7 +90,7 @@ export function AiVisibilitySoftwareHub() {
 							<p>
 								That changes the unit of visibility. There's often no ranking to hold — there's one answer, and your
 								brand is either named in it or it isn't. Being cited becomes the win. This is the premise of{" "}
-								<a className={LINK} href="/blog/answer-engine-optimization">
+								<a className={LINK} href="/answer-engine-optimization">
 									answer engine optimization
 								</a>
 								, and AI visibility software is how you measure whether it's working.
@@ -137,13 +137,13 @@ export function AiVisibilitySoftwareHub() {
 							</p>
 							<p>
 								That matters in a market full of opaque scoring and inflated pricing. With Elmo you own your data and
-								avoid vendor lock-in: the self-hosted core is free, with a managed cloud option on the way. To see how
-								it compares with the rest of the field, read our roundup of the{" "}
+								avoid vendor lock-in: the self-hosted core is free, and managed cloud hosting is there if you would
+								rather not run it. To see how it compares with the rest of the field, read our roundup of the{" "}
 								<a className={LINK} href="/blog/best-ai-visibility-tools">
 									best AI visibility tools
 								</a>{" "}
 								or learn{" "}
-								<a className={LINK} href="/blog/track-brand-ai-search">
+								<a className={LINK} href="/answer-engine-optimization">
 									how to track your brand in AI search
 								</a>
 								.

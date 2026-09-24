@@ -1,0 +1,33 @@
+meta {
+  name: list prompts filtered by tag
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}&tags=monitoring
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  brandId: {{brandId}}
+  tags: monitoring
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.total: gte 1
+}
+
+tests {
+  test("every prompt carries the tag that was filtered on", function() {
+    for (const prompt of res.getBody().prompts) {
+      expect(prompt.tags).to.include("monitoring");
+    }
+  });
+}

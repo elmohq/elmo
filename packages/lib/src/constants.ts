@@ -42,7 +42,7 @@ export function getDefaultDelayHours(): number {
 }
 
 // Maximum limits for brand resources
-export const MAX_COMPETITORS = 100;
+export const MAX_COMPETITORS = 500;
 export const MAX_PROMPTS = 100;
 
 /**

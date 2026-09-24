@@ -1,12 +1,12 @@
 import {
-	OverviewPageGraphic,
-	VisibilityPageGraphic,
-	ShareOfVoicePageGraphic,
-	QueryFanOutPageGraphic,
 	CitationsPageGraphic,
 	OpportunitiesPageGraphic,
-	PromptSearchGraphic,
+	OverviewPageGraphic,
 	PromptDetailGraphic,
+	PromptSearchGraphic,
+	QueryFanOutPageGraphic,
+	ShareOfVoicePageGraphic,
+	VisibilityPageGraphic,
 	VisibilityTrendGraphic,
 } from "./feature-graphics";
 
@@ -23,8 +23,7 @@ const features: Feature[] = [
 		num: "01",
 		eyebrow: "DASHBOARD",
 		title: "Your AI visibility command center.",
-		description:
-			"See everything at a glance — current visibility, share of voice, 30-day trends, and the key metrics behind every score.",
+		description: "Current visibility, share of voice, and 30-day trends on one dashboard.",
 		graphic: <OverviewPageGraphic />,
 	},
 	{
@@ -40,7 +39,7 @@ const features: Feature[] = [
 		eyebrow: "SHARE OF VOICE",
 		title: "See how you stack up against the competition.",
 		description:
-			"Compare your brand's mention share against every competitor. A live leaderboard ranks who AI engines name most — so you can see who dominates and where the gaps are.",
+			"Compare your brand's mention share against every competitor. A live leaderboard ranks who AI engines name most, and where you're missing.",
 		graphic: <ShareOfVoicePageGraphic />,
 	},
 	{
@@ -64,7 +63,7 @@ const features: Feature[] = [
 		eyebrow: "OPPORTUNITIES",
 		title: "Know exactly what to do next.",
 		description:
-			"Turn your data into action with AI-generated recommendations — content to create, pages to refresh, and third-party sources to pitch — each ranked by impact.",
+			"Get AI-generated recommendations ranked by impact: content to create, pages to refresh, third-party sources to pitch.",
 		graphic: <OpportunitiesPageGraphic />,
 	},
 	{
@@ -72,7 +71,7 @@ const features: Feature[] = [
 		eyebrow: "PROMPTS",
 		title: "Search, tag, and organize your prompts.",
 		description:
-			"Find any prompt instantly with full-text search and highlight matching. Tag prompts for easy filtering and track visibility scores per prompt.",
+			"Full-text search finds any prompt instantly. Tag them to filter, and track visibility scores per prompt.",
 		graphic: <PromptSearchGraphic />,
 	},
 	{
@@ -80,7 +79,7 @@ const features: Feature[] = [
 		eyebrow: "DEEP DIVE",
 		title: "Inspect every individual AI response.",
 		description:
-			"Drill into any prompt to see exactly what each AI model said, which brands were mentioned, what sources were cited, and how the response was constructed.",
+			"Drill into any prompt to see exactly what each AI model said, which brands were mentioned, and what sources were cited.",
 		graphic: <PromptDetailGraphic />,
 	},
 	{
@@ -93,15 +92,15 @@ const features: Feature[] = [
 	},
 ];
 
-export function Features() {
+export function Features({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 	return (
 		<section id="features" className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<div>
 					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ FEATURES</p>
-					<h2 className="mt-4 text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+					<Heading className="mt-4 text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 						All you need to grow AI visibility.
-					</h2>
+					</Heading>
 				</div>
 
 				<div className="mt-16 space-y-16 lg:space-y-24">

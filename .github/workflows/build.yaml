@@ -1,11 +1,15 @@
-# Host-side checks: type check, unit + Storybook tests, and a real `pnpm build`
-# that must leave the working tree clean.
+# Host-side checks: format and lint, type check, unit + Storybook tests, and a
+# real `pnpm build` that must leave the working tree clean.
 #
 # The clean-tree check is the point of running a host build at all.
 # `routeTree.gen.ts` is committed because `tsc` needs it to resolve routes, so
 # it can go stale in git. e2e.yaml can't catch that: it builds inside Docker,
 # where the file is regenerated in the image and the checked-in copy is never
 # consulted.
+#
+# `schema-auth.ts` is covered the same way. Turbo regenerates it before
+# check-types, so a better-auth bump or a new schema-bearing plugin fails here
+# instead of leaving drizzle-kit to snapshot a stale schema.
 #
 # Keep it excluded from Biome (see biome.json) — the router generator formats
 # its own output with Prettier, and a formatter fighting it would make every
@@ -38,7 +42,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -51,6 +55,16 @@ jobs:
       # it in place would surface as unexplained churn in the clean-tree check.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Formatting, lint and import order in one pass, repo-wide. Runs first
+      # because it is the cheapest thing that can fail.
+      - name: Format and lint
+        run: pnpm lint
+
+      # The OpenAPI document is written by hand and no compiler reads it, so
+      # this is the only thing that holds it to the spec it claims to be.
+      - name: Lint the OpenAPI document
+        run: pnpm lint:spec
 
       # Redundant with `pnpm build` (turbo's build depends on check-types), but
       # it fails in a minute instead of after the whole build, and turbo caches
@@ -87,12 +101,15 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
+      # Not `--with-deps`: that runs apt-get update on every job, cache hit or
+      # not, for libraries the runner image already carries. If an image ever
+      # stops carrying them, Playwright fails naming `playwright install-deps`.
       - name: Install Playwright browsers
         uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
-          command: pnpm -C apps/web exec playwright install chromium --with-deps
+          command: pnpm -C apps/web exec playwright install chromium
 
       - name: Storybook tests
         run: pnpm -C apps/web test:storybook

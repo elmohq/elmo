@@ -1,0 +1,22 @@
+meta {
+  name: get the organization a key belongs to
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/organizations/{{orgId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq default
+  res.body.name: isString
+  res.body.brandCount: isNumber
+}

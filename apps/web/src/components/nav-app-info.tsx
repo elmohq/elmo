@@ -1,5 +1,7 @@
 import { IconBrandGithub, IconScale, IconWorld } from "@tabler/icons-react";
 import { useRouteContext } from "@tanstack/react-router";
+import { LEGAL_DOCUMENTS, legalUrl, showsLegalLinks } from "@workspace/config/legal";
+import type { ClientConfig } from "@workspace/config/types";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -8,8 +10,6 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { LEGAL_DOCUMENTS, legalUrl, showsLegalLinks } from "@workspace/config/legal";
-import type { ClientConfig } from "@workspace/config/types";
 import { openCookiePreferences } from "@workspace/ui/lib/cookie-consent";
 
 export function NavAppInfo() {
@@ -34,7 +34,9 @@ export function NavAppInfo() {
 			</a>
 			<div className="flex items-center gap-1">
 				<Tooltip>
-					<TooltipTrigger render={<a href="https://www.elmohq.com/" target="_blank" className={linkClass} />}>
+					<TooltipTrigger
+						render={<a href="https://www.elmohq.com/" target="_blank" className={linkClass} rel="noopener" />}
+					>
 						<IconWorld className="size-4" />
 					</TooltipTrigger>
 					<TooltipContent>elmohq.com</TooltipContent>

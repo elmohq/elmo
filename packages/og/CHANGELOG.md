@@ -1,5 +1,31 @@
 # @workspace/og
 
+## 0.4.1
+
+### Patch Changes
+
+- @workspace/config@0.4.1
+
+## 0.4.0
+
+### Patch Changes
+
+- e30d6d4: Redesigned the Open Graph share images with a cleaner layout, headline sizing that fits long titles, and the app's host in the footer.
+- @workspace/config@0.4.0
+
+## 0.3.0
+
+### Patch Changes
+
+- Updated dependencies [3ba2e5a]
+- Updated dependencies [78593b9]
+- Updated dependencies [f4f7ef2]
+- Updated dependencies [78593b9]
+- Updated dependencies [f87d2e2]
+- Updated dependencies [1f46b62]
+- Updated dependencies [78593b9]
+  - @workspace/config@0.3.0
+
 ## 0.2.19
 
 ### Patch Changes

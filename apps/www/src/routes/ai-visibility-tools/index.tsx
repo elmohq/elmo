@@ -8,9 +8,9 @@ import { competitors, getComparisonSlug, isLowDR } from "@/lib/competitors";
 import { DIRECTORY_FAQS } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
-const title = "AI Visibility Tool Directory | Compare AI Search Tools · Elmo";
+const title = "AI Visibility Tools: Compare Every AEO & GEO Platform · Elmo";
 const description =
-	"AI visibility software tracks your brand across ChatGPT, Perplexity, and Gemini. Compare 100+ AI visibility and AEO tools, head-to-head with Elmo.";
+	"Compare 100+ AI visibility tools, AEO software, LLM visibility trackers and GEO platforms side by side — engine coverage, pricing, and features, each head-to-head with Elmo.";
 
 // Indexed comparison pages (mirrors the sitemap filter), surfaced as ItemList
 // structured data so AI engines can extract the full directory of tools.
@@ -48,7 +48,7 @@ export const Route = createFileRoute("/ai-visibility-tools/")({
 const browseLinks = [
 	{
 		title: "Compare head-to-head",
-		description: "Side-by-side breakdowns of the leading platforms, with Elmo in the mix.",
+		description: "Side-by-side comparisons, with Elmo included.",
 		href: "/ai-visibility-tools/compare",
 	},
 	{

@@ -29,11 +29,7 @@ const components: Components = {
 			{children}
 		</a>
 	),
-	ul: ({ children }) => (
-		<ul role="list" className="my-2 list-disc space-y-1 pl-5 marker:text-zinc-400">
-			{children}
-		</ul>
-	),
+	ul: ({ children }) => <ul className="my-2 list-disc space-y-1 pl-5 marker:text-zinc-400">{children}</ul>,
 	ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-5 marker:text-zinc-400">{children}</ol>,
 	li: ({ children }) => <li className="text-[14px] leading-relaxed text-zinc-700">{children}</li>,
 	strong: ({ children }) => <strong className="font-semibold text-zinc-950">{children}</strong>,

@@ -64,6 +64,13 @@ export function formatScrapeTarget(config: ModelConfig): string {
  * this one list so the "what we display" and "what we test" sets can't drift.
  */
 export const STATUS_TARGETS = [
+	"chatgpt:searchapi",
+	"chatgpt:searchapi:online",
+	"google-ai-mode:searchapi:online",
+	"google-ai-overview:searchapi:online",
+	"gemini:searchapi:online",
+	"copilot:searchapi:online",
+	"perplexity:searchapi:online",
 	"chatgpt:olostep:online",
 	"google-ai-mode:olostep:online",
 	"google-ai-overview:olostep:online",

@@ -1,0 +1,23 @@
+meta {
+  name: a demo deployment refuses to delete a prompt
+  type: http
+  seq: 5
+  tags: [
+    demo
+  ]
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq read_only
+}

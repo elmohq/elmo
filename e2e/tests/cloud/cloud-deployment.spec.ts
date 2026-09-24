@@ -9,9 +9,10 @@
  * transactional-email provider — so the specs verify addresses in the database
  * and assert on everything around it.
  */
-import { expect, test } from "@playwright/test";
-import { CLOUD_SIGNUP, TEST_BRAND_ID, TEST_USER } from "../../fixtures";
+import { expect, failedResource, test } from "../../test";
+import { CLOUD_SIGNUP, TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { deleteUsers, userExists, verifyEmail } from "../../session";
+import { openAccountMenu } from "../../interactions";
 
 const NEW_USER = {
   email: `signup@${CLOUD_SIGNUP.allowedDomain}`,
@@ -40,6 +41,12 @@ test.describe("Cloud self-serve signup", () => {
     await expect(page.getByRole("button", { name: /continue with google/i })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("link", { name: /forgot password/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /create one/i })).toBeVisible();
+  });
+
+  test("the bare app URL opens on sign-up, keeping the referral tag", async ({ page }) => {
+    await page.goto("/?ref=marketing-cta");
+    await page.waitForURL(/\/auth\/register\?.*ref=marketing-cta/, { timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Create account" })).toBeVisible({ timeout: 30_000 });
   });
 
   test("registering asks the new account to verify its email", async ({ page }) => {
@@ -75,55 +82,70 @@ test.describe("Cloud self-serve signup", () => {
     await page.getByLabel("Password").fill(NEW_USER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    // Cloud provisions a workspace on signup, but app access starts only after
-    // that workspace has an active plan.
     await page.waitForURL(/\/choose-plan(?:\?.*)?$/, { timeout: 30_000 });
     await expect(page.getByRole("heading", { name: "Choose your plan" })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("button", { name: "Subscribe to Starter" })).toBeVisible();
   });
 
+  // A 400 rather than the allowlist's 403, so unlike the case below this
+  // refusal does reach the caller.
   test("a disposable address is refused", async ({ request }) => {
     const response = await request.post("/api/auth/sign-up/email", {
       data: { email: DISPOSABLE_EMAIL, password: NEW_USER.password, name: "Throwaway" },
       failOnStatusCode: false,
     });
 
-    expect(response.ok()).toBe(false);
+    expect(response.ok(), `${response.status()} ${await response.text()}`).toBe(false);
     expect(await response.text()).toContain("Disposable email addresses are not supported");
+    expect(await userExists(DISPOSABLE_EMAIL)).toBe(false);
   });
 
-  test("an address outside the allowlist is refused", async ({ request }) => {
+  /**
+   * Cloud requires email verification, which puts better-auth in the mode where
+   * a refused creation answers exactly as a duplicate address does — a 200 over
+   * a synthetic user — so that signup cannot be used to learn who is already
+   * registered. The allowlist refusal is a 403, the status that rule covers, so
+   * the response says nothing either way and the account never existing is the
+   * whole of what this can assert. Read it against the allowlisted signup
+   * above, which does create one.
+   */
+  test("an address outside the allowlist creates no account", async ({ request }) => {
     const response = await request.post("/api/auth/sign-up/email", {
       data: { email: BLOCKED_EMAIL, password: NEW_USER.password, name: "Outsider" },
       failOnStatusCode: false,
     });
+    expect(response.status(), await response.text()).toBe(200);
 
-    // The allowlist gate returns the same generic failure as any other refused
-    // signup, so the assertion is that no account appeared — read against the
-    // allowlisted signup above, which does create one.
-    expect(response.ok()).toBe(false);
-    expect(await userExists(BLOCKED_EMAIL)).toBe(false);
+    expect(await userExists(BLOCKED_EMAIL), "an address off the allowlist was signed up").toBe(false);
   });
 });
 
 test.describe("Cloud features", () => {
-  test("report generation is switched off", async ({ page }) => {
+  test("report generation is switched off", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(404, "/reports"));
     await page.goto("/reports");
     await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
 
   test("the sidebar offers team settings and no reports", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+    await page.goto(`${organizationUrl()}/settings`);
     await expect(
-      page.locator(`a[href="/app/${TEST_BRAND_ID}/settings/members"][data-sidebar="menu-button"]`),
+      page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
     ).toBeVisible({ timeout: 30_000 });
+
+    await page.goto(`${brandUrl()}`);
+    await expect(
+      page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
+    ).toHaveCount(0);
+
     // The admin section is present (this user is an admin) but has no Reports entry.
-    await expect(page.locator('a[href="/admin"][data-sidebar="menu-button"]')).toBeVisible();
-    await expect(page.locator('a[href="/reports"][data-sidebar="menu-button"]')).toHaveCount(0);
+    const menu = await openAccountMenu(page);
+    await expect(menu.locator('a[href="/admin"]')).toBeVisible();
+    await expect(menu.locator('a[href="/reports"]')).toHaveCount(0);
   });
 
   test("teammates can be invited by email", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/settings/members`);
+    await page.goto(`${organizationUrl()}/settings/members`);
 
     await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Email")).toBeVisible();
@@ -133,8 +155,17 @@ test.describe("Cloud features", () => {
   });
 
   test("brands can be created from the UI", async ({ page }) => {
-    await page.goto("/app/new");
-    await expect(page.getByLabel("Brand name")).toBeVisible({ timeout: 30_000 });
+    await page.goto(`${organizationUrl()}/new`);
+    await expect(page.getByLabel("Brand Name")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Website")).toBeVisible();
+  });
+
+  test("another organization can be created", async ({ page }) => {
+    await page.goto("/app");
+    await expect(page.getByRole("link", { name: /new organization/i })).toBeVisible({ timeout: 30_000 });
+
+    await page.goto("/app/new");
+    await expect(page.getByLabel("Organization Name")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Create organization" })).toBeVisible();
   });
 });

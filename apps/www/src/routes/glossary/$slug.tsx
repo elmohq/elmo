@@ -1,9 +1,10 @@
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
-import { getGlossaryTerm, glossaryTerms, type GlossaryTerm } from "@/data/glossary";
+import { Navbar } from "@/components/navbar";
+import { type GlossaryTerm, getGlossaryTerm, glossaryTerms } from "@/data/glossary";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/glossary/$slug")({
 	head: ({ params }) => {
@@ -120,7 +121,7 @@ function GlossaryTermPage() {
 						</p>
 						<div className="mt-6 flex flex-wrap justify-center gap-3">
 							<Link
-								to="/docs"
+								{...SELF_HOST_LINK}
 								className="inline-flex h-9 items-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
 							>
 								Get started

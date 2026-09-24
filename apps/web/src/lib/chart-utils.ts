@@ -1,8 +1,13 @@
-import type { PerPromptVisibilityPoint, PerPromptDailyCitationStats } from "@/lib/postgres-read";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { type CitationCategory, CITATION_CATEGORIES } from "@/lib/domain-categories";
+import { CITATION_CATEGORIES, type CitationCategory } from "@/lib/domain-categories";
+import type { LookbackPeriod } from "@/lib/lookback";
+import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
 
-export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+/** Charts key a series by id and label it by name; nothing else about a brand is read. */
+export interface ChartSubject {
+	id: string;
+	name: string;
+}
 
 /** Use a stable one-month default while history loads, then shorten it for brands with less than a week of data. */
 export function getDefaultLookbackPeriod(earliestDataDate: string | null | undefined): LookbackPeriod {
@@ -87,6 +92,29 @@ export interface DailyVisibilityBucket {
 }
 
 /**
+ * Walk each prompt's series across `dateRange`, carrying its last observation
+ * forward over the days it didn't run. Pre-seeded with the prompt's earliest
+ * observation so days before its first run still contribute — otherwise a
+ * staggered schedule reads as a ramp-up rather than steady coverage.
+ */
+function carryForward<V>(
+	byPrompt: Map<string, Map<string, V>>,
+	dateRange: string[],
+	visit: (promptId: string, date: string, carried: V, actual: V | undefined) => void,
+): void {
+	for (const [promptId, byDate] of byPrompt) {
+		const earliest = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b))[0]?.[1];
+		let carried = earliest;
+		for (const date of dateRange) {
+			const actual = byDate.get(date);
+			if (actual !== undefined) carried = actual;
+			if (carried === undefined) continue;
+			visit(promptId, date, carried, actual);
+		}
+	}
+}
+
+/**
  * Per-prompt Last Value Carried Forward (LVCF) for visibility data.
  *
  * For each prompt, carries forward its last known (total_runs, brand_mentioned_count)
@@ -111,58 +139,43 @@ export function applyPerPromptLVCF(
 
 	const byPrompt = new Map<string, Map<string, { total: number; mentioned: number }>>();
 	for (const row of perPromptData) {
-		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
-		byPrompt.get(row.prompt_id)!.set(String(row.date), {
-			total: Number(row.total_runs),
-			mentioned: Number(row.brand_mentioned_count),
-		});
+		const byDate = byPrompt.get(row.prompt_id) ?? new Map<string, { total: number; mentioned: number }>();
+		byDate.set(String(row.date), { total: Number(row.total_runs), mentioned: Number(row.brand_mentioned_count) });
+		byPrompt.set(row.prompt_id, byDate);
 	}
 
 	const dailyVisibilityMap = new Map<string, DailyVisibilityBucket>();
-	let totalBrandedRuns = 0;
-	let totalBrandedMentioned = 0;
-	let totalNonBrandedRuns = 0;
-	let totalNonBrandedMentioned = 0;
+	const observed = {
+		branded: { runs: 0, mentioned: 0 },
+		nonBranded: { runs: 0, mentioned: 0 },
+	};
 
-	// Pre-seed carried value with the prompt's earliest observation so that
-	// dates before the first run still get a contribution (avoids ramp-up artifact).
-	for (const [promptId, dateMap] of byPrompt) {
+	carryForward(byPrompt, dateRange, (promptId, date, carried, actual) => {
 		const isBranded = brandedSet.has(promptId);
-		const sortedEntries = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
-		let carried: { total: number; mentioned: number } | null = sortedEntries.length > 0 ? sortedEntries[0][1] : null;
+		const bucket = dailyVisibilityMap.get(date) ?? {
+			branded: { total: 0, mentioned: 0 },
+			nonBranded: { total: 0, mentioned: 0 },
+		};
+		dailyVisibilityMap.set(date, bucket);
 
-		for (const date of dateRange) {
-			const actual = dateMap.get(date);
-			if (actual) {
-				carried = actual;
-			}
-			if (!carried) continue;
+		const day = isBranded ? bucket.branded : bucket.nonBranded;
+		day.total += carried.total;
+		day.mentioned += carried.mentioned;
 
-			if (!dailyVisibilityMap.has(date)) {
-				dailyVisibilityMap.set(date, {
-					branded: { total: 0, mentioned: 0 },
-					nonBranded: { total: 0, mentioned: 0 },
-				});
-			}
-			const bucket = dailyVisibilityMap.get(date)!;
-			const target = isBranded ? bucket.branded : bucket.nonBranded;
-			target.total += carried.total;
-			target.mentioned += carried.mentioned;
+		// Period totals measure observations, not the synthetic daily series.
+		if (!actual) return;
+		const period = isBranded ? observed.branded : observed.nonBranded;
+		period.runs += actual.total;
+		period.mentioned += actual.mentioned;
+	});
 
-			// Period totals measure observations, not the synthetic daily series.
-			if (actual) {
-				if (isBranded) {
-					totalBrandedRuns += actual.total;
-					totalBrandedMentioned += actual.mentioned;
-				} else {
-					totalNonBrandedRuns += actual.total;
-					totalNonBrandedMentioned += actual.mentioned;
-				}
-			}
-		}
-	}
-
-	return { dailyVisibilityMap, totalBrandedRuns, totalBrandedMentioned, totalNonBrandedRuns, totalNonBrandedMentioned };
+	return {
+		dailyVisibilityMap,
+		totalBrandedRuns: observed.branded.runs,
+		totalBrandedMentioned: observed.branded.mentioned,
+		totalNonBrandedRuns: observed.nonBranded.runs,
+		totalNonBrandedMentioned: observed.nonBranded.mentioned,
+	};
 }
 
 export type CitationCategories = Record<CitationCategory, number>;
@@ -185,26 +198,20 @@ export function applyPerPromptKeyedLVCF<K extends string>(
 
 	const byPrompt = new Map<string, Map<string, Record<K, number>>>();
 	for (const row of rows) {
-		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
-		const dateMap = byPrompt.get(row.prompt_id)!;
-		const dateStr = String(row.date);
-		if (!dateMap.has(dateStr)) dateMap.set(dateStr, empty());
-		dateMap.get(dateStr)![row.key] += Number(row.count);
+		const byDate = byPrompt.get(row.prompt_id) ?? new Map<string, Record<K, number>>();
+		const date = String(row.date);
+		const counts = byDate.get(date) ?? empty();
+		counts[row.key] += Number(row.count);
+		byDate.set(date, counts);
+		byPrompt.set(row.prompt_id, byDate);
 	}
 
 	const daily = new Map<string, Record<K, number>>();
-	for (const [, dateMap] of byPrompt) {
-		const sortedEntries = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
-		let carried: Record<K, number> | null = sortedEntries.length > 0 ? sortedEntries[0][1] : null;
-		for (const date of dateRange) {
-			const actual = dateMap.get(date);
-			if (actual) carried = actual;
-			if (!carried) continue;
-			if (!daily.has(date)) daily.set(date, empty());
-			const day = daily.get(date)!;
-			for (const k of allKeys) day[k] += carried[k] / cadenceDays;
-		}
-	}
+	carryForward(byPrompt, dateRange, (_promptId, date, carried) => {
+		const day = daily.get(date) ?? empty();
+		for (const key of allKeys) day[key] += carried[key] / cadenceDays;
+		daily.set(date, day);
+	});
 
 	// Values are intentionally left fractional: both consumers
 	// convert to percentages via toRoundedPercentages, where the 1/cadenceDays factor
@@ -233,35 +240,34 @@ export function applyPerPromptCitationLVCF(
 	);
 }
 
-/** Map the 0–500 score range to 20-point percentage bands. */
-export const normalizeToPercentage = (value: number): number => {
-	const percentage = (value / 500) * 100;
-	const roundedPercentage = Math.floor(percentage / 20) * 20;
-	return Math.min(roundedPercentage, 100);
-};
-
-export function getBadgeVariant(value: number): "default" | "secondary" | "destructive" {
-	if (value > 75) return "default";
-	if (value > 45) return "secondary";
-	return "destructive";
-}
-
-export function getBadgeClassName(value: number): string {
-	if (value > 75) return "bg-emerald-600 hover:bg-emerald-600 text-white";
-	if (value > 45) return "bg-amber-500 hover:bg-amber-500 text-white";
-	return "bg-rose-500 hover:bg-rose-500 text-white";
-}
-
 export interface ChartDataPoint {
 	date: string;
 	[key: string]: number | string | boolean | null;
 }
 
-import type { PromptRun, Brand, Competitor } from "@workspace/lib/db/schema";
+export function visibilityBadgeProps(value: number): {
+	variant: "default" | "secondary" | "destructive";
+	className: string;
+} {
+	if (value > 75) return { variant: "default", className: "bg-emerald-600 hover:bg-emerald-600 text-white" };
+	if (value > 45) return { variant: "secondary", className: "bg-amber-500 hover:bg-amber-500 text-white" };
+	return { variant: "destructive", className: "bg-rose-500 hover:bg-rose-500 text-white" };
+}
+
+export function latestObservedPoint(chartData: ChartDataPoint[], ids: string[]): ChartDataPoint | undefined {
+	return chartData.filter((point) => ids.some((id) => point[id] !== null && point[id] !== undefined)).pop();
+}
+
+export function latestVisibility(chartData: ChartDataPoint[], id: string): number | null {
+	const point = latestObservedPoint(chartData, [id]);
+	return point ? (point[id] as number) : null;
+}
+
+import type { Competitor, PromptRun } from "@workspace/lib/db/schema";
 
 export function calculateVisibilityPercentages(
 	promptRuns: PromptRun[],
-	brand: Brand,
+	brand: ChartSubject,
 	competitors: Competitor[],
 	lookback: LookbackPeriod,
 	userTimezone: string = Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -344,19 +350,6 @@ export function calculateVisibilityPercentages(
 		return dataPoint;
 	});
 }
-export function getCompetitorColor(
-	competitorName: string,
-	competitors: Competitor[],
-	whitelabelColors: string[],
-): string {
-	const sortedCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
-	const index = sortedCompetitors.findIndex((c) => c.name === competitorName);
-
-	// Index zero is reserved for the brand.
-	const colorIndex = (index + 1) % whitelabelColors.length;
-	return whitelabelColors[colorIndex] || whitelabelColors[1];
-}
-
 function calculateAverageVisibility(data: ChartDataPoint[], competitorId: string): number {
 	const validValues = data
 		.map((point) => point[competitorId] as number | null)
@@ -391,10 +384,6 @@ export function selectCompetitorsToDisplay(
 	}
 
 	return topCompetitors;
-}
-
-export function getBrandColor(whitelabelColors: string[]): string {
-	return whitelabelColors[0];
 }
 
 export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback: LookbackPeriod): ChartDataPoint[] {
@@ -447,33 +436,20 @@ export function extendLinesToChartEdges(chartData: ChartDataPoint[], dataKeys: s
 	const extendedData = chartData.map((point) => ({ ...point }));
 
 	for (const key of dataKeys) {
-		let firstValidIndex = -1;
-		let lastValidIndex = -1;
-		let firstValue: number | null = null;
-		let lastValue: number | null = null;
+		const observed = extendedData
+			.map((point, index) => ({ index, value: point[key] }))
+			.filter((entry) => entry.value !== null && entry.value !== undefined);
+		const first = observed[0];
+		const last = observed[observed.length - 1];
+		if (!first || !last) continue;
 
-		for (let i = 0; i < extendedData.length; i++) {
-			const value = extendedData[i][key];
-			if (value !== null && value !== undefined) {
-				if (firstValidIndex === -1) {
-					firstValidIndex = i;
-					firstValue = value as number;
-				}
-				lastValidIndex = i;
-				lastValue = value as number;
-			}
+		for (let i = 0; i < first.index; i++) {
+			extendedData[i][key] = first.value;
+			extendedData[i][`_extended_${key}`] = true;
 		}
-
-		if (firstValidIndex !== -1 && lastValidIndex !== -1) {
-			for (let i = 0; i < firstValidIndex; i++) {
-				extendedData[i][key] = firstValue;
-				extendedData[i][`_extended_${key}`] = true;
-			}
-
-			for (let i = lastValidIndex + 1; i < extendedData.length; i++) {
-				extendedData[i][key] = lastValue;
-				extendedData[i][`_extended_${key}`] = true;
-			}
+		for (let i = last.index + 1; i < extendedData.length; i++) {
+			extendedData[i][key] = last.value;
+			extendedData[i][`_extended_${key}`] = true;
 		}
 	}
 
@@ -482,49 +458,4 @@ export function extendLinesToChartEdges(chartData: ChartDataPoint[], dataKeys: s
 
 export function isExtendedDataPoint(dataPoint: ChartDataPoint, key: string): boolean {
 	return dataPoint[`_extended_${key}`] === true;
-}
-
-/**
- * Create a mapping from prompt IDs to their oldest web query (first alphabetically if multiple from same time)
- */
-export function createPromptToWebQueryMapping(promptRuns: PromptRun[]): Record<string, string> {
-	const promptToWebQuery: Record<string, string> = {};
-
-	const promptRunsByPromptId = promptRuns.reduce(
-		(acc, run) => {
-			if (!acc[run.promptId]) {
-				acc[run.promptId] = [];
-			}
-			acc[run.promptId].push(run);
-			return acc;
-		},
-		{} as Record<string, PromptRun[]>,
-	);
-
-	Object.entries(promptRunsByPromptId).forEach(([promptId, runs]) => {
-		const runsWithWebQueries = runs.filter((run) => run.webQueries && run.webQueries.length > 0);
-
-		if (runsWithWebQueries.length === 0) return;
-
-		runsWithWebQueries.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-		const oldestDate = runsWithWebQueries[0].createdAt;
-		const oldestRuns = runsWithWebQueries.filter(
-			(run) => new Date(run.createdAt).getTime() === new Date(oldestDate).getTime(),
-		);
-
-		const allWebQueries: string[] = [];
-		oldestRuns.forEach((run) => {
-			if (run.webQueries) {
-				allWebQueries.push(...run.webQueries);
-			}
-		});
-
-		if (allWebQueries.length > 0) {
-			allWebQueries.sort();
-			promptToWebQuery[promptId] = allWebQueries[0];
-		}
-	});
-
-	return promptToWebQuery;
 }

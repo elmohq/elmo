@@ -25,5 +25,4 @@ export const updatePromptsFn = async ({
 		tags: p.tags ?? [],
 		systemTags: [] as string[],
 	}));
-export const getPromptChartDataFn = noop;
 export const getPromptWebQueryFn = noop;

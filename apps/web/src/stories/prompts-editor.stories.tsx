@@ -10,8 +10,6 @@ const prompts = Array.from({ length: 24 }, (_, i) => ({
 	systemTags: i % 2 === 0 ? ["unbranded"] : ["branded"],
 }));
 
-/** Mirrors the `/app/$brand` shell so the sticky bar is exercised against the
- *  real scroll container, not a bare story canvas. */
 const meta = {
 	title: "Pages/PromptsEditor",
 	component: PromptsEditor,

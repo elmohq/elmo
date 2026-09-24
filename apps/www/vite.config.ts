@@ -1,13 +1,13 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { nitro } from "nitro/vite";
-import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import { embedBinaries } from "@workspace/og/vite-plugin";
 import mdx from "fumadocs-mdx/vite";
-import { embedBinaries, externalizeResvg } from "@workspace/og/vite-plugin";
-import * as MdxConfig from "./source.config";
+import { nitro } from "nitro/vite";
+import { defineConfig } from "vite";
 import pkg from "./package.json" with { type: "json" };
+import * as MdxConfig from "./source.config";
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
 
@@ -29,12 +29,12 @@ export default defineConfig({
 	},
 	plugins: [
 		embedBinaries(),
-		externalizeResvg(),
 		mdx(MdxConfig),
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			traceDeps: ["@resvg/resvg-js"],
+			traceDeps: ["@takumi-rs/core"],
+			exportConditions: ["import"],
 			alias: {
 				tslib: tslibEsm,
 			},

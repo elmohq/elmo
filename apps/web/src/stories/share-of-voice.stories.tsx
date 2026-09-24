@@ -1,12 +1,7 @@
-/**
- * Stories for the Share of Voice page (/app/$brand/share-of-voice). Renders the
- * real page with mocked brand + share-of-voice data. The page reads filters from
- * the URL search params via the mocked router hooks (empty search = defaults).
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
-import { Route } from "@/routes/_authed/app/$brand/share-of-voice";
+import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/share-of-voice";
 
 // The route file exports only `Route` (route files must, for code-splitting).
 // Render its component via the route options — the mock exposes `options`.

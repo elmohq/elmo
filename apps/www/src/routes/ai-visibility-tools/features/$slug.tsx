@@ -1,20 +1,21 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
-import { Faq } from "@/components/faq";
-import { ToolGrid } from "@/components/tool-list";
 import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
+import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
+import { ToolGrid } from "@/components/tool-list";
 import {
-	getFeatureKeyBySlug,
-	toolsWithFeature,
-	getFeatureLabel,
-	getFeatureVerdict,
-	getFeatureFaqs,
-	MIN_TOOLS_FOR_FEATURE_PAGE,
 	type Competitor,
 	type FeatureKey,
+	getFeatureFaqs,
+	getFeatureKeyBySlug,
+	getFeatureLabel,
+	getFeatureSearchTerm,
+	getFeatureVerdict,
+	MIN_TOOLS_FOR_FEATURE_PAGE,
+	toolsWithFeature,
 } from "@/lib/competitors";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
 	head: ({ params }) => {
@@ -23,8 +24,13 @@ export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
 		const tools = toolsWithFeature(key);
 		if (tools.length < MIN_TOOLS_FOR_FEATURE_PAGE) return {};
 		const label = getFeatureLabel(key);
-		const title = `AI Visibility Tools with ${label} · Elmo`;
-		const description = `See which AI visibility tools offer ${label.toLowerCase()} and how they compare, including the open-source option, Elmo.`;
+		const term = getFeatureSearchTerm(key);
+		const title = !term
+			? `AI Visibility Tools with ${label} · Elmo`
+			: tools.length <= 25
+				? `${tools.length} Best ${term} (2026) · Elmo`
+				: `${term} Compared: ${tools.length} Tools (2026) · Elmo`;
+		const description = `${tools.length} AI visibility tools with ${label.toLowerCase()}, compared on engine coverage, pricing, and export — including Elmo, the open-source option.`;
 		const path = `/ai-visibility-tools/features/${params.slug}`;
 		return {
 			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],

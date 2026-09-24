@@ -15,33 +15,25 @@
 import { describe, expect, it } from "vitest";
 import {
 	evaluateAdminRouteGuard,
-	evaluateApiKeyAuth,
 	evaluateAuthedRouteGuard,
-	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
 	evaluateReadOnly,
-	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
 	type RequestInfo,
-	resolveBrandOrganization,
 } from "@/lib/auth/policies";
 import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
-
-// ============================================================================
-// Helpers
-// ============================================================================
 
 function req(method: string, pathname: string, authorizationHeader?: string): RequestInfo {
 	return { pathname, method, authorizationHeader };
 }
 
+function apiReq(method: string, pathname: string): RequestInfo {
+	return req(method, pathname, "Bearer some-token");
+}
+
 const VALID_API_KEY = "test-key-abc123";
 const INVALID_API_KEY = "wrong-key";
 const API_KEYS = [VALID_API_KEY, "another-key"];
-
-// ============================================================================
-// 1. Deployment Request Policy Matrix
-// ============================================================================
 
 describe("evaluateDeploymentPolicy", () => {
 	// ────────────────────────────────────────────────────────────
@@ -75,27 +67,8 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("allow");
 		});
 
-		it("blocks API v1 without key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"), { adminApiKeys: API_KEYS });
-			expect(result).toMatchObject({ action: "block", status: 401 });
-		});
-
-		it("allows API v1 with valid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
-			expect(result.action).toBe("allow");
-		});
-
-		it("blocks API v1 with invalid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${INVALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
-			expect(result).toMatchObject({ action: "block", status: 401 });
-		});
-
 		it("allows API v1 docs without key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/docs"), { adminApiKeys: API_KEYS });
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/docs"));
 			expect(result.action).toBe("allow");
 		});
 
@@ -195,77 +168,9 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("allow");
 		});
 
-		it("blocks POST to /api/v1 before reaching key check (read-only takes priority)", () => {
-			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
-			expect(result).toMatchObject({
-				action: "block",
-				status: 403,
-				error: "Demo Mode",
-			});
-		});
-
-		it("allows GET to /api/v1 with valid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
-			expect(result.action).toBe("allow");
-		});
-
 		it("serves OpenAPI spec in demo mode", () => {
 			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/openapi.json"));
 			expect(result.action).toBe("serve-openapi");
-		});
-
-		it("blocks POST /api/v1/tools/analyze even with a valid key (demo can't burn LLM credit)", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/v1/tools/analyze", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
-		});
-
-		it("blocks POST /api/v1/brands even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/brands", `Bearer ${VALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
-		});
-
-		it("blocks PATCH /api/v1/brands/:brandId even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("PATCH", "/api/v1/brands/acme", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
-		});
-
-		it("blocks POST /api/v1/competitors even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/competitors", `Bearer ${VALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
-		});
-
-		it("blocks PATCH /api/v1/competitors/:competitorId even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("PATCH", "/api/v1/competitors/01234567-89ab-cdef-0123-456789abcdef", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
-		});
-
-		it("blocks DELETE /api/v1/competitors/:competitorId even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("DELETE", "/api/v1/competitors/01234567-89ab-cdef-0123-456789abcdef", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 
 		it("blocks POST /_server/* analyze server fn (no LLM access via wizard either)", () => {
@@ -305,16 +210,46 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("allow");
 		});
 
-		it("blocks API v1 without key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"), { adminApiKeys: API_KEYS });
-			expect(result).toMatchObject({ action: "block", status: 401 });
+		it("allows API v1 with valid key", () => {
+			const result = evaluateDeploymentPolicy(features, apiReq("GET", "/api/v1/prompts"));
+			expect(result.action).toBe("allow");
+		});
+	});
+
+	describe("api v1", () => {
+		it("passes a request that carries a token through, in every mode", () => {
+			for (const features of [LOCAL_FEATURES, DEMO_FEATURES, WHITELABEL_FEATURES]) {
+				for (const [method, path] of [
+					["GET", "/api/v1/prompts"],
+					["POST", "/api/v1/prompts"],
+					["POST", "/api/v1/brands"],
+					["PATCH", "/api/v1/brands/acme"],
+					["DELETE", "/api/v1/competitors/01234567-89ab-cdef-0123-456789abcdef"],
+					["POST", "/api/v1/tools/analyze"],
+				] as const) {
+					expect(evaluateDeploymentPolicy(features, apiReq(method, path)).action, `${method} ${path}`).toBe("allow");
+				}
+			}
 		});
 
-		it("allows API v1 with valid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
-			expect(result.action).toBe("allow");
+		it("refuses a request carrying no usable token, without looking it up", () => {
+			for (const header of [undefined, "", "Basic dXNlcjpwYXNz", "Bearer", "Bearer   "]) {
+				const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/prompts", header));
+				expect(result, `header: ${JSON.stringify(header)}`).toMatchObject({
+					action: "block",
+					status: 401,
+					code: "unauthorized",
+				});
+			}
+		});
+
+		it("leaves the docs and the spec reachable without a token", () => {
+			expect(evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/docs")).action).toBe("allow");
+			expect(evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/openapi.json")).action).toBe("serve-openapi");
+		});
+
+		it("still serves the spec without a key", () => {
+			expect(evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/openapi.json")).action).toBe("serve-openapi");
 		});
 	});
 
@@ -355,17 +290,63 @@ describe("evaluateDeploymentPolicy", () => {
 		}
 	});
 
+	describe("mcp", () => {
+		it("lets the transport through in every mode, because a read is a POST too", () => {
+			for (const features of [LOCAL_FEATURES, DEMO_FEATURES, WHITELABEL_FEATURES]) {
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/mcp")).action).toBe("allow");
+			}
+		});
+
+		it("leaves an unauthenticated MCP call to the route, which answers with a challenge", () => {
+			// A middleware block would be a bare 403 with no WWW-Authenticate, which
+			// is what a client reads to discover it should sign in.
+			expect(evaluateDeploymentPolicy(LOCAL_FEATURES, req("POST", "/api/mcp")).action).toBe("allow");
+		});
+
+		it("runs the OAuth flow wherever writes are allowed", () => {
+			for (const features of [LOCAL_FEATURES, WHITELABEL_FEATURES]) {
+				expect(evaluateDeploymentPolicy(features, req("GET", "/api/auth/oauth2/authorize")).action).toBe("allow");
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/oauth2/register")).action).toBe("allow");
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/oauth2/token")).action).toBe("allow");
+			}
+		});
+
+		it("turns the OAuth flow off in a read-only deployment", () => {
+			for (const path of ["/api/auth/oauth2/register", "/api/auth/oauth2/authorize", "/api/auth/oauth2/token"]) {
+				expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", path))).toMatchObject({
+					action: "block",
+					status: 403,
+				});
+			}
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("GET", "/api/auth/oauth2/authorize"))).toMatchObject({
+				action: "block",
+				status: 403,
+			});
+		});
+
+		it("still serves MCP itself in a read-only deployment", () => {
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp")).action).toBe("allow");
+		});
+
+		it("leaves a path under the MCP endpoint to the route, which answers 404", () => {
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp/sub")).action).toBe("allow");
+		});
+
+		it("does not exempt a route that merely starts with the same characters", () => {
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcpx"))).toMatchObject({
+				action: "block",
+				status: 403,
+			});
+		});
+	});
+
 	// ────────────────────────────────────────────────────────────
 	// Custom / edge-case feature combos
 	// ────────────────────────────────────────────────────────────
 	describe("custom feature combinations", () => {
-		it("blocks API v1 when no keys are configured", () => {
-			const result = evaluateDeploymentPolicy(
-				LOCAL_FEATURES,
-				req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: [] },
-			);
-			expect(result).toMatchObject({ action: "block", status: 401 });
+		it("leaves API v1 authentication to createApiHandler", () => {
+			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, apiReq("GET", "/api/v1/prompts"));
+			expect(result.action).toBe("allow");
 		});
 
 		it("handles /api/v1/openapi.json with trailing slash", () => {
@@ -374,7 +355,7 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("allows /api/v1/docs with trailing slash", () => {
-			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/docs/"), { adminApiKeys: API_KEYS });
+			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/docs/"));
 			expect(result.action).toBe("allow");
 		});
 
@@ -386,45 +367,6 @@ describe("evaluateDeploymentPolicy", () => {
 				error: "Demo Mode",
 			});
 		});
-	});
-});
-
-// ============================================================================
-// 2. Auth Function-Level Policies
-// ============================================================================
-
-describe("evaluateRequireAdmin", () => {
-	it("denies non-admin users", () => {
-		expect(evaluateRequireAdmin(false)).toBe("deny");
-	});
-
-	it("allows admin users", () => {
-		expect(evaluateRequireAdmin(true)).toBe("allow");
-	});
-});
-
-describe("resolveBrandOrganization", () => {
-	const ORG_A = "org-a";
-	const ORG_B = "org-b";
-
-	it("uses the sole membership when no org is requested", () => {
-		expect(resolveBrandOrganization([ORG_A], undefined)).toEqual({ ok: true, organizationId: ORG_A });
-	});
-
-	it("refuses to pick when the user belongs to several orgs", () => {
-		expect(resolveBrandOrganization([ORG_A, ORG_B], undefined)).toEqual({ ok: false, reason: "ambiguous" });
-	});
-
-	it("honors an explicit choice among several orgs", () => {
-		expect(resolveBrandOrganization([ORG_A, ORG_B], ORG_B)).toEqual({ ok: true, organizationId: ORG_B });
-	});
-
-	it("rejects an org the user does not belong to", () => {
-		expect(resolveBrandOrganization([ORG_A], ORG_B)).toEqual({ ok: false, reason: "forbidden" });
-	});
-
-	it("reports no membership before considering the request", () => {
-		expect(resolveBrandOrganization([], ORG_A)).toEqual({ ok: false, reason: "no-organization" });
 	});
 });
 
@@ -455,10 +397,6 @@ describe("evaluateRequireCanCreateBrands", () => {
 	});
 });
 
-// ============================================================================
-// 3. Route Guard Policies
-// ============================================================================
-
 describe("evaluateAuthedRouteGuard", () => {
 	const session = createMockSession();
 
@@ -480,66 +418,6 @@ describe("evaluateAdminRouteGuard", () => {
 		expect(evaluateAdminRouteGuard(true)).toBe("allow");
 	});
 });
-
-describe("evaluateBrandRouteGuard", () => {
-	it("returns not-found when user has no org access", () => {
-		expect(evaluateBrandRouteGuard(false)).toBe("not-found");
-	});
-
-	it("allows when user has org access", () => {
-		expect(evaluateBrandRouteGuard(true)).toBe("allow");
-	});
-});
-
-// ============================================================================
-// 4. API Key Authentication
-// ============================================================================
-
-describe("evaluateApiKeyAuth", () => {
-	const keys = ["key-1", "key-2", "key-3"];
-
-	it("rejects missing Authorization header", () => {
-		const result = evaluateApiKeyAuth(null, keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects empty Authorization header", () => {
-		const result = evaluateApiKeyAuth("", keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects non-Bearer scheme", () => {
-		const result = evaluateApiKeyAuth("Basic abc123", keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects invalid key", () => {
-		const result = evaluateApiKeyAuth("Bearer wrong-key", keys);
-		expect(result).not.toBe("allow");
-		if (result !== "allow") {
-			expect(result.message).toContain("Invalid API key");
-		}
-	});
-
-	it("rejects when no keys are configured", () => {
-		const result = evaluateApiKeyAuth("Bearer key-1", []);
-		expect(result).not.toBe("allow");
-	});
-
-	it("allows valid key", () => {
-		expect(evaluateApiKeyAuth("Bearer key-1", keys)).toBe("allow");
-	});
-
-	it("allows any of the configured keys", () => {
-		expect(evaluateApiKeyAuth("Bearer key-2", keys)).toBe("allow");
-		expect(evaluateApiKeyAuth("Bearer key-3", keys)).toBe("allow");
-	});
-});
-
-// ============================================================================
-// 5. Cross-cutting: Full scenario tests
-//    These simulate a user journey through multiple policy layers.
-// ============================================================================
 
 describe("full access-control scenarios", () => {
 	describe("local developer", () => {
@@ -597,25 +475,16 @@ describe("full access-control scenarios", () => {
 			expect(evaluateDeploymentPolicy(features, req("GET", "/admin")).action).toBe("allow");
 			expect(evaluateDeploymentPolicy(features, req("POST", "/admin")).action).toBe("allow");
 
-			// Auth: passes
-			expect(evaluateRequireAdmin(true)).toBe("allow");
-
 			// Route guards: all pass
 			expect(evaluateAuthedRouteGuard(session)).toBe("allow");
 			expect(evaluateAdminRouteGuard(true)).toBe("allow");
-			expect(evaluateBrandRouteGuard(true)).toBe("allow");
 		});
 	});
 
 	describe("whitelabel authenticated non-admin", () => {
 		it("can access org routes but not admin", () => {
 			// Admin denied
-			expect(evaluateRequireAdmin(false)).toBe("deny");
 			expect(evaluateAdminRouteGuard(false)).toBe("not-found");
-
-			// Org access depends on membership
-			expect(evaluateBrandRouteGuard(true)).toBe("allow");
-			expect(evaluateBrandRouteGuard(false)).toBe("not-found");
 		});
 	});
 });

@@ -173,24 +173,36 @@ export interface ResolveEntitlementsInput {
 	now: Date;
 }
 
+/**
+ * The plan an org's entitlements are derived from, and the standing that plan
+ * is held under. Fully-custom orgs (no live self-serve subscription) start from
+ * Business and override from there; custom-on-top-of-a-plan keeps the purchased
+ * plan. Null when nothing is owed to the org at all.
+ */
+function resolveBasePlan(
+	subscription: SubscriptionSnapshot | null,
+	isCustom: boolean,
+	now: Date,
+): { basePlan: (typeof PLANS)[PlanKey]; standing: SubscriptionStanding } | null {
+	const subscriptionStanding = deriveSubscriptionStanding(subscription, now);
+	const subscribedPlan =
+		subscription && subscriptionStanding !== "none" && isPlanKey(subscription.plan) ? PLANS[subscription.plan] : null;
+
+	const basePlan = subscribedPlan ?? (isCustom ? PLANS.business : null);
+	if (!basePlan) return null;
+
+	const standing = isCustom ? "active" : subscriptionStanding;
+	return standing === "none" ? null : { basePlan, standing };
+}
+
 export function resolveEntitlements(input: ResolveEntitlementsInput): Entitlements {
 	if (input.mode !== "cloud") return UNLIMITED_ENTITLEMENTS;
 
 	const overrides = input.overrides ?? {};
 	const isCustom = overrides.planOverride === "custom";
-
-	const subscriptionStanding = deriveSubscriptionStanding(input.subscription, input.now);
-	const subscribedPlan =
-		input.subscription && subscriptionStanding !== "none" && isPlanKey(input.subscription.plan)
-			? PLANS[input.subscription.plan]
-			: null;
-	// Fully-custom orgs (no live self-serve subscription) start from Business
-	// and override from there; custom-on-top-of-a-plan keeps the purchased plan.
-	const basePlan = subscribedPlan ?? (isCustom ? PLANS.business : null);
-	if (!basePlan) return NO_PLAN_ENTITLEMENTS;
-
-	const standing = isCustom ? "active" : subscriptionStanding;
-	if (standing === "none") return NO_PLAN_ENTITLEMENTS;
+	const base = resolveBasePlan(input.subscription, isCustom, input.now);
+	if (!base) return NO_PLAN_ENTITLEMENTS;
+	const { basePlan, standing } = base;
 
 	const premiumIncluded = overrides.premiumPoolIncluded ?? basePlan.premiumIncluded;
 	const addonQuantity =

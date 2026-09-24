@@ -11,7 +11,7 @@ Elmo is an open-source AI visibility platform (Answer Engine Optimization): it t
 - `packages/lib` — shared logic and the Drizzle schema/migrations
 - `packages/ui` — shared shadcn-based UI components
 - `packages/docs` — user-facing docs content (MDX), rendered by `apps/www`
-- `packages/deployment` — deployment-mode config (reads `DEPLOYMENT_MODE`, exposes per-mode features)
+- `packages/deployment` — deployment-mode config, per-mode auth hooks, cloud billing/email
 - `packages/config` — env validation and shared constants/types
 - `packages/api-spec` — OpenAPI spec
 - `e2e/` — Playwright end-to-end tests
@@ -24,11 +24,15 @@ Full setup instructions are in the developer guide at `packages/docs/content/doc
 - `pnpm test` — Vitest unit tests
 - `pnpm build` — build all packages
 - `pnpm format` — Biome format
+- `pnpm lint` — Biome check (errors only; warnings are not gated)
+- `pnpm lint:fix` — apply everything Biome can fix on its own
 - Migrations: from `packages/lib`, `pnpm exec drizzle-kit migrate` (NEVER RUN THESE UNLESS EXPLICITLY INSTRUCTED BY THE USER)
 - E2E tests need Playwright browsers (`pnpm exec playwright install`) and a running app; they are separate from unit tests
 - shadcn components: always install with the CLI (`pnpm dlx shadcn@latest add <component>`, from `packages/ui` or `apps/www` — each has its own `components.json`) — never hand-create them
 
-Do not routinely run formatting, linting, type checks, or tests after making changes; CI provides the default validation and these commands should not be part of every agent interaction. Run a targeted command only when it is strictly necessary to diagnose or iterate on the current work, or when the user explicitly requests it. Never run `pnpm lint` or the full test suite by default.
+Don't run formatting, linting, type checks, or tests after every change — only to diagnose what you're working on, or when asked.
+
+Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI fails on it. `pnpm lint:fix` handles the rest. Never silence a lint error with `biome-ignore` — fix the code.
 
 ## Tests
 
@@ -63,3 +67,4 @@ Do not routinely run formatting, linting, type checks, or tests after making cha
 - Add one only for **user-facing** changes (something an end user of the product would notice). Internal refactors, dependency bumps, and CI tweaks don't get one.
 - Keep it to one short, product-focused sentence; default to `patch`; scope it to the packages actually affected.
 - If a non-package directory (like `e2e/`) breaks Changesets tooling, fix the tooling configuration rather than inventing versions.
+- Never create a changeset for `apps/www`.

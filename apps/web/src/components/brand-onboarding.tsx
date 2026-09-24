@@ -1,22 +1,26 @@
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
+import { brandSegment } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
+import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createBrandFn } from "@/server/brands";
 import type { OnboardingPlatformState } from "@/server/platform-picks";
 
 interface BrandOnboardingProps {
+	organizationSlug: string;
 	brandId: string;
 	brandName: string;
 	platformState: OnboardingPlatformState;
 }
 
-export default function BrandOnboarding({ brandId, brandName, platformState }: BrandOnboardingProps) {
+export default function BrandOnboarding({ organizationSlug, brandId, brandName, platformState }: BrandOnboardingProps) {
 	const [step, setStep] = useState<"website" | "platforms">("website");
 	const [website, setWebsite] = useState("");
 	const [selected, setSelected] = useState<Set<string>>(
@@ -24,15 +28,16 @@ export default function BrandOnboarding({ brandId, brandName, platformState }: B
 	);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
+	const writeError = useWriteErrorMessage();
+	const organizationsChanged = useOrganizationsChanged();
 	const navigate = useNavigate();
-	const router = useRouter();
 
 	const createBrand = async (enabledModels: string[] | null) => {
 		setIsLoading(true);
 		setError("");
 
 		try {
-			await createBrandFn({
+			const { brand } = await createBrandFn({
 				data: {
 					brandId,
 					brandName,
@@ -42,10 +47,14 @@ export default function BrandOnboarding({ brandId, brandName, platformState }: B
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
-			await router.invalidate();
-			await navigate({ to: "/app/$brand", params: { brand: brandId } });
+			await organizationsChanged(() =>
+				navigate({
+					to: "/app/org/$org/brand/$brand",
+					params: { org: organizationSlug, brand: brandSegment(brand) },
+				}),
+			);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(writeError(err, "Could not create the brand."));
 		} finally {
 			setIsLoading(false);
 		}

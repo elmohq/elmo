@@ -1,10 +1,11 @@
-import React from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { getModelMeta, KNOWN_MODELS } from "@workspace/config/models";
+import React from "react";
 
 export type ProgressBarItem = {
 	label: string;
+	/** Rendered before the label — a `SiteIcon`, on the charts that name brands or domains. */
+	icon?: React.ReactNode;
 	count: number;
 	subtitle?: string;
 	suffix?: React.ReactNode;
@@ -17,7 +18,7 @@ export type ProgressBarItem = {
 	metadata?: Record<string, any>;
 };
 
-export type ColorMapping = {
+type ColorMapping = {
 	[category: string]: string;
 };
 
@@ -37,6 +38,28 @@ export type ProgressBarChartProps = {
 	truncateLabels?: boolean;
 	fillHeight?: boolean;
 };
+
+function ItemLabel({
+	className,
+	bold,
+	onClick,
+	children,
+	...props
+}: React.ComponentProps<"button"> & { bold?: boolean }) {
+	const classes = cn("text-sm text-left", bold ? "font-bold" : "font-medium", className);
+	if (!onClick) {
+		return (
+			<span className={classes} {...props}>
+				{children}
+			</span>
+		);
+	}
+	return (
+		<button type="button" className={cn(classes, "cursor-pointer hover:underline")} onClick={onClick} {...props}>
+			{children}
+		</button>
+	);
+}
 
 export function ProgressBarChart({
 	items,
@@ -92,18 +115,15 @@ export function ProgressBarChart({
 				return (
 					<div key={item.label} className="space-y-2">
 						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-1 min-w-0 flex-1">
+							<div className="flex items-center gap-1.5 min-w-0 flex-1">
+								{item.icon}
 								{item.tooltip ? (
 									<Tooltip>
 										<TooltipTrigger
 											render={
-												<span
-													className={cn(
-														"text-sm cursor-default",
-														isHighlighted ? "font-bold" : "font-medium",
-														truncateLabels && "truncate",
-														isClickable && "cursor-pointer hover:underline",
-													)}
+												<ItemLabel
+													className={cn("cursor-default", truncateLabels && "truncate")}
+													bold={Boolean(isHighlighted)}
 													onClick={item.onClick}
 												/>
 											}
@@ -113,17 +133,13 @@ export function ProgressBarChart({
 										<TooltipContent className="max-w-xs text-xs font-normal">{item.tooltip}</TooltipContent>
 									</Tooltip>
 								) : (
-									<span
-										className={cn(
-											"text-sm",
-											isHighlighted ? "font-bold" : "font-medium",
-											truncateLabels && "truncate",
-											isClickable && "cursor-pointer hover:underline",
-										)}
+									<ItemLabel
+										className={cn(truncateLabels && "truncate")}
+										bold={Boolean(isHighlighted)}
 										onClick={item.onClick}
 									>
 										{item.label}
-									</span>
+									</ItemLabel>
 								)}
 								{item.action}
 							</div>
@@ -150,34 +166,3 @@ export function ProgressBarChart({
 }
 
 export { DOMAIN_CATEGORY_COLORS } from "@/lib/domain-categories";
-
-// Colors are keyed by the provider family (iconId from `getModelMeta`), so a
-// deployment that adds any google-flavored model, anthropic-flavored model,
-// etc. via `SCRAPE_TARGETS` gets a sensible color without needing per-model
-// config here. Anything the `generic` branch can't match falls through to
-// `ProgressBarChart`'s `defaultColor`.
-const COLOR_BY_ICON: Record<string, string> = {
-	openai: "#10b981", // green
-	anthropic: "#f59e0b", // amber/orange
-	google: "#3b82f6", // blue
-	microsoft: "#06b6d4", // cyan
-	perplexity: "#8b5cf6", // purple
-	x: "#111827", // near-black
-};
-
-/** Resolve a model id to a display color. "all" is a no-filter sentinel. */
-export function getModelColor(model: string): string | undefined {
-	if (model === "all") return "#8b5cf6";
-	return COLOR_BY_ICON[getModelMeta(model).iconId];
-}
-
-/** Colors for every model id in `KNOWN_MODELS` plus "all". Unknown deployment
- *  models fall back to `ProgressBarChart`'s `defaultColor`. */
-export const MODEL_COLORS: ColorMapping = {
-	all: "#8b5cf6",
-	...Object.fromEntries(
-		Object.keys(KNOWN_MODELS)
-			.map((m) => [m, getModelColor(m)])
-			.filter((entry): entry is [string, string] => entry[1] !== undefined),
-	),
-};

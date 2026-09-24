@@ -1,5 +1,5 @@
-import type { DeploymentMode } from "@workspace/config/types";
 import type { MissingEnvVar } from "@workspace/config/env";
+import type { DeploymentMode } from "@workspace/config/types";
 import FullPageCard from "@/components/full-page-card";
 
 interface MissingEnvPageProps {

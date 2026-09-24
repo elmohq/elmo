@@ -21,6 +21,7 @@
 # ─────────────────────────────────────────────────────────────────────
 
 jrhizor
+uchiha-suraj
 prashantindurkar
 jrwrest
 tuliren
@@ -31,3 +32,5 @@ dchaudhari7177
 nosey-dewdrop
 snowyukitty
 morovinger
+mandapavankalyan
+raheebgill29

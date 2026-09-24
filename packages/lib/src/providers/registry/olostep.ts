@@ -1,8 +1,9 @@
 import Olostep from "olostep";
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
-import type { Citation } from "../../text-extraction";
+import { type Citation, normalizeCitationTitle } from "../../text-extraction";
+import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import { nonEmptyStrings } from "./scrape-shared";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
@@ -69,7 +70,7 @@ function extractCitationsFromOlostep(data: any): Citation[] {
 			const parsed = new URL(url);
 			citations.push({
 				url,
-				title: source?.title ?? source?.label ?? undefined,
+				title: normalizeCitationTitle(source?.title ?? source?.label),
 				domain: parsed.hostname.replace(/^www\./, ""),
 				citationIndex: idx++,
 			});
@@ -81,27 +82,16 @@ function extractCitationsFromOlostep(data: any): Citation[] {
 }
 
 function extractWebQueries(data: any): string[] {
-	const queries: string[] = [];
+	// Batch API returns a flat string array at data.search_queries.
+	const flat = nonEmptyStrings(data?.search_queries);
+	if (flat.length > 0) return flat;
 
-	// Batch API returns a flat string array at data.search_queries
-	const flat = data?.search_queries;
-	if (Array.isArray(flat)) {
-		for (const q of flat) {
-			if (typeof q === "string" && q.trim()) queries.push(q);
-		}
-	}
-
-	// Scrape API nests queries under network_search_calls or search_model_queries
-	if (queries.length === 0) {
-		const searchCalls = data?.network_search_calls?.search_queries ?? data?.search_model_queries ?? [];
-		for (const call of Array.isArray(searchCalls) ? searchCalls : []) {
-			// May be a string (flat array) or an object with .query
-			if (typeof call === "string" && call.trim()) queries.push(call);
-			else if (call?.query) queries.push(call.query);
-		}
-	}
-
-	return queries;
+	// Scrape API nests them under network_search_calls or search_model_queries,
+	// as either bare strings or objects carrying the query.
+	const calls = data?.network_search_calls?.search_queries ?? data?.search_model_queries;
+	return nonEmptyStrings(
+		(Array.isArray(calls) ? calls : []).map((call) => (typeof call === "string" ? call : call?.query)),
+	);
 }
 
 export const olostep: Provider = {
@@ -110,9 +100,7 @@ export const olostep: Provider = {
 	access: "scraped",
 	docsAnchor: "olostep",
 
-	isConfigured() {
-		return !!getCredential("OLOSTEP_API_KEY");
-	},
+	isConfigured: configuredWhen("OLOSTEP_API_KEY"),
 
 	validateTarget(config: ModelConfig) {
 		if (!OLOSTEP_PARSERS[config.model]) {
@@ -161,7 +149,7 @@ export const olostep: Provider = {
 			textContent: extractTextFromOlostep(parsed),
 			// Mark as "unavailable" only when citations prove a search happened
 			// but the API didn't expose the query strings
-			webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
 			citations,
 			modelVersion: parsed?.model ?? undefined,
 		};

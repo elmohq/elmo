@@ -1,18 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Check, X } from "lucide-react";
+import { useState } from "react";
 import {
-	sortedCompetitors,
-	FEATURE_CATEGORIES,
-	ELMO_FEATURES,
 	CATEGORY_LABELS,
-	getFeatureLabel,
-	getComparisonSlug,
-	getPopularityGrade,
 	type Competitor,
 	type CompetitorCategory,
+	ELMO_FEATURES,
+	FEATURE_CATEGORIES,
 	type FeatureKey,
+	getComparisonSlug,
+	getFeatureLabel,
+	getPopularityGrade,
+	sortedCompetitors,
 } from "@/lib/competitors";
 
 function FeatureIcon({ has }: { has: boolean }) {
@@ -41,11 +41,11 @@ export function CompetitorDirectory() {
 				<div className="relative mx-auto max-w-6xl px-4 md:px-6">
 					<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ RESOURCES</p>
 					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl lg:text-6xl">
-						AI Visibility Tool Directory
+						AI Visibility Tools
 					</h1>
 					<p className="mt-6 max-w-3xl text-lg text-balance text-zinc-600 md:text-xl">
-						Every AI visibility and Answer Engine Optimization tool in one place. Compare features, pricing, and find
-						the right platform for your team.
+						Every AI visibility tool, AEO platform, LLM visibility tracker and GEO tool in one place. Compare engine
+						coverage, features and pricing, and find the right platform for your team.
 					</p>
 				</div>
 			</section>

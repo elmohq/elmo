@@ -23,7 +23,7 @@ export interface BrandUpdateInput {
 	aliases?: string[];
 }
 
-export interface BrandUpdateFields {
+interface BrandUpdateFields {
 	name?: string;
 	website?: string;
 	additionalDomains?: string[];

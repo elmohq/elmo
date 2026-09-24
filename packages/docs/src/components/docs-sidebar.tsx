@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { ChevronRight, Search } from "lucide-react";
 import { Kbd } from "@workspace/ui/components/kbd";
 import { cn } from "@workspace/ui/lib/utils";
-import type { Root, Node, Item, Folder } from "fumadocs-core/page-tree";
+import type { Folder, Item, Node, Root } from "fumadocs-core/page-tree";
+import { ChevronRight, Search } from "lucide-react";
+import { useState } from "react";
 import { SearchDialog, useSearchDialog } from "./search-dialog";
 
 function SidebarItem({ item }: { item: Item }) {

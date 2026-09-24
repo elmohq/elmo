@@ -1,0 +1,26 @@
+meta {
+  name: an org key cannot update another tenant's brand
+  type: http
+  seq: 18
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "brandName": "Not yours"
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

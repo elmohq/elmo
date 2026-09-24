@@ -1,0 +1,31 @@
+meta {
+  name: the report list still answers under `reports`
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reports?page=1&limit=20
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.reports: isArray
+  res.body.pagination.page: eq 1
+}
+
+tests {
+  test("a report summary carries every field the shipped schema required", function() {
+    const report = res.getBody().reports[0];
+    for (const field of ["id", "brandName", "brandWebsite", "status", "createdAt", "completedAt"]) {
+      expect(report, `ReportSummary.${field}`).to.have.property(field);
+    }
+    expect(["pending", "processing", "completed", "failed"]).to.include(report.status);
+  });
+}

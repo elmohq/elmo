@@ -6,16 +6,17 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { requirePromptInScope } from "@/lib/api/scope";
+import { extractDomain, inDomainSet, normalizeUrl } from "@/lib/domain-categories";
 import {
 	getPromptCitationUrlStats,
 	getPromptMentionSummary,
 	getPromptTopCompetitorMentions,
 } from "@/lib/postgres-read";
-import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 function isValidDate(dateStr: string): boolean {
 	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,72 +25,62 @@ function isValidDate(dateStr: string): boolean {
 	return !Number.isNaN(d.getTime());
 }
 
+/** Top-K lists are bounded so one request can't ask for the whole history. */
+const MAX_TOP_K = 50;
+const DEFAULT_TOP_MENTIONS = 5;
+const DEFAULT_TOP_CITATIONS = 10;
+
+function boundedTopK(raw: string | null, fallback: number): number {
+	const parsed = Number.parseInt(raw || String(fallback), 10);
+	return Number.isNaN(parsed) ? fallback : Math.max(1, Math.min(MAX_TOP_K, parsed));
+}
+
+function parseSnapshotQuery(url: URL): { startDate: string; endDate: string; kMentions: number; kCitations: number } {
+	const { searchParams } = url;
+	const startDate = searchParams.get("startDate");
+	const endDate = searchParams.get("endDate");
+
+	if (!startDate || !endDate) {
+		throw new ApiError(
+			400,
+			"Validation Error",
+			"startDate and endDate query parameters are required (YYYY-MM-DD format)",
+		);
+	}
+	if (!isValidDate(startDate) || !isValidDate(endDate)) {
+		throw new ApiError(400, "Validation Error", "startDate and endDate must be valid dates in YYYY-MM-DD format");
+	}
+	if (startDate > endDate) {
+		throw new ApiError(400, "Validation Error", "startDate must be before or equal to endDate");
+	}
+
+	return {
+		startDate,
+		endDate,
+		kMentions: boundedTopK(searchParams.get("kMentions"), DEFAULT_TOP_MENTIONS),
+		kCitations: boundedTopK(searchParams.get("kCitations"), DEFAULT_TOP_CITATIONS),
+	};
+}
+
 export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
-				handle: async ({ params, request }) => {
+				scopes: ["read"],
+				handle: async ({ params, request, auth }) => {
 					const { promptId } = params;
-					const { searchParams } = new URL(request.url);
+					const { startDate, endDate, kMentions, kCitations } = parseSnapshotQuery(new URL(request.url));
 
-					const startDate = searchParams.get("startDate");
-					const endDate = searchParams.get("endDate");
-					if (!startDate || !endDate) {
-						throw new ApiError(
-							400,
-							"Validation Error",
-							"startDate and endDate query parameters are required (YYYY-MM-DD format)",
-						);
-					}
-					if (!isValidDate(startDate) || !isValidDate(endDate)) {
-						throw new ApiError(
-							400,
-							"Validation Error",
-							"startDate and endDate must be valid dates in YYYY-MM-DD format",
-						);
-					}
-					if (startDate > endDate) {
-						throw new ApiError(400, "Validation Error", "startDate must be before or equal to endDate");
-					}
+					const { prompt, brand } = await requirePromptInScope(auth, promptId);
+					const competitorsList = await db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId));
 
-					const kMentionsParam = Number.parseInt(searchParams.get("kMentions") || "5", 10);
-					const kMentions = Number.isNaN(kMentionsParam) ? 5 : Math.max(1, Math.min(50, kMentionsParam));
-					const kCitationsParam = Number.parseInt(searchParams.get("kCitations") || "10", 10);
-					const kCitations = Number.isNaN(kCitationsParam) ? 10 : Math.max(1, Math.min(50, kCitationsParam));
-
-					const promptResult = await db
-						.select({ id: prompts.id, brandId: prompts.brandId, value: prompts.value })
-						.from(prompts)
-						.where(eq(prompts.id, promptId))
-						.limit(1);
-					if (promptResult.length === 0) {
-						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
-					}
-					const prompt = promptResult[0];
-
-					const [brandInfo, competitorsList] = await Promise.all([
-						db.select().from(brands).where(eq(brands.id, prompt.brandId)).limit(1),
-						db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId)),
-					]);
-					if (brandInfo.length === 0) {
-						throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
-					}
 					const brandDomains = new Set(
-						[extractDomain(brandInfo[0].website), ...(brandInfo[0].additionalDomains || []).map(extractDomain)].filter(
-							Boolean,
-						),
+						[extractDomain(brand.website), ...(brand.additionalDomains || []).map(extractDomain)].filter(Boolean),
 					);
 					const competitorDomains = new Set(
 						competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),
 					);
-
-					const isMatchingDomain = (domain: string, domainSet: Set<string>) => {
-						for (const d of domainSet) {
-							if (domain === d || domain.endsWith(`.${d}`)) return true;
-						}
-						return false;
-					};
 
 					const timezone = "UTC";
 					const [mentionData, topCompetitors, citationUrlStats] = await Promise.all([
@@ -121,9 +112,9 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					const allCitationUrls = Array.from(urlCounts.entries())
 						.map(([url, { count, title, domain }]) => {
 							citationsTotal += count;
-							if (isMatchingDomain(domain, brandDomains)) {
+							if (inDomainSet(domain, brandDomains)) {
 								brandCitationsTotal += count;
-							} else if (isMatchingDomain(domain, competitorDomains)) {
+							} else if (inDomainSet(domain, competitorDomains)) {
 								competitorCitationsTotal += count;
 							}
 							return { url, title, count };
@@ -157,6 +148,6 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

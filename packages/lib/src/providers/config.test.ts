@@ -1,86 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { parseScrapeTargets, validateScrapeTargets } from "./config";
+import { reportedWebQueries, validateScrapeTargets } from "./config";
 import { brightdata } from "./registry/brightdata";
-import { oxylabs } from "./registry/oxylabs";
 import { cloro } from "./registry/cloro";
 import { dataforseo } from "./registry/dataforseo";
 import { olostep } from "./registry/olostep";
+import { oxylabs } from "./registry/oxylabs";
+import { searchapi } from "./registry/searchapi";
 import type { ModelConfig } from "./types";
-
-describe("parseScrapeTargets", () => {
-	describe("basic parsing", () => {
-		it("parses model:provider", () => {
-			const result = parseScrapeTargets("chatgpt:olostep");
-			expect(result).toEqual([{ model: "chatgpt", provider: "olostep", version: undefined, webSearch: false }]);
-		});
-
-		it("parses model:provider:online", () => {
-			const result = parseScrapeTargets("chatgpt:olostep:online");
-			expect(result).toEqual([{ model: "chatgpt", provider: "olostep", version: undefined, webSearch: true }]);
-		});
-
-		it("parses model:provider:version", () => {
-			const result = parseScrapeTargets("chatgpt:openai-api:gpt-5-mini");
-			expect(result).toEqual([{ model: "chatgpt", provider: "openai-api", version: "gpt-5-mini", webSearch: false }]);
-		});
-
-		it("parses model:provider:version:online", () => {
-			const result = parseScrapeTargets("chatgpt:openai-api:gpt-5-mini:online");
-			expect(result).toEqual([{ model: "chatgpt", provider: "openai-api", version: "gpt-5-mini", webSearch: true }]);
-		});
-	});
-
-	it("parses multiple entries with mixed providers", () => {
-		const result = parseScrapeTargets(
-			"chatgpt:olostep:online,claude:openrouter:anthropic/claude-sonnet-4,google-ai-mode:dataforseo:online",
-		);
-		expect(result).toHaveLength(3);
-		expect(result[0]).toEqual({ model: "chatgpt", provider: "olostep", version: undefined, webSearch: true });
-		expect(result[1]).toEqual({
-			model: "claude",
-			provider: "openrouter",
-			version: "anthropic/claude-sonnet-4",
-			webSearch: false,
-		});
-		expect(result[2]).toEqual({ model: "google-ai-mode", provider: "dataforseo", version: undefined, webSearch: true });
-	});
-
-	it("handles OpenRouter version slugs with colons", () => {
-		const result = parseScrapeTargets("chatgpt:openrouter:openai/gpt-5-mini:free:online");
-		expect(result).toEqual([
-			{ model: "chatgpt", provider: "openrouter", version: "openai/gpt-5-mini:free", webSearch: true },
-		]);
-	});
-
-	describe("whitespace handling", () => {
-		it("trims whitespace around entries", () => {
-			const result = parseScrapeTargets(" chatgpt:olostep:online , google-ai-mode:olostep:online ");
-			expect(result).toHaveLength(2);
-			expect(result[0].model).toBe("chatgpt");
-			expect(result[1].model).toBe("google-ai-mode");
-		});
-	});
-
-	describe("error cases", () => {
-		it("throws on empty string entries (trailing comma)", () => {
-			expect(() => parseScrapeTargets("chatgpt:olostep,")).toThrow("empty entry");
-		});
-
-		it("throws on single-segment entries", () => {
-			expect(() => parseScrapeTargets("chatgpt")).toThrow("need at least model:provider");
-		});
-	});
-
-	describe("missing SCRAPE_TARGETS", () => {
-		it("throws when SCRAPE_TARGETS is undefined", () => {
-			expect(() => parseScrapeTargets(undefined)).toThrow("SCRAPE_TARGETS environment variable is required");
-		});
-
-		it("throws when SCRAPE_TARGETS is empty string", () => {
-			expect(() => parseScrapeTargets("")).toThrow("SCRAPE_TARGETS environment variable is required");
-		});
-	});
-});
 
 describe("validateScrapeTargets", () => {
 	const configuredProvider = { isConfigured: () => true };
@@ -165,6 +91,7 @@ describe("validateScrapeTargets", () => {
 			{ model: "chatgpt", provider: "olostep", webSearch: true },
 			{ model: "chatgpt", provider: "brightdata", webSearch: true },
 			{ model: "chatgpt", provider: "oxylabs", webSearch: true },
+			{ model: "chatgpt", provider: "searchapi", webSearch: true },
 			{ model: "chatgpt", provider: "cloro", webSearch: true },
 			{ model: "google-ai-mode", provider: "dataforseo", webSearch: true },
 		];
@@ -175,6 +102,7 @@ describe("validateScrapeTargets", () => {
 					olostep: configuredProvider,
 					brightdata: configuredProvider,
 					oxylabs: configuredProvider,
+					searchapi: configuredProvider,
 					cloro: configuredProvider,
 					dataforseo: configuredProvider,
 				}),
@@ -187,6 +115,23 @@ describe("provider validateTarget", () => {
 	function config(model: string, provider: string, webSearch: boolean, version?: string): ModelConfig {
 		return { model, provider, version, webSearch };
 	}
+
+	describe("searchapi", () => {
+		it("accepts every surface it can reach, online", () => {
+			for (const model of ["chatgpt", "perplexity", "copilot", "gemini", "google-ai-mode", "google-ai-overview"]) {
+				expect(searchapi.validateTarget!(config(model, "searchapi", true))).toBeNull();
+			}
+		});
+
+		it("lets ChatGPT run without web search, since it is the only surface that can", () => {
+			expect(searchapi.validateTarget!(config("chatgpt", "searchapi", false))).toBeNull();
+			expect(searchapi.validateTarget!(config("perplexity", "searchapi", false))).toMatch(/requires :online/);
+		});
+
+		it("rejects unknown models", () => {
+			expect(searchapi.validateTarget!(config("claude", "searchapi", true))).toMatch(/does not support/);
+		});
+	});
 
 	describe("olostep", () => {
 		it("accepts valid online targets", () => {
@@ -297,5 +242,20 @@ describe("provider validateTarget", () => {
 		it("rejects unknown models", () => {
 			expect(cloro.validateTarget!(config("grok", "cloro", true))).toMatch(/does not support/);
 		});
+	});
+});
+
+describe("reportedWebQueries", () => {
+	it("reports nothing when web search was off", () => {
+		expect(reportedWebQueries(["a"], { webSearch: false })).toEqual([]);
+	});
+
+	it("passes captured queries through", () => {
+		expect(reportedWebQueries(["a", "b"])).toEqual(["a", "b"]);
+	});
+
+	it("marks a proven search with no captured query as unavailable", () => {
+		expect(reportedWebQueries([])).toEqual(["unavailable"]);
+		expect(reportedWebQueries([], { searchProven: false })).toEqual([]);
 	});
 });

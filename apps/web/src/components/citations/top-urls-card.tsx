@@ -15,13 +15,14 @@ import {
 } from "@/components/citations/shared";
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { SiteIcon } from "@/components/site-icon";
+import { useBrandParams } from "@/hooks/use-route-params";
 
 export function TopUrlsCard({
 	urls,
 	sourceTabs,
 	pageTypeTabs,
 	maxUrls,
-	brandId,
 	brandName,
 	brandShare,
 	brandIsCited,
@@ -30,11 +31,11 @@ export function TopUrlsCard({
 	sourceTabs: { key: string; label: string }[];
 	pageTypeTabs: { key: string; label: string }[];
 	maxUrls: number;
-	brandId?: string;
 	brandName?: string;
 	brandShare: number;
 	brandIsCited: boolean;
 }) {
+	const brandParams = useBrandParams();
 	const [urlSearch, setUrlSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const [selectedPageType, setSelectedPageType] = useState<string>("all");
@@ -75,13 +76,13 @@ export function TopUrlsCard({
 									</p>
 									<p>
 										<strong>Competitor</strong> domains are only those in your{" "}
-										{brandId ? (
-											<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
-												tracked competitors list
-											</Link>
-										) : (
-											"tracked competitors list"
-										)}
+										<Link
+											to="/app/org/$org/brand/$brand/settings/competitors"
+											params={brandParams}
+											className="underline"
+										>
+											tracked competitors list
+										</Link>
 										.
 									</p>
 								</TooltipContent>
@@ -157,6 +158,7 @@ export function TopUrlsCard({
 								rel="noopener noreferrer"
 								className="flex items-start justify-between gap-3 py-3 group"
 							>
+								<SiteIcon domain={citation.domain} size="lg" className="mt-0.5" />
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center gap-2 mb-0.5">
 										<Badge

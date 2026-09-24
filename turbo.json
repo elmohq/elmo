@@ -19,6 +19,7 @@
     "ANTHROPIC_API_KEY",
     "MISTRAL_API_KEY",
     "SCRAPE_TARGETS",
+    "SEARCHAPI_API_KEY",
     "OLOSTEP_API_KEY",
     "BRIGHTDATA_API_TOKEN",
     "OXYLABS_USERNAME",
@@ -47,7 +48,6 @@
     "VITE_AUTH0_DOMAIN",
     "VITE_AUTH0_CLIENT_ID",
     "BLOB_READ_WRITE_TOKEN",
-    "DBOS_SYSTEM_DATABASE_URL",
     "SENTRY_DSN",
     "SENTRY_ORG",
     "SENTRY_PROJECT",
@@ -67,8 +67,8 @@
     "//#format": {
       "cache": false
     },
-    "//#format-and-lint": {},
-    "//#format-and-lint:fix": {
+    "//#lint": {},
+    "//#lint:fix": {
       "cache": false
     },
     "build": {
@@ -79,11 +79,15 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
-    "check-types": {
-      "dependsOn": ["^check-types"]
+    "codegen": {
+      "outputs": [".source/**"]
     },
-    "lint": {
-      "dependsOn": ["^lint"]
+    "@workspace/lib#codegen": {
+      "inputs": ["$TURBO_DEFAULT$", "!src/db/schema-auth.ts"],
+      "outputs": ["src/db/schema-auth.ts"]
+    },
+    "check-types": {
+      "dependsOn": ["^check-types", "codegen"]
     },
     "test": {
       "dependsOn": ["^build"]

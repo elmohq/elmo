@@ -1,14 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Community } from "@/components/community";
-import { CTA } from "@/components/cta";
-import { Faq } from "@/components/faq";
-import { Features } from "@/components/features";
 import { Footer } from "@/components/footer";
-import { Hero } from "@/components/hero";
+import { Closing } from "@/components/home/closing";
+import { Faq } from "@/components/home/faq";
+import { Hero } from "@/components/home/hero";
+import { HowItWorks } from "@/components/home/how-it-works";
+import { LogoStrip } from "@/components/home/logos";
+import { ModelCoverage } from "@/components/home/models";
+import { Pricing } from "@/components/home/pricing";
+import { Reviews } from "@/components/home/reviews";
+import { SelfHost } from "@/components/home/self-host";
+import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
+import { WhySwitch } from "@/components/home/why-switch";
 import { Navbar } from "@/components/navbar";
-import { Pricing } from "@/components/pricing";
-import { Stats } from "@/components/stats";
-import { SpeakeasyTestimonial, TradeSitesTestimonial } from "@/components/testimonial";
 import { HOME_FAQS } from "@/lib/faqs";
 import { canonicalUrl, faqJsonLd, ogMeta, SITE_NAME, softwareApplicationJsonLd } from "@/lib/seo";
 
@@ -17,7 +21,7 @@ const title = `${SITE_NAME} · Open Source AEO & AI Visibility Tracker`;
 // copy. The homepage takes the largest share of search clicks and is the page
 // answer engines cite most, so it gets a full-width description of its own.
 const description =
-	"Elmo tracks your brand's AI visibility in ChatGPT, Perplexity, and Gemini. Open-source answer engine optimization (AEO). Cloud from $29/mo or self-host free.";
+	"Elmo is open-source answer engine optimization (AEO): track your brand's AI visibility in ChatGPT, Perplexity, and Gemini. Cloud from $29/mo or self-host free.";
 
 export const Route = createFileRoute("/")({
 	head: () => ({
@@ -38,18 +42,21 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
 	return (
-		<div className="min-h-screen">
+		<div className={`${HOME_FONT_CLASS} min-h-screen bg-white antialiased`}>
+			<HomeStyles />
 			<Navbar />
 			<main>
 				<Hero />
-				<Stats />
-				<SpeakeasyTestimonial />
-				<Features />
-				<TradeSitesTestimonial />
-				<Community />
+				<LogoStrip />
+				<ModelCoverage />
+				<Reviews />
+				<HowItWorks />
+				<WhySwitch />
 				<Pricing />
-				<Faq items={HOME_FAQS} eyebrow="/ FAQ" />
-				<CTA />
+				<Faq items={HOME_FAQS} />
+				<SelfHost />
+				<Community />
+				<Closing />
 			</main>
 			<Footer />
 		</div>

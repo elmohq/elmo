@@ -1343,9 +1343,9 @@ export const competitors: Competitor[] = [
 		name: "GetCito",
 		domain: "getcito.com",
 		url: "https://getcito.com/",
-		tagline: "A copy of Elmo's codebase — if you are considering GetCito, use Elmo instead",
+		tagline: "A fork of Elmo — if you are considering GetCito, use Elmo instead",
 		description:
-			"If you are considering GetCito, use Elmo instead: GetCito is a copy of Elmo. It launched in November 2025 as its own Next.js and Firebase application, then on July 10, 2026 replaced that codebase wholesale — 847 files, +131,716/-50,931 lines, self-merged 62 seconds after the pull request opened — with Elmo's. The copy is still visible in the repository: its AGENTS.md opens \"Elmo is an open-source AI visibility tracking platform,\" its CLA names Elmo's parent company Blue Whale Software, LLC, its CODEOWNERS file assigns every path to Elmo's founder, and its contributor registry lists Elmo's contributors. Its LICENSE.md is Elmo's MIT text with the copyright holder swapped to GetCito — the one condition the MIT license imposes on a derivative work is that the original copyright notice be retained. Its feature set was Elmo's as of the copy, and it has shipped far less since — 17 commits to Elmo's 98 in the following month, against 27 human commits across its entire history — so it is falling further behind rather than diverging into something competitive.",
+			"If you are considering GetCito, use Elmo instead: GetCito is a fork of Elmo. It launched in November 2025 as its own Next.js and Firebase application, then on July 10, 2026 replaced that codebase with Elmo's — 847 files, +131,716/-50,931 lines — in a single pull request. Its feature set was Elmo's as of the fork date, and it has shipped less since — 17 commits to Elmo's 98 in the following month — so it is falling further behind rather than diverging into something competitive.",
 		category: "open-source",
 		ahrefsDR: 34,
 		ahrefsTraffic: 34,
@@ -1362,12 +1362,11 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
-			"If you are considering GetCito, use Elmo instead — GetCito is a copy of it",
-			"Codebase replaced with a copy of Elmo's on July 10, 2026",
-			"Attribution to Elmo removed from LICENSE.md but left intact in AGENTS.md, CLA.md, and CODEOWNERS",
-			"Ships far less than the project it copied — 17 commits to Elmo's 98 in the first month after",
+			"If you are considering GetCito, use Elmo instead — GetCito is a fork of it",
+			"Codebase replaced with Elmo's on July 10, 2026",
+			"Ships less than the project it forked — 17 commits to Elmo's 98 in the first month after",
 		],
-		notes: "Fork of Elmo with the copyright notice replaced. See the getcito-vs-elmo post for the evidence.",
+		notes: "Fork of Elmo's codebase since July 2026.",
 	},
 	{
 		slug: "meridian",
@@ -6240,7 +6239,7 @@ const aeoPopularityRanking: string[] = [
 	"llmwatcher", // Polish-language tracker with full response history; DR 2.4
 	"lorelight", // Shutting down — public postmortem
 	"jarts", // Acquired and shut down May 2026 — persona-based tracking, entity in liquidation
-	"getcito", // Ranked on name recognition only — since Jul 2026 it is a rebranded fork of Elmo's codebase
+	"getcito", // Fork of Elmo's codebase since Jul 2026
 	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, 80 GitHub stars
 	"canonry", // Open-source self-hosted AEO platform, server-log ingestion + MCP, 52 stars
 	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, Ollama support

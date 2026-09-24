@@ -5,9 +5,11 @@ export interface FeaturesConfig {
 	showOptimizeButton: boolean;
 	/**
 	 * Whether the user can create new brands from the UI. True in local and
-	 * cloud modes — whitelabel orgs come from Auth0, demo is read-only.
+	 * cloud modes — whitelabel brands come from the admin API, demo is read-only.
 	 */
 	canCreateBrands: boolean;
+	canCreateOrganizations: boolean;
+	canEditOrganizations: boolean;
 	/**
 	 * Whether public self-serve registration is available. True only in cloud
 	 * mode. Local allows a single bootstrap signup (see ClientConfig.canRegister);
@@ -26,17 +28,27 @@ export interface FeaturesConfig {
 	 */
 	reportGeneration: boolean;
 	/**
-	 * Whether org admins can invite teammates by email. True only in cloud —
-	 * local is single-user by design, whitelabel memberships come from Auth0,
-	 * demo is read-only.
+	 * Whether the deployment owns its own team roster, which gates the team page
+	 * and every membership write. True only in cloud — local is single-user by
+	 * design, whitelabel memberships come from Auth0, demo is read-only.
 	 */
 	teamInvites: boolean;
+	/**
+	 * Whether the viewer picks which platforms a brand is tracked on. False in
+	 * whitelabel (the agency picks, and pays the provider bills) and demo.
+	 *
+	 * Matches `canCreateBrands` in every mode today, but kept separate: creating a
+	 * brand and choosing what it costs to run are sold as different things.
+	 */
+	platformPicksEditable: boolean;
 }
 
 export interface AnalyticsConfig {
 	plausibleDomain?: string;
 	clarityProjectId?: string;
 	posthogKey?: string;
+	/** Only set on deployments we operate (cloud and demo). */
+	crispWebsiteId?: string;
 }
 
 export interface BrandingConfig {
@@ -77,14 +89,14 @@ export interface ClientConfig {
 }
 
 export interface WebQueryResult {
+	/** Top web query over the requested window, for the requested model. */
 	webQuery: string | null;
-	modelWebQueries: Record<string, string>;
 }
 
 export interface OptimizeButtonProps {
 	brandId?: string;
 	selectedModel?: string;
-	availableModels?: string[];
+	availableModels: string[];
 	lookback?: "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 	promptName?: string;
 	promptId?: string;

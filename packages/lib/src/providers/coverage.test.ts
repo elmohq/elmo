@@ -8,6 +8,7 @@
  * settings page could not tell an operator which provider it needs.
  */
 
+import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
 import { KNOWN_MODELS } from "@workspace/config/models";
 import { PREMIUM_MODELS } from "@workspace/config/plans";
 import { parseScrapeTargets, providersByModel, STATUS_TARGETS } from "@workspace/config/scrape-targets";
@@ -37,7 +38,7 @@ describe("provider coverage", () => {
 				const described = describeProvider(provider);
 				expect(described).not.toBeNull();
 				expect(described?.name).toBeTruthy();
-				expect(described?.docsUrl).toMatch(/^https:\/\/docs\.elmohq\.com\/docs\/user-guide\/providers/);
+				expect(described?.docsUrl.startsWith(PROVIDERS_DOCS_URL)).toBe(true);
 			}
 		}
 	});
