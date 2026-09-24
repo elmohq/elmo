@@ -4,9 +4,14 @@
  * each card leads with a plain-language "why", then three drill-downs — Prompts /
  * Your citations / Competitor citations — to explore the underlying data.
  */
+
+import type {
+	CitedPage,
+	OpportunitiesReport as OpportunitiesReportData,
+	ReportPrompt,
+} from "@workspace/lib/opportunities";
 import { useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
-import type { CitedPage, OpportunitiesReport as OpportunitiesReportData, ReportPrompt } from "@/server/opportunities";
 
 const CATEGORY_META = [
 	{

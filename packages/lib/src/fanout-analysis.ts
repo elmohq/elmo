@@ -16,7 +16,7 @@
  * that reaches the aggregator is a genuine expansion, and engines that never
  * expose their searches simply contribute none.
  */
-import { WEB_QUERIES_UNAVAILABLE } from "@workspace/lib/constants";
+import { WEB_QUERIES_UNAVAILABLE } from "./constants";
 
 // ---------------------------------------------------------------------------
 // Input rows (shapes returned by postgres-read; kept here as the single source

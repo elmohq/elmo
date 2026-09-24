@@ -1,9 +1,9 @@
 import { useSearch } from "@tanstack/react-router";
+import { LOOKBACK_PERIODS, type LookbackPeriod } from "@workspace/lib/lookback";
 import { useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
 import { coerceLookback, useFilterNavigate } from "@/hooks/use-list-filters";
 import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
-import { LOOKBACK_PERIODS, type LookbackPeriod } from "@/lib/lookback";
 
 const LOOKBACK_LABELS: Record<LookbackPeriod, string> = {
 	"1w": "1w",

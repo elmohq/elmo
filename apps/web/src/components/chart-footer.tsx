@@ -1,12 +1,12 @@
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { getOptimizeButtonForMode } from "@workspace/deployment/client";
+import type { LookbackPeriod } from "@workspace/lib/lookback";
 import { Button } from "@workspace/ui/components/button";
 import { CardFooter } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Download } from "lucide-react";
 import { useCallback } from "react";
-import type { LookbackPeriod } from "@/lib/lookback";
 import { getPromptWebQueryFn } from "@/server/prompts";
 import { HistoryButton } from "./history-button";
 

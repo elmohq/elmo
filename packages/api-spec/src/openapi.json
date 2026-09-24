@@ -1659,8 +1659,8 @@
 					},
 					"status": {
 						"type": "string",
-						"description": "`ready` when a report is present. `insufficient-data` when the brand hasn't accumulated enough tracked answers to say anything useful yet, in which case the lists are empty.",
-						"enum": ["ready", "insufficient-data"]
+						"description": "`ready` when a report is present. `not-generated` when no report has been written yet; the first one is written from the Opportunities page in the app. `insufficient-data` when the brand hasn't accumulated enough tracked answers to say anything useful yet. The lists are empty unless `ready`.",
+						"enum": ["ready", "insufficient-data", "not-generated"]
 					},
 					"generatedAt": {
 						"type": ["string", "null"],

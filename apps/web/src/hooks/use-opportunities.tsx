@@ -8,9 +8,8 @@ const opportunitiesKeys = {
 };
 
 /**
- * Opportunities AEO report. The server returns a stored report and regenerates it
- * only when the latest is stale, so this is held for the session (staleTime:
- * Infinity, no refetch-on-focus) rather than refetched.
+ * Opportunities AEO report. Held for the session, except while a first report is
+ * being generated in the background, when it polls until that lands.
  */
 export function useOpportunities(brandId?: string) {
 	const resolvedBrandId = useResolvedBrandId(brandId);
@@ -23,6 +22,7 @@ export function useOpportunities(brandId?: string) {
 			}),
 		enabled: !!resolvedBrandId,
 		staleTime: Number.POSITIVE_INFINITY,
+		refetchInterval: (query) => (query.state.data?.reason === "generating" ? 10_000 : false),
 		refetchOnWindowFocus: false,
 		retry: false,
 	});

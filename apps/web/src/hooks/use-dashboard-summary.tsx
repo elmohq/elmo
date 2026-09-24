@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import type { LookbackPeriod } from "@workspace/lib/lookback";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import type { LookbackPeriod } from "@/lib/lookback";
 import { getDashboardSummaryFn } from "@/server/dashboard";
 
 export const dashboardKeys = {

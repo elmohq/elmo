@@ -10,8 +10,8 @@ import {
 	parseGoogleProductName,
 	parseGoogleSearchQuery,
 	resolvePageType,
-} from "@/lib/domain-categories";
-import { CURATED_DOMAIN_LISTS, categorizeDomain, classifyUrl } from "@/lib/domain-categories.server";
+} from "./domain-categories";
+import { CURATED_DOMAIN_LISTS, categorizeDomain, classifyUrl } from "./domain-categories.server";
 
 const brand = new Set(["mybrand.com"]);
 const competitors = new Set(["rival.com"]);

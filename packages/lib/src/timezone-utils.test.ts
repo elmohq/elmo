@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { LookbackPeriod } from "@/lib/lookback";
-import { getTimezoneLookbackRange, resolveTimezone, shiftDateStr } from "@/lib/timezone-utils";
+import type { LookbackPeriod } from "./lookback";
+import { getTimezoneLookbackRange, resolveTimezone, shiftDateStr } from "./timezone-utils";
 
 describe("resolveTimezone", () => {
 	it("returns a valid timezone unchanged", () => {

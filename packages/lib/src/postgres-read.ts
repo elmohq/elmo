@@ -6,15 +6,15 @@
  */
 
 import { parseModelFilter } from "@workspace/config/model-filter";
-import { db } from "@workspace/lib/db/db";
-import { getAllProviders } from "@workspace/lib/providers";
 import { type SQL, sql } from "drizzle-orm";
+import { db } from "./db/db";
 import {
 	type FanoutBreakdownRow,
 	type FanoutModelTotalRow,
 	type FanoutPromptTotalRow,
 	UNAVAILABLE_SENTINEL,
-} from "@/lib/fanout-analysis";
+} from "./fanout-analysis";
+import { getAllProviders } from "./providers";
 
 export interface DashboardSummary {
 	total_prompts: number;

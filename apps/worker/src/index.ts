@@ -59,6 +59,13 @@ async function main() {
 		retryBackoff: false,
 		expireInSeconds: 60 * 15, // 15 minute timeout for onboarding brand analysis
 	});
+	// exclusive + a brandId singletonKey: one queued-or-running generation per brand.
+	await boss.createQueue("generate-opportunities", {
+		policy: "exclusive",
+		retryLimit: 1,
+		retryDelay: 60,
+		expireInSeconds: 60 * 15,
+	});
 	await boss.createQueue("schedule-maintenance", {
 		retryLimit: 3,
 		retryDelay: 300, // 5 minutes between retries

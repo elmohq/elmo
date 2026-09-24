@@ -38,7 +38,16 @@
 		"./providers/types": "./src/providers/types.ts",
 		"./entitlements": "./src/entitlements/index.ts",
 		"./run-policy": "./src/run-policy/index.ts",
-		"./usage": "./src/usage/cost.ts"
+		"./usage": "./src/usage/cost.ts",
+		"./domain-categories": "./src/domain-categories.ts",
+		"./domain-categories.server": "./src/domain-categories.server.ts",
+		"./fanout-analysis": "./src/fanout-analysis.ts",
+		"./lookback": "./src/lookback.ts",
+		"./opportunities": "./src/opportunities.ts",
+		"./postgres-read": "./src/postgres-read.ts",
+		"./prompt-resolution": "./src/prompt-resolution.ts",
+		"./timezone-utils": "./src/timezone-utils.ts",
+		"./visibility-stats": "./src/visibility-stats.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^4.0.49",

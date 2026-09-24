@@ -3,8 +3,8 @@
  * digest of the brand's tracked citation data (per-query standing vs the leading
  * competitor over 7d + 30d, citation difficulty, where answers are sourced, and
  * per-platform visibility) and make a single structured LLM completion (no web
- * search) to turn it into categorized opportunities. The report is cached
- * server-side and regenerated only when stale — see server/opportunities.ts.
+ * search) to turn it into categorized opportunities. The worker regenerates the
+ * stored report in the background once it's stale — see server/opportunities.ts.
  */
 
 import { IconClock } from "@tabler/icons-react";
@@ -30,7 +30,7 @@ function OpportunitiesPage() {
 	const infoContent = "Recommendations based on your visibility and citation metrics. Refreshed weekly.";
 
 	let content: React.ReactNode;
-	if (isLoading) {
+	if (isLoading || data?.reason === "generating") {
 		content = <LoadingState />;
 	} else if (error) {
 		content = <EmptyCard>Couldn't generate recommendations right now. Reload the page to try again.</EmptyCard>;

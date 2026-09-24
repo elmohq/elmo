@@ -6,7 +6,7 @@ import {
 	normTok,
 	promptKeywords,
 	UNAVAILABLE_SENTINEL,
-} from "@/lib/fanout-analysis";
+} from "./fanout-analysis";
 
 const promptMap = new Map<string, string>([
 	["p1", "crm software for startups"],

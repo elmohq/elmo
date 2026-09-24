@@ -6,7 +6,7 @@ import {
 	shareOfVoiceLeaderboardLVCF,
 	shareOfVoiceTimeSeriesLVCF,
 	stabilityScore,
-} from "@/lib/visibility-stats";
+} from "./visibility-stats";
 
 /** Helper: build daily rows from a {date: {domain: count}} spec. */
 function rows(spec: Record<string, Record<string, number>>): DailyDomainCount[] {

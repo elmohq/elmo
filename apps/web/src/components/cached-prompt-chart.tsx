@@ -1,3 +1,4 @@
+import type { LookbackPeriod } from "@workspace/lib/lookback";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -6,7 +7,6 @@ import { Fragment, memo, useCallback, useMemo } from "react";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import { useChartExport } from "@/hooks/use-chart-export";
 import { visibilityBadgeProps } from "@/lib/chart-utils";
-import type { LookbackPeriod } from "@/lib/lookback";
 import { BaseChart } from "./base-chart";
 import { ChartActionsFooter } from "./chart-footer";
 

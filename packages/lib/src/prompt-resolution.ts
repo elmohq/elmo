@@ -11,10 +11,11 @@
  * Keeping it here, imported only inside server-fn handlers, stays strippable.
  * See issue #68.
  */
-import { db } from "@workspace/lib/db/db";
-import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+
 import { and, eq } from "drizzle-orm";
+import { db } from "./db/db";
+import { prompts, SYSTEM_TAGS } from "./db/schema";
+import { getEffectiveBrandedStatus } from "./tag-utils";
 
 export interface ResolvedPrompt {
 	id: string;
