@@ -5,7 +5,7 @@ import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { SectionHeading } from "./ui";
 
 const POINTS = [
-	{ title: "The same product", body: "Every feature from the cloud, MIT-licensed." },
+	{ title: "Full Featured", body: "Every feature from the cloud, MIT-licensed." },
 	{ title: "Your data stays put", body: "Prompts and answers live in your own Postgres." },
 	{ title: "Any model", body: "Bring your own keys, or any model on OpenRouter." },
 ];
@@ -16,11 +16,7 @@ export function SelfHost() {
 	return (
 		<section className="border-t border-zinc-200/80 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
-				<SectionHeading
-					align="center"
-					title="Prefer your own servers? Self-host for free."
-					lede="Two commands and Elmo is running on your infrastructure. No license fee, no seat limits."
-				/>
+				<SectionHeading align="center" title="Self-host for free." />
 				<div className="mx-auto mt-12 max-w-2xl">
 					<QuickstartBlock size="lg" />
 				</div>
