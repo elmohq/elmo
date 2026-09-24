@@ -1,5 +1,5 @@
+import { CITATION_CATEGORIES, type CitationCategory } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { CITATION_CATEGORIES, type CitationCategory } from "@/lib/domain-categories";
 import type { LookbackPeriod } from "@/lib/lookback";
 import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
 
@@ -265,8 +265,10 @@ export function latestVisibility(chartData: ChartDataPoint[], id: string): numbe
 
 import type { Competitor, PromptRun } from "@workspace/lib/db/schema";
 
+type VisibilityRun = Pick<PromptRun, "createdAt" | "brandMentioned" | "competitorsMentioned">;
+
 export function calculateVisibilityPercentages(
-	promptRuns: PromptRun[],
+	promptRuns: VisibilityRun[],
 	brand: ChartSubject,
 	competitors: Competitor[],
 	lookback: LookbackPeriod,
@@ -318,7 +320,7 @@ export function calculateVisibilityPercentages(
 			acc[dateKey].push(run);
 			return acc;
 		},
-		{} as Record<string, PromptRun[]>,
+		{} as Record<string, VisibilityRun[]>,
 	);
 
 	return dateRange.map((date) => {

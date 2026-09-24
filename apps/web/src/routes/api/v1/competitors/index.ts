@@ -7,6 +7,7 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { assertCompetitorCap } from "@workspace/lib/entitlements";
@@ -14,7 +15,6 @@ import { z } from "zod";
 import { clampedPaging } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
-import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { listCompetitors } from "@/server/competitors-core";
 
 const createCompetitorBody = z.object({

@@ -1,6 +1,6 @@
 // Client-safe citation taxonomy: types, display config, and lightweight URL
 // helpers. The heavy domain lists + `categorizeDomain` live in
-// `domain-categories.server.ts` (server-only) so the ~25k-entry editorial list
+// `domain-lists.ts` (server-only) so the ~25k-entry editorial list
 // never ships in the browser bundle.
 
 export type CitationCategory =
@@ -523,8 +523,12 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 	return PAGE_TYPE_RULES.find((rule) => rule.matches(page))?.type ?? "other";
 }
 
-// Source categories whose cited pages are essentially always editorial content.
-const CONTENT_PUBLISHER_CATEGORIES = new Set<CitationCategory>(["editorial", "institutional", "reference"]);
+/** Source categories whose cited pages are essentially always editorial content. */
+export const CONTENT_PUBLISHER_CATEGORIES: ReadonlySet<CitationCategory> = new Set<CitationCategory>([
+	"editorial",
+	"institutional",
+	"reference",
+]);
 
 /**
  * Page type for a citation given its resolved source category. Niche-independent:

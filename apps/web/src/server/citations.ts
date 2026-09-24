@@ -1,19 +1,5 @@
 /** Server functions for citation data. */
 import { createServerFn } from "@tanstack/react-start";
-import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { and, eq } from "drizzle-orm";
-import { z } from "zod";
-import { requireBrandSession } from "@/lib/auth/helpers";
-import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
-import {
-	type CitationDomain,
-	type CitationUrl,
-	rollUpCitationDomains,
-	rollUpCitationUrls,
-	tallyCitations,
-} from "@/lib/citation-rollup";
 import {
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
@@ -24,22 +10,36 @@ import {
 	extractDomain,
 	isGoogleSurfaceUrl,
 	normalizeUrl,
-	resolvePageType,
 	toRoundedPercentages,
-} from "@/lib/domain-categories";
+} from "@workspace/lib/citations/domain-categories";
 import {
 	categorizeDomain as categorizeDomainShared,
 	classifyUrl as classifyUrlShared,
-} from "@/lib/domain-categories.server";
-import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
+} from "@workspace/lib/citations/domain-lists";
+import { type ResolvedPageClass, resolvePageClass } from "@workspace/lib/citations/page-classification";
+import {
+	type CitationDomain,
+	type CitationUrl,
+	rollUpCitationDomains,
+	rollUpCitationUrls,
+	tallyCitations,
+} from "@workspace/lib/citations/rollup";
+import { db } from "@workspace/lib/db/db";
+import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
 	getPerPromptCitationPages,
-	getPerPromptDailyCitationPages,
+	getPerPromptDailyCitationClasses,
 	type PerPromptCitationPageRow,
-	type PerPromptDailyCitationPageRow,
-} from "@/lib/postgres-read";
+	type PerPromptDailyCitationClassRow,
+} from "@/lib/analytics-read";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
+import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
 import { parseTagFilter } from "@/server/prompt-resolution";
 
 type Classify = (domain: string, url: string, title?: string | null) => CitationCategory;
@@ -166,32 +166,27 @@ function promptCountsByUrl(urlStats: CitationUrlStats[]): Map<string, number> {
 }
 
 /**
- * Per-day percentage trends over the window, smoothed per prompt so a staggered
- * cadence doesn't read as a gap.
- *
- * Each row's key is looked up from the canonical URL-level classification rather
- * than reclassified: the per-(prompt, day) rows carry their own title, so
- * reclassifying could land an "other"-domain URL in a different category than
- * the totals — rendering a chart band with no tab and letting the stack sum to
- * under 100%.
+ * Per-day percentage trends over the window, smoothed per prompt so a
+ * staggered cadence doesn't read as a gap. Rows are already at (prompt, day,
+ * domain, category, page type) grain, so — unlike the per-URL rows this
+ * replaced — there's no separate "whole-window canonical classification" to
+ * look up: each row carries what it needs to classify itself.
  */
-function buildKeyedTimeSeries<K extends string>(args: {
-	rows: PerPromptDailyCitationPageRow[];
-	keyForUrl: Map<string, K>;
-	fallbackKey: (row: PerPromptDailyCitationPageRow) => K;
+function buildClassTimeSeries<K extends string>(args: {
+	rows: PerPromptDailyCitationClassRow[];
+	keyFor: (resolved: ResolvedPageClass) => K;
 	dateRange: string[];
 	cadenceHours: number | null | undefined;
 	allKeys: readonly K[];
 	emptyCounts: () => Record<K, number>;
+	brandDomains: Set<string>;
+	competitorDomains: Set<string>;
 }): ({ date: string } & Record<K, number>)[] {
-	const keyedRows = args.rows
-		.filter((row) => row.url && !isGoogleSurfaceUrl(row.url))
-		.map((row) => ({
-			prompt_id: row.prompt_id,
-			date: String(row.date),
-			key: args.keyForUrl.get(normalizeUrl(row.url as string)) ?? args.fallbackKey(row),
-			count: Number(row.count),
-		}));
+	const keyedRows = args.rows.flatMap((row) => {
+		const resolved = resolvePageClass(row, args.brandDomains, args.competitorDomains);
+		if (!resolved) return [];
+		return [{ prompt_id: row.prompt_id, date: String(row.date), key: args.keyFor(resolved), count: Number(row.count) }];
+	});
 
 	const smoothed = applyPerPromptKeyedLVCF(keyedRows, args.dateRange, args.cadenceHours, args.allKeys);
 	return args.dateRange.map((date) => {
@@ -384,9 +379,9 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
 		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary);
 
-		const [urlStats, perPromptDailyPages, perPromptPages, prevUrlStats] = await Promise.all([
+		const [urlStats, perPromptDailyClasses, perPromptPages, prevUrlStats] = await Promise.all([
 			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
-			getPerPromptDailyCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
+			getPerPromptDailyCitationClasses(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getPerPromptCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateStr, timezone, enabledPromptIds, data.model),
 		]);
@@ -428,22 +423,21 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		);
 
 		const timeSeriesArgs = {
-			rows: perPromptDailyPages,
+			rows: perPromptDailyClasses,
 			dateRange,
 			cadenceHours: brand?.delayOverrideHours,
+			brandDomains,
+			competitorDomains,
 		};
-		const citationTimeSeries = buildKeyedTimeSeries({
+		const citationTimeSeries = buildClassTimeSeries({
 			...timeSeriesArgs,
-			keyForUrl: new Map(specificUrls.map((url) => [url.url, url.category])),
-			fallbackKey: (row) => classify(row.domain, row.url as string, row.title),
+			keyFor: (resolved) => resolved.category,
 			allKeys: CITATION_CATEGORIES,
 			emptyCounts: emptyCategoryCounts,
 		});
-		const pageTypeTimeSeries = buildKeyedTimeSeries({
+		const pageTypeTimeSeries = buildClassTimeSeries({
 			...timeSeriesArgs,
-			keyForUrl: new Map(specificUrls.map((url) => [url.url, url.pageType])),
-			fallbackKey: (row) =>
-				resolvePageType(row.url as string, row.title, classify(row.domain, row.url as string, row.title)),
+			keyFor: (resolved) => resolved.pageType,
 			allKeys: CITATION_PAGE_TYPES,
 			emptyCounts: emptyPageTypeCounts,
 		});

@@ -15,7 +15,7 @@ import {
 	type ProductAttribution,
 	parseGoogleProductName,
 	parseGoogleSearchQuery,
-} from "@/lib/domain-categories";
+} from "@workspace/lib/citations/domain-categories";
 
 /** Minimal per-prompt cited-page row this builder needs (a structural subset of
  *  `PerPromptCitationPageRow`). */

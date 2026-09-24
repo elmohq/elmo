@@ -3,19 +3,18 @@ import type { Entitlements } from "@workspace/config/entitlements";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import {
-	type Brand,
-	brands,
-	type Competitor,
-	citations,
-	competitors,
-	promptRuns,
-	prompts,
-	usageEvents,
-} from "@workspace/lib/db/schema";
+import type { DbConnection } from "@workspace/lib/db/db-connection";
+import { type Brand, brands, citations, competitors, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
-import { analyzeMentions } from "@workspace/lib/mentions";
+import {
+	analyzeRunMentions,
+	MENTIONS_ANALYSIS_KEY,
+	type MentionConfig,
+	mentionConfigFrom,
+	mentionsStamp,
+} from "@workspace/lib/mentions";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
+import { markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
@@ -27,7 +26,7 @@ import {
 	slowestIntervalHours,
 	targetKey,
 } from "@workspace/lib/run-policy";
-import type { Citation } from "@workspace/lib/text-extraction";
+import { type Citation, EXTRACTOR_VERSION } from "@workspace/lib/text-extraction";
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
@@ -66,7 +65,6 @@ export const PROMPT_JOB_OPTIONS = {
 interface PromptContext {
 	prompt: typeof prompts.$inferSelect;
 	brand: Brand;
-	competitors: Competitor[];
 }
 
 /**
@@ -118,15 +116,13 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 		return null;
 	}
 
-	const brandCompetitors = await db.query.competitors.findMany({
-		where: eq(competitors.brandId, prompt.brandId),
-	});
+	return { prompt, brand };
+}
 
-	return {
-		prompt,
-		brand,
-		competitors: brandCompetitors,
-	};
+async function loadMentionConfig(conn: DbConnection, brandId: string): Promise<MentionConfig> {
+	const [brand] = await conn.select().from(brands).where(eq(brands.id, brandId));
+	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));
+	return mentionConfigFrom(brand, brandCompetitors);
 }
 
 /**
@@ -199,38 +195,33 @@ async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): P
 	return Number(row?.value ?? 0) >= ceiling;
 }
 
-async function savePromptRun(
-	promptId: string,
-	brandId: string,
-	model: string,
-	provider: string | null,
-	version: string,
-	webSearchEnabled: boolean,
-	rawOutput: unknown,
-	webQueries: string[],
-	brandMentioned: boolean,
-	competitorsMentioned: string[],
-): Promise<{ id: string; createdAt: Date }> {
-	const [result] = await db
+interface SavePromptRunInput {
+	promptId: string;
+	brandId: string;
+	model: string;
+	provider: string | null;
+	version: string;
+	webSearchEnabled: boolean;
+	rawOutput: unknown;
+	webQueries: string[];
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
+	textContent: string | null;
+	extractorVersion: number;
+	analysisVersions: Record<string, string>;
+}
+
+async function savePromptRun(conn: DbConnection, input: SavePromptRunInput): Promise<{ id: string; createdAt: Date }> {
+	const [result] = await conn
 		.insert(promptRuns)
-		.values({
-			promptId,
-			brandId,
-			model,
-			provider,
-			version,
-			webSearchEnabled,
-			rawOutput,
-			webQueries,
-			brandMentioned,
-			competitorsMentioned,
-		})
+		.values(input)
 		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
 
 	return result;
 }
 
 async function saveCitations(
+	conn: DbConnection,
 	promptRunId: string,
 	promptId: string,
 	brandId: string,
@@ -240,7 +231,7 @@ async function saveCitations(
 ): Promise<void> {
 	if (extracted.length === 0) return;
 
-	await db.insert(citations).values(
+	await conn.insert(citations).values(
 		extracted.map((c) => ({
 			promptRunId,
 			promptId,
@@ -288,7 +279,6 @@ async function runModelIteration({
 	promptId,
 	promptValue,
 	brand,
-	competitorsList,
 	config,
 	providerImpl,
 	runIndex,
@@ -296,7 +286,6 @@ async function runModelIteration({
 	promptId: string;
 	promptValue: string;
 	brand: Brand;
-	competitorsList: Competitor[];
 	config: ModelConfig;
 	providerImpl: Provider;
 	runIndex: number;
@@ -317,31 +306,35 @@ async function runModelIteration({
 		const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
 		console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
-		const safeTextContent = typeof textContent === "string" ? textContent : "";
-
-		const { brandMentioned, competitorsMentioned } = analyzeMentions(
-			safeTextContent,
-			{ name: brand.name, aliases: brand.aliases, domains: [brand.website, ...(brand.additionalDomains ?? [])] },
-			competitorsList,
-		);
-
+		const text = typeof textContent === "string" && textContent.trim() ? textContent : null;
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
-		const { id: promptRunId, createdAt } = await savePromptRun(
-			promptId,
-			brand.id,
-			config.model,
-			config.provider,
-			recordedVersion,
-			config.webSearch,
-			rawOutput,
-			webQueries,
-			brandMentioned,
-			competitorsMentioned,
-		);
+		const { id: promptRunId, createdAt } = await db.transaction(async (tx) => {
+			// Read here rather than at the start of the cycle: a config edit made while the
+			// provider call ran would otherwise be stamped onto this run as current.
+			const mentionConfig = await loadMentionConfig(tx, brand.id);
+			const { brandMentioned, competitorsMentioned } = analyzeRunMentions(text, mentionConfig);
+			const run = await savePromptRun(tx, {
+				promptId,
+				brandId: brand.id,
+				model: config.model,
+				provider: config.provider,
+				version: recordedVersion,
+				webSearchEnabled: config.webSearch,
+				rawOutput,
+				webQueries,
+				brandMentioned,
+				competitorsMentioned,
+				textContent: text,
+				extractorVersion: EXTRACTOR_VERSION,
+				analysisVersions: { [MENTIONS_ANALYSIS_KEY]: mentionsStamp(mentionConfig) },
+			});
+			await saveCitations(tx, run.id, promptId, brand.id, config.model, extractedCitations, run.createdAt);
+			await markDirty(tx, brand.id, [run.createdAt], "run");
+			return run;
+		});
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
-		await saveCitations(promptRunId, promptId, brand.id, config.model, extractedCitations, createdAt);
 		await recordUsageEvent({
 			organizationId: brand.organizationId,
 			brandId: brand.id,
@@ -389,7 +382,7 @@ async function processPrompt(
 		return;
 	}
 
-	const { prompt, brand, competitors: competitorsList } = context;
+	const { prompt, brand } = context;
 
 	if (!prompt.enabled || !brand.enabled) {
 		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
@@ -443,7 +436,6 @@ async function processPrompt(
 				promptId,
 				promptValue: prompt.value,
 				brand,
-				competitorsList,
 				config: target.config,
 				providerImpl,
 				runIndex: i + 1,
@@ -474,6 +466,20 @@ async function processPrompt(
 		successful_runs: successCount,
 		failed_runs: failures.length,
 	});
+
+	if (successCount > 0) {
+		try {
+			// Seconds-fresh dashboards instead of waiting for the once-a-minute
+			// schedule; a queue hiccup here must not fail an otherwise-successful cycle.
+			await boss.send(
+				REFRESH_ROLLUPS_QUEUE,
+				{ source: "run" },
+				{ singletonKey: REFRESH_ROLLUPS_QUEUE, singletonSeconds: 10 },
+			);
+		} catch (error) {
+			console.error(`Failed to send refresh-rollups trigger for prompt ${promptId}:`, error);
+		}
+	}
 
 	// A cycle where nothing came back means the targets themselves are failing,
 	// so the next attempt backs off instead of running on cadence. Anything that

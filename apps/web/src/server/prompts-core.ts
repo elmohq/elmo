@@ -6,8 +6,16 @@
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
+import {
+	citations,
+	promptRuns,
+	prompts,
+	rollupCitationUrls,
+	rollupCompetitorMentions,
+	rollupPromptRuns,
+} from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
+import { markPromptDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, type SQL } from "drizzle-orm";
 import { z } from "zod";
@@ -256,6 +264,12 @@ export async function deletePrompt(promptId: string): Promise<{ prompt: Prompt; 
 
 	const result = await db.transaction(async (tx) => {
 		await tx.delete(citations).where(eq(citations.promptId, promptId));
+		// Deleted here so pages drop the prompt at once; the marks cover a rebuild that
+		// read the runs before this commits and would otherwise write them back.
+		await markPromptDirty(tx, promptId, "run");
+		for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupCitationUrls]) {
+			await tx.delete(table).where(eq(table.promptId, promptId));
+		}
 		const deletedRuns = await tx
 			.delete(promptRuns)
 			.where(eq(promptRuns.promptId, promptId))

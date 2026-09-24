@@ -16,13 +16,14 @@
  * the brand_opportunities table (append-only) and served as-is until the latest
  * is older than REFRESH_AFTER_DAYS, so a normal page load doesn't trigger an LLM call.
  */
+
+import { type CitationCategory, extractDomain } from "@workspace/lib/citations/domain-categories";
+import { categorizeDomain } from "@workspace/lib/citations/domain-lists";
 import { db } from "@workspace/lib/db/db";
 import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schema";
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { type CitationCategory, extractDomain } from "@/lib/domain-categories";
-import { categorizeDomain } from "@/lib/domain-categories.server";
 import {
 	getBrandMentionRateByModel,
 	getPerPromptCitationPages,
@@ -31,7 +32,7 @@ import {
 	getPerPromptRunStats,
 	type PerPromptDailyCompetitorRow,
 	type PerPromptRunStats,
-} from "@/lib/postgres-read";
+} from "@/lib/analytics-read";
 import { isBrandedPrompt } from "@/lib/prompt-tags";
 import { resolveLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";

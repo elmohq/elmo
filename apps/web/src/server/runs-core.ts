@@ -91,9 +91,9 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 		.where(eq(citations.promptRunId, run.id))
 		.orderBy(asc(citations.citationIndex));
 
-	// Older rows predate the provider column; the model name is the extractor's
-	// other accepted key.
-	const text = extractTextContent(run.rawOutput, run.provider ?? run.model);
+	// Older rows carry no text and may predate the provider column; the
+	// extractor also accepts the model name.
+	const text = run.textContent ?? extractTextContent(run.rawOutput, run.provider ?? run.model);
 
 	return {
 		id: run.id,
