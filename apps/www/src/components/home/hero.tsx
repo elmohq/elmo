@@ -1,13 +1,15 @@
-import MuxPlayer from "@mux/mux-player-react";
 import { Link } from "@tanstack/react-router";
 import { cloudAppUrl, demoSiteUrl } from "@workspace/config/referrals";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { ArrowRight, ArrowUpRight, Play } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { externalRel } from "@/lib/external-link";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { ProductDemo } from "./product-demo";
 import { HOME_FONT_CLASS } from "./styles";
+
+// The player bundles hls.js, several times the weight of the rest of the page.
+const MuxPlayer = lazy(() => import("@mux/mux-player-react"));
 
 const CLOUD_URL = cloudAppUrl("marketing-hero");
 
@@ -28,22 +30,24 @@ function WalkthroughDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 				<DialogTitle className="sr-only">Elmo product walkthrough</DialogTitle>
 				{/* Mounted only while open, so the player's script and poster cost nothing up front. */}
 				{open ? (
-					<MuxPlayer
-						playbackId="PYV9FNIG008vlkchyQf9KMTxDt028zQdshaM4VLC6lS1Q"
-						streamType="on-demand"
-						// Mux Data otherwise writes a `muxData` cookie on page load — before
-						// anyone has answered the consent banner. Playback QoE still reports;
-						// only cross-visit viewer recognition goes away.
-						disableCookies
-						accentColor="#2563eb"
-						poster="/demo-poster.png"
-						autoPlay
-						metadata={{
-							video_id: "KGvs37kE02Z6mnTpcrnLJCtiS01V023aJEHK3MZlmaULPA",
-							video_title: "Elmo demo",
-						}}
-						style={{ aspectRatio: "16 / 9", display: "block", width: "100%" }}
-					/>
+					<Suspense fallback={<div className="aspect-video w-full" />}>
+						<MuxPlayer
+							playbackId="PYV9FNIG008vlkchyQf9KMTxDt028zQdshaM4VLC6lS1Q"
+							streamType="on-demand"
+							// Mux Data otherwise writes a `muxData` cookie on page load — before
+							// anyone has answered the consent banner. Playback QoE still reports;
+							// only cross-visit viewer recognition goes away.
+							disableCookies
+							accentColor="#2563eb"
+							poster="/demo-poster.png"
+							autoPlay
+							metadata={{
+								video_id: "KGvs37kE02Z6mnTpcrnLJCtiS01V023aJEHK3MZlmaULPA",
+								video_title: "Elmo demo",
+							}}
+							style={{ aspectRatio: "16 / 9", display: "block", width: "100%" }}
+						/>
+					</Suspense>
 				) : null}
 			</DialogContent>
 		</Dialog>
