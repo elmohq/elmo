@@ -27,3 +27,8 @@ export function initCrisp(): void {
 	script.async = true;
 	document.head.appendChild(script);
 }
+
+export function openCrispChat(): void {
+	initCrisp();
+	window.$crisp?.push(["do", "chat:open"]);
+}

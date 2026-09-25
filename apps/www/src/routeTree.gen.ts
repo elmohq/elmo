@@ -26,6 +26,7 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as StatisticsRouteImport } from './routes/statistics'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as VisionRouteImport } from './routes/vision'
 import { Route as DotwellKnownAiCatalogDotjsonRouteImport } from './routes/[.]well-known/ai-catalog[.]json'
 import { Route as DotwellKnownApiCatalogRouteImport } from './routes/[.]well-known/api-catalog'
@@ -149,6 +150,11 @@ const StatisticsRoute = StatisticsRouteImport.update({
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VisionRoute = VisionRouteImport.update({
@@ -368,6 +374,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/statistics': typeof StatisticsRoute
   '/status': typeof StatusRoute
+  '/support': typeof SupportRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
@@ -424,6 +431,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/statistics': typeof StatisticsRoute
   '/status': typeof StatusRoute
+  '/support': typeof SupportRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
@@ -481,6 +489,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/statistics': typeof StatisticsRoute
   '/status': typeof StatusRoute
+  '/support': typeof SupportRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
@@ -539,6 +548,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/statistics'
     | '/status'
+    | '/support'
     | '/vision'
     | '/.well-known/ai-catalog.json'
     | '/.well-known/api-catalog'
@@ -595,6 +605,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/statistics'
     | '/status'
+    | '/support'
     | '/vision'
     | '/.well-known/ai-catalog.json'
     | '/.well-known/api-catalog'
@@ -651,6 +662,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/statistics'
     | '/status'
+    | '/support'
     | '/vision'
     | '/.well-known/ai-catalog.json'
     | '/.well-known/api-catalog'
@@ -708,6 +720,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StatisticsRoute: typeof StatisticsRoute
   StatusRoute: typeof StatusRoute
+  SupportRoute: typeof SupportRoute
   VisionRoute: typeof VisionRoute
   DotwellKnownAiCatalogDotjsonRoute: typeof DotwellKnownAiCatalogDotjsonRoute
   DotwellKnownApiCatalogRoute: typeof DotwellKnownApiCatalogRoute
@@ -866,6 +879,13 @@ declare module '@tanstack/react-router' {
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/vision': {
@@ -1148,6 +1168,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StatisticsRoute: StatisticsRoute,
   StatusRoute: StatusRoute,
+  SupportRoute: SupportRoute,
   VisionRoute: VisionRoute,
   DotwellKnownAiCatalogDotjsonRoute: DotwellKnownAiCatalogDotjsonRoute,
   DotwellKnownApiCatalogRoute: DotwellKnownApiCatalogRoute,
