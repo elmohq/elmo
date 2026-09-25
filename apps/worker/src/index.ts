@@ -65,6 +65,12 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 30, // 30 minute timeout
 	});
+	// Singleton: a slow backfill tick must not overlap the next and update the same rows twice.
+	await boss.createQueue("index-responses", {
+		policy: "singleton",
+		retryLimit: 1,
+		expireInSeconds: 60 * 5,
+	});
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.createQueue("sync-auth0-memberships", {
 			retryLimit: 3,
@@ -77,6 +83,9 @@ async function main() {
 
 	await boss.schedule("schedule-maintenance", "*/5 * * * *", { source: "scheduled" }, { tz: "UTC" });
 	console.log("Scheduled maintenance job (every 5 minutes)");
+
+	await boss.schedule("index-responses", "* * * * *", { source: "scheduled" }, { tz: "UTC" });
+	console.log("Scheduled response indexing (every minute)");
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.schedule("sync-auth0-memberships", "*/15 * * * *", { source: "scheduled" }, { tz: "UTC" });

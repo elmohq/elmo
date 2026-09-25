@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
 	boolean,
+	customType,
 	index,
 	integer,
 	json,
@@ -20,6 +22,10 @@ import { organization } from "./schema-auth";
 // Better-auth tables & relations — re-exported so `import * as schema` sees everything.
 // Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
 export * from "./schema-auth";
+
+const tsvector = customType<{ data: string }>({
+	dataType: () => "tsvector",
+});
 
 // ============================================================================
 // Application tables
@@ -123,9 +129,19 @@ export const promptRuns = pgTable(
 		webQueries: text("web_queries").array().notNull().default([]),
 		brandMentioned: boolean("brand_mentioned").notNull(),
 		competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
+		// The answer as the dashboard displays it. Null only on runs the worker
+		// has not yet backfilled; a run with no extractable answer stores "".
+		textContent: text("text_content"),
+		// Always written alongside `textContent` — see `responseSearchVector`.
+		searchVector: tsvector("search_vector"),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	},
 	(table) => ({
+		searchVectorIdx: index("prompt_runs_search_vector_idx").using("gin", table.searchVector),
+		// Empties as the backfill finishes, so finding the remaining work stays cheap.
+		textContentPendingIdx: index("prompt_runs_text_content_pending_idx")
+			.on(table.createdAt)
+			.where(sql`${table.textContent} IS NULL`),
 		promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		createdAtIdx: index("prompt_runs_created_at_idx").on(table.createdAt),
 		webSearchCreatedAtIdx: index("prompt_runs_web_search_created_at_idx").on(table.webSearchEnabled, table.createdAt),

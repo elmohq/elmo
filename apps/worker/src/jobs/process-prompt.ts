@@ -16,6 +16,7 @@ import {
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import { analyzeMentions } from "@workspace/lib/mentions";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
+import { responseSearchVector, storableResponseText } from "@workspace/lib/response-search";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
@@ -207,10 +208,12 @@ async function savePromptRun(
 	version: string,
 	webSearchEnabled: boolean,
 	rawOutput: unknown,
+	textContent: string,
 	webQueries: string[],
 	brandMentioned: boolean,
 	competitorsMentioned: string[],
 ): Promise<{ id: string; createdAt: Date }> {
+	const storedText = storableResponseText(textContent);
 	const [result] = await db
 		.insert(promptRuns)
 		.values({
@@ -221,6 +224,8 @@ async function savePromptRun(
 			version,
 			webSearchEnabled,
 			rawOutput,
+			textContent: storedText,
+			searchVector: responseSearchVector(storedText),
 			webQueries,
 			brandMentioned,
 			competitorsMentioned,
@@ -335,6 +340,7 @@ async function runModelIteration({
 			recordedVersion,
 			config.webSearch,
 			rawOutput,
+			safeTextContent,
 			webQueries,
 			brandMentioned,
 			competitorsMentioned,
