@@ -30,6 +30,7 @@
 		"./onboarding": "./src/onboarding/index.ts",
 		"./mentions": "./src/mentions.ts",
 		"./tag-utils": "./src/tag-utils.ts",
+		"./prompt-type": "./src/prompt-type.ts",
 		"./bulk-prompts": "./src/bulk-prompts.ts",
 		"./website-excerpt": "./src/website-excerpt.ts",
 		"./report-metrics": "./src/report-metrics.ts",
