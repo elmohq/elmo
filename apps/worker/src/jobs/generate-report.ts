@@ -13,7 +13,7 @@ export interface GenerateReportData extends ReportJobData {}
 export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promise<void> {
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
-		const { reportId, brandName, brandWebsite, manualPrompts } = job.data;
+		const { reportId, brandName, brandAliases, brandWebsite, manualPrompts } = job.data;
 
 		console.log(`Generating report ${reportId} for ${brandName}`);
 
@@ -34,6 +34,7 @@ export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promis
 			data: {
 				reportId,
 				brandName,
+				brandAliases,
 				brandWebsite,
 				manualPrompts,
 			},
