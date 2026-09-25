@@ -54,25 +54,34 @@ export function getEffectiveBrandedStatus(systemTags: string[], userTags: string
 	};
 }
 
-export function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
+export function isPromptBranded(
+	promptValue: string,
+	brandName: string,
+	brandWebsite: string,
+	aliases: readonly string[] = [],
+): boolean {
 	const promptLower = promptValue.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
+	const names = [brandName, ...aliases].map((name) => name.trim().toLowerCase()).filter(Boolean);
+	if (names.some((name) => promptLower.includes(name))) return true;
 
 	try {
 		const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
 		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
 		const domainWithoutTld = domain.split(".")[0];
 
-		return (
-			promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld)
-		);
+		return promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
 	} catch {
-		return promptLower.includes(brandNameLower);
+		return false;
 	}
 }
 
-export function computeSystemTags(promptValue: string, brandName: string, brandWebsite: string): string[] {
-	const isBranded = isPromptBranded(promptValue, brandName, brandWebsite);
+export function computeSystemTags(
+	promptValue: string,
+	brandName: string,
+	brandWebsite: string,
+	aliases: readonly string[] = [],
+): string[] {
+	const isBranded = isPromptBranded(promptValue, brandName, brandWebsite, aliases);
 	return [isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED];
 }
 

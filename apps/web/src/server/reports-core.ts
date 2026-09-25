@@ -23,13 +23,29 @@ export async function findReport(reportId: string): Promise<Report | undefined> 
 	return report;
 }
 
+/** Trimmed, case-insensitively deduped variants, excluding the brand name itself. */
+export function cleanBrandAliases(brandName: string, aliases: readonly string[] = []): string[] {
+	const seen = new Set([brandName.trim().toLowerCase()]);
+	const cleaned: string[] = [];
+	for (const alias of aliases) {
+		const trimmed = alias.trim();
+		const key = trimmed.toLowerCase();
+		if (!trimmed || seen.has(key)) continue;
+		seen.add(key);
+		cleaned.push(trimmed);
+	}
+	return cleaned;
+}
+
 export async function createReport(input: {
 	brandName: string;
+	brandAliases?: string[];
 	brandWebsite: string;
 	manualPrompts?: string[];
 }): Promise<Report> {
 	const newReport: NewReport = {
 		brandName: input.brandName.trim(),
+		brandAliases: cleanBrandAliases(input.brandName, input.brandAliases),
 		brandWebsite: cleanOnboardingUrl(input.brandWebsite),
 		status: "pending",
 	};
@@ -38,12 +54,13 @@ export async function createReport(input: {
 	if (!created) throw new ReportCreateError();
 
 	try {
-		const queued = await sendReportJob(
-			created.id,
-			created.brandName,
-			created.brandWebsite,
-			input.manualPrompts?.length ? input.manualPrompts : undefined,
-		);
+		const queued = await sendReportJob({
+			reportId: created.id,
+			brandName: created.brandName,
+			brandAliases: created.brandAliases,
+			brandWebsite: created.brandWebsite,
+			manualPrompts: input.manualPrompts?.length ? input.manualPrompts : undefined,
+		});
 		if (!queued) throw new ReportQueueError();
 	} catch {
 		await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, created.id));

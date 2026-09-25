@@ -180,6 +180,8 @@ export const reports = pgTable(
 	{
 		id: uuid("id").defaultRandom().primaryKey().notNull(),
 		brandName: text("brand_name").notNull(),
+		// Other names the brand goes by; any of them counts as a brand mention.
+		brandAliases: text("brand_aliases").array().notNull().default([]),
 		brandWebsite: text("brand_website").notNull(),
 		status: reportStatusEnum().notNull().default("pending"),
 		progress: integer("progress").notNull().default(0),
