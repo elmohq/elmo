@@ -1,4 +1,3 @@
-/** Every answer the AI engines gave to this brand's prompts, searchable by its text. */
 import { createFileRoute } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { useMemo, useState } from "react";
@@ -14,7 +13,6 @@ import { joinTags, splitTags, useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useResponseSearch } from "@/hooks/use-responses";
 import { useSiteIcons } from "@/hooks/use-site-icons";
-import { RESPONSES_PAGE_SIZE } from "@/lib/responses";
 import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/responses")({
@@ -29,8 +27,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/respons
 
 function ResponsesPage() {
 	const brandId = useBrandId();
-	const { model, lookback, tags, search } = useListFilters();
-	const query = search.trim();
+	const { model, lookback, tags, search: query } = useListFilters();
 
 	const { data: brand } = useBrand(brandId);
 	const { domainFor } = useSiteIcons(brandId);
@@ -104,12 +101,7 @@ function ResponsesPage() {
 						domainFor={domainFor}
 					/>
 				))}
-				<ListPagination
-					page={page}
-					pageSize={RESPONSES_PAGE_SIZE}
-					totalItems={data.matchedRuns}
-					onPageChange={setPage}
-				/>
+				<ListPagination page={page} pageSize={data.pageSize} totalItems={data.matchedRuns} onPageChange={setPage} />
 			</div>
 		);
 	}

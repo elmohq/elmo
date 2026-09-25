@@ -1,9 +1,7 @@
-/** Server functions for the Responses page. */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
-import { RESPONSES_PAGE_SIZE } from "@/lib/responses";
 import { resolveLookbackRange } from "@/lib/timezone-utils";
 import { type ResponseSearchResult, searchBrandResponses } from "@/server/responses-core";
 
@@ -30,12 +28,10 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			to: toDateStr,
 			timezone,
 			query: data.query,
-			filters: {
-				model: data.model,
-				tags: data.tags,
-				promptIds: data.prompts?.split(",").filter(Boolean),
-			},
-			limit: RESPONSES_PAGE_SIZE,
-			offset: data.page * RESPONSES_PAGE_SIZE,
+			model: data.model,
+			tags: data.tags,
+			promptIds: data.prompts?.split(",").filter(Boolean),
+			page: data.page,
+			pageSize: 15,
 		});
 	});

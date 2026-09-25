@@ -1297,7 +1297,6 @@ export async function getResponseCounts(
 	return { total: row?.total ?? 0, matched: row?.matched ?? 0, unindexed: row?.unindexed ?? false };
 }
 
-/** A page of matching runs, newest first. */
 export async function getResponseMatches(
 	scope: ResponseSearchScope,
 	limit: number,

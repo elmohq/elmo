@@ -5,7 +5,7 @@
 import { db } from "@workspace/lib/db/db";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
 import { extractTextContent } from "@workspace/lib/text-extraction";
-import { and, asc, eq, getTableColumns } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 
@@ -73,9 +73,8 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 
 /** Addressed through its prompt, so a run id cannot be read under another. */
 export async function findRunDetail(promptId: string, runId: string): Promise<RunDetail | null> {
-	const { searchVector: _searchVector, ...columns } = getTableColumns(promptRuns);
 	const [run] = await db
-		.select(columns)
+		.select()
 		.from(promptRuns)
 		.where(and(eq(promptRuns.id, runId), eq(promptRuns.promptId, promptId)))
 		.limit(1);

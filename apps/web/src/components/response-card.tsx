@@ -23,7 +23,6 @@ const formatDate = (value: Date | string) => new Date(value).toLocaleString(unde
 const formatRawOutput = (rawOutput: unknown) =>
 	typeof rawOutput === "string" ? rawOutput : JSON.stringify(rawOutput, null, 2);
 
-/** One engine's answer to one prompt run, with what it searched for and whom it named. */
 export function ResponseCard({
 	run,
 	text,
@@ -33,7 +32,6 @@ export function ResponseCard({
 }: {
 	run: ResponseCardRun;
 	text: string;
-	/** Shown above the run details where the list mixes prompts. */
 	prompt?: ReactNode;
 	brandName?: string;
 	domainFor: (name: string) => string | undefined;

@@ -5,7 +5,6 @@
  */
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { getResponseCounts, getResponseMatches, type ResponseSearchScope } from "@/lib/postgres-read";
-import type { AnalyticsFilters } from "@/server/analytics-core";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 export interface ResponseMatch {
@@ -28,6 +27,7 @@ export interface ResponseSearchResult {
 	totalRuns: number;
 	matchedRuns: number;
 	matches: ResponseMatch[];
+	pageSize: number;
 	/** True while older runs in scope haven't been indexed yet, so they can't match a query. */
 	indexing: boolean;
 }
@@ -38,9 +38,11 @@ export interface ResponseSearchOptions {
 	to: string;
 	timezone: string;
 	query?: string;
-	filters?: Pick<AnalyticsFilters, "model" | "tags"> & { promptIds?: string[] };
-	limit: number;
-	offset: number;
+	model?: string;
+	tags?: string;
+	promptIds?: string[];
+	page: number;
+	pageSize: number;
 }
 
 export async function searchBrandResponses(
@@ -48,8 +50,8 @@ export async function searchBrandResponses(
 	options: ResponseSearchOptions,
 ): Promise<ResponseSearchResult> {
 	const query = options.query?.trim() || undefined;
-	const picked = options.filters?.promptIds?.length ? new Set(options.filters.promptIds) : null;
-	const prompts = (await resolveFilteredPrompts(brandId, { tags: options.filters?.tags })).filter(
+	const picked = options.promptIds?.length ? new Set(options.promptIds) : null;
+	const prompts = (await resolveFilteredPrompts(brandId, { tags: options.tags })).filter(
 		(prompt) => !picked || picked.has(prompt.id),
 	);
 	const promptValues = new Map(prompts.map((prompt) => [prompt.id, prompt.value]));
@@ -59,13 +61,13 @@ export async function searchBrandResponses(
 		toDate: options.to,
 		timezone: options.timezone,
 		promptIds: prompts.map((prompt) => prompt.id),
-		model: options.filters?.model,
+		model: options.model,
 		query,
 	};
 
 	const [counts, rows] = await Promise.all([
 		getResponseCounts(scope),
-		getResponseMatches(scope, options.limit, options.offset),
+		getResponseMatches(scope, options.pageSize, options.page * options.pageSize),
 	]);
 
 	return {
@@ -73,6 +75,7 @@ export async function searchBrandResponses(
 		totalRuns: counts.total,
 		matchedRuns: counts.matched,
 		indexing: counts.unindexed,
+		pageSize: options.pageSize,
 		matches: rows.map((row) => ({
 			id: row.id,
 			promptId: row.prompt_id,

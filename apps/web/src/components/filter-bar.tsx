@@ -374,7 +374,6 @@ export function FilterBar({
 	availableTags: readonly string[];
 	trackedTargets: TrackedTarget[];
 	showSearch: boolean;
-	/** The search box filters prompts unless a page gives it another meaning. */
 	searchPlaceholder?: string;
 	showModelSelector: boolean;
 	/** Only passed by pages that filter a list; omit on pages with a single aggregate view (e.g. Citations). */
