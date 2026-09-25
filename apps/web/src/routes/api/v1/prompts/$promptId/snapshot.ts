@@ -76,7 +76,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					const competitorsList = await db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId));
 
 					const brandDomains = new Set(
-						[extractDomain(brand.website), ...(brand.additionalDomains || []).map(extractDomain)].filter(Boolean),
+						[brand.domain, ...(brand.additionalDomains || []).map(extractDomain)].filter(Boolean),
 					);
 					const competitorDomains = new Set(
 						competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),

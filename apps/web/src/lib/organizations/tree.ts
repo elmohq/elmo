@@ -9,7 +9,7 @@ interface RowBase {
 }
 
 export type OrganizationRow =
-	| (RowBase & { kind: "brand"; id: string; website: string })
+	| (RowBase & { kind: "brand"; id: string; domain: string })
 	| (RowBase & { kind: "new-brand" })
 	| (RowBase & { kind: "set-up" });
 
@@ -25,7 +25,7 @@ export function organizationTree(organization: OrganizationSummary): Organizatio
 		link: { to: "/app/org/$org/brand/$brand", params: brandLinkParams(organization, brand) },
 		label: brand.name,
 		id: brand.id,
-		website: brand.website,
+		domain: brand.domain,
 	}));
 
 	const params = orgLinkParams(organization);

@@ -41,7 +41,7 @@ const analyzeStatusKey = (brandId: string) => ["analyze-brand", "status", brandI
 
 interface WizardData {
 	brandName: string;
-	website: string;
+	domain: string;
 	additionalDomains: string[];
 	aliases: string[];
 	competitors: CompetitorEntry[];
@@ -90,12 +90,17 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const [isSaving, setIsSaving] = useState(false);
 	const [data, setData] = useState<WizardData>({
 		brandName: "",
-		website: "",
+		domain: "",
 		additionalDomains: [],
 		aliases: [],
 		competitors: [],
 		prompts: [],
 	});
+
+	// Only feeds the analysis, so a sub-brand can be researched from its own
+	// section of a larger site; the brand itself only ever stores the domain.
+	const [analysisUrl, setAnalysisUrl] = useState<string | null>(null);
+	const pageToAnalyze = analysisUrl ?? (brand?.domain ? `https://${brand.domain}` : "");
 
 	const brandId = brand?.id;
 
@@ -137,13 +142,14 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	});
 
 	const handleAnalyze = useCallback(() => {
-		if (!brand?.website || !brand?.id) return;
+		const website = pageToAnalyze.trim();
+		if (!website || !brand?.id) return;
 		setError(null);
 		// Clear any stale status from a previous run before we start polling.
 		queryClient.removeQueries({ queryKey: analyzeStatusKey(brand.id) });
 		setPhase("analyzing");
-		enqueueAnalysis({ brandId: brand.id, website: brand.website, brandName: brand.name });
-	}, [brand?.website, brand?.id, brand?.name, queryClient, enqueueAnalysis]);
+		enqueueAnalysis({ brandId: brand.id, website, brandName: brand.name });
+	}, [pageToAnalyze, brand?.id, brand?.name, queryClient, enqueueAnalysis]);
 
 	// React to status transitions while analyzing.
 	const statusData = statusQuery.data;
@@ -159,7 +165,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			const suggestion = statusData.suggestion;
 			setData({
 				brandName: suggestion.brandName || brand?.name || "",
-				website: brand?.website || suggestion.website || "",
+				domain: brand?.domain || suggestion.website || "",
 				additionalDomains: suggestion.additionalDomains,
 				aliases: suggestion.aliases,
 				competitors: suggestion.competitors.map((c) =>
@@ -181,7 +187,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			});
 			if (brandId) queryClient.removeQueries({ queryKey: analyzeStatusKey(brandId) });
 		}
-	}, [phase, statusData, brandId, brand?.name, brand?.website, queryClient]);
+	}, [phase, statusData, brandId, brand?.name, brand?.domain, queryClient]);
 
 	// Give up on a stuck analysis instead of polling forever.
 	useEffect(() => {
@@ -194,7 +200,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	}, [phase, stopAnalyzing]);
 
 	const updateBrandName = useCallback((brandName: string) => setData((p) => ({ ...p, brandName })), []);
-	const updateWebsite = useCallback((website: string) => setData((p) => ({ ...p, website })), []);
+	const updateDomain = useCallback((domain: string) => setData((p) => ({ ...p, domain })), []);
 	const updateAliases = useCallback((aliases: string[]) => setData((p) => ({ ...p, aliases })), []);
 	const updateAdditionalDomains = useCallback(
 		(additionalDomains: string[]) => setData((p) => ({ ...p, additionalDomains })),
@@ -232,7 +238,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				data: {
 					brandId: brand.id,
 					brandName: data.brandName.trim() || brand.name,
-					website: data.website.trim() || brand.website,
+					domain: data.domain.trim() || brand.domain,
 					additionalDomains: data.additionalDomains,
 					aliases: data.aliases,
 					competitors: competitorsPayload,
@@ -266,9 +272,19 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		return (
 			<div className="max-w-2xl mx-auto space-y-3">
 				<p className="text-sm text-muted-foreground">
-					We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors, additional
-					domains/aliases, and a starter set of AI prompts to track.
+					We'll analyze this page using web search to suggest competitors, additional domains/aliases, and a starter set
+					of AI prompts to track. Point it at a specific section to analyze a sub-brand.
 				</p>
+				<div>
+					<p className="text-xs text-muted-foreground">Page to analyze</p>
+					<Input
+						type="url"
+						value={pageToAnalyze}
+						onChange={(e) => setAnalysisUrl(e.target.value)}
+						placeholder="https://example.com"
+						disabled={phase === "analyzing"}
+					/>
+				</div>
 				{error && (
 					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
 						<AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
@@ -278,7 +294,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				<div className="flex items-center gap-2">
 					<Button
 						onClick={handleAnalyze}
-						disabled={phase === "analyzing"}
+						disabled={phase === "analyzing" || !pageToAnalyze.trim()}
 						className="flex items-center gap-2 cursor-pointer"
 					>
 						{phase === "analyzing" ? (
@@ -314,13 +330,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						<Input value={data.brandName} onChange={(e) => updateBrandName(e.target.value)} placeholder="Brand name" />
 					</div>
 					<div>
-						<p className="text-xs text-muted-foreground">Website URL</p>
-						<Input
-							type="url"
-							value={data.website}
-							onChange={(e) => updateWebsite(e.target.value)}
-							placeholder="https://example.com"
-						/>
+						<p className="text-xs text-muted-foreground">Domain</p>
+						<Input value={data.domain} onChange={(e) => updateDomain(e.target.value)} placeholder="example.com" />
 					</div>
 					<div>
 						<p className="text-xs text-muted-foreground">Additional domains</p>

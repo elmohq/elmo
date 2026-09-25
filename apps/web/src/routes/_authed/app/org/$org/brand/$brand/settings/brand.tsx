@@ -21,7 +21,7 @@ import { updateBrandFn } from "@/server/brands";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/brand")({
 	staticData: { crumb: "Brand" },
-	head: pageHead({ title: "Brand Settings", description: "Manage your brand name and website." }),
+	head: pageHead({ title: "Brand Settings", description: "Manage your brand name and domains." }),
 	component: BrandSettingsPage,
 });
 
@@ -88,7 +88,7 @@ function BrandSettingsPage() {
 
 		try {
 			const name = formData.get("name") as string;
-			const website = formData.get("website") as string;
+			const domain = formData.get("domain") as string;
 
 			const nextSlug = normalizeSlug(slug);
 			const slugMoved = nextSlug !== currentSlug;
@@ -96,7 +96,7 @@ function BrandSettingsPage() {
 				data: {
 					brandId: brand.id,
 					name,
-					website,
+					domain,
 					...(slugMoved && { slug: nextSlug }),
 					additionalDomains,
 					aliases,
@@ -130,7 +130,7 @@ function BrandSettingsPage() {
 		<div className="space-y-6 max-w-2xl">
 			<div>
 				<h1 className="text-3xl font-bold">Brand</h1>
-				<p className="text-muted-foreground">Manage your brand name and website</p>
+				<p className="text-muted-foreground">Manage your brand name and domains</p>
 			</div>
 
 			<form action={handleSubmit} className="space-y-6">
@@ -159,17 +159,17 @@ function BrandSettingsPage() {
 					/>
 
 					<div className="space-y-2">
-						<Label htmlFor="website">Website</Label>
+						<Label htmlFor="domain">Domain</Label>
 						<Input
-							id="website"
-							name="website"
+							id="domain"
+							name="domain"
 							type="text"
 							placeholder="example.com"
-							defaultValue={brand.website}
+							defaultValue={brand.domain}
 							required
 							disabled={isSubmitting}
 						/>
-						<p className="text-xs text-muted-foreground">Your brand&apos;s primary website</p>
+						<p className="text-xs text-muted-foreground">Your brand&apos;s primary domain</p>
 					</div>
 
 					<div className="space-y-2">

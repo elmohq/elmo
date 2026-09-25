@@ -20,7 +20,7 @@ const BASE_ROUTE_CONTEXT: Record<string, unknown> = {
 		slug: "mock-organization",
 		name: "Acme",
 		brandCreation: { kind: "allowed" },
-		brands: [{ id: "mock-brand-id", slug: null, name: "Acme Corp", website: "https://acme.com", onboarded: true }],
+		brands: [{ id: "mock-brand-id", slug: null, name: "Acme Corp", domain: "acme.com", onboarded: true }],
 	},
 };
 

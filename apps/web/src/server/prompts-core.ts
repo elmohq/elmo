@@ -69,7 +69,7 @@ export type UpdatePromptInput = z.infer<typeof updatePromptInputSchema>;
 export interface PromptBrand {
 	id: string;
 	name: string;
-	website: string;
+	domain: string;
 	organizationId: string;
 }
 
@@ -159,7 +159,7 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 		value: prompt.value,
 		enabled: prompt.enabled ?? true,
 		tags: sanitizeUserTags(prompt.tags ?? []),
-		systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+		systemTags: computeSystemTags(prompt.value, brand.name, brand.domain),
 		premiumModels: selectPremiumModels(prompt.premiumModels),
 	}));
 
@@ -188,13 +188,13 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 
 function promptUpdateData(
 	input: UpdatePromptInput,
-	brand: Pick<PromptBrand, "name" | "website">,
+	brand: Pick<PromptBrand, "name" | "domain">,
 	nextPremium: string[],
 ): Partial<typeof prompts.$inferInsert> {
 	const update: Partial<typeof prompts.$inferInsert> = {};
 	if (input.value !== undefined) {
 		update.value = input.value;
-		update.systemTags = computeSystemTags(input.value, brand.name, brand.website);
+		update.systemTags = computeSystemTags(input.value, brand.name, brand.domain);
 	}
 	if (input.enabled !== undefined) update.enabled = input.enabled;
 	if (input.tags !== undefined) update.tags = sanitizeUserTags(input.tags);

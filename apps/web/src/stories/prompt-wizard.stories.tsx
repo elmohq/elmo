@@ -53,7 +53,7 @@ const RICH_SUGGESTION: OnboardingSuggestion = {
 const MOCK_BRAND = {
 	id: "mock-brand-id",
 	name: "Acme",
-	website: "https://acme.com",
+	domain: "acme.com",
 	prompts: [],
 	competitors: [],
 };
