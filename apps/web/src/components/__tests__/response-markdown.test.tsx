@@ -108,3 +108,27 @@ describe("answer rendering across providers", () => {
 		expect(html).not.toContain("tracker.example");
 	});
 });
+
+describe("ResponseMarkdown search highlights", () => {
+	const renderWith = (markdown: string, highlight?: string) =>
+		renderToStaticMarkup(<ResponseMarkdown highlight={highlight}>{markdown}</ResponseMarkdown>);
+
+	it("marks every match regardless of case, including inside formatting", () => {
+		const html = renderWith("**Acme** beats acme-lite and ACME Pro.", "acme");
+
+		expect(html.match(/<mark /g)).toHaveLength(3);
+		expect(html).toMatch(/<strong><mark [^>]*>Acme<\/mark><\/strong>/);
+		expect(html).toMatch(/<mark [^>]*>ACME<\/mark> Pro/);
+	});
+
+	it("marks link text without touching the link target", () => {
+		const html = renderWith("See [Acme](https://acme.com/acme).", "acme");
+
+		expect(html).toContain('href="https://acme.com/acme"');
+		expect(html).toMatch(/<mark [^>]*>Acme<\/mark><\/a>/);
+	});
+
+	it("marks nothing without a search", () => {
+		expect(renderWith("**Acme** beats acme-lite.")).not.toContain("<mark");
+	});
+});

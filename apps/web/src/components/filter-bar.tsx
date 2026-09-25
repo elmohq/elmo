@@ -365,6 +365,7 @@ export function FilterBar({
 	availableTags,
 	trackedTargets,
 	showSearch,
+	searchPlaceholder,
 	showModelSelector,
 	resultCount,
 	resultTotal,
@@ -373,6 +374,7 @@ export function FilterBar({
 	availableTags: readonly string[];
 	trackedTargets: TrackedTarget[];
 	showSearch: boolean;
+	searchPlaceholder?: string;
 	showModelSelector: boolean;
 	/** Only passed by pages that filter a list; omit on pages with a single aggregate view (e.g. Citations). */
 	resultCount?: number;
@@ -391,7 +393,7 @@ export function FilterBar({
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />
 			</div>
-			{showSearch && <SearchInput />}
+			{showSearch && <SearchInput placeholder={searchPlaceholder} />}
 		</div>
 	);
 }
