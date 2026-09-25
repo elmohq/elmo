@@ -1,7 +1,7 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { brands, competitors, promptRuns, prompts } from "@workspace/lib/db/schema";
 import {
 	assertAllowed,
 	assertPromptSaveAllowed,
@@ -9,7 +9,8 @@ import {
 	promptSaveDelta,
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
-import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { matchesPromptFilter, mentionsBrand, parsePromptFilter } from "@workspace/lib/prompt-type";
+import { sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
@@ -30,7 +31,7 @@ import {
 } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
-import { parseTagFilter } from "@/server/prompt-resolution";
+import { loadBrandIdentity, loadTypedPrompts, type ResolvedPrompt } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 // Server Functions
 // ============================================================================
@@ -50,6 +51,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 		if (!prompt) {
 			return null;
 		}
+		const brand = await loadBrandIdentity(data.brandId);
 
 		let nextRunAt: string | null = null;
 		try {
@@ -76,8 +78,8 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			brandId: prompt.brandId,
 			value: prompt.value,
 			enabled: prompt.enabled,
-			tags: prompt.tags || [],
-			systemTags: prompt.systemTags || [],
+			tags: prompt.tags,
+			branded: mentionsBrand(prompt.value, brand),
 			nextRunAt,
 		};
 	});
@@ -88,20 +90,10 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 type PromptSummaryStat = Awaited<ReturnType<typeof getPromptsSummary>>[number];
 
 function summarizePrompt(
-	prompt: {
-		id: string;
-		value: string;
-		enabled: boolean;
-		createdAt: Date;
-		tags: string[] | null;
-		systemTags: string[] | null;
-	},
+	prompt: ResolvedPrompt,
 	stats: PromptSummaryStat | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
 ) {
-	const userTags = prompt.tags || [];
-	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
-	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
 	const totalRuns = Number(stats?.total_runs ?? 0);
 	// The query answers in ratios so the API can publish them unrounded; the
 	// dashboard renders percentages, and this is where it rounds.
@@ -111,8 +103,6 @@ function summarizePrompt(
 	return {
 		id: prompt.id,
 		value: prompt.value,
-		enabled: prompt.enabled,
-		createdAt: prompt.createdAt,
 		totalRuns,
 		brandMentionRate,
 		competitorMentionRate,
@@ -120,9 +110,8 @@ function summarizePrompt(
 		hasVisibilityData: totalRuns > 0 && (brandMentionRate > 0 || competitorMentionRate > 0),
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
-		// Exactly one effective system tag, so branded and unbranded filters use
-		// the same status the UI shows.
-		tags: userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag],
+		tags: prompt.tags,
+		branded: prompt.branded,
 	};
 }
 
@@ -146,17 +135,14 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			type: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		await requireBrandSession(data.brandId);
 
-		const allPrompts = await db
-			.select()
-			.from(prompts)
-			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)))
-			.orderBy(desc(prompts.createdAt));
+		const allPrompts = await loadTypedPrompts(data.brandId);
 
 		const promptIds = allPrompts.map((p) => p.id);
 
@@ -177,29 +163,16 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const summaryMap = new Map(summaryData.map((s) => [s.prompt_id, s]));
 		const firstEvalMap = new Map(firstEvaluatedData.map((f) => [f.prompt_id, f.first_evaluated_at]));
 
-		// Collect all user tags (system tags are added separately)
-		const allUserTags = new Set<string>();
-		const tagFilter = parseTagFilter(data.tags);
-
-		const promptSummaries = allPrompts.map((p) => {
-			for (const tag of p.tags || []) allUserTags.add(tag);
-			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
-		});
-
-		const filteredPrompts =
-			tagFilter.length > 0 ? promptSummaries.filter((p) => tagFilter.some((t) => p.tags.includes(t))) : promptSummaries;
-		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
+		const filter = parsePromptFilter(data);
+		const promptSummaries = allPrompts
+			.filter((p) => matchesPromptFilter(p, filter))
+			.map((p) => summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id)))
+			.sort(byVisibilityThenName);
 
 		return {
-			prompts: sortedPrompts,
-			totalPrompts: promptSummaries.length,
-			availableTags: [
-				SYSTEM_TAGS.BRANDED,
-				SYSTEM_TAGS.UNBRANDED,
-				...Array.from(allUserTags)
-					.filter((tag) => tag.toLowerCase() !== SYSTEM_TAGS.BRANDED && tag.toLowerCase() !== SYSTEM_TAGS.UNBRANDED)
-					.sort(),
-			],
+			prompts: promptSummaries,
+			totalPrompts: allPrompts.length,
+			availableTags: [...new Set(allPrompts.flatMap((p) => p.tags))].sort(),
 		};
 	});
 
@@ -502,8 +475,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					.set({
 						value: prompt.value,
 						enabled: prompt.enabled,
-						tags: prompt.tags || [],
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+						tags: sanitizeUserTags(prompt.tags ?? []),
 						premiumModels: after.premiumModels,
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
@@ -515,8 +487,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						brandId: data.brandId,
 						value: prompt.value,
 						enabled: prompt.enabled,
-						tags: prompt.tags || [],
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+						tags: sanitizeUserTags(prompt.tags ?? []),
 						premiumModels: after.premiumModels,
 					})),
 				);

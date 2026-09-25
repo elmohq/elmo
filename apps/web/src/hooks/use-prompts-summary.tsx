@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { PromptType } from "@workspace/lib/prompt-type";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
 import { getPromptsSummaryFn } from "@/server/prompts";
@@ -8,6 +9,7 @@ export interface PromptsSummaryFilters {
 	webSearchEnabled?: boolean;
 	model?: string;
 	tags?: string[];
+	type?: PromptType;
 }
 
 export const promptsSummaryKeys = {
@@ -28,6 +30,7 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 					webSearchEnabled: filters?.webSearchEnabled?.toString(),
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					type: filters?.type,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

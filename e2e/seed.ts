@@ -136,8 +136,8 @@ async function seedBillingTenants(client: pg.Client): Promise<void> {
 
   for (let i = 0; i < CAPPED_PROMPT_COUNT; i++) {
     await client.query(
-      `INSERT INTO prompts (brand_id, value, enabled, tags, system_tags, created_at, updated_at)
-       VALUES ($1, $2, true, '{}', '{}', NOW(), NOW())`,
+      `INSERT INTO prompts (brand_id, value, enabled, tags, created_at, updated_at)
+       VALUES ($1, $2, true, '{}', NOW(), NOW())`,
       [CAPPED_BRAND_ID, `Capped tenant prompt ${i + 1}`],
     );
   }
@@ -246,39 +246,34 @@ async function seed(connectionString: string) {
         id: PROMPT_IDS.branded1,
         value: "What is the best AI monitoring tool for tracking brand visibility?",
         tags: ["monitoring"],
-        systemTags: ["branded"],
       },
       {
         id: PROMPT_IDS.branded2,
         value: "Compare AI visibility platforms and their features",
         tags: ["comparison"],
-        systemTags: ["branded"],
       },
       {
         id: PROMPT_IDS.unbranded1,
         value: "How do I optimize content for LLM citations?",
         tags: ["optimization"],
-        systemTags: ["unbranded"],
       },
       {
         id: PROMPT_IDS.branded3,
         value: "What tools can track AI search results and brand mentions?",
         tags: ["monitoring", "tools"],
-        systemTags: ["branded"],
       },
       {
         id: PROMPT_IDS.unbranded2,
         value: "Best practices for generative AI SEO and content strategy",
         tags: ["seo"],
-        systemTags: ["unbranded"],
       },
     ];
 
     for (const p of promptData) {
       await client.query(
-        `INSERT INTO prompts (id, brand_id, value, enabled, tags, system_tags, created_at, updated_at)
-         VALUES ($1, $2, $3, true, $4, $5, NOW(), NOW())`,
-        [p.id, TEST_BRAND_ID, p.value, p.tags, p.systemTags]
+        `INSERT INTO prompts (id, brand_id, value, enabled, tags, created_at, updated_at)
+         VALUES ($1, $2, $3, true, $4, NOW(), NOW())`,
+        [p.id, TEST_BRAND_ID, p.value, p.tags]
       );
     }
     console.log(`  Created ${promptData.length} prompts`);
@@ -516,8 +511,8 @@ async function seed(connectionString: string) {
         { name: "Competitor Beta", domain: "competitor-beta.com" },
       ],
       prompts: [
-        { brandId: REPORT_IDS.completed, value: "What is the best AI monitoring tool for tracking brand visibility?", enabled: true, tags: [], systemTags: ["branded"] },
-        { brandId: REPORT_IDS.completed, value: "Compare AI visibility platforms and their features", enabled: true, tags: [], systemTags: ["unbranded"] },
+        { brandId: REPORT_IDS.completed, value: "What is the best AI monitoring tool for tracking brand visibility?", enabled: true, tags: [] },
+        { brandId: REPORT_IDS.completed, value: "Compare AI visibility platforms and their features", enabled: true, tags: [] },
       ],
       promptRuns: [
         {
@@ -576,8 +571,8 @@ async function seed(connectionString: string) {
     ];
     for (const p of nikePrompts) {
       await client.query(
-        `INSERT INTO prompts (id, brand_id, value, enabled, tags, system_tags, created_at, updated_at)
-         VALUES ($1, $2, $3, true, $4, '{}', NOW(), NOW())`,
+        `INSERT INTO prompts (id, brand_id, value, enabled, tags, created_at, updated_at)
+         VALUES ($1, $2, $3, true, $4, NOW(), NOW())`,
         [p.id, NIKE_BRAND_ID, p.value, p.tags],
       );
     }

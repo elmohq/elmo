@@ -58,14 +58,20 @@
 						"items": {
 							"type": "string"
 						},
-						"description": "User-defined tags for categorizing this prompt"
+						"description": "User-defined tags for categorizing this prompt. Never includes `branded` or `unbranded`; that is `branded`, which is derived."
+					},
+					"branded": {
+						"type": "boolean",
+						"description": "Whether the prompt names the brand, checked against the brand's current name, aliases, and domains on every read."
 					},
 					"systemTags": {
 						"type": "array",
 						"items": {
-							"type": "string"
+							"type": "string",
+							"enum": ["branded", "unbranded"]
 						},
-						"description": "Auto-computed system tags (e.g., 'branded', 'unbranded'). Read-only."
+						"deprecated": true,
+						"description": "Always `[\"branded\"]` or `[\"unbranded\"]`, matching `branded`. Read `branded` instead."
 					},
 					"createdAt": {
 						"type": "string",
@@ -91,6 +97,7 @@
 					"value",
 					"enabled",
 					"tags",
+					"branded",
 					"systemTags",
 					"createdAt",
 					"updatedAt",
@@ -114,7 +121,7 @@
 						"items": {
 							"type": "string"
 						},
-						"description": "User-defined tags for categorizing this prompt"
+						"description": "User-defined tags for categorizing this prompt. `branded` and `unbranded` are dropped; whether a prompt is branded comes from the brand's name, aliases, and domains."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -137,7 +144,7 @@
 						"items": {
 							"type": "string"
 						},
-						"description": "User-defined tags for categorizing this prompt"
+						"description": "User-defined tags for categorizing this prompt. `branded` and `unbranded` are dropped; whether a prompt is branded comes from the brand's name, aliases, and domains."
 					},
 					"premiumModels": {
 						"type": "array",
@@ -1347,6 +1354,10 @@
 							"type": "string"
 						}
 					},
+					"branded": {
+						"type": "boolean",
+						"description": "Whether the prompt names the brand."
+					},
 					"totalRuns": {
 						"type": "integer"
 					},
@@ -1375,6 +1386,7 @@
 					"promptId",
 					"value",
 					"tags",
+					"branded",
 					"totalRuns",
 					"brandMentionRate",
 					"competitorMentionRate",
@@ -1555,13 +1567,9 @@
 					"promptCount": {
 						"type": "integer",
 						"description": "Prompts in this brand carrying the tag."
-					},
-					"system": {
-						"type": "boolean",
-						"description": "True for `branded` and `unbranded`, which Elmo computes from the prompt text. A system tag always appears here; applying it to a prompt as a user tag overrides the computed classification rather than creating a new tag."
 					}
 				},
-				"required": ["name", "promptCount", "system"]
+				"required": ["name", "promptCount"]
 			},
 			"TagList": {
 				"type": "object",
@@ -1574,7 +1582,7 @@
 						"items": {
 							"$ref": "#/components/schemas/Tag"
 						},
-						"description": "System tags first, then user tags alphabetically — the order the dashboard's filter shows."
+						"description": "Alphabetical. Branded and unbranded are the prompt type, not tags, and never appear here."
 					}
 				},
 				"required": ["brandId", "data"]
@@ -2020,10 +2028,20 @@
 			"TagsFilter": {
 				"name": "tags",
 				"in": "query",
-				"description": "Comma-separated prompt tags. Only prompts carrying at least one of them are counted.",
+				"description": "Comma-separated prompt tags. Only prompts carrying at least one of them are counted. A `branded` or `unbranded` entry is read as the `type` filter.",
 				"required": false,
 				"schema": {
 					"type": "string"
+				}
+			},
+			"TypeFilter": {
+				"name": "type",
+				"in": "query",
+				"description": "`branded` for prompts that name the brand, `unbranded` for the rest. Combines with `tags`: a prompt must be of this type and carry one of the tags.",
+				"required": false,
+				"schema": {
+					"type": "string",
+					"enum": ["branded", "unbranded"]
 				}
 			}
 		},
@@ -2326,6 +2344,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TypeFilter"
 					}
 				],
 				"responses": {
@@ -2382,6 +2403,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TypeFilter"
 					}
 				],
 				"responses": {
@@ -2438,6 +2462,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TypeFilter"
 					}
 				],
 				"responses": {
@@ -2536,6 +2563,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TypeFilter"
 					}
 				],
 				"responses": {
@@ -2592,6 +2622,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TypeFilter"
 					}
 				],
 				"responses": {
@@ -3165,10 +3198,20 @@
 					{
 						"name": "tags",
 						"in": "query",
-						"description": "Comma-separated tags. A prompt matches if it carries any of them.",
+						"description": "Comma-separated tags. A prompt matches if it carries any of them. A `branded` or `unbranded` entry is read as the `type` filter.",
 						"required": false,
 						"schema": {
 							"type": "string"
+						}
+					},
+					{
+						"name": "type",
+						"in": "query",
+						"description": "`branded` for prompts that name their brand, `unbranded` for the rest.",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": ["branded", "unbranded"]
 						}
 					},
 					{

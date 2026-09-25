@@ -38,7 +38,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/query-f
 
 function QueryFanoutPage() {
 	const brandId = useBrandId();
-	const { model, lookback, tags } = useListFilters();
+	const { model, lookback, tags, type } = useListFilters();
 	const tab = Route.useSearch({ select: (s) => s.tab ?? "fanout" });
 	const navigate = Route.useNavigate();
 	const setTab = (next: FanoutTab) =>
@@ -58,6 +58,7 @@ function QueryFanoutPage() {
 	const { data, isLoading, error } = useQueryFanout(brandId, {
 		lookback,
 		tags,
+		type,
 		model: modelParam,
 	});
 

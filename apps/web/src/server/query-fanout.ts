@@ -50,6 +50,7 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			type: z.string().optional(),
 			search: z.string().optional(),
 			/** Scope to a single prompt (prompt-details Web Queries tab) — lists come back uncapped. */
 			promptId: z.string().optional(),
@@ -63,7 +64,7 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 		const analysis = await getBrandQueryFanout(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags, search: data.search },
+			{ model: data.model, tags: data.tags, type: data.type, search: data.search },
 			{ promptId: data.promptId },
 		);
 

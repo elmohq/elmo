@@ -8,7 +8,7 @@ import { z } from "zod";
 import { clampedPaging } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
-import { createPrompts, listPrompts } from "@/server/prompts-core";
+import { createPrompts, listPrompts, toPromptSummary } from "@/server/prompts-core";
 
 const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
@@ -31,6 +31,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 						brandId: searchParams.get("brandId") ?? undefined,
 						enabled: enabled === "true" ? true : enabled === "false" ? false : undefined,
 						tags: (searchParams.get("tags") ?? "").split(","),
+						type: searchParams.get("type") ?? undefined,
 						q: searchParams.get("q") ?? undefined,
 						limit,
 						offset,
@@ -55,7 +56,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					const [created] = await createPrompts(brand, {
 						prompts: [{ value: body.value, tags: body.tags, enabled: true }],
 					});
-					return created;
+					return toPromptSummary(created, brand);
 				},
 			}),
 		}),

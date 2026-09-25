@@ -41,6 +41,7 @@ function CitationsPage() {
 	} = useCitations(brandId, {
 		days,
 		tags: filters.tags.length > 0 ? filters.tags : undefined,
+		type: filters.type,
 		model: modelParam,
 	});
 

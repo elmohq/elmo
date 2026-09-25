@@ -7,7 +7,6 @@
 import { getModelMeta } from "@workspace/config/models";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import { generateDateRange } from "@/lib/chart-utils";
 import { rollUpCitationDomains, rollUpCitationUrls } from "@/lib/citation-rollup";
@@ -60,6 +59,8 @@ function windowInstants(window: AnalyticsWindow): { start: Date; end: Date } {
 export interface AnalyticsFilters {
 	model?: string;
 	tags?: string;
+	/** `branded` or `unbranded`. */
+	type?: string;
 	search?: string;
 }
 
@@ -77,12 +78,10 @@ export interface BrandVisibility {
 }
 
 async function resolveScope(brandId: string, filters: AnalyticsFilters) {
-	const resolved = await resolveFilteredPrompts(brandId, { tags: filters.tags, search: filters.search });
+	const resolved = await resolveFilteredPrompts(brandId, filters);
 	return {
 		promptIds: resolved.map((prompt) => prompt.id),
-		brandedPromptIds: resolved
-			.filter((prompt) => getEffectiveBrandedStatus(prompt.systemTags, prompt.tags).isBranded)
-			.map((prompt) => prompt.id),
+		brandedPromptIds: resolved.filter((prompt) => prompt.branded).map((prompt) => prompt.id),
 		prompts: resolved,
 	};
 }
@@ -412,6 +411,7 @@ export interface PromptPerformance {
 	promptId: string;
 	value: string;
 	tags: string[];
+	branded: boolean;
 	totalRuns: number;
 	brandMentionRate: number;
 	competitorMentionRate: number;
@@ -443,7 +443,8 @@ export async function getBrandPromptPerformance(
 		return {
 			promptId: prompt.id,
 			value: prompt.value,
-			tags: prompt.tags ?? [],
+			tags: prompt.tags,
+			branded: prompt.branded,
 			totalRuns: Number(stats?.total_runs ?? 0),
 			brandMentionRate: Number(stats?.brand_mention_rate ?? 0),
 			competitorMentionRate: Number(stats?.competitor_mention_rate ?? 0),

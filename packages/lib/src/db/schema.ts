@@ -77,7 +77,6 @@ export const prompts = pgTable(
 		 */
 		premiumModels: text("premium_models").array().notNull().default([]),
 		tags: text("tags").array().notNull().default([]),
-		systemTags: text("system_tags").array().notNull().default([]),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true })
 			.defaultNow()
@@ -242,13 +241,6 @@ export type NewCitationRecord = typeof citations.$inferInsert;
 
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
-
-export const SYSTEM_TAGS = {
-	BRANDED: "branded",
-	UNBRANDED: "unbranded",
-} as const;
-
-export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];
 
 /**
  * Cloud billing/entitlement state we own per organization (as opposed to the

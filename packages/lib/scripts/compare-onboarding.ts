@@ -34,8 +34,8 @@ import {
 	type OnboardingSuggestion,
 } from "../src/onboarding/analyze";
 import { RESEARCH_PROVIDER_PREFERENCE, type ResearchProviderId } from "../src/onboarding/llm";
+import { mentionsBrand } from "../src/prompt-type";
 import { getProvider } from "../src/providers";
-import { isPromptBranded } from "../src/tag-utils";
 
 type ProviderId = ResearchProviderId;
 
@@ -124,7 +124,7 @@ async function runProvider(providerId: ProviderId, ctx: AnalysisContext, timeout
 	const elapsedMs = Date.now() - start;
 	const suggestion = normalizeAnalysisResult(result.object, ctx);
 	const brandedCount = suggestion.suggestedPrompts.filter((p) =>
-		isPromptBranded(p.prompt, suggestion.brandName, suggestion.website),
+		mentionsBrand(p.prompt, { name: suggestion.brandName, website: suggestion.website, aliases: suggestion.aliases }),
 	).length;
 	return {
 		providerId,

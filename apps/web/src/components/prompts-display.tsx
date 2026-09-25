@@ -1,6 +1,7 @@
 import { IconEditCircle } from "@tabler/icons-react";
 import { Link, useSearch } from "@tanstack/react-router";
 import type { Competitor } from "@workspace/lib/db/schema";
+import type { PromptType } from "@workspace/lib/prompt-type";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card } from "@workspace/ui/components/card";
 import { cn } from "@workspace/ui/lib/utils";
@@ -53,7 +54,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 	const { data: brand } = useBrand(brandId);
 	const brandParams = useBrandParams();
 	const filters = useListFilters();
-	const { model, lookback, tags, search } = filters;
+	const { model, lookback, tags, type, search } = filters;
 	// `order` is this route's own search key (not a narrowing filter), so it
 	// rides outside `useListFilters` / `isFiltered`.
 	const order = useSearch({
@@ -76,6 +77,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 		lookback,
 		model: modelParam,
 		tags: tags.length > 0 ? tags : undefined,
+		type,
 	});
 
 	const availableTags = promptsSummary?.availableTags ?? [];
@@ -144,6 +146,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 				modelParam={modelParam}
 				searchQuery={search}
 				selectedTags={tags}
+				selectedType={type}
 				sortedPrompts={sortedPrompts}
 				availableIndividualModels={availableIndividualModels}
 			/>
@@ -162,6 +165,7 @@ function ChartSection({
 	modelParam,
 	searchQuery,
 	selectedTags,
+	selectedType,
 	sortedPrompts,
 	availableIndividualModels,
 }: {
@@ -171,6 +175,7 @@ function ChartSection({
 	modelParam: string | undefined;
 	searchQuery: string;
 	selectedTags: string[];
+	selectedType: PromptType | undefined;
 	sortedPrompts: { id: string; value: string; firstEvaluatedAt?: Date | string | null }[];
 	availableIndividualModels: string[];
 }) {
@@ -178,6 +183,7 @@ function ChartSection({
 		lookback,
 		model: modelParam,
 		tags: selectedTags.length > 0 ? selectedTags : undefined,
+		type: selectedType,
 		search: searchQuery || undefined,
 	});
 

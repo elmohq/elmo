@@ -4,9 +4,11 @@
  * Production-quality printable report (US Letter 8.5 x 11 in).
  * Uses Share of Voice as the primary metric with rich competitive analysis.
  */
+
 import { createFileRoute, notFound, useRouteContext } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import type { ClientConfig } from "@workspace/config/types";
+import { mentionsBrand } from "@workspace/lib/prompt-type";
 import {
 	analyzeByEngine,
 	analyzeCompetitorFrequency,
@@ -76,21 +78,6 @@ const loadReportData = createServerFn({ method: "GET" })
 		if (!hasReportAccess(session)) throw new Error("Not authorized");
 		return getReportByIdFn({ data: { reportId } });
 	});
-
-function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
-	const promptLower = promptValue.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
-	try {
-		const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
-		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
-		const domainWithoutTld = domain.split(".")[0];
-		return (
-			promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld)
-		);
-	} catch {
-		return promptLower.includes(brandNameLower);
-	}
-}
 
 type ReportRecord = NonNullable<Awaited<ReturnType<typeof loadReportData>>>;
 
@@ -281,7 +268,7 @@ function buildReportModel(report: ReportRecord) {
 
 	const selectedPrompts = selectRepresentativePrompts(promptSoVs, (id: string) => {
 		const p = promptMap.get(id);
-		return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite) : false;
+		return p ? mentionsBrand(p.value, { name: report.brandName, website: report.brandWebsite }) : false;
 	});
 
 	// Rich analysis

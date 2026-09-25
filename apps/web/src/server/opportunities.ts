@@ -32,7 +32,6 @@ import {
 	type PerPromptDailyCompetitorRow,
 	type PerPromptRunStats,
 } from "@/lib/postgres-read";
-import { isBrandedPrompt } from "@/lib/prompt-tags";
 import { resolveLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
@@ -383,9 +382,9 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 	const prompts = await resolveFilteredPrompts(brandId, {});
 	if (prompts.length === 0) return null;
 	const promptIds = prompts.map((p) => p.id);
-	const isBranded = new Map(prompts.map((p) => [p.id, isBrandedPrompt(p)]));
+	const isBranded = new Map(prompts.map((p) => [p.id, p.branded]));
 	const promptText = new Map(prompts.map((p) => [p.id, p.value]));
-	const tagsByPrompt = new Map(prompts.map((p) => [p.id, p.tags ?? []]));
+	const tagsByPrompt = new Map(prompts.map((p) => [p.id, p.tags]));
 
 	const { brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel } = await loadDigestData(
 		brandId,

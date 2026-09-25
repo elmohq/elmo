@@ -1,9 +1,9 @@
 /** Server functions for citation data. */
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { and, eq } from "drizzle-orm";
+import { brands, competitors } from "@workspace/lib/db/schema";
+import { matchesPromptFilter, parsePromptFilter } from "@workspace/lib/prompt-type";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
@@ -40,7 +40,7 @@ import {
 	type PerPromptCitationPageRow,
 	type PerPromptDailyCitationPageRow,
 } from "@/lib/postgres-read";
-import { parseTagFilter } from "@/server/prompt-resolution";
+import { loadTypedPrompts } from "@/server/prompt-resolution";
 
 type Classify = (domain: string, url: string, title?: string | null) => CitationCategory;
 
@@ -96,33 +96,6 @@ const MIN_COUNT_FOR_WHATS_CHANGED = 2;
 const DROP_PERCENT_THRESHOLD = 50;
 
 const WHATS_CHANGED_LIMIT = 10;
-
-/**
- * Prompt ids matching the tag filter. Branded/unbranded are derived rather than
- * stored, so they resolve through getEffectiveBrandedStatus; every other tag
- * matches against the prompt's own tags or its system tags.
- */
-function promptIdsMatchingTags(
-	allPrompts: { id: string; tags: string[] | null; systemTags: string[] | null }[],
-	tagFilter: string[],
-): string[] {
-	const wantsBranded = tagFilter.includes(SYSTEM_TAGS.BRANDED);
-	const wantsUnbranded = tagFilter.includes(SYSTEM_TAGS.UNBRANDED);
-	const userTagFilter = tagFilter.filter((tag) => tag !== SYSTEM_TAGS.BRANDED && tag !== SYSTEM_TAGS.UNBRANDED);
-
-	return allPrompts
-		.filter((prompt) => {
-			const systemTags = prompt.systemTags || [];
-			const userTags = prompt.tags || [];
-			if (wantsBranded || wantsUnbranded) {
-				const { isBranded } = getEffectiveBrandedStatus(systemTags, userTags);
-				if (isBranded ? wantsBranded : wantsUnbranded) return true;
-			}
-			const allTags = [...systemTags, ...userTags].map((tag) => tag.toLowerCase());
-			return userTagFilter.some((tag) => allTags.includes(tag));
-		})
-		.map((prompt) => prompt.id);
-}
 
 /**
  * Google search/shopping surfaces (Google AI Mode) are pulled OUT of the source
@@ -339,6 +312,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			days: z.number().optional().default(7),
 			tags: z.string().optional(),
+			type: z.string().optional(),
 			model: z.string().optional(),
 		}),
 	)
@@ -357,10 +331,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const [brandResult, competitorsList, allPrompts] = await Promise.all([
 			db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
 			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
-			db
-				.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
-				.from(prompts)
-				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+			loadTypedPrompts(data.brandId),
 		]);
 		const brand = brandResult[0];
 
@@ -370,18 +341,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
 		const competitorSummary = competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains }));
 
-		const userTags = new Set(allPrompts.flatMap((prompt) => prompt.tags || []));
-		const availableTags = [
-			SYSTEM_TAGS.BRANDED,
-			SYSTEM_TAGS.UNBRANDED,
-			...[...userTags]
-				.filter((tag) => tag.toLowerCase() !== SYSTEM_TAGS.BRANDED && tag.toLowerCase() !== SYSTEM_TAGS.UNBRANDED)
-				.sort(),
-		];
+		const availableTags = [...new Set(allPrompts.flatMap((prompt) => prompt.tags))].sort();
 
-		const tagFilter = parseTagFilter(data.tags);
-		const enabledPromptIds =
-			tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
+		const filter = parsePromptFilter(data);
+		const enabledPromptIds = allPrompts.filter((p) => matchesPromptFilter(p, filter)).map((p) => p.id);
 		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary);
 
 		const [urlStats, perPromptDailyPages, perPromptPages, prevUrlStats] = await Promise.all([

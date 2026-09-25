@@ -46,7 +46,7 @@ type PromptMetadata = {
 	value: string;
 	enabled: boolean;
 	tags: string[];
-	systemTags: string[];
+	branded: boolean;
 	nextRunAt?: string | null;
 };
 
@@ -106,9 +106,7 @@ function PromptHeader({
 	onLookbackChange: () => void;
 }) {
 	const brandParams = useBrandParams();
-	const systemTags = promptMeta?.systemTags || [];
 	const userTags = promptMeta?.tags || [];
-	const hasTags = systemTags.length > 0 || userTags.length > 0;
 
 	return (
 		<div className="pb-6 space-y-3">
@@ -161,16 +159,25 @@ function PromptHeader({
 						</>
 					)}
 
-					{hasTags && <span className="text-border">|</span>}
+					{promptMeta && <span className="text-border">|</span>}
 
-					{hasTags && (
+					{promptMeta && (
 						<div className="flex items-center gap-1.5">
 							<span className="text-muted-foreground">Tags:</span>
-							{systemTags.map((tag) => (
-								<Badge key={`sys-${tag}`} variant="secondary" className="text-xs capitalize font-normal">
-									{tag}
-								</Badge>
-							))}
+							<Tooltip>
+								<TooltipTrigger
+									render={
+										<Badge variant="secondary" className="text-xs font-normal cursor-help">
+											{promptMeta.branded ? "Branded" : "Unbranded"}
+										</Badge>
+									}
+								/>
+								<TooltipContent>
+									<p className="max-w-xs">
+										Whether the prompt names your brand, going by its name, aliases, and domains in brand settings.
+									</p>
+								</TooltipContent>
+							</Tooltip>
 							{userTags.map((tag) => (
 								<Badge key={`usr-${tag}`} variant="outline" className="text-xs capitalize font-normal">
 									{tag}

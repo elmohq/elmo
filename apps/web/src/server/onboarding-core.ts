@@ -8,7 +8,7 @@ import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
 import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
-import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
+import { sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { count, desc, eq, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
@@ -224,8 +224,6 @@ async function insertCompetitors(args: {
 
 async function insertPrompts(args: {
 	brandId: string;
-	brandName: string;
-	website: string;
 	source: { value: string; tags: string[]; enabled: boolean }[];
 	dedupeAgainstExisting: boolean;
 	conn?: DbConnection;
@@ -248,7 +246,6 @@ async function insertPrompts(args: {
 		value: string;
 		enabled: boolean;
 		tags: string[];
-		systemTags: string[];
 	}> = [];
 	for (const p of args.source) {
 		const value = p.value.trim();
@@ -260,8 +257,7 @@ async function insertPrompts(args: {
 			brandId: args.brandId,
 			value,
 			enabled: p.enabled,
-			tags: p.tags,
-			systemTags: computeSystemTags(value, args.brandName, args.website),
+			tags: sanitizeUserTags(p.tags),
 		});
 	}
 	if (rows.length === 0) return [];
@@ -319,11 +315,9 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 
 		return await insertPrompts({
 			brandId: input.id,
-			brandName: input.name,
-			website: formattedWebsite,
 			source: (input.prompts ?? []).map((p) => ({
 				value: p.value,
-				tags: sanitizeUserTags(p.tags ?? []),
+				tags: p.tags ?? [],
 				enabled: p.enabled ?? true,
 			})),
 			dedupeAgainstExisting: false,
@@ -395,11 +389,9 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 
 	const wizardPromptIds = await insertPrompts({
 		brandId: input.brandId,
-		brandName: existing.name,
-		website: existing.website,
 		source: (input.prompts ?? []).map((p) => ({
 			value: p.value,
-			tags: sanitizeUserTags(p.tags ?? []),
+			tags: p.tags ?? [],
 			enabled: p.enabled ?? true,
 		})),
 		dedupeAgainstExisting: true,
