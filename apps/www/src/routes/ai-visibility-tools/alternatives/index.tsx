@@ -15,7 +15,8 @@ const items = indexedCompetitors.map((c) => ({
 }));
 
 export const Route = createFileRoute("/ai-visibility-tools/alternatives/")({
-	head: () => ({
+	loader: () => ({ items }),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/")({
 				{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 				{ name: "Alternatives", path: "/ai-visibility-tools/alternatives" },
 			]),
-			itemListJsonLd(items),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: AlternativesHub,

@@ -22,9 +22,15 @@ import {
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const c = getCompetitorBySlug(params.slug);
-		if (!c || !isIndexed(c)) return {};
+		if (!c || !isIndexed(c)) throw notFound();
+		const alternatives = getAlternatives(c);
+		return { competitor: c, alternatives, faqs: getAlternativesFaqs(c, alternatives) };
+	},
+	head: ({ params, loaderData }) => {
+		if (!loaderData) return {};
+		const { competitor: c, faqs } = loaderData;
 		const title = `${c.name} Alternatives | Open-Source AI Visibility · Elmo`;
 		const description = `The best ${c.name} alternatives for AI visibility tracking, including Elmo — the open-source, self-hosted option you can run for free.`;
 		const path = `/ai-visibility-tools/alternatives/${params.slug}`;
@@ -37,14 +43,9 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: `${c.name} alternatives`, path },
 				]),
-				faqJsonLd(getAlternativesFaqs(c, getAlternatives(c))),
+				faqJsonLd(faqs),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const c = getCompetitorBySlug(params.slug);
-		if (!c || !isIndexed(c)) throw notFound();
-		return { competitor: c, alternatives: getAlternatives(c) };
 	},
 	component: AlternativesPage,
 });

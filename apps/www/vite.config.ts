@@ -31,7 +31,17 @@ export default defineConfig({
 		embedBinaries(),
 		mdx(MdxConfig),
 		tailwindcss(),
-		tanstackStart(),
+		tanstackStart({
+			router: {
+				// Loaders ride in the lazy route chunk with the component, so the
+				// data modules they read (the tool directory, the glossary, …) stay
+				// out of the entry bundle every page downloads. Route `head`s read
+				// `loaderData` rather than those modules for the same reason.
+				codeSplittingOptions: {
+					defaultBehavior: [["loader", "component"], ["errorComponent"], ["notFoundComponent"]],
+				},
+			},
+		}),
 		nitro({
 			traceDeps: ["@takumi-rs/core"],
 			exportConditions: ["import"],
