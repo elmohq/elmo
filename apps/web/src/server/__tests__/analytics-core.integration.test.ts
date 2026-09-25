@@ -1,3 +1,4 @@
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
 	getBrandAnalytics,
 	getBrandCitations,
@@ -13,7 +14,6 @@ import {
 	createRun,
 	deleteBrand,
 } from "@/test/integration/stats-fixtures";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const window = { from: "2026-03-01", to: "2026-03-03", timezone: "UTC" };
 

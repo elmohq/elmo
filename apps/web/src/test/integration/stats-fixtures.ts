@@ -93,7 +93,11 @@ export async function createRun(
 	return { id: row.id, promptId, brandId, model, createdAt };
 }
 
-export async function createCitation(run: FixtureRun, url: string, opts: { title?: string | null; index?: number } = {}) {
+export async function createCitation(
+	run: FixtureRun,
+	url: string,
+	opts: { title?: string | null; index?: number } = {},
+) {
 	await db.insert(citations).values({
 		promptRunId: run.id,
 		promptId: run.promptId,

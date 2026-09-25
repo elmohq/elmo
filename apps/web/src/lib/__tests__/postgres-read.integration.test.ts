@@ -1,3 +1,4 @@
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
 import {
 	countPromptRuns,
@@ -19,14 +20,7 @@ import {
 	getPromptTopCompetitorMentions,
 	getVisibilityDailyAggregate,
 } from "@/lib/postgres-read";
-import {
-	createBrand,
-	createCitation,
-	createPrompt,
-	createRun,
-	deleteBrand,
-} from "@/test/integration/stats-fixtures";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createBrand, createCitation, createPrompt, createRun, deleteBrand } from "@/test/integration/stats-fixtures";
 
 const brandIds: string[] = [];
 
@@ -113,13 +107,9 @@ describe("date windows", () => {
 	});
 
 	it("treats instant bounds as half-open", async () => {
-		const totals = await getBrandMentionTotals(
-			brandId,
-			"2026-03-04T03:00:00.000Z",
-			"2026-03-04T15:00:00.000Z",
-			"UTC",
-			[promptId],
-		);
+		const totals = await getBrandMentionTotals(brandId, "2026-03-04T03:00:00.000Z", "2026-03-04T15:00:00.000Z", "UTC", [
+			promptId,
+		]);
 		expect(totals.total_runs).toBe(1);
 		expect(await countPromptRuns(promptId, "2026-03-04T03:00:00.000Z", "2026-03-04T15:00:00.001Z", "UTC")).toBe(2);
 	});
@@ -198,7 +188,14 @@ describe("daily visibility aggregate", () => {
 	});
 
 	it("counts every prompt as non-branded when none are branded", async () => {
-		const rows = await getVisibilityDailyAggregate(brandId, "2026-03-03", "2026-03-03", "UTC", [branded, unbranded], []);
+		const rows = await getVisibilityDailyAggregate(
+			brandId,
+			"2026-03-03",
+			"2026-03-03",
+			"UTC",
+			[branded, unbranded],
+			[],
+		);
 		expect(rows).toEqual([
 			expect.objectContaining({
 				date: "2026-03-03",
@@ -248,7 +245,7 @@ describe("model filter", () => {
 	});
 
 	it("attributes citations through the run that produced them", async () => {
-		const window = ["2026-03-02", "2026-03-02", "UTC", [promptId]] as const;
+		const window: [string, string, string, string[]] = ["2026-03-02", "2026-03-02", "UTC", [promptId]];
 		expect(await getCitationsTotalCount(brandId, ...window, "chatgpt")).toBe(2);
 		expect(await getCitationsTotalCount(brandId, ...window, "chatgpt::premium")).toBe(1);
 		expect(await getCitationsTotalCount(brandId, ...window)).toBe(3);
