@@ -10,7 +10,13 @@ import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 const pillar = getPillar("answer-engine-optimization");
 
 export const Route = createFileRoute("/answer-engine-optimization")({
-	head: () => {
+	loader: () => {
+		if (!pillar) return;
+		const { slug, metaTitle, description, h1, faqs } = pillar;
+		return { seo: { slug, metaTitle, description, h1, faqs } };
+	},
+	head: ({ loaderData }) => {
+		const pillar = loaderData?.seo;
 		if (!pillar) return {};
 		const path = `/${pillar.slug}`;
 		return {

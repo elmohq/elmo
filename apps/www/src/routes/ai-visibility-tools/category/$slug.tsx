@@ -24,12 +24,16 @@ import {
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/category/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const category = getCategoryBySlug(params.slug);
-		if (!category) return {};
+		if (!category) throw notFound();
 		const tools = toolsInCategory(category);
-		if (tools.length < 2) return {};
-		const heading = CATEGORY_HEADINGS[category];
+		if (tools.length < 2) throw notFound();
+		return { category, tools, heading: CATEGORY_HEADINGS[category], faqs: getCategoryFaqs(category, tools) };
+	},
+	head: ({ params, loaderData }) => {
+		if (!loaderData) return {};
+		const { heading, faqs } = loaderData;
 		const title = `${heading.charAt(0).toUpperCase()}${heading.slice(1)} · Elmo`;
 		const description = `A comparison of ${heading} for tracking your brand in AI search, including Elmo — the open-source, self-hosted option.`;
 		const path = `/ai-visibility-tools/category/${params.slug}`;
@@ -42,16 +46,9 @@ export const Route = createFileRoute("/ai-visibility-tools/category/$slug")({
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: heading, path },
 				]),
-				faqJsonLd(getCategoryFaqs(category, tools)),
+				faqJsonLd(faqs),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const category = getCategoryBySlug(params.slug);
-		if (!category) throw notFound();
-		const tools = toolsInCategory(category);
-		if (tools.length < 2) throw notFound();
-		return { category, tools };
 	},
 	component: CategoryPage,
 });

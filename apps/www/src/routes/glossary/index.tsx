@@ -9,7 +9,10 @@ const description =
 	"A plain-English glossary of AI search and answer engine optimization terms: AEO, GEO, LLMO, AI Overviews, citations, share of voice, RAG, and more.";
 
 export const Route = createFileRoute("/glossary/")({
-	head: () => ({
+	loader: () => ({
+		terms: glossaryTerms.map((t) => ({ term: t.term, definition: t.short, url: `/glossary/${t.slug}` })),
+	}),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -25,11 +28,7 @@ export const Route = createFileRoute("/glossary/")({
 				name: "AI Search & AEO Glossary",
 				description,
 				path: "/glossary",
-				terms: glossaryTerms.map((t) => ({
-					term: t.term,
-					definition: t.short,
-					url: `/glossary/${t.slug}`,
-				})),
+				terms: loaderData?.terms ?? [],
 			}),
 		],
 	}),

@@ -6,7 +6,7 @@
 import geistMonoFont from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url";
 import geistSansFont from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { Asset, createRootRoute, Outlet, Scripts, useTags } from "@tanstack/react-router";
 import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
 import { type ReactNode, useEffect, useState } from "react";
@@ -120,11 +120,25 @@ function RootComponent() {
 	);
 }
 
+// Pages are server-rendered, so hydration JS shouldn't compete with CSS, fonts, and images.
+function PageHead() {
+	return useTags().map((tag) => {
+		const lowered = tag.tag === "link" && tag.attrs?.rel === "modulepreload";
+		return (
+			<Asset
+				{...tag}
+				attrs={lowered ? { ...tag.attrs, fetchPriority: "low" } : tag.attrs}
+				key={`tsr-meta-${JSON.stringify(tag)}`}
+			/>
+		);
+	});
+}
+
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
-				<HeadContent />
+				<PageHead />
 			</head>
 			<body className="flex min-h-screen flex-col">
 				{children}

@@ -17,9 +17,14 @@ import {
 } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const tools = getCompareEntry(params.slug);
-		if (!tools) return {};
+		if (!tools) throw notFound();
+		return { tools, faqs: getCompareFaqs(tools) };
+	},
+	head: ({ params, loaderData }) => {
+		if (!loaderData) return {};
+		const { tools, faqs } = loaderData;
 		const names = tools.map((t) => t.name).join(" vs ");
 		const isPair = tools.length === 2;
 		const title = isPair ? `${names} | AI Visibility Tool Comparison · Elmo` : `${names} · Elmo`;
@@ -36,16 +41,11 @@ export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: names, path },
 				]),
-				faqJsonLd(getCompareFaqs(tools)),
+				faqJsonLd(faqs),
 				comparisonJsonLd([...tools.map((t) => ({ name: t.name, url: t.url })), ELMO_LISTING]),
 				softwareApplicationJsonLd(),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const tools = getCompareEntry(params.slug);
-		if (!tools) throw notFound();
-		return { tools };
 	},
 	component: ComparePage,
 });

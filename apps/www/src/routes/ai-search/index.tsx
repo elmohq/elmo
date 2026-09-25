@@ -9,7 +9,10 @@ const description =
 	"Practical guides to appearing in AI search: how engines like ChatGPT, Perplexity, and Google AI Overviews choose what to cite — and how to become one of their sources.";
 
 export const Route = createFileRoute("/ai-search/")({
-	head: () => ({
+	loader: () => ({
+		items: aiSearchEngines.map((e) => ({ name: `How to appear in ${e.name}`, path: `/ai-search/${e.slug}` })),
+	}),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -21,12 +24,7 @@ export const Route = createFileRoute("/ai-search/")({
 				{ name: "Home", path: "/" },
 				{ name: "AI Search", path: "/ai-search" },
 			]),
-			itemListJsonLd(
-				aiSearchEngines.map((e) => ({
-					name: `How to appear in ${e.name}`,
-					path: `/ai-search/${e.slug}`,
-				})),
-			),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: AiSearchIndex,
