@@ -26,11 +26,10 @@ These are always set. The site cannot work without them, and consent is not requ
 
 | What | Where | Purpose | Lifetime |
 | --- | --- | --- | --- |
-| `better-auth.session_token` | app.elmohq.com | Keeps you signed in | Session, up to 30 days |
+| `better-auth.session_token` and related session cookies | app.elmohq.com | Keeps you signed in | For as long as you stay signed in |
 | CSRF and callback state | app.elmohq.com | Protects sign-in and form submissions from cross-site request forgery | Minutes |
 | `elmo.cookie-consent` (localStorage) | elmohq.com, app.elmohq.com | Remembers your answer to the cookie banner so we don't ask again | Until you clear it |
 | Load-balancing and security cookies | all | Set by our hosting providers to route requests and mitigate abuse | Session |
-| Sentry session identifier (sessionStorage) | app.elmohq.com | Correlates errors from the same visit so a crash report is intelligible. No cookie. | Until the tab closes |
 
 ### Analytics
 
@@ -62,7 +61,7 @@ Where we run these tags, they load on our marketing site rather than inside the 
 Some pages embed content from other services, which may set their own storage:
 
 - **YouTube** — today we embed through `youtube-nocookie.com`, which does not set tracking cookies unless you press play.
-- **Mux** — video playback on some product pages.
+- **Mux** — video playback on our website.
 - **Live chat** — our support chat widget loads with the page and stores a session identifier, so a conversation survives a page reload.
 
 ## Changing your mind
