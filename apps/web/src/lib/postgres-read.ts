@@ -440,7 +440,7 @@ export async function getPromptsFirstEvaluatedAt(
 	const rows = await queryPg<PromptFirstEvaluatedAt>(sql`
 		SELECT
 			prompt_id,
-			min(created_at) AT TIME ZONE 'UTC' AS first_evaluated_at
+			min(created_at) AS first_evaluated_at
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			AND prompt_id IN (${uuidList(promptIds)})
