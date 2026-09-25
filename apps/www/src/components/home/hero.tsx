@@ -8,7 +8,6 @@ import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { ProductDemo } from "./product-demo";
 import { HOME_FONT_CLASS } from "./styles";
 
-// The player bundles hls.js, several times the weight of the rest of the page.
 const MuxPlayer = lazy(() => import("@mux/mux-player-react"));
 
 const CLOUD_URL = cloudAppUrl("marketing-hero");

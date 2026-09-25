@@ -33,10 +33,7 @@ export default defineConfig({
 		tailwindcss(),
 		tanstackStart({
 			router: {
-				// Loaders ride in the lazy route chunk with the component, so the
-				// data modules they read (the tool directory, the glossary, …) stay
-				// out of the entry bundle every page downloads. Route `head`s read
-				// `loaderData` rather than those modules for the same reason.
+				// Route `head`s must read `loaderData`, not data modules, or the data lands in the entry bundle.
 				codeSplittingOptions: {
 					defaultBehavior: [["loader", "component"], ["errorComponent"], ["notFoundComponent"]],
 				},

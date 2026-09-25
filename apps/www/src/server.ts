@@ -83,10 +83,7 @@ function negotiableMarkdownRoute(path: string): string | undefined {
 	}
 }
 
-// Pages are fully server-rendered, so the hydration scripts can wait behind the
-// stylesheet, fonts, and hero image instead of splitting a slow connection with
-// them. TanStack exposes no attribute hook for the tags it emits, hence the
-// rewrite.
+// TanStack has no hook for attributes on the script tags it emits.
 const SCRIPT_PRIORITY_REWRITES: [string, string][] = [
 	['rel="modulepreload"', 'rel="modulepreload" fetchpriority="low"'],
 	['<script type="module" async=""', '<script type="module" async="" fetchpriority="low"'],
@@ -105,7 +102,6 @@ function deprioritizeScripts(response: Response): Response {
 		new TransformStream<Uint8Array, Uint8Array>({
 			transform(chunk, controller) {
 				pending += decoder.decode(chunk, { stream: true });
-				// Hold back an unclosed trailing tag so a match split across chunks isn't missed.
 				const lastTag = pending.lastIndexOf("<");
 				const ready = lastTag === -1 || pending.includes(">", lastTag) ? pending : pending.slice(0, lastTag);
 				pending = pending.slice(ready.length);

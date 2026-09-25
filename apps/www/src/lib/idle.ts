@@ -1,5 +1,3 @@
-// Resolves once the page has loaded and the main thread goes idle, for
-// third-party scripts that shouldn't compete with the page's own resources.
 export function afterPageIdle(): Promise<void> {
 	return new Promise((resolve) => {
 		const schedule = () => {
