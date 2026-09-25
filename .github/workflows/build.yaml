@@ -38,6 +38,22 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 25
 
+    # For the integration tests only.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: elmo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -75,6 +91,14 @@ jobs:
 
       - name: Unit tests
         run: pnpm turbo test
+
+      - name: Integration tests
+        run: pnpm -C apps/web test:integration
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/elmo_test
+          # Off UTC on purpose: a timestamp that loses its zone between Postgres
+          # and JS only reads wrong on a host that isn't in UTC.
+          TZ: America/Los_Angeles
 
       # scripts/ is outside the workspace, so turbo does not reach it.
       - name: Release script tests
@@ -114,48 +138,3 @@ jobs:
 
       - name: Storybook tests
         run: pnpm -C apps/web test:storybook
-
-  integration:
-    name: Integration tests
-    runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 10
-
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: elmo_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    env:
-      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/elmo_test
-      # Off UTC on purpose: a timestamp that loses its zone between Postgres
-      # and JS only reads wrong on a host that isn't in UTC.
-      TZ: America/Los_Angeles
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.1.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Integration tests
-        run: pnpm -C apps/web test:integration
