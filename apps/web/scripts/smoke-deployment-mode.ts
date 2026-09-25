@@ -41,13 +41,15 @@ const SMOKE_MODES: SmokeMode[] = ["local", "demo", "whitelabel", "cloud"];
  * DATABASE_URL is never connected; APP_URL / VITE_APP_URL are read by
  * createAuth(); the AUTH0_* vars are read by getWhitelabelAuthOptions() and the
  * whitelabel env requirements. SCRAPE_TARGETS=chatgpt:olostep:online pulls in
- * the OLOSTEP_API_KEY provider-key requirement.
+ * the OLOSTEP_API_KEY provider-key requirement; OPENAI_API_KEY is the direct
+ * LLM key onboarding needs.
  */
 const SHARED_ENV: Record<string, string> = {
 	DATABASE_URL: "postgres://smoke:smoke@127.0.0.1:5432/smoke",
 	BETTER_AUTH_SECRET: "smoke-test-better-auth-secret-0000000000",
 	SCRAPE_TARGETS: "chatgpt:olostep:online",
 	OLOSTEP_API_KEY: "smoke-olostep-key",
+	OPENAI_API_KEY: "smoke-openai-key",
 };
 
 const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
@@ -72,8 +74,6 @@ const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
 		VITE_APP_NAME: "Smoke App",
 		VITE_APP_ICON: "https://example.com/icon.png",
 		VITE_APP_URL: "https://smoke.example.com/",
-		VITE_APP_PARENT_NAME: "Smoke Parent",
-		VITE_APP_PARENT_URL: "https://parent.example.com/",
 		VITE_OPTIMIZATION_URL_TEMPLATE: "https://parent.example.com/optimize?org_id={brandId}&prompt={prompt}",
 	},
 	cloud: {

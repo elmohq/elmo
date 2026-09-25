@@ -22,6 +22,14 @@ export function getCredential(name: string): string | undefined {
 	return overlay.get(name) ?? process.env[name];
 }
 
+/** The environment with stored overrides applied, so a startup check counts a
+ *  credential saved in the database the same as one set in .env. */
+export function withStoredCredentials(
+	env: Record<string, string | undefined> = process.env,
+): Record<string, string | undefined> {
+	return { ...env, ...Object.fromEntries(overlay) };
+}
+
 export function clearCredentialOverlay(): void {
 	overlay.clear();
 }

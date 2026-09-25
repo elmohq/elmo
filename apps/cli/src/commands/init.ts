@@ -313,7 +313,6 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 
 	const env: EnvMap = {};
 	env.DEPLOYMENT_MODE = "local";
-	env.VITE_DEPLOYMENT_MODE = "local";
 	env.DEPLOYMENT_ID = preservedDeploymentId ?? crypto.randomUUID();
 	env.BETTER_AUTH_SECRET = generateSecret();
 	// Standard base64 (not base64url): the app decodes this with Buffer.from(key,

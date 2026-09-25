@@ -2,6 +2,14 @@ import { refreshCredentialOverlay } from "./store";
 
 const CREDENTIAL_REFRESH_INTERVAL_MS = 60_000;
 
+let firstLoad: Promise<void> = Promise.resolve();
+
+/** Settles once startCredentialRefresh's first load has been attempted, for
+ *  callers that can't treat a not-yet-loaded credential as missing. */
+export function storedCredentialsLoaded(): Promise<void> {
+	return firstLoad;
+}
+
 /** Keep the credential overlay fresh. The interval is scheduled before the first
  *  load, so a database that is briefly unreachable recovers on its own instead of
  *  leaving the process permanently stale.
@@ -19,10 +27,9 @@ export async function startCredentialRefresh(): Promise<NodeJS.Timeout> {
 	}, CREDENTIAL_REFRESH_INTERVAL_MS);
 	timer.unref();
 
-	try {
-		await refreshCredentialOverlay();
-	} catch (error) {
+	firstLoad = refreshCredentialOverlay().catch((error) => {
 		console.error("[secrets] could not load stored credentials — using environment credentials for now:", error);
-	}
+	});
+	await firstLoad;
 	return timer;
 }
