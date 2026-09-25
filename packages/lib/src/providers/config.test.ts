@@ -64,6 +64,16 @@ describe("validateScrapeTargets", () => {
 		);
 	});
 
+	it("reports every misconfigured target at once", () => {
+		const configs = [
+			{ model: "chatgpt", provider: "nonexistent", webSearch: true },
+			{ model: "claude", provider: "anthropic-api", webSearch: true },
+		];
+		expect(() => validateScrapeTargets(configs, makeGetProvider({ "anthropic-api": unconfiguredProvider }))).toThrow(
+			/unknown provider "nonexistent"[\s\S]*"anthropic-api" requires API key\(s\) to be configured: ANTHROPIC_API_KEY[\s\S]*requires a version slug/,
+		);
+	});
+
 	it("passes when mistral-api provider has a version", () => {
 		const configs = [{ model: "mistral", provider: "mistral-api", version: "mistral-medium-latest", webSearch: true }];
 		expect(() => validateScrapeTargets(configs, makeGetProvider({ "mistral-api": configuredProvider }))).not.toThrow();

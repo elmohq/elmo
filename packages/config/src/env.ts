@@ -186,6 +186,22 @@ export function requireEnvVars<const K extends string>(
 	return Object.fromEntries(keys.map((key) => [key, env[key]!])) as Record<K, string>;
 }
 
+// Provider keys are excluded: they can also come from stored credentials, so
+// SCRAPE_TARGETS validation checks them once those are loaded.
+export function assertRequiredEnv(env: EnvMap = process.env): void {
+	const requirements = hasValue(env.DEPLOYMENT_MODE)
+		? buildStaticRequirements(getDeploymentModeFromEnv(env))
+		: buildStaticRequirements("local").filter((requirement) =>
+				VALID_MODES.every((mode) => buildStaticRequirements(mode).some((other) => other.id === requirement.id)),
+			);
+	const missing = requirements
+		.filter((requirement) => !requirement.isSatisfied(env))
+		.map((requirement) => requirement.id);
+	if (missing.length > 0) {
+		throw new Error(formatMissingEnvVars(missing));
+	}
+}
+
 /**
  * Get an optional environment variable with a default value
  */

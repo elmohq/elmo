@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getEnvRequirements, requireEnvVars, validateEnvRequirements } from "./env";
+import { assertRequiredEnv, getEnvRequirements, requireEnvVars, validateEnvRequirements } from "./env";
 
 // Vars required specifically because the deployment is cloud.
 const CLOUD_ONLY_VARS = [
@@ -89,5 +89,31 @@ describe("requireEnvVars", () => {
 	it("returns the resolved values when every var is present", () => {
 		const env = { VITE_APP_NAME: "Acme", VITE_APP_URL: "https://app.elmo.com" };
 		expect(requireEnvVars(["VITE_APP_NAME", "VITE_APP_URL"], env)).toEqual(env);
+	});
+});
+
+describe("assertRequiredEnv", () => {
+	it("names every missing var for the mode in one error", () => {
+		expect(() =>
+			assertRequiredEnv({ DEPLOYMENT_MODE: "whitelabel", SCRAPE_TARGETS: "chatgpt:olostep:online" }),
+		).toThrow(/DATABASE_URL.*BETTER_AUTH_SECRET.*AUTH0_CLIENT_ID.*VITE_APP_ICON/);
+	});
+
+	it("still lists the shared vars when DEPLOYMENT_MODE is unset", () => {
+		expect(() => assertRequiredEnv({})).toThrow(
+			/^Missing required environment variables: .*DATABASE_URL.*SCRAPE_TARGETS.*DEPLOYMENT_MODE/,
+		);
+	});
+
+	it("leaves provider keys to SCRAPE_TARGETS validation", () => {
+		expect(() =>
+			assertRequiredEnv({
+				DEPLOYMENT_MODE: "local",
+				DATABASE_URL: "postgres://localhost/elmo",
+				BETTER_AUTH_SECRET: "secret",
+				ELMO_ENCRYPTION_KEY: "key",
+				SCRAPE_TARGETS: "chatgpt:olostep:online",
+			}),
+		).not.toThrow();
 	});
 });
