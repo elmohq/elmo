@@ -17,7 +17,7 @@ const ORGANIZATION_ACTIONS = {
 } as const;
 
 describe("organization roles", () => {
-	it("lets an owner run the workspace, which is what the plugin's endpoints ask", () => {
+	it("lets an owner run the organization, which is what the plugin's endpoints ask", () => {
 		for (const [action, permission] of Object.entries(ORGANIZATION_ACTIONS)) {
 			expect(ownerRole.authorize(permission).success, action).toBe(true);
 		}

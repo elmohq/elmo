@@ -120,7 +120,7 @@ describe("mcp scopes are not oauth scopes", () => {
 });
 
 describe("principalLabel", () => {
-	it("names the workspace a key belongs to rather than the key", () => {
+	it("names the organization a key belongs to rather than the key", () => {
 		expect(principalLabel(orgKey)).toContain("Acme");
 	});
 

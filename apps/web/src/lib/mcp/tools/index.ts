@@ -1,5 +1,5 @@
 /**
- * The product as a workspace member has it, and no more: `McpTool` has no
+ * The product as an organization member has it, and no more: `McpTool` has no
  * `adminOnly`, so an instance key gets what an organization key gets.
  */
 

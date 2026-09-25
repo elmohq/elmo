@@ -1,6 +1,6 @@
 /**
  * Needs no scope: a key only ever sees the organization it is bound to, and
- * gating this would stop an analytics-only key naming the workspace its own
+ * gating this would stop an analytics-only key naming the organization its own
  * numbers belong to.
  */
 import { createFileRoute } from "@tanstack/react-router";

@@ -1,5 +1,5 @@
 /**
- * None of these paginate or cap: a workspace has a handful of brands and a
+ * None of these paginate or cap: an organization has a handful of brands and a
  * handful of competitors per brand, and a ceiling under a description saying
  * "every" would be a list that lies about being complete.
  */
@@ -56,7 +56,7 @@ export const getBilling = defineTool({
 	name: "get_billing",
 	title: "Get plan and usage",
 	description:
-		"A workspace's plan, its limits, and how much of each is used. Read-only — there is no tool that changes a subscription.",
+		"An organization's plan, its limits, and how much of each is used. Read-only — there is no tool that changes a subscription.",
 	scopes: ["read"],
 	readOnly: true,
 	input: {

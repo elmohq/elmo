@@ -81,7 +81,7 @@ export interface CreateBrandInput {
 	competitors?: CompetitorInput[];
 	prompts?: PromptInput[];
 	/** Null provisions one named after the brand id, which is right for an admin
-	 * key standing up a tenant and wrong inside an existing workspace. */
+	 * key standing up a tenant and wrong inside an existing organization. */
 	organizationId?: string | null;
 	conn?: DbConnection;
 	afterCommit?: (task: () => Promise<unknown>) => void;

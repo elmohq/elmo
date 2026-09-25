@@ -1,4 +1,4 @@
-/** A workspace outside the key's reach answers 404, identically to one that
+/** An organization outside the key's reach answers 404, identically to one that
  * does not exist. */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
