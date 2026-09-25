@@ -5,6 +5,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import type { ReactNode } from "react";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
+import { HIGHLIGHT_CLASS, splitHighlights } from "@/lib/highlight";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 
@@ -27,11 +28,13 @@ export function ResponseCard({
 	run,
 	text,
 	prompt,
+	highlight,
 	brandName,
 	domainFor,
 }: {
 	run: ResponseCardRun;
 	text: string;
+	highlight?: string;
 	prompt?: ReactNode;
 	brandName?: string;
 	domainFor: (name: string) => string | undefined;
@@ -99,7 +102,7 @@ export function ResponseCard({
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
 					<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
-						<ResponseMarkdown>{text}</ResponseMarkdown>
+						<ResponseMarkdown highlight={highlight}>{text}</ResponseMarkdown>
 					</div>
 				</div>
 
@@ -107,13 +110,33 @@ export function ResponseCard({
 					<span className="text-xs text-muted-foreground block mb-1.5">Raw Output</span>
 					<div className="rounded-md border bg-muted/20 p-4 max-h-64 overflow-auto">
 						<pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap">
-							{formatRawOutput(run.rawOutput)}
+							<Highlighted
+								text={formatRawOutput(run.rawOutput)}
+								// The JSON shows strings escaped, so the term is too.
+								term={highlight && JSON.stringify(highlight).slice(1, -1)}
+							/>
 						</pre>
 					</div>
 				</div>
 			</CardContent>
 		</Card>
 	);
+}
+
+function Highlighted({ text, term }: { text: string; term?: string }) {
+	if (!term) return text;
+	let offset = 0;
+	return splitHighlights(text, term).map((part) => {
+		const key = offset;
+		offset += part.text.length;
+		return part.match ? (
+			<mark key={key} className={HIGHLIGHT_CLASS}>
+				{part.text}
+			</mark>
+		) : (
+			<span key={key}>{part.text}</span>
+		);
+	});
 }
 
 export function ResponseCardSkeletons({ count }: { count: number }) {

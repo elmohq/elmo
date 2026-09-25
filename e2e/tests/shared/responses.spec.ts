@@ -33,6 +33,7 @@ test.describe("Responses Page", () => {
 
     await expect(page.getByText("2 of 8 results")).toBeVisible({ timeout: 30_000 });
     await expect(answer(page, /Competitor Alpha provides basic tracking/)).toHaveCount(0);
+    await expect(page.locator("pre mark", { hasText: "Competitor Beta" })).toHaveCount(2);
   });
 
   test("filtering to a prompt shows only its responses", async ({ page }) => {

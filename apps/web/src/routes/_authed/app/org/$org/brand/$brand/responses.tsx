@@ -87,6 +87,7 @@ function ResponsesPage() {
 						key={match.id}
 						run={match}
 						text={match.text}
+						highlight={data.query ?? undefined}
 						prompt={
 							<BrandPromptLink
 								promptId={match.promptId}
