@@ -57,7 +57,7 @@ export function createMcpServer(auth: Principal, tools: readonly McpTool[]): Mcp
 				annotations: {
 					title: tool.title,
 					readOnlyHint: tool.readOnly,
-					destructiveHint: !tool.readOnly,
+					destructiveHint: !tool.readOnly && tool.destructive !== false,
 					idempotentHint: tool.readOnly,
 					openWorldHint: false,
 				},
