@@ -87,6 +87,17 @@ elmo compose down
 elmo compose up -d
 ```
 
+## Serving Elmo from a Domain
+
+`elmo init` asks for the public URL you'll open Elmo at, defaulting to `http://localhost:1515`. If you put Elmo behind a domain or reverse proxy, set it to that URL — sign-in is only accepted from the URL configured here:
+
+```bash
+elmo url https://elmo.example.com
+elmo compose up -d
+```
+
+Run `elmo url` with no argument to print the current value. Elmo must be served from the root of its domain, not a subpath.
+
 ## Using an External Database
 
 By default, `elmo init` provisions a PostgreSQL container. To use an existing database instead, choose "Use existing Postgres" during `elmo init` and provide your connection string when prompted.
