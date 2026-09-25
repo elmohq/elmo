@@ -8,6 +8,7 @@ export interface ResponseSearchFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
 	tags?: string[];
+	promptIds?: string[];
 	page?: number;
 }
 
@@ -29,6 +30,7 @@ export function useResponseSearch(brandId?: string, filters?: ResponseSearchFilt
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					prompts: filters?.promptIds?.length ? filters.promptIds.join(",") : undefined,
 					page: filters?.page ?? 0,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

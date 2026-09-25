@@ -38,7 +38,7 @@ export interface ResponseSearchOptions {
 	to: string;
 	timezone: string;
 	query?: string;
-	filters?: Pick<AnalyticsFilters, "model" | "tags">;
+	filters?: Pick<AnalyticsFilters, "model" | "tags"> & { promptIds?: string[] };
 	limit: number;
 	offset: number;
 }
@@ -48,7 +48,10 @@ export async function searchBrandResponses(
 	options: ResponseSearchOptions,
 ): Promise<ResponseSearchResult> {
 	const query = options.query?.trim() || undefined;
-	const prompts = await resolveFilteredPrompts(brandId, { tags: options.filters?.tags });
+	const picked = options.filters?.promptIds?.length ? new Set(options.filters.promptIds) : null;
+	const prompts = (await resolveFilteredPrompts(brandId, { tags: options.filters?.tags })).filter(
+		(prompt) => !picked || picked.has(prompt.id),
+	);
 	const promptValues = new Map(prompts.map((prompt) => [prompt.id, prompt.value]));
 	const scope: ResponseSearchScope = {
 		brandId,

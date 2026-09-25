@@ -15,6 +15,8 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			/** Comma-joined prompt IDs; absent means every prompt. */
+			prompts: z.string().optional(),
 			page: z.number().int().min(0).default(0),
 			timezone: z.string().default("UTC"),
 		}),
@@ -28,7 +30,11 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			to: toDateStr,
 			timezone,
 			query: data.query,
-			filters: { model: data.model, tags: data.tags },
+			filters: {
+				model: data.model,
+				tags: data.tags,
+				promptIds: data.prompts?.split(",").filter(Boolean),
+			},
 			limit: RESPONSES_PAGE_SIZE,
 			offset: data.page * RESPONSES_PAGE_SIZE,
 		});
