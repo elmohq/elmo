@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { Check, X } from "lucide-react";
 import { useState } from "react";
 import {
 	CATEGORY_LABELS,
@@ -16,7 +15,11 @@ import {
 } from "@/lib/competitors";
 
 function FeatureIcon({ has }: { has: boolean }) {
-	return has ? <Check className="mx-auto h-4 w-4 text-blue-600" /> : <X className="mx-auto h-4 w-4 text-zinc-300" />;
+	return has ? (
+		<span role="img" aria-label="Yes" className="feature-mark-yes mx-auto block size-4 text-blue-600" />
+	) : (
+		<span role="img" aria-label="No" className="feature-mark-no mx-auto block size-4 text-zinc-300" />
+	);
 }
 
 const visibleCompetitors = sortedCompetitors.filter((c) => c.status !== "shutting-down" && c.category !== "other");
