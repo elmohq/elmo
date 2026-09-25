@@ -98,6 +98,12 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
 	"/blog/track-brand-ai-search": "/answer-engine-optimization",
 	"/blog/what-is-generative-seo": "/generative-engine-optimization",
 	"/docs/mcp": "/docs/api/mcp",
+	// The URLs people (and ad platforms, and app stores) guess for these.
+	"/terms": "/legal/terms",
+	"/privacy": "/legal/privacy",
+	"/cookies": "/legal/cookies",
+	"/subprocessors": "/legal/subprocessors",
+	"/acceptable-use": "/legal/acceptable-use",
 };
 export default createServerEntry({
 	async fetch(request) {

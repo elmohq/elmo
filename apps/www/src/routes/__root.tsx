@@ -7,12 +7,15 @@ import geistMonoFont from "@fontsource/geist-mono/files/geist-mono-latin-400-nor
 import geistSansFont from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-import { type ReactNode, useEffect } from "react";
+import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
+import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
+import { type ReactNode, useEffect, useState } from "react";
 import { NotFound } from "@/components/not-found";
+import { getConsentRegion } from "@/lib/consent-region";
 import { initCrisp } from "@/lib/crisp";
 import { getGitHubStars } from "@/lib/github-stars";
 import { getMarketingOgImage } from "@/lib/og";
-import { initPostHog } from "@/lib/posthog";
+import { initAnalytics } from "@/lib/posthog";
 import { organizationJsonLd, SITE_DESCRIPTION, SITE_NAME, SITE_URL, websiteJsonLd } from "@/lib/seo";
 import appCss from "../styles.css?url";
 
@@ -88,21 +91,31 @@ export const Route = createRootRoute({
 		],
 	}),
 	loader: async () => {
-		const githubStars = await getGitHubStars();
-		return { githubStars };
+		const [githubStars, consentRegion] = await Promise.all([getGitHubStars(), getConsentRegion()]);
+		return { githubStars, consentRegion };
 	},
 	component: RootComponent,
 });
 
 function RootComponent() {
+	const { consentRegion } = Route.useLoaderData();
+	// Null until the browser resolves it — the time-zone fallback would read the
+	// server's own zone during SSR.
+	const [consentRequired, setConsentRequired] = useState<boolean | null>(null);
+
 	useEffect(() => {
-		initPostHog();
+		const required = isConsentRequired(consentRegion);
+		setConsentRequired(required);
 		initCrisp();
-	}, []);
+		return initAnalytics(required);
+	}, [consentRegion]);
 
 	return (
 		<RootDocument>
 			<Outlet />
+			{consentRequired !== null && (
+				<CookieConsentBanner consentRequired={consentRequired} policyHref="/legal/cookies" />
+			)}
 		</RootDocument>
 	);
 }

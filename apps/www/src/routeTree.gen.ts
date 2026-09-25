@@ -45,6 +45,8 @@ import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as GlossaryIndexRouteImport } from './routes/glossary/index'
 import { Route as GlossarySlugRouteImport } from './routes/glossary/$slug'
+import { Route as LegalIndexRouteImport } from './routes/legal/index'
+import { Route as LegalSplatRouteImport } from './routes/legal/$'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
 import { Route as DotwellKnownAgentSkillsSplatRouteImport } from './routes/[.]well-known/agent-skills/$'
 import { Route as DotwellKnownAgentSkillsIndexDotjsonRouteImport } from './routes/[.]well-known/agent-skills/index[.]json'
@@ -247,6 +249,16 @@ const GlossarySlugRoute = GlossarySlugRouteImport.update({
   path: '/glossary/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LegalIndexRoute = LegalIndexRouteImport.update({
+  id: '/legal/',
+  path: '/legal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalSplatRoute = LegalSplatRouteImport.update({
+  id: '/legal/$',
+  path: '/legal/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OgStatusDotpngRoute = OgStatusDotpngRouteImport.update({
   id: '/og/status.png',
   path: '/og/status.png',
@@ -381,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
+  '/legal/$': typeof LegalSplatRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
@@ -388,6 +401,7 @@ export interface FileRoutesByFullPath {
   '/blog/': typeof BlogIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
+  '/legal/': typeof LegalIndexRoute
   '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
   '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
@@ -437,6 +451,7 @@ export interface FileRoutesByTo {
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
+  '/legal/$': typeof LegalSplatRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/aeo-for': typeof AeoForIndexRoute
   '/ai-search': typeof AiSearchIndexRoute
@@ -444,6 +459,7 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogIndexRoute
   '/docs': typeof DocsIndexRoute
   '/glossary': typeof GlossaryIndexRoute
+  '/legal': typeof LegalIndexRoute
   '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
   '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
@@ -494,6 +510,7 @@ export interface FileRoutesById {
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
+  '/legal/$': typeof LegalSplatRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
@@ -501,6 +518,7 @@ export interface FileRoutesById {
   '/blog/': typeof BlogIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
+  '/legal/': typeof LegalIndexRoute
   '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
   '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
@@ -552,6 +570,7 @@ export interface FileRouteTypes {
     | '/blog/rss.xml'
     | '/docs/$'
     | '/glossary/$slug'
+    | '/legal/$'
     | '/og/status.png'
     | '/aeo-for/'
     | '/ai-search/'
@@ -559,6 +578,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/docs/'
     | '/glossary/'
+    | '/legal/'
     | '/.well-known/agent-skills/$'
     | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
@@ -608,6 +628,7 @@ export interface FileRouteTypes {
     | '/blog/rss.xml'
     | '/docs/$'
     | '/glossary/$slug'
+    | '/legal/$'
     | '/og/status.png'
     | '/aeo-for'
     | '/ai-search'
@@ -615,6 +636,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/docs'
     | '/glossary'
+    | '/legal'
     | '/.well-known/agent-skills/$'
     | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
@@ -664,6 +686,7 @@ export interface FileRouteTypes {
     | '/blog/rss.xml'
     | '/docs/$'
     | '/glossary/$slug'
+    | '/legal/$'
     | '/og/status.png'
     | '/aeo-for/'
     | '/ai-search/'
@@ -671,6 +694,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/docs/'
     | '/glossary/'
+    | '/legal/'
     | '/.well-known/agent-skills/$'
     | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
@@ -721,6 +745,7 @@ export interface RootRouteChildren {
   BlogRssDotxmlRoute: typeof BlogRssDotxmlRoute
   DocsSplatRoute: typeof DocsSplatRoute
   GlossarySlugRoute: typeof GlossarySlugRoute
+  LegalSplatRoute: typeof LegalSplatRoute
   OgStatusDotpngRoute: typeof OgStatusDotpngRoute
   AeoForIndexRoute: typeof AeoForIndexRoute
   AiSearchIndexRoute: typeof AiSearchIndexRoute
@@ -728,6 +753,7 @@ export interface RootRouteChildren {
   BlogIndexRoute: typeof BlogIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
   GlossaryIndexRoute: typeof GlossaryIndexRoute
+  LegalIndexRoute: typeof LegalIndexRoute
   DotwellKnownAgentSkillsSplatRoute: typeof DotwellKnownAgentSkillsSplatRoute
   DotwellKnownAgentSkillsIndexDotjsonRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   AiVisibilityToolsAlternativesSlugRoute: typeof AiVisibilityToolsAlternativesSlugRoute
@@ -1001,6 +1027,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GlossarySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal/': {
+      id: '/legal/'
+      path: '/legal'
+      fullPath: '/legal/'
+      preLoaderRoute: typeof LegalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/$': {
+      id: '/legal/$'
+      path: '/legal/$'
+      fullPath: '/legal/$'
+      preLoaderRoute: typeof LegalSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/og/status.png': {
       id: '/og/status.png'
       path: '/og/status.png'
@@ -1161,6 +1201,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogRssDotxmlRoute: BlogRssDotxmlRoute,
   DocsSplatRoute: DocsSplatRoute,
   GlossarySlugRoute: GlossarySlugRoute,
+  LegalSplatRoute: LegalSplatRoute,
   OgStatusDotpngRoute: OgStatusDotpngRoute,
   AeoForIndexRoute: AeoForIndexRoute,
   AiSearchIndexRoute: AiSearchIndexRoute,
@@ -1168,6 +1209,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogIndexRoute: BlogIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
   GlossaryIndexRoute: GlossaryIndexRoute,
+  LegalIndexRoute: LegalIndexRoute,
   DotwellKnownAgentSkillsSplatRoute: DotwellKnownAgentSkillsSplatRoute,
   DotwellKnownAgentSkillsIndexDotjsonRoute:
     DotwellKnownAgentSkillsIndexDotjsonRoute,

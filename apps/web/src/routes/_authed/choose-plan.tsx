@@ -20,6 +20,7 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { Switch } from "@workspace/ui/components/switch";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { LegalConsentNotice } from "@/components/legal-consent-notice";
 import { PlanComparison } from "@/components/plan-comparison";
 import { forgetPaywall } from "@/lib/billing/queries";
 import { pageHead } from "@/lib/route-head";
@@ -168,6 +169,8 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 					</Button>
 				)}
 			/>
+
+			<LegalConsentNotice action="subscribing" />
 
 			<p className="text-center text-sm text-muted-foreground">
 				Need more brands, any other models, higher numbers of samples, SSO, white label, or custom limits?{" "}

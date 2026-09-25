@@ -21,6 +21,7 @@ import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
+import { LegalConsentNotice } from "@/components/legal-consent-notice";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
@@ -164,6 +165,7 @@ export function RegisterForm({
 						<IconBrandGoogle className="size-4" />
 						Continue with Google
 					</Button>
+					<LegalConsentNotice action="continuing with Google" />
 					<div className="flex items-center gap-3">
 						<Separator className="flex-1" />
 						<span className="text-xs text-muted-foreground">or</span>
@@ -218,6 +220,7 @@ export function RegisterForm({
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Creating account..." : "Create account"}
 				</Button>
+				<LegalConsentNotice action="creating an account" />
 			</form>
 			{hasUsers && (
 				<p className="text-sm text-muted-foreground pt-4">

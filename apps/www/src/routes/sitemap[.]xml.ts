@@ -17,6 +17,7 @@ import {
 	indexedCompetitors,
 	isLowDR,
 } from "@/lib/competitors";
+import { listLegalPages } from "@/lib/legal";
 import { source } from "@/lib/source";
 
 const SITE_URL = "https://www.elmohq.com";
@@ -49,6 +50,7 @@ const staticPages: SitemapEntry[] = [
 	{ path: "/vision", changefreq: "monthly", priority: 0.6 },
 	{ path: "/brand", changefreq: "monthly", priority: 0.5 },
 	{ path: "/status", changefreq: "daily", priority: 0.5 },
+	{ path: "/legal", changefreq: "yearly", priority: 0.3 },
 ];
 
 export const Route = createFileRoute("/sitemap.xml")({
@@ -59,6 +61,13 @@ export const Route = createFileRoute("/sitemap.xml")({
 					path: page.url,
 					changefreq: "weekly",
 					priority: 0.7,
+				}));
+
+				const legalPages: SitemapEntry[] = listLegalPages().map((page) => ({
+					path: `/legal/${page.slug}`,
+					changefreq: "yearly",
+					priority: 0.3,
+					lastmod: page.updated,
 				}));
 
 				const blogPages: SitemapEntry[] = blogSource.getPages().map((page) => ({
@@ -141,6 +150,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 				const allPages: SitemapEntry[] = [
 					...staticPages,
 					...docsPages,
+					...legalPages,
 					...blogPages,
 					...comparisonPages,
 					...directorySubPages,
