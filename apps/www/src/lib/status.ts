@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { STATUS_TARGETS } from "@workspace/config/scrape-targets";
-import type { StatusEntry, TargetStatus } from "./status-helpers";
 import { getRedis } from "./redis";
+import type { StatusEntry, TargetStatus } from "./status-helpers";
 
 export type { TargetStatus } from "./status-helpers";
 
