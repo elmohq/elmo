@@ -1,3 +1,4 @@
+import "./check-env";
 import * as Sentry from "@sentry/node";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";

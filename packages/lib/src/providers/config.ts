@@ -1,3 +1,4 @@
+import { ENV_REGISTRY } from "@workspace/config/env-registry";
 import { WEB_QUERIES_UNAVAILABLE } from "../constants";
 import { getCredential } from "../secrets";
 import type { ModelConfig } from "./types";
@@ -69,11 +70,22 @@ export function validateScrapeTargets(
 		id: string,
 	) => { isConfigured(): boolean; validateTarget?(config: ModelConfig): string | null } | undefined,
 ): void {
+	// Collected rather than thrown one at a time so a fresh setup sees every
+	// problem in a single boot instead of fixing them one restart at a time.
+	const errors = new Set<string>();
 	for (const config of configs) {
 		const provider = getProvider(config.provider);
-		if (!provider) throw new Error(`SCRAPE_TARGETS: unknown provider "${config.provider}"`);
-		if (!provider.isConfigured())
-			throw new Error(`SCRAPE_TARGETS: provider "${config.provider}" requires API key(s) to be configured (see docs)`);
+		if (!provider) {
+			errors.add(`SCRAPE_TARGETS: unknown provider "${config.provider}"`);
+			continue;
+		}
+		if (!provider.isConfigured()) {
+			const keys = ENV_REGISTRY.filter((spec) => spec.provider === config.provider && !getCredential(spec.name)).map(
+				(spec) => spec.name,
+			);
+			const keyList = keys.length > 0 ? `: ${keys.join(", ")}` : " (see docs)";
+			errors.add(`SCRAPE_TARGETS: provider "${config.provider}" requires API key(s) to be configured${keyList}`);
+		}
 		if (
 			(config.provider === "openai-api" ||
 				config.provider === "anthropic-api" ||
@@ -81,9 +93,9 @@ export function validateScrapeTargets(
 				config.provider === "openrouter") &&
 			!config.version
 		)
-			throw new Error(`SCRAPE_TARGETS: "${config.model}:${config.provider}" requires a version slug (third segment)`);
+			errors.add(`SCRAPE_TARGETS: "${config.model}:${config.provider}" requires a version slug (third segment)`);
 		const targetError = provider.validateTarget?.(config);
-		if (targetError)
-			throw new Error(`SCRAPE_TARGETS: invalid target "${config.model}:${config.provider}": ${targetError}`);
+		if (targetError) errors.add(`SCRAPE_TARGETS: invalid target "${config.model}:${config.provider}": ${targetError}`);
 	}
+	if (errors.size > 0) throw new Error([...errors].join("\n"));
 }

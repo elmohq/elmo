@@ -187,6 +187,27 @@ export function requireEnvVars<const K extends string>(
 }
 
 /**
+ * Throw a single error naming every env var the deployment mode requires but
+ * lacks. Provider keys are excluded: they can also come from stored
+ * credentials, so SCRAPE_TARGETS validation checks them once those are loaded.
+ */
+export function assertRequiredEnv(env: EnvMap = process.env): void {
+	// Without a mode, still report what every mode needs rather than stopping
+	// at DEPLOYMENT_MODE alone.
+	const requirements = hasValue(env.DEPLOYMENT_MODE)
+		? buildStaticRequirements(getDeploymentModeFromEnv(env))
+		: buildStaticRequirements("local").filter((requirement) =>
+				VALID_MODES.every((mode) => buildStaticRequirements(mode).some((other) => other.id === requirement.id)),
+			);
+	const missing = requirements
+		.filter((requirement) => !requirement.isSatisfied(env))
+		.map((requirement) => requirement.id);
+	if (missing.length > 0) {
+		throw new Error(formatMissingEnvVars(missing));
+	}
+}
+
+/**
  * Get an optional environment variable with a default value
  */
 export function getEnv(key: string, defaultValue: string, env: EnvMap = process.env): string {
