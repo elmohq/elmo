@@ -63,10 +63,11 @@ describe("the MCP server", () => {
 		const { client, close } = await connect([
 			stubTool({ name: "reader", run: async () => ({}) }),
 			stubTool({ name: "writer", readOnly: false, run: async () => ({}) }),
+			stubTool({ name: "adder", readOnly: false, destructive: false, run: async () => ({}) }),
 		]);
 
 		const { tools } = await client.listTools();
-		expect(tools.map((tool) => tool.name).sort()).toEqual(["reader", "writer"]);
+		expect(tools.map((tool) => tool.name).sort()).toEqual(["adder", "reader", "writer"]);
 		expect(tools.find((tool) => tool.name === "reader")?.annotations).toMatchObject({
 			title: "reader",
 			readOnlyHint: true,
@@ -76,6 +77,10 @@ describe("the MCP server", () => {
 			title: "writer",
 			readOnlyHint: false,
 			destructiveHint: true,
+		});
+		expect(tools.find((tool) => tool.name === "adder")?.annotations).toMatchObject({
+			readOnlyHint: false,
+			destructiveHint: false,
 		});
 		await close();
 	});

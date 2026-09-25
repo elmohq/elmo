@@ -68,6 +68,7 @@ export const createPromptsTool = defineTool({
 	description: `Add up to ${MAX_PROMPT_BATCH} prompts to a brand in one call. All-or-nothing: a batch that would exceed the organization's plan creates none of it.`,
 	scopes: ["write"],
 	readOnly: false,
+	destructive: false,
 	input: { brandId: brandIdArg, prompts: bulkPromptInputSchema.shape.prompts },
 	run: async ({ auth }, args) => {
 		const brand = await requireBrandInScope(auth, args.brandId, "body");
