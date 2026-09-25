@@ -118,6 +118,24 @@ function validatePort(value: string | undefined): string | undefined {
 	return valid ? undefined : "Must be an integer between 1 and 65535";
 }
 
+function toPublicUrl(value: string): URL | undefined {
+	const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+	try {
+		return new URL(withScheme);
+	} catch {
+		return undefined;
+	}
+}
+
+function validatePublicUrl(value: string | undefined): string | undefined {
+	if (!value) return "Required";
+	const url = toPublicUrl(value.trim());
+	if (!url?.hostname.includes(".")) return "Enter a domain, e.g. elmo.example.com";
+	// Auth trusts only this origin, so Elmo can't be served from a subpath.
+	if (url.pathname !== "/") return "Must not include a path";
+	return undefined;
+}
+
 async function configureProvidersInteractive(env: EnvMap): Promise<"recommended" | "custom"> {
 	p.note(
 		[
@@ -382,16 +400,38 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 	});
 	const email = p.isCancel(updatesEmail) ? undefined : updatesEmail || undefined;
 
-	// ── Web app port ────────────────────────────────────────────────────
+	// ── Access ──────────────────────────────────────────────────────────
+	const access = await p.select({
+		message: "How will you access Elmo?",
+		options: [
+			{ value: "local" as const, label: "On this machine (localhost)" },
+			{ value: "public" as const, label: "From a domain (e.g. behind a reverse proxy)" },
+		],
+		initialValue: "local" as const,
+	});
+	assertNotCancelled(access);
+
+	let publicUrl: URL | undefined;
+	if (access === "public") {
+		const domain = await p.text({
+			message: "Domain",
+			placeholder: "elmo.example.com",
+			validate: validatePublicUrl,
+		});
+		assertNotCancelled(domain);
+		publicUrl = toPublicUrl(domain.trim());
+	}
+
 	const portInput = await p.text({
-		message: "Web app port",
+		message: access === "public" ? "Port for your reverse proxy to forward to" : "Web app port",
 		placeholder: String(DEFAULT_APP_PORT),
 		defaultValue: String(DEFAULT_APP_PORT),
 		validate: validatePort,
 	});
 	assertNotCancelled(portInput);
 	const port = Number(portInput);
-	env.APP_URL = `http://localhost:${port}`;
+
+	env.APP_URL = publicUrl?.origin ?? `http://localhost:${port}`;
 	env.VITE_APP_URL = env.APP_URL;
 
 	// ── Write config ─────────────────────────────────────────────────────

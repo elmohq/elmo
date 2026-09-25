@@ -242,6 +242,10 @@ async function main(): Promise<void> {
 	await waitFor("email to receive product updates");
 	await send(ENTER);
 
+	// Access mode select — default "On this machine (localhost)"
+	await waitFor("How will you access Elmo?");
+	await send(ENTER);
+
 	// Web app port (default 1515) → accept default
 	await waitFor("Web app port");
 	await send(ENTER);
