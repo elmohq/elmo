@@ -7,6 +7,7 @@ import { cloudPricingUrl } from "@workspace/config/referrals";
 import { formatScrapeTarget } from "@workspace/config/scrape-targets";
 import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
+import { parseAppUrl } from "../app-url.js";
 import { buildComposeYaml } from "../compose.js";
 import { CONFIG_HOME, type EnvMap, ensureDir, fileExists, type PostgresMode, writeConfigFiles } from "../config.js";
 import { assertDockerRunning, runDockerCompose, waitForHealthy } from "../docker.js";
@@ -391,7 +392,31 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 	});
 	assertNotCancelled(portInput);
 	const port = Number(portInput);
-	env.APP_URL = `http://localhost:${port}`;
+
+	const localUrl = `http://localhost:${port}`;
+	p.note(
+		[
+			`Keep the default if you'll only use Elmo on this machine. If people`,
+			`will reach it through a domain or reverse proxy, enter that URL`,
+			`instead — sign-in only works from the URL set here.`,
+			"",
+			"Change it later with `elmo url <url>`.",
+		].join("\n"),
+		"Public URL",
+	);
+	const urlInput = await p.text({
+		message: "Public URL (where you'll open Elmo in a browser)",
+		placeholder: localUrl,
+		defaultValue: localUrl,
+		validate: (value) => {
+			if (!value) return undefined;
+			const result = parseAppUrl(value);
+			return "error" in result ? result.error : undefined;
+		},
+	});
+	assertNotCancelled(urlInput);
+	const appUrl = parseAppUrl(urlInput);
+	env.APP_URL = "url" in appUrl ? appUrl.url : localUrl;
 	env.VITE_APP_URL = env.APP_URL;
 
 	// ── Write config ─────────────────────────────────────────────────────

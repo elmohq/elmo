@@ -5,6 +5,7 @@ import { runCompose } from "./commands/compose.js";
 import { runEdit } from "./commands/edit.js";
 import { type InitOptions, runInit } from "./commands/init.js";
 import { runUpgrade, type UpgradeOptions } from "./commands/upgrade.js";
+import { runUrl } from "./commands/url.js";
 import type { DirOption } from "./config.js";
 import { printBanner } from "./util.js";
 import { getPackageVersion, maybeNotifyNewVersion } from "./version.js";
@@ -47,6 +48,14 @@ async function main() {
 		.argument("<env|compose>", "which config file to edit")
 		.action(async (target: string, _opts: object, cmd: Command) => {
 			await runEdit(target, cmd.optsWithGlobals<DirOption>());
+		});
+
+	program
+		.command("url")
+		.description("show or set the public URL people use to reach Elmo")
+		.argument("[url]", "new public URL, e.g. https://elmo.example.com")
+		.action(async (url: string | undefined, _opts: object, cmd: Command) => {
+			await runUrl(url, cmd.optsWithGlobals<DirOption>());
 		});
 
 	program
