@@ -1,4 +1,5 @@
 import { CRISP_WEBSITE_ID } from "@workspace/config/constants";
+import { afterPageIdle } from "./idle";
 
 type CrispCommand = unknown[];
 
@@ -22,8 +23,11 @@ export function initCrisp(): void {
 	// So a marketing-site question is distinguishable from one raised in the product.
 	window.$crisp.push(["set", "session:segments", [["marketing"]]]);
 
-	const script = document.createElement("script");
-	script.src = CRISP_SCRIPT_URL;
-	script.async = true;
-	document.head.appendChild(script);
+	// Commands queue on `$crisp` until the widget script arrives.
+	void afterPageIdle().then(() => {
+		const script = document.createElement("script");
+		script.src = CRISP_SCRIPT_URL;
+		script.async = true;
+		document.head.appendChild(script);
+	});
 }
