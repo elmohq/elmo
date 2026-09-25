@@ -26,6 +26,7 @@ import {
 	PROVIDER_FILTER_ORDER,
 	parseTarget,
 	passRate,
+	providerAffiliateUrl,
 	providerCategory,
 	providerColumnLabel,
 	providerPhrase,
@@ -596,6 +597,29 @@ function StatWithSparkline({
 	);
 }
 
+function ProviderName({
+	provider,
+	className,
+	children,
+}: {
+	provider: string;
+	className?: string;
+	children: ReactNode;
+}) {
+	const href = providerAffiliateUrl(provider);
+	if (!href) return <span className={className}>{children}</span>;
+	return (
+		<a
+			href={href}
+			target="_blank"
+			rel="sponsored nofollow noopener noreferrer"
+			className={`${className ?? ""} underline decoration-zinc-300 underline-offset-2 hover:decoration-current`}
+		>
+			{children}
+		</a>
+	);
+}
+
 function ProviderRow({ data }: { data: TargetStatus }) {
 	const { model, provider, rest } = parseTarget(data.target);
 	const deduped = dedupeEntries(data.entries);
@@ -612,7 +636,9 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 		<div className="space-y-2 rounded-md border border-zinc-200 bg-white p-4">
 			<div className="flex items-center justify-between">
 				<div>
-					<span className="font-medium text-zinc-950">{formatProvider(provider)}</span>
+					<ProviderName provider={provider} className="font-medium text-zinc-950">
+						{formatProvider(provider)}
+					</ProviderName>
 					{rest && (
 						<span className="text-zinc-500">
 							{" "}
@@ -941,7 +967,7 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 						<div />
 						{renderProviderCells((p) => (
 							<div key={p} className="px-1 pb-1 text-center text-[11px] font-medium text-zinc-500">
-								{providerColumnLabel(p, grouped)}
+								<ProviderName provider={p}>{providerColumnLabel(p, grouped)}</ProviderName>
 							</div>
 						))}
 						<div />
