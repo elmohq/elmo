@@ -2,8 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
+import { countResponses, getResponseMatches, type ResponseSearchScope } from "@/lib/postgres-read";
 import { resolveLookbackRange } from "@/lib/timezone-utils";
-import { type ResponseSearchResult, searchBrandResponses } from "@/server/responses-core";
+import { resolveFilteredPrompts } from "@/server/prompt-resolution";
+
+const PAGE_SIZE = 15;
 
 export const searchResponsesFn = createServerFn({ method: "GET" })
 	.validator(
@@ -19,19 +22,48 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			timezone: z.string().default("UTC"),
 		}),
 	)
-	.handler(async ({ data }): Promise<ResponseSearchResult> => {
+	.handler(async ({ data }) => {
 		await requireBrandSession(data.brandId);
 
+		const query = data.query?.trim() || undefined;
+		const picked = data.prompts ? new Set(data.prompts.split(",")) : null;
+		const prompts = (await resolveFilteredPrompts(data.brandId, { tags: data.tags })).filter(
+			(prompt) => !picked || picked.has(prompt.id),
+		);
+		const promptValues = new Map(prompts.map((prompt) => [prompt.id, prompt.value]));
 		const { timezone, fromDateStr, toDateStr } = resolveLookbackRange(data.lookback, data.timezone);
-		return searchBrandResponses(data.brandId, {
-			from: fromDateStr,
-			to: toDateStr,
+		const scope: ResponseSearchScope = {
+			brandId: data.brandId,
+			fromDate: fromDateStr,
+			toDate: toDateStr,
 			timezone,
-			query: data.query,
+			promptIds: prompts.map((prompt) => prompt.id),
 			model: data.model,
-			tags: data.tags,
-			promptIds: data.prompts?.split(",").filter(Boolean),
-			page: data.page,
-			pageSize: 15,
-		});
+			query,
+		};
+
+		const [totalRuns, rows] = await Promise.all([
+			countResponses(scope),
+			getResponseMatches(scope, PAGE_SIZE, data.page * PAGE_SIZE),
+		]);
+
+		return {
+			query: query ?? null,
+			totalRuns,
+			matchedRuns: rows[0]?.matched ?? 0,
+			pageSize: PAGE_SIZE,
+			matches: rows.map((row) => ({
+				id: row.id,
+				promptId: row.prompt_id,
+				promptValue: promptValues.get(row.prompt_id) ?? "",
+				model: row.model,
+				provider: row.provider,
+				version: row.version,
+				webQueries: row.web_queries ?? [],
+				brandMentioned: row.brand_mentioned,
+				competitorsMentioned: row.competitors_mentioned ?? [],
+				rawOutput: row.raw_output as {},
+				createdAt: new Date(row.created_at).toISOString(),
+			})),
+		};
 	});

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { extractTextContent } from "@workspace/lib/text-extraction";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
@@ -86,7 +87,8 @@ function ResponsesPage() {
 					<ResponseCard
 						key={match.id}
 						run={match}
-						text={match.text}
+						// Older rows predate the provider column; the model name is the extractor's other accepted key.
+						text={extractTextContent(match.rawOutput, match.provider ?? match.model)}
 						highlight={data.query ?? undefined}
 						prompt={
 							<BrandPromptLink

@@ -1260,6 +1260,8 @@ export interface ResponseMatchRow {
 	competitors_mentioned: string[];
 	raw_output: unknown;
 	created_at: string;
+	/** Every match in scope, not just this page — counted in the same scan. */
+	matched: number;
 }
 
 function responseScopeFilter(scope: ResponseSearchScope): SQL {
@@ -1282,17 +1284,13 @@ function responseMatch(scope: ResponseSearchScope): SQL {
 	return sql`pr.raw_output::text ILIKE ${pattern}`;
 }
 
-/** Runs in scope, and how many of them match. */
-export async function getResponseCounts(scope: ResponseSearchScope): Promise<{ total: number; matched: number }> {
-	if (scope.promptIds.length === 0) return { total: 0, matched: 0 };
-	const rows = await queryPg<{ total: number; matched: number }>(sql`
-		SELECT
-			count(*)::int AS total,
-			count(*) FILTER (WHERE ${responseMatch(scope)})::int AS matched
-		FROM prompt_runs pr
-		WHERE ${responseScopeFilter(scope)}
+/** Runs in scope, ignoring the search — cheap, since it never reads `raw_output`. */
+export async function countResponses(scope: ResponseSearchScope): Promise<number> {
+	if (scope.promptIds.length === 0) return 0;
+	const rows = await queryPg<{ total: number }>(sql`
+		SELECT count(*)::int AS total FROM prompt_runs pr WHERE ${responseScopeFilter(scope)}
 	`);
-	return { total: rows[0]?.total ?? 0, matched: rows[0]?.matched ?? 0 };
+	return rows[0]?.total ?? 0;
 }
 
 export async function getResponseMatches(
@@ -1312,7 +1310,8 @@ export async function getResponseMatches(
 			pr.brand_mentioned,
 			pr.competitors_mentioned,
 			pr.raw_output,
-			pr.created_at
+			pr.created_at,
+			count(*) OVER ()::int AS matched
 		FROM prompt_runs pr
 		WHERE ${responseScopeFilter(scope)} AND ${responseMatch(scope)}
 		ORDER BY pr.created_at DESC, pr.id
