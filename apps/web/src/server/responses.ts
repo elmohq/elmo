@@ -5,7 +5,7 @@ import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
 import { RESPONSES_PAGE_SIZE } from "@/lib/responses";
 import { resolveLookbackRange } from "@/lib/timezone-utils";
-import { findBrandRunDetail, type ResponseSearchResult, searchBrandResponses } from "@/server/responses-core";
+import { type ResponseSearchResult, searchBrandResponses } from "@/server/responses-core";
 
 export const searchResponsesFn = createServerFn({ method: "GET" })
 	.validator(
@@ -32,23 +32,4 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			limit: RESPONSES_PAGE_SIZE,
 			offset: data.page * RESPONSES_PAGE_SIZE,
 		});
-	});
-
-export const getResponseDetailFn = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string(), runId: z.string() }))
-	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
-		const run = await findBrandRunDetail(data.brandId, data.runId);
-		if (!run) return null;
-		return {
-			id: run.id,
-			promptId: run.promptId,
-			model: run.model,
-			createdAt: new Date(run.createdAt).toISOString(),
-			brandMentioned: Boolean(run.brandMentioned),
-			competitorsMentioned: [...new Set((run.competitorsMentioned as string[] | null) ?? [])],
-			webQueries: [...new Set((run.webQueries as string[] | null) ?? [])],
-			text: run.answer.text,
-			citations: run.citations,
-		};
 	});

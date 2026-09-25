@@ -25,7 +25,3 @@ export function responseSearchVector(text: string | SQL): SQL {
 export function responseSearchQuery(query: string): SQL {
 	return sql`websearch_to_tsquery(${SEARCH_CONFIG}::regconfig, ${query})`;
 }
-
-export function responseSearchHeadline(text: SQL, query: string, options: string): SQL {
-	return sql`ts_headline(${SEARCH_CONFIG}::regconfig, ${text}, ${responseSearchQuery(query)}, ${options})`;
-}

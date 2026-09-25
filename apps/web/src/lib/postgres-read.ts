@@ -8,7 +8,7 @@
 import { parseModelFilter } from "@workspace/config/model-filter";
 import { db } from "@workspace/lib/db/db";
 import { getAllProviders } from "@workspace/lib/providers";
-import { responseSearchHeadline, responseSearchQuery } from "@workspace/lib/response-search";
+import { responseSearchQuery } from "@workspace/lib/response-search";
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type FanoutBreakdownRow,
@@ -16,7 +16,6 @@ import {
 	type FanoutPromptTotalRow,
 	UNAVAILABLE_SENTINEL,
 } from "@/lib/fanout-analysis";
-import { SNIPPET_MARK_END, SNIPPET_MARK_START } from "@/lib/responses";
 
 export interface DashboardSummary {
 	total_prompts: number;
@@ -1251,34 +1250,19 @@ export interface ResponseSearchScope {
 	query?: string;
 }
 
-export interface ResponseDailyModelRow {
-	date: string;
-	model: string;
-	runs: number;
-	matched: number;
-	matched_brand_mentioned: number;
-}
-
-export interface ResponsePromptRow {
-	prompt_id: string;
-	runs: number;
-	matched: number;
-}
-
-export interface ResponseCompetitorRow {
-	competitor: string;
-	matched: number;
-}
-
 export interface ResponseMatchRow {
 	id: string;
 	prompt_id: string;
 	model: string;
+	provider: string | null;
+	version: string;
+	web_queries: string[];
 	brand_mentioned: boolean;
 	competitors_mentioned: string[];
+	raw_output: unknown;
+	/** Null until the worker has indexed the run. */
+	text_content: string | null;
 	created_at: string;
-	/** Null until the run's text has been indexed. */
-	snippet: string | null;
 }
 
 function responseScopeFilter(scope: ResponseSearchScope): SQL {
@@ -1293,91 +1277,49 @@ function responseMatch(scope: ResponseSearchScope): SQL {
 	return scope.query ? sql`pr.search_vector @@ ${responseSearchQuery(scope.query)}` : sql`TRUE`;
 }
 
-/** Every run in scope counted per day and model, alongside how many of them match. */
-export async function getResponseDailyModelCounts(scope: ResponseSearchScope): Promise<ResponseDailyModelRow[]> {
-	if (scope.promptIds.length === 0) return [];
-	const match = responseMatch(scope);
-	return queryPg<ResponseDailyModelRow>(sql`
+/**
+ * Runs in scope, how many of them match, and whether any are still waiting on
+ * the worker to index their text (and so can't match yet).
+ */
+export async function getResponseCounts(
+	scope: ResponseSearchScope,
+): Promise<{ total: number; matched: number; unindexed: boolean }> {
+	if (scope.promptIds.length === 0) return { total: 0, matched: 0, unindexed: false };
+	const rows = await queryPg<{ total: number; matched: number; unindexed: boolean }>(sql`
 		SELECT
-			to_char((pr.created_at AT TIME ZONE ${scope.timezone})::date, 'YYYY-MM-DD') AS date,
-			pr.model,
-			count(*)::int AS runs,
-			count(*) FILTER (WHERE ${match})::int AS matched,
-			count(*) FILTER (WHERE ${match} AND pr.brand_mentioned)::int AS matched_brand_mentioned
+			count(*)::int AS total,
+			count(*) FILTER (WHERE ${responseMatch(scope)})::int AS matched,
+			bool_or(pr.text_content IS NULL) AS unindexed
 		FROM prompt_runs pr
 		WHERE ${responseScopeFilter(scope)}
-		GROUP BY 1, 2
-		ORDER BY 1
 	`);
+	const row = rows[0];
+	return { total: row?.total ?? 0, matched: row?.matched ?? 0, unindexed: row?.unindexed ?? false };
 }
 
-/** Prompts with at least one matching run. */
-export async function getResponsePromptCounts(scope: ResponseSearchScope): Promise<ResponsePromptRow[]> {
-	if (scope.promptIds.length === 0) return [];
-	const match = responseMatch(scope);
-	return queryPg<ResponsePromptRow>(sql`
-		SELECT
-			pr.prompt_id::text AS prompt_id,
-			count(*)::int AS runs,
-			count(*) FILTER (WHERE ${match})::int AS matched
-		FROM prompt_runs pr
-		WHERE ${responseScopeFilter(scope)}
-		GROUP BY pr.prompt_id
-		HAVING count(*) FILTER (WHERE ${match}) > 0
-		ORDER BY matched DESC
-	`);
-}
-
-/** Competitors named in matching runs, each run counted once per competitor. */
-export async function getResponseCompetitorCounts(scope: ResponseSearchScope): Promise<ResponseCompetitorRow[]> {
-	if (scope.promptIds.length === 0) return [];
-	return queryPg<ResponseCompetitorRow>(sql`
-		SELECT c.competitor, count(*)::int AS matched
-		FROM prompt_runs pr
-		CROSS JOIN LATERAL (SELECT DISTINCT unnest(pr.competitors_mentioned) AS competitor) c
-		WHERE ${responseScopeFilter(scope)} AND ${responseMatch(scope)}
-		GROUP BY c.competitor
-		ORDER BY matched DESC, c.competitor
-	`);
-}
-
-/** A page of matching runs, newest first, each with the passage that matched. */
+/** A page of matching runs, newest first. */
 export async function getResponseMatches(
 	scope: ResponseSearchScope,
 	limit: number,
 	offset: number,
 ): Promise<ResponseMatchRow[]> {
 	if (scope.promptIds.length === 0) return [];
-	const snippet = scope.query
-		? responseSearchHeadline(
-				sql`pr.text_content`,
-				scope.query,
-				`StartSel=${SNIPPET_MARK_START}, StopSel=${SNIPPET_MARK_END}, MaxFragments=2, MaxWords=30, MinWords=12, FragmentDelimiter=" … "`,
-			)
-		: sql`left(pr.text_content, 600)`;
 	return queryPg<ResponseMatchRow>(sql`
 		SELECT
 			pr.id::text AS id,
 			pr.prompt_id::text AS prompt_id,
 			pr.model,
+			pr.provider,
+			pr.version,
+			pr.web_queries,
 			pr.brand_mentioned,
 			pr.competitors_mentioned,
-			pr.created_at,
-			CASE WHEN pr.text_content IS NULL THEN NULL ELSE ${snippet} END AS snippet
+			pr.raw_output,
+			pr.text_content,
+			pr.created_at
 		FROM prompt_runs pr
 		WHERE ${responseScopeFilter(scope)} AND ${responseMatch(scope)}
 		ORDER BY pr.created_at DESC, pr.id
 		LIMIT ${limit} OFFSET ${offset}
 	`);
-}
-
-/** Whether any run in scope is still waiting on the worker to index its text. */
-export async function hasUnindexedResponses(scope: ResponseSearchScope): Promise<boolean> {
-	if (scope.promptIds.length === 0) return false;
-	const rows = await queryPg<{ pending: boolean }>(sql`
-		SELECT EXISTS (
-			SELECT 1 FROM prompt_runs pr WHERE ${responseScopeFilter(scope)} AND pr.text_content IS NULL
-		) AS pending
-	`);
-	return rows[0]?.pending ?? false;
 }

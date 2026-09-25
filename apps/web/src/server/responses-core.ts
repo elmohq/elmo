@@ -1,45 +1,32 @@
 /**
- * Full-text search across every stored answer for a brand, plus the analysis
- * of what matched. Like `analytics-core`, the caller has already decided the
- * requester may see the brand.
+ * Full-text search across every stored answer for a brand. Like
+ * `analytics-core`, the caller has already decided the requester may see the
+ * brand.
  */
-import { db } from "@workspace/lib/db/db";
-import { promptRuns } from "@workspace/lib/db/schema";
-import { and, eq } from "drizzle-orm";
-import { generateDateRange } from "@/lib/chart-utils";
-import {
-	getResponseCompetitorCounts,
-	getResponseDailyModelCounts,
-	getResponseMatches,
-	getResponsePromptCounts,
-	hasUnindexedResponses,
-	type ResponseSearchScope,
-} from "@/lib/postgres-read";
+import { extractTextContent } from "@workspace/lib/text-extraction";
+import { getResponseCounts, getResponseMatches, type ResponseSearchScope } from "@/lib/postgres-read";
 import type { AnalyticsFilters } from "@/server/analytics-core";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
-import { findRunDetail, type RunDetail } from "@/server/runs-core";
 
 export interface ResponseMatch {
 	id: string;
 	promptId: string;
 	promptValue: string;
 	model: string;
+	version: string;
+	webQueries: string[];
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
+	rawOutput: {};
+	/** The answer as the search indexed it, so what shows is what matched. */
+	text: string;
 	createdAt: string;
-	snippet: string | null;
 }
 
 export interface ResponseSearchResult {
 	query: string | null;
 	totalRuns: number;
 	matchedRuns: number;
-	/** Share of matching runs that mention the brand, 0..1; null with no matches. */
-	brandMentionRate: number | null;
-	series: Array<{ date: string; runs: number; matched: number }>;
-	byModel: Array<{ model: string; runs: number; matched: number }>;
-	byPrompt: Array<{ promptId: string; promptValue: string; runs: number; matched: number }>;
-	competitors: Array<{ name: string; matched: number }>;
 	matches: ResponseMatch[];
 	/** True while older runs in scope haven't been indexed yet, so they can't match a query. */
 	indexing: boolean;
@@ -73,81 +60,29 @@ export async function searchBrandResponses(
 		query,
 	};
 
-	const [daily, promptRows, competitorRows, matchRows, indexing] = await Promise.all([
-		getResponseDailyModelCounts(scope),
-		getResponsePromptCounts(scope),
-		getResponseCompetitorCounts(scope),
+	const [counts, rows] = await Promise.all([
+		getResponseCounts(scope),
 		getResponseMatches(scope, options.limit, options.offset),
-		hasUnindexedResponses(scope),
 	]);
-
-	let totalRuns = 0;
-	let matchedRuns = 0;
-	let matchedMentioned = 0;
-	const byDate = new Map<string, { runs: number; matched: number }>();
-	const byModel = new Map<string, { runs: number; matched: number }>();
-	for (const row of daily) {
-		totalRuns += row.runs;
-		matchedRuns += row.matched;
-		matchedMentioned += row.matched_brand_mentioned;
-		for (const [map, key] of [
-			[byDate, row.date],
-			[byModel, row.model],
-		] as const) {
-			const entry = map.get(key) ?? { runs: 0, matched: 0 };
-			entry.runs += row.runs;
-			entry.matched += row.matched;
-			map.set(key, entry);
-		}
-	}
-
-	const series = generateDateRange(new Date(`${options.from}T00:00:00Z`), new Date(`${options.to}T00:00:00Z`)).map(
-		(date) => ({ date, ...(byDate.get(date) ?? { runs: 0, matched: 0 }) }),
-	);
 
 	return {
 		query: query ?? null,
-		totalRuns,
-		matchedRuns,
-		brandMentionRate: matchedRuns > 0 ? matchedMentioned / matchedRuns : null,
-		series,
-		byModel: [...byModel]
-			.map(([model, counts]) => ({ model, ...counts }))
-			.sort((a, b) => b.matched - a.matched || b.runs - a.runs),
-		byPrompt: promptRows.map((row) => ({
-			promptId: row.prompt_id,
-			promptValue: promptValues.get(row.prompt_id) ?? "",
-			runs: row.runs,
-			matched: row.matched,
-		})),
-		competitors: competitorRows.map((row) => ({ name: row.competitor, matched: row.matched })),
-		matches: matchRows.map((row) => ({
+		totalRuns: counts.total,
+		matchedRuns: counts.matched,
+		indexing: counts.unindexed,
+		matches: rows.map((row) => ({
 			id: row.id,
 			promptId: row.prompt_id,
 			promptValue: promptValues.get(row.prompt_id) ?? "",
 			model: row.model,
+			version: row.version,
+			webQueries: row.web_queries ?? [],
 			brandMentioned: row.brand_mentioned,
-			competitorsMentioned: [...new Set(row.competitors_mentioned ?? [])],
+			competitorsMentioned: row.competitors_mentioned ?? [],
+			rawOutput: row.raw_output as {},
+			// Older rows predate the provider column; the model name is the extractor's other accepted key.
+			text: row.text_content || extractTextContent(row.raw_output, row.provider ?? row.model),
 			createdAt: new Date(row.created_at).toISOString(),
-			snippet: row.snippet,
 		})),
-		indexing,
 	};
-}
-
-/**
- * A run addressed through its brand, so a run id cannot be read under another.
- * The answer is the indexed text where there is one, so what opens is exactly
- * what the search matched.
- */
-export async function findBrandRunDetail(brandId: string, runId: string): Promise<RunDetail | null> {
-	const [run] = await db
-		.select({ promptId: promptRuns.promptId, textContent: promptRuns.textContent })
-		.from(promptRuns)
-		.where(and(eq(promptRuns.id, runId), eq(promptRuns.brandId, brandId)))
-		.limit(1);
-	if (!run) return null;
-	const detail = await findRunDetail(run.promptId, runId);
-	if (!detail || !run.textContent) return detail;
-	return { ...detail, answer: { text: run.textContent } };
 }
