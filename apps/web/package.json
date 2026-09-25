@@ -10,6 +10,7 @@
 		"start": "node .output/server/index.mjs",
 		"preview": "vite preview",
 		"test": "vitest run --project=unit",
+		"test:integration": "vitest run --project=integration",
 		"test:storybook": "vitest run --project=storybook",
 		"check-types": "tsc --noEmit",
 		"generate-icons": "tsx scripts/generate-brand-icons.tsx",
