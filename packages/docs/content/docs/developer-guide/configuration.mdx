@@ -89,7 +89,7 @@ elmo compose up -d
 
 ## Serving Elmo from a Domain
 
-`elmo init` asks for the public URL you'll open Elmo at, defaulting to `http://localhost:1515`. If you put Elmo behind a domain or reverse proxy, set it to that URL — sign-in is only accepted from the URL configured here.
+`elmo init` asks how you'll access Elmo. Choose **From a domain** and enter it (for example `elmo.example.com`, which becomes `https://elmo.example.com`), then point your reverse proxy at the port you pick. Sign-in is only accepted from the configured URL.
 
 To change it later, run `elmo edit env`, set both `APP_URL` and `VITE_APP_URL` to the new URL (for example `https://elmo.example.com`), then restart with `elmo compose up -d`. Elmo must be served from the root of its domain, not a subpath.
 
