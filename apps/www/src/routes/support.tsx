@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { bookDemoUrl } from "@workspace/config/referrals";
 import { buttonVariants } from "@workspace/ui/components/button";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { ArrowUpRight } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { openCrispChat } from "@/lib/crisp";
@@ -12,7 +13,7 @@ import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
 const title = "Support · Elmo";
 const description = "Get help with Elmo: chat with the team, email support, book a call, or ask the community.";
 
-const SUPPORT_EMAIL = "hello@elmohq.com";
+const SUPPORT_EMAIL = "contact@elmohq.com";
 const SECURITY_EMAIL = "security@elmohq.com";
 const DISCORD_INVITE_URL = "https://discord.gg/s24nubCtKz";
 const GITHUB_ISSUES_URL = "https://github.com/elmohq/elmo/issues";
@@ -43,6 +44,34 @@ function ContactCard({ heading, body, action }: { heading: string; body: string;
 			<p className="mt-2 flex-1 text-sm text-zinc-600">{body}</p>
 			<div className="mt-5">{action}</div>
 		</div>
+	);
+}
+
+// Stops a click that's still waiting on Crisp from spinning forever if the event never comes.
+const CHAT_OPEN_TIMEOUT_MS = 15_000;
+
+function StartChatButton() {
+	const [opening, setOpening] = useState(false);
+
+	function start() {
+		setOpening(true);
+		const timeout = window.setTimeout(() => setOpening(false), CHAT_OPEN_TIMEOUT_MS);
+		openCrispChat(() => {
+			window.clearTimeout(timeout);
+			setOpening(false);
+		});
+	}
+
+	return (
+		<button
+			type="button"
+			onClick={start}
+			disabled={opening}
+			className={buttonVariants({ variant: "default", size: "sm" })}
+		>
+			{opening && <Spinner />}
+			{opening ? "Opening chat…" : "Start a chat"}
+		</button>
 	);
 }
 
@@ -94,15 +123,7 @@ function SupportPage() {
 					<ContactCard
 						heading="Chat with us"
 						body="The fastest way to reach the team, for anything from sign-in trouble to questions about your data."
-						action={
-							<button
-								type="button"
-								onClick={openCrispChat}
-								className={buttonVariants({ variant: "default", size: "sm" })}
-							>
-								Start a chat
-							</button>
-						}
+						action={<StartChatButton />}
 					/>
 					<ContactCard
 						heading="Email"
