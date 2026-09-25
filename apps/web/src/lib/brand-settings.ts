@@ -37,7 +37,7 @@ export function normalizeBrandUpdate(input: BrandUpdateInput): NormalizeBrandUpd
 
 	if (input.name !== undefined) {
 		if (!input.name.trim()) {
-			return { ok: false, error: "Brand name must be a non-empty string" };
+			return { ok: false, error: "Brand name can't be empty" };
 		}
 		updates.name = input.name.trim();
 	}

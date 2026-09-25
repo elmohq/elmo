@@ -75,7 +75,7 @@ export async function isBrandInScope(auth: Principal, brandId: string): Promise<
 	return (await loadBrandInScope(auth, brandId)) !== null;
 }
 
-/** Never looks the workspace up: the check is against ids the caller already
+/** Never looks the organization up: the check is against ids the caller already
  * reaches, so nobody learns another tenant exists by asking. */
 export function requireOrganizationInScope(auth: Principal, organizationId: string): void {
 	const { organizationIds } = principalReach(auth);

@@ -40,7 +40,7 @@ export function TrackDomainPopover({
 
 	const handleError = (e: unknown) => {
 		setSaving(false);
-		setError("Something went wrong. Please try again.");
+		setError("Couldn't update tracking for this domain. Try again.");
 		Sentry.captureException(e);
 	};
 

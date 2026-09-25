@@ -578,7 +578,7 @@ export async function resolveOpportunities(brandId: string, timezone = "UTC"): P
 	if (!generated) {
 		// No schema-valid report; serve the last good one if there is one.
 		if (latest) return serveStored();
-		throw new Error("Failed to generate a valid opportunities report");
+		throw new Error("Couldn't generate opportunities. Try again in a few minutes.");
 	}
 
 	const report = enrichReport(generated.report, digest);

@@ -80,7 +80,7 @@ export const updatePromptTool = defineTool({
 	name: "update_prompt",
 	title: "Update a prompt",
 	description:
-		"Change a prompt's text, tags, or whether it is being sampled. Setting `enabled: false` is how you stop a prompt costing runs — it keeps every answer already recorded.",
+		"Change a prompt's text, tags, or whether it is being sampled. Setting `enabled: false` stops a prompt from using runs and keeps every answer already recorded.",
 	scopes: ["write"],
 	readOnly: false,
 	// No `premiumModels`: pairing a prompt with one spends a metered pool, which

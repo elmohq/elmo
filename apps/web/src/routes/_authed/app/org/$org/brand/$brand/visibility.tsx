@@ -30,7 +30,7 @@ function VisibilityPage() {
 	return (
 		<PromptsDisplay
 			pageTitle="Visibility"
-			pageDescription="See how LLMs are evaluating prompts related to your brand."
+			pageDescription="See how AI models answer prompts about your brand."
 			pageInfoContent={infoContent}
 		/>
 	);

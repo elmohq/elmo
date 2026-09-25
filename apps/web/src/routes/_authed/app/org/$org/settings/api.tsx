@@ -32,7 +32,7 @@ function ApiSettingsPage() {
 		<div className="space-y-6">
 			<header className="space-y-1">
 				<h1 className="text-3xl font-bold">API Docs</h1>
-				<p className="max-w-2xl text-muted-foreground">Programmatic interface for {appName}.</p>
+				<p className="max-w-2xl text-muted-foreground">Reference for the {appName} REST API.</p>
 			</header>
 
 			<DemoModeAlert>API access is disabled in demo mode.</DemoModeAlert>

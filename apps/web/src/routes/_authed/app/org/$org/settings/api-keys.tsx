@@ -195,7 +195,7 @@ function ApiKeysSettingsPage() {
 				<section className="space-y-3">
 					<div className="space-y-1">
 						<h2 className="text-lg font-semibold text-muted-foreground">Inactive</h2>
-						<p className="text-sm text-muted-foreground">Revoked or expired — they no longer authenticate anything.</p>
+						<p className="text-sm text-muted-foreground">Revoked or expired keys that no longer work.</p>
 					</div>
 					<KeyTable keys={inactive} brandNames={brandNames} inactive />
 				</section>
@@ -225,7 +225,7 @@ function ApiKeysSettingsPage() {
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Revoke “{revokeTarget?.name ?? "Untitled key"}”?</DialogTitle>
-						<DialogDescription>This key will immediately and permanently have its access revoked.</DialogDescription>
+						<DialogDescription>This key will stop working immediately. This can't be undone.</DialogDescription>
 					</DialogHeader>
 					{revokeError && (
 						<Alert variant="destructive">

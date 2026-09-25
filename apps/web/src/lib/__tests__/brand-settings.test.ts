@@ -29,7 +29,7 @@ describe("normalizeBrandUpdate", () => {
 		])("rejects a %s name", (_label, name) => {
 			expect(normalizeBrandUpdate({ name })).toEqual({
 				ok: false,
-				error: "Brand name must be a non-empty string",
+				error: "Brand name can't be empty",
 			});
 		});
 	});

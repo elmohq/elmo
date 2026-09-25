@@ -24,10 +24,9 @@ export interface PlatformGroup {
 }
 
 const GROUP_DESCRIPTIONS: Record<PlanPlatformGroupId, string> = {
-	scraped: "Captures the response of an LLM within an actual UI. You track what a real visitor sees.",
-	api: "LLMs called without web-search tools, so answers show what the model was trained on.",
-	premium:
-		"LLMs called with their native web-search tools, so answers are grounded using recent updates to their web index.",
+	scraped: "Answers captured from each product's own interface, exactly as a real visitor sees them.",
+	api: "Models called through their API with web search off, so answers reflect what they learned in training.",
+	premium: "Models called through their API with built-in web search on, so answers draw on current web results.",
 };
 
 /** Which group an option belongs to. The one place that rule is decided. */

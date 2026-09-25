@@ -39,6 +39,6 @@ export const Default: Story = {
 		initialPrompts: prompts,
 		brandId: "mock-brand-id",
 		pageTitle: "Prompts",
-		pageDescription: "Add, edit, or remove your brand tracking keywords and prompts",
+		pageDescription: "Add, edit, or remove the prompts you track for this brand.",
 	},
 };

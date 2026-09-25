@@ -162,7 +162,7 @@ function McpSettingsPage() {
 		<div className="max-w-4xl space-y-8">
 			<header className="space-y-1">
 				<h1 className="text-3xl font-bold">MCP</h1>
-				<p className="max-w-2xl text-muted-foreground">Connect any chat bot to {appName}.</p>
+				<p className="max-w-2xl text-muted-foreground">Connect any MCP client to {appName}.</p>
 			</header>
 
 			<DemoModeAlert>MCP access is disabled in demo mode.</DemoModeAlert>
@@ -202,7 +202,7 @@ function McpSettingsPage() {
 					<h2 className="text-lg font-semibold">Tools</h2>
 					{readOnlyDeployment && (
 						<p className="text-sm text-muted-foreground">
-							This deployment is read-only, so the tools that write are withheld from every key.
+							This deployment is read-only, so write tools aren't available to any key.
 						</p>
 					)}
 				</div>

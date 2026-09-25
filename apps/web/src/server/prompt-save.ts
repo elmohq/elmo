@@ -57,14 +57,19 @@ export function planPromptSave(
 		// Guessing which row was meant would write one edit and drop another.
 		const before = existingById.get(prompt.id);
 		if (!before) {
-			throw new Error(`Prompt ${prompt.id} is not in this brand's list. Reload the page and try again.`);
+			throw new Error(`"${promptLabel(prompt)}" is no longer in this brand's prompts. Reload the page and try again.`);
 		}
 		if (claimed.has(prompt.id)) {
-			throw new Error(`Prompt ${prompt.id} appears twice in this save.`);
+			throw new Error(`"${promptLabel(prompt)}" is listed twice. Reload the page and try again.`);
 		}
 		claimed.add(prompt.id);
 		updates.push({ id: prompt.id, prompt, before, after });
 	}
 
 	return { updates, inserts };
+}
+
+function promptLabel(prompt: SubmittedPrompt): string {
+	const text = prompt.value.trim();
+	return text.length > 60 ? `${text.slice(0, 57)}...` : text;
 }

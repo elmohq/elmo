@@ -98,8 +98,8 @@ function BillingSettingsPage() {
 				<Alert variant="destructive">
 					<AlertTitle>Tracking paused</AlertTitle>
 					<AlertDescription>
-						Payment is more than a week overdue, so prompt tracking is paused. Your data stays readable; fix the payment
-						in the billing portal and tracking resumes automatically.
+						Payment is more than a week overdue, so prompt tracking is paused. Your data is still available. Fix the
+						payment in the billing portal and tracking resumes automatically.
 					</AlertDescription>
 				</Alert>
 			)}
@@ -128,7 +128,7 @@ function BillingSettingsPage() {
 				description={
 					showPlanGrid
 						? "Switching takes effect immediately; Stripe prorates the difference."
-						: "What your organization is on, and what it costs."
+						: "Your organization's current plan and what it costs."
 				}
 			>
 				<SubscriptionSummary
@@ -157,7 +157,7 @@ function BillingSettingsPage() {
 									disabled={!isAdmin || busy !== null}
 									onClick={openPortal}
 								>
-									{busy === "portal" ? <Spinner /> : "Manage"}
+									{busy === "portal" ? <Spinner /> : "Manage Billing"}
 								</Button>
 							) : (
 								<Button
@@ -177,7 +177,7 @@ function BillingSettingsPage() {
 					/>
 				)}
 				<p className="text-sm text-muted-foreground">
-					Need more brands, any other models, higher numbers of samples, SSO, white label, or custom limits?{" "}
+					Need more brands, other models, more samples, SSO, white-labeling, or custom limits?{" "}
 					<a className="underline" href="mailto:hello@elmohq.com?subject=Elmo%20Cloud%20custom%20plan">
 						Talk to us about a custom plan
 					</a>
@@ -187,8 +187,8 @@ function BillingSettingsPage() {
 
 			{state.premiumAddonAvailable && (
 				<Section
-					title="Extra premium"
-					description={`Beyond what your plan includes, at $${PREMIUM_ADDON_MONTHLY_USD} per pairing per month.`}
+					title="Extra Premium Pairings"
+					description={`Pairings beyond your plan's allowance, at $${PREMIUM_ADDON_MONTHLY_USD} per pairing per month.`}
 				>
 					<PremiumAddonCard
 						organizationId={state.organization.id}
@@ -200,7 +200,7 @@ function BillingSettingsPage() {
 			)}
 
 			{showMeters(entitlements) && (
-				<Section title="Usage" description="What your organization is using against its plan.">
+				<Section title="Usage" description="How much of your plan your organization is using.">
 					<UsageCard state={state} />
 				</Section>
 			)}

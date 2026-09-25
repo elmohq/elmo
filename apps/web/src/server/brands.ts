@@ -301,7 +301,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 
 		const trimmedName = data.brandName.trim();
 		if (!trimmedName) {
-			throw new Error("Brand name must be a non-empty string");
+			throw new Error("Brand name can't be empty");
 		}
 
 		const orgId = data.organizationId;

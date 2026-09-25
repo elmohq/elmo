@@ -49,7 +49,7 @@ export function CitationStatsCards({
 			    excluded from this count and broken out in the Google Shopping card. */}
 			<StatCard
 				title="Total Citations"
-				tooltip="The total external websites cited by AI models across prompt evaluations."
+				tooltip="Citations of external websites across all prompt evaluations in this period."
 				value={totalCitations.toLocaleString()}
 			/>
 		</div>

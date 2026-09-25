@@ -65,7 +65,7 @@ function ShareOfVoicePage() {
 		<>
 			<p className="mb-2">
 				Share of voice is how often each brand is mentioned in the AI answers to your prompts. Mentions are counted per
-				run, so the brand and competitor figures use the same unit and are directly comparable.
+				run, so brand and competitor figures are directly comparable.
 			</p>
 			<p>Competitors are the ones you track in settings. Switch the model filter to compare engines.</p>
 		</>

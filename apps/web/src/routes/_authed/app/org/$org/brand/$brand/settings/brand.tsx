@@ -179,8 +179,7 @@ function BrandSettingsPage() {
 								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
 									Other domains your brand owns (e.g. blog.example.com, shop.example.com). Citations from these domains
-									will be counted as your brand&apos;s citations. <strong>Updates retroactively</strong> &mdash;
-									existing citations will be reclassified immediately.
+									count as yours, and <strong>existing citations are reclassified right away</strong>.
 								</TooltipContent>
 							</Tooltip>
 						</Label>
@@ -201,9 +200,8 @@ function BrandSettingsPage() {
 							<Tooltip>
 								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
-									Alternative names for your brand (sub-brands, product lines, abbreviations). Used for mention
-									detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively to past
-									results.
+									Alternative names for your brand (sub-brands, product lines, abbreviations). Used to detect mentions
+									in <strong>future</strong> prompt runs only. Past results aren&apos;t updated.
 								</TooltipContent>
 							</Tooltip>
 						</Label>

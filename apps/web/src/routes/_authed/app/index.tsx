@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authed/app/")({
 		}
 		return (await context.queryClient.ensureQueryData(organizationsQuery)).organizations;
 	},
-	head: pageHead({ title: "Organizations and Brands", description: "Modify organizations or navigate to brands." }),
+	head: pageHead({ title: "Organizations and Brands", description: "Open a brand or manage your organizations." }),
 	component: OrganizationPickerPage,
 });
 
@@ -45,7 +45,7 @@ function OrganizationPickerPage() {
 	}
 
 	return (
-		<FullPageCard title="Organizations and Brands" subtitle="Modify organizations or navigate to brands.">
+		<FullPageCard title="Organizations and Brands" subtitle="Open a brand or manage your organizations.">
 			<OrganizationDirectory organizations={organizations} />
 		</FullPageCard>
 	);

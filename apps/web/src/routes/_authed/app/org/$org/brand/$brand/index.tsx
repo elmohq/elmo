@@ -268,7 +268,7 @@ function TrackingStats({
 				icon={IconActivity}
 				label="evaluations (30d)"
 				value={totalRuns.toLocaleString()}
-				tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
+				tooltip="Prompt runs in the last 30 days. Each prompt runs several times across your tracked AI models."
 			/>
 			<StatWithTooltip
 				icon={IconClock}
@@ -298,7 +298,7 @@ function TrackingStats({
 				value={formatRelativeTime(lastUpdatedAt)}
 				tooltip={
 					lastUpdatedAt
-						? `The last prompts we evaluated for your brand were run on ${new Date(lastUpdatedAt).toLocaleString()}`
+						? `Your most recent prompt run was on ${new Date(lastUpdatedAt).toLocaleString()}.`
 						: "No evaluations have been run yet."
 				}
 			/>
@@ -314,10 +314,10 @@ function AwaitingFirstEvaluation({ totalPrompts, hasPrompts }: { totalPrompts: n
 	const params = useBrandParams();
 	const hasEnabledPrompts = totalPrompts > 0;
 	const message = hasEnabledPrompts
-		? "You are ready to track your AI visibility. We're currently running the first evaluation against AI models. This usually takes a few minutes."
+		? "We're running your prompts on AI models for the first time. This usually takes a few minutes."
 		: hasPrompts
-			? "You have prompts configured but none are currently enabled. Add or enable some prompts to start tracking your AI visibility."
-			: "Set up prompts to start tracking your AI visibility. Once configured, we'll evaluate them against AI models automatically.";
+			? "None of your prompts are enabled. Enable or add prompts to start tracking your AI visibility."
+			: "Add prompts to start tracking your AI visibility. We'll run them on AI models automatically.";
 
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center p-8 max-w-xl mx-auto text-center">
@@ -360,8 +360,7 @@ function ResearchBrandData({ brandId, clientConfig }: { brandId: string; clientC
 			<div className="space-y-2">
 				<h2 className="text-2xl font-bold">Research Brand Data</h2>
 				<p className="text-muted-foreground text-balance">
-					We will analyze your website and find the best generative AI prompts to track. This process may take a couple
-					of minutes.
+					We'll analyze your website and suggest prompts to track. This takes a couple of minutes.
 				</p>
 			</div>
 			<PromptWizard
@@ -414,10 +413,10 @@ function useReportedPromptCount(totalPrompts: number | undefined) {
 }
 
 const visibilityTooltipText = (nonBrandedVisibility: number) =>
-	`The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${nonBrandedVisibility}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`;
+	`The share of AI answers to your prompts that mention your brand. The big number is the latest point on the line. For prompts that don't name your brand, it's ${nonBrandedVisibility}%. The line is smoothed because prompts run on staggered schedules.`;
 
 const SOV_TOOLTIP =
-	"Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules.";
+	"Your brand's share of all brand and competitor mentions in AI answers to your prompts. The big number is the latest point on the line, which is smoothed because prompts run on staggered schedules.";
 
 function DashboardPage() {
 	const brandId = useBrandId();

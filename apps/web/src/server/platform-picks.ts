@@ -293,7 +293,9 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 
 		if (models === null) {
 			if (!entitlements.unlimited) {
-				throw new Error("Choose which platforms to track — your plan defines how many.");
+				throw new Error(
+					"Your plan limits how many platforms a brand can track. Pick specific platforms instead of all of them.",
+				);
 			}
 		} else {
 			// Loud validation against the configured targets (same rule the worker

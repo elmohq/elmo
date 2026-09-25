@@ -106,7 +106,7 @@ function AuthorizePage() {
 						{client.publisherHost ? (
 							<dd className="font-mono text-xs break-all">{client.publisherHost}</dd>
 						) : (
-							<dd>Unverified — it named itself</dd>
+							<dd>Unverified (the client named itself)</dd>
 						)}
 					</div>
 					{client.redirectHosts.length ? (
@@ -128,7 +128,7 @@ function AuthorizePage() {
 					{client.publisherHost
 						? `Its name and callback address come from a document it publishes at ${client.publisherHost}. `
 						: null}
-					It will act as you, in the workspaces you belong to. Revoke it by signing out of the client or removing its
+					It will act as you, in the organizations you belong to. Revoke it by signing out of the client or removing its
 					access from your account.
 				</p>
 				<div className="flex gap-2">

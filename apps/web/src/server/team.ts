@@ -94,7 +94,7 @@ export const cancelInvitationFn = createServerFn({ method: "POST" })
 			.from(invitation)
 			.where(and(eq(invitation.id, data.invitationId), eq(invitation.organizationId, org.id)))
 			.limit(1);
-		if (!row) throw new Error("Not found: no such invitation in this organization");
+		if (!row) throw new Error("That invitation no longer exists in this organization");
 
 		await auth.api.cancelInvitation({
 			body: { invitationId: data.invitationId },
@@ -117,7 +117,7 @@ export const removeTeamMemberFn = createServerFn({ method: "POST" })
 			.where(and(eq(member.id, data.memberId), eq(member.organizationId, org.id)))
 			.limit(1);
 		if (row?.userId === session.user.id) {
-			throw new Error("You cannot remove yourself from the team");
+			throw new Error("You can't remove yourself from the organization.");
 		}
 
 		await auth.api.removeMember({

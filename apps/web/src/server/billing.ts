@@ -135,7 +135,7 @@ export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
 			throw new Error(`Extra premium pairings are available on the ${premiumPlanNames()} plans`);
 		}
 		if (!state.subscription?.stripeSubscriptionId) {
-			throw new Error("No active subscription to attach the add-on to");
+			throw new Error("You need an active subscription to buy extra premium pairings.");
 		}
 
 		// Shrinking the add-on below what's assigned would orphan assignments;

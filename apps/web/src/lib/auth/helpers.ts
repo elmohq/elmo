@@ -17,7 +17,7 @@ export async function getAuthSession() {
 
 export async function requireAuthSession() {
 	const session = await getAuthSession();
-	if (!session) throw new Error("Unauthorized: Authentication required");
+	if (!session) throw new Error("Sign in to continue.");
 	return session;
 }
 
@@ -53,7 +53,7 @@ async function checkOrgAccess(userId: string, orgId: string): Promise<boolean> {
 
 export async function requireOrgAccess(userId: string, orgId: string): Promise<void> {
 	if (!(await checkOrgAccess(userId, orgId))) {
-		throw new Error("Forbidden: No access to this organization");
+		throw new Error("You don't have access to this organization.");
 	}
 }
 
@@ -74,7 +74,7 @@ async function checkBrandAccess(userId: string, brandId: string): Promise<boolea
 
 export async function requireBrandAccess(userId: string, brandId: string): Promise<void> {
 	if (!(await checkBrandAccess(userId, brandId))) {
-		throw new Error("Forbidden: No access to this brand");
+		throw new Error("You don't have access to this brand.");
 	}
 }
 
@@ -100,7 +100,7 @@ export async function requireBrandOrganization(userId: string, brandId: string):
 		.innerJoin(organization, eq(organization.id, brands.organizationId))
 		.where(eq(brands.id, brandId))
 		.limit(1);
-	if (!row) throw new Error("Forbidden: No access to this brand");
+	if (!row) throw new Error("You don't have access to this brand.");
 	return row;
 }
 
@@ -131,6 +131,6 @@ export async function requireOrganization(userId: string, organizationId: string
 		.innerJoin(member, and(eq(member.organizationId, organization.id), eq(member.userId, userId)))
 		.where(eq(organization.id, organizationId))
 		.limit(1);
-	if (!row) throw new Error("Forbidden: No access to this organization");
+	if (!row) throw new Error("You don't have access to this organization.");
 	return row;
 }

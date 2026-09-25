@@ -109,15 +109,14 @@ function CompetitorsSettingsPage() {
 		<div className="max-w-2xl space-y-6">
 			<div>
 				<h1 className="text-3xl font-bold">Competitors</h1>
-				<p className="text-muted-foreground">Manage your competitive landscape for reputation tracking.</p>
+				<p className="text-muted-foreground">The competitors to track alongside your brand in AI answers.</p>
 			</div>
 
 			<Alert variant="default" className="border-yellow-200 bg-yellow-50 text-yellow-800">
 				<AlertTriangle className="h-4 w-4 text-yellow-600" />
 				<AlertTitle>Warning</AlertTitle>
 				<AlertDescription className="text-yellow-700">
-					Updating competitors will only apply to future prompt evaluations. Citation categorization updates
-					retroactively.
+					Competitor changes only affect future prompt runs. Existing citations are recategorized right away.
 				</AlertDescription>
 			</Alert>
 

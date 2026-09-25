@@ -74,7 +74,7 @@ describe("the tool registry", () => {
 		expect(writers.sort()).toEqual([...WRITE_TOOLS].sort());
 	});
 
-	it("offers nothing that deletes and nothing that creates a brand or workspace", () => {
+	it("offers nothing that deletes and nothing that creates a brand or organization", () => {
 		const names = MCP_TOOLS.map((tool) => tool.name);
 		for (const forbidden of ["delete_prompt", "delete_brand", "create_brand", "create_organization"]) {
 			expect(names).not.toContain(forbidden);

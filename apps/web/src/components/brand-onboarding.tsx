@@ -78,7 +78,7 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 
 	if (step === "platforms" && platformState) {
 		return (
-			<FullPageCard title={`Setup ${brandName}`} subtitle="Choose which AI platforms to track">
+			<FullPageCard title={`Set Up ${brandName}`} subtitle="Choose which AI platforms to track">
 				<PlatformSelectionStep
 					state={platformState}
 					selected={selected}
@@ -94,7 +94,7 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 	}
 
 	return (
-		<FullPageCard title={`Setup ${brandName}`} subtitle="Configure your brand to get started" showBackButton={true}>
+		<FullPageCard title={`Set Up ${brandName}`} subtitle="Configure your brand to get started" showBackButton={true}>
 			<form action={handleWebsiteSubmit} className="space-y-4">
 				<div className="space-y-2">
 					<Label htmlFor="website">Website</Label>

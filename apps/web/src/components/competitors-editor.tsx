@@ -133,8 +133,8 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 											render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />}
 										/>
 										<TooltipContent className="max-w-xs text-xs font-normal">
-											All domains owned by this competitor. Citation categorization updates retroactively &mdash;
-											existing citations from these domains will immediately be classified as &quot;competitor&quot;.
+											Every domain this competitor owns. Changes apply retroactively, so existing citations from these
+											domains count as competitor citations right away.
 										</TooltipContent>
 									</Tooltip>
 								</Label>
@@ -157,8 +157,8 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 											render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />}
 										/>
 										<TooltipContent className="max-w-xs text-xs font-normal">
-											Alternative names for this competitor (sub-brands, product names, abbreviations). Used for mention
-											detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively.
+											Alternative names for this competitor (sub-brands, product names, abbreviations). Used to detect
+											mentions in <strong>future</strong> prompt runs only.
 										</TooltipContent>
 									</Tooltip>
 								</Label>
