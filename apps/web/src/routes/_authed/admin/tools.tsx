@@ -52,7 +52,7 @@ function AnalyzeBrandDialog() {
 			});
 			setResult(data);
 		} catch (err) {
-			setError(writeError(err, "An error occurred"));
+			setError(writeError(err, "Couldn't analyze this website."));
 		} finally {
 			setIsLoading(false);
 		}

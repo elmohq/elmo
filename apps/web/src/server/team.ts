@@ -117,7 +117,7 @@ export const removeTeamMemberFn = createServerFn({ method: "POST" })
 			.where(and(eq(member.id, data.memberId), eq(member.organizationId, org.id)))
 			.limit(1);
 		if (row?.userId === session.user.id) {
-			throw new Error("You cannot remove yourself from the team");
+			throw new Error("You can't remove yourself from the organization.");
 		}
 
 		await auth.api.removeMember({

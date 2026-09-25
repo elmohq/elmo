@@ -117,7 +117,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const { mutate: enqueueAnalysis, isSuccess: analysisEnqueued } = useMutation({
 		mutationFn: (vars: { brandId: string; website: string; brandName?: string }) => startAnalyzeBrandFn({ data: vars }),
 		onError: (err) => {
-			setError(writeError(err, "Analysis failed"));
+			setError(writeError(err, "Couldn't start the brand analysis. Try again."));
 			setPhase("idle");
 		},
 	});
@@ -256,7 +256,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			onComplete();
 		} catch (err) {
-			setSubmitError(writeError(err, "Failed to save"));
+			setSubmitError(writeError(err, "Couldn't save your brand setup. Try again."));
 		} finally {
 			setIsSaving(false);
 		}
