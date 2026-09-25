@@ -30,6 +30,7 @@ These are always set. The site cannot work without them, and consent is not requ
 | CSRF and callback state | app.elmohq.com | Protects sign-in and form submissions from cross-site request forgery | Minutes |
 | `elmo.cookie-consent` (localStorage) | elmohq.com, app.elmohq.com | Remembers your answer to the cookie banner so we don't ask again | Until you clear it |
 | Load-balancing and security cookies | all | Set by our hosting providers to route requests and mitigate abuse | Session |
+| Sentry session identifier (sessionStorage) | app.elmohq.com | Correlates errors from the same visit so a crash report is intelligible. No cookie. | Until the tab closes |
 
 ### Analytics
 
