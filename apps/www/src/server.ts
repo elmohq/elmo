@@ -83,6 +83,45 @@ function negotiableMarkdownRoute(path: string): string | undefined {
 	}
 }
 
+// Pages are fully server-rendered, so the hydration scripts can wait behind the
+// stylesheet, fonts, and hero image instead of splitting a slow connection with
+// them. TanStack exposes no attribute hook for the tags it emits, hence the
+// rewrite.
+const SCRIPT_PRIORITY_REWRITES: [string, string][] = [
+	['rel="modulepreload"', 'rel="modulepreload" fetchpriority="low"'],
+	['<script type="module" async=""', '<script type="module" async="" fetchpriority="low"'],
+];
+
+function lowerScriptPriority(html: string): string {
+	return SCRIPT_PRIORITY_REWRITES.reduce((out, [from, to]) => out.replaceAll(from, to), html);
+}
+
+function deprioritizeScripts(response: Response): Response {
+	if (!response.body || !(response.headers.get("Content-Type") ?? "").startsWith("text/html")) return response;
+	const decoder = new TextDecoder();
+	const encoder = new TextEncoder();
+	let pending = "";
+	const body = response.body.pipeThrough(
+		new TransformStream<Uint8Array, Uint8Array>({
+			transform(chunk, controller) {
+				pending += decoder.decode(chunk, { stream: true });
+				// Hold back an unclosed trailing tag so a match split across chunks isn't missed.
+				const lastTag = pending.lastIndexOf("<");
+				const ready = lastTag === -1 || pending.includes(">", lastTag) ? pending : pending.slice(0, lastTag);
+				pending = pending.slice(ready.length);
+				if (ready) controller.enqueue(encoder.encode(lowerScriptPriority(ready)));
+			},
+			flush(controller) {
+				pending += decoder.decode();
+				if (pending) controller.enqueue(encoder.encode(lowerScriptPriority(pending)));
+			},
+		}),
+	);
+	const headers = new Headers(response.headers);
+	headers.delete("Content-Length");
+	return new Response(body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function withAcceptHtml(request: Request): Request {
 	const headers = new Headers(request.headers);
 	headers.set("Accept", "text/html");
@@ -130,7 +169,7 @@ export default createServerEntry({
 			req = withAcceptHtml(request);
 		}
 
-		const response = await handler.fetch(req);
+		const response = deprioritizeScripts(await handler.fetch(req));
 		if (negotiable) response.headers.set("Vary", "Accept");
 		addDiscoveryLinks(response, negotiable ? `${path}.md` : undefined);
 		return addSecurityHeaders(response);
