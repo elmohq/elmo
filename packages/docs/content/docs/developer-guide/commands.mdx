@@ -48,8 +48,8 @@ pnpm --filter @workspace/web test:storybook
 ```
 
 The analytics stats are checked against a real Postgres. These tests migrate the
-database in `TEST_DATABASE_URL` and write to it, so point it at a database of
-its own, never the one in `DATABASE_URL`:
+database in `TEST_DATABASE_URL` and write to it, so they refuse to run unless it
+points at a local database whose name ends in `_test`:
 
 ```bash
 createdb elmo_test

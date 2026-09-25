@@ -8,13 +8,30 @@ const migrationsFolder = path.resolve(
 	"../../../../../packages/lib/src/db/migrations",
 );
 
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * These tests migrate the database and write fixtures into it, so refuse
+ * anything that isn't unmistakably a disposable local test database.
+ */
+function assertDisposable(url: string) {
+	const { hostname, pathname } = new URL(url);
+	const database = decodeURIComponent(pathname.slice(1));
+	if (!LOCAL_HOSTS.has(hostname) || !database.endsWith("_test")) {
+		throw new Error(
+			`Refusing to run integration tests against ${hostname}/${database}: TEST_DATABASE_URL must point at a local database whose name ends in "_test".`,
+		);
+	}
+}
+
 export default async function setup() {
 	const url = process.env.TEST_DATABASE_URL;
 	if (!url) {
 		throw new Error(
-			"Integration tests need TEST_DATABASE_URL: a Postgres database they may migrate and write to, e.g. postgres://postgres:postgres@localhost:5432/elmo_test",
+			"Integration tests need TEST_DATABASE_URL: a local Postgres database ending in _test that they may migrate and write to, e.g. postgres://postgres:postgres@localhost:5432/elmo_test",
 		);
 	}
+	assertDisposable(url);
 	const db = drizzle(url);
 	try {
 		await migrate(db, { migrationsFolder });
