@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
-import type { BrandIdentity } from "@workspace/lib/prompt-type";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import {
@@ -16,23 +15,13 @@ const meta = {
 
 export default meta;
 
-const NIKE = { name: "Nike", website: "https://nike.com" };
-
 /** The table layout is `hidden md:grid` — widen the canvas past 768px to see it. */
-function Harness({
-	initial,
-	brand = NIKE,
-	premium,
-}: {
-	initial: EditablePrompt[];
-	brand?: BrandIdentity;
-	premium?: PremiumAllowance;
-}) {
+function Harness({ initial, premium }: { initial: EditablePrompt[]; premium?: PremiumAllowance }) {
 	const [prompts, setPrompts] = useState(initial);
 
 	return (
 		<div className="p-8">
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} brand={brand} premium={premium} />
+			<PromptsListEditor prompts={prompts} onChange={setPrompts} premium={premium} />
 		</div>
 	);
 }
@@ -57,7 +46,6 @@ export const Populated = () => (
 		initial={[
 			...entries(["best running shoes for flat feet"], { tags: ["footwear"] }),
 			...entries(["is nike better than adidas"], { tags: ["comparison"] }),
-			...entries(["shoes like the ones jordan wore"], { tags: ["footwear"], brandedOverride: true }),
 			...entries(["most durable trail runners"], { enabled: false }),
 		]}
 	/>

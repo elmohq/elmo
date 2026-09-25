@@ -13,19 +13,14 @@
  */
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
-import {
-	type BrandIdentity,
-	matchesPromptFilter,
-	parsePromptFilter,
-	type ResolvedPromptType,
-	resolvePromptType,
-} from "@workspace/lib/prompt-type";
+import { type BrandIdentity, matchesPromptFilter, mentionsBrand, parsePromptFilter } from "@workspace/lib/prompt-type";
 import { and, eq } from "drizzle-orm";
 
-export interface ResolvedPrompt extends ResolvedPromptType {
+export interface ResolvedPrompt {
 	id: string;
 	value: string;
 	tags: string[];
+	branded: boolean;
 }
 
 export async function loadBrandIdentity(brandId: string): Promise<BrandIdentity> {
@@ -49,16 +44,11 @@ export async function loadTypedPrompts(brandId: string): Promise<ResolvedPrompt[
 	const [brand, rows] = await Promise.all([
 		loadBrandIdentity(brandId),
 		db
-			.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, brandedOverride: prompts.brandedOverride })
+			.select({ id: prompts.id, value: prompts.value, tags: prompts.tags })
 			.from(prompts)
 			.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true))),
 	]);
-	return rows.map((row) => ({
-		id: row.id,
-		value: row.value,
-		tags: row.tags,
-		...resolvePromptType(row, brand),
-	}));
+	return rows.map((row) => ({ ...row, branded: mentionsBrand(row.value, brand) }));
 }
 
 /**

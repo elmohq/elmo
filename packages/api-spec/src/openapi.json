@@ -58,16 +58,11 @@
 						"items": {
 							"type": "string"
 						},
-						"description": "User-defined tags for categorizing this prompt. Never includes `branded` or `unbranded`; those are the prompt type, in `branded`."
+						"description": "User-defined tags for categorizing this prompt. Never includes `branded` or `unbranded`; that is `branded`, which is derived."
 					},
 					"branded": {
 						"type": "boolean",
-						"description": "Whether the prompt names the brand, checked against the brand's current name, aliases, and domains on every read, unless pinned."
-					},
-					"brandedSource": {
-						"type": "string",
-						"enum": ["auto", "manual"],
-						"description": "`manual` when `branded` is pinned rather than detected."
+						"description": "Whether the prompt names the brand, checked against the brand's current name, aliases, and domains on every read."
 					},
 					"systemTags": {
 						"type": "array",
@@ -103,7 +98,6 @@
 					"enabled",
 					"tags",
 					"branded",
-					"brandedSource",
 					"systemTags",
 					"createdAt",
 					"updatedAt",
@@ -127,11 +121,7 @@
 						"items": {
 							"type": "string"
 						},
-						"description": "User-defined tags for categorizing this prompt"
-					},
-					"branded": {
-						"type": ["boolean", "null"],
-						"description": "Pin the prompt as branded (true) or unbranded (false). Null goes back to detecting it from whether the prompt names the brand. Sending a lone `branded` or `unbranded` tag does the same, for callers written before this field."
+						"description": "User-defined tags for categorizing this prompt. `branded` and `unbranded` are dropped; whether a prompt is branded comes from the brand's name, aliases, and domains."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -154,11 +144,7 @@
 						"items": {
 							"type": "string"
 						},
-						"description": "User-defined tags for categorizing this prompt"
-					},
-					"branded": {
-						"type": ["boolean", "null"],
-						"description": "Pin the prompt as branded (true) or unbranded (false). Null goes back to detecting it from whether the prompt names the brand. Sending a lone `branded` or `unbranded` tag does the same, for callers written before this field."
+						"description": "User-defined tags for categorizing this prompt. `branded` and `unbranded` are dropped; whether a prompt is branded comes from the brand's name, aliases, and domains."
 					},
 					"premiumModels": {
 						"type": "array",
@@ -1370,7 +1356,7 @@
 					},
 					"branded": {
 						"type": "boolean",
-						"description": "Whether the prompt names the brand, detected or pinned."
+						"description": "Whether the prompt names the brand."
 					},
 					"totalRuns": {
 						"type": "integer"

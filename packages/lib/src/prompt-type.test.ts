@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	matchesPromptFilter,
-	mentionsBrand,
-	parsePromptFilter,
-	resolvePromptType,
-	splitLegacyTypeTags,
-} from "./prompt-type";
+import { matchesPromptFilter, mentionsBrand, parsePromptFilter } from "./prompt-type";
 
 const acme = {
 	name: "Acme Corp",
@@ -39,29 +33,6 @@ describe("mentionsBrand", () => {
 	it("still matches the name when the website is malformed", () => {
 		expect(mentionsBrand("acme corp pricing", { name: "Acme Corp", website: "" })).toBe(true);
 		expect(mentionsBrand("random products", { name: "Acme Corp", website: "" })).toBe(false);
-	});
-});
-
-describe("resolvePromptType", () => {
-	it("detects the type when there is no override", () => {
-		expect(resolvePromptType({ value: "acme corp pricing", brandedOverride: null }, acme)).toEqual({
-			branded: true,
-			brandedSource: "auto",
-			detectedBranded: true,
-		});
-	});
-
-	it("lets an override win over detection, and still reports what detection says", () => {
-		expect(resolvePromptType({ value: "acme corp pricing", brandedOverride: false }, acme)).toEqual({
-			branded: false,
-			brandedSource: "manual",
-			detectedBranded: true,
-		});
-		expect(resolvePromptType({ value: "best anvils", brandedOverride: true }, acme)).toEqual({
-			branded: true,
-			brandedSource: "manual",
-			detectedBranded: false,
-		});
 	});
 });
 
@@ -107,17 +78,5 @@ describe("matchesPromptFilter", () => {
 		expect(matchesPromptFilter(prompt, { tags: ["pricing"], type: "branded" })).toBe(true);
 		expect(matchesPromptFilter(prompt, { tags: ["pricing"], type: "unbranded" })).toBe(false);
 		expect(matchesPromptFilter(prompt, { tags: [], type: "unbranded" })).toBe(false);
-	});
-});
-
-describe("splitLegacyTypeTags", () => {
-	it("turns a lone legacy type tag into an override", () => {
-		expect(splitLegacyTypeTags(["pricing", "Branded"])).toEqual({ tags: ["pricing"], brandedOverride: true });
-		expect(splitLegacyTypeTags(["unbranded"])).toEqual({ tags: [], brandedOverride: false });
-	});
-
-	it("sets no override when both or neither are sent", () => {
-		expect(splitLegacyTypeTags(["branded", "unbranded", "pricing"])).toEqual({ tags: ["pricing"] });
-		expect(splitLegacyTypeTags(["pricing"])).toEqual({ tags: ["pricing"] });
 	});
 });

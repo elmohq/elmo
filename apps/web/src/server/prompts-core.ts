@@ -9,15 +9,14 @@ import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { brands, citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import {
-	type BrandedSource,
 	type BrandIdentity,
 	matchesPromptFilter,
+	mentionsBrand,
 	type PromptType,
 	parsePromptFilter,
 	promptTypeOf,
-	resolvePromptType,
 } from "@workspace/lib/prompt-type";
-import { readTagsInput } from "@workspace/lib/tag-utils";
+import { sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
@@ -42,13 +41,6 @@ const promptValueSchema = z
 
 const promptTagsSchema = z.array(z.string()).describe("Free-form labels used for filtering analytics.");
 
-const brandedOverrideSchema = z
-	.boolean()
-	.nullable()
-	.describe(
-		"Pin the prompt as branded (true) or unbranded (false). Null goes back to detecting it from whether the prompt names the brand.",
-	);
-
 export const bulkPromptInputSchema = z.object({
 	brandId: brandIdSchema,
 	prompts: z
@@ -56,7 +48,6 @@ export const bulkPromptInputSchema = z.object({
 			z.object({
 				value: promptValueSchema,
 				tags: promptTagsSchema.optional(),
-				branded: brandedOverrideSchema.optional(),
 				enabled: z.boolean().optional().describe("Whether to start sampling it. Defaults to true."),
 				premiumModels: z.array(z.string()).optional().describe("Premium engines to pair this prompt with."),
 			}),
@@ -70,7 +61,6 @@ export const promptUpdateFields = {
 	value: promptValueSchema.optional().describe("Replacement text."),
 	enabled: z.boolean().optional().describe("Whether to keep sampling it."),
 	tags: promptTagsSchema.optional().describe("Replaces the prompt's tags outright."),
-	branded: brandedOverrideSchema.optional(),
 	premiumModels: z.array(z.string()).optional().describe("Replaces the prompt's premium engine pairings."),
 };
 
@@ -78,7 +68,7 @@ export const updatePromptInputSchema = z
 	.object(promptUpdateFields)
 	.refine(
 		(body) => Object.keys(body).length > 0,
-		"At least one of value, enabled, tags, branded, or premiumModels must be provided",
+		"At least one of value, enabled, tags, or premiumModels must be provided",
 	);
 
 export type BulkPromptInput = z.infer<typeof bulkPromptInputSchema>;
@@ -99,8 +89,6 @@ export interface PromptSummary {
 	tags: string[];
 	/** Whether the prompt names the brand, as of the brand's current names. */
 	branded: boolean;
-	/** `manual` when `branded` is pinned rather than detected. */
-	brandedSource: BrandedSource;
 	/** @deprecated `[branded ? "branded" : "unbranded"]`; read `branded`. */
 	systemTags: PromptType[];
 	premiumModels: string[];
@@ -111,7 +99,7 @@ export interface PromptSummary {
 /** The public shape of a prompt, so every edge that hands a prompt to a client
  *  answers the same fields. */
 export function toPromptSummary(prompt: Prompt, brand: BrandIdentity): PromptSummary {
-	const { branded, brandedSource } = resolvePromptType(prompt, brand);
+	const branded = mentionsBrand(prompt.value, brand);
 	return {
 		id: prompt.id,
 		brandId: prompt.brandId,
@@ -119,7 +107,6 @@ export function toPromptSummary(prompt: Prompt, brand: BrandIdentity): PromptSum
 		enabled: prompt.enabled,
 		tags: prompt.tags,
 		branded,
-		brandedSource,
 		systemTags: [promptTypeOf(branded)],
 		premiumModels: prompt.premiumModels,
 		createdAt: prompt.createdAt,
@@ -191,17 +178,13 @@ export async function requirePrompt(promptId: string): Promise<Prompt> {
  * overrun a limit creates nothing. */
 export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptInput, "brandId">): Promise<Prompt[]> {
 	const parsed = bulkPromptInputSchema.omit({ brandId: true }).parse(input);
-	const rows = parsed.prompts.map((prompt) => {
-		const { tags, brandedOverride } = readTagsInput(prompt.tags ?? [], prompt.branded);
-		return {
-			brandId: brand.id,
-			value: prompt.value,
-			enabled: prompt.enabled ?? true,
-			tags,
-			brandedOverride: brandedOverride ?? null,
-			premiumModels: selectPremiumModels(prompt.premiumModels),
-		};
-	});
+	const rows = parsed.prompts.map((prompt) => ({
+		brandId: brand.id,
+		value: prompt.value,
+		enabled: prompt.enabled ?? true,
+		tags: sanitizeUserTags(prompt.tags ?? []),
+		premiumModels: selectPremiumModels(prompt.premiumModels),
+	}));
 
 	// Under the lock, so two batches cannot both spend the last slot.
 	const enabled = rows.filter((row) => row.enabled);
@@ -230,12 +213,7 @@ function promptUpdateData(input: UpdatePromptInput, nextPremium: string[]): Part
 	const update: Partial<typeof prompts.$inferInsert> = {};
 	if (input.value !== undefined) update.value = input.value;
 	if (input.enabled !== undefined) update.enabled = input.enabled;
-	if (input.tags !== undefined) {
-		const { tags, brandedOverride } = readTagsInput(input.tags);
-		update.tags = tags;
-		if (brandedOverride !== undefined) update.brandedOverride = brandedOverride;
-	}
-	if (input.branded !== undefined) update.brandedOverride = input.branded;
+	if (input.tags !== undefined) update.tags = sanitizeUserTags(input.tags);
 	if (input.premiumModels !== undefined) update.premiumModels = nextPremium;
 	return update;
 }

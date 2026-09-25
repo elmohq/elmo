@@ -9,7 +9,7 @@ import {
 	promptSaveDelta,
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
-import { matchesPromptFilter, parsePromptFilter, resolvePromptType } from "@workspace/lib/prompt-type";
+import { matchesPromptFilter, mentionsBrand, parsePromptFilter } from "@workspace/lib/prompt-type";
 import { sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -79,8 +79,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			value: prompt.value,
 			enabled: prompt.enabled,
 			tags: prompt.tags,
-			brandedOverride: prompt.brandedOverride,
-			...resolvePromptType(prompt, brand),
+			branded: mentionsBrand(prompt.value, brand),
 			nextRunAt,
 		};
 	});
@@ -441,8 +440,6 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					value: z.string(),
 					enabled: z.boolean().optional().default(true),
 					tags: z.array(z.string()).optional(),
-					/** Omitted leaves the stored override alone; null returns to detection. */
-					brandedOverride: z.boolean().nullable().optional(),
 					/**
 					 * Premium models to track this prompt on, grounded — one of the org's
 					 * premium slots each.
@@ -479,7 +476,6 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						value: prompt.value,
 						enabled: prompt.enabled,
 						tags: sanitizeUserTags(prompt.tags ?? []),
-						...(prompt.brandedOverride !== undefined && { brandedOverride: prompt.brandedOverride }),
 						premiumModels: after.premiumModels,
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
@@ -492,7 +488,6 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						value: prompt.value,
 						enabled: prompt.enabled,
 						tags: sanitizeUserTags(prompt.tags ?? []),
-						...(prompt.brandedOverride !== undefined && { brandedOverride: prompt.brandedOverride }),
 						premiumModels: after.premiumModels,
 					})),
 				);

@@ -5,7 +5,6 @@ export interface SubmittedPrompt {
 	value: string;
 	enabled: boolean;
 	tags?: string[];
-	brandedOverride?: boolean | null;
 	premiumModels?: string[];
 }
 

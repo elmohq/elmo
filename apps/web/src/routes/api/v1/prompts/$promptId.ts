@@ -2,7 +2,7 @@
  * /api/v1/prompts/:promptId — single prompt resource.
  *
  * GET     fetch one prompt
- * PATCH   update value / enabled / tags / branded
+ * PATCH   update value / enabled / tags
  * DELETE  remove the prompt (cascades to runs + citations) — admin key only
  *
  * Protected by API key authentication.

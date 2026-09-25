@@ -14,7 +14,6 @@ const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
 	value: z.string().trim().min(1, "value must be a non-empty string"),
 	tags: z.array(z.string()).optional(),
-	branded: z.boolean().nullable().optional(),
 });
 
 export const Route = createFileRoute("/api/v1/prompts/")({
@@ -55,7 +54,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 				handle: async ({ body, auth }) => {
 					const brand = await requireBrandInScope(auth, body.brandId, "body");
 					const [created] = await createPrompts(brand, {
-						prompts: [{ value: body.value, tags: body.tags, branded: body.branded, enabled: true }],
+						prompts: [{ value: body.value, tags: body.tags, enabled: true }],
 					});
 					return toPromptSummary(created, brand);
 				},

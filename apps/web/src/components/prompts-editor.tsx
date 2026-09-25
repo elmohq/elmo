@@ -1,4 +1,3 @@
-import type { BrandIdentity } from "@workspace/lib/prompt-type";
 import { useMemo, useRef, useState } from "react";
 import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@/components/prompts-list-editor";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
@@ -12,14 +11,12 @@ interface PromptRow {
 	value: string;
 	enabled: boolean;
 	tags?: string[] | null;
-	brandedOverride?: boolean | null;
 	premiumModels?: string[] | null;
 }
 
 interface PromptsEditorProps {
 	initialPrompts: PromptRow[];
 	brandId: string;
-	brand: BrandIdentity;
 	pageTitle: string;
 	pageDescription: string;
 	premium?: PremiumAllowance;
@@ -40,7 +37,6 @@ function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
 			value: p.value,
 			enabled: p.enabled,
 			tags: p.tags || [],
-			brandedOverride: p.brandedOverride ?? null,
 			premiumModels: p.premiumModels ?? [],
 		}))
 		.sort(
@@ -66,7 +62,6 @@ function classifyPrompt(
 	const edited =
 		prompt.value.trim() !== prev.value.trim() ||
 		prompt.enabled !== prev.enabled ||
-		prompt.brandedOverride !== prev.brandedOverride ||
 		!sameModels(prompt.premiumModels, prev.premiumModels) ||
 		!sameTags(prompt.tags, prev.tags);
 	return edited ? "edited" : null;
@@ -95,14 +90,7 @@ function diffPrompts(baseline: EditablePrompt[], prompts: EditablePrompt[]) {
 	};
 }
 
-export function PromptsEditor({
-	initialPrompts,
-	brandId,
-	brand,
-	pageTitle,
-	pageDescription,
-	premium,
-}: PromptsEditorProps) {
+export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription, premium }: PromptsEditorProps) {
 	const [baseline, setBaseline] = useState<EditablePrompt[]>(() => toEditablePrompts(initialPrompts));
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(baseline);
 	const [isSaving, setIsSaving] = useState(false);
@@ -145,7 +133,6 @@ export function PromptsEditor({
 					value: p.value.trim(),
 					enabled: p.enabled,
 					tags: p.tags,
-					brandedOverride: p.brandedOverride,
 					premiumModels: p.premiumModels,
 				})),
 				...removedPrompts,
@@ -179,13 +166,7 @@ export function PromptsEditor({
 				</div>
 			</div>
 
-			<PromptsListEditor
-				prompts={prompts}
-				onChange={setPrompts}
-				brand={brand}
-				changedKeys={changedKeys}
-				premium={premium}
-			/>
+			<PromptsListEditor prompts={prompts} onChange={setPrompts} changedKeys={changedKeys} premium={premium} />
 
 			<UnsavedChangesBar
 				isDirty={isDirty}

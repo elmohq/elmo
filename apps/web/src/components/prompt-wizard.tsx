@@ -206,18 +206,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	);
 	const updatePrompts = useCallback((prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })), []);
 
-	// What the brand will be once saved, so the Type column detects against the
-	// name and aliases being edited above rather than the ones stored now.
-	const wizardBrand = useMemo(
-		() => ({
-			name: data.brandName || brand?.name || "",
-			website: data.website || brand?.website || "",
-			aliases: data.aliases,
-			additionalDomains: data.additionalDomains,
-		}),
-		[data.brandName, data.website, data.aliases, data.additionalDomains, brand?.name, brand?.website],
-	);
-
 	const previewCounts = useMemo(() => {
 		const enabled = data.prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
 		return { totalNew: enabled };
@@ -238,7 +226,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			const promptsPayload = data.prompts
 				.filter((p) => p.enabled && p.value.trim())
-				.map((p) => ({ value: p.value.trim(), tags: p.tags, branded: p.brandedOverride, enabled: true }));
+				.map((p) => ({ value: p.value.trim(), tags: p.tags, enabled: true }));
 
 			await updateOnboardedBrandFn({
 				data: {
@@ -372,10 +360,10 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					<h2 className="text-2xl font-bold">Prompts</h2>
 					<p className="text-muted-foreground">
 						Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the
-						bottom. Prompts that name your brand count as branded automatically.
+						bottom.
 					</p>
 				</div>
-				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} brand={wizardBrand} />
+				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} />
 			</div>
 
 			{submitError && (

@@ -4,4 +4,4 @@
 "@workspace/api-spec": patch
 ---
 
-Branded and unbranded are now a prompt type with its own filter and override, and they follow brand name, alias, and domain edits instead of going stale.
+Branded and unbranded now have their own filter on visibility, citations, share of voice, and fan-out, and they follow brand name, alias, and domain edits instead of going stale.

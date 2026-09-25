@@ -2,15 +2,12 @@
  * Whether a prompt names the brand. This is derived from the prompt text and
  * the brand's current name, aliases, and domains every time it is read, never
  * stored, so renaming a brand or adding an alias reclassifies every prompt at
- * once. A prompt can pin the answer with `brandedOverride` when detection gets
- * it wrong.
+ * once. A misclassified prompt is fixed by adding the alias it uses.
  */
 import { mentionsSubject, normalizeDomain } from "./mentions";
 
 export const PROMPT_TYPES = ["branded", "unbranded"] as const;
 export type PromptType = (typeof PROMPT_TYPES)[number];
-
-export type BrandedSource = "auto" | "manual";
 
 export interface BrandIdentity {
 	name: string;
@@ -31,22 +28,6 @@ export function mentionsBrand(promptValue: string, brand: BrandIdentity): boolea
 		aliases: [...(brand.aliases ?? []), label],
 		domains: [brand.website, ...(brand.additionalDomains ?? [])],
 	});
-}
-
-export interface ResolvedPromptType {
-	branded: boolean;
-	brandedSource: BrandedSource;
-	/** What detection says, whether or not an override wins. */
-	detectedBranded: boolean;
-}
-
-export function resolvePromptType(
-	prompt: { value: string; brandedOverride: boolean | null },
-	brand: BrandIdentity,
-): ResolvedPromptType {
-	const detectedBranded = mentionsBrand(prompt.value, brand);
-	if (prompt.brandedOverride === null) return { branded: detectedBranded, brandedSource: "auto", detectedBranded };
-	return { branded: prompt.brandedOverride, brandedSource: "manual", detectedBranded };
 }
 
 export function promptTypeOf(branded: boolean): PromptType {
@@ -83,16 +64,4 @@ export function matchesPromptFilter(
 ): boolean {
 	if (filter.type && promptTypeOf(prompt.branded) !== filter.type) return false;
 	return filter.tags.length === 0 || filter.tags.some((tag) => prompt.tags.includes(tag));
-}
-
-/**
- * Writes that still send `branded`/`unbranded` as a tag set the override
- * instead; the pair together says nothing and is dropped.
- */
-export function splitLegacyTypeTags(tags: readonly string[]): { tags: string[]; brandedOverride?: boolean } {
-	const lower = tags.map((tag) => tag.trim().toLowerCase());
-	const legacyTypes = new Set(lower.filter(isPromptType));
-	const rest = tags.filter((_, i) => !isPromptType(lower[i]));
-	if (legacyTypes.size !== 1) return { tags: rest };
-	return { tags: rest, brandedOverride: legacyTypes.has("branded") };
 }

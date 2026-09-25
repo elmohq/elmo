@@ -8,7 +8,7 @@ import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
 import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
-import { readTagsInput } from "@workspace/lib/tag-utils";
+import { sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { count, desc, eq, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
@@ -37,8 +37,6 @@ const competitorInputSchema = z.object({
 const promptInputSchema = z.object({
 	value: z.string().min(1),
 	tags: z.array(z.string()).optional().default([]),
-	/** Pins branded (true) or unbranded (false); omitted or null detects it. */
-	branded: z.boolean().nullable().optional(),
 	enabled: z.boolean().optional().default(true),
 });
 
@@ -224,14 +222,9 @@ async function insertCompetitors(args: {
 	return toInsert.length;
 }
 
-function tagFields(tags: string[], branded: boolean | null | undefined) {
-	const read = readTagsInput(tags, branded);
-	return { tags: read.tags, brandedOverride: read.brandedOverride ?? null };
-}
-
 async function insertPrompts(args: {
 	brandId: string;
-	source: { value: string; tags: string[]; branded?: boolean | null; enabled: boolean }[];
+	source: { value: string; tags: string[]; enabled: boolean }[];
 	dedupeAgainstExisting: boolean;
 	conn?: DbConnection;
 	/** The brand row may still be uncommitted, so a lookup would find nothing. */
@@ -253,7 +246,6 @@ async function insertPrompts(args: {
 		value: string;
 		enabled: boolean;
 		tags: string[];
-		brandedOverride: boolean | null;
 	}> = [];
 	for (const p of args.source) {
 		const value = p.value.trim();
@@ -265,7 +257,7 @@ async function insertPrompts(args: {
 			brandId: args.brandId,
 			value,
 			enabled: p.enabled,
-			...tagFields(p.tags, p.branded),
+			tags: sanitizeUserTags(p.tags),
 		});
 	}
 	if (rows.length === 0) return [];
@@ -326,7 +318,6 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 			source: (input.prompts ?? []).map((p) => ({
 				value: p.value,
 				tags: p.tags ?? [],
-				branded: p.branded,
 				enabled: p.enabled ?? true,
 			})),
 			dedupeAgainstExisting: false,
@@ -401,7 +392,6 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 		source: (input.prompts ?? []).map((p) => ({
 			value: p.value,
 			tags: p.tags ?? [],
-			branded: p.branded,
 			enabled: p.enabled ?? true,
 		})),
 		dedupeAgainstExisting: true,

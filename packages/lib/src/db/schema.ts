@@ -77,11 +77,6 @@ export const prompts = pgTable(
 		 */
 		premiumModels: text("premium_models").array().notNull().default([]),
 		tags: text("tags").array().notNull().default([]),
-		/**
-		 * Pins the prompt as branded (true) or unbranded (false). Null means
-		 * detect it from the text and the brand's names (see prompt-type.ts).
-		 */
-		brandedOverride: boolean("branded_override"),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true })
 			.defaultNow()

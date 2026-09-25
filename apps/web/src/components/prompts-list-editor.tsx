@@ -5,8 +5,7 @@
  *
  * Controlled component: the caller owns the `prompts` array and the change
  * callback. The settings page wraps it with save/server logic; the wizard
- * keeps it inline. Passing `brand` adds the Type column, which detects
- * branded/unbranded from each prompt's text as it is typed.
+ * keeps it inline.
  */
 
 import { IconInfoCircle } from "@tabler/icons-react";
@@ -21,7 +20,7 @@ import {
 } from "@workspace/config/plans";
 import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
-import { type BrandIdentity, isPromptType, mentionsBrand } from "@workspace/lib/prompt-type";
+import { isPromptType } from "@workspace/lib/prompt-type";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
@@ -36,7 +35,6 @@ import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { BulkTagsMenu, PROMPT_TYPE_TAG_ERROR } from "@/components/bulk-tags-menu";
-import { PromptTypeField, PromptTypeMenu } from "@/components/prompt-type-field";
 import { useOrganizationParams } from "@/hooks/use-route-params";
 
 export interface EditablePrompt {
@@ -45,8 +43,6 @@ export interface EditablePrompt {
 	value: string;
 	enabled: boolean;
 	tags: string[];
-	/** Null detects branded/unbranded from the text. */
-	brandedOverride: boolean | null;
 	premiumModels: string[];
 }
 
@@ -61,7 +57,6 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		value: partial?.value ?? "",
 		enabled: partial?.enabled ?? true,
 		tags: partial?.tags ?? [],
-		brandedOverride: partial?.brandedOverride ?? null,
 		premiumModels: partial?.premiumModels ?? [],
 		...(partial?.id ? { id: partial.id } : {}),
 	};
@@ -161,18 +156,14 @@ function PremiumModelsField({
  * Every column layout the table can take, spelled out rather than assembled at
  * runtime: Tailwind only generates class names that appear literally in source.
  */
-const GRID_COLS: Record<string, string> = {
-	"type-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_7.5rem_minmax(14rem,1fr)_2.75rem]",
-	"type-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_7.5rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
-	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
+const GRID_COLS = {
+	basic: "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
+	premium: "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
 };
 
 interface PromptsListEditorProps {
 	prompts: EditablePrompt[];
 	onChange: (next: EditablePrompt[]) => void;
-	/** Omit to hide the Type column. */
-	brand?: BrandIdentity;
 	/** `_key`s of rows edited since the last save, flagged with an accent rail
 	 *  so a change is findable in a list of up to {@link MAX_PROMPTS} rows. */
 	changedKeys?: ReadonlySet<string>;
@@ -253,14 +244,12 @@ function useRowSelection(prompts: EditablePrompt[]) {
 
 function ColumnHeader({
 	gridCols,
-	showType,
 	premium,
 	allSelected,
 	onToggleSelectAll,
 	disabled,
 }: {
 	gridCols: string;
-	showType: boolean;
 	premium?: PremiumAllowance;
 	allSelected: boolean;
 	onToggleSelectAll: () => void;
@@ -285,21 +274,6 @@ function ColumnHeader({
 					</TooltipContent>
 				</Tooltip>
 			</div>
-			{showType && (
-				<div className="hidden md:flex items-center gap-1">
-					Type
-					<Tooltip>
-						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-						<TooltipContent>
-							<p className="max-w-xs">
-								Branded prompts name your brand; unbranded ones don&apos;t. Detected from the prompt text and your
-								brand&apos;s name, aliases, and domains, so it follows any change to those. Click one to set it
-								yourself.
-							</p>
-						</TooltipContent>
-					</Tooltip>
-				</div>
-			)}
 			<div className="flex items-center gap-1 min-w-0">
 				Tags
 				<Tooltip>
@@ -338,7 +312,6 @@ function PromptRow({
 	total,
 	update,
 	allTagOptions,
-	brand,
 	changedKeys,
 	premium,
 	premiumAtCapacity,
@@ -351,7 +324,6 @@ function PromptRow({
 	total: number;
 	update: (index: number, patch: Partial<EditablePrompt>) => void;
 	allTagOptions: { value: string }[];
-	brand?: BrandIdentity;
 	changedKeys?: ReadonlySet<string>;
 	premium?: PremiumAllowance;
 	premiumAtCapacity: boolean;
@@ -368,14 +340,6 @@ function PromptRow({
 			searchPlaceholder="Search or create tag..."
 			normalizeValue={(raw) => raw.toLowerCase().trim()}
 			onValidate={validateTag}
-		/>
-	);
-	const typeField = brand && (
-		<PromptTypeField
-			override={prompt.brandedOverride}
-			detected={mentionsBrand(prompt.value, brand)}
-			onChange={(brandedOverride) => update(index, { brandedOverride })}
-			className="w-full"
 		/>
 	);
 
@@ -405,7 +369,6 @@ function PromptRow({
 						/>
 					</div>
 				</div>
-				{typeField}
 				{tagsInput}
 				{premium && (
 					<PremiumModelsField
@@ -429,7 +392,6 @@ function PromptRow({
 					placeholder="Enter prompt text..."
 					className="min-w-0"
 				/>
-				{typeField}
 				{tagsInput}
 				{premium && (
 					<div className="flex justify-center pt-1">
@@ -507,7 +469,7 @@ function validateTag(tag: string): true | string {
 	return isPromptType(tag) ? PROMPT_TYPE_TAG_ERROR : true;
 }
 
-export function PromptsListEditor({ prompts, onChange, brand, changedKeys, premium }: PromptsListEditorProps) {
+export function PromptsListEditor({ prompts, onChange, changedKeys, premium }: PromptsListEditorProps) {
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
 		for (const p of prompts) for (const t of p.tags) set.add(t);
@@ -540,7 +502,6 @@ export function PromptsListEditor({ prompts, onChange, brand, changedKeys, premi
 		onChange(prompts.map((p) => (selectedKeys.has(p._key) ? { ...p, ...patch(p) } : p)));
 	};
 	const selectedPrompts = prompts.filter((p) => selectedKeys.has(p._key));
-	const selectedOverrides = new Set(selectedPrompts.map((p) => p.brandedOverride));
 
 	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
 
@@ -550,9 +511,9 @@ export function PromptsListEditor({ prompts, onChange, brand, changedKeys, premi
 	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
 
 	// Desktop layout only — column order is
-	// [select] [text] [type?] [tags] [premium?] [switch]. Mobile renders a
-	// stacked per-prompt block instead (no selection, no bulk).
-	const gridCols = GRID_COLS[`${brand ? "type" : "plain"}-${premium ? "premium" : "basic"}`];
+	// [select] [text] [tags] [premium?] [switch]. Mobile renders a stacked
+	// per-prompt block instead (no selection, no bulk).
+	const gridCols = GRID_COLS[premium ? "premium" : "basic"];
 
 	return (
 		<div className="space-y-4">
@@ -586,18 +547,6 @@ export function PromptsListEditor({ prompts, onChange, brand, changedKeys, premi
 							onAdd={(tag) => updateSelection((p) => ({ tags: p.tags.includes(tag) ? p.tags : [...p.tags, tag] }))}
 							onRemove={(tag) => updateSelection((p) => ({ tags: p.tags.filter((t) => t !== tag) }))}
 						/>
-						{brand && (
-							<PromptTypeMenu
-								align="end"
-								selected={selectedOverrides.size === 1 ? [...selectedOverrides][0] : undefined}
-								onSelect={(brandedOverride) => updateSelection(() => ({ brandedOverride }))}
-								trigger={
-									<Button type="button" size="sm" variant="outline" className="cursor-pointer">
-										Type
-									</Button>
-								}
-							/>
-						)}
 						<Button type="button" size="sm" variant="ghost" onClick={clearSelection} className="cursor-pointer">
 							Clear
 						</Button>
@@ -623,7 +572,6 @@ export function PromptsListEditor({ prompts, onChange, brand, changedKeys, premi
 
 			<ColumnHeader
 				gridCols={gridCols}
-				showType={Boolean(brand)}
 				premium={premium}
 				allSelected={allSelected}
 				onToggleSelectAll={toggleSelectAll}
@@ -647,7 +595,6 @@ export function PromptsListEditor({ prompts, onChange, brand, changedKeys, premi
 							total={prompts.length}
 							update={update}
 							allTagOptions={allTagOptions}
-							brand={brand}
 							changedKeys={changedKeys}
 							premium={premium}
 							premiumAtCapacity={premiumAtCapacity}

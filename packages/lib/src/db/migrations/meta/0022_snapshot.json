@@ -1,5 +1,5 @@
 {
-  "id": "b7f084b8-a62d-4373-a9e1-54111a4b1649",
+  "id": "dc305d76-72f9-4459-a5cf-d169056e51f9",
   "prevId": "71a6f7ef-3f21-46f6-9c6e-f12aae25d56d",
   "version": "7",
   "dialect": "postgresql",
@@ -855,12 +855,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'{}'"
-        },
-        "branded_override": {
-          "name": "branded_override",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",
