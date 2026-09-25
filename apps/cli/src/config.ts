@@ -58,7 +58,7 @@ export function buildEnvFile(env: EnvMap, version: string): string {
 	return `${lines.join("\n")}\n`;
 }
 
-export function formatEnvValue(value: string): string {
+function formatEnvValue(value: string): string {
 	if (value === "") {
 		return '""';
 	}

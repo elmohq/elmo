@@ -1,5 +1,3 @@
-import { formatEnvValue } from "./config.js";
-
 /**
  * Turns what someone typed into the origin Elmo should answer on. Auth trusts
  * requests only from this origin, so a path would never match a browser's
@@ -20,28 +18,4 @@ export function parseAppUrl(input: string): { url: string } | { error: string } 
 		return { error: "Elmo must be served from the root of its domain — drop the path" };
 	}
 	return { url: parsed.origin };
-}
-
-/**
- * Sets keys in a .env file's text without re-rendering it, so comments, hand
- * edits, and the `# Rendered by elmo` header that `elmo upgrade` reads all
- * survive.
- */
-export function setEnvValues(contents: string, updates: Record<string, string>): string {
-	const lines = contents === "" ? [] : contents.replace(/\n$/, "").split("\n");
-
-	for (const [key, value] of Object.entries(updates)) {
-		const assignment = `${key}=${formatEnvValue(value)}`;
-		const pattern = new RegExp(`^\\s*(?:export\\s+)?${key}\\s*=`);
-		let found = false;
-		for (let i = 0; i < lines.length; i++) {
-			if (pattern.test(lines[i])) {
-				lines[i] = assignment;
-				found = true;
-			}
-		}
-		if (!found) lines.push(assignment);
-	}
-
-	return `${lines.join("\n")}\n`;
 }

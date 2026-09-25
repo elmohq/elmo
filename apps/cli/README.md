@@ -59,7 +59,6 @@ For the full self-hosting walkthrough, see the [Elmo docs](https://www.elmohq.co
 | --- | --- |
 | `elmo init` | Interactive wizard to set up a local Elmo instance |
 | `elmo compose <args...>` | Run any `docker compose` command against your Elmo project (e.g. `elmo compose up -d`, `elmo compose down`, `elmo compose logs -f`, `elmo compose build`, `elmo compose ps`) |
-| `elmo url [url]` | Show or set the public URL people use to reach Elmo (e.g. `elmo url https://elmo.example.com`) |
 | `elmo edit <env\|compose>` | Change API keys, scrape targets, or the Docker Compose YAML |
 | `elmo upgrade` | Move your deployment to this CLI's version — runs migrations, re-pins image tags, and restarts the stack |
 

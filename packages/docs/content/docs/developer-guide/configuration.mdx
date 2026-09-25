@@ -89,14 +89,9 @@ elmo compose up -d
 
 ## Serving Elmo from a Domain
 
-`elmo init` asks for the public URL you'll open Elmo at, defaulting to `http://localhost:1515`. If you put Elmo behind a domain or reverse proxy, set it to that URL — sign-in is only accepted from the URL configured here:
+`elmo init` asks for the public URL you'll open Elmo at, defaulting to `http://localhost:1515`. If you put Elmo behind a domain or reverse proxy, set it to that URL — sign-in is only accepted from the URL configured here.
 
-```bash
-elmo url https://elmo.example.com
-elmo compose up -d
-```
-
-Run `elmo url` with no argument to print the current value. Elmo must be served from the root of its domain, not a subpath.
+To change it later, run `elmo edit env`, set both `APP_URL` and `VITE_APP_URL` to the new URL (for example `https://elmo.example.com`), then restart with `elmo compose up -d`. Elmo must be served from the root of its domain, not a subpath.
 
 ## Using an External Database
 

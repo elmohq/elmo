@@ -400,7 +400,7 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 			`will reach it through a domain or reverse proxy, enter that URL`,
 			`instead — sign-in only works from the URL set here.`,
 			"",
-			"Change it later with `elmo url <url>`.",
+			"Change it later with `elmo edit env` (APP_URL and VITE_APP_URL).",
 		].join("\n"),
 		"Public URL",
 	);
