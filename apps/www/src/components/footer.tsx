@@ -35,6 +35,7 @@ const cols: { heading: string; links: FooterLink[] }[] = [
 		links: [
 			{ label: "Blog", href: "/blog" },
 			{ label: "Documentation", href: "/docs" },
+			{ label: "Support", href: "/support" },
 			{ label: "API Reference", href: "/docs/api" },
 			{ label: "Elmo Cloud Status", href: "https://status.elmohq.com/", external: true },
 			{ label: "Provider Status", href: "/status" },

@@ -33,6 +33,7 @@ export type ReferralSource =
 	| "marketing-pricing-closing"
 	| "marketing-page-cta"
 	| "marketing-vision"
+	| "marketing-support"
 	| "marketing-plan-starter"
 	| "marketing-plan-basic"
 	| "marketing-plan-pro"

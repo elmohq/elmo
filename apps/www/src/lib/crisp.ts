@@ -27,3 +27,17 @@ export function initCrisp(): void {
 	script.async = true;
 	document.head.appendChild(script);
 }
+
+/** Crisp can take seconds to load, so `onOpened` reports when the chat is actually on screen. */
+export function openCrispChat(onOpened: () => void): void {
+	initCrisp();
+	window.$crisp?.push([
+		"on",
+		"chat:opened",
+		() => {
+			window.$crisp?.push(["off", "chat:opened"]);
+			onOpened();
+		},
+	]);
+	window.$crisp?.push(["do", "chat:open"]);
+}
