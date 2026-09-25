@@ -81,41 +81,51 @@ export function PlanComparison({
 				))}
 			</div>
 
-			<div className="overflow-x-auto pb-2">
-				<div className={GRID}>
-					<SectionHeading>Limits</SectionHeading>
-					<Row label="Brands" cell={(plan) => plan.maxBrands} />
-					<Row label="Tracked prompts" cell={(plan) => plan.maxPrompts} />
-					<Row label="Platforms per brand" cell={(plan) => plan.platformPicks} />
-					<Row label="Sampling" cell={(plan) => `${plan.standardRunsPerDay}×/day`} />
-					<Row label="Seats" cell={() => "Unlimited"} />
-					<Row label="API access" cell={() => true} />
+			<PlanFeatureTable />
+		</div>
+	);
+}
 
-					<PlatformSection tier="scraped" />
-					<PlatformSection tier="api" />
+/**
+ * Every limit and platform, one column per plan. Exported on its own for a page
+ * that shows its own plan cards and only wants the detail on request.
+ */
+export function PlanFeatureTable() {
+	return (
+		<div className="overflow-x-auto pb-2">
+			<div className={GRID}>
+				<SectionHeading>Limits</SectionHeading>
+				<Row label="Brands" cell={(plan) => plan.maxBrands} />
+				<Row label="Tracked prompts" cell={(plan) => plan.maxPrompts} />
+				<Row label="Platforms per brand" cell={(plan) => plan.platformPicks} />
+				<Row label="Sampling" cell={(plan) => `${plan.standardRunsPerDay}×/day`} />
+				<Row label="Seats" cell={() => "Unlimited"} />
+				<Row label="API access" cell={() => true} />
 
-					<SectionHeading>
-						{PLATFORM_TIER_LABELS.premium}
-						<span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground tabular-nums">
-							{PREMIUM_RUNS_PER_DAY}×/day
-						</span>
-					</SectionHeading>
+				<PlatformSection tier="scraped" />
+				<PlatformSection tier="api" />
+
+				<SectionHeading>
+					{PLATFORM_TIER_LABELS.premium}
+					<span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground tabular-nums">
+						{PREMIUM_RUNS_PER_DAY}×/day
+					</span>
+				</SectionHeading>
+				<Row
+					label="Included"
+					cell={(plan) => (plan.premiumIncluded > 0 ? premiumPairings(plan.premiumIncluded) : false)}
+				/>
+				<Row
+					label="Buy more"
+					cell={(plan) => (plan.premiumAddonAvailable ? `$${PREMIUM_ADDON_MONTHLY_USD}/mo each` : false)}
+				/>
+				{platformTierMembers("premium").map((member) => (
 					<Row
-						label="Included"
-						cell={(plan) => (plan.premiumIncluded > 0 ? premiumPairings(plan.premiumIncluded) : false)}
+						key={member.model}
+						label={<ModelLabel iconId={member.iconId} label={member.label} />}
+						cell={(plan) => plan.premiumIncluded > 0 || plan.premiumAddonAvailable}
 					/>
-					<Row
-						label="Buy more"
-						cell={(plan) => (plan.premiumAddonAvailable ? `$${PREMIUM_ADDON_MONTHLY_USD}/mo each` : false)}
-					/>
-					{platformTierMembers("premium").map((member) => (
-						<Row
-							key={member.model}
-							label={<ModelLabel iconId={member.iconId} label={member.label} />}
-							cell={(plan) => plan.premiumIncluded > 0 || plan.premiumAddonAvailable}
-						/>
-					))}
-				</div>
+				))}
 			</div>
 		</div>
 	);
