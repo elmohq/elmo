@@ -21,7 +21,13 @@ describe("which rows a save may claim", () => {
 		// Another brand's prompt, or one deleted through the admin API since the
 		// editor loaded. Skipping it would drop that edit and report success.
 		expect(() => planPromptSave([submitted({ id: "someone-elses" })], [stored("own")])).toThrow(
-			/not in this brand's list/,
+			/no longer in this brand's prompts/,
+		);
+	});
+
+	it("names a refused prompt by its text, not its id", () => {
+		expect(() => planPromptSave([submitted({ id: "someone-elses" })], [stored("own")])).toThrow(
+			/^"how do i track brand mentions"/,
 		);
 	});
 
@@ -31,13 +37,13 @@ describe("which rows a save may claim", () => {
 				[submitted({ id: "own", value: "first" }), submitted({ id: "own", value: "second" })],
 				[stored("own")],
 			),
-		).toThrow(/appears twice/);
+		).toThrow(/listed twice/);
 	});
 
 	it("refuses a padded list before it can be charged to the org's pools", () => {
 		const rows = Array.from({ length: 500 }, () => submitted({ id: "own", premiumModels: ["claude"] }));
 
-		expect(() => planPromptSave(rows, [stored("own")])).toThrow(/appears twice/);
+		expect(() => planPromptSave(rows, [stored("own")])).toThrow(/listed twice/);
 	});
 });
 
