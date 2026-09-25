@@ -67,7 +67,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			db
 				.select({
 					name: brands.name,
-					website: brands.website,
+					domain: brands.domain,
 					additionalDomains: brands.additionalDomains,
 					delayOverrideHours: brands.delayOverrideHours,
 				})
@@ -85,8 +85,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
 		]);
 
-		const brandWebsite = brandResult[0]?.website || "";
-		const primaryBrandDomain = extractDomain(brandWebsite);
+		const primaryBrandDomain = brandResult[0]?.domain ?? "";
 		const additionalBrandDomains = (brandResult[0]?.additionalDomains || []).map(extractDomain);
 		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
 		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));

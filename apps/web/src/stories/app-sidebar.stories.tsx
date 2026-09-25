@@ -30,7 +30,7 @@ import { setMockBrand } from "./_mocks/use-brands";
 const onboardedBrand = {
 	id: "brand-1",
 	name: "Acme Corp",
-	website: "https://acme.com",
+	domain: "acme.com",
 	enabled: true,
 	onboarded: true,
 	createdAt: new Date().toISOString(),
@@ -42,13 +42,13 @@ const organization = {
 	slug: "mock-organization",
 	name: "Acme",
 	brandCreation: { kind: "allowed" as const },
-	brands: [{ id: "brand-1", slug: null, name: "Acme Corp", website: "https://acme.com", onboarded: true }],
+	brands: [{ id: "brand-1", slug: null, name: "Acme Corp", domain: "acme.com", onboarded: true }],
 };
 
 const newBrand = {
 	id: "brand-2",
 	name: "NewStartup",
-	website: "https://newstartup.io",
+	domain: "newstartup.io",
 	enabled: true,
 	onboarded: false,
 	createdAt: new Date().toISOString(),

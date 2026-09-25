@@ -745,7 +745,7 @@ function promptWorkflowStatus(
 }
 
 function brandWorkflowSummary(
-	brand: { id: string; slug: string | null; organizationId: string; name: string; website: string; enabled: boolean },
+	brand: { id: string; slug: string | null; organizationId: string; name: string; domain: string; enabled: boolean },
 	brandPrompts: { id: string; value: string; enabled: boolean; createdAt: Date }[],
 	context: WorkflowContext,
 ) {
@@ -757,7 +757,7 @@ function brandWorkflowSummary(
 		brandSlug: brand.slug,
 		organizationSlug: organizationSegment(context.orgSlugs, brand.organizationId),
 		brandName: brand.name,
-		website: brand.website,
+		domain: brand.domain,
 		enabled: brand.enabled,
 		totalPrompts: brandPrompts.length,
 		enabledPrompts: enabled.length,

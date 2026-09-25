@@ -7,7 +7,7 @@ import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { useOrganizationParams } from "@/hooks/use-route-params";
-import { validateWebsiteUrl } from "@/lib/brand-website";
+import { validateBrandDomain } from "@/lib/brand-domain";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -35,7 +35,7 @@ function NewBrandPage() {
 	const { organizationId, organizationName, blocked } = Route.useLoaderData();
 	const organizationParams = useOrganizationParams();
 	const [step, setStep] = useState<"details" | "platforms">("details");
-	const [details, setDetails] = useState({ brandName: "", website: "" });
+	const [details, setDetails] = useState({ brandName: "", domain: "" });
 	const [platformState, setPlatformState] = useState<NonNullable<OnboardingPlatformState> | null>(null);
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +44,7 @@ function NewBrandPage() {
 	const navigate = useNavigate();
 	const writeError = useWriteErrorMessage();
 
-	const createBrand = async (brandName: string, website: string, enabledModels: string[] | null) => {
+	const createBrand = async (brandName: string, domain: string, enabledModels: string[] | null) => {
 		setIsLoading(true);
 		setError("");
 
@@ -52,12 +52,12 @@ function NewBrandPage() {
 			const { brandSlug } = await createBrandInOrgFn({
 				data: {
 					brandName,
-					website,
+					domain,
 					organizationId,
 					...(enabledModels && enabledModels.length > 0 && { enabledModels }),
 				},
 			});
-			trackEvent("brand_created", { has_website: Boolean(website) });
+			trackEvent("brand_created", { has_website: Boolean(domain) });
 
 			await organizationsChanged(() =>
 				navigate({ to: "/app/org/$org/brand/$brand", params: { ...organizationParams, brand: brandSlug } }),
@@ -71,10 +71,10 @@ function NewBrandPage() {
 
 	const handleDetailsSubmit = async (formData: FormData) => {
 		const brandName = (formData.get("brandName") as string)?.trim() ?? "";
-		const website = (formData.get("website") as string)?.trim() ?? "";
+		const domain = (formData.get("domain") as string)?.trim() ?? "";
 		setError("");
 
-		const validation = validateWebsiteUrl(website);
+		const validation = validateBrandDomain(domain);
 		if (!validation.isValid) {
 			setError(validation.error);
 			return;
@@ -84,10 +84,10 @@ function NewBrandPage() {
 		try {
 			const state = await getOnboardingPlatformStateFn({ data: { organizationId } });
 			if (!state) {
-				await createBrand(brandName, website, null);
+				await createBrand(brandName, domain, null);
 				return;
 			}
-			setDetails({ brandName, website });
+			setDetails({ brandName, domain });
 			setPlatformState(state);
 			setSelected(new Set(state.defaultSelected));
 			setStep("platforms");
@@ -128,7 +128,7 @@ function NewBrandPage() {
 					disabled={isLoading}
 					error={error}
 					onBack={() => setStep("details")}
-					onSubmit={() => createBrand(details.brandName, details.website, [...selected])}
+					onSubmit={() => createBrand(details.brandName, details.domain, [...selected])}
 					submitLabel={isLoading ? "Creating..." : "Create brand"}
 				/>
 			</FullPageCard>
@@ -152,15 +152,15 @@ function NewBrandPage() {
 				</div>
 
 				<div className="space-y-2">
-					<Label htmlFor="website">Website</Label>
+					<Label htmlFor="domain">Domain</Label>
 					<Input
-						id="website"
-						name="website"
+						id="domain"
+						name="domain"
 						type="text"
 						placeholder="example.com"
 						required
 						disabled={isLoading}
-						defaultValue={details.website}
+						defaultValue={details.domain}
 					/>
 				</div>
 

@@ -7,8 +7,8 @@ let _organizations: OrganizationSummary[] = [
 		name: "Acme",
 		brandCreation: { kind: "allowed" },
 		brands: [
-			{ id: "brand-1", slug: "acme", name: "Acme", website: "https://acme.com", onboarded: true },
-			{ id: "brand-2", slug: "acme-labs", name: "Acme Labs", website: "https://labs.acme.com", onboarded: true },
+			{ id: "brand-1", slug: "acme", name: "Acme", domain: "acme.com", onboarded: true },
+			{ id: "brand-2", slug: "acme-labs", name: "Acme Labs", domain: "labs.acme.com", onboarded: true },
 		],
 	},
 ];

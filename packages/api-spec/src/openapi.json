@@ -397,7 +397,7 @@
 			},
 			"CreateBrandRequest": {
 				"type": "object",
-				"description": "Create a brand. Skips onboarding. The first entry in `domains` is treated as the brand's primary website; the rest are stored as additional domains.",
+				"description": "Create a brand. Skips onboarding. The first entry in `domains` is treated as the brand's primary domain; the rest are stored as additional domains.",
 				"properties": {
 					"id": {
 						"type": "string",
@@ -413,7 +413,7 @@
 							"type": "string"
 						},
 						"minItems": 1,
-						"description": "Brand domains. The first entry is the primary website; remaining entries are additional domains."
+						"description": "Brand domains. The first entry is the primary domain; remaining entries are additional domains."
 					},
 					"aliases": {
 						"type": "array",
@@ -478,7 +478,7 @@
 			},
 			"UpdateBrandRequest": {
 				"type": "object",
-				"description": "Update brand-level fields. At least one field must be provided. Provided arrays replace the stored values verbatim. When `domains` is provided, the first entry becomes the primary website and the rest become additional domains. Prompts and competitors are managed via /prompts and /competitors.",
+				"description": "Update brand-level fields. At least one field must be provided. Provided arrays replace the stored values verbatim. When `domains` is provided, the first entry becomes the primary domain and the rest become additional domains. Prompts and competitors are managed via /prompts and /competitors.",
 				"minProperties": 1,
 				"properties": {
 					"brandName": {
@@ -491,7 +491,7 @@
 							"type": "string"
 						},
 						"minItems": 1,
-						"description": "Brand domains. The first entry is the primary website; remaining entries are additional domains."
+						"description": "Brand domains. The first entry is the primary domain; remaining entries are additional domains."
 					},
 					"aliases": {
 						"type": "array",
@@ -520,7 +520,7 @@
 						"items": {
 							"type": "string"
 						},
-						"description": "Brand domains. The first entry is the primary website; remaining entries are additional domains."
+						"description": "Brand domains. The first entry is the primary domain; remaining entries are additional domains."
 					},
 					"aliases": {
 						"type": "array",

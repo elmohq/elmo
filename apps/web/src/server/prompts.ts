@@ -366,7 +366,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		// ---- Citation stats ----
 		const [brandInfo, competitorsList] = await Promise.all([
 			db
-				.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })
+				.select({ name: brands.name, domain: brands.domain, additionalDomains: brands.additionalDomains })
 				.from(brands)
 				.where(eq(brands.id, prompt[0].brandId))
 				.limit(1),
@@ -376,7 +376,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 				.where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
 
-		const primaryBrandDomain = brandInfo[0] ? extractDomain(brandInfo[0].website) : "";
+		const primaryBrandDomain = brandInfo[0]?.domain ?? "";
 		const additionalBrandDomains = (brandInfo[0]?.additionalDomains || []).map(extractDomain);
 		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
 		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
@@ -503,7 +503,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						value: prompt.value,
 						enabled: prompt.enabled,
 						tags: prompt.tags || [],
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+						systemTags: computeSystemTags(prompt.value, brand.name, brand.domain),
 						premiumModels: after.premiumModels,
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
@@ -516,7 +516,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						value: prompt.value,
 						enabled: prompt.enabled,
 						tags: prompt.tags || [],
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+						systemTags: computeSystemTags(prompt.value, brand.name, brand.domain),
 						premiumModels: after.premiumModels,
 					})),
 				);
