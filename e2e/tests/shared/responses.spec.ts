@@ -4,9 +4,9 @@ import { brandUrl } from "../../fixtures";
 
 const RESPONSES_URL = `${brandUrl()}/responses`;
 
-/** The rendered answer, not the same words repeated in the raw output below it. */
+/** The seeded runs aren't in any provider's shape, so their answers only show in the raw output. */
 function answer(page: Page, text: RegExp) {
-  return page.locator("p", { hasText: text });
+  return page.locator("pre", { hasText: text });
 }
 
 test.describe("Responses Page", () => {
@@ -17,10 +17,10 @@ test.describe("Responses Page", () => {
     await expect(answer(page, /To optimize content for LLM citations/)).toBeVisible();
   });
 
-  test("searching finds answers that use any form of the word", async ({ page }) => {
+  test("searching finds answers containing the text, ignoring case", async ({ page }) => {
     await page.goto(RESPONSES_URL);
     await expect(answer(page, /Several platforms offer AI visibility tracking/)).toBeVisible({ timeout: 30_000 });
-    await page.getByPlaceholder("Search responses...").fill("optimize");
+    await page.getByPlaceholder("Search responses...").fill("OPTIMIZ");
 
     await expect(page.getByText("2 of 8 results")).toBeVisible({ timeout: 30_000 });
     await expect(answer(page, /To optimize content for LLM citations/)).toBeVisible();
@@ -28,8 +28,8 @@ test.describe("Responses Page", () => {
     await expect(answer(page, /Several platforms offer AI visibility tracking/)).toHaveCount(0);
   });
 
-  test("a quoted phrase matches only answers containing it", async ({ page }) => {
-    await page.goto(`${RESPONSES_URL}?q=${encodeURIComponent('"Competitor Beta"')}`);
+  test("a phrase matches only answers containing it", async ({ page }) => {
+    await page.goto(`${RESPONSES_URL}?q=${encodeURIComponent("Competitor Beta")}`);
 
     await expect(page.getByText("2 of 8 results")).toBeVisible({ timeout: 30_000 });
     await expect(answer(page, /Competitor Alpha provides basic tracking/)).toHaveCount(0);

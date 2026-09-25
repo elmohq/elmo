@@ -378,18 +378,6 @@ export function extractTextFromSearchapi(rawOutput: any): string {
 }
 
 /**
- * Extractors answer "nothing to show" with a message the dashboard renders in
- * place of the answer, not an empty string. Anything that treats the result as
- * the engine's own words has to tell the two apart.
- */
-const PLACEHOLDER_PATTERN =
-	/^(?:No (?:text )?content(?: found)? in [\w ]+ output\.|No AI overview content found\.|No content\.|Error extracting text content\.|Unknown provider format - cannot extract text content\.)$/;
-
-export function isExtractionPlaceholder(text: string): boolean {
-	return PLACEHOLDER_PATTERN.test(text);
-}
-
-/**
  * Extract text content from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
  * because persisted runs may not identify a provider.

@@ -8,7 +8,6 @@
 import { parseModelFilter } from "@workspace/config/model-filter";
 import { db } from "@workspace/lib/db/db";
 import { getAllProviders } from "@workspace/lib/providers";
-import { responseSearchQuery } from "@workspace/lib/response-search";
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type FanoutBreakdownRow,
@@ -1260,8 +1259,6 @@ export interface ResponseMatchRow {
 	brand_mentioned: boolean;
 	competitors_mentioned: string[];
 	raw_output: unknown;
-	/** Null until the worker has indexed the run. */
-	text_content: string | null;
 	created_at: string;
 }
 
@@ -1273,28 +1270,29 @@ function responseScopeFilter(scope: ResponseSearchScope): SQL {
 		${modelFilter(scope.model, { alias: "pr" })}`;
 }
 
+/**
+ * Answers are stored only as each provider's raw JSON, so the search runs over
+ * that text. The term is JSON-escaped first so quotes and backslashes match
+ * how they're stored, then LIKE-escaped so `%` and `_` are literal.
+ */
 function responseMatch(scope: ResponseSearchScope): SQL {
-	return scope.query ? sql`pr.search_vector @@ ${responseSearchQuery(scope.query)}` : sql`TRUE`;
+	if (!scope.query) return sql`TRUE`;
+	const stored = JSON.stringify(scope.query).slice(1, -1);
+	const pattern = `%${stored.replace(/[\\%_]/g, "\\$&")}%`;
+	return sql`pr.raw_output::text ILIKE ${pattern}`;
 }
 
-/**
- * Runs in scope, how many of them match, and whether any are still waiting on
- * the worker to index their text (and so can't match yet).
- */
-export async function getResponseCounts(
-	scope: ResponseSearchScope,
-): Promise<{ total: number; matched: number; unindexed: boolean }> {
-	if (scope.promptIds.length === 0) return { total: 0, matched: 0, unindexed: false };
-	const rows = await queryPg<{ total: number; matched: number; unindexed: boolean }>(sql`
+/** Runs in scope, and how many of them match. */
+export async function getResponseCounts(scope: ResponseSearchScope): Promise<{ total: number; matched: number }> {
+	if (scope.promptIds.length === 0) return { total: 0, matched: 0 };
+	const rows = await queryPg<{ total: number; matched: number }>(sql`
 		SELECT
 			count(*)::int AS total,
-			count(*) FILTER (WHERE ${responseMatch(scope)})::int AS matched,
-			bool_or(pr.text_content IS NULL) AS unindexed
+			count(*) FILTER (WHERE ${responseMatch(scope)})::int AS matched
 		FROM prompt_runs pr
 		WHERE ${responseScopeFilter(scope)}
 	`);
-	const row = rows[0];
-	return { total: row?.total ?? 0, matched: row?.matched ?? 0, unindexed: row?.unindexed ?? false };
+	return { total: rows[0]?.total ?? 0, matched: rows[0]?.matched ?? 0 };
 }
 
 export async function getResponseMatches(
@@ -1314,7 +1312,6 @@ export async function getResponseMatches(
 			pr.brand_mentioned,
 			pr.competitors_mentioned,
 			pr.raw_output,
-			pr.text_content,
 			pr.created_at
 		FROM prompt_runs pr
 		WHERE ${responseScopeFilter(scope)} AND ${responseMatch(scope)}

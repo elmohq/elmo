@@ -1,5 +1,5 @@
 /**
- * Full-text search across every stored answer for a brand. Like
+ * Text search across every stored answer for a brand. Like
  * `analytics-core`, the caller has already decided the requester may see the
  * brand.
  */
@@ -17,7 +17,6 @@ export interface ResponseMatch {
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
 	rawOutput: {};
-	/** The answer as the search indexed it, so what shows is what matched. */
 	text: string;
 	createdAt: string;
 }
@@ -28,8 +27,6 @@ export interface ResponseSearchResult {
 	matchedRuns: number;
 	matches: ResponseMatch[];
 	pageSize: number;
-	/** True while older runs in scope haven't been indexed yet, so they can't match a query. */
-	indexing: boolean;
 }
 
 export interface ResponseSearchOptions {
@@ -74,7 +71,6 @@ export async function searchBrandResponses(
 		query: query ?? null,
 		totalRuns: counts.total,
 		matchedRuns: counts.matched,
-		indexing: counts.unindexed,
 		pageSize: options.pageSize,
 		matches: rows.map((row) => ({
 			id: row.id,
@@ -87,7 +83,7 @@ export async function searchBrandResponses(
 			competitorsMentioned: row.competitors_mentioned ?? [],
 			rawOutput: row.raw_output as {},
 			// Older rows predate the provider column; the model name is the extractor's other accepted key.
-			text: row.text_content || extractTextContent(row.raw_output, row.provider ?? row.model),
+			text: extractTextContent(row.raw_output, row.provider ?? row.model),
 			createdAt: new Date(row.created_at).toISOString(),
 		})),
 	};

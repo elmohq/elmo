@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
@@ -64,8 +63,8 @@ function ResponsesPage() {
 
 	const infoContent = (
 		<p>
-			Every answer the AI engines gave to your prompts. Search matches any form of a word; put a phrase in "quotes" to
-			match it exactly, use <em>or</em> to match either term, and a leading minus to exclude a word.
+			Every answer the AI engines gave to your prompts. Search finds responses containing the exact text you type,
+			ignoring case.
 		</p>
 	);
 
@@ -126,13 +125,6 @@ function ResponsesPage() {
 					resultTotal={data?.totalRuns}
 				/>
 			</FilterSection>
-			{data?.indexing && (
-				<Alert className="mb-4">
-					<AlertDescription>
-						Older responses are still being indexed for search, so some matches may be missing for now.
-					</AlertDescription>
-				</Alert>
-			)}
 			{content}
 		</PageHeader>
 	);
