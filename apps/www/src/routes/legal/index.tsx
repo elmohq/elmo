@@ -68,11 +68,15 @@ function LegalIndex() {
 							))}
 						</dl>
 						<p className="mt-8 max-w-3xl text-sm text-zinc-600">
-							Running Elmo yourself instead? None of this applies — the{" "}
+							Running Elmo yourself instead? The{" "}
 							<a href="https://github.com/elmohq/elmo" className="text-zinc-950 underline hover:text-blue-700">
 								source
 							</a>{" "}
-							is MIT-licensed and your instance is yours.
+							is MIT-licensed, and these terms don't govern your instance. Telemetry it sends us is covered by the{" "}
+							<a href="/legal/privacy" className="text-zinc-950 underline hover:text-blue-700">
+								Privacy Policy
+							</a>
+							.
 						</p>
 					</div>
 				</section>
