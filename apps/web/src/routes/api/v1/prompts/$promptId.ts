@@ -2,7 +2,7 @@
  * /api/v1/prompts/:promptId — single prompt resource.
  *
  * GET     fetch one prompt
- * PATCH   update value / enabled / tags
+ * PATCH   update value / enabled / tags / branded
  * DELETE  remove the prompt (cascades to runs + citations) — admin key only
  *
  * Protected by API key authentication.
@@ -35,7 +35,10 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 			GET: createApiHandler({
 				params: promptParams,
 				scopes: ["read"],
-				handle: async ({ params, auth }) => toPromptSummary((await requirePromptInScope(auth, params.promptId)).prompt),
+				handle: async ({ params, auth }) => {
+					const { prompt, brand } = await requirePromptInScope(auth, params.promptId);
+					return toPromptSummary(prompt, brand);
+				},
 			}),
 
 			PATCH: createApiHandler({
@@ -45,7 +48,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				mapError: mapPromptNotFound,
 				handle: async ({ params, body, auth }) => {
 					const { brand } = await requirePromptInScope(auth, params.promptId);
-					return toPromptSummary(await updatePrompt(brand, params.promptId, body));
+					return toPromptSummary(await updatePrompt(brand, params.promptId, body), brand);
 				},
 			}),
 
@@ -58,9 +61,9 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				adminOnlyHint: "Send PATCH with `enabled: false` to stop tracking this prompt without losing its history.",
 				mapError: mapPromptNotFound,
 				handle: async ({ params, auth }) => {
-					await requirePromptInScope(auth, params.promptId);
+					const { brand } = await requirePromptInScope(auth, params.promptId);
 					const { prompt, deletedRunsCount } = await deletePrompt(params.promptId);
-					return { ...toPromptSummary(prompt), deletedRunsCount };
+					return { ...toPromptSummary(prompt, brand), deletedRunsCount };
 				},
 			}),
 		}),

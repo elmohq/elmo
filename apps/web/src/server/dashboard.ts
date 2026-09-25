@@ -2,7 +2,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
@@ -21,6 +20,7 @@ import {
 	getPerPromptVisibilityTimeSeries,
 } from "@/lib/postgres-read";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { loadTypedPrompts } from "@/server/prompt-resolution";
 
 interface VisibilityTimeSeriesPoint {
 	date: string;
@@ -75,10 +75,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 				.where(eq(brands.id, data.brandId))
 				.limit(1),
 			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
-			db
-				.select({ id: prompts.id, value: prompts.value, systemTags: prompts.systemTags, tags: prompts.tags })
-				.from(prompts)
-				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+			loadTypedPrompts(data.brandId),
 			db
 				.select({ count: count() })
 				.from(prompts)
@@ -93,9 +90,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		const totalPrompts = totalPromptsResult[0]?.count || 0;
 
 		const enabledPromptIds = enabledPromptsResult.map((p) => p.id);
-		const brandedPromptIds = enabledPromptsResult
-			.filter((p) => getEffectiveBrandedStatus(p.systemTags || [], p.tags || []).isBranded)
-			.map((p) => p.id);
+		const brandedPromptIds = enabledPromptsResult.filter((p) => p.branded).map((p) => p.id);
 
 		const [summaryResult, perPromptVisibility, perPromptCitations] = await Promise.all([
 			getDashboardSummary(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),

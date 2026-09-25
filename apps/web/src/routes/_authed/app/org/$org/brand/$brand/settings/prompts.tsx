@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { premiumSlotsUsed } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
-import { prompts } from "@workspace/lib/db/schema";
+import { brands, prompts } from "@workspace/lib/db/schema";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -18,13 +18,26 @@ const getPromptsForEditing = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		const brandPrompts = await db
-			.select()
-			.from(prompts)
-			.where(eq(prompts.brandId, data.brandId))
-			.orderBy(prompts.value, desc(prompts.enabled), prompts.id);
+		const [brandPrompts, [brand]] = await Promise.all([
+			db
+				.select()
+				.from(prompts)
+				.where(eq(prompts.brandId, data.brandId))
+				.orderBy(prompts.value, desc(prompts.enabled), prompts.id),
+			db
+				.select({
+					name: brands.name,
+					website: brands.website,
+					aliases: brands.aliases,
+					additionalDomains: brands.additionalDomains,
+				})
+				.from(brands)
+				.where(eq(brands.id, data.brandId))
+				.limit(1),
+		]);
+		if (!brand) throw new Error("Brand not found");
 
-		return brandPrompts;
+		return { prompts: brandPrompts, brand };
 	});
 
 function PromptsSettingsSkeleton() {
@@ -50,7 +63,7 @@ function PromptsSettingsSkeleton() {
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/prompts")({
 	staticData: { crumb: "Prompts" },
 	loader: async ({ context }) => {
-		const [brandPrompts, premiumPool] = await Promise.all([
+		const [{ prompts: brandPrompts, brand }, premiumPool] = await Promise.all([
 			getPromptsForEditing({ data: { brandId: context.brandId } }),
 			getPremiumPoolFn({ data: { brandId: context.brandId } }),
 		]);
@@ -60,6 +73,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 		const spentHere = premiumSlotsUsed(brandPrompts);
 		return {
 			prompts: brandPrompts,
+			brand,
 			premium: premiumPool.available
 				? {
 						total: premiumPool.total,
@@ -74,13 +88,14 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 });
 
 function PromptsSettingsPage() {
-	const { prompts: brandPrompts, premium } = Route.useLoaderData();
+	const { prompts: brandPrompts, brand, premium } = Route.useLoaderData();
 	const brandId = useBrandId();
 
 	return (
 		<PromptsEditor
 			initialPrompts={brandPrompts}
 			brandId={brandId}
+			brand={brand}
 			pageTitle="Prompts"
 			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
 			premium={premium}

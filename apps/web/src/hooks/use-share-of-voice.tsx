@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { PromptType } from "@workspace/lib/prompt-type";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
 import { getShareOfVoiceFn } from "@/server/analysis";
@@ -8,6 +9,7 @@ export interface ShareOfVoiceFilters {
 	model?: string;
 	/** Tag filter (resolved to prompt IDs server-side, like the visibility page). */
 	tags?: string[];
+	type?: PromptType;
 }
 
 const shareOfVoiceKeys = {
@@ -27,6 +29,7 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					type: filters?.type,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

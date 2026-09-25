@@ -1,5 +1,6 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
+import { type PromptType, parsePromptFilter } from "@workspace/lib/prompt-type";
 import { useCallback, useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
 import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
@@ -14,6 +15,7 @@ export type BrandFilterSearch = {
 	model?: string;
 	lookback?: string;
 	tags?: string;
+	type?: PromptType;
 	q?: string;
 };
 
@@ -27,10 +29,16 @@ function asString(value: unknown): string | undefined {
 }
 
 export function validateBrandFilterSearch(search: Record<string, unknown>): BrandFilterSearch {
+	// Links from before branded/unbranded became the type carry them in `tags`.
+	const { tags, type } = parsePromptFilter({
+		tags: Array.isArray(search.tags) ? search.tags.map(String) : asString(search.tags),
+		type: asString(search.type),
+	});
 	return {
 		model: asString(search.model),
 		lookback: asString(search.lookback),
-		tags: Array.isArray(search.tags) ? search.tags.map(String).join(",") : asString(search.tags),
+		tags: joinTags(tags),
+		type,
 		q: asString(search.q),
 	};
 }
@@ -67,7 +75,7 @@ export function useFilterNavigate() {
 }
 
 /** URL-persisted state for the standard dashboard filter set (search, tags,
- *  model, lookback). Page-specific keys (e.g. the fan-out `tab`) live in
+ *  prompt type, model, lookback). Page-specific keys (e.g. the fan-out `tab`) live in
  *  their own route's `validateSearch` instead.
  *
  *  This subscribes to the whole search object — use it in the component that
@@ -83,18 +91,20 @@ export function useListFilters() {
 
 	const model = urlFilters.model ?? ALL_MODELS_VALUE;
 	const tags = useMemo(() => splitTags(urlFilters.tags), [urlFilters.tags]);
+	const type = urlFilters.type;
 	const search = urlFilters.q ?? "";
 
 	return {
 		model,
 		lookback: coerceLookback(urlFilters.lookback, defaultLookback),
 		tags,
+		type,
 		search,
 		/** True when any narrowing filter is active (lookback never narrows to
 		 *  zero on its own, so it doesn't count). Gates which empty state a
 		 *  page shows: "no data" vs "no matches for your filters". */
-		isFiltered: Boolean(search) || tags.length > 0 || model !== ALL_MODELS_VALUE,
-		clearFilters: () => setFilters({ q: undefined, tags: undefined, model: undefined }),
+		isFiltered: Boolean(search) || tags.length > 0 || Boolean(type) || model !== ALL_MODELS_VALUE,
+		clearFilters: () => setFilters({ q: undefined, tags: undefined, type: undefined, model: undefined }),
 	};
 }
 

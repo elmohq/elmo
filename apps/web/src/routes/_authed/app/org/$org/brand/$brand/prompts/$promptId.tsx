@@ -1,5 +1,6 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { BrandedSource } from "@workspace/lib/prompt-type";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -7,6 +8,7 @@ import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Pin } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type CitationData, CitationsDisplay } from "@/components/citations-display";
 import {
@@ -19,6 +21,7 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
+import { promptTypeLabel } from "@/components/prompt-type-field";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
 import { useBrandId } from "@/hooks/use-brand-id";
@@ -46,7 +49,8 @@ type PromptMetadata = {
 	value: string;
 	enabled: boolean;
 	tags: string[];
-	systemTags: string[];
+	branded: boolean;
+	brandedSource: BrandedSource;
 	nextRunAt?: string | null;
 };
 
@@ -106,9 +110,7 @@ function PromptHeader({
 	onLookbackChange: () => void;
 }) {
 	const brandParams = useBrandParams();
-	const systemTags = promptMeta?.systemTags || [];
 	const userTags = promptMeta?.tags || [];
-	const hasTags = systemTags.length > 0 || userTags.length > 0;
 
 	return (
 		<div className="pb-6 space-y-3">
@@ -161,16 +163,36 @@ function PromptHeader({
 						</>
 					)}
 
-					{hasTags && <span className="text-border">|</span>}
+					{promptMeta && (
+						<>
+							<span className="text-border">|</span>
+							<Tooltip>
+								<TooltipTrigger
+									render={
+										<Badge variant="secondary" className="text-xs font-normal cursor-help">
+											{promptTypeLabel(promptMeta.branded)}
+											{promptMeta.brandedSource === "manual" && <Pin className="size-3" />}
+										</Badge>
+									}
+								/>
+								<TooltipContent>
+									<p className="max-w-xs">
+										{promptMeta.brandedSource === "manual"
+											? "Set manually in Edit prompts."
+											: promptMeta.branded
+												? "Detected: this prompt names your brand."
+												: "Detected: this prompt doesn't name your brand."}
+									</p>
+								</TooltipContent>
+							</Tooltip>
+						</>
+					)}
 
-					{hasTags && (
+					{userTags.length > 0 && <span className="text-border">|</span>}
+
+					{userTags.length > 0 && (
 						<div className="flex items-center gap-1.5">
 							<span className="text-muted-foreground">Tags:</span>
-							{systemTags.map((tag) => (
-								<Badge key={`sys-${tag}`} variant="secondary" className="text-xs capitalize font-normal">
-									{tag}
-								</Badge>
-							))}
 							{userTags.map((tag) => (
 								<Badge key={`usr-${tag}`} variant="outline" className="text-xs capitalize font-normal">
 									{tag}

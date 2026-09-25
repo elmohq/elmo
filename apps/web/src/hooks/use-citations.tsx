@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
+import type { PromptType } from "@workspace/lib/prompt-type";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import { getCitationsFn } from "@/server/citations";
 
 export interface CitationFilters {
 	days?: number;
 	tags?: string[];
+	type?: PromptType;
 	model?: string;
 }
 
@@ -24,6 +26,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 					brandId: resolvedBrandId!,
 					days: filters?.days || 7,
 					tags: filters?.tags?.join(","),
+					type: filters?.type,
 					model: filters?.model,
 				},
 			}),

@@ -49,7 +49,7 @@ const TIPS = {
 
 function ShareOfVoicePage() {
 	const brandId = useBrandId();
-	const { model, lookback, tags } = useListFilters();
+	const { model, lookback, tags, type } = useListFilters();
 
 	const { data: brand } = useBrand(brandId);
 	const { domainFor } = useSiteIcons(brandId);
@@ -59,7 +59,7 @@ function ShareOfVoicePage() {
 	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	const { data, isLoading } = useShareOfVoice(brandId, { lookback, model: modelParam, tags });
+	const { data, isLoading } = useShareOfVoice(brandId, { lookback, model: modelParam, tags, type });
 
 	const infoContent = (
 		<>
