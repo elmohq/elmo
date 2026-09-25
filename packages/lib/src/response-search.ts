@@ -1,4 +1,5 @@
 import { type SQL, sql } from "drizzle-orm";
+import { isExtractionPlaceholder } from "./text-extraction";
 
 /**
  * Stemmed, so a search for "recommend" also finds "recommended". The stored
@@ -7,9 +8,13 @@ import { type SQL, sql } from "drizzle-orm";
  */
 const SEARCH_CONFIG = "english";
 
-/** Postgres text cannot hold NUL, and one stray byte from a provider would fail the whole write. */
+/**
+ * What gets indexed for an extracted answer: nothing when there was no answer,
+ * so a search never matches the placeholder shown in its place. Postgres text
+ * cannot hold NUL, and one stray byte from a provider would fail the whole write.
+ */
 export function storableResponseText(text: string): string {
-	return text.replaceAll("\u0000", "");
+	return isExtractionPlaceholder(text) ? "" : text.replaceAll("\u0000", "");
 }
 
 export function responseSearchVector(text: string | SQL): SQL {

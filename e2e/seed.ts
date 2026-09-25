@@ -467,8 +467,8 @@ async function seed(connectionString: string) {
 
     for (const run of promptRuns) {
       await client.query(
-        `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, version, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, version, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at, text_content, search_vector)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::text, to_tsvector('english', $12::text))`,
         [
           run.id,
           run.promptId,
@@ -481,6 +481,7 @@ async function seed(connectionString: string) {
           run.brandMentioned,
           run.competitorsMentioned,
           run.createdAt,
+          run.textContent,
         ]
       );
     }

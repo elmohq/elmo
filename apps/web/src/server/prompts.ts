@@ -432,6 +432,8 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 
 		const [runs, totalResult] = await Promise.all([
 			db.query.promptRuns.findMany({
+				// The page renders answers from rawOutput; the search index is bulk it never reads.
+				columns: { textContent: false, searchVector: false },
 				where: and(eq(promptRuns.promptId, data.promptId), gte(promptRuns.createdAt, fromDate)),
 				orderBy: desc(promptRuns.createdAt),
 				limit: data.limit,
