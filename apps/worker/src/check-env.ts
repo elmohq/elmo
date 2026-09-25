@@ -1,7 +1,6 @@
 import { assertRequiredEnv } from "@workspace/config/env";
 
-// Imported first by the entrypoint: other modules read env at load time and
-// would otherwise fail on the first missing var instead of listing them all.
+// Must be the entrypoint's first import, since other modules read env at load time.
 try {
 	assertRequiredEnv();
 } catch (error) {

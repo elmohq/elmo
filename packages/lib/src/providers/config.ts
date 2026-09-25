@@ -70,8 +70,6 @@ export function validateScrapeTargets(
 		id: string,
 	) => { isConfigured(): boolean; validateTarget?(config: ModelConfig): string | null } | undefined,
 ): void {
-	// Collected rather than thrown one at a time so a fresh setup sees every
-	// problem in a single boot instead of fixing them one restart at a time.
 	const errors = new Set<string>();
 	for (const config of configs) {
 		const provider = getProvider(config.provider);
