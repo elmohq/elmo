@@ -1,7 +1,7 @@
 import { IconEditCircle } from "@tabler/icons-react";
-import type { PromptType } from "@workspace/lib/prompt-type";
 import { Link, useSearch } from "@tanstack/react-router";
 import type { Competitor } from "@workspace/lib/db/schema";
+import type { PromptType } from "@workspace/lib/prompt-type";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card } from "@workspace/ui/components/card";
 import { cn } from "@workspace/ui/lib/utils";

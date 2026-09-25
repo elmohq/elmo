@@ -54,7 +54,7 @@ test.describe("Prompt Details Page", () => {
     const pageContent = await page.textContent("body");
     const hasMetadata =
       pageContent?.includes("monitoring") ||
-      pageContent?.includes("branded") ||
+      pageContent?.includes("Branded") ||
       pageContent?.includes("AI monitoring");
     expect(hasMetadata).toBeTruthy();
   });

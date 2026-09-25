@@ -4,10 +4,10 @@ import { PromptsEditor } from "@/components/prompts-editor";
 
 const prompts = Array.from({ length: 24 }, (_, i) => ({
 	id: `prompt-${i}`,
-	value: `What are the best AI visibility tools for ${["agencies", "startups", "enterprises", "ecommerce"][i % 4]}? (${i + 1})`,
+	value: `What are the best AI visibility tools for ${["agencies", "startups", "enterprises", "ecommerce"][i % 4]}${i % 3 === 1 ? " besides Elmo" : ""}? (${i + 1})`,
 	enabled: i % 5 !== 0,
 	tags: i % 3 === 0 ? ["comparison"] : [],
-	systemTags: i % 2 === 0 ? ["unbranded"] : ["branded"],
+	brandedOverride: i === 4 ? true : null,
 }));
 
 const meta = {
@@ -38,6 +38,7 @@ export const Default: Story = {
 	args: {
 		initialPrompts: prompts,
 		brandId: "mock-brand-id",
+		brand: { name: "Elmo", website: "https://elmohq.com" },
 		pageTitle: "Prompts",
 		pageDescription: "Add, edit, or remove your brand tracking keywords and prompts",
 	},

@@ -4,8 +4,8 @@ import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, reports } from "@workspace/lib/db/schema";
 import { analyzeMentions } from "@workspace/lib/mentions";
 import { analyzeBrand } from "@workspace/lib/onboarding";
+import { type BrandIdentity, mentionsBrand } from "@workspace/lib/prompt-type";
 import { getProvider, type ModelConfig } from "@workspace/lib/providers";
-import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 
 interface CompetitorResult {
@@ -18,7 +18,6 @@ interface PromptData {
 	value: string;
 	enabled: boolean;
 	tags: string[];
-	systemTags: string[];
 }
 
 const TARGET_PROMPTS_COUNT = 70;
@@ -91,8 +90,7 @@ function selectOptimalPrompts(
 			competitorsMentioned: string[];
 		}>;
 	}>,
-	brandName: string,
-	brandWebsite: string,
+	brand: BrandIdentity,
 ): string[] {
 	const scoredCandidates = candidateResults.map((candidate) => {
 		const totalRuns = candidate.runs.length;
@@ -102,7 +100,7 @@ function selectOptimalPrompts(
 		const brandMentionRate = totalRuns > 0 ? brandMentionCount / totalRuns : 0;
 		const competitorMentionRate = totalRuns > 0 ? competitorMentionCount / totalRuns : 0;
 
-		const isActuallyBranded = isPromptBranded(candidate.promptValue, brandName, brandWebsite);
+		const isActuallyBranded = mentionsBrand(candidate.promptValue, brand);
 
 		return {
 			promptValue: candidate.promptValue,
@@ -246,11 +244,11 @@ export async function processReportJob(job: ReportJobContext) {
 		const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = useManualPrompts
 			? manualPrompts.map((prompt) => ({
 					prompt: prompt.toLowerCase().trim(),
-					brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite),
+					brandedPrompt: mentionsBrand(prompt, { name: brandName, website: brandWebsite }),
 				}))
 			: suggestion.suggestedPrompts.map((p) => ({
 					prompt: p.prompt,
-					brandedPrompt: isPromptBranded(p.prompt, brandName, brandWebsite),
+					brandedPrompt: mentionsBrand(p.prompt, { name: brandName, website: brandWebsite }),
 				}));
 
 		if (candidatePrompts.length === 0) {
@@ -323,7 +321,7 @@ export async function processReportJob(job: ReportJobContext) {
 		job.updateProgress(70);
 
 		job.log(`Selecting optimal ${TARGET_PROMPTS_COUNT} prompts from ${candidateResults.length} candidates`);
-		const selectedPromptValues = selectOptimalPrompts(candidateResults, brandName, brandWebsite);
+		const selectedPromptValues = selectOptimalPrompts(candidateResults, { name: brandName, website: brandWebsite });
 		job.updateProgress(75);
 
 		job.log(`Running final ${selectedPromptValues.length} selected prompts`);
@@ -353,7 +351,6 @@ export async function processReportJob(job: ReportJobContext) {
 			value: promptValue,
 			enabled: true,
 			tags: [],
-			systemTags: computeSystemTags(promptValue, brandName, brandWebsite),
 		}));
 
 		const reportData: ReportData = {

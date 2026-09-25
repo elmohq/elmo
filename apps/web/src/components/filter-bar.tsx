@@ -1,4 +1,5 @@
 import { useSearch } from "@tanstack/react-router";
+import { isPromptType, PROMPT_TYPES, type PromptType } from "@workspace/lib/prompt-type";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
@@ -13,7 +14,6 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { isPromptType, PROMPT_TYPES, type PromptType } from "@workspace/lib/prompt-type";
 import { ChevronDown, Clock, Search, Shapes, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";

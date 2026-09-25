@@ -71,13 +71,16 @@ export interface PromptFilter {
 export function parsePromptFilter(input: { tags?: string | readonly string[]; type?: string }): PromptFilter {
 	const raw = typeof input.tags === "string" ? input.tags.split(",") : (input.tags ?? []);
 	const all = raw.map((tag) => tag.trim().toLowerCase()).filter(Boolean);
-	const legacyTypes = all.filter(isPromptType);
+	const legacyTypes = [...new Set(all.filter(isPromptType))];
 	const tags = [...new Set(all.filter((tag) => !isPromptType(tag)))];
 	const type = isPromptType(input.type) ? input.type : legacyTypes.length === 1 ? legacyTypes[0] : undefined;
 	return type ? { tags, type } : { tags };
 }
 
-export function matchesPromptFilter(prompt: { tags: readonly string[]; branded: boolean }, filter: PromptFilter): boolean {
+export function matchesPromptFilter(
+	prompt: { tags: readonly string[]; branded: boolean },
+	filter: PromptFilter,
+): boolean {
 	if (filter.type && promptTypeOf(prompt.branded) !== filter.type) return false;
 	return filter.tags.length === 0 || filter.tags.some((tag) => prompt.tags.includes(tag));
 }

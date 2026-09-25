@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { matchesPromptFilter, parsePromptFilter } from "@workspace/lib/prompt-type";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
+import type { BrandIdentity } from "@workspace/lib/prompt-type";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import {
@@ -15,21 +16,23 @@ const meta = {
 
 export default meta;
 
+const NIKE = { name: "Nike", website: "https://nike.com" };
+
 /** The table layout is `hidden md:grid` — widen the canvas past 768px to see it. */
 function Harness({
 	initial,
-	showSystemTags = true,
+	brand = NIKE,
 	premium,
 }: {
 	initial: EditablePrompt[];
-	showSystemTags?: boolean;
+	brand?: BrandIdentity;
 	premium?: PremiumAllowance;
 }) {
 	const [prompts, setPrompts] = useState(initial);
 
 	return (
 		<div className="p-8">
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} showSystemTags={showSystemTags} premium={premium} />
+			<PromptsListEditor prompts={prompts} onChange={setPrompts} brand={brand} premium={premium} />
 		</div>
 	);
 }
@@ -52,9 +55,10 @@ const addMultiple =
 export const Populated = () => (
 	<Harness
 		initial={[
-			...entries(["best running shoes for flat feet"], { tags: ["footwear"], systemTags: ["unbranded"] }),
-			...entries(["is nike better than adidas"], { tags: ["comparison"], systemTags: ["branded"] }),
-			...entries(["most durable trail runners"], { enabled: false, systemTags: ["unbranded"] }),
+			...entries(["best running shoes for flat feet"], { tags: ["footwear"] }),
+			...entries(["is nike better than adidas"], { tags: ["comparison"] }),
+			...entries(["shoes like the ones jordan wore"], { tags: ["footwear"], brandedOverride: true }),
+			...entries(["most durable trail runners"], { enabled: false }),
 		]}
 	/>
 );
@@ -84,9 +88,7 @@ export const AddMultiple: StoryObj = {
  * that fit.
  */
 export const AddMultipleOverCapacity: StoryObj = {
-	render: () => (
-		<Harness showSystemTags={false} initial={[...filler(MAX_PROMPTS - 5), ...entries(["", "", "", "", ""])]} />
-	),
+	render: () => <Harness initial={[...filler(MAX_PROMPTS - 5), ...entries(["", "", "", "", ""])]} />,
 	play: async (ctx) => {
 		await addMultiple(
 			"trail shoes for wide feet\nbest marathon racing flats\nlightweight gym trainers\nbest shoes for plantar fasciitis\ncushioned recovery runners\nzero drop road shoes",
@@ -100,7 +102,7 @@ export const AddMultipleOverCapacity: StoryObj = {
 };
 
 /** At the cap: both toolbar buttons are hidden and the limit message shows. */
-export const AtCapacity = () => <Harness showSystemTags={false} initial={filler(MAX_PROMPTS)} />;
+export const AtCapacity = () => <Harness initial={filler(MAX_PROMPTS)} />;
 
 // ---------------------------------------------------------------------------
 // Web-grounded Claude assignment (cloud plans)
