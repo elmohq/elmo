@@ -266,8 +266,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		return (
 			<div className="max-w-2xl mx-auto space-y-3">
 				<p className="text-sm text-muted-foreground">
-					We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors, additional
-					domains/aliases, and a starter set of AI prompts to track.
+					We'll analyze <strong>{brand?.website}</strong> with web search and suggest competitors, other domains and
+					aliases, and a starter set of prompts to track.
 				</p>
 				{error && (
 					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
@@ -306,7 +306,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			<div className="space-y-2">
 				<h2 className="text-2xl font-bold">Brand details</h2>
 				<p className="text-muted-foreground">
-					Confirm the brand identity, additional domains, and aliases used for tracking.
+					Check the name, domains, and aliases used to recognize your brand in AI answers.
 				</p>
 				<div className="space-y-3">
 					<div>
@@ -359,8 +359,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				<div>
 					<h2 className="text-2xl font-bold">Prompts</h2>
 					<p className="text-muted-foreground">
-						Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the
-						bottom.
+						Choose the prompts to start tracking. Untick any you don't want, edit tags, or add your own at the bottom.
 					</p>
 				</div>
 				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} />

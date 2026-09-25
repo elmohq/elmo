@@ -306,10 +306,9 @@ function ColumnHeader({
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">
-								Also track this prompt on a model called directly with its own web search on, for a grounded answer with
-								citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the
-								organization&apos;s premium pairings. This is on top of the platforms the brand tracks, which run on
-								every prompt either way.
+								Also run this prompt {PREMIUM_RUNS_PER_DAY}× a day directly on a model with its web search on, for a
+								grounded answer with citations. Each model you pick uses one of your organization&apos;s premium
+								pairings, on top of the platforms this brand already tracks.
 							</p>
 						</TooltipContent>
 					</Tooltip>
@@ -560,7 +559,7 @@ export function PromptsListEditor({
 					<span className="font-medium text-foreground">
 						{premiumUsed} of {premium.total}
 					</span>{" "}
-					pairings in use across this organization — one for each model a prompt is tracked on.
+					pairings in use across your organization (one per model per prompt).
 					{premiumAtCapacity && (
 						<>
 							{" "}

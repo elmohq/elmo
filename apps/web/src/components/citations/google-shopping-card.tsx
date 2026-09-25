@@ -54,18 +54,17 @@ export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModul
 					<Tooltip>
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Product cards Google AI Mode showed when answering your prompts. The number next to each is how many times
-							that card appeared across results (card inclusions, not unique products). Kept separate from the citation
-							mix above.
+							Product cards Google AI Mode showed when answering your prompts. Each count is how many times that card
+							appeared, not the number of unique products. These aren&apos;t counted as citations.
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					Products Google AI Mode surfaced —{" "}
+					Google AI Mode showed your products{" "}
 					<span className="font-medium text-emerald-600">{googleModule.shopping.brandCount.toLocaleString()}</span>{" "}
-					appearances for yours vs{" "}
-					<span className="font-medium text-red-600">{googleModule.shopping.competitorCount.toLocaleString()}</span> for
-					competitors
+					times and competitors&apos;{" "}
+					<span className="font-medium text-red-600">{googleModule.shopping.competitorCount.toLocaleString()}</span>{" "}
+					times
 				</CardDescription>
 			</CardHeader>
 			<Separator />

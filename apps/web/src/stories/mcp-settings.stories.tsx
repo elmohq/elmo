@@ -101,7 +101,7 @@ export const Whitelabel: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("Connect any chat bot to Acme Visibility.")).toBeVisible();
+		await expect(await canvas.findByText("Connect any MCP client to Acme Visibility.")).toBeVisible();
 		// Nothing on the page names the vendor.
 		await expect(canvas.queryByText(/elmo/i)).toBeNull();
 	},
@@ -114,7 +114,7 @@ export const ReadOnlyDeployment: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/read-only, so the tools that write are withheld/)).toBeVisible();
+		await expect(await canvas.findByText(/read-only, so write tools aren.t available/)).toBeVisible();
 		await expect(await canvas.findByText("MCP access is disabled in demo mode.")).toBeVisible();
 	},
 };

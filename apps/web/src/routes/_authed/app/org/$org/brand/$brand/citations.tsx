@@ -47,8 +47,8 @@ function CitationsPage() {
 	const infoContent = (
 		<>
 			<p className="mb-2">
-				Citations are the links and sources that AI models include in their responses when answering your prompts. They
-				show which websites the AI considers authoritative or relevant to your topics.
+				Citations are the links AI models include when answering your prompts. They show which websites the models treat
+				as authoritative on your topics.
 			</p>
 			<p>
 				<strong>Competitor</strong> domains are only those you&apos;ve added to your{" "}
@@ -105,7 +105,7 @@ function CitationsPage() {
 					<Card>
 						<CardContent className="pt-6">
 							<div className="text-muted-foreground text-center py-8">
-								No citations found. Citations are only available from prompts evaluated with web search enabled.
+								No citations found. Citations only come from prompts run with web search enabled.
 							</div>
 						</CardContent>
 					</Card>

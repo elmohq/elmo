@@ -49,9 +49,8 @@ export function UnknownQueriesNote({ byModel }: { byModel: ModelFanoutStat[] }) 
 	if (hidden.length === 0) return null;
 	return (
 		<div className="text-muted-foreground text-xs">
-			{hidden.map((m) => getModelDisplayName(m.model)).join(", ")} ran with web search enabled but the queries are
-			unknown — the engine may not have searched, searched with just the prompt itself, or searched without revealing
-			its queries.
+			{hidden.map((m) => getModelDisplayName(m.model)).join(", ")} ran with web search on but exposed no queries. Either
+			no search happened, the prompt itself was the search, or the engine doesn't reveal its queries.
 		</div>
 	);
 }
@@ -147,9 +146,10 @@ export function VariationsList({
 type WordTab = "added" | "preserved" | "dropped";
 
 const WORD_TAB_HELP: Record<WordTab, string> = {
-	added: "Words engines add that weren't in your prompt — the intent they layer on (e.g. “best”, “2026”, “vs”).",
-	preserved: "Words from your prompt engines keep in their searches.",
-	dropped: "Words from your prompt engines leave out of their searches.",
+	added:
+		"Words engines add that weren't in your prompt, revealing the intent they layer on (e.g. “best”, “2026”, “vs”).",
+	preserved: "Words from your prompt that engines keep in their searches.",
+	dropped: "Words from your prompt that engines drop from their searches.",
 };
 
 export function QueryWordsSection({ terms, wordChanges }: { terms: TermStat[]; wordChanges: WordChanges }) {

@@ -82,9 +82,7 @@ export function RedditCard({ subreddits }: { subreddits: ReturnType<typeof useSu
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
-				<CardDescription>
-					Top cited subreddits — which Reddit communities AI models reference when answering your prompts
-				</CardDescription>
+				<CardDescription>Subreddits AI models cite most when answering your prompts</CardDescription>
 			</CardHeader>
 			<Separator />
 			<CardContent>

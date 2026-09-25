@@ -84,7 +84,7 @@ function LoadingState() {
 		<div className="space-y-6">
 			<div className="flex items-center gap-2 text-sm text-muted-foreground">
 				<Spinner />
-				Analyzing your citation landscape and drafting your opportunities…
+				Analyzing your citations and drafting opportunities…
 			</div>
 			<div className="space-y-2">
 				<Skeleton className="h-6 w-2/3" />

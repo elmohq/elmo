@@ -94,7 +94,7 @@ export const cancelInvitationFn = createServerFn({ method: "POST" })
 			.from(invitation)
 			.where(and(eq(invitation.id, data.invitationId), eq(invitation.organizationId, org.id)))
 			.limit(1);
-		if (!row) throw new Error("Not found: no such invitation in this organization");
+		if (!row) throw new Error("That invitation no longer exists in this organization");
 
 		await auth.api.cancelInvitation({
 			body: { invitationId: data.invitationId },

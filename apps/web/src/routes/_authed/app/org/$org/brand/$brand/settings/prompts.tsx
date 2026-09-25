@@ -82,7 +82,7 @@ function PromptsSettingsPage() {
 			initialPrompts={brandPrompts}
 			brandId={brandId}
 			pageTitle="Prompts"
-			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
+			pageDescription="Add, edit, or remove the prompts you track for this brand."
 			premium={premium}
 		/>
 	);

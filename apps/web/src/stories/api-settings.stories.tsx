@@ -53,7 +53,7 @@ export const Whitelabel: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("Programmatic interface for Acme Visibility.")).toBeVisible();
+		await expect(await canvas.findByText("Reference for the Acme Visibility REST API.")).toBeVisible();
 		// Nothing on the page names the vendor.
 		await expect(canvas.queryByText(/elmo/i)).toBeNull();
 	},

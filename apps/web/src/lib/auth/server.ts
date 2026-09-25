@@ -27,7 +27,7 @@ function getLocalAuthOptions(): CreateAuthOptions {
 				create: {
 					before: async () => {
 						if ((await countUsers()) > 0) {
-							throw new Error("This instance is already bootstrapped. Sign in with the existing account instead.");
+							throw new Error("This instance already has an admin account. Sign in with it instead.");
 						}
 					},
 					after: async (user) => {

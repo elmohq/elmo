@@ -438,8 +438,8 @@ function TopQueries({ data }: { data: FanoutData }) {
 				<CardTitle className="flex items-center gap-1.5 text-base">
 					Top Queries
 					<InfoTip>
-						The searches with the widest reach — sort by how many distinct prompts triggered them, or how many prompt
-						runs issued them. Expand a query to see the prompts behind it.
+						Sort by how many distinct prompts triggered each search or how many runs issued it. Expand a query to see
+						the prompts behind it.
 					</InfoTip>
 				</CardTitle>
 				<CardDescription>The searches that recur across your prompts.</CardDescription>

@@ -116,7 +116,7 @@ function CitationTrendCharts({
 			{sourceSeries.length > 0 && (
 				<TrendAreaChart
 					title="Citation Categories"
-					tooltip="Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section)."
+					tooltip="Each day's citations split by source category. Smoothed because prompts run on staggered schedules. Google AI Mode search and shopping results are excluded; see Google Shopping."
 					data={sourceSeries as unknown as Array<Record<string, number | string>>}
 					keys={chartSourceCategories}
 					meta={CATEGORY_META}

@@ -12,12 +12,12 @@ const CATEGORY_META = [
 	{
 		key: "creation",
 		label: "Creation",
-		desc: "Net-new content to publish or earn — comparisons, guides, and 'best of' angles for topics you're absent on.",
+		desc: "New content to publish or earn, like comparisons, guides, and 'best of' lists, on topics where you don't show up.",
 	},
 	{
 		key: "existing-content",
 		label: "Existing Content",
-		desc: "Pages already getting cited that are slipping, or could win the mention with a refresh.",
+		desc: "Your cited pages that are slipping, or that could win the mention with a refresh.",
 	},
 	{
 		key: "outreach",
@@ -27,7 +27,7 @@ const CATEGORY_META = [
 	{
 		key: "social",
 		label: "Social",
-		desc: "Show up in the community conversations — Reddit, YouTube, forums — assistants pull from.",
+		desc: "Show up in the Reddit threads, YouTube videos, and forums that assistants pull from.",
 	},
 ] as const;
 

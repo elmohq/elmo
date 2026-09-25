@@ -10,7 +10,7 @@ import { createReport, findReport } from "@/server/reports-core";
 
 async function requireReportAccess() {
 	const session = await requireAuthSession();
-	if (!hasReportAccess(session)) throw new Error("Access denied. Report generator access required.");
+	if (!hasReportAccess(session)) throw new Error("You don't have access to the report generator.");
 }
 
 export const getReportsFn = createServerFn({ method: "GET" }).handler(async () => {

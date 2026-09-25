@@ -106,7 +106,7 @@ function AuthorizePage() {
 						{client.publisherHost ? (
 							<dd className="font-mono text-xs break-all">{client.publisherHost}</dd>
 						) : (
-							<dd>Unverified — it named itself</dd>
+							<dd>Unverified (the client named itself)</dd>
 						)}
 					</div>
 					{client.redirectHosts.length ? (

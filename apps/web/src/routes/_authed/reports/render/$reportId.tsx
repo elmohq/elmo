@@ -582,7 +582,7 @@ function CompetitiveOverviewPage({
 					<>
 						<Section
 							title="Mention Rate"
-							subtitle="Each prompt is evaluated multiple times across AI engines — mentions show total appearances, unique prompts show how many distinct prompts include the brand"
+							subtitle="Each prompt runs several times per AI engine. Mentions count every appearance; unique prompts count the distinct prompts that include the brand."
 						/>
 						<div className="border border-slate-200 rounded-lg overflow-hidden print:pb-px">
 							<table className="w-full">
