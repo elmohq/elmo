@@ -142,7 +142,10 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						<img
 							src={getScreenshotUrl(competitor.slug)}
 							alt={`Screenshot of ${competitor.name} homepage`}
-							className="w-full"
+							// Captures are 16:9 or 16:10; a fixed box keeps the page from shifting when one loads.
+							width={1920}
+							height={1080}
+							className="aspect-video w-full object-cover object-top"
 							loading="lazy"
 						/>
 					</div>
