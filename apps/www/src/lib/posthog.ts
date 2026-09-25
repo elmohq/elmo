@@ -9,6 +9,10 @@ const POSTHOG_HOST = "https://var.elmohq.com";
 // download it at all.
 let instance: PostHog | null = null;
 let loading: Promise<void> | null = null;
+// The visitor's current answer. The import can resolve after they've changed
+// their mind, so what happens then is decided by this, not by the call that
+// started the load.
+let allowed = false;
 
 // Callers don't wait for that import, so anything they send in the meantime
 // would be dropped. Identity is latched until analytics actually starts;
@@ -32,20 +36,34 @@ function load(): Promise<void> {
 			capture_dead_clicks: false,
 			capture_performance: false,
 			persistence: "localStorage+cookie",
+			// Opting out then also deletes PostHog's cookie and localStorage
+			// entries, rather than leaving the identifier behind.
+			opt_out_persistence_by_default: true,
 		});
 		instance = posthog;
-		identity?.(posthog);
-		for (const call of queuedEvents.splice(0)) call(posthog);
 	});
 	return loading;
 }
 
-function stop(): void {
+function start(posthog: PostHog): void {
+	// A returning visitor who opted out earlier is still opted out in PostHog's
+	// own storage; anything replayed before this would be dropped.
+	if (posthog.has_opted_out_capturing()) posthog.opt_in_capturing({ captureEventName: false });
+	identity?.(posthog);
+	for (const call of queuedEvents.splice(0)) call(posthog);
+}
+
+function stop(posthog: PostHog): void {
+	// Reset first: it clears the stored consent state along with the
+	// identifier, so opting out afterwards is what sticks.
+	posthog.reset(true);
+	posthog.opt_out_capturing();
+}
+
+function sync(): void {
 	if (!instance) return;
-	instance.opt_out_capturing();
-	// Drops the distinct id and stored properties, so withdrawing consent
-	// clears the identifier rather than just pausing it.
-	instance.reset(true);
+	if (allowed) start(instance);
+	else stop(instance);
 }
 
 /**
@@ -53,9 +71,14 @@ function stop(): void {
  * answer for the rest of the session. Returns an unsubscribe.
  */
 export function initAnalytics(consentRequired: boolean): () => void {
-	return onAnalyticsConsent(consentRequired, (allowed) => {
-		if (allowed) void load().then(() => instance?.opt_in_capturing());
-		else stop();
+	return onAnalyticsConsent(consentRequired, (answer) => {
+		allowed = answer;
+		if (answer) {
+			void load().then(sync);
+		} else {
+			queuedEvents.length = 0;
+			sync();
+		}
 	});
 }
 
@@ -65,10 +88,10 @@ export function trackEvent(
 ): void {
 	const call = (posthog: PostHog) => posthog.capture(eventName, properties);
 	if (instance) call(instance);
-	else if (loading) queuedEvents.push(call);
+	else if (loading && allowed) queuedEvents.push(call);
 }
 
 export function identifyByEmail(email: string): void {
 	identity = (posthog) => posthog.identify(email, { email });
-	if (instance) identity(instance);
+	if (instance && allowed) identity(instance);
 }
