@@ -7,7 +7,6 @@ import { cloudPricingUrl } from "@workspace/config/referrals";
 import { formatScrapeTarget } from "@workspace/config/scrape-targets";
 import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
-import { parseAppUrl } from "../app-url.js";
 import { buildComposeYaml } from "../compose.js";
 import { CONFIG_HOME, type EnvMap, ensureDir, fileExists, type PostgresMode, writeConfigFiles } from "../config.js";
 import { assertDockerRunning, runDockerCompose, waitForHealthy } from "../docker.js";
@@ -117,6 +116,19 @@ function validatePort(value: string | undefined): string | undefined {
 	const port = Number(value);
 	const valid = Number.isInteger(port) && port >= 1 && port <= 65535;
 	return valid ? undefined : "Must be an integer between 1 and 65535";
+}
+
+function validateAppUrl(value: string | undefined): string | undefined {
+	if (!value) return undefined;
+	try {
+		const url = new URL(value);
+		if (url.protocol !== "http:" && url.protocol !== "https:") return "Must start with http:// or https://";
+		// Auth trusts only this origin, so Elmo can't be served from a subpath.
+		if (url.pathname !== "/") return "Must not include a path";
+		return undefined;
+	} catch {
+		return "Must be a full URL, e.g. https://elmo.example.com";
+	}
 }
 
 async function configureProvidersInteractive(env: EnvMap): Promise<"recommended" | "custom"> {
@@ -394,29 +406,14 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 	const port = Number(portInput);
 
 	const localUrl = `http://localhost:${port}`;
-	p.note(
-		[
-			`Keep the default if you'll only use Elmo on this machine. If people`,
-			`will reach it through a domain or reverse proxy, enter that URL`,
-			`instead — sign-in only works from the URL set here.`,
-			"",
-			"Change it later with `elmo edit env` (APP_URL and VITE_APP_URL).",
-		].join("\n"),
-		"Public URL",
-	);
-	const urlInput = await p.text({
-		message: "Public URL (where you'll open Elmo in a browser)",
+	const appUrl = await p.text({
+		message: "Public URL (change it if you'll serve Elmo from a domain)",
 		placeholder: localUrl,
 		defaultValue: localUrl,
-		validate: (value) => {
-			if (!value) return undefined;
-			const result = parseAppUrl(value);
-			return "error" in result ? result.error : undefined;
-		},
+		validate: validateAppUrl,
 	});
-	assertNotCancelled(urlInput);
-	const appUrl = parseAppUrl(urlInput);
-	env.APP_URL = "url" in appUrl ? appUrl.url : localUrl;
+	assertNotCancelled(appUrl);
+	env.APP_URL = new URL(appUrl).origin;
 	env.VITE_APP_URL = env.APP_URL;
 
 	// ── Write config ─────────────────────────────────────────────────────
