@@ -9,6 +9,7 @@
 	"exports": {
 		"./brand/*": "./src/brand/*.tsx",
 		"./components/*": "./src/components/*.tsx",
+		"./consent/*": "./src/consent/*.tsx",
 		"./hooks/*": "./src/hooks/*.ts",
 		"./lib/*": "./src/lib/*.ts",
 		"./styles/*": "./src/styles/*.css"
