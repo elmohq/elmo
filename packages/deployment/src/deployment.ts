@@ -3,8 +3,8 @@
  * across warm invocations, which is safe because the Deployment object contains
  * no request-scoped state.
  *
- * This module stays Node-safe: branding is assembled from env alone, so the
- * worker builds a Deployment without pulling in the React OptimizeButton.
+ * This module stays Node-safe: branding is assembled from env alone, so server
+ * code builds a Deployment without pulling in the React OptimizeButton.
  */
 
 import { DEFAULT_APP_ICON, DEFAULT_APP_NAME, DEFAULT_APP_URL, DEFAULT_CHART_COLORS } from "@workspace/config/constants";
@@ -119,8 +119,12 @@ function brandingFor(mode: DeploymentMode, env: Env): BrandingConfig {
 	};
 }
 
+function resolveMode(requestedMode: DeploymentMode, env: Env): DeploymentMode {
+	return requestedMode === "local" && env.READ_ONLY === "true" ? "demo" : requestedMode;
+}
+
 export function buildDeployment(requestedMode: DeploymentMode, env: Env): Deployment {
-	const mode = requestedMode === "local" && env.READ_ONLY === "true" ? "demo" : requestedMode;
+	const mode = resolveMode(requestedMode, env);
 	return {
 		mode,
 		features: FEATURES_BY_MODE[mode],
@@ -140,6 +144,15 @@ export function getDeployment(options?: GetDeploymentOptions): Deployment {
 	const env = options?.env ?? process.env;
 	cached = buildDeployment(getDeploymentModeFromEnv(env), env);
 	return cached;
+}
+
+/**
+ * Features only, skipping branding so callers without a UI (the worker) don't
+ * need the whitelabel VITE_APP_* vars.
+ */
+export function getDeploymentFeatures(options?: GetDeploymentOptions): FeaturesConfig {
+	const env = options?.env ?? process.env;
+	return FEATURES_BY_MODE[resolveMode(getDeploymentModeFromEnv(env), env)];
 }
 
 /**
