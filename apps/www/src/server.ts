@@ -103,6 +103,7 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
 	"/privacy": "/legal/privacy",
 	"/cookies": "/legal/cookies",
 	"/subprocessors": "/legal/subprocessors",
+	"/acceptable-use": "/legal/acceptable-use",
 };
 export default createServerEntry({
 	async fetch(request) {
