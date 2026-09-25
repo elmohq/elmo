@@ -49,11 +49,6 @@ COPY . .
 # Web application bundle
 FROM builder AS web-build
 
-# Build arguments for VITE_ env vars (baked into client bundle)
-ARG DEPLOYMENT_MODE=local
-ARG VITE_DEPLOYMENT_MODE=${DEPLOYMENT_MODE}
-ENV VITE_DEPLOYMENT_MODE=${VITE_DEPLOYMENT_MODE}
-
 RUN pnpm --filter @workspace/web build
 
 # Pruned standalone deployments (only each package's own deps)
