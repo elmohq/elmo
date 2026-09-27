@@ -5,6 +5,7 @@
  *   - Idle (the analyze button before the user clicks it).
  *   - Analyzing (the in-flight loader, simulated with a long mock delay).
  *   - Review (every section populated, prompts pre-tagged).
+ *   - Review rejecting a covered domain (inline validation on the domains input).
  *   - Analyze error (the wizard surfaces the message inline).
  *
  * The mocks live in src/stories/_mocks; the storybook alias in
@@ -209,6 +210,38 @@ export const Review = () => {
 			<AutoAnalyze />
 		</>
 	);
+};
+
+/**
+ * Adding a domain the website already covers. `acme.com` is tracked, so the input
+ * turns down `blog.acme.com` rather than taking a chip that would change nothing.
+ */
+export const ReviewRejectsCoveredDomain: StoryObj = {
+	render: () => {
+		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const documentBody = within(canvasElement.ownerDocument.body);
+
+		await canvas.findByText("Brand details");
+		// Brand name and website are plain inputs, so domains is the first combobox.
+		const [domainsInput] = canvas.getAllByRole("combobox");
+		await userEvent.click(domainsInput);
+
+		const search = await documentBody.findByPlaceholderText("Add domain...");
+		await userEvent.type(search, "blog.acme.com");
+		await userEvent.keyboard("{Enter}");
+
+		await expect(documentBody.findByText(/already covered by acme\.com/i)).resolves.toBeVisible();
+		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+	},
 };
 
 /**
