@@ -22,7 +22,8 @@ const directoryItems = competitors
 	}));
 
 export const Route = createFileRoute("/ai-visibility-tools/")({
-	head: () => ({
+	loader: () => ({ directoryItems }),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/ai-visibility-tools/")({
 		links: [{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools") }],
 		scripts: [
 			faqJsonLd(DIRECTORY_FAQS),
-			itemListJsonLd(directoryItems),
+			itemListJsonLd(loaderData?.directoryItems ?? []),
 			breadcrumbJsonLd([
 				{ name: "Home", path: "/" },
 				{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },

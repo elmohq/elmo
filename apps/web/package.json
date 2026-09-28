@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/web",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"private": true,
 	"license": "MIT",
 	"type": "module",
@@ -10,6 +10,7 @@
 		"start": "node .output/server/index.mjs",
 		"preview": "vite preview",
 		"test": "vitest run --project=unit",
+		"test:integration": "vitest run --project=integration",
 		"test:storybook": "vitest run --project=storybook",
 		"check-types": "tsc --noEmit",
 		"generate-icons": "tsx scripts/generate-brand-icons.tsx",

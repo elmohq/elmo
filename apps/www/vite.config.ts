@@ -31,7 +31,14 @@ export default defineConfig({
 		embedBinaries(),
 		mdx(MdxConfig),
 		tailwindcss(),
-		tanstackStart(),
+		tanstackStart({
+			router: {
+				// Route `head`s must read `loaderData`, not data modules, or the data lands in the entry bundle.
+				codeSplittingOptions: {
+					defaultBehavior: [["loader", "component"], ["errorComponent"], ["notFoundComponent"]],
+				},
+			},
+		}),
 		nitro({
 			traceDeps: ["@takumi-rs/core"],
 			exportConditions: ["import"],

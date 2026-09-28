@@ -15,7 +15,8 @@ const items = indexableCategories.map((category) => ({
 }));
 
 export const Route = createFileRoute("/ai-visibility-tools/category/")({
-	head: () => ({
+	loader: () => ({ items }),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/ai-visibility-tools/category/")({
 				{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 				{ name: "Categories", path: "/ai-visibility-tools/category" },
 			]),
-			itemListJsonLd(items),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: CategoryHub,

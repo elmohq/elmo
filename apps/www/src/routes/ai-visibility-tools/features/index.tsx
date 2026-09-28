@@ -33,7 +33,8 @@ const items = indexableFeatureKeys().map((key) => ({
 }));
 
 export const Route = createFileRoute("/ai-visibility-tools/features/")({
-	head: () => ({
+	loader: () => ({ items }),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -46,7 +47,7 @@ export const Route = createFileRoute("/ai-visibility-tools/features/")({
 				{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 				{ name: "Features", path: "/ai-visibility-tools/features" },
 			]),
-			itemListJsonLd(items),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: FeatureHub,

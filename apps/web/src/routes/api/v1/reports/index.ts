@@ -20,6 +20,7 @@ const createReportBody = z.object({
 		.string("brandName is required and must be a non-empty string")
 		.trim()
 		.min(1, "brandName is required and must be a non-empty string"),
+	brandAliases: z.array(z.string()).max(10, "brandAliases can have at most 10 entries").optional(),
 	// The report worker fetches this page, so reject anything it can't fetch
 	// (non-http(s) schemes) before the row exists and the job is queued.
 	brandWebsite: z
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 				handle: async ({ body }) => {
 					const createdReport = await createReport({
 						brandName: body.brandName,
+						brandAliases: body.brandAliases,
 						brandWebsite: body.brandWebsite,
 						manualPrompts: (body.manualPrompts ?? []).map((prompt) => prompt.trim()).filter(Boolean),
 					});
@@ -52,6 +54,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 						reportId: createdReport.id,
 						status: createdReport.status,
 						brandName: createdReport.brandName,
+						brandAliases: createdReport.brandAliases,
 						brandWebsite: createdReport.brandWebsite,
 						createdAt: createdReport.createdAt,
 					};
@@ -72,6 +75,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 						.select({
 							id: reports.id,
 							brandName: reports.brandName,
+							brandAliases: reports.brandAliases,
 							brandWebsite: reports.brandWebsite,
 							status: reports.status,
 							createdAt: reports.createdAt,

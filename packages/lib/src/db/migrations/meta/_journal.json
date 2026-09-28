@@ -159,8 +159,15 @@
     {
       "idx": 22,
       "version": "7",
-      "when": 1790300445184,
-      "tag": "0022_brand_domain",
+      "when": 1790299942543,
+      "tag": "0022_report_brand_aliases",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790627127332,
+      "tag": "0023_brand_domain",
       "breakpoints": true
     }
   ]

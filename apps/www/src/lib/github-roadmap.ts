@@ -1,10 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { Redis } from "@upstash/redis";
-
-const redis = new Redis({
-	url: process.env.UPSTASH_REDIS_REST_URL!,
-	token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+import { getRedis } from "./redis";
 
 const CACHE_KEY = "gh:roadmap:elmohq/elmo";
 const TTL_SECONDS = 60 * 60;
@@ -68,7 +63,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 export const getGitHubRoadmap = createServerFn({ method: "GET" }).handler(async (): Promise<RoadmapData> => {
 	try {
-		const cached = await redis.get<RoadmapData>(CACHE_KEY);
+		const cached = await getRedis().get<RoadmapData>(CACHE_KEY);
 		if (cached && Array.isArray(cached.issues)) return cached;
 
 		const pages = await Promise.all([
@@ -98,11 +93,11 @@ export const getGitHubRoadmap = createServerFn({ method: "GET" }).handler(async 
 			});
 
 		const data: RoadmapData = { issues, totalCount: issues.length };
-		await redis.set(CACHE_KEY, data, { ex: TTL_SECONDS });
+		await getRedis().set(CACHE_KEY, data, { ex: TTL_SECONDS });
 		return data;
 	} catch {
 		const empty: RoadmapData = { issues: [], totalCount: 0 };
-		await redis.set(CACHE_KEY, empty, { ex: ERROR_TTL_SECONDS });
+		await getRedis().set(CACHE_KEY, empty, { ex: ERROR_TTL_SECONDS });
 		return empty;
 	}
 });

@@ -22,7 +22,8 @@ const pairItems = comparePairs.map(([a, b]) => ({
 const items = [...setItems, ...pairItems];
 
 export const Route = createFileRoute("/ai-visibility-tools/compare/")({
-	head: () => ({
+	loader: () => ({ items }),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/ai-visibility-tools/compare/")({
 				{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 				{ name: "Compare", path: "/ai-visibility-tools/compare" },
 			]),
-			itemListJsonLd(items),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: CompareHub,

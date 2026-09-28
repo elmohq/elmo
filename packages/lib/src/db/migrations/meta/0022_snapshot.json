@@ -1,5 +1,5 @@
 {
-  "id": "2f54d6c8-7c72-4ac4-81c4-c9d6486a757d",
+  "id": "2e0f0fdf-5258-4024-9308-726f6405df7f",
   "prevId": "71a6f7ef-3f21-46f6-9c6e-f12aae25d56d",
   "version": "7",
   "dialect": "postgresql",
@@ -107,8 +107,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "domain": {
-          "name": "domain",
+        "website": {
+          "name": "website",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -953,6 +953,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "brand_aliases": {
+          "name": "brand_aliases",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
         },
         "brand_website": {
           "name": "brand_website",

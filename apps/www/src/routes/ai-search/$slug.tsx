@@ -23,9 +23,17 @@ function engineFaqs(e: AiSearchEngine): FaqItem[] {
 }
 
 export const Route = createFileRoute("/ai-search/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const e = getAiSearchEngine(params.slug);
-		if (!e) return {};
+		if (!e) throw notFound();
+		const related = (e.related ?? [])
+			.map((slug) => aiSearchEngines.find((x) => x.slug === slug))
+			.filter((x): x is AiSearchEngine => Boolean(x));
+		return { engine: e, related };
+	},
+	head: ({ loaderData }) => {
+		if (!loaderData) return {};
+		const e = loaderData.engine;
 		const title = `How to Appear in ${e.name} · Elmo`;
 		const description = e.short;
 		const path = `/ai-search/${e.slug}`;
@@ -46,14 +54,6 @@ export const Route = createFileRoute("/ai-search/$slug")({
 				faqJsonLd(engineFaqs(e)),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const e = getAiSearchEngine(params.slug);
-		if (!e) throw notFound();
-		const related = (e.related ?? [])
-			.map((slug) => aiSearchEngines.find((x) => x.slug === slug))
-			.filter((x): x is AiSearchEngine => Boolean(x));
-		return { engine: e, related };
 	},
 	component: EnginePage,
 });
