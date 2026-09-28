@@ -1,10 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { Redis } from "@upstash/redis";
-
-const redis = new Redis({
-	url: process.env.UPSTASH_REDIS_REST_URL!,
-	token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+import { getRedis } from "./redis";
 
 const CACHE_KEY = "gh:changelog:elmohq/elmo";
 const TTL_SECONDS = 60 * 60;
@@ -83,7 +78,7 @@ function groupByMonth(issues: ChangelogIssue[]): ChangelogMonth[] {
 
 export const getGitHubChangelog = createServerFn({ method: "GET" }).handler(async (): Promise<ChangelogMonth[]> => {
 	try {
-		const cached = await redis.get<ChangelogMonth[]>(CACHE_KEY);
+		const cached = await getRedis().get<ChangelogMonth[]>(CACHE_KEY);
 		if (Array.isArray(cached)) return cached;
 
 		const pages = await Promise.all([
@@ -105,10 +100,10 @@ export const getGitHubChangelog = createServerFn({ method: "GET" }).handler(asyn
 			}));
 
 		const months = groupByMonth(issues);
-		await redis.set(CACHE_KEY, months, { ex: TTL_SECONDS });
+		await getRedis().set(CACHE_KEY, months, { ex: TTL_SECONDS });
 		return months;
 	} catch {
-		await redis.set(CACHE_KEY, [] as ChangelogMonth[], {
+		await getRedis().set(CACHE_KEY, [] as ChangelogMonth[], {
 			ex: ERROR_TTL_SECONDS,
 		});
 		return [];

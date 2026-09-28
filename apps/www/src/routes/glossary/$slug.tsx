@@ -7,9 +7,17 @@ import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/glossary/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const t = getGlossaryTerm(params.slug);
-		if (!t) return {};
+		if (!t) throw notFound();
+		const related = (t.related ?? [])
+			.map((slug) => glossaryTerms.find((x) => x.slug === slug))
+			.filter((x): x is GlossaryTerm => Boolean(x));
+		return { term: t, related };
+	},
+	head: ({ loaderData }) => {
+		if (!loaderData) return {};
+		const t = loaderData.term;
 		const title = `What is ${t.term}? · Elmo`;
 		const description = t.short;
 		const path = `/glossary/${t.slug}`;
@@ -30,14 +38,6 @@ export const Route = createFileRoute("/glossary/$slug")({
 				]),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const t = getGlossaryTerm(params.slug);
-		if (!t) throw notFound();
-		const related = (t.related ?? [])
-			.map((slug) => glossaryTerms.find((x) => x.slug === slug))
-			.filter((x): x is GlossaryTerm => Boolean(x));
-		return { term: t, related };
 	},
 	component: GlossaryTermPage,
 });

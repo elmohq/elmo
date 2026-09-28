@@ -8,13 +8,18 @@ import { type AeoVertical, aeoVerticals, getAeoVertical } from "@/data/aeo-verti
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, howToJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/aeo-for/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const v = getAeoVertical(params.slug);
-		if (!v) return {};
+		if (!v) throw notFound();
+		const others = aeoVerticals.filter((x) => x.slug !== v.slug);
+		return { vertical: v, others };
+	},
+	head: ({ loaderData }) => {
+		if (!loaderData) return {};
+		const { vertical: v, others } = loaderData;
 		const title = v.metaTitle ?? `AEO for ${v.audience}: Track AI Visibility · Elmo`;
 		const description = v.metaDescription ?? v.short;
 		const path = `/aeo-for/${v.slug}`;
-		const others = aeoVerticals.filter((x) => x.slug !== v.slug);
 		return {
 			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
@@ -35,12 +40,6 @@ export const Route = createFileRoute("/aeo-for/$slug")({
 				),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const v = getAeoVertical(params.slug);
-		if (!v) throw notFound();
-		const others = aeoVerticals.filter((x) => x.slug !== v.slug);
-		return { vertical: v, others };
 	},
 	component: VerticalPage,
 });

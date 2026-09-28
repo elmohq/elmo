@@ -1,5 +1,6 @@
 import { onAnalyticsConsent } from "@workspace/ui/lib/cookie-consent";
 import type { PostHog } from "posthog-js";
+import { afterPageIdle } from "./idle";
 
 const POSTHOG_KEY = "phc_Jhx9LnI9cTDFHpQmpOzJSDTW127qD9pFU65KRnYym6z";
 const POSTHOG_HOST = "https://var.elmohq.com";
@@ -22,26 +23,28 @@ let identity: ((posthog: PostHog) => void) | null = null;
 const queuedEvents: ((posthog: PostHog) => void)[] = [];
 
 function load(): Promise<void> {
-	loading ??= import("posthog-js").then(({ default: posthog }) => {
-		posthog.init(POSTHOG_KEY, {
-			api_host: POSTHOG_HOST,
-			capture_pageview: true,
-			capture_pageleave: true,
-			autocapture: false,
-			disable_session_recording: true,
-			// Prevent PostHog from auto-loading optional feature scripts we don't use.
-			// Without these, /static/{surveys,dead-clicks-autocapture,web-vitals}.js
-			// were being fetched even though the server returns surveys:false etc.
-			disable_surveys: true,
-			capture_dead_clicks: false,
-			capture_performance: false,
-			persistence: "localStorage+cookie",
-			// Opting out then also deletes PostHog's cookie and localStorage
-			// entries, rather than leaving the identifier behind.
-			opt_out_persistence_by_default: true,
+	loading ??= afterPageIdle()
+		.then(() => import("posthog-js"))
+		.then(({ default: posthog }) => {
+			posthog.init(POSTHOG_KEY, {
+				api_host: POSTHOG_HOST,
+				capture_pageview: true,
+				capture_pageleave: true,
+				autocapture: false,
+				disable_session_recording: true,
+				// Prevent PostHog from auto-loading optional feature scripts we don't use.
+				// Without these, /static/{surveys,dead-clicks-autocapture,web-vitals}.js
+				// were being fetched even though the server returns surveys:false etc.
+				disable_surveys: true,
+				capture_dead_clicks: false,
+				capture_performance: false,
+				persistence: "localStorage+cookie",
+				// Opting out then also deletes PostHog's cookie and localStorage
+				// entries, rather than leaving the identifier behind.
+				opt_out_persistence_by_default: true,
+			});
+			instance = posthog;
 		});
-		instance = posthog;
-	});
 	return loading;
 }
 
