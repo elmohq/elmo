@@ -1,0 +1,147 @@
+---
+title: "Does Changing a Page's Date Help It Get Cited by AI?"
+description: "A peer-reviewed experiment shows a date alone can flip an LLM's choice between two equally relevant passages up to 25% of the time. What that means for date bumps, stale pages, and your refresh policy."
+date: "2026-09-28"
+author: ai
+metaTitle: "Does Changing a Page's Date Help AI Citations?"
+tags:
+  - ai-citations
+  - aeo
+  - ai-search
+  - ai-visibility
+definedTerms:
+  - term: Recency bias in LLM reranking
+    definition: "Recency bias in LLM reranking is the tendency of a language model, when ordering retrieved passages by relevance, to promote passages that carry a newer publication date even when the content is identical. A SIGIR-AP 2025 paper measured it across seven models and found that every one showed it, with larger models showing less."
+  - term: Date bumping
+    definition: "Date bumping is changing a page's visible or structured publication or update date without substantively changing the content, in the hope that search or AI systems will treat it as fresh. Google's helpful content guidance lists it as a search-engine-first practice."
+  - term: Reversal rate
+    definition: "In recency-bias research, the reversal rate is the share of pairwise judgments in which a model's preference between two equally relevant passages flips once the originally preferred passage is given an older date and the other a newer one. It isolates the date as the only thing that changed."
+howTo:
+  name: "How to set a date policy for AI search"
+  description: "Decide when a page's date should change, and what to do about old dates, using what the controlled and observational evidence actually supports."
+  steps:
+    - name: Change the date only when the content changed
+      text: "Tie every date change to a substantive edit: new figures, a new section, corrected claims. That is the only kind of update Google's guidance treats as legitimate, and it is the only kind that also improves how well the page answers the question, which is the far stronger citation signal."
+    - name: Put the real update date in the text, not only in markup
+      text: "The experiment that found recency bias placed the date in the passage itself. Whether a schema dateModified value ever reaches the model that ranks passages varies by engine and is not documented, so a visible 'Updated' line next to the content is the version the evidence covers."
+    - name: Audit evergreen pages that display old dates
+      text: "The same bias that rewards a new date penalizes an old one. List your cited and target pages that still show a date more than a year old, and review them first: either update the substance and the date, or confirm the page is still correct and date the review honestly."
+    - name: Treat the date as a tiebreaker, not a strategy
+      text: "Recency bias was measured between passages of equal relevance. If your page does not answer the prompt as well as the pages being cited, no date will close the gap. Spend the effort on the answer first."
+    - name: Measure the effect per engine
+      text: "Log the date of each substantive update and compare citation rates for the affected prompts over the following four weeks, engine by engine. The size of the effect in the research varied more than fivefold across models, so your engine mix determines what you see."
+faq:
+  - question: Does changing a page's date help it get cited by AI?
+    answer: "It can move an LLM's ranking, but only at the margin. In a SIGIR-AP 2025 paper by Fang and colleagues, giving the preferred of two equally relevant passages a 1980 date and the other a 2025 date reversed the model's choice 8.9% to 25.2% of the time, depending on the model. Observational studies, though, find page age is a weak predictor of citation next to how well a page answers the prompt, and Google explicitly lists changing dates without substantial changes as a practice to avoid."
+  - question: Do AI search engines prefer newer content?
+    answer: "On average, yes. Ahrefs' July 2025 analysis of about 17 million citations found that AI assistants cited content averaging 1,064 days old against 1,432 days for Google organic results, making AI citations about 25.7% fresher. Controlled experiments show part of that preference comes from the date itself, not only from newer content being better."
+  - question: Is it against Google's guidelines to update the date without changing content?
+    answer: "Google's helpful content guidance lists it among search-engine-first practices, asking: 'Are you changing the date of pages to make them seem fresh when the content has not substantially changed?' Its byline date documentation says dates must describe the actual publication or update date of the page. Google also says its AI features are rooted in its core Search ranking systems, so the same guidance applies to AI Overviews and AI Mode."
+  - question: Which AI models are most affected by recency bias?
+    answer: "Smaller ones, in the published tests. LLaMA3-8B reversed 25.2% of equal-relevance judgments after date injection, LLaMA3-70B 21.0%, Qwen2.5-7B 12.1%, and Qwen2.5-72B 8.9%. In listwise reranking, the top ten's average date moved forward 3.9 years for LLaMA3-8B and 1.3 years for GPT-4o on the same dataset. No model eliminated the effect."
+  - question: Does an old date on my page hurt my AI visibility?
+    answer: "It can, when your page competes against equally relevant passages with newer dates, because the bias that promotes new dates demotes old ones. The fix is not a new date on unchanged content; it is reviewing the page, updating what has changed, and then showing an accurate update date."
+  - question: Does dateModified schema affect AI citations?
+    answer: "No published evidence shows it does on its own. The recency-bias experiments put the date in the passage text as 'Published on YYYY/MM/DD'. Whether an engine passes structured-data dates to the model that ranks passages is not documented by the major AI search providers, so a visible date in the content is the case the evidence covers."
+---
+
+**The date on a page is one of the few things an LLM reads that has nothing to do with whether the page answers the question, and it still moves the ranking.** A [peer-reviewed experiment presented at SIGIR-AP 2025](https://arxiv.org/abs/2509.11353) gave pairs of equally relevant passages different dates and nothing else. Depending on the model, between 9% and 25% of the model's choices flipped toward the newer date. That result is real. It also explains less than the "refresh your dates" advice built on it suggests.
+
+**Key facts**
+
+| | |
+|---|---|
+| Choices flipped by a date alone (equal-relevance pairs) | **8.9%** (Qwen2.5-72B) to **25.2%** (LLaMA3-8B) — [Fang et al., SIGIR-AP 2025](https://arxiv.org/abs/2509.11353) |
+| Forward shift in the top ten's average date, listwise reranking | **1.3 years** (GPT-4o) to **4.8 years** (LLaMA3-8B) |
+| Largest single-passage jump | **95 ranks** out of 100 |
+| Age of content AI assistants cite vs Google organic | **1,064 vs 1,432 days**, about 25.7% fresher — [Ahrefs, ~17M citations](https://ahrefs.com/blog/do-ai-assistants-prefer-to-cite-fresh-content/) |
+| Page age vs prompt-content alignment as a citation predictor | **β = +0.05 vs +0.37** — [Discovered Labs, 2M observations](https://discoveredlabs.com/research/what-drives-ai-citations) |
+| Google's position on date changes without substantial edits | Listed as a search-engine-first practice — [Google Search Central](https://developers.google.com/search/docs/fundamentals/creating-helpful-content) |
+
+**Key takeaways**
+
+- A date alone changes LLM rankings. Every one of the seven models tested promoted newer-dated passages, and larger models reduced the effect without removing it.
+- The effect is a tiebreaker. It was measured between passages of equal relevance, and in observational data page age is a far weaker predictor of citation than how well the page answers the prompt.
+- Observational freshness studies cannot tell a real update from a date bump. They read the dates pages display, so some of the "AI prefers fresh content" finding may be the bias itself.
+- Old dates are the underrated risk. The mechanism that rewards a new date demotes an old one on an evergreen page that is still correct.
+- Date bumping is a declining trade with a penalty attached: bigger models are less swayed, and Google names the practice in its guidance.
+
+## Why is this question different from "should I refresh content?"
+
+We have already covered [how long it takes to get cited and how old cited content is](/blog/how-long-to-get-cited-by-ai): median citation ages run from five to eight months depending on the engine, and pages left unrefreshed lose visibility faster. That post concluded that re-dating a page that does not answer the question will not earn a citation.
+
+The question marketing teams actually ask next is narrower and more awkward: *if the page does answer the question, does the date by itself make a difference?* That is a question about the date as a signal, separate from the content behind it, and observational data cannot answer it. It needs an experiment that holds the content fixed and changes only the date. That experiment now exists.
+
+## What did the experiment test?
+
+Hanpei Fang, Sijie Tao, Nuo Chen, Kai-Xin Chang, and Tetsuya Sakai, of Waseda University and the Hong Kong Polytechnic University, took the TREC Deep Learning 2021 and 2022 passage collections, which come with human relevance judgments for 53 and 76 queries. For each query, BM25 retrieved the top 100 passages and an LLM reranked them: the standard retrieve-then-rerank setup in information retrieval research.
+
+They then prefixed each passage with a line reading "Published on YYYY/MM/DD" and reran the reranking. Seven models were tested: GPT-3.5-turbo, GPT-4, GPT-4o, LLaMA3-8B and 70B, and Qwen2.5-7B and 72B. The paper was accepted to SIGIR-AP 2025, and a revised version was posted on 21 September 2026.
+
+Two designs came out of it, and they answer different questions.
+
+**The listwise test** dated the 100 passages in reverse order of their BM25 rank: rank 100 got 2025, rank 1 got 1926, a year apart each. Newer-dated passages moved up across the board. The average date of the top ten shifted forward by 1.3 years for GPT-4o, 3.2 years for GPT-3.5-turbo, and 3.9 to 4.8 years for LLaMA3-8B, and individual passages jumped by as many as 95 ranks.
+
+**The pairwise test** is the cleaner one. The researchers took pairs of passages with the *same* human relevance grade, found which one the model preferred, then gave the preferred passage a 1980 date and the other a 2025 date. The only thing that changed was the date.
+
+| Model | Choices reversed by the date swap |
+|---|---|
+| LLaMA3-8B | 25.18% |
+| LLaMA3-70B | 21.02% |
+| Qwen2.5-7B | 12.10% |
+| Qwen2.5-72B | 8.93% |
+
+All four results were statistically significant. The authors' summary: "Although larger models attenuate the effect, none eliminate it."
+
+## What does the experiment not show?
+
+The limits matter more than usual here, because this paper is easy to read as permission to bump dates.
+
+**The listwise numbers are a stress test.** Because the newest dates went to the passages BM25 ranked lowest, the design pits recency directly against first-stage relevance. The large year shifts show how hard a date can pull on a weak passage. They are not an estimate of what re-dating a strong page in a real results set would do. The pairwise reversal rate, measured between equals, is the figure that fits the "my page versus a similar page" scenario.
+
+**The gap was 45 years.** The pairwise test compared 1980 with 2025. A marketing page competing on "Updated March 2026" against "Updated September 2026" presents a much smaller cue, and the paper does not measure how the effect scales with the size of the gap.
+
+**The date was in the text.** It appeared as a line inside the passage the model read. Production engines do not document whether a page's structured-data dates, HTTP headers, or byline reach the model that ranks passages, so the result tells you nothing about a `dateModified` value hidden in markup.
+
+**The models are a step behind.** None of the seven are the models answering buyers' questions today, and the trend inside the paper points one way: GPT-4o was swayed less than GPT-3.5-turbo, and each 70B-class model less than its smaller sibling.
+
+**Reranking is one stage.** A passage has to be retrieved before an LLM can rerank it. A new date on a page that is never retrieved for a prompt changes nothing.
+
+## How do the observational studies fit?
+
+Two large observational datasets measure the outcome the experiment cannot: what AI engines actually cite.
+
+[Ahrefs' July 2025 study](https://ahrefs.com/blog/do-ai-assistants-prefer-to-cite-fresh-content/), by Ryan Law, pulled about 17 million cited URLs from ChatGPT, Perplexity, Gemini, Copilot, and Google's AI Overviews alongside organic results. AI-cited content averaged 1,064 days since publication against 1,432 days for organic results, about 25.7% fresher; on last-update date the gap narrowed to roughly 13%. The same study cautioned against updating publish dates without changing the content.
+
+[Discovered Labs](https://discoveredlabs.com/research/what-drives-ai-citations) analyzed 2 million citation observations over six months and modeled which page features accompany citation. Page age carried a coefficient of +0.05. Prompt-content alignment carried +0.37, which the report describes as roughly three times the next-strongest page-level signal.
+
+These look like they disagree. One says AI engines lean clearly toward newer content; the other says age barely matters. The experiment reconciles them. If the date works as a tiebreaker between passages that are otherwise close, it will show up as a consistent average tilt toward fresher content across millions of citations, and as a small coefficient next to relevance in a model that controls for relevance. Both findings describe the same mechanism from different distances.
+
+There is a second point neither observational study raises. Both measure the dates pages *display*. A page whose date was bumped last month without any edit counts as fresh content in these datasets. So the observed freshness premium is not purely evidence that updated content is better; part of it may be the date bias itself, measured in the wild. That is exactly why these studies cannot settle whether a date bump works, and why the controlled result matters.
+
+## What does Google say?
+
+Google is the one party with a documented rule. Its [helpful content guidance](https://developers.google.com/search/docs/fundamentals/creating-helpful-content) lists, among search-engine-first practices to avoid: "Are you changing the date of pages to make them seem fresh when the content has not substantially changed?" Its [byline date documentation](https://developers.google.com/search/docs/appearance/publication-dates) says dates "must describe the publication or update date of the page." And Google's [guidance on AI features](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide) says AI Overviews and AI Mode are rooted in its core ranking and quality systems.
+
+So the evidence splits by surface. On engines that lean on LLM reranking, a newer date is a demonstrated but shrinking tiebreaker. On Google's surfaces, a bumped date without an edit is named as the wrong behavior.
+
+## What should your date policy be?
+
+The reconciliation turns into four rules.
+
+1. **Change the date when, and only when, the content changed.** A substantive update improves the answer, which is the strong signal, and earns an honest new date, which is the weak one. A bump without an edit collects only the weak signal, on a shrinking set of models, and conflicts with Google's guidance.
+2. **Make the real update date visible in the content.** The evidence covers a date the model can read in the passage. An accurate "Updated" line near the top of the page is the form the experiment tested; a markup-only date is untested.
+3. **Treat old visible dates as a liability.** This is the half of the finding most teams miss. The pairwise test is symmetric: the page that lost its preference was the one that got the older date. An evergreen guide still showing 2022 is at a disadvantage against an equally good competitor showing 2026. Audit the pages you are cited on, and those you want to be cited on, for stale dates first, and fix them by actually reviewing them.
+4. **Win on relevance before you think about dates.** The bias only operated between equals. If the pages being cited for your prompts answer the question better than yours, the date is not your problem. Our analysis of [whether ranking in Google's top 10 gets you cited](/blog/rankings-and-ai-citations) covers the larger levers.
+
+There is also a strategic reason to avoid building on the date trick. It is the kind of signal that [stops paying as more pages exploit it](/blog/do-geo-tactics-stop-working): if everyone's page says "updated this month," the date stops distinguishing anyone, and the bias itself is now a published, measured weakness that model builders have a reason to reduce.
+
+## Where this leaves freshness
+
+"AI prefers fresh content" is true and incomplete. The controlled evidence says the date itself is part of what engines respond to, which makes an accurate, visible, recent date worth having. The observational evidence says it is a small part, far behind answering the question. And the one engine owner that has written a rule says the date has to mean something.
+
+The practical upshot is to stop thinking of the date as something you set and start thinking of it as something you earn: it moves when the page does.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces on a schedule and stores every answer with its citations. Because each cited URL and each run date are in your own database, checking which of your cited pages carry stale dates, or comparing citation rates in the four weeks after a substantive update, is a query over your own history.
+
+For the timing of citations, start with [how long it takes to get cited by AI](/blog/how-long-to-get-cited-by-ai) and [citation volatility](/blog/citation-volatility). For how dates and authorship are expressed in markup, see [structured data for AI search](/blog/structured-data-for-ai-search). For the fundamentals, see [AI citations](/blog/ai-citations), the [AEO guide](/answer-engine-optimization), and the [AI search glossary](/glossary).
