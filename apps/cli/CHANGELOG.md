@@ -1,5 +1,11 @@
 # @elmohq/cli
 
+## 0.4.3
+
+### Patch Changes
+
+- c728281: `elmo init` now asks for the public URL you'll reach Elmo at, so sign-in works when it's served from a domain.
+
 ## 0.4.2
 
 ### Patch Changes

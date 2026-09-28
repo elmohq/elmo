@@ -1,5 +1,18 @@
 # @workspace/web
 
+## 0.4.3
+
+### Patch Changes
+
+- 7937d49: Fixed the API and MCP tools reporting when a prompt first ran as several hours off on servers set to a timezone other than UTC.
+- Updated dependencies [10bc2f0]
+  - @workspace/lib@0.4.3
+  - @workspace/deployment@0.4.3
+  - @workspace/api-spec@0.4.3
+  - @workspace/config@0.4.3
+  - @workspace/og@0.4.3
+  - @workspace/ui@0.4.3
+
 ## 0.4.2
 
 ### Patch Changes
