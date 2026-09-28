@@ -200,7 +200,7 @@ export function ProductDemo() {
 					<span className="font-medium text-zinc-950">{slide.label}.</span> {slide.caption}.
 				</p>
 				<div className="flex items-center gap-5">
-					<div className="flex items-center gap-1.5">
+					<div className="flex items-center">
 						{SLIDES.map((s, i) => (
 							<button
 								key={s.src}
@@ -208,7 +208,7 @@ export function ProductDemo() {
 								onClick={() => pick(i)}
 								aria-label={`Show ${s.label}`}
 								aria-current={i === index}
-								className="group flex h-6 items-center"
+								className="group flex size-6 items-center justify-center"
 							>
 								<span
 									className={`block h-1.5 rounded-full transition-all duration-300 ${

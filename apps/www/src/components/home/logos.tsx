@@ -37,6 +37,8 @@ const customers: Customer[] = [
 		render: () => (
 			<img
 				src="/recordranks-logo.svg"
+				width={106}
+				height={24}
 				alt=""
 				aria-hidden="true"
 				className="block h-6 w-auto grayscale transition-[filter] duration-150 group-hover/rr:grayscale-0"
@@ -50,6 +52,8 @@ const customers: Customer[] = [
 		render: () => (
 			<img
 				src="/askhotel-logo.png"
+				width={95}
+				height={24}
 				alt=""
 				aria-hidden="true"
 				className="block h-6 w-auto grayscale transition-[filter] duration-150 group-hover/ah:grayscale-0"
@@ -63,6 +67,8 @@ const customers: Customer[] = [
 		render: () => (
 			<img
 				src="/aisearch-global-logo.svg"
+				width={81}
+				height={24}
 				alt=""
 				aria-hidden="true"
 				className="block h-6 w-auto opacity-60 grayscale transition-[filter,opacity] duration-150 group-hover/asg:opacity-100 group-hover/asg:grayscale-0"
