@@ -5,9 +5,9 @@ import pc from "picocolors";
 import type { EnvMap } from "./config.js";
 import { assertNotCancelled, link } from "./util.js";
 
-// The PartnerStack links forward `sid` to the signup, so referrals are attributable
+// The affiliate links carry a sub-ID (`fp_sid` for Cloro, `sid` for BrightData), so referrals are attributable
 // per surface: `cli` here, `docs` and `blog` on the links in packages/docs.
-const CLORO_AFFILIATE = "https://affiliate.cloro.dev/elmo?sid=cli";
+const CLORO_AFFILIATE = "https://cloro.dev?fpr=elmo&fp_sid=cli";
 const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/elmo?sid=cli";
 const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32";
 const SEARCHAPI_AFFILIATE = "https://www.searchapi.io/?via=elmo";
