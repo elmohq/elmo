@@ -35,7 +35,7 @@ const defaultClientConfig: ClientConfig = {
 const mockBrand = {
 	id: "brand-1",
 	name: "Acme Corp",
-	website: "https://acme.com",
+	domain: "acme.com",
 	enabled: true,
 	onboarded: true,
 	createdAt: new Date().toISOString(),

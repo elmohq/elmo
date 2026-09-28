@@ -34,8 +34,8 @@ import {
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
 import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
+import { validateBrandDomain } from "@/lib/brand-domain";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
-import { validateWebsiteUrl } from "@/lib/brand-website";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import type { TrackedTarget } from "@/lib/model-filter";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
@@ -212,7 +212,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		z.object({
 			brandId: z.string(),
 			brandName: z.string(),
-			website: z.string(),
+			domain: z.string(),
 			/** Platform picks from the onboarding wizard; omitted → plan defaults. */
 			enabledModels: z.array(z.string().min(1)).max(50).optional(),
 		}),
@@ -224,9 +224,9 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		// org id), so the brand count gate applies to that org.
 		await assertCanCreateBrand(data.brandId);
 
-		const urlValidation = validateWebsiteUrl(data.website);
-		if (!urlValidation.isValid) {
-			throw new Error(urlValidation.error);
+		const domainValidation = validateBrandDomain(data.domain);
+		if (!domainValidation.isValid) {
+			throw new Error(domainValidation.error);
 		}
 
 		const defaultDomains = getDefaultBrandDomains();
@@ -242,7 +242,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 							organizationId: data.brandId,
 							name: data.brandName,
 							slug,
-							website: urlValidation.formattedUrl,
+							domain: domainValidation.domain,
 							enabled: true,
 							...(enabledModels && { enabledModels }),
 							...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
@@ -280,7 +280,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandName: z.string().min(1).max(100),
-			website: z.string().min(1),
+			domain: z.string().min(1),
 			organizationId: z.string(),
 			/** Platform picks from the creation wizard; omitted → plan defaults. */
 			enabledModels: z.array(z.string().min(1)).max(50).optional(),
@@ -294,9 +294,9 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand creation is not allowed in this deployment");
 		}
 
-		const urlValidation = validateWebsiteUrl(data.website);
-		if (!urlValidation.isValid) {
-			throw new Error(urlValidation.error);
+		const domainValidation = validateBrandDomain(data.domain);
+		if (!domainValidation.isValid) {
+			throw new Error(domainValidation.error);
 		}
 
 		const trimmedName = data.brandName.trim();
@@ -322,7 +322,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 					organizationId: orgId,
 					name: trimmedName,
 					slug,
-					website: urlValidation.formattedUrl,
+					domain: domainValidation.domain,
 					enabled: true,
 					...(enabledModels && { enabledModels }),
 					...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
@@ -341,7 +341,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		z.object({
 			brandId: z.string(),
 			name: z.string().optional(),
-			website: z.string().optional(),
+			domain: z.string().optional(),
 			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH).optional(),
 			additionalDomains: z.array(z.string()).optional(),
 			aliases: z.array(z.string()).optional(),
@@ -355,7 +355,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 
 		const normalized = normalizeBrandUpdate({
 			name: data.name,
-			website: data.website,
+			domain: data.domain,
 			additionalDomains: data.additionalDomains,
 			aliases: data.aliases,
 		});

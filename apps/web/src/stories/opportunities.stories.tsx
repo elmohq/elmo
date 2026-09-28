@@ -14,7 +14,7 @@ import { mockOpportunities } from "./analytics-fixtures";
 const onboardedBrand = {
 	id: "brand-1",
 	name: "Acme",
-	website: "https://acme.com",
+	domain: "acme.com",
 	onboarded: true,
 	enabled: true,
 	prompts: [{ id: "p1", value: "best crm", enabled: true }],

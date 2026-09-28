@@ -1,4 +1,4 @@
-import { validateWebsiteUrl } from "@/lib/brand-website";
+import { validateBrandDomain } from "@/lib/brand-domain";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 /**
@@ -8,7 +8,7 @@ import { cleanAndValidateDomain } from "@/lib/domain-categories";
  * persistence; this owns the field-level rules:
  *
  *  - name: trimmed; must be non-empty when provided
- *  - website: validated + normalized to a full URL (path preserved)
+ *  - domain: validated + reduced to a bare hostname
  *  - additionalDomains: each cleaned/validated (hard error listing the invalid
  *    ones), then de-duplicated
  *  - aliases: trimmed, empties dropped, de-duplicated
@@ -18,14 +18,14 @@ import { cleanAndValidateDomain } from "@/lib/domain-categories";
  */
 export interface BrandUpdateInput {
 	name?: string;
-	website?: string;
+	domain?: string;
 	additionalDomains?: string[];
 	aliases?: string[];
 }
 
 interface BrandUpdateFields {
 	name?: string;
-	website?: string;
+	domain?: string;
 	additionalDomains?: string[];
 	aliases?: string[];
 }
@@ -42,12 +42,12 @@ export function normalizeBrandUpdate(input: BrandUpdateInput): NormalizeBrandUpd
 		updates.name = input.name.trim();
 	}
 
-	if (input.website !== undefined) {
-		const urlValidation = validateWebsiteUrl(input.website);
-		if (!urlValidation.isValid) {
-			return { ok: false, error: urlValidation.error };
+	if (input.domain !== undefined) {
+		const domainValidation = validateBrandDomain(input.domain);
+		if (!domainValidation.isValid) {
+			return { ok: false, error: domainValidation.error };
 		}
-		updates.website = urlValidation.formattedUrl;
+		updates.domain = domainValidation.domain;
 	}
 
 	if (input.additionalDomains !== undefined) {

@@ -106,7 +106,7 @@ test.describe("Local features", () => {
 
     await page.goto(`${organizationUrl()}/new`);
     await expect(page.getByLabel("Brand Name")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByLabel("Website")).toBeVisible();
+    await expect(page.getByLabel("Domain", { exact: true })).toBeVisible();
   });
 
   test("organizations cannot be created — a local install has exactly one", async ({ page }) => {

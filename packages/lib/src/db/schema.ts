@@ -33,7 +33,8 @@ export const brands = pgTable(
 		id: text("id").primaryKey().notNull(),
 		name: text("name").notNull(),
 		slug: text("slug"),
-		website: text("website").notNull(),
+		/** Tracked hostname (no protocol, no www, no path), same shape as additionalDomains. */
+		domain: text("domain").notNull(),
 		additionalDomains: text("additional_domains").array().notNull().default([]),
 		aliases: text("aliases").array().notNull().default([]),
 		enabled: boolean("enabled").default(true).notNull(),

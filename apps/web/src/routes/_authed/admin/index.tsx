@@ -33,7 +33,7 @@ interface BrandStats {
 	slug: string | null;
 	name: string;
 	organizationSlug: string;
-	website: string;
+	domain: string;
 	enabled: boolean;
 	onboarded: boolean;
 	delayOverrideHours: number | null;
@@ -276,7 +276,7 @@ function BrandStatsRow({ brand, onUpdate }: { brand: BrandStats; onUpdate: () =>
 					>
 						{brand.name}
 					</Link>
-					<div className="text-xs text-muted-foreground">{brand.website}</div>
+					<div className="text-xs text-muted-foreground">{brand.domain}</div>
 				</div>
 			</TableCell>
 			<TableCell className="text-right">

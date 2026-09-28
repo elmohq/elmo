@@ -7,7 +7,7 @@ export function OrganizationRowIcon({ row, size }: { row: OrganizationRow; size:
 
 	switch (row.kind) {
 		case "brand":
-			return <SiteIcon domain={row.website} size={size} />;
+			return <SiteIcon domain={row.domain} size={size} />;
 		case "new-brand":
 			return <IconPlus className={className} />;
 		case "set-up":

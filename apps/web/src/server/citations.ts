@@ -365,7 +365,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const brand = brandResult[0];
 
 		const brandDomains = new Set(
-			[extractDomain(brand?.website || ""), ...(brand?.additionalDomains || []).map(extractDomain)].filter(Boolean),
+			[brand?.domain ?? "", ...(brand?.additionalDomains || []).map(extractDomain)].filter(Boolean),
 		);
 		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
 		const competitorSummary = competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains }));

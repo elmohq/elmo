@@ -242,7 +242,7 @@ async function loadDigestData(
 	const { r30, r7 } = windows;
 	const [brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel] = await Promise.all([
 		db
-			.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })
+			.select({ name: brands.name, domain: brands.domain, additionalDomains: brands.additionalDomains })
 			.from(brands)
 			.where(eq(brands.id, brandId))
 			.limit(1),
@@ -262,11 +262,11 @@ async function loadDigestData(
 }
 
 function resolveOwnership(
-	brand: { website: string | null; additionalDomains: string[] | null } | undefined,
+	brand: { domain: string | null; additionalDomains: string[] | null } | undefined,
 	competitorRows: { domains: string[] | null }[],
 ) {
 	const brandDomains = new Set(
-		[extractDomain(brand?.website || ""), ...(brand?.additionalDomains || []).map(extractDomain)].filter(Boolean),
+		[brand?.domain ?? "", ...(brand?.additionalDomains || []).map(extractDomain)].filter(Boolean),
 	);
 	const competitorDomains = new Set(
 		competitorRows.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),

@@ -125,7 +125,7 @@ export function TrackDomainPopover({
 							disabled={saving}
 							className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 						>
-							<SiteIcon domain={brand?.website} size="sm" />
+							<SiteIcon domain={brand?.domain} size="sm" />
 							{brandName || "My brand"}
 						</button>
 					</div>

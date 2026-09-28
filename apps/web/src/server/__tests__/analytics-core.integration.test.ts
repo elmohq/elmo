@@ -23,7 +23,7 @@ let branded: string;
 let idle: string;
 
 beforeAll(async () => {
-	brandId = await createBrand({ name: "Acme", website: "https://acme.example" });
+	brandId = await createBrand({ name: "Acme", domain: "acme.example" });
 	await createCompetitor(brandId, "Globex", ["globex.example"]);
 	pricing = await createPrompt(brandId, { value: "acme pricing alternatives", tags: ["pricing"] });
 	branded = await createPrompt(brandId, { value: "is acme any good", systemTags: ["branded"] });

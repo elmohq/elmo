@@ -12,7 +12,7 @@ describe("normalizeBrandUpdate", () => {
 		expect(result.ok).toBe(true);
 		if (result.ok) {
 			expect(result.updates).toEqual({ name: "Acme" });
-			expect(result.updates).not.toHaveProperty("website");
+			expect(result.updates).not.toHaveProperty("domain");
 			expect(result.updates).not.toHaveProperty("aliases");
 		}
 	});
@@ -34,24 +34,19 @@ describe("normalizeBrandUpdate", () => {
 		});
 	});
 
-	describe("website", () => {
-		it("adds a scheme to a bare domain", () => {
-			const result = normalizeBrandUpdate({ website: "acme.com" });
-			expect(result).toEqual({ ok: true, updates: { website: "https://acme.com/" } });
+	describe("domain", () => {
+		it("keeps a bare domain as-is", () => {
+			const result = normalizeBrandUpdate({ domain: "acme.com" });
+			expect(result).toEqual({ ok: true, updates: { domain: "acme.com" } });
 		});
 
-		it("adds a scheme to a bare domain and keeps the path", () => {
-			const result = normalizeBrandUpdate({ website: "acme.com/products" });
-			expect(result).toEqual({ ok: true, updates: { website: "https://acme.com/products" } });
+		it("reduces a full URL to its domain", () => {
+			const result = normalizeBrandUpdate({ domain: "https://www.acme.com/products?ref=nav" });
+			expect(result).toEqual({ ok: true, updates: { domain: "acme.com" } });
 		});
 
-		it("keeps the path of a full URL", () => {
-			const result = normalizeBrandUpdate({ website: "https://www.acme.com/products?ref=nav" });
-			expect(result).toEqual({ ok: true, updates: { website: "https://www.acme.com/products?ref=nav" } });
-		});
-
-		it("rejects an invalid website", () => {
-			const result = normalizeBrandUpdate({ website: "not a url" });
+		it("rejects an invalid domain", () => {
+			const result = normalizeBrandUpdate({ domain: "not a url" });
 			expect(result.ok).toBe(false);
 			if (!result.ok) expect(result.error).toMatch(/valid/i);
 		});
@@ -95,7 +90,7 @@ describe("normalizeBrandUpdate", () => {
 	it("validates all provided fields together", () => {
 		const result = normalizeBrandUpdate({
 			name: " Acme ",
-			website: "acme.com",
+			domain: "acme.com",
 			additionalDomains: ["acme.io", "acme.io"],
 			aliases: [" Acme ", "Acme"],
 		});
@@ -103,7 +98,7 @@ describe("normalizeBrandUpdate", () => {
 			ok: true,
 			updates: {
 				name: "Acme",
-				website: "https://acme.com/",
+				domain: "acme.com",
 				additionalDomains: ["acme.io"],
 				aliases: ["Acme"],
 			},

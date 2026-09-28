@@ -12,7 +12,7 @@ function organization(brandCreation: BrandCreation, brandNames: string[] = []): 
 			id: name,
 			slug: name,
 			name,
-			website: `https://${name}.com`,
+			domain: `${name}.com`,
 			onboarded: true,
 		})),
 	};
@@ -39,7 +39,7 @@ describe("organizationTree", () => {
 	it("says what each row is", () => {
 		const { children } = organizationTree(organization({ kind: "allowed" }, ["nike"]));
 		expect(children.map((row) => row.kind)).toEqual(["brand", "new-brand"]);
-		expect(children[0]).toMatchObject({ id: "nike", website: "https://nike.com" });
+		expect(children[0]).toMatchObject({ id: "nike", domain: "nike.com" });
 	});
 
 	it("asks for the first brand differently from the next one", () => {

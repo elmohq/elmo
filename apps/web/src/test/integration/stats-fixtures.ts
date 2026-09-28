@@ -7,14 +7,14 @@ import { eq } from "drizzle-orm";
  * Every fixture brand gets its own organization and random ids, so test files
  * can share one database, run in parallel, and never see each other's rows.
  */
-export async function createBrand(opts: { name?: string; website?: string; additionalDomains?: string[] } = {}) {
+export async function createBrand(opts: { name?: string; domain?: string; additionalDomains?: string[] } = {}) {
 	const id = `brand-${randomUUID()}`;
 	await db.insert(organization).values({ id, name: id, slug: id, createdAt: new Date() });
 	await db.insert(brands).values({
 		id,
 		organizationId: id,
 		name: opts.name ?? "Acme",
-		website: opts.website ?? "https://acme.example",
+		domain: opts.domain ?? "acme.example",
 		additionalDomains: opts.additionalDomains ?? [],
 		onboarded: true,
 	});

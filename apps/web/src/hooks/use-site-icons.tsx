@@ -18,7 +18,7 @@ export function useSiteIcons(brandId?: string) {
 				? [
 						{
 							name: brand.name,
-							domains: [brand.website, ...(brand.additionalDomains ?? [])],
+							domains: [brand.domain, ...(brand.additionalDomains ?? [])],
 							aliases: brand.aliases ?? [],
 						},
 					]

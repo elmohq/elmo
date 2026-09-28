@@ -261,7 +261,7 @@ async function citationContext(brandId: string) {
 	]);
 	const brand = brandRow[0];
 	const brandDomains = new Set(
-		[extractDomain(brand?.website ?? ""), ...(brand?.additionalDomains ?? []).map(extractDomain)].filter(Boolean),
+		[brand?.domain ?? "", ...(brand?.additionalDomains ?? []).map(extractDomain)].filter(Boolean),
 	);
 	const competitorDomains = new Set(competitorRows.flatMap((row) => row.domains.map(extractDomain)).filter(Boolean));
 	return { brandDomains, competitorDomains };

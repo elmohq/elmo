@@ -7,7 +7,7 @@ import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
-import { validateWebsiteUrl } from "@/lib/brand-website";
+import { validateBrandDomain } from "@/lib/brand-domain";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createBrandFn } from "@/server/brands";
@@ -21,8 +21,8 @@ interface BrandOnboardingProps {
 }
 
 export default function BrandOnboarding({ organizationSlug, brandId, brandName, platformState }: BrandOnboardingProps) {
-	const [step, setStep] = useState<"website" | "platforms">("website");
-	const [website, setWebsite] = useState("");
+	const [step, setStep] = useState<"domain" | "platforms">("domain");
+	const [domain, setDomain] = useState("");
 	const [selected, setSelected] = useState<Set<string>>(
 		platformState ? new Set(platformState.defaultSelected) : new Set(),
 	);
@@ -41,11 +41,11 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 				data: {
 					brandId,
 					brandName,
-					website,
+					domain,
 					...(enabledModels && enabledModels.length > 0 && { enabledModels }),
 				},
 			});
-			trackEvent("brand_created", { has_website: Boolean(website) });
+			trackEvent("brand_created", { has_website: Boolean(domain) });
 
 			await organizationsChanged(() =>
 				navigate({
@@ -60,10 +60,10 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 		}
 	};
 
-	const handleWebsiteSubmit = async () => {
+	const handleDomainSubmit = async () => {
 		setError("");
 
-		const validation = validateWebsiteUrl(website);
+		const validation = validateBrandDomain(domain);
 		if (!validation.isValid) {
 			setError(validation.error);
 			return;
@@ -85,7 +85,7 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 					onSelectedChange={setSelected}
 					disabled={isLoading}
 					error={error}
-					onBack={() => setStep("website")}
+					onBack={() => setStep("domain")}
 					onSubmit={() => createBrand([...selected])}
 					submitLabel={isLoading ? "Setting up..." : "Complete Setup"}
 				/>
@@ -95,20 +95,20 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 
 	return (
 		<FullPageCard title={`Setup ${brandName}`} subtitle="Configure your brand to get started" showBackButton={true}>
-			<form action={handleWebsiteSubmit} className="space-y-4">
+			<form action={handleDomainSubmit} className="space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="website">Website</Label>
+					<Label htmlFor="domain">Domain</Label>
 					<Input
-						id="website"
-						name="website"
+						id="domain"
+						name="domain"
 						type="text"
 						placeholder="example.com"
 						required
 						disabled={isLoading}
-						value={website}
-						onChange={(e) => setWebsite(e.target.value)}
+						value={domain}
+						onChange={(e) => setDomain(e.target.value)}
 					/>
-					<p className="text-xs text-muted-foreground">Enter your brand's website</p>
+					<p className="text-xs text-muted-foreground">Your brand's primary domain</p>
 				</div>
 
 				{error && <p className="text-sm text-destructive">{error}</p>}

@@ -35,6 +35,7 @@ import {
   SLUGGED_BRAND_SLUG,
   TEST_BRAND_ID,
   TEST_BRAND_NAME,
+  TEST_BRAND_DOMAIN,
   TEST_BRAND_WEBSITE,
   UNPAID_BRAND_ID,
   UNPAID_ORG_ID,
@@ -109,9 +110,9 @@ async function seedApiKeys(client: pg.Client): Promise<void> {
 /** Inert outside cloud mode, where entitlements resolve to unlimited whatever
  * is stored here. */
 async function seedBillingTenants(client: pg.Client): Promise<void> {
-  for (const [orgId, brandId, name, website] of [
-    [CAPPED_ORG_ID, CAPPED_BRAND_ID, "Capped Co", "https://capped.example.com"],
-    [UNPAID_ORG_ID, UNPAID_BRAND_ID, "Unpaid Co", "https://unpaid.example.com"],
+  for (const [orgId, brandId, name, domain] of [
+    [CAPPED_ORG_ID, CAPPED_BRAND_ID, "Capped Co", "capped.example.com"],
+    [UNPAID_ORG_ID, UNPAID_BRAND_ID, "Unpaid Co", "unpaid.example.com"],
   ] as const) {
     await client.query(
       `INSERT INTO organization (id, name, slug, created_at)
@@ -119,9 +120,9 @@ async function seedBillingTenants(client: pg.Client): Promise<void> {
       [orgId, name],
     );
     await client.query(
-      `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
+      `INSERT INTO brands (id, organization_id, name, domain, enabled, onboarded, created_at, updated_at)
        VALUES ($1, $2, $3, $4, true, true, NOW(), NOW())`,
-      [brandId, orgId, name, website],
+      [brandId, orgId, name, domain],
     );
   }
 
@@ -221,22 +222,22 @@ async function seed(connectionString: string) {
       [TEST_BRAND_ID, TEST_BRAND_NAME]
     );
     await client.query(
-      `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
+      `INSERT INTO brands (id, organization_id, name, domain, enabled, onboarded, created_at, updated_at)
        VALUES ($1, $1, $2, $3, true, true, NOW(), NOW())`,
-      [TEST_BRAND_ID, TEST_BRAND_NAME, TEST_BRAND_WEBSITE]
+      [TEST_BRAND_ID, TEST_BRAND_NAME, TEST_BRAND_DOMAIN]
     );
     console.log("  Created brand:", TEST_BRAND_ID);
 
     await client.query(
-      `INSERT INTO brands (id, organization_id, slug, name, website, enabled, onboarded, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 'https://labs.example.com', true, true, NOW(), NOW())`,
+      `INSERT INTO brands (id, organization_id, slug, name, domain, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'labs.example.com', true, true, NOW(), NOW())`,
       [SLUGGED_BRAND_ID, TEST_BRAND_ID, SLUGGED_BRAND_SLUG, SLUGGED_BRAND_NAME]
     );
     console.log("  Created brand:", SLUGGED_BRAND_ID, `(/brand/${SLUGGED_BRAND_SLUG})`);
 
     await client.query(
-      `INSERT INTO brands (id, organization_id, slug, name, website, enabled, onboarded, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 'https://rename.example.com', true, true, NOW(), NOW())`,
+      `INSERT INTO brands (id, organization_id, slug, name, domain, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'rename.example.com', true, true, NOW(), NOW())`,
       [RENAMEABLE_BRAND_ID, TEST_BRAND_ID, RENAMEABLE_BRAND_SLUG, RENAMEABLE_BRAND_NAME]
     );
     console.log("  Created brand:", RENAMEABLE_BRAND_ID, `(/brand/${RENAMEABLE_BRAND_SLUG})`);
@@ -565,8 +566,8 @@ async function seed(connectionString: string) {
       [NIKE_ORG_ID],
     );
     await client.query(
-      `INSERT INTO brands (id, organization_id, name, website, additional_domains, aliases, enabled, onboarded, created_at, updated_at)
-       VALUES ($1, $2, 'Nike', 'https://nike.com', $3, $4, true, true, NOW(), NOW())`,
+      `INSERT INTO brands (id, organization_id, name, domain, additional_domains, aliases, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, 'Nike', 'nike.com', $3, $4, true, true, NOW(), NOW())`,
       [NIKE_BRAND_ID, NIKE_ORG_ID, ["jordan.com", "converse.com"], ["Just Do It", "Swoosh", "Air Jordan"]],
     );
 
@@ -613,8 +614,8 @@ async function seed(connectionString: string) {
     // So a key narrowed to one brand has something inside its own organization
     // that it must not reach.
     await client.query(
-      `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
-       VALUES ($1, $2, 'Jordan', 'https://jordan.com', true, true, NOW(), NOW())`,
+      `INSERT INTO brands (id, organization_id, name, domain, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, 'Jordan', 'jordan.com', true, true, NOW(), NOW())`,
       [NIKE_SECOND_BRAND_ID, NIKE_ORG_ID],
     );
     console.log("  Created second tenant: Nike (2 brands, 2 prompts, 2 competitors, 1 run, 2 citations)");

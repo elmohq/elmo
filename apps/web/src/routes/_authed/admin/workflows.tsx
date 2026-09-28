@@ -70,7 +70,7 @@ interface BrandScheduleSummary {
 	brandSlug: string | null;
 	brandName: string;
 	organizationSlug: string;
-	website: string;
+	domain: string;
 	enabled: boolean;
 	totalPrompts: number;
 	enabledPrompts: number;
@@ -493,7 +493,7 @@ function BrandRow({
 							>
 								{brand.brandName}
 							</Link>
-							<p className="text-xs text-muted-foreground">{brand.website}</p>
+							<p className="text-xs text-muted-foreground">{brand.domain}</p>
 						</div>
 					</div>
 				</TableCell>

@@ -50,7 +50,8 @@ export const SLUGGED_BRAND_NAME = "Test Labs";
 export const RENAMEABLE_BRAND_ID = "seeded-rename-brand";
 export const RENAMEABLE_BRAND_SLUG = "rename-me";
 export const RENAMEABLE_BRAND_NAME = "Test Rename";
-export const TEST_BRAND_WEBSITE = "https://example.com";
+export const TEST_BRAND_DOMAIN = "example.com";
+export const TEST_BRAND_WEBSITE = `https://${TEST_BRAND_DOMAIN}`;
 
 export const PROMPT_IDS = {
   branded1: "00000000-0000-0000-0000-000000000001",

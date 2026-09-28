@@ -321,7 +321,7 @@ async function runModelIteration({
 
 		const { brandMentioned, competitorsMentioned } = analyzeMentions(
 			safeTextContent,
-			{ name: brand.name, aliases: brand.aliases, domains: [brand.website, ...(brand.additionalDomains ?? [])] },
+			{ name: brand.name, aliases: brand.aliases, domains: [brand.domain, ...(brand.additionalDomains ?? [])] },
 			competitorsList,
 		);
 

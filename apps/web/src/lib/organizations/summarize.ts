@@ -38,7 +38,7 @@ export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<
 				id: brands.id,
 				slug: brands.slug,
 				name: brands.name,
-				website: brands.website,
+				domain: brands.domain,
 				onboarded: brands.onboarded,
 				organizationId: brands.organizationId,
 			})
@@ -56,7 +56,7 @@ export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<
 		// every capitalized name ahead of every lowercase one.
 		brands: rows
 			.filter((brand) => brand.organizationId === org.id)
-			.map(({ id, slug, name, website, onboarded }) => ({ id, slug, name, website, onboarded }))
+			.map(({ id, slug, name, domain, onboarded }) => ({ id, slug, name, domain, onboarded }))
 			.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
 		brandCreation: creation.get(org.id) ?? NOT_OFFERED,
 	}));
