@@ -1233,3 +1233,88 @@ export async function getFanoutPromptTotals(
 		GROUP BY pr.prompt_id
 	`);
 }
+
+// ============================================================================
+// Response search
+// ============================================================================
+
+/** Runs a response search covers. Without a `query` every run in scope matches. */
+export interface ResponseSearchScope {
+	brandId: string;
+	fromDate: string;
+	toDate: string;
+	timezone: string;
+	promptIds: string[];
+	model?: string;
+	query?: string;
+}
+
+export interface ResponseMatchRow {
+	id: string;
+	prompt_id: string;
+	model: string;
+	provider: string | null;
+	version: string;
+	web_queries: string[];
+	brand_mentioned: boolean;
+	competitors_mentioned: string[];
+	raw_output: unknown;
+	created_at: string;
+	/** Every match in scope, not just this page — counted in the same scan. */
+	matched: number;
+}
+
+function responseScopeFilter(scope: ResponseSearchScope): SQL {
+	return sql`pr.brand_id = ${scope.brandId}
+		AND pr.created_at >= ${windowStart(scope.fromDate, scope.timezone)}
+		AND pr.created_at < ${windowEnd(scope.toDate, scope.timezone)}
+		AND pr.prompt_id IN (${uuidList(scope.promptIds)})
+		${modelFilter(scope.model, { alias: "pr" })}`;
+}
+
+/**
+ * Answers are stored only as each provider's raw JSON, so the search runs over
+ * that text. The term is JSON-escaped first so quotes and backslashes match
+ * how they're stored, then LIKE-escaped so `%` and `_` are literal.
+ */
+function responseMatch(scope: ResponseSearchScope): SQL {
+	if (!scope.query) return sql`TRUE`;
+	const stored = JSON.stringify(scope.query).slice(1, -1);
+	const pattern = `%${stored.replace(/[\\%_]/g, "\\$&")}%`;
+	return sql`pr.raw_output::text ILIKE ${pattern}`;
+}
+
+/** Runs in scope, ignoring the search — cheap, since it never reads `raw_output`. */
+export async function countResponses(scope: ResponseSearchScope): Promise<number> {
+	if (scope.promptIds.length === 0) return 0;
+	const rows = await queryPg<{ total: number }>(sql`
+		SELECT count(*)::int AS total FROM prompt_runs pr WHERE ${responseScopeFilter(scope)}
+	`);
+	return rows[0]?.total ?? 0;
+}
+
+export async function getResponseMatches(
+	scope: ResponseSearchScope,
+	limit: number,
+	offset: number,
+): Promise<ResponseMatchRow[]> {
+	if (scope.promptIds.length === 0) return [];
+	return queryPg<ResponseMatchRow>(sql`
+		SELECT
+			pr.id::text AS id,
+			pr.prompt_id::text AS prompt_id,
+			pr.model,
+			pr.provider,
+			pr.version,
+			pr.web_queries,
+			pr.brand_mentioned,
+			pr.competitors_mentioned,
+			pr.raw_output,
+			pr.created_at,
+			count(*) OVER ()::int AS matched
+		FROM prompt_runs pr
+		WHERE ${responseScopeFilter(scope)} AND ${responseMatch(scope)}
+		ORDER BY pr.created_at DESC, pr.id
+		LIMIT ${limit} OFFSET ${offset}
+	`);
+}
