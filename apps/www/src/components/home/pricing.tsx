@@ -41,7 +41,7 @@ function TierCard({ planKey }: { planKey: PlanKey }) {
 			</span>
 			<ul className="mt-5 space-y-2.5 text-sm">
 				{planLines(plan).map((line) => (
-					<li key={line.text} className={`flex items-start gap-2 ${line.included ? "text-zinc-700" : "text-zinc-400"}`}>
+					<li key={line.text} className={`flex items-start gap-2 ${line.included ? "text-zinc-700" : "text-zinc-500"}`}>
 						{line.included ? (
 							<Check className="mt-0.5 size-4 shrink-0 text-blue-600" strokeWidth={2.5} aria-hidden="true" />
 						) : (

@@ -75,7 +75,7 @@ export function Navbar() {
 							</PopoverContent>
 						</Popover>
 					</NavigationMenu>
-					<Link to="/" aria-label="Homepage" className="flex items-center">
+					<Link to="/" className="flex items-center">
 						<Logo className="text-2xl" />
 					</Link>
 					<NavigationMenu className="mx-auto max-md:hidden">

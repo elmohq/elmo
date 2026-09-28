@@ -95,7 +95,7 @@ export function Footer() {
 				<div className="grid grid-cols-2 gap-10 py-16 sm:grid-cols-3 lg:grid-cols-5">
 					{cols.map((col) => (
 						<div key={col.heading}>
-							<h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">{col.heading}</h3>
+							<h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">{col.heading}</h3>
 							<ul className="mt-4 space-y-3 text-sm">
 								{col.links.map((link) => (
 									<li key={link.href}>
@@ -149,13 +149,13 @@ export function Footer() {
 							href="https://github.com/elmohq/elmo"
 							target="_blank"
 							rel="noopener noreferrer"
-							aria-label={`Elmo v${__APP_VERSION__} on GitHub`}
 							className="group inline-flex h-7 items-center gap-1.5 rounded-full bg-white pl-1 pr-2.5 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
 						>
 							<span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-zinc-100 px-2 font-mono text-[11px] text-zinc-700">
 								<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
 							</span>
 							Open source
+							<span className="sr-only"> on GitHub</span>
 							<ArrowUpRight
 								className="size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
 								aria-hidden="true"
@@ -168,7 +168,6 @@ export function Footer() {
 			{/* Deliberately oversized and cropped by the page edge. */}
 			<Link
 				to="/"
-				aria-label="Homepage"
 				className="-mb-[0.14em] block translate-y-[0.1em] select-none text-center font-titan-one text-[clamp(7rem,30vw,24rem)] lowercase leading-[0.8] tracking-[-0.02em] text-blue-600"
 			>
 				elmo
