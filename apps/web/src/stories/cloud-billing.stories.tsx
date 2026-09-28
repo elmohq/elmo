@@ -194,7 +194,7 @@ export const CustomContractPlan: Story = {
 		}),
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("Custom")).toBeVisible();
+		await expect(await canvas.findByText("Custom plan")).toBeVisible();
 		await expect(await canvas.findByText(/billed outside self-serve/i)).toBeVisible();
 		await expect(await canvas.findByText("640 / 1000")).toBeVisible();
 		// A contract has no published price, so no total is invented for it.
@@ -223,8 +223,7 @@ export const OpeningBillingPortal: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// The current plan's card carries the way in to Stripe.
-		await userEvent.click(await canvas.findByRole("button", { name: /^manage$/i }));
+		await userEvent.click(await canvas.findByRole("button", { name: /manage billing/i }));
 		// Every other action disables while one is in flight.
 		await expect(await canvas.findByRole("button", { name: /switch to starter/i })).toBeDisabled();
 	},
@@ -257,13 +256,25 @@ export const ComparesPlansWithCurrentMarked: Story = {
 	render: () => renderWith(),
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// The badge marks the active plan; it carries no button to press.
+		// The badge marks the active plan; its card offers nothing to press.
 		await expect(await canvas.findByText("Current")).toBeVisible();
+		await expect(await canvas.findByRole("button", { name: "Your plan" })).toBeDisabled();
 		// Every other plan offers a switch.
 		for (const name of ["Starter", "Basic", "Business"]) {
 			await expect(await canvas.findByRole("button", { name: `Switch to ${name}` })).toBeEnabled();
 		}
 		await expect(canvas.queryByRole("button", { name: "Switch to Pro" })).toBeNull();
+	},
+};
+
+/** The full feature table stays folded until someone asks to compare. */
+export const FeatureTableOnRequest: Story = {
+	render: () => renderWith(),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByText("API access")).toBeNull();
+		await userEvent.click(await canvas.findByRole("button", { name: /compare all features/i }));
+		await expect(await canvas.findByText("API access")).toBeVisible();
 	},
 };
 
