@@ -1,6 +1,6 @@
 /**
  * Stories for the brand-onboarding flow. Cover the meaningful UI states:
- *   - Setup (the BrandOnboarding form that captures the website URL — runs
+ *   - Setup (the BrandOnboarding form that captures the brand domain — runs
  *     before the wizard).
  *   - Idle (the analyze button before the user clicks it).
  *   - Analyzing (the in-flight loader, simulated with a long mock delay).
@@ -104,7 +104,7 @@ function AutoAnalyze() {
 }
 
 /**
- * Step 1 — the website-capture form that runs before the wizard. The real
+ * Step 1 — the domain-capture form that runs before the wizard. The real
  * flow renders this when the auth-side brand exists but no DB row does;
  * once the user submits, createBrandFn writes the row and the route
  * re-renders into the wizard.
@@ -131,7 +131,7 @@ const CLOUD_PLATFORM_STATE = {
 };
 
 /**
- * Cloud plans insert a platform-selection step between the website form and
+ * Cloud plans insert a platform-selection step between the domain form and
  * brand creation: plan defaults pre-selected, extra options disabled at the
  * pick limit.
  */
@@ -143,7 +143,7 @@ export const SetupPlatformStep: StoryObj = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
-		await userEvent.type(await canvas.findByLabelText("Website"), "acme.com");
+		await userEvent.type(await canvas.findByLabelText("Domain"), "acme.com");
 		await userEvent.click(await canvas.findByRole("button", { name: /continue/i }));
 
 		expect(await canvas.findByRole("checkbox", { name: /chatgpt/i })).toBeChecked();
@@ -173,7 +173,7 @@ export const SetupSinglePlatformPlan: StoryObj = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
-		await userEvent.type(await canvas.findByLabelText("Website"), "acme.com");
+		await userEvent.type(await canvas.findByLabelText("Domain"), "acme.com");
 		await userEvent.click(await canvas.findByRole("button", { name: /continue/i }));
 
 		const checkbox = await canvas.findByRole("checkbox", { name: /chatgpt/i });
