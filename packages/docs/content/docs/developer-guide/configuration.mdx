@@ -59,6 +59,8 @@ New values are encrypted under the new key while anything saved under a retired 
 
 At least one provider is required for Elmo to track visibility. See [Providers](/docs/user-guide/providers) for a full cost/capability breakdown and recommended setups.
 
+Brand onboarding and the Opportunities report also need one direct LLM API key — `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, or `MISTRAL_API_KEY` — even if `SCRAPE_TARGETS` only uses scrapers. Elmo uses the first of those that's set; to pick one explicitly, set `ONBOARDING_LLM_TARGET` (e.g. `claude:anthropic-api`).
+
 | Variable | Description |
 |----------|-------------|
 | `BRIGHTDATA_API_TOKEN` | BrightData token — recommended scraper for ChatGPT + Google AI Mode. [Sign up](https://get.brightdata.com/elmo?sid=docs) |
@@ -70,6 +72,7 @@ At least one provider is required for Elmo to track visibility. See [Providers](
 | `OPENAI_API_KEY` | OpenAI API key — enables ChatGPT (via API, not the consumer UI) |
 | `ANTHROPIC_API_KEY` | Anthropic API key — enables Claude tracking |
 | `OPENROUTER_API_KEY` | OpenRouter key — one key for Claude + other hosted models |
+| `MISTRAL_API_KEY` | Mistral API key — enables Mistral tracking |
 | `DATAFORSEO_LOGIN` | DataForSEO login — optional, enables DataForSEO targets such as `chatgpt:dataforseo:online`, `gemini:dataforseo:online`, `google-ai-mode:dataforseo:online`, and `perplexity:dataforseo:online` |
 | `DATAFORSEO_PASSWORD` | DataForSEO password |
 | `SCRAPE_TARGETS` | Comma-separated `model:provider[:version][:online]` entries. See [Providers](/docs/user-guide/providers#scrape_targets-format). |

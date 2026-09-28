@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { assertRequiredEnv } from "@workspace/config/env";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
-import { getDeployment } from "@workspace/deployment";
+import { getDeploymentFeatures } from "@workspace/deployment";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { getBoss } from "./boss";
@@ -48,7 +48,7 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 15, // 15 minute timeout
 	});
-	if (getDeployment().features.reportGeneration) {
+	if (getDeploymentFeatures().reportGeneration) {
 		await boss.createQueue("generate-report", {
 			retryLimit: 3,
 			retryDelay: 60,

@@ -5,7 +5,6 @@
 
 interface ImportMetaEnv {
 	// Deployment mode
-	readonly VITE_DEPLOYMENT_MODE: string;
 
 	// Branding (whitelabel only - local/demo use server-side defaults)
 	readonly VITE_APP_NAME?: string;
@@ -56,6 +55,7 @@ declare global {
 			readonly OXYLABS_PASSWORD?: string;
 			readonly CLORO_API_KEY?: string;
 			readonly JINA_API_KEY?: string;
+			readonly ONBOARDING_LLM_TARGET?: string;
 			readonly ELMO_ENCRYPTION_KEY?: string;
 			readonly ELMO_ENCRYPTION_KEY_OLD?: string;
 			readonly DATAFORSEO_LOGIN: string;

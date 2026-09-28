@@ -1,4 +1,4 @@
-import { ENV_REGISTRY } from "./env-registry";
+import { ENV_REGISTRY, RESEARCH_PROVIDER_PREFERENCE } from "./env-registry";
 import { parseScrapeTargets } from "./scrape-targets";
 import type { DeploymentMode, EnvRequirement } from "./types";
 
@@ -52,6 +52,12 @@ function buildStaticRequirements(mode: DeploymentMode): EnvRequirement[] {
 	);
 }
 
+function providerKeys(provider: string): string[] {
+	return ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider === provider).map(
+		(spec) => spec.name,
+	);
+}
+
 /**
  * Build env requirements for exactly the provider keys referenced by SCRAPE_TARGETS.
  */
@@ -68,9 +74,7 @@ function buildProviderKeyRequirements(env: EnvMap = process.env): EnvRequirement
 
 	const requirements: EnvRequirement[] = [];
 	for (const provider of providers) {
-		const keys = ENV_REGISTRY.filter(
-			(spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider === provider,
-		).map((spec) => spec.name);
+		const keys = providerKeys(provider);
 		if (keys.length === 0) continue;
 		requirements.push({
 			id: `PROVIDER_${provider.toUpperCase().replace(/-/g, "_")}`,
@@ -83,11 +87,40 @@ function buildProviderKeyRequirements(env: EnvMap = process.env): EnvRequirement
 	return requirements;
 }
 
+/**
+ * Brand onboarding and the Opportunities report run on a direct LLM API
+ * provider whatever SCRAPE_TARGETS tracks, so a deployment that only scrapes
+ * would otherwise boot fine and fail the first time either is used.
+ */
+function buildResearchProviderRequirement(): EnvRequirement {
+	const candidates = RESEARCH_PROVIDER_PREFERENCE.map(providerKeys);
+	return {
+		id: "RESEARCH_PROVIDER",
+		label: candidates.map((keys) => keys.join(" + ")).join(" or "),
+		description:
+			"Needed for brand onboarding and the Opportunities report. Alternatively, set ONBOARDING_LLM_TARGET and that provider's keys.",
+		isSatisfied: (env) => {
+			const target = env.ONBOARDING_LLM_TARGET?.trim();
+			if (!target) return candidates.some((keys) => requireAll(keys)(env));
+			try {
+				const [parsed] = parseScrapeTargets(target);
+				return parsed !== undefined && requireAll(providerKeys(parsed.provider))(env);
+			} catch {
+				return false;
+			}
+		},
+	};
+}
+
+function buildRequirements(mode: DeploymentMode): EnvRequirement[] {
+	return [...buildStaticRequirements(mode), ...buildProviderKeyRequirements(), buildResearchProviderRequirement()];
+}
+
 export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
-	local: [...buildStaticRequirements("local"), ...buildProviderKeyRequirements()],
-	demo: [...buildStaticRequirements("demo"), ...buildProviderKeyRequirements()],
-	whitelabel: [...buildStaticRequirements("whitelabel"), ...buildProviderKeyRequirements()],
-	cloud: [...buildStaticRequirements("cloud"), ...buildProviderKeyRequirements()],
+	local: buildRequirements("local"),
+	demo: buildRequirements("demo"),
+	whitelabel: buildRequirements("whitelabel"),
+	cloud: buildRequirements("cloud"),
 };
 
 /**
