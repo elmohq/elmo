@@ -65,7 +65,7 @@ export function formatProvider(provider: string) {
 // Affiliate sign-up links for the third-party providers, keyed by provider id
 // or matrix category. `sid` tags the source for the programs that support it.
 const PROVIDER_AFFILIATE_URLS: Record<string, string> = {
-	cloro: "https://affiliate.cloro.dev/elmo?sid=status",
+	cloro: "https://cloro.dev?fpr=elmo&fp_sid=status",
 	brightdata: "https://get.brightdata.com/elmo?sid=status",
 	oxylabs: "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32",
 	searchapi: "https://www.searchapi.io/?via=elmo",
