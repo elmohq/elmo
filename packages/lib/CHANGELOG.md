@@ -1,5 +1,12 @@
 # @workspace/lib
 
+## 0.4.3
+
+### Patch Changes
+
+- 10bc2f0: Google AI Overview runs through SearchApi no longer fail when Google loads the overview separately from the result page.
+- @workspace/config@0.4.3
+
 ## 0.4.2
 
 ### Patch Changes
