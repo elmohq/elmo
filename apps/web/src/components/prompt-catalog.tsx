@@ -15,6 +15,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { Inbox, Plus, Search, X } from "lucide-react";
 import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
+import { BulkDeleteDialog, BulkStatusDialog, SelectionBar, TagRemovalDialog } from "@/components/prompt-bulk-actions";
 import { PromptImportPanel } from "@/components/prompt-import";
 import {
 	type EditablePrompt,
@@ -25,9 +26,11 @@ import {
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import { trackEvent } from "@/lib/posthog";
+import { MAX_BULK_SELECTION } from "@/lib/prompt-bulk";
 import type { PromptCatalogQuery, PromptStatusFilter } from "@/lib/prompt-catalog";
 import { PROMPT_SAVE_FAILED } from "@/lib/public-errors";
 import { useWriteErrorMessage } from "@/lib/write-errors";
+import { listPromptIdsFn } from "@/server/prompt-bulk";
 import type { PromptCatalogPage } from "@/server/prompt-catalog-load";
 import { updatePromptsFn } from "@/server/prompts";
 
@@ -54,6 +57,90 @@ function toEditablePrompts(rows: PromptCatalogPage["rows"]): EditablePrompt[] {
 		systemTags: p.systemTags ?? [],
 		premiumModels: p.premiumModels ?? [],
 	}));
+}
+
+/** Add or drop `ids` from a selection, never past the selection cap. */
+function toggleSelected(prev: ReadonlySet<string>, ids: string[], select: boolean): ReadonlySet<string> {
+	const next = new Set(prev);
+	for (const id of ids) {
+		if (!select) next.delete(id);
+		else if (next.size < MAX_BULK_SELECTION) next.add(id);
+	}
+	return next;
+}
+
+/** Which rows differ from the loaded page and how: the unsaved-changes summary and the save payload's filter. */
+function diffRows(rows: EditablePrompt[], baseline: EditablePrompt[]) {
+	const before = new Map(baseline.map((p) => [p.id, p]));
+	const changed = new Set<string>();
+	let added = 0;
+	let edited = 0;
+	let removed = 0;
+	for (const p of rows) {
+		const prev = p.id ? before.get(p.id) : undefined;
+		if (!prev) {
+			if (p.value.trim()) {
+				changed.add(p._key);
+				added++;
+			}
+			continue;
+		}
+		// Clearing the text drops the prompt on save (it is disabled and keeps
+		// its text), so it counts as removed rather than edited.
+		if (!p.value.trim()) {
+			changed.add(p._key);
+			removed++;
+			continue;
+		}
+		if (
+			p.value.trim() !== prev.value.trim() ||
+			p.enabled !== prev.enabled ||
+			!sameSet(p.premiumModels, prev.premiumModels) ||
+			!sameSet(p.tags, prev.tags)
+		) {
+			changed.add(p._key);
+			edited++;
+		}
+	}
+	return { changedKeys: changed, addedCount: added, editedCount: edited, removedCount: removed };
+}
+
+/** The changed rows as the server takes them; a cleared text becomes "disable, keep the old text". */
+function savePayload(
+	rows: EditablePrompt[],
+	changedKeys: ReadonlySet<string>,
+	before: Map<string | undefined, EditablePrompt>,
+) {
+	return rows
+		.filter((p) => changedKeys.has(p._key))
+		.map((p) => {
+			const prev = p.id ? before.get(p.id) : undefined;
+			if (prev && !p.value.trim()) {
+				return { id: prev.id, value: prev.value, enabled: false, tags: prev.tags, premiumModels: [] };
+			}
+			return {
+				...(p.id ? { id: p.id } : {}),
+				value: p.value.trim(),
+				enabled: p.enabled,
+				tags: p.tags,
+				premiumModels: p.premiumModels,
+			};
+		});
+}
+
+function adoptInsertedIds(
+	rows: EditablePrompt[],
+	saved: PromptCatalogPage["rows"],
+	before: Map<string | undefined, EditablePrompt>,
+): EditablePrompt[] {
+	const insertedByValue = new Map(saved.filter((p) => !before.has(p.id)).map((p) => [p.value, p]));
+	return rows
+		.filter((p) => p.value.trim())
+		.map((p) => {
+			if (p.id) return p;
+			const inserted = insertedByValue.get(p.value.trim());
+			return inserted ? { ...p, id: inserted.id, systemTags: inserted.systemTags ?? [] } : p;
+		});
 }
 
 function sameSet(a: string[], b: string[]): boolean {
@@ -93,43 +180,41 @@ export function PromptCatalog({ brandId, page, search, premium }: PromptCatalogP
 		setError(null);
 	}, [page]);
 
-	const { changedKeys, addedCount, editedCount, removedCount } = useMemo(() => {
-		const before = new Map(baseline.map((p) => [p.id, p]));
-		const changed = new Set<string>();
-		let added = 0;
-		let edited = 0;
-		let removed = 0;
-		for (const p of rows) {
-			const prev = p.id ? before.get(p.id) : undefined;
-			if (!prev) {
-				if (p.value.trim()) {
-					changed.add(p._key);
-					added++;
-				}
-				continue;
-			}
-			// Clearing the text drops the prompt on save (it is disabled and keeps
-			// its text), so it counts as removed rather than edited.
-			if (!p.value.trim()) {
-				changed.add(p._key);
-				removed++;
-				continue;
-			}
-			if (
-				p.value.trim() !== prev.value.trim() ||
-				p.enabled !== prev.enabled ||
-				!sameSet(p.premiumModels, prev.premiumModels) ||
-				!sameSet(p.tags, prev.tags)
-			) {
-				changed.add(p._key);
-				edited++;
-			}
-		}
-		return { changedKeys: changed, addedCount: added, editedCount: edited, removedCount: removed };
-	}, [rows, baseline]);
+	const { changedKeys, addedCount, editedCount, removedCount } = useMemo(
+		() => diffRows(rows, baseline),
+		[rows, baseline],
+	);
 
 	const isDirty = changedKeys.size > 0;
 	dirtyRef.current = isDirty;
+
+	// Selection: prompt ids, kept across pages of the same filter, dropped the
+	// moment the filter or the brand changes so it can never act on rows the
+	// user no longer sees the shape of.
+	const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+	const filterKey = `${brandId}|${search.q}|${search.tag}|${search.status}`;
+	const [selectionFilterKey, setSelectionFilterKey] = useState(filterKey);
+	if (selectionFilterKey !== filterKey) {
+		setSelectionFilterKey(filterKey);
+		setSelected(new Set());
+	}
+	const selectedIds = useMemo(() => [...selected], [selected]);
+	const [dialog, setDialog] = useState<
+		null | { kind: "status"; enabled: boolean } | { kind: "delete" } | { kind: "tag"; tag: string }
+	>(null);
+	const [notice, setNotice] = useState<string | null>(null);
+	const clearSelection = () => setSelected(new Set());
+	const afterMutation = async (message: string) => {
+		setDialog(null);
+		clearSelection();
+		setNotice(message);
+		invalidatePromptsSummary(brandId);
+		await router.invalidate();
+	};
+	const selectAllMatching = async () => {
+		const result = await listPromptIdsFn({ data: { brandId, ...search } });
+		setSelected(new Set(result.ids));
+	};
 	const summary = [
 		addedCount && `${addedCount} added`,
 		editedCount && `${editedCount} edited`,
@@ -146,36 +231,14 @@ export function PromptCatalog({ brandId, page, search, premium }: PromptCatalogP
 		setError(null);
 		try {
 			const before = new Map(baseline.map((p) => [p.id, p]));
-			const payload = rows
-				.filter((p) => changedKeys.has(p._key))
-				.map((p) => {
-					const prev = p.id ? before.get(p.id) : undefined;
-					if (prev && !p.value.trim()) {
-						return { id: prev.id, value: prev.value, enabled: false, tags: prev.tags, premiumModels: [] };
-					}
-					return {
-						...(p.id ? { id: p.id } : {}),
-						value: p.value.trim(),
-						enabled: p.enabled,
-						tags: p.tags,
-						premiumModels: p.premiumModels,
-					};
-				});
-			const saved = await updatePromptsFn({ data: { brandId, prompts: payload } });
+			const saved = await updatePromptsFn({ data: { brandId, prompts: savePayload(rows, changedKeys, before) } });
 			trackEvent("prompts_updated", { added: addedCount, edited: editedCount, deleted: removedCount });
 			invalidatePromptsSummary(brandId);
 
 			// Adopt the server's ids for the rows this save inserted before the page
 			// is re-read: a second save in that window must update them, not
 			// insert them again.
-			const insertedByValue = new Map(saved.filter((p) => !before.has(p.id)).map((p) => [p.value, p]));
-			const settled = rows
-				.filter((p) => p.value.trim())
-				.map((p) => {
-					if (p.id) return p;
-					const inserted = insertedByValue.get(p.value.trim());
-					return inserted ? { ...p, id: inserted.id, systemTags: inserted.systemTags ?? [] } : p;
-				});
+			const settled = adoptInsertedIds(rows, saved, before);
 			setBaseline(settled);
 			setRows(settled);
 			// The page is then re-read rather than patched: an edited text can move
@@ -225,8 +288,6 @@ export function PromptCatalog({ brandId, page, search, premium }: PromptCatalogP
 	}, [page.tagOptions, rows]);
 
 	const isFiltered = Boolean(search.q || search.tag || search.status !== "all");
-	const rangeStart = page.total === 0 ? 0 : (page.page - 1) * page.pageSize + 1;
-	const rangeEnd = Math.min(page.page * page.pageSize, page.total);
 
 	return (
 		<div className="space-y-4">
@@ -236,23 +297,30 @@ export function PromptCatalog({ brandId, page, search, premium }: PromptCatalogP
 				onChange={setSearch}
 				onClear={() => setSearch({ q: "", tag: "", status: "all" })}
 				isFiltered={isFiltered}
+				onRemoveTag={search.tag ? () => setDialog({ kind: "tag", tag: search.tag }) : undefined}
+			/>
+
+			{notice && (
+				<p role="status" className="text-sm text-muted-foreground" data-testid="catalog-notice">
+					{notice}
+				</p>
+			)}
+
+			<SelectionBar
+				selectedCount={selected.size}
+				matchingTotal={page.total}
+				pageSize={page.pageSize}
+				selectionCap={MAX_BULK_SELECTION}
+				onSelectAllMatching={selectAllMatching}
+				onClear={clearSelection}
+				onEnable={() => setDialog({ kind: "status", enabled: true })}
+				onDisable={() => setDialog({ kind: "status", enabled: false })}
+				onDelete={() => setDialog({ kind: "delete" })}
+				disabledReason={isDirty ? "Save or discard the edits on this page first." : undefined}
 			/>
 
 			<div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-				<p data-testid="catalog-range">
-					{page.total === 0 ? (
-						isFiltered ? (
-							"No prompts match these filters."
-						) : (
-							"No prompts yet."
-						)
-					) : (
-						<>
-							Showing {formatCount(rangeStart)}–{formatCount(rangeEnd)} of {formatCount(page.total)}
-							{isFiltered ? " matching" : ""} prompts
-						</>
-					)}
-				</p>
+				<p data-testid="catalog-range">{rangeText(page, isFiltered)}</p>
 				<p data-testid="catalog-capacity">
 					<strong className="text-foreground">
 						{formatCount(page.brand.total)}/{formatCount(MAX_PROMPTS)}
@@ -302,6 +370,11 @@ export function PromptCatalog({ brandId, page, search, premium }: PromptCatalogP
 					premium={premium}
 					addControls={false}
 					tagOptions={tagOptions}
+					selection={{
+						selected,
+						onToggle: (id) => setSelected((prev) => toggleSelected(prev, [id], !prev.has(id))),
+						onToggleAll: (ids, select) => setSelected((prev) => toggleSelected(prev, ids, select)),
+					}}
 				/>
 			)}
 
@@ -309,6 +382,18 @@ export function PromptCatalog({ brandId, page, search, premium }: PromptCatalogP
 				page={page.page}
 				totalPages={page.totalPages}
 				onPage={(p) => setSearch({ page: p }, { keepPage: true })}
+			/>
+
+			<CatalogDialogs
+				brandId={brandId}
+				ids={selectedIds}
+				dialog={dialog}
+				onClose={() => setDialog(null)}
+				afterMutation={afterMutation}
+				onTagRemoved={(tag) => {
+					// The removed tag can no longer filter anything: drop it and go back to page 1.
+					if (search.tag === tag) setSearch({ tag: "" });
+				}}
 			/>
 
 			<UnsavedChangesBar
@@ -324,18 +409,81 @@ export function PromptCatalog({ brandId, page, search, premium }: PromptCatalogP
 	);
 }
 
+type CatalogDialog = { kind: "status"; enabled: boolean } | { kind: "delete" } | { kind: "tag"; tag: string } | null;
+
+function CatalogDialogs({
+	brandId,
+	ids,
+	dialog,
+	onClose,
+	afterMutation,
+	onTagRemoved,
+}: {
+	brandId: string;
+	ids: string[];
+	dialog: CatalogDialog;
+	onClose: () => void;
+	afterMutation: (message: string) => Promise<void>;
+	onTagRemoved: (tag: string) => void;
+}) {
+	const plural = (count: number, word: string) => `${formatCount(count)} ${word}${count === 1 ? "" : "s"}`;
+	return (
+		<>
+			<BulkStatusDialog
+				brandId={brandId}
+				ids={ids}
+				enabled={dialog?.kind === "status" ? dialog.enabled : null}
+				open={dialog?.kind === "status"}
+				onClose={onClose}
+				onDone={(r) =>
+					afterMutation(
+						`${plural(r.changed, "prompt")} ${dialog?.kind === "status" && dialog.enabled ? "enabled" : "disabled"}.`,
+					)
+				}
+			/>
+			<BulkDeleteDialog
+				brandId={brandId}
+				ids={ids}
+				open={dialog?.kind === "delete"}
+				onClose={onClose}
+				onDone={(r) => afterMutation(`Deleted ${plural(r.deleted, "prompt")} and their history.`)}
+			/>
+			<TagRemovalDialog
+				brandId={brandId}
+				tag={dialog?.kind === "tag" ? dialog.tag : ""}
+				open={dialog?.kind === "tag"}
+				onClose={onClose}
+				onDone={async (r) => {
+					onTagRemoved(r.tag);
+					await afterMutation(`Removed the tag “${r.tag}” from ${plural(r.updated, "prompt")}.`);
+				}}
+			/>
+		</>
+	);
+}
+
+function rangeText(page: PromptCatalogPage, isFiltered: boolean): string {
+	if (page.total === 0) return isFiltered ? "No prompts match these filters." : "No prompts yet.";
+	const start = (page.page - 1) * page.pageSize + 1;
+	const end = Math.min(page.page * page.pageSize, page.total);
+	return `Showing ${formatCount(start)}–${formatCount(end)} of ${formatCount(page.total)}${isFiltered ? " matching" : ""} prompts`;
+}
+
 function CatalogToolbar({
 	search,
 	tagOptions,
 	onChange,
 	onClear,
 	isFiltered,
+	onRemoveTag,
 }: {
 	search: PromptCatalogQuery;
 	tagOptions: string[];
 	onChange: (patch: Partial<PromptCatalogQuery>) => void;
 	onClear: () => void;
 	isFiltered: boolean;
+	/** Offered while a tag filter is active: remove that tag from the whole brand. */
+	onRemoveTag?: () => void;
 }) {
 	const [q, setQ] = useState(search.q);
 	useEffect(() => setQ(search.q), [search.q]);
@@ -407,6 +555,17 @@ function CatalogToolbar({
 			{isFiltered && (
 				<Button type="button" size="sm" variant="ghost" onClick={onClear} className="h-8 cursor-pointer">
 					<X className="mr-1 size-3.5" /> Clear filters
+				</Button>
+			)}
+			{onRemoveTag && (
+				<Button
+					type="button"
+					size="sm"
+					variant="ghost"
+					onClick={onRemoveTag}
+					className="h-8 cursor-pointer text-destructive"
+				>
+					Remove tag “{search.tag}” from all prompts…
 				</Button>
 			)}
 		</form>

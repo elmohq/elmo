@@ -190,6 +190,13 @@
       "when": 1790249298665,
       "tag": "0026_sentiment_verifier_filtered_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790590631214,
+      "tag": "0027_bulk_delete_fk_indexes",
+      "breakpoints": true
     }
   ]
 }

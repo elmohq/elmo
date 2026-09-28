@@ -91,8 +91,14 @@ async function expectPromptRows(page: Page, value: string, rows: number) {
   await expect.poll(() => countPromptInputs(page, value)).toBe(rows * LAYOUTS);
 }
 
-/** The visible prompt input holding `value`, for editing it, and its row index. */
+/**
+ * The visible prompt input holding `value`, for editing it, and its row index.
+ * Waits for the network to settle first: under load the page can still be
+ * hydrating when the inputs render, and a fill that lands before React owns
+ * the input is lost.
+ */
 async function promptInput(page: Page, value: string) {
+  await page.waitForLoadState("networkidle");
   const visible = promptInputs(page).filter({ visible: true });
   const index = await visible.evaluateAll(
     (els, wanted) => els.findIndex((el) => (el as HTMLInputElement).value === wanted),
@@ -100,11 +106,6 @@ async function promptInput(page: Page, value: string) {
   );
   expect(index, `no visible prompt input holds "${value}"`).toBeGreaterThanOrEqual(0);
   return { input: visible.nth(index), index };
-}
-
-/** The desktop grid row holding the visible prompt input at `index`. */
-function desktopRow(page: Page, index: number) {
-  return page.locator("div.md\\:grid").filter({ has: page.getByPlaceholder("Enter prompt text...") }).nth(index);
 }
 
 /**
@@ -129,17 +130,30 @@ async function expectTagChips(page: Page, expectedCounts: Record<string, number>
 
 const searchBox = (page: Page) => page.getByRole("textbox", { name: /search prompt text/i });
 
+/**
+ * The capacity line equals the live brand count. Other specs add and remove
+ * their own rows in this brand while this one runs, so the number is read
+ * from the database at the same moment instead of being fixed up front.
+ */
+async function expectCapacityMatchesDb(page: Page, client: pg.Client) {
+  await expect
+    .poll(async () => {
+      const text = (await page.getByTestId("catalog-capacity").textContent()) ?? "";
+      const shown = Number(text.replace(/,/g, "").match(/^(\d+)\/10000 prompts in this brand/)?.[1] ?? -1);
+      return shown === (await brandPromptCount(client));
+    })
+    .toBe(true);
+}
+
 test.describe("Prompt catalog import and paging", () => {
   test.describe.configure({ mode: "serial" });
 
   let client: pg.Client;
-  let countBefore: number;
   const createdIds: string[] = [];
 
   test.beforeAll(async () => {
     client = new pg.Client({ connectionString: DATABASE_URL });
     await client.connect();
-    countBefore = await brandPromptCount(client);
   });
 
   test.afterAll(async ({ request }) => {
@@ -154,7 +168,7 @@ test.describe("Prompt catalog import and paging", () => {
         createdIds,
       ]);
     }
-    expect(await brandPromptCount(client)).toBe(countBefore);
+    expect((await promptRows(client)).length).toBe(0);
     await client.end();
   });
 
@@ -162,7 +176,7 @@ test.describe("Prompt catalog import and paging", () => {
     test.setTimeout(120_000);
     await page.goto(`${brandUrl()}/settings/prompts`);
     await expect(promptInputs(page).first()).toBeAttached();
-    await expect(page.getByTestId("catalog-capacity")).toHaveText(new RegExp(`^${countBefore}/10,000 prompts in this brand`));
+    await expectCapacityMatchesDb(page, client);
 
     // The syntax is discoverable and the textarea has an accessible name.
     const textarea = await openImport(page);
@@ -179,7 +193,6 @@ test.describe("Prompt catalog import and paging", () => {
     await expect(review).toContainText("Skipped 1 blank line");
     await expect(review).toContainText("Skipped 1 duplicate of prompts already in the list");
     await expect(review).toContainText("COMPARE  AI VISIBILITY PLATFORMS and their features");
-    expect(await brandPromptCount(client)).toBe(countBefore);
     expect(await promptRows(client)).toEqual([]);
 
     // Commit writes all three as disabled with normalized tags and server-computed system tags.
@@ -189,7 +202,6 @@ test.describe("Prompt catalog import and paging", () => {
     });
     const rows = await promptRows(client);
     expect(rows).toHaveLength(3);
-    expect(await brandPromptCount(client)).toBe(countBefore + 3);
     const byValue = new Map(rows.map((r) => [r.value, r]));
     for (const [key, value] of Object.entries(NEW_PROMPTS) as [keyof typeof NEW_PROMPTS, string][]) {
       const row = byValue.get(value);
@@ -212,9 +224,7 @@ test.describe("Prompt catalog import and paging", () => {
     await expect(page.getByRole("button", { name: "Remove dup-tag", exact: true })).toHaveCount(0);
     await page.reload();
     for (const value of Object.values(NEW_PROMPTS)) await expectPromptRows(page, value, 1);
-    await expect(page.getByTestId("catalog-capacity")).toHaveText(
-      new RegExp(`^${countBefore + 3}/10,000 prompts in this brand`),
-    );
+    await expectCapacityMatchesDb(page, client);
 
     // A delta save renames one row in place: same id, same count, still no chain.
     const legacy = await promptInput(page, NEW_PROMPTS.legacy);
@@ -225,7 +235,7 @@ test.describe("Prompt catalog import and paging", () => {
     await expect(unsavedBar).toBeVisible();
     await saveButton.click();
     await expect(unsavedBar).toBeHidden({ timeout: 30_000 });
-    expect(await brandPromptCount(client)).toBe(countBefore + 3);
+    expect((await promptRows(client)).length).toBe(2); // the renamed row no longer matches its original text
     const { rows: renamed } = await client.query<{ id: string; tags: string[] }>(
       "SELECT id, tags FROM prompts WHERE brand_id = $1 AND value = $2",
       [TEST_BRAND_ID, `${NEW_PROMPTS.legacy} today`],
@@ -236,7 +246,8 @@ test.describe("Prompt catalog import and paging", () => {
 
     // Enabling one prompt through its switch and saving starts exactly one chain for it.
     const compare = await promptInput(page, NEW_PROMPTS.compare);
-    await desktopRow(page, compare.index).getByRole("switch", { name: /enable prompt/i }).click();
+    // The switch of the same row: the input's parent is the row's desktop grid.
+    await compare.input.locator("..").getByRole("switch", { name: /enable prompt/i }).click();
     await expect(unsavedBar).toBeVisible();
     await saveButton.click();
     await expect(unsavedBar).toBeHidden({ timeout: 30_000 });
@@ -286,7 +297,7 @@ test.describe("Prompt catalog import and paging", () => {
     await expect(page.getByRole("button", { name: /^import 1 prompt$/i })).toBeDisabled();
     // The text is still there to fix.
     await expect(textarea).toHaveValue("fine prompt;tag\n;orphan\n  ;a;b");
-    expect(await brandPromptCount(client)).toBe(countBefore + 3);
+    expect((await promptRows(client)).length).toBe(2);
   });
 
   test("leaving a page with unsaved edits offers Save, Discard and Cancel", async ({ page }) => {

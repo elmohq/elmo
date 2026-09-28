@@ -31,17 +31,26 @@ export function promptChainSingletonKey(promptId: string): string {
 	return `prompt-${promptId}`;
 }
 
+/** Nothing was sent: at the moment of the send the prompt was disabled or no longer existed. */
+export type ChainStopped = { stopped: "disabled" | "missing" };
+
+function isStopped(result: string | null | ChainStopped): result is ChainStopped {
+	return typeof result === "object" && result !== null;
+}
+
 export interface RescheduleDeps {
 	/**
 	 * pg-boss send. Resolves to the job id, or null when pg-boss throttled the
 	 * send (a job with the same singleton key was created within the same
-	 * singletonSeconds slot — including one that has already completed).
+	 * singletonSeconds slot — including one that has already completed), or to
+	 * the stopped marker when the sender found the prompt disabled or gone and
+	 * inserted nothing.
 	 */
 	send(
 		queue: string,
 		data: { promptId: string; consecutiveFailures: number },
 		options: Record<string, unknown>,
-	): Promise<string | null>;
+	): Promise<string | null | ChainStopped>;
 	/** Ids of `created` process-prompt jobs with this key, oldest first. */
 	listScheduledChainJobs(singletonKey: string): Promise<string[]>;
 	/** pg-boss cancel of one `created` chain job (supported API, idempotent). */
@@ -58,7 +67,9 @@ export type RescheduleOutcome =
 	 * singletonSeconds slot also counts jobs that already completed, which
 	 * otherwise silently kills the chain (send resolves null, no job exists).
 	 */
-	| { status: "revived"; jobId: string };
+	| { status: "revived"; jobId: string }
+	/** The prompt was disabled or deleted by the time of the send: the chain ends, nothing queued. */
+	| { status: "stopped"; reason: ChainStopped["stopped"] };
 
 /**
  * Converge on exactly one `created` chain job: keep the oldest, cancel the
@@ -120,6 +131,7 @@ export async function ensureChainJob(
 		startAfter: startAfterSeconds,
 		...PROMPT_JOB_OPTIONS,
 	});
+	if (isStopped(jobId)) return { status: "stopped", reason: jobId.stopped };
 	if (jobId !== null) {
 		await convergeToOneChainJob(singletonKey, deps);
 		return { status: "scheduled", jobId };
@@ -134,6 +146,7 @@ export async function ensureChainJob(
 		startAfter: startAfterSeconds,
 		...PROMPT_JOB_OPTIONS,
 	});
+	if (isStopped(revivedId)) return { status: "stopped", reason: revivedId.stopped };
 	if (revivedId === null) {
 		throw new Error(`pg-boss dropped the unthrottled chain send for prompt ${promptId}`);
 	}

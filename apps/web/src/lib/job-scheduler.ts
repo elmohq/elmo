@@ -1,7 +1,12 @@
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
-import { ensureChainJob, PROMPT_JOB_OPTIONS, type RescheduleDeps } from "@workspace/lib/run-policy";
+import {
+	ensureChainJob,
+	PROMPT_JOB_OPTIONS,
+	type RescheduleDeps,
+	sendChainJobIfEnabled,
+} from "@workspace/lib/run-policy";
 import { eq, inArray, sql } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
@@ -25,7 +30,9 @@ const CHAIN_START_CONCURRENCY = 50;
  * rate-limit storm that then repeats on every cycle at that same minute.
  * A single prompt starts now, as before.
  *
- * Idempotent per prompt: an existing chain job is kept, never doubled.
+ * Idempotent per prompt: an existing chain job is kept, never doubled. The
+ * send itself re-checks the prompt under its row lock, so a prompt disabled or
+ * deleted after the enable committed gets no chain (see sendChainJobIfEnabled).
  */
 export async function scheduleFirstPromptRuns(promptIds: string[]): Promise<boolean[]> {
 	if (promptIds.length === 0) return [];
@@ -43,7 +50,7 @@ export async function scheduleFirstPromptRuns(promptIds: string[]): Promise<bool
 	}
 
 	const deps: RescheduleDeps = {
-		send: (queue, data, options) => boss.send(queue, data, options),
+		send: (queue, data, options) => sendChainJobIfEnabled(db.$client, boss, data.promptId, queue, data, options),
 		listScheduledChainJobs: async (singletonKey) => {
 			const rows = await db.execute(
 				sql`select id from pgboss.job where name = 'process-prompt' and singleton_key = ${singletonKey} and state = 'created' order by created_on`,
@@ -57,6 +64,7 @@ export async function scheduleFirstPromptRuns(promptIds: string[]): Promise<bool
 
 	const results: boolean[] = new Array(promptIds.length).fill(false);
 	const total = promptIds.length;
+	let stopped = 0;
 	for (let i = 0; i < total; i += CHAIN_START_CONCURRENCY) {
 		const batch = promptIds.slice(i, i + CHAIN_START_CONCURRENCY);
 		const settled = await Promise.allSettled(
@@ -65,7 +73,11 @@ export async function scheduleFirstPromptRuns(promptIds: string[]): Promise<bool
 				if (cadenceHours === undefined) return false; // deleted between commit and here
 				const position = i + offset;
 				const startAfterSeconds = total > 1 ? Math.floor((position / total) * cadenceHours * 3600) : 0;
-				await ensureChainJob(promptId, startAfterSeconds, 0, deps);
+				const outcome = await ensureChainJob(promptId, startAfterSeconds, 0, deps);
+				if (outcome.status === "stopped") {
+					stopped++;
+					return false;
+				}
 				return true;
 			}),
 		);
@@ -74,7 +86,9 @@ export async function scheduleFirstPromptRuns(promptIds: string[]): Promise<bool
 			else console.error(`Failed to start the chain for prompt ${batch[offset]}:`, result.reason);
 		});
 	}
-	console.log(`Started ${results.filter(Boolean).length}/${total} prompt chains`);
+	console.log(
+		`Started ${results.filter(Boolean).length}/${total} prompt chains${stopped > 0 ? ` (${stopped} disabled or deleted meanwhile)` : ""}`,
+	);
 	return results;
 }
 

@@ -21,6 +21,7 @@ import {
 	type PromptRunPlan,
 	resolveBrandPromptRunPlans,
 	selectRunTargets,
+	sendChainJobIfEnabled,
 	targetKey,
 } from "@workspace/lib/run-policy";
 import { brandEntity, competitorEntity, enqueueSentimentBestEffort, extractAnswerBody } from "@workspace/lib/sentiment";
@@ -58,11 +59,14 @@ interface PromptContext {
  * Schedule the next run for a prompt through the shared exactly-one-chain
  * logic (see ensureNextRunScheduled): an existing future chain job is kept
  * as-is, a missing one is created, and a silently throttled send is revived.
+ * The send re-checks the prompt under its row lock: a prompt disabled or
+ * deleted while this run was in flight finishes this one call and queues no
+ * next one (see sendChainJobIfEnabled).
  */
 async function scheduleNextRun(promptId: string, cadenceHours: number, consecutiveFailures: number): Promise<void> {
 	try {
 		const outcome = await ensureNextRunScheduled(promptId, cadenceHours, consecutiveFailures, {
-			send: (queue, data, options) => boss.send(queue, data, options),
+			send: (queue, data, options) => sendChainJobIfEnabled(db.$client, boss, promptId, queue, data, options),
 			listScheduledChainJobs: async (singletonKey) => {
 				const rows = await db.execute(
 					sql`select id from pgboss.job where name = 'process-prompt' and singleton_key = ${singletonKey} and state = 'created' order by created_on`,

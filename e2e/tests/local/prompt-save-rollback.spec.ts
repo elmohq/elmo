@@ -151,7 +151,8 @@ test.describe("Prompt save rolls back as a whole", () => {
       nikeBefore,
     );
     const scheduled = await client.query(
-      "SELECT count(*)::int AS n FROM pgboss.job WHERE name = 'process-prompt' AND data->>'promptId' NOT IN (SELECT id::text FROM prompts) AND created_on > now() - interval '2 minutes'",
+      // Live jobs only: a bulk delete running in another spec leaves cancelled rows for prompts that no longer exist, by design.
+      "SELECT count(*)::int AS n FROM pgboss.job WHERE name = 'process-prompt' AND state IN ('created','retry','active') AND data->>'promptId' NOT IN (SELECT id::text FROM prompts) AND created_on > now() - interval '2 minutes'",
     );
     expect(scheduled.rows[0].n).toBe(0);
 

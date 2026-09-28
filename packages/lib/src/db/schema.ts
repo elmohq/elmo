@@ -189,6 +189,8 @@ export const citations = pgTable(
 			table.citationIndex,
 		),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
+		// Deleting a run checks this FK once per run; without the index every check scans the table.
+		promptRunIdx: index("citations_prompt_run_id_idx").on(table.promptRunId),
 		domainIdx: index("citations_domain_idx").on(table.domain),
 	}),
 ).enableRLS();
@@ -582,6 +584,9 @@ export const sentimentObservations = pgTable(
 			table.entityKey,
 			table.score,
 		),
+		// Cascade paths from prompt_runs and prompt_run_entity_mentions: a bulk history delete walks them per parent row.
+		promptRunIdx: index("sentiment_observations_prompt_run_id_idx").on(table.promptRunId),
+		mentionIdx: index("sentiment_observations_mention_id_idx").on(table.mentionId),
 		scoreCheck: check("sentiment_observations_score_check", sql`${table.score} >= 0 AND ${table.score} <= 100`),
 		categoryCheck: check(
 			"sentiment_observations_category_check",
@@ -788,6 +793,8 @@ export const sentimentProviderAttempts = pgTable(
 		finishedAt: timestamp("finished_at", { withTimezone: true }),
 	},
 	(table) => ({
+		// Deleting a permit checks this FK once per permit; the index keeps a bulk history delete set-based.
+		permitIdx: index("sentiment_provider_attempts_permit_id_idx").on(table.permitId),
 		candidateCheck: check(
 			"sentiment_provider_attempts_candidate_check",
 			sql`${table.candidate} IS NULL OR jsonb_typeof(${table.candidate}) = 'object'`,

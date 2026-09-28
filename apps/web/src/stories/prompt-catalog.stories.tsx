@@ -3,6 +3,7 @@ import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { PromptCatalog } from "@/components/prompt-catalog";
 import type { PromptCatalogPage } from "@/server/prompt-catalog-load";
+import { mockBulk } from "./_mocks/server-prompt-bulk";
 import { mockPromptSave } from "./_mocks/server-prompts";
 
 const now = new Date("2026-09-01T00:00:00Z");
@@ -137,5 +138,76 @@ export const ImportReviewThenCommit: Story = {
 		await userEvent.click(canvas.getByRole("button", { name: /^import 2 prompts$/i }));
 		await expect(await canvas.findByRole("status")).toHaveTextContent("Imported 2 prompts as disabled.");
 		await expect(canvas.queryByTestId("prompt-import-panel")).toBeNull();
+	},
+};
+
+/**
+ * Bulk operations: the header checkbox selects the page, "Select all N
+ * matching" grows the selection to the filter's exact ids without any rows,
+ * and each action previews before it commits. Enabled rows block the delete.
+ */
+export const BulkSelectionAndActions: Story = {
+	args: {
+		brandId: "mock-brand-id",
+		page: page(rows.slice(0, 6), { total: 240, totalPages: 5, brand: { total: 240, enabled: 190 } }),
+		search,
+	},
+	play: async ({ canvasElement }) => {
+		mockBulk.rows = rows.map((r) => ({ id: r.id, enabled: r.enabled, tags: r.tags }));
+		mockBulk.allIds = Array.from({ length: 240 }, (_, i) => (i < rows.length ? rows[i].id : `prompt-extra-${i}`));
+		const canvas = within(canvasElement);
+
+		await userEvent.click(canvas.getByRole("checkbox", { name: /select all prompts/i }));
+		await expect(canvas.getByTestId("selection-count")).toHaveTextContent("6");
+		await userEvent.click(canvas.getByRole("button", { name: /select all 240 matching/i }));
+		await expect(canvas.getByTestId("selection-count")).toHaveTextContent("240");
+
+		// Delete is refused while an enabled prompt is selected; the preview says which count.
+		await userEvent.click(canvas.getByRole("button", { name: /^delete…$/i }));
+		const deletePreview = await within(document.body).findByTestId("bulk-delete-preview");
+		await expect(deletePreview).toHaveTextContent(/still enabled/);
+		await expect(within(document.body).getByTestId("bulk-delete-commit")).toBeDisabled();
+		await userEvent.click(within(document.body).getByRole("button", { name: /^cancel$/i }));
+
+		// Back to the page's six rows: "Clear selection" then the header checkbox.
+		await userEvent.click(canvas.getByRole("button", { name: /clear selection/i }));
+		await expect(canvas.queryByTestId("selection-bar")).toBeNull();
+		await userEvent.click(canvas.getByRole("checkbox", { name: /select all prompts/i }));
+		await expect(canvas.getByTestId("selection-count")).toHaveTextContent("6");
+
+		// Disable: the preview counts what changes and what is already disabled.
+		await userEvent.click(canvas.getByRole("button", { name: /^disable$/i }));
+		const statusPreview = await within(document.body).findByTestId("bulk-status-preview");
+		await expect(statusPreview).toHaveTextContent("4 will be disabled; 2 already disabled and left as is.");
+		await userEvent.click(within(document.body).getByTestId("bulk-status-commit"));
+		await waitFor(() => expect(canvas.getByTestId("catalog-notice")).toHaveTextContent("4 prompts disabled."));
+		await expect(canvas.queryByTestId("selection-bar")).toBeNull();
+	},
+};
+
+/** The tag filter offers removing that tag from the whole brand, behind a typed phrase. */
+export const RemoveTagFromBrand: Story = {
+	args: {
+		brandId: "mock-brand-id",
+		page: page(
+			rows.filter((r) => r.tags.includes("comparison")),
+			{ total: 8 },
+		),
+		search: { ...search, tag: "comparison" },
+	},
+	play: async ({ canvasElement }) => {
+		mockBulk.rows = rows.map((r) => ({ id: r.id, enabled: r.enabled, tags: r.tags }));
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: /remove tag “comparison” from all prompts/i }));
+		const preview = await within(document.body).findByTestId("tag-removal-preview");
+		await expect(preview).toHaveTextContent("8 prompts carry the tag comparison");
+		const commit = within(document.body).getByTestId("tag-removal-commit");
+		await expect(commit).toBeDisabled();
+		await userEvent.type(within(document.body).getByTestId("tag-removal-phrase"), "REMOVE comparison");
+		await expect(commit).toBeEnabled();
+		await userEvent.click(commit);
+		await waitFor(() =>
+			expect(canvas.getByTestId("catalog-notice")).toHaveTextContent("Removed the tag “comparison” from 8 prompts."),
+		);
 	},
 };

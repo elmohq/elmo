@@ -190,6 +190,18 @@ interface PromptsListEditorProps {
 	addControls?: boolean;
 	/** Tag suggestions beyond the tags on the rows shown — the rest of a paged catalog's tags. */
 	tagOptions?: readonly string[];
+	/**
+	 * Selection owned by the caller, keyed by prompt id. A paged catalog keeps a
+	 * selection across pages and acts on it server-side, so the editor only
+	 * renders the checkboxes and hides its own client-side bulk bar. Rows with
+	 * no id yet (unsaved) cannot be selected.
+	 */
+	selection?: {
+		selected: ReadonlySet<string>;
+		onToggle: (id: string) => void;
+		/** Header checkbox: select or clear every saved row on screen. */
+		onToggleAll: (ids: string[], select: boolean) => void;
+	};
 }
 
 /**
@@ -505,6 +517,7 @@ export function PromptsListEditor({
 	capacity = MAX_PROMPTS,
 	addControls = true,
 	tagOptions,
+	selection,
 }: PromptsListEditorProps) {
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>(tagOptions ?? []);
@@ -530,12 +543,23 @@ export function PromptsListEditor({
 		onChange([...prompts, ...added.map(({ value, tags }) => newPromptEntry({ value, tags }))]),
 	);
 
-	const { selectedKeys, liveSelectedCount, allSelected, toggleSelect, toggleSelectAll, clearSelection } =
-		useRowSelection(prompts);
+	const own = useRowSelection(prompts);
+	const savedIds = prompts.flatMap((p) => (p.id ? [p.id] : []));
+	const externalAllSelected = savedIds.length > 0 && savedIds.every((id) => selection?.selected.has(id));
+	const isSelected = (p: EditablePrompt) =>
+		selection ? p.id !== undefined && selection.selected.has(p.id) : own.selectedKeys.has(p._key);
+	const toggleRow = (p: EditablePrompt) => {
+		if (selection) {
+			if (p.id) selection.onToggle(p.id);
+		} else own.toggleSelect(p._key);
+	};
+	const allSelected = selection ? externalAllSelected : own.allSelected;
+	const toggleSelectAll = selection ? () => selection.onToggleAll(savedIds, !externalAllSelected) : own.toggleSelectAll;
+	const liveSelectedCount = selection ? 0 : own.liveSelectedCount;
 
 	const applyEnabledToSelection = (enabled: boolean) => {
 		if (liveSelectedCount === 0) return;
-		onChange(prompts.map((p) => (selectedKeys.has(p._key) ? { ...p, enabled } : p)));
+		onChange(prompts.map((p) => (own.selectedKeys.has(p._key) ? { ...p, enabled } : p)));
 	};
 
 	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
@@ -576,7 +600,7 @@ export function PromptsListEditor({
 						>
 							Disable
 						</Button>
-						<Button type="button" size="sm" variant="ghost" onClick={clearSelection} className="cursor-pointer">
+						<Button type="button" size="sm" variant="ghost" onClick={own.clearSelection} className="cursor-pointer">
 							Clear
 						</Button>
 					</div>
@@ -630,8 +654,8 @@ export function PromptsListEditor({
 							premium={premium}
 							premiumAtCapacity={premiumAtCapacity}
 							gridCols={gridCols}
-							selected={selectedKeys.has(prompt._key)}
-							onToggleSelect={() => toggleSelect(prompt._key)}
+							selected={isSelected(prompt)}
+							onToggleSelect={() => toggleRow(prompt)}
 						/>
 					))}
 				</div>

@@ -11,6 +11,7 @@ import {
 	type MaintenancePromptState,
 	type PromptRunPlan,
 	resolveBrandPromptRunPlans,
+	sendChainJobIfEnabled,
 	targetKey,
 } from "@workspace/lib/run-policy";
 import { enqueueResumableSentimentRuns } from "@workspace/lib/sentiment";
@@ -200,9 +201,14 @@ const SCHEDULE_BATCH_SIZE = 50;
  * enabled at once, a worker that was down for a day — and those start spread
  * evenly over each prompt's cadence, so the fan-outs do not all fire in the
  * same minute and then keep firing in that minute on every cycle.
+ *
+ * The enabled-prompt read that produced `toSchedule` is minutes stale by now;
+ * each send re-checks its prompt under the row lock, so a prompt disabled or
+ * deleted since then gets no job (see sendChainJobIfEnabled).
  */
 async function scheduleNewJobs(toSchedule: { promptId: string; cadenceHours: number }[]): Promise<void> {
 	let successCount = 0;
+	let stoppedCount = 0;
 	let failCount = 0;
 	const spread = toSchedule.length > SCHEDULE_BATCH_SIZE;
 
@@ -210,7 +216,10 @@ async function scheduleNewJobs(toSchedule: { promptId: string; cadenceHours: num
 		const results = await Promise.allSettled(
 			toSchedule.slice(i, i + SCHEDULE_BATCH_SIZE).map(({ promptId, cadenceHours }, offset) => {
 				const startAfter = spread ? Math.floor(((i + offset) / toSchedule.length) * cadenceHours * 3600) : 0;
-				return boss.send(
+				return sendChainJobIfEnabled(
+					db.$client,
+					boss,
+					promptId,
 					"process-prompt",
 					{ promptId },
 					{
@@ -223,16 +232,16 @@ async function scheduleNewJobs(toSchedule: { promptId: string; cadenceHours: num
 			}),
 		);
 		for (const result of results) {
-			if (result.status === "fulfilled") successCount++;
-			else {
+			if (result.status === "rejected") {
 				failCount++;
 				console.error("[schedule-maintenance] Failed to schedule job:", result.reason);
-			}
+			} else if (typeof result.value === "object" && result.value !== null) stoppedCount++;
+			else successCount++;
 		}
 	}
 
 	console.log(
-		`[schedule-maintenance] Scheduled ${successCount} new jobs${spread ? " spread over the cadence" : ""}${failCount > 0 ? ` (${failCount} failed)` : ""}`,
+		`[schedule-maintenance] Scheduled ${successCount} new jobs${spread ? " spread over the cadence" : ""}${stoppedCount > 0 ? ` (${stoppedCount} disabled or deleted meanwhile)` : ""}${failCount > 0 ? ` (${failCount} failed)` : ""}`,
 	);
 }
 

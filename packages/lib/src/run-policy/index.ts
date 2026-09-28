@@ -2,6 +2,7 @@ export {
 	type ResolveBrandPromptRunPlansInput,
 	resolveBrandPromptRunPlans,
 } from "./brand-plans";
+export { type ChainSender, sendChainJobIfEnabled } from "./chain-send";
 export {
 	computeMaintenanceDecisions,
 	computePoolPositions,
@@ -29,6 +30,7 @@ export {
 } from "./policy";
 export { ensurePromptQueue, type PromptQueueAdmin } from "./queue";
 export {
+	type ChainStopped,
 	ensureChainJob,
 	ensureNextRunScheduled,
 	PROMPT_JOB_OPTIONS,
