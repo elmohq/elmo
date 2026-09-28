@@ -179,6 +179,17 @@ interface PromptsListEditorProps {
 	changedKeys?: ReadonlySet<string>;
 	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
 	premium?: PremiumAllowance;
+	/** Most prompts this list may hold. Defaults to the brand cap. */
+	capacity?: number;
+	/**
+	 * Show the editor's own "Add Prompt" / "Add Multiple" controls and its
+	 * capacity footer. Off when the caller pages the list and owns adding —
+	 * the rows on screen are then one page, not the whole list the footer
+	 * would be counting.
+	 */
+	addControls?: boolean;
+	/** Tag suggestions beyond the tags on the rows shown — the rest of a paged catalog's tags. */
+	tagOptions?: readonly string[];
 }
 
 /**
@@ -186,13 +197,13 @@ interface PromptsListEditorProps {
  * the rules (trim, dedupe, cap) are tested without a DOM; it runs on every
  * keystroke only to label the button and warn about what will be dropped.
  */
-function useBulkPaste(filledValues: string[], onAdd: (records: BulkPromptRecord[]) => void) {
+function useBulkPaste(filledValues: string[], capacity: number, onAdd: (records: BulkPromptRecord[]) => void) {
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
 
 	const bulkPreview = useMemo(
-		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: MAX_PROMPTS }),
-		[bulkText, filledValues],
+		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: capacity }),
+		[bulkText, filledValues, capacity],
 	);
 
 	// A line with tags but no prompt, or going over capacity, blocks the whole
@@ -202,7 +213,7 @@ function useBulkPaste(filledValues: string[], onAdd: (records: BulkPromptRecord[
 	const bulkError =
 		describeMissingPrompt(bulkPreview.skipped.missingPrompt) ??
 		(overCapacity > 0
-			? `This paste is ${overCapacity} prompt${overCapacity === 1 ? "" : "s"} over the ${MAX_PROMPTS} limit. Remove ${overCapacity === 1 ? "a line" : "some lines"} to continue.`
+			? `This paste is ${overCapacity} prompt${overCapacity === 1 ? "" : "s"} over the ${capacity.toLocaleString("en-US")} limit. Remove ${overCapacity === 1 ? "a line" : "some lines"} to continue.`
 			: null);
 	const closeBulk = () => {
 		setBulkOpen(false);
@@ -491,18 +502,21 @@ export function PromptsListEditor({
 	showSystemTags = true,
 	changedKeys,
 	premium,
+	capacity = MAX_PROMPTS,
+	addControls = true,
+	tagOptions,
 }: PromptsListEditorProps) {
 	const allTagOptions = useMemo(() => {
-		const set = new Set<string>();
+		const set = new Set<string>(tagOptions ?? []);
 		for (const p of prompts) for (const t of p.tags) set.add(t);
 		return [...set].sort().map((t) => ({ value: t }));
-	}, [prompts]);
+	}, [prompts, tagOptions]);
 
 	const update = (index: number, patch: Partial<EditablePrompt>) => {
 		onChange(prompts.map((p, i) => (i === index ? { ...p, ...patch } : p)));
 	};
 	const add = () => {
-		if (prompts.length >= MAX_PROMPTS) return;
+		if (prompts.length >= capacity) return;
 		onChange([...prompts, newPromptEntry()]);
 	};
 
@@ -510,9 +524,9 @@ export function PromptsListEditor({
 	// stages a new prompt and they're dropped on save, so counting them against
 	// the cap would refuse prompts the list still has room for.
 	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
-	const atCapacity = filledValues.length >= MAX_PROMPTS;
+	const atCapacity = filledValues.length >= capacity;
 
-	const bulk = useBulkPaste(filledValues, (added) =>
+	const bulk = useBulkPaste(filledValues, capacity, (added) =>
 		onChange([...prompts, ...added.map(({ value, tags }) => newPromptEntry({ value, tags }))]),
 	);
 
@@ -623,9 +637,9 @@ export function PromptsListEditor({
 				</div>
 			)}
 
-			{!atCapacity && (
+			{addControls && !atCapacity && (
 				<div className="flex flex-wrap items-center gap-2">
-					{prompts.length < MAX_PROMPTS && (
+					{prompts.length < capacity && (
 						<Button
 							variant="outline"
 							size="sm"
@@ -648,20 +662,22 @@ export function PromptsListEditor({
 				</div>
 			)}
 
-			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} />}
+			{addControls && bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} />}
 
-			{atCapacity && (
+			{addControls && atCapacity && (
 				<p className="text-xs text-muted-foreground">
-					Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
+					Maximum of {capacity.toLocaleString("en-US")} prompts allowed. Remove a prompt to add a new one.
 				</p>
 			)}
 
-			<p className="text-xs text-muted-foreground">
-				<strong>
-					{validCount}/{MAX_PROMPTS}
-				</strong>{" "}
-				prompts configured
-			</p>
+			{addControls && (
+				<p className="text-xs text-muted-foreground">
+					<strong>
+						{validCount.toLocaleString("en-US")}/{capacity.toLocaleString("en-US")}
+					</strong>{" "}
+					prompts configured
+				</p>
+			)}
 		</div>
 	);
 }

@@ -1,5 +1,10 @@
-// Runs per target per firing when the RUNS_PER_PROMPT env var is unset or invalid.
-export const RUNS_PER_PROMPT_FALLBACK = 5;
+/**
+ * Runs per target per firing when the RUNS_PER_PROMPT env var is unset or
+ * invalid. One: a deployment that never set the variable, or mistyped it, pays
+ * for one answer per prompt and target, not five. Operators who want several
+ * samples turn it up deliberately.
+ */
+export const RUNS_PER_PROMPT_FALLBACK = 1;
 
 /**
  * How many times a firing runs each of a prompt's targets. Answers vary between
@@ -43,7 +48,8 @@ export function getDefaultDelayHours(): number {
 
 // Maximum limits for brand resources
 export const MAX_COMPETITORS = 500;
-export const MAX_PROMPTS = 100;
+/** Per brand, counting disabled prompts too: a disabled prompt still occupies a catalog row. */
+export const MAX_PROMPTS = 10_000;
 
 /**
  * Sentinel providers store in `prompt_runs.web_queries` when a web search

@@ -422,7 +422,7 @@ function DashboardPage() {
 
 	// No runs yet: the dashboard has nothing to plot, so point at what to do next.
 	if (!isLoadingBrand && !isLoadingSummary && totalRuns === 0) {
-		return <AwaitingFirstEvaluation totalPrompts={totalPrompts} hasPrompts={(brand?.prompts?.length ?? 0) > 0} />;
+		return <AwaitingFirstEvaluation totalPrompts={totalPrompts} hasPrompts={(brand?.promptCount ?? 0) > 0} />;
 	}
 
 	return (

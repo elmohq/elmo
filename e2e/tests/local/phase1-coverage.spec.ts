@@ -49,7 +49,8 @@ test.describe("Settings editors render seeded data", () => {
 
   test("prompts settings lists seeded prompts with controls", async ({ page }) => {
     await page.goto(`${brandUrl()}/settings/prompts`);
-    await expect(page.getByRole("textbox").first()).toBeVisible();
+    await expect(page.getByPlaceholder("Enter prompt text...").first()).toBeAttached();
+    await expect(page.getByRole("button", { name: /^import prompts$/i })).toBeVisible();
   });
 
   test("llms settings shows platform groups", async ({ page }) => {

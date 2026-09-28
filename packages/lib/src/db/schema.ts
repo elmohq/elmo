@@ -250,8 +250,13 @@ export type NewCompetitor = typeof competitors.$inferInsert;
 export type PromptRun = typeof promptRuns.$inferSelect;
 export type NewPromptRun = typeof promptRuns.$inferInsert;
 
+/**
+ * A brand as the app shell and dashboards see it. Prompts travel as a count,
+ * never as rows: a brand may hold ten thousand of them and the pages that
+ * take this only ask whether there are any.
+ */
 export type BrandWithPrompts = Brand & {
-	prompts: Prompt[];
+	promptCount: number;
 	competitors: Competitor[];
 };
 

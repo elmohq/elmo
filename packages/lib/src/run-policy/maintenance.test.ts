@@ -275,3 +275,86 @@ describe("lastRunQueryWindowMs", () => {
 		expect(lastRunQueryWindowMs(24)).toBeLessThan(50 * HOUR);
 	});
 });
+
+describe("computeMaintenanceDecisions with a first run spread over the cadence", () => {
+	const neverRan = (pending: MaintenancePromptState["pendingJob"]) =>
+		state({ promptId: "p1", promptCreatedAt: new Date(NOW.getTime() - 2 * HOUR), pendingJob: pending });
+
+	it("leaves a never-run prompt alone while its first job is due within one interval, and does not alert", () => {
+		const decisions = computeMaintenanceDecisions(
+			[
+				neverRan({
+					jobId: "job-1",
+					state: "created",
+					consecutiveFailures: 0,
+					startAfter: new Date(NOW.getTime() + 20 * HOUR),
+				}),
+			],
+			NOW,
+		);
+		expect(decisions).toEqual({ toSchedule: [], toExpedite: [], alertOverdueCount: 0 });
+	});
+
+	it("still expedites a job scheduled further out than the prompt's interval", () => {
+		const decisions = computeMaintenanceDecisions(
+			[
+				neverRan({
+					jobId: "job-1",
+					state: "created",
+					consecutiveFailures: 0,
+					startAfter: new Date(NOW.getTime() + 30 * HOUR),
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([{ promptId: "p1", jobId: "job-1" }]);
+		expect(decisions.alertOverdueCount).toBe(1);
+	});
+
+	it("still expedites a prompt with run history that is overdue, even when its job is due within an interval", () => {
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					lastRunAtByKey: new Map([[targetKey(CHATGPT), new Date(NOW.getTime() - 48 * HOUR)]]),
+					pendingJob: {
+						jobId: "job-1",
+						state: "created",
+						consecutiveFailures: 0,
+						startAfter: new Date(NOW.getTime() + 20 * HOUR),
+					},
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([{ promptId: "p1", jobId: "job-1" }]);
+		expect(decisions.alertOverdueCount).toBe(1);
+	});
+
+	it("treats a job without a known start time as it always did", () => {
+		const decisions = computeMaintenanceDecisions(
+			[neverRan({ jobId: "job-1", state: "created", consecutiveFailures: 0 })],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([{ promptId: "p1", jobId: "job-1" }]);
+	});
+
+	it("schedules ten thousand promptless prompts without touching the ones already scheduled", () => {
+		const states = Array.from({ length: 10_000 }, (_, i) =>
+			state({
+				promptId: `p${i}`,
+				promptCreatedAt: new Date(NOW.getTime() - HOUR),
+				pendingJob:
+					i % 2 === 0
+						? { jobId: `j${i}`, state: "created", consecutiveFailures: 0, startAfter: new Date(NOW.getTime() + HOUR) }
+						: null,
+			}),
+		);
+		const started = performance.now();
+		const decisions = computeMaintenanceDecisions(states, NOW);
+		expect(performance.now() - started).toBeLessThan(1000);
+		expect(decisions.toSchedule).toHaveLength(5_000);
+		expect(decisions.toExpedite).toEqual([]);
+		expect(decisions.alertOverdueCount).toBe(5_000);
+	});
+});

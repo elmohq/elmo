@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+	ensureChainJob,
 	ensureNextRunScheduled,
 	PROMPT_JOB_OPTIONS,
 	PROMPT_RUN_MAX_SECONDS,
@@ -177,5 +178,34 @@ describe("ensureNextRunScheduled", () => {
 		const startAfter = store.sentOptions[0].startAfter as number;
 		expect(startAfter).toBeLessThan(12 * 3600);
 		expect(startAfter).toBeGreaterThan(0);
+	});
+});
+
+describe("ensureChainJob", () => {
+	it("starts a chain at the given delay and uses the hour slot for an immediate start", async () => {
+		const store = chainStore();
+		const spread = await ensureChainJob(PROMPT, 5_400, 0, store.deps);
+		expect(spread).toMatchObject({ status: "scheduled" });
+		expect(store.sentOptions[0]).toMatchObject({ startAfter: 5_400, singletonSeconds: 5_400 });
+
+		const other = chainStore();
+		await ensureChainJob(PROMPT, 0, 0, other.deps);
+		expect(other.sentOptions[0]).toMatchObject({ startAfter: 0, singletonSeconds: 3_600, ...PROMPT_JOB_OPTIONS });
+	});
+
+	it("is idempotent: an existing chain is kept, a second start sends nothing", async () => {
+		const store = chainStore();
+		await ensureChainJob(PROMPT, 120, 0, store.deps);
+		const again = await ensureChainJob(PROMPT, 240, 0, store.deps);
+		expect(again).toEqual({ status: "existing" });
+		expect(store.send).toHaveBeenCalledTimes(1);
+		expect(createdJobs(store)).toHaveLength(1);
+	});
+
+	it("revives a start whose slot is occupied by the previous chain's finished job", async () => {
+		const store = chainStore([{ key: promptChainSingletonKey(PROMPT), state: "completed" }]);
+		const outcome = await ensureChainJob(PROMPT, 0, 0, store.deps);
+		expect(outcome).toMatchObject({ status: "revived" });
+		expect(createdJobs(store)).toHaveLength(1);
 	});
 });

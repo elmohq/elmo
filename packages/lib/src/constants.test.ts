@@ -22,7 +22,7 @@ function withEnv(value: string | undefined): number {
 describe("getRunsPerPrompt", () => {
 	it("keeps the long-standing default when unset", () => {
 		expect(withEnv(undefined)).toBe(RUNS_PER_PROMPT_FALLBACK);
-		expect(RUNS_PER_PROMPT_FALLBACK).toBe(5);
+		expect(RUNS_PER_PROMPT_FALLBACK).toBe(1);
 	});
 
 	it("takes an operator's value", () => {

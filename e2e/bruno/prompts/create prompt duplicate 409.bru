@@ -1,0 +1,25 @@
+meta {
+  name: create prompt duplicate 409
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "  bruno   E2E prompt — best TESTING framework?  ",
+    "tags": ["other-tag"]
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.error: eq Conflict
+  res.body.message: contains {{createdPromptId}}
+}

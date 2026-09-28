@@ -98,7 +98,38 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
  */
 export function decidePromptCap(existing: number, adding: number): WriteDecision {
 	if (adding <= 0 || existing + adding <= MAX_PROMPTS) return ALLOWED;
-	return deny("prompt-cap", `A brand may have at most ${MAX_PROMPTS} prompts (this one has ${existing}).`);
+	return deny(
+		"prompt-cap",
+		`A brand may have at most ${MAX_PROMPTS.toLocaleString("en-US")} prompts (this one has ${existing.toLocaleString("en-US")}).`,
+	);
+}
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Serialize prompt inserts per brand for the rest of the transaction. Every
+ * creation path (settings save, import commit, onboarding, public API) counts
+ * the brand's rows and then inserts; without this two saves at 9 999 both see
+ * room for one and the brand ends at 10 001. Keyed per brand so brands never
+ * contend, and transaction-scoped so a failed insert releases it with the
+ * rollback.
+ */
+export async function lockBrandPrompts(tx: Transaction, brandId: string): Promise<void> {
+	await tx.execute(sql`select pg_advisory_xact_lock(hashtext('elmo-brand-prompts'), hashtext(${brandId}))`);
+}
+
+/**
+ * Take the brand lock, count its prompts (enabled and disabled alike) and
+ * refuse the transaction if `adding` rows would pass MAX_PROMPTS. Returns the
+ * count so the caller can reuse it. Must run inside the transaction that
+ * performs the insert — checking outside it is exactly the race this closes.
+ */
+export async function reserveBrandPromptCapacity(tx: Transaction, brandId: string, adding: number): Promise<number> {
+	await lockBrandPrompts(tx, brandId);
+	const [row] = await tx.select({ value: count() }).from(prompts).where(eq(prompts.brandId, brandId));
+	const existing = row?.value ?? 0;
+	assertAllowed(decidePromptCap(existing, adding));
+	return existing;
 }
 
 export function decideCompetitorCap(resulting: number): WriteDecision {

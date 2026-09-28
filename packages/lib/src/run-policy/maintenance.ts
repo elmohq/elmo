@@ -26,6 +26,8 @@ export interface MaintenancePromptState {
 		state: "created" | "active" | "retry";
 		/** Failure streak it carries, so a deliberate backoff is distinguishable. */
 		consecutiveFailures: number;
+		/** When the job is due to run. Unknown for jobs recorded before this field existed. */
+		startAfter?: Date;
 	} | null;
 }
 
@@ -54,9 +56,25 @@ type MaintenanceAction =
 	| { kind: "schedule"; cadenceHours: number }
 	| { kind: "expedite"; jobId: string };
 
+/**
+ * A prompt that has never run (within the maintenance window) and whose first
+ * job is due within one run interval is a start spread over the cadence, not
+ * a stalled chain: nothing to drag forward, nothing to alert on. A prompt
+ * with run history keeps the old rule — overdue means the data is stale and
+ * its future job is pulled forward — so a revived chain still runs now.
+ */
+function hasScheduledFirstRun(state: MaintenancePromptState, nowMs: number): boolean {
+	const job = state.pendingJob;
+	if (state.lastRunAtByKey.size > 0 || !job || job.state !== "created" || !job.startAfter) return false;
+	const startMs = job.startAfter.getTime();
+	const intervalMs = Math.min(...state.plan.targets.map((t) => t.intervalHours)) * 3600 * 1000;
+	return startMs > nowMs && startMs - nowMs <= intervalMs;
+}
+
 function actionForPrompt(state: MaintenancePromptState, nowMs: number): MaintenanceAction {
 	// A job that is running or retrying is already being handled.
 	if (state.pendingJob && state.pendingJob.state !== "created") return { kind: "none" };
+	if (hasScheduledFirstRun(state, nowMs)) return { kind: "none" };
 
 	// A prompt with no recorded runs is inherently overdue: there is nothing
 	// fresh. This covers brand-new prompts and revived chains whose history
@@ -93,7 +111,9 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
 		// No targets (unentitled org, no picks, outside the pool): the prompt is
 		// meant to be stopped. Not overdue, nothing to start, no alert noise.
 		if (state.plan.targets.length === 0 || state.plan.rescheduleHours === null) continue;
-		if (isPromptOverdue(state, nowMs, OVERDUE_ALERT_GRACE_MS)) decisions.alertOverdueCount++;
+		if (isPromptOverdue(state, nowMs, OVERDUE_ALERT_GRACE_MS) && !hasScheduledFirstRun(state, nowMs)) {
+			decisions.alertOverdueCount++;
+		}
 
 		const action = actionForPrompt(state, nowMs);
 		if (action.kind === "schedule") {

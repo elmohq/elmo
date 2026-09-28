@@ -1,12 +1,81 @@
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
-import { PROMPT_JOB_OPTIONS } from "@workspace/lib/run-policy";
-import { eq } from "drizzle-orm";
+import { ensureChainJob, PROMPT_JOB_OPTIONS, type RescheduleDeps } from "@workspace/lib/run-policy";
+import { eq, inArray, sql } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
 export function hoursToMs(hours: number): number {
 	return hours * 60 * 60 * 1000;
+}
+
+/** How many chain starts are in flight at once against pg-boss and Postgres. */
+const CHAIN_START_CONCURRENCY = 50;
+
+/**
+ * Start the cadence chain of prompts that have none — just inserted, or just
+ * flipped from disabled to enabled. One brand read per distinct brand rather
+ * than two reads per prompt, and the sends run in bounded batches, so
+ * enabling ten thousand prompts is a few hundred round trips rather than
+ * thirty thousand concurrent ones.
+ *
+ * First runs are spread evenly over the brand's cadence when more than one
+ * prompt starts together: ten thousand prompts enabled at once are ten
+ * thousand paid fan-outs, and firing them in the same minute is a provider
+ * rate-limit storm that then repeats on every cycle at that same minute.
+ * A single prompt starts now, as before.
+ *
+ * Idempotent per prompt: an existing chain job is kept, never doubled.
+ */
+export async function scheduleFirstPromptRuns(promptIds: string[]): Promise<boolean[]> {
+	if (promptIds.length === 0) return [];
+	const boss = await getBoss();
+	const defaultDelayHours = getDefaultDelayHours();
+
+	const cadenceByPrompt = new Map<string, number>();
+	for (let i = 0; i < promptIds.length; i += 1000) {
+		const rows = await db
+			.select({ id: prompts.id, delayOverrideHours: brands.delayOverrideHours })
+			.from(prompts)
+			.innerJoin(brands, eq(prompts.brandId, brands.id))
+			.where(inArray(prompts.id, promptIds.slice(i, i + 1000)));
+		for (const row of rows) cadenceByPrompt.set(row.id, row.delayOverrideHours ?? defaultDelayHours);
+	}
+
+	const deps: RescheduleDeps = {
+		send: (queue, data, options) => boss.send(queue, data, options),
+		listScheduledChainJobs: async (singletonKey) => {
+			const rows = await db.execute(
+				sql`select id from pgboss.job where name = 'process-prompt' and singleton_key = ${singletonKey} and state = 'created' order by created_on`,
+			);
+			return rows.rows.map((row) => String((row as { id: unknown }).id));
+		},
+		cancelChainJob: async (jobId) => {
+			await boss.cancel("process-prompt", jobId);
+		},
+	};
+
+	const results: boolean[] = new Array(promptIds.length).fill(false);
+	const total = promptIds.length;
+	for (let i = 0; i < total; i += CHAIN_START_CONCURRENCY) {
+		const batch = promptIds.slice(i, i + CHAIN_START_CONCURRENCY);
+		const settled = await Promise.allSettled(
+			batch.map(async (promptId, offset) => {
+				const cadenceHours = cadenceByPrompt.get(promptId);
+				if (cadenceHours === undefined) return false; // deleted between commit and here
+				const position = i + offset;
+				const startAfterSeconds = total > 1 ? Math.floor((position / total) * cadenceHours * 3600) : 0;
+				await ensureChainJob(promptId, startAfterSeconds, 0, deps);
+				return true;
+			}),
+		);
+		settled.forEach((result, offset) => {
+			if (result.status === "fulfilled") results[i + offset] = result.value;
+			else console.error(`Failed to start the chain for prompt ${batch[offset]}:`, result.reason);
+		});
+	}
+	console.log(`Started ${results.filter(Boolean).length}/${total} prompt chains`);
+	return results;
 }
 
 export async function getPromptCadenceHours(promptId: string): Promise<number> {

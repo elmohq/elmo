@@ -89,16 +89,34 @@ export async function ensureNextRunScheduled(
 	consecutiveFailures: number,
 	deps: RescheduleDeps,
 ): Promise<RescheduleOutcome> {
+	const delayHours = failureBackoffHours(consecutiveFailures, cadenceHours);
+	return ensureChainJob(promptId, Math.round(delayHours * 60 * 60), consecutiveFailures, deps);
+}
+
+/**
+ * The same exactly-one-chain guarantee for a chain that is being started
+ * rather than continued: a prompt just created or re-enabled. The caller picks
+ * the delay — zero for a single prompt, a share of the cadence when many
+ * start at once — and a chain that already exists is left alone, so enabling
+ * twice, or enabling while the previous chain's last job is still queued,
+ * never doubles it.
+ */
+export async function ensureChainJob(
+	promptId: string,
+	startAfterSeconds: number,
+	consecutiveFailures: number,
+	deps: RescheduleDeps,
+): Promise<RescheduleOutcome> {
 	const singletonKey = promptChainSingletonKey(promptId);
 	if (await convergeToOneChainJob(singletonKey, deps)) return { status: "existing" };
 
-	const delayHours = failureBackoffHours(consecutiveFailures, cadenceHours);
-	const startAfterSeconds = Math.round(delayHours * 60 * 60);
 	const data = { promptId, consecutiveFailures };
 
+	// A zero-second throttle slot is meaningless, so an immediate start uses the
+	// hour slot every other sender of an immediate process-prompt job uses.
 	const jobId = await deps.send("process-prompt", data, {
 		singletonKey,
-		singletonSeconds: startAfterSeconds,
+		singletonSeconds: startAfterSeconds > 0 ? startAfterSeconds : 60 * 60,
 		startAfter: startAfterSeconds,
 		...PROMPT_JOB_OPTIONS,
 	});

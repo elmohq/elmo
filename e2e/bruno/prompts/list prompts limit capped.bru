@@ -1,0 +1,21 @@
+meta {
+  name: list prompts limit capped
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?page=1&limit=100000
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 1
+  limit: 100000
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.limit: eq 100
+}

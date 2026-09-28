@@ -29,6 +29,7 @@ export {
 } from "./policy";
 export { ensurePromptQueue, type PromptQueueAdmin } from "./queue";
 export {
+	ensureChainJob,
 	ensureNextRunScheduled,
 	PROMPT_JOB_OPTIONS,
 	PROMPT_RUN_MAX_SECONDS,

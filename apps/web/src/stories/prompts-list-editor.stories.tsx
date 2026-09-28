@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import {
@@ -15,6 +14,12 @@ const meta = {
 
 export default meta;
 
+/**
+ * The capacity stories run against a small list cap: the real brand cap is
+ * ten thousand rows, and a story rendering that many is not a story.
+ */
+const CAPACITY = 100;
+
 /** The table layout is `hidden md:grid` — widen the canvas past 768px to see it. */
 function Harness({
 	initial,
@@ -29,7 +34,13 @@ function Harness({
 
 	return (
 		<div className="p-8">
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} showSystemTags={showSystemTags} premium={premium} />
+			<PromptsListEditor
+				prompts={prompts}
+				onChange={setPrompts}
+				showSystemTags={showSystemTags}
+				premium={premium}
+				capacity={CAPACITY}
+			/>
 		</div>
 	);
 }
@@ -85,7 +96,7 @@ export const AddMultiple: StoryObj = {
  */
 export const AddMultipleOverCapacity: StoryObj = {
 	render: () => (
-		<Harness showSystemTags={false} initial={[...filler(MAX_PROMPTS - 5), ...entries(["", "", "", "", ""])]} />
+		<Harness showSystemTags={false} initial={[...filler(CAPACITY - 5), ...entries(["", "", "", "", ""])]} />
 	),
 	play: async (ctx) => {
 		await addMultiple(
@@ -94,7 +105,7 @@ export const AddMultipleOverCapacity: StoryObj = {
 		const canvas = within(ctx.canvasElement);
 		await expect(canvas.getByRole("button", { name: /^add 5 prompts$/i })).toBeDisabled();
 		await expect(canvas.getByRole("alert")).toHaveTextContent(
-			`This paste is 1 prompt over the ${MAX_PROMPTS} limit. Remove a line to continue.`,
+			`This paste is 1 prompt over the ${CAPACITY} limit. Remove a line to continue.`,
 		);
 	},
 };
@@ -106,25 +117,25 @@ export const AddMultipleOverCapacity: StoryObj = {
  * still nothing is staged while the error stands.
  */
 export const AddMultipleOverCapacityWithDuplicate: StoryObj = {
-	render: () => <Harness showSystemTags={false} initial={filler(MAX_PROMPTS - 1)} />,
+	render: () => <Harness showSystemTags={false} initial={filler(CAPACITY - 1)} />,
 	play: async (ctx) => {
 		await addMultiple("Prompt A;one\nPrompt B;two\nprompt   b;three")(ctx);
 		const canvas = within(ctx.canvasElement);
 		const add = canvas.getByRole("button", { name: /^add 1 prompt$/i });
 		await expect(add).toBeDisabled();
 		await expect(canvas.getByRole("alert")).toHaveTextContent(
-			`This paste is 1 prompt over the ${MAX_PROMPTS} limit. Remove a line to continue.`,
+			`This paste is 1 prompt over the ${CAPACITY} limit. Remove a line to continue.`,
 		);
 		await expect(canvas.getByText("Skipped 1 duplicate.")).toBeVisible();
 		await userEvent.click(add);
 		await expect(canvas.queryAllByDisplayValue("Prompt A")).toHaveLength(0);
 		await expect(canvas.queryAllByRole("button", { name: /^Remove (one|two|three)$/ })).toHaveLength(0);
-		await expect(canvas.getByText(`${MAX_PROMPTS - 1}/${MAX_PROMPTS}`)).toBeVisible();
+		await expect(canvas.getByText(`${CAPACITY - 1}/${CAPACITY}`)).toBeVisible();
 	},
 };
 
 /** At the cap: both toolbar buttons are hidden and the limit message shows. */
-export const AtCapacity = () => <Harness showSystemTags={false} initial={filler(MAX_PROMPTS)} />;
+export const AtCapacity = () => <Harness showSystemTags={false} initial={filler(CAPACITY)} />;
 
 /**
  * Tags written after a prompt, separated by semicolons, land on that prompt's

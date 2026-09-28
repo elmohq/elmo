@@ -30,10 +30,25 @@ interface UnsavedChangesBarProps {
 	error?: string | null;
 	onSave: () => void;
 	onDiscard: () => void;
+	/**
+	 * Save, resolving to whether it succeeded. When given, the leave dialog
+	 * offers "Save and leave" next to discarding, and leaves only on success —
+	 * a failed save keeps the edits and the page.
+	 */
+	onSaveAndLeave?: () => Promise<boolean>;
 }
 
-export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, onDiscard }: UnsavedChangesBarProps) {
+export function UnsavedChangesBar({
+	isDirty,
+	isSaving,
+	summary,
+	error,
+	onSave,
+	onDiscard,
+	onSaveAndLeave,
+}: UnsavedChangesBarProps) {
 	const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+	const [leaving, setLeaving] = useState(false);
 
 	// A save is in flight until the parent resets its baseline, so keep blocking
 	// through it — the edits aren't durable yet.
@@ -126,22 +141,53 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 				</DialogContent>
 			</Dialog>
 
-			<Dialog open={blocker.status === "blocked"} onOpenChange={(open) => !open && blocker.reset?.()}>
+			<Dialog open={blocker.status === "blocked"} onOpenChange={(open) => !open && !leaving && blocker.reset?.()}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Leave without saving?</DialogTitle>
+						<DialogTitle>{onSaveAndLeave ? "Save changes before leaving?" : "Leave without saving?"}</DialogTitle>
 						<DialogDescription>
-							{summary ? `You have unsaved changes (${summary}).` : "You have unsaved changes."} They&apos;ll be lost if
-							you leave this page.
+							{summary ? `You have unsaved changes (${summary}).` : "You have unsaved changes."}{" "}
+							{onSaveAndLeave ? "Save them, discard them, or stay here." : "They’ll be lost if you leave this page."}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button variant="outline" onClick={() => blocker.reset?.()} className="cursor-pointer">
-							Stay on page
+						<Button variant="outline" disabled={leaving} onClick={() => blocker.reset?.()} className="cursor-pointer">
+							Cancel
 						</Button>
-						<Button variant="destructive" onClick={() => blocker.proceed?.()} className="cursor-pointer">
-							Leave without saving
+						<Button
+							variant="destructive"
+							disabled={leaving}
+							onClick={() => {
+								onDiscard();
+								blocker.proceed?.();
+							}}
+							className="cursor-pointer"
+						>
+							Discard and leave
 						</Button>
+						{onSaveAndLeave && (
+							<Button
+								disabled={leaving}
+								onClick={async () => {
+									setLeaving(true);
+									try {
+										if (await onSaveAndLeave()) blocker.proceed?.();
+										else blocker.reset?.();
+									} finally {
+										setLeaving(false);
+									}
+								}}
+								className="cursor-pointer"
+							>
+								{leaving ? (
+									<>
+										<Spinner /> Saving…
+									</>
+								) : (
+									"Save and leave"
+								)}
+							</Button>
+						)}
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

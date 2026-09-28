@@ -16,6 +16,7 @@
 		"./db/db": "./src/db/db.ts",
 		"./db/schema": "./src/db/schema.ts",
 		"./db/competitors": "./src/db/competitors.ts",
+		"./db/prompt-identity": "./src/db/prompt-identity.ts",
 		"./db/auth-sync": "./src/db/auth-sync.ts",
 		"./db/provisioning": "./src/db/provisioning.ts",
 		"./db/unique-names": "./src/db/unique-names.ts",

@@ -109,14 +109,14 @@ describe("decidePromptCap", () => {
 	});
 
 	it("refuses a save that grows past the cap", () => {
-		expect(denialMessage(decidePromptCap(MAX_PROMPTS, 1))).toMatch(new RegExp(`at most ${MAX_PROMPTS} prompts`));
+		expect(denialMessage(decidePromptCap(MAX_PROMPTS, 1))).toMatch(/at most 10,000 prompts \(this one has 10,000\)/);
 		expect(decidePromptCap(MAX_PROMPTS - 1, 2).allowed).toBe(false);
 	});
 
 	it("keeps an over-cap brand editable as long as the save adds nothing", () => {
-		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, 150, 0).allowed).toBe(true);
-		expect(decidePromptCap(150, 0).allowed).toBe(true);
-		expect(decidePromptCap(150, 1).allowed).toBe(false);
+		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, MAX_PROMPTS + 50, 0).allowed).toBe(true);
+		expect(decidePromptCap(MAX_PROMPTS + 50, 0).allowed).toBe(true);
+		expect(decidePromptCap(MAX_PROMPTS + 50, 1).allowed).toBe(false);
 	});
 
 	it("lets an unlimited deployment add past MAX_PROMPTS over the admin API", () => {

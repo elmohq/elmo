@@ -7,7 +7,7 @@ import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 import { brands, prompts } from "@workspace/lib/db/schema";
 import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -35,14 +35,14 @@ const getBrandData = createServerFn({ method: "GET" })
 			return null;
 		}
 
-		const [brandPrompts, brandCompetitors, { entitlements }] = await Promise.all([
-			db.query.prompts.findMany({ where: eq(prompts.brandId, brand.id) }),
+		const [[promptStats], brandCompetitors, { entitlements }] = await Promise.all([
+			db.select({ promptCount: count() }).from(prompts).where(eq(prompts.brandId, brand.id)),
 			db.query.competitors.findMany({ where: activeCompetitorsOf(brand.id) }),
 			getOrgBillingState(brand.organizationId),
 		]);
 
 		return {
-			brand: { ...brand, prompts: brandPrompts, competitors: brandCompetitors },
+			brand: { ...brand, promptCount: promptStats?.promptCount ?? 0, competitors: brandCompetitors },
 			unpaidOrganizationId: entitlements.standing === "none" ? brand.organizationId : null,
 		};
 	});

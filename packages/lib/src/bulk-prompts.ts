@@ -47,13 +47,14 @@ export interface ParseBulkPromptsOptions {
 const FIELD_SEPARATOR = ";";
 
 /**
- * Comparison key for two prompts being "the same".
+ * Comparison key for two prompts being "the same" — the one identity every
+ * creation path (paste, import, onboarding, API) checks duplicates against.
  *
  * Case and surrounding whitespace are ignored, and runs of internal whitespace
  * collapse to one space, so a line re-pasted from a wrapped document does not
- * arrive as a second distinct prompt.
+ * arrive as a second distinct prompt. Tags play no part in it.
  */
-function dedupeKey(value: string): string {
+export function promptIdentityKey(value: string): string {
 	return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
@@ -76,62 +77,138 @@ function dedupeKey(value: string): string {
  */
 export function parseBulkPrompts(text: string, options: ParseBulkPromptsOptions = {}): BulkPromptParse {
 	const { existing = [], limit = MAX_PROMPTS } = options;
+	const plan = planPromptImport(text, {
+		existingKeys: new Set(existing.map(promptIdentityKey)),
+		room: Math.max(0, limit - existing.length),
+		sampleLimit: Number.POSITIVE_INFINITY,
+	});
+	return {
+		added: plan.records,
+		skipped: {
+			blank: plan.summary.blank,
+			duplicateOfExisting: plan.summary.samples.duplicateOfExisting,
+			duplicateInPaste: plan.summary.samples.duplicateInPaste,
+			overCapacity: plan.summary.samples.overCapacity,
+			missingPrompt: plan.summary.samples.missingPrompt,
+		},
+	};
+}
 
-	const seen = new Set(existing.map(dedupeKey));
-	const room = Math.max(0, limit - existing.length);
+/** Most examples of each skip reason an import review carries back. */
+export const IMPORT_SAMPLE_LIMIT = 100;
 
-	const added: BulkPromptRecord[] = [];
-	const skipped: SkippedLines = {
+/**
+ * What an import will do, in numbers plus a bounded set of examples: the
+ * whole picture of a ten-thousand-line paste without sending ten thousand
+ * lines back to the screen that already has them.
+ */
+export interface PromptImportSummary {
+	/** Lines in the text, blank ones included. */
+	lines: number;
+	/** Prompts the import will create. */
+	added: number;
+	blank: number;
+	duplicateOfExisting: number;
+	duplicateInPaste: number;
+	overCapacity: number;
+	missingPrompt: number;
+	/** At most `sampleLimit` examples per reason, in line order. */
+	samples: {
+		duplicateOfExisting: string[];
+		duplicateInPaste: string[];
+		overCapacity: string[];
+		/** 1-based line numbers. */
+		missingPrompt: number[];
+	};
+}
+
+export interface PromptImportPlan {
+	/** The prompts to create, in pasted order. */
+	records: BulkPromptRecord[];
+	summary: PromptImportSummary;
+}
+
+export interface PlanPromptImportOptions {
+	/** `promptIdentityKey` of every prompt the brand already holds. */
+	existingKeys: ReadonlySet<string>;
+	/** How many more prompts the brand may hold. */
+	room: number;
+	/** Examples kept per skip reason. Defaults to IMPORT_SAMPLE_LIMIT. */
+	sampleLimit?: number;
+}
+
+/**
+ * The one set of import rules, applied line by line. `parseBulkPrompts`
+ * (the wizard's paste) and the settings import's Review and Commit all run
+ * this, so a line lands the same way whichever surface it came through.
+ *
+ * Duplicates are decided on `promptIdentityKey` alone; a duplicate's tags are
+ * dropped with it, never merged. The first occurrence claims the identity
+ * before capacity is checked, so a repeat of a prompt that did not fit is a
+ * duplicate, not a second excess prompt. Capacity is checked after the
+ * duplicate rules: a line that was never going to be added is not competing
+ * for a slot.
+ */
+export function planPromptImport(text: string, options: PlanPromptImportOptions): PromptImportPlan {
+	const sampleLimit = options.sampleLimit ?? IMPORT_SAMPLE_LIMIT;
+	const room = Math.max(0, options.room);
+	const records: BulkPromptRecord[] = [];
+	const summary: PromptImportSummary = {
+		lines: 0,
+		added: 0,
 		blank: 0,
-		duplicateOfExisting: [],
-		duplicateInPaste: [],
-		overCapacity: [],
-		missingPrompt: [],
+		duplicateOfExisting: 0,
+		duplicateInPaste: 0,
+		overCapacity: 0,
+		missingPrompt: 0,
+		samples: { duplicateOfExisting: [], duplicateInPaste: [], overCapacity: [], missingPrompt: [] },
+	};
+	const sample = <T>(list: T[], item: T) => {
+		if (list.length < sampleLimit) list.push(item);
 	};
 
 	const withinPaste = new Set<string>();
+	const lines = text.split(/\r?\n/);
+	summary.lines = lines.length;
 
-	text.split(/\r?\n/).forEach((raw, index) => {
+	lines.forEach((raw, index) => {
 		if (raw.trim().length === 0) {
-			skipped.blank += 1;
+			summary.blank += 1;
 			return;
 		}
 
 		const [first, ...rest] = raw.split(FIELD_SEPARATOR);
 		const value = first.trim();
 		if (value.length === 0) {
-			skipped.missingPrompt.push(index + 1);
+			summary.missingPrompt += 1;
+			sample(summary.samples.missingPrompt, index + 1);
 			return;
 		}
 
-		const key = dedupeKey(value);
+		const key = promptIdentityKey(value);
 		if (withinPaste.has(key)) {
-			skipped.duplicateInPaste.push(value);
+			summary.duplicateInPaste += 1;
+			sample(summary.samples.duplicateInPaste, value);
 			return;
 		}
-		if (seen.has(key)) {
-			skipped.duplicateOfExisting.push(value);
+		if (options.existingKeys.has(key)) {
+			summary.duplicateOfExisting += 1;
+			sample(summary.samples.duplicateOfExisting, value);
 			return;
 		}
-
-		// The first occurrence claims the prompt's identity whether or not it
-		// fits, so a repeat of a prompt that did not fit is reported as the
-		// duplicate it is instead of as a second excess prompt.
 		withinPaste.add(key);
 
-		// Capacity is checked after the duplicate rules on purpose. A line that
-		// was never going to be added is not competing for a slot, so reporting
-		// it as over capacity would blame the limit for something the limit did
-		// not cause.
-		if (added.length >= room) {
-			skipped.overCapacity.push(value);
+		if (records.length >= room) {
+			summary.overCapacity += 1;
+			sample(summary.samples.overCapacity, value);
 			return;
 		}
 
-		added.push({ value, tags: sanitizeUserTags(rest) });
+		records.push({ value, tags: sanitizeUserTags(rest) });
 	});
 
-	return { added, skipped };
+	summary.added = records.length;
+	return { records, summary };
 }
 
 /**

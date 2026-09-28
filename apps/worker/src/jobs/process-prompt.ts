@@ -483,9 +483,11 @@ async function processPrompt(
 	const { prompt, brand, competitors: competitorsList } = context;
 
 	if (!prompt.enabled || !brand.enabled) {
-		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
-		// Still reschedule at the brand cadence - the prompt might be enabled later
-		await scheduleNextRun(promptId, brand.delayOverrideHours ?? getDefaultDelayHours(), 0);
+		// The chain ends here: a disabled prompt owns no future job. Enabling it
+		// starts a new chain (the save that enables it, or schedule-maintenance
+		// within one pass), so ten thousand disabled prompts cost nothing, not
+		// ten thousand no-op jobs per cadence.
+		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping (no reschedule)`);
 		return;
 	}
 

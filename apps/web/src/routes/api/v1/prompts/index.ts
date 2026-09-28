@@ -3,14 +3,19 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { promptIdentityKey } from "@workspace/lib/bulk-prompts";
 import { db } from "@workspace/lib/db/db";
+import { promptIdentityKeySql } from "@workspace/lib/db/prompt-identity";
 import { brands, prompts } from "@workspace/lib/db/schema";
-import { assertCanAddPrompts } from "@workspace/lib/entitlements";
+import { assertCanAddPrompts, reserveBrandPromptCapacity } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
-import { createPromptJobScheduler } from "@/lib/job-scheduler";
+import { scheduleFirstPromptRuns } from "@/lib/job-scheduler";
+
+/** Largest page the list endpoint serves; the catalog is read page by page, never whole. */
+const MAX_API_PAGE_SIZE = 100;
 
 const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
@@ -26,7 +31,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					const { searchParams } = new URL(request.url);
 					const brandId = searchParams.get("brandId");
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-					const limit = Math.max(1, parseInt(searchParams.get("limit") || "20"));
+					const limit = Math.min(MAX_API_PAGE_SIZE, Math.max(1, parseInt(searchParams.get("limit") || "20")));
 					const offset = (page - 1) * limit;
 
 					const whereConditions = brandId ? eq(prompts.brandId, brandId) : undefined;
@@ -71,16 +76,29 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					}
 
 					const brand = brandInfo[0];
-					await assertCanAddPrompts(brand.organizationId, 1);
 					const userTags = tags ? sanitizeUserTags(tags) : [];
 					const systemTags = computeSystemTags(value, brand.name, brand.website);
 
-					const [newPrompt] = await db
-						.insert(prompts)
-						.values({ brandId, value, tags: userTags, systemTags, enabled: true })
-						.returning();
+					const newPrompt = await db.transaction(async (tx) => {
+						await reserveBrandPromptCapacity(tx, brandId, 1);
+						const key = promptIdentityKey(value);
+						const [duplicate] = await tx
+							.select({ id: prompts.id })
+							.from(prompts)
+							.where(and(eq(prompts.brandId, brandId), eq(promptIdentityKeySql(), key)))
+							.limit(1);
+						if (duplicate) {
+							throw new ApiError(409, "Conflict", `Prompt already exists in brand '${brandId}' (id ${duplicate.id})`);
+						}
+						await assertCanAddPrompts(brand.organizationId, 1);
+						const [row] = await tx
+							.insert(prompts)
+							.values({ brandId, value, tags: userTags, systemTags, enabled: true })
+							.returning();
+						return row;
+					});
 
-					await createPromptJobScheduler(newPrompt.id);
+					await scheduleFirstPromptRuns([newPrompt.id]);
 
 					return newPrompt;
 				},

@@ -25,7 +25,7 @@ import {
 	selectTargetsForBrand,
 } from "@workspace/lib/providers";
 import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
-import { and, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
 	requireAuthSession,
@@ -53,11 +53,7 @@ import { saveCompetitorRoster } from "@/server/competitor-roster";
  * asking "which models is this brand tracking?" reads from here; deployments
  * configure arbitrary sets via `SCRAPE_TARGETS`, so nothing hardcodes a list.
  */
-function computeTrackedTargets(
-	brand: Brand,
-	brandPrompts: { premiumModels: string[] }[],
-	entitlements: Entitlements,
-): TrackedTarget[] {
+function computeTrackedTargets(brand: Brand, premiumModels: string[], entitlements: Entitlements): TrackedTarget[] {
 	try {
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
@@ -69,7 +65,7 @@ function computeTrackedTargets(
 		const plan = resolvePromptRunPlan({
 			scrapeTargets: configs,
 			brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
-			prompt: { premiumModels: [...new Set(brandPrompts.flatMap((prompt) => prompt.premiumModels))] },
+			prompt: { premiumModels },
 			entitlements,
 			defaultDelayHours: getDefaultDelayHours(),
 		});
@@ -170,17 +166,24 @@ async function getBrandWithPromptsFromDb(
 		});
 		if (!brand) return undefined;
 
-		const [brandPrompts, brandCompetitors, resolved] = await Promise.all([
-			db.query.prompts.findMany({ where: eq(prompts.brandId, brandId) }),
+		const [[promptStats], brandCompetitors, resolved] = await Promise.all([
+			db
+				.select({
+					promptCount: count(),
+					premiumModels: sql<string[]>`coalesce(array_agg(distinct m.model) filter (where m.model is not null), '{}')`,
+				})
+				.from(prompts)
+				.leftJoin(sql`lateral unnest(${prompts.premiumModels}) as m(model)`, sql`true`)
+				.where(eq(prompts.brandId, brandId)),
 			db.query.competitors.findMany({ where: activeCompetitorsOf(brandId), orderBy: competitorRosterOrder }),
 			entitlements ?? getOrgEntitlements(brand.organizationId),
 		]);
 
 		return {
 			...brand,
-			prompts: brandPrompts,
+			promptCount: promptStats?.promptCount ?? 0,
 			competitors: brandCompetitors,
-			trackedTargets: computeTrackedTargets(brand, brandPrompts, resolved),
+			trackedTargets: computeTrackedTargets(brand, promptStats?.premiumModels ?? [], resolved),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);

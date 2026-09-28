@@ -176,6 +176,7 @@ function buildLocation({ to, params }: { to?: string; params?: Record<string, st
 export function useRouter() {
 	return {
 		navigate: (_opts: unknown) => {},
+		invalidate: async (_opts?: unknown) => {},
 		buildLocation,
 		state: { location: { pathname: "/", search: "", hash: "" } },
 	};

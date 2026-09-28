@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { describeMissingPrompt, describeSkipped, parseBulkPrompts, type SkippedLines } from "./bulk-prompts";
+import {
+	describeMissingPrompt,
+	describeSkipped,
+	IMPORT_SAMPLE_LIMIT,
+	parseBulkPrompts,
+	planPromptImport,
+	type SkippedLines,
+} from "./bulk-prompts";
 import { MAX_PROMPTS } from "./constants";
 
 const nothingSkipped = (): SkippedLines => ({
@@ -316,5 +323,55 @@ describe("bulk-prompts", () => {
 				"Lines 1, 4 and 9 have no prompt text before their first semicolon. Fix or remove them to continue.",
 			);
 		});
+	});
+});
+
+describe("planPromptImport", () => {
+	it("counts every line and keeps at most the sample limit of examples per reason", () => {
+		const existing = new Set(["existing prompt"]);
+		const lines = [
+			...Array.from({ length: 150 }, () => "Existing  Prompt"),
+			...Array.from({ length: 5 }, () => ";only tags"),
+			"",
+			"new one;tag",
+			"new one;other",
+			...Array.from({ length: 3 }, (_, i) => `over ${i}`),
+		];
+		const { records, summary } = planPromptImport(lines.join("\n"), {
+			existingKeys: existing,
+			room: 1,
+			sampleLimit: 4,
+		});
+		expect(records).toEqual([{ value: "new one", tags: ["tag"] }]);
+		expect(summary).toMatchObject({
+			lines: lines.length,
+			added: 1,
+			blank: 1,
+			duplicateOfExisting: 150,
+			duplicateInPaste: 1,
+			overCapacity: 3,
+			missingPrompt: 5,
+		});
+		expect(summary.samples.duplicateOfExisting).toHaveLength(4);
+		expect(summary.samples.missingPrompt).toEqual([151, 152, 153, 154]);
+		expect(summary.samples.overCapacity).toEqual(["over 0", "over 1", "over 2"]);
+	});
+
+	it("defaults the sample limit to IMPORT_SAMPLE_LIMIT", () => {
+		const text = Array.from({ length: IMPORT_SAMPLE_LIMIT + 20 }, () => "same").join("\n");
+		const { summary } = planPromptImport(text, { existingKeys: new Set(), room: 10 });
+		expect(summary.added).toBe(1);
+		expect(summary.duplicateInPaste).toBe(IMPORT_SAMPLE_LIMIT + 19);
+		expect(summary.samples.duplicateInPaste).toHaveLength(IMPORT_SAMPLE_LIMIT);
+	});
+
+	it("handles ten thousand lines in well under a second", () => {
+		const text = Array.from({ length: 10_000 }, (_, i) => `Prompt number ${i};tag${i % 7};Group ${i % 3}`).join("\r\n");
+		const started = performance.now();
+		const { records, summary } = planPromptImport(text, { existingKeys: new Set(), room: 10_000 });
+		expect(performance.now() - started).toBeLessThan(1000);
+		expect(records).toHaveLength(10_000);
+		expect(records[9_999]).toEqual({ value: "Prompt number 9999", tags: ["tag3", "group 0"] });
+		expect(summary.added).toBe(10_000);
 	});
 });

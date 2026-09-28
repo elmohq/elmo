@@ -1,30 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import { premiumSlotsUsed } from "@workspace/config/plans";
-import { db } from "@workspace/lib/db/db";
-import { prompts } from "@workspace/lib/db/schema";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { desc, eq } from "drizzle-orm";
-import { z } from "zod";
-import { PromptsEditor } from "@/components/prompts-editor";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import { PromptCatalog } from "@/components/prompt-catalog";
+import { resolvePromptCatalogQuery, validatePromptCatalogSearch } from "@/lib/prompt-catalog";
 import { pageHead } from "@/lib/route-head";
 import { getPremiumPoolFn } from "@/server/premium-tracking";
-
-const getPromptsForEditing = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string() }))
-	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-
-		const brandPrompts = await db
-			.select()
-			.from(prompts)
-			.where(eq(prompts.brandId, data.brandId))
-			.orderBy(prompts.value, desc(prompts.enabled), prompts.id);
-
-		return brandPrompts;
-	});
+import { getPromptCatalogPageFn } from "@/server/prompt-catalog";
 
 function PromptsSettingsSkeleton() {
 	return (
@@ -48,17 +29,21 @@ function PromptsSettingsSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/prompts")({
 	staticData: { crumb: "Prompts" },
-	loader: async ({ context }) => {
-		const [brandPrompts, premiumPool] = await Promise.all([
-			getPromptsForEditing({ data: { brandId: context.brandId } }),
+	validateSearch: validatePromptCatalogSearch,
+	loaderDeps: ({ search }) => resolvePromptCatalogQuery(search),
+	loader: async ({ context, deps }) => {
+		const [page, premiumPool] = await Promise.all([
+			getPromptCatalogPageFn({ data: { brandId: context.brandId, ...deps } }),
 			getPremiumPoolFn({ data: { brandId: context.brandId } }),
 		]);
 
-		// The pool is org-wide but the editor only sees this brand, so hand it the
-		// share spent by the org's other brands and let it count this list live.
-		const spentHere = premiumSlotsUsed(brandPrompts);
+		// The pool is org-wide but the editor only sees this page, so hand it the
+		// share spent everywhere else — other brands and this brand's other
+		// pages — and let it count the rows on screen live.
+		const spentHere = premiumSlotsUsed(page.rows);
 		return {
-			prompts: brandPrompts,
+			page,
+			search: deps,
 			premium: premiumPool.available
 				? {
 						total: premiumPool.total,
@@ -73,16 +58,16 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 });
 
 function PromptsSettingsPage() {
-	const { prompts: brandPrompts, premium } = Route.useLoaderData();
+	const { page, search, premium } = Route.useLoaderData();
 	const { brandId } = Route.useRouteContext();
 
 	return (
-		<PromptsEditor
-			initialPrompts={brandPrompts}
-			brandId={brandId}
-			pageTitle="Prompts"
-			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
-			premium={premium}
-		/>
+		<div className="space-y-6">
+			<div>
+				<h1 className="text-3xl font-bold tracking-tight">Prompts</h1>
+				<p className="text-muted-foreground">Add, edit, or remove your brand tracking keywords and prompts</p>
+			</div>
+			<PromptCatalog brandId={brandId} page={page} search={search} premium={premium} />
+		</div>
 	);
 }

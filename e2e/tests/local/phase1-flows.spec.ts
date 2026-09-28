@@ -29,7 +29,7 @@ test.describe("Create brand + onboarding (stub analysis)", () => {
 test.describe("Prompt editor interactions", () => {
   test("editing a prompt raises the unsaved-changes bar without saving", async ({ page }) => {
     await page.goto(`${brandUrl()}/settings/prompts`);
-    const firstPrompt = page.getByRole("textbox").first();
+    const firstPrompt = page.getByPlaceholder("Enter prompt text...").filter({ visible: true }).first();
     await firstPrompt.waitFor();
     await firstPrompt.pressSequentially(" edited", { delay: 20 });
     await firstPrompt.blur();

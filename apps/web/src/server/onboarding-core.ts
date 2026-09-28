@@ -9,17 +9,24 @@
  */
 
 import { slugify } from "@workspace/lib/app-urls";
+import { promptIdentityKey } from "@workspace/lib/bulk-prompts";
 import { activeCompetitorsOf } from "@workspace/lib/db/competitors";
 import { db } from "@workspace/lib/db/db";
 import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
-import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
+import {
+	assertCanAddPrompts,
+	assertCompetitorCap,
+	getBrandOrganizationId,
+	lockBrandPrompts,
+	reserveBrandPromptCapacity,
+} from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
-import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import { scheduleFirstPromptRuns } from "@/lib/job-scheduler";
 import { PublicError } from "@/lib/public-errors";
 
 // ============================================================================
@@ -252,43 +259,49 @@ async function insertPrompts(args: {
 }): Promise<number> {
 	if (args.source.length === 0) return 0;
 
-	const seen = new Set<string>();
-	if (args.dedupeAgainstExisting) {
-		const existing = await db.query.prompts.findMany({
-			where: eq(prompts.brandId, args.brandId),
-		});
-		for (const p of existing) seen.add(p.value.toLowerCase());
-	}
+	const inserted = await db.transaction(async (tx) => {
+		// Reserve nothing yet: the row count is only known after the duplicate
+		// pass, but the lock has to be held while the existing values are read.
+		await lockBrandPrompts(tx, args.brandId);
 
-	const rows: Array<{
-		brandId: string;
-		value: string;
-		enabled: boolean;
-		tags: string[];
-		systemTags: string[];
-	}> = [];
-	for (const p of args.source) {
-		const value = p.value.trim();
-		if (!value) continue;
-		const key = value.toLowerCase();
-		if (seen.has(key)) continue;
-		seen.add(key);
-		rows.push({
-			brandId: args.brandId,
-			value,
-			enabled: p.enabled,
-			tags: p.tags,
-			systemTags: computeSystemTags(value, args.brandName, args.website),
-		});
-	}
-	if (rows.length === 0) return 0;
+		const seen = new Set<string>();
+		if (args.dedupeAgainstExisting) {
+			const existing = await tx.select({ value: prompts.value }).from(prompts).where(eq(prompts.brandId, args.brandId));
+			for (const p of existing) seen.add(promptIdentityKey(p.value));
+		}
 
-	// Covers both wizard onboarding and POST /api/v1/brands — the two bulk
-	// prompt-creation surfaces share this chokepoint.
-	await assertCanAddPrompts(await getBrandOrganizationId(args.brandId), rows.filter((r) => r.enabled).length);
+		const rows: Array<{
+			brandId: string;
+			value: string;
+			enabled: boolean;
+			tags: string[];
+			systemTags: string[];
+		}> = [];
+		for (const p of args.source) {
+			const value = p.value.trim();
+			if (!value) continue;
+			const key = promptIdentityKey(value);
+			if (seen.has(key)) continue;
+			seen.add(key);
+			rows.push({
+				brandId: args.brandId,
+				value,
+				enabled: p.enabled,
+				tags: p.tags,
+				systemTags: computeSystemTags(value, args.brandName, args.website),
+			});
+		}
+		if (rows.length === 0) return [];
 
-	const inserted = await db.insert(prompts).values(rows).returning({ id: prompts.id });
-	await createMultiplePromptJobSchedulers(inserted.map((r) => r.id));
+		await reserveBrandPromptCapacity(tx, args.brandId, rows.length);
+		// Covers both wizard onboarding and POST /api/v1/brands — the two bulk
+		// prompt-creation surfaces share this chokepoint.
+		await assertCanAddPrompts(await getBrandOrganizationId(args.brandId), rows.filter((r) => r.enabled).length);
+
+		return tx.insert(prompts).values(rows).returning({ id: prompts.id, enabled: prompts.enabled });
+	});
+
+	await scheduleFirstPromptRuns(inserted.filter((r) => r.enabled).map((r) => r.id));
 	return inserted.length;
 }
 
