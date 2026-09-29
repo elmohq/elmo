@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 describe("openrouter run", () => {
-	it("requests one native web search biased to Germany on the bare model slug", async () => {
+	it("Luna + webSearch: true uses auto tool choice, disabled web plugin, and German search location", async () => {
 		const fetchMock = stubFetch();
 
 		await openrouter.run("chatgpt", "prompt", { webSearch: true, version: "openai/gpt-5.6-luna" });
@@ -81,18 +81,24 @@ describe("openrouter run", () => {
 		expect(body.model).toBe("openai/gpt-5.6-luna");
 		expect(body.messages).toEqual([{ role: "user", content: "prompt" }]);
 		expect(body.max_tokens).toBe(API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter);
-		expectWebSearchContract(body);
+		// Luna with webSearch: tool_choice is "auto" not "required"
+		expect(body.tools).toEqual(GERMAN_WEB_SEARCH_TOOLS);
+		expect(body.tool_choice).toBe("auto");
+		expect(body.max_tool_calls).toBe(1);
+		expect(body.plugins).toEqual([{ id: "web", enabled: false }]);
+		expect(String(body.model)).not.toMatch(/:online$/);
 		expect(Object.keys(body).sort()).toEqual([
 			"max_tokens",
 			"max_tool_calls",
 			"messages",
 			"model",
+			"plugins",
 			"tool_choice",
 			"tools",
 		]);
 	});
 
-	it("drops a legacy terminal :online suffix instead of activating search twice", async () => {
+	it("Luna drops a legacy terminal :online suffix and uses auto tool choice", async () => {
 		const fetchMock = stubFetch();
 
 		await openrouter.run("chatgpt", "prompt", { webSearch: true, version: "openai/gpt-5.6-luna:online" });
@@ -100,20 +106,24 @@ describe("openrouter run", () => {
 		const { body } = sentRequest(fetchMock);
 		expect(body.model).toBe("openai/gpt-5.6-luna");
 		expect(body.tools).toHaveLength(1);
-		expectWebSearchContract(body);
+		expect(body.tool_choice).toBe("auto");
+		expect(body.plugins).toEqual([{ id: "web", enabled: false }]);
 	});
 
-	it("keeps other model variants when removing the :online flag", async () => {
+	it("non-Luna models keep required tool choice", async () => {
 		const fetchMock = stubFetch();
 
 		await openrouter.run("chatgpt", "prompt", { webSearch: true, version: "meta-llama/llama-4-maverick:free:online" });
 
 		const { body } = sentRequest(fetchMock);
 		expect(body.model).toBe("meta-llama/llama-4-maverick:free");
-		expectWebSearchContract(body);
+		expect(body.tools).toEqual(GERMAN_WEB_SEARCH_TOOLS);
+		expect(body.tool_choice).toBe("required");
+		expect(body.max_tool_calls).toBe(1);
+		expect(body).not.toHaveProperty("plugins");
 	});
 
-	it("sends no web tool, location or tool budget when web search is off", async () => {
+	it("Luna sends no web tool or tool budget when web search is off, but still disables the plugin", async () => {
 		const fetchMock = stubFetch();
 
 		await openrouter.run("chatgpt", "prompt", { webSearch: false, version: "openai/gpt-5.6-luna" });
@@ -122,10 +132,15 @@ describe("openrouter run", () => {
 		expect(body.model).toBe("openai/gpt-5.6-luna");
 		expect(body.max_tokens).toBe(API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter);
 		expect(body.messages).toEqual([{ role: "user", content: "prompt" }]);
-		expectNoWebSearch(init.body as string);
+		expect(body.plugins).toEqual([{ id: "web", enabled: false }]);
+		expect(body).not.toHaveProperty("tools");
+		expect(body).not.toHaveProperty("tool_choice");
+		expect(body).not.toHaveProperty("max_tool_calls");
+		expect(init.body).not.toContain("user_location");
+		expect(init.body).not.toContain("web_search");
 	});
 
-	it("also strips a stray :online when web search is off", async () => {
+	it("non-Luna model strips :online and sends no web search when disabled", async () => {
 		const fetchMock = stubFetch();
 
 		await openrouter.run("chatgpt", "prompt", { webSearch: false, version: "openai/gpt-5-mini:online" });
@@ -133,6 +148,7 @@ describe("openrouter run", () => {
 		const { init, body } = sentRequest(fetchMock);
 		expect(body.model).toBe("openai/gpt-5-mini");
 		expectNoWebSearch(init.body as string);
+		expect(body).not.toHaveProperty("plugins");
 	});
 
 	it("rejects a target without a version slug before calling the API", async () => {

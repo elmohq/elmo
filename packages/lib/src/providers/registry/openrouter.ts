@@ -45,8 +45,11 @@ const WEB_SEARCH_USER_LOCATION = Object.freeze({
  * model search 0..N times. `tool_choice: "required"` + `max_tool_calls: 1`
  * pins it back to one mandatory search so tracked runs keep comparable cost
  * and behavior.
+ *
+ * For Luna model: `tool_choice: "auto"` allows the model to decide whether to search (0 or 1),
+ * while keeping other models at `required` for consistency.
  */
-function webSearchRequestFields(): Record<string, unknown> {
+function webSearchRequestFields(toolChoice: "required" | "auto" = "required"): Record<string, unknown> {
 	return {
 		tools: [
 			{
@@ -57,7 +60,7 @@ function webSearchRequestFields(): Record<string, unknown> {
 				},
 			},
 		],
-		tool_choice: "required",
+		tool_choice: toolChoice,
 		max_tool_calls: 1,
 	};
 }
@@ -345,13 +348,29 @@ export const openrouter: Provider = {
 			);
 		}
 		const modelSlug = bareModelSlug(options.version);
+		const isLunaModel = modelSlug === "openai/gpt-5.6-luna";
 
 		const body: Record<string, unknown> = {
 			model: modelSlug,
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
-			...(options.webSearch ? webSearchRequestFields() : {}),
 		};
+
+		// Luna: optional web search with auto tool choice and disabled plugin.
+		// Other models: required search when enabled, for consistency with tracked runs.
+		if (isLunaModel) {
+			// Disable the default OpenRouter web plugin, which could bypass tool_choice: "auto"
+			body.plugins = [{ id: "web", enabled: false }];
+			if (options.webSearch) {
+				// Luna can choose whether to search (0 or 1)
+				Object.assign(body, webSearchRequestFields("auto"));
+			}
+		} else {
+			// Non-Luna models maintain required search behavior
+			if (options.webSearch) {
+				Object.assign(body, webSearchRequestFields("required"));
+			}
+		}
 
 		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema
 		// strips annotations from responses, which contain web search citations.
