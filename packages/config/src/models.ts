@@ -27,6 +27,20 @@ export const KNOWN_MODELS: Record<string, ModelMeta> = {
 	qwen: { label: "Qwen", iconId: "qwen" },
 };
 
+/**
+ * Surfaces that put paid placements next to an answer, and whose scraped payload
+ * carries them. Ads are a property of the consumer product, so a model reached
+ * through its API never has them however it is configured — which is also why
+ * the Ads page counts only these models' runs in its denominator.
+ */
+export const AD_CAPABLE_MODELS = ["chatgpt", "google-ai-mode"] as const;
+
+export type AdCapableModel = (typeof AD_CAPABLE_MODELS)[number];
+
+export function isAdCapableModel(model: string): model is AdCapableModel {
+	return (AD_CAPABLE_MODELS as readonly string[]).includes(model);
+}
+
 export function getModelMeta(model: string): ModelMeta {
 	if (KNOWN_MODELS[model]) return KNOWN_MODELS[model];
 	const label = model
