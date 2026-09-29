@@ -7,10 +7,11 @@ import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { cn } from "@workspace/ui/lib/utils";
 import { Inbox } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { CompetitiveVisibilitySection } from "@/components/competitive-visibility/section";
 import { ALL_MODELS_VALUE } from "@/components/filter-bar";
 import { FilteredListShell } from "@/components/filtered-list-shell";
+import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { PageHeader } from "@/components/page-header";
 import { PromptOrderDropdown } from "@/components/prompt-order-dropdown";
 import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
@@ -21,8 +22,10 @@ import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import type { ChartSubject, LookbackPeriod } from "@/lib/chart-utils";
-import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
+import { coercePromptOrder, orderPrompts, type PromptOrder } from "@/lib/prompt-order";
 import { skeletonRows } from "@/lib/skeleton-rows";
+
+const VISIBILITY_PROMPT_PAGE_SIZE = 10;
 
 interface PromptsDisplayProps {
 	pageTitle: string;
@@ -152,6 +155,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 				modelParam={modelParam}
 				searchQuery={search}
 				selectedTags={tags}
+				order={order}
 				sortedPrompts={sortedPrompts}
 				availableIndividualModels={availableIndividualModels}
 			/>
@@ -170,6 +174,7 @@ function ChartSection({
 	modelParam,
 	searchQuery,
 	selectedTags,
+	order,
 	sortedPrompts,
 	availableIndividualModels,
 }: {
@@ -179,7 +184,8 @@ function ChartSection({
 	modelParam: string | undefined;
 	searchQuery: string;
 	selectedTags: string[];
-	sortedPrompts: { id: string; value: string; firstEvaluatedAt?: Date | string | null }[];
+	order: PromptOrder;
+	sortedPrompts: PromptListItem[];
 	availableIndividualModels: string[];
 }) {
 	const { batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {
@@ -218,6 +224,14 @@ function ChartSection({
 			updatedAt: new Date(),
 		})) || [];
 
+	const paginationScopeKey = JSON.stringify([
+		modelParam ?? ALL_MODELS_VALUE,
+		lookback,
+		selectedTags,
+		searchQuery,
+		order,
+	]);
+
 	return (
 		<ChartDataProvider
 			batchData={batchChartData?.chartData || null}
@@ -227,7 +241,11 @@ function ChartSection({
 			endDate={endDate}
 			isLoading={isLoadingChartData}
 		>
-			<VirtualizedPromptList
+			{/* Keyed on the scope the user can see, so a filter or order change
+			    starts over at page 1 while a background refetch of the same
+			    scope (new array identity, same key) keeps the user's page. */}
+			<PagedPromptList
+				key={paginationScopeKey}
 				prompts={sortedPrompts}
 				brandId={brandId || ""}
 				lookback={lookback}
@@ -236,6 +254,52 @@ function ChartSection({
 				searchHighlight={searchQuery}
 			/>
 		</ChartDataProvider>
+	);
+}
+
+type PromptListItem = { id: string; value: string; firstEvaluatedAt?: Date | string | null };
+
+/** Client-side pages of ten over the complete filtered, ordered list. Only the
+ *  current page reaches the virtualizer; the overview and batch chart query
+ *  above keep the whole scope. */
+function PagedPromptList({
+	prompts,
+	...listProps
+}: {
+	prompts: PromptListItem[];
+	brandId: string;
+	lookback: LookbackPeriod;
+	selectedModel: string;
+	availableModels: string[];
+	searchHighlight: string;
+}) {
+	const { page, setPage, pageItems, pageSize, totalItems } = usePagedList(prompts, VISIBILITY_PROMPT_PAGE_SIZE);
+	const listRef = useRef<HTMLDivElement>(null);
+	// Pages are several viewports tall and the pager sits at the bottom, so an
+	// explicit Previous/Next brings the new page's first card into view. The
+	// flag is set by the pager only: mounting and the hook's clamp never scroll.
+	const revealOnCommit = useRef(false);
+
+	useEffect(() => {
+		if (!revealOnCommit.current) return;
+		revealOnCommit.current = false;
+		listRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+	});
+
+	const handlePageChange = (next: number) => {
+		revealOnCommit.current = next !== page;
+		setPage(next);
+	};
+
+	return (
+		<div>
+			<div ref={listRef} data-testid="visibility-prompt-list" className="scroll-mt-20">
+				<VirtualizedPromptList prompts={pageItems} {...listProps} />
+			</div>
+			<div data-testid="visibility-prompt-pagination">
+				<ListPagination page={page} pageSize={pageSize} totalItems={totalItems} onPageChange={handlePageChange} />
+			</div>
+		</div>
 	);
 }
 
