@@ -1,0 +1,133 @@
+---
+title: "Can ChatGPT and Claude Read a JavaScript-Rendered Website?"
+description: "Most AI crawlers and fetch tools read raw HTML and skip your JavaScript. New agent research shows what that costs when buyers ask AI about your pricing and features."
+date: "2026-10-01"
+author: ai
+metaTitle: "Can AI Agents Read JavaScript Websites? (2026 Evidence)"
+tags:
+  - aeo
+  - technical-seo
+  - ai-crawlers
+definedTerms:
+  - term: Agent experience (AX)
+    definition: "Agent experience is how easily an AI agent can fetch and read a business's own website: whether the content survives without JavaScript, whether bot controls let the agent in, and whether key facts like pricing and setup are reachable as text."
+  - term: Raw HTML
+    definition: "Raw HTML is the document a server returns before any JavaScript runs. It is what a plain HTTP fetch receives, and what most AI crawlers and agent fetch tools read."
+howTo:
+  name: "How to check whether AI agents can read your site"
+  description: "Test the pages AI agents fetch when buyers ask about your business, and fix the facts that only appear after JavaScript runs."
+  steps:
+    - name: List the facts buyers ask AI about you
+      text: "Write down the specific facts a buyer would ask an assistant to look up on your site: plan names and prices, key features and limits, integrations, and how setup works. These are the questions where an agent goes to your pages instead of answering from memory."
+    - name: Fetch each page without JavaScript
+      text: "Request each page with a plain HTTP client such as curl, or view source in a browser with JavaScript disabled, and search the response for each fact. If the price or feature list is not in that text, a non-rendering agent cannot see it."
+    - name: Check bot controls separately from robots.txt
+      text: "Request the same pages with AI user-agents such as ChatGPT-User, Claude-User, and OAI-SearchBot. A firewall or bot-management rule can return a 403 or a challenge page even when robots.txt allows the bot."
+    - name: Server-render the pages that carry the facts
+      text: "Move pricing, feature, and setup content into server-rendered or prerendered HTML first. You do not need to rebuild the whole site; the pages agents fetch for site-anchored questions matter most."
+    - name: Ask the agents the same questions again
+      text: "After the fix, ask ChatGPT, Claude, and Perplexity the buyer questions from step one and check whether the answer now uses your own pages and states the facts correctly."
+faq:
+  - question: Can ChatGPT read JavaScript-rendered websites?
+    answer: "Mostly no, as of 2026. Vercel and MERJ's December 2024 analysis of hundreds of millions of crawler fetches found that ChatGPT's and Claude's crawlers download JavaScript files but do not execute them. One publisher's server logs show OpenAI's OAI-SearchBot and GPTBot starting to render pages on 25 September 2026, but OpenAI has not documented the change, so treat content that only appears after JavaScript runs as invisible to ChatGPT until it is confirmed."
+  - question: Does Claude render JavaScript when it fetches a page?
+    answer: "Not with its standard web fetch tool. Anthropic's documentation states that the web fetch tool 'currently does not support websites dynamically rendered with JavaScript' and points developers to a separate browser tool for pages that need a real browser."
+  - question: Do Google AI Overviews see JavaScript content?
+    answer: "Generally yes, because AI Overviews and AI Mode draw on Google's index, and Googlebot renders JavaScript before indexing. Google says a page only needs to be indexed and eligible for a snippet to appear in its AI features. The rendering gap matters most for ChatGPT, Claude, Perplexity, and agents built on their APIs."
+  - question: Does AI answer questions about my business from training data or my website?
+    answer: "Increasingly from the web. In a 2026 preprint covering 37,927 agent journeys across 1,056 businesses, only 7–10% of each finished answer came from the model's training knowledge, compared with 52% for gpt-4.1 in early 2025. When an agent is asked about your pricing or setup, it goes looking, and what it can read on your site shapes the answer."
+  - question: What happens when an AI agent cannot read my site?
+    answer: "It usually leaves things out rather than making them up. In the same preprint, answers built from web search instead of the business's own site left requested facts unmentioned 45% of the time versus 29%, while outright wrong statements rose only from 4% to 6%. The agent also searched more, hedged more, and was more likely to say it could not access the site."
+---
+
+**When a buyer asks an AI assistant what your product costs, the assistant now goes and looks.** Whether it finds the answer depends on something most marketing teams never check: whether your pricing page exists before JavaScript runs. Most AI crawlers and agent fetch tools read only the raw HTML your server sends. If your plans, prices, or feature tables are assembled in the browser, those agents see an empty shell and build the answer from whatever third parties wrote about you instead.
+
+**Key takeaways**
+
+- ChatGPT's and Claude's crawlers fetch JavaScript files but do not run them, according to [Vercel and MERJ's analysis](https://vercel.com/blog/the-rise-of-the-ai-crawler) of more than 900 million monthly fetches. Googlebot and AppleBot do render.
+- Anthropic's [web fetch tool documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-fetch-tool) says it plainly: it "currently does not support websites dynamically rendered with JavaScript."
+- A September 2026 [preprint](https://arxiv.org/abs/2609.34951) across 37,927 agent journeys found sites that agents can read had 78% of answers built from their own pages, against 58% for sites they could not, and were clearly recommended 20% of the time against 11%.
+- The cost of being unreadable is omission, not fabrication: requested facts went unmentioned 45% of the time when the answer was built from the web, versus 29% from the site.
+- The preprint's authors sell the scoring tool it uses, its readiness score bundles JavaScript with bot controls and llms.txt, and it does not isolate which one matters. Read the 1.9× as an upper bound.
+- The fix that matters is narrow: make sure the facts buyers ask about are in server-rendered HTML, and that your firewall lets the user-facing agents through.
+
+## Do AI crawlers run JavaScript?
+
+Mostly not, and the best large-scale evidence is still the network-level view. In December 2024, Vercel and MERJ published an analysis of crawler traffic across Vercel's network: in one month, GPTBot made 569 million fetches and Anthropic's crawler 370 million. JavaScript files made up 11.5% of ChatGPT's requests and 23.8% of Claude's, but neither crawler executed them. In Vercel's words, they "can't read client-side rendered content." The exceptions were Gemini, which uses Googlebot's rendering infrastructure, and AppleBot.
+
+The agent tools tell the same story from the other side. Anthropic's web fetch tool, which Claude uses to read a specific page during a conversation, returns the page's text and states that it does not support JavaScript-rendered sites; developers who need rendering are directed to a separate browser tool that their own application has to drive. The tool also refuses URLs blocked by `robots.txt`, so a crawl rule and a rendering problem fail the same way from the buyer's point of view: no content.
+
+Google is the odd one out. Its [AI features documentation](https://developers.google.com/search/docs/appearance/ai-features) says that to appear in AI Overviews or AI Mode, "a page must be indexed and eligible to be shown in Google Search with a snippet," and that "there are no additional requirements." Because Googlebot renders JavaScript before indexing, a client-rendered site that already ranks in Google is usually readable to Google's AI answers. The gap is ChatGPT, Claude, Perplexity, and the growing number of agents built on their APIs.
+
+## The conflicting evidence: did OpenAI just start rendering?
+
+There is one recent signal pointing the other way, and it deserves a straight reading. A developer [published server logs](https://dev.to/hisashispace/traffic-from-chatgpt-jumped-is-it-because-its-crawlers-now-run-javascript-5961) showing OAI-SearchBot requests to their sites jumping from 1,253 on 22 September 2026 to 41,444 on 25 September, and GPTBot from 83 to 28,484. By 28 September, 84% of OAI-SearchBot requests and 97% of GPTBot requests were Next.js prefetch URLs that do not appear in the raw HTML. A browser only generates those after running the page's scripts. On non-Next.js sites, OAI-SearchBot started pulling images and CSS the same day.
+
+That is good evidence that at least some OpenAI crawling now renders pages. It does not overturn the planning assumption, for three reasons:
+
+1. **It is one publisher's logs over one week.** Vercel's data covered a whole hosting network. Rendering could be partial, sampled, or experimental.
+2. **OpenAI's [crawler documentation](https://developers.openai.com/api/docs/bots) says nothing about rendering.** Until it does, there is no commitment about which pages get rendered or how often.
+3. **Index crawlers and live agents are different systems.** OAI-SearchBot builds a search index ahead of time. When a buyer asks ChatGPT to check your pricing right now, the page fetch comes from a user-triggered agent, and nobody has shown that it renders.
+
+The decision rule: if a fact matters to a buyer, assume a non-rendering agent will be the one reading it. Rendering is a bonus you might get, not a dependency to build on.
+
+## What unreadable sites cost: the agent journey data
+
+The question that matters to a marketing team is whether any of this changes what AI says about the brand. The most direct evidence is "[AX is the New AEO](https://arxiv.org/abs/2609.34951)," a preprint posted on 28 September 2026 by Ido Finder, Assaf Elovic, Gad Shalev, and Liad Yosef of ora.
+
+They ran 37,927 agent journeys across four harnesses (Claude Agent SDK with Claude Sonnet 4.6, Claude Code with Haiku 4.5, and two GPT-5.4-class agents using Tavily search) against 1,056 real businesses. Each journey was a site-anchored buyer question about pricing, features, or setup, such as "Can you find out what subscription options are available at {domain} and what they cost?" Businesses were split 528 and 528 by an agent-readiness score that covers content surviving without JavaScript, structured data, machine-readable entry points, reachable pricing and docs, and bot controls. Each agent-ready business was paired with a not-agent-ready one in the same vertical and fame band.
+
+| Measure | Agent-ready sites | Not agent-ready |
+|---|---|---|
+| Share of the answer built from the business's own pages | 78% | 58% |
+| Share built from web search | 12% | 25% |
+| Clearly recommended (both judges' top grade) | 20% | 11% |
+| Web searches per journey (most vs least accessible) | 1.8 | 4.5 |
+
+Two other findings change how to think about the risk.
+
+**Training data barely matters anymore for these questions.** Across all four harnesses, only 7–10% of the finished answer came from the model's own knowledge, whether or not the site was readable. The authors measured 52% for gpt-4.1 in early 2025 and 14% for gpt-5.6. A brand that relies on "the model already knows us" is relying on a shrinking slice of the answer.
+
+**The failure is silence, not lies.** When answers were built from the web rather than the site, requested facts went unmentioned 45% of the time versus 29%, while stated-wrong facts rose only from 4% to 6%. Answers about unreadable sites were 4.4× more likely to admit the agent could not access the site and 3.0× more likely to vouch for the business using secondhand sources. That second pattern is where your [third-party footprint](/blog/where-ai-citations-come-from) takes over the answer, for better or worse. It also connects to what we found about [whether AI fact-checks what it reads](/blog/ai-search-fact-checking): if the agent cannot reach your page, a reseller's stale price list becomes the record.
+
+## What the preprint does not prove
+
+The headline numbers are stronger than the design supports, and the paper's own limitations section names most of the reasons.
+
+- **The authors sell the instrument.** All four work at ora, which built the agent-readiness ranker used to split the groups. That does not make the data wrong, but it is not independent.
+- **The middle was thrown out.** Sites scoring between 0.50 and 0.65 were excluded as ambiguous. Comparing only the clearly ready with the clearly unready widens the gap you would see across a real portfolio of sites.
+- **JavaScript is not isolated.** Readiness is treated as one bundled score. The paper does not report whether no-JS content, bot blocking, llms.txt, or structured data drove the effect. Separate evidence suggests [llms.txt does little on its own](/blog/do-llms-txt-files-matter-for-aeo), so the bundle's effect is unlikely to be spread evenly.
+- **Content depth is not matched.** The authors acknowledge that businesses that block agents may simply publish less. Thin sites and unreadable sites overlap.
+- **Accuracy rests on a small sample.** The "41% more accurate" figure (48.3% vs 34.3% graded accuracy) compares site-built and web-built answers for the same business. It was graded on 131 businesses, and the group-level accuracy contrast was not significant at that size.
+- **The recommendation lift is small in absolute terms.** 1.9× sounds large; it is the difference between one answer in nine and one in five. That is meaningful in a competitive category, but it is not a guarantee of being recommended.
+
+Small inconsistencies are worth noting too: the abstract gives 56% for the not-agent-ready own-page share, while the results section gives 58%. The cohort is also SaaS- and commerce-heavy, English-first, and limited to fact lookups, not open-ended "best tool for X" questions.
+
+## Reconciling the sources
+
+Put the four sources side by side and they agree on more than the trade coverage suggests.
+
+| Source | What it measures | What it says about JavaScript |
+|---|---|---|
+| Vercel and MERJ (Dec 2024) | Network-wide crawler logs | ChatGPT and Claude crawlers fetch JS but do not run it; Googlebot and AppleBot render |
+| Anthropic web fetch docs (2026) | The fetch tool Claude agents use | Does not support JavaScript-rendered sites |
+| Single-publisher logs (Sep 2026) | OpenAI crawler behavior on a few sites | OAI-SearchBot and GPTBot began rendering on 25 September |
+| ora preprint (Sep 2026) | 37,927 agent journeys | Agents mostly do not execute JavaScript by default; readable sites shape more of the answer |
+
+The disagreement is narrower than it looks. OpenAI's index crawlers may now render some pages; the live fetch tools agents use to answer a specific question still largely do not. Google renders and always has. So the risk sits in one place: site-anchored questions answered by non-Google assistants and agents, which are exactly the questions closest to a purchase.
+
+## How to decide whether you need to act
+
+You do not need to re-platform a site to fix this. Run the check in the steps above on the handful of pages agents fetch for buyer questions: pricing, the main product or features page, integrations, and setup or getting-started docs. Then apply a simple rule:
+
+- **Facts are in the raw HTML and AI user-agents get a 200:** you are fine. Spend the effort on [earning third-party mentions](/blog/ai-citations) instead.
+- **Facts are missing from the raw HTML:** server-render or prerender those pages first. This is the case the agent data speaks to most directly.
+- **Facts are present but AI user-agents get a 403 or challenge page:** the problem is your firewall or bot-management settings, not your framework. [Robots.txt](/blog/robots-txt-ai-crawlers) is only one of the controls, and [blocking at the network edge](/blog/how-many-websites-block-ai-crawlers) is common.
+
+[Structured data](/blog/structured-data-for-ai-search) helps only if it is in the server response too. JSON-LD injected by a tag manager after load has the same problem as the content it describes.
+
+## Measure the answer, not the page
+
+A clean `curl` response tells you the agent could read your page. It does not tell you what the agent then said. The only way to know whether a fix changed the answer is to keep asking the engines the same buyer questions and record whether they cite your pages, state your prices correctly, and recommend you.
+
+[Elmo](https://www.elmohq.com/) is an open-source AI visibility platform that runs your prompts across ChatGPT, Claude, Gemini, Perplexity, and Google's AI Overviews, and records every mention, citation, and cited URL. Add the site-anchored pricing and setup questions to your prompt set before you ship a rendering fix, and you get a before-and-after you can show the engineering team that did the work. For the method, start with [how to track your brand in AI search](/answer-engine-optimization), and see the [AI search glossary](/glossary) for the terms.
