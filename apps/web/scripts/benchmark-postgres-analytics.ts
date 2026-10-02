@@ -3,7 +3,7 @@
 /**
  * Benchmark: Postgres analytics query performance.
  *
- * Imports the production functions from postgres-read.ts and measures
+ * Imports the production functions from rollup-read.ts and measures
  * their latency across the top N brands.
  *
  * Usage:
@@ -15,7 +15,7 @@
 
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import * as pgRead from "../src/lib/postgres-read";
+import * as pgRead from "../src/lib/rollup-read";
 
 const db = drizzle(process.env.DATABASE_URL!);
 
@@ -80,7 +80,6 @@ async function benchBrand(brandId: string, runCount: number, hasCitations: boole
 	const toDate = new Date().toISOString().split("T")[0];
 	const fromDate = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
 	const tz = "UTC";
-	const brandedPromptIds = promptIds.slice(0, Math.ceil(promptIds.length / 2));
 
 	console.log(`\n### Brand: ${brandId.slice(0, 8)}... (${runCount} runs, ${promptIds.length} prompts)\n`);
 
@@ -88,12 +87,6 @@ async function benchBrand(brandId: string, runCount: number, hasCitations: boole
 
 	results.push(
 		await bench("getDashboardSummary", () => pgRead.getDashboardSummary(brandId, fromDate, toDate, tz, promptIds)),
-	);
-
-	results.push(
-		await bench("getVisibilityTimeSeries", () =>
-			pgRead.getVisibilityTimeSeries(brandId, fromDate, toDate, tz, brandedPromptIds, promptIds),
-		),
 	);
 
 	results.push(await bench("getPromptsSummary", () => pgRead.getPromptsSummary(brandId, fromDate, toDate, tz)));

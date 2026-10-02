@@ -29,6 +29,10 @@ import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/sch
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
+import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
+import { lookbackSchema } from "@/lib/lookback";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -36,11 +40,7 @@ import {
 	getPerPromptDailyCitationClasses,
 	type PerPromptCitationPageRow,
 	type PerPromptDailyCitationClassRow,
-} from "@/lib/analytics-read";
-import { requireBrandSession } from "@/lib/auth/helpers";
-import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
-import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
-import { lookbackSchema } from "@/lib/lookback";
+} from "@/lib/rollup-read";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 

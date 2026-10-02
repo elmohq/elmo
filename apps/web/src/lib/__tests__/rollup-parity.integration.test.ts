@@ -1,12 +1,3 @@
-/**
- * ROLLUP_TEST_DATABASE_URL must equal DATABASE_URL, since `@workspace/lib/db/db`
- * reads DATABASE_URL at import time:
- *
- *   DATABASE_URL=postgres://postgres@127.0.0.1:54329/elmo_test \
- *   ROLLUP_TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/elmo_test \
- *   pnpm --filter @workspace/web test
- */
-
 import { classifyUrl } from "@workspace/lib/citations/domain-lists";
 import { rollUpCitationUrls } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
@@ -18,15 +9,16 @@ import {
 	rollupDirty,
 	rollupPromptRuns,
 } from "@workspace/lib/db/schema";
-import { setPipelineState } from "@workspace/lib/rollups";
+import { bucketStart } from "@workspace/lib/rollups";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { LookbackPeriod } from "@/lib/lookback";
-import type { CitationDomainStats, PerPromptCitationPageRow } from "@/lib/postgres-read";
-import * as rawRead from "@/lib/postgres-read";
+import { countPromptRuns, getResponseMatches } from "@/lib/postgres-read";
+import type { CitationDomainStats, PerPromptCitationPageRow } from "@/lib/rollup-read";
 import * as rollupRead from "@/lib/rollup-read";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { deletePrompt } from "@/server/prompts-core";
+import * as rawRead from "@/test/raw-analytics-reads";
 import {
 	ALL_PROMPT_IDS,
 	BRAND_ID,
@@ -34,26 +26,9 @@ import {
 	NOW,
 	PROMPTS,
 	reset,
+	SEED_RUNS,
 	seedAndRebuild,
-} from "./analytics-read.integration.helpers";
-
-const connectionString = process.env.ROLLUP_TEST_DATABASE_URL;
-
-function assertSafeTestDatabase(url: string): void {
-	if (url !== process.env.DATABASE_URL) {
-		throw new Error(
-			"ROLLUP_TEST_DATABASE_URL must equal DATABASE_URL — @workspace/lib/db/db reads DATABASE_URL at import " +
-				"time, so a mismatch here means the functions under test and this file's own setup/teardown would " +
-				"silently talk to two different databases.",
-		);
-	}
-	const host = new URL(url).hostname;
-	if (host !== "127.0.0.1" && host !== "localhost") {
-		throw new Error(`refusing to run analytics-read integration tests against non-local host "${host}"`);
-	}
-}
-
-if (connectionString) assertSafeTestDatabase(connectionString);
+} from "./rollup-parity.fixtures";
 
 // Ties in an ORDER BY aren't stable, so rows are compared as a sorted set.
 
@@ -349,6 +324,30 @@ const EQUIVALENCE_CASES: EquivalenceCase[] = [
 			expectSameRows(label, rollupRows, rawRows);
 		},
 	},
+	{
+		name: "countResponses",
+		async check(combo, label) {
+			const scope = {
+				brandId: BRAND_ID,
+				fromDate: combo.fromDateStr,
+				toDate: combo.toDateStr,
+				timezone: combo.timezone,
+				promptIds: combo.promptIds,
+				model: combo.model,
+			};
+			expect(await rollupRead.countResponses(scope), label).toBe(await rawRead.countResponses(scope));
+		},
+	},
+	{
+		name: "getPromptsFirstEvaluatedAt",
+		async check(combo, label) {
+			const [rollupRows, rawRows] = await Promise.all([
+				rollupRead.getPromptsFirstEvaluatedAt(BRAND_ID, combo.promptIds),
+				rawRead.getPromptsFirstEvaluatedAt(BRAND_ID, combo.promptIds),
+			]);
+			expectSameRows(label, rollupRows, rawRows);
+		},
+	},
 ];
 
 // Windows are resolved inside each test because "all" depends on data seeded in beforeEach.
@@ -391,13 +390,13 @@ function buildCombos(): ComboSpec[] {
 
 const COMBOS = buildCombos();
 
-describe.skipIf(!connectionString)("analytics-read integration", () => {
+describe("rollup reads against raw", () => {
 	beforeEach(async () => {
 		await reset(db);
 		await seedAndRebuild(db);
 	});
 
-	describe("read equivalence: rollup-read matches postgres-read", () => {
+	describe("read equivalence: rollup-read matches the raw reference", () => {
 		for (const combo of COMBOS) {
 			it(combo.label, async () => {
 				const window = await resolveBrandWindow(BRAND_ID, combo.lookback, combo.timezone, { now: NOW });
@@ -443,71 +442,6 @@ describe.skipIf(!connectionString)("analytics-read integration", () => {
 		}
 	});
 
-	describe("facade gating", () => {
-		it("reads raw before the backfill completes and rollups (even if stale) once it has", async () => {
-			await db.insert(promptRuns).values({
-				id: "eeeeeeee-0000-4000-8000-999999999999",
-				promptId: PROMPTS[0].id,
-				brandId: BRAND_ID,
-				model: "chatgpt",
-				provider: null,
-				version: "1",
-				webSearchEnabled: false,
-				rawOutput: { text: "seed" },
-				brandMentioned: true,
-				competitorsMentioned: [],
-				createdAt: new Date("2026-07-05T12:00:00.000Z"),
-			});
-
-			const rawTotal = (await rawRead.getDashboardSummary(BRAND_ID, "2026-07-01", "2026-07-11", "UTC"))[0].total_runs;
-			const staleRollupTotal = (await rollupRead.getDashboardSummary(BRAND_ID, "2026-07-01", "2026-07-11", "UTC"))[0]
-				.total_runs;
-			expect(rawTotal, "sanity: the extra run should be visible to raw but not yet to the rollup").not.toBe(
-				staleRollupTotal,
-			);
-
-			await setPipelineState(db, { backfillCompletedAt: null });
-			vi.resetModules();
-			const notReady = await import("@/lib/analytics-read");
-			const notReadyTotal = (await notReady.getDashboardSummary(BRAND_ID, "2026-07-01", "2026-07-11", "UTC"))[0]
-				.total_runs;
-			expect(notReadyTotal).toBe(rawTotal);
-
-			await setPipelineState(db, { backfillCompletedAt: new Date() });
-			vi.resetModules();
-			const ready = await import("@/lib/analytics-read");
-			const readyTotal = (await ready.getDashboardSummary(BRAND_ID, "2026-07-01", "2026-07-11", "UTC"))[0].total_runs;
-			expect(readyTotal).toBe(staleRollupTotal);
-		});
-
-		it("getPerPromptDailyCitationClasses agrees whether or not the backfill has finished", async () => {
-			const window = await resolveBrandWindow(BRAND_ID, "1m", "UTC", { now: NOW });
-
-			vi.resetModules();
-			const ready = await import("@/lib/analytics-read");
-			const readyRows = await ready.getPerPromptDailyCitationClasses(
-				BRAND_ID,
-				window.fromDateStr,
-				window.toDateStr,
-				"UTC",
-				ALL_PROMPT_IDS,
-			);
-
-			await setPipelineState(db, { backfillCompletedAt: null });
-			vi.resetModules();
-			const notReady = await import("@/lib/analytics-read");
-			const fallbackRows = await notReady.getPerPromptDailyCitationClasses(
-				BRAND_ID,
-				window.fromDateStr,
-				window.toDateStr,
-				"UTC",
-				ALL_PROMPT_IDS,
-			);
-
-			expectSameRows("getPerPromptDailyCitationClasses ready vs. not-ready fallback", readyRows, fallbackRows);
-		});
-	});
-
 	describe("prompt deletion", () => {
 		it("removes the prompt's rollup rows in the same stroke as its raw rows, leaving other prompts untouched", async () => {
 			const promptId = PROMPTS[2].id;
@@ -542,6 +476,12 @@ describe.skipIf(!connectionString)("analytics-read integration", () => {
 	});
 
 	describe("resolveBrandWindow", () => {
+		it("finds the brand's earliest run where the raw rows do", async () => {
+			expect(await rollupRead.getBrandEarliestRunDate(BRAND_ID)).toEqual(
+				await rawRead.getBrandEarliestRunDate(BRAND_ID),
+			);
+		});
+
 		it("opens the 'all' window at the brand's earliest run, read as a calendar day in the viewer's timezone", async () => {
 			// The earliest run, 2026-07-01T06:59:00Z, is still June 30 in Los Angeles.
 			expect((await resolveBrandWindow(BRAND_ID, "all", "UTC", { now: NOW })).fromDateStr).toBe("2026-07-01");
@@ -549,6 +489,95 @@ describe.skipIf(!connectionString)("analytics-read integration", () => {
 			expect((await resolveBrandWindow(BRAND_ID, "all", "America/Los_Angeles", { now: NOW })).fromDateStr).toBe(
 				"2026-06-30",
 			);
+		});
+	});
+
+	describe("live prompts only", () => {
+		it("ignores rollup rows left behind by a prompt the brand no longer has", async () => {
+			const before = await rollupRead.getDashboardSummary(BRAND_ID, null, null, "UTC");
+			// What a prompt deleted by a release without rollups leaves behind.
+			await db.insert(rollupPromptRuns).values({
+				brandId: BRAND_ID,
+				bucket: new Date("2026-06-01T00:00:00.000Z"),
+				promptId: "dddddddd-0000-4000-8000-0000000000ff",
+				model: "chatgpt",
+				provider: "",
+				webSearchEnabled: false,
+				runs: 5,
+				brandMentionedRuns: 5,
+				competitorRuns: 0,
+				competitorMentions: 0,
+				noMentionRuns: 0,
+				firstRunAt: new Date("2026-06-01T00:01:00.000Z"),
+				lastRunAt: new Date("2026-06-01T00:02:00.000Z"),
+			});
+
+			expect(await rollupRead.getDashboardSummary(BRAND_ID, null, null, "UTC")).toEqual(before);
+			expect(await rollupRead.getBrandEarliestRunDate(BRAND_ID)).toEqual(
+				await rawRead.getBrandEarliestRunDate(BRAND_ID),
+			);
+		});
+	});
+
+	// Local midnight here falls mid-bucket, so the rollups put a run from the first
+	// quarter hour of a day on the day before, and every window agrees with that.
+	describe("a timezone whose midnight isn't on a bucket boundary", () => {
+		const timezone = "Asia/Kathmandu";
+		const OFFSET_MS = (5 * 60 + 45) * 60 * 1000;
+		const attributedDay = (createdAt: string) =>
+			new Date(bucketStart(new Date(createdAt)).getTime() + OFFSET_MS).toISOString().slice(0, 10);
+		const trueLocalDay = (createdAt: string) => new Date(Date.parse(createdAt) + OFFSET_MS).toISOString().slice(0, 10);
+		const totalRuns = async (from: string, to: string) =>
+			(await rollupRead.getBrandMentionTotals(BRAND_ID, from, to, timezone)).total_runs;
+
+		it("seeds runs in the first quarter hour of a local day", () => {
+			expect(SEED_RUNS.some((run) => attributedDay(run.createdAt) !== trueLocalDay(run.createdAt))).toBe(true);
+		});
+
+		it("puts each run on the local day its bucket starts on", async () => {
+			const rows = await rollupRead.getPerPromptDailyMentions(
+				BRAND_ID,
+				"2026-06-30",
+				"2026-07-11",
+				timezone,
+				ALL_PROMPT_IDS,
+			);
+			const byDay: Record<string, number> = {};
+			for (const row of rows) byDay[row.date] = (byDay[row.date] ?? 0) + row.brand_mentions;
+			const expected: Record<string, number> = {};
+			for (const run of SEED_RUNS.filter((r) => r.brandMentioned)) {
+				const day = attributedDay(run.createdAt);
+				expected[day] = (expected[day] ?? 0) + 1;
+			}
+			expect(byDay).toEqual(expected);
+		});
+
+		it("counts every run once across adjacent windows", async () => {
+			const whole = await totalRuns("2026-06-30", "2026-07-11");
+			expect(whole).toBe(SEED_RUNS.length);
+			for (const split of ["2026-07-02", "2026-07-05", "2026-07-08"]) {
+				const dayBefore = new Date(Date.parse(split) - 86_400_000).toISOString().slice(0, 10);
+				expect((await totalRuns("2026-06-30", dayBefore)) + (await totalRuns(split, "2026-07-11"))).toBe(whole);
+			}
+		});
+
+		it("windows raw run lists the same way", async () => {
+			for (const [from, to] of [
+				["2026-07-02", "2026-07-02"],
+				["2026-07-03", "2026-07-06"],
+			]) {
+				const scope = { brandId: BRAND_ID, fromDate: from, toDate: to, timezone, promptIds: ALL_PROMPT_IDS };
+				const expected = SEED_RUNS.filter((run) => {
+					const day = attributedDay(run.createdAt);
+					return day >= from && day <= to;
+				}).length;
+				const [firstMatch] = await getResponseMatches(scope, 1, 0);
+				expect(firstMatch?.matched ?? 0).toBe(expected);
+				expect(await rollupRead.countResponses(scope)).toBe(expected);
+				let listed = 0;
+				for (const promptId of ALL_PROMPT_IDS) listed += await countPromptRuns(promptId, from, to, timezone);
+				expect(listed).toBe(expected);
+			}
 		});
 	});
 });

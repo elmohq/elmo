@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getBrandEarliestRunDate = vi.hoisted(() => vi.fn<(brandId: string) => Promise<string | null>>());
-vi.mock("@/lib/postgres-read", () => ({ getBrandEarliestRunDate }));
+vi.mock("@/lib/rollup-read", () => ({ getBrandEarliestRunDate }));
 
 const { resolveBrandLookbackDays, resolveBrandWindow } = await import("@/server/brand-window");
 

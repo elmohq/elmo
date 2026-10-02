@@ -11,13 +11,17 @@ import {
 	organization,
 	promptRuns,
 	prompts,
+	rollupCitationUrls,
+	rollupCompetitorMentions,
+	rollupDirty,
+	rollupPromptRuns,
 	SYSTEM_TAGS,
 } from "@workspace/lib/db/schema";
-import { rebuildRange, setPipelineState } from "@workspace/lib/rollups";
-import { sql } from "drizzle-orm";
+import { rebuildRange } from "@workspace/lib/rollups";
+import { eq } from "drizzle-orm";
 
-export const ORG_ID = "org-analytics-read-test";
-export const BRAND_ID = "brand-analytics-read-test";
+export const ORG_ID = "org-rollup-parity-test";
+export const BRAND_ID = "brand-rollup-parity-test";
 
 export const NOW = new Date("2026-07-11T12:00:00.000Z");
 
@@ -58,6 +62,8 @@ const MODEL_VARIANTS: { model: string; provider: string | null; webSearchEnabled
 	{ model: "chatgpt", provider: null, webSearchEnabled: false },
 	{ model: "claude", provider: null, webSearchEnabled: false },
 	{ model: "gemini", provider: null, webSearchEnabled: false },
+	// Searched, but recorded before runs carried a provider: still the standard model.
+	{ model: "chatgpt", provider: null, webSearchEnabled: true },
 ];
 
 // Just before midnight in UTC, Asia/Kolkata, and America/Los_Angeles (PDT, hence July),
@@ -182,24 +188,29 @@ export const SEED_CITATIONS: SeedCitation[] = buildSeedCitations();
 export const REBUILD_FROM = new Date("2026-07-01T00:00:00.000Z");
 export const REBUILD_TO = new Date("2026-07-11T00:00:00.000Z");
 
+/** Removes only this brand, so other test files can share the database. */
 export async function reset(db: DbConnection): Promise<void> {
-	await db.execute(sql`
-		TRUNCATE citations, prompt_runs, prompts, competitors, brands, organization,
-			rollup_prompt_runs, rollup_competitor_mentions, rollup_citation_urls, cited_pages, rollup_dirty
-		RESTART IDENTITY CASCADE
-	`);
-	await db.execute(sql`INSERT INTO pipeline_state (id) VALUES (1) ON CONFLICT DO NOTHING`);
-	await db.execute(sql`
-		UPDATE pipeline_state
-		SET backfill_enqueued_at = NULL, backfill_completed_at = NULL, rollup_version = 0, classifier_version = 0
-	`);
+	for (const table of [
+		rollupPromptRuns,
+		rollupCompetitorMentions,
+		rollupCitationUrls,
+		rollupDirty,
+		citations,
+		promptRuns,
+	]) {
+		await db.delete(table).where(eq(table.brandId, BRAND_ID));
+	}
+	await db.delete(prompts).where(eq(prompts.brandId, BRAND_ID));
+	await db.delete(competitors).where(eq(competitors.brandId, BRAND_ID));
+	await db.delete(brands).where(eq(brands.id, BRAND_ID));
+	await db.delete(organization).where(eq(organization.id, ORG_ID));
 }
 
 export async function seed(db: DbConnection): Promise<void> {
 	await db.insert(organization).values({
 		id: ORG_ID,
-		name: "Analytics Read Test Org",
-		slug: "analytics-read-test-org",
+		name: "Rollup Parity Test Org",
+		slug: "rollup-parity-test-org",
 		createdAt: new Date("2026-01-01T00:00:00.000Z"),
 	});
 	await db.insert(brands).values({
@@ -263,5 +274,4 @@ export async function seed(db: DbConnection): Promise<void> {
 export async function seedAndRebuild(db: DbConnection): Promise<void> {
 	await seed(db);
 	await rebuildRange(db, BRAND_ID, REBUILD_FROM, REBUILD_TO);
-	await setPipelineState(db, { backfillCompletedAt: new Date() });
 }

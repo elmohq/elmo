@@ -1,7 +1,19 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@workspace/lib/db/db";
-import { brands, citations, competitors, organization, promptRuns, prompts } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
+import {
+	brands,
+	citations,
+	competitors,
+	organization,
+	promptRuns,
+	prompts,
+	rollupCitationUrls,
+	rollupCompetitorMentions,
+	rollupDirty,
+	rollupPromptRuns,
+} from "@workspace/lib/db/schema";
+import { bucketEnd, bucketStart, rebuildRange } from "@workspace/lib/rollups";
+import { eq, max, min } from "drizzle-orm";
 
 /**
  * Every fixture brand gets its own organization and random ids, so test files
@@ -22,6 +34,9 @@ export async function createBrand(opts: { name?: string; website?: string; addit
 }
 
 export async function deleteBrand(brandId: string) {
+	for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupCitationUrls, rollupDirty]) {
+		await db.delete(table).where(eq(table.brandId, brandId));
+	}
 	await db.delete(citations).where(eq(citations.brandId, brandId));
 	await db.delete(promptRuns).where(eq(promptRuns.brandId, brandId));
 	await db.delete(prompts).where(eq(prompts.brandId, brandId));
@@ -67,7 +82,7 @@ export async function createRun(
 		brandMentioned: boolean;
 		competitors?: string[];
 		model?: string;
-		provider?: string;
+		provider?: string | null;
 		webSearch?: boolean;
 		webQueries?: string[];
 	},
@@ -80,7 +95,7 @@ export async function createRun(
 			promptId,
 			brandId,
 			model,
-			provider: opts.provider ?? "brightdata",
+			provider: opts.provider === undefined ? "brightdata" : opts.provider,
 			version: "test",
 			webSearchEnabled: opts.webSearch ?? true,
 			rawOutput: {},
@@ -109,4 +124,14 @@ export async function createCitation(
 		citationIndex: opts.index ?? 1,
 		createdAt: run.createdAt,
 	});
+}
+
+/** Brings the brand's rollups up to date with its raw rows, as the worker's refresh would. */
+export async function rebuildRollups(brandId: string) {
+	const [span] = await db
+		.select({ first: min(promptRuns.createdAt), last: max(promptRuns.createdAt) })
+		.from(promptRuns)
+		.where(eq(promptRuns.brandId, brandId));
+	if (!span?.first || !span.last) return;
+	await rebuildRange(db, brandId, bucketStart(span.first), bucketEnd(span.last));
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
- * Checks that rollup-read.ts returns the same results as postgres-read.ts, and
- * times both. Citation URL rows are folded through `rollUpCitationUrls` first
+ * Checks that rollup-read.ts returns the same results as the raw reference reads in
+ * src/test/raw-analytics-reads.ts, and times both. Citation URL rows are folded through `rollUpCitationUrls` first
  * because raw rows are pre-fold. `getCitationDomainStats` compares only
  * `domain`/`count`: `example_title` intentionally answers a different question
  * once rollups are live ("most-cited page" vs "most recently cited").
@@ -15,8 +15,8 @@ import { rollUpCitationUrls } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { sql } from "drizzle-orm";
 import { getBoundedLookbackRange } from "@/lib/timezone-utils";
-import * as rawRead from "../src/lib/postgres-read";
 import * as rollupRead from "../src/lib/rollup-read";
+import * as rawRead from "../src/test/raw-analytics-reads";
 
 if (!process.env.DATABASE_URL) {
 	console.error("DATABASE_URL must be set explicitly (no .env is loaded). Refusing to run.");

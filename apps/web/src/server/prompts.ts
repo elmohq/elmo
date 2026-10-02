@@ -16,14 +16,22 @@ import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
-import { type CitationUrlStats, getPromptCitationUrlStats, getPromptsSummary } from "@/lib/analytics-read";
+
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
-import { getPromptsFirstEvaluatedAt, getPromptWebQueryCounts } from "@/lib/postgres-read";
+import { getPromptWebQueryCounts } from "@/lib/postgres-read";
+import {
+	type CitationUrlStats,
+	getPromptCitationUrlStats,
+	getPromptMentionSummary,
+	getPromptsFirstEvaluatedAt,
+	getPromptsSummary,
+	getPromptTopCompetitorMentions,
+} from "@/lib/rollup-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
@@ -282,80 +290,30 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const fromDateStr = fromDate.toISOString().split("T")[0];
 		const toDateStr = toDate.toISOString().split("T")[0];
 		const timezone = "UTC";
-		const timeCondition = gte(promptRuns.createdAt, fromDate);
-
-		const [mentionStatsResult, competitorMentionsResult] = await Promise.all([
-			// Total runs + brand mentions
-			db
-				.select({
-					totalRuns: count(),
-					brandMentions: sql<number>`SUM(CASE WHEN ${promptRuns.brandMentioned} THEN 1 ELSE 0 END)`,
-				})
-				.from(promptRuns)
-				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
-
-			// Competitor mentions (separate to avoid unnest issues)
-			db
-				.select({ competitorsMentioned: promptRuns.competitorsMentioned })
-				.from(promptRuns)
-				.where(
-					and(
-						eq(promptRuns.promptId, data.promptId),
-						timeCondition,
-						sql`array_length(${promptRuns.competitorsMentioned}, 1) > 0`,
-					),
-				),
+		const [mentionSummary, competitorMentions, brandResult, allCompetitors] = await Promise.all([
+			getPromptMentionSummary(data.promptId, fromDateStr, toDateStr, timezone),
+			getPromptTopCompetitorMentions(data.promptId, fromDateStr, toDateStr, timezone),
+			db.select({ name: brands.name }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
+			db.select({ name: competitors.name }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
 
 		// ---- Process mention stats ----
-		const mentionData = mentionStatsResult[0];
 		const mentionStats: { name: string; count: number }[] = [];
 
-		if (mentionData) {
-			const [brandResult, allCompetitors] = await Promise.all([
-				db.select({ name: brands.name }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
-				db.select({ name: competitors.name }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
-			]);
+		const brandName = brandResult[0]?.name;
+		if (brandName) {
+			mentionStats.push({ name: brandName, count: Number(mentionSummary.brand_mentioned_count) });
+		}
 
-			const brandName = brandResult[0]?.name;
-			if (brandName) {
-				mentionStats.push({ name: brandName, count: Number(mentionData.brandMentions) });
-			}
+		// Only current competitors, each listed even when no run named it.
+		const mentionsByName = new Map(competitorMentions.map((row) => [row.competitor_name, Number(row.mention_count)]));
+		for (const { name } of allCompetitors) {
+			mentionStats.push({ name, count: mentionsByName.get(name) ?? 0 });
+		}
 
-			const competitorCounts: Record<string, number> = {};
-			allCompetitors.forEach((c) => {
-				competitorCounts[c.name] = 0;
-			});
-
-			competitorMentionsResult.forEach((row: any) => {
-				(row.competitorsMentioned || []).forEach((name: string) => {
-					if (name?.trim() && Object.hasOwn(competitorCounts, name)) {
-						competitorCounts[name] += 1;
-					}
-				});
-			});
-
-			Object.entries(competitorCounts).forEach(([name, cnt]) => {
-				mentionStats.push({ name, count: cnt });
-			});
-
-			// "no brand mentions" category
-			const noMentionRuns = await db
-				.select({ count: count() })
-				.from(promptRuns)
-				.where(
-					and(
-						eq(promptRuns.promptId, data.promptId),
-						timeCondition,
-						eq(promptRuns.brandMentioned, false),
-						sql`array_length(${promptRuns.competitorsMentioned}, 1) IS NULL OR array_length(${promptRuns.competitorsMentioned}, 1) = 0`,
-					),
-				);
-
-			const noMentionCount = Number(noMentionRuns[0]?.count || 0);
-			if (noMentionCount > 0) {
-				mentionStats.push({ name: "(no brand mentions)", count: noMentionCount });
-			}
+		const noMentionCount = Number(mentionSummary.no_mention_count);
+		if (noMentionCount > 0) {
+			mentionStats.push({ name: "(no brand mentions)", count: noMentionCount });
 		}
 
 		mentionStats.sort((a, b) => (a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count));
@@ -395,7 +353,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			aggregations: {
 				mentionStats,
 				citationStats,
-				totalRuns: Number(mentionData?.totalRuns || 0),
+				totalRuns: Number(mentionSummary.total_runs),
 			},
 		};
 	});

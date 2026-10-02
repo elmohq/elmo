@@ -1,6 +1,6 @@
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
-import { getBrandEarliestRunDate } from "@/lib/postgres-read";
+import { getBrandEarliestRunDate } from "@/lib/rollup-read";
 import {
 	type CalendarDayRange,
 	calendarDayInTimezone,

@@ -13,6 +13,10 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
+import { API_PROVIDER_IDS, isCalendarDay } from "@/lib/analytics-sql";
+import { generateDateRange } from "@/lib/chart-utils";
+import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
+import { getFanoutBreakdown, getFanoutModelTotals, getFanoutPromptTotals } from "@/lib/postgres-read";
 import {
 	type CitationCountByModelRow,
 	getBrandMentionRateByModel,
@@ -23,18 +27,10 @@ import {
 	getCitationUrlStats,
 	getPerPromptDailyCompetitorMentions,
 	getPerPromptDailyMentions,
+	getPromptsFirstEvaluatedAt,
 	getPromptsSummary,
 	getVisibilityDailyAggregate,
-} from "@/lib/analytics-read";
-import { API_PROVIDER_IDS, isCalendarDay } from "@/lib/analytics-sql";
-import { generateDateRange } from "@/lib/chart-utils";
-import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
-import {
-	getFanoutBreakdown,
-	getFanoutModelTotals,
-	getFanoutPromptTotals,
-	getPromptsFirstEvaluatedAt,
-} from "@/lib/postgres-read";
+} from "@/lib/rollup-read";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -48,10 +44,10 @@ export interface AnalyticsWindow {
 
 /**
  * Calendar days are read as midnight UTC here but in the caller's `timezone` by
- * `postgres-read`, so for those the bounds can sit a zone offset from the rows
+ * `analytics-sql`, so for those the bounds can sit a zone offset from the rows
  * the queries returned. That only matters where the bounds become a *window*,
  * and only instants reach the one below; share of voice turns these into UTC day
- * labels, which a calendar day survives. Mirror `postgres-read` here before a
+ * labels, which a calendar day survives. Mirror `windowStart` here before a
  * calendar-day caller needs a window rather than a label.
  */
 function windowInstants(window: AnalyticsWindow): { start: Date; end: Date } {

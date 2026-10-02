@@ -46,15 +46,22 @@ export function uuidList(ids: string[]): SQL {
 	);
 }
 
-export function promptIdFilter(enabledPromptIds?: string[]): SQL {
-	if (!enabledPromptIds?.length) return sql``;
-	return sql`AND prompt_id IN (${uuidList(enabledPromptIds)})`;
+/**
+ * Without ids, every prompt the brand still has, so rollup rows that outlive a
+ * deleted prompt (briefly when the delete races a rebuild, for good when an
+ * older release did the deleting) are never read. An empty list is an empty scope.
+ */
+export function promptScope(brandId: string, promptIds?: string[]): SQL {
+	if (!promptIds) return sql`AND prompt_id IN (SELECT id FROM prompts WHERE brand_id = ${brandId})`;
+	if (promptIds.length === 0) return sql`AND FALSE`;
+	return sql`AND prompt_id IN (${uuidList(promptIds)})`;
 }
 
 // With `web_search_enabled`, the provider is what separates a grounded API answer from
 // the same model scraped off its consumer product; both rows carry the same `model`.
 // A provider that picks its route per target (DataForSEO) is classified by its default,
-// since the row doesn't record which route ran.
+// since the row doesn't record which route ran. Older runs have no provider; rollups
+// store that as '', and both read it as not an API route.
 export const API_PROVIDER_IDS = getAllProviders()
 	.filter((provider) => provider.access === "api")
 	.map((provider) => provider.id);
@@ -81,7 +88,7 @@ export function modelFilter(model?: string, opts?: { alias?: string; source?: "p
 						AND mf_run.web_search_enabled
 						AND mf_run.provider IN (${providers})
 				)`
-			: sql`(${prefix}web_search_enabled AND ${prefix}provider IN (${providers}))`;
+			: sql`(${prefix}web_search_enabled AND coalesce(${prefix}provider, '') IN (${providers}))`;
 	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
 }
 

@@ -3,7 +3,8 @@ import { extractTextContent } from "@workspace/lib/text-extraction";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
-import { countResponses, getResponseMatches, type ResponseSearchScope } from "@/lib/postgres-read";
+import { getResponseMatches, type ResponseSearchScope } from "@/lib/postgres-read";
+import { countResponses } from "@/lib/rollup-read";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 

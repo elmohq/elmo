@@ -24,6 +24,7 @@ import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schem
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { isBrandedPrompt } from "@/lib/prompt-tags";
 import {
 	getBrandMentionRateByModel,
 	getPerPromptCitationPages,
@@ -32,8 +33,7 @@ import {
 	getPerPromptRunStats,
 	type PerPromptDailyCompetitorRow,
 	type PerPromptRunStats,
-} from "@/lib/analytics-read";
-import { isBrandedPrompt } from "@/lib/prompt-tags";
+} from "@/lib/rollup-read";
 import { resolveLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
