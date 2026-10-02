@@ -6,6 +6,7 @@ import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
+import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
 import { shutdownTelemetry } from "./telemetry";
 
 if (process.env.SENTRY_DSN) {
@@ -76,6 +77,13 @@ async function main() {
 			expireInSeconds: 60 * 10,
 		});
 	}
+	await boss.createQueue(REPROCESS_QUEUE, {
+		policy: "stately",
+		retryLimit: 2,
+		retryDelay: 60,
+		retryBackoff: true,
+		expireInSeconds: 60 * 10,
+	});
 	console.log("Queues created");
 
 	await boss.schedule("schedule-maintenance", "*/5 * * * *", { source: "scheduled" }, { tz: "UTC" });
@@ -85,6 +93,11 @@ async function main() {
 		await boss.schedule("sync-auth0-memberships", "*/15 * * * *", { source: "scheduled" }, { tz: "UTC" });
 		console.log("Scheduled Auth0 membership sync (every 15 minutes)");
 	}
+
+	// Before any handler runs, so the stale pass never mistakes a brand that
+	// predates stamping for one whose whole history needs replaying.
+	const adopted = await adoptCurrentStamps();
+	if (adopted > 0) console.log(`Adopted current analysis stamps for ${adopted} brands`);
 
 	// Register job handlers
 	await registerHandlers(boss);
