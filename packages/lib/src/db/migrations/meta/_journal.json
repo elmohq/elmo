@@ -159,8 +159,15 @@
     {
       "idx": 22,
       "version": "7",
-      "when": 1790118879412,
-      "tag": "0022_rate_limit",
+      "when": 1790299942543,
+      "tag": "0022_report_brand_aliases",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790972601833,
+      "tag": "0023_rate_limit",
       "breakpoints": true
     }
   ]

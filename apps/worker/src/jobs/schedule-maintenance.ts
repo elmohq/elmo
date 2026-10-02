@@ -16,7 +16,7 @@ import {
 } from "@workspace/lib/run-policy";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
-import boss from "../boss";
+import { getBoss } from "../boss";
 import { PROMPT_JOB_OPTIONS } from "./process-prompt";
 
 export interface ScheduleMaintenanceData {
@@ -166,7 +166,7 @@ async function scheduleNewJobs(promptIds: string[]): Promise<void> {
 	for (let i = 0; i < promptIds.length; i += SCHEDULE_BATCH_SIZE) {
 		const results = await Promise.allSettled(
 			promptIds.slice(i, i + SCHEDULE_BATCH_SIZE).map((promptId) =>
-				boss.send(
+				getBoss().send(
 					"process-prompt",
 					{ promptId },
 					{

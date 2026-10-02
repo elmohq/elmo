@@ -1,5 +1,5 @@
 {
-  "id": "1e567dca-cda8-4ee1-aa80-e6cb05f6b0ce",
+  "id": "2e0f0fdf-5258-4024-9308-726f6405df7f",
   "prevId": "71a6f7ef-3f21-46f6-9c6e-f12aae25d56d",
   "version": "7",
   "dialect": "postgresql",
@@ -953,6 +953,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "brand_aliases": {
+          "name": "brand_aliases",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
         },
         "brand_website": {
           "name": "brand_website",
@@ -2963,51 +2970,6 @@
           "nullsNotDistinct": false,
           "columns": [
             "slug"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.rate_limit": {
-      "name": "rate_limit",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "count": {
-          "name": "count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_request": {
-          "name": "last_request",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "rate_limit_key_unique": {
-          "name": "rate_limit_key_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "key"
           ]
         }
       },

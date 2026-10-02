@@ -22,6 +22,8 @@ export interface McpTool {
 	description: string;
 	scopes: readonly ApiScope[];
 	readOnly: boolean;
+	/** `false` for a write tool that only adds. */
+	destructive?: boolean;
 	input: z.ZodRawShape;
 	/** Already validated by the SDK; erased because the registry holds many shapes. */
 	run(ctx: McpToolContext, args: Record<string, unknown>): Promise<unknown>;
@@ -33,6 +35,7 @@ export function defineTool<S extends z.ZodRawShape>(tool: {
 	description: string;
 	scopes?: readonly ApiScope[];
 	readOnly: boolean;
+	destructive?: boolean;
 	input: S;
 	run(ctx: McpToolContext, args: z.output<z.ZodObject<S>>): Promise<unknown>;
 }): McpTool {

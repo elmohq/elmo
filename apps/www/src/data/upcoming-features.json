@@ -1,14 +1,7 @@
 {
-	"lastUpdated": "2026-06-18",
+	"lastUpdated": "2026-09-25",
 	"note": "Curated list of upcoming highlights surfaced from the project board. Refresh via the `update-changelog` Claude skill.",
 	"highlights": [
-		{
-			"title": "Elmo Cloud",
-			"description": "A fully hosted version of Elmo — sign up and start tracking your AI visibility in minutes, with no infrastructure to manage.",
-			"tag": "In progress",
-			"issue": 342,
-			"url": "https://github.com/elmohq/elmo/issues/342"
-		},
 		{
 			"title": "Citation sentiment tracking",
 			"description": "Detect whether mentions of your brand in AI responses skew positive, neutral, or negative.",
@@ -29,6 +22,13 @@
 			"tag": "Planned",
 			"issue": 168,
 			"url": "https://github.com/elmohq/elmo/issues/168"
+		},
+		{
+			"title": "Country and language tracking",
+			"description": "Track prompts by market and language, then compare your AI visibility across countries and regions.",
+			"tag": "Planned",
+			"issue": 525,
+			"url": "https://github.com/elmohq/elmo/issues/525"
 		}
 	]
 }

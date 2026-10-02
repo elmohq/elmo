@@ -119,3 +119,5 @@ export const MCP_PATH = "/api/mcp";
 /** Where an interrupted MCP sign-in resumes. Named here so the sign-in page
  * need not know the auth base path or the plugin's own. */
 export const MCP_AUTHORIZE_ENDPOINT = "/api/auth/oauth2/authorize";
+
+export const API_KEY_RATE_LIMIT_PER_MINUTE = 1_000;

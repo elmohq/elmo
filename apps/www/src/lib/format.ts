@@ -1,7 +1,7 @@
 /**
- * Format a "YYYY-MM-DD" blog date as e.g. "May 30, 2026". Parsed and rendered
- * in UTC so the displayed day matches the frontmatter regardless of the
- * viewer's timezone.
+ * Format a "YYYY-MM-DD" frontmatter date as e.g. "May 30, 2026". Parsed and
+ * rendered in UTC so the displayed day matches the frontmatter regardless of
+ * the viewer's timezone.
  */
 export function formatPostDate(value: string): string {
 	const date = new Date(`${value}T00:00:00Z`);

@@ -23,6 +23,7 @@ import {
 	type ReportPromptRun,
 	selectRepresentativePrompts,
 } from "@workspace/lib/report-metrics";
+import { isPromptBranded } from "@workspace/lib/tag-utils";
 import { BarChart3, Rocket, Target } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { PromptChartPrint } from "@/components/prompt-chart-print";
@@ -76,21 +77,6 @@ const loadReportData = createServerFn({ method: "GET" })
 		if (!hasReportAccess(session)) throw new Error("Not authorized");
 		return getReportByIdFn({ data: { reportId } });
 	});
-
-function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
-	const promptLower = promptValue.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
-	try {
-		const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
-		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
-		const domainWithoutTld = domain.split(".")[0];
-		return (
-			promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld)
-		);
-	} catch {
-		return promptLower.includes(brandNameLower);
-	}
-}
 
 type ReportRecord = NonNullable<Awaited<ReturnType<typeof loadReportData>>>;
 
@@ -269,8 +255,8 @@ function buildReportModel(report: ReportRecord) {
 
 	const { simpleRuns, fullRuns, chartRuns } = flattenPromptRuns(data.promptRuns);
 
-	const brandNameLower = report.brandName.toLowerCase().trim();
-	const isBrandName = (name: string) => name.toLowerCase().trim() === brandNameLower;
+	const brandNames = new Set([report.brandName, ...report.brandAliases].map((name) => name.toLowerCase().trim()));
+	const isBrandName = (name: string) => brandNames.has(name.toLowerCase().trim());
 	const filteredCompetitors = dedupeCompetitors(data.competitors, isBrandName);
 
 	// Core metrics
@@ -281,7 +267,7 @@ function buildReportModel(report: ReportRecord) {
 
 	const selectedPrompts = selectRepresentativePrompts(promptSoVs, (id: string) => {
 		const p = promptMap.get(id);
-		return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite) : false;
+		return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite, report.brandAliases) : false;
 	});
 
 	// Rich analysis

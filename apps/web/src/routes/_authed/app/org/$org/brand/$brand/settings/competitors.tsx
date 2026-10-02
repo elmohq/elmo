@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { type CompetitorEntry, CompetitorsEditor } from "@/components/competitors-editor";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand, useCompetitors } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
@@ -30,7 +31,7 @@ function saveable(competitors: CompetitorEntry[]) {
 }
 
 function CompetitorsSettingsPage() {
-	const { brandId } = Route.useRouteContext();
+	const brandId = useBrandId();
 	const { data: brand, isLoading } = useBrand(brandId);
 	const {
 		data: existingCompetitors,

@@ -11,5 +11,11 @@ export {
 	SecretDecryptError,
 	UnknownKeyError,
 } from "./crypto";
-export { startCredentialRefresh } from "./refresh";
-export { clearCredentialOverlay, encryptCredential, getCredential, refreshCredentialOverlay } from "./store";
+export { startCredentialRefresh, storedCredentialsLoaded } from "./refresh";
+export {
+	clearCredentialOverlay,
+	encryptCredential,
+	getCredential,
+	refreshCredentialOverlay,
+	withStoredCredentials,
+} from "./store";
