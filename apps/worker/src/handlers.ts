@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/node";
-import { getDeployment } from "@workspace/deployment";
+import { getDeploymentFeatures } from "@workspace/deployment";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { RECONCILE_ROLLUPS_QUEUE, REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups/constants";
 import type { Job, PgBoss } from "pg-boss";
@@ -41,7 +41,7 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 	);
 	console.log("Registered handler: process-prompt");
 
-	if (getDeployment().features.reportGeneration) {
+	if (getDeploymentFeatures().reportGeneration) {
 		await boss.work<GenerateReportData>(
 			"generate-report",
 			{ localConcurrency: 2 },

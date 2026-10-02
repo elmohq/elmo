@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/config",
-	"version": "0.4.1",
+	"version": "0.4.3",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
@@ -12,6 +12,7 @@
 		"./entitlements": "./src/entitlements.ts",
 		"./env": "./src/env.ts",
 		"./env-registry": "./src/env-registry.ts",
+		"./legal": "./src/legal.ts",
 		"./model-filter": "./src/model-filter.ts",
 		"./models": "./src/models.ts",
 		"./plans": "./src/plans.ts",

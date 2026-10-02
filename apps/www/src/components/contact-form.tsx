@@ -8,9 +8,10 @@ import { identifyByEmail, trackEvent } from "@/lib/posthog";
 
 interface ContactFormProps {
 	source: string;
+	title?: string;
 }
 
-export function ContactForm({ source }: ContactFormProps) {
+export function ContactForm({ source, title = "White Label Inquiry" }: ContactFormProps) {
 	const [open, setOpen] = useState(false);
 	const [email, setEmail] = useState("");
 	const [name, setName] = useState("");
@@ -61,7 +62,7 @@ export function ContactForm({ source }: ContactFormProps) {
 			</Button>
 			<Dialog open={open} onOpenChange={handleOpenChange}>
 				<DialogContent className="sm:max-w-md" aria-describedby={undefined}>
-					<DialogTitle>White Label Inquiry</DialogTitle>
+					<DialogTitle>{title}</DialogTitle>
 					{submitted ? (
 						<div className="py-6 text-center">
 							<p className="text-sm text-muted-foreground">Thanks! We'll be in touch shortly.</p>

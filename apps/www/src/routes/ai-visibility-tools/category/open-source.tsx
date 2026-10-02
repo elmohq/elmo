@@ -263,7 +263,10 @@ function Cell({ children, strong }: { children: ReactNode; strong?: boolean }) {
 }
 
 export const Route = createFileRoute("/ai-visibility-tools/category/open-source")({
-	head: () => ({
+	loader: () => ({
+		tools: openSourceTools().map((c) => ({ name: c.name, url: c.url, description: c.tagline })),
+	}),
+	head: ({ loaderData }) => ({
 		meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 		links: [{ rel: "canonical", href: canonicalUrl(path) }],
 		scripts: [
@@ -273,13 +276,7 @@ export const Route = createFileRoute("/ai-visibility-tools/category/open-source"
 				{ name: "Open-source AI visibility tools", path },
 			]),
 			faqJsonLd(FAQS),
-			itemListJsonLd(
-				openSourceTools().map((c) => ({
-					name: c.name,
-					url: c.url,
-					description: c.tagline,
-				})),
-			),
+			itemListJsonLd(loaderData?.tools ?? []),
 		],
 	}),
 	component: OpenSourcePage,

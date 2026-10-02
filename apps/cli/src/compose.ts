@@ -162,8 +162,6 @@ function buildWebService(options: {
 			`    context: ${options.repoRoot}`,
 			`    dockerfile: ${options.dockerfilePath}`,
 			"    target: web",
-			"    args:",
-			"      DEPLOYMENT_MODE: local",
 		);
 	} else {
 		lines.push(`  image: elmohq/elmo-web:${options.version}`);
@@ -197,8 +195,6 @@ function buildWorkerService(options: {
 			`    context: ${options.repoRoot}`,
 			`    dockerfile: ${options.dockerfilePath}`,
 			"    target: worker",
-			"    args:",
-			"      DEPLOYMENT_MODE: local",
 		);
 	} else {
 		lines.push(`  image: elmohq/elmo-worker:${options.version}`);

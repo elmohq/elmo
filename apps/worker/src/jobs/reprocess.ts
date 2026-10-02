@@ -21,7 +21,7 @@ import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, EXTRACTOR_VERSION, extractRun, tryExtractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gte, inArray, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
-import boss from "../boss";
+import { getBoss } from "../boss";
 
 export type ReprocessLayer = "extraction" | "interpretation";
 
@@ -305,7 +305,7 @@ async function triggerRefresh(sendBoss: BossSender): Promise<void> {
 export async function runReprocess(
 	data: ReprocessData,
 	conn: DbConnection = db,
-	sendBoss: BossSender = boss,
+	sendBoss: BossSender = getBoss(),
 ): Promise<void> {
 	const deadline = Date.now() + TIME_BUDGET_MS;
 	const context = await loadBrand(conn, data.brandId);
@@ -346,7 +346,10 @@ function pickLayers(versions: Record<string, string>, layers: ReprocessLayer[]):
  * dropped job heals on the next pass. Brands that predate the rollups adopt
  * today's stamps: their history is taken as is until something changes.
  */
-export async function requestStaleReprocesses(conn: DbConnection = db, sendBoss: BossSender = boss): Promise<number> {
+export async function requestStaleReprocesses(
+	conn: DbConnection = db,
+	sendBoss: BossSender = getBoss(),
+): Promise<number> {
 	const [state, allBrands, allCompetitors] = await Promise.all([
 		getPipelineState(conn),
 		conn.select().from(brands),

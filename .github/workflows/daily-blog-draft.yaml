@@ -121,7 +121,7 @@ jobs:
 
             If nothing is worth publishing, write no file.
           claude_args: |
-            --model claude-fable-5
+            --model claude-opus-5-5
             --max-budget-usd 5.00
             --tools "Read,Glob,Grep,Write,Edit,WebSearch,WebFetch,Skill"
             --allowedTools "Read,Glob,Grep,Write,Edit,WebSearch,WebFetch,Skill"

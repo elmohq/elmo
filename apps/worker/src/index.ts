@@ -1,10 +1,11 @@
 import * as Sentry from "@sentry/node";
+import { assertRequiredEnv } from "@workspace/config/env";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
-import { getDeployment } from "@workspace/deployment";
+import { getDeploymentFeatures } from "@workspace/deployment";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
 import { RECONCILE_ROLLUPS_QUEUE, REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
-import boss from "./boss";
+import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
@@ -19,6 +20,8 @@ if (process.env.SENTRY_DSN) {
 
 async function main() {
 	console.log("Starting pg-boss worker...");
+	assertRequiredEnv();
+	const boss = getBoss();
 
 	// Awaited so a stored credential counts toward the validation below.
 	await startCredentialRefresh();
@@ -47,7 +50,7 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 15, // 15 minute timeout
 	});
-	if (getDeployment().features.reportGeneration) {
+	if (getDeploymentFeatures().reportGeneration) {
 		await boss.createQueue("generate-report", {
 			retryLimit: 3,
 			retryDelay: 60,
@@ -127,7 +130,7 @@ main().catch(async (error) => {
 // Graceful shutdown
 process.on("SIGTERM", async () => {
 	console.log("Received SIGTERM, shutting down gracefully...");
-	await boss.stop({ graceful: true, timeout: 30000 });
+	await getBoss().stop({ graceful: true, timeout: 30000 });
 	await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
 	console.log("Worker stopped");
 	process.exit(0);
@@ -135,7 +138,7 @@ process.on("SIGTERM", async () => {
 
 process.on("SIGINT", async () => {
 	console.log("Received SIGINT, shutting down gracefully...");
-	await boss.stop({ graceful: true, timeout: 30000 });
+	await getBoss().stop({ graceful: true, timeout: 30000 });
 	await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
 	console.log("Worker stopped");
 	process.exit(0);

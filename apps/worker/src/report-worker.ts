@@ -52,6 +52,8 @@ function getReportRunsForModel(model: string): number {
 export interface ReportJobData {
 	reportId: string;
 	brandName: string;
+	/** Absent on jobs queued before reports stored brand name variants. */
+	brandAliases?: string[];
 	brandWebsite: string;
 	manualPrompts?: string[];
 }
@@ -92,6 +94,7 @@ function selectOptimalPrompts(
 		}>;
 	}>,
 	brandName: string,
+	brandAliases: string[],
 	brandWebsite: string,
 ): string[] {
 	const scoredCandidates = candidateResults.map((candidate) => {
@@ -102,7 +105,7 @@ function selectOptimalPrompts(
 		const brandMentionRate = totalRuns > 0 ? brandMentionCount / totalRuns : 0;
 		const competitorMentionRate = totalRuns > 0 ? competitorMentionCount / totalRuns : 0;
 
-		const isActuallyBranded = isPromptBranded(candidate.promptValue, brandName, brandWebsite);
+		const isActuallyBranded = isPromptBranded(candidate.promptValue, brandName, brandWebsite, brandAliases);
 
 		return {
 			promptValue: candidate.promptValue,
@@ -164,6 +167,7 @@ function selectOptimalPrompts(
 async function runPrompt(
 	promptValue: string,
 	brandName: string,
+	brandAliases: string[],
 	brandWebsite: string,
 	competitors: CompetitorResult[],
 	scrapeConfigs: ModelConfig[],
@@ -177,7 +181,7 @@ async function runPrompt(
 		});
 		const { brandMentioned, competitorsMentioned } = analyzeMentions(
 			result.textContent,
-			{ name: brandName, domains: [brandWebsite] },
+			{ name: brandName, aliases: brandAliases, domains: [brandWebsite] },
 			competitors.map((competitor) => ({ name: competitor.name, domains: [competitor.domain] })),
 		);
 		return {
@@ -209,6 +213,7 @@ async function runPrompt(
 
 export async function processReportJob(job: ReportJobContext) {
 	const { reportId, brandName, brandWebsite, manualPrompts } = job.data;
+	const brandAliases = job.data.brandAliases ?? [];
 
 	job.log(`Processing report ID: ${reportId} for brand: ${brandName}`);
 
@@ -238,19 +243,22 @@ export async function processReportJob(job: ReportJobContext) {
 		// The report renderer's CompetitorResult expects a single primary domain;
 		// analyzeBrand returns the full list now. Take the first as the canonical
 		// one for the report's UI (which doesn't display the rest anyway).
+		// A brand name variant listed as a competitor would count the brand's own
+		// mentions against it.
+		const brandNames = new Set([brandName, ...brandAliases].map((name) => name.trim().toLowerCase()));
 		const competitors: CompetitorResult[] = suggestion.competitors
-			.filter((c) => c.domains.length > 0)
+			.filter((c) => c.domains.length > 0 && !brandNames.has(c.name.trim().toLowerCase()))
 			.map((c) => ({ name: c.name, domain: c.domains[0] }));
 		job.updateProgress(35);
 
 		const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = useManualPrompts
 			? manualPrompts.map((prompt) => ({
 					prompt: prompt.toLowerCase().trim(),
-					brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite),
+					brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite, brandAliases),
 				}))
 			: suggestion.suggestedPrompts.map((p) => ({
 					prompt: p.prompt,
-					brandedPrompt: isPromptBranded(p.prompt, brandName, brandWebsite),
+					brandedPrompt: isPromptBranded(p.prompt, brandName, brandWebsite, brandAliases),
 				}));
 
 		if (candidatePrompts.length === 0) {
@@ -287,7 +295,15 @@ export async function processReportJob(job: ReportJobContext) {
 			const batch = candidatePrompts.slice(i, i + batchSize);
 			const batchPromises = batch.map(async (candidate) => {
 				try {
-					const result = await runPrompt(candidate.prompt, brandName, brandWebsite, competitors, scrapeConfigs, job);
+					const result = await runPrompt(
+						candidate.prompt,
+						brandName,
+						brandAliases,
+						brandWebsite,
+						competitors,
+						scrapeConfigs,
+						job,
+					);
 					completedCandidates++;
 					const progress = 40 + (completedCandidates / totalCandidates) * 30;
 					job.updateProgress(progress);
@@ -323,7 +339,7 @@ export async function processReportJob(job: ReportJobContext) {
 		job.updateProgress(70);
 
 		job.log(`Selecting optimal ${TARGET_PROMPTS_COUNT} prompts from ${candidateResults.length} candidates`);
-		const selectedPromptValues = selectOptimalPrompts(candidateResults, brandName, brandWebsite);
+		const selectedPromptValues = selectOptimalPrompts(candidateResults, brandName, brandAliases, brandWebsite);
 		job.updateProgress(75);
 
 		job.log(`Running final ${selectedPromptValues.length} selected prompts`);
@@ -353,7 +369,7 @@ export async function processReportJob(job: ReportJobContext) {
 			value: promptValue,
 			enabled: true,
 			tags: [],
-			systemTags: computeSystemTags(promptValue, brandName, brandWebsite),
+			systemTags: computeSystemTags(promptValue, brandName, brandWebsite, brandAliases),
 		}));
 
 		const reportData: ReportData = {

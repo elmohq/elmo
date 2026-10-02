@@ -18,13 +18,22 @@ import {
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const key = getFeatureKeyBySlug(params.slug);
-		if (!key) return {};
+		if (!key) throw notFound();
 		const tools = toolsWithFeature(key);
-		if (tools.length < MIN_TOOLS_FOR_FEATURE_PAGE) return {};
-		const label = getFeatureLabel(key);
-		const term = getFeatureSearchTerm(key);
+		if (tools.length < MIN_TOOLS_FOR_FEATURE_PAGE) throw notFound();
+		return {
+			featureKey: key,
+			tools,
+			label: getFeatureLabel(key),
+			term: getFeatureSearchTerm(key),
+			faqs: getFeatureFaqs(key, tools),
+		};
+	},
+	head: ({ params, loaderData }) => {
+		if (!loaderData) return {};
+		const { tools, label, term, faqs } = loaderData;
 		const title = !term
 			? `AI Visibility Tools with ${label} · Elmo`
 			: tools.length <= 25
@@ -41,16 +50,9 @@ export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: label, path },
 				]),
-				faqJsonLd(getFeatureFaqs(key, tools)),
+				faqJsonLd(faqs),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const key = getFeatureKeyBySlug(params.slug);
-		if (!key) throw notFound();
-		const tools = toolsWithFeature(key);
-		if (tools.length < MIN_TOOLS_FOR_FEATURE_PAGE) throw notFound();
-		return { featureKey: key, tools };
 	},
 	component: FeaturePage,
 });

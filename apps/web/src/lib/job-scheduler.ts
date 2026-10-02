@@ -152,25 +152,23 @@ export async function sendImmediatePromptJob(promptId: string): Promise<boolean>
 	}
 }
 
-export async function sendReportJob(
-	reportId: string,
-	brandName: string,
-	brandWebsite: string,
-	manualPrompts?: string[],
-): Promise<boolean> {
+export async function sendReportJob(data: {
+	reportId: string;
+	brandName: string;
+	brandAliases: string[];
+	brandWebsite: string;
+	manualPrompts?: string[];
+}): Promise<boolean> {
+	const { reportId } = data;
 	try {
 		const boss = await getBoss();
 
-		await boss.send(
-			"generate-report",
-			{ reportId, brandName, brandWebsite, manualPrompts },
-			{
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 60, // 1 hour timeout for reports
-			},
-		);
+		await boss.send("generate-report", data, {
+			retryLimit: 3,
+			retryDelay: 60,
+			retryBackoff: true,
+			expireInSeconds: 60 * 60, // 1 hour timeout for reports
+		});
 
 		console.log(`Sent report job for report ${reportId}`);
 		return true;

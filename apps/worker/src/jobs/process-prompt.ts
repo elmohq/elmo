@@ -30,7 +30,7 @@ import { type Citation, EXTRACTOR_VERSION } from "@workspace/lib/text-extraction
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
-import boss from "../boss";
+import { getBoss } from "../boss";
 import { trackWorkerEvent } from "../telemetry";
 
 export interface ProcessPromptData {
@@ -79,7 +79,7 @@ async function scheduleNextRun(promptId: string, cadenceHours: number, consecuti
 	const startAfterSeconds = Math.round(delayHours * 60 * 60);
 
 	try {
-		await boss.send(
+		await getBoss().send(
 			"process-prompt",
 			{ promptId, consecutiveFailures },
 			{
@@ -471,7 +471,7 @@ async function processPrompt(
 		try {
 			// Seconds-fresh dashboards instead of waiting for the once-a-minute
 			// schedule; a queue hiccup here must not fail an otherwise-successful cycle.
-			await boss.send(
+			await getBoss().send(
 				REFRESH_ROLLUPS_QUEUE,
 				{ source: "run" },
 				{ singletonKey: REFRESH_ROLLUPS_QUEUE, singletonSeconds: 10 },

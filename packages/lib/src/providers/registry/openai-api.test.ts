@@ -80,6 +80,68 @@ describe("openai-api citations", () => {
 	});
 });
 
+describe("openai-api stored payload", () => {
+	const body = {
+		id: "resp_1",
+		object: "response",
+		output: [
+			{ id: "rs_1", type: "reasoning", summary: [] },
+			{
+				id: "ws_1",
+				type: "web_search_call",
+				status: "completed",
+				action: { type: "search", query: "elmo aeo", queries: ["elmo aeo", "elmo pricing"] },
+			},
+			{
+				id: "msg_1",
+				type: "message",
+				content: [
+					{
+						type: "output_text",
+						text: "answer",
+						annotations: [{ type: "url_citation", url: "https://example.com/a", title: "A" }],
+					},
+				],
+			},
+		],
+	};
+
+	it("stores the payload the searches came from", async () => {
+		aiMock.generateText.mockResolvedValue(generated({ response: { body } }));
+
+		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+
+		expect(res.rawOutput).toBe(body);
+		expect(res.textContent).toBe("answer");
+		expect(res.citations.map((c) => c.url)).toEqual(["https://example.com/a"]);
+	});
+
+	it("rebuilds an answer-and-citations payload when the SDK reports no body", async () => {
+		aiMock.generateText.mockResolvedValue(
+			generated({
+				sources: [{ type: "source", sourceType: "url", id: "1", url: "https://example.com/a", title: "A" }],
+			}),
+		);
+
+		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
+
+		expect(res.rawOutput).toEqual({
+			output: [
+				{
+					type: "message",
+					content: [
+						{
+							type: "output_text",
+							text: "answer",
+							annotations: [{ type: "url_citation", url: "https://example.com/a", title: "A" }],
+						},
+					],
+				},
+			],
+		});
+	});
+});
+
 describe("openai-api web queries", () => {
 	function searchResult(action: Record<string, any>) {
 		return generated({ content: [{ type: "tool-result", toolName: "web_search", output: { action } }] });

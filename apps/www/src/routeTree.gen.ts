@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnswerEngineOptimizationRouteImport } from './routes/answer-engine-optimization'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as FeaturesRouteImport } from './routes/features'
+import { Route as GenerativeEngineOptimizationRouteImport } from './routes/generative-engine-optimization'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as OffSiteAeoRouteImport } from './routes/off-site-aeo'
@@ -22,7 +24,9 @@ import { Route as RepoActivityDotsvgRouteImport } from './routes/repo-activity[.
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as StatisticsRouteImport } from './routes/statistics'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as VisionRouteImport } from './routes/vision'
 import { Route as DotwellKnownAiCatalogDotjsonRouteImport } from './routes/[.]well-known/ai-catalog[.]json'
 import { Route as DotwellKnownApiCatalogRouteImport } from './routes/[.]well-known/api-catalog'
@@ -42,6 +46,8 @@ import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as GlossaryIndexRouteImport } from './routes/glossary/index'
 import { Route as GlossarySlugRouteImport } from './routes/glossary/$slug'
+import { Route as LegalIndexRouteImport } from './routes/legal/index'
+import { Route as LegalSplatRouteImport } from './routes/legal/$'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
 import { Route as DotwellKnownAgentSkillsSplatRouteImport } from './routes/[.]well-known/agent-skills/$'
 import { Route as DotwellKnownAgentSkillsIndexDotjsonRouteImport } from './routes/[.]well-known/agent-skills/index[.]json'
@@ -66,6 +72,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnswerEngineOptimizationRoute =
+  AnswerEngineOptimizationRouteImport.update({
+    id: '/answer-engine-optimization',
+    path: '/answer-engine-optimization',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const BrandRoute = BrandRouteImport.update({
   id: '/brand',
   path: '/brand',
@@ -81,6 +93,12 @@ const FeaturesRoute = FeaturesRouteImport.update({
   path: '/features',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GenerativeEngineOptimizationRoute =
+  GenerativeEngineOptimizationRouteImport.update({
+    id: '/generative-engine-optimization',
+    path: '/generative-engine-optimization',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
   id: '/llms-full.txt',
   path: '/llms-full.txt',
@@ -126,9 +144,19 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StatisticsRoute = StatisticsRouteImport.update({
+  id: '/statistics',
+  path: '/statistics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VisionRoute = VisionRouteImport.update({
@@ -225,6 +253,16 @@ const GlossaryIndexRoute = GlossaryIndexRouteImport.update({
 const GlossarySlugRoute = GlossarySlugRouteImport.update({
   id: '/glossary/$slug',
   path: '/glossary/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalIndexRoute = LegalIndexRouteImport.update({
+  id: '/legal/',
+  path: '/legal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalSplatRoute = LegalSplatRouteImport.update({
+  id: '/legal/$',
+  path: '/legal/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OgStatusDotpngRoute = OgStatusDotpngRouteImport.update({
@@ -332,9 +370,11 @@ const ApiPlausibleJsScriptIndexRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/features': typeof FeaturesRoute
+  '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/off-site-aeo': typeof OffSiteAeoRoute
@@ -344,7 +384,9 @@ export interface FileRoutesByFullPath {
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/statistics': typeof StatisticsRoute
   '/status': typeof StatusRoute
+  '/support': typeof SupportRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
@@ -358,6 +400,7 @@ export interface FileRoutesByFullPath {
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
+  '/legal/$': typeof LegalSplatRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
@@ -365,6 +408,7 @@ export interface FileRoutesByFullPath {
   '/blog/': typeof BlogIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
+  '/legal/': typeof LegalIndexRoute
   '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
   '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
@@ -385,9 +429,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/features': typeof FeaturesRoute
+  '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/off-site-aeo': typeof OffSiteAeoRoute
@@ -397,7 +443,9 @@ export interface FileRoutesByTo {
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/statistics': typeof StatisticsRoute
   '/status': typeof StatusRoute
+  '/support': typeof SupportRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
@@ -411,6 +459,7 @@ export interface FileRoutesByTo {
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
+  '/legal/$': typeof LegalSplatRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/aeo-for': typeof AeoForIndexRoute
   '/ai-search': typeof AiSearchIndexRoute
@@ -418,6 +467,7 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogIndexRoute
   '/docs': typeof DocsIndexRoute
   '/glossary': typeof GlossaryIndexRoute
+  '/legal': typeof LegalIndexRoute
   '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
   '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
@@ -439,9 +489,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/features': typeof FeaturesRoute
+  '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/off-site-aeo': typeof OffSiteAeoRoute
@@ -451,7 +503,9 @@ export interface FileRoutesById {
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/statistics': typeof StatisticsRoute
   '/status': typeof StatusRoute
+  '/support': typeof SupportRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
@@ -465,6 +519,7 @@ export interface FileRoutesById {
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
+  '/legal/$': typeof LegalSplatRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
@@ -472,6 +527,7 @@ export interface FileRoutesById {
   '/blog/': typeof BlogIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
+  '/legal/': typeof LegalIndexRoute
   '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
   '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
@@ -494,9 +550,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
     | '/features'
+    | '/generative-engine-optimization'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/off-site-aeo'
@@ -506,7 +564,9 @@ export interface FileRouteTypes {
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/statistics'
     | '/status'
+    | '/support'
     | '/vision'
     | '/.well-known/ai-catalog.json'
     | '/.well-known/api-catalog'
@@ -520,6 +580,7 @@ export interface FileRouteTypes {
     | '/blog/rss.xml'
     | '/docs/$'
     | '/glossary/$slug'
+    | '/legal/$'
     | '/og/status.png'
     | '/aeo-for/'
     | '/ai-search/'
@@ -527,6 +588,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/docs/'
     | '/glossary/'
+    | '/legal/'
     | '/.well-known/agent-skills/$'
     | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
@@ -547,9 +609,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
     | '/features'
+    | '/generative-engine-optimization'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/off-site-aeo'
@@ -559,7 +623,9 @@ export interface FileRouteTypes {
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/statistics'
     | '/status'
+    | '/support'
     | '/vision'
     | '/.well-known/ai-catalog.json'
     | '/.well-known/api-catalog'
@@ -573,6 +639,7 @@ export interface FileRouteTypes {
     | '/blog/rss.xml'
     | '/docs/$'
     | '/glossary/$slug'
+    | '/legal/$'
     | '/og/status.png'
     | '/aeo-for'
     | '/ai-search'
@@ -580,6 +647,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/docs'
     | '/glossary'
+    | '/legal'
     | '/.well-known/agent-skills/$'
     | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
@@ -600,9 +668,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
     | '/features'
+    | '/generative-engine-optimization'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/off-site-aeo'
@@ -612,7 +682,9 @@ export interface FileRouteTypes {
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/statistics'
     | '/status'
+    | '/support'
     | '/vision'
     | '/.well-known/ai-catalog.json'
     | '/.well-known/api-catalog'
@@ -626,6 +698,7 @@ export interface FileRouteTypes {
     | '/blog/rss.xml'
     | '/docs/$'
     | '/glossary/$slug'
+    | '/legal/$'
     | '/og/status.png'
     | '/aeo-for/'
     | '/ai-search/'
@@ -633,6 +706,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/docs/'
     | '/glossary/'
+    | '/legal/'
     | '/.well-known/agent-skills/$'
     | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
@@ -654,9 +728,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnswerEngineOptimizationRoute: typeof AnswerEngineOptimizationRoute
   BrandRoute: typeof BrandRoute
   ChangelogRoute: typeof ChangelogRoute
   FeaturesRoute: typeof FeaturesRoute
+  GenerativeEngineOptimizationRoute: typeof GenerativeEngineOptimizationRoute
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   OffSiteAeoRoute: typeof OffSiteAeoRoute
@@ -666,7 +742,9 @@ export interface RootRouteChildren {
   RoadmapRoute: typeof RoadmapRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StatisticsRoute: typeof StatisticsRoute
   StatusRoute: typeof StatusRoute
+  SupportRoute: typeof SupportRoute
   VisionRoute: typeof VisionRoute
   DotwellKnownAiCatalogDotjsonRoute: typeof DotwellKnownAiCatalogDotjsonRoute
   DotwellKnownApiCatalogRoute: typeof DotwellKnownApiCatalogRoute
@@ -680,6 +758,7 @@ export interface RootRouteChildren {
   BlogRssDotxmlRoute: typeof BlogRssDotxmlRoute
   DocsSplatRoute: typeof DocsSplatRoute
   GlossarySlugRoute: typeof GlossarySlugRoute
+  LegalSplatRoute: typeof LegalSplatRoute
   OgStatusDotpngRoute: typeof OgStatusDotpngRoute
   AeoForIndexRoute: typeof AeoForIndexRoute
   AiSearchIndexRoute: typeof AiSearchIndexRoute
@@ -687,6 +766,7 @@ export interface RootRouteChildren {
   BlogIndexRoute: typeof BlogIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
   GlossaryIndexRoute: typeof GlossaryIndexRoute
+  LegalIndexRoute: typeof LegalIndexRoute
   DotwellKnownAgentSkillsSplatRoute: typeof DotwellKnownAgentSkillsSplatRoute
   DotwellKnownAgentSkillsIndexDotjsonRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   AiVisibilityToolsAlternativesSlugRoute: typeof AiVisibilityToolsAlternativesSlugRoute
@@ -715,6 +795,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/answer-engine-optimization': {
+      id: '/answer-engine-optimization'
+      path: '/answer-engine-optimization'
+      fullPath: '/answer-engine-optimization'
+      preLoaderRoute: typeof AnswerEngineOptimizationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/brand': {
       id: '/brand'
       path: '/brand'
@@ -734,6 +821,13 @@ declare module '@tanstack/react-router' {
       path: '/features'
       fullPath: '/features'
       preLoaderRoute: typeof FeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/generative-engine-optimization': {
+      id: '/generative-engine-optimization'
+      path: '/generative-engine-optimization'
+      fullPath: '/generative-engine-optimization'
+      preLoaderRoute: typeof GenerativeEngineOptimizationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms-full.txt': {
@@ -799,11 +893,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/statistics': {
+      id: '/statistics'
+      path: '/statistics'
+      fullPath: '/statistics'
+      preLoaderRoute: typeof StatisticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/status': {
       id: '/status'
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/vision': {
@@ -939,6 +1047,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GlossarySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal/': {
+      id: '/legal/'
+      path: '/legal'
+      fullPath: '/legal/'
+      preLoaderRoute: typeof LegalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/$': {
+      id: '/legal/$'
+      path: '/legal/$'
+      fullPath: '/legal/$'
+      preLoaderRoute: typeof LegalSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/og/status.png': {
       id: '/og/status.png'
       path: '/og/status.png'
@@ -1070,9 +1192,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnswerEngineOptimizationRoute: AnswerEngineOptimizationRoute,
   BrandRoute: BrandRoute,
   ChangelogRoute: ChangelogRoute,
   FeaturesRoute: FeaturesRoute,
+  GenerativeEngineOptimizationRoute: GenerativeEngineOptimizationRoute,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   OffSiteAeoRoute: OffSiteAeoRoute,
@@ -1082,7 +1206,9 @@ const rootRouteChildren: RootRouteChildren = {
   RoadmapRoute: RoadmapRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StatisticsRoute: StatisticsRoute,
   StatusRoute: StatusRoute,
+  SupportRoute: SupportRoute,
   VisionRoute: VisionRoute,
   DotwellKnownAiCatalogDotjsonRoute: DotwellKnownAiCatalogDotjsonRoute,
   DotwellKnownApiCatalogRoute: DotwellKnownApiCatalogRoute,
@@ -1096,6 +1222,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogRssDotxmlRoute: BlogRssDotxmlRoute,
   DocsSplatRoute: DocsSplatRoute,
   GlossarySlugRoute: GlossarySlugRoute,
+  LegalSplatRoute: LegalSplatRoute,
   OgStatusDotpngRoute: OgStatusDotpngRoute,
   AeoForIndexRoute: AeoForIndexRoute,
   AiSearchIndexRoute: AiSearchIndexRoute,
@@ -1103,6 +1230,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogIndexRoute: BlogIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
   GlossaryIndexRoute: GlossaryIndexRoute,
+  LegalIndexRoute: LegalIndexRoute,
   DotwellKnownAgentSkillsSplatRoute: DotwellKnownAgentSkillsSplatRoute,
   DotwellKnownAgentSkillsIndexDotjsonRoute:
     DotwellKnownAgentSkillsIndexDotjsonRoute,
