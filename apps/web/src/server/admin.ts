@@ -8,7 +8,7 @@ import { getModelMeta } from "@workspace/config/models";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, brands, organization, type Prompt, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { type Brand, brands, organization, type Prompt, prompts, rollupPromptRuns } from "@workspace/lib/db/schema";
 import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import type { ModelConfig } from "@workspace/lib/providers";
@@ -74,13 +74,17 @@ async function adminRows<T>(query: SQL): Promise<T[]> {
 	return result.rows as T[];
 }
 
+// Off the rollups rather than prompt_runs; `live` drops rows a deleted prompt
+// left behind, which the raw rows no longer have either.
+const live = sql`prompt_id IN (SELECT id FROM prompts)`;
+
 async function getAdminRunsOverTime(): Promise<AdminRunsOverTime[]> {
 	const rows = await adminRows<AdminRunsOverTime>(sql`
 		SELECT
-			(created_at AT TIME ZONE 'UTC')::date AS date,
-			count(*)::int AS count
-		FROM prompt_runs
-		WHERE created_at >= now() - interval '30 days'
+			(bucket AT TIME ZONE 'UTC')::date AS date,
+			sum(runs)::int AS count
+		FROM rollup_prompt_runs
+		WHERE bucket >= now() - interval '30 days' AND ${live}
 		GROUP BY date
 		ORDER BY date
 	`);
@@ -91,10 +95,11 @@ async function getAdminBrandRunStats(): Promise<AdminBrandRunStats[]> {
 	const rows = await adminRows<AdminBrandRunStats>(sql`
 		SELECT
 			brand_id,
-			count(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS runs_7d,
-			count(*) FILTER (WHERE created_at >= now() - interval '30 days')::int AS runs_30d,
-			to_char(max(created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_run_at
-		FROM prompt_runs
+			coalesce(sum(runs) FILTER (WHERE bucket >= now() - interval '7 days'), 0)::int AS runs_7d,
+			coalesce(sum(runs) FILTER (WHERE bucket >= now() - interval '30 days'), 0)::int AS runs_30d,
+			to_char(max(last_run_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_run_at
+		FROM rollup_prompt_runs
+		WHERE ${live}
 		GROUP BY brand_id
 	`);
 	return rows;
@@ -108,10 +113,10 @@ async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime
 		FROM (
 			SELECT
 				brand_id,
-				(created_at AT TIME ZONE 'UTC')::date + d AS target_date
-			FROM prompt_runs,
+				(bucket AT TIME ZONE 'UTC')::date + d AS target_date
+			FROM rollup_prompt_runs,
 				generate_series(0, 29) AS d
-			WHERE created_at >= now() - interval '60 days'
+			WHERE bucket >= now() - interval '60 days' AND ${live}
 		) expanded
 		WHERE target_date >= current_date - 30
 			AND target_date <= current_date
@@ -789,14 +794,19 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 	const lastRunsQuery = await db
 		.select({
-			promptId: promptRuns.promptId,
-			model: promptRuns.model,
-			provider: promptRuns.provider,
-			webSearchEnabled: promptRuns.webSearchEnabled,
-			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+			promptId: rollupPromptRuns.promptId,
+			model: rollupPromptRuns.model,
+			provider: rollupPromptRuns.provider,
+			webSearchEnabled: rollupPromptRuns.webSearchEnabled,
+			lastRunAt: sql<Date>`max(${rollupPromptRuns.lastRunAt})`.as("last_run_at"),
 		})
-		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
+		.from(rollupPromptRuns)
+		.groupBy(
+			rollupPromptRuns.promptId,
+			rollupPromptRuns.model,
+			rollupPromptRuns.provider,
+			rollupPromptRuns.webSearchEnabled,
+		);
 
 	const lastRunsByPrompt = new Map<string, Map<string, Date>>();
 	for (const run of lastRunsQuery) {
@@ -805,8 +815,8 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 			byKey = new Map();
 			lastRunsByPrompt.set(run.promptId, byKey);
 		}
-		// provider is nullable on the column; a row without one predates target
-		// keying and can't be matched to a target anyway.
+		// A run without a provider ('' in the rollups) predates target keying and
+		// can't be matched to a target anyway.
 		if (!run.provider) continue;
 		byKey.set(
 			targetKey({ model: run.model, provider: run.provider, webSearch: run.webSearchEnabled }),

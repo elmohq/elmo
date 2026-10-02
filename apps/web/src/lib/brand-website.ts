@@ -1,4 +1,4 @@
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 
 export type WebsiteValidationResult = { isValid: true; formattedUrl: string } | { isValid: false; error: string };
 

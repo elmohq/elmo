@@ -11,7 +11,12 @@ type TimezoneDateRange = {
 	toDateStr: string | null;
 };
 
-type AllLookbackStrategy = "none" | "1y";
+export type BoundedLookbackPeriod = Exclude<LookbackPeriod, "all">;
+
+export type CalendarDayRange = {
+	fromDateStr: string;
+	toDateStr: string;
+};
 
 export function resolveTimezone(timezoneParam?: string, resolvedFallback?: string): string {
 	if (timezoneParam) {
@@ -65,26 +70,27 @@ export function shiftDateStr(dateStr: string, delta: DateShift): string {
 	return date.toISOString().slice(0, 10);
 }
 
+export function calendarDayInTimezone(timezone: string, instant: Date = new Date()): string {
+	return instant.toLocaleDateString("en-CA", { timeZone: timezone });
+}
+
 export function getTimezoneLookbackRange(
 	lookback: LookbackPeriod,
 	timezone: string,
-	options?: {
-		now?: Date;
-		allStrategy?: AllLookbackStrategy;
-	},
+	options?: { now?: Date },
 ): TimezoneDateRange {
-	const now = options?.now ?? new Date();
-	const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
-
 	if (lookback === "all") {
-		if (options?.allStrategy === "1y") {
-			return {
-				fromDateStr: shiftDateStr(todayStr, { years: -1 }),
-				toDateStr: todayStr,
-			};
-		}
 		return { fromDateStr: null, toDateStr: null };
 	}
+	return getBoundedLookbackRange(lookback, timezone, options);
+}
+
+export function getBoundedLookbackRange(
+	lookback: BoundedLookbackPeriod,
+	timezone: string,
+	options?: { now?: Date },
+): CalendarDayRange {
+	const todayStr = calendarDayInTimezone(timezone, options?.now ?? new Date());
 
 	switch (lookback) {
 		case "1w":
@@ -115,16 +121,12 @@ export function getTimezoneLookbackRange(
 	}
 }
 
-/** `allStrategy: "1y"` keeps the bounds non-null for "all", which is what the
- * cast below rests on. */
+/** Viewer-chosen periods (including "all") go through `resolveBrandWindow`,
+ * which can bound "all" by the brand's own history. */
 export function resolveLookbackRange(
-	lookback: LookbackPeriod,
+	lookback: BoundedLookbackPeriod,
 	timezoneParam: string,
-): { timezone: string; fromDateStr: string; toDateStr: string } {
+): { timezone: string } & CalendarDayRange {
 	const timezone = resolveTimezone(timezoneParam);
-	const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
-		fromDateStr: string;
-		toDateStr: string;
-	};
-	return { timezone, fromDateStr, toDateStr };
+	return { timezone, ...getBoundedLookbackRange(lookback, timezone) };
 }

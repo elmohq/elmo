@@ -13,6 +13,7 @@ import {
 	createPrompt,
 	createRun,
 	deleteBrand,
+	rebuildRollups,
 } from "@/test/integration/stats-fixtures";
 
 const window = { from: "2026-03-01", to: "2026-03-03", timezone: "UTC" };
@@ -53,6 +54,7 @@ beforeAll(async () => {
 
 	const hidden = await createRun(brandId, disabled, { at: "2026-03-02T10:00:00Z", brandMentioned: true });
 	await createCitation(hidden, "https://hidden.example/");
+	await rebuildRollups(brandId);
 });
 
 afterAll(async () => {

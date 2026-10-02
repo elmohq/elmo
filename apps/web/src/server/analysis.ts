@@ -14,8 +14,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
-import { resolveLookbackRange } from "@/lib/timezone-utils";
 import { getBrandShareOfVoice } from "@/server/analytics-core";
+import { resolveBrandWindow } from "@/server/brand-window";
 
 export interface ShareOfVoiceEntry {
 	name: string;
@@ -50,7 +50,7 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<ShareOfVoiceResponse> => {
 		await requireBrandSession(data.brandId);
 
-		const { timezone, fromDateStr, toDateStr } = resolveLookbackRange(data.lookback, data.timezone);
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const result = await getBrandShareOfVoice(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
