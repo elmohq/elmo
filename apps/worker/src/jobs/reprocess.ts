@@ -62,7 +62,7 @@ interface RunPosition {
 const BATCH_SIZE = 200;
 const TIME_BUDGET_MS = 4 * 60 * 1000;
 
-type BossClient = Pick<PgBoss, "send" | "findJobs">;
+export type BossClient = Pick<PgBoss, "send" | "findJobs">;
 
 export interface RunHead {
 	id: string;
