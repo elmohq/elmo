@@ -102,7 +102,9 @@ async function queryPg<T>(query: SQL): Promise<T[]> {
 export const isCalendarDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 function windowStart(from: string, timezone: string): SQL {
-	return isCalendarDay(from) ? sql`(${from}::date AT TIME ZONE ${timezone})` : sql`${from}::timestamptz`;
+	// A bare date takes the timestamptz overload of AT TIME ZONE, which converts the
+	// other way: midnight in the session's zone, read as wall time in this one.
+	return isCalendarDay(from) ? sql`(${from}::date::timestamp AT TIME ZONE ${timezone})` : sql`${from}::timestamptz`;
 }
 
 function windowEnd(to: string, timezone: string): SQL {
