@@ -1,6 +1,6 @@
 /**
  * Date range filter: the preset lookbacks plus independent start and end date
- * pickers (either may be left empty). The custom range is written to the same
+ * fields, each opening its own calendar (either may be left empty). The custom range is written to the same
  * `?lookback=` URL key as the presets (`YYYY-MM-DD..YYYY-MM-DD`, with an empty
  * side for an open bound), so the
  * filter-bar and prompt-detail stories assert the URL value too.
@@ -57,7 +57,10 @@ function UrlLookback() {
 	);
 }
 
-const dayButton = (region: HTMLElement, label: RegExp) => within(region).getByRole("button", { name: label });
+// Only one calendar is ever open, so day names are unambiguous across the popover.
+const openField = async (label: "Start date" | "End date") =>
+	userEvent.click(await screen.findByRole("button", { name: new RegExp(`^${label}:`) }));
+const day = (name: RegExp) => screen.getAllByRole("button", { name })[0];
 
 /** Picking a preset closes the popover and updates the trigger label. */
 export const Presets: Story = {
@@ -72,19 +75,22 @@ export const Presets: Story = {
 	},
 };
 
-/** "Custom range…" swaps the preset list for start and end date pickers. */
+/** "Custom range…" swaps the preset list for a start and an end date field;
+ *  clicking a field opens its calendar, and picking a day closes it again. */
 export const CustomRange: Story = {
 	render: () => <ControlledPicker initial="2025-03-01..2025-03-31" />,
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: /Mar 1\s–\s31, 2025/ }));
 
-		// An active custom range reopens straight onto the pickers.
-		const start = await screen.findByRole("region", { name: "Start date" });
-		const end = screen.getByRole("region", { name: "End date" });
+		// An active custom range reopens straight onto the fields, both closed.
+		await openField("Start date");
+		await userEvent.click(day(/March 3rd, 2025/));
+		await expect(screen.queryByRole("grid")).toBeNull();
+		await expect(screen.getByRole("button", { name: "Start date: Mar 3, 2025" })).toBeVisible();
 
-		await userEvent.click(dayButton(start, /March 3rd, 2025/));
-		await userEvent.click(dayButton(end, /March 14th, 2025/));
+		await openField("End date");
+		await userEvent.click(day(/March 14th, 2025/));
 		await userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
 		await expect(canvas.getByTestId("value")).toHaveTextContent("2025-03-03..2025-03-14");
@@ -97,18 +103,20 @@ export const CustomRangeBounds: Story = {
 	render: () => <ControlledPicker initial="2025-03-10..2025-03-20" />,
 	play: async ({ canvasElement }) => {
 		await userEvent.click(within(canvasElement).getByRole("button", { name: /Mar 10\s–\s20, 2025/ }));
-		const start = await screen.findByRole("region", { name: "Start date" });
-		const end = screen.getByRole("region", { name: "End date" });
+		await openField("Start date");
+		await expect(day(/March 21st, 2025/)).toBeDisabled();
+		await expect(day(/March 5th, 2025/)).toBeEnabled();
 
-		await expect(dayButton(start, /March 21st, 2025/)).toBeDisabled();
-		await expect(dayButton(end, /March 9th, 2025/)).toBeDisabled();
-		await expect(dayButton(start, /March 5th, 2025/)).toBeEnabled();
-		await expect(dayButton(end, /March 25th, 2025/)).toBeEnabled();
+		// Opening the other field swaps calendars rather than stacking a second one.
+		await openField("End date");
+		await expect(screen.getAllByRole("grid")).toHaveLength(1);
+		await expect(day(/March 9th, 2025/)).toBeDisabled();
+		await expect(day(/March 25th, 2025/)).toBeEnabled();
 	},
 };
 
-/** Switching from a preset starts with both pickers empty; Apply needs at
- *  least one date. A start date alone means "since". */
+/** Switching from a preset starts with both fields empty and the start
+ *  calendar open; Apply needs at least one date. A start alone means "since". */
 export const StartDateOnly: Story = {
 	render: () => <ControlledPicker initial="1w" />,
 	play: async ({ canvasElement }) => {
@@ -119,8 +127,7 @@ export const StartDateOnly: Story = {
 		const apply = screen.getByRole("button", { name: "Apply" });
 		await expect(apply).toBeDisabled();
 
-		const start = screen.getByRole("region", { name: "Start date" });
-		await userEvent.click(within(start).getAllByRole("button", { name: /1st,/ })[0]);
+		await userEvent.click(day(/1st,/));
 		await userEvent.click(apply);
 
 		await expect(canvas.getByTestId("value")).toHaveTextContent(/^\d{4}-\d{2}-01\.\.$/);
@@ -136,8 +143,8 @@ export const EndDateOnly: Story = {
 		await userEvent.click(canvas.getByRole("button", { name: /Last 7 days/ }));
 		await userEvent.click(await screen.findByRole("option", { name: /Custom range/ }));
 
-		const end = screen.getByRole("region", { name: "End date" });
-		await userEvent.click(within(end).getAllByRole("button", { name: /1st,/ })[0]);
+		await openField("End date");
+		await userEvent.click(day(/1st,/));
 		await userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
 		await expect(canvas.getByTestId("value")).toHaveTextContent(/^\.\.\d{4}-\d{2}-01$/);
@@ -176,8 +183,8 @@ export const InFilterBar: Story = {
 		const trigger = canvas.getByRole("button", { name: /Jan 5\s–\sFeb 10, 2025/ });
 
 		await userEvent.click(trigger);
-		const start = await screen.findByRole("region", { name: "Start date" });
-		await userEvent.click(dayButton(start, /January 1st, 2025/));
+		await openField("Start date");
+		await userEvent.click(day(/January 1st, 2025/));
 		await userEvent.click(screen.getByRole("button", { name: "Apply" }));
 		await waitFor(() => expect(getMockSearch().lookback).toBe("2025-01-01..2025-02-10"));
 		await expect(canvas.getByTestId("url-lookback")).toHaveTextContent("2025-01-01..2025-02-10");
@@ -216,10 +223,10 @@ export const PromptDetailSelector: Story = {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: "Custom range" }));
 
-		const start = await screen.findByRole("region", { name: "Start date" });
-		const end = screen.getByRole("region", { name: "End date" });
-		await userEvent.click(within(start).getAllByRole("button", { name: /1st,/ })[0]);
-		await userEvent.click(within(end).getByRole("button", { name: /^Today,/ }));
+		await screen.findByRole("grid");
+		await userEvent.click(day(/1st,/));
+		await openField("End date");
+		await userEvent.click(day(/^Today,/));
 		await userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
 		await waitFor(() => expect(String(getMockSearch().lookback)).toMatch(/^\d{4}-\d{2}-01\.\.\d{4}-\d{2}-\d{2}$/));

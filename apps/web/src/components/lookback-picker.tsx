@@ -1,8 +1,8 @@
 import { Button } from "@workspace/ui/components/button";
 import { Calendar } from "@workspace/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { CalendarRange, Check, ChevronLeft } from "lucide-react";
-import { type ComponentProps, type ReactElement, useState } from "react";
+import { CalendarIcon, CalendarRange, Check, ChevronLeft, X } from "lucide-react";
+import { type ReactElement, type ReactNode, useState } from "react";
 import {
 	type DateRange,
 	formatCustomLookback,
@@ -55,8 +55,11 @@ function startOfToday(): Date {
 	return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-/** Two independent date pickers. Either may be left empty: a start alone
- *  means "since", an end alone means "until", both make a range. */
+type Bound = "from" | "to";
+
+/** Two independent date fields. Either may be left empty: a start alone means
+ *  "since", an end alone means "until", both make a range. One calendar opens
+ *  at a time, under the field it edits. */
 export function CustomRangeForm({
 	initialRange,
 	onApply,
@@ -69,24 +72,50 @@ export function CustomRangeForm({
 	const today = startOfToday();
 	const [from, setFrom] = useState(() => (initialRange?.from ? toLocalDate(initialRange.from) : undefined));
 	const [to, setTo] = useState(() => (initialRange?.to ? toLocalDate(initialRange.to) : undefined));
+	// Fresh from a preset there is nothing to review, so go straight to picking.
+	const [editing, setEditing] = useState<Bound | null>(initialRange ? null : "from");
+
+	const toggle = (bound: Bound) => setEditing((current) => (current === bound ? null : bound));
+	const pick = (set: (date: Date | undefined) => void) => (date: Date | undefined) => {
+		set(date);
+		if (date) setEditing(null);
+	};
 
 	return (
-		<div className="flex flex-col">
-			<div className="flex flex-col sm:flex-row sm:divide-x">
-				<DatePickerColumn
+		<div className="flex w-72 flex-col">
+			<div className="flex flex-col gap-2 p-3">
+				<DateField
 					label="Start date"
+					placeholder="Earliest"
 					value={from}
-					onChange={setFrom}
-					disabled={{ after: to ?? today }}
-					defaultMonth={to ?? today}
-				/>
-				<DatePickerColumn
+					open={editing === "from"}
+					onToggle={() => toggle("from")}
+					onClear={() => setFrom(undefined)}
+				>
+					<Calendar
+						mode="single"
+						selected={from}
+						onSelect={pick(setFrom)}
+						defaultMonth={from ?? to ?? today}
+						disabled={{ after: to ?? today }}
+					/>
+				</DateField>
+				<DateField
 					label="End date"
+					placeholder="Today"
 					value={to}
-					onChange={setTo}
-					disabled={from ? [{ after: today }, { before: from }] : { after: today }}
-					defaultMonth={today}
-				/>
+					open={editing === "to"}
+					onToggle={() => toggle("to")}
+					onClear={() => setTo(undefined)}
+				>
+					<Calendar
+						mode="single"
+						selected={to}
+						onSelect={pick(setTo)}
+						defaultMonth={to ?? today}
+						disabled={from ? [{ after: today }, { before: from }] : { after: today }}
+					/>
+				</DateField>
 			</div>
 			<div className="flex items-center justify-between gap-2 border-t p-3">
 				{onCancel ? (
@@ -110,42 +139,55 @@ export function CustomRangeForm({
 	);
 }
 
-function DatePickerColumn({
+function DateField({
 	label,
+	placeholder,
 	value,
-	onChange,
-	disabled,
-	defaultMonth,
+	open,
+	onToggle,
+	onClear,
+	children,
 }: {
 	label: string;
+	placeholder: string;
 	value: Date | undefined;
-	onChange: (date: Date | undefined) => void;
-	disabled: ComponentProps<typeof Calendar>["disabled"];
-	defaultMonth: Date;
+	open: boolean;
+	onToggle: () => void;
+	onClear: () => void;
+	children: ReactNode;
 }) {
+	const display = value ? rangeFormatter.format(new Date(`${toDateString(value)}T00:00:00Z`)) : placeholder;
 	return (
-		<section aria-label={label} className="flex flex-col">
-			<div className="flex h-6 items-center justify-between px-3 pt-3">
-				<h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
-				{value && (
+		<div className="flex flex-col gap-1">
+			<div className="flex items-center gap-2">
+				<span className="w-16 shrink-0 text-xs text-muted-foreground">{label}</span>
+				<div className="relative flex-1">
 					<button
 						type="button"
-						onClick={() => onChange(undefined)}
-						className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
-						aria-label={`Clear ${label.toLowerCase()}`}
+						onClick={onToggle}
+						aria-expanded={open}
+						aria-label={`${label}: ${display}`}
+						className={`flex h-8 w-full cursor-pointer items-center gap-2 rounded-md border px-2.5 text-left text-sm ${
+							open ? "border-ring ring-[3px] ring-ring/30" : "hover:bg-muted"
+						}`}
 					>
-						Clear
+						<CalendarIcon className="size-3.5 text-muted-foreground" />
+						<span className={value ? "" : "text-muted-foreground"}>{display}</span>
 					</button>
-				)}
+					{value && (
+						<button
+							type="button"
+							onClick={onClear}
+							aria-label={`Clear ${label.toLowerCase()}`}
+							className="absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
+						>
+							<X className="size-3.5" />
+						</button>
+					)}
+				</div>
 			</div>
-			<Calendar
-				mode="single"
-				selected={value}
-				onSelect={onChange}
-				defaultMonth={value ?? defaultMonth}
-				disabled={disabled}
-			/>
-		</section>
+			{open && <div className="flex justify-center">{children}</div>}
+		</div>
 	);
 }
 
