@@ -164,6 +164,7 @@ function LookbackDropdown() {
 	return (
 		<LookbackPicker
 			value={selected}
+			defaultValue={defaultLookback}
 			onChange={handleChange}
 			trigger={
 				<FilterTriggerButton

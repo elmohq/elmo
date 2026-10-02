@@ -1,8 +1,7 @@
-import { Button } from "@workspace/ui/components/button";
 import { Calendar } from "@workspace/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { CalendarIcon, CalendarRange, Check, ChevronLeft, X } from "lucide-react";
-import { type ReactElement, type ReactNode, useState } from "react";
+import { CalendarIcon, Check, X } from "lucide-react";
+import { type ComponentProps, type ReactElement, useState } from "react";
 import {
 	type DateRange,
 	formatCustomLookback,
@@ -55,86 +54,51 @@ function startOfToday(): Date {
 	return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-type Bound = "from" | "to";
+function monthBefore(date: Date): Date {
+	return new Date(date.getFullYear(), date.getMonth() - 1, 1);
+}
 
-/** Two independent date fields. Either may be left empty: a start alone means
- *  "since", an end alone means "until", both make a range. One calendar opens
- *  at a time, under the field it edits. */
-export function CustomRangeForm({
-	initialRange,
-	onApply,
-	onCancel,
+/** Start and end date fields, each optional and applied as soon as a day is
+ *  picked: a start alone means "since", an end alone means "until", both make
+ *  a range. `null` means both were cleared. */
+export function CustomRangeFields({
+	value,
+	onChange,
 }: {
-	initialRange?: DateRange;
-	onApply: (range: DateRange) => void;
-	onCancel?: () => void;
+	value: DateRange | null;
+	onChange: (range: DateRange | null) => void;
 }) {
 	const today = startOfToday();
-	const [from, setFrom] = useState(() => (initialRange?.from ? toLocalDate(initialRange.from) : undefined));
-	const [to, setTo] = useState(() => (initialRange?.to ? toLocalDate(initialRange.to) : undefined));
-	// Fresh from a preset there is nothing to review, so go straight to picking.
-	const [editing, setEditing] = useState<Bound | null>(initialRange ? null : "from");
+	const from = value?.from ? toLocalDate(value.from) : undefined;
+	const to = value?.to ? toLocalDate(value.to) : undefined;
 
-	const toggle = (bound: Bound) => setEditing((current) => (current === bound ? null : bound));
-	const pick = (set: (date: Date | undefined) => void) => (date: Date | undefined) => {
-		set(date);
-		if (date) setEditing(null);
+	const commit = (next: { from: Date | undefined; to: Date | undefined }) => {
+		if (!next.from && !next.to) return onChange(null);
+		onChange({
+			from: next.from ? toDateString(next.from) : null,
+			to: next.to ? toDateString(next.to) : null,
+		});
 	};
 
 	return (
-		<div className="flex w-72 flex-col">
-			<div className="flex flex-col gap-2 p-3">
-				<DateField
-					label="Start date"
-					placeholder="Earliest"
-					value={from}
-					open={editing === "from"}
-					onToggle={() => toggle("from")}
-					onClear={() => setFrom(undefined)}
-				>
-					<Calendar
-						mode="single"
-						selected={from}
-						onSelect={pick(setFrom)}
-						defaultMonth={from ?? to ?? today}
-						disabled={{ after: to ?? today }}
-					/>
-				</DateField>
-				<DateField
-					label="End date"
-					placeholder="Today"
-					value={to}
-					open={editing === "to"}
-					onToggle={() => toggle("to")}
-					onClear={() => setTo(undefined)}
-				>
-					<Calendar
-						mode="single"
-						selected={to}
-						onSelect={pick(setTo)}
-						defaultMonth={to ?? today}
-						disabled={from ? [{ after: today }, { before: from }] : { after: today }}
-					/>
-				</DateField>
-			</div>
-			<div className="flex items-center justify-between gap-2 border-t p-3">
-				{onCancel ? (
-					<Button variant="ghost" size="sm" onClick={onCancel} className="cursor-pointer">
-						<ChevronLeft className="size-3.5" />
-						Back
-					</Button>
-				) : (
-					<span />
-				)}
-				<Button
-					size="sm"
-					disabled={!from && !to}
-					onClick={() => onApply({ from: from ? toDateString(from) : null, to: to ? toDateString(to) : null })}
-					className="cursor-pointer"
-				>
-					Apply
-				</Button>
-			</div>
+		<div className="flex flex-col gap-1.5">
+			<DateField
+				label="Start date"
+				placeholder="Earliest"
+				value={from}
+				onChange={(date) => commit({ from: date, to })}
+				// Open a month back so the picker isn't mostly days that can't be chosen yet.
+				defaultMonth={monthBefore(to ?? today)}
+				disabled={{ after: to ?? today }}
+			/>
+			<DateField
+				label="End date"
+				placeholder="Today"
+				value={to}
+				onChange={(date) => commit({ from, to: date })}
+				defaultMonth={today}
+				disabled={from ? [{ after: today }, { before: from }] : { after: today }}
+			/>
 		</div>
 	);
 }
@@ -143,130 +107,116 @@ function DateField({
 	label,
 	placeholder,
 	value,
-	open,
-	onToggle,
-	onClear,
-	children,
+	onChange,
+	defaultMonth,
+	disabled,
 }: {
 	label: string;
 	placeholder: string;
 	value: Date | undefined;
-	open: boolean;
-	onToggle: () => void;
-	onClear: () => void;
-	children: ReactNode;
+	onChange: (date: Date | undefined) => void;
+	defaultMonth: Date;
+	disabled: ComponentProps<typeof Calendar>["disabled"];
 }) {
+	const [open, setOpen] = useState(false);
 	const display = value ? rangeFormatter.format(new Date(`${toDateString(value)}T00:00:00Z`)) : placeholder;
+
 	return (
-		<div className="flex flex-col gap-1">
-			<div className="flex items-center gap-2">
-				<span className="w-16 shrink-0 text-xs text-muted-foreground">{label}</span>
-				<div className="relative flex-1">
+		<div className="flex items-center gap-2">
+			<span className="w-16 shrink-0 text-xs text-muted-foreground">{label}</span>
+			<div className="relative min-w-0 flex-1">
+				<Popover open={open} onOpenChange={setOpen}>
+					<PopoverTrigger
+						render={
+							<button
+								type="button"
+								aria-label={`${label}: ${display}`}
+								className={`flex h-8 w-full cursor-pointer items-center gap-2 rounded-md border px-2.5 text-left text-sm ${
+									open ? "border-ring ring-[3px] ring-ring/30" : "hover:bg-muted"
+								}`}
+							>
+								<CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
+								<span className={`truncate ${value ? "" : "text-muted-foreground"}`}>{display}</span>
+							</button>
+						}
+					/>
+					<PopoverContent side="right" align="start" sideOffset={12} className="w-auto p-0">
+						<Calendar
+							mode="single"
+							selected={value}
+							onSelect={(date) => {
+								if (!date) return;
+								onChange(date);
+								setOpen(false);
+							}}
+							defaultMonth={value ?? defaultMonth}
+							disabled={disabled}
+						/>
+					</PopoverContent>
+				</Popover>
+				{value && (
 					<button
 						type="button"
-						onClick={onToggle}
-						aria-expanded={open}
-						aria-label={`${label}: ${display}`}
-						className={`flex h-8 w-full cursor-pointer items-center gap-2 rounded-md border px-2.5 text-left text-sm ${
-							open ? "border-ring ring-[3px] ring-ring/30" : "hover:bg-muted"
-						}`}
+						onClick={() => onChange(undefined)}
+						aria-label={`Clear ${label.toLowerCase()}`}
+						className="absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
 					>
-						<CalendarIcon className="size-3.5 text-muted-foreground" />
-						<span className={value ? "" : "text-muted-foreground"}>{display}</span>
+						<X className="size-3.5" />
 					</button>
-					{value && (
-						<button
-							type="button"
-							onClick={onClear}
-							aria-label={`Clear ${label.toLowerCase()}`}
-							className="absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
-						>
-							<X className="size-3.5" />
-						</button>
-					)}
-				</div>
+				)}
 			</div>
-			{open && <div className="flex justify-center">{children}</div>}
 		</div>
 	);
 }
 
-/** Preset list plus a "Custom range" view with start/end date pickers.
- *  Controlled: the caller owns where the value lives (the URL, in the app). */
+/** One menu: the presets, then start/end date fields beneath them. Picking a
+ *  preset or a date applies immediately; clearing both dates falls back to
+ *  `defaultValue`. Controlled: the caller owns where the value lives (the URL,
+ *  in the app). */
 export function LookbackPicker({
 	value,
+	defaultValue,
 	onChange,
 	trigger,
 	align = "start",
 }: {
 	value: LookbackPeriod;
+	defaultValue: LookbackPeriod;
 	onChange: (lookback: LookbackPeriod) => void;
 	trigger: ReactElement;
 	align?: "start" | "center" | "end";
 }) {
 	const [open, setOpen] = useState(false);
-	const customRange = parseCustomLookback(value);
-	const [view, setView] = useState<"presets" | "custom">("presets");
-
-	const handleOpenChange = (next: boolean) => {
-		setOpen(next);
-		// Reopen on whatever is currently selected.
-		if (next) setView(customRange ? "custom" : "presets");
-	};
-
-	const choose = (next: LookbackPeriod) => {
-		onChange(next);
-		setOpen(false);
-	};
 
 	return (
-		<Popover open={open} onOpenChange={handleOpenChange}>
+		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger render={trigger} />
-			<PopoverContent align={align} className="w-auto p-0">
-				{view === "presets" ? (
-					<div role="listbox" aria-label="Date range" className="w-48 py-1">
-						{LOOKBACK_PERIODS.map((period) => (
-							<PickerOption key={period} selected={value === period} onClick={() => choose(period)}>
-								{PRESET_LABELS[period]}
-							</PickerOption>
-						))}
-						<div className="my-1 border-t" />
-						<PickerOption selected={customRange !== null} onClick={() => setView("custom")}>
-							<CalendarRange className="size-3.5 text-muted-foreground" />
-							Custom range…
-						</PickerOption>
-					</div>
-				) : (
-					<CustomRangeForm
-						initialRange={customRange ?? undefined}
-						onApply={(range) => choose(formatCustomLookback(range))}
-						onCancel={() => setView("presets")}
+			<PopoverContent align={align} className="w-72 p-0">
+				<div role="listbox" aria-label="Date range" className="py-1">
+					{LOOKBACK_PERIODS.map((period) => (
+						<button
+							key={period}
+							type="button"
+							role="option"
+							aria-selected={value === period}
+							onClick={() => {
+								onChange(period);
+								setOpen(false);
+							}}
+							className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
+						>
+							{PRESET_LABELS[period]}
+							{value === period && <Check className="ml-auto size-3.5" />}
+						</button>
+					))}
+				</div>
+				<div className="border-t p-3">
+					<CustomRangeFields
+						value={parseCustomLookback(value)}
+						onChange={(range) => onChange(range ? formatCustomLookback(range) : defaultValue)}
 					/>
-				)}
+				</div>
 			</PopoverContent>
 		</Popover>
-	);
-}
-
-function PickerOption({
-	selected,
-	onClick,
-	children,
-}: {
-	selected: boolean;
-	onClick: () => void;
-	children: React.ReactNode;
-}) {
-	return (
-		<button
-			type="button"
-			role="option"
-			aria-selected={selected}
-			onClick={onClick}
-			className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
-		>
-			{children}
-			{selected && <Check className="ml-auto size-3.5" />}
-		</button>
 	);
 }

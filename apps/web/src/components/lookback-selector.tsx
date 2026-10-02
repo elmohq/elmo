@@ -2,7 +2,7 @@ import { useSearch } from "@tanstack/react-router";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { CalendarRange } from "lucide-react";
 import { useMemo, useState } from "react";
-import { CustomRangeForm, formatLookbackLabel } from "@/components/lookback-picker";
+import { CustomRangeFields, formatLookbackLabel } from "@/components/lookback-picker";
 import { useBrand } from "@/hooks/use-brands";
 import { coerceLookback, useFilterNavigate } from "@/hooks/use-list-filters";
 import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
@@ -77,13 +77,10 @@ export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSe
 						</button>
 					}
 				/>
-				<PopoverContent align="end" className="w-auto p-0">
-					<CustomRangeForm
-						initialRange={customRange ?? undefined}
-						onApply={(range) => {
-							handleChange(formatCustomLookback(range));
-							setCustomOpen(false);
-						}}
+				<PopoverContent align="end" className="w-72 p-3">
+					<CustomRangeFields
+						value={customRange}
+						onChange={(range) => handleChange(range ? formatCustomLookback(range) : computedDefaultPeriod)}
 					/>
 				</PopoverContent>
 			</Popover>
