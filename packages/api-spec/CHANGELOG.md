@@ -1,5 +1,11 @@
 # @workspace/api-spec
 
+## 0.4.4
+
+### Patch Changes
+
+- 76ec134: Reports accept other names a brand goes by, and count a mention of any of them as a brand mention.
+
 ## 0.4.3
 
 No changes in this release.

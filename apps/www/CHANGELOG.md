@@ -1,5 +1,17 @@
 # @workspace/www
 
+## 0.4.4
+
+### Patch Changes
+
+- Updated dependencies [b48f545]
+- Updated dependencies [76ec134]
+  - @workspace/config@0.4.4
+  - @workspace/api-spec@0.4.4
+  - @workspace/og@0.4.4
+  - @workspace/docs@0.4.4
+  - @workspace/ui@0.4.4
+
 ## 0.4.3
 
 ### Patch Changes
