@@ -5,4 +5,4 @@
 "@workspace/api-spec": patch
 ---
 
-Analytics pages load much faster and stay accurate after you edit a brand's name, aliases, domains, or competitors.
+Analytics pages and the analytics API load much faster, and date ranges in time zones ahead of UTC now include the whole first day.
