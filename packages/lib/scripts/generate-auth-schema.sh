@@ -106,11 +106,4 @@ HEADER
 cat "$TMP_OUTPUT"
 } > "$OUTPUT"
 
-# The CLI formats with Prettier and emits imports unsorted, both of which fail
-# `pnpm lint`. Run Biome so the generated file is committable as-is. Deploy
-# builds run this through turbo from a context .dockerignore strips .gitignore
-# out of, and Biome refuses to start when the ignore file it is told to read is
-# missing — the target is named explicitly, so it has no use for one.
-pnpm exec biome check --write --vcs-use-ignore-file=false "$OUTPUT" >/dev/null
-
 echo "[generate-auth-schema] Written $(wc -l < "$OUTPUT") lines to $OUTPUT"
