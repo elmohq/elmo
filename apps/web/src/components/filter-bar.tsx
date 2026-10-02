@@ -13,6 +13,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
@@ -270,7 +271,13 @@ function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 // setState) to avoid flashing back when the URL echo races with typing.
 // ------------------------------------------------------------------
 
-function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: string }) {
+function SearchInput({
+	placeholder = "Search prompts...",
+	searching = false,
+}: {
+	placeholder?: string;
+	searching?: boolean;
+}) {
 	const urlValue = useSearch({ strict: false, select: (s) => s.q });
 	const setFilters = useFilterNavigate();
 	const value = urlValue ?? "";
@@ -324,7 +331,7 @@ function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: stri
 				className="h-8 text-sm"
 			/>
 			<InputGroupAddon className="pl-2.5">
-				<Search className="size-3.5" />
+				{searching ? <Spinner className="size-3.5" aria-label="Searching" /> : <Search className="size-3.5" />}
 			</InputGroupAddon>
 			{local && (
 				<InputGroupAddon align="inline-end" className="pr-1.5">
@@ -369,6 +376,7 @@ export function FilterBar({
 	showModelSelector,
 	resultCount,
 	resultTotal,
+	searching,
 	extraControls,
 }: {
 	availableTags: readonly string[];
@@ -380,6 +388,8 @@ export function FilterBar({
 	resultCount?: number;
 	/** Unfiltered count — when it differs from `resultCount` the line reads "n of m results". */
 	resultTotal?: number;
+	/** For searches slow enough that the input should show they're still running. */
+	searching?: boolean;
 	/** Page-specific controls rendered inline with the dropdown group
 	 *  (e.g. the prompts list's sort dropdown). */
 	extraControls?: ReactNode;
@@ -393,7 +403,7 @@ export function FilterBar({
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />
 			</div>
-			{showSearch && <SearchInput placeholder={searchPlaceholder} />}
+			{showSearch && <SearchInput placeholder={searchPlaceholder} searching={searching} />}
 		</div>
 	);
 }

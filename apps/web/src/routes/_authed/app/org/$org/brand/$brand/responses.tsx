@@ -51,9 +51,13 @@ function ResponsesPage() {
 	const filterKey = JSON.stringify([query, lookback, modelParam, tags, promptIds]);
 	const [paging, setPaging] = useState({ filterKey, page: 0 });
 	const page = paging.filterKey === filterKey ? paging.page : 0;
-	const setPage = (next: number) => setPaging({ filterKey, page: next });
+	const setPage = (next: number) => {
+		setPaging({ filterKey, page: next });
+		window.scrollTo({ top: 0 });
+	};
 
-	const { data, isLoading, error } = useResponseSearch(brandId, {
+	// Placeholder data is the previous page or search, still on screen while the next one loads.
+	const { data, isLoading, isPlaceholderData, error } = useResponseSearch(brandId, {
 		query,
 		lookback,
 		model: modelParam,
@@ -82,7 +86,11 @@ function ResponsesPage() {
 		content = <EmptyState message={`No responses contain "${data.query}" in this period.`} />;
 	} else {
 		content = (
-			<div className="space-y-4">
+			// Bottom padding keeps the pager clear of the floating support chat button.
+			<div
+				className={`space-y-4 pb-20 transition-opacity ${isPlaceholderData ? "opacity-50" : ""}`}
+				aria-busy={isPlaceholderData}
+			>
 				{data.matches.map((match) => (
 					<ResponseCard
 						key={match.id}
@@ -126,6 +134,7 @@ function ResponsesPage() {
 					}
 					resultCount={data?.matchedRuns}
 					resultTotal={data?.totalRuns}
+					searching={isPlaceholderData}
 				/>
 			</FilterSection>
 			{content}
