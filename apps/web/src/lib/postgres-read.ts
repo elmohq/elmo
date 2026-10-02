@@ -153,27 +153,31 @@ function modelFilter(model?: string, opts?: { alias?: string; source?: "prompt_r
 	const target = model ? parseModelFilter(model) : null;
 	if (!target) return sql``;
 	const prefix = opts?.alias ? sql.raw(`${opts.alias}.`) : sql``;
+	const grounded = groundedCondition(prefix, opts?.source);
 	// No API providers configured means nothing can be grounded, so the premium
 	// side matches nothing and the standard side matches everything.
-	if (API_PROVIDER_IDS.length === 0) {
+	if (!grounded) {
 		return target.premium ? sql`AND FALSE` : sql`AND ${prefix}model = ${target.model}`;
 	}
+	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
+}
+
+function groundedCondition(prefix: SQL, source?: "prompt_runs" | "citations"): SQL | null {
+	if (API_PROVIDER_IDS.length === 0) return null;
 	const providers = sql.join(
 		API_PROVIDER_IDS.map((id) => sql`${id}`),
 		sql`, `,
 	);
 	// A citation records which model cited it but not how that model was
 	// reached, so the grounded test has to go through the run it came from.
-	const grounded =
-		opts?.source === "citations"
-			? sql`EXISTS (
-					SELECT 1 FROM prompt_runs AS mf_run
-					WHERE mf_run.id = ${prefix}prompt_run_id
-						AND mf_run.web_search_enabled
-						AND mf_run.provider IN (${providers})
-				)`
-			: sql`(${prefix}web_search_enabled AND ${prefix}provider IN (${providers}))`;
-	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
+	return source === "citations"
+		? sql`EXISTS (
+				SELECT 1 FROM prompt_runs AS mf_run
+				WHERE mf_run.id = ${prefix}prompt_run_id
+					AND mf_run.web_search_enabled
+					AND mf_run.provider IN (${providers})
+			)`
+		: sql`(${prefix}web_search_enabled AND ${prefix}provider IN (${providers}))`;
 }
 
 function webSearchFilter(webSearchEnabled?: boolean): SQL {
@@ -378,6 +382,38 @@ export async function getVisibilityDailyAggregate(
 		ORDER BY date
 	`);
 	return rows;
+}
+
+export interface CitationCountByModelRow {
+	model: string;
+	count: number;
+}
+
+/**
+ * Per model, the count `getCitationsTotalCount` gives for that bare model id in
+ * one pass. A bare id names the standard target, so grounded citations are left
+ * out exactly as `modelFilter` leaves them out.
+ */
+export async function getCitationsCountByModel(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+): Promise<CitationCountByModelRow[]> {
+	if (enabledPromptIds && enabledPromptIds.length === 0) return [];
+	const grounded = groundedCondition(sql``, "citations");
+	const rows = await queryPg<CitationCountByModelRow>(sql`
+		SELECT model, count(*)::int AS count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${grounded ? sql`AND NOT ${grounded}` : sql``}
+		GROUP BY model
+	`);
+	return rows.map((row) => ({ model: row.model, count: Number(row.count) }));
 }
 
 /**

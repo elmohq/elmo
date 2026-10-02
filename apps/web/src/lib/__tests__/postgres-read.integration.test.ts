@@ -6,6 +6,7 @@ import {
 	getBrandMentionTotals,
 	getCitationDomainPromptCounts,
 	getCitationDomainStats,
+	getCitationsCountByModel,
 	getCitationsTotalCount,
 	getCitationUrlStats,
 	getDashboardSummary,
@@ -271,6 +272,13 @@ describe("model filter", () => {
 		expect(await getCitationsTotalCount(brandId, ...window, "chatgpt")).toBe(2);
 		expect(await getCitationsTotalCount(brandId, ...window, "chatgpt::premium")).toBe(1);
 		expect(await getCitationsTotalCount(brandId, ...window)).toBe(3);
+	});
+
+	it("counts each model's citations the way its bare model filter does", async () => {
+		const window: [string, string, string, string[]] = ["2026-03-02", "2026-03-02", "UTC", [promptId]];
+		const byModel = await getCitationsCountByModel(brandId, ...window);
+		expect(byModel).toEqual([{ model: "chatgpt", count: 2 }]);
+		expect(byModel[0].count).toBe(await getCitationsTotalCount(brandId, ...window, "chatgpt"));
 	});
 
 	it("breaks mention rate down by model", async () => {
