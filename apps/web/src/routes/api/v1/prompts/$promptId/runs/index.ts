@@ -5,9 +5,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { parseAnalyticsWindow, parsePaging } from "@/lib/api/analytics-range";
-import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
-import { isBrandInScope } from "@/lib/api/scope";
-import { findPromptBrandId } from "@/server/prompts-core";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { requirePromptBrandInScope } from "@/lib/api/scope";
 import { listPromptRuns } from "@/server/runs-core";
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
@@ -18,10 +17,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
 				scopes: ["read"],
 				handle: async ({ params, request, auth }) => {
 					const { promptId } = params;
-					const brandId = await findPromptBrandId(promptId);
-					if (!brandId || !(await isBrandInScope(auth, brandId))) {
-						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
-					}
+					await requirePromptBrandInScope(auth, promptId);
 
 					const url = new URL(request.url);
 					const { page, limit, offset } = parsePaging(url);
