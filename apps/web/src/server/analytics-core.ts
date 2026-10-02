@@ -18,6 +18,7 @@ import {
 	getBrandMentionRateByModel,
 	getBrandMentionTotals,
 	getCitationDomainPromptCounts,
+	getCitationsCountByModel,
 	getCitationsTotalCount,
 	getCitationUrlStats,
 	getFanoutBreakdown,
@@ -230,15 +231,11 @@ async function getBrandModelBreakdown(
 	if (promptIds.length === 0) return [];
 	const { from, to, timezone } = window;
 
-	const rows = await getBrandMentionRateByModel(brandId, from, to, timezone, promptIds, filters.model);
-
-	// The URL roll-up has no model column to group by.
-	const citationsByModel = new Map<string, number>();
-	await Promise.all(
-		rows.map(async (row) => {
-			citationsByModel.set(row.model, await getCitationsTotalCount(brandId, from, to, timezone, promptIds, row.model));
-		}),
-	);
+	const [rows, citationRows] = await Promise.all([
+		getBrandMentionRateByModel(brandId, from, to, timezone, promptIds, filters.model),
+		getCitationsCountByModel(brandId, from, to, timezone, promptIds),
+	]);
+	const citationsByModel = new Map(citationRows.map((row) => [row.model, row.count]));
 
 	return rows.map((row) => {
 		const runs = Number(row.runs);
