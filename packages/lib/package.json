@@ -6,7 +6,8 @@
 	"scripts": {
 		"check-types": "tsc --noEmit",
 		"codegen": "pnpm run generate:auth-schema",
-		"test": "vitest run",
+		"test": "vitest run --project=unit",
+		"test:integration": "vitest run --project=integration",
 		"compare:onboarding": "tsx scripts/compare-onboarding.ts",
 		"generate:auth-schema": "bash scripts/generate-auth-schema.sh",
 		"verify:membership-dedupe": "tsx scripts/verify-membership-dedupe.ts"
