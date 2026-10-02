@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { getCitationsFn } from "@/server/citations";
 
 export interface CitationFilters {
-	days?: number;
-	/** Last day of a custom range; omitted, the window ends today. */
-	endDate?: string;
+	lookback?: LookbackPeriod;
 	tags?: string[];
 	model?: string;
 }
@@ -24,8 +23,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 			getCitationsFn({
 				data: {
 					brandId: resolvedBrandId!,
-					days: filters?.days || 7,
-					endDate: filters?.endDate,
+					lookback: filters?.lookback ?? "1w",
 					tags: filters?.tags?.join(","),
 					model: filters?.model,
 				},

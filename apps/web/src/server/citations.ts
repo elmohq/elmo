@@ -1,19 +1,5 @@
 /** Server functions for citation data. */
 import { createServerFn } from "@tanstack/react-start";
-import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { and, eq } from "drizzle-orm";
-import { z } from "zod";
-import { requireBrandSession } from "@/lib/auth/helpers";
-import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
-import {
-	type CitationDomain,
-	type CitationUrl,
-	rollUpCitationDomains,
-	rollUpCitationUrls,
-	tallyCitations,
-} from "@/lib/citation-rollup";
 import {
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
@@ -26,13 +12,27 @@ import {
 	normalizeUrl,
 	resolvePageType,
 	toRoundedPercentages,
-} from "@/lib/domain-categories";
+} from "@workspace/lib/citations/domain-categories";
 import {
 	categorizeDomain as categorizeDomainShared,
 	classifyUrl as classifyUrlShared,
-} from "@/lib/domain-categories.server";
+} from "@workspace/lib/citations/domain-lists";
+import {
+	type CitationDomain,
+	type CitationUrl,
+	rollUpCitationDomains,
+	rollUpCitationUrls,
+	tallyCitations,
+} from "@workspace/lib/citations/rollup";
+import { db } from "@workspace/lib/db/db";
+import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
-import { calendarDateSchema } from "@/lib/lookback";
+import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -41,6 +41,7 @@ import {
 	type PerPromptCitationPageRow,
 	type PerPromptDailyCitationPageRow,
 } from "@/lib/postgres-read";
+import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 
 type Classify = (domain: string, url: string, title?: string | null) => CitationCategory;
@@ -88,6 +89,8 @@ interface CitationsResult {
 	competitors: { id: string; name: string; domains: string[] }[];
 	competitorOnlyPrompts: { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[];
 	whatsChanged: WhatsChanged;
+	/** How many days the window spans, which "all" only settles on the server. */
+	days: number;
 }
 
 /** A URL or domain needs this many citations before it counts as a real change. */
@@ -316,8 +319,10 @@ function buildCompetitorOnlyPrompts(args: {
 function emptyCitationsResult(
 	availableTags: string[],
 	competitorSummary: CitationsResult["competitors"],
+	days: number,
 ): CitationsResult {
 	return {
+		days,
 		totalCitations: 0,
 		uniqueDomains: 0,
 		categoryCounts: emptyCategoryCounts(),
@@ -338,8 +343,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			days: z.number().optional().default(7),
-			endDate: calendarDateSchema.optional(),
+			lookback: lookbackSchema.default("1w"),
 			tags: z.string().optional(),
 			model: z.string().optional(),
 		}),
@@ -347,12 +351,14 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<CitationsResult> => {
 		await requireBrandSession(data.brandId);
 
-		// Window: `data.days` calendar days ending today or `endDate` (inclusive), plus the
-		// contiguous equal-length previous window — all UTC (server-TZ independent).
+		const days = await resolveBrandLookbackDays(data.brandId, data.lookback);
+		const endDate = customRangeEnd(data.lookback);
+		// Window: `days` calendar days ending today or on a custom range's end (inclusive),
+		// plus the contiguous equal-length previous window — all UTC (server-TZ independent).
 		// `dateRange` is reused for the trend charts so totals + charts span identically.
 		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(
-			data.endDate ? new Date(`${data.endDate}T00:00:00Z`) : new Date(),
-			data.days,
+			endDate ? new Date(`${endDate}T00:00:00Z`) : new Date(),
+			days,
 		);
 		const timezone = "UTC";
 
@@ -384,7 +390,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const tagFilter = parseTagFilter(data.tags);
 		const enabledPromptIds =
 			tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
-		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary);
+		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, days);
 
 		const [urlStats, perPromptDailyPages, perPromptPages, prevUrlStats] = await Promise.all([
 			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
@@ -451,6 +457,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		});
 
 		return {
+			days,
 			totalCitations,
 			uniqueDomains: domainDistribution.length,
 			categoryCounts,

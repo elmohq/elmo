@@ -28,9 +28,7 @@ import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { useSiteIcons } from "@/hooks/use-site-icons";
-import { getDaysFromLookback } from "@/lib/chart-utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
-import { customRangeEnd } from "@/lib/lookback";
 import { PROMPT_DETAIL_TABS, type PromptDetailTab } from "@/lib/prompt-detail-tabs";
 import { pageHead } from "@/lib/route-head";
 import { skeletonRows } from "@/lib/skeleton-rows";
@@ -200,8 +198,6 @@ function PromptHistoryPage() {
 	const brandId = useBrandId();
 
 	const lookback = useLookbackPeriod();
-	const days = getDaysFromLookback(lookback);
-	const endDate = customRangeEnd(lookback);
 
 	const activeTab = Route.useSearch({ select: (s) => s.tab ?? "mentions" });
 	const navigate = Route.useNavigate();
@@ -227,7 +223,7 @@ function PromptHistoryPage() {
 		data: promptStats,
 		isLoading: isStatsLoading,
 		error: statsError,
-	} = usePromptStats(shouldFetchStats ? promptId : "", { days, endDate });
+	} = usePromptStats(shouldFetchStats ? promptId : "", { lookback });
 	const aggregations = promptStats?.aggregations;
 
 	const shouldFetchRuns = visitedTabs.has("responses");
@@ -238,8 +234,7 @@ function PromptHistoryPage() {
 	} = usePromptRunsOnly(shouldFetchRuns ? promptId : "", {
 		page: currentPage,
 		limit: RUNS_PER_PAGE,
-		days,
-		endDate,
+		lookback,
 	});
 
 	const { runs, total: totalRunCount, totalPages } = runsPage(runsData);

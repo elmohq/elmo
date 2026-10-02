@@ -13,6 +13,7 @@
 			"!**/node_modules",
 			"!packages/ui/src/components",
 			"!**/routeTree.gen.ts",
+			"!packages/lib/src/db/schema-auth.ts",
 			"!**/public",
 			"!packages/lib/src/db/migrations"
 		]

@@ -102,7 +102,8 @@ async function queryPg<T>(query: SQL): Promise<T[]> {
 export const isCalendarDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 function windowStart(from: string, timezone: string): SQL {
-	return isCalendarDay(from) ? sql`(${from}::date AT TIME ZONE ${timezone})` : sql`${from}::timestamptz`;
+	// Cast to timestamp so AT TIME ZONE reads midnight as wall time in `timezone`.
+	return isCalendarDay(from) ? sql`(${from}::date::timestamp AT TIME ZONE ${timezone})` : sql`${from}::timestamptz`;
 }
 
 function windowEnd(to: string, timezone: string): SQL {
@@ -153,27 +154,31 @@ function modelFilter(model?: string, opts?: { alias?: string; source?: "prompt_r
 	const target = model ? parseModelFilter(model) : null;
 	if (!target) return sql``;
 	const prefix = opts?.alias ? sql.raw(`${opts.alias}.`) : sql``;
+	const grounded = groundedCondition(prefix, opts?.source);
 	// No API providers configured means nothing can be grounded, so the premium
 	// side matches nothing and the standard side matches everything.
-	if (API_PROVIDER_IDS.length === 0) {
+	if (!grounded) {
 		return target.premium ? sql`AND FALSE` : sql`AND ${prefix}model = ${target.model}`;
 	}
+	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
+}
+
+function groundedCondition(prefix: SQL, source?: "prompt_runs" | "citations"): SQL | null {
+	if (API_PROVIDER_IDS.length === 0) return null;
 	const providers = sql.join(
 		API_PROVIDER_IDS.map((id) => sql`${id}`),
 		sql`, `,
 	);
 	// A citation records which model cited it but not how that model was
 	// reached, so the grounded test has to go through the run it came from.
-	const grounded =
-		opts?.source === "citations"
-			? sql`EXISTS (
-					SELECT 1 FROM prompt_runs AS mf_run
-					WHERE mf_run.id = ${prefix}prompt_run_id
-						AND mf_run.web_search_enabled
-						AND mf_run.provider IN (${providers})
-				)`
-			: sql`(${prefix}web_search_enabled AND ${prefix}provider IN (${providers}))`;
-	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
+	return source === "citations"
+		? sql`EXISTS (
+				SELECT 1 FROM prompt_runs AS mf_run
+				WHERE mf_run.id = ${prefix}prompt_run_id
+					AND mf_run.web_search_enabled
+					AND mf_run.provider IN (${providers})
+			)`
+		: sql`(${prefix}web_search_enabled AND ${prefix}provider IN (${providers}))`;
 }
 
 function webSearchFilter(webSearchEnabled?: boolean): SQL {
@@ -378,6 +383,38 @@ export async function getVisibilityDailyAggregate(
 		ORDER BY date
 	`);
 	return rows;
+}
+
+export interface CitationCountByModelRow {
+	model: string;
+	count: number;
+}
+
+/**
+ * Per model, the count `getCitationsTotalCount` gives for that bare model id in
+ * one pass. A bare id names the standard target, so grounded citations are left
+ * out exactly as `modelFilter` leaves them out.
+ */
+export async function getCitationsCountByModel(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+): Promise<CitationCountByModelRow[]> {
+	if (enabledPromptIds && enabledPromptIds.length === 0) return [];
+	const grounded = groundedCondition(sql``, "citations");
+	const rows = await queryPg<CitationCountByModelRow>(sql`
+		SELECT model, count(*)::int AS count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${grounded ? sql`AND NOT ${grounded}` : sql``}
+		GROUP BY model
+	`);
+	return rows.map((row) => ({ model: row.model, count: Number(row.count) }));
 }
 
 /**
@@ -1026,11 +1063,20 @@ export async function getBrandMentionRateByModel(
 	return rows;
 }
 
+/** prompt_runs has no brand_id index, so this takes each prompt's first run off
+ * the (prompt_id, created_at) index instead of scanning for the brand's rows. */
 export async function getBrandEarliestRunDate(brandId: string): Promise<string | null> {
 	const rows = await queryPg<{ earliest_date: string | null }>(sql`
-		SELECT min(created_at) AS earliest_date
-		FROM prompt_runs
-		WHERE brand_id = ${brandId}
+		SELECT min(first_run.created_at) AS earliest_date
+		FROM prompts p
+		CROSS JOIN LATERAL (
+			SELECT pr.created_at
+			FROM prompt_runs pr
+			WHERE pr.prompt_id = p.id
+			ORDER BY pr.created_at
+			LIMIT 1
+		) first_run
+		WHERE p.brand_id = ${brandId}
 	`);
 	return rows[0]?.earliest_date || null;
 }

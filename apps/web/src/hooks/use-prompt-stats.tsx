@@ -1,19 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { getPromptStatsFn } from "@/server/prompts";
 
 const promptStatsKeys = {
 	all: ["prompt-stats"] as const,
-	detail: (promptId: string, days: number, endDate?: string) =>
-		[...promptStatsKeys.all, promptId, days, endDate] as const,
+	detail: (promptId: string, lookback: LookbackPeriod) => [...promptStatsKeys.all, promptId, lookback] as const,
 };
 
-export function usePromptStats(promptId?: string, options?: { days?: number; endDate?: string }) {
-	const days = options?.days || 7;
-	const endDate = options?.endDate;
+export function usePromptStats(promptId?: string, options?: { lookback?: LookbackPeriod }) {
+	const lookback = options?.lookback ?? "1w";
 
 	const query = useQuery({
-		queryKey: promptStatsKeys.detail(promptId || "", days, endDate),
-		queryFn: () => getPromptStatsFn({ data: { promptId: promptId!, days, endDate } }),
+		queryKey: promptStatsKeys.detail(promptId || "", lookback),
+		queryFn: () => getPromptStatsFn({ data: { promptId: promptId!, lookback } }),
 		enabled: !!promptId,
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,

@@ -1,5 +1,8 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
+import { extractDomain } from "@workspace/lib/citations/domain-categories";
+import { classifyUrl } from "@workspace/lib/citations/domain-lists";
+import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
@@ -14,13 +17,10 @@ import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
-import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
-import { extractDomain } from "@/lib/domain-categories";
-import { classifyUrl } from "@/lib/domain-categories.server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
-import { calendarDateSchema, lookbackSchema } from "@/lib/lookback";
+import { customRangeEnd, type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
 import {
 	type CitationUrlStats,
 	getPromptCitationUrlStats,
@@ -30,6 +30,7 @@ import {
 } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 // Server Functions
@@ -280,8 +281,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			promptId: z.string(),
-			days: z.number().optional().default(7),
-			endDate: calendarDateSchema.optional(),
+			lookback: lookbackSchema.default("1w"),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -296,9 +296,13 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		if (prompt.length === 0) throw new Error("Prompt not found");
 		await requireBrandAccess(session.user.id, prompt[0].brandId);
 
-		const { fromDate, toDate } = promptRunWindow(data.days, data.endDate);
+		const endDate = customRangeEnd(data.lookback);
+		const { fromDate, toDate } = promptRunWindow(
+			await resolveBrandLookbackDays(prompt[0].brandId, data.lookback),
+			endDate,
+		);
 		const fromDateStr = fromDate.toISOString().split("T")[0];
-		const toDateStr = data.endDate ?? toDate.toISOString().split("T")[0];
+		const toDateStr = endDate ?? toDate.toISOString().split("T")[0];
 		const timezone = "UTC";
 		const timeCondition = and(gte(promptRuns.createdAt, fromDate), lt(promptRuns.createdAt, toDate));
 
@@ -427,8 +431,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 			promptId: z.string(),
 			page: z.number().optional().default(1),
 			limit: z.number().optional().default(10),
-			days: z.number().optional().default(7),
-			endDate: calendarDateSchema.optional(),
+			lookback: lookbackSchema.default("1w"),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -441,7 +444,10 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 
 		await requireBrandAccess(session.user.id, prompt.brandId);
 
-		const { fromDate, toDate } = promptRunWindow(data.days, data.endDate);
+		const { fromDate, toDate } = promptRunWindow(
+			await resolveBrandLookbackDays(prompt.brandId, data.lookback),
+			customRangeEnd(data.lookback),
+		);
 		const timeCondition = and(gte(promptRuns.createdAt, fromDate), lt(promptRuns.createdAt, toDate));
 
 		const offset = (data.page - 1) * data.limit;
