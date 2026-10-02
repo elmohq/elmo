@@ -20,7 +20,7 @@ import { classifyUrl } from "@/lib/domain-categories.server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
-import type { LookbackPeriod } from "@/lib/lookback";
+import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
 import {
 	type CitationUrlStats,
 	getPromptCitationUrlStats,
@@ -30,6 +30,7 @@ import {
 } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 // Server Functions
@@ -264,7 +265,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			promptId: z.string(),
-			days: z.number().optional().default(7),
+			lookback: lookbackSchema.default("1w"),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -280,7 +281,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		await requireBrandAccess(session.user.id, prompt[0].brandId);
 
 		const fromDate = new Date();
-		fromDate.setDate(fromDate.getDate() - data.days);
+		fromDate.setDate(fromDate.getDate() - (await resolveBrandLookbackDays(prompt[0].brandId, data.lookback)));
 		const toDate = new Date();
 		const fromDateStr = fromDate.toISOString().split("T")[0];
 		const toDateStr = toDate.toISOString().split("T")[0];
@@ -412,7 +413,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 			promptId: z.string(),
 			page: z.number().optional().default(1),
 			limit: z.number().optional().default(10),
-			days: z.number().optional().default(7),
+			lookback: lookbackSchema.default("1w"),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -426,7 +427,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		await requireBrandAccess(session.user.id, prompt.brandId);
 
 		const fromDate = new Date();
-		fromDate.setDate(fromDate.getDate() - data.days);
+		fromDate.setDate(fromDate.getDate() - (await resolveBrandLookbackDays(prompt.brandId, data.lookback)));
 
 		const offset = (data.page - 1) * data.limit;
 

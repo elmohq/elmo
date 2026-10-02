@@ -32,6 +32,7 @@ import {
 	classifyUrl as classifyUrlShared,
 } from "@/lib/domain-categories.server";
 import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
+import { lookbackSchema } from "@/lib/lookback";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -40,6 +41,7 @@ import {
 	type PerPromptCitationPageRow,
 	type PerPromptDailyCitationPageRow,
 } from "@/lib/postgres-read";
+import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 
 type Classify = (domain: string, url: string, title?: string | null) => CitationCategory;
@@ -87,6 +89,8 @@ interface CitationsResult {
 	competitors: { id: string; name: string; domains: string[] }[];
 	competitorOnlyPrompts: { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[];
 	whatsChanged: WhatsChanged;
+	/** How many days the window spans, which "all" only settles on the server. */
+	days: number;
 }
 
 /** A URL or domain needs this many citations before it counts as a real change. */
@@ -315,8 +319,10 @@ function buildCompetitorOnlyPrompts(args: {
 function emptyCitationsResult(
 	availableTags: string[],
 	competitorSummary: CitationsResult["competitors"],
+	days: number,
 ): CitationsResult {
 	return {
+		days,
 		totalCitations: 0,
 		uniqueDomains: 0,
 		categoryCounts: emptyCategoryCounts(),
@@ -337,7 +343,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			days: z.number().optional().default(7),
+			lookback: lookbackSchema.default("1w"),
 			tags: z.string().optional(),
 			model: z.string().optional(),
 		}),
@@ -345,12 +351,13 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<CitationsResult> => {
 		await requireBrandSession(data.brandId);
 
-		// Window: `data.days` calendar days ending today (inclusive), plus the
+		const days = await resolveBrandLookbackDays(data.brandId, data.lookback);
+		// Window: `days` calendar days ending today (inclusive), plus the
 		// contiguous equal-length previous window — all UTC (server-TZ independent).
 		// `dateRange` is reused for the trend charts so totals + charts span identically.
 		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(
 			new Date(),
-			data.days,
+			days,
 		);
 		const timezone = "UTC";
 
@@ -382,7 +389,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const tagFilter = parseTagFilter(data.tags);
 		const enabledPromptIds =
 			tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
-		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary);
+		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, days);
 
 		const [urlStats, perPromptDailyPages, perPromptPages, prevUrlStats] = await Promise.all([
 			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
@@ -449,6 +456,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		});
 
 		return {
+			days,
 			totalCitations,
 			uniqueDomains: domainDistribution.length,
 			categoryCounts,

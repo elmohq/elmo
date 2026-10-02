@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getBrandEarliestRunDate = vi.hoisted(() => vi.fn<(brandId: string) => Promise<string | null>>());
 vi.mock("@/lib/postgres-read", () => ({ getBrandEarliestRunDate }));
 
-const { resolveBrandWindow } = await import("@/server/brand-window");
+const { resolveBrandLookbackDays, resolveBrandWindow } = await import("@/server/brand-window");
 
 const now = new Date("2024-03-31T12:00:00Z");
 
@@ -55,5 +55,23 @@ describe("the window a lookback stands for", () => {
 			fromDateStr: "2024-04-01",
 			toDateStr: "2024-04-01",
 		});
+	});
+});
+
+describe("the same lookback as a day count", () => {
+	it("keeps a bounded lookback's fixed length, without asking about the brand", async () => {
+		await expect(resolveBrandLookbackDays("brand", "1m", { now })).resolves.toBe(30);
+		expect(getBrandEarliestRunDate).not.toHaveBeenCalled();
+	});
+
+	it("reaches back to the day of the brand's first run for 'all'", async () => {
+		getBrandEarliestRunDate.mockResolvedValue("2021-07-04T09:15:00Z");
+
+		// 2021-07-04 through 2024-03-31, both days included.
+		await expect(resolveBrandLookbackDays("brand", "all", { now })).resolves.toBe(1002);
+	});
+
+	it("covers just today for a brand with no runs", async () => {
+		await expect(resolveBrandLookbackDays("brand", "all", { now })).resolves.toBe(1);
 	});
 });
