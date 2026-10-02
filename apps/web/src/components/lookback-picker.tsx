@@ -1,6 +1,6 @@
 import { Calendar } from "@workspace/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { CalendarIcon, Check, X } from "lucide-react";
+import { ArrowRight, Check, X } from "lucide-react";
 import { type ComponentProps, type ReactElement, useState } from "react";
 import {
 	type DateRange,
@@ -81,19 +81,20 @@ export function CustomRangeFields({
 	};
 
 	return (
-		<div className="flex flex-col gap-1.5">
+		<div className="flex items-center gap-2">
 			<DateField
 				label="Start date"
-				placeholder="Earliest"
+				align="start"
 				value={from}
 				onChange={(date) => commit({ from: date, to })}
 				// Open a month back so the picker isn't mostly days that can't be chosen yet.
 				defaultMonth={monthBefore(to ?? today)}
 				disabled={{ after: to ?? today }}
 			/>
+			<ArrowRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
 			<DateField
 				label="End date"
-				placeholder="Today"
+				align="end"
 				value={to}
 				onChange={(date) => commit({ from, to: date })}
 				defaultMonth={today}
@@ -105,71 +106,67 @@ export function CustomRangeFields({
 
 function DateField({
 	label,
-	placeholder,
+	align,
 	value,
 	onChange,
 	defaultMonth,
 	disabled,
 }: {
 	label: string;
-	placeholder: string;
+	align: "start" | "end";
 	value: Date | undefined;
 	onChange: (date: Date | undefined) => void;
 	defaultMonth: Date;
 	disabled: ComponentProps<typeof Calendar>["disabled"];
 }) {
 	const [open, setOpen] = useState(false);
-	const display = value ? rangeFormatter.format(new Date(`${toDateString(value)}T00:00:00Z`)) : placeholder;
+	const display = value ? rangeFormatter.format(new Date(`${toDateString(value)}T00:00:00Z`)) : null;
 
 	return (
-		<div className="flex items-center gap-2">
-			<span className="w-16 shrink-0 text-xs text-muted-foreground">{label}</span>
-			<div className="relative min-w-0 flex-1">
-				<Popover open={open} onOpenChange={setOpen}>
-					<PopoverTrigger
-						render={
-							<button
-								type="button"
-								aria-label={`${label}: ${display}`}
-								className={`flex h-8 w-full cursor-pointer items-center gap-2 rounded-md border px-2.5 text-left text-sm ${
-									open ? "border-ring ring-[3px] ring-ring/30" : "hover:bg-muted"
-								}`}
-							>
-								<CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
-								<span className={`truncate ${value ? "" : "text-muted-foreground"}`}>{display}</span>
-							</button>
-						}
+		<div className="relative min-w-0 flex-1">
+			<Popover open={open} onOpenChange={setOpen}>
+				<PopoverTrigger
+					render={
+						<button
+							type="button"
+							aria-label={display ? `${label}: ${display}` : label}
+							className={`flex h-8 w-full cursor-pointer items-center rounded-md border px-2.5 text-left text-sm ${
+								open ? "border-ring ring-[3px] ring-ring/30" : "hover:bg-muted"
+							} ${value ? "pr-7" : ""}`}
+						>
+							<span className={`truncate ${value ? "" : "text-muted-foreground"}`}>{display ?? label}</span>
+						</button>
+					}
+				/>
+				<PopoverContent side="bottom" align={align} className="w-auto p-0">
+					<Calendar
+						mode="single"
+						selected={value}
+						onSelect={(date) => {
+							if (!date) return;
+							onChange(date);
+							setOpen(false);
+						}}
+						defaultMonth={value ?? defaultMonth}
+						disabled={disabled}
 					/>
-					<PopoverContent side="right" align="start" sideOffset={12} className="w-auto p-0">
-						<Calendar
-							mode="single"
-							selected={value}
-							onSelect={(date) => {
-								if (!date) return;
-								onChange(date);
-								setOpen(false);
-							}}
-							defaultMonth={value ?? defaultMonth}
-							disabled={disabled}
-						/>
-					</PopoverContent>
-				</Popover>
-				{value && (
-					<button
-						type="button"
-						onClick={() => onChange(undefined)}
-						aria-label={`Clear ${label.toLowerCase()}`}
-						className="absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
-					>
-						<X className="size-3.5" />
-					</button>
-				)}
-			</div>
+				</PopoverContent>
+			</Popover>
+			{value && (
+				<button
+					type="button"
+					onClick={() => onChange(undefined)}
+					aria-label={`Clear ${label.toLowerCase()}`}
+					className="absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
+				>
+					<X className="size-3.5" />
+				</button>
+			)}
 		</div>
 	);
 }
 
-/** One menu: the presets, then start/end date fields beneath them. Picking a
+/** One menu: the presets, then start → end date fields beneath them. Picking a
  *  preset or a date applies immediately; clearing both dates falls back to
  *  `defaultValue`. Controlled: the caller owns where the value lives (the URL,
  *  in the app). */
@@ -191,7 +188,7 @@ export function LookbackPicker({
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger render={trigger} />
-			<PopoverContent align={align} className="w-72 p-0">
+			<PopoverContent align={align} className="w-80 p-0">
 				<div role="listbox" aria-label="Date range" className="py-1">
 					{LOOKBACK_PERIODS.map((period) => (
 						<button

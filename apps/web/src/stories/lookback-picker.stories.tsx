@@ -1,6 +1,6 @@
 /**
  * Date range filter: one menu with the preset lookbacks and, beneath them,
- * optional start and end date fields whose calendars open to the side. Every
+ * optional start → end date fields whose calendars drop down below. Every
  * pick applies immediately. The custom range is written to the same
  * `?lookback=` URL key as the presets (`YYYY-MM-DD..YYYY-MM-DD`, with an empty
  * side for an open bound), so the
@@ -61,7 +61,7 @@ function UrlLookback() {
 
 // Only one calendar is ever open, so day names are unambiguous across the page.
 const openField = async (label: "Start date" | "End date") =>
-	userEvent.click(await screen.findByRole("button", { name: new RegExp(`^${label}:`) }));
+	userEvent.click(await screen.findByRole("button", { name: new RegExp(`^${label}`) }));
 const day = (name: RegExp) => screen.getAllByRole("button", { name })[0];
 
 /** Picking a preset closes the menu and updates the trigger label. */
