@@ -1,5 +1,5 @@
+import { CITATION_CATEGORIES, type CitationCategory } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { CITATION_CATEGORIES, type CitationCategory } from "@/lib/domain-categories";
 import type { LookbackPeriod } from "@/lib/lookback";
 import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
 

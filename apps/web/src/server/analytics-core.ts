@@ -5,14 +5,14 @@
  */
 
 import { getModelMeta } from "@workspace/config/models";
+import { extractDomain, normalizeUrl } from "@workspace/lib/citations/domain-categories";
+import { classifyUrl as classifyUrlShared } from "@workspace/lib/citations/domain-lists";
+import { rollUpCitationDomains, rollUpCitationUrls } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import { generateDateRange } from "@/lib/chart-utils";
-import { rollUpCitationDomains, rollUpCitationUrls } from "@/lib/citation-rollup";
-import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
-import { classifyUrl as classifyUrlShared } from "@/lib/domain-categories.server";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
 import {
 	getBrandMentionRateByModel,

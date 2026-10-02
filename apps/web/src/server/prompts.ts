@@ -1,5 +1,8 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
+import { extractDomain } from "@workspace/lib/citations/domain-categories";
+import { classifyUrl } from "@workspace/lib/citations/domain-lists";
+import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
@@ -14,9 +17,6 @@ import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
-import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
-import { extractDomain } from "@/lib/domain-categories";
-import { classifyUrl } from "@/lib/domain-categories.server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";

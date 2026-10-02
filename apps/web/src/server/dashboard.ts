@@ -1,5 +1,12 @@
 /** Server functions for dashboard data. */
 import { createServerFn } from "@tanstack/react-start";
+import {
+	type CitationCategory,
+	emptyCategoryCounts,
+	extractDomain,
+	toRoundedPercentages,
+} from "@workspace/lib/citations/domain-categories";
+import { categorizeDomain } from "@workspace/lib/citations/domain-lists";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
@@ -7,13 +14,6 @@ import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
-import {
-	type CitationCategory,
-	emptyCategoryCounts,
-	extractDomain,
-	toRoundedPercentages,
-} from "@/lib/domain-categories";
-import { categorizeDomain } from "@/lib/domain-categories.server";
 import { lookbackSchema } from "@/lib/lookback";
 import {
 	getDashboardSummary,
