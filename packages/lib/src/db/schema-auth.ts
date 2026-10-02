@@ -21,7 +21,7 @@
  * apps/web/src/lib/auth/api-auth.ts.
  */
 import { relations } from "drizzle-orm";
-import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),
@@ -401,6 +401,13 @@ export const subscription = pgTable("subscription", {
 	seats: integer("seats"),
 	billingInterval: text("billing_interval"),
 	stripeScheduleId: text("stripe_schedule_id"),
+});
+
+export const rateLimit = pgTable("rate_limit", {
+	id: text("id").primaryKey(),
+	key: text("key").notNull().unique(),
+	count: integer("count").notNull(),
+	lastRequest: bigint("last_request", { mode: "number" }).notNull(),
 });
 
 export const userRelations = relations(user, ({ many }) => ({
