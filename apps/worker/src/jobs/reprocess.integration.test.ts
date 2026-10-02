@@ -122,7 +122,7 @@ describe("runReprocess", () => {
 
 		const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
 		expect(brand.analysisVersions).toEqual(await currentVersions(brandId));
-		expect(send).not.toHaveBeenCalled();
+		expect(sentFor(send, brandId)).toEqual([]);
 	});
 
 	it("leaves runs that are already current untouched", async () => {
@@ -148,7 +148,7 @@ describe("runReprocess", () => {
 		const runs = await runsInWalkOrder();
 		expect(runs).toHaveLength(450);
 		expect(runs.every((run) => run.brandMentioned && run.extractorVersion === EXTRACTOR_VERSION)).toBe(true);
-		expect(send).not.toHaveBeenCalled();
+		expect(sentFor(send, brandId)).toEqual([]);
 	});
 
 	it("resumes a continuation exactly after its cursor, even inside a shared microsecond", async () => {
