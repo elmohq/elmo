@@ -18,20 +18,12 @@ overrides:
   uuid: "^14.0.2" # GHSA-w5hq-g745-h8pq; also anchors the direct dep in apps/web
   # The bruno CLI is the only thing pulling these in, and only for the e2e API suite.
   form-data: "^4.0.6" # GHSA-hmw2-7cc7-3qxx
-  axios: "^1.20.0" # GHSA-gcfj-64vw-6mp9, GHSA-xj6q-8x83-jv6g, and seven more
+  axios: "^1.18.0" # GHSA-gcfj-64vw-6mp9, GHSA-xj6q-8x83-jv6g, and seven more
   "@faker-js/faker": "^10.4.1" # GHSA-qxc2-j82w-r537
   csv-parse: "^7.0.2" # GHSA-8cw4-87c7-c6xx
   # Scoped to v3 so the floor never drags a future v4+ consumer back down.
   "nanoid@^3": "^3.3.18" # GHSA-xwg4-73v4-xw9w, GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8
   "@ai-sdk/provider-utils@^4": "^4.0.33"
-  "undici@^7": "^7.29.1"
-  ip-address: "^10.7.1"
-  "fast-uri@^3": "^3.1.8"
-  moment: "^2.31.0"
-  "brace-expansion@^5": "^5.0.12"
-  dompurify: "^3.4.16"
-  "@grpc/grpc-js": "^1.14.5"
-  hono: "^4.13.7"
 
 allowBuilds:
   "@tailwindcss/oxide": true

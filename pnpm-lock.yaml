@@ -170,19 +170,11 @@ overrides:
   '@xmldom/xmldom': ~0.8.15
   uuid: ^14.0.2
   form-data: ^4.0.6
-  axios: ^1.20.0
+  axios: ^1.18.0
   '@faker-js/faker': ^10.4.1
   csv-parse: ^7.0.2
   nanoid@^3: ^3.3.18
   '@ai-sdk/provider-utils@^4': ^4.0.33
-  undici@^7: ^7.29.1
-  ip-address: ^10.7.1
-  fast-uri@^3: ^3.1.8
-  moment: ^2.31.0
-  brace-expansion@^5: ^5.0.12
-  dompurify: ^3.4.16
-  '@grpc/grpc-js': ^1.14.5
-  hono: ^4.13.7
 
 importers:
 
@@ -266,7 +258,7 @@ importers:
         version: 1.30.0(supports-color@7.2.0)(zod@4.5.4)
       '@scalar/api-reference-react':
         specifier: ^0.9.66
-        version: 0.9.66(react@19.2.8)(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)
+        version: 0.9.66(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(react@19.2.8)(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)
       '@sentry/tanstackstart-react':
         specifier: ^10.73.0
         version: 10.73.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(react@19.2.8)(supports-color@7.2.0)
@@ -2092,7 +2084,7 @@ packages:
     resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
     engines: {node: '>=20'}
     peerDependencies:
-      hono: ^4.13.7
+      hono: ^4
 
   '@hookform/resolvers@5.9.1':
     resolution: {integrity: sha512-7b7vsbraJxKgjVSA1Nur9tLwj539WGJUBLA7QNvXnFoT2pM5Z7G+6rlukk4B2/QrTZy6huRtH6wKeESPKuIr6w==}
@@ -5031,7 +5023,7 @@ packages:
     resolution: {integrity: sha512-SDobKBbPIOe0cVL7QxMzGkuUGHvWTdihi9zOrrWaWUgFKe15cwEcwfWmgrcNzjT6kHnNmWuTajPHoIzUjYNYYQ==}
     peerDependencies:
       async-validator: ^4
-      axios: ^1.20.0
+      axios: ^1.18.0
       change-case: ^5
       drauu: ^0.4
       focus-trap: ^7
@@ -5340,7 +5332,7 @@ packages:
     resolution: {integrity: sha512-BlpjvRWiOi52k8bCeoSCTe5jKQQdSqAN18x07WR8sZghzGW6tvtuepz+72pPvImI2vCn2F5HiyLvOVAVjoha+g==}
     engines: {node: '>=16'}
     peerDependencies:
-      axios: ^1.20.0
+      axios: ^1.18.0
 
   aws4@1.13.2:
     resolution: {integrity: sha512-lHe62zvbTB5eEABUVi/AwVh0ZKY9rMMDhmm+eeyuuUQbQ3+J+fONVQOZyj+DdrvD4BY33uYniyRJ4UJIaSKAfw==}
@@ -6770,7 +6762,7 @@ packages:
   grpc-js-reflection-client@1.4.1:
     resolution: {integrity: sha512-dbrAwsSQN6QJF1MfEx1deh9mw/SFbp8JsfjLocwsmHSvO0Zys4yB4z8bZtyBDL8Oi3XYNlmTUSbsLFymCrs4sg==}
     peerDependencies:
-      '@grpc/grpc-js': ^1.14.5
+      '@grpc/grpc-js': ^1.14.4
 
   gtoken@8.0.0:
     resolution: {integrity: sha512-+CqsMbHPiSTdtSO14O51eMNlrp9N79gmeqmXeouJOhfucAedHw9noVe/n5uJk3tbKE6a+6ZCQg3RPhVhHByAIw==}
@@ -9099,8 +9091,8 @@ packages:
   undici-types@8.3.0:
     resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
 
-  undici@6.28.1:
-    resolution: {integrity: sha512-zWpdTVD54H48CIybL0rWQ3ukpb9d23wM7eH5RtfdmeP70cWHNjtfo7P4vZX+5CoDcO53J4Pu5uXp7lNfjc6DRA==}
+  undici@6.29.0:
+    resolution: {integrity: sha512-R+RODBqp6i2pPflGdq+xIOUkl+RNfGgHwoinecKu/JCuf2uO06cOKoDbI2P7Dn6KcswdKwrczbU6IYJ6K8X+wg==}
     engines: {node: '>=18.17'}
 
   undici@7.30.0:
@@ -9682,7 +9674,7 @@ snapshots:
       '@ai-sdk/provider': 3.0.18
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.1.1
-      undici: 6.28.1
+      undici: 6.29.0
       zod: 4.5.4
 
   '@ai-sdk/provider-utils@5.0.36(zod@4.5.4)':
@@ -12319,10 +12311,10 @@ snapshots:
       estree-walker: 2.0.2
       picomatch: 4.0.5
 
-  '@scalar/agent-chat@0.12.29(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)':
+  '@scalar/agent-chat@0.12.29(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)':
     dependencies:
       '@ai-sdk/vue': 3.0.33(vue@3.5.42(typescript@7.0.2))(zod@4.5.4)
-      '@scalar/api-client': 3.17.0(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/api-client': 3.17.0(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/components': 0.29.0(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/helpers': 0.11.2
       '@scalar/icons': 0.7.6(typescript@7.0.2)
@@ -12357,7 +12349,7 @@ snapshots:
       - universal-cookie
       - zod
 
-  '@scalar/api-client@3.17.0(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)':
+  '@scalar/api-client@3.17.0(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)':
     dependencies:
       '@headlessui/tailwindcss': 0.2.2(tailwindcss@4.3.3)
       '@headlessui/vue': 1.7.23(vue@3.5.42(typescript@7.0.2))
@@ -12377,7 +12369,7 @@ snapshots:
       '@scalar/use-toasts': 0.10.5(typescript@7.0.2)
       '@scalar/workspace-store': 0.59.0(typescript@7.0.2)
       '@vueuse/core': 13.9.0(vue@3.5.42(typescript@7.0.2))
-      '@vueuse/integrations': 13.9.0(focus-trap@7.8.0)(fuse.js@7.5.0)(vue@3.5.42(typescript@7.0.2))
+      '@vueuse/integrations': 13.9.0(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(focus-trap@7.8.0)(fuse.js@7.5.0)(vue@3.5.42(typescript@7.0.2))
       focus-trap: 7.8.0
       fuse.js: 7.5.0
       js-base64: 3.9.3
@@ -12405,9 +12397,9 @@ snapshots:
       - typescript
       - universal-cookie
 
-  '@scalar/api-reference-react@0.9.66(react@19.2.8)(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)':
+  '@scalar/api-reference-react@0.9.66(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(react@19.2.8)(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)':
     dependencies:
-      '@scalar/api-reference': 1.67.0(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)
+      '@scalar/api-reference': 1.67.0(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)
       '@scalar/types': 0.18.3
       react: 19.2.8
     transitivePeerDependencies:
@@ -12427,11 +12419,11 @@ snapshots:
       - universal-cookie
       - zod
 
-  '@scalar/api-reference@1.67.0(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)':
+  '@scalar/api-reference@1.67.0(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)':
     dependencies:
       '@headlessui/vue': 1.7.23(vue@3.5.42(typescript@7.0.2))
-      '@scalar/agent-chat': 0.12.29(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)
-      '@scalar/api-client': 3.17.0(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/agent-chat': 0.12.29(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.5.4)
+      '@scalar/api-client': 3.17.0(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/blocks': 0.1.15(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/code-highlight': 0.4.5(supports-color@7.2.0)
       '@scalar/components': 0.29.0(supports-color@7.2.0)(tailwindcss@4.3.3)(typescript@7.0.2)
@@ -14172,7 +14164,7 @@ snapshots:
       is-buffer: 2.0.5
       is-node-process: 1.2.0
       throttleit: 2.1.0
-      undici: 6.28.1
+      undici: 6.29.0
 
   '@vercel/cli-config@0.2.0':
     dependencies:
@@ -14378,12 +14370,13 @@ snapshots:
       '@vueuse/shared': 13.9.0(vue@3.5.42(typescript@7.0.2))
       vue: 3.5.42(typescript@7.0.2)
 
-  '@vueuse/integrations@13.9.0(focus-trap@7.8.0)(fuse.js@7.5.0)(vue@3.5.42(typescript@7.0.2))':
+  '@vueuse/integrations@13.9.0(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(focus-trap@7.8.0)(fuse.js@7.5.0)(vue@3.5.42(typescript@7.0.2))':
     dependencies:
       '@vueuse/core': 13.9.0(vue@3.5.42(typescript@7.0.2))
       '@vueuse/shared': 13.9.0(vue@3.5.42(typescript@7.0.2))
       vue: 3.5.42(typescript@7.0.2)
     optionalDependencies:
+      axios: 1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
       focus-trap: 7.8.0
       fuse.js: 7.5.0
 
@@ -18883,7 +18876,7 @@ snapshots:
 
   undici-types@8.3.0: {}
 
-  undici@6.28.1: {}
+  undici@6.29.0: {}
 
   undici@7.30.0: {}
 
