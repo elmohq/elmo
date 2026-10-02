@@ -61,10 +61,10 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 export const auth = createAuth(getDeploymentAuthOptions());
 
 // Init queries the database at startup, and the runtime's unhandled-rejection
-// log drops the driver error that Drizzle wraps in `cause`. Rethrown so a
-// failed init still takes the instance down rather than leaving it unable to
-// authenticate.
+// log prints only the stack, dropping the driver error Drizzle wraps in
+// `cause`. Rethrown so a failed init still takes the instance down rather than
+// leaving it unable to authenticate.
 auth.$context.catch((error: unknown) => {
-	console.error("[auth] init failed:", error instanceof Error ? (error.cause ?? error) : error);
+	console.error("[auth] init failed:", error);
 	throw error;
 });
