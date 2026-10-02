@@ -1,5 +1,26 @@
 # @workspace/web
 
+## 0.4.4
+
+### Patch Changes
+
+- b48f545: Elmo's startup check now asks for a direct LLM key when onboarding needs one, counts provider keys saved in the app, and no longer requires the whitelabel parent-app link.
+- 46c2c7a: The billing page now leads with your plan, total cost, and usage side by side, with the full plan comparison folded away until you ask for it.
+- 2e32431: Fixed the competitor limit being exceeded when several requests added competitors to a brand at the same time.
+- 76ec134: Reports accept other names a brand goes by, and count a mention of any of them as a brand mention.
+- ee757a2: Add a Responses page that lists every AI answer for a brand, searchable by its text and filterable by prompt.
+- 5b00a9c: Fix a critical cross-site scripting vulnerability in TanStack Start.
+- Updated dependencies [b48f545]
+- Updated dependencies [1980c7d]
+- Updated dependencies [280e5f3]
+- Updated dependencies [76ec134]
+  - @workspace/config@0.4.4
+  - @workspace/lib@0.4.4
+  - @workspace/api-spec@0.4.4
+  - @workspace/deployment@0.4.4
+  - @workspace/og@0.4.4
+  - @workspace/ui@0.4.4
+
 ## 0.4.3
 
 ### Patch Changes

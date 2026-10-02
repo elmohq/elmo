@@ -1,5 +1,16 @@
 # @workspace/lib
 
+## 0.4.4
+
+### Patch Changes
+
+- b48f545: Elmo's startup check now asks for a direct LLM key when onboarding needs one, counts provider keys saved in the app, and no longer requires the whitelabel parent-app link.
+- 1980c7d: Auth rate limiting is now counted in the database, so the limits on sign-in and password reset hold across restarts and multiple app instances.
+- 280e5f3: Prompt runs on the OpenAI API provider now store the full API response, so the searches behind an answer stay readable.
+- 76ec134: Reports accept other names a brand goes by, and count a mention of any of them as a brand mention.
+- Updated dependencies [b48f545]
+  - @workspace/config@0.4.4
+
 ## 0.4.3
 
 ### Patch Changes

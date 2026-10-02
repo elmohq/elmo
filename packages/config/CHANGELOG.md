@@ -1,5 +1,11 @@
 # @workspace/config
 
+## 0.4.4
+
+### Patch Changes
+
+- b48f545: Elmo's startup check now asks for a direct LLM key when onboarding needs one, counts provider keys saved in the app, and no longer requires the whitelabel parent-app link.
+
 ## 0.4.3
 
 No changes in this release.

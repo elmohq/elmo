@@ -1,5 +1,12 @@
 # @workspace/og
 
+## 0.4.4
+
+### Patch Changes
+
+- Updated dependencies [b48f545]
+  - @workspace/config@0.4.4
+
 ## 0.4.3
 
 ### Patch Changes
