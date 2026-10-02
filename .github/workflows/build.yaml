@@ -12,8 +12,8 @@
 # check-types, so a better-auth bump or a new schema-bearing plugin fails here
 # instead of leaving drizzle-kit to snapshot a stale schema.
 #
-# Keep it excluded from Biome (see biome.json) — the router generator formats
-# its own output with Prettier, and a formatter fighting it would make every
+# Keep both excluded from Biome (see biome.json) — their generators format
+# their own output with Prettier, and a formatter fighting them would make every
 # build dirty this job.
 
 name: Build
