@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { extractTextContent } from "@workspace/lib/text-extraction";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
@@ -63,6 +64,9 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 				brandMentioned: row.brand_mentioned,
 				competitorsMentioned: row.competitors_mentioned ?? [],
 				rawOutput: row.raw_output as {},
+				// Older rows carry no text and may predate the provider column; the
+				// extractor also accepts the model name.
+				textContent: row.text_content ?? extractTextContent(row.raw_output, row.provider ?? row.model),
 				createdAt: new Date(row.created_at).toISOString(),
 			})),
 		};
