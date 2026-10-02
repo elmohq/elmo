@@ -80,6 +80,7 @@ export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSe
 				<PopoverContent align="end" className="w-72 p-3">
 					<CustomRangeFields
 						value={customRange}
+						openStartOnMount={customRange === null}
 						onChange={(range) => handleChange(range ? formatCustomLookback(range) : computedDefaultPeriod)}
 					/>
 				</PopoverContent>

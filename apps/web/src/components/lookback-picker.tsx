@@ -1,7 +1,7 @@
 import { Calendar } from "@workspace/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { CalendarIcon, Check, X } from "lucide-react";
-import { type ComponentProps, type ReactElement, useState } from "react";
+import { CalendarIcon, Check, ChevronDown, X } from "lucide-react";
+import { type ComponentProps, type ReactElement, type ReactNode, useState } from "react";
 import {
 	type DateRange,
 	formatCustomLookback,
@@ -64,9 +64,12 @@ function monthBefore(date: Date): Date {
 export function CustomRangeFields({
 	value,
 	onChange,
+	openStartOnMount = false,
 }: {
 	value: DateRange | null;
 	onChange: (range: DateRange | null) => void;
+	/** Pop the start calendar straight away when the user has just asked for a custom range. */
+	openStartOnMount?: boolean;
 }) {
 	const today = startOfToday();
 	const from = value?.from ? toLocalDate(value.from) : undefined;
@@ -85,6 +88,7 @@ export function CustomRangeFields({
 			<DateField
 				label="Start date"
 				placeholder="Earliest"
+				defaultOpen={openStartOnMount}
 				value={from}
 				onChange={(date) => commit({ from: date, to })}
 				// Open a month back so the picker isn't mostly days that can't be chosen yet.
@@ -106,6 +110,7 @@ export function CustomRangeFields({
 function DateField({
 	label,
 	placeholder,
+	defaultOpen = false,
 	value,
 	onChange,
 	defaultMonth,
@@ -113,12 +118,13 @@ function DateField({
 }: {
 	label: string;
 	placeholder: string;
+	defaultOpen?: boolean;
 	value: Date | undefined;
 	onChange: (date: Date | undefined) => void;
 	defaultMonth: Date;
 	disabled: ComponentProps<typeof Calendar>["disabled"];
 }) {
-	const [open, setOpen] = useState(false);
+	const [open, setOpen] = useState(defaultOpen);
 	const display = value ? rangeFormatter.format(new Date(`${toDateString(value)}T00:00:00Z`)) : placeholder;
 
 	return (
@@ -169,10 +175,10 @@ function DateField({
 	);
 }
 
-/** One menu: the presets, then start/end date fields beneath them. Picking a
- *  preset or a date applies immediately; clearing both dates falls back to
- *  `defaultValue`. Controlled: the caller owns where the value lives (the URL,
- *  in the app). */
+/** The presets plus a "Custom range" row that reveals start/end date fields
+ *  in place. Picking a preset or a date applies immediately; clearing both
+ *  dates falls back to `defaultValue`. Controlled: the caller owns where the
+ *  value lives (the URL, in the app). */
 export function LookbackPicker({
 	value,
 	defaultValue,
@@ -187,36 +193,81 @@ export function LookbackPicker({
 	align?: "start" | "center" | "end";
 }) {
 	const [open, setOpen] = useState(false);
+	const customRange = parseCustomLookback(value);
+	const [showCustom, setShowCustom] = useState(false);
+	// Set when the row is clicked, so the start calendar pops only on that
+	// request — not every time the menu reopens on an active range.
+	const [justRequestedCustom, setJustRequestedCustom] = useState(false);
+
+	const handleOpenChange = (next: boolean) => {
+		setOpen(next);
+		if (next) {
+			setShowCustom(customRange !== null);
+			setJustRequestedCustom(false);
+		}
+	};
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
+		<Popover open={open} onOpenChange={handleOpenChange}>
 			<PopoverTrigger render={trigger} />
 			<PopoverContent align={align} className="w-72 p-0">
 				<div role="listbox" aria-label="Date range" className="py-1">
 					{LOOKBACK_PERIODS.map((period) => (
-						<button
+						<MenuOption
 							key={period}
-							type="button"
-							role="option"
-							aria-selected={value === period}
+							selected={value === period}
 							onClick={() => {
 								onChange(period);
 								setOpen(false);
 							}}
-							className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
 						>
 							{PRESET_LABELS[period]}
-							{value === period && <Check className="ml-auto size-3.5" />}
-						</button>
+						</MenuOption>
 					))}
 				</div>
-				<div className="border-t p-3">
-					<CustomRangeFields
-						value={parseCustomLookback(value)}
-						onChange={(range) => onChange(range ? formatCustomLookback(range) : defaultValue)}
-					/>
+				<div className="border-t py-1">
+					<button
+						type="button"
+						aria-expanded={showCustom}
+						onClick={() => {
+							// An active range stays visible; there's nothing to collapse to.
+							if (customRange) return;
+							setShowCustom((current) => !current);
+							setJustRequestedCustom(true);
+						}}
+						className={MENU_ROW_CLASS}
+					>
+						Custom range
+						{customRange ? (
+							<Check className="ml-auto size-3.5" />
+						) : (
+							<ChevronDown
+								className={`ml-auto size-3.5 text-muted-foreground transition-transform ${showCustom ? "rotate-180" : ""}`}
+							/>
+						)}
+					</button>
 				</div>
+				{showCustom && (
+					<div className="px-3 pt-1 pb-3">
+						<CustomRangeFields
+							value={customRange}
+							openStartOnMount={justRequestedCustom}
+							onChange={(range) => onChange(range ? formatCustomLookback(range) : defaultValue)}
+						/>
+					</div>
+				)}
 			</PopoverContent>
 		</Popover>
+	);
+}
+
+const MENU_ROW_CLASS = "flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted";
+
+function MenuOption({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
+	return (
+		<button type="button" role="option" aria-selected={selected} onClick={onClick} className={MENU_ROW_CLASS}>
+			{children}
+			{selected && <Check className="ml-auto size-3.5" />}
+		</button>
 	);
 }
