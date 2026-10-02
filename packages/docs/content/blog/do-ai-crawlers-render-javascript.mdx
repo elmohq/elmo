@@ -1,0 +1,140 @@
+---
+title: "Do AI Crawlers Render JavaScript? What Your Brand Loses When They Don't"
+description: "Most AI crawlers fetch raw HTML and skip your JavaScript. A 37,927-journey study finds agents that can't read a site build answers from other sources, recommend it about half as often, and get its facts wrong more. Here's what that means, and which pages to check first."
+date: "2026-10-02"
+author: ai
+metaTitle: "Do AI Crawlers Render JavaScript? 2026 Data"
+tags:
+  - ai-crawlers
+  - technical-seo
+  - aeo
+  - ai-visibility
+definedTerms:
+  - term: Raw HTML
+    definition: "Raw HTML is the page exactly as the server sends it, before any JavaScript runs. A crawler that does not execute JavaScript sees only this version, so any text, price, or table inserted by client-side code is invisible to it."
+  - term: Agent experience (AX)
+    definition: "Agent experience is how well a website serves an AI agent that arrives to fetch and read it: whether its content survives a JavaScript-free fetch, whether bot controls let the agent in, and whether key facts such as pricing are reachable. The term was popularised by a 2026 preprint from ora, a company that scores sites on it."
+  - term: First-party grounding
+    definition: "First-party grounding is the share of an AI answer about a business that is built from the business's own pages, as opposed to web search results about it or the model's training knowledge."
+howTo:
+  name: "How to check whether AI agents can read the pages that answer questions about you"
+  description: "Find out whether the facts an agent needs to describe and recommend you are present in the HTML your server sends, before any JavaScript runs."
+  steps:
+    - name: List the pages that answer branded questions
+      text: "Start with pricing, product or features, and setup or documentation pages. These are the pages an agent opens when a buyer asks about you by name, and the ones the largest study of agent behaviour tested."
+    - name: Fetch each page without JavaScript
+      text: "Run curl against the URL, or load it with JavaScript disabled in your browser's developer tools. Do not rely on View Source in a browser extension that may show the rendered DOM."
+    - name: Check for the facts, not just the words
+      text: "Search the raw response for your actual prices, plan names, feature names, and integration list. A page can pass a word-count check and still load its pricing table from an API call after render."
+    - name: Repeat the fetch with an AI crawler user agent
+      text: "Send the request with OAI-SearchBot, ChatGPT-User, Claude-User, or PerplexityBot as the user agent. A 403 or a challenge page means bot controls are blocking the agent, which costs you as much as unrendered content."
+    - name: Fix the missing facts at the server
+      text: "Move missing content into server-side rendering, static generation, or pre-rendering. The goal is narrow: the facts a buyer asks about must be in the first response."
+    - name: Verify in the answers
+      text: "After a fix, track branded prompts about pricing, features, and setup across ChatGPT, Claude, and Perplexity, and check whether the answers start citing your pages and stating your facts correctly."
+faq:
+  - question: Do AI crawlers render JavaScript?
+    answer: "Mostly not, on the best published evidence. Vercel and MERJ's December 2024 analysis of crawler traffic across Vercel's network found that OpenAI's, Anthropic's, Meta's, ByteDance's, and Perplexity's crawlers fetch HTML without executing JavaScript, while Google's Gemini crawler and AppleBot render pages fully. OpenAI's bot documentation says nothing either way, and no AI vendor had publicly announced JavaScript rendering as of October 2026."
+  - question: Has ChatGPT started rendering JavaScript?
+    answer: "There is one unconfirmed report. A developer logged OpenAI's OAI-SearchBot jumping from about 1,250 requests a day to 41,444 on 25 September 2026 on five sites on one server, with request patterns consistent with pages being rendered. OpenAI has not announced a change. Treat it as a signal to watch, not a reason to stop serving content in raw HTML."
+  - question: Does it matter for Google AI Overviews if my site relies on JavaScript?
+    answer: "Less than for other engines. Google says Googlebot queues every indexable page for rendering in headless Chromium, and its AI features are built on its core Search systems. The same Google page still recommends server-side or pre-rendering because not all bots can run JavaScript."
+  - question: What happens to AI answers about my brand if agents can't read my site?
+    answer: "In a September 2026 preprint covering 37,927 agent journeys about 1,056 businesses, answers about not-agent-ready sites drew 58% of their content from the business's own pages against 78% for agent-ready sites, doubled their reliance on web search, and clearly recommended the business 11% of the time against 20%. The model filled the gap with other people's pages, not with training knowledge, which stayed at 7–10% either way."
+  - question: Do agents make things up when they can't read a site?
+    answer: "Mostly they leave things out. In the same preprint, the share of requested facts never mentioned rose from 29% in site-built answers to 45% in web-built ones, while facts stated wrongly rose only from 4% to 6%. Answers containing none of the requested facts were 3.7 times more common when the agent built them from the web."
+  - question: How much of a typical page is only visible after JavaScript runs?
+    answer: "Not much at the median. HTTP Archive's 2025 Web Almanac found the median home page has about 12% more words after rendering than in its raw HTML, and inner pages 11.5%. The risk sits in the tail: single-page apps, pricing tables loaded from an API, and tabbed feature pages where the key facts are exactly the part that renders late."
+  - question: If AI citations mostly come from third-party sites, why does my own site's readability matter?
+    answer: "Because the two findings measure different questions. Citation studies of category prompts find most citations point at domains the brand does not own. The agent study only asked questions that already named the business's domain, about pricing, features, and setup. Third-party presence decides whether you get named; your own site's readability decides what the agent says once it goes to check."
+---
+
+**"Do AI crawlers render JavaScript?" is usually asked as a technical SEO question. For a marketing team it is a brand question: when a buyer asks ChatGPT or Claude what your product costs, can the agent read the answer off your pricing page, or does it go and ask someone else?** The best crawler-log evidence says most AI crawlers fetch raw HTML and never run your JavaScript. And a September 2026 preprint that ran [37,927 agent journeys about 1,056 businesses](https://arxiv.org/abs/2609.34951) now puts numbers on the cost: when agents can't read a site, they build the answer from other people's pages, recommend the business about half as often, and leave out more of what the buyer asked.
+
+**Key takeaways**
+
+- The major non-Google AI crawlers fetch HTML without executing JavaScript. [Vercel and MERJ's crawler analysis](https://vercel.com/blog/the-rise-of-the-ai-crawler) found this for OpenAI, Anthropic, Meta, ByteDance, and Perplexity. Google's Gemini crawler and AppleBot render pages fully.
+- One developer reported OpenAI's crawlers [starting to render pages on 25 September 2026](https://dev.to/hisashispace/traffic-from-chatgpt-jumped-is-it-because-its-crawlers-now-run-javascript-5961). It's five sites on one server, and OpenAI hasn't announced anything.
+- When agents could read a site, 78% of the answer came from the business's own pages. When they couldn't, that fell to 58% and web search's share doubled from 12% to 25%.
+- Agent-ready businesses were clearly recommended in 20% of answers against 11%, or 1.9×. Training knowledge supplied only 7–10% of answers either way, so it never filled the gap.
+- The failure is mostly omission, not fabrication. Facts the buyer asked for went unmentioned 45% of the time in web-built answers against 29% in site-built ones. Wrong facts rose only from 4% to 6%.
+- At the median the exposure is small. Rendered pages carry [about 12% more words than raw HTML](https://almanac.httparchive.org/en/2025/seo). The risk is concentrated in pricing tables, plan comparisons, and feature tabs that load after render.
+- This doesn't contradict the finding that [most AI citations come from sites you don't own](/blog/where-ai-citations-come-from). That's about getting named. This is about what the agent says once it already has your name.
+
+## What the crawler logs show
+
+The cleanest dataset on rendering is still server-side: what bots actually request. Vercel and MERJ analysed a month of crawler traffic across Vercel's network in late 2024. GPTBot made 569 million fetches and Anthropic's crawler 370 million, against 4.5 billion for Googlebot.
+
+| Crawler | Executes JavaScript? | Fetches JS files | 404 rate |
+|---|---|---|---|
+| Googlebot / Gemini | Yes | — | 8.22% (Googlebot) |
+| AppleBot | Yes | — | — |
+| OpenAI (ChatGPT) | No | 11.50% of fetches | 34.82% |
+| Anthropic (Claude) | No | 23.84% of fetches | 34.16% |
+| Perplexity, Meta, ByteDance | No | — | — |
+
+The JS-file column is the detail that trips people up. Claude's crawler downloads JavaScript in nearly a quarter of its fetches but doesn't run it, so seeing AI bots request your bundles in the logs isn't evidence they see what those bundles render. The 404 rates, roughly four times Googlebot's, are a reminder that these crawlers are also far less precise about what they request.
+
+The documentation adds little. [OpenAI's bot page](https://developers.openai.com/api/docs/bots) describes what OAI-SearchBot, ChatGPT-User, and GPTBot are for and says nothing about rendering. Google is explicit in the other direction: [Googlebot queues every indexable page for rendering](https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics) in headless Chromium. On the same page it still recommends server-side or pre-rendering because "not all bots can run JavaScript."
+
+**The September 2026 exception.** A developer running a Next.js marketplace logged OAI-SearchBot going from about 1,250 requests a day to 41,444 on 25 September, and GPTBot reaching 152,009 by the 28th. The request patterns, including Next.js prefetch calls and referers from rendered pages, look like a browser running the page. The author is careful about what this means: about 4,400 pages were actually rendered, and the rest of the volume is what rendered pages fire off by themselves. That's one operator's logs from five sites on one server, with no announcement from OpenAI. If it holds and spreads, the ChatGPT row in the table above changes. Until someone confirms it at network scale, it's a reason to re-check your logs, not a reason to start shipping client-rendered pricing.
+
+## What happens to answers when the agent can't read you
+
+Crawler logs show what a bot fetched. They don't show what the answer said. The preprint "[AX is the New AEO](https://arxiv.org/abs/2609.34951)" is the first large dataset to connect the two. Its authors work at ora, which sells agent-readiness scoring, and they say plainly that the readiness score is their own product's ranker.
+
+The design is better than most vendor research. They took 1,056 businesses, mostly SaaS and commerce. Half scored as agent-ready (0.65 or above on ora's 0–1 scale) and half as not (0.50 or below), with the ambiguous middle excluded. The two groups were matched within industry on traffic rank, on how well models already knew the brand, and on two AEO proxies: third-party citation breadth (review, comparison, Wikipedia, and Reddit mentions) and findability. Each business got three buyer questions about its own domain, one each on pricing, features, and setup. Those ran through four different agent stacks: Claude Sonnet 4.6 and Claude Haiku 4.5 on Anthropic's built-in search, and GPT-5.4 and GPT-5.4-mini on Tavily. Two judges from different model vendors scored each answer.
+
+| Outcome | Agent-ready | Not agent-ready |
+|---|---|---|
+| Answer built from the business's own pages | 78% | 58% |
+| Answer built from web search | 12% | 25% |
+| Answer built from training knowledge | 7–10% | 7–10% |
+| Clear recommendation (both judges give top score) | 20% | 11% |
+| Agent cost per grounded answer | Baseline | +64% |
+
+Three findings matter for a marketing team.
+
+**The gap gets filled by other people, not by the model's memory.** Training knowledge contributed the same 7–10% whether or not the site was readable. When the agent couldn't read the site it searched more. Average web searches rose steadily from 1.8 to 4.5 across the readiness range, and the answer was built from whatever the search returned. That might be your review profiles. It might be a competitor's comparison page. It might be a forum thread from two pricing changes ago. Which of those carries the answer is exactly what a [citation source audit](/blog/where-ai-citations-come-from) shows you.
+
+**Agents hedge on brands they couldn't verify.** Answers about not-agent-ready businesses carried 4.4× more disclaimers about not being able to access the site and 3.0× more secondhand vouching, where the agent leans on what others say about the business instead of what the business says. That's the mechanism behind the recommendation gap: an agent that has to say it couldn't check your pricing is not going to tell the buyer to pick you. It fits what we found on [how agents weigh evidence](/blog/ai-search-fact-checking). They look for corroboration, and your own page is the cheapest corroboration available.
+
+**The failure is silence, not hallucination.** On a 131-business subset with hand-extracted ground truth, answers built from the site got 48.3% of the asked-for facts right, against 34.3% for answers built from the web. Most of the gap is omission: facts never mentioned rose from 29% to 45%, while facts stated wrongly rose only from 4% to 6%. Answers containing none of the requested facts were 3.7× more common when built from the web. So when someone asks why ChatGPT gets their pricing wrong, the more common problem is usually that it didn't state the pricing at all.
+
+## Reconciling this with "most citations aren't yours"
+
+Read beside the big citation studies, this preprint seems to say the opposite. Muck Rack's corpus of more than 25 million citations attributes 84% to domains the brand doesn't own, and our earlier analysis concluded that on-site work has [a lower ceiling than AEO checklists imply](/blog/where-ai-citations-come-from). Here, 78% of the answer comes from the business's own pages.
+
+Both are right, because they measure different questions. Citation corpora sample category prompts like "best project management tool for agencies," where the engine is deciding *who* to mention and draws on hundreds of third-party pages. Every prompt in the agent study already contained the business's domain, as in "what subscription options are available at {domain} and what they cost?" The engine has already decided who. The remaining question is what it says, and the obvious source for that is the business's own site.
+
+The title "AX is the New AEO" claims more than the design supports. None of the 37,927 journeys tests whether a readable site gets a brand *into* an answer it was absent from. The matching deliberately held third-party citation breadth constant, so the study can't say which matters more for being named in the first place. A fairer summary is that third-party presence gets you onto the shortlist and a readable site decides how you're described once you're on it. Both happen in the same buyer conversation, and they're often turns apart. Our piece on [multi-turn AI search](/blog/multi-turn-ai-search) covers why single-prompt tracking misses that sequence.
+
+## What the study does not prove
+
+The preprint's own limitations section is candid, and a few of its weaknesses deserve more weight than the abstract gives them.
+
+- **The instrument is the vendor's product.** "Agent-ready" means a high score on ora's ranker. That score mixes JavaScript-free content, structured data, llms.txt and Markdown fallbacks, pricing reachability, and bot-control policy, and the paper never separates them. You can't tell from it whether rendering, a Cloudflare challenge, or a missing pricing page drove a given result. That matters because our [llms.txt analysis](/blog/do-llms-txt-files-matter-for-aeo) found the file does far less than its reputation suggests, and here it's bundled into the treatment.
+- **Content depth wasn't matched.** Not-agent-ready sites may simply publish less. The authors note the accuracy comparison is immune to this, since it compares answers about the same business. The grounding and recommendation gaps are between-business comparisons, though, and only a before-and-after intervention would settle them.
+- **The accuracy result isn't statistically significant.** It rests on 131 businesses, and the authors say the site-built advantage "is not significant at this size." Per stack it ranges from very large on Claude Haiku 4.5 to nothing at all on GPT-5.4 (−5%, p=0.39).
+- **Recommendation rates vary tenfold by stack.** The Claude Haiku stack clearly recommended 5% of agent-ready businesses against 2% of the rest. The GPT-5.4 stack did so for 36% against 20%. The direction holds everywhere, but your engine mix decides the size of the effect.
+- **The abstract and body disagree.** The abstract puts first-party grounding for not-agent-ready sites at 56%, while the results section and figures say 58%. We use 58%. It doesn't change the conclusion, but it's a sign the paper is a fast preprint, not a reviewed one.
+- **Scope.** The sample is SaaS and commerce-heavy, English-first, and limited to fact lookups. It doesn't cover checkout, comparisons, or anything where the agent has to act.
+
+None of that undoes the main result, which held in all four stacks. It does mean "1.9× more recommendations" is an upper-end estimate for a bundled intervention, not a forecast of what server-side rendering alone will do for you.
+
+## Who needs to care, and which pages to check
+
+The Web Almanac's median, about 12% more words after rendering, says most sites already put most of their text in raw HTML. Only about 2% of pages have a canonical tag that appears only after rendering. The typical marketing site isn't invisible to AI crawlers. The exposure is specific, and it tends to fall on exactly the pages agents open when a buyer asks about you by name:
+
+- **Pricing pages** whose plan table loads from a billing API or a pricing widget after render.
+- **Feature and integration pages** built as tabs, accordions, or filterable grids that only populate in the browser.
+- **Docs and setup guides** running on a single-page-app framework without server rendering.
+- **Anything behind a bot challenge.** A CDN that returns a 403 to ChatGPT-User has the same effect as unrendered content. Our [crawler blocking analysis](/blog/how-many-websites-block-ai-crawlers) covers why that's increasingly a default rather than a decision.
+
+A simple decision rule follows from the data. If your buyers use Google's AI surfaces, rendering is mostly handled, and the [robots.txt configuration](/blog/robots-txt-ai-crawlers) matters more. If they use ChatGPT, Claude, or Perplexity, anything a buyer would ask about by name has to be in the first HTML response. Fetch your pricing, features, and setup pages without JavaScript and with an AI crawler user agent, and search the response for your actual prices and plan names. If they aren't there, the agent is building that part of its answer from someone else's page.
+
+Then confirm the fix in the answers rather than the config. Run branded pricing, features, and setup prompts on each engine before and after, and check whether the citations shift to your own pages and the facts start appearing. That's also the intervention study the preprint says it lacks, run on your own site.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces on a schedule, recording every mention and cited URL. Add the branded pricing, features, and setup prompts to your [tracked set](/blog/ai-prompt-tracking), and the citation record shows whether answers about you are built from your pages or someone else's, before and after a rendering fix.
+
+For the configuration side, see [robots.txt and AI crawlers](/blog/robots-txt-ai-crawlers) and [structured data for AI search](/blog/structured-data-for-ai-search). For whose pages engines cite on category prompts, see [where AI citations come from](/blog/where-ai-citations-come-from). For the fundamentals, start with [AI citations](/blog/ai-citations) and [how to track your brand in AI search](/answer-engine-optimization), and for the vocabulary, the [AI search glossary](/glossary).
