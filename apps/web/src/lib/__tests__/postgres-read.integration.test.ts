@@ -6,6 +6,7 @@ import {
 	getBrandMentionTotals,
 	getCitationDomainPromptCounts,
 	getCitationDomainStats,
+	getCitationsCountByModel,
 	getCitationsTotalCount,
 	getCitationUrlStats,
 	getDashboardSummary,
@@ -112,6 +113,28 @@ describe("date windows", () => {
 		]);
 		expect(totals.total_runs).toBe(1);
 		expect(await countPromptRuns(promptId, "2026-03-04T03:00:00.000Z", "2026-03-04T15:00:00.001Z", "UTC")).toBe(2);
+	});
+});
+
+describe("calendar day starts", () => {
+	let brandId: string;
+	let promptId: string;
+
+	beforeAll(async () => {
+		brandId = await brand();
+		promptId = await createPrompt(brandId);
+		// 21:00 on March 2nd in New York; 07:30 on March 3rd in Kolkata.
+		await createRun(brandId, promptId, { at: "2026-03-03T02:00:00Z", brandMentioned: true });
+	});
+
+	it("opens a day at local midnight west of UTC", async () => {
+		const totals = await getBrandMentionTotals(brandId, "2026-03-03", "2026-03-03", "America/New_York", [promptId]);
+		expect(totals.total_runs).toBe(0);
+	});
+
+	it("opens a day at local midnight east of UTC", async () => {
+		const totals = await getBrandMentionTotals(brandId, "2026-03-03", "2026-03-03", "Asia/Kolkata", [promptId]);
+		expect(totals.total_runs).toBe(1);
 	});
 });
 
@@ -249,6 +272,13 @@ describe("model filter", () => {
 		expect(await getCitationsTotalCount(brandId, ...window, "chatgpt")).toBe(2);
 		expect(await getCitationsTotalCount(brandId, ...window, "chatgpt::premium")).toBe(1);
 		expect(await getCitationsTotalCount(brandId, ...window)).toBe(3);
+	});
+
+	it("counts each model's citations the way its bare model filter does", async () => {
+		const window: [string, string, string, string[]] = ["2026-03-02", "2026-03-02", "UTC", [promptId]];
+		const byModel = await getCitationsCountByModel(brandId, ...window);
+		expect(byModel).toEqual([{ model: "chatgpt", count: 2 }]);
+		expect(byModel[0].count).toBe(await getCitationsTotalCount(brandId, ...window, "chatgpt"));
 	});
 
 	it("breaks mention rate down by model", async () => {

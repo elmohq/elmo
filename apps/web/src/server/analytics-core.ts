@@ -5,19 +5,20 @@
  */
 
 import { getModelMeta } from "@workspace/config/models";
+import { extractDomain, normalizeUrl } from "@workspace/lib/citations/domain-categories";
+import { classifyUrl as classifyUrlShared } from "@workspace/lib/citations/domain-lists";
+import { rollUpCitationDomains, rollUpCitationUrls } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import { generateDateRange } from "@/lib/chart-utils";
-import { rollUpCitationDomains, rollUpCitationUrls } from "@/lib/citation-rollup";
-import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
-import { classifyUrl as classifyUrlShared } from "@/lib/domain-categories.server";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
 import {
 	getBrandMentionRateByModel,
 	getBrandMentionTotals,
 	getCitationDomainPromptCounts,
+	getCitationsCountByModel,
 	getCitationsTotalCount,
 	getCitationUrlStats,
 	getFanoutBreakdown,
@@ -230,15 +231,11 @@ async function getBrandModelBreakdown(
 	if (promptIds.length === 0) return [];
 	const { from, to, timezone } = window;
 
-	const rows = await getBrandMentionRateByModel(brandId, from, to, timezone, promptIds, filters.model);
-
-	// The URL roll-up has no model column to group by.
-	const citationsByModel = new Map<string, number>();
-	await Promise.all(
-		rows.map(async (row) => {
-			citationsByModel.set(row.model, await getCitationsTotalCount(brandId, from, to, timezone, promptIds, row.model));
-		}),
-	);
+	const [rows, citationRows] = await Promise.all([
+		getBrandMentionRateByModel(brandId, from, to, timezone, promptIds, filters.model),
+		getCitationsCountByModel(brandId, from, to, timezone, promptIds),
+	]);
+	const citationsByModel = new Map(citationRows.map((row) => [row.model, row.count]));
 
 	return rows.map((row) => {
 		const runs = Number(row.runs);

@@ -12,7 +12,6 @@ import { useCitations } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { useBrandParams } from "@/hooks/use-route-params";
-import { getDaysFromLookback } from "@/lib/chart-utils";
 import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/citations")({
@@ -27,7 +26,6 @@ function CitationsPage() {
 	const queryClient = useQueryClient();
 
 	const filters = useListFilters();
-	const days = getDaysFromLookback(filters.lookback);
 
 	const { data: brand } = useBrand(brandId);
 	const trackedTargets = brand?.trackedTargets ?? [];
@@ -39,7 +37,7 @@ function CitationsPage() {
 		error: citationsError,
 		refetch: refetchCitations,
 	} = useCitations(brandId, {
-		days,
+		lookback: filters.lookback,
 		tags: filters.tags.length > 0 ? filters.tags : undefined,
 		model: modelParam,
 	});
@@ -119,7 +117,7 @@ function CitationsPage() {
 						showStats={true}
 						maxDomains={10}
 						maxUrls={20}
-						days={days}
+						days={citationData.days}
 						onCompetitorAdded={() => {
 							refetchCitations();
 							queryClient.invalidateQueries({ queryKey: dashboardKeys.all });

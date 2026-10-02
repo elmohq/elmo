@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
 import { countResponses, getResponseMatches, type ResponseSearchScope } from "@/lib/postgres-read";
-import { resolveLookbackRange } from "@/lib/timezone-utils";
+import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 const PAGE_SIZE = 15;
@@ -32,7 +32,7 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			(prompt) => !picked || picked.has(prompt.id),
 		);
 		const promptValues = new Map(prompts.map((prompt) => [prompt.id, prompt.value]));
-		const { timezone, fromDateStr, toDateStr } = resolveLookbackRange(data.lookback, data.timezone);
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const scope: ResponseSearchScope = {
 			brandId: data.brandId,
 			fromDate: fromDateStr,
