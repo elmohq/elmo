@@ -1,19 +1,5 @@
 /** Server functions for citation data. */
 import { createServerFn } from "@tanstack/react-start";
-import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { and, eq } from "drizzle-orm";
-import { z } from "zod";
-import { requireBrandSession } from "@/lib/auth/helpers";
-import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
-import {
-	type CitationDomain,
-	type CitationUrl,
-	rollUpCitationDomains,
-	rollUpCitationUrls,
-	tallyCitations,
-} from "@/lib/citation-rollup";
 import {
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
@@ -26,11 +12,25 @@ import {
 	normalizeUrl,
 	resolvePageType,
 	toRoundedPercentages,
-} from "@/lib/domain-categories";
+} from "@workspace/lib/citations/domain-categories";
 import {
 	categorizeDomain as categorizeDomainShared,
 	classifyUrl as classifyUrlShared,
-} from "@/lib/domain-categories.server";
+} from "@workspace/lib/citations/domain-lists";
+import {
+	type CitationDomain,
+	type CitationUrl,
+	rollUpCitationDomains,
+	rollUpCitationUrls,
+	tallyCitations,
+} from "@workspace/lib/citations/rollup";
+import { db } from "@workspace/lib/db/db";
+import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
 import {
 	type CitationUrlStats,
