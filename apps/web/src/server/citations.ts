@@ -355,10 +355,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		// Window: `days` calendar days ending today (inclusive), plus the
 		// contiguous equal-length previous window — all UTC (server-TZ independent).
 		// `dateRange` is reused for the trend charts so totals + charts span identically.
-		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(
-			new Date(),
-			days,
-		);
+		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(new Date(), days);
 		const timezone = "UTC";
 
 		const [brandResult, competitorsList, allPrompts] = await Promise.all([

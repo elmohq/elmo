@@ -8,7 +8,10 @@ const promptRunsKeys = {
 		[...promptRunsKeys.all, promptId, options] as const,
 };
 
-export function usePromptRunsOnly(promptId?: string, options?: { page?: number; limit?: number; lookback?: LookbackPeriod }) {
+export function usePromptRunsOnly(
+	promptId?: string,
+	options?: { page?: number; limit?: number; lookback?: LookbackPeriod },
+) {
 	const page = options?.page || 1;
 	const limit = options?.limit || 10;
 	const lookback = options?.lookback ?? "1w";
