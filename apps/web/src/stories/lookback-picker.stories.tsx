@@ -1,7 +1,7 @@
 /**
- * Date range filter: the preset lookbacks plus a "Custom range" row that
- * reveals optional start and end date fields in place, whose calendars open to
- * the side. Every pick applies immediately. The custom range is written to the same
+ * Date range filter: one menu with the preset lookbacks and, beneath them,
+ * optional start and end date fields whose calendars open to the side. Every
+ * pick applies immediately. The custom range is written to the same
  * `?lookback=` URL key as the presets (`YYYY-MM-DD..YYYY-MM-DD`, with an empty
  * side for an open bound), so the
  * filter-bar and prompt-detail stories assert the URL value too.
@@ -70,8 +70,6 @@ export const Presets: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: /Last 30 days/ }));
-		// The date fields stay tucked away until a custom range is asked for.
-		await expect(screen.queryByRole("button", { name: /^Start date:/ })).toBeNull();
 		await userEvent.click(await screen.findByRole("option", { name: "Last 3 months" }));
 
 		await expect(canvas.getByTestId("value")).toHaveTextContent("3m");
@@ -119,15 +117,13 @@ export const CustomRangeBounds: Story = {
 	},
 };
 
-/** "Custom range" reveals the fields and pops the start calendar straight
- *  away. A start date alone means "since", and replaces the preset. */
+/** A start date alone means "since", and replaces the preset. */
 export const StartDateOnly: Story = {
 	render: () => <ControlledPicker initial="1w" />,
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: /Last 7 days/ }));
-		await userEvent.click(await screen.findByRole("button", { name: /Custom range/ }));
-		await screen.findByRole("grid");
+		await openField("Start date");
 		await userEvent.click(day(/\s1st,/));
 
 		await expect(canvas.getByTestId("value")).toHaveTextContent(/^\d{4}-\d{2}-01\.\.$/);
@@ -142,7 +138,6 @@ export const EndDateOnly: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: /Last 7 days/ }));
-		await userEvent.click(await screen.findByRole("button", { name: /Custom range/ }));
 		await openField("End date");
 		await userEvent.click(day(/\s1st,/));
 
@@ -223,7 +218,7 @@ export const PromptDetailSelector: Story = {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: "Custom range" }));
 
-		await screen.findByRole("grid");
+		await openField("Start date");
 		await userEvent.click(day(/\s1st,/));
 		await waitFor(() => expect(String(getMockSearch().lookback)).toMatch(/^\d{4}-\d{2}-01\.\.$/));
 
