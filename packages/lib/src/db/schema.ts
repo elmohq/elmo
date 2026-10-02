@@ -359,6 +359,8 @@ export const rollupPromptRuns = pgTable(
 		competitorRuns: integer("competitor_runs").notNull(),
 		/** Total competitor mentions across the bucket's runs. */
 		competitorMentions: integer("competitor_mentions").notNull(),
+		/** Runs mentioning neither the brand nor any competitor. */
+		noMentionRuns: integer("no_mention_runs").notNull(),
 		firstRunAt: timestamp("first_run_at", { withTimezone: true }).notNull(),
 		lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
 	},
@@ -450,19 +452,18 @@ export const rollupCitationUrls = pgTable(
 
 /**
  * Invalidation outbox. Whoever changes raw data or interpretation marks the
- * affected buckets in the same transaction; the refresh job claims marks before
- * it reads, so a writer that commits mid-rebuild leaves its own mark behind.
+ * affected buckets in the same transaction; the refresh job deletes marks in
+ * the transaction that rebuilds them, so a rebuild that fails leaves its marks
+ * behind and a write that lands mid-rebuild leaves a fresh one.
  */
 export const rollupDirty = pgTable(
 	"rollup_dirty",
 	{
 		brandId: text("brand_id").notNull(),
 		bucket: timestamp("bucket", { withTimezone: true }).notNull(),
+		/** Why the bucket was first marked; later marks before the rebuild don't overwrite it. */
 		reason: text("reason").notNull(),
-		markedAt: timestamp("marked_at", { withTimezone: true }).defaultNow().notNull(),
-		/** Set while a refresh tick rebuilds the bucket; a mark whose lease lapses is claimable again. */
-		claimId: uuid("claim_id"),
-		claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+		firstMarkedAt: timestamp("first_marked_at", { withTimezone: true }).defaultNow().notNull(),
 	},
 	(table) => [
 		primaryKey({ name: "rollup_dirty_pk", columns: [table.brandId, table.bucket] }),
@@ -479,8 +480,6 @@ export const pipelineState = pgTable(
 	"pipeline_state",
 	{
 		id: smallint("id").primaryKey().default(1),
-		backfillEnqueuedAt: timestamp("backfill_enqueued_at", { withTimezone: true }),
-		backfillCompletedAt: timestamp("backfill_completed_at", { withTimezone: true }),
 		rollupVersion: integer("rollup_version").notNull().default(0),
 		classifierVersion: integer("classifier_version").notNull().default(0),
 	},

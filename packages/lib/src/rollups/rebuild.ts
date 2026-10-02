@@ -72,7 +72,7 @@ async function insertPromptRunRollup(
 	const result = await tx.execute(sql`
 		INSERT INTO ${rollupPromptRuns} (
 			brand_id, bucket, prompt_id, model, provider, web_search_enabled,
-			runs, brand_mentioned_runs, competitor_runs, competitor_mentions, first_run_at, last_run_at
+			runs, brand_mentioned_runs, competitor_runs, competitor_mentions, no_mention_runs, first_run_at, last_run_at
 		)
 		SELECT
 			brand_id,
@@ -85,6 +85,7 @@ async function insertPromptRunRollup(
 			count(*) FILTER (WHERE brand_mentioned)::int,
 			count(*) FILTER (WHERE cardinality(competitors_mentioned) > 0)::int,
 			coalesce(sum(cardinality(competitors_mentioned)), 0)::int,
+			count(*) FILTER (WHERE NOT brand_mentioned AND coalesce(cardinality(competitors_mentioned), 0) = 0)::int,
 			min(created_at),
 			max(created_at)
 		FROM ${promptRuns}

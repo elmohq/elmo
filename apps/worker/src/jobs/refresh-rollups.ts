@@ -1,16 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import {
-	claimDirty,
-	coalesceMarks,
-	completeDirty,
-	type DirtyClaim,
-	finishBackfillIfDrained,
-	type RebuildRange,
-	rebuildRange,
-	releaseDirty,
-} from "@workspace/lib/rollups";
+import { coalesceMarks, type DirtyMark, pendingMarks, type RebuildRange, refreshRange } from "@workspace/lib/rollups";
 import type { Job } from "pg-boss";
 
 export interface RefreshRollupsData {
@@ -23,7 +14,7 @@ const DEFAULT_TIME_BUDGET_MS = 50_000;
 export interface RefreshTickResult {
 	ranges: number;
 	failed: number;
-	marksClaimed: number;
+	marksTaken: number;
 }
 
 function reportRebuildFailure(error: unknown, range: RebuildRange): void {
@@ -43,32 +34,37 @@ function reportRebuildFailure(error: unknown, range: RebuildRange): void {
 	});
 }
 
-async function rebuildClaim(
+async function refreshBatch(
 	conn: DbConnection,
-	claim: DirtyClaim,
+	batch: DirtyMark[],
 	deadline: number,
-): Promise<{ ranges: number; failed: number; timedOut: boolean }> {
-	const ranges = coalesceMarks(claim.marks);
-	let rebuilt = 0;
-	let failed = 0;
-	for (const [i, range] of ranges.entries()) {
-		if (Date.now() > deadline) {
-			await releaseDirty(conn, claim.claimId, ranges.slice(i));
-			return { ranges: rebuilt, failed, timedOut: true };
-		}
+	skip: DirtyMark[],
+): Promise<RefreshTickResult> {
+	const result: RefreshTickResult = { ranges: 0, failed: 0, marksTaken: 0 };
+	for (const range of coalesceMarks(batch)) {
+		if (Date.now() >= deadline) break;
 		try {
-			await rebuildRange(conn, range.brandId, range.from, range.toExclusive);
-			await completeDirty(conn, claim.claimId, range);
-			rebuilt++;
+			const refreshed = await refreshRange(conn, range);
+			if (!refreshed) {
+				skip.push(...range.marks);
+				continue;
+			}
+			result.ranges++;
+			result.marksTaken += refreshed.marks.length;
 		} catch (error) {
-			// The range keeps its lease, so it's retried once the lease lapses rather than on every claim.
-			failed++;
+			result.failed++;
+			skip.push(...range.marks);
 			reportRebuildFailure(error, range);
 		}
 	}
-	return { ranges: rebuilt, failed, timedOut: false };
+	return result;
 }
 
+/**
+ * Each range commits on its own, so a failing one keeps its marks for the next
+ * tick without holding back the rest. Ranges this tick has tried, or that
+ * another worker had already taken, are skipped until the tick ends.
+ */
 export async function runRefreshTick(
 	options: { maxMarks?: number; timeBudgetMs?: number; source?: string } = {},
 	conn: DbConnection = db,
@@ -76,28 +72,23 @@ export async function runRefreshTick(
 	const maxMarks = options.maxMarks ?? DEFAULT_MAX_MARKS;
 	const start = Date.now();
 	const deadline = start + (options.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS);
-
-	let ranges = 0;
-	let failed = 0;
-	let marksClaimed = 0;
+	const totals: RefreshTickResult = { ranges: 0, failed: 0, marksTaken: 0 };
+	const skip: DirtyMark[] = [];
 
 	while (Date.now() < deadline) {
-		const claim = await claimDirty(conn, maxMarks);
-		if (claim.marks.length === 0) break;
-		marksClaimed += claim.marks.length;
-		const batch = await rebuildClaim(conn, claim, deadline);
-		ranges += batch.ranges;
-		failed += batch.failed;
-		if (batch.timedOut) break;
+		const batch = await pendingMarks(conn, maxMarks, skip);
+		if (batch.length === 0) break;
+		const result = await refreshBatch(conn, batch, deadline, skip);
+		totals.ranges += result.ranges;
+		totals.failed += result.failed;
+		totals.marksTaken += result.marksTaken;
 	}
-
-	await finishBackfillIfDrained(conn);
 
 	const elapsedMs = Date.now() - start;
 	console.log(
-		`[refresh-rollups] source=${options.source ?? "unknown"} marksClaimed=${marksClaimed} ranges=${ranges} failed=${failed} elapsedMs=${elapsedMs}`,
+		`[refresh-rollups] source=${options.source ?? "unknown"} marksTaken=${totals.marksTaken} ranges=${totals.ranges} failed=${totals.failed} elapsedMs=${elapsedMs}`,
 	);
-	return { ranges, failed, marksClaimed };
+	return totals;
 }
 
 export async function refreshRollupsJob(jobs: Job<RefreshRollupsData>[]): Promise<void> {

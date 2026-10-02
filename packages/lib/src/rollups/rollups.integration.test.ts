@@ -1,6 +1,8 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { db } from "../db/db";
+import type { DbConnection } from "../db/db-connection";
 import * as schema from "../db/schema";
 import {
 	brands,
@@ -11,20 +13,28 @@ import {
 	prompts,
 	rollupCitationUrls,
 	rollupCompetitorMentions,
+	rollupDirty,
 	rollupPromptRuns,
 } from "../db/schema";
-import { enqueueBackfill, finishBackfillIfDrained, rollupsReady } from "./backfill";
 import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
-import { claimDirty, coalesceMarks, completeDirty, markBrandRangeDirty, markDirty, releaseDirty } from "./dirty";
+import { markDirty, markPromptDirty, markRunsSinceDirty, pendingMarks, refreshRange } from "./dirty";
 import { getPipelineState, setPipelineState } from "./pipeline-state";
 import { rebuildRange } from "./rebuild";
 import { reclassifyPages } from "./reclassify";
-import { compareBucket } from "./reconcile";
 
-const connectionString = process.env.ROLLUP_TEST_DATABASE_URL;
+// Truncates shared tables, so nothing else may use this database while it runs.
 
-const connect = (url: string) => drizzle(url, { schema });
-type TestDb = ReturnType<typeof connect>;
+type TestDb = typeof db;
+
+/** Gives up on a lock quickly, which is how these tests make a rebuild fail. */
+const impatient = drizzle({
+	connection: { connectionString: process.env.DATABASE_URL, options: "-c lock_timeout=50" },
+	schema,
+});
+
+afterAll(async () => {
+	await impatient.$client.end();
+});
 
 const ORG_ID = "org-rollups-test";
 const BRAND_ID = "brand-rollups-test";
@@ -127,10 +137,7 @@ async function reset(db: TestDb): Promise<void> {
 		RESTART IDENTITY CASCADE
 	`);
 	await db.execute(sql`INSERT INTO pipeline_state (id) VALUES (1) ON CONFLICT DO NOTHING`);
-	await db.execute(sql`
-		UPDATE pipeline_state
-		SET backfill_enqueued_at = NULL, backfill_completed_at = NULL, rollup_version = 0, classifier_version = 0
-	`);
+	await db.execute(sql`UPDATE pipeline_state SET rollup_version = 0, classifier_version = 0`);
 }
 
 async function seed(db: TestDb): Promise<void> {
@@ -170,7 +177,7 @@ async function seed(db: TestDb): Promise<void> {
 	);
 }
 
-function insertRuns(db: TestDb, runs: SeedRun[]) {
+function insertRuns(db: DbConnection, runs: SeedRun[]) {
 	return db.insert(promptRuns).values(
 		runs.map((run) => ({
 			id: run.id,
@@ -223,17 +230,34 @@ async function snapshot(db: TestDb) {
 
 const rebuildAll = (db: TestDb) => rebuildRange(db, BRAND_ID, B0, B3);
 
-describe.skipIf(!connectionString)("rollups against postgres", () => {
-	let db: TestDb;
+/** Holds the brand's rebuild lock from another session while `fn` runs. */
+async function withBrandLocked<T>(fn: () => Promise<T>): Promise<T> {
+	const client = await db.$client.connect();
+	try {
+		await client.query("SELECT pg_advisory_lock(hashtext($1))", [BRAND_ID]);
+		try {
+			return await fn();
+		} finally {
+			await client.query("SELECT pg_advisory_unlock(hashtext($1))", [BRAND_ID]);
+		}
+	} finally {
+		client.release();
+	}
+}
 
-	beforeAll(() => {
-		db = connect(connectionString as string);
-	});
+async function waitForLockWaiters(count: number): Promise<void> {
+	for (let attempt = 0; attempt < 200; attempt++) {
+		const { rows } = await db.execute(sql`
+			SELECT count(*)::int AS waiting FROM pg_stat_activity
+			WHERE datname = current_database() AND wait_event_type = 'Lock'
+		`);
+		if ((rows[0] as { waiting: number }).waiting >= count) return;
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+	throw new Error(`timed out waiting for ${count} sessions to block on a lock`);
+}
 
-	afterAll(async () => {
-		await db.$client.end();
-	});
-
+describe("rollups against postgres", () => {
 	beforeEach(async () => {
 		await reset(db);
 		await seed(db);
@@ -259,6 +283,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 				brandMentionedRuns: r.brandMentionedRuns,
 				competitorRuns: r.competitorRuns,
 				competitorMentions: r.competitorMentions,
+				noMentionRuns: r.noMentionRuns,
 			})),
 		).toEqual([
 			{
@@ -271,6 +296,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 				brandMentionedRuns: 1,
 				competitorRuns: 1,
 				competitorMentions: 2,
+				noMentionRuns: 1,
 			},
 			{
 				bucket: B0.toISOString(),
@@ -282,6 +308,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 				brandMentionedRuns: 1,
 				competitorRuns: 1,
 				competitorMentions: 1,
+				noMentionRuns: 0,
 			},
 			{
 				bucket: B1.toISOString(),
@@ -293,6 +320,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 				brandMentionedRuns: 1,
 				competitorRuns: 1,
 				competitorMentions: 1,
+				noMentionRuns: 0,
 			},
 			{
 				bucket: B2.toISOString(),
@@ -304,6 +332,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 				brandMentionedRuns: 0,
 				competitorRuns: 1,
 				competitorMentions: 1,
+				noMentionRuns: 0,
 			},
 		]);
 		const first = rows[0];
@@ -412,41 +441,16 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 		expect(rows).toHaveLength(3);
 	});
 
-	it("reports no drift between the rollups and the raw rows", async () => {
+	it("totals the same runs, mentions and citations as the raw rows", async () => {
 		await rebuildAll(db);
-		for (const [from, toExclusive] of [
-			[B0, B1],
-			[B1, B2],
-			[B2, B3],
-			[B0, B3],
-		]) {
-			const comparison = await compareBucket(db, BRAND_ID, from, toExclusive);
-			expect(comparison.runs[0]).toBe(comparison.runs[1]);
-			expect(comparison.brandMentioned[0]).toBe(comparison.brandMentioned[1]);
-			expect(comparison.citations[0]).toBe(comparison.citations[1]);
-		}
-		expect(await compareBucket(db, BRAND_ID, B0, B3)).toEqual({
-			runs: [5, 5],
-			brandMentioned: [3, 3],
-			citations: [7, 7],
-		});
-	});
-
-	it("notices drift when a bucket is left stale", async () => {
-		await rebuildAll(db);
-		await insertRuns(db, [
-			{
-				id: RUN(7),
-				promptId: PROMPT_1,
-				createdAt: "2026-01-15T10:06:00.000Z",
-				model: "gpt-5",
-				provider: null,
-				webSearchEnabled: false,
-				brandMentioned: true,
-				competitorsMentioned: [],
-			},
-		]);
-		expect(await compareBucket(db, BRAND_ID, B0, B1)).toMatchObject({ runs: [3, 4] });
+		const [rollup] = (
+			await db.execute(sql`
+				SELECT sum(runs)::int AS runs, sum(brand_mentioned_runs)::int AS mentioned, sum(no_mention_runs)::int AS silent,
+					(SELECT sum(citations)::int FROM rollup_citation_urls WHERE brand_id = ${BRAND_ID}) AS citations
+				FROM rollup_prompt_runs WHERE brand_id = ${BRAND_ID}
+			`)
+		).rows;
+		expect(rollup).toEqual({ runs: 5, mentioned: 3, silent: 1, citations: SEED_CITATIONS.length });
 	});
 
 	it("joins a caller's transaction", async () => {
@@ -458,30 +462,6 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 			}),
 		).rejects.toThrow("caller rolled back");
 		expect(await runRollupRows(db)).toEqual([]);
-	});
-
-	it("marks the buckets a brand actually has runs in", async () => {
-		expect(await markBrandRangeDirty(db, BRAND_ID, B0, B2, "reconcile")).toBe(2);
-		expect((await claimDirty(db, 10)).marks.map((mark) => mark.bucket.toISOString())).toEqual([
-			B1.toISOString(),
-			B0.toISOString(),
-		]);
-
-		expect(await markBrandRangeDirty(db, "other-brand", B0, B3, "reconcile")).toBe(0);
-		expect((await claimDirty(db, 10)).marks).toEqual([]);
-	});
-
-	it("marks the buckets timestamps fall in", async () => {
-		await markDirty(
-			db,
-			BRAND_ID,
-			[new Date("2026-01-15T10:05:00.000Z"), new Date("2026-01-15T10:29:59.999Z"), B1],
-			"reprocess",
-		);
-		expect((await claimDirty(db, 10)).marks.map((mark) => mark.bucket.toISOString())).toEqual([
-			B1.toISOString(),
-			B0.toISOString(),
-		]);
 	});
 
 	it("reclassifies pages left on an older classifier version", async () => {
@@ -511,88 +491,106 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 		expect((await getPipelineState(db)).rollupVersion).toBe(7);
 	});
 
-	it("leases dirty marks newest bucket first", async () => {
-		await markDirty(db, BRAND_ID, [B0, B2, B1], "run");
-		await markDirty(db, BRAND_ID, [B0], "reprocess");
+	describe("dirty marks", () => {
+		const bucketsOf = (marks: { bucket: Date }[]) => marks.map((mark) => mark.bucket.toISOString());
+		const brandMarks = () => db.select().from(rollupDirty).where(eq(rollupDirty.brandId, BRAND_ID));
+		const B4 = new Date(B3.getTime() + BUCKET_MS);
+		const wholeDay = { brandId: BRAND_ID, from: B0, toExclusive: B4 };
 
-		const first = await claimDirty(db, 2);
-		expect(first.marks.map((mark) => mark.bucket.toISOString())).toEqual([B2.toISOString(), B1.toISOString()]);
-		expect(first.marks[0]).toMatchObject({ brandId: BRAND_ID, reason: "run" });
+		it("lists pending marks newest bucket first, without taking them", async () => {
+			await markDirty(db, BRAND_ID, [B0, B2, B1], "run");
+			expect(bucketsOf(await pendingMarks(db, 2))).toEqual([B2.toISOString(), B1.toISOString()]);
+			expect(bucketsOf(await pendingMarks(db, 10))).toEqual([B2, B1, B0].map((b) => b.toISOString()));
+		});
 
-		const rest = await claimDirty(db, 10);
-		// The second mark for B0 collapsed into the first, keeping its reason.
-		expect(rest.marks.map((mark) => [mark.bucket.toISOString(), mark.reason])).toEqual([[B0.toISOString(), "run"]]);
-		expect((await claimDirty(db, 10)).marks).toEqual([]);
+		it("leaves out the marks a tick has already tried", async () => {
+			await markDirty(db, BRAND_ID, [B0, B1, B2], "run");
+			const [newest] = await pendingMarks(db, 1);
+			expect(bucketsOf(await pendingMarks(db, 10, [newest]))).toEqual([B1.toISOString(), B0.toISOString()]);
+		});
 
-		await releaseDirty(db, first.claimId, coalesceMarks(first.marks));
-		expect((await claimDirty(db, 10)).marks.map((mark) => mark.bucket.toISOString())).toEqual([
-			B2.toISOString(),
-			B1.toISOString(),
-		]);
-	});
+		it("keeps a bucket's first reason and time when it is marked again", async () => {
+			await markDirty(db, BRAND_ID, [B0], "run");
+			const [first] = await brandMarks();
+			await markDirty(db, BRAND_ID, [B0], "reprocess");
+			expect(await brandMarks()).toEqual([first]);
+			expect(first.reason).toBe("run");
+		});
 
-	it("reclaims marks whose lease lapsed", async () => {
-		await markDirty(db, BRAND_ID, [B0], "run");
-		await claimDirty(db, 10);
-		await db.execute(sql`UPDATE rollup_dirty SET claimed_until = now() - interval '1 second'`);
-		expect((await claimDirty(db, 10)).marks).toHaveLength(1);
-	});
+		it("marks every bucket a prompt has runs in", async () => {
+			await markPromptDirty(db, PROMPT_2, "run");
+			expect(bucketsOf(await pendingMarks(db, 10))).toEqual([B2.toISOString(), B0.toISOString()]);
+		});
 
-	it("keeps a mark that was re-marked while its range was rebuilding", async () => {
-		await markDirty(db, BRAND_ID, [B0, B1], "run");
-		const claim = await claimDirty(db, 10);
-		await markDirty(db, BRAND_ID, [B1], "run");
+		it("marks every bucket with runs created since an instant", async () => {
+			expect(await markRunsSinceDirty(db, new Date("2026-01-15T10:30:00.000Z"), "catch-up")).toBe(2);
+			expect((await pendingMarks(db, 10)).map((mark) => [mark.bucket.toISOString(), mark.reason])).toEqual([
+				[B2.toISOString(), "catch-up"],
+				[B1.toISOString(), "catch-up"],
+			]);
+		});
 
-		for (const range of coalesceMarks(claim.marks)) await completeDirty(db, claim.claimId, range);
-		expect((await claimDirty(db, 10)).marks.map((mark) => mark.bucket.toISOString())).toEqual([B1.toISOString()]);
-	});
+		it("rebuilds a range and drops its marks in one commit", async () => {
+			await markDirty(db, BRAND_ID, [B0, B2], "run");
+			const refreshed = await refreshRange(db, wholeDay);
+			expect(bucketsOf(refreshed?.marks ?? []).sort()).toEqual([B0.toISOString(), B2.toISOString()]);
+			expect(await brandMarks()).toEqual([]);
+			// B1 lies between two marks, so it is rebuilt with them.
+			expect((await runRollupRows(db)).map((row) => row.bucket.toISOString())).toEqual([
+				B0.toISOString(),
+				B0.toISOString(),
+				B1.toISOString(),
+				B2.toISOString(),
+			]);
+			expect(await refreshRange(db, wholeDay)).toBeNull();
+		});
 
-	it("rebuilds the ranges a claim coalesces into", async () => {
-		await markDirty(db, BRAND_ID, [B0, B1, B2], "run");
-		const ranges = coalesceMarks((await claimDirty(db, 10)).marks);
-		expect(ranges).toHaveLength(1);
+		it("keeps the marks when the rebuild fails", async () => {
+			await markDirty(db, BRAND_ID, [B0], "run");
+			await withBrandLocked(() =>
+				expect(refreshRange(impatient, wholeDay)).rejects.toMatchObject({ cause: { code: "55P03" } }),
+			);
+			expect(bucketsOf(await brandMarks())).toEqual([B0.toISOString()]);
+			expect(await runRollupRows(db)).toEqual([]);
+		});
 
-		const [range] = ranges;
-		await rebuildRange(db, range.brandId, range.from, range.toExclusive);
-		expect(await compareBucket(db, BRAND_ID, B0, B3)).toMatchObject({ runs: [5, 5] });
-	});
+		it("re-marks a bucket written to while its rebuild is in flight", async () => {
+			await markDirty(db, BRAND_ID, [B0], "run");
+			await withBrandLocked(async () => {
+				// The refresh takes the mark, then waits on the rebuild lock with it uncommitted.
+				const refresh = refreshRange(db, wholeDay);
+				await waitForLockWaiters(1);
+				const write = db.transaction(async (tx) => {
+					await insertRuns(tx, [{ ...SEED_RUNS[0], id: RUN(8), createdAt: "2026-01-15T10:25:00.000Z" }]);
+					await markDirty(tx, BRAND_ID, [new Date("2026-01-15T10:25:00.000Z")], "run");
+				});
+				// The write now waits on the mark the refresh deleted.
+				await waitForLockWaiters(2);
+				return { refresh, write };
+			}).then(async ({ refresh, write }) => {
+				expect(bucketsOf((await refresh)?.marks ?? [])).toEqual([B0.toISOString()]);
+				await write;
+			});
 
-	it("enqueues a backfill once and completes it when the marks drain", async () => {
-		expect(await rollupsReady(db)).toBe(false);
-		expect(await enqueueBackfill(db)).toBe(true);
-		expect(await enqueueBackfill(db)).toBe(false);
+			expect(await brandMarks()).toEqual([expect.objectContaining({ bucket: B0, reason: "run" })]);
+			await refreshRange(db, wholeDay);
+			const [row] = (await runRollupRows(db)).filter(
+				(r) => r.promptId === PROMPT_1 && r.bucket.getTime() === B0.getTime(),
+			);
+			expect(row.runs).toBe(3);
+		});
 
-		const state = await getPipelineState(db);
-		expect(state.backfillEnqueuedAt).not.toBeNull();
-		expect(state.backfillCompletedAt).toBeNull();
-
-		expect(await finishBackfillIfDrained(db)).toBe(false);
-
-		const claim = await claimDirty(db, 100);
-		expect(claim.marks.map((mark) => mark.bucket.toISOString()).sort()).toEqual([
-			B0.toISOString(),
-			B1.toISOString(),
-			B2.toISOString(),
-		]);
-		expect(claim.marks.every((mark) => mark.reason === "backfill")).toBe(true);
-		// Claimed but not yet rebuilt still counts as outstanding.
-		expect(await finishBackfillIfDrained(db)).toBe(false);
-
-		for (const range of coalesceMarks(claim.marks)) await completeDirty(db, claim.claimId, range);
-		expect(await finishBackfillIfDrained(db)).toBe(true);
-		expect(await finishBackfillIfDrained(db)).toBe(false);
-		expect(await rollupsReady(db)).toBe(true);
-	});
-
-	it("does not complete a backfill while any of its marks remain", async () => {
-		await enqueueBackfill(db);
-		const first = await claimDirty(db, 1);
-		await markDirty(db, BRAND_ID, [B3], "run");
-		for (const range of coalesceMarks(first.marks)) await completeDirty(db, first.claimId, range);
-		expect(await finishBackfillIfDrained(db)).toBe(false);
-
-		const rest = await claimDirty(db, 100);
-		for (const range of coalesceMarks(rest.marks)) await completeDirty(db, rest.claimId, range);
-		expect(await finishBackfillIfDrained(db)).toBe(true);
+		it("skips marks another refresh holds instead of waiting for them", async () => {
+			await markDirty(db, BRAND_ID, [B0], "run");
+			await withBrandLocked(async () => {
+				const first = refreshRange(db, wholeDay);
+				await waitForLockWaiters(1);
+				expect(await refreshRange(db, wholeDay)).toBeNull();
+				// Wrapped: returning the promise itself would wait on it with the lock still held.
+				return { first };
+			}).then(async ({ first }) => {
+				expect(bucketsOf((await first)?.marks ?? [])).toEqual([B0.toISOString()]);
+			});
+		});
 	});
 });

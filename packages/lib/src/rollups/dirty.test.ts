@@ -62,7 +62,7 @@ describe("coalesceMarks", () => {
 		expect(coalesceMarks([...marks, mark("a", 48)])).toHaveLength(2);
 	});
 
-	it("keeps every mark so a failed rebuild can restore them", () => {
+	it("keeps every mark it folds into a range", () => {
 		const marks = [mark("a", 0, "run"), mark("a", 1, "backfill"), mark("b", 9, "reprocess")];
 		expect(coalesceMarks(marks).flatMap((r) => r.marks)).toEqual(
 			expect.arrayContaining(marks.map((m) => expect.objectContaining({ reason: m.reason }))),

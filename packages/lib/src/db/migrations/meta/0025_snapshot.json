@@ -1,5 +1,5 @@
 {
-  "id": "5269536e-c642-4e51-a5ce-5671b108ee75",
+  "id": "65554545-5428-4fd1-8c09-1910f8f1b4b2",
   "prevId": "2ae39572-f793-4db5-8141-15f8ec04c361",
   "version": "7",
   "dialect": "postgresql",
@@ -694,18 +694,6 @@
           "primaryKey": true,
           "notNull": true,
           "default": 1
-        },
-        "backfill_enqueued_at": {
-          "name": "backfill_enqueued_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "backfill_completed_at": {
-          "name": "backfill_completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "rollup_version": {
           "name": "rollup_version",
@@ -1460,24 +1448,12 @@
           "primaryKey": false,
           "notNull": true
         },
-        "marked_at": {
-          "name": "marked_at",
+        "first_marked_at": {
+          "name": "first_marked_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "claim_id": {
-          "name": "claim_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "claimed_until": {
-          "name": "claimed_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -1573,6 +1549,12 @@
         },
         "competitor_mentions": {
           "name": "competitor_mentions",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "no_mention_runs": {
+          "name": "no_mention_runs",
           "type": "integer",
           "primaryKey": false,
           "notNull": true

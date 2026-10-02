@@ -3,7 +3,7 @@ import { assertRequiredEnv } from "@workspace/config/env";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeploymentFeatures } from "@workspace/deployment";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
-import { RECONCILE_ROLLUPS_QUEUE, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups/constants";
+import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
@@ -85,7 +85,12 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 5,
 	});
-	await boss.createQueue(RECONCILE_ROLLUPS_QUEUE, { retryLimit: 1, retryDelay: 300, expireInSeconds: 60 * 30 });
+	await boss.createQueue(ROLLUP_CATCH_UP_QUEUE, {
+		retryLimit: 5,
+		retryDelay: 60,
+		retryBackoff: true,
+		expireInSeconds: 60 * 10,
+	});
 	await boss.createQueue(REPROCESS_QUEUE, {
 		policy: "stately",
 		retryLimit: 2,
@@ -116,10 +121,7 @@ async function main() {
 	);
 	console.log("Scheduled refresh-rollups job (every minute)");
 
-	await boss.schedule(RECONCILE_ROLLUPS_QUEUE, "0 3 * * *", { source: "scheduled" }, { tz: "UTC" });
-	console.log("Scheduled reconcile-rollups job (daily at 03:00 UTC)");
-
-	await initializePipeline();
+	await initializePipeline(boss);
 
 	// Register job handlers
 	await registerHandlers(boss);

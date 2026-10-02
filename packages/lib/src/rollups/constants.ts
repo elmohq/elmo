@@ -10,11 +10,16 @@ export const ROLLUP_VERSION = 1;
 /** Bumped when the curated domain lists or the URL classifier change. */
 export const CLASSIFIER_VERSION = 1;
 
-/** How long a refresh tick holds claimed marks; a failed range waits this long before a retry. */
-export const CLAIM_LEASE_MINUTES = 10;
+/**
+ * Workers still on the previous version keep writing runs, without marks, until
+ * the deploy finishes rolling out. The catch-up re-marks everything written since
+ * the full rebuild was requested, once those workers are surely gone.
+ */
+export const ROLLUP_CATCH_UP_DELAY_SECONDS = 60 * 60;
+/** Reaches back past the rebuild request to cover runs whose transaction began before it. */
+export const ROLLUP_CATCH_UP_MARGIN_MS = 60 * 60 * 1000;
 
 export const REFRESH_ROLLUPS_QUEUE = "refresh-rollups";
-export const REPROCESS_QUEUE = "reprocess";
-export const RECONCILE_ROLLUPS_QUEUE = "reconcile-rollups";
+export const ROLLUP_CATCH_UP_QUEUE = "rollup-catch-up";
 
-export type DirtyReason = "run" | "reprocess" | "backfill" | "reconcile" | "schema";
+export type DirtyReason = "run" | "reprocess" | "backfill" | "schema" | "catch-up";

@@ -14,8 +14,6 @@ CREATE TABLE "cited_pages" (
 ALTER TABLE "cited_pages" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "pipeline_state" (
 	"id" smallint PRIMARY KEY DEFAULT 1 NOT NULL,
-	"backfill_enqueued_at" timestamp with time zone,
-	"backfill_completed_at" timestamp with time zone,
 	"rollup_version" integer DEFAULT 0 NOT NULL,
 	"classifier_version" integer DEFAULT 0 NOT NULL,
 	CONSTRAINT "pipeline_state_singleton" CHECK (id = 1)
@@ -55,9 +53,7 @@ CREATE TABLE "rollup_dirty" (
 	"brand_id" text NOT NULL,
 	"bucket" timestamp with time zone NOT NULL,
 	"reason" text NOT NULL,
-	"marked_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"claim_id" uuid,
-	"claimed_until" timestamp with time zone,
+	"first_marked_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "rollup_dirty_pk" PRIMARY KEY("brand_id","bucket")
 );
 --> statement-breakpoint
@@ -73,6 +69,7 @@ CREATE TABLE "rollup_prompt_runs" (
 	"brand_mentioned_runs" integer NOT NULL,
 	"competitor_runs" integer NOT NULL,
 	"competitor_mentions" integer NOT NULL,
+	"no_mention_runs" integer NOT NULL,
 	"first_run_at" timestamp with time zone NOT NULL,
 	"last_run_at" timestamp with time zone NOT NULL,
 	CONSTRAINT "rollup_prompt_runs_pk" PRIMARY KEY("brand_id","bucket","prompt_id","model","provider","web_search_enabled")
