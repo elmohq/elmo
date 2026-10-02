@@ -1,6 +1,7 @@
 import { parseModelFilter } from "@workspace/config/model-filter";
 import { db } from "@workspace/lib/db/db";
 import { getAllProviders } from "@workspace/lib/providers";
+import { BUCKET_MINUTES, bucketSql } from "@workspace/lib/rollups";
 import { type SQL, sql } from "drizzle-orm";
 
 export async function queryPg<T>(query: SQL): Promise<T[]> {
@@ -12,14 +13,25 @@ export async function queryPg<T>(query: SQL): Promise<T[]> {
 // whole day); `/api/v1` passes instants, used as given.
 export const isCalendarDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
-// A bare date would pick the timestamptz overload of AT TIME ZONE, which converts the
-// other way: midnight in the session's zone, read as wall time in this one.
+/**
+ * Rollups put a bucket on the local day its start falls on. Where local midnight
+ * isn't on a bucket boundary (Asia/Kathmandu, +05:45), a day therefore begins at
+ * the first boundary after midnight, up to a quarter hour late. Raw reads use the
+ * same bound, so a run lands on the same day whichever table counts it.
+ */
+function dayStart(day: SQL, timezone: string): SQL {
+	// A bare date would pick the timestamptz overload of AT TIME ZONE, which
+	// converts the other way: midnight in the session's zone, as wall time in this one.
+	const midnight = sql`(${day}::timestamp AT TIME ZONE ${timezone})`;
+	return bucketSql(sql`${midnight} + ${sql.raw(`interval '${BUCKET_MINUTES} minutes'`)} - interval '1 microsecond'`);
+}
+
 export function windowStart(from: string, timezone: string): SQL {
-	return isCalendarDay(from) ? sql`(${from}::date::timestamp AT TIME ZONE ${timezone})` : sql`${from}::timestamptz`;
+	return isCalendarDay(from) ? dayStart(sql`${from}::date`, timezone) : sql`${from}::timestamptz`;
 }
 
 export function windowEnd(to: string, timezone: string): SQL {
-	return isCalendarDay(to) ? sql`((${to}::date + interval '1 day') AT TIME ZONE ${timezone})` : sql`${to}::timestamptz`;
+	return isCalendarDay(to) ? dayStart(sql`(${to}::date + 1)`, timezone) : sql`${to}::timestamptz`;
 }
 
 export function windowFilter(column: SQL, fromDate: string | null, toDate: string | null, timezone: string): SQL {
