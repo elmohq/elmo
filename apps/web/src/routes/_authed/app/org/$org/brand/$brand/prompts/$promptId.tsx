@@ -612,13 +612,7 @@ function ResponsesTab({
 			<h3 className="text-base font-medium">Individual Prompt Runs</h3>
 
 			{runs.map((run) => (
-				<ResponseCard
-					key={run.id}
-					run={run}
-					text={run.textContent}
-					brandName={brandName}
-					domainFor={domainFor}
-				/>
+				<ResponseCard key={run.id} run={run} text={run.textContent} brandName={brandName} domainFor={domainFor} />
 			))}
 
 			<ListPagination

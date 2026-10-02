@@ -31,7 +31,9 @@ function fakeBoss(pendingStates: string[] = []) {
 }
 
 const sentFor = (send: ReturnType<typeof vi.fn>, brandId: string): ReprocessData[] =>
-	send.mock.calls.filter(([queue, data]) => queue === REPROCESS_QUEUE && data.brandId === brandId).map(([, data]) => data);
+	send.mock.calls
+		.filter(([queue, data]) => queue === REPROCESS_QUEUE && data.brandId === brandId)
+		.map(([, data]) => data);
 
 let brandId: string;
 let promptId: string;
@@ -179,10 +181,12 @@ describe("runReprocess", () => {
 			.values({ brandId, name: "Globex", domains: ["oldsite.example"] })
 			.returning({ id: competitors.id });
 		const answer = "According to newsite.example, Acme is the best CRM.";
-		await db.insert(promptRuns).values([
-			legacyRun(answer, new Date("2026-02-01T10:00:00Z")),
-			legacyRun(answer, new Date("2026-02-01T11:00:00Z")),
-		]);
+		await db
+			.insert(promptRuns)
+			.values([
+				legacyRun(answer, new Date("2026-02-01T10:00:00Z")),
+				legacyRun(answer, new Date("2026-02-01T11:00:00Z")),
+			]);
 		// The pass's first segment handled the earlier run under the old config...
 		const startedUnder = await currentVersions(brandId);
 		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
