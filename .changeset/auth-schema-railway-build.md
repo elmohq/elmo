@@ -2,4 +2,4 @@
 "@workspace/lib": patch
 ---
 
-Fix some types of deployments failing while generating the auth schema.
+Prevent some types of deployments from failing while generating the auth schema.
