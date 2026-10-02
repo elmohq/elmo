@@ -1,12 +1,8 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
-const migrationsFolder = path.resolve(
-	path.dirname(fileURLToPath(import.meta.url)),
-	"../../../../../packages/lib/src/db/migrations",
-);
+const migrationsFolder = path.resolve(__dirname, "../../../../../packages/lib/src/db/migrations");
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
