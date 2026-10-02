@@ -1025,11 +1025,20 @@ export async function getBrandMentionRateByModel(
 	return rows;
 }
 
+/** prompt_runs has no brand_id index, so this takes each prompt's first run off
+ * the (prompt_id, created_at) index instead of scanning for the brand's rows. */
 export async function getBrandEarliestRunDate(brandId: string): Promise<string | null> {
 	const rows = await queryPg<{ earliest_date: string | null }>(sql`
-		SELECT min(created_at) AS earliest_date
-		FROM prompt_runs
-		WHERE brand_id = ${brandId}
+		SELECT min(first_run.created_at) AS earliest_date
+		FROM prompts p
+		CROSS JOIN LATERAL (
+			SELECT pr.created_at
+			FROM prompt_runs pr
+			WHERE pr.prompt_id = p.id
+			ORDER BY pr.created_at
+			LIMIT 1
+		) first_run
+		WHERE p.brand_id = ${brandId}
 	`);
 	return rows[0]?.earliest_date || null;
 }
