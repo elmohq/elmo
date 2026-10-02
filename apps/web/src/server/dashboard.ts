@@ -20,7 +20,7 @@ import {
 	getPerPromptDailyCitationStats,
 	getPerPromptVisibilityTimeSeries,
 } from "@/lib/postgres-read";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { resolveBrandWindow } from "@/server/brand-window";
 
 interface VisibilityTimeSeriesPoint {
 	date: string;
@@ -53,15 +53,9 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<DashboardSummaryResponse> => {
 		await requireBrandSession(data.brandId);
 
-		const lookbackParam = data.lookback;
-		const timezone = resolveTimezone(data.timezone);
-
 		// Same timezone-aware window as the visibility and share-of-voice pages, so
 		// the overview's two trend charts share one date domain (issue #413).
-		// `allStrategy: "1y"` keeps the bounds concrete for every lookback, incl. "all".
-		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookbackParam, timezone, {
-			allStrategy: "1y",
-		}) as { fromDateStr: string; toDateStr: string };
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 
 		const [brandResult, competitorsList, enabledPromptsResult, totalPromptsResult] = await Promise.all([
 			db
