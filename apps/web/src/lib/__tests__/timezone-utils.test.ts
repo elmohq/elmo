@@ -105,6 +105,18 @@ describe("getTimezoneLookbackRange", () => {
 		});
 	});
 
+	it.each<["none" | "1y", string, string | null, string]>([
+		["none", "2024-01-15..", "2024-01-15", "2024-03-31"],
+		["1y", "2024-01-15..", "2024-01-15", "2024-03-31"],
+		["none", "..2024-01-15", null, "2024-01-15"],
+		["1y", "..2024-01-15", "2023-01-15", "2024-01-15"],
+	])("with the %s strategy resolves %s open-ended", (allStrategy, lookback, fromDateStr, toDateStr) => {
+		expect(getTimezoneLookbackRange(lookback as LookbackPeriod, "UTC", { now, allStrategy })).toEqual({
+			fromDateStr,
+			toDateStr,
+		});
+	});
+
 	it.each<["none" | "1y", string | null, string | null]>([
 		["none", null, null],
 		["1y", "2023-03-31", "2024-03-31"],

@@ -13,9 +13,17 @@ describe("custom lookback ranges", () => {
 	});
 
 	it.each([
+		["a start date alone", "2026-03-01..", { from: "2026-03-01", to: null }],
+		["an end date alone", "..2026-03-01", { from: null, to: "2026-03-01" }],
+	])("accepts %s", (_label, value, range) => {
+		expect(parseCustomLookback(value)).toEqual(range);
+		expect(formatCustomLookback(range)).toBe(value);
+	});
+
+	it.each([
+		["neither date", ".."],
 		["an inverted range", "2026-02-10..2026-01-05"],
 		["an impossible date", "2026-02-30..2026-03-01"],
-		["a missing end", "2026-01-05.."],
 		["a different separator", "2026-01-05_2026-02-10"],
 		["a preset", "1m"],
 	])("rejects %s", (_label, value) => {

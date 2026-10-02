@@ -73,11 +73,19 @@ export function getTimezoneLookbackRange(
 		allStrategy?: AllLookbackStrategy;
 	},
 ): TimezoneDateRange {
-	const custom = parseCustomLookback(lookback);
-	if (custom) return { fromDateStr: custom.from, toDateStr: custom.to };
-
 	const now = options?.now ?? new Date();
 	const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
+
+	const custom = parseCustomLookback(lookback);
+	if (custom) {
+		const toDateStr = custom.to ?? todayStr;
+		if (custom.from) return { fromDateStr: custom.from, toDateStr };
+		// An open start reaches back the way "all" does, measured from the end date.
+		return {
+			fromDateStr: options?.allStrategy === "1y" ? shiftDateStr(toDateStr, { years: -1 }) : null,
+			toDateStr,
+		};
+	}
 
 	if (lookback === "all") {
 		if (options?.allStrategy === "1y") {

@@ -5,14 +5,15 @@ export type LookbackPreset = (typeof LOOKBACK_PERIODS)[number];
 
 /** A custom range rides in the same `lookback` value as the presets, so every
  *  URL param, query key and server fn that already carries a lookback carries
- *  it unchanged. Both ends are inclusive calendar dates in the viewer's
- *  timezone. */
+ *  it unchanged. Ends are inclusive calendar dates in the viewer's timezone,
+ *  and either may be left open: `2026-01-05..` runs to today, `..2026-02-10`
+ *  reaches back as far as "all" does. */
 export type CustomLookback = `${string}..${string}`;
 export type LookbackPeriod = LookbackPreset | CustomLookback;
 
 export interface DateRange {
-	from: string;
-	to: string;
+	from: string | null;
+	to: string | null;
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -33,13 +34,21 @@ export function parseCustomLookback(value: string | null | undefined): DateRange
 	if (!value) return null;
 	const parts = value.split(CUSTOM_SEPARATOR);
 	if (parts.length !== 2) return null;
-	const [from, to] = parts;
-	if (!isCalendarDate(from) || !isCalendarDate(to) || from > to) return null;
+	const [from, to] = parts.map((part) => part || null);
+	if (!from && !to) return null;
+	if ((from && !isCalendarDate(from)) || (to && !isCalendarDate(to))) return null;
+	if (from && to && from > to) return null;
 	return { from, to };
 }
 
+/** The fixed last day of a custom range, for endpoints that otherwise count
+ *  back from today. */
+export function customRangeEnd(lookback: LookbackPeriod): string | undefined {
+	return parseCustomLookback(lookback)?.to ?? undefined;
+}
+
 export function formatCustomLookback(range: DateRange): CustomLookback {
-	return `${range.from}${CUSTOM_SEPARATOR}${range.to}`;
+	return `${range.from ?? ""}${CUSTOM_SEPARATOR}${range.to ?? ""}`;
 }
 
 export function isLookbackPeriod(value: unknown): value is LookbackPeriod {
@@ -52,8 +61,8 @@ export const lookbackSchema = z.custom<LookbackPeriod>(isLookbackPeriod, {
 
 export const calendarDateSchema = z.string().refine(isCalendarDate, "Expected a YYYY-MM-DD date");
 
-/** Inclusive number of calendar days in a range. */
-export function daysInRange(range: DateRange): number {
+/** Inclusive number of calendar days between two dates. */
+export function daysInRange(range: { from: string; to: string }): number {
 	const ms = Date.parse(`${range.to}T00:00:00Z`) - Date.parse(`${range.from}T00:00:00Z`);
 	return Math.round(ms / 86_400_000) + 1;
 }

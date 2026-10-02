@@ -30,7 +30,7 @@ import { useBrandParams } from "@/hooks/use-route-params";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
-import { parseCustomLookback } from "@/lib/lookback";
+import { customRangeEnd } from "@/lib/lookback";
 import { PROMPT_DETAIL_TABS, type PromptDetailTab } from "@/lib/prompt-detail-tabs";
 import { pageHead } from "@/lib/route-head";
 import { skeletonRows } from "@/lib/skeleton-rows";
@@ -201,7 +201,7 @@ function PromptHistoryPage() {
 
 	const lookback = useLookbackPeriod();
 	const days = getDaysFromLookback(lookback);
-	const endDate = parseCustomLookback(lookback)?.to;
+	const endDate = customRangeEnd(lookback);
 
 	const activeTab = Route.useSearch({ select: (s) => s.tab ?? "mentions" });
 	const navigate = Route.useNavigate();

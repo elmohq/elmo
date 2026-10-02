@@ -2,7 +2,7 @@ import { Button } from "@workspace/ui/components/button";
 import { Calendar } from "@workspace/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { CalendarRange, Check, ChevronLeft } from "lucide-react";
-import { type ReactElement, useState } from "react";
+import { type ComponentProps, type ReactElement, useState } from "react";
 import {
 	type DateRange,
 	formatCustomLookback,
@@ -33,7 +33,10 @@ const rangeFormatter = new Intl.DateTimeFormat(undefined, {
 export function formatLookbackLabel(lookback: LookbackPeriod): string {
 	const custom = parseCustomLookback(lookback);
 	if (!custom) return PRESET_LABELS[lookback as LookbackPreset];
-	return rangeFormatter.formatRange(new Date(`${custom.from}T00:00:00Z`), new Date(`${custom.to}T00:00:00Z`));
+	const asDate = (date: string) => new Date(`${date}T00:00:00Z`);
+	if (custom.from && custom.to) return rangeFormatter.formatRange(asDate(custom.from), asDate(custom.to));
+	if (custom.from) return `Since ${rangeFormatter.format(asDate(custom.from))}`;
+	return `Until ${rangeFormatter.format(asDate(custom.to as string))}`;
 }
 
 // react-day-picker works in local Dates; the range is plain YYYY-MM-DD.
@@ -52,8 +55,8 @@ function startOfToday(): Date {
 	return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-/** A start and an end date picker, each constrained by the other, so either
- *  end of the range can be moved on its own. Both highlight the full range. */
+/** Two independent date pickers. Either may be left empty: a start alone
+ *  means "since", an end alone means "until", both make a range. */
 export function CustomRangeForm({
 	initialRange,
 	onApply,
@@ -64,40 +67,26 @@ export function CustomRangeForm({
 	onCancel?: () => void;
 }) {
 	const today = startOfToday();
-	const [from, setFrom] = useState<Date | undefined>(() => (initialRange ? toLocalDate(initialRange.from) : undefined));
-	const [to, setTo] = useState<Date | undefined>(() => (initialRange ? toLocalDate(initialRange.to) : undefined));
-
-	const rangeModifiers = {
-		range_start: from,
-		range_end: to,
-		range_middle: from && to ? { after: from, before: to } : undefined,
-	};
+	const [from, setFrom] = useState(() => (initialRange?.from ? toLocalDate(initialRange.from) : undefined));
+	const [to, setTo] = useState(() => (initialRange?.to ? toLocalDate(initialRange.to) : undefined));
 
 	return (
 		<div className="flex flex-col">
 			<div className="flex flex-col sm:flex-row sm:divide-x">
-				<section aria-label="Start date" className="flex flex-col">
-					<h3 className="px-3 pt-3 text-xs font-medium text-muted-foreground">Start date</h3>
-					<Calendar
-						mode="single"
-						selected={from}
-						onSelect={setFrom}
-						defaultMonth={from ?? to ?? today}
-						disabled={[{ after: to ?? today }]}
-						modifiers={rangeModifiers}
-					/>
-				</section>
-				<section aria-label="End date" className="flex flex-col">
-					<h3 className="px-3 pt-3 text-xs font-medium text-muted-foreground">End date</h3>
-					<Calendar
-						mode="single"
-						selected={to}
-						onSelect={setTo}
-						defaultMonth={to ?? today}
-						disabled={[{ after: today }, ...(from ? [{ before: from }] : [])]}
-						modifiers={rangeModifiers}
-					/>
-				</section>
+				<DatePickerColumn
+					label="Start date"
+					value={from}
+					onChange={setFrom}
+					disabled={{ after: to ?? today }}
+					defaultMonth={to ?? today}
+				/>
+				<DatePickerColumn
+					label="End date"
+					value={to}
+					onChange={setTo}
+					disabled={from ? [{ after: today }, { before: from }] : { after: today }}
+					defaultMonth={today}
+				/>
 			</div>
 			<div className="flex items-center justify-between gap-2 border-t p-3">
 				{onCancel ? (
@@ -110,14 +99,53 @@ export function CustomRangeForm({
 				)}
 				<Button
 					size="sm"
-					disabled={!from || !to}
-					onClick={() => from && to && onApply({ from: toDateString(from), to: toDateString(to) })}
+					disabled={!from && !to}
+					onClick={() => onApply({ from: from ? toDateString(from) : null, to: to ? toDateString(to) : null })}
 					className="cursor-pointer"
 				>
 					Apply
 				</Button>
 			</div>
 		</div>
+	);
+}
+
+function DatePickerColumn({
+	label,
+	value,
+	onChange,
+	disabled,
+	defaultMonth,
+}: {
+	label: string;
+	value: Date | undefined;
+	onChange: (date: Date | undefined) => void;
+	disabled: ComponentProps<typeof Calendar>["disabled"];
+	defaultMonth: Date;
+}) {
+	return (
+		<section aria-label={label} className="flex flex-col">
+			<div className="flex h-6 items-center justify-between px-3 pt-3">
+				<h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
+				{value && (
+					<button
+						type="button"
+						onClick={() => onChange(undefined)}
+						className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
+						aria-label={`Clear ${label.toLowerCase()}`}
+					>
+						Clear
+					</button>
+				)}
+			</div>
+			<Calendar
+				mode="single"
+				selected={value}
+				onSelect={onChange}
+				defaultMonth={value ?? defaultMonth}
+				disabled={disabled}
+			/>
+		</section>
 	);
 }
 

@@ -110,8 +110,9 @@ function windowEnd(to: string, timezone: string): SQL {
 }
 
 function dateFilter(fromDate: string | null, toDate: string | null, timezone: string): SQL {
-	if (!fromDate || !toDate) return sql``;
-	return sql`AND created_at >= ${windowStart(fromDate, timezone)} AND created_at < ${windowEnd(toDate, timezone)}`;
+	const from = fromDate ? sql`AND created_at >= ${windowStart(fromDate, timezone)}` : sql``;
+	const to = toDate ? sql`AND created_at < ${windowEnd(toDate, timezone)}` : sql``;
+	return sql`${from} ${to}`;
 }
 
 function uuidList(ids: string[]): SQL {

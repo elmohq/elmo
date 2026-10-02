@@ -1,7 +1,8 @@
 /**
- * Date range filter: the preset lookbacks plus a custom range picked with a
- * start and an end date picker. The custom range is written to the same
- * `?lookback=` URL key as the presets (`YYYY-MM-DD..YYYY-MM-DD`), so the
+ * Date range filter: the preset lookbacks plus independent start and end date
+ * pickers (either may be left empty). The custom range is written to the same
+ * `?lookback=` URL key as the presets (`YYYY-MM-DD..YYYY-MM-DD`, with an empty
+ * side for an open bound), so the
  * filter-bar and prompt-detail stories assert the URL value too.
  */
 import type { Meta, StoryObj } from "@storybook/react";
@@ -106,9 +107,9 @@ export const CustomRangeBounds: Story = {
 	},
 };
 
-/** Switching from a preset to a custom range starts with no dates picked, so
- *  Apply stays disabled until both ends are chosen. */
-export const CustomRangeFromPreset: Story = {
+/** Switching from a preset starts with both pickers empty; Apply needs at
+ *  least one date. A start date alone means "since". */
+export const StartDateOnly: Story = {
 	render: () => <ControlledPicker initial="1w" />,
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
@@ -119,12 +120,42 @@ export const CustomRangeFromPreset: Story = {
 		await expect(apply).toBeDisabled();
 
 		const start = screen.getByRole("region", { name: "Start date" });
-		const end = screen.getByRole("region", { name: "End date" });
 		await userEvent.click(within(start).getAllByRole("button", { name: /1st,/ })[0]);
-		await userEvent.click(within(end).getByRole("button", { name: /^Today,/ }));
 		await userEvent.click(apply);
 
-		await expect(canvas.getByTestId("value")).toHaveTextContent(/^\d{4}-\d{2}-01\.\.\d{4}-\d{2}-\d{2}$/);
+		await expect(canvas.getByTestId("value")).toHaveTextContent(/^\d{4}-\d{2}-01\.\.$/);
+		await expect(canvas.getByRole("button", { name: /^Since / })).toBeVisible();
+	},
+};
+
+/** An end date alone means "until". */
+export const EndDateOnly: Story = {
+	render: () => <ControlledPicker initial="1w" />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: /Last 7 days/ }));
+		await userEvent.click(await screen.findByRole("option", { name: /Custom range/ }));
+
+		const end = screen.getByRole("region", { name: "End date" });
+		await userEvent.click(within(end).getAllByRole("button", { name: /1st,/ })[0]);
+		await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+		await expect(canvas.getByTestId("value")).toHaveTextContent(/^\.\.\d{4}-\d{2}-01$/);
+		await expect(canvas.getByRole("button", { name: /^Until / })).toBeVisible();
+	},
+};
+
+/** Clearing one side of a range leaves the other as an open-ended bound. */
+export const ClearStartDate: Story = {
+	render: () => <ControlledPicker initial="2025-03-01..2025-03-31" />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: /Mar 1\s–\s31, 2025/ }));
+		await userEvent.click(await screen.findByRole("button", { name: "Clear start date" }));
+		await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+		await expect(canvas.getByTestId("value")).toHaveTextContent("..2025-03-31");
+		await expect(canvas.getByRole("button", { name: /Until Mar 31, 2025/ })).toBeVisible();
 	},
 };
 

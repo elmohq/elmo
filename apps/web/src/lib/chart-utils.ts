@@ -25,7 +25,7 @@ export function getDefaultLookbackPeriod(earliestDataDate: string | null | undef
 
 export function getDaysFromLookback(lookback: LookbackPeriod): number {
 	const custom = parseCustomLookback(lookback);
-	if (custom) return daysInRange(custom);
+	if (custom?.from) return daysInRange({ from: custom.from, to: getLookbackEndDate(lookback) });
 	switch (lookback) {
 		case "1w":
 			return 7;
@@ -38,7 +38,7 @@ export function getDaysFromLookback(lookback: LookbackPeriod): number {
 		case "1y":
 			return 365;
 		default:
-			// Bound the nominally unbounded "all" option so chart queries remain predictable.
+			// Bound the nominally unbounded "all" (and open-start ranges) so chart queries remain predictable.
 			return 365 * 2;
 	}
 }
@@ -294,8 +294,11 @@ export function calculateVisibilityPercentages(
 ): ChartDataPoint[] {
 	let startDate: Date;
 	let endDate: Date;
+	const custom = parseCustomLookback(lookback);
+	// An open-start range spans the runs themselves, the way "all" does.
+	const spansRuns = lookback === "all" || (custom !== null && custom.from === null);
 
-	if (lookback === "all" && promptRuns.length > 0) {
+	if (spansRuns && promptRuns.length > 0) {
 		const sortedRuns = [...promptRuns].sort(
 			(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 		);
@@ -309,7 +312,7 @@ export function calculateVisibilityPercentages(
 		const startDateString = startDate.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		const endDateString = endDate.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		startDate = new Date(startDateString);
-		endDate = new Date(endDateString);
+		endDate = new Date(custom?.to ?? endDateString);
 	} else {
 		// Today is resolved in the viewer's timezone: UTC may already be on tomorrow.
 		({ startDate, endDate } = lookbackChartWindow(lookback, userTimezone));
@@ -402,6 +405,11 @@ export function selectCompetitorsToDisplay(
 export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback: LookbackPeriod): ChartDataPoint[] {
 	if (lookback === "all") {
 		return chartData;
+	}
+	const custom = parseCustomLookback(lookback);
+	if (custom?.to && !custom.from) {
+		const to = custom.to;
+		return chartData.filter((item) => item.date <= to);
 	}
 
 	const { startDate, endDate: referenceDate } = lookbackChartWindow(
