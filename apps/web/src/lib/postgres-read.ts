@@ -1171,6 +1171,7 @@ export interface ResponseMatchRow {
 	brand_mentioned: boolean;
 	competitors_mentioned: string[];
 	raw_output: unknown;
+	text_content: string | null;
 	created_at: string;
 	/** Every match in scope, not just this page — counted in the same scan. */
 	matched: number;
@@ -1222,6 +1223,7 @@ export async function getResponseMatches(
 			pr.brand_mentioned,
 			pr.competitors_mentioned,
 			pr.raw_output,
+			pr.text_content,
 			pr.created_at,
 			count(*) OVER ()::int AS matched
 		FROM prompt_runs pr

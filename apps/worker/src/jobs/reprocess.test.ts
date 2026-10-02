@@ -1,7 +1,7 @@
 import { type MentionConfig, mentionsStamp } from "@workspace/lib/mentions";
 import { EXTRACTOR_VERSION } from "@workspace/lib/text-extraction";
 import { describe, expect, it } from "vitest";
-import { type BrandMentions, buildRowUpdate } from "./reprocess";
+import { type BrandMentions, brandVersions, buildRowUpdate, type RunHead, staleLayers } from "./reprocess";
 
 const config: MentionConfig = {
 	brand: { name: "Acme", aliases: [], domains: ["https://acme.com"] },
@@ -9,15 +9,16 @@ const config: MentionConfig = {
 };
 const mentions: BrandMentions = { config, stamp: mentionsStamp(config) };
 
-const baseRow = {
+const baseRow: RunHead = {
 	id: "run-1",
 	promptId: "prompt-1",
 	createdAt: new Date("2026-01-15T10:05:00.000Z"),
+	cursorAt: "2026-01-15T10:05:00.000000Z",
 	model: "gpt-5",
 	provider: "openai-api",
-	textContent: null as string | null,
-	extractorVersion: null as number | null,
-	analysisVersions: {} as Record<string, string>,
+	hasText: false,
+	extractorVersion: null,
+	analysisVersions: {},
 };
 
 const openAiPayload = (text: string) => ({
@@ -37,13 +38,12 @@ const openAiPayload = (text: string) => ({
 
 describe("buildRowUpdate", () => {
 	it("returns null when nothing is stale", () => {
-		const update = buildRowUpdate(baseRow, { extraction: false, mentions: false }, undefined, mentions);
-		expect(update).toBeNull();
+		expect(buildRowUpdate(baseRow, { extraction: false, mentions: false }, {}, mentions)).toBeNull();
 	});
 
-	it("re-extracts text and citations when extraction is stale and raw is available", () => {
+	it("re-extracts text and citations without touching mentions when only extraction is stale", () => {
 		const raw = openAiPayload("Acme is great.");
-		const update = buildRowUpdate(baseRow, { extraction: true, mentions: false }, raw, mentions);
+		const update = buildRowUpdate(baseRow, { extraction: true, mentions: false }, { raw }, mentions);
 		expect(update?.columns.textContent).toBe("Acme is great.");
 		expect(update?.columns.extractorVersion).toBe(EXTRACTOR_VERSION);
 		expect(update?.citations).toEqual([
@@ -53,14 +53,9 @@ describe("buildRowUpdate", () => {
 		expect(update?.columns.analysisVersions).toBeUndefined();
 	});
 
-	it("returns null when extraction is stale but raw was not fetched for it", () => {
-		const update = buildRowUpdate(baseRow, { extraction: true, mentions: false }, undefined, mentions);
-		expect(update).toBeNull();
-	});
-
-	it("lazily fills missing text for stale mentions without touching citations or the extractor stamp", () => {
+	it("fills missing text for stale mentions without touching citations or the extractor stamp", () => {
 		const raw = openAiPayload("Acme is great.");
-		const update = buildRowUpdate(baseRow, { extraction: false, mentions: true }, raw, mentions);
+		const update = buildRowUpdate(baseRow, { extraction: false, mentions: true }, { raw }, mentions);
 		expect(update?.columns.textContent).toBe("Acme is great.");
 		expect(update?.columns.extractorVersion).toBeUndefined();
 		expect(update?.citations).toBeUndefined();
@@ -68,21 +63,41 @@ describe("buildRowUpdate", () => {
 		expect(update?.columns.analysisVersions).toBeDefined();
 	});
 
-	it("does not fetch or fill text when text_content is already present, and derives from the stored text", () => {
-		const row = { ...baseRow, textContent: "Acme is already stored here." };
-		const update = buildRowUpdate(row, { extraction: false, mentions: true }, undefined, mentions);
+	it("derives mentions from stored text when the run already has it", () => {
+		const row = { ...baseRow, hasText: true };
+		const update = buildRowUpdate(
+			row,
+			{ extraction: false, mentions: true },
+			{ text: "Acme is already stored here." },
+			mentions,
+		);
 		expect(update?.columns.textContent).toBeUndefined();
-		expect(update?.columns.extractorVersion).toBeUndefined();
 		expect(update?.columns.brandMentioned).toBe(true);
-		expect(update?.columns.analysisVersions).toBeDefined();
 	});
 
-	it("combines extraction and interpretation in one pass, deriving from the freshly extracted text", () => {
+	it("derives mentions from freshly extracted text when both layers are stale", () => {
 		const raw = openAiPayload("No brand mention here.");
-		const update = buildRowUpdate(baseRow, { extraction: true, mentions: true }, raw, mentions);
+		const row = { ...baseRow, hasText: true };
+		const update = buildRowUpdate(row, { extraction: true, mentions: true }, { raw }, mentions);
 		expect(update?.columns.textContent).toBe("No brand mention here.");
 		expect(update?.citations).toHaveLength(1);
 		expect(update?.columns.brandMentioned).toBe(false);
-		expect(update?.columns.analysisVersions).toBeDefined();
+	});
+});
+
+describe("staleLayers", () => {
+	const current = brandVersions(config);
+
+	it("asks for nothing when history matches today's code and config", () => {
+		expect(staleLayers(current, current)).toEqual([]);
+	});
+
+	it("re-derives mentions alone after a config change", () => {
+		const moved = brandVersions({ ...config, brand: { ...config.brand, aliases: ["Acme Corp"] } });
+		expect(staleLayers(current, moved)).toEqual(["interpretation"]);
+	});
+
+	it("brings interpretation along with extraction, since new text changes what is found", () => {
+		expect(staleLayers({ ...current, extraction: "0" }, current)).toEqual(["extraction", "interpretation"]);
 	});
 });

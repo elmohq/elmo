@@ -79,10 +79,6 @@ CREATE TABLE "rollup_prompt_runs" (
 );
 --> statement-breakpoint
 ALTER TABLE "rollup_prompt_runs" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
-ALTER TABLE "brands" ADD COLUMN "analysis_versions" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
-ALTER TABLE "prompt_runs" ADD COLUMN "text_content" text;--> statement-breakpoint
-ALTER TABLE "prompt_runs" ADD COLUMN "extractor_version" integer;--> statement-breakpoint
-ALTER TABLE "prompt_runs" ADD COLUMN "analysis_versions" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
 ALTER TABLE "rollup_citation_urls" ADD CONSTRAINT "rollup_citation_urls_page_id_cited_pages_id_fk" FOREIGN KEY ("page_id") REFERENCES "public"."cited_pages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "cited_pages_domain_idx" ON "cited_pages" USING btree ("domain");--> statement-breakpoint
 CREATE INDEX "rollup_citation_urls_prompt_id_bucket_idx" ON "rollup_citation_urls" USING btree ("prompt_id","bucket");--> statement-breakpoint

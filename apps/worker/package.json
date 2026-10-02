@@ -8,7 +8,8 @@
 		"start": "tsx src/index.ts",
 		"build": "tsc -p tsconfig.json",
 		"check-types": "tsc --noEmit",
-		"test": "vitest run"
+		"test": "vitest run --project=unit",
+		"test:integration": "vitest run --project=integration"
 	},
 	"dependencies": {
 		"@sentry/node": "^10.73.0",

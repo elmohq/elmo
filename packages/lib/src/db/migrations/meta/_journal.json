@@ -173,8 +173,15 @@
     {
       "idx": 24,
       "version": "7",
-      "when": 1790973300178,
-      "tag": "0024_analytics_rollups",
+      "when": 1790975383651,
+      "tag": "0024_replayable_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790976130031,
+      "tag": "0025_analytics_rollups",
       "breakpoints": true
     }
   ]

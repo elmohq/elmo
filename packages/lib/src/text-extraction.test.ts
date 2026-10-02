@@ -17,6 +17,7 @@ import {
 	extractTextFromOpenAI,
 	extractTextFromOxylabs,
 	normalizeCitationTitle,
+	storableText,
 	tryExtractTextContent,
 } from "./text-extraction";
 
@@ -325,6 +326,7 @@ describe("text-extraction", () => {
 			["dataforseo llm responses", "dataforseo", { tasks: [{ result: [{ items: [{ sections: [] }] }] }] }],
 			["dataforseo llm scraper", "dataforseo", { tasks: [{ result: [{ sources: [] }] }] }],
 			["openrouter", "openrouter", {}],
+			["searchapi", "searchapi", {}],
 			["olostep", "olostep", {}],
 			["brightdata", "brightdata", {}],
 			["brightdata with no record", "brightdata", null],
@@ -352,6 +354,15 @@ describe("text-extraction", () => {
 		it("returns the answer when the payload has one", () => {
 			const rawOutput = { output: [{ type: "message", content: [{ type: "output_text", text: "The answer." }] }] };
 			expect(tryExtractTextContent(rawOutput, "openai-api")).toBe("The answer.");
+		});
+	});
+
+	describe("storableText", () => {
+		it("keeps a real answer and drops a provider's placeholder", () => {
+			expect(storableText("Acme leads the pack.")).toBe("Acme leads the pack.");
+			expect(storableText(extractTextFromOpenAI({}))).toBeNull();
+			expect(storableText("")).toBeNull();
+			expect(storableText(undefined)).toBeNull();
 		});
 	});
 

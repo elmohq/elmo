@@ -3,10 +3,11 @@ import { assertRequiredEnv } from "@workspace/config/env";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeploymentFeatures } from "@workspace/deployment";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
-import { RECONCILE_ROLLUPS_QUEUE, REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups/constants";
+import { RECONCILE_ROLLUPS_QUEUE, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
+import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 
@@ -101,6 +102,11 @@ async function main() {
 		await boss.schedule("sync-auth0-memberships", "*/15 * * * *", { source: "scheduled" }, { tz: "UTC" });
 		console.log("Scheduled Auth0 membership sync (every 15 minutes)");
 	}
+
+	// Before any handler runs, so the stale pass never mistakes a brand that
+	// predates stamping for one whose whole history needs replaying.
+	const adopted = await adoptCurrentStamps();
+	if (adopted > 0) console.log(`Adopted current analysis stamps for ${adopted} brands`);
 
 	await boss.schedule(
 		REFRESH_ROLLUPS_QUEUE,

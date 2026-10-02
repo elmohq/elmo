@@ -75,7 +75,7 @@ function insertRun(
 }
 
 function fakeBoss() {
-	return { send: vi.fn().mockResolvedValue("fake-job-id") };
+	return { send: vi.fn().mockResolvedValue("fake-job-id"), findJobs: vi.fn().mockResolvedValue([]) };
 }
 
 describe.skipIf(!connectionString)("worker rollup jobs against postgres", () => {
@@ -167,94 +167,6 @@ describe.skipIf(!connectionString)("worker rollup jobs against postgres", () => 
 
 			const marks = await db.select().from(rollupDirty).where(eq(rollupDirty.bucket, old));
 			expect(marks.map((mark) => mark.reason)).toEqual(["reconcile"]);
-		});
-	});
-
-	describe("runReprocess", () => {
-		it("extracts text, derives mentions, marks the touched bucket dirty, and triggers a refresh", async () => {
-			await insertRun(db, {
-				id: RUN(5),
-				createdAt: B0,
-				provider: "openai-api",
-				brandMentioned: false,
-				rawOutput: { choices: [{ message: { content: "Acme is the best CRM." } }] },
-			});
-
-			const sendBoss = fakeBoss();
-			await runReprocess({ layers: ["extraction", "interpretation"], brandId: BRAND_ID }, db, sendBoss);
-
-			const [row] = await db
-				.select()
-				.from(promptRuns)
-				.where(eq(promptRuns.id, RUN(5)));
-			expect(row.textContent).toBe("Acme is the best CRM.");
-			expect(row.extractorVersion).toBe(1);
-			expect(row.brandMentioned).toBe(true);
-			expect(row.analysisVersions.mentions).toBeDefined();
-
-			const marks = await db.select().from(rollupDirty).where(eq(rollupDirty.bucket, B0));
-			expect(marks.map((mark) => mark.reason)).toEqual(["reprocess"]);
-
-			expect(sendBoss.send).toHaveBeenCalledWith(
-				"refresh-rollups",
-				{ source: "reprocess" },
-				expect.objectContaining({ singletonKey: "refresh-rollups" }),
-			);
-		});
-
-		it("is a no-op the second time a row is already current", async () => {
-			await insertRun(db, {
-				id: RUN(6),
-				createdAt: B0,
-				provider: "openai-api",
-				rawOutput: { choices: [{ message: { content: "Acme is the best CRM." } }] },
-			});
-
-			await runReprocess({ layers: ["extraction", "interpretation"], brandId: BRAND_ID }, db, fakeBoss());
-			expect(await db.select().from(rollupDirty)).toHaveLength(1);
-			await db.delete(rollupDirty);
-
-			await runReprocess({ layers: ["extraction", "interpretation"], brandId: BRAND_ID }, db, fakeBoss());
-			expect(await db.select().from(rollupDirty)).toHaveLength(0);
-		});
-
-		it("skips a brand that no longer exists", async () => {
-			await expect(
-				runReprocess({ layers: ["extraction"], brandId: "no-such-brand" }, db, fakeBoss()),
-			).resolves.toBeUndefined();
-		});
-
-		it("records the stamps the brand's history was brought to", async () => {
-			await runReprocess({ layers: ["interpretation"], brandId: BRAND_ID }, db, fakeBoss());
-			const [brand] = await db.select().from(brands).where(eq(brands.id, BRAND_ID));
-			expect(Object.keys(brand.analysisVersions)).toEqual(["mentions"]);
-		});
-	});
-
-	describe("requestStaleReprocesses", () => {
-		const sentBrands = (sendBoss: ReturnType<typeof fakeBoss>) =>
-			sendBoss.send.mock.calls.map(([, data]) => [data.brandId, data.layers]);
-
-		it("adopts today's stamps for a brand that predates the rollups", async () => {
-			await db.update(pipelineState).set({ backfillEnqueuedAt: new Date() }).where(eq(pipelineState.id, 1));
-			const sendBoss = fakeBoss();
-			expect(await requestStaleReprocesses(db, sendBoss)).toBe(0);
-			expect(sendBoss.send).not.toHaveBeenCalled();
-			expect(await requestStaleReprocesses(db, sendBoss)).toBe(0);
-		});
-
-		it("requests a reprocess once a brand's config moves, and stops once it has run", async () => {
-			const sendBoss = fakeBoss();
-			expect(await requestStaleReprocesses(db, sendBoss)).toBe(1);
-			expect(sentBrands(sendBoss)).toEqual([[BRAND_ID, ["extraction", "interpretation"]]]);
-
-			await runReprocess({ brandId: BRAND_ID, layers: ["extraction", "interpretation"] }, db, fakeBoss());
-			expect(await requestStaleReprocesses(db, fakeBoss())).toBe(0);
-
-			await db.insert(competitors).values({ brandId: BRAND_ID, name: "Globex", domains: ["globex.test"] });
-			const afterEdit = fakeBoss();
-			expect(await requestStaleReprocesses(db, afterEdit)).toBe(1);
-			expect(sentBrands(afterEdit)).toEqual([[BRAND_ID, ["interpretation"]]]);
 		});
 	});
 

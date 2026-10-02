@@ -450,13 +450,18 @@ const EXTRACTION_FAILURE_SENTINELS: ReadonlySet<string> = new Set([
 	"No text content found in OpenAI output.",
 	"No text content found in OpenRouter output.",
 	"No text content found in Oxylabs output.",
+	"No text content found in SearchApi output.",
 	"Unknown provider format - cannot extract text content.",
 ]);
 
-export function tryExtractTextContent(rawOutput: unknown, providerOrEngine: string): string | null {
-	const text = extractTextContent(rawOutput, providerOrEngine);
-	if (!text.trim() || EXTRACTION_FAILURE_SENTINELS.has(text)) return null;
+/** An answer worth storing, or null for a blank answer or an extraction placeholder. */
+export function storableText(text: unknown): string | null {
+	if (typeof text !== "string" || !text.trim() || EXTRACTION_FAILURE_SENTINELS.has(text)) return null;
 	return text;
+}
+
+export function tryExtractTextContent(rawOutput: unknown, providerOrEngine: string): string | null {
+	return storableText(extractTextContent(rawOutput, providerOrEngine));
 }
 
 // ============================================================================

@@ -87,7 +87,7 @@ function canonicalTerms(terms: readonly string[]): string[] {
 }
 
 function canonicalDomains(domains: readonly string[]): string[] {
-	return canonicalTerms(domains.map((domain) => normalizeDomain(domain)));
+	return canonicalTerms(domains.filter(Boolean).map((domain) => normalizeDomain(domain)));
 }
 
 /**
@@ -102,12 +102,14 @@ export function mentionsStamp(config: MentionConfig): string {
 		names: canonicalTerms([config.brand.name, ...config.brand.aliases]),
 		domains: canonicalDomains(config.brand.domains),
 		competitors: config.competitors
-			.map((competitor) => ({
-				name: competitor.name.trim(),
-				aliases: canonicalTerms(competitor.aliases),
-				domains: canonicalDomains(competitor.domains),
-			}))
-			.sort((a, b) => a.name.localeCompare(b.name)),
+			.map((competitor) =>
+				JSON.stringify({
+					name: competitor.name.trim(),
+					aliases: canonicalTerms(competitor.aliases),
+					domains: canonicalDomains(competitor.domains),
+				}),
+			)
+			.sort(),
 	});
 	const digest = createHash("sha256").update(fingerprint).digest("hex");
 	return `${MENTIONS_VERSION}:${digest.slice(0, 16)}`;

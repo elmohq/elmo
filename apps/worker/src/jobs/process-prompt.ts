@@ -26,7 +26,7 @@ import {
 	slowestIntervalHours,
 	targetKey,
 } from "@workspace/lib/run-policy";
-import { type Citation, EXTRACTOR_VERSION } from "@workspace/lib/text-extraction";
+import { type Citation, EXTRACTOR_VERSION, storableText } from "@workspace/lib/text-extraction";
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
@@ -195,23 +195,10 @@ async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): P
 	return Number(row?.value ?? 0) >= ceiling;
 }
 
-interface SavePromptRunInput {
-	promptId: string;
-	brandId: string;
-	model: string;
-	provider: string | null;
-	version: string;
-	webSearchEnabled: boolean;
-	rawOutput: unknown;
-	webQueries: string[];
-	brandMentioned: boolean;
-	competitorsMentioned: string[];
-	textContent: string | null;
-	extractorVersion: number;
-	analysisVersions: Record<string, string>;
-}
-
-async function savePromptRun(conn: DbConnection, input: SavePromptRunInput): Promise<{ id: string; createdAt: Date }> {
+async function savePromptRun(
+	conn: DbConnection,
+	input: typeof promptRuns.$inferInsert,
+): Promise<{ id: string; createdAt: Date }> {
 	const [result] = await conn
 		.insert(promptRuns)
 		.values(input)
@@ -306,10 +293,11 @@ async function runModelIteration({
 		const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
 		console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
-		const text = typeof textContent === "string" && textContent.trim() ? textContent : null;
+		const text = storableText(textContent);
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
-		const { id: promptRunId, createdAt } = await db.transaction(async (tx) => {
+		// One transaction so a reprocess never sees a run without its citations.
+		const promptRunId = await db.transaction(async (tx) => {
 			// Read here rather than at the start of the cycle: a config edit made while the
 			// provider call ran would otherwise be stamped onto this run as current.
 			const mentionConfig = await loadMentionConfig(tx, brand.id);
@@ -331,7 +319,7 @@ async function runModelIteration({
 			});
 			await saveCitations(tx, run.id, promptId, brand.id, config.model, extractedCitations, run.createdAt);
 			await markDirty(tx, brand.id, [run.createdAt], "run");
-			return run;
+			return run.id;
 		});
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
