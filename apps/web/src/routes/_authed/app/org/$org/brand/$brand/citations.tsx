@@ -13,6 +13,7 @@ import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { getDaysFromLookback } from "@/lib/chart-utils";
+import { parseCustomLookback } from "@/lib/lookback";
 import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/citations")({
@@ -28,6 +29,7 @@ function CitationsPage() {
 
 	const filters = useListFilters();
 	const days = getDaysFromLookback(filters.lookback);
+	const endDate = parseCustomLookback(filters.lookback)?.to;
 
 	const { data: brand } = useBrand(brandId);
 	const trackedTargets = brand?.trackedTargets ?? [];
@@ -40,6 +42,7 @@ function CitationsPage() {
 		refetch: refetchCitations,
 	} = useCitations(brandId, {
 		days,
+		endDate,
 		tags: filters.tags.length > 0 ? filters.tags : undefined,
 		model: modelParam,
 	});

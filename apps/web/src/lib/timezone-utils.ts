@@ -1,4 +1,4 @@
-import type { LookbackPeriod } from "@/lib/lookback";
+import { type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 
 type DateShift = {
 	days?: number;
@@ -73,6 +73,9 @@ export function getTimezoneLookbackRange(
 		allStrategy?: AllLookbackStrategy;
 	},
 ): TimezoneDateRange {
+	const custom = parseCustomLookback(lookback);
+	if (custom) return { fromDateStr: custom.from, toDateStr: custom.to };
+
 	const now = options?.now ?? new Date();
 	const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
 
@@ -112,6 +115,8 @@ export function getTimezoneLookbackRange(
 				fromDateStr: shiftDateStr(todayStr, { years: -1 }),
 				toDateStr: todayStr,
 			};
+		default:
+			return { fromDateStr: null, toDateStr: null };
 	}
 }
 

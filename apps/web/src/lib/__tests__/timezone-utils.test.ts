@@ -98,6 +98,13 @@ describe("getTimezoneLookbackRange", () => {
 		expect(getTimezoneLookbackRange(lookback, "UTC", { now })).toEqual({ fromDateStr, toDateStr });
 	});
 
+	it("returns a custom range as-is, whatever the timezone or today", () => {
+		expect(getTimezoneLookbackRange("2023-11-02..2024-01-15", "Asia/Tokyo", { now })).toEqual({
+			fromDateStr: "2023-11-02",
+			toDateStr: "2024-01-15",
+		});
+	});
+
 	it.each<["none" | "1y", string | null, string | null]>([
 		["none", null, null],
 		["1y", "2023-03-31", "2024-03-31"],

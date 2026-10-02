@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	applyPerPromptKeyedLVCF,
 	citationDateWindow,
+	filterAndCompleteChartData,
 	generateDateRange,
 	getDaysFromLookback,
 	getDefaultLookbackPeriod,
@@ -17,6 +18,9 @@ describe("getDaysFromLookback", () => {
 		["6m", 180],
 		["1y", 365],
 		["all", 365 * 2],
+		["2026-03-01..2026-03-01", 1],
+		["2026-02-01..2026-03-01", 29],
+		["2025-12-31..2026-01-01", 2],
 	])("maps %s to %i days", (lookback, days) => {
 		expect(getDaysFromLookback(lookback)).toBe(days);
 	});
@@ -138,5 +142,23 @@ describe("applyPerPromptKeyedLVCF", () => {
 		const daily = applyPerPromptKeyedLVCF(rows, range, 24, keys);
 		expect(toRoundedPercentages(daily.get("2026-06-01")!)).toEqual({ brand: 33, editorial: 67, other: 0 });
 		expect(toRoundedPercentages(daily.get("2026-06-02")!)).toEqual({ brand: 33, editorial: 67, other: 0 });
+	});
+});
+
+describe("filterAndCompleteChartData with a custom range", () => {
+	it("plots exactly the chosen days, filling gaps and dropping points outside", () => {
+		const data = [
+			{ date: "2026-02-27", brand: 10 },
+			{ date: "2026-03-01", brand: 40 },
+			{ date: "2026-03-03", brand: 60 },
+			{ date: "2026-03-05", brand: 90 },
+		];
+
+		expect(filterAndCompleteChartData(data, "2026-03-01..2026-03-04")).toEqual([
+			{ date: "2026-03-01", brand: 40 },
+			{ date: "2026-03-02" },
+			{ date: "2026-03-03", brand: 60 },
+			{ date: "2026-03-04" },
+		]);
 	});
 });

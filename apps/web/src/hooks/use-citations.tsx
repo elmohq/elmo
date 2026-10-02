@@ -4,6 +4,8 @@ import { getCitationsFn } from "@/server/citations";
 
 export interface CitationFilters {
 	days?: number;
+	/** Last day of a custom range; omitted, the window ends today. */
+	endDate?: string;
 	tags?: string[];
 	model?: string;
 }
@@ -23,6 +25,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 				data: {
 					brandId: resolvedBrandId!,
 					days: filters?.days || 7,
+					endDate: filters?.endDate,
 					tags: filters?.tags?.join(","),
 					model: filters?.model,
 				},

@@ -32,6 +32,7 @@ import {
 	classifyUrl as classifyUrlShared,
 } from "@/lib/domain-categories.server";
 import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
+import { calendarDateSchema } from "@/lib/lookback";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -338,6 +339,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		z.object({
 			brandId: z.string(),
 			days: z.number().optional().default(7),
+			endDate: calendarDateSchema.optional(),
 			tags: z.string().optional(),
 			model: z.string().optional(),
 		}),
@@ -345,11 +347,11 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<CitationsResult> => {
 		await requireBrandSession(data.brandId);
 
-		// Window: `data.days` calendar days ending today (inclusive), plus the
+		// Window: `data.days` calendar days ending today or `endDate` (inclusive), plus the
 		// contiguous equal-length previous window — all UTC (server-TZ independent).
 		// `dateRange` is reused for the trend charts so totals + charts span identically.
 		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(
-			new Date(),
+			data.endDate ? new Date(`${data.endDate}T00:00:00Z`) : new Date(),
 			data.days,
 		);
 		const timezone = "UTC";
