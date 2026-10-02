@@ -115,6 +115,28 @@ describe("date windows", () => {
 	});
 });
 
+describe("calendar day starts", () => {
+	let brandId: string;
+	let promptId: string;
+
+	beforeAll(async () => {
+		brandId = await brand();
+		promptId = await createPrompt(brandId);
+		// 21:00 on March 2nd in New York; 07:30 on March 3rd in Kolkata.
+		await createRun(brandId, promptId, { at: "2026-03-03T02:00:00Z", brandMentioned: true });
+	});
+
+	it("opens a day at local midnight west of UTC", async () => {
+		const totals = await getBrandMentionTotals(brandId, "2026-03-03", "2026-03-03", "America/New_York", [promptId]);
+		expect(totals.total_runs).toBe(0);
+	});
+
+	it("opens a day at local midnight east of UTC", async () => {
+		const totals = await getBrandMentionTotals(brandId, "2026-03-03", "2026-03-03", "Asia/Kolkata", [promptId]);
+		expect(totals.total_runs).toBe(1);
+	});
+});
+
 describe("daily visibility aggregate", () => {
 	let brandId: string;
 	let branded: string;
