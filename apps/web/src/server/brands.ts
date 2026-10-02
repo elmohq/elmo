@@ -21,6 +21,7 @@ import {
 	assertEnabledModelsAllowed,
 	decideCompetitorCap,
 	getOrgEntitlements,
+	withQuotaLock,
 } from "@workspace/lib/entitlements";
 import { isGroundedApiTarget, resolveProviderAccess, selectTargetsForBrand } from "@workspace/lib/providers";
 import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
@@ -536,21 +537,26 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		const session = await requireAuthSession();
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
 
-		await assertCompetitorCap(data.brandId, 1);
+		// Check and insert under one lock: otherwise two requests on a brand's
+		// last competitor slot both pass the check.
+		return await withQuotaLock(org.id, async (tx) => {
+			await assertCompetitorCap(data.brandId, 1, tx);
 
-		const [result] = await db
-			.insert(competitors)
-			.values({
-				brandId: data.brandId,
-				name: data.name.trim(),
-				domains: [domain],
-			})
-			.returning();
+			const [result] = await tx
+				.insert(competitors)
+				.values({
+					brandId: data.brandId,
+					name: data.name.trim(),
+					domains: [domain],
+				})
+				.returning();
 
-		return result;
+			return result;
+		});
 	});
