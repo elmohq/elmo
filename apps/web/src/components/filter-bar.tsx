@@ -17,9 +17,10 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
+import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
 import { useBrand } from "@/hooks/use-brands";
 import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
-import { LOOKBACK_PERIODS, type LookbackPeriod } from "@/lib/lookback";
+import { type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 
 export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 
@@ -40,15 +41,6 @@ function iconForModel(model: string, className = "size-3.5") {
 	if (model === ALL_MODELS_VALUE) return <MdSelectAll className={className} />;
 	return <ModelIcon iconId={iconIdForModelFilter(model)} className={className} />;
 }
-
-const LOOKBACK_LABELS: Record<LookbackPeriod, string> = {
-	"1w": "Last 7 days",
-	"1m": "Last 30 days",
-	"3m": "Last 3 months",
-	"6m": "Last 6 months",
-	"1y": "Last 12 months",
-	all: "All time",
-};
 
 // ------------------------------------------------------------------
 // Trigger button (used by every dropdown)
@@ -171,20 +163,18 @@ function LookbackDropdown() {
 	};
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger
-				render={<FilterTriggerButton icon={<Clock className="size-3.5" />} label={LOOKBACK_LABELS[selected]} />}
-			/>
-			<DropdownMenuContent align="start" className="w-48">
-				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => handleChange(v as LookbackPeriod)}>
-					{LOOKBACK_PERIODS.map((period) => (
-						<DropdownMenuRadioItem key={period} value={period} className="cursor-pointer">
-							{LOOKBACK_LABELS[period]}
-						</DropdownMenuRadioItem>
-					))}
-				</DropdownMenuRadioGroup>
-			</DropdownMenuContent>
-		</DropdownMenu>
+		<LookbackPicker
+			value={selected}
+			defaultValue={defaultLookback}
+			onChange={handleChange}
+			trigger={
+				<FilterTriggerButton
+					icon={<Clock className="size-3.5" />}
+					label={formatLookbackLabel(selected)}
+					active={parseCustomLookback(selected) !== null}
+				/>
+			}
+		/>
 	);
 }
 

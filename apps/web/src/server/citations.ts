@@ -32,7 +32,7 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
-import { lookbackSchema } from "@/lib/lookback";
+import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -352,10 +352,14 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		await requireBrandSession(data.brandId);
 
 		const days = await resolveBrandLookbackDays(data.brandId, data.lookback);
-		// Window: `days` calendar days ending today (inclusive), plus the
-		// contiguous equal-length previous window — all UTC (server-TZ independent).
+		const endDate = customRangeEnd(data.lookback);
+		// Window: `days` calendar days ending today or on a custom range's end (inclusive),
+		// plus the contiguous equal-length previous window — all UTC (server-TZ independent).
 		// `dateRange` is reused for the trend charts so totals + charts span identically.
-		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(new Date(), days);
+		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(
+			endDate ? new Date(`${endDate}T00:00:00Z`) : new Date(),
+			days,
+		);
 		const timezone = "UTC";
 
 		const [brandResult, competitorsList, allPrompts] = await Promise.all([
