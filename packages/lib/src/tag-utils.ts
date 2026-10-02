@@ -69,7 +69,8 @@ export function isPromptBranded(
 		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
 		const domainWithoutTld = domain.split(".")[0];
 
-		return promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
+		// A malformed website like "www." or ".com" leaves an empty host or label, which every prompt contains.
+		return [domain, domainWithoutTld].some((term) => term && promptLower.includes(term));
 	} catch {
 		return false;
 	}

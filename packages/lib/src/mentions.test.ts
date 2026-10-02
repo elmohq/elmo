@@ -50,10 +50,22 @@ describe("analyzeMentions", () => {
 		expect(result.competitorsMentioned).toEqual(["Globex"]);
 	});
 
-	it("treats a blank alias or domain as no signal rather than as a match on everything", () => {
-		const blank = { name: "Zzz", aliases: ["", "   "], domains: ["", "  ", null] };
+	it("does not treat a blank or whitespace alias as a mention in every answer", () => {
+		const blank = { name: "Zzz", aliases: ["", " ", "\t"] };
 		expect(analyzeMentions("Any answer at all.", blank, []).brandMentioned).toBe(false);
 		expect(analyzeMentions("Any answer at all.", brand, [blank]).competitorsMentioned).toEqual([]);
+	});
+
+	it("does not treat a blank domain or null domain entry as a mention in every answer", () => {
+		const blank = { name: "Zzz", domains: ["", " ", null, undefined] };
+		expect(analyzeMentions("Any answer at all.", blank, []).brandMentioned).toBe(false);
+		expect(analyzeMentions("Any answer at all.", brand, [blank]).competitorsMentioned).toEqual([]);
+	});
+
+	it("still matches real terms alongside blank ones, ignoring surrounding whitespace", () => {
+		const padded = { name: "Zzz", aliases: ["", " Acme Corp "], domains: [null, " acme.io "] };
+		expect(analyzeMentions("Acme Corp is the incumbent.", padded, []).brandMentioned).toBe(true);
+		expect(analyzeMentions("See acme.io for details.", { ...padded, aliases: [] }, []).brandMentioned).toBe(true);
 	});
 });
 
