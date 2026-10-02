@@ -1,3 +1,4 @@
+import { getDaysFromLookback } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
 import { getBrandEarliestRunDate } from "@/lib/postgres-read";
 import {
@@ -29,4 +30,16 @@ export async function resolveBrandWindow(
 	if (!earliest) return { timezone, fromDateStr: todayStr, toDateStr: todayStr };
 
 	return { timezone, fromDateStr: calendarDayInTimezone(timezone, new Date(earliest)), toDateStr: todayStr };
+}
+
+/** The same lookback as a count of days ending today, for the pages that
+ * still window by day count in UTC rather than by calendar range. */
+export async function resolveBrandLookbackDays(
+	brandId: string,
+	lookback: LookbackPeriod,
+	options?: { now?: Date },
+): Promise<number> {
+	if (lookback !== "all") return getDaysFromLookback(lookback);
+	const { fromDateStr, toDateStr } = await resolveBrandWindow(brandId, lookback, "UTC", options);
+	return Math.round((Date.parse(toDateStr) - Date.parse(fromDateStr)) / 86_400_000) + 1;
 }
