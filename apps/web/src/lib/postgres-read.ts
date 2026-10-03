@@ -102,7 +102,8 @@ async function queryPg<T>(query: SQL): Promise<T[]> {
 export const isCalendarDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 function windowStart(from: string, timezone: string): SQL {
-	return isCalendarDay(from) ? sql`(${from}::date AT TIME ZONE ${timezone})` : sql`${from}::timestamptz`;
+	// Cast to timestamp so AT TIME ZONE reads midnight as wall time in `timezone`.
+	return isCalendarDay(from) ? sql`(${from}::date::timestamp AT TIME ZONE ${timezone})` : sql`${from}::timestamptz`;
 }
 
 function windowEnd(to: string, timezone: string): SQL {
@@ -110,8 +111,9 @@ function windowEnd(to: string, timezone: string): SQL {
 }
 
 function dateFilter(fromDate: string | null, toDate: string | null, timezone: string): SQL {
-	if (!fromDate || !toDate) return sql``;
-	return sql`AND created_at >= ${windowStart(fromDate, timezone)} AND created_at < ${windowEnd(toDate, timezone)}`;
+	const from = fromDate ? sql`AND created_at >= ${windowStart(fromDate, timezone)}` : sql``;
+	const to = toDate ? sql`AND created_at < ${windowEnd(toDate, timezone)}` : sql``;
+	return sql`${from} ${to}`;
 }
 
 function uuidList(ids: string[]): SQL {
@@ -152,27 +154,31 @@ function modelFilter(model?: string, opts?: { alias?: string; source?: "prompt_r
 	const target = model ? parseModelFilter(model) : null;
 	if (!target) return sql``;
 	const prefix = opts?.alias ? sql.raw(`${opts.alias}.`) : sql``;
+	const grounded = groundedCondition(prefix, opts?.source);
 	// No API providers configured means nothing can be grounded, so the premium
 	// side matches nothing and the standard side matches everything.
-	if (API_PROVIDER_IDS.length === 0) {
+	if (!grounded) {
 		return target.premium ? sql`AND FALSE` : sql`AND ${prefix}model = ${target.model}`;
 	}
+	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
+}
+
+function groundedCondition(prefix: SQL, source?: "prompt_runs" | "citations"): SQL | null {
+	if (API_PROVIDER_IDS.length === 0) return null;
 	const providers = sql.join(
 		API_PROVIDER_IDS.map((id) => sql`${id}`),
 		sql`, `,
 	);
 	// A citation records which model cited it but not how that model was
 	// reached, so the grounded test has to go through the run it came from.
-	const grounded =
-		opts?.source === "citations"
-			? sql`EXISTS (
-					SELECT 1 FROM prompt_runs AS mf_run
-					WHERE mf_run.id = ${prefix}prompt_run_id
-						AND mf_run.web_search_enabled
-						AND mf_run.provider IN (${providers})
-				)`
-			: sql`(${prefix}web_search_enabled AND ${prefix}provider IN (${providers}))`;
-	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
+	return source === "citations"
+		? sql`EXISTS (
+				SELECT 1 FROM prompt_runs AS mf_run
+				WHERE mf_run.id = ${prefix}prompt_run_id
+					AND mf_run.web_search_enabled
+					AND mf_run.provider IN (${providers})
+			)`
+		: sql`(${prefix}web_search_enabled AND ${prefix}provider IN (${providers}))`;
 }
 
 function webSearchFilter(webSearchEnabled?: boolean): SQL {
@@ -379,6 +385,38 @@ export async function getVisibilityDailyAggregate(
 	return rows;
 }
 
+export interface CitationCountByModelRow {
+	model: string;
+	count: number;
+}
+
+/**
+ * Per model, the count `getCitationsTotalCount` gives for that bare model id in
+ * one pass. A bare id names the standard target, so grounded citations are left
+ * out exactly as `modelFilter` leaves them out.
+ */
+export async function getCitationsCountByModel(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+): Promise<CitationCountByModelRow[]> {
+	if (enabledPromptIds && enabledPromptIds.length === 0) return [];
+	const grounded = groundedCondition(sql``, "citations");
+	const rows = await queryPg<CitationCountByModelRow>(sql`
+		SELECT model, count(*)::int AS count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${grounded ? sql`AND NOT ${grounded}` : sql``}
+		GROUP BY model
+	`);
+	return rows.map((row) => ({ model: row.model, count: Number(row.count) }));
+}
+
 /**
  * Plain count of citations for the filter window. The visibility bar needs
  * only this scalar, avoiding a row per date and domain on large tables.
@@ -440,7 +478,7 @@ export async function getPromptsFirstEvaluatedAt(
 	const rows = await queryPg<PromptFirstEvaluatedAt>(sql`
 		SELECT
 			prompt_id,
-			min(created_at) AT TIME ZONE 'UTC' AS first_evaluated_at
+			min(created_at) AS first_evaluated_at
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			AND prompt_id IN (${uuidList(promptIds)})
@@ -1025,11 +1063,20 @@ export async function getBrandMentionRateByModel(
 	return rows;
 }
 
+/** prompt_runs has no brand_id index, so this takes each prompt's first run off
+ * the (prompt_id, created_at) index instead of scanning for the brand's rows. */
 export async function getBrandEarliestRunDate(brandId: string): Promise<string | null> {
 	const rows = await queryPg<{ earliest_date: string | null }>(sql`
-		SELECT min(created_at) AS earliest_date
-		FROM prompt_runs
-		WHERE brand_id = ${brandId}
+		SELECT min(first_run.created_at) AS earliest_date
+		FROM prompts p
+		CROSS JOIN LATERAL (
+			SELECT pr.created_at
+			FROM prompt_runs pr
+			WHERE pr.prompt_id = p.id
+			ORDER BY pr.created_at
+			LIMIT 1
+		) first_run
+		WHERE p.brand_id = ${brandId}
 	`);
 	return rows[0]?.earliest_date || null;
 }
@@ -1231,5 +1278,90 @@ export async function getFanoutPromptTotals(
 			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
 			${modelFilter(model, { alias: "pr" })}
 		GROUP BY pr.prompt_id
+	`);
+}
+
+// ============================================================================
+// Response search
+// ============================================================================
+
+/** Runs a response search covers. Without a `query` every run in scope matches. */
+export interface ResponseSearchScope {
+	brandId: string;
+	fromDate: string;
+	toDate: string;
+	timezone: string;
+	promptIds: string[];
+	model?: string;
+	query?: string;
+}
+
+export interface ResponseMatchRow {
+	id: string;
+	prompt_id: string;
+	model: string;
+	provider: string | null;
+	version: string;
+	web_queries: string[];
+	brand_mentioned: boolean;
+	competitors_mentioned: string[];
+	raw_output: unknown;
+	created_at: string;
+	/** Every match in scope, not just this page — counted in the same scan. */
+	matched: number;
+}
+
+function responseScopeFilter(scope: ResponseSearchScope): SQL {
+	return sql`pr.brand_id = ${scope.brandId}
+		AND pr.created_at >= ${windowStart(scope.fromDate, scope.timezone)}
+		AND pr.created_at < ${windowEnd(scope.toDate, scope.timezone)}
+		AND pr.prompt_id IN (${uuidList(scope.promptIds)})
+		${modelFilter(scope.model, { alias: "pr" })}`;
+}
+
+/**
+ * Answers are stored only as each provider's raw JSON, so the search runs over
+ * that text. The term is JSON-escaped first so quotes and backslashes match
+ * how they're stored, then LIKE-escaped so `%` and `_` are literal.
+ */
+function responseMatch(scope: ResponseSearchScope): SQL {
+	if (!scope.query) return sql`TRUE`;
+	const stored = JSON.stringify(scope.query).slice(1, -1);
+	const pattern = `%${stored.replace(/[\\%_]/g, "\\$&")}%`;
+	return sql`pr.raw_output::text ILIKE ${pattern}`;
+}
+
+/** Runs in scope, ignoring the search — cheap, since it never reads `raw_output`. */
+export async function countResponses(scope: ResponseSearchScope): Promise<number> {
+	if (scope.promptIds.length === 0) return 0;
+	const rows = await queryPg<{ total: number }>(sql`
+		SELECT count(*)::int AS total FROM prompt_runs pr WHERE ${responseScopeFilter(scope)}
+	`);
+	return rows[0]?.total ?? 0;
+}
+
+export async function getResponseMatches(
+	scope: ResponseSearchScope,
+	limit: number,
+	offset: number,
+): Promise<ResponseMatchRow[]> {
+	if (scope.promptIds.length === 0) return [];
+	return queryPg<ResponseMatchRow>(sql`
+		SELECT
+			pr.id::text AS id,
+			pr.prompt_id::text AS prompt_id,
+			pr.model,
+			pr.provider,
+			pr.version,
+			pr.web_queries,
+			pr.brand_mentioned,
+			pr.competitors_mentioned,
+			pr.raw_output,
+			pr.created_at,
+			count(*) OVER ()::int AS matched
+		FROM prompt_runs pr
+		WHERE ${responseScopeFilter(scope)} AND ${responseMatch(scope)}
+		ORDER BY pr.created_at DESC, pr.id
+		LIMIT ${limit} OFFSET ${offset}
 	`);
 }

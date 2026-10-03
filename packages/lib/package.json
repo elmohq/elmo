@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/lib",
-	"version": "0.4.1",
+	"version": "0.4.4",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
@@ -38,7 +38,10 @@
 		"./providers/types": "./src/providers/types.ts",
 		"./entitlements": "./src/entitlements/index.ts",
 		"./run-policy": "./src/run-policy/index.ts",
-		"./usage": "./src/usage/cost.ts"
+		"./usage": "./src/usage/cost.ts",
+		"./citations/domain-categories": "./src/citations/domain-categories.ts",
+		"./citations/domain-lists": "./src/citations/domain-lists.ts",
+		"./citations/rollup": "./src/citations/rollup.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^4.0.49",

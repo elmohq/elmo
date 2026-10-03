@@ -21,10 +21,18 @@ export function normalizeDomain(urlOrDomain: string): string {
 	}
 }
 
+/** A blank term is contained in every answer, so it has to match nothing instead. */
+function containsTerm(contentLower: string, term: string | null | undefined): boolean {
+	const needle = term?.trim().toLowerCase();
+	return !!needle && contentLower.includes(needle);
+}
+
 export function mentionsSubject(contentLower: string, subject: MentionSubject): boolean {
 	const names = [subject.name, ...(subject.aliases ?? [])];
-	if (names.some((name) => name && contentLower.includes(name.toLowerCase()))) return true;
-	return (subject.domains ?? []).some((domain) => domain && contentLower.includes(normalizeDomain(domain)));
+	if (names.some((name) => containsTerm(contentLower, name))) return true;
+	return (subject.domains ?? []).some(
+		(domain) => domain != null && containsTerm(contentLower, normalizeDomain(domain)),
+	);
 }
 
 export function analyzeMentions(

@@ -7,8 +7,8 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
 import { getBatchChartData, type ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { getBrandVisibility } from "@/server/analytics-core";
+import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 export interface BatchChartDataResponse {
@@ -56,14 +56,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<BatchChartDataResponse> => {
 		await requireBrandSession(data.brandId);
 
-		const timezone = resolveTimezone(data.timezone);
-		const lookbackParam = data.lookback;
-
-		// `allStrategy: "1y"` guarantees concrete bounds for every lookback
-		// (including "all"), so the dates are never null here.
-		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookbackParam, timezone, {
-			allStrategy: "1y",
-		}) as { fromDateStr: string; toDateStr: string };
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 
 		// Resolve the in-scope prompts server-side from the filter criteria so
 		// the client never ships the full prompt-id list (issue #68).
@@ -134,12 +127,9 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		await requireBrandSession(data.brandId);
 
 		const lookback = data.lookback;
-		const timezone = resolveTimezone(data.timezone);
-		// Caps the "all" lookback so the visibility bar matches the chart section.
-		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
-			fromDateStr: string;
-			toDateStr: string;
-		};
+		// The same window as the chart section, so the visibility bar cannot read
+		// a different slice of history than the chart beside it.
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, lookback, data.timezone);
 
 		const result = await getBrandVisibility(
 			data.brandId,

@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/ui",
-	"version": "0.4.1",
+	"version": "0.4.4",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
@@ -9,6 +9,7 @@
 	"exports": {
 		"./brand/*": "./src/brand/*.tsx",
 		"./components/*": "./src/components/*.tsx",
+		"./consent/*": "./src/consent/*.tsx",
 		"./hooks/*": "./src/hooks/*.ts",
 		"./lib/*": "./src/lib/*.ts",
 		"./styles/*": "./src/styles/*.css"

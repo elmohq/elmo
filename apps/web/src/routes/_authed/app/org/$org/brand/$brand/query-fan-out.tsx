@@ -12,6 +12,7 @@ import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-s
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { HistoryButton } from "@/components/history-button";
 import { FilterSection, PageHeader } from "@/components/page-header";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
@@ -36,7 +37,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/query-f
 });
 
 function QueryFanoutPage() {
-	const { brandId } = Route.useRouteContext();
+	const brandId = useBrandId();
 	const { model, lookback, tags } = useListFilters();
 	const tab = Route.useSearch({ select: (s) => s.tab ?? "fanout" });
 	const navigate = Route.useNavigate();

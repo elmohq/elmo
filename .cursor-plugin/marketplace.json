@@ -1,0 +1,16 @@
+{
+  "name": "elmo",
+  "owner": {
+    "name": "Elmo"
+  },
+  "metadata": {
+    "description": "Official Elmo plugins for Cursor"
+  },
+  "plugins": [
+    {
+      "name": "elmo",
+      "source": "./plugins/elmo",
+      "description": "Track how ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews mention and cite your brand"
+    }
+  ]
+}

@@ -14,6 +14,7 @@ import {
 	getScreenshotUrl,
 	isLowDR,
 } from "@/lib/competitors";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { Faq } from "./faq";
 
 function FeatureRow({ label, elmo, competitor }: { label: string; elmo: boolean; competitor: boolean }) {
@@ -141,7 +142,9 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						<img
 							src={getScreenshotUrl(competitor.slug)}
 							alt={`Screenshot of ${competitor.name} homepage`}
-							className="w-full"
+							width={1920}
+							height={1080}
+							className="aspect-video w-full object-cover object-top"
 							loading="lazy"
 						/>
 					</div>
@@ -321,7 +324,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						brand.
 					</p>
 					<div className="mt-8 flex flex-wrap justify-center gap-3">
-						<Link to="/docs" className={buttonVariants({ size: "sm" })}>
+						<Link {...SELF_HOST_LINK} className={buttonVariants({ size: "sm" })}>
 							Deploy Elmo
 						</Link>
 						<a

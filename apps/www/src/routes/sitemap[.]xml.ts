@@ -17,6 +17,7 @@ import {
 	indexedCompetitors,
 	isLowDR,
 } from "@/lib/competitors";
+import { listLegalPages } from "@/lib/legal";
 import { source } from "@/lib/source";
 
 const SITE_URL = "https://www.elmohq.com";
@@ -35,6 +36,8 @@ interface SitemapEntry {
 
 const staticPages: SitemapEntry[] = [
 	{ path: "/", changefreq: "weekly", priority: 1.0 },
+	{ path: "/answer-engine-optimization", changefreq: "monthly", priority: 0.9 },
+	{ path: "/generative-engine-optimization", changefreq: "monthly", priority: 0.9 },
 	{ path: "/features", changefreq: "monthly", priority: 0.8 },
 	{ path: "/pricing", changefreq: "monthly", priority: 0.8 },
 	{ path: "/off-site-aeo", changefreq: "monthly", priority: 0.8 },
@@ -42,10 +45,13 @@ const staticPages: SitemapEntry[] = [
 	{ path: "/roadmap", changefreq: "weekly", priority: 0.7 },
 	{ path: "/docs", changefreq: "weekly", priority: 0.9 },
 	{ path: "/blog", changefreq: "weekly", priority: 0.7 },
+	{ path: "/statistics", changefreq: "weekly", priority: 0.8 },
 	{ path: "/ai-visibility-tools", changefreq: "weekly", priority: 0.8 },
 	{ path: "/vision", changefreq: "monthly", priority: 0.6 },
 	{ path: "/brand", changefreq: "monthly", priority: 0.5 },
 	{ path: "/status", changefreq: "daily", priority: 0.5 },
+	{ path: "/support", changefreq: "monthly", priority: 0.5 },
+	{ path: "/legal", changefreq: "yearly", priority: 0.3 },
 ];
 
 export const Route = createFileRoute("/sitemap.xml")({
@@ -56,6 +62,13 @@ export const Route = createFileRoute("/sitemap.xml")({
 					path: page.url,
 					changefreq: "weekly",
 					priority: 0.7,
+				}));
+
+				const legalPages: SitemapEntry[] = listLegalPages().map((page) => ({
+					path: `/legal/${page.slug}`,
+					changefreq: "yearly",
+					priority: 0.3,
+					lastmod: page.updated,
 				}));
 
 				const blogPages: SitemapEntry[] = blogSource.getPages().map((page) => ({
@@ -138,6 +151,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 				const allPages: SitemapEntry[] = [
 					...staticPages,
 					...docsPages,
+					...legalPages,
 					...blogPages,
 					...comparisonPages,
 					...directorySubPages,

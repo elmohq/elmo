@@ -2,16 +2,21 @@
  * does not transitively pull in drizzle and pg. */
 
 import { slugify } from "@workspace/lib/app-urls";
+import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
-import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
+import {
+	assertCanAddPrompts,
+	assertCompetitorCap,
+	getBrandOrganizationId,
+	withQuotaLock,
+} from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { count, desc, eq, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 
 export class BrandConflictError extends Error {
@@ -383,26 +388,33 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 	if (!existing) throw new BrandNotFoundError(input.brandId);
 	const websiteHost = new URL(existing.website).hostname.replace(/^www\./, "");
 
-	await insertCompetitors({
-		brandId: input.brandId,
-		websiteHost,
-		source: (input.competitors ?? []).map((c) => ({
-			name: c.name,
-			domains: c.domains ?? [],
-			aliases: c.aliases ?? [],
-		})),
-	});
+	// Both inserts check a usage count first, so they run under one lock: two
+	// saves racing each other must not both spend the same last slot.
+	const wizardPromptIds = await withQuotaLock(existing.organizationId, async (tx) => {
+		await insertCompetitors({
+			brandId: input.brandId,
+			websiteHost,
+			source: (input.competitors ?? []).map((c) => ({
+				name: c.name,
+				domains: c.domains ?? [],
+				aliases: c.aliases ?? [],
+			})),
+			conn: tx,
+		});
 
-	const wizardPromptIds = await insertPrompts({
-		brandId: input.brandId,
-		brandName: existing.name,
-		website: existing.website,
-		source: (input.prompts ?? []).map((p) => ({
-			value: p.value,
-			tags: sanitizeUserTags(p.tags ?? []),
-			enabled: p.enabled ?? true,
-		})),
-		dedupeAgainstExisting: true,
+		return insertPrompts({
+			brandId: input.brandId,
+			brandName: existing.name,
+			website: existing.website,
+			source: (input.prompts ?? []).map((p) => ({
+				value: p.value,
+				tags: sanitizeUserTags(p.tags ?? []),
+				enabled: p.enabled ?? true,
+			})),
+			dedupeAgainstExisting: true,
+			conn: tx,
+			organizationId: existing.organizationId,
+		});
 	});
 	await createMultiplePromptJobSchedulers(wizardPromptIds);
 

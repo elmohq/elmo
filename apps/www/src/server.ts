@@ -92,10 +92,19 @@ function withAcceptHtml(request: Request): Request {
 // Keep permanent redirects server-side so backlinks and ranking signals reach
 // the canonical replacement rather than a client-rendered not-found page.
 const PERMANENT_REDIRECTS: Record<string, string> = {
+	"/blog/answer-engine-optimization": "/answer-engine-optimization",
 	"/blog/best-open-source-aeo-tools": "/ai-visibility-tools/category/open-source",
+	"/blog/generative-ai-for-marketing": "/blog/ai-for-seo",
+	"/blog/track-brand-ai-search": "/answer-engine-optimization",
+	"/blog/what-is-generative-seo": "/generative-engine-optimization",
 	"/docs/mcp": "/docs/api/mcp",
+	// The URLs people (and ad platforms, and app stores) guess for these.
+	"/terms": "/legal/terms",
+	"/privacy": "/legal/privacy",
+	"/cookies": "/legal/cookies",
+	"/subprocessors": "/legal/subprocessors",
+	"/acceptable-use": "/legal/acceptable-use",
 };
-
 export default createServerEntry({
 	async fetch(request) {
 		const url = new URL(request.url);

@@ -1,4 +1,4 @@
-import type { CitationCategory, CitationPageType } from "@/lib/domain-categories";
+import type { CitationCategory, CitationPageType } from "@workspace/lib/citations/domain-categories";
 
 interface GoogleProductRow {
 	name: string;

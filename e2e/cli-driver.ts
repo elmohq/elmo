@@ -207,6 +207,10 @@ async function main(): Promise<void> {
 	await waitFor("Configure Oxylabs?");
 	await send(ENTER);
 
+	// SearchApi confirm (default No) → No
+	await waitFor("Configure SearchApi?");
+	await send(ENTER);
+
 	// Olostep confirm (default No) → No
 	await waitFor("Configure Olostep?");
 	await send(ENTER);
@@ -236,6 +240,10 @@ async function main(): Promise<void> {
 
 	// Product updates email (optional)
 	await waitFor("email to receive product updates");
+	await send(ENTER);
+
+	// Access mode select — default "On this machine (localhost)"
+	await waitFor("How will you access Elmo?");
 	await send(ENTER);
 
 	// Web app port (default 1515) → accept default

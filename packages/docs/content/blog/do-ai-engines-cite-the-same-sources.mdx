@@ -1,0 +1,130 @@
+---
+title: "Do AI Engines Cite the Same Sources? Not Even Close"
+description: "A new academic audit found Google and Baidu give near-identical answers while sharing 3% of their cited domains — and Google's own two AI surfaces agree even less. What that means for tracking one engine and extrapolating to the rest."
+date: "2026-09-23"
+author: ai
+metaTitle: "Do AI Engines Cite the Same Sources? 2026 Data"
+tags:
+  - ai-visibility
+  - ai-citations
+  - ai-search
+  - aeo
+definedTerms:
+  - term: Cross-engine source overlap
+    definition: "Cross-engine source overlap is the share of domains cited by one AI answer engine that another engine also cites for the same queries, usually reported as Jaccard similarity. Published measurements range from 0.008 to 0.18 — every pair of surfaces measured so far cites mostly different sources."
+  - term: Platform-language setting
+    definition: "A platform-language setting is one combination of answer engine and query language, such as Google in English or Baidu in Chinese. Source-exposure audits treat each setting as its own surface because both the platform and the language independently change which domains get cited."
+  - term: Answer convergence
+    definition: "Answer convergence is when two AI engines produce semantically similar answer text for the same question despite citing different sources. The Baidu–Google audit measured median answer similarity of 0.70 to 0.81 across engines whose cited domains overlapped at 3% or less: the engines largely agree on what to say and disagree on whom to credit."
+howTo:
+  name: "How to decide which AI engines to track"
+  description: "Choose a tracking scope from the overlap data instead of from tool defaults, so your visibility numbers describe the engines your buyers actually use."
+  steps:
+    - name: Find out which engines your buyers use
+      text: "Pull AI referral traffic by source from your analytics and ask new customers which assistant they used. Engine market share in your category, not global market share, is the weighting that matters."
+    - name: Track every engine above your materiality line
+      text: "A workable rule: any engine plausibly carrying a tenth or more of your buyers' AI usage gets tracked. Measured source overlap between engines runs from under 1% to about 18%, so no tracked engine substitutes for an untracked one."
+    - name: Treat each engine as a separate channel with its own baseline
+      text: "Record mentions and citations per engine and compare each engine only against its own history. ChatGPT and Gemini fail in opposite directions, so a blended score describes neither."
+    - name: Never average engines into one visibility number
+      text: "If a report needs a single number, present the per-engine numbers alongside it and state the weights. A 10-point move in a blended score can be one engine's model update, invisible until you unblend it."
+    - name: Split by language before comparing anything
+      text: "The same engine cites almost entirely different domains in different languages — Google's English and Chinese overviews shared 3.4% of cited hosts. A per-engine number that pools languages is still a blend."
+    - name: Re-check the mix after engine model updates
+      text: "Source preferences move independently per engine: Reddit's share of ChatGPT responses fell from roughly 60% to 10% inside 13 weeks while other engines held. Date your per-engine baselines and expect breaks."
+faq:
+  - question: Do ChatGPT, Gemini, and Perplexity cite the same sources?
+    answer: "Mostly not. In Profound's analysis of roughly 680 million citations, Wikipedia was 7.8% of ChatGPT's citations but 0.6% of Google AI Overviews' and Perplexity's, while Reddit ran at 6.6% on Perplexity against 1.8% on ChatGPT. And a SIGIR 2026 study measured source overlap between Google's AI Overviews and Gemini at a Jaccard of just 0.11 — two surfaces owned by the same company, citing almost entirely different documents."
+  - question: How much do AI engines overlap in the domains they cite?
+    answer: "Every published measurement lands low. A 2026 academic audit found host-domain Jaccard similarity of 0.032 between Baidu and Google answering the same Chinese queries, and 0.034 between Google's own English and Chinese overviews. The SIGIR 2026 benchmark put AI Overviews against Gemini at 0.11 and AI Overviews against Google's ranked results at 0.18. The highest figure anyone has published for any pair of surfaces is about 18% overlap."
+  - question: If the sources differ, do the answers differ too?
+    answer: "Much less than you would expect. The Baidu–Google audit found median answer-text similarity of 0.70 to 0.81 across matched queries — engines that shared 3% of their cited domains still said roughly the same things. Source exposure and answer content are separate dimensions: which brands get credited is far more engine-specific than what the answer claims."
+  - question: Is tracking ChatGPT enough to know my AI visibility?
+    answer: "No. ChatGPT tells you about ChatGPT. Measured source overlap between engines runs from under 1% to about 18%, engines cite at different rates (citations appeared in 96% of ChatGPT responses against 55% of Claude's in Muck Rack's data), and they fail in opposite directions — ChatGPT cites without naming brands while Gemini names without citing. Visibility on one engine is weak evidence about any other."
+  - question: Do Google AI Overviews and Gemini cite the same pages?
+    answer: "Rarely. The SIGIR 2026 study of 11,500 queries measured their source overlap at a Jaccard of 0.11 — lower than either surface's overlap with Google's traditional ranked results. Being cited in AI Overviews is not evidence you are cited in Gemini, even though both run on Google's index."
+  - question: Does query language change which sources AI engines cite?
+    answer: "Almost completely. Google's overviews for the same 500 questions asked in English and in Chinese shared 3.4% of their cited hosts, and an earlier CiteLens comparison of identical Turkish and English questions found 22% shared sources. Language is effectively another engine: each platform-language combination has its own citation pool."
+  - question: Should I combine engines into one AI visibility score?
+    answer: "Not if you want the number to be diagnosable. Engines disagree on sources, citation rates, mention behavior, and timing of change, so a blended score moves when any one engine's model updates and the cause is invisible until you split it back out. Report per-engine numbers, each against its own history, and if a summary number is required, publish the weights next to it."
+---
+
+**A team that tracks its brand on ChatGPT and assumes the result generalizes is making a measurable bet, and the measurements keep coming back against it.** A [2026 academic audit accepted at EMNLP's Web Agents and Answer Engines workshop](https://arxiv.org/abs/2609.24407) ran the same 500 questions through Google and Baidu in two languages and found the engines' answers were nearly interchangeable — median semantic similarity up to 0.81 — while the domains they cited barely intersected at all: a Jaccard overlap of 0.032 between Baidu and Google answering identical Chinese queries, and 0.034 between Google's own English and Chinese overviews. The engines agree on what to say. They disagree, almost completely, on whom to credit for it.
+
+**Key facts**
+
+| | |
+|---|---|
+| Host-domain overlap, Baidu vs Google, same Chinese queries | **Jaccard 0.032** — [Li et al., WAC @ EMNLP 2026](https://arxiv.org/abs/2609.24407) |
+| Host-domain overlap, Google English vs Google Chinese | **Jaccard 0.034** — same audit |
+| Answer-text similarity across those same pairs | **median 0.70–0.81** — same audit |
+| Source overlap, Google AI Overviews vs Gemini | **Jaccard 0.11** — [SIGIR 2026, 11,500 queries](https://arxiv.org/abs/2604.27790) |
+| Wikipedia's share of citations, ChatGPT vs AI Overviews | **7.8% vs 0.6%** — [Profound, ~680M citations](https://www.tryprofound.com/blog/ai-platform-citation-patterns) |
+| Mention rate vs citation rate, ChatGPT | **20.7% vs 87%** — [Semrush & Kevin Indig, 3,981 appearances](https://www.semrush.com/blog/the-ghost-citations-study/) |
+| Mention rate vs citation rate, Gemini | **83.7% vs 21.4%** — same study |
+| Distinct domains cited daily, Google AI Mode vs ChatGPT, Elmo 42-day study | **~24 vs ~17** — [citation volatility](/blog/citation-volatility) |
+
+**Key takeaways**
+
+- No published measurement of cross-engine source overlap exceeds roughly 18%, and most sit far below it. Engines build their answers from mostly disjoint citation pools.
+- The disagreement holds inside a single company: Google's AI Overviews and Gemini overlap at a Jaccard of 0.11 — less than either overlaps with Google's ranked results.
+- Language behaves like another engine. Google's English and Chinese overviews for the same questions shared 3.4% of cited hosts; identical Turkish and English questions in an earlier study shared 22% of sources.
+- Answers converge while sources diverge. Engines citing almost entirely different domains still produced answer text with 0.70–0.81 median similarity. Which brands get credited is the engine-specific part.
+- Engines differ in behavior, not just sources: ChatGPT cites without naming brands, Gemini names without citing, Claude cites in barely half its responses, and each moves on its own schedule.
+- The tracking consequence is blunt: per-engine measurement is not a premium feature, it is the measurement. A one-engine or blended number describes one engine, or nothing.
+
+## Same questions, same answers, different webs
+
+The [EMNLP workshop audit](https://arxiv.org/abs/2609.24407) — by researchers including Politecnico di Milano's Francesco Pierri — is the first to run a controlled cross-platform, cross-language comparison of answer-engine sourcing. The design is simple: 500 queries sampled from MS MARCO, translated into Simplified Chinese, submitted to Google and Baidu in both languages between 20 June and 10 July 2026, for 1,998 observations across four **platform-language settings**.
+
+The first finding is that the surfaces do not even fire equally. Google produced an AI overview for about 97% of queries in both languages; Baidu answered 82% of Chinese queries and just 4% of English ones. Whether an AI answer exists for your buyers' question at all is already platform- and language-specific.
+
+Where overviews did appear, the citation pools barely touched:
+
+| Setting pair | Host-domain Jaccard |
+|---|---|
+| Google Chinese vs Google English | 0.034 |
+| Baidu Chinese vs Google Chinese | 0.032 |
+| Baidu Chinese vs Google English | 0.008 |
+
+Two engines answering the same 500 questions in the same language shared about 3% of their cited hosts. The same engine answering in two languages shared about 3% too — which matches the direction of CiteLens's earlier Turkish–English comparison (22% shared sources) while landing even lower on a stricter metric and a broader query set.
+
+Concentration diverged as sharply as membership. Baidu's citations were dominated by its own properties — baike.baidu.com, baijiahao.baidu.com, zhidao.baidu.com — with a Gini coefficient of 0.895 and 27.1% of all visible exposure going to a single host. Google spread the same questions across roughly 2,700–2,800 unique hosts with a top host share under 7%. One engine runs a closed loop over its own ecosystem; the other samples widely from the open web. A brand can be structurally excluded from one pool and comfortably present in the other while doing nothing differently.
+
+And here is the part that should reframe how you read every engine comparison: the *answers* converged anyway. Median answer-text similarity across matched queries ran from 0.701 (Google English vs Baidu Chinese) to 0.813 (Google Chinese vs Baidu Chinese). The paper's conclusion is that answer similarity and source exposure are distinct dimensions of AI search — engines can tell users nearly the same thing while crediting completely different sources for it. If your concern is whether your brand is the one being credited, measuring the answer text on one engine tells you close to nothing about the citation set on another.
+
+## The disagreement survives inside one company
+
+If cross-engine divergence were just Google-versus-Baidu ecosystem politics, you could dismiss it. It is not. The [SIGIR 2026 benchmark](https://arxiv.org/abs/2604.27790) — 11,500 queries against Google's traditional results, AI Overviews, and Gemini, with the dataset published — measured source overlap between Google's own two generative surfaces at a Jaccard of 0.11. AI Overviews and Gemini agree with each other *less* than either agrees with the ranked list (0.18 and 0.16), despite sharing an index, a parent model family, and an owner. We covered that study's rank-overlap findings in [our analysis of rankings and AI citations](/blog/rankings-and-ai-citations); the cross-surface number is the one that matters here.
+
+Off Google, the gaps are the same shape. Measured against a common reference — Google's top 10 for the same query — [Ahrefs' four-assistant study](https://ahrefs.com/blog/ai-search-overlap/) found the assistants landing at very different distances from it: 8% of ChatGPT's cited links ranked there against 28.6% of Perplexity's, a 3.5x spread that cannot happen if the assistants draw from one shared pool. Profound's ~680-million-citation corpus shows the pools directly: each engine has its own source diet. Wikipedia is 7.8% of ChatGPT's citations and 0.6% of AI Overviews' and Perplexity's. Reddit is 6.6% of Perplexity's and 1.8% of ChatGPT's. These are not noisy estimates of one underlying citation distribution. They are different distributions.
+
+## Engines also behave differently with the citations they do give
+
+Source membership is only the first axis of disagreement. The [Semrush and Kevin Indig ghost-citations study](https://www.semrush.com/blog/the-ghost-citations-study/) found ChatGPT and Gemini failing brands in mirror image: ChatGPT cited a domain in 87% of its brand appearances but wrote the brand's name into the answer only 20.7% of the time, while Gemini named brands in 83.7% of appearances and cited in 21.4%. Muck Rack's corpus adds citation frequency itself: citations appeared in 96% of ChatGPT responses, 82% of Gemini's, and 55% of Claude's — and Claude, when it does cite, lists roughly 13 sources against ChatGPT's 5, diluting any one citation's prominence.
+
+A September 2026 preprint built on one monitoring vendor's data ([Tannenbaum, arXiv:2609.23162](https://arxiv.org/abs/2609.23162)) is consistent from yet another angle: across 34,960 prompt-engine observations, the same retrieval condition produced different brand-mention rates per engine — with the brand's own domain cited in the retrieval path, GPT mentioned the target brand 49.0% of the time and Gemini 58.4%. Same brand, same evidence in front of the model, ten-point behavioral gap.
+
+Our own tracking shows the divergence day to day. In [Elmo's 42-day citation study](/blog/citation-volatility), Google AI Mode cited about 24 distinct domains per day for a tracked prompt set while ChatGPT cited about 17, and a single broad prompt drew on 445 distinct domains over six weeks on Google's surface. Engines also move on their own clocks: within one 13-week window, Semrush watched Reddit's presence in ChatGPT responses fall from roughly 60% to about 10% while other engines' mixes held — a single-engine model update that would have silently dragged any blended score with it.
+
+## What this does not prove
+
+**The academic audits count domains, not brands.** A Jaccard of 0.032 over host domains does not directly say that *brand mentions* disagree at the same rate. Answers converge semantically, so it is possible engines agree on which brands to name more than on which pages to cite — the ghost-citations data suggests naming and citing are partly independent behaviors. Nobody has published a brand-level cross-engine mention correlation. Until someone does, the safe reading is that citation presence — the thing your pages can earn — is engine-specific, and mention agreement is unmeasured.
+
+**MS MARCO queries are not buyer prompts.** The EMNLP audit's 500 queries are general informational questions, not the comparison and recommendation prompts that decide shortlists. Evaluation-stage prompts pull from a different, more vendor-heavy pool — [Ten Speed's data](/blog/where-ai-citations-come-from) puts product pages at 24% of citations on those prompts — and cross-engine overlap on that slice has not been measured. It could be higher; the category's own pages are a smaller pool to draw from.
+
+**Both academic studies are snapshots.** The Baidu–Google audit is three weeks in mid-2026 collected from Milan, which the authors flag may not reproduce mainland-China Baidu; the SIGIR collection is two days in December 2025, before the model change Ahrefs credits with shifting AI Overview sourcing. Overlap numbers move when engines do. The direction — low everywhere, on every pair, in every study — is what has held.
+
+## The decision rule
+
+The practical question is scope: which engines does your tracking need to cover, and can any of them proxy for the rest? The data supports one rule with three parts.
+
+1. **Weight engines by your buyers, not by global market share.** Pull AI-source referrals from your analytics, ask new customers what assistant they used, and rank engines by share of *your* category's usage. A developer-tools brand and a skincare brand have different engine mixes, and neither matches the global chart.
+2. **Track every engine above your materiality line, because none proxies for another.** The measured overlap between any two surfaces is 1–18%. If an engine plausibly carries a tenth of your buyers' AI activity, its citation pool is invisible from every other engine you track. That includes treating Google's AI Overviews and Gemini as two engines, and each language you sell in as its own surface.
+3. **Baseline each engine against itself, and never publish a blend without its weights.** Per-engine numbers are diagnosable: a drop isolates to one surface, and the fix differs by surface — retrieval problems on an engine that cites you nowhere, entity problems on one that cites without naming you. A blended score moves whenever any single engine's model updates, and the movement has no address.
+
+The cost objection is real — every added engine multiplies prompt runs — but it prices the wrong risk. The expensive failure is not tracking four engines; it is spending two quarters optimizing against ChatGPT data while Gemini, drawing on a citation pool your dashboard has never seen, quietly recommends your competitor to the other half of your buyers.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, storing mentions, citations, and competitors per engine on every run. Because results carry the engine on every row and the data is yours to query, per-engine baselines and cross-engine comparisons are a `GROUP BY`, not a feature tier.
+
+For the fundamentals, start with [AI citations](/blog/ai-citations) and [AI share of voice](/blog/ai-share-of-voice), then [how to track your brand in AI search](/answer-engine-optimization). For why two *tools* disagree even on one engine, see [why AI visibility scores differ](/blog/why-ai-visibility-scores-differ); for how sources churn within an engine, [citation volatility](/blog/citation-volatility); for the cite-without-naming problem, [ghost citations](/blog/ghost-citations). For the vocabulary, see the [AI search glossary](/glossary).

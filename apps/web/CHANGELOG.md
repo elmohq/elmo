@@ -1,5 +1,54 @@
 # @workspace/web
 
+## 0.4.4
+
+### Patch Changes
+
+- b48f545: Elmo's startup check now asks for a direct LLM key when onboarding needs one, counts provider keys saved in the app, and no longer requires the whitelabel parent-app link.
+- 46c2c7a: The billing page now leads with your plan, total cost, and usage side by side, with the full plan comparison folded away until you ask for it.
+- 2e32431: Fixed the competitor limit being exceeded when several requests added competitors to a brand at the same time.
+- 76ec134: Reports accept other names a brand goes by, and count a mention of any of them as a brand mention.
+- ee757a2: Add a Responses page that lists every AI answer for a brand, searchable by its text and filterable by prompt.
+- 5b00a9c: Fix a critical cross-site scripting vulnerability in TanStack Start.
+- Updated dependencies [b48f545]
+- Updated dependencies [1980c7d]
+- Updated dependencies [280e5f3]
+- Updated dependencies [76ec134]
+  - @workspace/config@0.4.4
+  - @workspace/lib@0.4.4
+  - @workspace/api-spec@0.4.4
+  - @workspace/deployment@0.4.4
+  - @workspace/og@0.4.4
+  - @workspace/ui@0.4.4
+
+## 0.4.3
+
+### Patch Changes
+
+- 7937d49: Fixed the API and MCP tools reporting when a prompt first ran as several hours off on servers set to a timezone other than UTC.
+- Updated dependencies [10bc2f0]
+  - @workspace/lib@0.4.3
+  - @workspace/deployment@0.4.3
+  - @workspace/api-spec@0.4.3
+  - @workspace/config@0.4.3
+  - @workspace/og@0.4.3
+  - @workspace/ui@0.4.3
+
+## 0.4.2
+
+### Patch Changes
+
+- 208301d: The API, API Keys, and MCP settings pages now say when access is disabled in demo mode, instead of handing out connection steps that the server refuses.
+- a0cd449: Dialogs no longer flash a dark backdrop as they close.
+- 97707a9: Removed an unused CORS header from the MCP server's sign-in challenge.
+- e350e87: Fixed prompt run history revealing whether a prompt id exists to signed-out visitors.
+- @workspace/api-spec@0.4.2
+  - @workspace/config@0.4.2
+  - @workspace/deployment@0.4.2
+  - @workspace/lib@0.4.2
+  - @workspace/og@0.4.2
+  - @workspace/ui@0.4.2
+
 ## 0.4.1
 
 ### Patch Changes

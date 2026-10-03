@@ -64,6 +64,22 @@ describe("tag-utils", () => {
 			expect(isPromptBranded("Acme Corp products", brandName, "not-a-valid-url")).toBe(true);
 			expect(isPromptBranded("random products", brandName, "not-a-valid-url")).toBe(false);
 		});
+
+		it("should treat any brand name variant as branded", () => {
+			const aliases = ["ACME", "Acme Inc."];
+			expect(isPromptBranded("is acme any good", brandName, brandWebsite, aliases)).toBe(true);
+			expect(isPromptBranded("acme inc. pricing", brandName, "not-a-valid-url", aliases)).toBe(true);
+			expect(isPromptBranded("best running shoes", brandName, brandWebsite, aliases)).toBe(false);
+		});
+
+		it("should ignore blank variants", () => {
+			expect(isPromptBranded("best running shoes", brandName, brandWebsite, ["", "  "])).toBe(false);
+		});
+
+		it("should not treat every prompt as branded when the website has an empty host or label", () => {
+			expect(isPromptBranded("best running shoes", brandName, "www.")).toBe(false);
+			expect(isPromptBranded("best running shoes", brandName, ".com")).toBe(false);
+		});
 	});
 
 	describe("computeSystemTags", () => {

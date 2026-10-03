@@ -118,6 +118,24 @@ function validatePort(value: string | undefined): string | undefined {
 	return valid ? undefined : "Must be an integer between 1 and 65535";
 }
 
+function toPublicUrl(value: string): URL | undefined {
+	const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+	try {
+		return new URL(withScheme);
+	} catch {
+		return undefined;
+	}
+}
+
+function validatePublicUrl(value: string | undefined): string | undefined {
+	if (!value) return "Required";
+	const url = toPublicUrl(value.trim());
+	if (!url?.hostname.includes(".")) return "Enter a domain, e.g. elmo.example.com";
+	// Auth trusts only this origin, so Elmo can't be served from a subpath.
+	if (url.pathname !== "/") return "Must not include a path";
+	return undefined;
+}
+
 async function configureProvidersInteractive(env: EnvMap): Promise<"recommended" | "custom"> {
 	p.note(
 		[
@@ -127,6 +145,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 			`     • ${pc.cyan("Cloro")}      — most reliable, every surface, ~$0.65/mo per prompt ($30/mo min)`,
 			`     • ${pc.cyan("BrightData")} — pay-as-you-go and cheaper, but slower, ~$0.45/mo per prompt`,
 			`     • ${pc.cyan("Oxylabs")}    — cheapest per run, no Gemini/Copilot, $49/mo min`,
+			`     • ${pc.cyan("SearchApi")}  — flat per-search, every surface, ~$1.20/mo per prompt ($40/mo min)`,
 			`     • ${pc.cyan("Olostep")}    — premium, built for high volume, ~$2.25/mo per prompt`,
 			`     • ${pc.cyan("DataForSEO")} — pay-as-you-go, scrapers + direct APIs, ~$1.20/mo per prompt`,
 			"",
@@ -168,6 +187,10 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 			{ value: "cloro" as const, label: "Cloro — most reliable, every surface (~$0.65/mo per prompt, $30/mo min)" },
 			{ value: "brightdata" as const, label: "BrightData — pay-as-you-go, cheaper but slower (~$0.45/mo per prompt)" },
 			{ value: "oxylabs" as const, label: "Oxylabs — cheapest per run, no Gemini/Copilot ($49/mo min)" },
+			{
+				value: "searchapi" as const,
+				label: "SearchApi — flat per-search, every surface (~$1.20/mo per prompt, $40/mo min)",
+			},
 			{ value: "olostep" as const, label: "Olostep — premium, built for high volume (~$2.25/mo per prompt)" },
 			{
 				value: "dataforseo" as const,
@@ -308,7 +331,6 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 
 	const env: EnvMap = {};
 	env.DEPLOYMENT_MODE = "local";
-	env.VITE_DEPLOYMENT_MODE = "local";
 	env.DEPLOYMENT_ID = preservedDeploymentId ?? crypto.randomUUID();
 	env.BETTER_AUTH_SECRET = generateSecret();
 	// Standard base64 (not base64url): the app decodes this with Buffer.from(key,
@@ -377,16 +399,38 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 	});
 	const email = p.isCancel(updatesEmail) ? undefined : updatesEmail || undefined;
 
-	// ── Web app port ────────────────────────────────────────────────────
+	// ── Access ──────────────────────────────────────────────────────────
+	const access = await p.select({
+		message: "How will you access Elmo?",
+		options: [
+			{ value: "local" as const, label: "On this machine (localhost)" },
+			{ value: "public" as const, label: "From a domain (e.g. behind a reverse proxy)" },
+		],
+		initialValue: "local" as const,
+	});
+	assertNotCancelled(access);
+
+	let publicUrl: URL | undefined;
+	if (access === "public") {
+		const domain = await p.text({
+			message: "Domain",
+			placeholder: "elmo.example.com",
+			validate: validatePublicUrl,
+		});
+		assertNotCancelled(domain);
+		publicUrl = toPublicUrl(domain.trim());
+	}
+
 	const portInput = await p.text({
-		message: "Web app port",
+		message: access === "public" ? "Port for your reverse proxy to forward to" : "Web app port",
 		placeholder: String(DEFAULT_APP_PORT),
 		defaultValue: String(DEFAULT_APP_PORT),
 		validate: validatePort,
 	});
 	assertNotCancelled(portInput);
 	const port = Number(portInput);
-	env.APP_URL = `http://localhost:${port}`;
+
+	env.APP_URL = publicUrl?.origin ?? `http://localhost:${port}`;
 	env.VITE_APP_URL = env.APP_URL;
 
 	// ── Write config ─────────────────────────────────────────────────────
@@ -436,7 +480,13 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 		postgres_mode: postgresMode,
 		dev_mode: Boolean(options.dev),
 		setup_mode: setupMode,
-		has_scraper: Boolean(env.BRIGHTDATA_API_TOKEN || env.OLOSTEP_API_KEY || env.OXYLABS_USERNAME || env.CLORO_API_KEY),
+		has_scraper: Boolean(
+			env.BRIGHTDATA_API_TOKEN ||
+				env.SEARCHAPI_API_KEY ||
+				env.OLOSTEP_API_KEY ||
+				env.OXYLABS_USERNAME ||
+				env.CLORO_API_KEY,
+		),
 		has_direct_api: hasDirectApiConfigured(env),
 	});
 

@@ -19,20 +19,12 @@
  * `ONBOARDING_LLM_TARGET` (parsed like a SCRAPE_TARGETS entry) overrides the
  * preference order if a deployment wants a specific provider/model.
  */
+import { RESEARCH_PROVIDER_PREFERENCE } from "@workspace/config/env-registry";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import type { z } from "zod";
 import { getProvider, type Provider, type StructuredResearchResult } from "../providers";
 
-/**
- * Direct-API providers in the order onboarding prefers them. GPT-5 Mini was
- * the cheapest + best-recall in compare-onboarding runs, so we go OpenAI
- * direct first, then OpenAI via OpenRouter as a fallback (same model, just
- * different key), then Anthropic, then Mistral.
- *
- * Exported so the compare-onboarding script reads from the same source as
- * production — keeps the two from drifting.
- */
-export const RESEARCH_PROVIDER_PREFERENCE = ["openai-api", "openrouter", "anthropic-api", "mistral-api"] as const;
+export { RESEARCH_PROVIDER_PREFERENCE };
 
 export type ResearchProviderId = (typeof RESEARCH_PROVIDER_PREFERENCE)[number];
 

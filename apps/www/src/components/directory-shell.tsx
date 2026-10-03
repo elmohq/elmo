@@ -3,6 +3,7 @@ import { Badge } from "@workspace/ui/components/badge";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 
 export function DirectoryBackLink({ label = "AI Visibility Tool Directory" }: { label?: string }) {
 	return (
@@ -55,7 +56,7 @@ export function DirectoryElmoBanner({
 					<h2 className="font-heading text-xl text-zinc-950">Elmo: the open-source alternative</h2>
 					<p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">{pitch}</p>
 					<div className="mt-4 flex flex-wrap gap-3">
-						<Link to="/docs" className={buttonVariants({ size: "sm" })}>
+						<Link {...SELF_HOST_LINK} className={buttonVariants({ size: "sm" })}>
 							Deploy Elmo
 						</Link>
 						<Link
@@ -83,7 +84,7 @@ export function ElmoCta() {
 					brand. Open source, self-hosted, free.
 				</p>
 				<div className="mt-8 flex flex-wrap justify-center gap-3">
-					<Link to="/docs" className={buttonVariants({ size: "sm" })}>
+					<Link {...SELF_HOST_LINK} className={buttonVariants({ size: "sm" })}>
 						Deploy Elmo
 					</Link>
 					<a

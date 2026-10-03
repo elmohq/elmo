@@ -1,6 +1,6 @@
+import { CITATION_CATEGORIES, type CitationCategory } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { CITATION_CATEGORIES, type CitationCategory } from "@/lib/domain-categories";
-import type { LookbackPeriod } from "@/lib/lookback";
+import { daysInRange, type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
 
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
@@ -24,6 +24,8 @@ export function getDefaultLookbackPeriod(earliestDataDate: string | null | undef
 }
 
 export function getDaysFromLookback(lookback: LookbackPeriod): number {
+	const custom = parseCustomLookback(lookback);
+	if (custom?.from) return daysInRange({ from: custom.from, to: getLookbackEndDate(lookback) });
 	switch (lookback) {
 		case "1w":
 			return 7;
@@ -35,10 +37,28 @@ export function getDaysFromLookback(lookback: LookbackPeriod): number {
 			return 180;
 		case "1y":
 			return 365;
-		case "all":
-			// Bound the nominally unbounded UI option so chart queries remain predictable.
+		default:
+			// Bound the nominally unbounded "all" (and open-start ranges) so chart queries remain predictable.
 			return 365 * 2;
 	}
+}
+
+/** Last calendar day a lookback covers (YYYY-MM-DD): a custom range's end,
+ *  otherwise today in `timezone`. */
+export function getLookbackEndDate(
+	lookback: LookbackPeriod,
+	timezone: string = Intl.DateTimeFormat().resolvedOptions().timeZone,
+): string {
+	return parseCustomLookback(lookback)?.to ?? new Date().toLocaleDateString("en-CA", { timeZone: timezone });
+}
+
+/** The `days`-long window ending on `getLookbackEndDate`, as midnight-UTC dates
+ *  (the convention `generateDateRange` and the chart date keys share). */
+function lookbackChartWindow(lookback: LookbackPeriod, timezone: string): { startDate: Date; endDate: Date } {
+	const endDate = new Date(getLookbackEndDate(lookback, timezone));
+	const startDate = new Date(endDate);
+	startDate.setDate(startDate.getDate() - (getDaysFromLookback(lookback) - 1));
+	return { startDate, endDate };
 }
 
 export function generateDateRange(startDate: Date, endDate: Date): string[] {
@@ -274,8 +294,11 @@ export function calculateVisibilityPercentages(
 ): ChartDataPoint[] {
 	let startDate: Date;
 	let endDate: Date;
+	const custom = parseCustomLookback(lookback);
+	// An open-start range spans the runs themselves, the way "all" does.
+	const spansRuns = lookback === "all" || (custom !== null && custom.from === null);
 
-	if (lookback === "all" && promptRuns.length > 0) {
+	if (spansRuns && promptRuns.length > 0) {
 		const sortedRuns = [...promptRuns].sort(
 			(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 		);
@@ -289,17 +312,10 @@ export function calculateVisibilityPercentages(
 		const startDateString = startDate.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		const endDateString = endDate.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		startDate = new Date(startDateString);
-		endDate = new Date(endDateString);
+		endDate = new Date(custom?.to ?? endDateString);
 	} else {
-		const daysToSubtract = getDaysFromLookback(lookback);
-
-		// UTC may already be on tomorrow relative to the viewer.
-		const now = new Date();
-		const currentDateInTimezone = now.toLocaleDateString("en-CA", { timeZone: userTimezone });
-		endDate = new Date(currentDateInTimezone);
-
-		startDate = new Date(endDate);
-		startDate.setDate(startDate.getDate() - (daysToSubtract - 1));
+		// Today is resolved in the viewer's timezone: UTC may already be on tomorrow.
+		({ startDate, endDate } = lookbackChartWindow(lookback, userTimezone));
 	}
 
 	const dateRange = generateDateRange(startDate, endDate);
@@ -390,16 +406,16 @@ export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback
 	if (lookback === "all") {
 		return chartData;
 	}
+	const custom = parseCustomLookback(lookback);
+	if (custom?.to && !custom.from) {
+		const to = custom.to;
+		return chartData.filter((item) => item.date <= to);
+	}
 
-	const daysToSubtract = getDaysFromLookback(lookback);
-
-	const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const now = new Date();
-	const currentDateInTimezone = now.toLocaleDateString("en-CA", { timeZone: userTimezone });
-	const referenceDate = new Date(currentDateInTimezone);
-
-	const startDate = new Date(referenceDate);
-	startDate.setDate(startDate.getDate() - (daysToSubtract - 1));
+	const { startDate, endDate: referenceDate } = lookbackChartWindow(
+		lookback,
+		Intl.DateTimeFormat().resolvedOptions().timeZone,
+	);
 
 	const dateRange = generateDateRange(startDate, referenceDate);
 

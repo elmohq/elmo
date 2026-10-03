@@ -33,6 +33,7 @@ jobs:
         timeout-minutes: 35
         continue-on-error: true
         env:
+          SEARCHAPI_API_KEY: ${{ secrets.SEARCHAPI_API_KEY }}
           OLOSTEP_API_KEY: ${{ secrets.OLOSTEP_API_KEY }}
           BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
           OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}

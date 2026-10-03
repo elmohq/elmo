@@ -9,7 +9,10 @@ const description =
 	"How answer engine optimization applies to your industry — 20 guides covering the prompts that matter, what to publish, and how AI engines pick sources in each one.";
 
 export const Route = createFileRoute("/aeo-for/")({
-	head: () => ({
+	loader: () => ({
+		items: aeoVerticals.map((v) => ({ name: `AEO for ${v.audience}`, path: `/aeo-for/${v.slug}` })),
+	}),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -21,12 +24,7 @@ export const Route = createFileRoute("/aeo-for/")({
 				{ name: "Home", path: "/" },
 				{ name: "AEO by industry", path: "/aeo-for" },
 			]),
-			itemListJsonLd(
-				aeoVerticals.map((v) => ({
-					name: `AEO for ${v.audience}`,
-					path: `/aeo-for/${v.slug}`,
-				})),
-			),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: AeoForIndex,

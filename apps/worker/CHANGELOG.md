@@ -1,5 +1,36 @@
 # @workspace/worker
 
+## 0.4.4
+
+### Patch Changes
+
+- 76ec134: Reports accept other names a brand goes by, and count a mention of any of them as a brand mention.
+- Updated dependencies [b48f545]
+- Updated dependencies [1980c7d]
+- Updated dependencies [280e5f3]
+- Updated dependencies [76ec134]
+  - @workspace/config@0.4.4
+  - @workspace/lib@0.4.4
+  - @workspace/deployment@0.4.4
+
+## 0.4.3
+
+### Patch Changes
+
+- 64a2580: The worker now lists every missing environment variable and misconfigured scrape target at startup instead of stopping at the first one.
+- Updated dependencies [10bc2f0]
+  - @workspace/lib@0.4.3
+  - @workspace/deployment@0.4.3
+  - @workspace/config@0.4.3
+
+## 0.4.2
+
+### Patch Changes
+
+- @workspace/config@0.4.2
+  - @workspace/deployment@0.4.2
+  - @workspace/lib@0.4.2
+
 ## 0.4.1
 
 ### Patch Changes

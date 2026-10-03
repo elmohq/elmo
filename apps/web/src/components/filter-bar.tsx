@@ -13,12 +13,14 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
+import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
 import { useBrand } from "@/hooks/use-brands";
 import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
-import { LOOKBACK_PERIODS, type LookbackPeriod } from "@/lib/lookback";
+import { type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 
 export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 
@@ -39,15 +41,6 @@ function iconForModel(model: string, className = "size-3.5") {
 	if (model === ALL_MODELS_VALUE) return <MdSelectAll className={className} />;
 	return <ModelIcon iconId={iconIdForModelFilter(model)} className={className} />;
 }
-
-const LOOKBACK_LABELS: Record<LookbackPeriod, string> = {
-	"1w": "Last 7 days",
-	"1m": "Last 30 days",
-	"3m": "Last 3 months",
-	"6m": "Last 6 months",
-	"1y": "Last 12 months",
-	all: "All time",
-};
 
 // ------------------------------------------------------------------
 // Trigger button (used by every dropdown)
@@ -170,20 +163,18 @@ function LookbackDropdown() {
 	};
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger
-				render={<FilterTriggerButton icon={<Clock className="size-3.5" />} label={LOOKBACK_LABELS[selected]} />}
-			/>
-			<DropdownMenuContent align="start" className="w-48">
-				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => handleChange(v as LookbackPeriod)}>
-					{LOOKBACK_PERIODS.map((period) => (
-						<DropdownMenuRadioItem key={period} value={period} className="cursor-pointer">
-							{LOOKBACK_LABELS[period]}
-						</DropdownMenuRadioItem>
-					))}
-				</DropdownMenuRadioGroup>
-			</DropdownMenuContent>
-		</DropdownMenu>
+		<LookbackPicker
+			value={selected}
+			defaultValue={defaultLookback}
+			onChange={handleChange}
+			trigger={
+				<FilterTriggerButton
+					icon={<Clock className="size-3.5" />}
+					label={formatLookbackLabel(selected)}
+					active={parseCustomLookback(selected) !== null}
+				/>
+			}
+		/>
 	);
 }
 
@@ -270,7 +261,13 @@ function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 // setState) to avoid flashing back when the URL echo races with typing.
 // ------------------------------------------------------------------
 
-function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: string }) {
+function SearchInput({
+	placeholder = "Search prompts...",
+	searching = false,
+}: {
+	placeholder?: string;
+	searching?: boolean;
+}) {
 	const urlValue = useSearch({ strict: false, select: (s) => s.q });
 	const setFilters = useFilterNavigate();
 	const value = urlValue ?? "";
@@ -324,7 +321,7 @@ function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: stri
 				className="h-8 text-sm"
 			/>
 			<InputGroupAddon className="pl-2.5">
-				<Search className="size-3.5" />
+				{searching ? <Spinner className="size-3.5" aria-label="Searching" /> : <Search className="size-3.5" />}
 			</InputGroupAddon>
 			{local && (
 				<InputGroupAddon align="inline-end" className="pr-1.5">
@@ -365,19 +362,24 @@ export function FilterBar({
 	availableTags,
 	trackedTargets,
 	showSearch,
+	searchPlaceholder,
 	showModelSelector,
 	resultCount,
 	resultTotal,
+	searching,
 	extraControls,
 }: {
 	availableTags: readonly string[];
 	trackedTargets: TrackedTarget[];
 	showSearch: boolean;
+	searchPlaceholder?: string;
 	showModelSelector: boolean;
 	/** Only passed by pages that filter a list; omit on pages with a single aggregate view (e.g. Citations). */
 	resultCount?: number;
 	/** Unfiltered count — when it differs from `resultCount` the line reads "n of m results". */
 	resultTotal?: number;
+	/** For searches slow enough that the input should show they're still running. */
+	searching?: boolean;
 	/** Page-specific controls rendered inline with the dropdown group
 	 *  (e.g. the prompts list's sort dropdown). */
 	extraControls?: ReactNode;
@@ -391,7 +393,7 @@ export function FilterBar({
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />
 			</div>
-			{showSearch && <SearchInput />}
+			{showSearch && <SearchInput placeholder={searchPlaceholder} searching={searching} />}
 		</div>
 	);
 }

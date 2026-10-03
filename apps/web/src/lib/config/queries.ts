@@ -1,3 +1,4 @@
+import { getConsentRegion } from "@/lib/consent-region";
 import { getClientConfig, getEnvValidationStateFn } from "@/server/config";
 
 /**
@@ -10,8 +11,12 @@ import { getClientConfig, getEnvValidationStateFn } from "@/server/config";
 export const rootConfigQuery = {
 	queryKey: ["root-config"] as const,
 	queryFn: async () => {
-		const [clientConfig, envValidation] = await Promise.all([getClientConfig(), getEnvValidationStateFn()]);
-		return { clientConfig, envValidation };
+		const [clientConfig, envValidation, consentRegion] = await Promise.all([
+			getClientConfig(),
+			getEnvValidationStateFn(),
+			getConsentRegion(),
+		]);
+		return { clientConfig, envValidation, consentRegion };
 	},
 	staleTime: Number.POSITIVE_INFINITY,
 };

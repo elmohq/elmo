@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { type ReactNode, useEffect } from "react";
 import PromptWizard from "@/components/prompt-wizard";
 import { TrendChart, type TrendPoint } from "@/components/trend-chart";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
@@ -419,7 +420,7 @@ const SOV_TOOLTIP =
 	"Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules.";
 
 function DashboardPage() {
-	const { brandId } = Route.useRouteContext();
+	const brandId = useBrandId();
 	const { data: brand, isLoading: isLoadingBrand } = useBrand();
 	// The footer reports what this brand actually runs, resolved server-side.
 	const trackedTargets = brand?.trackedTargets ?? [];
