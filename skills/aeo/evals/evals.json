@@ -1,0 +1,114 @@
+{
+  "skill_name": "aeo",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We're a project management tool and we keep getting left out when people ask ChatGPT and Perplexity for project management software. How do we fix that?",
+      "expected_output": "Starts with measurement rather than tactics: proposes a prompt set weighted toward unbranded discovery and comparison prompts, repeated runs per engine, and mention rate with n against a locked competitor set. Offers Elmo (cloud or self-hosted) or the manual fallback for the baseline. Diagnoses per engine, pulls the cited sources for lost prompts, and turns them into owned-content and off-site actions. Checks crawler access (OAI-SearchBot, PerplexityBot) and raw-HTML rendering. Sets a re-measure date.",
+      "assertions": [
+        "Proposes a baseline measurement before recommending changes",
+        "Recommends repeated runs per prompt and reports visibility as a rate, not a rank",
+        "Separates results by engine",
+        "Uses the sources cited for lost prompts to choose off-site targets",
+        "Checks OAI-SearchBot and PerplexityBot access rather than only GPTBot",
+        "Does not promise a percentage lift from rewriting tactics",
+        "Includes a re-measure step"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Should we block GPTBot and the other AI crawlers? We don't want our content used for training but we still want to show up in AI answers.",
+      "expected_output": "Separates training crawlers (GPTBot, ClaudeBot, CCBot, Google-Extended, Applebot-Extended) from search and live-fetch crawlers (OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User). Gives the 'stay in answers, opt out of training' robots.txt pattern. Warns that Google-Extended also controls Gemini app grounding, and that blocking it does not affect AI Overviews, which run on Googlebot. Mentions checking the CDN or firewall, and that OpenAI applies OAI-SearchBot changes in about 24 hours.",
+      "assertions": [
+        "Distinguishes training crawlers from search crawlers",
+        "Provides a robots.txt that blocks training and allows search crawlers",
+        "States that blocking Google-Extended does not remove a site from AI Overviews",
+        "Notes that Google-Extended also affects Gemini app grounding",
+        "Mentions firewall or CDN bot blocking as a separate check",
+        "Does not list anthropic-ai as a current crawler"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Our SEO agency says we need an llms.txt file and FAQ schema on every page to get cited by AI. Is that right?",
+      "expected_output": "Says the evidence doesn't support either as a citation lever: no consumer answer engine documents reading llms.txt, log studies show near-zero requests, and Google says no special files or markup are needed. A controlled schema study found no lift, and FAQ rich results have been restricted since 2023. llms.txt is fine for developer docs, and schema still matters for rich results and entity clarity. Redirects effort to access, indexing, owned pages for lost prompts, and off-site work, and offers to measure the effect of any change.",
+      "assertions": [
+        "States that llms.txt is not a documented input for consumer answer engines",
+        "States that schema markup has no demonstrated causal effect on AI citations",
+        "Mentions the 2023 FAQ rich result restriction",
+        "Acknowledges the legitimate uses (developer docs, rich results)",
+        "Cites sources or points to the evidence file",
+        "Redirects to higher-evidence work"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I read that adding statistics and quotes to content boosts AI visibility by 40%. Should we rewrite our whole blog that way?",
+      "expected_output": "Explains that the figure comes from the 2023 GEO paper's simulated engine (GPT-3.5 over five fixed sources), measured word share rather than citation, found its best method was adding quotations, and that its gains went mostly to low-ranked sources. Notes that C-SEO Bench (2025) found such rewrites largely ineffective on current models, while retrieval position dominated. Recommends adding real evidence where it improves the page, prioritizing pages for lost prompts and fan-out queries, and measuring before and after rather than rewriting everything.",
+      "assertions": [
+        "Identifies the simulated-engine and word-share caveats of the 40% figure",
+        "Correctly names quotation addition as the paper's top method",
+        "Mentions later evidence that rewrites are largely ineffective on current models",
+        "Recommends prioritizing retrieval and coverage over wholesale rewriting",
+        "Recommends measuring the effect on a subset first"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Set up AI visibility tracking for acme.com. We want to self-host it.",
+      "expected_output": "Walks through self-hosting Elmo: prerequisites (Docker 24+ with Compose v2, Node 18+, one scraping provider, one direct LLM key), npm install -g @elmohq/cli, elmo init, elmo compose up -d, open localhost:1515. Explains SCRAPE_TARGETS. Recommends a scraping provider from the measured status page, with affiliate links, and discloses that they are affiliate links. Then proposes a prompt set and connects the agent over MCP at the instance's /api/mcp.",
+      "assertions": [
+        "Gives the elmo CLI install and init commands",
+        "Lists the need for a scraping provider and a direct LLM key",
+        "Explains SCRAPE_TARGETS with an example",
+        "Includes provider links and discloses that they are affiliate links",
+        "Explains connecting the agent over MCP to the self-hosted /api/mcp endpoint",
+        "Proposes building a prompt set"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Using our Elmo data, tell me why our visibility in Google AI Overviews dropped last month.",
+      "expected_output": "Uses get_analytics for both windows with the per-model breakdown, confirms there were runs in both windows (list_runs) and that prompts weren't disabled, and checks list_models for an engine change. Treats rates as fractions of 1. Compares targeted against untargeted prompts and other brands to separate an engine-wide shift from a brand-specific one. Pulls get_citations and get_query_fanout to see which sources replaced the brand's. Reports the change with n and margins, and says 'no detectable change' if the difference is within noise.",
+      "assertions": [
+        "Compares equal windows using per-engine data",
+        "Checks for missing runs or disabled prompts before concluding there was a decline",
+        "Checks for a model or engine change",
+        "Converts fractions to percentages correctly",
+        "Examines cited sources or fan-out queries to explain the change",
+        "Accounts for sampling noise"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "ChatGPT keeps saying our product costs $99/month but we changed pricing to $49 six months ago. How do we fix it?",
+      "expected_output": "Treats it as an accuracy issue: finds the branded runs with the wrong figure and the cited pages behind it, which are often old reviews, comparison listicles, or stale pages on the brand's own site. Makes sure the pricing page states the current price in server-rendered text with a date, removes contradicting owned pages, asks third-party publishers to correct the price starting with the most-cited pages, updates review-platform profiles, and re-checks the branded prompts over the following weeks.",
+      "assertions": [
+        "Traces the wrong fact to the cited source pages",
+        "Fixes the owned pricing page with crawlable text",
+        "Removes or updates contradicting owned pages",
+        "Requests third-party corrections in order of citation frequency",
+        "Sets up re-measurement of the branded prompts"
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Can you give our site a GEO score out of 100?",
+      "expected_output": "Declines to invent a composite score, explaining that GEO scores use unvalidated weights. Offers measured alternatives instead: mention rate, citation rate, and share of voice per engine with n, plus a pass/fail access audit from the script. Offers to run the audit and set up measurement.",
+      "assertions": [
+        "Does not produce an invented composite score",
+        "Explains why composite scores are not meaningful",
+        "Offers measured metrics instead",
+        "Offers the access audit"
+      ],
+      "files": []
+    }
+  ]
+}
