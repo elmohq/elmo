@@ -11,7 +11,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { assertCanCreateBrand, withQuotaLock } from "@workspace/lib/entitlements";
 import { count, desc, eq } from "drizzle-orm";
-import { clampedPaging } from "@/lib/api/analytics-range";
+import { parsePaging } from "@/lib/api/analytics-range";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition } from "@/lib/api/scope";
 import {
@@ -29,8 +29,7 @@ export const Route = createFileRoute("/api/v1/brands/")({
 			GET: createApiHandler({
 				scopes: ["read"],
 				handle: async ({ request, auth }) => {
-					const { searchParams } = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(searchParams);
+					const { page, limit, offset } = parsePaging(new URL(request.url));
 
 					const where = await brandScopeCondition(auth, brands.id);
 

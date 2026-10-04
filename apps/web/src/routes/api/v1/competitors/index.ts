@@ -11,7 +11,7 @@ import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-ca
 import { competitors } from "@workspace/lib/db/schema";
 import { assertCompetitorCap, withQuotaLock } from "@workspace/lib/entitlements";
 import { z } from "zod";
-import { clampedPaging } from "@/lib/api/analytics-range";
+import { parsePaging } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { listCompetitors } from "@/server/competitors-core";
@@ -29,8 +29,9 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 			GET: createApiHandler({
 				scopes: ["read"],
 				handle: async ({ request, auth }) => {
-					const { searchParams } = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(searchParams);
+					const url = new URL(request.url);
+					const { searchParams } = url;
+					const { page, limit, offset } = parsePaging(url);
 
 					const { data, total } = await listCompetitors({
 						scope: await brandScopeCondition(auth, competitors.brandId),
