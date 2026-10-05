@@ -2,6 +2,7 @@ import "../instrument.server.mjs";
 import { wrapFetchWithSentry } from "@sentry/tanstackstart-react";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
+import { AD_TAG_CSP } from "@workspace/ui/lib/ad-tags";
 
 // Not awaited: the app has to serve sign-in and settings whether or not the
 // credential store is reachable.
@@ -18,15 +19,15 @@ const strictTransportSecurity =
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline' https://*.clarity.ms https://var.elmohq.com https://*.crisp.chat",
+		`script-src 'self' 'unsafe-inline' https://*.clarity.ms https://var.elmohq.com https://*.crisp.chat ${AD_TAG_CSP.script}`,
 		"style-src 'self' 'unsafe-inline' https://*.crisp.chat",
 		"img-src 'self' data: https: https://c.bing.com",
 		"font-src 'self' data: https://*.crisp.chat",
 		"media-src 'self' https://*.crisp.chat",
 		// The chatbox runs its background work in a blob worker.
 		"worker-src 'self' blob: https://*.crisp.chat",
-		"frame-src 'self' https://*.crisp.chat",
-		"connect-src 'self' https://var.elmohq.com https://*.sentry.io https://*.clarity.ms https://c.bing.com https://*.crisp.chat wss://*.relay.crisp.chat wss://*.relay.rescue.crisp.chat",
+		`frame-src 'self' https://*.crisp.chat ${AD_TAG_CSP.frame}`,
+		`connect-src 'self' https://var.elmohq.com https://*.sentry.io https://*.clarity.ms https://c.bing.com https://*.crisp.chat wss://*.relay.crisp.chat wss://*.relay.rescue.crisp.chat ${AD_TAG_CSP.connect}`,
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",

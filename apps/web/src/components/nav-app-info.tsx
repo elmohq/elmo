@@ -1,6 +1,6 @@
 import { IconBrandGithub, IconScale, IconWorld } from "@tabler/icons-react";
 import { useRouteContext } from "@tanstack/react-router";
-import { LEGAL_DOCUMENTS, legalUrl, showsLegalLinks } from "@workspace/config/legal";
+import { isElmoHosted, LEGAL_DOCUMENTS, legalUrl, showsLegalLinks } from "@workspace/config/legal";
 import type { ClientConfig } from "@workspace/config/types";
 import {
 	DropdownMenu,
@@ -55,8 +55,8 @@ export function NavAppInfo() {
 									{document.title}
 								</DropdownMenuItem>
 							))}
-							{/* Only cloud gates anything on consent, so only cloud has a choice to revisit. */}
-							{mode === "cloud" && (
+							{/* Only Elmo-hosted deployments gate anything on consent, so only they have a choice to revisit. */}
+							{isElmoHosted(mode) && (
 								<>
 									<DropdownMenuSeparator />
 									<DropdownMenuItem onClick={openCookiePreferences}>Cookie preferences</DropdownMenuItem>

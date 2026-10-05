@@ -34,3 +34,12 @@ export function legalUrl(slug: string): string {
 export function showsLegalLinks(mode: DeploymentMode | undefined): boolean {
 	return mode === "cloud" || mode === "demo" || mode === "local";
 }
+
+/**
+ * Elmo's own hosted deployments — Elmo Cloud and the public demo — which ask
+ * for cookie consent and carry our ad tags. A self-hosted deployment is
+ * governed by whoever runs it, and its telemetry has an operator-level opt-out.
+ */
+export function isElmoHosted(mode: DeploymentMode | undefined): boolean {
+	return mode === "cloud" || mode === "demo";
+}

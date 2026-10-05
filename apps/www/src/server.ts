@@ -1,18 +1,19 @@
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
+import { AD_TAG_CSP } from "@workspace/ui/lib/ad-tags";
 import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
 
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline' https://var.elmohq.com https://*.crisp.chat",
+		`script-src 'self' 'unsafe-inline' https://var.elmohq.com https://*.crisp.chat ${AD_TAG_CSP.script}`,
 		"style-src 'self' 'unsafe-inline' https://*.crisp.chat",
 		"img-src 'self' data: https:",
 		"font-src 'self' data: https://*.crisp.chat",
-		"connect-src 'self' https://var.elmohq.com https://*.mux.com https://*.litix.io https://*.crisp.chat wss://*.relay.crisp.chat wss://*.relay.rescue.crisp.chat",
+		`connect-src 'self' https://var.elmohq.com https://*.mux.com https://*.litix.io https://*.crisp.chat wss://*.relay.crisp.chat wss://*.relay.rescue.crisp.chat ${AD_TAG_CSP.connect}`,
 		"media-src 'self' blob: https://*.mux.com https://*.crisp.chat",
 		"worker-src 'self' blob: https://*.crisp.chat",
 		// YouTube embeds in blog posts (privacy-enhanced youtube-nocookie host).
-		"frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://*.crisp.chat",
+		`frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://*.crisp.chat ${AD_TAG_CSP.frame}`,
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
