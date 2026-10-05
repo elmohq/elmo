@@ -1,9 +1,9 @@
 # Elmo 
 # Supports: web app (Nitro server) and worker
 
-# Mention-judge weights: a weights-only image published from elmohq/elmo-models under its own
-# license. Pinned by digest so a worker build always gets exactly the model it was tested with.
-ARG MENTION_JUDGE_IMAGE=ghcr.io/elmohq/mention-judge:0.1.0@sha256:979607be9555c8b06dc4d5dcb158368f0cde45f4da64c459786da7869e58cfcf
+# Mention-judge weights (MIT): a weights-only image published from elmohq/elmo-models.
+# Pinned by digest so a worker build always gets exactly the model it was tested with.
+ARG MENTION_JUDGE_IMAGE=ghcr.io/elmohq/mention-judge:0.1.1@sha256:aeb99b6c3c9a36a158a9b728b5b8e0f627c78fe0f7941536bf9002c5849379ad
 FROM ${MENTION_JUDGE_IMAGE} AS mention-judge
 
 # Base stage with Node.js
