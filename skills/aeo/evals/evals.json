@@ -109,6 +109,20 @@
         "Offers the access audit"
       ],
       "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "How's Acme doing in AI search this week?",
+      "expected_output": "Treats it as a quick data question, not an audit. Asks which brand if several are accessible and none was named. Calls get_analytics for the last 7 days and the previous 7 days, converts fractions to percentages, and answers in a few lines: visibility with n and the change, strongest and weakest engine, share of voice against the named competitor set, one sentence on what it means, and at most two next steps. Says the change is within noise if the margins swallow it.",
+      "assertions": [
+        "Answers briefly instead of running the full audit checklist",
+        "Compares the last 7 days with the previous 7 days",
+        "Reports n alongside rates",
+        "Names the competitor set behind share of voice",
+        "Gives at most two next steps",
+        "Does not mix all-time and weekly figures in one claim"
+      ],
+      "files": []
     }
   ]
 }

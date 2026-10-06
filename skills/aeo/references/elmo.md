@@ -1,7 +1,7 @@
 # Elmo: tracking and reading AI visibility
 
-Contents: what it does · cloud or self-hosted · self-hosting · connecting an agent · reading the data ·
-gotchas
+Contents: what it does · cloud or self-hosted · self-hosting · connecting an agent · REST without
+MCP · reading the data · everyday requests · gotchas
 
 [Elmo](https://www.elmohq.com/?ref=aeo-skill) is an open-source (MIT) AI visibility platform. It
 runs a brand's prompts across the major answer engines on a schedule and stores each answer: whether
@@ -93,6 +93,35 @@ Other clients (Cursor, VS Code, ChatGPT, and others): <https://www.elmohq.com/do
 **REST.** Base URL `/api/v1`, with the same Bearer token. OpenAPI:
 <https://www.elmohq.com/api/openapi.json>.
 
+## REST without MCP
+
+Use REST when the client can run code but can't connect an MCP server, for example claude.ai on the
+web without a connector. Ask the user for an organization API key (Elmo dashboard → API keys; it
+starts with `elmo_`) and, only if they self-host, their instance URL. Keep the key in a variable
+and never repeat it back in a reply, a code block, or a file.
+
+```python
+import json, os, urllib.parse, urllib.request
+from datetime import datetime, timedelta, timezone
+
+BASE = os.environ.get("ELMO_URL", "https://app.elmohq.com") + "/api/v1"
+KEY = os.environ["ELMO_API_KEY"]
+
+def get(path, **params):
+    query = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in params.items() if v is not None)
+    request = urllib.request.Request(f"{BASE}{path}?{query}", headers={"Authorization": f"Bearer {KEY}"})
+    with urllib.request.urlopen(request) as response:
+        return json.load(response)
+
+end = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+start = end - timedelta(days=7)
+brands = get("/brands")
+analytics = get(f"/brands/{brands['data'][0]['id']}/analytics", start=start.isoformat(), end=end.isoformat())
+```
+
+A 401 means a bad or revoked key, and a 403 means the key lacks the scope or the brand. Report
+either plainly instead of retrying.
+
 ## Reading the data
 
 Every brand-scoped call takes a `brandId`, so start with `list_brands`. Analytics calls take a
@@ -124,6 +153,64 @@ How the tools map onto the workflow in `SKILL.md`:
   there was enough data to write one.
 - **New prompts (step 2):** `create_prompts` with the prompt set from `measurement.md`. Confirm
   with the user before writing.
+
+## Everyday requests
+
+Most requests aren't audits. They're quick questions about the data. Answer them in a few lines:
+the number, the change, what it means, and at most two next steps. Save the full report format in
+`SKILL.md` for audits.
+
+Before any of them:
+
+- If `list_brands` returns several brands and the user didn't name one, ask which. Don't pick.
+- Use one window per claim. Don't put an all-time figure and a last-7-days figure in one sentence.
+- Show n (runs in the window) next to every rate, and say "too few runs to tell" when the margins in
+  `measurement.md` swallow the change.
+
+### "How are we doing?"
+
+1. `get_analytics` for the last 7 days and for the 7 days before it.
+2. Report:
+
+```
+<Brand>, <start>–<end>
+Visibility <x>% (<±y> pts vs previous 7 days), n = <runs>
+Strongest: <engine> <x>% · Weakest: <engine> <x>%
+Share of voice <x>% vs <competitor set>; leader <competitor> at <x>%
+What it means: <one sentence>
+Next: <one action, tied to a lost prompt or cited source>
+```
+
+### "Why did visibility drop?"
+
+1. `get_analytics` for the current and previous equal windows. Confirm both windows have runs
+   (`list_runs`) before calling it a drop.
+2. Split by engine: repeat with `model` set to each engine from the per-model breakdown. The drop is
+   usually concentrated in one.
+3. Check `list_models` for an engine or model change in the window, and check whether competitors
+   moved too. An engine-wide shift hits everyone at once.
+4. On the engine that dropped: `get_prompt_performance` for the prompts that lost the brand, then
+   `get_citations` for both windows to see which sources replaced the brand's.
+5. Report the headline (where the drop is concentrated, with n), the most likely cause with the data
+   behind it, and one or two actions. Don't guess what competitors did unless the cited sources show
+   it.
+
+### "Who are we up against?"
+
+1. `get_analytics` for the last 30 days. Rank the tracked competitors by share of voice.
+2. Say plainly when a competitor is ahead, by how much, and on which engines.
+3. Note any brand that keeps appearing in answers but isn't in the tracked set. Suggest adding it
+   with the user's agreement, since share of voice is only measured against tracked competitors.
+
+### "Are we tracking the right prompts?"
+
+1. `list_prompts` with `enabled: false` for paused prompts. Ask whether each pause is intentional:
+   paused prompts report nothing, and a forgotten pause looks like flat visibility.
+2. `list_prompt_tags` for counts per tag. Flag tags with only one or two prompts (too thin to
+   measure), a single tag holding most prompts, and intents from `measurement.md` with no prompts
+   at all (often comparison or alternatives prompts).
+3. Check the branded and unbranded mix against `measurement.md`.
+4. Propose specific prompts to add, and create them with `create_prompts` only after the user agrees.
 
 ## Gotchas
 

@@ -129,6 +129,8 @@ The [`aeo` skill](skills/aeo/SKILL.md) teaches Claude Code, Cursor, Codex, and o
 npx skills add elmohq/elmo
 ```
 
+Or copy [`skills/aeo`](skills/aeo) into your agent's skills directory (for Claude Code, `~/.claude/skills/aeo`). On claude.ai, zip the `aeo` folder and upload it in the Skills settings.
+
 ## Deployment Options
 
 | Option | What you get | Price |
