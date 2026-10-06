@@ -130,12 +130,12 @@ export const competitors: Competitor[] = [
 	},
 	{
 		slug: "se-ranking",
-		name: "SE Ranking",
-		domain: "seranking.com",
-		url: "https://seranking.com/ai-overviews-tracker.html",
+		name: "SE Visible",
+		domain: "visible.seranking.com",
+		url: "https://visible.seranking.com/",
 		tagline: "All-in-one SEO platform with AI Overviews and ChatGPT tracking",
 		description:
-			"SE Ranking adds AI visibility tracking to their comprehensive SEO toolkit, offering both an AI Overviews Tracker and a ChatGPT Visibility Tracker. Monitors how your brand appears in Google's AI-generated results and ChatGPT responses, with integration into their keyword tracking and competitive analysis tools.",
+			"SE Visible is SE Ranking's AI visibility product, built alongside their comprehensive SEO toolkit, offering both an AI Overviews Tracker and a ChatGPT Visibility Tracker. Monitors how your brand appears in Google's AI-generated results and ChatGPT responses, with integration into their keyword tracking and competitive analysis tools.",
 		category: "seo-traditional",
 		ahrefsDR: 85,
 		ahrefsTraffic: 809093,
