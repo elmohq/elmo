@@ -1,0 +1,129 @@
+---
+title: "Do Self-Promotional 'Best Of' Listicles Help AI Visibility?"
+description: "AI engines cite vendor-written 'best X' lists that rank the publisher first, but rarely adopt the ranking. We reconcile the two datasets that measured it and give a rule for deciding whether your listicle is helping you or your competitors."
+date: "2026-10-06"
+author: ai
+metaTitle: "Do Self-Promotional Listicles Help AI Visibility?"
+tags:
+  - ai-citations
+  - ai-visibility
+  - aeo
+  - ai-search
+definedTerms:
+  - term: Self-promotional listicle
+    definition: "A self-promotional listicle is a 'best [category]' roundup published by a vendor on its own domain that ranks the vendor's own product first among a list of competitors."
+  - term: Net recommendation delta
+    definition: "Net recommendation delta is, across the AI answers that cite a given page, the share that recommend the page's publisher minus the share that recommend a competitor while leaving the publisher out. A negative value means the page is supplying evidence for rivals more often than for its owner."
+  - term: Citation-without-recommendation
+    definition: "Citation-without-recommendation is when an AI answer lists a brand's page as a source but does not include that brand among the options it actually suggests to the user."
+howTo:
+  name: "How to tell whether your listicle helps you or your competitors"
+  description: "Measure what AI answers do with your 'best of' page, not just whether they cite it."
+  steps:
+    - name: Track the prompts the listicle was written for
+      text: "Add the exact 'best [category]' and 'best [category] for [use case]' prompts the page targets to your prompt set, across every engine you track. Recommendation-shaped prompts are where the page is supposed to pay off, so they are the only fair test."
+    - name: Log four fields per answer
+      text: "For each run, record whether the listicle is cited, whether your brand is named, whether your brand is recommended, and which competitors are recommended. A single 'visible' flag hides the outcome that matters."
+    - name: Compute the net recommendation delta
+      text: "Among answers that cite the listicle, subtract the share recommending a competitor without you from the share recommending you. Do it per engine, because recommendation rates differ by a factor of three or more between engines."
+    - name: Compare against answers that do not cite the page
+      text: "Look at your recommendation rate on the same prompts when the listicle is not cited. If it barely moves, the page is not what is getting you recommended."
+    - name: Decide on a stated threshold
+      text: "If the delta stays negative across two measurement cycles, rewrite the page into a comparison a neutral reader would trust, or stop investing in more of them. If it is positive, keep it and keep measuring, because both published datasets show the effect weakening over time."
+faq:
+  - question: Do self-promotional listicles get cited by AI engines?
+    answer: "Yes, often. In Lily Ray's June 2026 tracking of 100 'best B2B software' queries, Google AI Overviews cited self-promotional listicles 323 times across 80 queries that triggered an Overview. Scrunch's analysis of about 10,000 URLs cited by seven AI assistants found self-promoting listicles made up roughly 30% of the comparison pages cited. Being cited is not the problem; being recommended is."
+  - question: Does ranking yourself number one in a listicle get you recommended by AI?
+    answer: "Rarely. In Ray's June data the publishing brand was left out of the Overview's recommendation in 69% of cases where its listicle was cited, rising to 83% in her September re-run. Scrunch's causal estimate across seven assistants puts the author's recommendation rate at roughly 7% when the listicle is cited, against about 4% when it is not: a small lift from a low base."
+  - question: Can a self-promotional listicle help my competitors in AI answers?
+    answer: "Yes. Ray's September data found that in 70% of cases, the cited listicle accompanied an answer that recommended competitors and left the publisher out. Scrunch measured a lower 24.3% across all answers citing such pages, on a broader set of prompts and engines. Both find competitors recommended from your page more often than you are."
+  - question: Why do AI engines cite a page but not follow its ranking?
+    answer: "Engines appear to use a vendor's listicle as a source of candidate names and attributes rather than as advice. Scrunch found that in 63.9% of answers citing such a page, the engine treated it as raw material for a balanced overview rather than adopting its number-one pick. Google's own guidance warns that 'seeking inauthentic mentions across the web isn't as helpful as it might seem.'"
+  - question: Should I delete my 'best [category]' listicles?
+    answer: "Not on the strength of these studies alone. They show a small lift in your own recommendation rate and a larger lift for competitors, averaged across many brands. Measure your own pages on the prompts they target, compute how often they recommend you versus a rival, and act on that number."
+---
+
+**Writing a "best [category]" list on your own blog and putting yourself at the top is one of the most common AI visibility tactics in B2B software. It works at getting cited. It mostly does not work at getting recommended.** In [Lily Ray's tracking](https://lilyraynyc.substack.com/p/why-calling-yourself-the-best-could) of 100 "best B2B software" queries, Google AI Overviews cited self-promotional listicles 323 times between April and June 2026, and left the publishing brand out of the actual recommendation 69% of the time. Her [September re-run](https://lilyraynyc.substack.com/p/prediction-the-next-massive-google) put that at 83%.
+
+That is one dataset on one engine. A second, larger study across seven assistants appears to disagree sharply on how often competitors benefit. Read the two side by side and they mostly agree. What follows is that reconciliation, the lab research that seems to say the opposite, and a rule for checking your own pages.
+
+**Key takeaways**
+
+- AI engines cite self-promotional listicles readily. They rarely adopt the ranking. Across both datasets the publisher's recommendation rate when its own list is cited sits between about 7% and 31%, depending on what counts as a "recommendation".
+- The lift exists but is small. Scrunch's matched comparison puts it at roughly 4% → 7% across seven assistants.
+- Competitors gain more. Ray found competitors recommended without the publisher in 70% of cited cases in September; Scrunch found 24.3% across broader prompts. In both, rivals were recommended from your page more often than you were.
+- Ray's data shows the tactic weakening: 38% fewer self-promotional listicles cited in AI Overviews in September than in June.
+- Lab papers that show product pages *can* steer LLM rankings test injected instructions in a small, closed set of pages. They do not describe what an ordinary "we're #1" list does in a production engine.
+- The decision metric is your **net recommendation delta** on the prompts the page was written for, not whether it gets cited.
+
+## What the two datasets measured
+
+Two independent groups have measured what happens when an AI answer cites a vendor's self-ranking list. Their designs differ in ways that explain most of the gap between their headline numbers.
+
+| | Lily Ray, June 2026 | Lily Ray, Sept 2026 | Scrunch, May–June 2026 |
+|---|---|---|---|
+| Engines | Google AI Overviews | Google AI Overviews | ChatGPT, Claude, Gemini, Copilot, Perplexity, AI Overviews, AI Mode |
+| Prompts | 100 "best [category] software" queries, one per B2B category | Same framing, 100 queries | All prompts whose answers cited a sampled page |
+| Sample | 3 snapshots (Apr 15, May 15, Jun 8); 80 queries triggered an Overview; 184 listicle pages from 146 brands | Not published in detail | 818 self-ranking listicles vs 1,033 neutral comparisons; 5,434 page–answer pairs |
+| "Recommended" means | Brand appears as a pick in the Overview's answer text | Same | Engine actively suggests the brand as the best choice (separate from merely naming it) |
+| Publisher left out | 69% of 323 citations | 83% | — |
+| Publisher recommended | 31% (implied) | 17% (implied) | ~7% overall; 8.9% on AI Overviews |
+| Publisher named at all | — | — | ~39% (vs ~19% when the page isn't cited) |
+| Competitor recommended, publisher left out | — | 70% | 24.3% |
+
+Sources: [Ray, June](https://lilyraynyc.substack.com/p/why-calling-yourself-the-best-could); [Ray, October](https://lilyraynyc.substack.com/p/prediction-the-next-massive-google); [Scrunch](https://scrunch.com/blog/what-happens-when-you-crown-yourself-number-1-listicles-impact-on-ai-answers/).
+
+## Why 31% and 7% are not a contradiction
+
+The publisher-recommended figures look far apart until you line up the definitions.
+
+Ray counts a brand as recommended when it appears as a pick in the Overview's text. On a "best X software" query, the Overview is itself a list of picks, so being in the text and being recommended are nearly the same event. Scrunch splits those apart: *named* (the brand appears) and *recommended* (the engine actively steers the user to it). Ray's 31% in June falls between Scrunch's two figures for the same window. It is below the 39% named rate (pooled across all seven engines) and well above the 8.9% recommended rate on AI Overviews. That is where you would expect a measure that sits between the two definitions to land.
+
+So both datasets support the same reading. When your own list is cited, an engine names you about a third of the time and actively endorses you far less often. Ray's September drop to 17% then fits a trend rather than a disagreement. It is consistent with the same engine getting stricter over the summer, which Ray's 38% fall in citations of these pages also suggests.
+
+## Why 70% and 24.3% are not a contradiction either
+
+The competitor figures differ by a factor of almost three, and the denominators explain it.
+
+Ray's queries are all recommendation-shaped. Every one asks for the best software in a category, so every Overview that answers recommends *someone*. If the publisher is left out 83% of the time, a competitor is almost by construction what fills the space. Scrunch's denominator is every answer that cited a sampled page, across seven engines and whatever prompts produced those citations. Many of those answers recommend no one. Scrunch reports that in 63.9% of answers citing a self-promotional listicle, the engine used the page "as raw material for a balanced overview" rather than adopting its number-one pick. A competitor-recommended rate computed over that wider base will be lower. The timing differs too: Scrunch's window ended June 30, and Ray's own two waves show the effect moving against publishers after that.
+
+The ratio is what holds up. In Scrunch's data, competitors were recommended instead of the author in 24.3% of answers, against a roughly 7% author recommendation rate: about 3.5 to 1. In Ray's September data, 70% against 17%: about 4 to 1. **Measured either way, a cited self-promotional listicle is followed by a competitor recommendation several times more often than by one for its publisher.**
+
+## What the lab research shows, and why it doesn't transfer
+
+There is a body of research suggesting a vendor's own page *can* move an LLM's product ranking. The two studies most often cited are real. Neither describes the tactic marketers are actually using.
+
+- Aounon Kumar and Himabindu Lakkaraju, [Manipulating Large Language Models to Increase Product Visibility](https://arxiv.org/abs/2404.07981), added an optimized "strategic text sequence" to a product's page in a fictional coffee-machine catalog. It significantly raised the chance that the product was recommended first.
+- Samuel Pfrommer and colleagues, [Ranking Manipulation for Conversational Search Engines](https://arxiv.org/abs/2406.03589) (EMNLP 2024), used prompt-injection attacks on consumer product sites to promote low-ranked products. They report that the attacks transferred to Perplexity.
+
+Both test adversarial text written to hijack the model, inserted into a small, controlled set of candidate pages. A "Top 10 [category] tools (we're #1)" post is ordinary persuasive copy competing with many other retrieved sources. Scrunch found 43.4% of answers citing a self-promotional listicle also cited a competitor's own website. These papers establish that LLM rankings can be manipulated. They are not evidence that a self-ranking listicle will move a production engine. Their technique is also prompt injection, which is a different thing from content marketing, with different risks.
+
+Google's position points the same way. Its [guide to AI features](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide) says plainly that "seeking inauthentic 'mentions' across the web isn't as helpful as it might seem."
+
+## What this does not prove
+
+**Ray's methodology is lightly documented.** The June study describes its query set, dates, and counts. The September update reports percentages without saying whether it used the same 100 queries or how pages were classified. It covers one engine and one vertical, B2B software.
+
+**Scrunch is a single vendor's study of a single window.** Its causal estimate covers about 6% of the eligible population. Its authors say the mention lift has not yet passed their falsification test and that the numbers are "a snapshot of that window, not a constant." Scrunch sells AI visibility software, as we do.
+
+**Averages hide your page.** Both studies pool hundreds of brands. A listicle from a category leader whose name the model already associates with the category can behave very differently from one by an unknown challenger. Ray notes that lesser-known self-promoters occasionally make it into the answer, though "this appears to be increasingly rare."
+
+**Neither study measures clicks or revenue.** A citation can still send traffic. What these numbers say is that it rarely sends an endorsement.
+
+## The decision rule: measure the net recommendation delta
+
+The question to ask about a self-promotional listicle is not "does it get cited?" Both datasets say it probably does. The question is whether answers that cite it recommend you more often than they recommend someone else.
+
+1. **Track the prompts the page targets.** Put the exact "best [category]" and "best [category] for [use case]" prompts into your [prompt set](/blog/ai-prompt-tracking) on every engine. Recommendation-shaped prompts are the fair test. On informational prompts, nobody gets recommended.
+2. **Log four fields, not one.** Listicle cited, brand named, brand recommended, competitors recommended. This is the same split our piece on [ghost citations](/blog/ghost-citations) argues for, with one more column.
+3. **Compute the delta per engine.** Among answers citing the page, take the share recommending you and subtract the share recommending a competitor without you. Scrunch's per-engine author rates ranged from 15.6% on Claude to 4.8% on Copilot. A blended number would hide that.
+4. **Check the counterfactual.** Compare your recommendation rate on the same prompts when the listicle is *not* cited. If the two are close, the page is not what earns you a place.
+5. **Act on two cycles, not one run.** Citations for the same prompt turn over [60–70% from day to day](/blog/citation-volatility) in our own tracking. One snapshot can't separate a trend from noise.
+
+If the delta stays negative, the page is giving your competitors evidence. Rewrite it into a comparison a neutral reader would trust, with stated criteria and honest trade-offs, or stop producing more of them. If it is positive, keep it and keep measuring, because Ray's two waves show the effect shrinking.
+
+The broader point is the one our review of [where AI citations come from](/blog/where-ai-citations-come-from) flagged as an open question: most citations point to domains the brand does not own, and the major format studies don't check whose domain a cited listicle sits on. This is the first evidence on that question. It suggests the recommendation is shaped mostly by what other sources say about you, and very little by what you say about yourself.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces. It records the cited URLs, the brands named, and the competitors recommended next to you on every run. Because you run it yourself and the data is yours to query, the net recommendation delta for any page is a query over your own results.
+
+For the fundamentals, start with [AI citations](/blog/ai-citations) and [AI share of voice](/blog/ai-share-of-voice), then [how to track your brand in AI search](/answer-engine-optimization). For the vocabulary, see the [AI search glossary](/glossary).
