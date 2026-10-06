@@ -3,7 +3,7 @@ import { gzipSync } from "node:zlib";
 
 // The published skill lives at the repo root so `npx skills add elmohq/elmo` finds it; the site
 // serves the same files so `npx skills add elmohq.com` installs an identical copy.
-const aeoFiles = import.meta.glob(["../../../../skills/aeo/**/*", "!**/evals/**"], {
+const aeoFiles = import.meta.glob(["../../../../skills/aeo/**/*", "!../../../../skills/aeo/evals/**"], {
 	query: "?raw",
 	import: "default",
 	eager: true,
