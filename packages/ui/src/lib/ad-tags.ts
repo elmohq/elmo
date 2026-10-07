@@ -10,12 +10,15 @@ const PRODUCTION_HOSTS = new Set(["elmohq.com", "www.elmohq.com", "app.elmohq.co
 
 export type AdConversion = "sign_up" | "purchase";
 
-/** Content-Security-Policy sources the two tags need, per directive. Images are covered by `https:`. */
+/**
+ * Content-Security-Policy sources the two tags need, per directive. Images are covered by `https:`.
+ * The Google Analytics hosts go unused, but Tag Assistant flags a policy without them.
+ */
 export const AD_TAG_CSP = {
 	script:
-		"https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.google.com https://connect.facebook.net",
+		"https://*.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.google.com https://connect.facebook.net",
 	connect:
-		"https://www.google.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://*.doubleclick.net https://pagead2.googlesyndication.com https://www.facebook.com https://connect.facebook.net",
+		"https://www.google.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://*.doubleclick.net https://pagead2.googlesyndication.com https://www.facebook.com https://connect.facebook.net https://*.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
 	frame: "https://td.doubleclick.net https://bid.g.doubleclick.net https://www.googletagmanager.com",
 	// Only Tag Assistant's debug badge loads styles and fonts.
 	style: "https://www.googletagmanager.com https://fonts.googleapis.com",
