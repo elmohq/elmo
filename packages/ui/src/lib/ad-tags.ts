@@ -1,14 +1,14 @@
 import { onMarketingConsent } from "./cookie-consent";
 import { afterPageIdle } from "./idle";
 
-const GOOGLE_ADS_ID = "AW-926316143";
+const GOOGLE_ADS_ID = "AW-18500607241";
 const META_PIXEL_ID = "2332896134120550";
 
 // Everywhere else — local dev, CI, preview deploys, a self-hosted instance
 // running in demo mode — must never count toward our ad accounts.
 const PRODUCTION_HOSTS = new Set(["elmohq.com", "www.elmohq.com", "app.elmohq.com", "demo.elmohq.com"]);
 
-export type AdConversion = "sign_up" | "purchase";
+export type AdConversion = "sign_up" | "purchase" | "demo_booked";
 
 /**
  * Content-Security-Policy sources the two tags need, per directive. Images are covered by `https:`.
@@ -26,13 +26,15 @@ export const AD_TAG_CSP = {
 };
 
 const GOOGLE_ADS_CONVERSION_LABELS: Record<AdConversion, string> = {
-	sign_up: "V2PWCM6i8JQdEO_s2bkD",
-	purchase: "JTI3CKnF8ZQdEO_s2bkD",
+	sign_up: "wRDKCLet-JQdEIm64_VE",
+	purchase: "YrPlCO2w-JQdEIm64_VE",
+	demo_booked: "606ZCKDt8JQdEIm64_VE",
 };
 
 const META_EVENTS: Record<AdConversion, string> = {
 	sign_up: "CompleteRegistration",
 	purchase: "Purchase",
+	demo_booked: "Schedule",
 };
 
 // A server-side sender (Meta's Conversions API) has to reproduce these exactly
@@ -40,6 +42,7 @@ const META_EVENTS: Record<AdConversion, string> = {
 const META_EVENT_ID_PREFIXES: Record<AdConversion, string> = {
 	sign_up: "reg_",
 	purchase: "sub_",
+	demo_booked: "demo_",
 };
 
 // First-party cookies the two tags set on our own domain. Their third-party
@@ -228,7 +231,7 @@ function markSent(key: string): void {
 interface ConversionDetails {
 	/**
 	 * Stable across reloads — the user for a signup, the Stripe subscription for
-	 * a purchase. Also dedupes on the platforms' side.
+	 * a purchase, the Cal.com booking for a demo. Also dedupes on the platforms' side.
 	 */
 	id: string;
 	valueUsd?: number;
