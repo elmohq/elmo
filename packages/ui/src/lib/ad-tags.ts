@@ -42,7 +42,14 @@ const AD_COOKIE = /^(_gcl_|_fbp$|_fbc$)/;
 const SENT_STORAGE_PREFIX = "elmo.ad-conversion.";
 
 type Command = (...args: unknown[]) => void;
-type MetaQueue = Command & { callMethod?: Command; queue: unknown[]; push: Command; loaded: boolean; version: string };
+type MetaQueue = Command & {
+	callMethod?: Command;
+	queue: unknown[];
+	push: Command;
+	loaded: boolean;
+	version: string;
+	disablePushState?: boolean;
+};
 
 declare global {
 	interface Window {
@@ -102,6 +109,10 @@ function stubMeta(): void {
 	queue.push = queue;
 	queue.loaded = true;
 	queue.version = "2.0";
+	// Otherwise the pixel sends a PageView with the URL on every client-side
+	// navigation, which in the app would carry customers' org and brand names
+	// to Meta once someone moves past the signup pages.
+	queue.disablePushState = true;
 	queue.queue = [];
 	window.fbq = queue;
 	window._fbq ??= queue;
