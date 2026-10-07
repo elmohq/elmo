@@ -8,7 +8,7 @@ import { afterPageIdle } from "./idle";
  */
 
 /** Google Ads tag ID, `AW-…`. */
-const GOOGLE_ADS_ID = "";
+const GOOGLE_ADS_ID = "AW-926316143";
 /** Meta Pixel ID (Events Manager → Data sources). */
 const META_PIXEL_ID = "2332896134120550";
 
@@ -25,8 +25,8 @@ export const AD_TAG_CSP = {
 
 /** Google Ads → Goals → Conversions: the label half of each action's `send_to`. */
 const GOOGLE_ADS_CONVERSION_LABELS: Record<AdConversion, string> = {
-	sign_up: "",
-	purchase: "",
+	sign_up: "V2PWCM6i8JQdEO_s2bkD",
+	purchase: "JTI3CKnF8ZQdEO_s2bkD",
 };
 
 const META_EVENTS: Record<AdConversion, string> = {
