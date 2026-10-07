@@ -6,9 +6,9 @@ const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
 		`script-src 'self' 'unsafe-inline' https://var.elmohq.com https://*.crisp.chat ${AD_TAG_CSP.script}`,
-		"style-src 'self' 'unsafe-inline' https://*.crisp.chat",
+		`style-src 'self' 'unsafe-inline' https://*.crisp.chat ${AD_TAG_CSP.style}`,
 		"img-src 'self' data: https:",
-		"font-src 'self' data: https://*.crisp.chat",
+		`font-src 'self' data: https://*.crisp.chat ${AD_TAG_CSP.font}`,
 		`connect-src 'self' https://var.elmohq.com https://*.mux.com https://*.litix.io https://*.crisp.chat wss://*.relay.crisp.chat wss://*.relay.rescue.crisp.chat ${AD_TAG_CSP.connect}`,
 		"media-src 'self' blob: https://*.mux.com https://*.crisp.chat",
 		"worker-src 'self' blob: https://*.crisp.chat",
