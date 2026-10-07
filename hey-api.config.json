@@ -1,0 +1,18 @@
+{
+  "input": "./packages/api-spec/src/openapi.json",
+  "targets": {
+    "typescript": {
+      "package": {
+        "dir": "packages/sdk-typescript",
+        "name": "@elmohq/sdk",
+        "repository": "https://github.com/elmohq/elmo"
+      }
+    },
+    "python": {
+      "package": {
+        "dir": "packages/sdk-python",
+        "name": "elmohq-sdk"
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+packages/sdk-typescript/** linguist-generated=true
+packages/sdk-python/** linguist-generated=true
+.hey-api/** linguist-generated=true
