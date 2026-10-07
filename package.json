@@ -19,7 +19,7 @@
     "cli:link": "npm unlink -g @elmohq/cli || true && pnpm -C apps/cli build && (cd apps/cli && npm link)",
     "cli:unlink": "npm unlink -g @elmohq/cli",
     "changeset": "changeset",
-    "version-packages": "changeset version && node scripts/sync-sdk-versions.mjs",
+    "version-packages": "changeset version",
     "release": "pnpm build && changeset publish",
     "test:e2e": "pnpm --filter e2e test:e2e",
     "test:e2e:cloud": "pnpm --filter e2e test:e2e:cloud",
