@@ -15,7 +15,9 @@
 			"!**/routeTree.gen.ts",
 			"!packages/lib/src/db/schema-auth.ts",
 			"!**/public",
-			"!packages/lib/src/db/migrations"
+			"!packages/lib/src/db/migrations",
+			"!packages/sdk-typescript",
+			"!packages/sdk-python"
 		]
 	},
 	"formatter": {
