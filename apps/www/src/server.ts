@@ -1,11 +1,12 @@
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { AD_TAG_CSP } from "@workspace/ui/lib/ad-tags";
 import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
+import { CAL_EMBED_CSP } from "@/lib/cal-embed";
 
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		`script-src 'self' 'unsafe-inline' https://var.elmohq.com https://*.crisp.chat ${AD_TAG_CSP.script}`,
+		`script-src 'self' 'unsafe-inline' https://var.elmohq.com https://*.crisp.chat ${CAL_EMBED_CSP} ${AD_TAG_CSP.script}`,
 		`style-src 'self' 'unsafe-inline' https://*.crisp.chat ${AD_TAG_CSP.style}`,
 		"img-src 'self' data: https:",
 		`font-src 'self' data: https://*.crisp.chat ${AD_TAG_CSP.font}`,
@@ -13,7 +14,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 		"media-src 'self' blob: https://*.mux.com https://*.crisp.chat",
 		"worker-src 'self' blob: https://*.crisp.chat",
 		// YouTube embeds in blog posts (privacy-enhanced youtube-nocookie host).
-		`frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://*.crisp.chat ${AD_TAG_CSP.frame}`,
+		`frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://*.crisp.chat ${CAL_EMBED_CSP} ${AD_TAG_CSP.frame}`,
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",

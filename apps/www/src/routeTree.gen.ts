@@ -13,7 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnswerEngineOptimizationRouteImport } from './routes/answer-engine-optimization'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
-import { Route as DemoBookedRouteImport } from './routes/demo-booked'
+import { Route as DemoRouteImport } from './routes/demo'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as GenerativeEngineOptimizationRouteImport } from './routes/generative-engine-optimization'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
@@ -89,9 +89,9 @@ const ChangelogRoute = ChangelogRouteImport.update({
   path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DemoBookedRoute = DemoBookedRouteImport.update({
-  id: '/demo-booked',
-  path: '/demo-booked',
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeaturesRoute = FeaturesRouteImport.update({
@@ -379,7 +379,7 @@ export interface FileRoutesByFullPath {
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
-  '/demo-booked': typeof DemoBookedRoute
+  '/demo': typeof DemoRoute
   '/features': typeof FeaturesRoute
   '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
@@ -439,7 +439,7 @@ export interface FileRoutesByTo {
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
-  '/demo-booked': typeof DemoBookedRoute
+  '/demo': typeof DemoRoute
   '/features': typeof FeaturesRoute
   '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
@@ -500,7 +500,7 @@ export interface FileRoutesById {
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
-  '/demo-booked': typeof DemoBookedRoute
+  '/demo': typeof DemoRoute
   '/features': typeof FeaturesRoute
   '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
@@ -562,7 +562,7 @@ export interface FileRouteTypes {
     | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
-    | '/demo-booked'
+    | '/demo'
     | '/features'
     | '/generative-engine-optimization'
     | '/llms-full.txt'
@@ -622,7 +622,7 @@ export interface FileRouteTypes {
     | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
-    | '/demo-booked'
+    | '/demo'
     | '/features'
     | '/generative-engine-optimization'
     | '/llms-full.txt'
@@ -682,7 +682,7 @@ export interface FileRouteTypes {
     | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
-    | '/demo-booked'
+    | '/demo'
     | '/features'
     | '/generative-engine-optimization'
     | '/llms-full.txt'
@@ -743,7 +743,7 @@ export interface RootRouteChildren {
   AnswerEngineOptimizationRoute: typeof AnswerEngineOptimizationRoute
   BrandRoute: typeof BrandRoute
   ChangelogRoute: typeof ChangelogRoute
-  DemoBookedRoute: typeof DemoBookedRoute
+  DemoRoute: typeof DemoRoute
   FeaturesRoute: typeof FeaturesRoute
   GenerativeEngineOptimizationRoute: typeof GenerativeEngineOptimizationRoute
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
@@ -829,11 +829,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/demo-booked': {
-      id: '/demo-booked'
-      path: '/demo-booked'
-      fullPath: '/demo-booked'
-      preLoaderRoute: typeof DemoBookedRouteImport
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/features': {
@@ -1215,7 +1215,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnswerEngineOptimizationRoute: AnswerEngineOptimizationRoute,
   BrandRoute: BrandRoute,
   ChangelogRoute: ChangelogRoute,
-  DemoBookedRoute: DemoBookedRoute,
+  DemoRoute: DemoRoute,
   FeaturesRoute: FeaturesRoute,
   GenerativeEngineOptimizationRoute: GenerativeEngineOptimizationRoute,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
