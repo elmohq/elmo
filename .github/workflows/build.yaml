@@ -127,7 +127,7 @@ jobs:
       - name: Verify the generated SDKs match the OpenAPI document
         env:
           HEY_API_PKG_TOKEN: ${{ secrets.HEY_API_PKG_TOKEN }}
-          SECRETS_WITHHELD: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.actor == 'dependabot[bot]') }}
+          SECRETS_WITHHELD: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.user.login == 'dependabot[bot]') }}
         run: |
           if [ -z "$HEY_API_PKG_TOKEN" ]; then
             if [ "$SECRETS_WITHHELD" = "true" ]; then
