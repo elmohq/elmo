@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnswerEngineOptimizationRouteImport } from './routes/answer-engine-optimization'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as DemoBookedRouteImport } from './routes/demo-booked'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as GenerativeEngineOptimizationRouteImport } from './routes/generative-engine-optimization'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
@@ -86,6 +87,11 @@ const BrandRoute = BrandRouteImport.update({
 const ChangelogRoute = ChangelogRouteImport.update({
   id: '/changelog',
   path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoBookedRoute = DemoBookedRouteImport.update({
+  id: '/demo-booked',
+  path: '/demo-booked',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeaturesRoute = FeaturesRouteImport.update({
@@ -373,6 +379,7 @@ export interface FileRoutesByFullPath {
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
+  '/demo-booked': typeof DemoBookedRoute
   '/features': typeof FeaturesRoute
   '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
@@ -432,6 +439,7 @@ export interface FileRoutesByTo {
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
+  '/demo-booked': typeof DemoBookedRoute
   '/features': typeof FeaturesRoute
   '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
@@ -492,6 +500,7 @@ export interface FileRoutesById {
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
+  '/demo-booked': typeof DemoBookedRoute
   '/features': typeof FeaturesRoute
   '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
@@ -553,6 +562,7 @@ export interface FileRouteTypes {
     | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
+    | '/demo-booked'
     | '/features'
     | '/generative-engine-optimization'
     | '/llms-full.txt'
@@ -612,6 +622,7 @@ export interface FileRouteTypes {
     | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
+    | '/demo-booked'
     | '/features'
     | '/generative-engine-optimization'
     | '/llms-full.txt'
@@ -671,6 +682,7 @@ export interface FileRouteTypes {
     | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
+    | '/demo-booked'
     | '/features'
     | '/generative-engine-optimization'
     | '/llms-full.txt'
@@ -731,6 +743,7 @@ export interface RootRouteChildren {
   AnswerEngineOptimizationRoute: typeof AnswerEngineOptimizationRoute
   BrandRoute: typeof BrandRoute
   ChangelogRoute: typeof ChangelogRoute
+  DemoBookedRoute: typeof DemoBookedRoute
   FeaturesRoute: typeof FeaturesRoute
   GenerativeEngineOptimizationRoute: typeof GenerativeEngineOptimizationRoute
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
@@ -814,6 +827,13 @@ declare module '@tanstack/react-router' {
       path: '/changelog'
       fullPath: '/changelog'
       preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo-booked': {
+      id: '/demo-booked'
+      path: '/demo-booked'
+      fullPath: '/demo-booked'
+      preLoaderRoute: typeof DemoBookedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/features': {
@@ -1195,6 +1215,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnswerEngineOptimizationRoute: AnswerEngineOptimizationRoute,
   BrandRoute: BrandRoute,
   ChangelogRoute: ChangelogRoute,
+  DemoBookedRoute: DemoBookedRoute,
   FeaturesRoute: FeaturesRoute,
   GenerativeEngineOptimizationRoute: GenerativeEngineOptimizationRoute,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
