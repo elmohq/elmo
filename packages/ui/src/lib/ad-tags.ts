@@ -17,6 +17,9 @@ export const AD_TAG_CSP = {
 	connect:
 		"https://www.google.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://*.doubleclick.net https://pagead2.googlesyndication.com https://www.facebook.com https://connect.facebook.net",
 	frame: "https://td.doubleclick.net https://bid.g.doubleclick.net https://www.googletagmanager.com",
+	// Only Tag Assistant's debug badge loads styles and fonts.
+	style: "https://www.googletagmanager.com https://fonts.googleapis.com",
+	font: "https://fonts.gstatic.com",
 };
 
 const GOOGLE_ADS_CONVERSION_LABELS: Record<AdConversion, string> = {
