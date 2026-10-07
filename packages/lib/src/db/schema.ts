@@ -40,6 +40,11 @@ export const brands = pgTable(
 		onboarded: boolean("onboarded").default(false).notNull(),
 		delayOverrideHours: integer("delay_override_hours"),
 		enabledModels: text("enabled_models").array(),
+		/**
+		 * Analysis name -> the stamp this brand's run history was last reprocessed to.
+		 * Null for brands that predate stamping until the worker adopts today's stamps.
+		 */
+		analysisVersions: jsonb("analysis_versions").$type<Record<string, string>>().default({}),
 		// Hard tenancy scope. Every brand belongs to exactly one better-auth
 		// organization; org membership (the `member` table) is the access-control
 		// mechanism. Brand and organization ids are independent, so billing and
@@ -123,6 +128,11 @@ export const promptRuns = pgTable(
 		webQueries: text("web_queries").array().notNull().default([]),
 		brandMentioned: boolean("brand_mentioned").notNull(),
 		competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
+		/** Answer text extracted from `raw_output`; null when there was none or the run predates extraction. */
+		textContent: text("text_content"),
+		extractorVersion: integer("extractor_version"),
+		/** Deriver name -> the version stamp of the code and brand config that produced its columns. */
+		analysisVersions: jsonb("analysis_versions").$type<Record<string, string>>().notNull().default({}),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	},
 	(table) => ({
