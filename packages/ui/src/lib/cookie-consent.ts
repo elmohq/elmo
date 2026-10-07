@@ -152,15 +152,27 @@ export function isConsentRequired(fromEdge: boolean | null): boolean {
 	return fromEdge ?? consentRequiredByTimeZone();
 }
 
+function onCategoryConsent(
+	category: keyof CookieConsent,
+	consentRequired: boolean,
+	apply: (allowed: boolean) => void,
+): () => void {
+	if (typeof window === "undefined") return () => {};
+	apply(resolveConsent(readConsent(), consentRequired)[category]);
+	return onConsentChange((consent) => apply(consent[category]));
+}
+
 /**
  * Call `apply` with the visitor's current analytics answer, and again whenever
  * it changes. Returns an unsubscribe. Every analytics tool goes through this,
  * so they can't drift apart on what the same answer means.
  */
 export function onAnalyticsConsent(consentRequired: boolean, apply: (allowed: boolean) => void): () => void {
-	if (typeof window === "undefined") return () => {};
-	apply(resolveConsent(readConsent(), consentRequired).analytics);
-	return onConsentChange((consent) => apply(consent.analytics));
+	return onCategoryConsent("analytics", consentRequired, apply);
+}
+
+export function onMarketingConsent(consentRequired: boolean, apply: (allowed: boolean) => void): () => void {
+	return onCategoryConsent("marketing", consentRequired, apply);
 }
 
 /**

@@ -1,0 +1,262 @@
+import { onMarketingConsent } from "./cookie-consent";
+import { afterPageIdle } from "./idle";
+
+const GOOGLE_ADS_ID = "AW-926316143";
+const META_PIXEL_ID = "2332896134120550";
+
+// Everywhere else — local dev, CI, preview deploys, a self-hosted instance
+// running in demo mode — must never count toward our ad accounts.
+const PRODUCTION_HOSTS = new Set(["elmohq.com", "www.elmohq.com", "app.elmohq.com", "demo.elmohq.com"]);
+
+export type AdConversion = "sign_up" | "purchase";
+
+/** Content-Security-Policy sources the two tags need, per directive. Images are covered by `https:`. */
+export const AD_TAG_CSP = {
+	script:
+		"https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.google.com https://connect.facebook.net",
+	connect:
+		"https://www.google.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://*.doubleclick.net https://pagead2.googlesyndication.com https://www.facebook.com https://connect.facebook.net",
+	frame: "https://td.doubleclick.net https://bid.g.doubleclick.net https://www.googletagmanager.com",
+};
+
+const GOOGLE_ADS_CONVERSION_LABELS: Record<AdConversion, string> = {
+	sign_up: "V2PWCM6i8JQdEO_s2bkD",
+	purchase: "JTI3CKnF8ZQdEO_s2bkD",
+};
+
+const META_EVENTS: Record<AdConversion, string> = {
+	sign_up: "CompleteRegistration",
+	purchase: "Purchase",
+};
+
+// A server-side sender (Meta's Conversions API) has to reproduce these exactly
+// for Meta to drop the duplicate.
+const META_EVENT_ID_PREFIXES: Record<AdConversion, string> = {
+	sign_up: "reg_",
+	purchase: "sub_",
+};
+
+// First-party cookies the two tags set on our own domain. Their third-party
+// cookies live on google.com and facebook.com, out of our reach.
+const AD_COOKIE = /^(_gcl_|_fbp$|_fbc$)/;
+const SENT_STORAGE_PREFIX = "elmo.ad-conversion.";
+
+type Command = (...args: unknown[]) => void;
+type MetaQueue = Command & {
+	callMethod?: Command;
+	queue: unknown[];
+	push: Command;
+	loaded: boolean;
+	version: string;
+	disablePushState?: boolean;
+};
+
+declare global {
+	interface Window {
+		dataLayer?: unknown[];
+		gtag?: Command;
+		fbq?: MetaQueue;
+		_fbq?: MetaQueue;
+	}
+}
+
+let allowed = false;
+let loaded = false;
+// A page view asked for while advertising was off. Accepting counts the page
+// they accepted on, the way the analytics tools do.
+let pageViewPending = false;
+// React runs a page's effects before the root's, so a conversion can be
+// reported before the stored answer has been read. Those wait for it; ones
+// made after a refusal are dropped.
+let answered = false;
+const heldConversions: (() => void)[] = [];
+let lastPathname: string | null = null;
+
+function enabled(): boolean {
+	return Boolean(GOOGLE_ADS_ID || META_PIXEL_ID) && PRODUCTION_HOSTS.has(window.location.hostname);
+}
+
+function gtag(...args: unknown[]): void {
+	if (GOOGLE_ADS_ID) window.gtag?.(...args);
+}
+
+function fbq(...args: unknown[]): void {
+	if (META_PIXEL_ID) window.fbq?.(...args);
+}
+
+function injectScript(src: string): void {
+	const script = document.createElement("script");
+	script.async = true;
+	script.src = src;
+	document.head.appendChild(script);
+}
+
+function stubGoogle(): void {
+	window.dataLayer ??= [];
+	// gtag.js only recognises commands pushed as `arguments` objects; a plain
+	// array is read as a dataLayer message and silently ignored.
+	window.gtag ??= function gtag() {
+		window.dataLayer?.push(arguments);
+	};
+}
+
+function stubMeta(): void {
+	if (window.fbq) return;
+	const queue = ((...args: unknown[]) => {
+		if (queue.callMethod) queue.callMethod(...args);
+		else queue.queue.push(args);
+	}) as MetaQueue;
+	queue.push = queue;
+	queue.loaded = true;
+	queue.version = "2.0";
+	// Otherwise the pixel sends a PageView with the URL on every client-side
+	// navigation, which in the app would carry customers' org and brand names
+	// to Meta once someone moves past the signup pages.
+	queue.disablePushState = true;
+	queue.queue = [];
+	window.fbq = queue;
+	window._fbq ??= queue;
+}
+
+function applyConsent(): void {
+	const state = allowed ? "granted" : "denied";
+	gtag("consent", "update", { ad_storage: state, ad_user_data: state, ad_personalization: state });
+	fbq("consent", allowed ? "grant" : "revoke");
+}
+
+// Both tags queue every command until their script arrives, so the scripts
+// themselves can wait for the page to settle without losing anything.
+function load(): void {
+	if (loaded) return;
+	loaded = true;
+
+	if (GOOGLE_ADS_ID) {
+		stubGoogle();
+		gtag("consent", "default", {
+			ad_storage: "denied",
+			ad_user_data: "denied",
+			ad_personalization: "denied",
+			analytics_storage: "denied",
+		});
+	}
+	if (META_PIXEL_ID) {
+		stubMeta();
+		// Automatic configuration scrapes button clicks and page metadata, which
+		// inside the app would hand Meta customer data.
+		fbq("set", "autoConfig", false, META_PIXEL_ID);
+	}
+	applyConsent();
+	gtag("js", new Date());
+	gtag("config", GOOGLE_ADS_ID, { send_page_view: false, allow_enhanced_conversions: true });
+	fbq("init", META_PIXEL_ID);
+
+	void afterPageIdle().then(() => {
+		if (GOOGLE_ADS_ID) injectScript(`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`);
+		if (META_PIXEL_ID) injectScript("https://connect.facebook.net/en_US/fbevents.js");
+	});
+}
+
+function sendPageView(): void {
+	load();
+	gtag("event", "page_view", { send_to: GOOGLE_ADS_ID });
+	fbq("track", "PageView");
+}
+
+function clearAdCookies(): void {
+	const labels = window.location.hostname.split(".");
+	const domains = labels.map((_, index) => labels.slice(index).join("."));
+	for (const entry of document.cookie.split("; ")) {
+		const name = entry.split("=")[0];
+		if (!AD_COOKIE.test(name)) continue;
+		document.cookie = `${name}=; Max-Age=0; path=/`;
+		for (const domain of domains) document.cookie = `${name}=; Max-Age=0; path=/; domain=${domain}`;
+	}
+}
+
+/** Tags aren't fetched until the first page view or conversion needs them. */
+export function initAdTags(consentRequired: boolean): () => void {
+	if (!enabled()) return () => {};
+	return onMarketingConsent(consentRequired, (answer) => {
+		allowed = answer;
+		answered = true;
+		if (loaded) {
+			applyConsent();
+			if (!allowed) clearAdCookies();
+		}
+		const held = heldConversions.splice(0);
+		if (!allowed) return;
+		if (pageViewPending) {
+			pageViewPending = false;
+			sendPageView();
+		}
+		for (const send of held) send();
+	});
+}
+
+/** Repeat calls for the path last counted are ignored, so a re-run effect doesn't count a page twice. */
+export function trackAdPageView(pathname: string): void {
+	if (!enabled()) return;
+	if (pathname === lastPathname) return;
+	lastPathname = pathname;
+	if (allowed) sendPageView();
+	else pageViewPending = true;
+}
+
+function alreadySent(key: string): boolean {
+	try {
+		return window.localStorage.getItem(key) !== null;
+	} catch {
+		return false;
+	}
+}
+
+function markSent(key: string): void {
+	try {
+		window.localStorage.setItem(key, new Date().toISOString());
+	} catch {
+		// Without storage a reload can count it again; Google still dedupes
+		// purchases on transaction_id.
+	}
+}
+
+interface ConversionDetails {
+	/**
+	 * Stable across reloads — the user for a signup, the Stripe subscription for
+	 * a purchase. Also dedupes on the platforms' side.
+	 */
+	id: string;
+	valueUsd?: number;
+	/**
+	 * Lets each platform match the conversion to an account when the ad-click
+	 * cookie is gone. Both hash it in the browser before sending. Passed only
+	 * here, so neither platform reads it off a page by itself.
+	 */
+	email?: string;
+}
+
+/** Report a conversion once per `id` on this browser. */
+export function trackAdConversion(conversion: AdConversion, details: ConversionDetails): void {
+	if (!enabled()) return;
+	if (!answered) {
+		heldConversions.push(() => trackAdConversion(conversion, details));
+		return;
+	}
+	if (!allowed) return;
+	const { id, valueUsd } = details;
+	const key = `${SENT_STORAGE_PREFIX}${conversion}.${id}`;
+	if (alreadySent(key)) return;
+	markSent(key);
+	load();
+
+	const email = details.email?.trim().toLowerCase();
+	const value = valueUsd === undefined ? {} : { value: valueUsd, currency: "USD" };
+	const label = GOOGLE_ADS_CONVERSION_LABELS[conversion];
+	if (label) {
+		if (email) gtag("set", "user_data", { email });
+		gtag("event", "conversion", { send_to: `${GOOGLE_ADS_ID}/${label}`, transaction_id: id, ...value });
+	}
+	// Meta takes customer information on init; calling it again attaches it to
+	// the events that follow.
+	if (email) fbq("init", META_PIXEL_ID, { em: email });
+	fbq("track", META_EVENTS[conversion], value, { eventID: `${META_EVENT_ID_PREFIXES[conversion]}${id}` });
+}

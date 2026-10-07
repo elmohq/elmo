@@ -1,6 +1,6 @@
 import { onAnalyticsConsent } from "@workspace/ui/lib/cookie-consent";
+import { afterPageIdle } from "@workspace/ui/lib/idle";
 import type { PostHog } from "posthog-js";
-import { afterPageIdle } from "./idle";
 
 const POSTHOG_KEY = "phc_Jhx9LnI9cTDFHpQmpOzJSDTW127qD9pFU65KRnYym6z";
 const POSTHOG_HOST = "https://var.elmohq.com";
