@@ -10,7 +10,7 @@ import { afterPageIdle } from "./idle";
 /** Google Ads tag ID, `AW-…`. */
 const GOOGLE_ADS_ID = "";
 /** Meta Pixel ID (Events Manager → Data sources). */
-const META_PIXEL_ID = "";
+const META_PIXEL_ID = "2332896134120550";
 
 export type AdConversion = "sign_up" | "purchase";
 
