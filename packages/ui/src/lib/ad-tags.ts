@@ -12,6 +12,10 @@ const GOOGLE_ADS_ID = "AW-926316143";
 /** Meta Pixel ID (Events Manager → Data sources). */
 const META_PIXEL_ID = "2332896134120550";
 
+// Everywhere else — local dev, CI, preview deploys, a self-hosted instance
+// running in demo mode — must never count toward our ad accounts.
+const PRODUCTION_HOSTS = new Set(["elmohq.com", "www.elmohq.com", "app.elmohq.com", "demo.elmohq.com"]);
+
 export type AdConversion = "sign_up" | "purchase";
 
 /** Content-Security-Policy sources the two tags need, per directive. Images are covered by `https:`. */
@@ -62,6 +66,10 @@ let pageViewPending = false;
 let answered = false;
 const heldConversions: (() => void)[] = [];
 let lastPathname: string | null = null;
+
+function enabled(): boolean {
+	return Boolean(GOOGLE_ADS_ID || META_PIXEL_ID) && PRODUCTION_HOSTS.has(window.location.hostname);
+}
 
 function gtag(...args: unknown[]): void {
 	if (GOOGLE_ADS_ID) window.gtag?.(...args);
@@ -163,7 +171,7 @@ function clearAdCookies(): void {
  * unsubscribe.
  */
 export function initAdTags(consentRequired: boolean): () => void {
-	if (!GOOGLE_ADS_ID && !META_PIXEL_ID) return () => {};
+	if (!enabled()) return () => {};
 	return onMarketingConsent(consentRequired, (answer) => {
 		allowed = answer;
 		answered = true;
@@ -186,7 +194,7 @@ export function initAdTags(consentRequired: boolean): () => void {
  * counted are ignored, so a re-run effect doesn't count a page twice.
  */
 export function trackAdPageView(pathname: string): void {
-	if (!GOOGLE_ADS_ID && !META_PIXEL_ID) return;
+	if (!enabled()) return;
 	if (pathname === lastPathname) return;
 	lastPathname = pathname;
 	if (allowed) sendPageView();
@@ -224,7 +232,7 @@ interface ConversionDetails {
 
 /** Report a conversion once per `id` on this browser. */
 export function trackAdConversion(conversion: AdConversion, details: ConversionDetails): void {
-	if (!GOOGLE_ADS_ID && !META_PIXEL_ID) return;
+	if (!enabled()) return;
 	if (!answered) {
 		heldConversions.push(() => trackAdConversion(conversion, details));
 		return;
