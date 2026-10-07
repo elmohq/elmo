@@ -121,16 +121,21 @@ jobs:
           fi
 
       # Hey API's generator needs a key, so `pnpm build` can't regenerate the
-      # SDKs and the step above can't catch them going stale. Fork and
-      # Dependabot PRs don't get the secret, so they skip this and the push to
-      # main checks it instead.
+      # SDKs and the step above can't catch them going stale. A missing key is
+      # a failure, except where GitHub withholds secrets by design: PRs from
+      # forks and from Dependabot. Those skip, and the push to main checks.
       - name: Verify the generated SDKs match the OpenAPI document
         env:
           HEY_API_PKG_TOKEN: ${{ secrets.HEY_API_PKG_TOKEN }}
+          SECRETS_WITHHELD: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.actor == 'dependabot[bot]') }}
         run: |
           if [ -z "$HEY_API_PKG_TOKEN" ]; then
-            echo "::warning::HEY_API_PKG_TOKEN isn't available to this run, so the SDKs weren't regenerated."
-            exit 0
+            if [ "$SECRETS_WITHHELD" = "true" ]; then
+              echo "::warning::GitHub doesn't give this PR the HEY_API_PKG_TOKEN secret, so the SDKs weren't regenerated. The push to main checks them."
+              exit 0
+            fi
+            echo "::error::HEY_API_PKG_TOKEN isn't set. Add it as a repository secret."
+            exit 1
           fi
           pnpm generate:sdk
           if [ -n "$(git status --porcelain=v1 --untracked-files=all)" ]; then
