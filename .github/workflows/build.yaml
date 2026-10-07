@@ -15,6 +15,10 @@
 # Keep both excluded from Biome (see biome.json) — their generators format
 # their own output with Prettier, and a formatter fighting them would make every
 # build dirty this job.
+#
+# The SDKs in packages/sdk-typescript and packages/sdk-python are generated
+# and excluded from Biome too, but Hey API's generator needs a key, so they get
+# a check of their own after the build.
 
 name: Build
 
@@ -111,6 +115,26 @@ jobs:
         run: |
           if [ -n "$(git status --porcelain=v1 --untracked-files=all)" ]; then
             echo "::error::The build changed files tracked by git. Run 'pnpm build' locally and commit the result."
+            git status --porcelain=v1 --untracked-files=all
+            git diff --
+            exit 1
+          fi
+
+      # Hey API's generator needs a key, so `pnpm build` can't regenerate the
+      # SDKs and the step above can't catch them going stale. Fork and
+      # Dependabot PRs don't get the secret, so they skip this and the push to
+      # main checks it instead.
+      - name: Verify the generated SDKs match the OpenAPI document
+        env:
+          HEY_API_PKG_TOKEN: ${{ secrets.HEY_API_PKG_TOKEN }}
+        run: |
+          if [ -z "$HEY_API_PKG_TOKEN" ]; then
+            echo "::warning::HEY_API_PKG_TOKEN isn't available to this run, so the SDKs weren't regenerated."
+            exit 0
+          fi
+          pnpm generate:sdk
+          if [ -n "$(git status --porcelain=v1 --untracked-files=all)" ]; then
+            echo "::error::The generated SDKs are out of date. Run 'pnpm generate:sdk' locally and commit the result."
             git status --porcelain=v1 --untracked-files=all
             git diff --
             exit 1
