@@ -2,3 +2,5 @@ __pycache__/
 *.py[cod]
 .venv/
 dist/
+# Fern stamps the current git commit in here, so it differs on every commit.
+.fern/

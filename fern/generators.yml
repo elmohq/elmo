@@ -1,4 +1,13 @@
 # yaml-language-server: $schema=https://schema.buildwithfern.dev/generators-yml.json
+#
+# `pnpm generate:sdk` runs this logged out, entirely on this machine: the
+# generators are Docker images, so it needs Docker and stays out of `pnpm
+# build`. Logged out, Fern writes only the sources; the manifests, build config
+# and READMEs around them are ours.
+#
+# FERN_NO_VERSION_REDIRECTION keeps the CLI pinned in package.json from
+# swapping itself for the version in fern.config.json via npx, around pnpm's
+# supply-chain controls. Keep the two versions equal.
 api:
   specs:
     - openapi: ../packages/api-spec/src/openapi.json
