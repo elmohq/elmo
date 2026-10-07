@@ -86,6 +86,10 @@ const PACKAGE_EXCEPTIONS = new Map([
   ["spawndamnit", "Unknown"],
   ["json-query", "Unknown"],
 
+  // Fern CLI – SDK generation tooling only, never distributed with Elmo. Its
+  // package.json omits `license`; the bundled LICENSE file is Apache-2.0.
+  ["fern-api", "Unknown"],
+
   // yuku-analyzer native bindings (transitive via knip). The 0.6.x platform
   // binding packages ship only a .node binary and omit the `license` field, so
   // pnpm reports "Unknown". The yuku-toolchain repository and parent packages
