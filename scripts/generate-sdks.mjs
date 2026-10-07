@@ -8,7 +8,8 @@
  * HEY_API_PKG_TOKEN in the environment, or `//npm.pkg.heyapi.dev/:_authToken`
  * in your npm config. That is why it stays out of turbo's codegen and `pnpm
  * build`, and only runs when called. CI runs it in its own step and fails if
- * the checked-in output differs.
+ * the checked-in output differs. Runs without the key fall back to the
+ * fingerprint this writes (see sdk-fingerprint.mjs).
  *
  * Usage:
  *   pnpm generate:sdk
@@ -16,6 +17,7 @@
 
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { writeFingerprint } from "./sdk-fingerprint.mjs";
 
 // Pinned: the output is checked in, so moving the generator is a regeneration
 // PR of its own.
@@ -49,3 +51,5 @@ execFileSync(
   [fileURLToPath(new URL("sync-sdk-versions.mjs", import.meta.url))],
   { stdio: "inherit" },
 );
+
+writeFingerprint(root);
