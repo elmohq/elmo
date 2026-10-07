@@ -171,7 +171,6 @@ export function onAnalyticsConsent(consentRequired: boolean, apply: (allowed: bo
 	return onCategoryConsent("analytics", consentRequired, apply);
 }
 
-/** The advertising counterpart to {@link onAnalyticsConsent}, for ad and conversion tags. */
 export function onMarketingConsent(consentRequired: boolean, apply: (allowed: boolean) => void): () => void {
 	return onCategoryConsent("marketing", consentRequired, apply);
 }

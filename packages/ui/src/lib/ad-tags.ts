@@ -1,15 +1,7 @@
 import { onMarketingConsent } from "./cookie-consent";
 import { afterPageIdle } from "./idle";
 
-/**
- * Google Ads and Meta Pixel, shared by the marketing site and Elmo's own hosted
- * app (cloud and the public demo). Each platform stays off while its ID is
- * empty, and nothing loads until advertising consent is in effect.
- */
-
-/** Google Ads tag ID, `AW-…`. */
 const GOOGLE_ADS_ID = "AW-926316143";
-/** Meta Pixel ID (Events Manager → Data sources). */
 const META_PIXEL_ID = "2332896134120550";
 
 // Everywhere else — local dev, CI, preview deploys, a self-hosted instance
@@ -27,7 +19,6 @@ export const AD_TAG_CSP = {
 	frame: "https://td.doubleclick.net https://bid.g.doubleclick.net https://www.googletagmanager.com",
 };
 
-/** Google Ads → Goals → Conversions: the label half of each action's `send_to`. */
 const GOOGLE_ADS_CONVERSION_LABELS: Record<AdConversion, string> = {
 	sign_up: "V2PWCM6i8JQdEO_s2bkD",
 	purchase: "JTI3CKnF8ZQdEO_s2bkD",
@@ -134,7 +125,6 @@ function load(): void {
 			ad_storage: "denied",
 			ad_user_data: "denied",
 			ad_personalization: "denied",
-			// Ads only — Google Analytics isn't loaded through this tag.
 			analytics_storage: "denied",
 		});
 	}
@@ -172,11 +162,7 @@ function clearAdCookies(): void {
 	}
 }
 
-/**
- * Follow the visitor's advertising consent for the rest of the session. Tags
- * aren't fetched until the first page view or conversion needs them. Returns an
- * unsubscribe.
- */
+/** Tags aren't fetched until the first page view or conversion needs them. */
 export function initAdTags(consentRequired: boolean): () => void {
 	if (!enabled()) return () => {};
 	return onMarketingConsent(consentRequired, (answer) => {
@@ -196,10 +182,7 @@ export function initAdTags(consentRequired: boolean): () => void {
 	});
 }
 
-/**
- * Count a page view for remarketing audiences. Repeat calls for the path last
- * counted are ignored, so a re-run effect doesn't count a page twice.
- */
+/** Repeat calls for the path last counted are ignored, so a re-run effect doesn't count a page twice. */
 export function trackAdPageView(pathname: string): void {
 	if (!enabled()) return;
 	if (pathname === lastPathname) return;
