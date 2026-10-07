@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://schema.buildwithfern.dev/generators-yml.json
+api:
+  specs:
+    - openapi: ../packages/api-spec/src/openapi.json
+
+default-group: local
+
+groups:
+  local:
+    generators:
+      - name: fernapi/fern-typescript-sdk
+        version: 3.98.4
+        output:
+          location: local-file-system
+          path: ../packages/sdk-typescript/src
+        config:
+          namespaceExport: Elmo
+      - name: fernapi/fern-python-sdk
+        version: 5.34.2
+        output:
+          location: local-file-system
+          path: ../packages/sdk-python/src/elmohq_sdk
+        config:
+          client_class_name: Elmo
+          package_name: elmohq_sdk

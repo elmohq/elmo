@@ -1,0 +1,37 @@
+{
+	"name": "@elmohq/sdk",
+	"version": "0.4.4",
+	"description": "TypeScript SDK for the Elmo API",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/elmohq/elmo.git",
+		"directory": "packages/sdk-typescript"
+	},
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./dist/index.d.mts",
+			"default": "./dist/index.mjs"
+		},
+		"./package.json": "./package.json"
+	},
+	"types": "./dist/index.d.mts",
+	"files": ["dist"],
+	"scripts": {
+		"build": "tsdown",
+		"check-types": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@types/node": "^18.19.0",
+		"tsdown": "^0.22.14",
+		"typescript": "^7.0.2"
+	},
+	"engines": {
+		"node": ">=20.19.0"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

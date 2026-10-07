@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignoreWorkspaces": ["packages/ui"],
+  "ignoreWorkspaces": ["packages/ui", "packages/sdk-typescript"],
   "workspaces": {
     ".": {
       "entry": ["turbo.json"],
