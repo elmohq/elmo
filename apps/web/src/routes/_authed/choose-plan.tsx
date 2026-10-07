@@ -69,18 +69,21 @@ function ChoosePlanPage() {
 }
 
 /** Read back what the webhook recorded rather than trusting the success URL. */
-async function reportPurchase(organizationId: string): Promise<void> {
+async function reportPurchase(organizationId: string, email: string): Promise<void> {
 	const { subscription } = await getBillingStateFn({ data: { organizationId } });
 	if (!subscription || !isPlanKey(subscription.plan)) return;
 	const plan = PLANS[subscription.plan];
 	trackAdConversion("purchase", {
 		id: subscription.id,
 		valueUsd: subscription.billingInterval === "year" ? plan.annualPriceUsd : plan.monthlyPriceUsd,
+		email,
 	});
 }
 
 /** Post-checkout: wait for the Stripe webhook to record the subscription. */
 function ActivatingOrganization({ organizationId }: { organizationId?: string }) {
+	const { session } = Route.useRouteContext();
+	const email = session.user.email;
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 
@@ -90,7 +93,7 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 			for (let i = 0; i < 30 && !cancelled; i++) {
 				const state = await getPaywallStateFn({ data: { organizationId } });
 				if (!state.needsPlan) {
-					if (organizationId) void reportPurchase(organizationId);
+					if (organizationId) void reportPurchase(organizationId, email);
 					forgetPaywall(queryClient);
 					navigate({ to: "/app" });
 					return;
@@ -102,7 +105,7 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 		return () => {
 			cancelled = true;
 		};
-	}, [navigate, organizationId, queryClient]);
+	}, [navigate, organizationId, queryClient, email]);
 
 	return (
 		<div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
@@ -114,6 +117,8 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 }
 
 function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
+	const { session } = Route.useRouteContext();
+	const email = session.user.email;
 	const [annual, setAnnual] = useState(false);
 	const [subscribing, setSubscribing] = useState<PlanKey | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -122,8 +127,8 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 	// Every new cloud account lands here first, whether it signed up with a
 	// password or with Google, so this is where a signup is complete.
 	useEffect(() => {
-		trackAdConversion("sign_up", { id: paywall.organizationId });
-	}, [paywall.organizationId]);
+		trackAdConversion("sign_up", { id: paywall.organizationId, email });
+	}, [paywall.organizationId, email]);
 
 	const subscribe = async (plan: PlanKey) => {
 		setSubscribing(plan);

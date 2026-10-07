@@ -131,7 +131,7 @@ function load(): void {
 	}
 	applyConsent();
 	gtag("js", new Date());
-	gtag("config", GOOGLE_ADS_ID, { send_page_view: false });
+	gtag("config", GOOGLE_ADS_ID, { send_page_view: false, allow_enhanced_conversions: true });
 	fbq("init", META_PIXEL_ID);
 
 	void afterPageIdle().then(() => {
@@ -210,26 +210,41 @@ function markSent(key: string): void {
 	}
 }
 
-/**
- * Report a conversion once per `id` on this browser. `id` also dedupes on the
- * platforms' side, so pass something stable (the org, the subscription).
- */
-export function trackAdConversion(conversion: AdConversion, { id, valueUsd }: { id: string; valueUsd?: number }): void {
+interface ConversionDetails {
+	/** Stable across reloads (the org, the subscription); also dedupes on the platforms' side. */
+	id: string;
+	valueUsd?: number;
+	/**
+	 * Lets each platform match the conversion to an account when the ad-click
+	 * cookie is gone. Both hash it in the browser before sending. Passed only
+	 * here, so neither platform reads it off a page by itself.
+	 */
+	email?: string;
+}
+
+/** Report a conversion once per `id` on this browser. */
+export function trackAdConversion(conversion: AdConversion, details: ConversionDetails): void {
 	if (!GOOGLE_ADS_ID && !META_PIXEL_ID) return;
 	if (!answered) {
-		heldConversions.push(() => trackAdConversion(conversion, { id, valueUsd }));
+		heldConversions.push(() => trackAdConversion(conversion, details));
 		return;
 	}
 	if (!allowed) return;
+	const { id, valueUsd } = details;
 	const key = `${SENT_STORAGE_PREFIX}${conversion}.${id}`;
 	if (alreadySent(key)) return;
 	markSent(key);
 	load();
 
+	const email = details.email?.trim().toLowerCase();
 	const value = valueUsd === undefined ? {} : { value: valueUsd, currency: "USD" };
 	const label = GOOGLE_ADS_CONVERSION_LABELS[conversion];
 	if (label) {
+		if (email) gtag("set", "user_data", { email });
 		gtag("event", "conversion", { send_to: `${GOOGLE_ADS_ID}/${label}`, transaction_id: id, ...value });
 	}
+	// Meta takes customer information on init; calling it again attaches it to
+	// the events that follow.
+	if (email) fbq("init", META_PIXEL_ID, { em: email });
 	fbq("track", META_EVENTS[conversion], value, { eventID: `${conversion}.${id}` });
 }
