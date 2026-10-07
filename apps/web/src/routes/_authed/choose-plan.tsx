@@ -71,10 +71,10 @@ function ChoosePlanPage() {
 /** Read back what the webhook recorded rather than trusting the success URL. */
 async function reportPurchase(organizationId: string, email: string): Promise<void> {
 	const { subscription } = await getBillingStateFn({ data: { organizationId } });
-	if (!subscription || !isPlanKey(subscription.plan)) return;
+	if (!subscription?.stripeSubscriptionId || !isPlanKey(subscription.plan)) return;
 	const plan = PLANS[subscription.plan];
 	trackAdConversion("purchase", {
-		id: subscription.id,
+		id: subscription.stripeSubscriptionId,
 		valueUsd: subscription.billingInterval === "year" ? plan.annualPriceUsd : plan.monthlyPriceUsd,
 		email,
 	});
@@ -118,7 +118,7 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 
 function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 	const { session } = Route.useRouteContext();
-	const email = session.user.email;
+	const { id: userId, email } = session.user;
 	const [annual, setAnnual] = useState(false);
 	const [subscribing, setSubscribing] = useState<PlanKey | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -127,8 +127,8 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 	// Every new cloud account lands here first, whether it signed up with a
 	// password or with Google, so this is where a signup is complete.
 	useEffect(() => {
-		trackAdConversion("sign_up", { id: paywall.organizationId, email });
-	}, [paywall.organizationId, email]);
+		trackAdConversion("sign_up", { id: userId, email });
+	}, [userId, email]);
 
 	const subscribe = async (plan: PlanKey) => {
 		setSubscribing(plan);

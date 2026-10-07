@@ -38,6 +38,13 @@ const META_EVENTS: Record<AdConversion, string> = {
 	purchase: "Purchase",
 };
 
+// A server-side sender (Meta's Conversions API) has to reproduce these exactly
+// for Meta to drop the duplicate.
+const META_EVENT_ID_PREFIXES: Record<AdConversion, string> = {
+	sign_up: "reg_",
+	purchase: "sub_",
+};
+
 // First-party cookies the two tags set on our own domain. Their third-party
 // cookies live on google.com and facebook.com, out of our reach.
 const AD_COOKIE = /^(_gcl_|_fbp$|_fbc$)/;
@@ -219,7 +226,10 @@ function markSent(key: string): void {
 }
 
 interface ConversionDetails {
-	/** Stable across reloads (the org, the subscription); also dedupes on the platforms' side. */
+	/**
+	 * Stable across reloads — the user for a signup, the Stripe subscription for
+	 * a purchase. Also dedupes on the platforms' side.
+	 */
 	id: string;
 	valueUsd?: number;
 	/**
@@ -254,5 +264,5 @@ export function trackAdConversion(conversion: AdConversion, details: ConversionD
 	// Meta takes customer information on init; calling it again attaches it to
 	// the events that follow.
 	if (email) fbq("init", META_PIXEL_ID, { em: email });
-	fbq("track", META_EVENTS[conversion], value, { eventID: `${conversion}.${id}` });
+	fbq("track", META_EVENTS[conversion], value, { eventID: `${META_EVENT_ID_PREFIXES[conversion]}${id}` });
 }
