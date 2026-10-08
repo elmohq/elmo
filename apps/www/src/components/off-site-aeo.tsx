@@ -1,15 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, ArrowUpRight, CalendarClock, Check, PenLine, Quote, Target } from "lucide-react";
+import { ArrowRight, CalendarClock, Check, PenLine, Quote, Target } from "lucide-react";
 import { externalRel } from "@/lib/external-link";
-
-// Cal.com booking page. The selected plan is prefilled into the booking
-// question with identifier "plan" so each call arrives pre-qualified.
-// See https://cal.com/help/bookings/prefill-fields#pre-fill-fields-questions
-const CAL_BASE = "https://cal.com/jrhizor/elmo-aeo";
-
-function calLink(plan: string): string {
-	return plan ? `${CAL_BASE}?plan=${encodeURIComponent(plan)}` : CAL_BASE;
-}
 
 function BookButton({
 	plan,
@@ -22,16 +13,15 @@ function BookButton({
 	variant?: "primary" | "ghost";
 	className?: string;
 }) {
-	const href = calLink(plan);
 	const base = "inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium leading-none";
 	const styles =
 		variant === "primary"
 			? "bg-blue-600 text-white ring-1 ring-blue-600 hover:bg-blue-700"
 			: "bg-white text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300";
 	return (
-		<a href={href} target="_blank" rel={externalRel(href)} className={`${base} ${styles} ${className}`}>
+		<Link to="/off-site-aeo/book" search={plan ? { plan } : {}} className={`${base} ${styles} ${className}`}>
 			{children}
-		</a>
+		</Link>
 	);
 }
 
@@ -343,7 +333,7 @@ export function OffSitePricing() {
 					</div>
 					<BookButton plan="Custom" variant="ghost" className="shrink-0">
 						Talk to us
-						<ArrowUpRight className="size-3.5" />
+						<ArrowRight className="size-3.5" />
 					</BookButton>
 				</div>
 			</div>
