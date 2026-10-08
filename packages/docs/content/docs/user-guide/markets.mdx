@@ -1,0 +1,50 @@
+---
+title: Countries, Languages, and Groups
+description: Ask prompts from the countries and in the languages your customers use, and compare markets side by side.
+---
+
+AI answers depend on where a question is asked from and what language it's asked in. The same question gets different sources, shops, and competitors in the UK than in the US, and Google only shows an AI Overview for some queries in some places. In Elmo, every prompt is asked from one **country** in one **language**, so its results describe that market.
+
+## Choosing a country and language
+
+Prompts start in the **United States**, in **English**. On the **Prompts** settings page, pick a country and language when you add a prompt. **Add Multiple** takes several countries at once and one language, and adds every pasted line once per country.
+
+A saved prompt's country and language can't be changed. Changing them would mix two markets into one history. To measure a prompt somewhere else, add a variant (see below). Each variant is its own prompt with its own history, and each one counts toward your prompt limit.
+
+The prompt text is sent exactly as you write it, so write each variant in its own language. For anything more local than a country, put the place in the prompt itself (for example `best running shop in Manchester`).
+
+## Groups
+
+Variants of the same question belong to one **group**, for example *best running shoes for flat feet* in the US and the UK and *meilleures chaussures de running pieds plats* in France. A group is how Elmo knows they belong together:
+
+- On the **Prompts** settings page, a group's variants are listed together. The **Group** button on each row shows the group's variants, adds a new one (starting from the same text for you to translate), or moves the prompt into another group or out on its own.
+- A pasted line added in several countries at once becomes one group.
+- On a prompt's page, **Variants** switches between the group's members, keeping the tab you're on.
+- In the prompt list, each prompt shows its country and language, and how many variants its group has.
+
+A group holds one enabled prompt per country and language. Two would be the same measurement twice.
+
+## Filtering
+
+Once a brand's prompts span more than one country or language, **Countries** and **Languages** filters appear next to the tag filter on every dashboard page. Pick one value to see that market on its own, or several to see them combined. With nothing picked, every market is included.
+
+The API and MCP server take the same filters as `countries` and `languages` parameters, both comma-separated (`countries=GB,IE`, `languages=en`). `GET /prompts` and `list_prompts` also take a `groupId`.
+
+## Which platforms can answer from a country
+
+Each provider localizes in its own way, and not every one can. For a prompt outside the US, Elmo only runs it on the platforms that can actually answer from that country, rather than storing a US answer under another country's name. A prompt's page has a **How each model runs this prompt** section that says, for each model and each variant, whether it runs and what reaches the provider.
+
+| Provider | Country | Language |
+| --- | --- | --- |
+| Cloro | All platforms | From the prompt's wording |
+| Oxylabs | All platforms | From the prompt's wording |
+| Olostep | All platforms, from the US, UK, Germany, France, and Singapore only | From the prompt's wording |
+| DataForSEO | All scraped surfaces. The ChatGPT and Gemini scrapers don't cover Hong Kong or Taiwan. Not targets pinned to a model version (LLM Responses) | Sent on the scraped surfaces |
+| BrightData | ChatGPT and Google AI Overview | Sent for Google AI Overview |
+| SearchApi | Google AI Mode and Google AI Overview | Sent for the Google surfaces |
+| OpenAI API, Anthropic API | Targets with web search on (`:online`) | From the prompt's wording |
+| Mistral API, OpenRouter | None with web search on | From the prompt's wording |
+
+A model called **without** web search answers the same everywhere, so it runs every prompt in every country. Each run records the country and language it actually sent, which the API returns as `country` and `language` on every run. Each is `null` when the platform didn't take it.
+
+Coverage within a provider also varies by platform. For example, Google AI Mode isn't offered in every country, and Cloro's supported countries differ by platform. A run the provider can't serve fails without storing a result.

@@ -1,4 +1,4 @@
-import { countryName, DEFAULT_COUNTRY } from "@workspace/config/countries";
+import { COUNTRIES, countryName, DEFAULT_COUNTRY } from "@workspace/config/countries";
 import { DEFAULT_LANGUAGE, languageName } from "@workspace/config/languages";
 import { Button } from "@workspace/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
@@ -17,6 +17,14 @@ export interface GroupSummary {
 	/** The first member's text, which is how the group reads everywhere. */
 	label: string;
 	markets: Market[];
+}
+
+/** The default market if the group doesn't have it yet, else the first country it lacks in that language. */
+function firstOpenMarket(taken: Market[], preferred?: Market): Market {
+	const language = preferred?.language ?? DEFAULT_LANGUAGE;
+	const has = (country: string) => taken.some((m) => m.country === country && m.language === language);
+	const country = [preferred?.country ?? DEFAULT_COUNTRY, ...COUNTRIES.map((c) => c.code)].find((c) => !has(c));
+	return { country: country ?? DEFAULT_COUNTRY, language };
 }
 
 /** Where a prompt is asked from and in what language, fixed once it's saved. */
@@ -77,9 +85,7 @@ export function PromptGroupField({
 	onSeparate: () => void;
 }) {
 	const [open, setOpen] = useState(false);
-	const [market, setMarket] = useState<Market>(
-		defaultMarket ?? { country: DEFAULT_COUNTRY, language: DEFAULT_LANGUAGE },
-	);
+	const [market, setMarket] = useState<Market>(() => firstOpenMarket(group.markets, defaultMarket));
 	const variants = group.markets.length;
 	const taken = group.markets.some((m) => m.country === market.country && m.language === market.language);
 

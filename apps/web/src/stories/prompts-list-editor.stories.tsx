@@ -20,12 +20,12 @@ function Harness({
 	initial,
 	showSystemTags = true,
 	premium,
-	newPromptCountry,
+	newPromptMarket,
 }: {
 	initial: EditablePrompt[];
 	showSystemTags?: boolean;
 	premium?: PremiumAllowance;
-	newPromptCountry?: string;
+	newPromptMarket?: { country: string; language: string };
 }) {
 	const [prompts, setPrompts] = useState(initial);
 
@@ -36,7 +36,7 @@ function Harness({
 				onChange={setPrompts}
 				showSystemTags={showSystemTags}
 				premium={premium}
-				newPromptCountry={newPromptCountry}
+				newPromptMarket={newPromptMarket}
 			/>
 		</div>
 	);
@@ -234,17 +234,29 @@ export const NoPremiumColumn: StoryObj = {
 };
 
 /**
- * Saved prompts show their country as fixed text; a new row gets a picker.
+ * A group's saved variants sit together, the later ones nested under the
+ * first, with their country and language fixed; a new row gets pickers.
  * Pasting with a second country ticked adds every line once per country.
  */
-export const Countries: StoryObj = {
+export const Groups: StoryObj = {
 	render: () => (
 		<Harness
-			newPromptCountry="US"
+			newPromptMarket={{ country: "US", language: "en" }}
 			initial={[
-				...entries(["best running shoes for flat feet"], { id: "saved-us", country: "US", systemTags: ["unbranded"] }),
-				...entries(["best running shoes for flat feet"], { id: "saved-gb", country: "GB", systemTags: ["unbranded"] }),
-				...entries(["meilleures chaussures de running"], { country: "FR" }),
+				...entries(["best running shoes for flat feet"], {
+					id: "saved-us",
+					groupId: "g1",
+					country: "US",
+					systemTags: ["unbranded"],
+				}),
+				...entries(["best running shoes for flat feet"], {
+					id: "saved-gb",
+					groupId: "g1",
+					country: "GB",
+					systemTags: ["unbranded"],
+				}),
+				...entries(["meilleures chaussures de running"], { groupId: "g1", country: "FR", language: "fr" }),
+				...entries(["most durable trail runners"], { id: "saved-trail", groupId: "g2", systemTags: ["unbranded"] }),
 			]}
 		/>
 	),
@@ -256,6 +268,6 @@ export const Countries: StoryObj = {
 		await userEvent.click(canvas.getByRole("button", { name: "United States" }));
 		await userEvent.click(await within(document.body).findByRole("button", { name: /united kingdom/i }));
 		await expect(canvas.getByRole("button", { name: /^add 2 prompts$/i })).toBeEnabled();
-		await expect(canvas.getByText("Each line is added once per country.")).toBeVisible();
+		await expect(canvas.getByText("Each line is added once per country, grouped together.")).toBeVisible();
 	},
 };

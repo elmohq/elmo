@@ -6,6 +6,9 @@ const prompts = Array.from({ length: 24 }, (_, i) => ({
 	id: `prompt-${i}`,
 	value: `What are the best AI visibility tools for ${["agencies", "startups", "enterprises", "ecommerce"][i % 4]}? (${i + 1})`,
 	enabled: i % 5 !== 0,
+	country: "US",
+	language: "en",
+	groupId: `group-${i}`,
 	tags: i % 3 === 0 ? ["comparison"] : [],
 	systemTags: i % 2 === 0 ? ["unbranded"] : ["branded"],
 }));

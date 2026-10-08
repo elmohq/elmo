@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { planPromptSave, type StoredPrompt, type SubmittedPrompt } from "@/server/prompt-save";
+import {
+	assertOneVariantPerMarket,
+	type GroupMember,
+	planPromptSave,
+	type StoredPrompt,
+	type SubmittedPrompt,
+} from "@/server/prompt-save";
 
 function stored(id: string, overrides: Partial<StoredPrompt> = {}): StoredPrompt {
 	return { id, enabled: true, premiumModels: [], ...overrides };
@@ -82,5 +88,34 @@ describe("the plan prices the save", () => {
 		const plan = planPromptSave([submitted()], []);
 
 		expect(plan.inserts[0]).not.toHaveProperty("before");
+	});
+});
+
+describe("one prompt per country and language in a group", () => {
+	const member = (overrides: Partial<GroupMember>): GroupMember => ({
+		value: "best running shoes",
+		enabled: true,
+		groupId: "g1",
+		country: "US",
+		language: "en",
+		...overrides,
+	});
+
+	it("allows the same question in other countries and languages", () => {
+		expect(() =>
+			assertOneVariantPerMarket([member({}), member({ country: "GB" }), member({ country: "CA", language: "fr" })]),
+		).not.toThrow();
+	});
+
+	it("refuses two live prompts asking from the same market, naming both", () => {
+		expect(() => assertOneVariantPerMarket([member({}), member({ value: "top running shoes" })])).toThrow(
+			/"best running shoes" and "top running shoes" are in the same group for United States in English/,
+		);
+	});
+
+	it("ignores removed prompts and other groups", () => {
+		expect(() =>
+			assertOneVariantPerMarket([member({}), member({ enabled: false }), member({ groupId: "g2" })]),
+		).not.toThrow();
 	});
 });

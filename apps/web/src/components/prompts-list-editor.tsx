@@ -174,10 +174,10 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"system-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_14rem_3.5rem_minmax(12rem,1fr)_2.75rem]",
-	"system-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_14rem_3.5rem_minmax(12rem,1fr)_5.5rem_2.75rem]",
-	"plain-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_14rem_3.5rem_minmax(12rem,1fr)_2.75rem]",
-	"plain-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_14rem_3.5rem_minmax(12rem,1fr)_5.5rem_2.75rem]",
+	"system-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_14rem_4.5rem_minmax(12rem,1fr)_2.75rem]",
+	"system-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_14rem_4.5rem_minmax(12rem,1fr)_5.5rem_2.75rem]",
+	"plain-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_14rem_4.5rem_minmax(12rem,1fr)_2.75rem]",
+	"plain-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_14rem_4.5rem_minmax(12rem,1fr)_5.5rem_2.75rem]",
 };
 
 interface PromptsListEditorProps {

@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workspace/
 import { cn } from "@workspace/ui/lib/utils";
 import { ChevronRight } from "lucide-react";
 import { useBrandParams } from "@/hooks/use-route-params";
+import { PROMPT_DETAIL_TABS, type PromptDetailTab } from "@/lib/prompt-detail-tabs";
 import { marketLabel } from "@/lib/prompt-markets";
 import type { GroupTargetRow } from "@/server/prompt-group-core";
 import { getPromptGroupFn } from "@/server/prompt-groups";
@@ -37,9 +38,6 @@ function handlingText(handling: Handling | undefined, member: Member): { text: s
  * on every visit.
  */
 export function PromptGroupPanel({ brandId, promptId }: { brandId: string; promptId: string }) {
-	const brandParams = useBrandParams();
-	// Moving between variants keeps the tab you're on.
-	const search = useSearch({ from: "/_authed/app/org/$org/brand/$brand/prompts/$promptId" });
 	const { data } = useQuery({
 		queryKey: ["prompt-group", brandId, promptId],
 		queryFn: () => getPromptGroupFn({ data: { brandId, promptId } }),
@@ -47,8 +45,24 @@ export function PromptGroupPanel({ brandId, promptId }: { brandId: string; promp
 		staleTime: 60_000,
 	});
 	if (!data) return null;
+	return <PromptGroupView promptId={promptId} members={data.members} targets={data.targets} />;
+}
 
-	const { members, targets } = data;
+export function PromptGroupView({
+	promptId,
+	members,
+	targets,
+}: {
+	promptId: string;
+	members: Member[];
+	targets: GroupTargetRow[];
+}) {
+	const brandParams = useBrandParams();
+	// Moving between variants keeps the tab you're on.
+	const tab = useSearch({
+		strict: false,
+		select: (s) => (PROMPT_DETAIL_TABS.includes(s.tab as PromptDetailTab) ? (s.tab as PromptDetailTab) : undefined),
+	});
 	const notRunAnywhere = targets.filter((target) =>
 		members.some((member) => target.byPrompt[member.id] && !target.byPrompt[member.id].runs),
 	).length;
@@ -63,7 +77,7 @@ export function PromptGroupPanel({ brandId, promptId }: { brandId: string; promp
 							key={member.id}
 							to="/app/org/$org/brand/$brand/prompts/$promptId"
 							params={{ ...brandParams, promptId: member.id }}
-							search={{ tab: search.tab }}
+							search={{ tab }}
 							title={member.value}
 							className={cn(
 								"rounded-md border px-2 py-0.5 text-xs transition-colors",

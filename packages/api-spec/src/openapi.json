@@ -55,8 +55,18 @@
 					},
 					"country": {
 						"type": "string",
-						"description": "ISO 3166-1 alpha-2 country the prompt is asked from. Fixed once the prompt exists: to track the same text in another country, create it again with that country.",
+						"description": "ISO 3166-1 alpha-2 country the prompt is asked from. Fixed once the prompt exists: to track the same question in another country, create a variant in the same group.",
 						"example": "US"
+					},
+					"language": {
+						"type": "string",
+						"description": "Language the prompt is written in (e.g. `en`, `de`, `pt-BR`). Sent to the providers that take one; fixed once the prompt exists.",
+						"example": "en"
+					},
+					"groupId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Prompts asking the same question in other countries or languages share a group. A group holds one enabled prompt per country and language."
 					},
 					"tags": {
 						"type": "array",
@@ -96,6 +106,8 @@
 					"value",
 					"enabled",
 					"country",
+					"language",
+					"groupId",
 					"tags",
 					"systemTags",
 					"createdAt",
@@ -126,6 +138,16 @@
 						"type": "string",
 						"description": "ISO 3166-1 alpha-2 country to ask the prompt from, case-insensitive. Defaults to US.",
 						"example": "GB"
+					},
+					"language": {
+						"type": "string",
+						"description": "Language the prompt is written in, case-insensitive. Defaults to `en`.",
+						"example": "de"
+					},
+					"groupId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Add the prompt as a variant of an existing group, by another prompt's `groupId`. Omit to start a new group. Returns 409 if the group already has an enabled prompt in the same country and language."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -156,6 +178,11 @@
 							"type": "string"
 						},
 						"description": "Replaces the prompt's grounded models. Checked against the organization's premium pool."
+					},
+					"groupId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Move the prompt into another prompt's group. Returns 409 if that group already has an enabled prompt in the same country and language."
 					}
 				}
 			},
@@ -1457,6 +1484,10 @@
 						"type": ["string", "null"],
 						"description": "ISO 3166-1 alpha-2 country the provider was asked to answer from. Null when the target can't be localized: a model called without web search, or a surface that only answers for its default market."
 					},
+					"language": {
+						"type": ["string", "null"],
+						"description": "Language sent to the provider. Null when the provider takes no language and the prompt's wording alone set it."
+					},
 					"brandMentioned": {
 						"type": "boolean"
 					},
@@ -1489,6 +1520,7 @@
 					"provider",
 					"webSearchEnabled",
 					"country",
+					"language",
 					"brandMentioned",
 					"competitorsMentioned",
 					"webQueries",
@@ -2066,6 +2098,16 @@
 					"type": "string"
 				},
 				"example": "US,GB"
+			},
+			"LanguagesFilter": {
+				"name": "languages",
+				"in": "query",
+				"description": "Comma-separated language codes. Only prompts written in one of these languages are counted.",
+				"required": false,
+				"schema": {
+					"type": "string"
+				},
+				"example": "de,fr"
 			}
 		},
 		"requestBodies": {
@@ -2370,6 +2412,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2429,6 +2474,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2488,6 +2536,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2589,6 +2640,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2648,6 +2702,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -3234,6 +3291,25 @@
 						"required": false,
 						"schema": {
 							"type": "string"
+						}
+					},
+					{
+						"name": "languages",
+						"in": "query",
+						"description": "Comma-separated language codes; a prompt written in any of them matches.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "groupId",
+						"in": "query",
+						"description": "Only the prompts in this group: a question and its variants in other countries or languages.",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"format": "uuid"
 						}
 					},
 					{
