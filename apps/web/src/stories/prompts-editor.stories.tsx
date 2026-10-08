@@ -98,7 +98,7 @@ export const SuggestPrompts: Story = {
 		await userEvent.click(canvas.getByRole("checkbox", { name: `Include "${SUGGESTIONS[2]!.prompt}"` }));
 		await userEvent.click(canvas.getByRole("button", { name: /^add 4 prompts$/i }));
 
-		await expect(canvas.queryByRole("region", { name: "Suggested prompts" })).not.toBeInTheDocument();
+		await expect(canvas.queryByRole("region", { name: "Suggested Prompts" })).not.toBeInTheDocument();
 		await expect(canvas.getByText("4 added")).toBeVisible();
 	},
 };

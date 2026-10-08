@@ -117,6 +117,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	);
 
 	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
+	const tagOptions = useMemo(() => [...new Set(prompts.flatMap((p) => p.tags))], [prompts]);
 	const isDirty = changedKeys.size > 0 || removedCount > 0;
 	const summary = [
 		addedCount && `${addedCount} added`,
@@ -184,7 +185,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 					disabled={suggesting || filledValues.length >= MAX_PROMPTS}
 					className="flex shrink-0 items-center gap-2 cursor-pointer"
 				>
-					<Sparkles className="h-4 w-4" /> Suggest prompts
+					<Sparkles className="h-4 w-4" /> Suggest Prompts
 				</Button>
 			</div>
 
@@ -192,6 +193,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				<PromptSuggestions
 					brandId={brandId}
 					existingValues={filledValues}
+					tagOptions={tagOptions}
 					// On top, right under the panel, rather than at the end of a list
 					// that can run to a hundred rows.
 					onAdd={(added) => {

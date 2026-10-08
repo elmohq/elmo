@@ -1,5 +1,5 @@
 /**
- * "Suggest prompts" panel for the prompts page: asks the worker for prompts
+ * "Suggest Prompts" panel for the prompts page: asks the worker for prompts
  * the brand doesn't track yet, then lets the user tick, edit, and add them to
  * the list. Added rows land in the editor unsaved, so the page's normal save
  * bar is what persists them.
@@ -8,11 +8,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { dedupeKey, describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS, PROMPT_SUGGESTION_RUNS_PER_DAY } from "@workspace/lib/constants";
-import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Input } from "@workspace/ui/components/input";
 import { Spinner } from "@workspace/ui/components/spinner";
+import { TagsInput } from "@workspace/ui/components/tags-input";
 import { AlertCircle, RefreshCw, Sparkles } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
@@ -38,6 +38,8 @@ interface PromptSuggestionsProps {
 	brandId: string;
 	/** Every filled prompt currently in the editor, saved or not. */
 	existingValues: string[];
+	/** Tags already used in the editor, offered alongside the suggestions' own. */
+	tagOptions: string[];
 	onAdd: (prompts: { value: string; tags: string[] }[]) => void;
 	onClose: () => void;
 }
@@ -71,7 +73,7 @@ function useSuggestionRuns(brandId: string, existingValues: string[]) {
 		start();
 	};
 
-	// One run on open; later runs come from the "Suggest more" button.
+	// One run on open; later runs come from the "Suggest More" button.
 	const opened = useRef(false);
 	useEffect(() => {
 		if (opened.current) return;
@@ -127,12 +129,14 @@ function SuggestionPicker({
 	suggestions,
 	onChange,
 	existingValues,
+	tagOptions,
 	onAdd,
 	actions,
 }: {
 	suggestions: Suggestion[];
 	onChange: (next: Suggestion[]) => void;
 	existingValues: string[];
+	tagOptions: string[];
 	onAdd: (prompts: { value: string; tags: string[] }[]) => void;
 	/** "Suggest more" and "Cancel", which sit beside the add button. */
 	actions: ReactNode;
@@ -157,6 +161,10 @@ function SuggestionPicker({
 	const update = (key: string, patch: Partial<Suggestion>) =>
 		onChange(suggestions.map((s) => (s.key === key ? { ...s, ...patch } : s)));
 	const allSelected = suggestions.length > 0 && suggestions.every((s) => s.selected);
+	const allTagOptions = useMemo(
+		() => [...new Set([...tagOptions, ...suggestions.flatMap((s) => s.tags)])].sort().map((value) => ({ value })),
+		[tagOptions, suggestions],
+	);
 
 	return (
 		<>
@@ -172,27 +180,35 @@ function SuggestionPicker({
 							onCheckedChange={() => onChange(suggestions.map((s) => ({ ...s, selected: !allSelected })))}
 							aria-label={allSelected ? "Deselect all suggestions" : "Select all suggestions"}
 						/>
-						Untick any you don't want, or edit them before adding.
+						Untick any you don't want, or edit the text and tags before adding.
 					</div>
 					{suggestions.map((s) => (
-						<div key={s.key} className={`flex items-center gap-2 ${s.selected ? "" : "opacity-60"}`}>
-							<Checkbox
-								checked={s.selected}
-								onCheckedChange={(checked) => update(s.key, { selected: checked === true })}
-								aria-label={`Include "${s.value}"`}
-							/>
+						<div
+							key={s.key}
+							className={`flex flex-wrap items-start gap-2 sm:flex-nowrap ${s.selected ? "" : "opacity-60"}`}
+						>
+							<div className="flex shrink-0 pt-2.5">
+								<Checkbox
+									checked={s.selected}
+									onCheckedChange={(checked) => update(s.key, { selected: checked === true })}
+									aria-label={`Include "${s.value}"`}
+								/>
+							</div>
 							<Input
 								value={s.value}
 								onChange={(e) => update(s.key, { value: e.target.value })}
 								aria-label="Suggested prompt"
-								className="h-8 min-w-0 flex-1 bg-background"
+								className="min-w-0 flex-1 bg-background"
 							/>
-							<div className="hidden w-40 shrink-0 flex-wrap gap-1 sm:flex">
-								{s.tags.map((tag) => (
-									<Badge key={tag} variant="outline">
-										{tag}
-									</Badge>
-								))}
+							<div className="w-full pl-6 sm:w-80 sm:shrink-0 sm:pl-0">
+								<TagsInput
+									value={s.tags}
+									onValueChange={(tags) => update(s.key, { tags })}
+									options={allTagOptions}
+									placeholder="Add tag..."
+									searchPlaceholder="Search or create tag..."
+									normalizeValue={(raw) => raw.toLowerCase().trim()}
+								/>
 							</div>
 						</div>
 					))}
@@ -219,7 +235,7 @@ function SuggestionPicker({
 	);
 }
 
-export function PromptSuggestions({ brandId, existingValues, onAdd, onClose }: PromptSuggestionsProps) {
+export function PromptSuggestions({ brandId, existingValues, tagOptions, onAdd, onClose }: PromptSuggestionsProps) {
 	const { phase, suggestions, setSuggestions, remaining, requestRun, cancel } = useSuggestionRuns(
 		brandId,
 		existingValues,
@@ -237,10 +253,10 @@ export function PromptSuggestions({ brandId, existingValues, onAdd, onClose }: P
 	);
 
 	return (
-		<section aria-label="Suggested prompts" className="space-y-3 rounded-md border bg-muted/40 p-3">
+		<section aria-label="Suggested Prompts" className="space-y-3 rounded-md border bg-muted/40 p-3">
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<h2 className="flex items-center gap-2 text-sm font-medium">
-					<Sparkles className="h-4 w-4 text-muted-foreground" /> Suggested prompts
+					<Sparkles className="h-4 w-4 text-muted-foreground" /> Suggested Prompts
 				</h2>
 				{remaining !== null && (
 					<span className="text-xs text-muted-foreground">
@@ -283,6 +299,7 @@ export function PromptSuggestions({ brandId, existingValues, onAdd, onClose }: P
 					suggestions={suggestions}
 					onChange={setSuggestions}
 					existingValues={existingValues}
+					tagOptions={tagOptions}
 					onAdd={onAdd}
 					actions={
 						<>
@@ -294,7 +311,7 @@ export function PromptSuggestions({ brandId, existingValues, onAdd, onClose }: P
 								disabled={outOfRuns}
 								className="flex items-center gap-2"
 							>
-								<RefreshCw className="h-4 w-4" /> Suggest more
+								<RefreshCw className="h-4 w-4" /> Suggest More
 							</Button>
 							{closeButton("Cancel")}
 						</>
