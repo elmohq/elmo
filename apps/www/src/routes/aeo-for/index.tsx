@@ -6,7 +6,7 @@ import { LogoStrip } from "@/components/home/logos";
 import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { CARD, SectionHeading } from "@/components/home/ui";
 import { Navbar } from "@/components/navbar";
-import { aeoVerticals } from "@/data/aeo-verticals";
+import { aeoHeadline, aeoVerticals } from "@/data/aeo-verticals";
 import { breadcrumbJsonLd, canonicalUrl, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "Answer Engine Optimization by Industry · Elmo";
@@ -15,7 +15,7 @@ const description =
 
 export const Route = createFileRoute("/aeo-for/")({
 	loader: () => ({
-		items: aeoVerticals.map((v) => ({ name: `AEO for ${v.audience}`, path: `/aeo-for/${v.slug}` })),
+		items: aeoVerticals.map((v) => ({ name: aeoHeadline(v), path: `/aeo-for/${v.slug}` })),
 	}),
 	head: ({ loaderData }) => ({
 		meta: [
@@ -67,7 +67,7 @@ function AeoForIndex() {
 										className={`group flex flex-1 flex-col p-6 transition hover:shadow-[0_0_0_1px_rgb(37_99_235/0.45),0_16px_40px_-20px_rgb(37_99_235/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${CARD}`}
 									>
 										<h2 className="flex items-center justify-between gap-3 text-base font-semibold text-zinc-950">
-											AEO for {v.audience}
+											{aeoHeadline(v)}
 											<ArrowRight
 												className="size-4 shrink-0 text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-blue-600"
 												aria-hidden="true"

@@ -11,7 +11,7 @@ export interface AeoVertical {
 	technical?: boolean;
 	/** The two customer quotes closest to this audience. */
 	reviews: [keyof typeof PEOPLE, keyof typeof PEOPLE];
-	/** Page <h1> and <title>, when "AEO for {audience}" is not what buyers search. */
+	/** Page <h1>, in title case, when "AEO for {Audience}" is not what buyers search. */
 	headline?: string;
 	metaTitle?: string;
 	metaDescription?: string;
@@ -31,7 +31,7 @@ export const aeoVerticals: AeoVertical[] = [
 		plan: "business",
 		technical: true,
 		reviews: ["viveka", "borys"],
-		headline: "AI visibility software for agencies",
+		headline: "AI Visibility Software for Agencies",
 		metaTitle: "AI Visibility & SEO Software for Agencies (White-Label) · Elmo",
 		metaDescription:
 			"White-label AI visibility software for agencies: track every client's presence in ChatGPT, Perplexity and AI Overviews, report under your own brand, and self-host without per-seat fees.",
@@ -233,7 +233,7 @@ export const aeoVerticals: AeoVertical[] = [
 		plan: "starter",
 		technical: true,
 		reviews: ["deni", "nolan"],
-		headline: "Startup SEO and AI search visibility",
+		headline: "Startup SEO and AI Search Visibility",
 		metaTitle: "Startup SEO in the AI Search Era: A Practical Guide · Elmo",
 		metaDescription:
 			"Startup SEO when a growing share of searches end in an AI answer: which prompts to track first, what to publish, and how to measure visibility on no budget.",
@@ -282,7 +282,7 @@ export const aeoVerticals: AeoVertical[] = [
 		plan: "business",
 		technical: true,
 		reviews: ["nolan", "viveka"],
-		headline: "Enterprise AI visibility platforms",
+		headline: "Enterprise AI Visibility Platforms",
 		metaTitle: "Enterprise AI Visibility & AEO Platform Requirements · Elmo",
 		metaDescription:
 			"What an enterprise AEO platform has to do: multi-brand tracking, data residency, SSO, export, and a visibility methodology your analysts can audit rather than trust.",
@@ -1023,6 +1023,21 @@ export const aeoVerticals: AeoVertical[] = [
 		],
 	},
 ];
+
+const MINOR_WORDS = new Set(["a", "an", "and", "for", "in", "of", "on", "or", "the", "to", "vs"]);
+
+/** Capitalises each word and each hyphenated part, leaving minor words and existing capitals (SaaS, HR) alone. */
+function titleCase(text: string) {
+	return text
+		.split(" ")
+		.map((word, i) => (i > 0 && MINOR_WORDS.has(word) ? word : word.replace(/(^|-)(\w)/g, (m) => m.toUpperCase())))
+		.join(" ");
+}
+
+/** The page's title, as its <h1> and wherever the page is listed. */
+export function aeoHeadline(v: AeoVertical): string {
+	return v.headline ?? titleCase(`AEO for ${v.audience}`);
+}
 
 export function getAeoVertical(slug: string): AeoVertical | undefined {
 	return aeoVerticals.find((v) => v.slug === slug);

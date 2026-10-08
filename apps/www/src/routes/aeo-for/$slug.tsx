@@ -17,7 +17,7 @@ import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { CARD, SectionHeading } from "@/components/home/ui";
 import { WhySwitch } from "@/components/home/why-switch";
 import { Navbar } from "@/components/navbar";
-import { type AeoVertical, aeoVerticals, getAeoVertical } from "@/data/aeo-verticals";
+import { type AeoVertical, aeoHeadline, aeoVerticals, getAeoVertical } from "@/data/aeo-verticals";
 import { externalRel } from "@/lib/external-link";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, howToJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/aeo-for/$slug")({
 	head: ({ loaderData }) => {
 		if (!loaderData) return {};
 		const { vertical: v, others } = loaderData;
-		const title = v.metaTitle ?? `AEO for ${v.audience}: Track AI Visibility · Elmo`;
+		const title = v.metaTitle ?? `${aeoHeadline(v)}: Track AI Visibility · Elmo`;
 		const description = v.metaDescription ?? v.short;
 		const path = `/aeo-for/${v.slug}`;
 		return {
@@ -41,7 +41,7 @@ export const Route = createFileRoute("/aeo-for/$slug")({
 				breadcrumbJsonLd([
 					{ name: "Home", path: "/" },
 					{ name: "AEO by industry", path: "/aeo-for" },
-					{ name: v.headline ?? `AEO for ${v.audience}`, path },
+					{ name: aeoHeadline(v), path },
 				]),
 				faqJsonLd(v.faqs),
 				howToJsonLd({
@@ -49,9 +49,7 @@ export const Route = createFileRoute("/aeo-for/$slug")({
 					description: v.short,
 					steps: v.plays.map((play) => ({ name: play.name, text: play.text })),
 				}),
-				itemListJsonLd(
-					others.map((o) => ({ name: `AEO for ${o.audience}`, path: `/aeo-for/${o.slug}`, description: o.short })),
-				),
+				itemListJsonLd(others.map((o) => ({ name: aeoHeadline(o), path: `/aeo-for/${o.slug}`, description: o.short }))),
 			],
 		};
 	},
@@ -259,7 +257,7 @@ function VerticalPage() {
 			<main>
 				<Hero
 					badge={<AudienceBadge audience={vertical.audience} />}
-					title={vertical.headline ?? `AEO for ${vertical.audience}`}
+					title={aeoHeadline(vertical)}
 					lede={<WithPrompts text={vertical.short} />}
 					selfHost={vertical.technical === true}
 					from={FROM}
