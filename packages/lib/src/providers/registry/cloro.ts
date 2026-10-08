@@ -176,7 +176,11 @@ export const cloro: Provider = {
 			throw new Error(`Cloro: no task mapping for model "${model}". Supported: ${Object.keys(CLORO_TASKS).join(", ")}`);
 		}
 
-		const payload: Record<string, any> = { [task.field]: prompt, country: options?.country ?? DEFAULT_COUNTRY, include: task.include };
+		const payload: Record<string, any> = {
+			[task.field]: prompt,
+			country: options?.country ?? DEFAULT_COUNTRY,
+			include: task.include,
+		};
 
 		const response = await runAsyncTask(task.taskType, payload);
 		const answer = cloroAnswer(response) ?? {};

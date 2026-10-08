@@ -32,7 +32,7 @@ export async function deleteBrand(brandId: string) {
 
 export async function createPrompt(
 	brandId: string,
-	opts: { value?: string; tags?: string[]; systemTags?: string[]; enabled?: boolean } = {},
+	opts: { value?: string; tags?: string[]; systemTags?: string[]; enabled?: boolean; country?: string } = {},
 ) {
 	const [row] = await db
 		.insert(prompts)
@@ -42,6 +42,7 @@ export async function createPrompt(
 			tags: opts.tags ?? [],
 			systemTags: opts.systemTags ?? ["unbranded"],
 			enabled: opts.enabled ?? true,
+			...(opts.country ? { country: opts.country } : {}),
 		})
 		.returning({ id: prompts.id });
 	return row.id;

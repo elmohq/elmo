@@ -76,7 +76,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 		lookback,
 		model: modelParam,
 		tags: tags.length > 0 ? tags : undefined,
-		countries: countries.length > 0 ? countries : undefined,
+		countries,
 	});
 
 	const availableTags = promptsSummary?.availableTags ?? [];
@@ -175,7 +175,7 @@ function ChartSection({
 	searchQuery: string;
 	selectedTags: string[];
 	selectedCountries: string[];
-	sortedPrompts: { id: string; value: string; firstEvaluatedAt?: Date | string | null }[];
+	sortedPrompts: { id: string; value: string; country?: string; firstEvaluatedAt?: Date | string | null }[];
 	availableIndividualModels: string[];
 }) {
 	const { data: batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {

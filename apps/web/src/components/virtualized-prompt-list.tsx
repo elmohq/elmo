@@ -6,6 +6,7 @@ import { CachedPromptChart } from "./cached-prompt-chart";
 interface PromptItem {
 	id: string;
 	value: string;
+	country?: string;
 	// All-time first evaluation date (null if never evaluated)
 	// Note: Date objects are serialized to strings in JSON responses
 	firstEvaluatedAt?: Date | string | null;
@@ -41,6 +42,9 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 	const [scrollMargin, setScrollMargin] = useState(0);
 
 	const orderedPrompts = prompts;
+	// Labelled only when the list mixes countries; a single-country list
+	// (or one filtered to a country) would just repeat the same code.
+	const showCountry = new Set(prompts.map((prompt) => prompt.country)).size > 1;
 
 	useLayoutEffect(() => {
 		if (listRef.current) {
@@ -93,6 +97,7 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 								<CachedPromptChart
 									promptId={prompt.id}
 									promptName={prompt.value}
+									country={showCountry ? prompt.country : undefined}
 									brandId={brandId}
 									lookback={lookback}
 									selectedModel={selectedModel}

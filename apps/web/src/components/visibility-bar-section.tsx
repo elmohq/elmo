@@ -27,7 +27,7 @@ export function VisibilityBarSection({ brandId }: { brandId: string | undefined 
 	} = useFilteredVisibility(brandId, {
 		lookback,
 		tags: tags.length > 0 ? tags : undefined,
-		countries: countries.length > 0 ? countries : undefined,
+		countries,
 		search: search || undefined,
 		model: modelParam,
 	});

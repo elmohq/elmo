@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { Entitlements } from "@workspace/config/entitlements";
 import { DEFAULT_COUNTRY } from "@workspace/config/countries";
+import type { Entitlements } from "@workspace/config/entitlements";
 import { targetFilterValue } from "@workspace/config/model-filter";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";

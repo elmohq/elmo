@@ -2,8 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@/components/prompts-list-editor";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
-import { defaultCountryForNewPrompts } from "@/lib/prompt-countries";
 import { trackEvent } from "@/lib/posthog";
+import { defaultCountryForNewPrompts } from "@/lib/prompt-countries";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updatePromptsFn } from "@/server/prompts";
 

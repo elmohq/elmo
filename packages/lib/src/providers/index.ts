@@ -76,10 +76,7 @@ export function isGroundedApiTarget(config: ModelConfig): boolean {
  * market every provider answers for unasked. One with no search runs every
  * prompt, since its answer doesn't depend on where it was asked from.
  */
-export function targetLocalization(
-	config: ModelConfig,
-	country: string,
-): { runs: boolean; localized: boolean } {
+export function targetLocalization(config: ModelConfig, country: string): { runs: boolean; localized: boolean } {
 	const localized = getProvider(config.provider).localizes?.(config) ?? false;
 	if (localized) return { runs: true, localized };
 	const searchFree = !config.webSearch && resolveProviderAccess(config) === "api";

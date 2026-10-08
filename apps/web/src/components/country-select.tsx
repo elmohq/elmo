@@ -37,9 +37,7 @@ export function CountriesPicker({ value, onChange }: { value: string[]; onChange
 	return (
 		<Popover>
 			<PopoverTrigger
-				render={
-					<Button type="button" variant="outline" size="sm" className="h-8 max-w-64 justify-start truncate" />
-				}
+				render={<Button type="button" variant="outline" size="sm" className="h-8 max-w-64 justify-start truncate" />}
 			>
 				<span className="truncate">{summary}</span>
 			</PopoverTrigger>

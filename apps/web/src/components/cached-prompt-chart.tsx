@@ -1,3 +1,4 @@
+import { countryName } from "@workspace/config/countries";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -21,9 +22,20 @@ function PlaceholderBars({ heights }: { heights: readonly number[] }) {
 	);
 }
 
-function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
+function PromptTitle({ name, highlight, country }: { name: string; highlight: string; country?: string }) {
 	const term = highlight.trim();
-	if (!term) return <CardTitle className="text-sm">{name}</CardTitle>;
+	const countryLabel = country && (
+		<span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground" title={countryName(country)}>
+			{country}
+		</span>
+	);
+	if (!term)
+		return (
+			<CardTitle className="text-sm">
+				{name}
+				{countryLabel}
+			</CardTitle>
+		);
 
 	const pattern = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
 	const segments = name.split(pattern).map((part, index) => ({
@@ -43,6 +55,7 @@ function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 					<Fragment key={segment.key}>{segment.part}</Fragment>
 				),
 			)}
+			{countryLabel}
 		</CardTitle>
 	);
 }
@@ -82,6 +95,8 @@ export function PromptChartSkeleton() {
 export interface CachedPromptChartProps {
 	promptId: string;
 	promptName: string;
+	/** Shown beside the title when the list mixes countries. */
+	country?: string;
 	brandId: string;
 	lookback: LookbackPeriod;
 	/** Current model filter from the URL. "all" = no filter. */
@@ -100,6 +115,7 @@ export interface CachedPromptChartProps {
 export const CachedPromptChart = memo(function CachedPromptChart({
 	promptId,
 	promptName,
+	country,
 	brandId,
 	lookback = "1m",
 	selectedModel = "all",
@@ -150,7 +166,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					<PromptTitle name={promptName} highlight={searchHighlight} />
+					<PromptTitle name={promptName} highlight={searchHighlight} country={country} />
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				{/* h-[300px] instead of h-[250px] to compensate for the missing footer section,
@@ -191,7 +207,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 				{exportPortal}
 				<Card className="py-3 gap-3">
 					<CardHeader className="flex justify-between items-center px-3">
-						<PromptTitle name={promptName} highlight={searchHighlight} />
+						<PromptTitle name={promptName} highlight={searchHighlight} country={country} />
 					</CardHeader>
 					<Separator className="py-0 my-0" />
 					<CardContent className="px-3">
@@ -228,7 +244,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 			{exportPortal}
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					<PromptTitle name={promptName} highlight={searchHighlight} />
+					<PromptTitle name={promptName} highlight={searchHighlight} country={country} />
 					{lastBrandVisibility !== null && (
 						<Badge
 							variant={visibilityBadgeProps(lastBrandVisibility).variant}

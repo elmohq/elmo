@@ -320,8 +320,8 @@ function ColumnHeader({
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">
-								Where the prompt is asked from. AI answers and the sources they cite differ by country. To track a
-								saved prompt somewhere else, add it again in that country.
+								Where the prompt is asked from. AI answers and the sources they cite differ by country. To track a saved
+								prompt somewhere else, add it again in that country.
 							</p>
 						</TooltipContent>
 					</Tooltip>
@@ -581,7 +581,9 @@ export function PromptsListEditor({
 	// [select] [text] [system?] [country?] [tags] [premium?] [switch]. Mobile
 	// renders a stacked per-prompt block instead (no selection, no bulk).
 	const gridCols =
-		GRID_COLS[`${showSystemTags ? "system" : "plain"}${showCountry ? "-country" : ""}-${premium ? "premium" : "basic"}`];
+		GRID_COLS[
+			`${showSystemTags ? "system" : "plain"}${showCountry ? "-country" : ""}-${premium ? "premium" : "basic"}`
+		];
 
 	return (
 		<div className="space-y-4">
