@@ -64,24 +64,24 @@
 		"zod": "^4.5.4"
 	},
 	"devDependencies": {
-		"@storybook/addon-vitest": "^10.6.0",
-		"@storybook/react": "^10.6.0",
-		"@storybook/react-vite": "^10.6.0",
+		"@storybook/addon-vitest": "^10.6.1",
+		"@storybook/react": "^10.6.1",
+		"@storybook/react-vite": "^10.6.1",
 		"@types/archiver": "^8.0.0",
 		"@types/node": "^26.4.1",
 		"@types/pg": "^8.23.1",
 		"@types/react": "^19.2.18",
 		"@types/react-dom": "^19.2.7",
 		"@vitejs/plugin-react": "^6.1.1",
-		"@vitest/browser-playwright": "^4.1.11",
-		"@vitest/coverage-v8": "^4.1.11",
+		"@vitest/browser-playwright": "^5.0.3",
+		"@vitest/coverage-v8": "^5.0.3",
 		"archiver": "^8.0.0",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
 		"playwright": "^1.63.0",
 		"png-to-ico": "^3.0.2",
-		"storybook": "^10.6.0",
+		"storybook": "^10.6.1",
 		"typescript": "^7.0.2",
 		"vite": "^8.2.2",
-		"vitest": "^4.1.11"
+		"vitest": "^5.0.3"
 	}
 }
