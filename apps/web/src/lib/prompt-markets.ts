@@ -28,7 +28,7 @@ export function defaultMarketForNewPrompts(prompts: readonly MarketPrompt[]): { 
 	};
 }
 
-/** "GB · en" — compact enough for a card title or a chip. */
+/** "GB · EN" — compact enough for a card title or a chip. */
 export function marketLabel(prompt: { country: string; language: string }): string {
-	return `${prompt.country} · ${prompt.language}`;
+	return `${prompt.country} · ${prompt.language.toUpperCase()}`;
 }

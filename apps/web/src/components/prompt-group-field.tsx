@@ -1,9 +1,19 @@
 import { COUNTRIES, countryName, DEFAULT_COUNTRY } from "@workspace/config/countries";
 import { DEFAULT_LANGUAGE, languageName } from "@workspace/config/languages";
 import { Button } from "@workspace/ui/components/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
+	DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { Layers } from "lucide-react";
-import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { ChevronDown, MoreHorizontal } from "lucide-react";
 import { CountrySelect, LanguageSelect } from "@/components/market-select";
 import { marketLabel } from "@/lib/prompt-markets";
 
@@ -19,16 +29,21 @@ export interface GroupSummary {
 	markets: Market[];
 }
 
+const chipClass = "h-7 shrink-0 gap-1 px-2 font-mono text-xs";
+
 /** The default market if the group doesn't have it yet, else the first country it lacks in that language. */
-function firstOpenMarket(taken: Market[], preferred?: Market): Market {
+export function firstOpenMarket(taken: Market[], preferred?: Market): Market {
 	const language = preferred?.language ?? DEFAULT_LANGUAGE;
 	const has = (country: string) => taken.some((m) => m.country === country && m.language === language);
 	const country = [preferred?.country ?? DEFAULT_COUNTRY, ...COUNTRIES.map((c) => c.code)].find((c) => !has(c));
 	return { country: country ?? DEFAULT_COUNTRY, language };
 }
 
-/** Where a prompt is asked from and in what language, fixed once it's saved. */
-export function MarketField({
+/**
+ * Where a prompt is asked from and in what language, as a compact chip beside
+ * its text. A picker until the prompt is saved; fixed after that.
+ */
+export function MarketChip({
 	market,
 	saved,
 	onChange,
@@ -37,143 +52,99 @@ export function MarketField({
 	saved: boolean;
 	onChange: (market: Market) => void;
 }) {
+	const full = `${countryName(market.country)}, ${languageName(market.language)}`;
 	if (saved) {
 		return (
-			<div
-				className="flex h-9 items-center px-1 text-sm"
-				title="Fixed once saved. Add a variant to track this prompt in another country or language."
-			>
-				<span className="truncate">
-					{countryName(market.country)} · {languageName(market.language)}
-				</span>
-			</div>
+			<Tooltip>
+				<TooltipTrigger
+					render={
+						<span className="inline-flex h-7 shrink-0 cursor-default items-center rounded-md border bg-muted/50 px-2 font-mono text-xs text-muted-foreground" />
+					}
+				>
+					{marketLabel(market)}
+				</TooltipTrigger>
+				<TooltipContent>
+					<p className="max-w-xs">
+						Asked from {full}. Fixed once saved. Use “Add country or language” to track it somewhere else.
+					</p>
+				</TooltipContent>
+			</Tooltip>
 		);
 	}
 	return (
-		<div className="flex gap-1">
-			<CountrySelect
-				value={market.country}
-				onChange={(country) => onChange({ ...market, country })}
-				className="h-9 min-w-0 flex-1"
-			/>
-			<LanguageSelect
-				value={market.language}
-				onChange={(language) => onChange({ ...market, language })}
-				className="h-9 w-24 shrink-0"
-			/>
-		</div>
+		<Popover>
+			<PopoverTrigger
+				render={
+					<Button type="button" variant="outline" size="sm" className={chipClass} aria-label={`Market: ${full}`} />
+				}
+			>
+				{marketLabel(market)}
+				<ChevronDown className="size-3 text-muted-foreground" />
+			</PopoverTrigger>
+			<PopoverContent align="start" className="w-72 space-y-2 p-3">
+				<p className="text-xs text-muted-foreground">
+					Where the prompt is asked from, and the language it's written in.
+				</p>
+				<CountrySelect
+					value={market.country}
+					onChange={(country) => onChange({ ...market, country })}
+					className="h-9 w-full"
+				/>
+				<LanguageSelect
+					value={market.language}
+					onChange={(language) => onChange({ ...market, language })}
+					className="h-9 w-full"
+				/>
+			</PopoverContent>
+		</Popover>
 	);
 }
 
-/**
- * A prompt's group: the other countries and languages it's asked in. Adds a
- * variant, or moves the prompt into another group (or out on its own).
- */
-export function PromptGroupField({
-	group,
+/** Per-row actions for grouping: add a variant, move to another group, or leave one. */
+export function PromptRowMenu({
+	inGroup,
 	otherGroups,
-	defaultMarket,
 	onAddVariant,
 	onMove,
 	onSeparate,
 }: {
-	group: GroupSummary;
+	inGroup: boolean;
 	otherGroups: GroupSummary[];
-	defaultMarket?: Market;
-	onAddVariant: (market: Market) => void;
+	onAddVariant: () => void;
 	onMove: (groupId: string) => void;
 	onSeparate: () => void;
 }) {
-	const [open, setOpen] = useState(false);
-	const [market, setMarket] = useState<Market>(() => firstOpenMarket(group.markets, defaultMarket));
-	const variants = group.markets.length;
-	const taken = group.markets.some((m) => m.country === market.country && m.language === market.language);
-
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger
-				render={
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						className="h-8 w-full justify-center gap-1 px-2"
-						aria-label={`Group: ${variants} variant${variants === 1 ? "" : "s"}`}
-					/>
-				}
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				render={<Button type="button" variant="ghost" size="icon" className="size-8" aria-label="Prompt actions" />}
 			>
-				<Layers className="size-3.5 text-muted-foreground" />
-				<span className="text-xs tabular-nums">{variants}</span>
-			</PopoverTrigger>
-			<PopoverContent align="end" className="w-80 space-y-3 p-3">
-				<div className="space-y-1">
-					<p className="text-sm font-medium">Variants</p>
-					<p className="text-xs text-muted-foreground">
-						The same question asked in other countries or languages. They're shown and compared together.
-					</p>
-					<div className="flex flex-wrap gap-1 pt-1">
-						{group.markets.map((m) => (
-							<span key={marketLabel(m)} className="rounded border px-1.5 py-0.5 font-mono text-[10px]">
-								{marketLabel(m)}
-							</span>
-						))}
-					</div>
-				</div>
-
-				<div className="space-y-1.5 border-t pt-3">
-					<p className="text-sm font-medium">Add a variant</p>
-					<MarketField market={market} saved={false} onChange={setMarket} />
-					<Button
-						type="button"
-						size="sm"
-						className="w-full"
-						disabled={taken}
-						onClick={() => {
-							onAddVariant(market);
-							setOpen(false);
-						}}
-					>
-						{taken ? "Already in this group" : "Add variant"}
-					</Button>
-					<p className="text-xs text-muted-foreground">Starts with this prompt's text; translate it before saving.</p>
-				</div>
-
-				{(otherGroups.length > 0 || variants > 1) && (
-					<div className="space-y-1 border-t pt-3">
-						<p className="text-sm font-medium">Move to</p>
-						<div className="max-h-48 overflow-y-auto">
-							{variants > 1 && (
-								<button
-									type="button"
-									onClick={() => {
-										onSeparate();
-										setOpen(false);
-									}}
-									className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-								>
-									Its own group
-								</button>
-							)}
-							{otherGroups.map((other) => (
-								<button
-									type="button"
-									key={other.groupId}
-									onClick={() => {
-										onMove(other.groupId);
-										setOpen(false);
-									}}
-									className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-								>
-									<span className="min-w-0 flex-1 truncate">{other.label || "Untitled"}</span>
+				<MoreHorizontal className="size-4" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-64">
+				<DropdownMenuItem onClick={onAddVariant}>Add country or language</DropdownMenuItem>
+				{otherGroups.length > 0 && (
+					<DropdownMenuSub>
+						<DropdownMenuSubTrigger>Group with…</DropdownMenuSubTrigger>
+						<DropdownMenuSubContent className="max-h-72 w-72 overflow-y-auto">
+							{otherGroups.map((group) => (
+								<DropdownMenuItem key={group.groupId} onClick={() => onMove(group.groupId)}>
+									<span className="min-w-0 flex-1 truncate">{group.label || "Untitled"}</span>
 									<span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-										{other.markets.map(marketLabel).join(", ")}
+										{group.markets.map(marketLabel).join(", ")}
 									</span>
-								</button>
+								</DropdownMenuItem>
 							))}
-						</div>
-					</div>
+						</DropdownMenuSubContent>
+					</DropdownMenuSub>
 				)}
-			</PopoverContent>
-		</Popover>
+				{inGroup && (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem onClick={onSeparate}>Remove from group</DropdownMenuItem>
+					</>
+				)}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }

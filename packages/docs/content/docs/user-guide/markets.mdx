@@ -17,9 +17,9 @@ The prompt text is sent exactly as you write it, so write each variant in its ow
 
 Variants of the same question belong to one **group**, for example *best running shoes for flat feet* in the US and the UK and *meilleures chaussures de running pieds plats* in France. A group is how Elmo knows they belong together:
 
-- On the **Prompts** settings page, a group's variants are listed together. The **Group** button on each row shows the group's variants, adds a new one (starting from the same text for you to translate), or moves the prompt into another group or out on its own.
+- On the **Prompts** settings page, each prompt shows its country and language as a chip beside its text (`GB · EN`). A group's variants share one frame, with **Add country or language** underneath. The **⋯** menu on each row adds a variant, groups the prompt with another one, or removes it from its group.
 - A pasted line added in several countries at once becomes one group.
-- On a prompt's page, **Variants** switches between the group's members, keeping the tab you're on.
+- On a prompt's page, **Markets** switches between the group's variants, keeping the tab you're on.
 - In the prompt list, each prompt shows its country and language, and how many variants its group has.
 
 A group holds one enabled prompt per country and language. Two would be the same measurement twice.
@@ -32,7 +32,7 @@ The API and MCP server take the same filters as `countries` and `languages` para
 
 ## Which platforms can answer from a country
 
-Each provider localizes in its own way, and not every one can. For a prompt outside the US, Elmo only runs it on the platforms that can actually answer from that country, rather than storing a US answer under another country's name. A prompt's page has a **How each model runs this prompt** section that says, for each model and each variant, whether it runs and what reaches the provider.
+Each provider localizes in its own way, and not every one can. For a prompt outside the US, Elmo only runs it on the platforms that can actually answer from that country, rather than storing a US answer under another country's name. A prompt's page has a **How each model runs this prompt** section listing, for each model, whether it runs from the prompt's country and whether its language is sent.
 
 | Provider | Country | Language |
 | --- | --- | --- |

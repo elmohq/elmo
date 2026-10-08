@@ -68,7 +68,7 @@ const targets: GroupTargetRow[] = [
 	},
 ];
 
-/** The prompt page for the UK variant, with the per-model breakdown unfolded. */
+/** The prompt page for the UK variant, with its per-model breakdown unfolded. */
 export const Variants: StoryObj = {
 	render: () => (
 		<div className="max-w-5xl p-8">
@@ -78,7 +78,7 @@ export const Variants: StoryObj = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: /how each model runs/i }));
-		await expect(canvas.getAllByText("Not run: can't answer from France")).toHaveLength(1);
-		await expect(canvas.getByText("Asked from United Kingdom, English sent")).toBeVisible();
+		await expect(canvas.getByText("Skipped, can't ask from United Kingdom")).toBeVisible();
+		await expect(canvas.getAllByText("Asked from United Kingdom")).toHaveLength(2);
 	},
 };

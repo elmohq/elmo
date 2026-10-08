@@ -37,7 +37,13 @@ import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { CountriesPicker, LanguageSelect } from "@/components/market-select";
-import { type GroupSummary, type Market, MarketField, PromptGroupField } from "@/components/prompt-group-field";
+import {
+	firstOpenMarket,
+	type GroupSummary,
+	type Market,
+	MarketChip,
+	PromptRowMenu,
+} from "@/components/prompt-group-field";
 import { useOrganizationParams } from "@/hooks/use-route-params";
 
 export interface EditablePrompt {
@@ -174,10 +180,10 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"system-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_14rem_4.5rem_minmax(12rem,1fr)_2.75rem]",
-	"system-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_14rem_4.5rem_minmax(12rem,1fr)_5.5rem_2.75rem]",
-	"plain-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_14rem_4.5rem_minmax(12rem,1fr)_2.75rem]",
-	"plain-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_14rem_4.5rem_minmax(12rem,1fr)_5.5rem_2.75rem]",
+	"system-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_2.75rem_2rem]",
+	"system-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem_2rem]",
+	"plain-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem_2rem]",
+	"plain-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem_2rem]",
 };
 
 interface PromptsListEditorProps {
@@ -190,8 +196,8 @@ interface PromptsListEditorProps {
 	changedKeys?: ReadonlySet<string>;
 	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
 	premium?: PremiumAllowance;
-	/** Where, and in what language, new prompts start. Omit to hide the
-	 *  country, language, and group columns and add every prompt in the
+	/** Where, and in what language, new prompts start. Omit to hide each
+	 *  prompt's country/language chip and grouping and add every prompt in the
 	 *  defaults (the onboarding wizard). */
 	newPromptMarket?: Market;
 }
@@ -326,34 +332,6 @@ function ColumnHeader({
 					</Tooltip>
 				</div>
 			)}
-			{showMarket && (
-				<>
-					<div className="flex items-center gap-1 min-w-0">
-						Country · Language
-						<Tooltip>
-							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-							<TooltipContent>
-								<p className="max-w-xs">
-									Where the prompt is asked from and the language it's written in. AI answers and the sources they cite
-									differ by both. Fixed once saved: add a variant to track the prompt somewhere else.
-								</p>
-							</TooltipContent>
-						</Tooltip>
-					</div>
-					<div className="flex items-center justify-center gap-1">
-						Group
-						<Tooltip>
-							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-							<TooltipContent>
-								<p className="max-w-xs">
-									Variants of the same question in other countries or languages. The dashboard shows a group together so
-									the markets can be compared.
-								</p>
-							</TooltipContent>
-						</Tooltip>
-					</div>
-				</>
-			)}
 			<div className="flex items-center gap-1 min-w-0">
 				Tags
 				<Tooltip>
@@ -382,6 +360,7 @@ function ColumnHeader({
 			<div className="flex justify-center">
 				<span className="sr-only">Enabled</span>
 			</div>
+			{showMarket && <span className="sr-only">Actions</span>}
 		</div>
 	);
 }
@@ -394,7 +373,6 @@ function PromptRow({
 	allTagOptions,
 	showSystemTags,
 	marketControls,
-	isVariant,
 	changedKeys,
 	premium,
 	premiumAtCapacity,
@@ -408,10 +386,8 @@ function PromptRow({
 	update: (index: number, patch: Partial<EditablePrompt>) => void;
 	allTagOptions: { value: string }[];
 	showSystemTags: boolean;
-	/** The country/language and group cells, when the table shows them. */
-	marketControls?: { market: ReactNode; group: ReactNode };
-	/** Follows another member of its group, so it's drawn as nested under it. */
-	isVariant: boolean;
+	/** The country/language chip and grouping menu, when the table shows them. */
+	marketControls?: { chip: ReactNode; menu: ReactNode };
 	changedKeys?: ReadonlySet<string>;
 	premium?: PremiumAllowance;
 	premiumAtCapacity: boolean;
@@ -431,6 +407,7 @@ function PromptRow({
 			{/* Mobile: stacked, no selection/bulk */}
 			<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < total - 1 ? "border-b" : ""}`}>
 				<div className="flex items-start gap-2">
+					{marketControls && <div className="pt-1">{marketControls.chip}</div>}
 					<Input
 						value={prompt.value}
 						onChange={(e) => update(index, { value: e.target.value })}
@@ -445,12 +422,6 @@ function PromptRow({
 						/>
 					</div>
 				</div>
-				{marketControls && (
-					<div className="flex gap-2">
-						<div className="min-w-0 flex-1">{marketControls.market}</div>
-						<div className="w-16">{marketControls.group}</div>
-					</div>
-				)}
 				<TagsInput
 					value={prompt.tags}
 					onValueChange={(tags) => update(index, { tags })}
@@ -475,12 +446,8 @@ function PromptRow({
 				<div className="flex justify-center pt-2">
 					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
 				</div>
-				<div className={cn("flex min-w-0 items-center gap-1.5", isVariant && "pl-4")}>
-					{isVariant && (
-						<span className="text-muted-foreground" aria-hidden>
-							↳
-						</span>
-					)}
+				<div className="flex min-w-0 items-center gap-2">
+					{marketControls?.chip}
 					<Input
 						value={prompt.value}
 						onChange={(e) => update(index, { value: e.target.value })}
@@ -489,12 +456,6 @@ function PromptRow({
 					/>
 				</div>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
-				{marketControls && (
-					<>
-						{marketControls.market}
-						<div className="flex justify-center pt-0.5">{marketControls.group}</div>
-					</>
-				)}
 				<TagsInput
 					value={prompt.tags}
 					onValueChange={(tags) => update(index, { tags })}
@@ -520,6 +481,7 @@ function PromptRow({
 						aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
 					/>
 				</div>
+				{marketControls && <div className="flex justify-center pt-0.5">{marketControls.menu}</div>}
 			</div>
 		</div>
 	);
@@ -535,6 +497,17 @@ function summarizeGroups(prompts: EditablePrompt[]): Map<string, GroupSummary> {
 		groups.set(prompt.groupId, group);
 	}
 	return groups;
+}
+
+/** Consecutive rows of one group, so a group's variants render together. */
+function rowBlocks(prompts: EditablePrompt[], grouped: boolean) {
+	const blocks: { prompt: EditablePrompt; index: number }[][] = [];
+	prompts.forEach((prompt, index) => {
+		const last = blocks.at(-1);
+		if (grouped && last && last[0].prompt.groupId === prompt.groupId) last.push({ prompt, index });
+		else blocks.push([{ prompt, index }]);
+	});
+	return blocks;
 }
 
 /** Inserts a row right after the last member of its group, so a group stays together on screen. */
@@ -634,37 +607,39 @@ export function PromptsListEditor({
 	});
 
 	const groups = useMemo(() => summarizeGroups(prompts), [prompts]);
-	const groupControls = (prompt: EditablePrompt, index: number) => {
+	const addVariant = (prompt: EditablePrompt) => {
 		const group = groups.get(prompt.groupId);
-		if (!group) return undefined;
-		return {
-			market: <MarketField market={prompt} saved={Boolean(prompt.id)} onChange={(market) => update(index, market)} />,
-			group: (
-				<PromptGroupField
-					group={group}
-					otherGroups={[...groups.values()].filter((other) => other.groupId !== prompt.groupId)}
-					defaultMarket={defaultMarket}
-					onAddVariant={(market) =>
-						onChange(
-							placeInGroup(
-								prompts,
-								newPromptEntry({ value: prompt.value, tags: prompt.tags, groupId: prompt.groupId, ...market }),
-							),
-						)
-					}
-					onMove={(groupId) =>
-						onChange(
-							placeInGroup(
-								prompts.filter((_, i) => i !== index),
-								{ ...prompt, groupId },
-							),
-						)
-					}
-					onSeparate={() => update(index, { groupId: uuidv4() })}
-				/>
+		onChange(
+			placeInGroup(
+				prompts,
+				newPromptEntry({
+					value: prompt.value,
+					tags: prompt.tags,
+					groupId: prompt.groupId,
+					...firstOpenMarket(group?.markets ?? [prompt], defaultMarket),
+				}),
 			),
-		};
+		);
 	};
+	const groupControls = (prompt: EditablePrompt, index: number) => ({
+		chip: <MarketChip market={prompt} saved={Boolean(prompt.id)} onChange={(market) => update(index, market)} />,
+		menu: (
+			<PromptRowMenu
+				inGroup={(groups.get(prompt.groupId)?.markets.length ?? 1) > 1}
+				otherGroups={[...groups.values()].filter((other) => other.groupId !== prompt.groupId)}
+				onAddVariant={() => addVariant(prompt)}
+				onMove={(groupId) =>
+					onChange(
+						placeInGroup(
+							prompts.filter((_, i) => i !== index),
+							{ ...prompt, groupId },
+						),
+					)
+				}
+				onSeparate={() => update(index, { groupId: uuidv4() })}
+			/>
+		),
+	});
 
 	const { selectedKeys, liveSelectedCount, allSelected, toggleSelect, toggleSelectAll, clearSelection } =
 		useRowSelection(prompts);
@@ -755,25 +730,42 @@ export function PromptsListEditor({
 				</div>
 			) : (
 				<div className="space-y-3">
-					{prompts.map((prompt, index) => (
-						<PromptRow
-							key={prompt._key}
-							prompt={prompt}
-							index={index}
-							total={prompts.length}
-							update={update}
-							allTagOptions={allTagOptions}
-							showSystemTags={showSystemTags}
-							marketControls={showMarket ? groupControls(prompt, index) : undefined}
-							isVariant={showMarket && index > 0 && prompts[index - 1].groupId === prompt.groupId}
-							changedKeys={changedKeys}
-							premium={premium}
-							premiumAtCapacity={premiumAtCapacity}
-							gridCols={gridCols}
-							selected={selectedKeys.has(prompt._key)}
-							onToggleSelect={() => toggleSelect(prompt._key)}
-						/>
-					))}
+					{rowBlocks(prompts, showMarket).map((block) => {
+						const rows = block.map(({ prompt, index }) => (
+							<PromptRow
+								key={prompt._key}
+								prompt={prompt}
+								index={index}
+								total={prompts.length}
+								update={update}
+								allTagOptions={allTagOptions}
+								showSystemTags={showSystemTags}
+								marketControls={showMarket ? groupControls(prompt, index) : undefined}
+								changedKeys={changedKeys}
+								premium={premium}
+								premiumAtCapacity={premiumAtCapacity}
+								gridCols={gridCols}
+								selected={selectedKeys.has(prompt._key)}
+								onToggleSelect={() => toggleSelect(prompt._key)}
+							/>
+						));
+						if (block.length === 1) return rows;
+						// A group with several countries or languages reads as one
+						// question: its variants share a frame, with a way to add another.
+						const first = block[0].prompt;
+						return (
+							<div key={first.groupId} className="-mx-2 space-y-2 rounded-lg border bg-muted/30 p-2">
+								{rows}
+								<button
+									type="button"
+									onClick={() => addVariant(first)}
+									className="ml-11 inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+								>
+									<Plus className="size-3" /> Add country or language
+								</button>
+							</div>
+						);
+					})}
 				</div>
 			)}
 
