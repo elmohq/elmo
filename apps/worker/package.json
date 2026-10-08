@@ -10,7 +10,7 @@
 		"check-types": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@sentry/node": "^10.73.0",
+		"@sentry/node": "^11.4.0",
 		"@workspace/config": "workspace:*",
 		"@workspace/deployment": "workspace:*",
 		"@workspace/lib": "workspace:*",
