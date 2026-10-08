@@ -14,7 +14,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
+import { ChevronDown, Clock, Globe, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
@@ -24,6 +24,7 @@ import { type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 
 export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 
+import { countryName } from "@workspace/config/countries";
 import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@workspace/config/model-filter";
 // Filter state lives in the URL, validated by the `$brand` layout route's
 // search schema (see `validateBrandFilterSearch`). The widgets here keep
@@ -33,6 +34,7 @@ import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@wo
 // the URL itself is the authoritative filter state.
 import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
 import { getAvailableModels, groupTrackedTargets, type TrackedTarget } from "@/lib/model-filter";
+import { countriesInUse } from "@/lib/prompt-countries";
 
 /** The model filter's trigger glyph. `all` is the no-filter sentinel; every
  *  other value names one of the brand's targets, whose logo is decided by
@@ -256,6 +258,81 @@ function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 }
 
 // ------------------------------------------------------------------
+// Countries dropdown — subscribes to only the "countries" URL key. Reads the
+// brand's own prompts, so it only appears once they span two countries.
+// ------------------------------------------------------------------
+
+function CountriesDropdown() {
+	const { data: brand } = useBrand();
+	const available = useMemo(() => countriesInUse(brand?.prompts ?? []), [brand?.prompts]);
+	const urlCountries = useSearch({ strict: false, select: (s) => s.countries });
+	const setFilters = useFilterNavigate();
+	const selected = useMemo(() => splitTags(urlCountries), [urlCountries]);
+	const [open, setOpen] = useState(false);
+
+	// A link can still carry a filter after its prompts are gone; keep the
+	// dropdown up so it can be cleared.
+	if (available.length < 2 && selected.length === 0) return null;
+
+	const commit = (next: string[]) => setFilters({ countries: joinTags(next) });
+	const toggle = (country: string) =>
+		commit(selected.includes(country) ? selected.filter((c) => c !== country) : [...selected, country]);
+	const label = selected.length === 1 ? countryName(selected[0]) : "Countries";
+
+	return (
+		<Popover open={open} onOpenChange={setOpen} modal={false}>
+			<PopoverTrigger
+				render={
+					<FilterTriggerButton
+						icon={<Globe className="size-3.5" />}
+						label={label}
+						active={selected.length > 0}
+						badgeCount={selected.length > 1 ? selected.length : undefined}
+					/>
+				}
+			/>
+			<PopoverContent align="start" className="w-64 p-0" initialFocus={false}>
+				<div className="flex items-center justify-between px-3 h-10 border-b">
+					<span className="font-medium text-sm">Countries</span>
+					{selected.length > 0 && (
+						<button
+							type="button"
+							onClick={() => commit([])}
+							className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+						>
+							Clear
+						</button>
+					)}
+				</div>
+				<div className="py-1 max-h-64 overflow-y-auto">
+					{[...new Set([...available, ...selected])].map((country) => {
+						const checked = selected.includes(country);
+						return (
+							<button
+								key={country}
+								type="button"
+								onClick={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									toggle(country);
+								}}
+								className={`flex w-full items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
+									checked ? "bg-accent" : "hover:bg-muted"
+								}`}
+							>
+								<Checkbox checked={checked} className="pointer-events-none" />
+								<span className="flex-1">{countryName(country)}</span>
+								<span className="font-mono text-[10px] text-muted-foreground">{country}</span>
+							</button>
+						);
+					})}
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+// ------------------------------------------------------------------
 // Search input — subscribes to only the "q" URL key.
 // Debounces keystrokes and uses an effect-based sync (no render-time
 // setState) to avoid flashing back when the URL echo races with typing.
@@ -335,15 +412,16 @@ function SearchInput({
 }
 
 // ------------------------------------------------------------------
-// Result count — subscribes only to the two URL keys that gate its
-// visibility (tags + q). Parent passes the count as a prop so the
+// Result count — subscribes only to the URL keys that gate its
+// visibility (tags, countries, q). Parent passes the count as a prop so the
 // prompts-summary query is read once by a single owner.
 // ------------------------------------------------------------------
 
 function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
 	const tags = useSearch({ strict: false, select: (s) => s.tags });
+	const countries = useSearch({ strict: false, select: (s) => s.countries });
 	const q = useSearch({ strict: false, select: (s) => s.q });
-	const active = Boolean(tags) || Boolean(q);
+	const active = Boolean(tags) || Boolean(countries) || Boolean(q);
 	if (!active || count === undefined) return null;
 	const showTotal = total !== undefined && total !== count;
 	return (
@@ -389,6 +467,7 @@ export function FilterBar({
 			<div className="flex flex-wrap items-center gap-1.5">
 				{showModelSelector && <ModelDropdown trackedTargets={trackedTargets} />}
 				<TagsDropdown availableTags={availableTags} />
+				<CountriesDropdown />
 				<LookbackDropdown />
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />

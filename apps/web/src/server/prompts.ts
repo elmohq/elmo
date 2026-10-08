@@ -1,5 +1,6 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
+import { parseCountryFilter } from "@workspace/config/countries";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { classifyUrl } from "@workspace/lib/citations/domain-lists";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
@@ -31,7 +32,7 @@ import {
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { parseTagFilter } from "@/server/prompt-resolution";
+import { matchesCountryFilter, parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 // Server Functions
 // ============================================================================
@@ -93,6 +94,7 @@ function summarizePrompt(
 		id: string;
 		value: string;
 		enabled: boolean;
+		country: string;
 		createdAt: Date;
 		tags: string[] | null;
 		systemTags: string[] | null;
@@ -113,6 +115,7 @@ function summarizePrompt(
 		id: prompt.id,
 		value: prompt.value,
 		enabled: prompt.enabled,
+		country: prompt.country,
 		createdAt: prompt.createdAt,
 		totalRuns,
 		brandMentionRate,
@@ -147,6 +150,8 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			/** Comma-joined country codes; a prompt in any of them matches. */
+			countries: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
@@ -181,14 +186,17 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		// Collect all user tags (system tags are added separately)
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
+		const countries = parseCountryFilter(data.countries);
 
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
 			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
 		});
 
-		const filteredPrompts =
-			tagFilter.length > 0 ? promptSummaries.filter((p) => tagFilter.some((t) => p.tags.includes(t))) : promptSummaries;
+		const filteredPrompts = promptSummaries.filter(
+			(p) =>
+				(tagFilter.length === 0 || tagFilter.some((t) => p.tags.includes(t))) && matchesCountryFilter(p, countries),
+		);
 		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
 		return {

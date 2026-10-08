@@ -16,6 +16,8 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			/** Comma-joined country codes; a prompt in any of them matches. */
+			countries: z.string().optional(),
 			/** Comma-joined prompt IDs; absent means every prompt. */
 			prompts: z.string().optional(),
 			page: z.number().int().min(0).default(0),
@@ -27,7 +29,7 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 
 		const query = data.query?.trim() || undefined;
 		const picked = data.prompts ? new Set(data.prompts.split(",")) : null;
-		const prompts = (await resolveFilteredPrompts(data.brandId, { tags: data.tags })).filter(
+		const prompts = (await resolveFilteredPrompts(data.brandId, { tags: data.tags, countries: data.countries })).filter(
 			(prompt) => !picked || picked.has(prompt.id),
 		);
 		const promptValues = new Map(prompts.map((prompt) => [prompt.id, prompt.value]));

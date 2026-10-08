@@ -8,6 +8,7 @@ export interface FilteredVisibilityFilters {
 	model?: string;
 	/** Tag filter (resolved to prompt IDs server-side). */
 	tags?: string[];
+	countries?: string[];
 	/** Search term applied to prompt text (resolved server-side). */
 	search?: string;
 }
@@ -31,6 +32,7 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 					lookback: filters?.lookback || "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					countries: filters?.countries?.join(","),
 					search: filters?.search,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

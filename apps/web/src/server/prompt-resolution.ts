@@ -11,6 +11,7 @@
  * Keeping it here, imported only inside server-fn handlers, stays strippable.
  * See issue #68.
  */
+import { parseCountryFilter } from "@workspace/config/countries";
 import { db } from "@workspace/lib/db/db";
 import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
@@ -40,12 +41,13 @@ export interface ResolvedPrompt {
  */
 export async function resolveFilteredPrompts(
 	brandId: string,
-	opts: { tags?: string; search?: string },
+	opts: { tags?: string; countries?: string; search?: string },
 ): Promise<ResolvedPrompt[]> {
 	const allPrompts = await db
 		.select({
 			id: prompts.id,
 			value: prompts.value,
+			country: prompts.country,
 			systemTags: prompts.systemTags,
 			tags: prompts.tags,
 		})
@@ -53,16 +55,27 @@ export async function resolveFilteredPrompts(
 		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
 
 	const tagFilter = parseTagFilter(opts.tags);
+	const countries = parseCountryFilter(opts.countries);
 	const search = opts.search?.toLowerCase();
 
 	return allPrompts
-		.filter((p) => matchesTagFilter(p, tagFilter) && (!search || p.value.toLowerCase().includes(search)))
+		.filter(
+			(p) =>
+				matchesTagFilter(p, tagFilter) &&
+				matchesCountryFilter(p, countries) &&
+				(!search || p.value.toLowerCase().includes(search)),
+		)
 		.map((p) => ({
 			id: p.id,
 			value: p.value,
 			systemTags: p.systemTags || [],
 			tags: p.tags || [],
 		}));
+}
+
+/** An empty filter matches every country, the same as an empty tag filter. */
+export function matchesCountryFilter(prompt: { country: string }, countries: readonly string[]): boolean {
+	return countries.length === 0 || countries.includes(prompt.country);
 }
 
 export function parseTagFilter(tags: string | undefined): string[] {

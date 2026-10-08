@@ -61,6 +61,8 @@ function windowInstants(window: AnalyticsWindow): { start: Date; end: Date } {
 export interface AnalyticsFilters {
 	model?: string;
 	tags?: string;
+	/** Comma-joined country codes. */
+	countries?: string;
 	search?: string;
 }
 
@@ -78,7 +80,11 @@ export interface BrandVisibility {
 }
 
 async function resolveScope(brandId: string, filters: AnalyticsFilters) {
-	const resolved = await resolveFilteredPrompts(brandId, { tags: filters.tags, search: filters.search });
+	const resolved = await resolveFilteredPrompts(brandId, {
+		tags: filters.tags,
+		countries: filters.countries,
+		search: filters.search,
+	});
 	return {
 		promptIds: resolved.map((prompt) => prompt.id),
 		brandedPromptIds: resolved

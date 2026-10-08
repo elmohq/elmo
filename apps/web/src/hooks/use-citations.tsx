@@ -6,6 +6,7 @@ import { getCitationsFn } from "@/server/citations";
 export interface CitationFilters {
 	lookback?: LookbackPeriod;
 	tags?: string[];
+	countries?: string[];
 	model?: string;
 }
 
@@ -25,6 +26,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback ?? "1w",
 					tags: filters?.tags?.join(","),
+					countries: filters?.countries?.join(","),
 					model: filters?.model,
 				},
 			}),
