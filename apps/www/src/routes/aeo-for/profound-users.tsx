@@ -102,11 +102,6 @@ const FAQS = [
 			"Yes. Paste your existing prompt list into Elmo, one prompt per line, and it is tracked from then on. Your Profound history stays in Profound, so most teams run both for a short overlap before cancelling.",
 	},
 	{
-		question: "What does Profound do that Elmo does not?",
-		answer:
-			"Profound sells a broader suite: AI content generation, ChatGPT Shopping tracking, crawler analytics, and prompt volume estimates. Elmo deliberately leaves those out and focuses on visibility, share of voice, citations, and what to fix. If you rely on those extras, Profound may still fit better.",
-	},
-	{
 		question: "Is Elmo's data comparable to Profound's?",
 		answer: `Both track how AI engines answer your buyers' prompts. Elmo checks each prompt up to ${FOUR_TIMES_DAILY_FROM.standardRunsPerDay}× a day rather than once, which smooths out the run-to-run variation in AI answers, and every metric is computed by open-source code you can read.`,
 	},
