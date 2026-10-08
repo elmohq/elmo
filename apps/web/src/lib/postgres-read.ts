@@ -856,6 +856,7 @@ export interface PromptRunRow {
 	provider: string | null;
 	web_search_enabled: boolean;
 	country: string | null;
+	language: string | null;
 	brand_mentioned: boolean;
 	competitors_mentioned: string[];
 	web_queries: string[];
@@ -883,6 +884,7 @@ export async function getPromptRuns(
 			prompt_runs.provider,
 			prompt_runs.web_search_enabled,
 			prompt_runs.country,
+			prompt_runs.language,
 			prompt_runs.brand_mentioned,
 			prompt_runs.competitors_mentioned,
 			prompt_runs.web_queries,

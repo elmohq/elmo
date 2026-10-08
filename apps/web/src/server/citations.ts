@@ -1,6 +1,5 @@
 /** Server functions for citation data. */
 import { createServerFn } from "@tanstack/react-start";
-import { parseCountryFilter } from "@workspace/config/countries";
 import {
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
@@ -43,7 +42,7 @@ import {
 	type PerPromptDailyCitationPageRow,
 } from "@/lib/postgres-read";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { matchesCountryFilter, parseTagFilter } from "@/server/prompt-resolution";
+import { matchesMarketFilter, parseMarketFilter, parseTagFilter } from "@/server/prompt-resolution";
 
 type Classify = (domain: string, url: string, title?: string | null) => CitationCategory;
 
@@ -348,6 +347,8 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			tags: z.string().optional(),
 			/** Comma-joined country codes; a prompt in any of them matches. */
 			countries: z.string().optional(),
+			/** Comma-joined language codes, matched the same way. */
+			languages: z.string().optional(),
 			model: z.string().optional(),
 		}),
 	)
@@ -373,6 +374,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					id: prompts.id,
 					value: prompts.value,
 					country: prompts.country,
+					language: prompts.language,
 					tags: prompts.tags,
 					systemTags: prompts.systemTags,
 				})
@@ -397,10 +399,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		];
 
 		const tagFilter = parseTagFilter(data.tags);
-		const countries = parseCountryFilter(data.countries);
-		const inCountry = allPrompts.filter((prompt) => matchesCountryFilter(prompt, countries));
+		const market = parseMarketFilter(data);
+		const inMarket = allPrompts.filter((prompt) => matchesMarketFilter(prompt, market));
 		const enabledPromptIds =
-			tagFilter.length > 0 ? promptIdsMatchingTags(inCountry, tagFilter) : inCountry.map((p) => p.id);
+			tagFilter.length > 0 ? promptIdsMatchingTags(inMarket, tagFilter) : inMarket.map((p) => p.id);
 		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, days);
 
 		const [urlStats, perPromptDailyPages, perPromptPages, prevUrlStats] = await Promise.all([

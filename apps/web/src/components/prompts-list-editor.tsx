@@ -11,7 +11,8 @@
 
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { countryName, DEFAULT_COUNTRY } from "@workspace/config/countries";
+import { DEFAULT_COUNTRY } from "@workspace/config/countries";
+import { DEFAULT_LANGUAGE } from "@workspace/config/languages";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -35,7 +36,8 @@ import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { CountriesPicker, CountrySelect } from "@/components/country-select";
+import { CountriesPicker, LanguageSelect } from "@/components/market-select";
+import { type GroupSummary, type Market, MarketField, PromptGroupField } from "@/components/prompt-group-field";
 import { useOrganizationParams } from "@/hooks/use-route-params";
 
 export interface EditablePrompt {
@@ -45,6 +47,9 @@ export interface EditablePrompt {
 	enabled: boolean;
 	/** Editable until the prompt is saved; after that it's part of what the prompt measures. */
 	country: string;
+	language: string;
+	/** Prompts sharing one are variants of the same question. */
+	groupId: string;
 	tags: string[];
 	systemTags: string[];
 	premiumModels: string[];
@@ -61,6 +66,8 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		value: partial?.value ?? "",
 		enabled: partial?.enabled ?? true,
 		country: partial?.country ?? DEFAULT_COUNTRY,
+		language: partial?.language ?? DEFAULT_LANGUAGE,
+		groupId: partial?.groupId ?? uuidv4(),
 		tags: partial?.tags ?? [],
 		systemTags: partial?.systemTags ?? [],
 		premiumModels: partial?.premiumModels ?? [],
@@ -167,10 +174,10 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"system-country-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_9rem_minmax(14rem,1fr)_2.75rem]",
-	"system-country-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_9rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"plain-country-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_9rem_minmax(14rem,1fr)_2.75rem]",
-	"plain-country-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_9rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
+	"system-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_14rem_3.5rem_minmax(12rem,1fr)_2.75rem]",
+	"system-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_14rem_3.5rem_minmax(12rem,1fr)_5.5rem_2.75rem]",
+	"plain-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_14rem_3.5rem_minmax(12rem,1fr)_2.75rem]",
+	"plain-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_14rem_3.5rem_minmax(12rem,1fr)_5.5rem_2.75rem]",
 };
 
 interface PromptsListEditorProps {
@@ -183,9 +190,10 @@ interface PromptsListEditorProps {
 	changedKeys?: ReadonlySet<string>;
 	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
 	premium?: PremiumAllowance;
-	/** Where new prompts start. Omit to hide the Country column and add every
-	 *  prompt in the default country (the onboarding wizard). */
-	newPromptCountry?: string;
+	/** Where, and in what language, new prompts start. Omit to hide the
+	 *  country, language, and group columns and add every prompt in the
+	 *  defaults (the onboarding wizard). */
+	newPromptMarket?: Market;
 }
 
 /**
@@ -195,13 +203,15 @@ interface PromptsListEditorProps {
  */
 function useBulkPaste(
 	filled: { value: string; country: string }[],
-	defaultCountry: string,
-	onAdd: (prompts: { value: string; country: string }[]) => void,
+	defaultMarket: Market,
+	onAdd: (prompts: { value: string; country: string; language: string }[]) => void,
 ) {
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
 	const [bulkCountries, setBulkCountries] = useState<string[] | null>(null);
-	const countries = useMemo(() => bulkCountries ?? [defaultCountry], [bulkCountries, defaultCountry]);
+	const [bulkLanguage, setBulkLanguage] = useState<string | null>(null);
+	const countries = useMemo(() => bulkCountries ?? [defaultMarket.country], [bulkCountries, defaultMarket.country]);
+	const language = bulkLanguage ?? defaultMarket.language;
 
 	const bulkPreview = useMemo(
 		() => parseBulkPromptsInCountries(bulkText, { existing: filled, countries, limit: MAX_PROMPTS }),
@@ -215,6 +225,7 @@ function useBulkPaste(
 		setBulkOpen(false);
 		setBulkText("");
 		setBulkCountries(null);
+		setBulkLanguage(null);
 	};
 
 	return {
@@ -224,6 +235,8 @@ function useBulkPaste(
 		setBulkText,
 		bulkCountries: countries,
 		setBulkCountries,
+		bulkLanguage: language,
+		setBulkLanguage,
 		bulkPreview,
 		bulkNotice: bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null,
 		bulkError:
@@ -233,7 +246,7 @@ function useBulkPaste(
 		closeBulk,
 		addBulk: () => {
 			if (bulkPreview.added.length === 0 || overCapacity > 0) return;
-			onAdd(bulkPreview.added);
+			onAdd(bulkPreview.added.map((prompt) => ({ ...prompt, language })));
 			closeBulk();
 		},
 	};
@@ -267,7 +280,7 @@ function useRowSelection(prompts: EditablePrompt[]) {
 function ColumnHeader({
 	gridCols,
 	showSystemTags,
-	showCountry,
+	showMarket,
 	premium,
 	allSelected,
 	onToggleSelectAll,
@@ -275,7 +288,7 @@ function ColumnHeader({
 }: {
 	gridCols: string;
 	showSystemTags: boolean;
-	showCountry: boolean;
+	showMarket: boolean;
 	premium?: PremiumAllowance;
 	allSelected: boolean;
 	onToggleSelectAll: () => void;
@@ -313,19 +326,33 @@ function ColumnHeader({
 					</Tooltip>
 				</div>
 			)}
-			{showCountry && (
-				<div className="flex items-center gap-1 min-w-0">
-					Country
-					<Tooltip>
-						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-						<TooltipContent>
-							<p className="max-w-xs">
-								Where the prompt is asked from. AI answers and the sources they cite differ by country. To track a saved
-								prompt somewhere else, add it again in that country.
-							</p>
-						</TooltipContent>
-					</Tooltip>
-				</div>
+			{showMarket && (
+				<>
+					<div className="flex items-center gap-1 min-w-0">
+						Country · Language
+						<Tooltip>
+							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+							<TooltipContent>
+								<p className="max-w-xs">
+									Where the prompt is asked from and the language it's written in. AI answers and the sources they
+									cite differ by both. Fixed once saved: add a variant to track the prompt somewhere else.
+								</p>
+							</TooltipContent>
+						</Tooltip>
+					</div>
+					<div className="flex items-center justify-center gap-1">
+						Group
+						<Tooltip>
+							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+							<TooltipContent>
+								<p className="max-w-xs">
+									Variants of the same question in other countries or languages. The dashboard shows a group together
+									so the markets can be compared.
+								</p>
+							</TooltipContent>
+						</Tooltip>
+					</div>
+				</>
 			)}
 			<div className="flex items-center gap-1 min-w-0">
 				Tags
@@ -366,7 +393,8 @@ function PromptRow({
 	update,
 	allTagOptions,
 	showSystemTags,
-	showCountry,
+	marketControls,
+	isVariant,
 	changedKeys,
 	premium,
 	premiumAtCapacity,
@@ -380,7 +408,10 @@ function PromptRow({
 	update: (index: number, patch: Partial<EditablePrompt>) => void;
 	allTagOptions: { value: string }[];
 	showSystemTags: boolean;
-	showCountry: boolean;
+	/** The country/language and group cells, when the table shows them. */
+	marketControls?: { market: ReactNode; group: ReactNode };
+	/** Follows another member of its group, so it's drawn as nested under it. */
+	isVariant: boolean;
 	changedKeys?: ReadonlySet<string>;
 	premium?: PremiumAllowance;
 	premiumAtCapacity: boolean;
@@ -414,7 +445,12 @@ function PromptRow({
 						/>
 					</div>
 				</div>
-				{showCountry && <PromptCountryField prompt={prompt} onChange={(country) => update(index, { country })} />}
+				{marketControls && (
+					<div className="flex gap-2">
+						<div className="min-w-0 flex-1">{marketControls.market}</div>
+						<div className="w-16">{marketControls.group}</div>
+					</div>
+				)}
 				<TagsInput
 					value={prompt.tags}
 					onValueChange={(tags) => update(index, { tags })}
@@ -439,14 +475,26 @@ function PromptRow({
 				<div className="flex justify-center pt-2">
 					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
 				</div>
-				<Input
-					value={prompt.value}
-					onChange={(e) => update(index, { value: e.target.value })}
-					placeholder="Enter prompt text..."
-					className="min-w-0"
-				/>
+				<div className={cn("flex min-w-0 items-center gap-1.5", isVariant && "pl-4")}>
+					{isVariant && (
+						<span className="text-muted-foreground" aria-hidden>
+							↳
+						</span>
+					)}
+					<Input
+						value={prompt.value}
+						onChange={(e) => update(index, { value: e.target.value })}
+						placeholder="Enter prompt text..."
+						className="min-w-0"
+					/>
+				</div>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
-				{showCountry && <PromptCountryField prompt={prompt} onChange={(country) => update(index, { country })} />}
+				{marketControls && (
+					<>
+						{marketControls.market}
+						<div className="flex justify-center pt-0.5">{marketControls.group}</div>
+					</>
+				)}
 				<TagsInput
 					value={prompt.tags}
 					onValueChange={(tags) => update(index, { tags })}
@@ -477,17 +525,29 @@ function PromptRow({
 	);
 }
 
-/** A saved prompt's country is fixed, so only a new row gets a picker. */
-function PromptCountryField({ prompt, onChange }: { prompt: EditablePrompt; onChange: (country: string) => void }) {
-	if (!prompt.id) return <CountrySelect value={prompt.country} onChange={onChange} className="h-9 w-full" />;
-	return (
-		<div className="flex h-9 items-center gap-1.5 px-1 text-sm" title="Add the prompt again to track another country">
-			<span className="truncate">{countryName(prompt.country)}</span>
-		</div>
-	);
+/** Each group's members in list order, read as the first member's text. */
+function summarizeGroups(prompts: EditablePrompt[]): Map<string, GroupSummary> {
+	const groups = new Map<string, GroupSummary>();
+	for (const prompt of prompts) {
+		const group = groups.get(prompt.groupId) ?? { groupId: prompt.groupId, label: "", markets: [] };
+		if (!group.label && prompt.value.trim()) group.label = prompt.value.trim();
+		group.markets.push({ country: prompt.country, language: prompt.language });
+		groups.set(prompt.groupId, group);
+	}
+	return groups;
 }
 
-function BulkPasteBox({ bulk, showCountry }: { bulk: ReturnType<typeof useBulkPaste>; showCountry: boolean }) {
+/** Inserts a row right after the last member of its group, so a group stays together on screen. */
+function placeInGroup(prompts: EditablePrompt[], entry: EditablePrompt): EditablePrompt[] {
+	let last = -1;
+	prompts.forEach((prompt, i) => {
+		if (prompt.groupId === entry.groupId) last = i;
+	});
+	if (last === -1) return [...prompts, entry];
+	return [...prompts.slice(0, last + 1), entry, ...prompts.slice(last + 1)];
+}
+
+function BulkPasteBox({ bulk, showMarket }: { bulk: ReturnType<typeof useBulkPaste>; showMarket: boolean }) {
 	return (
 		<div className="space-y-2 rounded-md border bg-muted/40 p-3">
 			<Textarea
@@ -497,11 +557,15 @@ function BulkPasteBox({ bulk, showCountry }: { bulk: ReturnType<typeof useBulkPa
 				rows={6}
 				aria-label="Prompts to add, one per line"
 			/>
-			{showCountry && (
+			{showMarket && (
 				<div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 					<span>Run from</span>
 					<CountriesPicker value={bulk.bulkCountries} onChange={bulk.setBulkCountries} />
-					{bulk.bulkCountries.length > 1 && <span className="text-xs">Each line is added once per country.</span>}
+					<span>in</span>
+					<LanguageSelect value={bulk.bulkLanguage} onChange={bulk.setBulkLanguage} className="h-8 w-40" />
+					{bulk.bulkCountries.length > 1 && (
+						<span className="text-xs">Each line is added once per country, grouped together.</span>
+					)}
 				</div>
 			)}
 			<div className="flex flex-wrap items-center gap-2">
@@ -534,7 +598,7 @@ export function PromptsListEditor({
 	showSystemTags = true,
 	changedKeys,
 	premium,
-	newPromptCountry,
+	newPromptMarket,
 }: PromptsListEditorProps) {
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
@@ -547,7 +611,7 @@ export function PromptsListEditor({
 	};
 	const add = () => {
 		if (prompts.length >= MAX_PROMPTS) return;
-		onChange([...prompts, newPromptEntry({ country: defaultCountry })]);
+		onChange([...prompts, newPromptEntry(defaultMarket)]);
 	};
 
 	// A row only takes a slot once it has text. Blank rows are how this editor
@@ -555,12 +619,53 @@ export function PromptsListEditor({
 	// the cap would refuse prompts the list still has room for.
 	const filled = useMemo(() => prompts.filter((p) => p.value.trim().length > 0), [prompts]);
 	const atCapacity = filled.length >= MAX_PROMPTS;
-	const showCountry = newPromptCountry !== undefined;
-	const defaultCountry = newPromptCountry ?? DEFAULT_COUNTRY;
+	const showMarket = newPromptMarket !== undefined;
+	const defaultMarket = newPromptMarket ?? { country: DEFAULT_COUNTRY, language: DEFAULT_LANGUAGE };
 
-	const bulk = useBulkPaste(filled, defaultCountry, (added) =>
-		onChange([...prompts, ...added.map((prompt) => newPromptEntry(prompt))]),
-	);
+	// One paste line added in several countries becomes one group.
+	const bulk = useBulkPaste(filled, defaultMarket, (added) => {
+		const groupByValue = new Map<string, string>();
+		const entries = added.map((prompt) => {
+			const groupId = groupByValue.get(prompt.value) ?? uuidv4();
+			groupByValue.set(prompt.value, groupId);
+			return newPromptEntry({ ...prompt, groupId });
+		});
+		onChange([...prompts, ...entries]);
+	});
+
+	const groups = useMemo(() => summarizeGroups(prompts), [prompts]);
+	const groupControls = (prompt: EditablePrompt, index: number) => {
+		const group = groups.get(prompt.groupId);
+		if (!group) return undefined;
+		return {
+			market: (
+				<MarketField
+					market={prompt}
+					saved={Boolean(prompt.id)}
+					onChange={(market) => update(index, market)}
+				/>
+			),
+			group: (
+				<PromptGroupField
+					group={group}
+					otherGroups={[...groups.values()].filter((other) => other.groupId !== prompt.groupId)}
+					defaultMarket={defaultMarket}
+					onAddVariant={(market) =>
+						onChange(
+							placeInGroup(
+								prompts,
+								newPromptEntry({ value: prompt.value, tags: prompt.tags, groupId: prompt.groupId, ...market }),
+							),
+						)
+					}
+					onMove={(groupId) =>
+						onChange(placeInGroup(prompts.filter((_, i) => i !== index), { ...prompt, groupId }))
+					}
+					onSeparate={() => update(index, { groupId: uuidv4() })}
+				/>
+			),
+		};
+	};
 
 	const { selectedKeys, liveSelectedCount, allSelected, toggleSelect, toggleSelectAll, clearSelection } =
 		useRowSelection(prompts);
@@ -582,7 +687,7 @@ export function PromptsListEditor({
 	// renders a stacked per-prompt block instead (no selection, no bulk).
 	const gridCols =
 		GRID_COLS[
-			`${showSystemTags ? "system" : "plain"}${showCountry ? "-country" : ""}-${premium ? "premium" : "basic"}`
+			`${showSystemTags ? "system" : "plain"}${showMarket ? "-market" : ""}-${premium ? "premium" : "basic"}`
 		];
 
 	return (
@@ -637,7 +742,7 @@ export function PromptsListEditor({
 			<ColumnHeader
 				gridCols={gridCols}
 				showSystemTags={showSystemTags}
-				showCountry={showCountry}
+				showMarket={showMarket}
 				premium={premium}
 				allSelected={allSelected}
 				onToggleSelectAll={toggleSelectAll}
@@ -662,7 +767,8 @@ export function PromptsListEditor({
 							update={update}
 							allTagOptions={allTagOptions}
 							showSystemTags={showSystemTags}
-							showCountry={showCountry}
+							marketControls={showMarket ? groupControls(prompt, index) : undefined}
+							isVariant={showMarket && index > 0 && prompts[index - 1].groupId === prompt.groupId}
 							changedKeys={changedKeys}
 							premium={premium}
 							premiumAtCapacity={premiumAtCapacity}
@@ -699,7 +805,7 @@ export function PromptsListEditor({
 				</div>
 			)}
 
-			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} showCountry={showCountry} />}
+			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} showMarket={showMarket} />}
 
 			{atCapacity && (
 				<p className="text-xs text-muted-foreground">

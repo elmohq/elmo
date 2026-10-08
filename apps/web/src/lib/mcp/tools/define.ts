@@ -55,6 +55,11 @@ export const countriesArg = z
 	.optional()
 	.describe("Comma-separated ISO 3166-1 alpha-2 codes; only prompts run from one of these countries are counted.");
 
+export const languagesArg = z
+	.string()
+	.optional()
+	.describe("Comma-separated language codes, e.g. de,fr; only prompts written in one of these are counted.");
+
 export const modelArg = z.string().optional().describe("Restrict to one model, by id from list_models.");
 
 /** Half-open `[start, end)`. A timestamp carries its own offset, so there is no
@@ -65,6 +70,7 @@ export const windowArgs = {
 	model: modelArg,
 	tags: z.string().optional().describe("Comma-separated prompt tags; only prompts carrying one are counted."),
 	countries: countriesArg,
+	languages: languagesArg,
 };
 
 export type WindowArgs = z.output<z.ZodObject<typeof windowArgs>>;
@@ -74,5 +80,5 @@ export function windowFor(args: WindowArgs): AnalyticsWindow {
 }
 
 export function filtersFrom(args: WindowArgs): AnalyticsFilters {
-	return { model: args.model, tags: args.tags, countries: args.countries };
+	return { model: args.model, tags: args.tags, countries: args.countries, languages: args.languages };
 }

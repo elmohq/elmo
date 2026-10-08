@@ -9,6 +9,7 @@ export interface PromptsSummaryFilters {
 	model?: string;
 	tags?: string[];
 	countries?: string[];
+	languages?: string[];
 }
 
 export const promptsSummaryKeys = {
@@ -30,6 +31,7 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
 					countries: filters?.countries?.join(","),
+					languages: filters?.languages?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

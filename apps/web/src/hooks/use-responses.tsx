@@ -9,6 +9,7 @@ export interface ResponseSearchFilters {
 	model?: string;
 	tags?: string[];
 	countries?: string[];
+	languages?: string[];
 	promptIds?: string[];
 	page?: number;
 }
@@ -32,6 +33,7 @@ export function useResponseSearch(brandId?: string, filters?: ResponseSearchFilt
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
 					countries: filters?.countries?.join(","),
+					languages: filters?.languages?.join(","),
 					prompts: filters?.promptIds?.length ? filters.promptIds.join(",") : undefined,
 					page: filters?.page ?? 0,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,

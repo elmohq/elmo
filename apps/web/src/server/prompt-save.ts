@@ -1,3 +1,5 @@
+import { countryName } from "@workspace/config/countries";
+import { languageName } from "@workspace/config/languages";
 import { selectPremiumModels } from "@workspace/config/plans";
 
 export interface SubmittedPrompt {
@@ -6,6 +8,10 @@ export interface SubmittedPrompt {
 	enabled: boolean;
 	/** Only read for a new prompt; a saved prompt's country never changes. */
 	country?: string;
+	/** Likewise fixed once saved. */
+	language?: string;
+	/** Omitted, a new prompt starts a group of its own and a saved one stays put. */
+	groupId?: string;
 	tags?: string[];
 	premiumModels?: string[];
 }
@@ -69,4 +75,39 @@ export function planPromptSave(
 	}
 
 	return { updates, inserts };
+}
+
+export interface GroupMember {
+	value: string;
+	enabled: boolean;
+	groupId: string;
+	country: string;
+	language: string;
+}
+
+/** Two enabled prompts in one group asking from the same country in the same language. */
+export class PromptGroupClashError extends Error {
+	constructor(first: GroupMember, second: GroupMember) {
+		super(
+			`"${first.value}" and "${second.value}" are in the same group for ${countryName(first.country)} in ${languageName(first.language)}. A group holds one prompt per country and language.`,
+		);
+		this.name = "PromptGroupClashError";
+	}
+}
+
+/**
+ * A group is one question asked across markets, so two enabled members in the
+ * same country and language would be the same measurement twice, and the
+ * group's per-market view couldn't say which one it shows. Disabled members
+ * don't count: they're how removed prompts keep their history.
+ */
+export function assertOneVariantPerMarket(members: readonly GroupMember[]): void {
+	const seen = new Map<string, GroupMember>();
+	for (const member of members) {
+		if (!member.enabled) continue;
+		const key = `${member.groupId}|${member.country}|${member.language}`;
+		const clash = seen.get(key);
+		if (clash) throw new PromptGroupClashError(clash, member);
+		seen.set(key, member);
+	}
 }

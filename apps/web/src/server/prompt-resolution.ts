@@ -12,6 +12,7 @@
  * See issue #68.
  */
 import { parseCountryFilter } from "@workspace/config/countries";
+import { parseLanguageFilter } from "@workspace/config/languages";
 import { db } from "@workspace/lib/db/db";
 import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
@@ -41,13 +42,14 @@ export interface ResolvedPrompt {
  */
 export async function resolveFilteredPrompts(
 	brandId: string,
-	opts: { tags?: string; countries?: string; search?: string },
+	opts: { tags?: string; countries?: string; languages?: string; search?: string },
 ): Promise<ResolvedPrompt[]> {
 	const allPrompts = await db
 		.select({
 			id: prompts.id,
 			value: prompts.value,
 			country: prompts.country,
+			language: prompts.language,
 			systemTags: prompts.systemTags,
 			tags: prompts.tags,
 		})
@@ -55,14 +57,14 @@ export async function resolveFilteredPrompts(
 		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
 
 	const tagFilter = parseTagFilter(opts.tags);
-	const countries = parseCountryFilter(opts.countries);
+	const market = parseMarketFilter(opts);
 	const search = opts.search?.toLowerCase();
 
 	return allPrompts
 		.filter(
 			(p) =>
 				matchesTagFilter(p, tagFilter) &&
-				matchesCountryFilter(p, countries) &&
+				matchesMarketFilter(p, market) &&
 				(!search || p.value.toLowerCase().includes(search)),
 		)
 		.map((p) => ({
@@ -73,9 +75,21 @@ export async function resolveFilteredPrompts(
 		}));
 }
 
-/** An empty filter matches every country, the same as an empty tag filter. */
-export function matchesCountryFilter(prompt: { country: string }, countries: readonly string[]): boolean {
-	return countries.length === 0 || countries.includes(prompt.country);
+export interface MarketFilter {
+	countries: string[];
+	languages: string[];
+}
+
+export function parseMarketFilter(opts: { countries?: string; languages?: string }): MarketFilter {
+	return { countries: parseCountryFilter(opts.countries), languages: parseLanguageFilter(opts.languages) };
+}
+
+/** An empty list matches every country (or language), the same as an empty tag filter. */
+export function matchesMarketFilter(prompt: { country: string; language: string }, filter: MarketFilter): boolean {
+	return (
+		(filter.countries.length === 0 || filter.countries.includes(prompt.country)) &&
+		(filter.languages.length === 0 || filter.languages.includes(prompt.language))
+	);
 }
 
 export function parseTagFilter(tags: string | undefined): string[] {

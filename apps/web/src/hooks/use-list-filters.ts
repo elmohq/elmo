@@ -16,6 +16,8 @@ export type BrandFilterSearch = {
 	tags?: string;
 	/** Comma-joined country codes, split/joined the same way as `tags`. */
 	countries?: string;
+	/** Comma-joined language codes, likewise. */
+	languages?: string;
 	q?: string;
 };
 
@@ -34,6 +36,7 @@ export function validateBrandFilterSearch(search: Record<string, unknown>): Bran
 		lookback: asString(search.lookback),
 		tags: Array.isArray(search.tags) ? search.tags.map(String).join(",") : asString(search.tags),
 		countries: asString(search.countries),
+		languages: asString(search.languages),
 		q: asString(search.q),
 	};
 }
@@ -87,6 +90,7 @@ export function useListFilters() {
 	const model = urlFilters.model ?? ALL_MODELS_VALUE;
 	const tags = useMemo(() => splitTags(urlFilters.tags), [urlFilters.tags]);
 	const countries = useMemo(() => splitTags(urlFilters.countries), [urlFilters.countries]);
+	const languages = useMemo(() => splitTags(urlFilters.languages), [urlFilters.languages]);
 	const search = urlFilters.q ?? "";
 
 	return {
@@ -94,12 +98,15 @@ export function useListFilters() {
 		lookback: coerceLookback(urlFilters.lookback, defaultLookback),
 		tags,
 		countries,
+		languages,
 		search,
 		/** True when any narrowing filter is active (lookback never narrows to
 		 *  zero on its own, so it doesn't count). Gates which empty state a
 		 *  page shows: "no data" vs "no matches for your filters". */
-		isFiltered: Boolean(search) || tags.length > 0 || countries.length > 0 || model !== ALL_MODELS_VALUE,
-		clearFilters: () => setFilters({ q: undefined, tags: undefined, countries: undefined, model: undefined }),
+		isFiltered:
+			Boolean(search) || tags.length > 0 || countries.length > 0 || languages.length > 0 || model !== ALL_MODELS_VALUE,
+		clearFilters: () =>
+			setFilters({ q: undefined, tags: undefined, countries: undefined, languages: undefined, model: undefined }),
 	};
 }
 

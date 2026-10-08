@@ -17,7 +17,7 @@ import { useListFilters } from "@/hooks/use-list-filters";
  * real bar comes in.
  */
 export function VisibilityBarSection({ brandId }: { brandId: string | undefined }) {
-	const { lookback, model, tags, countries, search } = useListFilters();
+	const { lookback, model, tags, countries, languages, search } = useListFilters();
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
 	const {
@@ -28,6 +28,7 @@ export function VisibilityBarSection({ brandId }: { brandId: string | undefined 
 		lookback,
 		tags: tags.length > 0 ? tags : undefined,
 		countries,
+		languages,
 		search: search || undefined,
 		model: modelParam,
 	});

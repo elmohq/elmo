@@ -3,6 +3,7 @@
  * Disabling is the reversible way to stop a prompt costing runs.
  */
 import { parseCountryFilter } from "@workspace/config/countries";
+import { parseLanguageFilter } from "@workspace/config/languages";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
 import { brandScopeCondition, requireBrandInScope, requirePromptInScope } from "@/lib/api/scope";
@@ -15,7 +16,7 @@ import {
 	updatePrompt,
 } from "@/server/prompts-core";
 import { listBrandTags } from "@/server/tags-core";
-import { brandIdArg, countriesArg, defineTool, promptIdArg } from "./define";
+import { brandIdArg, countriesArg, defineTool, languagesArg, promptIdArg } from "./define";
 
 export const listPromptsTool = defineTool({
 	name: "list_prompts",
@@ -29,6 +30,8 @@ export const listPromptsTool = defineTool({
 		enabled: z.boolean().optional().describe("Restrict to prompts that are or aren't being sampled."),
 		tags: z.string().optional().describe("Comma-separated tags; a prompt carrying any of them matches."),
 		countries: countriesArg,
+		languages: languagesArg,
+		groupId: z.guid().optional().describe("Restrict to one group: a question and its variants in other countries or languages."),
 		q: z.string().optional().describe("Substring match on the prompt text."),
 		page: z.number().int().min(1).optional().describe("1-based page number. Defaults to 1."),
 		limit: z.number().int().min(1).max(1000).optional().describe("Prompts per page. Defaults to 100."),
@@ -43,6 +46,8 @@ export const listPromptsTool = defineTool({
 			enabled: args.enabled,
 			tags: (args.tags ?? "").split(","),
 			countries: parseCountryFilter(args.countries),
+			languages: parseLanguageFilter(args.languages),
+			groupId: args.groupId,
 			q: args.q,
 			limit,
 			offset: (page - 1) * limit,
@@ -83,7 +88,7 @@ export const updatePromptTool = defineTool({
 	name: "update_prompt",
 	title: "Update a prompt",
 	description:
-		"Change a prompt's text, tags, or whether it is being sampled. Setting `enabled: false` is how you stop a prompt costing runs — it keeps every answer already recorded.",
+		"Change a prompt's text, tags, group, or whether it is being sampled. Setting `enabled: false` is how you stop a prompt costing runs — it keeps every answer already recorded.",
 	scopes: ["write"],
 	readOnly: false,
 	// No `premiumModels`: pairing a prompt with one spends a metered pool, which
@@ -93,6 +98,7 @@ export const updatePromptTool = defineTool({
 		value: promptUpdateFields.value,
 		enabled: promptUpdateFields.enabled,
 		tags: promptUpdateFields.tags,
+		groupId: promptUpdateFields.groupId,
 	},
 	run: async ({ auth }, args) => {
 		const { brand } = await requirePromptInScope(auth, args.promptId);

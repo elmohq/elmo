@@ -1,34 +1,47 @@
 import { COUNTRIES, countryName } from "@workspace/config/countries";
+import { LANGUAGES } from "@workspace/config/languages";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
+import { useMemo } from "react";
 
-const COUNTRY_ITEMS = Object.fromEntries(COUNTRIES.map((country) => [country.code, country.name]));
-
-export function CountrySelect({
+function CodeSelect({
+	options,
 	value,
 	onChange,
+	label,
 	className,
 }: {
+	options: readonly { code: string; name: string }[];
 	value: string;
-	onChange: (country: string) => void;
+	onChange: (code: string) => void;
+	label: string;
 	className?: string;
 }) {
+	const items = useMemo(() => Object.fromEntries(options.map((option) => [option.code, option.name])), [options]);
 	return (
-		<Select items={COUNTRY_ITEMS} value={value} onValueChange={(next) => next && onChange(next as string)}>
-			<SelectTrigger className={className} aria-label="Country">
+		<Select items={items} value={value} onValueChange={(next) => next && onChange(next as string)}>
+			<SelectTrigger className={className} aria-label={label}>
 				<SelectValue />
 			</SelectTrigger>
 			<SelectContent>
-				{COUNTRIES.map((country) => (
-					<SelectItem key={country.code} value={country.code}>
-						{country.name}
+				{options.map((option) => (
+					<SelectItem key={option.code} value={option.code}>
+						{option.name}
 					</SelectItem>
 				))}
 			</SelectContent>
 		</Select>
 	);
+}
+
+export function CountrySelect(props: { value: string; onChange: (country: string) => void; className?: string }) {
+	return <CodeSelect options={COUNTRIES} label="Country" {...props} />;
+}
+
+export function LanguageSelect(props: { value: string; onChange: (language: string) => void; className?: string }) {
+	return <CodeSelect options={LANGUAGES} label="Language" {...props} />;
 }
 
 /** Several countries at once, for adding the same prompts in each of them. */

@@ -1,6 +1,7 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
-import { countryCodeSchema, DEFAULT_COUNTRY, parseCountryFilter } from "@workspace/config/countries";
+import { countryCodeSchema, DEFAULT_COUNTRY } from "@workspace/config/countries";
+import { DEFAULT_LANGUAGE, languageCodeSchema } from "@workspace/config/languages";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { classifyUrl } from "@workspace/lib/citations/domain-lists";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
@@ -32,8 +33,8 @@ import {
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { matchesCountryFilter, parseTagFilter } from "@/server/prompt-resolution";
-import { planPromptSave } from "@/server/prompt-save";
+import { matchesMarketFilter, parseMarketFilter, parseTagFilter } from "@/server/prompt-resolution";
+import { assertOneVariantPerMarket, planPromptSave } from "@/server/prompt-save";
 // Server Functions
 // ============================================================================
 
@@ -95,6 +96,8 @@ function summarizePrompt(
 		value: string;
 		enabled: boolean;
 		country: string;
+		language: string;
+		groupId: string;
 		createdAt: Date;
 		tags: string[] | null;
 		systemTags: string[] | null;
@@ -116,6 +119,8 @@ function summarizePrompt(
 		value: prompt.value,
 		enabled: prompt.enabled,
 		country: prompt.country,
+		language: prompt.language,
+		groupId: prompt.groupId,
 		createdAt: prompt.createdAt,
 		totalRuns,
 		brandMentionRate,
@@ -152,6 +157,8 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			tags: z.string().optional(),
 			/** Comma-joined country codes; a prompt in any of them matches. */
 			countries: z.string().optional(),
+			/** Comma-joined language codes, matched the same way. */
+			languages: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
@@ -186,7 +193,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		// Collect all user tags (system tags are added separately)
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
-		const countries = parseCountryFilter(data.countries);
+		const market = parseMarketFilter(data);
 
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
@@ -195,7 +202,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 
 		const filteredPrompts = promptSummaries.filter(
 			(p) =>
-				(tagFilter.length === 0 || tagFilter.some((t) => p.tags.includes(t))) && matchesCountryFilter(p, countries),
+				(tagFilter.length === 0 || tagFilter.some((t) => p.tags.includes(t))) && matchesMarketFilter(p, market),
 		);
 		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
@@ -497,6 +504,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					value: z.string(),
 					enabled: z.boolean().optional().default(true),
 					country: countryCodeSchema.optional(),
+					language: languageCodeSchema.optional(),
+					groupId: z.guid().optional(),
 					tags: z.array(z.string()).optional(),
 					/**
 					 * Premium models to track this prompt on, grounded — one of the org's
@@ -516,13 +525,42 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		if (!brand) throw new Error("Brand not found");
 
 		const existingRows = await db
-			.select({ id: prompts.id, enabled: prompts.enabled, premiumModels: prompts.premiumModels })
+			.select({
+				id: prompts.id,
+				value: prompts.value,
+				enabled: prompts.enabled,
+				premiumModels: prompts.premiumModels,
+				groupId: prompts.groupId,
+				country: prompts.country,
+				language: prompts.language,
+			})
 			.from(prompts)
 			.where(eq(prompts.brandId, data.brandId));
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
 
 		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
+		const insertRows = inserts.map(({ prompt, after }) => ({
+			prompt,
+			after,
+			groupId: prompt.groupId ?? crypto.randomUUID(),
+			country: prompt.country ?? DEFAULT_COUNTRY,
+			language: prompt.language ?? DEFAULT_LANGUAGE,
+		}));
+		const updatedById = new Map(updates.map((update) => [update.id, update]));
+		assertOneVariantPerMarket([
+			...existingRows.map((row) => {
+				const update = updatedById.get(row.id);
+				if (!update) return row;
+				return {
+					...row,
+					value: update.prompt.value,
+					enabled: update.after.enabled,
+					groupId: update.prompt.groupId ?? row.groupId,
+				};
+			}),
+			...insertRows.map((row) => ({ ...row, value: row.prompt.value, enabled: row.after.enabled })),
+		]);
 		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
 
@@ -536,17 +574,20 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						tags: prompt.tags || [],
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
+						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
 
 			if (inserts.length > 0) {
 				await tx.insert(prompts).values(
-					inserts.map(({ prompt, after }) => ({
+					insertRows.map(({ prompt, after, groupId, country, language }) => ({
 						brandId: data.brandId,
 						value: prompt.value,
 						enabled: prompt.enabled,
-						country: prompt.country ?? DEFAULT_COUNTRY,
+						country,
+						language,
+						groupId,
 						tags: prompt.tags || [],
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,

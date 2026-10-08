@@ -4,6 +4,7 @@
  */
 
 import { countryCodeSchema, DEFAULT_COUNTRY } from "@workspace/config/countries";
+import { DEFAULT_LANGUAGE, languageCodeSchema } from "@workspace/config/languages";
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
@@ -13,8 +14,17 @@ import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, inArray, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
+import { assertOneVariantPerMarket, type GroupMember, PromptGroupClashError } from "@/server/prompt-save";
 
 export const MAX_PROMPT_BATCH = 100;
+
+/** A groupId that names no prompt of this brand: groups are joined, not invented. */
+export class PromptGroupNotFoundError extends Error {
+	constructor(readonly groupId: string) {
+		super(`No prompt of this brand is in group ${groupId}.`);
+		this.name = "PromptGroupNotFoundError";
+	}
+}
 
 export class PromptNotFoundError extends Error {
 	constructor(public readonly promptId: string) {
@@ -35,8 +45,18 @@ const promptValueSchema = z
 const promptTagsSchema = z.array(z.string()).describe("Free-form labels used for filtering analytics.");
 
 const promptCountrySchema = countryCodeSchema.describe(
-	`ISO 3166-1 alpha-2 country to ask it from. Defaults to ${DEFAULT_COUNTRY}, and is fixed once the prompt exists: to track another country, add the prompt again with that country.`,
+	`ISO 3166-1 alpha-2 country to ask it from. Defaults to ${DEFAULT_COUNTRY}, and is fixed once the prompt exists: to track another country, add a variant in the same group.`,
 );
+
+const promptLanguageSchema = languageCodeSchema.describe(
+	`Language the prompt is written in, e.g. "de" or "pt-BR". Defaults to ${DEFAULT_LANGUAGE}, and is fixed once the prompt exists.`,
+);
+
+const promptGroupIdSchema = z
+	.guid()
+	.describe(
+		"Group of prompts asking the same question in other countries or languages, from another prompt's groupId. A group holds one enabled prompt per country and language. Omit to start a new group.",
+	);
 
 export const bulkPromptInputSchema = z.object({
 	brandId: brandIdSchema,
@@ -46,6 +66,8 @@ export const bulkPromptInputSchema = z.object({
 				value: promptValueSchema,
 				tags: promptTagsSchema.optional(),
 				country: promptCountrySchema.optional(),
+				language: promptLanguageSchema.optional(),
+				groupId: promptGroupIdSchema.optional(),
 				enabled: z.boolean().optional().describe("Whether to start sampling it. Defaults to true."),
 				premiumModels: z.array(z.string()).optional().describe("Premium engines to pair this prompt with."),
 			}),
@@ -60,13 +82,14 @@ export const promptUpdateFields = {
 	enabled: z.boolean().optional().describe("Whether to keep sampling it."),
 	tags: promptTagsSchema.optional().describe("Replaces the prompt's tags outright."),
 	premiumModels: z.array(z.string()).optional().describe("Replaces the prompt's premium engine pairings."),
+	groupId: promptGroupIdSchema.optional().describe("Moves the prompt into another prompt's group."),
 };
 
 export const updatePromptInputSchema = z
 	.object(promptUpdateFields)
 	.refine(
 		(body) => Object.keys(body).length > 0,
-		"At least one of value, enabled, tags, or premiumModels must be provided",
+		"At least one of value, enabled, tags, premiumModels, or groupId must be provided",
 	);
 
 export type BulkPromptInput = z.infer<typeof bulkPromptInputSchema>;
@@ -87,6 +110,8 @@ const PROMPT_COLUMNS = {
 	value: prompts.value,
 	enabled: prompts.enabled,
 	country: prompts.country,
+	language: prompts.language,
+	groupId: prompts.groupId,
 	tags: prompts.tags,
 	systemTags: prompts.systemTags,
 	premiumModels: prompts.premiumModels,
@@ -108,6 +133,8 @@ export function toPromptSummary(prompt: Prompt): PromptSummary {
 		value: prompt.value,
 		enabled: prompt.enabled,
 		country: prompt.country,
+		language: prompt.language,
+		groupId: prompt.groupId,
 		tags: prompt.tags,
 		systemTags: prompt.systemTags,
 		premiumModels: prompt.premiumModels,
@@ -121,6 +148,8 @@ export interface ListPromptsFilters {
 	enabled?: boolean;
 	tags?: string[];
 	countries?: string[];
+	languages?: string[];
+	groupId?: string;
 	q?: string;
 	limit: number;
 	offset: number;
@@ -134,6 +163,8 @@ export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: 
 	const tags = (filters.tags ?? []).map((tag) => tag.trim().toLowerCase()).filter(Boolean);
 	if (tags.length > 0) conditions.push(arrayOverlaps(prompts.tags, tags));
 	if (filters.countries?.length) conditions.push(inArray(prompts.country, filters.countries));
+	if (filters.languages?.length) conditions.push(inArray(prompts.language, filters.languages));
+	if (filters.groupId) conditions.push(eq(prompts.groupId, filters.groupId));
 	if (filters.q?.trim()) conditions.push(ilike(prompts.value, `%${filters.q.trim()}%`));
 
 	const where = and(...conditions.filter(Boolean));
@@ -169,6 +200,8 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 		value: prompt.value,
 		enabled: prompt.enabled ?? true,
 		country: prompt.country ?? DEFAULT_COUNTRY,
+		language: prompt.language ?? DEFAULT_LANGUAGE,
+		groupId: prompt.groupId ?? crypto.randomUUID(),
 		tags: sanitizeUserTags(prompt.tags ?? []),
 		systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 		premiumModels: selectPremiumModels(prompt.premiumModels),
@@ -184,6 +217,12 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 				premiumPairings: enabled.reduce((sum, row) => sum + row.premiumModels.length, 0),
 			},
 			tx,
+		);
+		await assertGroupsStayDistinct(
+			tx,
+			brand.id,
+			rows,
+			parsed.prompts.map((prompt) => prompt.groupId),
 		);
 		return tx.insert(prompts).values(rows).returning();
 	});
@@ -210,7 +249,37 @@ function promptUpdateData(
 	if (input.enabled !== undefined) update.enabled = input.enabled;
 	if (input.tags !== undefined) update.tags = sanitizeUserTags(input.tags);
 	if (input.premiumModels !== undefined) update.premiumModels = nextPremium;
+	if (input.groupId !== undefined) update.groupId = input.groupId;
 	return update;
+}
+
+/**
+ * Checks the groups `incoming` lands in, with the brand's current members
+ * (less any row `incoming` replaces), against the one-per-market rule.
+ */
+async function assertGroupsStayDistinct(
+	tx: DbConnection,
+	brandId: string,
+	incoming: (GroupMember & { id?: string })[],
+	namedGroupIds: (string | undefined)[],
+): Promise<void> {
+	const groupIds = [...new Set(incoming.map((row) => row.groupId))];
+	const current = await tx
+		.select({
+			id: prompts.id,
+			value: prompts.value,
+			enabled: prompts.enabled,
+			groupId: prompts.groupId,
+			country: prompts.country,
+			language: prompts.language,
+		})
+		.from(prompts)
+		.where(and(eq(prompts.brandId, brandId), inArray(prompts.groupId, groupIds)));
+	const known = new Set(current.map((row) => row.groupId));
+	const unknown = namedGroupIds.find((groupId) => groupId !== undefined && !known.has(groupId));
+	if (unknown) throw new PromptGroupNotFoundError(unknown);
+	const replaced = new Set(incoming.map((row) => row.id).filter(Boolean));
+	assertOneVariantPerMarket([...current.filter((row) => !replaced.has(row.id)), ...incoming]);
 }
 
 /** The quota-checked half of an update: re-read the row under the lock, charge
@@ -239,6 +308,17 @@ async function applyPromptUpdate(
 		},
 		tx,
 	);
+
+	if (input.groupId !== undefined || (input.enabled && !wasEnabled)) {
+		await assertGroupsStayDistinct(tx, brand.id, [
+			{
+				...existing,
+				value: input.value ?? existing.value,
+				enabled: willBeEnabled,
+				groupId: input.groupId ?? existing.groupId,
+			},
+		], [input.groupId]);
+	}
 
 	const [row] = await tx
 		.update(prompts)
@@ -278,4 +358,11 @@ export async function deletePrompt(promptId: string): Promise<{ prompt: Prompt; 
 	// The caller's check can race with a concurrent delete; returning() decides.
 	if (!result.deletedPrompt) throw new PromptNotFoundError(promptId);
 	return { prompt: result.deletedPrompt, deletedRunsCount: result.deletedRuns.length };
+}
+
+/** API status for the group rules, shared by the REST routes. */
+export function promptGroupErrorStatus(err: unknown): { status: 400 | 409; error: string } | undefined {
+	if (err instanceof PromptGroupNotFoundError) return { status: 400, error: "Validation Error" };
+	if (err instanceof PromptGroupClashError) return { status: 409, error: "Conflict" };
+	return undefined;
 }

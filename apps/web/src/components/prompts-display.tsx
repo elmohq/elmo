@@ -53,7 +53,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 	const { data: brand } = useBrand(brandId);
 	const brandParams = useBrandParams();
 	const filters = useListFilters();
-	const { model, lookback, tags, countries, search } = filters;
+	const { model, lookback, tags, countries, languages, search } = filters;
 	// `order` is this route's own search key (not a narrowing filter), so it
 	// rides outside `useListFilters` / `isFiltered`.
 	const order = useSearch({
@@ -77,6 +77,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 		model: modelParam,
 		tags: tags.length > 0 ? tags : undefined,
 		countries,
+		languages,
 	});
 
 	const availableTags = promptsSummary?.availableTags ?? [];
@@ -146,6 +147,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 				searchQuery={search}
 				selectedTags={tags}
 				selectedCountries={countries}
+				selectedLanguages={languages}
 				sortedPrompts={sortedPrompts}
 				availableIndividualModels={availableIndividualModels}
 			/>
@@ -165,6 +167,7 @@ function ChartSection({
 	searchQuery,
 	selectedTags,
 	selectedCountries,
+	selectedLanguages,
 	sortedPrompts,
 	availableIndividualModels,
 }: {
@@ -175,6 +178,7 @@ function ChartSection({
 	searchQuery: string;
 	selectedTags: string[];
 	selectedCountries: string[];
+	selectedLanguages: string[];
 	sortedPrompts: { id: string; value: string; country?: string; firstEvaluatedAt?: Date | string | null }[];
 	availableIndividualModels: string[];
 }) {
@@ -182,7 +186,8 @@ function ChartSection({
 		lookback,
 		model: modelParam,
 		tags: selectedTags.length > 0 ? selectedTags : undefined,
-		countries: selectedCountries.length > 0 ? selectedCountries : undefined,
+		countries: selectedCountries,
+		languages: selectedLanguages,
 		search: searchQuery || undefined,
 	});
 

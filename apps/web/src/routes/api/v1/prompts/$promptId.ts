@@ -14,6 +14,7 @@ import { requirePromptInScope } from "@/lib/api/scope";
 import {
 	deletePrompt,
 	PromptNotFoundError,
+	promptGroupErrorStatus,
 	toPromptSummary,
 	updatePrompt,
 	updatePromptInputSchema,
@@ -26,8 +27,11 @@ const promptParams = z.object({ promptId: z.guid("Invalid prompt ID format") });
 /** The writes re-check under their own lock, so a prompt that a concurrent
  * delete takes between the scope check and the write reads as 404 here rather
  * than as a 500. */
-const mapPromptNotFound = (err: unknown) =>
-	err instanceof PromptNotFoundError ? new ApiError(404, "Not Found", err.message) : undefined;
+const mapPromptNotFound = (err: unknown) => {
+	if (err instanceof PromptNotFoundError) return new ApiError(404, "Not Found", err.message);
+	const group = promptGroupErrorStatus(err);
+	return group && err instanceof Error ? new ApiError(group.status, group.error, err.message) : undefined;
+};
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 	server: {
