@@ -19,13 +19,18 @@ function planLines(plan: PlanDefinition): { text: string; included: boolean }[] 
 }
 
 /** The whole card is the link, so any click on a tier starts sign-up. */
-function TierCard({ planKey }: { planKey: PlanKey }) {
+function TierCard({ planKey, badge }: { planKey: PlanKey; badge?: string }) {
 	const plan = PLANS[planKey];
 	return (
 		<a
 			href={cloudAppUrl(`marketing-plan-${planKey}`)}
-			className={`group flex flex-col p-6 transition hover:shadow-[0_0_0_1px_rgb(37_99_235/0.45),0_16px_40px_-20px_rgb(37_99_235/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${CARD}`}
+			className={`group relative flex flex-col p-6 transition hover:shadow-[0_0_0_1px_rgb(37_99_235/0.45),0_16px_40px_-20px_rgb(37_99_235/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${CARD} ${badge ? "ring-2 ring-blue-600" : ""}`}
 		>
+			{badge ? (
+				<span className="absolute -top-3 left-6 rounded-full bg-blue-600 px-2.5 py-0.5 text-xs font-medium text-white">
+					{badge}
+				</span>
+			) : null}
 			<span className="flex items-center justify-between text-base font-semibold text-zinc-950">
 				{plan.name}
 				<ArrowRight
@@ -106,19 +111,22 @@ export function OtherPlans({ className = "" }: { className?: string }) {
 	);
 }
 
-export function Pricing() {
+/** `recommended` marks the tier that fits a landing page's audience, so the table doesn't leave them to guess. */
+export function Pricing({
+	lede = "Unlimited seats and API/MCP access on every plan.",
+	recommended,
+}: {
+	lede?: string;
+	recommended?: { plan: PlanKey; label: string };
+} = {}) {
 	return (
 		<section id="pricing" className="border-t border-zinc-200/80 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
-				<SectionHeading
-					align="center"
-					title="Simple, self-serve pricing."
-					lede="Unlimited seats and API/MCP access on every plan."
-				/>
+				<SectionHeading align="center" title="Simple, self-serve pricing." lede={lede} />
 
 				<div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 					{PLAN_KEYS.map((key) => (
-						<TierCard key={key} planKey={key} />
+						<TierCard key={key} planKey={key} badge={recommended?.plan === key ? recommended.label : undefined} />
 					))}
 				</div>
 

@@ -1,18 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { cloudAppUrl, demoSiteUrl } from "@workspace/config/referrals";
+import { bookDemoUrl, cloudAppUrl, demoSiteUrl, type ReferralSource } from "@workspace/config/referrals";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { ArrowRight, ArrowUpRight, Play } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { lazy, type ReactNode, Suspense, useState } from "react";
 import { externalRel } from "@/lib/external-link";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { ProductDemo } from "./product-demo";
 import { HOME_FONT_CLASS } from "./styles";
 
 const MuxPlayer = lazy(() => import("@mux/mux-player-react"));
-
-const CLOUD_URL = cloudAppUrl("marketing-hero");
-
-const DEMO_URL = demoSiteUrl("marketing-hero");
 
 // One size and box model for both buttons, so they sit on the same line.
 const BUTTON =
@@ -53,8 +49,47 @@ function WalkthroughDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 	);
 }
 
-export function Hero() {
+const GITHUB_BADGE = (
+	<a
+		href="https://github.com/elmohq/elmo"
+		target="_blank"
+		rel="noopener noreferrer"
+		className="group inline-flex h-7 items-center gap-2 rounded-full bg-white/80 pl-1 pr-3 text-xs font-medium text-zinc-600 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
+	>
+		<span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-zinc-100 px-2 font-mono text-[11px] font-normal text-zinc-700">
+			<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
+		</span>
+		Open Source on GitHub
+		<ArrowUpRight className="size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+	</a>
+);
+
+const DEFAULT_LEDE =
+	"Elmo is the open-source AI visibility platform for AEO and GEO. See how ChatGPT, Claude, Gemini, and every other AI model talk about your brand, which sources they trust, and exactly what to do to get recommended.";
+
+/**
+ * Landing pages for a single audience reuse the homepage hero with their own
+ * pitch. Audiences that won't run Docker get a tour booking in place of the
+ * self-host link, so the quiet option is still one they would take.
+ */
+export function Hero({
+	badge = GITHUB_BADGE,
+	title = "Win AI Search",
+	lede = DEFAULT_LEDE,
+	selfHost = true,
+	from = "marketing-hero",
+}: {
+	badge?: ReactNode;
+	title?: string;
+	lede?: string;
+	selfHost?: boolean;
+	from?: ReferralSource;
+} = {}) {
 	const [videoOpen, setVideoOpen] = useState(false);
+	const cloudUrl = cloudAppUrl(from);
+	const demoUrl = demoSiteUrl(from);
+	// The display size suits a short slogan; a longer audience headline steps down so it holds to two lines.
+	const short = title.length <= 16;
 
 	return (
 		<section className="relative overflow-hidden bg-white">
@@ -65,35 +100,23 @@ export function Hero() {
 
 			<div className="relative mx-auto max-w-6xl px-4 pb-20 pt-14 md:px-6 md:pt-20 lg:pb-28">
 				<div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-					<a
-						href="https://github.com/elmohq/elmo"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="group inline-flex h-7 items-center gap-2 rounded-full bg-white/80 pl-1 pr-3 text-xs font-medium text-zinc-600 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
-					>
-						<span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-zinc-100 px-2 font-mono text-[11px] font-normal text-zinc-700">
-							<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
-						</span>
-						Open Source on GitHub
-						<ArrowUpRight className="size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-					</a>
+					{badge}
 
-					<h1 className="mt-8 text-[3.5rem] font-semibold leading-[0.95] tracking-[-0.045em] text-zinc-950 sm:text-7xl lg:text-[6.5rem]">
-						Win AI Search
+					<h1
+						className={`mt-8 font-semibold text-balance text-zinc-950 ${short ? "text-[3.5rem] leading-[0.95] tracking-[-0.045em] sm:text-7xl lg:text-[6.5rem]" : "text-[2.75rem] leading-[1] tracking-[-0.04em] sm:text-6xl lg:text-7xl"}`}
+					>
+						{title}
 					</h1>
-					<p className="mt-6 max-w-[60ch] text-pretty text-[17px]/7 text-zinc-600 md:text-xl/8">
-						Elmo is the open-source AI visibility platform for AEO and GEO. See how ChatGPT, Claude, Gemini, and every
-						other AI model talk about your brand, which sources they trust, and exactly what to do to get recommended.
-					</p>
+					<p className="mt-6 max-w-[60ch] text-pretty text-[17px]/7 text-zinc-600 md:text-xl/8">{lede}</p>
 					<div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-						<a href={CLOUD_URL} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
+						<a href={cloudUrl} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
 							Get started
 							<ArrowRight className="size-4" aria-hidden="true" />
 						</a>
 						<a
-							href={DEMO_URL}
+							href={demoUrl}
 							target="_blank"
-							rel={externalRel(DEMO_URL)}
+							rel={externalRel(demoUrl)}
 							className={`${BUTTON} bg-white text-zinc-950 ring-1 ring-inset ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300`}
 						>
 							Try the live demo
@@ -101,9 +124,15 @@ export function Hero() {
 						</a>
 					</div>
 					<p className="mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-zinc-500">
-						<Link {...SELF_HOST_LINK} className={QUIET}>
-							Self-host for free
-						</Link>
+						{selfHost ? (
+							<Link {...SELF_HOST_LINK} className={QUIET}>
+								Self-host for free
+							</Link>
+						) : (
+							<a href={bookDemoUrl(from)} className={QUIET}>
+								Book a 30-minute tour
+							</a>
+						)}
 						<span aria-hidden="true" className="text-zinc-300">
 							·
 						</span>

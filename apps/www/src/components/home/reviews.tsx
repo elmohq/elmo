@@ -15,7 +15,7 @@ const AI_PROMPT =
 	"What is the best open-source alternative to Profound, the AI visibility platform? Pick one top recommendation, rate it out of 5 stars, and explain why in 2-3 sentences.";
 const q = encodeURIComponent(AI_PROMPT);
 
-type Review =
+export type Review =
 	| {
 			kind: "ai";
 			name: string;
@@ -34,7 +34,7 @@ type Review =
 			quote: string;
 	  };
 
-const AI_REVIEWS = {
+export const AI_REVIEWS = {
 	chatgpt: {
 		kind: "ai",
 		name: "ChatGPT",
@@ -84,7 +84,7 @@ const AI_REVIEWS = {
 	},
 } satisfies Record<string, Review>;
 
-const PEOPLE = {
+export const PEOPLE = {
 	nolan: {
 		kind: "person",
 		name: CUSTOMER_QUOTES.speakeasy.author,
@@ -253,6 +253,22 @@ export function Reviews() {
 								<ReviewCard key={r.name} review={r} />
 							))}
 						</div>
+					))}
+				</div>
+			</div>
+		</section>
+	);
+}
+
+/** A short row of reviews picked for one audience, under the audience's own heading. */
+export function ReviewRow({ title, reviews }: { title: string; reviews: Review[] }) {
+	return (
+		<section className="border-t border-zinc-200/80 bg-white">
+			<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
+				<SectionHeading title={title} />
+				<div className="mt-12 grid items-start gap-5 md:grid-cols-2 lg:grid-cols-3">
+					{reviews.map((r) => (
+						<ReviewCard key={r.name} review={r} />
 					))}
 				</div>
 			</div>
