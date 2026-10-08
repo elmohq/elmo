@@ -1,0 +1,46 @@
+{
+  "generate": "pull-request",
+  "input": "./packages/api-spec/src/openapi.json",
+  "targets": {
+    "typescript": {
+      "package": {
+        "name": "@elmohq/sdk",
+        "destination": [
+          "github",
+          "npm"
+        ],
+        "repository": "https://github.com/elmohq/elmo-sdk-typescript"
+      }
+    },
+    "python": {
+      "package": {
+        "name": "elmo-sdk",
+        "destination": [
+          "github",
+          "pypi"
+        ],
+        "repository": "https://github.com/elmohq/elmo-sdk-python"
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "@hey-api/client",
+      "timeout": {
+        "overrides": [
+          {
+            "include": {
+              "openapi": {
+                "operations": [
+                  "GET /brands/{brandId}/opportunities",
+                  "POST /tools/analyze"
+                ]
+              }
+            },
+            "ms": 600000
+          }
+        ]
+      }
+    }
+  ]
+}
