@@ -292,12 +292,12 @@ export async function collectProvider(spec: ProviderSpec, env: EnvMap, targets: 
 	}
 
 	if (spec.picker) {
-		const selected = (await p.multiselect({
+		const selected = await p.multiselect({
 			message: spec.picker.message,
 			options: spec.picker.options,
 			required: spec.picker.required,
 			initialValues: [...spec.picker.initialValues],
-		})) as string[] | symbol;
+		});
 		assertNotCancelled(selected);
 		targets.push(...selected);
 	}
