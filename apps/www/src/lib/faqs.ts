@@ -40,7 +40,7 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "How much does Elmo cost compared to Profound?",
 		answer:
-			"Profound publishes no paid prices: after a free trial, its plans are quoted by sales. Elmo Cloud is self-serve with public prices, starting at $29/mo for the Starter plan. From the $99/mo Basic plan, every prompt is checked 4× a day, where Profound checks daily. Pro ($299/mo) and Business ($649/mo) add more brands, more prompts, and premium grounded models, and self-hosting Elmo is free.",
+			"Profound's pricing page lists a free trial and an Enterprise plan quoted by sales. Elmo Cloud is self-serve with public prices, starting at $29/mo for the Starter plan. From the $99/mo Basic plan, every prompt is checked 4× a day, where Profound checks daily. Pro ($299/mo) and Business ($649/mo) add more brands, more prompts, and premium grounded models, and self-hosting Elmo is free.",
 	},
 	{
 		question: "Is Elmo free?",
