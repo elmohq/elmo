@@ -75,6 +75,43 @@ function capitalize(s: string) {
 	return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** Renders each match of `pattern` (its first group) with `render`, keyed by where it sits in the text. */
+function replaceMatches(text: string, pattern: RegExp, render: (match: string, key: number) => React.ReactNode) {
+	const out: React.ReactNode[] = [];
+	let last = 0;
+	for (const m of text.matchAll(pattern)) {
+		out.push(text.slice(last, m.index), render(m[1], m.index));
+		last = m.index + m[0].length;
+	}
+	out.push(text.slice(last));
+	return out;
+}
+
+/** Bracketed slots like [category] stand for the reader's own names, so they get their own colour. */
+function PromptText({ text }: { text: string }) {
+	return replaceMatches(text, /(\[[^\]]+\])/g, (slot, key) => (
+		<span key={key} className="font-medium text-blue-600">
+			{slot}
+		</span>
+	));
+}
+
+/** A prompt quoted inside running copy, set like inline code so it reads as something typed into an engine. */
+function InlinePrompt({ text }: { text: string }) {
+	return (
+		<code className="whitespace-nowrap rounded-md bg-zinc-100 px-1.5 py-0.5 font-mono text-[0.85em] text-zinc-900 ring-1 ring-zinc-200/80">
+			<PromptText text={text} />
+		</code>
+	);
+}
+
+/** Copy can quote prompts in single quotes; those render as inline prompts. Apostrophes are left alone. */
+function WithPrompts({ text }: { text: string }) {
+	return replaceMatches(text, /(?<=^|\s)'([^']+)'(?=[\s.,;]|$)/g, (prompt, key) => (
+		<InlinePrompt key={key} text={prompt} />
+	));
+}
+
 function AudienceBadge({ audience }: { audience: string }) {
 	return (
 		<span className="inline-flex h-7 items-center gap-2 rounded-full bg-white/80 px-3 text-xs font-medium text-zinc-600 shadow-sm ring-1 ring-zinc-200">
@@ -107,7 +144,9 @@ function Prompts({ vertical }: { vertical: AeoVertical }) {
 									className="flex items-center gap-3 rounded-xl bg-zinc-50 px-4 py-3 text-[15px] text-zinc-900 ring-1 ring-zinc-200/70"
 								>
 									<Search className="size-4 shrink-0 text-zinc-400" aria-hidden="true" />
-									<span className="min-w-0 flex-1 truncate">{p}</span>
+									<span className="min-w-0 flex-1 truncate font-mono text-[14px]">
+										<PromptText text={p} />
+									</span>
 								</li>
 							))}
 						</ul>
@@ -221,8 +260,8 @@ function VerticalPage() {
 				<Hero
 					badge={<AudienceBadge audience={vertical.audience} />}
 					title={vertical.headline ?? `AEO for ${vertical.audience}`}
-					lede={vertical.short}
-					selfHost={vertical.technical}
+					lede={<WithPrompts text={vertical.short} />}
+					selfHost={vertical.technical === true}
 					from={FROM}
 				/>
 				<LogoStrip />

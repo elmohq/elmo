@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { bookDemoUrl, cloudAppUrl, demoSiteUrl, type ReferralSource } from "@workspace/config/referrals";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { ArrowRight, ArrowUpRight, Play } from "lucide-react";
-import { lazy, type ReactNode, Suspense, useState } from "react";
+import { Fragment, lazy, type ReactNode, Suspense, useState } from "react";
 import { externalRel } from "@/lib/external-link";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { ProductDemo } from "./product-demo";
@@ -64,6 +64,15 @@ const GITHUB_BADGE = (
 	</a>
 );
 
+function titleWords(title: string) {
+	let at = 0;
+	return title.split(" ").map((word) => {
+		const entry = { word, at };
+		at += word.length + 1;
+		return entry;
+	});
+}
+
 const DEFAULT_LEDE =
 	"Elmo is the open-source AI visibility platform for AEO and GEO. See how ChatGPT, Claude, Gemini, and every other AI model talk about your brand, which sources they trust, and exactly what to do to get recommended.";
 
@@ -81,7 +90,7 @@ export function Hero({
 }: {
 	badge?: ReactNode;
 	title?: string;
-	lede?: string;
+	lede?: ReactNode;
 	selfHost?: boolean;
 	from?: ReferralSource;
 } = {}) {
@@ -105,9 +114,15 @@ export function Hero({
 					<h1
 						className={`mt-8 font-semibold text-balance text-zinc-950 ${short ? "text-[3.5rem] leading-[0.95] tracking-[-0.045em] sm:text-7xl lg:text-[6.5rem]" : "text-[2.75rem] leading-[1] tracking-[-0.04em] sm:text-6xl lg:text-7xl"}`}
 					>
-						{title}
+						{titleWords(title).map(({ word, at }) => (
+							<Fragment key={at}>
+								{at > 0 ? " " : null}
+								{/* A display-size line break at a hyphen ("e-" / "commerce") reads as a typo. */}
+								{word.includes("-") ? <span className="whitespace-nowrap">{word}</span> : word}
+							</Fragment>
+						))}
 					</h1>
-					<p className="mt-6 max-w-[60ch] text-pretty text-[17px]/7 text-zinc-600 md:text-xl/8">{lede}</p>
+					<p className="mt-6 max-w-[60ch] text-balance text-[17px]/7 text-zinc-600 md:text-xl/8">{lede}</p>
 					<div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
 						<a href={cloudUrl} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
 							Get started
