@@ -69,18 +69,41 @@ export function isGroundedApiTarget(config: ModelConfig): boolean {
 }
 
 /**
- * How a target handles a prompt's country: whether it can run the prompt at
- * all, and whether the run is localized (and so records the country).
- *
- * A target that can't localize still runs prompts in the default country, the
- * market every provider answers for unasked. One with no search runs every
- * prompt, since its answer doesn't depend on where it was asked from.
+ * How a target treats a prompt's country:
+ *  - "localized": the provider is asked to answer from it.
+ *  - "location-free": no web search, so nothing about the answer is local.
+ *  - "provider-default": the provider can't be told, but the prompt is in the
+ *    default country, the market every provider answers for unasked.
+ *  - "unsupported": the provider can't answer from it, so the target doesn't
+ *    run the prompt at all rather than file a US answer under another country.
  */
-export function targetLocalization(config: ModelConfig, country: string): { runs: boolean; localized: boolean } {
-	const localized = getProvider(config.provider).localizes?.(config) ?? false;
-	if (localized) return { runs: true, localized };
-	const searchFree = !config.webSearch && resolveProviderAccess(config) === "api";
-	return { runs: searchFree || country === DEFAULT_COUNTRY, localized };
+export type CountryHandling = "localized" | "location-free" | "provider-default" | "unsupported";
+
+/** Whether the language is sent to the provider, or only carried by the prompt's wording. */
+export type LanguageHandling = "sent" | "prompt-text";
+
+export interface TargetRunDescription {
+	runs: boolean;
+	country: CountryHandling;
+	language: LanguageHandling;
+}
+
+/**
+ * What running a prompt on a target actually measures — the single answer the
+ * run policy (whether it runs), the worker (what it sends and records), and the
+ * prompt page (what it tells the user) all share.
+ */
+export function describeTargetRun(config: ModelConfig, prompt: { country: string }): TargetRunDescription {
+	const provider = getProvider(config.provider);
+	const language: LanguageHandling = provider.sendsLanguage?.(config) ? "sent" : "prompt-text";
+	const country: CountryHandling = provider.localizes?.(config, prompt.country)
+		? "localized"
+		: !config.webSearch && resolveProviderAccess(config) === "api"
+			? "location-free"
+			: prompt.country === DEFAULT_COUNTRY
+				? "provider-default"
+				: "unsupported";
+	return { runs: country !== "unsupported", country, language };
 }
 
 /**

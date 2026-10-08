@@ -1,5 +1,6 @@
 import { bdclient } from "@brightdata/sdk";
 import { DEFAULT_COUNTRY } from "@workspace/config/countries";
+import { DEFAULT_LANGUAGE } from "@workspace/config/languages";
 import { getCredential } from "../../secrets";
 import { extractCitationsFromBrightdata, extractTextFromBrightdata } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
@@ -40,7 +41,7 @@ const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
 
 /**
  * Fetch Google's AI Overview through BrightData's SERP API. AI Overview is the
- * AI summary block on a normal results page, so we request an English Google
+ * AI summary block on a normal results page, so we request a Google
  * SERP as parsed JSON (`brd_json=1`) with `brd_ai_overview=2` — the flag that
  * makes BrightData surface the overview; without it AIO shows up in only a
  * fraction of SERPs. This runs through a serp zone (default `sdk_serp`, the zone
@@ -48,9 +49,13 @@ const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
  * to the same BRIGHTDATA_API_TOKEN — no dataset id or extra credential. The
  * parsed SERP carries an `ai_overview` object when Google shows one.
  */
-function runGoogleAiOverview(prompt: string, country: string = DEFAULT_COUNTRY): Promise<ScrapeResult> {
+function runGoogleAiOverview(
+	prompt: string,
+	country: string = DEFAULT_COUNTRY,
+	language: string = DEFAULT_LANGUAGE,
+): Promise<ScrapeResult> {
 	const zone = process.env.BRIGHTDATA_SERP_ZONE ?? "sdk_serp";
-	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=${country.toLowerCase()}&hl=en`;
+	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=${country.toLowerCase()}&hl=${language}`;
 
 	return retryTransient(
 		() => attemptGoogleAiOverview(zone, url),
@@ -177,9 +182,13 @@ export const brightdata: Provider = {
 		return LOCALIZED_MODELS.has(config.model);
 	},
 
+	sendsLanguage(config: ModelConfig) {
+		return config.model === AI_OVERVIEW_MODEL;
+	},
+
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		if (model === AI_OVERVIEW_MODEL) {
-			return runGoogleAiOverview(prompt, options?.country);
+			return runGoogleAiOverview(prompt, options?.country, options?.language);
 		}
 
 		const datasetId = options?.version ?? BD_DATASET_IDS[model];

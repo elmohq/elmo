@@ -5,6 +5,8 @@ import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { nonEmptyStrings } from "./scrape-shared";
 
+const OLOSTEP_COUNTRIES = new Set(["US", "GB", "DE", "FR", "SG"]);
+
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
 		parserId: "@olostep/chatgpt-results",
@@ -113,9 +115,10 @@ export const olostep: Provider = {
 	},
 
 	// Olostep runs each batch through a browser in the requested country, so
-	// every surface localizes the same way.
-	localizes() {
-		return true;
+	// every surface localizes the same way — but only from the countries its
+	// SDK names; others aren't documented.
+	localizes(_config: ModelConfig, country: string) {
+		return OLOSTEP_COUNTRIES.has(country);
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

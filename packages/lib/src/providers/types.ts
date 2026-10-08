@@ -24,6 +24,8 @@ export interface ProviderOptions {
 	 * it always has.
 	 */
 	country?: string;
+	/** Language code to ask in. Only read by targets that `sendsLanguage`. */
+	language?: string;
 }
 
 export interface StructuredResearchOptions<T> {
@@ -76,11 +78,17 @@ export interface Provider {
 	isConfigured(): boolean;
 	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
 	/**
-	 * Whether a target honors `ProviderOptions.country`. Omit when no target
-	 * does; such a target can only run prompts in DEFAULT_COUNTRY, the market
-	 * every provider answers for when it isn't told otherwise.
+	 * Whether a target can answer as if asked from `country`. Omit when no
+	 * target can; such a target only runs prompts in DEFAULT_COUNTRY, the
+	 * market every provider answers for when it isn't told otherwise.
 	 */
-	localizes?(config: ModelConfig): boolean;
+	localizes?(config: ModelConfig, country: string): boolean;
+	/**
+	 * Whether a target passes `ProviderOptions.language` on (a Google `hl`, a
+	 * DataForSEO language code). The rest answer in whatever language the
+	 * prompt is written in.
+	 */
+	sendsLanguage?(config: ModelConfig): boolean;
 	/** Validate a target config. Returns an error message if invalid, null if valid.
 	 *  Omit for providers that accept any model (runtime validation only). */
 	validateTarget?(config: ModelConfig): string | null;

@@ -6,8 +6,8 @@ import { type Attempt, failureDetails, isTransientStatus, nonEmptyStrings, retry
 
 const SEARCHAPI_URL = "https://www.searchapi.io/api/v1/search";
 
-// Only the Google engines take a location; the chatbot engines answer from
-// wherever SearchApi runs them. Language stays English for now.
+// Only the Google engines take a location and language; the chatbot engines
+// answer from wherever SearchApi runs them.
 const GOOGLE_LOCALE = { gl: "us", hl: "en" } as const;
 
 const SEARCHAPI_TIMEOUT_MS = 3 * 60 * 1000;
@@ -134,6 +134,10 @@ export const searchapi: Provider = {
 		return SEARCHAPI_TARGETS[config.model]?.params?.gl !== undefined;
 	},
 
+	sendsLanguage(config: ModelConfig) {
+		return SEARCHAPI_TARGETS[config.model]?.params?.hl !== undefined;
+	},
+
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const target = SEARCHAPI_TARGETS[model];
 		if (!target) {
@@ -145,6 +149,7 @@ export const searchapi: Provider = {
 		const params = new URLSearchParams({ engine: target.engine, q: prompt, ...target.params });
 		if (model === "chatgpt") params.set("web_search", String(options?.webSearch ?? false));
 		if (options?.country && params.has("gl")) params.set("gl", options.country.toLowerCase());
+		if (options?.language && params.has("hl")) params.set("hl", options.language);
 
 		const serp = await search(params);
 		const payload = target.nested === "ai_overview" ? await redeemAiOverviewToken(serp) : serp;

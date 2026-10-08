@@ -38,6 +38,10 @@ export const stub: Provider = {
 		return true;
 	},
 
+	sendsLanguage() {
+		return true;
+	},
+
 	async run(): Promise<ScrapeResult> {
 		// The stub exists for the structured-research path; the scrape path is
 		// never pointed at it in practice, so return an empty-but-valid result.

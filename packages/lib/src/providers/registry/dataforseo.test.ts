@@ -131,17 +131,28 @@ describe("dataforseo provider", () => {
 			expect(result.modelVersion).toBe("gpt-5-5");
 		});
 
-		it("asks the scraped ChatGPT UI from the prompt's country", async () => {
+		it("asks the scraped ChatGPT UI from the prompt's country, in its language", async () => {
 			dataforseoClient.chatGptLlmScraperLiveAdvanced.mockResolvedValueOnce(scraperResponse(CHATGPT_SCRAPE));
 
-			expect(dataforseo.localizes?.({ model: "chatgpt", provider: "dataforseo", webSearch: true })).toBe(true);
-			await dataforseo.run("chatgpt", "What speaker released last month reviews well?", {
+			const target = { model: "chatgpt", provider: "dataforseo", webSearch: true };
+			expect(dataforseo.localizes?.(target, "GB")).toBe(true);
+			expect(dataforseo.sendsLanguage?.(target)).toBe(true);
+			await dataforseo.run("chatgpt", "Quel enceinte sortie le mois dernier est bien notée ?", {
 				webSearch: true,
-				country: "GB",
+				country: "FR",
+				language: "fr",
 			});
 
 			const [payload] = dataforseoClient.chatGptLlmScraperLiveAdvanced.mock.calls[0];
-			expect(payload[0]).toMatchObject({ location_code: 2826 });
+			expect(payload[0]).toMatchObject({ location_code: 2250, language_code: "fr" });
+		});
+
+		it("doesn't localize the scraper to countries missing from its location list", () => {
+			const target = { model: "chatgpt", provider: "dataforseo", webSearch: true };
+			expect(dataforseo.localizes?.(target, "TW")).toBe(false);
+			expect(dataforseo.localizes?.({ model: "google-ai-mode", provider: "dataforseo", webSearch: true }, "TW")).toBe(
+				true,
+			);
 		});
 
 		it("routes to LLM Responses instead when the target pins a model_name", async () => {
@@ -259,7 +270,7 @@ describe("dataforseo provider", () => {
 
 		// The version pin is what selects the LLM Responses route.
 		const target = { model: "chatgpt", provider: "dataforseo", version: "gpt-5.5", webSearch: true };
-		expect(dataforseo.localizes?.(target)).toBe(false);
+		expect(dataforseo.localizes?.(target, "GB")).toBe(false);
 		await dataforseo.run("chatgpt", "What is a well-reviewed laptop this month?", {
 			webSearch: true,
 			version: "gpt-5.5",

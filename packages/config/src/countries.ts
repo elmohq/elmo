@@ -6,9 +6,10 @@ import { z } from "zod";
  * parameter (a Google `gl`, a DataForSEO location code, an approximate user
  * location for a model's web search tool).
  *
- * Deliberately a curated list rather than all of ISO 3166: every entry has to
- * map cleanly onto every localizing provider, and a country none of them
- * serves would only produce prompts that never run.
+ * Deliberately a curated list rather than all of ISO 3166: providers each
+ * cover a different subset, and every entry here is one the broad-coverage
+ * providers serve. Which targets can answer from a given country is the
+ * provider's call (see `Provider.localizes`).
  */
 
 /** Every prompt that predates countries ran from here, and new ones start here. */

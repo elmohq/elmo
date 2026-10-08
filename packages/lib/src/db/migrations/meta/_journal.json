@@ -173,8 +173,8 @@
     {
       "idx": 24,
       "version": "7",
-      "when": 1791450445656,
-      "tag": "0024_prompt_country",
+      "when": 1791483814323,
+      "tag": "0024_prompt_markets",
       "breakpoints": true
     }
   ]

@@ -23,6 +23,11 @@ export function dfsLocationCode(country: string = DEFAULT_COUNTRY): number {
 	return 2000 + getCountry(country).numeric;
 }
 
+/** The location and language every scraped DataForSEO route takes. */
+export function dfsLocale(options?: { country?: string; language?: string }) {
+	return { location_code: dfsLocationCode(options?.country), language_code: options?.language ?? DFS_LANGUAGE_CODE };
+}
+
 export const isDataforseoConfigured = configuredWhen("DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD");
 
 const DFS_STATUS_OK = 20000;

@@ -1,5 +1,5 @@
 {
-  "id": "9a7be965-4f53-48b8-8bc9-2f88e61786a2",
+  "id": "dee7fc4b-9ae1-4cfa-84db-50d891774afa",
   "prevId": "d6ac89b3-c93f-4527-9432-e34eaf19bb0c",
   "version": "7",
   "dialect": "postgresql",
@@ -628,6 +628,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "raw_output": {
           "name": "raw_output",
           "type": "json",
@@ -862,6 +868,20 @@
           "notNull": true,
           "default": "'US'"
         },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'en'"
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
         "tags": {
           "name": "tags",
           "type": "text[]",
@@ -918,6 +938,27 @@
             },
             {
               "expression": "enabled",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "prompts_brand_id_group_id_idx": {
+          "name": "prompts_brand_id_group_id_idx",
+          "columns": [
+            {
+              "expression": "brand_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "group_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

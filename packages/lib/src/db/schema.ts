@@ -82,6 +82,18 @@ export const prompts = pgTable(
 		 * never a mix of markets. Same text in two countries is two rows.
 		 */
 		country: text("country").notNull().default("US"),
+		/**
+		 * Language the prompt is written in. Sent to the providers that take one,
+		 * and fixed once created for the same reason as `country`.
+		 */
+		language: text("language").notNull().default("en"),
+		/**
+		 * Prompts asking the same question — in other countries or languages —
+		 * share a group, which the dashboard shows and compares as one. Every
+		 * prompt is in a group, most of them alone; no table of its own, because
+		 * a group has nothing to it but its members.
+		 */
+		groupId: uuid("group_id").defaultRandom().notNull(),
 		tags: text("tags").array().notNull().default([]),
 		systemTags: text("system_tags").array().notNull().default([]),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -93,6 +105,7 @@ export const prompts = pgTable(
 	(table) => ({
 		brandIdIdx: index("prompts_brand_id_idx").on(table.brandId),
 		brandIdEnabledIdx: index("prompts_brand_id_enabled_idx").on(table.brandId, table.enabled),
+		brandIdGroupIdIdx: index("prompts_brand_id_group_id_idx").on(table.brandId, table.groupId),
 	}),
 ).enableRLS();
 
@@ -131,6 +144,8 @@ export const promptRuns = pgTable(
 		 * can't be localized and answers for its default market.
 		 */
 		country: text("country"),
+		/** The language sent to the provider; null when the prompt's text alone sets it. */
+		language: text("language"),
 		rawOutput: json("raw_output").notNull(),
 		webQueries: text("web_queries").array().notNull().default([]),
 		brandMentioned: boolean("brand_mentioned").notNull(),
