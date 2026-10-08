@@ -170,7 +170,7 @@ A web app serves the dashboard and REST API, a worker schedules and executes pro
 
 - [Discord](https://discord.gg/s24nubCtKz)
 - [Email](mailto:support@elmohq.com)
-- [Schedule a call](https://cal.com/jrhizor/elmo)
+- [Schedule a call](https://www.elmohq.com/demo)
 
 ## Contributing
 
