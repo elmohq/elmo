@@ -27,7 +27,7 @@ import {
 // (≤5 distinct values) that's actually useful for filtering THIS brand's
 // prompts. No tag values are hardcoded here — the LLM picks the entire
 // vocabulary from the brand context.
-const TAG_GUIDANCE =
+export const TAG_GUIDANCE =
 	"Tags should be tailored to this specific brand and the prompt set you're producing. Aim for tags that describe WHAT a prompt is about (a product category, audience segment, sub-feature, competitor name) — not WHAT the user wants to do with the answer (compare, evaluate, buy). Goal-style intent tags tend to apply to most prompts in the set and don't discriminate. Prefer single-word tags; only use multi-word tags (lowercase, single hyphens between words) when no single word captures the concept. Each tag should describe ONE axis — don't fuse two ideas into a compound hyphenated label. Don't use 'branded' or 'unbranded' as tag values; the system computes that classification automatically from the prompt text. Pick a small shared vocabulary (no more than 5 distinct values across all prompts), and only attach a tag to a prompt if it actually discriminates that prompt from others — if the same tag would apply to most prompts, don't use it.";
 
 const ALIAS_GUIDANCE =
@@ -43,7 +43,7 @@ const competitorSchema = z.object({
 	aliases: z.array(z.string()).describe(`Other names the company is commonly known by. ${ALIAS_GUIDANCE}`),
 });
 
-const promptSchema = z.object({
+export const promptSchema = z.object({
 	prompt: z
 		.string()
 		.describe(
@@ -225,7 +225,7 @@ function filterRedundantAliases(aliases: string[], canonicalName: string): strin
 	return aliases.filter((a) => !a.toLowerCase().includes(canonical));
 }
 
-async function safeGetExcerpt(website: string): Promise<string> {
+export async function safeGetExcerpt(website: string): Promise<string> {
 	try {
 		return await getWebsiteExcerpt(website);
 	} catch (err) {
@@ -359,7 +359,7 @@ function normalizeCompetitors(
 	return competitors;
 }
 
-function normalizePrompts(raw: RawSuggestion["suggestedPrompts"], maxPrompts: number): OnboardingPrompt[] {
+export function normalizePrompts(raw: z.infer<typeof promptSchema>[] | undefined, maxPrompts: number): OnboardingPrompt[] {
 	const prompts: OnboardingPrompt[] = [];
 	const seen = new Set<string>();
 
