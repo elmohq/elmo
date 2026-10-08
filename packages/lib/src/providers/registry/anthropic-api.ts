@@ -38,6 +38,7 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 			type: "web_search_20250305",
 			name: "web_search",
 			max_uses: ANTHROPIC_WEB_SEARCH_MAX_USES,
+			...(options.country ? { user_location: { type: "approximate" as const, country: options.country } } : {}),
 		});
 	}
 
@@ -107,6 +108,10 @@ export const anthropicApi: Provider = {
 	docsAnchor: "direct-model-apis",
 
 	isConfigured: configuredWhen("ANTHROPIC_API_KEY"),
+
+	// The web search tool takes an approximate user location; without search
+	// there is nothing to localize.
+	localizes: (config) => config.webSearch,
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;

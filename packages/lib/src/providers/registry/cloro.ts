@@ -1,7 +1,8 @@
+import { DEFAULT_COUNTRY } from "@workspace/config/countries";
 import { getCredential } from "../../secrets";
 import { type Citation, cloroAnswer, extractCitationsFromCloro, extractTextFromCloro } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
-import type { ModelConfig, Provider, ScrapeResult } from "../types";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, responseError, sleep } from "./scrape-shared";
 
 // Cloro monitors live AI answer engines. Each Elmo model maps to a Cloro task
@@ -47,9 +48,6 @@ const CLORO_GENERATION_TIMEOUT_MS = 10 * 60 * 1000;
  * tasks at once, and this has to cover the last of them reaching the front.
  */
 const CLORO_TOTAL_TIMEOUT_MS = 60 * 60 * 1000;
-
-// Cloro localizes every answer; default to a US audience.
-const CLORO_COUNTRY = "US";
 
 /** Statuses meaning "accepted, not started" — see CLORO_GENERATION_TIMEOUT_MS. */
 const CLORO_QUEUED_STATUSES = new Set(["QUEUED", "PENDING", "CREATED", "SCHEDULED"]);
@@ -168,13 +166,17 @@ export const cloro: Provider = {
 		return null;
 	},
 
-	async run(model: string, prompt: string): Promise<ScrapeResult> {
+	localizes() {
+		return true;
+	},
+
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const task = CLORO_TASKS[model];
 		if (!task) {
 			throw new Error(`Cloro: no task mapping for model "${model}". Supported: ${Object.keys(CLORO_TASKS).join(", ")}`);
 		}
 
-		const payload: Record<string, any> = { [task.field]: prompt, country: CLORO_COUNTRY, include: task.include };
+		const payload: Record<string, any> = { [task.field]: prompt, country: options?.country ?? DEFAULT_COUNTRY, include: task.include };
 
 		const response = await runAsyncTask(task.taskType, payload);
 		const answer = cloroAnswer(response) ?? {};

@@ -18,6 +18,12 @@ export interface ScrapeResult {
 export interface ProviderOptions {
 	webSearch?: boolean;
 	version?: string;
+	/**
+	 * ISO 3166-1 alpha-2 country to answer as if asked from. Only read by
+	 * targets their provider `localizes`; omitted, each answers for the market
+	 * it always has.
+	 */
+	country?: string;
 }
 
 export interface StructuredResearchOptions<T> {
@@ -69,6 +75,12 @@ export interface Provider {
 	docsAnchor?: string;
 	isConfigured(): boolean;
 	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
+	/**
+	 * Whether a target honors `ProviderOptions.country`. Omit when no target
+	 * does; such a target can only run prompts in DEFAULT_COUNTRY, the market
+	 * every provider answers for when it isn't told otherwise.
+	 */
+	localizes?(config: ModelConfig): boolean;
 	/** Validate a target config. Returns an error message if invalid, null if valid.
 	 *  Omit for providers that accept any model (runtime validation only). */
 	validateTarget?(config: ModelConfig): string | null;

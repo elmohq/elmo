@@ -30,6 +30,7 @@ function orgPrompts(count: number, premiumModels: string[] = []) {
 		id: `p${i + 1}`,
 		createdAt: new Date(Date.UTC(2026, 0, i + 1)),
 		premiumModels,
+		country: "US",
 	}));
 }
 

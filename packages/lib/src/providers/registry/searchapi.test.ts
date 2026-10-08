@@ -95,6 +95,14 @@ describe("searchapi provider", () => {
 		expect(result.webQueries).toEqual([]);
 	});
 
+	it("localizes only the Google engines", () => {
+		const target = (model: string) => ({ model, provider: "searchapi", webSearch: true });
+		expect(searchapi.localizes?.(target("google-ai-mode"))).toBe(true);
+		expect(searchapi.localizes?.(target("google-ai-overview"))).toBe(true);
+		expect(searchapi.localizes?.(target("chatgpt"))).toBe(false);
+		expect(searchapi.localizes?.(target("perplexity"))).toBe(false);
+	});
+
 	it("reports no searches for an offline target even when ChatGPT searched anyway", async () => {
 		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(CHATGPT_RESPONSE)));
 
@@ -108,9 +116,13 @@ describe("searchapi provider", () => {
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(AI_OVERVIEW_SERP));
 		vi.stubGlobal("fetch", fetchMock);
 
-		const result = await searchapi.run("google-ai-overview", "best running shoes for beginners", { webSearch: true });
+		const result = await searchapi.run("google-ai-overview", "best running shoes for beginners", {
+			webSearch: true,
+			country: "GB",
+		});
 
 		expect(requestedUrl(fetchMock).searchParams.get("engine")).toBe("google");
+		expect(requestedUrl(fetchMock).searchParams.get("gl")).toBe("gb");
 		expect(requestedUrl(fetchMock).searchParams.get("link")).toBe("resolved");
 
 		expect(result.textContent).toContain("Brooks Ghost");

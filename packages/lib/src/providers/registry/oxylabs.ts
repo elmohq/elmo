@@ -1,3 +1,4 @@
+import { countryName } from "@workspace/config/countries";
 import { getCredential } from "../../secrets";
 import { type Citation, extractCitationsFromOxylabs, extractTextFromOxylabs } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
@@ -145,6 +146,11 @@ export const oxylabs: Provider = {
 		return null;
 	},
 
+	// Every source takes `geo_location`, as a country's English name.
+	localizes() {
+		return true;
+	},
+
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const sourceConfig = OXYLABS_SOURCES[model];
 		if (!sourceConfig) {
@@ -162,6 +168,7 @@ export const oxylabs: Provider = {
 		// ChatGPT's `search` flag toggles in-product web search. Other sources
 		// always search, so we don't send the flag for them.
 		if (model === "chatgpt") body.search = options?.webSearch ?? false;
+		if (options?.country) body.geo_location = countryName(options.country);
 
 		const payload = await runAsyncQuery(body);
 		const content = payload.results?.[0]?.content ?? {};

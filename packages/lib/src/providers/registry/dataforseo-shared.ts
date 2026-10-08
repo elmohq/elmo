@@ -1,3 +1,4 @@
+import { DEFAULT_COUNTRY, getCountry } from "@workspace/config/countries";
 import * as client from "dataforseo-client";
 import { getCredential } from "../../secrets";
 import { configuredWhen } from "../config";
@@ -11,10 +12,16 @@ import { type Attempt, nonEmptyStrings } from "./scrape-shared";
 
 const MAX_PROMPT_CHARS = 500;
 
-// Country localization is intentionally not exposed via SCRAPE_TARGETS yet
-// because support differs by DataForSEO surface and underlying model.
-export const DFS_LOCATION_CODE = 2840;
 export const DFS_LANGUAGE_CODE = "en";
+
+/**
+ * DataForSEO's country location codes are Google Ads geotarget ids, which for
+ * a country are 2000 plus its ISO 3166-1 numeric code (United States 840 →
+ * 2840).
+ */
+export function dfsLocationCode(country: string = DEFAULT_COUNTRY): number {
+	return 2000 + getCountry(country).numeric;
+}
 
 export const isDataforseoConfigured = configuredWhen("DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD");
 

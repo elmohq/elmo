@@ -73,7 +73,12 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		toolChoice: webSearch ? "auto" : "none",
 		...(webSearch
 			? {
-					tools: { web_search: openai.tools.webSearch({ searchContextSize: OPENAI_WEB_SEARCH_CONTEXT_SIZE }) },
+					tools: {
+						web_search: openai.tools.webSearch({
+							searchContextSize: OPENAI_WEB_SEARCH_CONTEXT_SIZE,
+							...(options?.country ? { userLocation: { type: "approximate", country: options.country } } : {}),
+						}),
+					},
 					providerOptions: { openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } },
 				}
 			: {}),
@@ -106,6 +111,10 @@ export const openaiApi: Provider = {
 	docsAnchor: "direct-model-apis",
 
 	isConfigured: configuredWhen("OPENAI_API_KEY"),
+
+	// The web search tool takes an approximate user location; without search
+	// there is nothing to localize.
+	localizes: (config) => config.webSearch,
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;

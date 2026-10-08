@@ -1,4 +1,5 @@
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
+import { DEFAULT_COUNTRY } from "@workspace/config/countries";
 import { anthropicApi } from "./registry/anthropic-api";
 import { brightdata } from "./registry/brightdata";
 import { cloro } from "./registry/cloro";
@@ -65,6 +66,24 @@ export function resolveProviderAccess(config: ModelConfig): ProviderAccess {
  */
 export function isGroundedApiTarget(config: ModelConfig): boolean {
 	return config.webSearch && resolveProviderAccess(config) === "api";
+}
+
+/**
+ * How a target handles a prompt's country: whether it can run the prompt at
+ * all, and whether the run is localized (and so records the country).
+ *
+ * A target that can't localize still runs prompts in the default country, the
+ * market every provider answers for unasked. One with no search runs every
+ * prompt, since its answer doesn't depend on where it was asked from.
+ */
+export function targetLocalization(
+	config: ModelConfig,
+	country: string,
+): { runs: boolean; localized: boolean } {
+	const localized = getProvider(config.provider).localizes?.(config) ?? false;
+	if (localized) return { runs: true, localized };
+	const searchFree = !config.webSearch && resolveProviderAccess(config) === "api";
+	return { runs: searchFree || country === DEFAULT_COUNTRY, localized };
 }
 
 /**

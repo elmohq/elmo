@@ -131,6 +131,19 @@ describe("dataforseo provider", () => {
 			expect(result.modelVersion).toBe("gpt-5-5");
 		});
 
+		it("asks the scraped ChatGPT UI from the prompt's country", async () => {
+			dataforseoClient.chatGptLlmScraperLiveAdvanced.mockResolvedValueOnce(scraperResponse(CHATGPT_SCRAPE));
+
+			expect(dataforseo.localizes?.({ model: "chatgpt", provider: "dataforseo", webSearch: true })).toBe(true);
+			await dataforseo.run("chatgpt", "What speaker released last month reviews well?", {
+				webSearch: true,
+				country: "GB",
+			});
+
+			const [payload] = dataforseoClient.chatGptLlmScraperLiveAdvanced.mock.calls[0];
+			expect(payload[0]).toMatchObject({ location_code: 2826 });
+		});
+
 		it("routes to LLM Responses instead when the target pins a model_name", async () => {
 			dataforseoClient.chatgptLlmResponsesLive.mockResolvedValueOnce({
 				tasks: [
@@ -216,7 +229,7 @@ describe("dataforseo provider", () => {
 		});
 	});
 
-	it("does not send country localization for DataForSEO LLM Responses targets", async () => {
+	it("does not send a country to LLM Responses, so those targets only run default-country prompts", async () => {
 		dataforseoClient.chatgptLlmResponsesLive.mockResolvedValueOnce({
 			tasks: [
 				{
@@ -244,13 +257,14 @@ describe("dataforseo provider", () => {
 			],
 		});
 
-		// country isn't a ProviderOptions field (intentionally not exposed); force it
-		// through to prove DataForSEO never forwards it as web_search_country_iso_code.
 		// The version pin is what selects the LLM Responses route.
-		const options = { webSearch: true, version: "gpt-5.5", country: "GB" } as unknown as Parameters<
-			typeof dataforseo.run
-		>[2];
-		await dataforseo.run("chatgpt", "What is a well-reviewed laptop this month?", options);
+		const target = { model: "chatgpt", provider: "dataforseo", version: "gpt-5.5", webSearch: true };
+		expect(dataforseo.localizes?.(target)).toBe(false);
+		await dataforseo.run("chatgpt", "What is a well-reviewed laptop this month?", {
+			webSearch: true,
+			version: "gpt-5.5",
+			country: "GB",
+		});
 
 		const [payload] = dataforseoClient.chatgptLlmResponsesLive.mock.calls[0];
 		expect(payload[0]).not.toHaveProperty("web_search_country_iso_code");
