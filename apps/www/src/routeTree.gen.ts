@@ -49,6 +49,7 @@ import { Route as GlossaryIndexRouteImport } from './routes/glossary/index'
 import { Route as GlossarySlugRouteImport } from './routes/glossary/$slug'
 import { Route as LegalIndexRouteImport } from './routes/legal/index'
 import { Route as LegalSplatRouteImport } from './routes/legal/$'
+import { Route as OffSiteAeoBookRouteImport } from './routes/off-site-aeo_.book'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
 import { Route as DotwellKnownAgentSkillsSplatRouteImport } from './routes/[.]well-known/agent-skills/$'
 import { Route as DotwellKnownAgentSkillsIndexDotjsonRouteImport } from './routes/[.]well-known/agent-skills/index[.]json'
@@ -271,6 +272,11 @@ const LegalSplatRoute = LegalSplatRouteImport.update({
   path: '/legal/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OffSiteAeoBookRoute = OffSiteAeoBookRouteImport.update({
+  id: '/off-site-aeo_/book',
+  path: '/off-site-aeo/book',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OgStatusDotpngRoute = OgStatusDotpngRouteImport.update({
   id: '/og/status.png',
   path: '/og/status.png',
@@ -408,6 +414,7 @@ export interface FileRoutesByFullPath {
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/legal/$': typeof LegalSplatRoute
+  '/off-site-aeo/book': typeof OffSiteAeoBookRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
@@ -468,6 +475,7 @@ export interface FileRoutesByTo {
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/legal/$': typeof LegalSplatRoute
+  '/off-site-aeo/book': typeof OffSiteAeoBookRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/aeo-for': typeof AeoForIndexRoute
   '/ai-search': typeof AiSearchIndexRoute
@@ -529,6 +537,7 @@ export interface FileRoutesById {
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/legal/$': typeof LegalSplatRoute
+  '/off-site-aeo_/book': typeof OffSiteAeoBookRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
@@ -591,6 +600,7 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/glossary/$slug'
     | '/legal/$'
+    | '/off-site-aeo/book'
     | '/og/status.png'
     | '/aeo-for/'
     | '/ai-search/'
@@ -651,6 +661,7 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/glossary/$slug'
     | '/legal/$'
+    | '/off-site-aeo/book'
     | '/og/status.png'
     | '/aeo-for'
     | '/ai-search'
@@ -711,6 +722,7 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/glossary/$slug'
     | '/legal/$'
+    | '/off-site-aeo_/book'
     | '/og/status.png'
     | '/aeo-for/'
     | '/ai-search/'
@@ -772,6 +784,7 @@ export interface RootRouteChildren {
   DocsSplatRoute: typeof DocsSplatRoute
   GlossarySlugRoute: typeof GlossarySlugRoute
   LegalSplatRoute: typeof LegalSplatRoute
+  OffSiteAeoBookRoute: typeof OffSiteAeoBookRoute
   OgStatusDotpngRoute: typeof OgStatusDotpngRoute
   AeoForIndexRoute: typeof AeoForIndexRoute
   AiSearchIndexRoute: typeof AiSearchIndexRoute
@@ -1081,6 +1094,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/off-site-aeo_/book': {
+      id: '/off-site-aeo_/book'
+      path: '/off-site-aeo/book'
+      fullPath: '/off-site-aeo/book'
+      preLoaderRoute: typeof OffSiteAeoBookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/og/status.png': {
       id: '/og/status.png'
       path: '/og/status.png'
@@ -1244,6 +1264,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsSplatRoute: DocsSplatRoute,
   GlossarySlugRoute: GlossarySlugRoute,
   LegalSplatRoute: LegalSplatRoute,
+  OffSiteAeoBookRoute: OffSiteAeoBookRoute,
   OgStatusDotpngRoute: OgStatusDotpngRoute,
   AeoForIndexRoute: AeoForIndexRoute,
   AiSearchIndexRoute: AiSearchIndexRoute,
