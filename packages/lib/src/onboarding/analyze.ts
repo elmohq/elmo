@@ -359,7 +359,10 @@ function normalizeCompetitors(
 	return competitors;
 }
 
-export function normalizePrompts(raw: z.infer<typeof promptSchema>[] | undefined, maxPrompts: number): OnboardingPrompt[] {
+export function normalizePrompts(
+	raw: z.infer<typeof promptSchema>[] | undefined,
+	maxPrompts: number,
+): OnboardingPrompt[] {
 	const prompts: OnboardingPrompt[] = [];
 	const seen = new Set<string>();
 

@@ -40,7 +40,9 @@ function buildPrompt(args: {
 	competitors: string[];
 	count: number;
 }): string {
-	const excerptBlock = args.websiteExcerpt ? `\nText from ${args.analysisUrl}:\n---\n${args.websiteExcerpt}\n---\n` : "";
+	const excerptBlock = args.websiteExcerpt
+		? `\nText from ${args.analysisUrl}:\n---\n${args.websiteExcerpt}\n---\n`
+		: "";
 	const competitorsLine =
 		args.competitors.length > 0 ? `\nCompetitors already tracked: ${args.competitors.join(", ")}\n` : "";
 	const tagsLine =
