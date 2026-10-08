@@ -1,6 +1,6 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
-import { parseCountryFilter } from "@workspace/config/countries";
+import { countryCodeSchema, DEFAULT_COUNTRY, parseCountryFilter } from "@workspace/config/countries";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { classifyUrl } from "@workspace/lib/citations/domain-lists";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
@@ -496,6 +496,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					id: z.string().optional(),
 					value: z.string(),
 					enabled: z.boolean().optional().default(true),
+					country: countryCodeSchema.optional(),
 					tags: z.array(z.string()).optional(),
 					/**
 					 * Premium models to track this prompt on, grounded — one of the org's
@@ -545,6 +546,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						brandId: data.brandId,
 						value: prompt.value,
 						enabled: prompt.enabled,
+						country: prompt.country ?? DEFAULT_COUNTRY,
 						tags: prompt.tags || [],
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,

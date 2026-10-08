@@ -121,3 +121,40 @@ export function describeSkipped(skipped: SkippedLines): string | null {
 	if (parts.length === 0) return null;
 	return `Skipped ${parts.join(" and ")}.`;
 }
+
+export interface CountryBulkPromptParse {
+	/** One entry per pasted line per country, lines in paste order. */
+	added: { value: string; country: string }[];
+	skipped: SkippedLines;
+}
+
+/**
+ * `parseBulkPrompts` for a paste added in several countries at once. Each line
+ * becomes one prompt per country, and a line only duplicates a prompt that is
+ * already in the same country — the same text elsewhere is a different prompt.
+ */
+export function parseBulkPromptsInCountries(
+	text: string,
+	options: { existing?: readonly { value: string; country: string }[]; countries: readonly string[]; limit?: number },
+): CountryBulkPromptParse {
+	const { existing = [], countries, limit = MAX_PROMPTS } = options;
+	const lines = parseBulkPrompts(text, { limit: Number.POSITIVE_INFINITY });
+	const countryKey = (value: string, country: string) => `${country}:${dedupeKey(value)}`;
+	const seen = new Set(existing.map((prompt) => countryKey(prompt.value, prompt.country)));
+	const room = Math.max(0, limit - existing.length);
+
+	const added: { value: string; country: string }[] = [];
+	const skipped: SkippedLines = { ...lines.skipped, duplicateOfExisting: [], overCapacity: [] };
+	for (const value of lines.added) {
+		for (const country of countries) {
+			if (seen.has(countryKey(value, country))) {
+				skipped.duplicateOfExisting.push(value);
+			} else if (added.length >= room) {
+				skipped.overCapacity.push(value);
+			} else {
+				added.push({ value, country });
+			}
+		}
+	}
+	return { added, skipped };
+}

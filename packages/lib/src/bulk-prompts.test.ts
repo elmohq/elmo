@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeSkipped, parseBulkPrompts } from "./bulk-prompts";
+import { describeSkipped, parseBulkPrompts, parseBulkPromptsInCountries } from "./bulk-prompts";
 import { MAX_PROMPTS } from "./constants";
 
 describe("bulk-prompts", () => {
@@ -122,5 +122,32 @@ describe("bulk-prompts", () => {
 				describeSkipped({ blank: 0, duplicateOfExisting: [], duplicateInPaste: [], overCapacity: ["b", "c"] }),
 			).toBeNull();
 		});
+	});
+});
+
+describe("parseBulkPromptsInCountries", () => {
+	it("adds every line once per country", () => {
+		const result = parseBulkPromptsInCountries("best shoes\nbest boots", { countries: ["US", "GB"] });
+		expect(result.added).toEqual([
+			{ value: "best shoes", country: "US" },
+			{ value: "best shoes", country: "GB" },
+			{ value: "best boots", country: "US" },
+			{ value: "best boots", country: "GB" },
+		]);
+	});
+
+	it("treats the same text in another country as a new prompt", () => {
+		const result = parseBulkPromptsInCountries("Best Shoes", {
+			existing: [{ value: "best shoes", country: "US" }],
+			countries: ["US", "DE"],
+		});
+		expect(result.added).toEqual([{ value: "Best Shoes", country: "DE" }]);
+		expect(result.skipped.duplicateOfExisting).toEqual(["Best Shoes"]);
+	});
+
+	it("counts each country's copy against the list's capacity", () => {
+		const result = parseBulkPromptsInCountries("best shoes\nbest boots", { countries: ["US", "GB"], limit: 3 });
+		expect(result.added).toHaveLength(3);
+		expect(result.skipped.overCapacity).toEqual(["best boots"]);
 	});
 });

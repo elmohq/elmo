@@ -3,6 +3,7 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { countryCodeSchema, parseCountryFilter } from "@workspace/config/countries";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
 import { clampedPaging } from "@/lib/api/analytics-range";
@@ -14,6 +15,7 @@ const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
 	value: z.string().trim().min(1, "value must be a non-empty string"),
 	tags: z.array(z.string()).optional(),
+	country: countryCodeSchema.optional(),
 });
 
 export const Route = createFileRoute("/api/v1/prompts/")({
@@ -31,6 +33,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 						brandId: searchParams.get("brandId") ?? undefined,
 						enabled: enabled === "true" ? true : enabled === "false" ? false : undefined,
 						tags: (searchParams.get("tags") ?? "").split(","),
+						countries: parseCountryFilter(searchParams.get("countries")),
 						q: searchParams.get("q") ?? undefined,
 						limit,
 						offset,
@@ -53,7 +56,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 				handle: async ({ body, auth }) => {
 					const brand = await requireBrandInScope(auth, body.brandId, "body");
 					const [created] = await createPrompts(brand, {
-						prompts: [{ value: body.value, tags: body.tags, enabled: true }],
+						prompts: [{ value: body.value, tags: body.tags, country: body.country, enabled: true }],
 					});
 					return created;
 				},

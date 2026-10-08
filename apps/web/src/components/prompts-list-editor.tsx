@@ -11,6 +11,7 @@
 
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { countryName, DEFAULT_COUNTRY } from "@workspace/config/countries";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -19,7 +20,7 @@ import {
 	premiumSlotsUsed,
 	selectPremiumModels,
 } from "@workspace/config/plans";
-import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
+import { describeSkipped, parseBulkPromptsInCountries } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
@@ -34,6 +35,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { CountriesPicker, CountrySelect } from "@/components/country-select";
 import { useOrganizationParams } from "@/hooks/use-route-params";
 
 export interface EditablePrompt {
@@ -41,6 +43,8 @@ export interface EditablePrompt {
 	_key: string;
 	value: string;
 	enabled: boolean;
+	/** Editable until the prompt is saved; after that it's part of what the prompt measures. */
+	country: string;
 	tags: string[];
 	systemTags: string[];
 	premiumModels: string[];
@@ -56,6 +60,7 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		_key: uuidv4(),
 		value: partial?.value ?? "",
 		enabled: partial?.enabled ?? true,
+		country: partial?.country ?? DEFAULT_COUNTRY,
 		tags: partial?.tags ?? [],
 		systemTags: partial?.systemTags ?? [],
 		premiumModels: partial?.premiumModels ?? [],
@@ -162,6 +167,10 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
+	"system-country-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_9rem_minmax(14rem,1fr)_2.75rem]",
+	"system-country-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_9rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
+	"plain-country-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_9rem_minmax(14rem,1fr)_2.75rem]",
+	"plain-country-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_9rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 };
 
 interface PromptsListEditorProps {
@@ -174,6 +183,9 @@ interface PromptsListEditorProps {
 	changedKeys?: ReadonlySet<string>;
 	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
 	premium?: PremiumAllowance;
+	/** Where new prompts start. Omit to hide the Country column and add every
+	 *  prompt in the default country (the onboarding wizard). */
+	newPromptCountry?: string;
 }
 
 /**
@@ -181,13 +193,19 @@ interface PromptsListEditorProps {
  * the rules (trim, dedupe, cap) are tested without a DOM; it runs on every
  * keystroke only to label the button and warn about what will be dropped.
  */
-function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void) {
+function useBulkPaste(
+	filled: { value: string; country: string }[],
+	defaultCountry: string,
+	onAdd: (prompts: { value: string; country: string }[]) => void,
+) {
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
+	const [bulkCountries, setBulkCountries] = useState<string[] | null>(null);
+	const countries = useMemo(() => bulkCountries ?? [defaultCountry], [bulkCountries, defaultCountry]);
 
 	const bulkPreview = useMemo(
-		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: MAX_PROMPTS }),
-		[bulkText, filledValues],
+		() => parseBulkPromptsInCountries(bulkText, { existing: filled, countries, limit: MAX_PROMPTS }),
+		[bulkText, filled, countries],
 	);
 
 	// Over capacity blocks the whole paste rather than quietly taking the lines
@@ -196,6 +214,7 @@ function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void)
 	const closeBulk = () => {
 		setBulkOpen(false);
 		setBulkText("");
+		setBulkCountries(null);
 	};
 
 	return {
@@ -203,6 +222,8 @@ function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void)
 		setBulkOpen,
 		bulkText,
 		setBulkText,
+		bulkCountries: countries,
+		setBulkCountries,
 		bulkPreview,
 		bulkNotice: bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null,
 		bulkError:
@@ -246,6 +267,7 @@ function useRowSelection(prompts: EditablePrompt[]) {
 function ColumnHeader({
 	gridCols,
 	showSystemTags,
+	showCountry,
 	premium,
 	allSelected,
 	onToggleSelectAll,
@@ -253,6 +275,7 @@ function ColumnHeader({
 }: {
 	gridCols: string;
 	showSystemTags: boolean;
+	showCountry: boolean;
 	premium?: PremiumAllowance;
 	allSelected: boolean;
 	onToggleSelectAll: () => void;
@@ -285,6 +308,20 @@ function ColumnHeader({
 						<TooltipContent>
 							<p className="max-w-xs">
 								Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.
+							</p>
+						</TooltipContent>
+					</Tooltip>
+				</div>
+			)}
+			{showCountry && (
+				<div className="flex items-center gap-1 min-w-0">
+					Country
+					<Tooltip>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+						<TooltipContent>
+							<p className="max-w-xs">
+								Where the prompt is asked from. AI answers and the sources they cite differ by country. To track a
+								saved prompt somewhere else, add it again in that country.
 							</p>
 						</TooltipContent>
 					</Tooltip>
@@ -329,6 +366,7 @@ function PromptRow({
 	update,
 	allTagOptions,
 	showSystemTags,
+	showCountry,
 	changedKeys,
 	premium,
 	premiumAtCapacity,
@@ -342,6 +380,7 @@ function PromptRow({
 	update: (index: number, patch: Partial<EditablePrompt>) => void;
 	allTagOptions: { value: string }[];
 	showSystemTags: boolean;
+	showCountry: boolean;
 	changedKeys?: ReadonlySet<string>;
 	premium?: PremiumAllowance;
 	premiumAtCapacity: boolean;
@@ -375,6 +414,7 @@ function PromptRow({
 						/>
 					</div>
 				</div>
+				{showCountry && <PromptCountryField prompt={prompt} onChange={(country) => update(index, { country })} />}
 				<TagsInput
 					value={prompt.tags}
 					onValueChange={(tags) => update(index, { tags })}
@@ -406,6 +446,7 @@ function PromptRow({
 					className="min-w-0"
 				/>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
+				{showCountry && <PromptCountryField prompt={prompt} onChange={(country) => update(index, { country })} />}
 				<TagsInput
 					value={prompt.tags}
 					onValueChange={(tags) => update(index, { tags })}
@@ -436,7 +477,17 @@ function PromptRow({
 	);
 }
 
-function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
+/** A saved prompt's country is fixed, so only a new row gets a picker. */
+function PromptCountryField({ prompt, onChange }: { prompt: EditablePrompt; onChange: (country: string) => void }) {
+	if (!prompt.id) return <CountrySelect value={prompt.country} onChange={onChange} className="h-9 w-full" />;
+	return (
+		<div className="flex h-9 items-center gap-1.5 px-1 text-sm" title="Add the prompt again to track another country">
+			<span className="truncate">{countryName(prompt.country)}</span>
+		</div>
+	);
+}
+
+function BulkPasteBox({ bulk, showCountry }: { bulk: ReturnType<typeof useBulkPaste>; showCountry: boolean }) {
 	return (
 		<div className="space-y-2 rounded-md border bg-muted/40 p-3">
 			<Textarea
@@ -446,6 +497,13 @@ function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
 				rows={6}
 				aria-label="Prompts to add, one per line"
 			/>
+			{showCountry && (
+				<div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+					<span>Run from</span>
+					<CountriesPicker value={bulk.bulkCountries} onChange={bulk.setBulkCountries} />
+					{bulk.bulkCountries.length > 1 && <span className="text-xs">Each line is added once per country.</span>}
+				</div>
+			)}
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
 					size="sm"
@@ -476,6 +534,7 @@ export function PromptsListEditor({
 	showSystemTags = true,
 	changedKeys,
 	premium,
+	newPromptCountry,
 }: PromptsListEditorProps) {
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
@@ -488,17 +547,19 @@ export function PromptsListEditor({
 	};
 	const add = () => {
 		if (prompts.length >= MAX_PROMPTS) return;
-		onChange([...prompts, newPromptEntry()]);
+		onChange([...prompts, newPromptEntry({ country: defaultCountry })]);
 	};
 
 	// A row only takes a slot once it has text. Blank rows are how this editor
 	// stages a new prompt and they're dropped on save, so counting them against
 	// the cap would refuse prompts the list still has room for.
-	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
-	const atCapacity = filledValues.length >= MAX_PROMPTS;
+	const filled = useMemo(() => prompts.filter((p) => p.value.trim().length > 0), [prompts]);
+	const atCapacity = filled.length >= MAX_PROMPTS;
+	const showCountry = newPromptCountry !== undefined;
+	const defaultCountry = newPromptCountry ?? DEFAULT_COUNTRY;
 
-	const bulk = useBulkPaste(filledValues, (added) =>
-		onChange([...prompts, ...added.map((value) => newPromptEntry({ value }))]),
+	const bulk = useBulkPaste(filled, defaultCountry, (added) =>
+		onChange([...prompts, ...added.map((prompt) => newPromptEntry(prompt))]),
 	);
 
 	const { selectedKeys, liveSelectedCount, allSelected, toggleSelect, toggleSelectAll, clearSelection } =
@@ -517,9 +578,10 @@ export function PromptsListEditor({
 	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
 
 	// Desktop layout only — column order is
-	// [select] [text] [system?] [tags] [premium?] [switch]. Mobile renders a
-	// stacked per-prompt block instead (no selection, no bulk).
-	const gridCols = GRID_COLS[`${showSystemTags ? "system" : "plain"}-${premium ? "premium" : "basic"}`];
+	// [select] [text] [system?] [country?] [tags] [premium?] [switch]. Mobile
+	// renders a stacked per-prompt block instead (no selection, no bulk).
+	const gridCols =
+		GRID_COLS[`${showSystemTags ? "system" : "plain"}${showCountry ? "-country" : ""}-${premium ? "premium" : "basic"}`];
 
 	return (
 		<div className="space-y-4">
@@ -573,6 +635,7 @@ export function PromptsListEditor({
 			<ColumnHeader
 				gridCols={gridCols}
 				showSystemTags={showSystemTags}
+				showCountry={showCountry}
 				premium={premium}
 				allSelected={allSelected}
 				onToggleSelectAll={toggleSelectAll}
@@ -597,6 +660,7 @@ export function PromptsListEditor({
 							update={update}
 							allTagOptions={allTagOptions}
 							showSystemTags={showSystemTags}
+							showCountry={showCountry}
 							changedKeys={changedKeys}
 							premium={premium}
 							premiumAtCapacity={premiumAtCapacity}
@@ -633,7 +697,7 @@ export function PromptsListEditor({
 				</div>
 			)}
 
-			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} />}
+			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} showCountry={showCountry} />}
 
 			{atCapacity && (
 				<p className="text-xs text-muted-foreground">

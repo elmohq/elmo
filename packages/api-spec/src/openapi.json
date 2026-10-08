@@ -53,6 +53,11 @@
 						"type": "boolean",
 						"description": "Whether the prompt is currently enabled"
 					},
+					"country": {
+						"type": "string",
+						"description": "ISO 3166-1 alpha-2 country the prompt is asked from. Fixed once the prompt exists: to track the same text in another country, create it again with that country.",
+						"example": "US"
+					},
 					"tags": {
 						"type": "array",
 						"items": {
@@ -90,6 +95,7 @@
 					"brandId",
 					"value",
 					"enabled",
+					"country",
 					"tags",
 					"systemTags",
 					"createdAt",
@@ -115,6 +121,11 @@
 							"type": "string"
 						},
 						"description": "User-defined tags for categorizing this prompt"
+					},
+					"country": {
+						"type": "string",
+						"description": "ISO 3166-1 alpha-2 country to ask the prompt from, case-insensitive. Defaults to US.",
+						"example": "GB"
 					}
 				},
 				"required": ["brandId", "value"]
@@ -1442,6 +1453,10 @@
 						"type": "boolean",
 						"description": "Whether the engine answered with its own web search on."
 					},
+					"country": {
+						"type": ["string", "null"],
+						"description": "ISO 3166-1 alpha-2 country the provider was asked to answer from. Null when the target can't be localized: a model called without web search, or a surface that only answers for its default market."
+					},
 					"brandMentioned": {
 						"type": "boolean"
 					},
@@ -1473,6 +1488,7 @@
 					"model",
 					"provider",
 					"webSearchEnabled",
+					"country",
 					"brandMentioned",
 					"competitorsMentioned",
 					"webQueries",
@@ -2040,6 +2056,16 @@
 				"schema": {
 					"type": "string"
 				}
+			},
+			"CountriesFilter": {
+				"name": "countries",
+				"in": "query",
+				"description": "Comma-separated ISO 3166-1 alpha-2 codes. Only prompts asked from one of these countries are counted.",
+				"required": false,
+				"schema": {
+					"type": "string"
+				},
+				"example": "US,GB"
 			}
 		},
 		"requestBodies": {
@@ -2341,6 +2367,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
 					}
 				],
 				"responses": {
@@ -2397,6 +2426,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
 					}
 				],
 				"responses": {
@@ -2453,6 +2485,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
 					}
 				],
 				"responses": {
@@ -2551,6 +2586,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
 					}
 				],
 				"responses": {
@@ -2607,6 +2645,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
 					}
 				],
 				"responses": {
@@ -3181,6 +3222,15 @@
 						"name": "tags",
 						"in": "query",
 						"description": "Comma-separated tags. A prompt matches if it carries any of them.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "countries",
+						"in": "query",
+						"description": "Comma-separated ISO 3166-1 alpha-2 codes; a prompt asked from any of them matches.",
 						"required": false,
 						"schema": {
 							"type": "string"

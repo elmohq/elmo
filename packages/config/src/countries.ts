@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * The countries a prompt can be run from. Each prompt belongs to exactly one,
  * and every provider that can localize translates the code into its own
@@ -103,3 +105,11 @@ export function parseCountryFilter(raw: string | undefined | null): string[] {
 	const codes = raw.split(",").map(normalizeCountryCode);
 	return [...new Set(codes.filter((code): code is string => code !== null))];
 }
+
+/** A country code from user input: either case in, the stored uppercase code out. */
+export const countryCodeSchema = z.string().transform((raw, ctx) => {
+	const code = normalizeCountryCode(raw);
+	if (code) return code;
+	ctx.addIssue({ code: "custom", message: `Unsupported country "${raw}". Use an ISO 3166-1 alpha-2 code, e.g. "GB".` });
+	return z.NEVER;
+});

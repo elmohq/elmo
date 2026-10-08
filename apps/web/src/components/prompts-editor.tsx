@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@/components/prompts-list-editor";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
+import { defaultCountryForNewPrompts } from "@/lib/prompt-countries";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updatePromptsFn } from "@/server/prompts";
@@ -10,6 +11,7 @@ interface PromptRow {
 	id: string;
 	value: string;
 	enabled: boolean;
+	country: string;
 	tags?: string[] | null;
 	systemTags?: string[] | null;
 	premiumModels?: string[] | null;
@@ -37,6 +39,7 @@ function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
 			_key: p.id,
 			value: p.value,
 			enabled: p.enabled,
+			country: p.country,
 			tags: p.tags || [],
 			systemTags: p.systemTags || [],
 			premiumModels: p.premiumModels ?? [],
@@ -134,6 +137,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 					...(p.id ? { id: p.id } : {}),
 					value: p.value.trim(),
 					enabled: p.enabled,
+					country: p.country,
 					tags: p.tags,
 					premiumModels: p.premiumModels,
 				})),
@@ -168,7 +172,13 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				</div>
 			</div>
 
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} changedKeys={changedKeys} premium={premium} />
+			<PromptsListEditor
+				prompts={prompts}
+				onChange={setPrompts}
+				changedKeys={changedKeys}
+				premium={premium}
+				newPromptCountry={defaultCountryForNewPrompts(baseline)}
+			/>
 
 			<UnsavedChangesBar
 				isDirty={isDirty}

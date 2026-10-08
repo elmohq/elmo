@@ -4,6 +4,8 @@ export interface SubmittedPrompt {
 	id?: string;
 	value: string;
 	enabled: boolean;
+	/** Only read for a new prompt; a saved prompt's country never changes. */
+	country?: string;
 	tags?: string[];
 	premiumModels?: string[];
 }

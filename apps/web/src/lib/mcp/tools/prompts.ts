@@ -2,6 +2,7 @@
  * No delete tool: deleting takes a prompt's runs and citations with it.
  * Disabling is the reversible way to stop a prompt costing runs.
  */
+import { parseCountryFilter } from "@workspace/config/countries";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
 import { brandScopeCondition, requireBrandInScope, requirePromptInScope } from "@/lib/api/scope";
@@ -14,7 +15,7 @@ import {
 	updatePrompt,
 } from "@/server/prompts-core";
 import { listBrandTags } from "@/server/tags-core";
-import { brandIdArg, defineTool, promptIdArg } from "./define";
+import { brandIdArg, countriesArg, defineTool, promptIdArg } from "./define";
 
 export const listPromptsTool = defineTool({
 	name: "list_prompts",
@@ -27,6 +28,7 @@ export const listPromptsTool = defineTool({
 		brandId: brandIdArg.optional().describe("Restrict to one brand. Omit for every brand in reach."),
 		enabled: z.boolean().optional().describe("Restrict to prompts that are or aren't being sampled."),
 		tags: z.string().optional().describe("Comma-separated tags; a prompt carrying any of them matches."),
+		countries: countriesArg,
 		q: z.string().optional().describe("Substring match on the prompt text."),
 		page: z.number().int().min(1).optional().describe("1-based page number. Defaults to 1."),
 		limit: z.number().int().min(1).max(1000).optional().describe("Prompts per page. Defaults to 100."),
@@ -40,6 +42,7 @@ export const listPromptsTool = defineTool({
 			brandId: args.brandId,
 			enabled: args.enabled,
 			tags: (args.tags ?? "").split(","),
+			countries: parseCountryFilter(args.countries),
 			q: args.q,
 			limit,
 			offset: (page - 1) * limit,
