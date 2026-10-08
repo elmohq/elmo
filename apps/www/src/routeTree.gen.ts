@@ -34,6 +34,7 @@ import { Route as DotwellKnownApiCatalogRouteImport } from './routes/[.]well-kno
 import { Route as DotwellKnownArdDotjsonRouteImport } from './routes/[.]well-known/ard[.]json'
 import { Route as AeoForIndexRouteImport } from './routes/aeo-for/index'
 import { Route as AeoForSlugRouteImport } from './routes/aeo-for/$slug'
+import { Route as AeoForProfoundUsersRouteImport } from './routes/aeo-for/profound-users'
 import { Route as AiSearchIndexRouteImport } from './routes/ai-search/index'
 import { Route as AiSearchSlugRouteImport } from './routes/ai-search/$slug'
 import { Route as AiVisibilityToolsIndexRouteImport } from './routes/ai-visibility-tools/index'
@@ -195,6 +196,11 @@ const AeoForIndexRoute = AeoForIndexRouteImport.update({
 const AeoForSlugRoute = AeoForSlugRouteImport.update({
   id: '/aeo-for/$slug',
   path: '/aeo-for/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AeoForProfoundUsersRoute = AeoForProfoundUsersRouteImport.update({
+  id: '/aeo-for/profound-users',
+  path: '/aeo-for/profound-users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiSearchIndexRoute = AiSearchIndexRouteImport.update({
@@ -405,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/ard.json': typeof DotwellKnownArdDotjsonRoute
   '/aeo-for/$slug': typeof AeoForSlugRoute
+  '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
@@ -466,6 +473,7 @@ export interface FileRoutesByTo {
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/ard.json': typeof DotwellKnownArdDotjsonRoute
   '/aeo-for/$slug': typeof AeoForSlugRoute
+  '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
@@ -528,6 +536,7 @@ export interface FileRoutesById {
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/ard.json': typeof DotwellKnownArdDotjsonRoute
   '/aeo-for/$slug': typeof AeoForSlugRoute
+  '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
@@ -591,6 +600,7 @@ export interface FileRouteTypes {
     | '/.well-known/api-catalog'
     | '/.well-known/ard.json'
     | '/aeo-for/$slug'
+    | '/aeo-for/profound-users'
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
@@ -652,6 +662,7 @@ export interface FileRouteTypes {
     | '/.well-known/api-catalog'
     | '/.well-known/ard.json'
     | '/aeo-for/$slug'
+    | '/aeo-for/profound-users'
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
@@ -713,6 +724,7 @@ export interface FileRouteTypes {
     | '/.well-known/api-catalog'
     | '/.well-known/ard.json'
     | '/aeo-for/$slug'
+    | '/aeo-for/profound-users'
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
@@ -775,6 +787,7 @@ export interface RootRouteChildren {
   DotwellKnownApiCatalogRoute: typeof DotwellKnownApiCatalogRoute
   DotwellKnownArdDotjsonRoute: typeof DotwellKnownArdDotjsonRoute
   AeoForSlugRoute: typeof AeoForSlugRoute
+  AeoForProfoundUsersRoute: typeof AeoForProfoundUsersRoute
   AiSearchSlugRoute: typeof AiSearchSlugRoute
   AiVisibilityToolsSlugRoute: typeof AiVisibilityToolsSlugRoute
   ApiOpenapiDotjsonRoute: typeof ApiOpenapiDotjsonRoute
@@ -987,6 +1000,13 @@ declare module '@tanstack/react-router' {
       path: '/aeo-for/$slug'
       fullPath: '/aeo-for/$slug'
       preLoaderRoute: typeof AeoForSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/aeo-for/profound-users': {
+      id: '/aeo-for/profound-users'
+      path: '/aeo-for/profound-users'
+      fullPath: '/aeo-for/profound-users'
+      preLoaderRoute: typeof AeoForProfoundUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai-search/': {
@@ -1255,6 +1275,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotwellKnownApiCatalogRoute: DotwellKnownApiCatalogRoute,
   DotwellKnownArdDotjsonRoute: DotwellKnownArdDotjsonRoute,
   AeoForSlugRoute: AeoForSlugRoute,
+  AeoForProfoundUsersRoute: AeoForProfoundUsersRoute,
   AiSearchSlugRoute: AiSearchSlugRoute,
   AiVisibilityToolsSlugRoute: AiVisibilityToolsSlugRoute,
   ApiOpenapiDotjsonRoute: ApiOpenapiDotjsonRoute,

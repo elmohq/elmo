@@ -142,6 +142,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 
 				const aeoForPages: SitemapEntry[] = [
 					{ path: "/aeo-for", changefreq: "monthly", priority: 0.7 },
+					{ path: "/aeo-for/profound-users", changefreq: "monthly", priority: 0.6 },
 					...aeoVerticals.map((v) => ({
 						path: `/aeo-for/${v.slug}`,
 						changefreq: "monthly",
