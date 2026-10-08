@@ -215,6 +215,10 @@ DataForSEO straddles both halves of this page. Left alone it scrapes, but pinnin
 
 On OpenRouter, `:online` runs the underlying model's own web search where one exists (Anthropic, Google, OpenAI, Perplexity, xAI) and falls back to OpenRouter's Exa search elsewhere. `perplexity/sonar` is the cheapest way to track Perplexity: $1/M tokens each way plus $0.005 per request. `perplexity/sonar-pro-search` is closer to the agentic stack perplexity.ai itself serves, at roughly seven times the cost ($3/$15 per M tokens plus $0.018 per request).
 
+## Countries
+
+Prompts can be asked from countries other than the US. Providers differ in which platforms they can localize. See [Countries](/docs/user-guide/countries#which-platforms-can-answer-from-a-country) before choosing one if you track more than one market.
+
 ## Recommended setups
 
 **Starter (scrape the two that matter).** Pick one scraper, add one direct API key for onboarding analysis and sentiment scoring, and you're done:
