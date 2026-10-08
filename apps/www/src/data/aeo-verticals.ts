@@ -1,5 +1,4 @@
 import type { PlanKey } from "@workspace/config/plans";
-import type { PEOPLE } from "@/components/home/reviews";
 
 export interface AeoVertical {
 	slug: string;
@@ -9,8 +8,6 @@ export interface AeoVertical {
 	plan: PlanKey;
 	/** Audiences likely to run Docker themselves get self-hosting pitched alongside the cloud. */
 	technical?: boolean;
-	/** The two customer quotes closest to this audience. */
-	reviews: [keyof typeof PEOPLE, keyof typeof PEOPLE];
 	/** Page <h1>, in title case, when "AEO for {Audience}" is not what buyers search. */
 	headline?: string;
 	metaTitle?: string;
@@ -30,7 +27,6 @@ export const aeoVerticals: AeoVertical[] = [
 		audience: "agencies",
 		plan: "business",
 		technical: true,
-		reviews: ["viveka", "borys"],
 		headline: "AI Visibility Software for Agencies",
 		metaTitle: "AI Visibility & SEO Software for Agencies (White-Label) · Elmo",
 		metaDescription:
@@ -80,7 +76,6 @@ export const aeoVerticals: AeoVertical[] = [
 		audience: "SaaS companies",
 		plan: "pro",
 		technical: true,
-		reviews: ["nolan", "deni"],
 		headline: "AEO for B2B SaaS",
 		metaTitle: "AEO for B2B SaaS: Tools and Tactics for Software Buyers · Elmo",
 		metaDescription:
@@ -138,7 +133,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "ecommerce",
 		audience: "e-commerce brands",
 		plan: "basic",
-		reviews: ["james", "nolan"],
 		headline: "AEO for E-Commerce",
 		short: "Make sure AI shopping answers and buying-guide queries surface your products, not just your competitors'.",
 		intro: [
@@ -183,7 +177,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "b2b",
 		audience: "B2B companies",
 		plan: "pro",
-		reviews: ["nolan", "james"],
 		short: "Show up when buyers research categories, vendors, and you, across long and considered purchases.",
 		intro: [
 			"B2B purchases involve a lot of research, and much of it now starts with an AI engine. Buyers ask what a category is, who the serious vendors are, and whether you are credible, long before they fill out a form.",
@@ -232,7 +225,6 @@ export const aeoVerticals: AeoVertical[] = [
 		audience: "startups",
 		plan: "starter",
 		technical: true,
-		reviews: ["deni", "nolan"],
 		headline: "Startup SEO and AI Search Visibility",
 		metaTitle: "Startup SEO in the AI Search Era: A Practical Guide · Elmo",
 		metaDescription:
@@ -281,7 +273,6 @@ export const aeoVerticals: AeoVertical[] = [
 		audience: "enterprises",
 		plan: "business",
 		technical: true,
-		reviews: ["nolan", "viveka"],
 		headline: "Enterprise AI Visibility Platforms",
 		metaTitle: "Enterprise AI Visibility & AEO Platform Requirements · Elmo",
 		metaDescription:
@@ -329,7 +320,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "healthcare",
 		audience: "healthcare brands",
 		plan: "basic",
-		reviews: ["viveka", "james"],
 		short: "Monitor and correct how AI engines describe your healthcare brand, where accuracy is not optional.",
 		intro: [
 			"Health topics are exactly where AI engines are most cautious, and where errors do the most damage. An inaccurate description of a provider, product, or service carries real risk.",
@@ -373,7 +363,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "financial-services",
 		audience: "financial services",
 		plan: "pro",
-		reviews: ["nolan", "viveka"],
 		short: "Track how AI engines describe your financial brand, with the accuracy and data control the sector demands.",
 		intro: [
 			"Finance is another area where engines tread carefully, and where a wrong answer about rates, products, or eligibility carries compliance weight. Buyers ask AI engines for recommendations and comparisons all the same.",
@@ -417,7 +406,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "law-firms",
 		audience: "law firms",
 		plan: "basic",
-		reviews: ["james", "viveka"],
 		short:
 			"Win the 'best [practice area] lawyer near me' answers, where the AI response now stands between a potential client and a consultation.",
 		intro: [
@@ -472,7 +460,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "local-business",
 		audience: "local businesses",
 		plan: "starter",
-		reviews: ["james", "borys"],
 		short:
 			"Show up when someone asks an AI assistant for the best option near them, across every location you operate.",
 		intro: [
@@ -522,7 +509,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "real-estate",
 		audience: "real estate companies",
 		plan: "basic",
-		reviews: ["james", "borys"],
 		short:
 			"Be the brokerage an AI assistant names when someone asks how to buy, sell, or find an agent in your market.",
 		intro: [
@@ -572,7 +558,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "education",
 		audience: "education institutions",
 		plan: "pro",
-		reviews: ["deni", "viveka"],
 		short:
 			"Reach prospective students at the point where they now start: asking an AI assistant which programme is worth it.",
 		intro: [
@@ -622,7 +607,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "travel-hospitality",
 		audience: "travel and hospitality brands",
 		plan: "basic",
-		reviews: ["james", "borys"],
 		short:
 			"Get named in the itineraries and recommendations AI assistants now build for travellers before they ever reach a booking site.",
 		intro: [
@@ -672,7 +656,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "manufacturing",
 		audience: "manufacturers",
 		plan: "basic",
-		reviews: ["james", "nolan"],
 		short: "Be the supplier an AI assistant names when an engineer or buyer asks who makes the part they need.",
 		intro: [
 			"Industrial buying starts with a specification, not a brand. An engineer describes a requirement — material, tolerance, certification, volume — and asks who can supply it. That question increasingly goes to an assistant, and the answer is a short list of manufacturers assembled from spec sheets and technical documentation.",
@@ -721,7 +704,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "insurance",
 		audience: "insurance companies",
 		plan: "pro",
-		reviews: ["nolan", "viveka"],
 		short: "Be named accurately when someone asks an AI assistant which policy to buy and what it actually covers.",
 		intro: [
 			"Insurance shopping is a research problem before it is a purchase, and the research has moved to assistants. What does this policy cover, what is a reasonable premium, which carrier handles claims well. The answers shape the shortlist before any quote form is filled in.",
@@ -770,7 +752,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "automotive",
 		audience: "automotive brands",
 		plan: "pro",
-		reviews: ["borys", "james"],
 		short:
 			"Get named in the comparisons AI assistants build when someone is deciding which vehicle or service to choose.",
 		intro: [
@@ -820,7 +801,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "nonprofits",
 		audience: "nonprofits",
 		plan: "starter",
-		reviews: ["deni", "james"],
 		short:
 			"Be the organisation an AI assistant names when someone asks where to donate or who is doing the work in your cause area.",
 		intro: [
@@ -871,7 +851,6 @@ export const aeoVerticals: AeoVertical[] = [
 		audience: "cybersecurity companies",
 		plan: "pro",
 		technical: true,
-		reviews: ["nolan", "deni"],
 		short:
 			"Win the vendor shortlist that security buyers now assemble by asking an AI assistant before they call an analyst.",
 		intro: [
@@ -921,7 +900,6 @@ export const aeoVerticals: AeoVertical[] = [
 		slug: "recruiting",
 		audience: "recruiting and HR companies",
 		plan: "basic",
-		reviews: ["viveka", "borys"],
 		short: "Be named when employers ask an AI assistant which staffing partner or HR platform to use.",
 		intro: [
 			"Both sides of the recruiting market now research with assistants. Employers ask which agencies specialise in a role or region and which HR platforms fit their size; candidates ask which firms are worth working with. Each conversation produces a short list, and neither runs through your website first.",
@@ -971,7 +949,6 @@ export const aeoVerticals: AeoVertical[] = [
 		audience: "developer tools companies",
 		plan: "pro",
 		technical: true,
-		reviews: ["nolan", "deni"],
 		short:
 			"Get recommended inside the coding assistants and AI answers developers now consult before choosing a library or platform.",
 		intro: [

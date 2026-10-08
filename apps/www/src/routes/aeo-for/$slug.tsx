@@ -11,7 +11,7 @@ import { HowItWorks } from "@/components/home/how-it-works";
 import { LogoStrip } from "@/components/home/logos";
 import { ModelCoverage } from "@/components/home/models";
 import { Pricing } from "@/components/home/pricing";
-import { AI_REVIEWS, PEOPLE, ReviewRow } from "@/components/home/reviews";
+import { Reviews } from "@/components/home/reviews";
 import { SelfHost } from "@/components/home/self-host";
 import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { CARD, SectionHeading } from "@/components/home/ui";
@@ -264,10 +264,7 @@ function VerticalPage() {
 				/>
 				<LogoStrip />
 				<Prompts vertical={vertical} />
-				<ReviewRow
-					title="Loved by marketers. Recommended by AI."
-					reviews={[PEOPLE[vertical.reviews[0]], AI_REVIEWS.chatgpt, PEOPLE[vertical.reviews[1]]]}
-				/>
+				<Reviews />
 				<Playbook vertical={vertical} />
 				<HowItWorks />
 				<ModelCoverage />
