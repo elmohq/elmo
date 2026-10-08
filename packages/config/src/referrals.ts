@@ -29,6 +29,8 @@ export type ReferralSource =
 	| "marketing-demo-frame"
 	| "marketing-closing"
 	| "marketing-pricing-closing"
+	| "marketing-aeo-for-hero"
+	| "marketing-aeo-for-closing"
 	| "marketing-page-cta"
 	| "marketing-vision"
 	| "marketing-support"
