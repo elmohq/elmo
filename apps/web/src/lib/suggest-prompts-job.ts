@@ -1,7 +1,6 @@
 /**
- * Server-only helpers for "Suggest prompts" on the prompts page. Same shape as
- * the onboarding analysis in ./analyze-brand-job: the worker runs the LLM call
- * and the client polls the latest job by brand.
+ * Server-only helpers for "Suggest Prompts" on the prompts page, on top of
+ * ./brand-jobs: the worker runs the LLM call and the client polls by brand.
  *
  * The daily allowance is counted straight from pg-boss's job rows, which keep
  * the brand id in `data` and outlive the 24-hour window, so it needs no table
@@ -15,13 +14,12 @@ import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import type { OnboardingPrompt } from "@workspace/lib/onboarding";
 import { eq, sql } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
+import { cancelLatestBrandJob, IN_FLIGHT_STATES, latestBrandJob, readBrandJob } from "@/lib/brand-jobs";
 
 const SUGGEST_PROMPTS_QUEUE = "suggest-prompts";
 const SUGGESTIONS_PER_RUN = 10;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
-const IN_FLIGHT_STATES = new Set(["created", "active", "retry"]);
 
-/** The worker's real error is already in Sentry; the browser gets this. */
 const GENERIC_FAILURE = "Couldn't suggest prompts. Please try again.";
 
 export type PromptSuggestionsStatus =
@@ -34,23 +32,6 @@ export interface PromptSuggestionsInput {
 	/** Prompts on screen that aren't saved yet, or that an earlier run suggested
 	 *  and the user passed on — the model is told to steer clear of them too. */
 	exclude: string[];
-}
-
-interface JobRow {
-	id: string;
-	state: string;
-	output: unknown;
-}
-
-async function latestJobForBrand(brandId: string): Promise<JobRow | undefined> {
-	const result = await db.execute(sql`
-		SELECT id, state, output
-		FROM pgboss.job
-		WHERE name = ${SUGGEST_PROMPTS_QUEUE} AND data->>'brandId' = ${brandId}
-		ORDER BY created_on DESC
-		LIMIT 1
-	`);
-	return result.rows[0] as unknown as JobRow | undefined;
 }
 
 /**
@@ -88,7 +69,7 @@ function describeWait(until: Date): string {
 export async function enqueuePromptSuggestions(input: PromptSuggestionsInput): Promise<{ remaining: number }> {
 	const { used, oldest } = await runsInWindow(input.brandId);
 
-	const latest = await latestJobForBrand(input.brandId);
+	const latest = await latestBrandJob(SUGGEST_PROMPTS_QUEUE, input.brandId);
 	if (latest && IN_FLIGHT_STATES.has(latest.state)) {
 		return { remaining: Math.max(0, PROMPT_SUGGESTION_RUNS_PER_DAY - used) };
 	}
@@ -130,25 +111,10 @@ export async function enqueuePromptSuggestions(input: PromptSuggestionsInput): P
 }
 
 export async function getPromptSuggestionsStatus(brandId: string): Promise<PromptSuggestionsStatus> {
-	const job = await latestJobForBrand(brandId);
-	if (!job) return { status: "pending" };
-	if (job.state === "completed") {
-		return { status: "done", prompts: (job.output as { prompts: OnboardingPrompt[] }).prompts };
-	}
-	if (job.state === "failed" || job.state === "cancelled") {
-		console.error("[suggest-prompts] job ended without a result", { brandId, jobId: job.id, state: job.state });
-		return { status: "failed", error: GENERIC_FAILURE };
-	}
-	return { status: "pending" };
+	const job = await readBrandJob<{ prompts: OnboardingPrompt[] }>(SUGGEST_PROMPTS_QUEUE, brandId, GENERIC_FAILURE);
+	return job.status === "done" ? { status: "done", prompts: job.output.prompts } : job;
 }
 
 export async function cancelPromptSuggestions(brandId: string): Promise<void> {
-	const job = await latestJobForBrand(brandId);
-	if (!job || !IN_FLIGHT_STATES.has(job.state)) return;
-	const boss = await getBoss();
-	try {
-		await boss.cancel(SUGGEST_PROMPTS_QUEUE, job.id);
-	} catch {
-		// It may have finished between the read and the cancel.
-	}
+	await cancelLatestBrandJob(SUGGEST_PROMPTS_QUEUE, brandId);
 }
