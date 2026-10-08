@@ -26,6 +26,14 @@
   "plugins": [
     {
       "name": "@hey-api/client",
+      "auth": {
+        "schemes": {
+          "BearerAuth": {
+            "startsWith": "elmo_",
+            "url": "https://elmohq.com/docs/api#authentication"
+          }
+        }
+      },
       "timeout": {
         "overrides": [
           {
