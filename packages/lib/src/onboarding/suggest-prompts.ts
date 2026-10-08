@@ -4,7 +4,15 @@
  */
 import { z } from "zod";
 import { dedupeKey } from "../bulk-prompts";
-import { normalizePrompts, type OnboardingPrompt, promptSchema, safeGetExcerpt, TAG_GUIDANCE } from "./analyze";
+import {
+	normalizePrompts,
+	type OnboardingPrompt,
+	promptMixGuidance,
+	promptSchema,
+	safeGetExcerpt,
+	TAG_GUIDANCE,
+	websiteExcerptBlock,
+} from "./analyze";
 import { runStructuredResearchPrompt } from "./llm";
 import { cleanDomain, cleanUrl } from "./utils";
 
@@ -25,9 +33,7 @@ function buildSchema(count: number) {
 	return z.object({
 		suggestedPrompts: z
 			.array(promptSchema)
-			.describe(
-				`Exactly ${count} NEW AI tracking prompts. The MAJORITY must be UNBRANDED — generic category/persona queries that do NOT contain the brand name. At most a couple may be branded. ${TAG_GUIDANCE}`,
-			),
+			.describe(`Exactly ${count} NEW AI tracking prompts. ${promptMixGuidance("At most 2")} ${TAG_GUIDANCE}`),
 	});
 }
 
@@ -40,9 +46,7 @@ function buildPrompt(args: {
 	competitors: string[];
 	count: number;
 }): string {
-	const excerptBlock = args.websiteExcerpt
-		? `\nText from ${args.analysisUrl}:\n---\n${args.websiteExcerpt}\n---\n`
-		: "";
+	const excerptBlock = websiteExcerptBlock(args.analysisUrl, args.websiteExcerpt);
 	const competitorsLine =
 		args.competitors.length > 0 ? `\nCompetitors already tracked: ${args.competitors.join(", ")}\n` : "";
 	const tagsLine =
