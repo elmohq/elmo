@@ -76,6 +76,12 @@ export const prompts = pgTable(
 		 * per entry (see PREMIUM_MODELS). Empty = standard tracking only.
 		 */
 		premiumModels: text("premium_models").array().notNull().default([]),
+		/**
+		 * ISO 3166-1 alpha-2 country the prompt is asked from. Fixed once created:
+		 * measuring another country is another prompt, so a prompt's history is
+		 * never a mix of markets. Same text in two countries is two rows.
+		 */
+		country: text("country").notNull().default("US"),
 		tags: text("tags").array().notNull().default([]),
 		systemTags: text("system_tags").array().notNull().default([]),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -119,6 +125,12 @@ export const promptRuns = pgTable(
 		provider: text("provider"),
 		version: text("version").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
+		/**
+		 * The country the provider was asked to answer from. Null when the target
+		 * takes no location — an API call without web search, or a surface that
+		 * can't be localized and answers for its default market.
+		 */
+		country: text("country"),
 		rawOutput: json("raw_output").notNull(),
 		webQueries: text("web_queries").array().notNull().default([]),
 		brandMentioned: boolean("brand_mentioned").notNull(),

@@ -9,6 +9,7 @@
 	},
 	"exports": {
 		"./constants": "./src/constants.ts",
+		"./countries": "./src/countries.ts",
 		"./entitlements": "./src/entitlements.ts",
 		"./env": "./src/env.ts",
 		"./env-registry": "./src/env-registry.ts",
