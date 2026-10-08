@@ -95,7 +95,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "AUTH0_MGMT_API_DOMAIN",
 		scope: "server",
 		requiredBy: ["whitelabel"],
-		description: "Auth0 Management API domain.",
+		description: "Auth0 Management API domain as a bare hostname (e.g. tenant.us.auth0.com).",
 	},
 	{
 		name: "UPSTASH_REDIS_REST_URL",
