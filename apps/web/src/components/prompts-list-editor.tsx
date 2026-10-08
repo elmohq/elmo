@@ -334,8 +334,8 @@ function ColumnHeader({
 							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 							<TooltipContent>
 								<p className="max-w-xs">
-									Where the prompt is asked from and the language it's written in. AI answers and the sources they
-									cite differ by both. Fixed once saved: add a variant to track the prompt somewhere else.
+									Where the prompt is asked from and the language it's written in. AI answers and the sources they cite
+									differ by both. Fixed once saved: add a variant to track the prompt somewhere else.
 								</p>
 							</TooltipContent>
 						</Tooltip>
@@ -346,8 +346,8 @@ function ColumnHeader({
 							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 							<TooltipContent>
 								<p className="max-w-xs">
-									Variants of the same question in other countries or languages. The dashboard shows a group together
-									so the markets can be compared.
+									Variants of the same question in other countries or languages. The dashboard shows a group together so
+									the markets can be compared.
 								</p>
 							</TooltipContent>
 						</Tooltip>
@@ -638,13 +638,7 @@ export function PromptsListEditor({
 		const group = groups.get(prompt.groupId);
 		if (!group) return undefined;
 		return {
-			market: (
-				<MarketField
-					market={prompt}
-					saved={Boolean(prompt.id)}
-					onChange={(market) => update(index, market)}
-				/>
-			),
+			market: <MarketField market={prompt} saved={Boolean(prompt.id)} onChange={(market) => update(index, market)} />,
 			group: (
 				<PromptGroupField
 					group={group}
@@ -659,7 +653,12 @@ export function PromptsListEditor({
 						)
 					}
 					onMove={(groupId) =>
-						onChange(placeInGroup(prompts.filter((_, i) => i !== index), { ...prompt, groupId }))
+						onChange(
+							placeInGroup(
+								prompts.filter((_, i) => i !== index),
+								{ ...prompt, groupId },
+							),
+						)
 					}
 					onSeparate={() => update(index, { groupId: uuidv4() })}
 				/>
@@ -686,9 +685,7 @@ export function PromptsListEditor({
 	// [select] [text] [system?] [country?] [tags] [premium?] [switch]. Mobile
 	// renders a stacked per-prompt block instead (no selection, no bulk).
 	const gridCols =
-		GRID_COLS[
-			`${showSystemTags ? "system" : "plain"}${showMarket ? "-market" : ""}-${premium ? "premium" : "basic"}`
-		];
+		GRID_COLS[`${showSystemTags ? "system" : "plain"}${showMarket ? "-market" : ""}-${premium ? "premium" : "basic"}`];
 
 	return (
 		<div className="space-y-4">

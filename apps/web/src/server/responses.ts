@@ -31,9 +31,13 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 
 		const query = data.query?.trim() || undefined;
 		const picked = data.prompts ? new Set(data.prompts.split(",")) : null;
-		const prompts = (await resolveFilteredPrompts(data.brandId, { tags: data.tags, countries: data.countries, languages: data.languages })).filter(
-			(prompt) => !picked || picked.has(prompt.id),
-		);
+		const prompts = (
+			await resolveFilteredPrompts(data.brandId, {
+				tags: data.tags,
+				countries: data.countries,
+				languages: data.languages,
+			})
+		).filter((prompt) => !picked || picked.has(prompt.id));
 		const promptValues = new Map(prompts.map((prompt) => [prompt.id, prompt.value]));
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const scope: ResponseSearchScope = {

@@ -289,7 +289,8 @@ function MarketDropdown({
 	if (available.length < 2 && selected.length === 0) return null;
 
 	const commit = (next: string[]) => setFilters({ [searchKey]: joinTags(next) });
-	const toggle = (code: string) => commit(selected.includes(code) ? selected.filter((c) => c !== code) : [...selected, code]);
+	const toggle = (code: string) =>
+		commit(selected.includes(code) ? selected.filter((c) => c !== code) : [...selected, code]);
 	const label = selected.length === 1 ? nameOf(selected[0]) : title;
 
 	return (

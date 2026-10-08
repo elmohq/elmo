@@ -301,7 +301,8 @@ export const dataforseo: Provider = {
 	// (see runLlmResponse). The LLM Scraper's location list leaves out a few
 	// countries the Google SERP endpoints serve.
 	localizes: (config, country) =>
-		dataforseoAccess(config) === "scraped" && !(config.model in SCRAPER_CALLS && SCRAPER_UNLISTED_COUNTRIES.has(country)),
+		dataforseoAccess(config) === "scraped" &&
+		!(config.model in SCRAPER_CALLS && SCRAPER_UNLISTED_COUNTRIES.has(country)),
 	sendsLanguage: (config) => dataforseoAccess(config) === "scraped",
 
 	isConfigured: isDataforseoConfigured,

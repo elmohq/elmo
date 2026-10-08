@@ -12,6 +12,7 @@ import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, inArray, type SQL } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
 import { assertOneVariantPerMarket, type GroupMember, PromptGroupClashError } from "@/server/prompt-save";
@@ -201,7 +202,7 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 		enabled: prompt.enabled ?? true,
 		country: prompt.country ?? DEFAULT_COUNTRY,
 		language: prompt.language ?? DEFAULT_LANGUAGE,
-		groupId: prompt.groupId ?? crypto.randomUUID(),
+		groupId: prompt.groupId ?? uuidv4(),
 		tags: sanitizeUserTags(prompt.tags ?? []),
 		systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 		premiumModels: selectPremiumModels(prompt.premiumModels),
@@ -310,14 +311,19 @@ async function applyPromptUpdate(
 	);
 
 	if (input.groupId !== undefined || (input.enabled && !wasEnabled)) {
-		await assertGroupsStayDistinct(tx, brand.id, [
-			{
-				...existing,
-				value: input.value ?? existing.value,
-				enabled: willBeEnabled,
-				groupId: input.groupId ?? existing.groupId,
-			},
-		], [input.groupId]);
+		await assertGroupsStayDistinct(
+			tx,
+			brand.id,
+			[
+				{
+					...existing,
+					value: input.value ?? existing.value,
+					enabled: willBeEnabled,
+					groupId: input.groupId ?? existing.groupId,
+				},
+			],
+			[input.groupId],
+		);
 	}
 
 	const [row] = await tx

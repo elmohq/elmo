@@ -16,6 +16,7 @@ import {
 } from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
@@ -81,6 +82,8 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			enabled: prompt.enabled,
 			tags: prompt.tags || [],
 			systemTags: prompt.systemTags || [],
+			country: prompt.country,
+			language: prompt.language,
 			nextRunAt,
 		};
 	});
@@ -201,8 +204,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		});
 
 		const filteredPrompts = promptSummaries.filter(
-			(p) =>
-				(tagFilter.length === 0 || tagFilter.some((t) => p.tags.includes(t))) && matchesMarketFilter(p, market),
+			(p) => (tagFilter.length === 0 || tagFilter.some((t) => p.tags.includes(t))) && matchesMarketFilter(p, market),
 		);
 		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
@@ -543,7 +545,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		const insertRows = inserts.map(({ prompt, after }) => ({
 			prompt,
 			after,
-			groupId: prompt.groupId ?? crypto.randomUUID(),
+			groupId: prompt.groupId ?? uuidv4(),
 			country: prompt.country ?? DEFAULT_COUNTRY,
 			language: prompt.language ?? DEFAULT_LANGUAGE,
 		}));

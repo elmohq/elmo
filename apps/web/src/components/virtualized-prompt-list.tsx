@@ -1,12 +1,17 @@
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { countryName } from "@workspace/config/countries";
+import { languageName } from "@workspace/config/languages";
 import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { LookbackPeriod } from "@/lib/lookback";
+import { marketLabel } from "@/lib/prompt-markets";
 import { CachedPromptChart } from "./cached-prompt-chart";
 
 interface PromptItem {
 	id: string;
 	value: string;
 	country?: string;
+	language?: string;
+	groupId?: string;
 	// All-time first evaluation date (null if never evaluated)
 	// Note: Date objects are serialized to strings in JSON responses
 	firstEvaluatedAt?: Date | string | null;
@@ -21,6 +26,8 @@ interface VirtualizedPromptListProps {
 	/** Concrete model ids this brand runs — no "all" sentinel. */
 	availableModels: string[];
 	searchHighlight?: string;
+	/** Enabled members per group, across the whole brand rather than the filtered list. */
+	groupSizes: ReadonlyMap<string, number>;
 }
 
 // All chart cards use a uniform height (empty states match chart height via h-[250px])
@@ -37,14 +44,17 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 	selectedModel,
 	availableModels,
 	searchHighlight = "",
+	groupSizes,
 }: VirtualizedPromptListProps) {
 	const listRef = useRef<HTMLDivElement>(null);
 	const [scrollMargin, setScrollMargin] = useState(0);
 
 	const orderedPrompts = prompts;
-	// Labelled only when the list mixes countries; a single-country list
-	// (or one filtered to a country) would just repeat the same code.
-	const showCountry = new Set(prompts.map((prompt) => prompt.country)).size > 1;
+	// Labelled only when the list mixes markets or has groups; a single-market
+	// list (or one filtered to a market) would just repeat the same code.
+	const showMarket =
+		new Set(prompts.map((prompt) => `${prompt.country}|${prompt.language}`)).size > 1 ||
+		prompts.some((prompt) => (groupSizes.get(prompt.groupId ?? "") ?? 1) > 1);
 
 	useLayoutEffect(() => {
 		if (listRef.current) {
@@ -97,7 +107,15 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 								<CachedPromptChart
 									promptId={prompt.id}
 									promptName={prompt.value}
-									country={showCountry ? prompt.country : undefined}
+									market={
+										showMarket && prompt.country && prompt.language
+											? {
+													label: marketLabel({ country: prompt.country, language: prompt.language }),
+													title: `${countryName(prompt.country)}, ${languageName(prompt.language)}`,
+													variants: groupSizes.get(prompt.groupId ?? "") ?? 1,
+												}
+											: undefined
+									}
 									brandId={brandId}
 									lookback={lookback}
 									selectedModel={selectedModel}

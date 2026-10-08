@@ -31,7 +31,10 @@ export const listPromptsTool = defineTool({
 		tags: z.string().optional().describe("Comma-separated tags; a prompt carrying any of them matches."),
 		countries: countriesArg,
 		languages: languagesArg,
-		groupId: z.guid().optional().describe("Restrict to one group: a question and its variants in other countries or languages."),
+		groupId: z
+			.guid()
+			.optional()
+			.describe("Restrict to one group: a question and its variants in other countries or languages."),
 		q: z.string().optional().describe("Substring match on the prompt text."),
 		page: z.number().int().min(1).optional().describe("1-based page number. Defaults to 1."),
 		limit: z.number().int().min(1).max(1000).optional().describe("Prompts per page. Defaults to 100."),

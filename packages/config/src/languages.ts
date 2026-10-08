@@ -77,6 +77,9 @@ export function parseLanguageFilter(raw: string | undefined | null): string[] {
 export const languageCodeSchema = z.string().transform((raw, ctx) => {
 	const code = normalizeLanguageCode(raw);
 	if (code) return code;
-	ctx.addIssue({ code: "custom", message: `Unsupported language "${raw}". Use a code such as "en", "de", or "pt-BR".` });
+	ctx.addIssue({
+		code: "custom",
+		message: `Unsupported language "${raw}". Use a code such as "en", "de", or "pt-BR".`,
+	});
 	return z.NEVER;
 });

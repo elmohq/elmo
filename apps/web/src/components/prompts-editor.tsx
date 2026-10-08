@@ -58,7 +58,9 @@ function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
 	});
 	return sorted
 		.map((prompt, i) => ({ prompt, i }))
-		.sort((a, b) => (firstPosition.get(a.prompt.groupId) ?? 0) - (firstPosition.get(b.prompt.groupId) ?? 0) || a.i - b.i)
+		.sort(
+			(a, b) => (firstPosition.get(a.prompt.groupId) ?? 0) - (firstPosition.get(b.prompt.groupId) ?? 0) || a.i - b.i,
+		)
 		.map(({ prompt }) => prompt);
 }
 

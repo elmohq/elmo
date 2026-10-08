@@ -179,9 +179,25 @@ function ChartSection({
 	selectedTags: string[];
 	selectedCountries: string[];
 	selectedLanguages: string[];
-	sortedPrompts: { id: string; value: string; country?: string; firstEvaluatedAt?: Date | string | null }[];
+	sortedPrompts: {
+		id: string;
+		value: string;
+		country?: string;
+		language?: string;
+		groupId?: string;
+		firstEvaluatedAt?: Date | string | null;
+	}[];
 	availableIndividualModels: string[];
 }) {
+	const { data: brand } = useBrand(brandId);
+	const groupSizes = useMemo(() => {
+		const sizes = new Map<string, number>();
+		for (const prompt of brand?.prompts ?? []) {
+			if (prompt.enabled) sizes.set(prompt.groupId, (sizes.get(prompt.groupId) ?? 0) + 1);
+		}
+		return sizes;
+	}, [brand?.prompts]);
+
 	const { data: batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {
 		lookback,
 		model: modelParam,
@@ -233,6 +249,7 @@ function ChartSection({
 				selectedModel={selectedModel}
 				availableModels={availableIndividualModels}
 				searchHighlight={searchQuery}
+				groupSizes={groupSizes}
 			/>
 		</ChartDataProvider>
 	);
