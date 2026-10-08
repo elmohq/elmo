@@ -139,6 +139,7 @@ export const aeoVerticals: AeoVertical[] = [
 		audience: "e-commerce brands",
 		plan: "basic",
 		reviews: ["james", "nolan"],
+		headline: "AEO for E-Commerce",
 		short: "Make sure AI shopping answers and buying-guide queries surface your products, not just your competitors'.",
 		intro: [
 			"Shoppers ask AI engines to compare products and recommend the best option, and some engines now have dedicated shopping features. Best running shoes for flat feet, cheapest option under a hundred dollars. The answer usually names a few brands and skips the rest.",
