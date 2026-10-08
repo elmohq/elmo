@@ -20,16 +20,24 @@ function Harness({
 	initial,
 	showSystemTags = true,
 	premium,
+	newPromptCountry,
 }: {
 	initial: EditablePrompt[];
 	showSystemTags?: boolean;
 	premium?: PremiumAllowance;
+	newPromptCountry?: string;
 }) {
 	const [prompts, setPrompts] = useState(initial);
 
 	return (
 		<div className="p-8">
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} showSystemTags={showSystemTags} premium={premium} />
+			<PromptsListEditor
+				prompts={prompts}
+				onChange={setPrompts}
+				showSystemTags={showSystemTags}
+				premium={premium}
+				newPromptCountry={newPromptCountry}
+			/>
 		</div>
 	);
 }
@@ -222,5 +230,32 @@ export const NoPremiumColumn: StoryObj = {
 		const canvas = within(canvasElement);
 		await expect(canvas.queryByRole("button", { name: /premium models:/i })).toBeNull();
 		await expect(canvas.queryByText(/pairings in use/i)).toBeNull();
+	},
+};
+
+/**
+ * Saved prompts show their country as fixed text; a new row gets a picker.
+ * Pasting with a second country ticked adds every line once per country.
+ */
+export const Countries: StoryObj = {
+	render: () => (
+		<Harness
+			newPromptCountry="US"
+			initial={[
+				...entries(["best running shoes for flat feet"], { id: "saved-us", country: "US", systemTags: ["unbranded"] }),
+				...entries(["best running shoes for flat feet"], { id: "saved-gb", country: "GB", systemTags: ["unbranded"] }),
+				...entries(["meilleures chaussures de running"], { country: "FR" }),
+			]}
+		/>
+	),
+	play: async (ctx) => {
+		await addMultiple("trail shoes for wide feet\nbest running shoes for flat feet")(ctx);
+		const canvas = within(ctx.canvasElement);
+		await expect(canvas.getByRole("button", { name: /^add 1 prompt$/i })).toBeEnabled();
+
+		await userEvent.click(canvas.getByRole("button", { name: "United States" }));
+		await userEvent.click(await within(document.body).findByRole("button", { name: /united kingdom/i }));
+		await expect(canvas.getByRole("button", { name: /^add 2 prompts$/i })).toBeEnabled();
+		await expect(canvas.getByText("Each line is added once per country.")).toBeVisible();
 	},
 };
