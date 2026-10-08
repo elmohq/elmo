@@ -36,6 +36,8 @@ export interface TagsInputProps {
   minItems?: number;
   disabled?: boolean;
   className?: string;
+  /** Classes for the clickable field itself, e.g. to drop its border inside a table row. */
+  triggerClassName?: string;
 }
 
 const PASTE_SPLITTER = /[\n#?=&\t,./-]+/;
@@ -55,6 +57,7 @@ export function TagsInput({
   minItems = 0,
   disabled,
   className,
+  triggerClassName,
 }: TagsInputProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -169,6 +172,7 @@ export function TagsInput({
               className={cn(
                 "border-input focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-9 w-full items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]",
                 disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+                triggerClassName,
               )}
             />
           }

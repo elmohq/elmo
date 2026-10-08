@@ -62,6 +62,11 @@ const SUGGESTIONS = [
 	{ prompt: "answer engine optimization software pricing", tags: ["pricing"] },
 ];
 
+const MORE_SUGGESTIONS = [
+	{ prompt: "best geo tools for ecommerce brands", tags: ["ecommerce"] },
+	{ prompt: "does google ai overviews mention small brands", tags: [] },
+];
+
 /** Sets what a suggestion run returns. Called during render: the run starts
  *  from a click, after the story has mounted. */
 function mockSuggestions({
@@ -73,7 +78,7 @@ function mockSuggestions({
 	startError?: string | null;
 	remaining?: number;
 } = {}) {
-	setMockPromptSuggestions(SUGGESTIONS);
+	setMockPromptSuggestions(SUGGESTIONS, MORE_SUGGESTIONS);
 	setMockPromptSuggestionsDelay(delayMs);
 	setMockPromptSuggestionsStartError(startError);
 	setMockPromptSuggestionsRemaining(remaining);
@@ -94,7 +99,7 @@ export const SuggestPrompts: Story = {
 		await userEvent.click(canvas.getByRole("button", { name: /suggest prompts/i }));
 
 		await canvas.findByRole("checkbox", { name: `Include "${SUGGESTIONS[0]!.prompt}"` });
-		await expect(canvas.getByText("4 of 5 runs left today")).toBeVisible();
+		await expect(canvas.getByText("4 runs left today")).toBeVisible();
 		await userEvent.click(canvas.getByRole("checkbox", { name: `Include "${SUGGESTIONS[2]!.prompt}"` }));
 		await userEvent.click(canvas.getByRole("button", { name: /^add 4 prompts$/i }));
 
@@ -113,7 +118,7 @@ export const SuggestPromptsLoading: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: /suggest prompts/i }));
-		await expect(await canvas.findByText(/looking for prompts you don't track yet/i)).toBeVisible();
+		await expect(await canvas.findByText(/finding prompts you don't track yet/i)).toBeVisible();
 		await expect(canvas.getByRole("button", { name: /suggest prompts/i })).toBeDisabled();
 	},
 };
@@ -132,5 +137,29 @@ export const SuggestPromptsLimitReached: Story = {
 		await userEvent.click(canvas.getByRole("button", { name: /suggest prompts/i }));
 		await expect(await canvas.findByRole("alert")).toHaveTextContent("Try again in 3 hours.");
 		await expect(canvas.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
+	},
+};
+
+/**
+ * "Suggest More" adds to the list instead of replacing it, so a suggestion
+ * passed over in the first run stays passed over.
+ */
+export const SuggestMoreKeepsEarlierPicks: Story = {
+	args: Default.args,
+	render: (args) => {
+		mockSuggestions();
+		return <PromptsEditor {...args} />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: /suggest prompts/i }));
+		const skipped = await canvas.findByRole("checkbox", { name: `Include "${SUGGESTIONS[2]!.prompt}"` });
+		await userEvent.click(skipped);
+
+		await userEvent.click(canvas.getByRole("button", { name: /suggest more/i }));
+		await canvas.findByRole("checkbox", { name: `Include "${MORE_SUGGESTIONS[0]!.prompt}"` });
+
+		await expect(canvas.getByRole("checkbox", { name: `Include "${SUGGESTIONS[2]!.prompt}"` })).not.toBeChecked();
+		await expect(canvas.getByRole("button", { name: /^add 6 prompts$/i })).toBeEnabled();
 	},
 };
