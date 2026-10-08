@@ -20,6 +20,12 @@ overrides:
   "@faker-js/faker": "^10.4.1" # GHSA-qxc2-j82w-r537
   csv-parse: "^7.0.2" # GHSA-8cw4-87c7-c6xx
   "@ai-sdk/provider-utils@^4": "^4.0.33"
+  # @usebruno/cli pins these exactly; only the e2e API suite pulls them in.
+  "js-yaml@^4": "^4.3.2" # GHSA-2883-xcg3-v3hh
+  "yaml@^2": "^2.8.3" # GHSA-48c2-rrv3-qjmp
+  # @tailwindcss/typography pins 6.0.10, and the fix only exists on the 7 line.
+  postcss-selector-parser: "^7.1.6" # GHSA-rj75-hqrm-r3gf
+  "@scalar/json-magic>undici": "^7.29.1" # GHSA-4cwx-7wf7-3272, GHSA-rfgv-xxqx-mfg5, and four more
 
 allowBuilds:
   "@tailwindcss/oxide": true
