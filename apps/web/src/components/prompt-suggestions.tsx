@@ -5,7 +5,6 @@
  * bar is what persists them.
  */
 
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { dedupeKey, describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
@@ -16,18 +15,15 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { cn } from "@workspace/ui/lib/utils";
 import { AlertCircle, Plus, RefreshCw, Sparkles, X } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { type PolledJobError, usePolledBrandJob } from "@/hooks/use-polled-brand-job";
 import { trackEvent } from "@/lib/posthog";
-import { useWriteErrorMessage } from "@/lib/write-errors";
 import {
 	cancelPromptSuggestionsFn,
 	getPromptSuggestionsStatusFn,
 	startPromptSuggestionsFn,
 } from "@/server/prompt-suggestions";
-
-const POLL_INTERVAL_MS = 2000;
-const TIMEOUT_MS = 6 * 60 * 1000;
 
 /** Rows share one column layout so text and tags line up down the list. */
 const ROW_GRID =
@@ -50,46 +46,47 @@ interface PromptSuggestionsProps {
 	onClose: () => void;
 }
 
-interface RunError {
-	message: string;
-	/** False when starting was refused (e.g. the daily limit), so retrying can't help. */
-	retryable: boolean;
-}
-
 /**
  * Runs accumulate: "Suggest More" appends to what's on screen rather than
  * replacing it, so ticks and edits on earlier suggestions survive.
  */
 function useSuggestionRuns(brandId: string, existingValues: string[]) {
-	const writeError = useWriteErrorMessage();
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<RunError | null>(null);
-	const [run, setRun] = useState(0);
+	const [error, setError] = useState<PolledJobError | null>(null);
 	const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 	const [remaining, setRemaining] = useState<number | null>(null);
 	// Everything any run has offered, so the next run doesn't offer it again.
 	const offered = useRef<string[]>([]);
 
-	const fail = useCallback((next: RunError) => {
-		setLoading(false);
-		setError(next);
-	}, []);
-
-	const { mutate: start, isSuccess: started } = useMutation({
-		mutationFn: () =>
+	const job = usePolledBrandJob({
+		queryKey: ["prompt-suggestions", brandId],
+		start: () =>
 			startPromptSuggestionsFn({
 				data: { brandId, exclude: [...existingValues, ...offered.current].slice(0, MAX_PROMPTS * 2) },
 			}),
-		onSuccess: (result) => setRemaining(result.remaining),
-		onError: (err) => fail({ message: writeError(err, "Couldn't suggest prompts."), retryable: false }),
+		poll: () => getPromptSuggestionsStatusFn({ data: { brandId } }),
+		cancel: () => cancelPromptSuggestionsFn({ data: { brandId } }),
+		onStarted: (result) => setRemaining(result.remaining),
+		onDone: ({ prompts }) => {
+			offered.current = [...offered.current, ...prompts.map((p) => p.prompt)];
+			setSuggestions((prev) => {
+				// Unsaved rows can't be known to the server until the run starts, and
+				// the model can still slip one through; filter again against the list.
+				const seen = new Set([...existingValues, ...prev.map((s) => s.value)].map(dedupeKey));
+				const fresh = prompts
+					.filter((p) => !seen.has(dedupeKey(p.prompt)))
+					.map((p) => ({ key: uuidv4(), value: p.prompt, tags: p.tags, selected: true }));
+				return [...prev, ...fresh];
+			});
+		},
+		onError: setError,
+		startErrorFallback: "Couldn't suggest prompts.",
+		timeoutMessage: "Suggesting prompts timed out. Please try again.",
 	});
 
 	const requestRun = () => {
-		setLoading(true);
 		setError(null);
-		setRun((n) => n + 1);
 		trackEvent("prompt_suggestions_requested");
-		start();
+		job.run();
 	};
 
 	// One run on open; later runs come from the "Suggest More" button.
@@ -100,49 +97,7 @@ function useSuggestionRuns(brandId: string, existingValues: string[]) {
 		requestRun();
 	});
 
-	const { data: status } = useQuery({
-		queryKey: ["prompt-suggestions", brandId, run],
-		queryFn: () => getPromptSuggestionsStatusFn({ data: { brandId } }),
-		enabled: loading && started,
-		staleTime: 0,
-		gcTime: 0,
-		refetchInterval: (query) => (query.state.data?.status === "pending" ? POLL_INTERVAL_MS : false),
-		refetchIntervalInBackground: true,
-	});
-
-	useEffect(() => {
-		if (!loading || !status) return;
-		if (status.status === "failed") {
-			fail({ message: status.error, retryable: true });
-		} else if (status.status === "done") {
-			offered.current = [...offered.current, ...status.prompts.map((p) => p.prompt)];
-			setSuggestions((prev) => {
-				// Unsaved rows can't be known to the server until the run starts, and
-				// the model can still slip one through; filter again against the list.
-				const seen = new Set([...existingValues, ...prev.map((s) => s.value)].map(dedupeKey));
-				const fresh = status.prompts
-					.filter((p) => !seen.has(dedupeKey(p.prompt)))
-					.map((p) => ({ key: uuidv4(), value: p.prompt, tags: p.tags, selected: true }));
-				return [...prev, ...fresh];
-			});
-			setLoading(false);
-		}
-	}, [loading, status, existingValues, fail]);
-
-	useEffect(() => {
-		if (!loading) return;
-		const timer = window.setTimeout(
-			() => fail({ message: "Suggesting prompts timed out. Please try again.", retryable: true }),
-			TIMEOUT_MS,
-		);
-		return () => window.clearTimeout(timer);
-	}, [loading, fail]);
-
-	const cancel = () => {
-		if (loading) cancelPromptSuggestionsFn({ data: { brandId } }).catch(() => {});
-	};
-
-	return { loading, error, suggestions, setSuggestions, remaining, requestRun, cancel };
+	return { loading: job.running, error, suggestions, setSuggestions, remaining, requestRun, cancel: job.cancel };
 }
 
 function SuggestionRow({
