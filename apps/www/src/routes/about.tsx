@@ -313,8 +313,8 @@ function AboutPage() {
 								he spent five years at LiveRamp, ending as tech lead for one of the largest device graphs in adtech.
 							</p>
 							<p>
-								Since then he has started and sold small products of his own, including MealByMeal and poach.vc. He
-								started Elmo in July 2025 after seeing AI visibility tools charge enterprise prices for work that is
+								After Airbyte, Jared built and sold two small products of his own, MealByMeal and poach.vc. He started
+								Elmo in July 2025 after seeing AI visibility tools charge enterprise prices for work that is
 								cheap to run: querying answer engines, parsing responses, and tracking the results. He built Elmo as an
 								open-source alternative that any team can audit, self-host, or use as an affordable managed service.
 							</p>
