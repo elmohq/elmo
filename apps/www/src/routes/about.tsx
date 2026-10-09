@@ -107,8 +107,8 @@ const differentiators = [
 		body: "Consumer products like ChatGPT, Google AI Mode, and Perplexity are scraped from the same interface your buyers use. API-only tools measure a different model configuration than the one people actually see.",
 	},
 	{
-		title: "Bootstrapped and built to last",
-		body: "Elmo has no venture investors, so it doesn't need enterprise pricing to survive. If you self-host, Elmo keeps working even if the company behind it changes course.",
+		title: "Unlimited seats, API, and MCP on every plan",
+		body: "Every Elmo Cloud plan includes unlimited team members, the REST API, and an MCP server for Claude Code, Cursor, and other AI assistants. Your whole team and your own tools get the data without per-seat fees or an enterprise upgrade.",
 	},
 ];
 
@@ -121,32 +121,11 @@ const audiences = [
 	"Local and hospitality businesses checking how AI assistants describe and recommend them",
 ];
 
-function SectionEyebrow({ num, label }: { num: string; label: string }) {
-	return (
-		<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
-			{num} <span className="text-zinc-500">— {label}</span>
-		</p>
-	);
-}
-
-function Section({
-	num,
-	label,
-	heading,
-	tinted,
-	children,
-}: {
-	num: string;
-	label: string;
-	heading: string;
-	tinted?: boolean;
-	children: ReactNode;
-}) {
+function Section({ heading, tinted, children }: { heading: string; tinted?: boolean; children: ReactNode }) {
 	return (
 		<section className={`border-b border-zinc-200 py-12 lg:py-20 ${tinted ? "bg-zinc-50" : "bg-white"}`}>
 			<div className="mx-auto max-w-6xl px-4 md:px-6">
-				<SectionEyebrow num={num} label={label} />
-				<h2 className="font-heading mt-3 max-w-3xl text-3xl text-zinc-950 md:text-4xl">{heading}</h2>
+				<h2 className="font-heading max-w-3xl text-3xl text-zinc-950 md:text-4xl">{heading}</h2>
 				<div className="mt-8">{children}</div>
 			</div>
 		</section>
@@ -265,7 +244,6 @@ function AboutPage() {
 					/>
 					<div className="relative mx-auto max-w-6xl px-4 md:px-6">
 						<div className="max-w-3xl">
-							<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ ABOUT ELMO</p>
 							<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl lg:text-6xl">About Elmo</h1>
 							<p className="mt-6 max-w-2xl text-lg text-pretty text-zinc-600 md:text-xl">
 								Elmo is an open-source answer engine optimization (AEO) platform that tracks how ChatGPT, Google AI
@@ -276,15 +254,15 @@ function AboutPage() {
 					</div>
 				</section>
 
-				<Section num="01" label="WHAT WE DO" heading="What Elmo does">
+				<Section heading="What Elmo does">
 					<CardGrid items={services} />
 				</Section>
 
-				<Section num="02" label="DIFFERENTIATORS" heading="What makes Elmo different" tinted>
+				<Section heading="What makes Elmo different" tinted>
 					<CardGrid items={differentiators} tinted />
 				</Section>
 
-				<Section num="03" label="WHO IT'S FOR" heading="Who uses Elmo">
+				<Section heading="Who uses Elmo">
 					<ul className="max-w-3xl list-disc space-y-3 pl-5 text-[1.0625rem] leading-relaxed text-zinc-600 marker:text-blue-600">
 						{audiences.map((audience) => (
 							<li key={audience}>{audience}</li>
@@ -295,7 +273,7 @@ function AboutPage() {
 					</p>
 				</Section>
 
-				<Section num="04" label="THE TEAM" heading="The team behind Elmo" tinted>
+				<Section heading="Team" tinted>
 					<div className="grid gap-10 lg:grid-cols-12">
 						<div className="lg:col-span-5">
 							<div className="flex items-center gap-5 rounded-lg border border-zinc-200 bg-white p-6">
@@ -324,14 +302,14 @@ function AboutPage() {
 							<p>
 								After Airbyte, Jared built and exited two companies of his own: MealByMeal, calorie tracking over text
 								message, and poach.vc, which helped VCs find undiscovered early-stage founders. In July 2025 he started
-								Elmo, after seeing AI search starting to reshape how customers made purchasing decisions. Elmo is the
-								open-source alternative that any team can audit, self-host, or use as an affordable managed service.
+								Elmo, after seeing AI search starting to reshape how customers made purchasing decisions. Today Elmo
+								helps hundreds of teams understand and improve how AI answer engines talk about their brands.
 							</p>
 							<p>
-								Elmo is built by <ExternalLink href={BLUEWHALE_URL}>Blue Whale Software, LLC</ExternalLink>, a
-								bootstrapped company with no outside investors. Jared writes most of the code and handles support
-								himself, with contributions from open-source developers on{" "}
-								<ExternalLink href={GITHUB_URL}>GitHub</ExternalLink>. Read more about why in{" "}
+								Elmo is built by <ExternalLink href={BLUEWHALE_URL}>Blue Whale Software, LLC</ExternalLink>, a San
+								Francisco software company, together with a community of open-source contributors on{" "}
+								<ExternalLink href={GITHUB_URL}>GitHub</ExternalLink>. Read more about how we think about AI visibility
+								in{" "}
 								<Link to="/vision" className="font-medium text-blue-600 underline-offset-4 hover:underline">
 									our vision
 								</Link>
@@ -341,13 +319,13 @@ function AboutPage() {
 					</div>
 				</Section>
 
-				<Section num="05" label="HOW WE WORK" heading="How Elmo works">
+				<Section heading="How Elmo works">
 					<div className="grid gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-2">
 						<div className="bg-white p-6">
 							<h3 className="text-lg font-semibold tracking-tight text-zinc-950">Who you work with</h3>
 							<p className="mt-2 text-sm leading-relaxed text-zinc-600">
-								There's no account manager or tiered support queue. Messages go straight to the people who build Elmo,
-								usually Jared himself.
+								You work directly with the team that builds Elmo, not a tiered support queue. Questions about your
+								setup, data, or results are answered by people who know the product inside out.
 							</p>
 						</div>
 						<div className="bg-white p-6">
@@ -388,7 +366,7 @@ function AboutPage() {
 					</div>
 				</Section>
 
-				<Section num="06" label="KEY FACTS" heading="Key facts about Elmo" tinted>
+				<Section heading="Key facts about Elmo" tinted>
 					<dl className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white">
 						{keyFacts.map((fact) => (
 							<div key={fact.term} className="grid gap-1 px-5 py-4 sm:grid-cols-[13rem_1fr] sm:gap-6">

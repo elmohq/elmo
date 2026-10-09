@@ -104,12 +104,12 @@ export const ABOUT_FAQS: FaqItem[] = [
 	{
 		question: "Who founded Elmo?",
 		answer:
-			"Elmo was founded in July 2025 by Jared Rhizor, previously a founding engineer at the open-source data integration platform Airbyte and a tech lead at LiveRamp. He is still Elmo's primary maintainer and the person you reach when you contact the team.",
+			"Elmo was founded in July 2025 by Jared Rhizor, previously a founding engineer at the open-source data integration platform Airbyte and a tech lead at LiveRamp. He leads Elmo's product and engineering.",
 	},
 	{
 		question: "Who owns Elmo?",
 		answer:
-			"Elmo is built and operated by Blue Whale Software, LLC, an independent, bootstrapped software company based in San Francisco. There are no outside investors.",
+			"Elmo is built and operated by Blue Whale Software, LLC, a software company headquartered in San Francisco. It provides Elmo Cloud, white-label deployments, and the Off-Site AEO service.",
 	},
 	{
 		question: "Where is Elmo based?",
