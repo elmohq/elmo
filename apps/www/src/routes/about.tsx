@@ -18,6 +18,8 @@ const BOOK_CALL_URL = bookDemoUrl("marketing-about");
 const GITHUB_URL = "https://github.com/elmohq/elmo";
 const DISCORD_URL = "https://discord.gg/s24nubCtKz";
 const SUPPORT_EMAIL = "contact@elmohq.com";
+// `ref` preserves attribution when an intermediary strips the Referer.
+const BLUEWHALE_URL = "https://bluewhale.dev?ref=elmo";
 
 const title = "About Elmo · Open-Source AI Visibility Platform";
 const description =
@@ -195,7 +197,14 @@ function AboutPage() {
 	const stars = rootData?.githubStars ?? 0;
 
 	const keyFacts: { term: string; detail: ReactNode }[] = [
-		{ term: "Company Name", detail: "Elmo (elmohq.com), built by Blue Whale Software, LLC" },
+		{
+			term: "Company Name",
+			detail: (
+				<>
+					Elmo (elmohq.com), built by <ExternalLink href={BLUEWHALE_URL}>Blue Whale Software, LLC</ExternalLink>
+				</>
+			),
+		},
 		{ term: "Type", detail: "Open-source software; answer engine optimization (AEO) platform" },
 		{ term: "Founded", detail: "July 2025" },
 		{ term: "Founder", detail: "Jared Rhizor, previously a founding engineer at Airbyte and tech lead at LiveRamp" },
@@ -319,8 +328,9 @@ function AboutPage() {
 								open-source alternative that any team can audit, self-host, or use as an affordable managed service.
 							</p>
 							<p>
-								Elmo is built by Blue Whale Software, LLC, a bootstrapped company with no outside investors. Jared
-								writes most of the code and handles support himself, with contributions from open-source developers on{" "}
+								Elmo is built by <ExternalLink href={BLUEWHALE_URL}>Blue Whale Software, LLC</ExternalLink>, a
+								bootstrapped company with no outside investors. Jared writes most of the code and handles support
+								himself, with contributions from open-source developers on{" "}
 								<ExternalLink href={GITHUB_URL}>GitHub</ExternalLink>. Read more about why in{" "}
 								<Link to="/vision" className="font-medium text-blue-600 underline-offset-4 hover:underline">
 									our vision
