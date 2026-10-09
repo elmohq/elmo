@@ -1,31 +1,16 @@
 /**
- * Server-only helpers for the async brand-analysis job.
- *
- * All pg-boss coupling for the onboarding analysis lives here so the server
- * functions in `@/server/onboarding` stay thin (and free of direct db
- * imports). The web app enqueues the work and then polls the job's result
- * *by brand* — the brand id is the org id, so callers prove access to the
- * brand and we never hand a job's output to someone outside that org.
- *
- * Reading the result goes straight at pg-boss's `pgboss.job` table rather than
- * `getJobById`, because the client polls by brand (not by an opaque job id it
- * has to round-trip). The columns used here (`name`, `data`, `state`,
- * `output`, `created_on`) are stable across the pinned pg-boss v12 line.
+ * Server-only helpers for the async brand-analysis job. All pg-boss coupling
+ * for the onboarding analysis lives here (on top of ./brand-jobs) so the
+ * server functions in `@/server/onboarding` stay free of direct db imports.
  */
 
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
-import { db } from "@workspace/lib/db/db";
 import { cleanOnboardingUrl, type OnboardingSuggestion } from "@workspace/lib/onboarding";
-import { sql } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
+import { cancelLatestBrandJob, IN_FLIGHT_STATES, latestBrandJob, readBrandJob } from "@/lib/brand-jobs";
 
 const ANALYZE_BRAND_QUEUE = "analyze-brand";
 
-/**
- * Shown to the user when a job ends in a failed/cancelled state. The real
- * error (provider messages, stack traces) is already captured server-side by
- * the worker's Sentry wrapper; we never forward it to the browser.
- */
 const GENERIC_FAILURE = "Brand analysis failed. Please try again.";
 
 /** Discriminated status returned to the wizard while it polls. */
@@ -40,27 +25,6 @@ export interface AnalyzeBrandInput {
 	website: string;
 	brandName?: string;
 }
-
-interface JobRow {
-	id: string;
-	state: string;
-	data: { website?: string } | null;
-	output: unknown;
-}
-
-/** The most recent analyze-brand job for a brand, regardless of state. */
-async function latestJobForBrand(brandId: string): Promise<JobRow | undefined> {
-	const result = await db.execute(sql`
-		SELECT id, state, data, output
-		FROM pgboss.job
-		WHERE name = ${ANALYZE_BRAND_QUEUE} AND data->>'brandId' = ${brandId}
-		ORDER BY created_on DESC
-		LIMIT 1
-	`);
-	return result.rows[0] as unknown as JobRow | undefined;
-}
-
-const IN_FLIGHT_STATES = new Set(["created", "active", "retry"]);
 
 /**
  * The page an enqueued job will actually read. Two runs are "the same" only if
@@ -91,51 +55,21 @@ export async function enqueueAnalyzeBrand(input: AnalyzeBrandInput): Promise<voi
 	const boss = await getBoss();
 	const key = analysisKey(input.website);
 
-	const latest = await latestJobForBrand(input.brandId);
-	if (latest && IN_FLIGHT_STATES.has(latest.state) && analysisKey(latest.data?.website ?? "") === key) {
+	const latest = await latestBrandJob(ANALYZE_BRAND_QUEUE, input.brandId);
+	const latestWebsite = typeof latest?.data?.website === "string" ? latest.data.website : "";
+	if (latest && IN_FLIGHT_STATES.has(latest.state) && analysisKey(latestWebsite) === key) {
 		return;
 	}
 
 	await boss.send(ANALYZE_BRAND_QUEUE, input);
 }
 
-/** Poll the status/result of the latest brand-analysis job for a brand. */
 export async function getAnalyzeBrandStatus(brandId: string): Promise<AnalyzeBrandStatus> {
-	const job = await latestJobForBrand(brandId);
-
-	// No job yet — the enqueue may not be visible, or the worker hasn't picked
-	// it up. Either way the client should keep polling.
-	if (!job) {
-		return { status: "pending" };
-	}
-	if (job.state === "completed") {
-		return { status: "done", suggestion: job.output as OnboardingSuggestion };
-	}
-	if (job.state === "failed" || job.state === "cancelled") {
-		console.error("[analyze-brand] job ended without a result", {
-			brandId,
-			jobId: job.id,
-			state: job.state,
-		});
-		return { status: "failed", error: GENERIC_FAILURE };
-	}
-	return { status: "pending" };
+	const job = await readBrandJob<OnboardingSuggestion>(ANALYZE_BRAND_QUEUE, brandId, GENERIC_FAILURE);
+	return job.status === "done" ? { status: "done", suggestion: job.output } : job;
 }
 
-/**
- * Best-effort cancel of an in-flight analysis for a brand. Used when the user
- * backs out of the wizard so the worker doesn't keep grinding on a result
- * nobody is waiting for.
- */
+/** Used when the user backs out of the wizard. */
 export async function cancelAnalyzeBrand(brandId: string): Promise<void> {
-	const job = await latestJobForBrand(brandId);
-	if (!job || !IN_FLIGHT_STATES.has(job.state)) {
-		return;
-	}
-	const boss = await getBoss();
-	try {
-		await boss.cancel(ANALYZE_BRAND_QUEUE, job.id);
-	} catch {
-		// Job may have completed between the read and the cancel — nothing to do.
-	}
+	await cancelLatestBrandJob(ANALYZE_BRAND_QUEUE, brandId);
 }
