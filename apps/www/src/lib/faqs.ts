@@ -104,7 +104,7 @@ export const ABOUT_FAQS: FaqItem[] = [
 	{
 		question: "Who founded Elmo?",
 		answer:
-			"Elmo was founded in 2025 by Jared Rhizor, a co-founder of the open-source data integration platform Airbyte. He is still Elmo's primary maintainer and the person you reach when you contact the team.",
+			"Elmo was founded in July 2025 by Jared Rhizor, previously a founding engineer at the open-source data integration platform Airbyte and a tech lead at LiveRamp. He is still Elmo's primary maintainer and the person you reach when you contact the team.",
 	},
 	{
 		question: "Who owns Elmo?",

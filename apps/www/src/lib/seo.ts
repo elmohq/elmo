@@ -98,7 +98,7 @@ export function organizationJsonLd() {
 			"https://peerpush.com/p/elmo",
 			"https://devhunt.org/tool/elmo",
 		],
-		foundingDate: "2025",
+		foundingDate: "2025-07",
 		founder: {
 			"@type": "Person",
 			name: "Jared Rhizor",

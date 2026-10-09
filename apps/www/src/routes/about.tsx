@@ -21,7 +21,7 @@ const SUPPORT_EMAIL = "contact@elmohq.com";
 
 const title = "About Elmo · Open-Source AI Visibility Platform";
 const description =
-	"Elmo is an open-source answer engine optimization (AEO) platform founded in 2025 by Jared Rhizor, co-founder of Airbyte. Company facts, team, pricing, and how we work.";
+	"Elmo is an open-source answer engine optimization (AEO) platform founded in 2025 by Jared Rhizor, a founding engineer at Airbyte. Company facts, team, pricing, and how we work.";
 
 export const Route = createFileRoute("/about")({
 	head: () => ({
@@ -197,8 +197,8 @@ function AboutPage() {
 	const keyFacts: { term: string; detail: ReactNode }[] = [
 		{ term: "Company Name", detail: "Elmo (elmohq.com), built by Blue Whale Software, LLC" },
 		{ term: "Type", detail: "Open-source software; answer engine optimization (AEO) platform" },
-		{ term: "Founded", detail: "2025" },
-		{ term: "Founder", detail: "Jared Rhizor, co-founder of Airbyte" },
+		{ term: "Founded", detail: "July 2025" },
+		{ term: "Founder", detail: "Jared Rhizor, previously a founding engineer at Airbyte and tech lead at LiveRamp" },
 		{ term: "Headquarters", detail: "San Francisco, California, USA" },
 		{
 			term: "Website",
@@ -308,12 +308,13 @@ function AboutPage() {
 						</div>
 						<div className="space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600 lg:col-span-7">
 							<p>
-								Jared Rhizor co-founded Airbyte, the open-source data integration platform, after working at LiveRamp.
-								He has spent the last year building AEO tooling for e-commerce and B2B SaaS brands and learning what
-								actually changes AI citations.
+								Jared Rhizor was a founding engineer at Airbyte, the open-source data integration platform, where he
+								helped build its API, sync orchestration, connectors, Kubernetes support, and Airbyte Cloud. Before that
+								he spent five years at LiveRamp, ending as tech lead for one of the largest device graphs in adtech.
 							</p>
 							<p>
-								Jared started Elmo in 2025 after seeing AI visibility tools charge enterprise prices for work that is
+								Since then he has started and sold small products of his own, including MealByMeal and poach.vc. He
+								started Elmo in July 2025 after seeing AI visibility tools charge enterprise prices for work that is
 								cheap to run: querying answer engines, parsing responses, and tracking the results. He built Elmo as an
 								open-source alternative that any team can audit, self-host, or use as an affordable managed service.
 							</p>
