@@ -88,6 +88,10 @@ user. Clients that can't open a browser can send an organization API key as
 be limited to some brands. Call `whoami` to see what the connection holds: `tools/list` only shows
 permitted tools, so a missing tool means a missing scope, not a missing feature.
 
+Tool names in this skill are bare (`get_analytics`). They belong to the server registered above as
+`elmo`, so their full names are `elmo:get_analytics` and so on. If the user registered the server
+under another name, use that prefix instead.
+
 Other clients (Cursor, VS Code, ChatGPT, and others): <https://www.elmohq.com/docs/api/mcp?ref=aeo-skill>.
 
 **REST.** Base URL `/api/v1`, with the same Bearer token. OpenAPI:
@@ -127,7 +131,7 @@ either plainly instead of retrying.
 Every brand-scoped call takes a `brandId`, so start with `list_brands`. Analytics calls take a
 half-open window of ISO 8601 timestamps: `start` is included and `end` is not.
 
-| Question | MCP tool | REST |
+| Question | MCP tool (`elmo` server) | REST |
 | --- | --- | --- |
 | How visible is the brand, per engine, and against competitors? | `get_analytics` | `GET /brands/{id}/analytics` |
 | Which prompts surface it and which don't? | `get_prompt_performance` | `GET /brands/{id}/prompt-performance` |

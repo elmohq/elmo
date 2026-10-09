@@ -21,8 +21,19 @@ import urllib.parse
 import urllib.request
 from html.parser import HTMLParser
 
+# Crawlers give up on slow pages too; a page that needs more than 15s is a finding in itself.
 TIMEOUT = 15
+# Well above any real HTML page, so only runaway or binary responses get cut off.
 MAX_BYTES = 5_000_000
+
+# Raw HTML with almost no visible text but many scripts is an app shell that only fills in after
+# JavaScript runs, which most AI crawlers don't do. A server-rendered page, even a short pricing
+# page, carries well over 150 words of navigation, headings, and copy.
+CLIENT_RENDERED_MAX_WORDS = 150
+CLIENT_RENDERED_MIN_SCRIPTS = 5
+
+# Bot challenges and block pages put their markers near the top of the document.
+CHALLENGE_SCAN_CHARS = 20_000
 
 BROWSER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -221,7 +232,7 @@ def looks_blocked(status, body):
         return True
     if status in (401, 403, 429, 503):
         return True
-    sample = body[:20000].lower()
+    sample = body[:CHALLENGE_SCAN_CHARS].lower()
     return any(marker in sample for marker in CHALLENGE_MARKERS)
 
 
@@ -242,7 +253,8 @@ def check(url, robots_cache):
         "canonical": reader.canonical,
         "visible_words_raw_html": reader.words,
         "script_tags": reader.scripts,
-        "likely_client_rendered": reader.words < 150 and reader.scripts >= 5,
+        "likely_client_rendered": reader.words < CLIENT_RENDERED_MAX_WORDS
+        and reader.scripts >= CLIENT_RENDERED_MIN_SCRIPTS,
         **directives(reader, browser_headers),
         "robots_txt": {"status": robots["status"], "note": robots["note"]},
         "crawlers": [],
