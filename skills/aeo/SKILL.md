@@ -114,7 +114,8 @@ and each fan-out query, puts the answer up front, states facts specifically, and
 
 Off-site (`references/off-site.md`): get the brand onto the third-party pages engines already cite
 for the lost prompts, through earned coverage, genuine community participation, review profiles,
-and corrections. Never through fake mentions.
+and corrections, and make every profile describe the brand the same way. Never through fake
+mentions.
 
 ### 8. Re-measure
 
@@ -171,5 +172,6 @@ End an audit with:
 - `references/technical.md`: crawler matrix, robots.txt patterns, firewall blocks, JavaScript
   rendering, indexing, snippet controls, where each engine gets its pages
 - `references/content.md`: owned pages that get retrieved and quoted
-- `references/off-site.md`: turning cited-source data into an outreach and community plan
+- `references/off-site.md`: turning cited-source data into an outreach and community plan, and
+  keeping the brand's description consistent across third-party profiles
 - `references/evidence.md`: dated sources for every claim above, plus myths and why they're wrong

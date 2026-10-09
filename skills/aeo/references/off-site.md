@@ -1,7 +1,7 @@
 # Off-site
 
-Contents: why off-site matters · building the target list · playbooks by source type · lines not
-to cross
+Contents: why off-site matters · building the target list · consistent positioning · playbooks by
+source type · lines not to cross
 
 Answer engines lean heavily on third-party pages. Academic comparisons find that ChatGPT and
 similar engines cite earned editorial sources far more than brand-owned pages for product
@@ -30,6 +30,35 @@ study, by engine, and by month. Start from the brand's own data:
    accurate. Then pick the play below.
 
 Re-pull the list monthly. Cited sources churn: a large share of cited URLs change between runs.
+
+## Consistent positioning
+
+An engine writes its description of a brand from many pages at once. When those pages agree on what
+the brand is and who it's for, the answer repeats it. When they disagree, the answer hedges, picks
+the most-repeated version, or keeps an old one. This is usually why a brand is mentioned but not
+recommended for the need it cares about (`measurement.md`, "Cited is not recommended"): the sources
+the engine reads don't connect the brand to that need, in words the buyer uses.
+
+1. **Write the canonical description.** One short paragraph: the category, who it's for, the two or
+   three things that set it apart, and the pricing model. Use the words buyers use for the category,
+   not an invented one. Every profile below should be able to quote it.
+2. **List where the description lives.** Start with the profiles the engines cite for branded and
+   lost prompts. Then check the usual set: review platforms, Crunchbase, the LinkedIn company page,
+   Wikidata, app marketplaces, partner and integration directories, social bios, and the press
+   boilerplate.
+3. **Compare each one with the canonical description.** Note a wrong category, an old segment
+   ("for startups" after moving upmarket), stale pricing, retired product names, or a missing use
+   case. Fix the ones the brand controls first, then ask publishers for the rest (see Corrections
+   below).
+4. **Make the use case a third-party fact.** To be recommended "for agencies", pages other than the
+   brand's own must say it's good for agencies: reviews from agency customers, case studies published
+   by partners, and roundups that list it in that category.
+5. **Re-check branded answers** after the changes, and expect stale descriptions to persist for
+   weeks.
+
+After a rebrand, merger, or repositioning, the old description is everywhere and the new one is
+nowhere. Redirect old product URLs, update profiles in one pass, say plainly on the site what the
+brand used to be called, and prioritize the most-cited pages that still use the old story.
 
 ## Playbooks by source type
 
