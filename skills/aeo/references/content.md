@@ -115,7 +115,8 @@ related pages, not in an orphaned "AI content" section.
 ## Keeping it true
 
 - Update pages when the facts change, and change the date only then. Some engines favor recently
-  updated pages, but faking freshness is a spam risk and gets noticed.
+  updated pages, but Google's people-first content guidance lists "changing the date of pages to
+  make them seem fresh when the content has not substantially changed" as a warning sign.
 - After changing a fact, re-check the branded prompts that got it wrong. Engines that cache sources
   can take weeks to catch up, and the old fact may live on in third-party pages (`off-site.md`).
 - Keep one canonical page per fact. Contradictions between the pricing page, docs, and old blog posts
@@ -126,8 +127,15 @@ related pages, not in an orphaned "AI content" section.
 - Don't write separate "for AI" versions of pages, hidden text, or content that only crawlers see.
   That is cloaking.
 - Don't split pages into tiny chunks or pad them to a magic word count.
-- Don't publish self-promotional "best X" listicles at scale that rank your own product first. Engines
-  cite them and then recommend someone else, and Google has acted against the pattern.
+- Don't publish self-promotional "best X" listicles at scale that rank your own product first. A
+  list that ranks its own publisher first is plainly biased; one small study (`evidence.md`) found
+  AI Overviews citing such lists while recommending competitors, though how each engine treats them
+  isn't documented. If you publish one, say you make one of the products and treat competitors
+  fairly.
+- Don't copy whole articles onto Medium, LinkedIn, or other platforms as a publishing strategy. The
+  copies can outrank or replace the original. Google calls cross-domain canonicals only a hint and
+  recommends that syndicated copies carry `noindex`; platforms you don't control often won't allow
+  either. Prefer excerpts that link back, and original posts written for each platform.
 - Don't use AI to mass-produce pages for every keyword variant. Google's scaled-content policy covers
   this, and its spam policies now explicitly apply to AI Overviews and AI Mode.
 - Don't rewrite pages chasing "GEO tactics" until the rewrites stop saying what the product actually

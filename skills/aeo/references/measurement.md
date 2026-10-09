@@ -64,6 +64,9 @@ For a rate *p* measured over *n* runs, the 95% margin is roughly `±2 × sqrt(p 
 Two windows differ meaningfully only when the gap is clearly larger than both margins. At small n,
 say "no detectable change", not "down 8 points".
 
+When you read exported data, count with code where you can, and quote exact numerators and
+denominators. Eyeballed counts drift.
+
 ## Metrics
 
 | Metric | Definition | Notes |
@@ -119,6 +122,8 @@ Which step a brand stalls at points to the fix:
 
 None of these show what the answer said, but they are free and authoritative for their own engine.
 
+- **Google Search Console, Performance report:** clicks and impressions from AI Overviews and AI Mode
+  are already included in the "Web" search type, mixed in with ordinary results.
 - **Google Search Console, generative AI performance report** (rolled out worldwide 31 Aug 2026):
   impressions of your links in AI Overviews and AI Mode, combined, by page, country, device, and
   date. No queries, clicks, or position, and no API export as of late 2026. Use it to see which

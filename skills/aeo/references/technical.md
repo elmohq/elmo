@@ -2,7 +2,7 @@
 
 Contents: crawler matrix · robots.txt patterns · firewall and CDN blocks · JavaScript rendering ·
 indexing · snippet controls · where each engine gets its pages · reading the audit script ·
-llms.txt and schema
+llms.txt and schema · product data and shopping · AI agents using the site · moving domains
 
 An engine can only cite pages it can fetch, and for most engines only pages that a search index
 already holds. Access problems are binary and often invisible, so check them before content work.
@@ -152,9 +152,10 @@ machine-readable output.
 
 ## llms.txt and schema
 
-- **llms.txt:** optional. No consumer answer engine documents reading it, and server-log studies show
-  AI crawlers almost never request it. Google says Google Search doesn't use it. It's worth having for developer documentation, because coding
-  agents and IDE tools do read it. Don't present it as an AEO lever, and don't spend time on it
+- **llms.txt:** optional. It's a 2024 community proposal (Jeremy Howard, llmstxt.org), not a
+  ratified standard. No consumer answer engine documents reading it, server-log studies show AI
+  crawlers almost never request it, and Google says Google Search doesn't use it. It's worth having
+  for developer documentation, because coding agents and IDE tools do read it. Don't present it as an AEO lever, and don't spend time on it
   before access and indexing are clean.
 - **Schema markup:** keep valid `Organization`, `Product`, `Article`, `BreadcrumbList`, and similar
   markup for rich results and to tie the brand's entity together (`sameAs` links to official
@@ -162,3 +163,37 @@ machine-readable output.
   fetchers read visible content. Any fact that matters must be in visible text. FAQ rich results no
   longer appear in Google Search (since 7 May 2026); existing FAQPage markup is harmless but earns
   nothing there.
+
+## Product data and shopping
+
+Schema skepticism stops at product data. For stores, Google's shopping experiences, including those
+in AI Mode, draw on `Product` structured data and Merchant Center feeds, and Google says providing
+both maximizes eligibility. Keep price, availability, currency, and variants identical across the
+feed, the markup, and the visible page; a mismatch is the most common reason product data gets
+ignored or disapproved. Other engines read the visible product page, so the same facts must be in
+HTML text. Where an engine runs its own merchant or product-feed program, check its current
+documentation rather than assuming one exists.
+
+## AI agents using the site
+
+Agents that browse for a user (booking a demo, comparing plans, checking out) perceive a page through
+some mix of screenshots, the raw HTML or DOM, and the accessibility tree. What helps them is what
+helps assistive technology:
+
+- Real `<button>`, `<a>`, `<label>`, and form elements instead of clickable `<div>`s and unlabeled
+  inputs.
+- No overlays, cookie walls, or invisible layers that intercept clicks, and no layout shift that
+  moves targets after load.
+- Key facts (prices, plans, availability) in text, not only in images or canvas.
+
+Test it: inspect the accessibility tree in browser dev tools, run an automated accessibility audit,
+complete the flow by keyboard alone, and, if you can, have a browsing agent attempt the task.
+
+## Moving domains
+
+A rebrand or a new domain resets much of what engines know. Redirect every old URL to its new
+equivalent with a permanent server-side redirect (301 or 308), not everything to the homepage.
+Update internal links, canonicals, sitemaps, and structured data to the new URLs, use Search
+Console's Change of Address tool, and keep the redirects in place for at least a year. Expect search
+and AI visibility to fluctuate for weeks while engines recrawl. Then work through the old
+description wherever it lives (`off-site.md`, "Consistent positioning").

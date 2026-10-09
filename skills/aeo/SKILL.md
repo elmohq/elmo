@@ -91,7 +91,9 @@ Read in this order:
 - **Fan-out queries.** The searches the engine actually ran are often worded differently from the
   prompt. Those are the queries to rank for.
 - **Accuracy.** In branded answers, look for wrong pricing, discontinued features, old positioning,
-  and "avoid" or "not recommended" language. Trace each one to the cited page that says it.
+  and "avoid" or "not recommended" language. Trace each one to the cited page that says it. An
+  answer with no citations probably comes from the model's training data, which only changes when
+  a newer model ships; fixing sources corrects answers grounded in live search, after a recrawl.
 
 ### 5. Access
 
@@ -104,8 +106,10 @@ python3 scripts/check_ai_access.py https://example.com/ https://example.com/pric
 
 It checks robots.txt for each AI crawler, fetches every page as each crawler (catching firewall
 and CDN blocks that robots.txt doesn't show), flags noindex and nosnippet, and checks whether the
-content is in the raw HTML, since most AI crawlers don't run JavaScript. Read
-`references/technical.md` for what each result means and how to fix it.
+content is in the raw HTML, since most AI crawlers don't run JavaScript. Run it yourself. If you
+can't run code, do the same checks by hand from what the user gives you, and don't point them at
+the script, which they don't have. Read `references/technical.md` for what each result means and
+how to fix it. It also covers product feeds, pages that AI agents have to use, and domain moves.
 
 ### 6–7. Fix
 
@@ -171,7 +175,8 @@ End an audit with:
 - `references/elmo.md`: setting up Elmo (cloud or self-hosted, with scraping providers), connecting
   over MCP or REST, mapping questions to tools, recipes for everyday data questions
 - `references/technical.md`: crawler matrix, robots.txt patterns, firewall blocks, JavaScript
-  rendering, indexing, snippet controls, where each engine gets its pages
+  rendering, indexing, snippet controls, where each engine gets its pages, product data, agent
+  usability, domain moves
 - `references/content.md`: owned pages that get retrieved and quoted, with patterns for comparison,
   alternatives, use-case, pricing, integration, and category pages
 - `references/off-site.md`: turning cited-source data into an outreach and community plan, and

@@ -36,6 +36,14 @@ opaque method.
 
 - Google, optimizing for generative AI features in Search (updated 10 Jul 2026): no special files, markup, or Markdown needed, and Google Search doesn't use them; no special schema; no need to chunk content. To be eligible, a page must be indexed, eligible for a snippet, and the site must be included in Search generative AI features in Search Console — <https://developers.google.com/search/docs/fundamentals/ai-optimization-guide>
 - Google, generative AI performance report in Search Console (announced Jun 2026, worldwide 31 Aug 2026) — <https://developers.google.com/search/blog/2026/06/gen-ai-performance-reports>
+- Google, AI features: AI Overviews and AI Mode traffic is reported in the Performance report under the "Web" search type — <https://developers.google.com/search/docs/appearance/ai-features>
+- Google, Product structured data: providing both structured data and a Merchant Center feed maximizes eligibility — <https://developers.google.com/search/docs/appearance/structured-data/product>
+- Google, people-first content: changing page dates without substantial changes is a warning sign — <https://developers.google.com/search/docs/fundamentals/creating-helpful-content>
+- Google, syndication: cross-domain canonical is a hint; noindex recommended on syndicated copies (Office Hours, Jun 2023) — <https://developers.google.com/search/help/office-hours/2023/june>
+- Google, qualifying paid links with rel="sponsored" — <https://developers.google.com/search/docs/crawling-indexing/qualify-outbound-links>
+- Google, site moves with URL changes — <https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes>
+- FTC Endorsement Guides (material connections must be disclosed) — <https://www.ftc.gov/legal-library/browse/rules/guides-concerning-use-endorsements-testimonials-advertising>
+- llms.txt proposal (Jeremy Howard, Sep 2024) — <https://llmstxt.org/>
 - Google spam policies apply to AI Overviews and AI Mode, including inauthentic mentions (May 2026) — <https://developers.google.com/search/docs/essentials/spam-policies>
 - Google, FAQ rich results no longer shown in Search from 7 May 2026, for all sites; existing FAQPage markup does no harm — <https://developers.google.com/search/docs/appearance/structured-data/faqpage>
 - Google, HowTo rich results removed and FAQ restricted (Aug 2023) — <https://developers.google.com/search/blog/2023/08/howto-faq-changes>

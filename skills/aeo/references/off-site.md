@@ -104,6 +104,12 @@ comparisons are the usual culprits.
 ## Lines not to cross
 
 - No fake reviews, sock puppets, seeded threads, paid mentions without disclosure, or mention farms.
+- Employees, agencies, and paid partners who recommend the product must disclose the connection.
+  The FTC's Endorsement Guides require disclosing material connections. Reddit's rules prohibit
+  content and vote manipulation, and many communities ban undisclosed self-promotion.
+- Paid list placements must be labeled as sponsored on the page, and their links qualified with
+  `rel="sponsored"`. Google says seeking inauthentic mentions across the web isn't as helpful as it
+  might seem, and its spam policies cover them in AI features too.
 - No "parasite" content on high-authority domains you don't control. Google's site reputation abuse
   policy targets it.
 - No spam-pitching every author on a list. Prioritize by citation frequency and pitch with substance.
