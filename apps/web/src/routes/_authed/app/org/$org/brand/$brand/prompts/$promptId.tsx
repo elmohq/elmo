@@ -21,7 +21,7 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
-import { PromptGroupPanel } from "@/components/prompt-group-panel";
+import { PromptMarketsPanel } from "@/components/prompt-markets-panel";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SiteIcon } from "@/components/site-icon";
 import { useBrandId } from "@/hooks/use-brand-id";
@@ -314,7 +314,7 @@ function PromptHistoryPage() {
 	return (
 		<div className="space-y-0">
 			<PromptHeader promptMeta={promptMeta} isMetaLoading={isMetaLoading} onLookbackChange={handleLookbackChange} />
-			<PromptGroupPanel brandId={brandId} promptId={promptId} />
+			<PromptMarketsPanel brandId={brandId} promptId={promptId} />
 
 			{/* TABS */}
 			<div className="border-b border-border">

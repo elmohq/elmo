@@ -27,8 +27,3 @@ export function defaultMarketForNewPrompts(prompts: readonly MarketPrompt[]): { 
 		language: languagesInUse(prompts)[0] ?? DEFAULT_LANGUAGE,
 	};
 }
-
-/** "GB · EN" — compact enough for a card title or a chip. */
-export function marketLabel(prompt: { country: string; language: string }): string {
-	return `${prompt.country} · ${prompt.language.toUpperCase()}`;
-}

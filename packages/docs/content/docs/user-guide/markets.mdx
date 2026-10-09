@@ -1,34 +1,27 @@
 ---
-title: Countries, Languages, and Groups
-description: Ask prompts from the countries and in the languages your customers use, and compare markets side by side.
+title: Markets
+description: Track a prompt in the countries and languages your customers use, and compare markets side by side.
 ---
 
-AI answers depend on where a question is asked from and what language it's asked in. The same question gets different sources, shops, and competitors in the UK than in the US, and Google only shows an AI Overview for some queries in some places. In Elmo, every prompt is asked from one **country** in one **language**, so its results describe that market.
+AI answers depend on where a question is asked from and what language it's asked in. The same question gets different sources, shops, and competitors in the UK than in the US, and Google only shows an AI Overview for some queries in some places. In Elmo, a prompt is tracked in one or more **markets**: a country and a language together, such as `GB · EN` or `CH · FR`.
 
-## Choosing a country and language
+## Tracking a prompt in several markets
 
-Prompts start in the **United States**, in **English**. On the **Prompts** settings page, pick a country and language when you add a prompt. **Add Multiple** takes several countries at once and one language, and adds every pasted line once per country.
+On the **Prompts** settings page, each prompt shows its markets as chips under its text. New prompts start in the market most of your prompts already use (the United States in English, for a new brand).
 
-A saved prompt's country and language can't be changed. Changing them would mix two markets into one history. To measure a prompt somewhere else, add a variant (see below). Each variant is its own prompt with its own history, and each one counts toward your prompt limit.
+- **+ Market** adds a market. It starts from the text you're looking at, so translate it for that market before saving.
+- Click a chip to see and edit that market's wording, and to switch it on or off. Tags apply to the prompt in every market.
+- **Add Multiple** takes several markets at once and adds every pasted line in each of them.
 
-The prompt text is sent exactly as you write it, so write each variant in its own language. For anything more local than a country, put the place in the prompt itself (for example `best running shop in Manchester`).
+Once saved, a market can't be changed. That would mix two markets into one history. Switch it off and add the one you want instead. Each market counts toward your prompt limit, since each one is run separately.
 
-## Groups
-
-Variants of the same question belong to one **group**, for example *best running shoes for flat feet* in the US and the UK and *meilleures chaussures de running pieds plats* in France. A group is how Elmo knows they belong together:
-
-- On the **Prompts** settings page, each prompt shows its country and language as a chip beside its text (`GB · EN`). A group's variants share one frame, with **Add country or language** underneath. The **⋯** menu on each row adds a variant, groups the prompt with another one, or removes it from its group.
-- A pasted line added in several countries at once becomes one group.
-- On a prompt's page, **Markets** switches between the group's variants, keeping the tab you're on.
-- In the prompt list, each prompt shows its country and language, and how many variants its group has.
-
-A group holds one enabled prompt per country and language. Two would be the same measurement twice.
+For anything more local than a country, put the place in the prompt itself (for example `best running shop in Manchester`).
 
 ## Filtering
 
-Once a brand's prompts span more than one country or language, **Countries** and **Languages** filters appear next to the tag filter on every dashboard page. Pick one value to see that market on its own, or several to see them combined. With nothing picked, every market is included.
+Once a brand's prompts span more than one country or language, a **Markets** filter appears next to the tag filter on every dashboard page, with a section for countries and one for languages. Pick one to see that market on its own, or several to see them combined. With nothing picked, every market is included. In the prompt list, each prompt shows its market and how many markets it's tracked in, and a prompt's page has a **Markets** switcher to move between them.
 
-The API and MCP server take the same filters as `countries` and `languages` parameters, both comma-separated (`countries=GB,IE`, `languages=en`). `GET /prompts` and `list_prompts` also take a `groupId`.
+The API and MCP server take the same filters as `countries` and `languages` parameters, both comma-separated (`countries=GB,IE`, `languages=en`). Prompts tracking the same question in different markets share a `groupId`; pass one when creating a prompt to add a market to an existing question, or to `GET /prompts` and `list_prompts` to list a question's markets.
 
 ## Which platforms can answer from a country
 

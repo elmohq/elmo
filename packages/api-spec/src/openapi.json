@@ -55,7 +55,7 @@
 					},
 					"country": {
 						"type": "string",
-						"description": "ISO 3166-1 alpha-2 country the prompt is asked from. Fixed once the prompt exists: to track the same question in another country, create a variant in the same group.",
+						"description": "ISO 3166-1 alpha-2 country the prompt is asked from. Fixed once the prompt exists: to track the same question in another market, create a prompt with this one's `groupId`.",
 						"example": "US"
 					},
 					"language": {
@@ -66,7 +66,7 @@
 					"groupId": {
 						"type": "string",
 						"format": "uuid",
-						"description": "Prompts asking the same question in other countries or languages share a group. A group holds one enabled prompt per country and language."
+						"description": "Prompts that are the same question in different markets share a group, which the dashboard shows as one prompt tracked in several markets. A group holds one enabled prompt per country and language."
 					},
 					"tags": {
 						"type": "array",
@@ -147,7 +147,7 @@
 					"groupId": {
 						"type": "string",
 						"format": "uuid",
-						"description": "Add the prompt as a variant of an existing group, by another prompt's `groupId`. Omit to start a new group. Returns 409 if the group already has an enabled prompt in the same country and language."
+						"description": "Another prompt's `groupId`, to track this as the same question in another market. Omit to start a new group. Returns 409 if the group already has an enabled prompt in this country and language."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -178,11 +178,6 @@
 							"type": "string"
 						},
 						"description": "Replaces the prompt's grounded models. Checked against the organization's premium pool."
-					},
-					"groupId": {
-						"type": "string",
-						"format": "uuid",
-						"description": "Move the prompt into another prompt's group. Returns 409 if that group already has an enabled prompt in the same country and language."
 					}
 				}
 			},

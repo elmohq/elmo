@@ -122,37 +122,42 @@ export function describeSkipped(skipped: SkippedLines): string | null {
 	return `Skipped ${parts.join(" and ")}.`;
 }
 
-export interface CountryBulkPromptParse {
-	/** One entry per pasted line per country, lines in paste order. */
-	added: { value: string; country: string }[];
+export interface MarketBulkPromptParse {
+	/** One entry per pasted line per market, lines in paste order. */
+	added: { value: string; country: string; language: string }[];
 	skipped: SkippedLines;
 }
 
 /**
- * `parseBulkPrompts` for a paste added in several countries at once. Each line
- * becomes one prompt per country, and a line only duplicates a prompt that is
- * already in the same country — the same text elsewhere is a different prompt.
+ * `parseBulkPrompts` for a paste added in several markets at once. Each line
+ * becomes one prompt per market, and a line only duplicates a prompt already
+ * in the same market — the same text elsewhere is a different prompt.
  */
-export function parseBulkPromptsInCountries(
+export function parseBulkPromptsInMarkets(
 	text: string,
-	options: { existing?: readonly { value: string; country: string }[]; countries: readonly string[]; limit?: number },
-): CountryBulkPromptParse {
-	const { existing = [], countries, limit = MAX_PROMPTS } = options;
+	options: {
+		existing?: readonly { value: string; country: string; language: string }[];
+		markets: readonly { country: string; language: string }[];
+		limit?: number;
+	},
+): MarketBulkPromptParse {
+	const { existing = [], markets, limit = MAX_PROMPTS } = options;
 	const lines = parseBulkPrompts(text, { limit: Number.POSITIVE_INFINITY });
-	const countryKey = (value: string, country: string) => `${country}:${dedupeKey(value)}`;
-	const seen = new Set(existing.map((prompt) => countryKey(prompt.value, prompt.country)));
+	const marketKey = (value: string, market: { country: string; language: string }) =>
+		`${market.country}:${market.language}:${dedupeKey(value)}`;
+	const seen = new Set(existing.map((prompt) => marketKey(prompt.value, prompt)));
 	const room = Math.max(0, limit - existing.length);
 
-	const added: { value: string; country: string }[] = [];
+	const added: MarketBulkPromptParse["added"] = [];
 	const skipped: SkippedLines = { ...lines.skipped, duplicateOfExisting: [], overCapacity: [] };
 	for (const value of lines.added) {
-		for (const country of countries) {
-			if (seen.has(countryKey(value, country))) {
+		for (const market of markets) {
+			if (seen.has(marketKey(value, market))) {
 				skipped.duplicateOfExisting.push(value);
 			} else if (added.length >= room) {
 				skipped.overCapacity.push(value);
 			} else {
-				added.push({ value, country });
+				added.push({ value, ...market });
 			}
 		}
 	}

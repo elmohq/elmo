@@ -1,9 +1,9 @@
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { countryName } from "@workspace/config/countries";
 import { languageName } from "@workspace/config/languages";
+import { marketCode } from "@workspace/config/markets";
 import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { LookbackPeriod } from "@/lib/lookback";
-import { marketLabel } from "@/lib/prompt-markets";
 import { CachedPromptChart } from "./cached-prompt-chart";
 
 interface PromptItem {
@@ -110,7 +110,7 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 									market={
 										showMarket && prompt.country && prompt.language
 											? {
-													label: marketLabel({ country: prompt.country, language: prompt.language }),
+													label: marketCode({ country: prompt.country, language: prompt.language }),
 													title: `${countryName(prompt.country)}, ${languageName(prompt.language)}`,
 													variants: groupSizes.get(prompt.groupId ?? "") ?? 1,
 												}

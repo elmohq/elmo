@@ -14,7 +14,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { ChevronDown, Clock, Globe, Languages, Search, Tag as TagIcon, X } from "lucide-react";
+import { ChevronDown, Clock, Globe, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
@@ -259,87 +259,104 @@ function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 }
 
 // ------------------------------------------------------------------
-// Country and language dropdowns — each subscribes to only its own URL key.
-// They read the brand's own prompts, so each only appears once the prompts
-// span two countries (or languages).
+// Markets dropdown — one control for the "countries" and "languages" URL
+// keys. Reads the brand's own prompts, so it only appears once they span two
+// countries or two languages.
 // ------------------------------------------------------------------
 
-function MarketDropdown({
-	searchKey,
-	title,
-	icon,
-	nameOf,
-	inUse,
-}: {
-	searchKey: "countries" | "languages";
-	title: string;
-	icon: ReactNode;
-	nameOf: (code: string) => string;
-	inUse: (prompts: { country: string; language: string; enabled: boolean }[]) => string[];
-}) {
+function MarketsDropdown() {
 	const { data: brand } = useBrand();
-	const available = useMemo(() => inUse(brand?.prompts ?? []), [inUse, brand?.prompts]);
-	const urlValue = useSearch({ strict: false, select: (s) => s[searchKey] });
+	const prompts = brand?.prompts ?? [];
+	const countries = useMemo(() => countriesInUse(prompts), [prompts]);
+	const languages = useMemo(() => languagesInUse(prompts), [prompts]);
+	const urlCountries = useSearch({ strict: false, select: (s) => s.countries });
+	const urlLanguages = useSearch({ strict: false, select: (s) => s.languages });
 	const setFilters = useFilterNavigate();
-	const selected = useMemo(() => splitTags(urlValue), [urlValue]);
+	const selected = {
+		countries: splitTags(urlCountries),
+		languages: splitTags(urlLanguages),
+	};
 	const [open, setOpen] = useState(false);
 
+	const total = selected.countries.length + selected.languages.length;
 	// A link can still carry a filter after its prompts are gone; keep the
 	// dropdown up so it can be cleared.
-	if (available.length < 2 && selected.length === 0) return null;
+	if (countries.length < 2 && languages.length < 2 && total === 0) return null;
 
-	const commit = (next: string[]) => setFilters({ [searchKey]: joinTags(next) });
-	const toggle = (code: string) =>
-		commit(selected.includes(code) ? selected.filter((c) => c !== code) : [...selected, code]);
-	const label = selected.length === 1 ? nameOf(selected[0]) : title;
+	const toggle = (key: "countries" | "languages", code: string) => {
+		const current = selected[key];
+		setFilters({ [key]: joinTags(current.includes(code) ? current.filter((c) => c !== code) : [...current, code]) });
+	};
+	const label =
+		total === 1
+			? selected.countries.length === 1
+				? countryName(selected.countries[0])
+				: languageName(selected.languages[0])
+			: "Markets";
+
+	const section = (
+		key: "countries" | "languages",
+		title: string,
+		codes: string[],
+		nameOf: (code: string) => string,
+	) => {
+		const all = [...new Set([...codes, ...selected[key]])];
+		if (all.length < 2 && selected[key].length === 0) return null;
+		return (
+			<div className="py-1">
+				<p className="px-3 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">{title}</p>
+				{all.map((code) => {
+					const checked = selected[key].includes(code);
+					return (
+						<button
+							key={code}
+							type="button"
+							onClick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								toggle(key, code);
+							}}
+							className={`flex w-full items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
+								checked ? "bg-accent" : "hover:bg-muted"
+							}`}
+						>
+							<Checkbox checked={checked} className="pointer-events-none" />
+							<span className="flex-1">{nameOf(code)}</span>
+						</button>
+					);
+				})}
+			</div>
+		);
+	};
 
 	return (
 		<Popover open={open} onOpenChange={setOpen} modal={false}>
 			<PopoverTrigger
 				render={
 					<FilterTriggerButton
-						icon={icon}
+						icon={<Globe className="size-3.5" />}
 						label={label}
-						active={selected.length > 0}
-						badgeCount={selected.length > 1 ? selected.length : undefined}
+						active={total > 0}
+						badgeCount={total > 1 ? total : undefined}
 					/>
 				}
 			/>
 			<PopoverContent align="start" className="w-64 p-0" initialFocus={false}>
 				<div className="flex items-center justify-between px-3 h-10 border-b">
-					<span className="font-medium text-sm">{title}</span>
-					{selected.length > 0 && (
+					<span className="font-medium text-sm">Markets</span>
+					{total > 0 && (
 						<button
 							type="button"
-							onClick={() => commit([])}
+							onClick={() => setFilters({ countries: undefined, languages: undefined })}
 							className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
 						>
 							Clear
 						</button>
 					)}
 				</div>
-				<div className="py-1 max-h-64 overflow-y-auto">
-					{[...new Set([...available, ...selected])].map((code) => {
-						const checked = selected.includes(code);
-						return (
-							<button
-								key={code}
-								type="button"
-								onClick={(e) => {
-									e.preventDefault();
-									e.stopPropagation();
-									toggle(code);
-								}}
-								className={`flex w-full items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
-									checked ? "bg-accent" : "hover:bg-muted"
-								}`}
-							>
-								<Checkbox checked={checked} className="pointer-events-none" />
-								<span className="flex-1">{nameOf(code)}</span>
-								<span className="font-mono text-[10px] text-muted-foreground">{code}</span>
-							</button>
-						);
-					})}
+				<div className="max-h-72 divide-y overflow-y-auto">
+					{section("countries", "Countries", countries, countryName)}
+					{section("languages", "Languages", languages, languageName)}
 				</div>
 			</PopoverContent>
 		</Popover>
@@ -482,20 +499,7 @@ export function FilterBar({
 			<div className="flex flex-wrap items-center gap-1.5">
 				{showModelSelector && <ModelDropdown trackedTargets={trackedTargets} />}
 				<TagsDropdown availableTags={availableTags} />
-				<MarketDropdown
-					searchKey="countries"
-					title="Countries"
-					icon={<Globe className="size-3.5" />}
-					nameOf={countryName}
-					inUse={countriesInUse}
-				/>
-				<MarketDropdown
-					searchKey="languages"
-					title="Languages"
-					icon={<Languages className="size-3.5" />}
-					nameOf={languageName}
-					inUse={languagesInUse}
-				/>
+				<MarketsDropdown />
 				<LookbackDropdown />
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />

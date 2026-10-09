@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import { countryName } from "@workspace/config/countries";
 import { languageName } from "@workspace/config/languages";
+import { marketCode, marketName } from "@workspace/config/markets";
 import { getModelMeta } from "@workspace/config/models";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workspace/ui/components/collapsible";
@@ -39,12 +40,11 @@ function Status({ text, tone }: { text: string; tone: keyof typeof TONES }) {
 }
 
 /**
- * The prompt's group — the same question in other countries and languages —
- * with a way across to each, and what every configured model does with each
- * one. Folded by default: the breakdown matters when a result looks off, not
- * on every visit.
+ * The markets this prompt is tracked in, with a way across to each, and what
+ * every configured model does with the one on screen. Folded by default: the
+ * breakdown matters when a result looks off, not on every visit.
  */
-export function PromptGroupPanel({ brandId, promptId }: { brandId: string; promptId: string }) {
+export function PromptMarketsPanel({ brandId, promptId }: { brandId: string; promptId: string }) {
 	const { data } = useQuery({
 		queryKey: ["prompt-group", brandId, promptId],
 		queryFn: () => getPromptGroupFn({ data: { brandId, promptId } }),
@@ -52,10 +52,10 @@ export function PromptGroupPanel({ brandId, promptId }: { brandId: string; promp
 		staleTime: 60_000,
 	});
 	if (!data) return null;
-	return <PromptGroupView promptId={promptId} members={data.members} targets={data.targets} />;
+	return <PromptMarketsView promptId={promptId} members={data.members} targets={data.targets} />;
 }
 
-export function PromptGroupView({
+export function PromptMarketsView({
 	promptId,
 	members,
 	targets,
@@ -65,7 +65,7 @@ export function PromptGroupView({
 	targets: GroupTargetRow[];
 }) {
 	const brandParams = useBrandParams();
-	// Moving between variants keeps the tab you're on.
+	// Moving between markets keeps the tab you're on.
 	const tab = useSearch({
 		strict: false,
 		select: (s) => (PROMPT_DETAIL_TABS.includes(s.tab as PromptDetailTab) ? (s.tab as PromptDetailTab) : undefined),
@@ -92,7 +92,7 @@ export function PromptGroupView({
 								to="/app/org/$org/brand/$brand/prompts/$promptId"
 								params={{ ...brandParams, promptId: member.id }}
 								search={{ tab }}
-								title={`${countryName(member.country)}, ${languageName(member.language)}: ${member.value}`}
+								title={`${marketName(member)}: ${member.value}`}
 								className={cn(
 									"rounded px-2 py-0.5 font-mono text-xs transition-colors",
 									member.id === promptId
@@ -100,7 +100,7 @@ export function PromptGroupView({
 										: "text-muted-foreground hover:bg-muted hover:text-foreground",
 								)}
 							>
-								{member.country} · {member.language.toUpperCase()}
+								{marketCode(member)}
 							</Link>
 						))}
 					</div>

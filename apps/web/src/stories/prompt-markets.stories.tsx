@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "storybook/test";
-import { PromptGroupView } from "@/components/prompt-group-panel";
+import { PromptMarketsView } from "@/components/prompt-markets-panel";
 import type { GroupTargetRow } from "@/server/prompt-group-core";
 
 const meta = {
-	title: "Components/PromptGroup",
+	title: "Components/PromptMarkets",
 } satisfies Meta;
 
 export default meta;
@@ -72,7 +72,7 @@ const targets: GroupTargetRow[] = [
 export const Variants: StoryObj = {
 	render: () => (
 		<div className="max-w-5xl p-8">
-			<PromptGroupView promptId="gb" members={members} targets={targets} />
+			<PromptMarketsView promptId="gb" members={members} targets={targets} />
 		</div>
 	),
 	play: async ({ canvasElement }) => {

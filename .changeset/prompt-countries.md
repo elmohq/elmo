@@ -5,4 +5,4 @@
 "@workspace/api-spec": patch
 ---
 
-Prompts can now be asked from a chosen country and in a chosen language, grouped as variants of the same question, and filtered by country and language across the dashboard, API, and MCP. Each prompt's page shows how every model runs it.
+Prompts can now be tracked in several markets (a country and language each), filtered by market across the dashboard, API, and MCP, and each prompt's page shows how every model runs it.

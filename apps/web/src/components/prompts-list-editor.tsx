@@ -13,6 +13,7 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import { DEFAULT_COUNTRY } from "@workspace/config/countries";
 import { DEFAULT_LANGUAGE } from "@workspace/config/languages";
+import type { Market } from "@workspace/config/markets";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -21,7 +22,7 @@ import {
 	premiumSlotsUsed,
 	selectPremiumModels,
 } from "@workspace/config/plans";
-import { describeSkipped, parseBulkPromptsInCountries } from "@workspace/lib/bulk-prompts";
+import { describeSkipped, parseBulkPromptsInMarkets } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
@@ -36,14 +37,8 @@ import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { CountriesPicker, LanguageSelect } from "@/components/market-select";
-import {
-	firstOpenMarket,
-	type GroupSummary,
-	type Market,
-	MarketChip,
-	PromptRowMenu,
-} from "@/components/prompt-group-field";
+import { MarketsPicker } from "@/components/market-picker";
+import { PromptMarketChips } from "@/components/prompt-market-chips";
 import { useOrganizationParams } from "@/hooks/use-route-params";
 
 export interface EditablePrompt {
@@ -54,7 +49,7 @@ export interface EditablePrompt {
 	/** Editable until the prompt is saved; after that it's part of what the prompt measures. */
 	country: string;
 	language: string;
-	/** Prompts sharing one are variants of the same question. */
+	/** Prompts sharing one are the same question in other markets, edited as one row. */
 	groupId: string;
 	tags: string[];
 	systemTags: string[];
@@ -180,10 +175,6 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"system-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_2.75rem_2rem]",
-	"system-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem_2rem]",
-	"plain-market-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem_2rem]",
-	"plain-market-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem_2rem]",
 };
 
 interface PromptsListEditorProps {
@@ -196,9 +187,8 @@ interface PromptsListEditorProps {
 	changedKeys?: ReadonlySet<string>;
 	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
 	premium?: PremiumAllowance;
-	/** Where, and in what language, new prompts start. Omit to hide each
-	 *  prompt's country/language chip and grouping and add every prompt in the
-	 *  defaults (the onboarding wizard). */
+	/** The market new prompts start in. Omit to hide markets and add every
+	 *  prompt in the default one (the onboarding wizard). */
 	newPromptMarket?: Market;
 }
 
@@ -208,20 +198,18 @@ interface PromptsListEditorProps {
  * keystroke only to label the button and warn about what will be dropped.
  */
 function useBulkPaste(
-	filled: { value: string; country: string }[],
+	filled: (Market & { value: string })[],
 	defaultMarket: Market,
 	onAdd: (prompts: { value: string; country: string; language: string }[]) => void,
 ) {
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
-	const [bulkCountries, setBulkCountries] = useState<string[] | null>(null);
-	const [bulkLanguage, setBulkLanguage] = useState<string | null>(null);
-	const countries = useMemo(() => bulkCountries ?? [defaultMarket.country], [bulkCountries, defaultMarket.country]);
-	const language = bulkLanguage ?? defaultMarket.language;
+	const [bulkMarkets, setBulkMarkets] = useState<Market[] | null>(null);
+	const markets = useMemo(() => bulkMarkets ?? [defaultMarket], [bulkMarkets, defaultMarket]);
 
 	const bulkPreview = useMemo(
-		() => parseBulkPromptsInCountries(bulkText, { existing: filled, countries, limit: MAX_PROMPTS }),
-		[bulkText, filled, countries],
+		() => parseBulkPromptsInMarkets(bulkText, { existing: filled, markets, limit: MAX_PROMPTS }),
+		[bulkText, filled, markets],
 	);
 
 	// Over capacity blocks the whole paste rather than quietly taking the lines
@@ -230,8 +218,7 @@ function useBulkPaste(
 	const closeBulk = () => {
 		setBulkOpen(false);
 		setBulkText("");
-		setBulkCountries(null);
-		setBulkLanguage(null);
+		setBulkMarkets(null);
 	};
 
 	return {
@@ -239,10 +226,8 @@ function useBulkPaste(
 		setBulkOpen,
 		bulkText,
 		setBulkText,
-		bulkCountries: countries,
-		setBulkCountries,
-		bulkLanguage: language,
-		setBulkLanguage,
+		bulkMarkets: markets,
+		setBulkMarkets,
 		bulkPreview,
 		bulkNotice: bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null,
 		bulkError:
@@ -252,7 +237,7 @@ function useBulkPaste(
 		closeBulk,
 		addBulk: () => {
 			if (bulkPreview.added.length === 0 || overCapacity > 0) return;
-			onAdd(bulkPreview.added.map((prompt) => ({ ...prompt, language })));
+			onAdd(bulkPreview.added);
 			closeBulk();
 		},
 	};
@@ -271,11 +256,15 @@ function useRowSelection(prompts: EditablePrompt[]) {
 		selectedKeys,
 		liveSelectedCount,
 		allSelected,
-		toggleSelect: (key: string) =>
+		/** Toggles a row, which is every market of its prompt together. */
+		toggleSelect: (keys: string[]) =>
 			setSelectedKeys((prev) => {
 				const next = new Set(prev);
-				if (next.has(key)) next.delete(key);
-				else next.add(key);
+				const on = keys.every((key) => next.has(key));
+				for (const key of keys) {
+					if (on) next.delete(key);
+					else next.add(key);
+				}
 				return next;
 			}),
 		toggleSelectAll: () => setSelectedKeys(allSelected ? new Set() : new Set(prompts.map((p) => p._key))),
@@ -286,7 +275,6 @@ function useRowSelection(prompts: EditablePrompt[]) {
 function ColumnHeader({
 	gridCols,
 	showSystemTags,
-	showMarket,
 	premium,
 	allSelected,
 	onToggleSelectAll,
@@ -294,7 +282,6 @@ function ColumnHeader({
 }: {
 	gridCols: string;
 	showSystemTags: boolean;
-	showMarket: boolean;
 	premium?: PremiumAllowance;
 	allSelected: boolean;
 	onToggleSelectAll: () => void;
@@ -360,7 +347,6 @@ function ColumnHeader({
 			<div className="flex justify-center">
 				<span className="sr-only">Enabled</span>
 			</div>
-			{showMarket && <span className="sr-only">Actions</span>}
 		</div>
 	);
 }
@@ -372,7 +358,7 @@ function PromptRow({
 	update,
 	allTagOptions,
 	showSystemTags,
-	marketControls,
+	markets,
 	changedKeys,
 	premium,
 	premiumAtCapacity,
@@ -386,8 +372,8 @@ function PromptRow({
 	update: (index: number, patch: Partial<EditablePrompt>) => void;
 	allTagOptions: { value: string }[];
 	showSystemTags: boolean;
-	/** The country/language chip and grouping menu, when the table shows them. */
-	marketControls?: { chip: ReactNode; menu: ReactNode };
+	/** The prompt's market chips, shown under its text. */
+	markets?: ReactNode;
 	changedKeys?: ReadonlySet<string>;
 	premium?: PremiumAllowance;
 	premiumAtCapacity: boolean;
@@ -406,8 +392,8 @@ function PromptRow({
 			{changedKeys?.has(prompt._key) && <span className="sr-only">Has unsaved changes</span>}
 			{/* Mobile: stacked, no selection/bulk */}
 			<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < total - 1 ? "border-b" : ""}`}>
+				{markets}
 				<div className="flex items-start gap-2">
-					{marketControls && <div className="pt-1">{marketControls.chip}</div>}
 					<Input
 						value={prompt.value}
 						onChange={(e) => update(index, { value: e.target.value })}
@@ -446,14 +432,14 @@ function PromptRow({
 				<div className="flex justify-center pt-2">
 					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
 				</div>
-				<div className="flex min-w-0 items-center gap-2">
-					{marketControls?.chip}
+				<div className="min-w-0 space-y-1.5">
 					<Input
 						value={prompt.value}
 						onChange={(e) => update(index, { value: e.target.value })}
 						placeholder="Enter prompt text..."
 						className="min-w-0"
 					/>
+					{markets}
 				</div>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
 				<TagsInput
@@ -481,27 +467,16 @@ function PromptRow({
 						aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
 					/>
 				</div>
-				{marketControls && <div className="flex justify-center pt-0.5">{marketControls.menu}</div>}
 			</div>
 		</div>
 	);
 }
 
-/** Each group's members in list order, read as the first member's text. */
-function summarizeGroups(prompts: EditablePrompt[]): Map<string, GroupSummary> {
-	const groups = new Map<string, GroupSummary>();
-	for (const prompt of prompts) {
-		const group = groups.get(prompt.groupId) ?? { groupId: prompt.groupId, label: "", markets: [] };
-		if (!group.label && prompt.value.trim()) group.label = prompt.value.trim();
-		group.markets.push({ country: prompt.country, language: prompt.language });
-		groups.set(prompt.groupId, group);
-	}
-	return groups;
-}
+type RowBlock = { prompt: EditablePrompt; index: number }[];
 
-/** Consecutive rows of one group, so a group's variants render together. */
-function rowBlocks(prompts: EditablePrompt[], grouped: boolean) {
-	const blocks: { prompt: EditablePrompt; index: number }[][] = [];
+/** Consecutive rows of one group: one prompt in several markets, shown as one row. */
+function rowBlocks(prompts: EditablePrompt[], grouped: boolean): RowBlock[] {
+	const blocks: RowBlock[] = [];
 	prompts.forEach((prompt, index) => {
 		const last = blocks.at(-1);
 		if (grouped && last && last[0].prompt.groupId === prompt.groupId) last.push({ prompt, index });
@@ -532,12 +507,10 @@ function BulkPasteBox({ bulk, showMarket }: { bulk: ReturnType<typeof useBulkPas
 			/>
 			{showMarket && (
 				<div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-					<span>Run from</span>
-					<CountriesPicker value={bulk.bulkCountries} onChange={bulk.setBulkCountries} />
-					<span>in</span>
-					<LanguageSelect value={bulk.bulkLanguage} onChange={bulk.setBulkLanguage} className="h-8 w-40" />
-					{bulk.bulkCountries.length > 1 && (
-						<span className="text-xs">Each line is added once per country, grouped together.</span>
+					<span>Track in</span>
+					<MarketsPicker value={bulk.bulkMarkets} onChange={bulk.setBulkMarkets} />
+					{bulk.bulkMarkets.length > 1 && (
+						<span className="text-xs">Each line becomes one prompt in every market.</span>
 					)}
 				</div>
 			)}
@@ -606,40 +579,30 @@ export function PromptsListEditor({
 		onChange([...prompts, ...entries]);
 	});
 
-	const groups = useMemo(() => summarizeGroups(prompts), [prompts]);
-	const addVariant = (prompt: EditablePrompt) => {
-		const group = groups.get(prompt.groupId);
-		onChange(
-			placeInGroup(
-				prompts,
-				newPromptEntry({
-					value: prompt.value,
-					tags: prompt.tags,
-					groupId: prompt.groupId,
-					...firstOpenMarket(group?.markets ?? [prompt], defaultMarket),
-				}),
-			),
+	// Which market a multi-market prompt's row is showing; its first until another is picked.
+	const [activeByGroup, setActiveByGroup] = useState<Record<string, string>>({});
+	const activeMember = (block: RowBlock) =>
+		block.find(({ prompt }) => prompt._key === activeByGroup[prompt.groupId]) ?? block[0];
+	const showMember = (groupId: string, key: string) => setActiveByGroup((prev) => ({ ...prev, [groupId]: key }));
+
+	const marketChips = (block: RowBlock) => {
+		const active = activeMember(block).prompt;
+		return (
+			<PromptMarketChips
+				members={block.map(({ prompt }) => prompt)}
+				activeKey={active._key}
+				onSelect={(key) => showMember(active.groupId, key)}
+				onAdd={(market) => {
+					// Starts from the shown market's text, to be translated.
+					const entry = newPromptEntry({ value: active.value, tags: active.tags, groupId: active.groupId, ...market });
+					onChange(placeInGroup(prompts, entry));
+					showMember(active.groupId, entry._key);
+				}}
+				onChangeMarket={(key, market) => onChange(prompts.map((p) => (p._key === key ? { ...p, ...market } : p)))}
+				onRemove={(key) => onChange(prompts.filter((p) => p._key !== key))}
+			/>
 		);
 	};
-	const groupControls = (prompt: EditablePrompt, index: number) => ({
-		chip: <MarketChip market={prompt} saved={Boolean(prompt.id)} onChange={(market) => update(index, market)} />,
-		menu: (
-			<PromptRowMenu
-				inGroup={(groups.get(prompt.groupId)?.markets.length ?? 1) > 1}
-				otherGroups={[...groups.values()].filter((other) => other.groupId !== prompt.groupId)}
-				onAddVariant={() => addVariant(prompt)}
-				onMove={(groupId) =>
-					onChange(
-						placeInGroup(
-							prompts.filter((_, i) => i !== index),
-							{ ...prompt, groupId },
-						),
-					)
-				}
-				onSeparate={() => update(index, { groupId: uuidv4() })}
-			/>
-		),
-	});
 
 	const { selectedKeys, liveSelectedCount, allSelected, toggleSelect, toggleSelectAll, clearSelection } =
 		useRowSelection(prompts);
@@ -659,8 +622,7 @@ export function PromptsListEditor({
 	// Desktop layout only — column order is
 	// [select] [text] [system?] [country?] [tags] [premium?] [switch]. Mobile
 	// renders a stacked per-prompt block instead (no selection, no bulk).
-	const gridCols =
-		GRID_COLS[`${showSystemTags ? "system" : "plain"}${showMarket ? "-market" : ""}-${premium ? "premium" : "basic"}`];
+	const gridCols = GRID_COLS[`${showSystemTags ? "system" : "plain"}-${premium ? "premium" : "basic"}`];
 
 	return (
 		<div className="space-y-4">
@@ -714,7 +676,6 @@ export function PromptsListEditor({
 			<ColumnHeader
 				gridCols={gridCols}
 				showSystemTags={showSystemTags}
-				showMarket={showMarket}
 				premium={premium}
 				allSelected={allSelected}
 				onToggleSelectAll={toggleSelectAll}
@@ -731,39 +692,36 @@ export function PromptsListEditor({
 			) : (
 				<div className="space-y-3">
 					{rowBlocks(prompts, showMarket).map((block) => {
-						const rows = block.map(({ prompt, index }) => (
+						const { prompt, index } = activeMember(block);
+						const keys = block.map((member) => member.prompt._key);
+						const changed = keys.some((key) => changedKeys?.has(key));
+						// Tags describe the question, so they follow it across markets;
+						// text, the switch, and premium pairings are per market.
+						const updateRow = (i: number, patch: Partial<EditablePrompt>) =>
+							patch.tags
+								? onChange(
+										prompts.map((p, at) =>
+											at === i ? { ...p, ...patch } : keys.includes(p._key) ? { ...p, tags: patch.tags ?? p.tags } : p,
+										),
+									)
+								: update(i, patch);
+						return (
 							<PromptRow
-								key={prompt._key}
+								key={prompt.groupId + (showMarket ? "" : prompt._key)}
 								prompt={prompt}
 								index={index}
 								total={prompts.length}
-								update={update}
+								update={updateRow}
 								allTagOptions={allTagOptions}
 								showSystemTags={showSystemTags}
-								marketControls={showMarket ? groupControls(prompt, index) : undefined}
-								changedKeys={changedKeys}
+								markets={showMarket ? marketChips(block) : undefined}
+								changedKeys={changed ? new Set([prompt._key]) : undefined}
 								premium={premium}
 								premiumAtCapacity={premiumAtCapacity}
 								gridCols={gridCols}
-								selected={selectedKeys.has(prompt._key)}
-								onToggleSelect={() => toggleSelect(prompt._key)}
+								selected={keys.every((key) => selectedKeys.has(key))}
+								onToggleSelect={() => toggleSelect(keys)}
 							/>
-						));
-						if (block.length === 1) return rows;
-						// A group with several countries or languages reads as one
-						// question: its variants share a frame, with a way to add another.
-						const first = block[0].prompt;
-						return (
-							<div key={first.groupId} className="-mx-2 space-y-2 rounded-lg border bg-muted/30 p-2">
-								{rows}
-								<button
-									type="button"
-									onClick={() => addVariant(first)}
-									className="ml-11 inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-								>
-									<Plus className="size-3" /> Add country or language
-								</button>
-							</div>
 						);
 					})}
 				</div>

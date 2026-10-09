@@ -26,7 +26,7 @@ function PromptTitle({ name, highlight, market }: { name: string; highlight: str
 	const countryLabel = market && (
 		<span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground" title={market.title}>
 			{market.label}
-			{market.variants > 1 && ` · ${market.variants} variants`}
+			{market.variants > 1 && ` · ${market.variants} markets`}
 		</span>
 	);
 	if (!term)
@@ -93,7 +93,7 @@ export function PromptChartSkeleton() {
 }
 
 export interface PromptMarketLabel {
-	/** "GB · en" */
+	/** "GB · EN" */
 	label: string;
 	/** Full names, for the hover. */
 	title: string;

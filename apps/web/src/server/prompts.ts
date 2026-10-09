@@ -6,7 +6,14 @@ import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { classifyUrl } from "@workspace/lib/citations/domain-lists";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, PROMPT_GROUP_MARKET_INDEX, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import {
+	brands,
+	competitors,
+	PROMPT_GROUP_MARKET_INDEX,
+	promptRuns,
+	prompts,
+	SYSTEM_TAGS,
+} from "@workspace/lib/db/schema";
 import {
 	assertAllowed,
 	assertPromptSaveAllowed,
@@ -540,39 +547,39 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 
 		const saved = await db
 			.transaction(async (tx) => {
-			for (const { id, prompt, after } of updates) {
-				await tx
-					.update(prompts)
-					.set({
-						value: prompt.value,
-						enabled: prompt.enabled,
-						tags: prompt.tags || [],
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
-						premiumModels: after.premiumModels,
-					})
-					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
-			}
+				for (const { id, prompt, after } of updates) {
+					await tx
+						.update(prompts)
+						.set({
+							value: prompt.value,
+							enabled: prompt.enabled,
+							tags: prompt.tags || [],
+							systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+							premiumModels: after.premiumModels,
+						})
+						.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
+				}
 
-			if (inserts.length > 0) {
-				await tx.insert(prompts).values(
-					inserts.map(({ prompt, after }) => ({
-						brandId: data.brandId,
-						value: prompt.value,
-						enabled: prompt.enabled,
-						country: prompt.country ?? DEFAULT_COUNTRY,
-						language: prompt.language ?? DEFAULT_LANGUAGE,
-						groupId: prompt.groupId ?? uuidv4(),
-						tags: prompt.tags || [],
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
-						premiumModels: after.premiumModels,
-					})),
-				);
-			}
+				if (inserts.length > 0) {
+					await tx.insert(prompts).values(
+						inserts.map(({ prompt, after }) => ({
+							brandId: data.brandId,
+							value: prompt.value,
+							enabled: prompt.enabled,
+							country: prompt.country ?? DEFAULT_COUNTRY,
+							language: prompt.language ?? DEFAULT_LANGUAGE,
+							groupId: prompt.groupId ?? uuidv4(),
+							tags: prompt.tags || [],
+							systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+							premiumModels: after.premiumModels,
+						})),
+					);
+				}
 
-			return tx.query.prompts.findMany({
-				where: eq(prompts.brandId, data.brandId),
-			});
-		})
+				return tx.query.prompts.findMany({
+					where: eq(prompts.brandId, data.brandId),
+				});
+			})
 			.catch((error) => rethrowMarketTaken(error, PROMPT_GROUP_MARKET_INDEX));
 
 		const newPromptIds = saved.filter((p) => !existingIds.has(p.id)).map((p) => p.id);
