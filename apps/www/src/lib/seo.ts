@@ -103,7 +103,7 @@ export function organizationJsonLd() {
 			"@type": "Person",
 			name: "Jared Rhizor",
 			url: "https://jrhizor.dev",
-			sameAs: ["https://www.linkedin.com/in/jrhizor", "https://x.com/jrhizor", "https://github.com/jrhizor"],
+			sameAs: ["https://www.linkedin.com/in/jrhizor", "https://x.com/jaredrhizor", "https://github.com/jrhizor"],
 		},
 		address: {
 			"@type": "PostalAddress",

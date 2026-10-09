@@ -44,7 +44,7 @@ const NOTABLE_USERS = ["Fermat Commerce", "Speakeasy", "TradeSites", "Record Ran
 
 const FOUNDER_LINKS = [
 	{ label: "LinkedIn", href: "https://www.linkedin.com/in/jrhizor" },
-	{ label: "X", href: "https://x.com/jrhizor" },
+	{ label: "X", href: "https://x.com/jaredrhizor" },
 	{ label: "GitHub", href: "https://github.com/jrhizor" },
 	{ label: "jrhizor.dev", href: "https://jrhizor.dev" },
 ];
