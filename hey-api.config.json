@@ -30,7 +30,8 @@
         "schemes": {
           "BearerAuth": {
             "startsWith": "elmo_",
-            "url": "https://elmohq.com/docs/api#authentication"
+            "url": "https://elmohq.com/docs/api#authentication",
+            "urlLabel": "the Elmo API docs"
           }
         }
       },
