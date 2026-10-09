@@ -17,7 +17,7 @@ import { getBoss } from "@/lib/boss-client";
 import { cancelLatestBrandJob, IN_FLIGHT_STATES, latestBrandJob, readBrandJob } from "@/lib/brand-jobs";
 
 const SUGGEST_PROMPTS_QUEUE = "suggest-prompts";
-const SUGGESTIONS_PER_RUN = 10;
+const SUGGESTIONS_PER_RUN = 5;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const GENERIC_FAILURE = "Couldn't suggest prompts. Please try again.";

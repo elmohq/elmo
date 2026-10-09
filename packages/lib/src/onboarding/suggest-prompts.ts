@@ -27,7 +27,7 @@ export interface SuggestPromptsOptions {
 	count?: number;
 }
 
-const DEFAULT_COUNT = 10;
+const DEFAULT_COUNT = 5;
 
 function buildSchema(count: number) {
 	return z.object({
