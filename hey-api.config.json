@@ -1,6 +1,7 @@
 {
   "generate": "pull-request",
   "input": "./packages/api-spec/src/openapi.json",
+  "docs": ".hey-api",
   "targets": {
     "typescript": {
       "package": {
@@ -29,9 +30,7 @@
       "auth": {
         "schemes": {
           "BearerAuth": {
-            "startsWith": "elmo_",
-            "url": "https://elmohq.com/docs/api#authentication",
-            "urlLabel": "the Elmo API docs"
+            "startsWith": "elmo_"
           }
         }
       },
