@@ -299,7 +299,7 @@ function AboutPage() {
 								/>
 								<div>
 									<h3 className="text-lg font-semibold tracking-tight text-zinc-950">Jared Rhizor</h3>
-									<p className="text-sm text-zinc-500">Founder &amp; maintainer</p>
+									<p className="text-sm text-zinc-500">Founder &amp; Maintainer</p>
 									<p className="mt-2 text-sm">
 										<LinkList links={FOUNDER_LINKS} />
 									</p>
