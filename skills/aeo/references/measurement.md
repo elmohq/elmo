@@ -73,9 +73,36 @@ say "no detectable change", not "down 8 points".
 | Share of voice | Brand mentions ÷ mentions of brand + locked competitors | Only meaningful against a fixed, named competitor set. Say which set. |
 | Cited domains and URLs | Which pages engines used, grouped by owned, competitor, editorial, UGC, and reference | The diagnostic. Drives content and off-site work. |
 | Fan-out queries | The searches an engine ran while answering | Tells you which queries to rank for. |
+| Recommendation rate | Share of runs where the answer recommends the brand for the stated need | Read from stored answers. See "Cited is not recommended" below. |
 | Accuracy | Wrong facts and negative framing in branded answers | Track as a list of issues, each with a source, not a score. |
 
 Avoid average position, "AI rank", and composite scores. They hide the variance that matters.
+
+### Cited is not recommended
+
+A brand moves up four steps in an answer, and each one needs different work:
+
+1. **Retrieved:** one of its pages is among the sources the engine read.
+2. **Cited:** the answer links to that page.
+3. **Mentioned:** the answer names the brand.
+4. **Recommended:** the answer puts the brand forward as a fit for the user's need, not in passing,
+   not as an option to avoid, and not only as a source.
+
+Engines regularly cite a brand's page and recommend a competitor, especially when the page is the
+brand's own "best X" list (`evidence.md`). Mention rate counts steps 3 and 4 together, so read the
+answers to separate them. For the discovery and comparison prompts, classify each run's mention as
+*recommended*, *listed*, *mentioned negatively*, or *cited only*, then report the recommendation rate
+with n like any other rate. In Elmo, `get_run` returns the full answer text. Sample enough runs per
+engine to clear the margins above, and label the result *Measured*.
+
+Which step a brand stalls at points to the fix:
+
+| Stalls at | Usual cause | Where to work |
+| --- | --- | --- |
+| Not retrieved | Blocked, unindexed, or no page for the query or its fan-out | `technical.md`, `content.md` |
+| Retrieved, not cited | The page doesn't answer the query plainly, or a better page exists | `content.md` |
+| Cited, not mentioned | The page is used as background, but it doesn't name the brand where it matters | `content.md` |
+| Mentioned, not recommended | Other sources don't back the brand for this need, or describe it differently | `off-site.md` |
 
 ## Comparing before and after
 

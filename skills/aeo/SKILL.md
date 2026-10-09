@@ -85,6 +85,9 @@ Read in this order:
 - **Cited sources for lost prompts.** Group them as owned, competitor, editorial or review, UGC
   (Reddit, forums, YouTube), and reference (Wikipedia, directories). This list *is* the work plan.
   Editorial and UGC pages feed step 7, and missing owned pages feed step 6.
+- **Cited but not recommended.** Where an owned page is cited or the brand is listed, but a
+  competitor gets the recommendation, more owned content rarely helps. The engine is following what
+  other sources say (`references/measurement.md`, "Cited is not recommended").
 - **Fan-out queries.** The searches the engine actually ran are often worded differently from the
   prompt. Those are the queries to rank for.
 - **Accuracy.** In branded answers, look for wrong pricing, discontinued features, old positioning,
@@ -151,8 +154,9 @@ These are common in other AEO guides, and the evidence doesn't support them. Sou
 End an audit with:
 
 1. **Baseline:** a table of mention rate, citation rate, and share of voice per engine, each with n,
-   the window, and the competitor set.
-2. **Top gaps:** lost prompts, with the sources cited instead.
+   the window, and the competitor set. Add the recommendation rate where you read the answers.
+2. **Top gaps:** lost prompts, with the sources cited instead, and prompts where the brand is cited
+   or listed but a competitor is recommended.
 3. **Wrong facts:** each with the answer excerpt, the engine, and the source page.
 4. **Actions:** owner, effort, the prompts each targets, and its evidence label. Order them by how
    many lost prompts they touch.
@@ -160,8 +164,8 @@ End an audit with:
 
 ## References
 
-- `references/measurement.md`: building the prompt set, sample sizes, metrics, before/after
-  comparison, first-party data (Search Console, Bing, analytics, logs), manual fallback
+- `references/measurement.md`: building the prompt set, sample sizes, metrics, cited versus
+  recommended, before/after comparison, first-party data (Search Console, Bing, analytics, logs), manual fallback
 - `references/elmo.md`: setting up Elmo (cloud or self-hosted, with scraping providers), connecting
   over MCP or REST, mapping questions to tools, recipes for everyday data questions
 - `references/technical.md`: crawler matrix, robots.txt patterns, firewall blocks, JavaScript
