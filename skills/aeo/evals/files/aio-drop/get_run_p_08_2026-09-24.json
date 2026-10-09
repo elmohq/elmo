@@ -1,0 +1,50 @@
+{
+  "id": "r_5f2c",
+  "promptId": "p_08",
+  "brandId": "b_tally",
+  "model": "google-ai-overview",
+  "provider": "dataforseo",
+  "webSearchEnabled": true,
+  "brandMentioned": false,
+  "competitorsMentioned": [
+    "ClickUp",
+    "Asana",
+    "Monday.com",
+    "Notion"
+  ],
+  "webQueries": [
+    "best project management apps for agencies 2026",
+    "agency project management software client portal"
+  ],
+  "citationCount": 4,
+  "createdAt": "2026-09-24T14:05:11.000Z",
+  "answer": {
+    "text": "For agencies, the most commonly recommended project management tools are ClickUp, Asana, and Monday.com. ClickUp suits agencies that want docs, time tracking, and client views in one place. Asana is strong for cross-team workflows and approvals. Monday.com is popular for its visual boards and client-facing dashboards. Teamwork and Notion are also options for smaller agencies that bill by the hour or need a lightweight wiki."
+  },
+  "citations": [
+    {
+      "url": "https://zapier.com/blog/best-project-management-apps-for-agencies/",
+      "domain": "zapier.com",
+      "title": "The 6 best project management apps for agencies in 2026",
+      "citationIndex": 0
+    },
+    {
+      "url": "https://clickup.com/blog/agency-project-management-software/",
+      "domain": "clickup.com",
+      "title": "15 best agency project management tools",
+      "citationIndex": 1
+    },
+    {
+      "url": "https://www.g2.com/categories/project-management",
+      "domain": "g2.com",
+      "title": "Best Project Management Software",
+      "citationIndex": 2
+    },
+    {
+      "url": "https://www.reddit.com/r/agency/comments/1f9x2k/what_pm_tool_does_your_agency_use/",
+      "domain": "reddit.com",
+      "title": "What PM tool does your agency use?",
+      "citationIndex": 3
+    }
+  ]
+}

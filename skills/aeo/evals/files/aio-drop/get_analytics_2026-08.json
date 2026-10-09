@@ -1,0 +1,336 @@
+{
+  "brandId": "b_tally",
+  "brandName": "Tallyboard",
+  "range": {
+    "start": "2026-08-01T00:00:00.000Z",
+    "end": "2026-09-01T00:00:00.000Z"
+  },
+  "visibility": {
+    "current": 0.46,
+    "series": [
+      {
+        "date": "2026-08-01",
+        "visibility": 0.508
+      },
+      {
+        "date": "2026-08-02",
+        "visibility": 0.512
+      },
+      {
+        "date": "2026-08-03",
+        "visibility": 0.471
+      },
+      {
+        "date": "2026-08-04",
+        "visibility": 0.444
+      },
+      {
+        "date": "2026-08-05",
+        "visibility": 0.413
+      },
+      {
+        "date": "2026-08-06",
+        "visibility": 0.493
+      },
+      {
+        "date": "2026-08-07",
+        "visibility": 0.469
+      },
+      {
+        "date": "2026-08-08",
+        "visibility": 0.504
+      },
+      {
+        "date": "2026-08-09",
+        "visibility": 0.458
+      },
+      {
+        "date": "2026-08-10",
+        "visibility": 0.505
+      },
+      {
+        "date": "2026-08-11",
+        "visibility": 0.446
+      },
+      {
+        "date": "2026-08-12",
+        "visibility": 0.509
+      },
+      {
+        "date": "2026-08-13",
+        "visibility": 0.501
+      },
+      {
+        "date": "2026-08-14",
+        "visibility": 0.463
+      },
+      {
+        "date": "2026-08-15",
+        "visibility": 0.478
+      },
+      {
+        "date": "2026-08-16",
+        "visibility": 0.495
+      },
+      {
+        "date": "2026-08-17",
+        "visibility": 0.436
+      },
+      {
+        "date": "2026-08-18",
+        "visibility": 0.479
+      },
+      {
+        "date": "2026-08-19",
+        "visibility": 0.51
+      },
+      {
+        "date": "2026-08-20",
+        "visibility": 0.445
+      },
+      {
+        "date": "2026-08-21",
+        "visibility": 0.509
+      },
+      {
+        "date": "2026-08-22",
+        "visibility": 0.495
+      },
+      {
+        "date": "2026-08-23",
+        "visibility": 0.514
+      },
+      {
+        "date": "2026-08-24",
+        "visibility": 0.453
+      },
+      {
+        "date": "2026-08-25",
+        "visibility": 0.424
+      },
+      {
+        "date": "2026-08-26",
+        "visibility": 0.509
+      },
+      {
+        "date": "2026-08-27",
+        "visibility": 0.51
+      },
+      {
+        "date": "2026-08-28",
+        "visibility": 0.466
+      },
+      {
+        "date": "2026-08-29",
+        "visibility": 0.424
+      },
+      {
+        "date": "2026-08-30",
+        "visibility": 0.437
+      },
+      {
+        "date": "2026-08-31",
+        "visibility": 0.489
+      }
+    ]
+  },
+  "shareOfVoice": {
+    "brand": 0.203,
+    "entries": [
+      {
+        "name": "Asana",
+        "isBrand": false,
+        "mentions": 512,
+        "prompts": 19,
+        "share": 0.244
+      },
+      {
+        "name": "Monday.com",
+        "isBrand": false,
+        "mentions": 488,
+        "prompts": 18,
+        "share": 0.232
+      },
+      {
+        "name": "ClickUp",
+        "isBrand": false,
+        "mentions": 441,
+        "prompts": 17,
+        "share": 0.21
+      },
+      {
+        "name": "Tallyboard",
+        "isBrand": true,
+        "mentions": 426,
+        "prompts": 20,
+        "share": 0.203
+      },
+      {
+        "name": "Notion",
+        "isBrand": false,
+        "mentions": 233,
+        "prompts": 11,
+        "share": 0.111
+      }
+    ],
+    "series": [
+      {
+        "date": "2026-08-01",
+        "share": 0.19
+      },
+      {
+        "date": "2026-08-02",
+        "share": 0.23
+      },
+      {
+        "date": "2026-08-03",
+        "share": 0.208
+      },
+      {
+        "date": "2026-08-04",
+        "share": 0.185
+      },
+      {
+        "date": "2026-08-05",
+        "share": 0.212
+      },
+      {
+        "date": "2026-08-06",
+        "share": 0.195
+      },
+      {
+        "date": "2026-08-07",
+        "share": 0.229
+      },
+      {
+        "date": "2026-08-08",
+        "share": 0.228
+      },
+      {
+        "date": "2026-08-09",
+        "share": 0.204
+      },
+      {
+        "date": "2026-08-10",
+        "share": 0.212
+      },
+      {
+        "date": "2026-08-11",
+        "share": 0.215
+      },
+      {
+        "date": "2026-08-12",
+        "share": 0.221
+      },
+      {
+        "date": "2026-08-13",
+        "share": 0.232
+      },
+      {
+        "date": "2026-08-14",
+        "share": 0.175
+      },
+      {
+        "date": "2026-08-15",
+        "share": 0.195
+      },
+      {
+        "date": "2026-08-16",
+        "share": 0.209
+      },
+      {
+        "date": "2026-08-17",
+        "share": 0.191
+      },
+      {
+        "date": "2026-08-18",
+        "share": 0.208
+      },
+      {
+        "date": "2026-08-19",
+        "share": 0.178
+      },
+      {
+        "date": "2026-08-20",
+        "share": 0.226
+      },
+      {
+        "date": "2026-08-21",
+        "share": 0.205
+      },
+      {
+        "date": "2026-08-22",
+        "share": 0.18
+      },
+      {
+        "date": "2026-08-23",
+        "share": 0.213
+      },
+      {
+        "date": "2026-08-24",
+        "share": 0.192
+      },
+      {
+        "date": "2026-08-25",
+        "share": 0.185
+      },
+      {
+        "date": "2026-08-26",
+        "share": 0.202
+      },
+      {
+        "date": "2026-08-27",
+        "share": 0.181
+      },
+      {
+        "date": "2026-08-28",
+        "share": 0.186
+      },
+      {
+        "date": "2026-08-29",
+        "share": 0.225
+      },
+      {
+        "date": "2026-08-30",
+        "share": 0.215
+      },
+      {
+        "date": "2026-08-31",
+        "share": 0.174
+      }
+    ]
+  },
+  "models": [
+    {
+      "model": "chatgpt",
+      "label": "ChatGPT",
+      "runs": 300,
+      "brandMentions": 144,
+      "visibility": 0.48,
+      "citations": 1520
+    },
+    {
+      "model": "perplexity",
+      "label": "Perplexity",
+      "runs": 300,
+      "brandMentions": 159,
+      "visibility": 0.53,
+      "citations": 2210
+    },
+    {
+      "model": "google-ai-overview",
+      "label": "Google AI Overview",
+      "runs": 300,
+      "brandMentions": 123,
+      "visibility": 0.41,
+      "citations": 1890
+    }
+  ],
+  "totals": {
+    "runs": 900,
+    "prompts": 20,
+    "citations": 5620,
+    "uniqueDomains": 318,
+    "uniqueUrls": 1204
+  }
+}

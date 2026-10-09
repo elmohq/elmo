@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "id": "chatgpt",
+      "label": "ChatGPT",
+      "premiumCapable": true,
+      "configured": true
+    },
+    {
+      "id": "perplexity",
+      "label": "Perplexity",
+      "premiumCapable": true,
+      "configured": true
+    },
+    {
+      "id": "google-ai-overview",
+      "label": "Google AI Overview",
+      "premiumCapable": false,
+      "configured": true
+    }
+  ]
+}

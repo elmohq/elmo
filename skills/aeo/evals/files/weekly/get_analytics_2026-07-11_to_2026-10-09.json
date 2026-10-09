@@ -1,0 +1,808 @@
+{
+  "brandId": "b_acme",
+  "brandName": "Acme",
+  "range": {
+    "start": "2026-07-11T00:00:00.000Z",
+    "end": "2026-10-09T00:00:00.000Z"
+  },
+  "visibility": {
+    "current": 0.3,
+    "series": [
+      {
+        "date": "2026-07-11",
+        "visibility": 0.313
+      },
+      {
+        "date": "2026-07-12",
+        "visibility": 0.26
+      },
+      {
+        "date": "2026-07-13",
+        "visibility": 0.261
+      },
+      {
+        "date": "2026-07-14",
+        "visibility": 0.315
+      },
+      {
+        "date": "2026-07-15",
+        "visibility": 0.296
+      },
+      {
+        "date": "2026-07-16",
+        "visibility": 0.34
+      },
+      {
+        "date": "2026-07-17",
+        "visibility": 0.313
+      },
+      {
+        "date": "2026-07-18",
+        "visibility": 0.32
+      },
+      {
+        "date": "2026-07-19",
+        "visibility": 0.263
+      },
+      {
+        "date": "2026-07-20",
+        "visibility": 0.333
+      },
+      {
+        "date": "2026-07-21",
+        "visibility": 0.258
+      },
+      {
+        "date": "2026-07-22",
+        "visibility": 0.312
+      },
+      {
+        "date": "2026-07-23",
+        "visibility": 0.341
+      },
+      {
+        "date": "2026-07-24",
+        "visibility": 0.341
+      },
+      {
+        "date": "2026-07-25",
+        "visibility": 0.339
+      },
+      {
+        "date": "2026-07-26",
+        "visibility": 0.295
+      },
+      {
+        "date": "2026-07-27",
+        "visibility": 0.319
+      },
+      {
+        "date": "2026-07-28",
+        "visibility": 0.329
+      },
+      {
+        "date": "2026-07-29",
+        "visibility": 0.264
+      },
+      {
+        "date": "2026-07-30",
+        "visibility": 0.344
+      },
+      {
+        "date": "2026-07-31",
+        "visibility": 0.341
+      },
+      {
+        "date": "2026-08-01",
+        "visibility": 0.294
+      },
+      {
+        "date": "2026-08-02",
+        "visibility": 0.328
+      },
+      {
+        "date": "2026-08-03",
+        "visibility": 0.295
+      },
+      {
+        "date": "2026-08-04",
+        "visibility": 0.278
+      },
+      {
+        "date": "2026-08-05",
+        "visibility": 0.321
+      },
+      {
+        "date": "2026-08-06",
+        "visibility": 0.256
+      },
+      {
+        "date": "2026-08-07",
+        "visibility": 0.33
+      },
+      {
+        "date": "2026-08-08",
+        "visibility": 0.348
+      },
+      {
+        "date": "2026-08-09",
+        "visibility": 0.279
+      },
+      {
+        "date": "2026-08-10",
+        "visibility": 0.344
+      },
+      {
+        "date": "2026-08-11",
+        "visibility": 0.258
+      },
+      {
+        "date": "2026-08-12",
+        "visibility": 0.336
+      },
+      {
+        "date": "2026-08-13",
+        "visibility": 0.278
+      },
+      {
+        "date": "2026-08-14",
+        "visibility": 0.347
+      },
+      {
+        "date": "2026-08-15",
+        "visibility": 0.293
+      },
+      {
+        "date": "2026-08-16",
+        "visibility": 0.342
+      },
+      {
+        "date": "2026-08-17",
+        "visibility": 0.253
+      },
+      {
+        "date": "2026-08-18",
+        "visibility": 0.259
+      },
+      {
+        "date": "2026-08-19",
+        "visibility": 0.332
+      },
+      {
+        "date": "2026-08-20",
+        "visibility": 0.314
+      },
+      {
+        "date": "2026-08-21",
+        "visibility": 0.304
+      },
+      {
+        "date": "2026-08-22",
+        "visibility": 0.253
+      },
+      {
+        "date": "2026-08-23",
+        "visibility": 0.267
+      },
+      {
+        "date": "2026-08-24",
+        "visibility": 0.287
+      },
+      {
+        "date": "2026-08-25",
+        "visibility": 0.255
+      },
+      {
+        "date": "2026-08-26",
+        "visibility": 0.349
+      },
+      {
+        "date": "2026-08-27",
+        "visibility": 0.327
+      },
+      {
+        "date": "2026-08-28",
+        "visibility": 0.345
+      },
+      {
+        "date": "2026-08-29",
+        "visibility": 0.32
+      },
+      {
+        "date": "2026-08-30",
+        "visibility": 0.284
+      },
+      {
+        "date": "2026-08-31",
+        "visibility": 0.258
+      },
+      {
+        "date": "2026-09-01",
+        "visibility": 0.323
+      },
+      {
+        "date": "2026-09-02",
+        "visibility": 0.261
+      },
+      {
+        "date": "2026-09-03",
+        "visibility": 0.305
+      },
+      {
+        "date": "2026-09-04",
+        "visibility": 0.296
+      },
+      {
+        "date": "2026-09-05",
+        "visibility": 0.299
+      },
+      {
+        "date": "2026-09-06",
+        "visibility": 0.258
+      },
+      {
+        "date": "2026-09-07",
+        "visibility": 0.257
+      },
+      {
+        "date": "2026-09-08",
+        "visibility": 0.302
+      },
+      {
+        "date": "2026-09-09",
+        "visibility": 0.253
+      },
+      {
+        "date": "2026-09-10",
+        "visibility": 0.303
+      },
+      {
+        "date": "2026-09-11",
+        "visibility": 0.265
+      },
+      {
+        "date": "2026-09-12",
+        "visibility": 0.278
+      },
+      {
+        "date": "2026-09-13",
+        "visibility": 0.265
+      },
+      {
+        "date": "2026-09-14",
+        "visibility": 0.307
+      },
+      {
+        "date": "2026-09-15",
+        "visibility": 0.289
+      },
+      {
+        "date": "2026-09-16",
+        "visibility": 0.272
+      },
+      {
+        "date": "2026-09-17",
+        "visibility": 0.272
+      },
+      {
+        "date": "2026-09-18",
+        "visibility": 0.306
+      },
+      {
+        "date": "2026-09-19",
+        "visibility": 0.341
+      },
+      {
+        "date": "2026-09-20",
+        "visibility": 0.292
+      },
+      {
+        "date": "2026-09-21",
+        "visibility": 0.266
+      },
+      {
+        "date": "2026-09-22",
+        "visibility": 0.282
+      },
+      {
+        "date": "2026-09-23",
+        "visibility": 0.274
+      },
+      {
+        "date": "2026-09-24",
+        "visibility": 0.307
+      },
+      {
+        "date": "2026-09-25",
+        "visibility": 0.329
+      },
+      {
+        "date": "2026-09-26",
+        "visibility": 0.307
+      },
+      {
+        "date": "2026-09-27",
+        "visibility": 0.269
+      },
+      {
+        "date": "2026-09-28",
+        "visibility": 0.283
+      },
+      {
+        "date": "2026-09-29",
+        "visibility": 0.288
+      },
+      {
+        "date": "2026-09-30",
+        "visibility": 0.294
+      },
+      {
+        "date": "2026-10-01",
+        "visibility": 0.29
+      },
+      {
+        "date": "2026-10-02",
+        "visibility": 0.35
+      },
+      {
+        "date": "2026-10-03",
+        "visibility": 0.305
+      },
+      {
+        "date": "2026-10-04",
+        "visibility": 0.316
+      },
+      {
+        "date": "2026-10-05",
+        "visibility": 0.322
+      },
+      {
+        "date": "2026-10-06",
+        "visibility": 0.315
+      },
+      {
+        "date": "2026-10-07",
+        "visibility": 0.331
+      },
+      {
+        "date": "2026-10-08",
+        "visibility": 0.287
+      }
+    ]
+  },
+  "shareOfVoice": {
+    "brand": 0.196,
+    "entries": [
+      {
+        "name": "HubSpot",
+        "isBrand": false,
+        "mentions": 1490,
+        "prompts": 30,
+        "share": 0.361
+      },
+      {
+        "name": "Pipedrive",
+        "isBrand": false,
+        "mentions": 1010,
+        "prompts": 28,
+        "share": 0.245
+      },
+      {
+        "name": "Acme",
+        "isBrand": true,
+        "mentions": 810,
+        "prompts": 24,
+        "share": 0.196
+      },
+      {
+        "name": "Close",
+        "isBrand": false,
+        "mentions": 520,
+        "prompts": 17,
+        "share": 0.126
+      },
+      {
+        "name": "Attio",
+        "isBrand": false,
+        "mentions": 300,
+        "prompts": 14,
+        "share": 0.073
+      }
+    ],
+    "series": [
+      {
+        "date": "2026-07-11",
+        "share": 0.21
+      },
+      {
+        "date": "2026-07-12",
+        "share": 0.228
+      },
+      {
+        "date": "2026-07-13",
+        "share": 0.18
+      },
+      {
+        "date": "2026-07-14",
+        "share": 0.208
+      },
+      {
+        "date": "2026-07-15",
+        "share": 0.193
+      },
+      {
+        "date": "2026-07-16",
+        "share": 0.174
+      },
+      {
+        "date": "2026-07-17",
+        "share": 0.172
+      },
+      {
+        "date": "2026-07-18",
+        "share": 0.216
+      },
+      {
+        "date": "2026-07-19",
+        "share": 0.177
+      },
+      {
+        "date": "2026-07-20",
+        "share": 0.213
+      },
+      {
+        "date": "2026-07-21",
+        "share": 0.176
+      },
+      {
+        "date": "2026-07-22",
+        "share": 0.192
+      },
+      {
+        "date": "2026-07-23",
+        "share": 0.172
+      },
+      {
+        "date": "2026-07-24",
+        "share": 0.203
+      },
+      {
+        "date": "2026-07-25",
+        "share": 0.217
+      },
+      {
+        "date": "2026-07-26",
+        "share": 0.184
+      },
+      {
+        "date": "2026-07-27",
+        "share": 0.204
+      },
+      {
+        "date": "2026-07-28",
+        "share": 0.225
+      },
+      {
+        "date": "2026-07-29",
+        "share": 0.188
+      },
+      {
+        "date": "2026-07-30",
+        "share": 0.198
+      },
+      {
+        "date": "2026-07-31",
+        "share": 0.213
+      },
+      {
+        "date": "2026-08-01",
+        "share": 0.222
+      },
+      {
+        "date": "2026-08-02",
+        "share": 0.18
+      },
+      {
+        "date": "2026-08-03",
+        "share": 0.21
+      },
+      {
+        "date": "2026-08-04",
+        "share": 0.177
+      },
+      {
+        "date": "2026-08-05",
+        "share": 0.177
+      },
+      {
+        "date": "2026-08-06",
+        "share": 0.229
+      },
+      {
+        "date": "2026-08-07",
+        "share": 0.173
+      },
+      {
+        "date": "2026-08-08",
+        "share": 0.225
+      },
+      {
+        "date": "2026-08-09",
+        "share": 0.215
+      },
+      {
+        "date": "2026-08-10",
+        "share": 0.211
+      },
+      {
+        "date": "2026-08-11",
+        "share": 0.214
+      },
+      {
+        "date": "2026-08-12",
+        "share": 0.209
+      },
+      {
+        "date": "2026-08-13",
+        "share": 0.187
+      },
+      {
+        "date": "2026-08-14",
+        "share": 0.197
+      },
+      {
+        "date": "2026-08-15",
+        "share": 0.182
+      },
+      {
+        "date": "2026-08-16",
+        "share": 0.222
+      },
+      {
+        "date": "2026-08-17",
+        "share": 0.217
+      },
+      {
+        "date": "2026-08-18",
+        "share": 0.217
+      },
+      {
+        "date": "2026-08-19",
+        "share": 0.183
+      },
+      {
+        "date": "2026-08-20",
+        "share": 0.206
+      },
+      {
+        "date": "2026-08-21",
+        "share": 0.185
+      },
+      {
+        "date": "2026-08-22",
+        "share": 0.217
+      },
+      {
+        "date": "2026-08-23",
+        "share": 0.215
+      },
+      {
+        "date": "2026-08-24",
+        "share": 0.23
+      },
+      {
+        "date": "2026-08-25",
+        "share": 0.212
+      },
+      {
+        "date": "2026-08-26",
+        "share": 0.211
+      },
+      {
+        "date": "2026-08-27",
+        "share": 0.217
+      },
+      {
+        "date": "2026-08-28",
+        "share": 0.176
+      },
+      {
+        "date": "2026-08-29",
+        "share": 0.206
+      },
+      {
+        "date": "2026-08-30",
+        "share": 0.172
+      },
+      {
+        "date": "2026-08-31",
+        "share": 0.192
+      },
+      {
+        "date": "2026-09-01",
+        "share": 0.177
+      },
+      {
+        "date": "2026-09-02",
+        "share": 0.227
+      },
+      {
+        "date": "2026-09-03",
+        "share": 0.172
+      },
+      {
+        "date": "2026-09-04",
+        "share": 0.225
+      },
+      {
+        "date": "2026-09-05",
+        "share": 0.227
+      },
+      {
+        "date": "2026-09-06",
+        "share": 0.196
+      },
+      {
+        "date": "2026-09-07",
+        "share": 0.22
+      },
+      {
+        "date": "2026-09-08",
+        "share": 0.173
+      },
+      {
+        "date": "2026-09-09",
+        "share": 0.178
+      },
+      {
+        "date": "2026-09-10",
+        "share": 0.171
+      },
+      {
+        "date": "2026-09-11",
+        "share": 0.174
+      },
+      {
+        "date": "2026-09-12",
+        "share": 0.17
+      },
+      {
+        "date": "2026-09-13",
+        "share": 0.22
+      },
+      {
+        "date": "2026-09-14",
+        "share": 0.175
+      },
+      {
+        "date": "2026-09-15",
+        "share": 0.205
+      },
+      {
+        "date": "2026-09-16",
+        "share": 0.186
+      },
+      {
+        "date": "2026-09-17",
+        "share": 0.178
+      },
+      {
+        "date": "2026-09-18",
+        "share": 0.195
+      },
+      {
+        "date": "2026-09-19",
+        "share": 0.181
+      },
+      {
+        "date": "2026-09-20",
+        "share": 0.229
+      },
+      {
+        "date": "2026-09-21",
+        "share": 0.193
+      },
+      {
+        "date": "2026-09-22",
+        "share": 0.206
+      },
+      {
+        "date": "2026-09-23",
+        "share": 0.204
+      },
+      {
+        "date": "2026-09-24",
+        "share": 0.208
+      },
+      {
+        "date": "2026-09-25",
+        "share": 0.199
+      },
+      {
+        "date": "2026-09-26",
+        "share": 0.186
+      },
+      {
+        "date": "2026-09-27",
+        "share": 0.178
+      },
+      {
+        "date": "2026-09-28",
+        "share": 0.223
+      },
+      {
+        "date": "2026-09-29",
+        "share": 0.182
+      },
+      {
+        "date": "2026-09-30",
+        "share": 0.197
+      },
+      {
+        "date": "2026-10-01",
+        "share": 0.219
+      },
+      {
+        "date": "2026-10-02",
+        "share": 0.205
+      },
+      {
+        "date": "2026-10-03",
+        "share": 0.227
+      },
+      {
+        "date": "2026-10-04",
+        "share": 0.219
+      },
+      {
+        "date": "2026-10-05",
+        "share": 0.201
+      },
+      {
+        "date": "2026-10-06",
+        "share": 0.177
+      },
+      {
+        "date": "2026-10-07",
+        "share": 0.206
+      },
+      {
+        "date": "2026-10-08",
+        "share": 0.198
+      }
+    ]
+  },
+  "models": [
+    {
+      "model": "chatgpt",
+      "label": "ChatGPT",
+      "runs": 900,
+      "brandMentions": 279,
+      "visibility": 0.31,
+      "citations": 5400
+    },
+    {
+      "model": "perplexity",
+      "label": "Perplexity",
+      "runs": 900,
+      "brandMentions": 369,
+      "visibility": 0.41,
+      "citations": 5400
+    },
+    {
+      "model": "google-ai-overview",
+      "label": "Google AI Overview",
+      "runs": 900,
+      "brandMentions": 162,
+      "visibility": 0.18,
+      "citations": 5400
+    }
+  ],
+  "totals": {
+    "runs": 2700,
+    "prompts": 30,
+    "citations": 16200,
+    "uniqueDomains": 140,
+    "uniqueUrls": 520
+  }
+}

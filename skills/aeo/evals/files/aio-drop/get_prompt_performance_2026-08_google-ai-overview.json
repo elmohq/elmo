@@ -1,0 +1,249 @@
+{
+  "brandId": "b_tally",
+  "range": {
+    "start": "2026-08-01T00:00:00.000Z",
+    "end": "2026-09-01T00:00:00.000Z"
+  },
+  "data": [
+    {
+      "promptId": "p_00",
+      "value": "What is Tallyboard?",
+      "tags": [
+        "branded"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.733,
+      "competitorMentionRate": 0.2,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_01",
+      "value": "Tallyboard pricing",
+      "tags": [
+        "branded"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.8,
+      "competitorMentionRate": 0.333,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_02",
+      "value": "Is Tallyboard good for small teams?",
+      "tags": [
+        "branded"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.667,
+      "competitorMentionRate": 0.467,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_03",
+      "value": "Tallyboard vs Asana",
+      "tags": [
+        "branded"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.733,
+      "competitorMentionRate": 1.0,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_04",
+      "value": "Tallyboard vs Monday.com",
+      "tags": [
+        "branded"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.667,
+      "competitorMentionRate": 1.0,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_05",
+      "value": "Tallyboard reviews",
+      "tags": [
+        "branded"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.667,
+      "competitorMentionRate": 0.4,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_06",
+      "value": "Does Tallyboard integrate with Slack?",
+      "tags": [
+        "branded"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.667,
+      "competitorMentionRate": 0.133,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_07",
+      "value": "Tallyboard alternatives",
+      "tags": [
+        "branded"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.667,
+      "competitorMentionRate": 0.933,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_08",
+      "value": "Best project management software for agencies",
+      "tags": [
+        "agency"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.8,
+      "competitorMentionRate": 0.933,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_09",
+      "value": "What project management tool should a 15-person creative agency use?",
+      "tags": [
+        "agency"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.667,
+      "competitorMentionRate": 1.0,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_10",
+      "value": "Best project management software for small teams",
+      "tags": [
+        "smb"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.2,
+      "competitorMentionRate": 0.867,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_11",
+      "value": "Best free project management tools",
+      "tags": [
+        "smb"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.133,
+      "competitorMentionRate": 0.933,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_12",
+      "value": "Asana alternatives for startups",
+      "tags": [
+        "alternatives"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.067,
+      "competitorMentionRate": 1.0,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_13",
+      "value": "Monday.com alternatives",
+      "tags": [
+        "alternatives"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.133,
+      "competitorMentionRate": 0.933,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_14",
+      "value": "Best project management tool with time tracking",
+      "tags": [
+        "features"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.067,
+      "competitorMentionRate": 0.8,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_15",
+      "value": "Best project management tool with Gantt charts",
+      "tags": [
+        "features"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.067,
+      "competitorMentionRate": 0.867,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_16",
+      "value": "Best project management software for remote teams",
+      "tags": [
+        "use-case"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.133,
+      "competitorMentionRate": 0.867,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_17",
+      "value": "Project management tool for client approvals",
+      "tags": [
+        "use-case"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.2,
+      "competitorMentionRate": 0.733,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_18",
+      "value": "Best kanban software for marketing teams",
+      "tags": [
+        "use-case"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.067,
+      "competitorMentionRate": 0.8,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    },
+    {
+      "promptId": "p_19",
+      "value": "Best project management software for nonprofits",
+      "tags": [
+        "use-case"
+      ],
+      "totalRuns": 15,
+      "brandMentionRate": 0.067,
+      "competitorMentionRate": 0.667,
+      "lastRunAt": "2026-08-31T21:40:00.000Z",
+      "firstEvaluatedAt": "2026-05-12T10:02:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,144 @@
+{
+  "brandId": "b_acme",
+  "brandName": "Acme",
+  "range": {
+    "start": "2026-10-02T00:00:00.000Z",
+    "end": "2026-10-09T00:00:00.000Z"
+  },
+  "visibility": {
+    "current": 0.338,
+    "series": [
+      {
+        "date": "2026-10-02",
+        "visibility": 0.367
+      },
+      {
+        "date": "2026-10-03",
+        "visibility": 0.382
+      },
+      {
+        "date": "2026-10-04",
+        "visibility": 0.317
+      },
+      {
+        "date": "2026-10-05",
+        "visibility": 0.289
+      },
+      {
+        "date": "2026-10-06",
+        "visibility": 0.333
+      },
+      {
+        "date": "2026-10-07",
+        "visibility": 0.294
+      },
+      {
+        "date": "2026-10-08",
+        "visibility": 0.291
+      }
+    ]
+  },
+  "shareOfVoice": {
+    "brand": 0.204,
+    "entries": [
+      {
+        "name": "HubSpot",
+        "isBrand": false,
+        "mentions": 118,
+        "prompts": 30,
+        "share": 0.339
+      },
+      {
+        "name": "Pipedrive",
+        "isBrand": false,
+        "mentions": 84,
+        "prompts": 27,
+        "share": 0.241
+      },
+      {
+        "name": "Acme",
+        "isBrand": true,
+        "mentions": 71,
+        "prompts": 22,
+        "share": 0.204
+      },
+      {
+        "name": "Close",
+        "isBrand": false,
+        "mentions": 40,
+        "prompts": 15,
+        "share": 0.115
+      },
+      {
+        "name": "Attio",
+        "isBrand": false,
+        "mentions": 35,
+        "prompts": 13,
+        "share": 0.101
+      }
+    ],
+    "series": [
+      {
+        "date": "2026-10-02",
+        "share": 0.216
+      },
+      {
+        "date": "2026-10-03",
+        "share": 0.177
+      },
+      {
+        "date": "2026-10-04",
+        "share": 0.213
+      },
+      {
+        "date": "2026-10-05",
+        "share": 0.192
+      },
+      {
+        "date": "2026-10-06",
+        "share": 0.226
+      },
+      {
+        "date": "2026-10-07",
+        "share": 0.221
+      },
+      {
+        "date": "2026-10-08",
+        "share": 0.174
+      }
+    ]
+  },
+  "models": [
+    {
+      "model": "chatgpt",
+      "label": "ChatGPT",
+      "runs": 70,
+      "brandMentions": 25,
+      "visibility": 0.357,
+      "citations": 420
+    },
+    {
+      "model": "perplexity",
+      "label": "Perplexity",
+      "runs": 70,
+      "brandMentions": 31,
+      "visibility": 0.443,
+      "citations": 420
+    },
+    {
+      "model": "google-ai-overview",
+      "label": "Google AI Overview",
+      "runs": 70,
+      "brandMentions": 15,
+      "visibility": 0.214,
+      "citations": 420
+    }
+  ],
+  "totals": {
+    "runs": 210,
+    "prompts": 30,
+    "citations": 1260,
+    "uniqueDomains": 140,
+    "uniqueUrls": 520
+  }
+}

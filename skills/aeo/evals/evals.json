@@ -73,17 +73,21 @@
     },
     {
       "id": 6,
-      "prompt": "Using our Elmo data, tell me why our visibility in Google AI Overviews dropped last month.",
-      "expected_output": "Uses get_analytics for both windows with the per-model breakdown, confirms there were runs in both windows (list_runs) and that prompts weren't disabled, and checks list_models for an engine change. Treats rates as fractions of 1. Compares targeted against untargeted prompts and other brands to separate an engine-wide shift from a brand-specific one. Pulls get_citations and get_query_fanout to see which sources replaced the brand's. Reports the change with n and margins, and says 'no detectable change' if the difference is within noise.",
+      "prompt": "Using our Elmo data (exports attached), tell me why our visibility in Google AI Overviews dropped last month.",
+      "expected_output": "Reads the exports, not assumptions. Reports Google AI Overview visibility as percentages with n: 41% (123 of 300 runs) in August against 15% (27 of 180) in September. Notices that the 8 branded prompts were disabled on 1 September (list_prompts, and totals.prompts falling from 20 to 12), so September samples a different, harder prompt set, and every engine's headline rate falls for the same reason. Compares like for like on the 12 prompts sampled in both months: 39 of 180 (22%) against 27 of 180 (15%), a gap close to the sampling margin. Finds that the real loss is concentrated in the two agency prompts (22 of 30 runs to 3 of 30), where a new Zapier listicle that omits Tallyboard became the top cited page and Tallyboard's own 2024 agency guide fell from 41 citations to 2. Confirms the model list is unchanged. Recommends re-enabling or separately reporting the branded prompts, and targeted work on the agency prompts: refresh the agency page, and pitch the Zapier list and the other cited roundups.",
       "assertions": [
-        "Compares equal windows using per-engine data",
-        "Checks for missing runs or disabled prompts before concluding there was a decline",
-        "Checks for a model or engine change",
-        "Converts fractions to percentages correctly",
-        "Examines cited sources or fan-out queries to explain the change",
-        "Accounts for sampling noise"
+        "Reports AI Overview visibility as percentages with run counts for both months",
+        "Identifies that 8 branded prompts were disabled on 1 September and that this changes what the headline rate measures",
+        "Compares the 12 prompts sampled in both months like for like",
+        "Treats the remaining overall difference as close to sampling noise rather than a confirmed decline",
+        "Locates the real loss in the two agency prompts",
+        "Uses the citation data to tie the agency loss to the new Zapier listicle and the brand's own agency page losing citations",
+        "Checks for an engine or model change rather than assuming one",
+        "Recommends concrete next steps for both the prompt set and the agency prompts"
       ],
-      "files": []
+      "files": [
+        "evals/files/aio-drop/"
+      ]
     },
     {
       "id": 7,
@@ -112,17 +116,20 @@
     },
     {
       "id": 9,
-      "prompt": "How's Acme doing in AI search this week?",
-      "expected_output": "Treats it as a quick data question, not an audit. Asks which brand if several are accessible and none was named. Calls get_analytics for the last 7 days and the previous 7 days, converts fractions to percentages, and answers in a few lines: visibility with n and the change, strongest and weakest engine, share of voice against the named competitor set, one sentence on what it means, and at most two next steps. Says the change is within noise if the margins swallow it.",
+      "prompt": "How's Acme doing in AI search this week? (Elmo exports attached.)",
+      "expected_output": "Treats it as a quick data question, not an audit. Compares the last 7 days with the previous 7: visibility 34% (71 of 210 runs) against 31% (65 of 210), a change inside the sampling noise. Strongest engine Perplexity (44%, 31 of 70), weakest Google AI Overview (21%, 15 of 70). Share of voice about 20%, third behind HubSpot and Pipedrive, against the tracked set of HubSpot, Pipedrive, Close, and Attio. One sentence on what it means and at most two next steps. Doesn't fold the 90-day figures into the weekly claim.",
       "assertions": [
         "Answers briefly instead of running the full audit checklist",
-        "Compares the last 7 days with the previous 7 days",
-        "Reports n alongside rates",
+        "Compares the last 7 days with the previous 7 days: 34% (71/210) against 31% (65/210)",
+        "Says the weekly change is within sampling noise",
+        "Names the strongest and weakest engines with their rates",
         "Names the competitor set behind share of voice",
         "Gives at most two next steps",
-        "Does not mix all-time and weekly figures in one claim"
+        "Does not mix the 90-day figures into the weekly claim"
       ],
-      "files": []
+      "files": [
+        "evals/files/weekly/"
+      ]
     }
   ]
 }

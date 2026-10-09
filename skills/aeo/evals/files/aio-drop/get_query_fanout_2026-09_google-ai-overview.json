@@ -1,0 +1,35 @@
+{
+  "brandId": "b_tally",
+  "range": {
+    "start": "2026-09-01T00:00:00.000Z",
+    "end": "2026-10-01T00:00:00.000Z"
+  },
+  "totalQueries": 412,
+  "uniqueQueries": 133,
+  "fanoutRuns": 168,
+  "totalRuns": 180,
+  "avgQueriesPerRun": 2.45,
+  "coverageRate": 0.14,
+  "data": [
+    {
+      "query": "best project management apps for agencies 2026",
+      "runs": 27,
+      "promptCount": 2
+    },
+    {
+      "query": "agency project management software client portal",
+      "runs": 19,
+      "promptCount": 2
+    },
+    {
+      "query": "project management software small team pricing",
+      "runs": 17,
+      "promptCount": 2
+    },
+    {
+      "query": "asana alternatives cheaper",
+      "runs": 14,
+      "promptCount": 2
+    }
+  ]
+}
