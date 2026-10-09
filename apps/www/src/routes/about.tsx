@@ -309,14 +309,15 @@ function AboutPage() {
 						<div className="space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600 lg:col-span-7">
 							<p>
 								Jared Rhizor was a founding engineer at Airbyte, the open-source data integration platform, where he
-								helped build its API, sync orchestration, connectors, Kubernetes support, and Airbyte Cloud. Before that
-								he spent five years at LiveRamp, ending as tech lead for one of the largest device graphs in adtech.
+								helped build out its initial platform and connectors. Before that he spent five years at LiveRamp, and
+								was tech lead for the team managing one of the largest device graphs in adtech.
 							</p>
 							<p>
-								After Airbyte, Jared built and sold two small products of his own, MealByMeal and poach.vc. He started
-								Elmo in July 2025 after seeing AI visibility tools charge enterprise prices for work that is cheap to
-								run: querying answer engines, parsing responses, and tracking the results. He built Elmo as an
-								open-source alternative that any team can audit, self-host, or use as an affordable managed service.
+								After Airbyte, Jared built and exited two companies of his own: MealByMeal, calorie tracking over text
+								message, and poach.vc, which helped VCs find undiscovered early-stage founders. In July 2025 he started
+								Elmo, after seeing AI visibility tools charge enterprise prices for work that is cheap to run: querying
+								answer engines, parsing responses, and tracking the results. Elmo is the open-source alternative that
+								any team can audit, self-host, or use as an affordable managed service.
 							</p>
 							<p>
 								Elmo is built by Blue Whale Software, LLC, a bootstrapped company with no outside investors. Jared
