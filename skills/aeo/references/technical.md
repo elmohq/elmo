@@ -114,7 +114,8 @@ fetching the raw HTML (`curl -s URL`) and searching it for a sentence from the p
 - Google: `nosnippet`, `max-snippet`, and `data-nosnippet` limit what AI Overviews and AI Mode can
   show from a page, the same way they limit normal snippets. A stray `nosnippet` silently removes a
   page from AI features. Search Console's **Search generative AI** control opts a whole site out of
-  AI Overviews and AI Mode.
+  AI Overviews and AI Mode (worldwide since 31 Aug 2026). To appear in those features at all, a page
+  must be indexed, eligible for a snippet, and on a site that hasn't been excluded there.
 - Bing: per Bing's guidance, `NOCACHE` limits Copilot to the URL, title, and snippet, and
   `NOARCHIVE` keeps the page out of Copilot answers.
 - Check both the `<meta name="robots">` tag and the `X-Robots-Tag` header.
@@ -152,10 +153,12 @@ machine-readable output.
 ## llms.txt and schema
 
 - **llms.txt:** optional. No consumer answer engine documents reading it, and server-log studies show
-  AI crawlers almost never request it. It's worth having for developer documentation, because coding
+  AI crawlers almost never request it. Google says Google Search doesn't use it. It's worth having for developer documentation, because coding
   agents and IDE tools do read it. Don't present it as an AEO lever, and don't spend time on it
   before access and indexing are clean.
 - **Schema markup:** keep valid `Organization`, `Product`, `Article`, `BreadcrumbList`, and similar
   markup for rich results and to tie the brand's entity together (`sameAs` links to official
   profiles). Don't promise AI citations from it. Google says no special markup is needed, and live AI
-  fetchers read visible content. Any fact that matters must be in visible text.
+  fetchers read visible content. Any fact that matters must be in visible text. FAQ rich results no
+  longer appear in Google Search (since 7 May 2026); existing FAQPage markup is harmless but earns
+  nothing there.

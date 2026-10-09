@@ -134,7 +134,8 @@ These are common in other AEO guides, and the evidence doesn't support them. Sou
   read, and nothing more.
 - **Schema markup as a citation lever.** Google says AI features need no special markup, a
   controlled study found no lift, and live AI fetchers read visible HTML. Use schema for rich results
-  and entity clarity, not for AI citations. FAQ and HowTo rich results have been restricted since 2023.
+  and entity clarity, not for AI citations. Google stopped showing FAQ rich results on 7 May 2026, and
+  HowTo rich results went in 2023.
 - **Chunking content into bite-sized pieces for LLMs**, and magic passage lengths ("40–60 words",
   "134–167 words"). Google explicitly advises against chunking, and the word counts have no primary
   source.

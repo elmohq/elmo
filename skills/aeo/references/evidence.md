@@ -1,6 +1,6 @@
 # Evidence
 
-Last reviewed: 2026-10-03. This file holds the dated facts so `SKILL.md` doesn't have to. Before
+Last reviewed: 2026-10-09. This file holds the dated facts so `SKILL.md` doesn't have to. Before
 quoting a figure to a user, give its source and date. Before relying on anything older than about a
 year, check whether it has been superseded.
 
@@ -34,10 +34,11 @@ opaque method.
 
 ## Platform documentation
 
-- Google, AI features and your website: no extra requirements, and no special files or schema needed to appear in AI Overviews or AI Mode — <https://developers.google.com/search/docs/appearance/ai-features>
+- Google, optimizing for generative AI features in Search (updated 10 Jul 2026): no special files, markup, or Markdown needed, and Google Search doesn't use them; no special schema; no need to chunk content. To be eligible, a page must be indexed, eligible for a snippet, and the site must be included in Search generative AI features in Search Console — <https://developers.google.com/search/docs/fundamentals/ai-optimization-guide>
 - Google, generative AI performance report in Search Console (announced Jun 2026, worldwide 31 Aug 2026) — <https://developers.google.com/search/blog/2026/06/gen-ai-performance-reports>
 - Google spam policies apply to AI Overviews and AI Mode, including inauthentic mentions (May 2026) — <https://developers.google.com/search/docs/essentials/spam-policies>
-- Google, FAQ and HowTo rich result restrictions (Aug 2023) — <https://developers.google.com/search/blog/2023/08/howto-faq-changes>
+- Google, FAQ rich results no longer shown in Search from 7 May 2026, for all sites; existing FAQPage markup does no harm — <https://developers.google.com/search/docs/appearance/structured-data/faqpage>
+- Google, HowTo rich results removed and FAQ restricted (Aug 2023) — <https://developers.google.com/search/blog/2023/08/howto-faq-changes>
 - Google-Extended scope (Gemini training and grounding, not Search) — <https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers>
 - OpenAI crawlers (OAI-SearchBot, GPTBot, ChatGPT-User) — <https://developers.openai.com/api/docs/bots>
 - Anthropic crawlers (ClaudeBot, Claude-SearchBot, Claude-User) — <https://privacy.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler>
@@ -51,9 +52,9 @@ opaque method.
 | --- | --- |
 | "GEO boosts AI visibility by 40%" | The GEO paper (Aggarwal et al., KDD 2024, <https://arxiv.org/abs/2311.09735>) measured *word share* in a simulated engine: GPT-3.5 summarizing five fixed Google results. Its best method was **adding quotations** (about +41%), followed by statistics (about +30–34%) and citing sources (about +27–30%). "Authoritative tone" gained only about +11–13%, and keyword stuffing was negative. Gains went mostly to sources ranked 5th, at the expense of sources ranked 1st. C-SEO Bench later found these rewrites largely ineffective on current models. Some popular skills misorder this table and inflate the authoritative-tone figure. |
 | "Expert quotes raise citation probability by 40.9%" | A garbled version of the GEO paper, which tested *adding quotations* and measured word share, not citation probability. |
-| "llms.txt helps you get cited" | 97% of 137K llms.txt files got zero requests in a month, and AI bots never requested files that didn't exist (Ahrefs, May 2026, <https://ahrefs.com/blog/llmstxt-study/>). Google's John Mueller: "no AI system currently uses llms.txt" (Jun 2025). It is useful for developer docs read by coding agents. |
+| "llms.txt helps you get cited" | 97% of 137K llms.txt files got zero requests in a month, and AI bots never requested files that didn't exist (Ahrefs, May 2026, <https://ahrefs.com/blog/llmstxt-study/>). Google's John Mueller: "no AI system currently uses llms.txt" (Jun 2025), and Google's AI optimization guide (Jul 2026) says Google Search doesn't use such files. It is useful for developer docs read by coding agents. |
 | "Schema markup increases AI citations" / "FAQ schema +40%" | A difference-in-differences study of 1,885 pages against 4,000 controls found no lift: AI Overviews −4.6%, while AI Mode and ChatGPT changes were noise (Ahrefs, May 2026, <https://ahrefs.com/blog/schema-ai-citations/>). Live AI fetchers ignored JSON-LD in testing (searchVIU, Oct 2025). Google says no special schema is needed. No primary source exists for the "+40%" figure. |
-| "Chunk content for LLMs" / "write 40–60 (or 134–167) word passages" | Google's Danny Sullivan said explicitly not to chunk (Jan 2026). None of the passage-length figures traces to a primary source. Answer-first writing is supported. Fragmenting pages isn't. |
+| "Chunk content for LLMs" / "write 40–60 (or 134–167) word passages" | Google's Danny Sullivan said explicitly not to chunk (Jan 2026), and Google's AI optimization guide (Jul 2026) says there's no need to. None of the passage-length figures traces to a primary source. Answer-first writing is supported. Fragmenting pages isn't. |
 | "Reddit is 40% of AI citations" | 40.1% was the share of *responses* citing Reddit at least once in one Semrush sample. Reddit's share of all citations was about 1.8% in ChatGPT and 6.6% in Perplexity (Profound, 680M citations, 2025), and ChatGPT cut Reddit citations sharply in Sep 2025. |
 | "Wikipedia is 48% of ChatGPT citations" | 47.9% was Wikipedia's share within ChatGPT's top-10 domains only. Its share of all citations was 7.8% (Profound). |
 | "ChatGPT just uses Bing" | Overlap estimates range from 87% (100 queries, Seer) to about 8% (15K queries, Ahrefs). ChatGPT also runs its own index (OAI-SearchBot) and uses other search data. Bing indexing matters, but it isn't the whole picture. |
