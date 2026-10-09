@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
 	boolean,
 	index,
@@ -62,6 +63,9 @@ export const brands = pgTable(
 	}),
 ).enableRLS();
 
+/** Named so a write can tell this violation apart from any other. */
+export const PROMPT_GROUP_MARKET_INDEX = "prompts_group_market_idx";
+
 export const prompts = pgTable(
 	"prompts",
 	{
@@ -88,10 +92,10 @@ export const prompts = pgTable(
 		 */
 		language: text("language").notNull().default("en"),
 		/**
-		 * Prompts asking the same question — in other countries or languages —
-		 * share a group, which the dashboard shows and compares as one. Every
-		 * prompt is in a group, most of them alone; no table of its own, because
-		 * a group has nothing to it but its members.
+		 * Prompts asking the same question in other markets share a group, which
+		 * the dashboard presents as one prompt tracked in several markets. Every
+		 * prompt is in one, most of them alone; no table of its own, because a
+		 * group has nothing to it but its members.
 		 */
 		groupId: uuid("group_id").defaultRandom().notNull(),
 		tags: text("tags").array().notNull().default([]),
@@ -105,7 +109,11 @@ export const prompts = pgTable(
 	(table) => ({
 		brandIdIdx: index("prompts_brand_id_idx").on(table.brandId),
 		brandIdEnabledIdx: index("prompts_brand_id_enabled_idx").on(table.brandId, table.enabled),
-		brandIdGroupIdIdx: index("prompts_brand_id_group_id_idx").on(table.brandId, table.groupId),
+		// A group is one question across markets, so it holds one live prompt per
+		// market; removed prompts are disabled rows and keep their history.
+		groupMarketIdx: uniqueIndex(PROMPT_GROUP_MARKET_INDEX)
+			.on(table.groupId, table.country, table.language)
+			.where(sql`${table.enabled}`),
 	}),
 ).enableRLS();
 

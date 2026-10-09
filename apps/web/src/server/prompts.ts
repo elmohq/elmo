@@ -6,7 +6,7 @@ import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { classifyUrl } from "@workspace/lib/citations/domain-lists";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { brands, competitors, PROMPT_GROUP_MARKET_INDEX, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
 	assertAllowed,
 	assertPromptSaveAllowed,
@@ -35,7 +35,7 @@ import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { matchesMarketFilter, parseMarketFilter, parseTagFilter } from "@/server/prompt-resolution";
-import { assertOneVariantPerMarket, planPromptSave } from "@/server/prompt-save";
+import { planPromptSave, rethrowMarketTaken } from "@/server/prompt-save";
 // Server Functions
 // ============================================================================
 
@@ -507,6 +507,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					enabled: z.boolean().optional().default(true),
 					country: countryCodeSchema.optional(),
 					language: languageCodeSchema.optional(),
+					/** Only read for a new prompt: joins it to an existing prompt as another market. */
 					groupId: z.guid().optional(),
 					tags: z.array(z.string()).optional(),
 					/**
@@ -527,46 +528,18 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		if (!brand) throw new Error("Brand not found");
 
 		const existingRows = await db
-			.select({
-				id: prompts.id,
-				value: prompts.value,
-				enabled: prompts.enabled,
-				premiumModels: prompts.premiumModels,
-				groupId: prompts.groupId,
-				country: prompts.country,
-				language: prompts.language,
-			})
+			.select({ id: prompts.id, enabled: prompts.enabled, premiumModels: prompts.premiumModels })
 			.from(prompts)
 			.where(eq(prompts.brandId, data.brandId));
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
 
 		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
-		const insertRows = inserts.map(({ prompt, after }) => ({
-			prompt,
-			after,
-			groupId: prompt.groupId ?? uuidv4(),
-			country: prompt.country ?? DEFAULT_COUNTRY,
-			language: prompt.language ?? DEFAULT_LANGUAGE,
-		}));
-		const updatedById = new Map(updates.map((update) => [update.id, update]));
-		assertOneVariantPerMarket([
-			...existingRows.map((row) => {
-				const update = updatedById.get(row.id);
-				if (!update) return row;
-				return {
-					...row,
-					value: update.prompt.value,
-					enabled: update.after.enabled,
-					groupId: update.prompt.groupId ?? row.groupId,
-				};
-			}),
-			...insertRows.map((row) => ({ ...row, value: row.prompt.value, enabled: row.after.enabled })),
-		]);
 		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
 
-		const saved = await db.transaction(async (tx) => {
+		const saved = await db
+			.transaction(async (tx) => {
 			for (const { id, prompt, after } of updates) {
 				await tx
 					.update(prompts)
@@ -576,20 +549,19 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						tags: prompt.tags || [],
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
-						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
 
 			if (inserts.length > 0) {
 				await tx.insert(prompts).values(
-					insertRows.map(({ prompt, after, groupId, country, language }) => ({
+					inserts.map(({ prompt, after }) => ({
 						brandId: data.brandId,
 						value: prompt.value,
 						enabled: prompt.enabled,
-						country,
-						language,
-						groupId,
+						country: prompt.country ?? DEFAULT_COUNTRY,
+						language: prompt.language ?? DEFAULT_LANGUAGE,
+						groupId: prompt.groupId ?? uuidv4(),
 						tags: prompt.tags || [],
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
@@ -600,7 +572,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 			return tx.query.prompts.findMany({
 				where: eq(prompts.brandId, data.brandId),
 			});
-		});
+		})
+			.catch((error) => rethrowMarketTaken(error, PROMPT_GROUP_MARKET_INDEX));
 
 		const newPromptIds = saved.filter((p) => !existingIds.has(p.id)).map((p) => p.id);
 		if (newPromptIds.length > 0) {

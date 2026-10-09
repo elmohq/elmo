@@ -1,5 +1,3 @@
-import { countryName } from "@workspace/config/countries";
-import { languageName } from "@workspace/config/languages";
 import { selectPremiumModels } from "@workspace/config/plans";
 
 export interface SubmittedPrompt {
@@ -10,7 +8,7 @@ export interface SubmittedPrompt {
 	country?: string;
 	/** Likewise fixed once saved. */
 	language?: string;
-	/** Omitted, a new prompt starts a group of its own and a saved one stays put. */
+	/** Only read for a new prompt; omitted, it starts a group of its own. */
 	groupId?: string;
 	tags?: string[];
 	premiumModels?: string[];
@@ -77,37 +75,22 @@ export function planPromptSave(
 	return { updates, inserts };
 }
 
-export interface GroupMember {
-	value: string;
-	enabled: boolean;
-	groupId: string;
-	country: string;
-	language: string;
-}
-
-/** Two enabled prompts in one group asking from the same country in the same language. */
-export class PromptGroupClashError extends Error {
-	constructor(first: GroupMember, second: GroupMember) {
-		super(
-			`"${first.value}" and "${second.value}" are in the same group for ${countryName(first.country)} in ${languageName(first.language)}. A group holds one prompt per country and language.`,
-		);
-		this.name = "PromptGroupClashError";
-	}
-}
-
 /**
- * A group is one question asked across markets, so two enabled members in the
- * same country and language would be the same measurement twice, and the
- * group's per-market view couldn't say which one it shows. Disabled members
- * don't count: they're how removed prompts keep their history.
+ * A write that would put two live prompts of one group in the same market —
+ * caught by the database's unique index rather than checked ahead of every
+ * write path.
  */
-export function assertOneVariantPerMarket(members: readonly GroupMember[]): void {
-	const seen = new Map<string, GroupMember>();
-	for (const member of members) {
-		if (!member.enabled) continue;
-		const key = `${member.groupId}|${member.country}|${member.language}`;
-		const clash = seen.get(key);
-		if (clash) throw new PromptGroupClashError(clash, member);
-		seen.set(key, member);
+export class PromptMarketTakenError extends Error {
+	constructor() {
+		super("This prompt is already tracked in that market. Each market can hold one version of a prompt.");
+		this.name = "PromptMarketTakenError";
 	}
+}
+
+/** Rethrows the group-market unique violation as `PromptMarketTakenError`, anything else as is. */
+export function rethrowMarketTaken(error: unknown, indexName: string): never {
+	const pgError = (error as { cause?: unknown })?.cause ?? error;
+	const { code, constraint } = (pgError ?? {}) as { code?: string; constraint?: string };
+	if (code === "23505" && constraint === indexName) throw new PromptMarketTakenError();
+	throw error;
 }

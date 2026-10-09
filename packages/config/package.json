@@ -11,6 +11,7 @@
 		"./constants": "./src/constants.ts",
 		"./countries": "./src/countries.ts",
 		"./languages": "./src/languages.ts",
+		"./markets": "./src/markets.ts",
 		"./entitlements": "./src/entitlements.ts",
 		"./env": "./src/env.ts",
 		"./env-registry": "./src/env-registry.ts",

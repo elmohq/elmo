@@ -10,7 +10,8 @@ import { z } from "zod";
 import { clampedPaging } from "@/lib/api/analytics-range";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
-import { createPrompts, listPrompts, promptGroupErrorStatus } from "@/server/prompts-core";
+import { PromptMarketTakenError } from "@/server/prompt-save";
+import { createPrompts, listPrompts } from "@/server/prompts-core";
 
 const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
@@ -59,8 +60,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 				status: 201,
 				scopes: ["write"],
 				mapError: (err) => {
-					const group = promptGroupErrorStatus(err);
-					return group && err instanceof Error ? new ApiError(group.status, group.error, err.message) : undefined;
+					return err instanceof PromptMarketTakenError ? new ApiError(409, "Conflict", err.message) : undefined;
 				},
 				handle: async ({ body, auth }) => {
 					const brand = await requireBrandInScope(auth, body.brandId, "body");

@@ -8,24 +8,16 @@ import { DEFAULT_LANGUAGE, languageCodeSchema } from "@workspace/config/language
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { citations, PROMPT_GROUP_MARKET_INDEX, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, inArray, type SQL } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
-import { assertOneVariantPerMarket, type GroupMember, PromptGroupClashError } from "@/server/prompt-save";
+import { rethrowMarketTaken } from "@/server/prompt-save";
 
 export const MAX_PROMPT_BATCH = 100;
-
-/** A groupId that names no prompt of this brand: groups are joined, not invented. */
-export class PromptGroupNotFoundError extends Error {
-	constructor(readonly groupId: string) {
-		super(`No prompt of this brand is in group ${groupId}.`);
-		this.name = "PromptGroupNotFoundError";
-	}
-}
 
 export class PromptNotFoundError extends Error {
 	constructor(public readonly promptId: string) {
@@ -56,7 +48,7 @@ const promptLanguageSchema = languageCodeSchema.describe(
 const promptGroupIdSchema = z
 	.guid()
 	.describe(
-		"Group of prompts asking the same question in other countries or languages, from another prompt's groupId. A group holds one enabled prompt per country and language. Omit to start a new group.",
+		"Another prompt's groupId, to track this as the same question in another market. A group holds one enabled prompt per country and language. Omit to start a new group.",
 	);
 
 export const bulkPromptInputSchema = z.object({
@@ -83,14 +75,13 @@ export const promptUpdateFields = {
 	enabled: z.boolean().optional().describe("Whether to keep sampling it."),
 	tags: promptTagsSchema.optional().describe("Replaces the prompt's tags outright."),
 	premiumModels: z.array(z.string()).optional().describe("Replaces the prompt's premium engine pairings."),
-	groupId: promptGroupIdSchema.optional().describe("Moves the prompt into another prompt's group."),
 };
 
 export const updatePromptInputSchema = z
 	.object(promptUpdateFields)
 	.refine(
 		(body) => Object.keys(body).length > 0,
-		"At least one of value, enabled, tags, premiumModels, or groupId must be provided",
+		"At least one of value, enabled, tags, or premiumModels must be provided",
 	);
 
 export type BulkPromptInput = z.infer<typeof bulkPromptInputSchema>;
@@ -219,13 +210,11 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 			},
 			tx,
 		);
-		await assertGroupsStayDistinct(
-			tx,
-			brand.id,
-			rows,
-			parsed.prompts.map((prompt) => prompt.groupId),
-		);
-		return tx.insert(prompts).values(rows).returning();
+		return tx
+			.insert(prompts)
+			.values(rows)
+			.returning()
+			.catch((error) => rethrowMarketTaken(error, PROMPT_GROUP_MARKET_INDEX));
 	});
 
 	// Outside the transaction: a queue hiccup must not roll back prompts the
@@ -250,37 +239,7 @@ function promptUpdateData(
 	if (input.enabled !== undefined) update.enabled = input.enabled;
 	if (input.tags !== undefined) update.tags = sanitizeUserTags(input.tags);
 	if (input.premiumModels !== undefined) update.premiumModels = nextPremium;
-	if (input.groupId !== undefined) update.groupId = input.groupId;
 	return update;
-}
-
-/**
- * Checks the groups `incoming` lands in, with the brand's current members
- * (less any row `incoming` replaces), against the one-per-market rule.
- */
-async function assertGroupsStayDistinct(
-	tx: DbConnection,
-	brandId: string,
-	incoming: (GroupMember & { id?: string })[],
-	namedGroupIds: (string | undefined)[],
-): Promise<void> {
-	const groupIds = [...new Set(incoming.map((row) => row.groupId))];
-	const current = await tx
-		.select({
-			id: prompts.id,
-			value: prompts.value,
-			enabled: prompts.enabled,
-			groupId: prompts.groupId,
-			country: prompts.country,
-			language: prompts.language,
-		})
-		.from(prompts)
-		.where(and(eq(prompts.brandId, brandId), inArray(prompts.groupId, groupIds)));
-	const known = new Set(current.map((row) => row.groupId));
-	const unknown = namedGroupIds.find((groupId) => groupId !== undefined && !known.has(groupId));
-	if (unknown) throw new PromptGroupNotFoundError(unknown);
-	const replaced = new Set(incoming.map((row) => row.id).filter(Boolean));
-	assertOneVariantPerMarket([...current.filter((row) => !replaced.has(row.id)), ...incoming]);
 }
 
 /** The quota-checked half of an update: re-read the row under the lock, charge
@@ -310,27 +269,13 @@ async function applyPromptUpdate(
 		tx,
 	);
 
-	if (input.groupId !== undefined || (input.enabled && !wasEnabled)) {
-		await assertGroupsStayDistinct(
-			tx,
-			brand.id,
-			[
-				{
-					...existing,
-					value: input.value ?? existing.value,
-					enabled: willBeEnabled,
-					groupId: input.groupId ?? existing.groupId,
-				},
-			],
-			[input.groupId],
-		);
-	}
-
+	// Re-enabling can collide with another live prompt in the same market.
 	const [row] = await tx
 		.update(prompts)
 		.set(promptUpdateData(input, brand, nextPremium))
 		.where(eq(prompts.id, promptId))
-		.returning();
+		.returning()
+		.catch((error) => rethrowMarketTaken(error, PROMPT_GROUP_MARKET_INDEX));
 	if (input.enabled !== undefined && wasEnabled !== input.enabled) {
 		afterCommit(() => (input.enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
 	}
@@ -364,11 +309,4 @@ export async function deletePrompt(promptId: string): Promise<{ prompt: Prompt; 
 	// The caller's check can race with a concurrent delete; returning() decides.
 	if (!result.deletedPrompt) throw new PromptNotFoundError(promptId);
 	return { prompt: result.deletedPrompt, deletedRunsCount: result.deletedRuns.length };
-}
-
-/** API status for the group rules, shared by the REST routes. */
-export function promptGroupErrorStatus(err: unknown): { status: 400 | 409; error: string } | undefined {
-	if (err instanceof PromptGroupNotFoundError) return { status: 400, error: "Validation Error" };
-	if (err instanceof PromptGroupClashError) return { status: 409, error: "Conflict" };
-	return undefined;
 }

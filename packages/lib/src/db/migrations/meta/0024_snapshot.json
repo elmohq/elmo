@@ -1,5 +1,5 @@
 {
-  "id": "dee7fc4b-9ae1-4cfa-84db-50d891774afa",
+  "id": "ec3aba83-789f-4062-ae4c-aa4f56928262",
   "prevId": "d6ac89b3-c93f-4527-9432-e34eaf19bb0c",
   "version": "7",
   "dialect": "postgresql",
@@ -948,23 +948,30 @@
           "method": "btree",
           "with": {}
         },
-        "prompts_brand_id_group_id_idx": {
-          "name": "prompts_brand_id_group_id_idx",
+        "prompts_group_market_idx": {
+          "name": "prompts_group_market_idx",
           "columns": [
-            {
-              "expression": "brand_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
             {
               "expression": "group_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
+            },
+            {
+              "expression": "country",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "language",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
+          "where": "\"prompts\".\"enabled\"",
           "concurrently": false,
           "method": "btree",
           "with": {}
