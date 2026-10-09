@@ -1,6 +1,6 @@
 # Owned content
 
-Contents: what to write · how to write it · keeping it true · what not to do
+Contents: what to write · how to write it · page patterns · keeping it true · what not to do
 
 Owned pages win citations when they are the best available answer to a query the engine actually
 runs. Every content recommendation should name the lost prompts or fan-out queries it targets.
@@ -46,6 +46,71 @@ Work from the diagnosis, not a template:
   an author with relevant expertise. Engines and readers both use these to judge trust.
 - **Use tables where readers compare** (plans, specs, alternatives). Don't force tables or FAQ blocks
   onto pages that don't need them.
+
+## Page patterns
+
+Starting points for the pages engines retrieve most for buying questions. Adapt them to what the
+lost prompts and fan-out queries ask for. Length follows from what the page has to say, not a target.
+
+**Comparison ("Brand vs Competitor")**
+
+```
+H1: Brand vs Competitor: [the main difference, in one line]
+Opening: who should pick which, stated plainly.
+Table: price, plans, key limits, integrations, support, deployment. Same rows for both, sourced
+  and dated, including rows where the competitor wins.
+Sections: one per real difference, each opening with the conclusion.
+Switching: what migrating takes, in either direction.
+Updated date and author.
+```
+
+**Alternatives ("Competitor alternatives")**
+
+```
+H1: [N] Competitor alternatives for [the reasons people leave it]
+Opening: why people look for alternatives, from reviews and forum threads, with sources.
+One section per alternative, the brand included but not automatically first: who it fits,
+  what it costs, what it lacks.
+Table summarizing fit and price.
+```
+
+**Use case or audience ("[Category] for [audience]")**
+
+```
+H1: [Category] for [audience or job]
+Opening: what this audience needs that others don't, and how the product meets it.
+Concrete workflow: the steps, with screenshots described in text.
+Proof: a named customer in this audience, with numbers they agreed to publish.
+Limits: where the product is not a fit for this audience.
+```
+
+**Pricing**
+
+```
+Every plan with its price, billing period, currency, and limits, as HTML text.
+What "contact sales" covers, with a starting price if there is one.
+The date prices last changed.
+```
+
+**Integration ("Brand + Tool")**
+
+```
+H1: Brand + Tool integration
+Opening: what syncs, in which direction, how often, and on which plans.
+Setup steps, the data fields mapped, and known limitations.
+```
+
+**Category explainer ("What is [category]")**
+
+```
+H1: What is [category]?
+Opening: a one-sentence definition, then who uses it and why.
+How to choose: the criteria a buyer should use, applicable to any vendor.
+The brand as one example, not the whole page.
+```
+
+These are the pages buyers and engines read. Keep them on the main site, linked from navigation or
+related pages, not in an orphaned "AI content" section.
 
 ## Keeping it true
 

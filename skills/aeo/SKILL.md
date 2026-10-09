@@ -171,7 +171,8 @@ End an audit with:
   over MCP or REST, mapping questions to tools, recipes for everyday data questions
 - `references/technical.md`: crawler matrix, robots.txt patterns, firewall blocks, JavaScript
   rendering, indexing, snippet controls, where each engine gets its pages
-- `references/content.md`: owned pages that get retrieved and quoted
+- `references/content.md`: owned pages that get retrieved and quoted, with patterns for comparison,
+  alternatives, use-case, pricing, integration, and category pages
 - `references/off-site.md`: turning cited-source data into an outreach and community plan, and
   keeping the brand's description consistent across third-party profiles
 - `references/evidence.md`: dated sources for every claim above, plus myths and why they're wrong
