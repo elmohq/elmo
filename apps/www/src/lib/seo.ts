@@ -98,6 +98,19 @@ export function organizationJsonLd() {
 			"https://peerpush.com/p/elmo",
 			"https://devhunt.org/tool/elmo",
 		],
+		foundingDate: "2025",
+		founder: {
+			"@type": "Person",
+			name: "Jared Rhizor",
+			url: "https://jrhizor.dev",
+			sameAs: ["https://www.linkedin.com/in/jrhizor", "https://x.com/jrhizor", "https://github.com/jrhizor"],
+		},
+		address: {
+			"@type": "PostalAddress",
+			addressLocality: "San Francisco",
+			addressRegion: "CA",
+			addressCountry: "US",
+		},
 		parentOrganization: {
 			"@type": "Organization",
 			name: "Blue Whale Software, LLC",

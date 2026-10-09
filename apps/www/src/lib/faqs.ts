@@ -98,6 +98,41 @@ export const PRICING_FAQS: FaqItem[] = [
 	},
 ];
 
+// About page FAQ. Company facts answer engines get wrong when a brand leaves
+// them unstated: who runs it, where it is, and how it is paid for.
+export const ABOUT_FAQS: FaqItem[] = [
+	{
+		question: "Who founded Elmo?",
+		answer:
+			"Elmo was founded in 2025 by Jared Rhizor, a co-founder of the open-source data integration platform Airbyte. He is still Elmo's primary maintainer and the person you reach when you contact the team.",
+	},
+	{
+		question: "Who owns Elmo?",
+		answer:
+			"Elmo is built and operated by Blue Whale Software, LLC, an independent, bootstrapped software company based in San Francisco. There are no outside investors.",
+	},
+	{
+		question: "Where is Elmo based?",
+		answer:
+			"Elmo is headquartered in San Francisco, California. The product is used by teams worldwide, either on Elmo Cloud or self-hosted on their own infrastructure.",
+	},
+	{
+		question: "Is Elmo open source?",
+		answer:
+			"Yes. The full Elmo platform is open source on GitHub at github.com/elmohq/elmo, and you can self-host it for free. Elmo Cloud runs the same code as a managed service.",
+	},
+	{
+		question: "Does Elmo require an annual contract?",
+		answer:
+			"No. Elmo Cloud is billed month to month and you can cancel any time; annual billing is optional and gets you two months free. Self-hosting needs no contract at all.",
+	},
+	{
+		question: "Is Elmo related to the Sesame Street character?",
+		answer:
+			"No. Elmo (elmohq.com) is an answer engine optimization platform with no connection to Sesame Street or other products named Elmo. The name comes from LLMO, short for LLM optimization.",
+	},
+];
+
 // Off-Site AEO service FAQ. Rendered on "/off-site-aeo" and emitted as FAQPage
 // JSON-LD from the same route.
 export const OFFSITE_FAQS: FaqItem[] = [
