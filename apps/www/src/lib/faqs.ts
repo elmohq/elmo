@@ -1,6 +1,8 @@
 export interface FaqItem {
 	question: string;
 	answer: string;
+	/** Phrases in `answer` to render as links. The FAQPage JSON-LD keeps the plain text. */
+	links?: { text: string; href: string }[];
 }
 
 // Homepage FAQ. Rendered visibly on "/" and emitted as FAQPage JSON-LD from the
@@ -120,6 +122,7 @@ export const ABOUT_FAQS: FaqItem[] = [
 		question: "Is Elmo open source?",
 		answer:
 			"Yes. The full Elmo platform is open source on GitHub at github.com/elmohq/elmo, and you can self-host it for free. Elmo Cloud runs the same code as a managed service.",
+		links: [{ text: "github.com/elmohq/elmo", href: "https://github.com/elmohq/elmo" }],
 	},
 	{
 		question: "Does Elmo require an annual contract?",
