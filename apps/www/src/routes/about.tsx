@@ -315,9 +315,8 @@ function AboutPage() {
 							<p>
 								After Airbyte, Jared built and exited two companies of his own: MealByMeal, calorie tracking over text
 								message, and poach.vc, which helped VCs find undiscovered early-stage founders. In July 2025 he started
-								Elmo, after seeing AI visibility tools charge enterprise prices for work that is cheap to run: querying
-								answer engines, parsing responses, and tracking the results. Elmo is the open-source alternative that
-								any team can audit, self-host, or use as an affordable managed service.
+								Elmo, after seeing AI search starting to reshape how customers made purchasing decisions. Elmo is the
+								open-source alternative that any team can audit, self-host, or use as an affordable managed service.
 							</p>
 							<p>
 								Elmo is built by Blue Whale Software, LLC, a bootstrapped company with no outside investors. Jared
