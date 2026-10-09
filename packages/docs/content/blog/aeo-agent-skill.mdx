@@ -62,7 +62,7 @@ npx skills add elmohq/elmo
 | Skills that compute a composite "GEO score" | **4** |
 | Skills that can retrieve a real AI answer themselves | **2**: one via a paid scraper actor, one via an optional DataForSEO hook |
 | Skills that report visibility as a rate across repeated runs | **0**. One describes the method for a human to follow by hand |
-| `aeo` SKILL.md length | **171 lines**, with 739 lines of references loaded on demand |
+| `aeo` SKILL.md length | **178 lines**, with 860 lines of references loaded on demand |
 
 **Key takeaways**
 
@@ -100,7 +100,7 @@ We build an AI visibility product, so weigh our conclusions accordingly. Every c
 | [warpdotdev `seo-aeo-audit`](https://github.com/warpdotdev/oz-skills) | 628 | 752 lines | No | Partial | "FAQPage (highest AI citation rate)"; tracks `chat.openai.com` referrals instead of `chatgpt.com` |
 | [cognitic-labs `geo-audit` / `geo-monitor`](https://github.com/cognitic-labs/geoskills) | 181 / 154 | 502 / 325 lines | No; "monitor" re-runs the heuristic | Partial | Weighted "GEO score v2" |
 | [apify `ai-search-visibility-tracker`](https://github.com/apify/awesome-skills/tree/main/skills/apify-ai-search-visibility-tracker) | 166 | 297 lines | **Yes**, via a paid scraper actor | Not covered | None notable; single runs, no sampling statistics |
-| **[elmohq `aeo`](https://github.com/elmohq/elmo/tree/main/skills/aeo)** | new | 171 lines + 6 refs | **Yes**, via Elmo over MCP, or a manual protocol | Correct, split by purpose, with an audit script | Every claim sourced in `references/evidence.md` |
+| **[elmohq `aeo`](https://github.com/elmohq/elmo/tree/main/skills/aeo)** | new | 178 lines + 6 refs | **Yes**, via Elmo over MCP, or a manual protocol | Correct, split by purpose, with an audit script | Every claim sourced in `references/evidence.md` |
 
 Installs are from the skills.sh API on 3 October 2026. Line counts are from each repository's default branch the same day.
 
@@ -144,7 +144,7 @@ We kept what the incumbents get right: Google's guidance up front and the purpos
 4. **Off-site work driven by the brand's own citation data.** Instead of a generic "get on Reddit" list, it ranks the third-party pages engines actually cite for the prompts the brand loses, with a playbook for each source type and clear lines it won't cross.
 5. **An access audit that runs.** `scripts/check_ai_access.py` uses only the Python standard library. It evaluates robots.txt for 17 crawlers with RFC 9309 matching, fetches each page as each crawler to catch firewall blocks robots.txt doesn't show, flags noindex and nosnippet, and checks whether content is in the raw HTML that non-rendering AI crawlers see.
 6. **Receipts.** The dated facts live in one evidence file with a credibility rating and a primary source for each, plus a myths table, so the main instructions don't go stale and every number can be traced.
-7. **A short main file.** SKILL.md is 171 lines. References load only when the agent reaches the step that needs them.
+7. **A short main file.** SKILL.md is 178 lines. References load only when the agent reaches the step that needs them.
 
 ### Where Elmo fits
 
