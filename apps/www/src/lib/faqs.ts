@@ -130,9 +130,9 @@ export const ABOUT_FAQS: FaqItem[] = [
 			"No. Elmo Cloud is billed month to month and you can cancel any time; annual billing is optional and gets you two months free. Self-hosting needs no contract at all.",
 	},
 	{
-		question: "Is Elmo related to the Sesame Street character?",
+		question: "Where does the name Elmo come from?",
 		answer:
-			"No. Elmo (elmohq.com) is an answer engine optimization platform with no connection to Sesame Street or other products named Elmo. The name comes from LLMO, short for LLM optimization.",
+			"Elmo comes from LLMO, short for LLM optimization: the practice of improving how large language models like ChatGPT, Claude, and Gemini mention and cite your brand. Say LLMO out loud and you get Elmo.",
 	},
 ];
 
