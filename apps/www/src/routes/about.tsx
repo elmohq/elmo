@@ -282,7 +282,7 @@ function AboutPage() {
 						))}
 					</ul>
 					<p className="mt-6 max-w-3xl text-[1.0625rem] leading-relaxed text-zinc-600">
-						Teams using Elmo include {NOTABLE_USERS.slice(0, -1).join(", ")}, and {NOTABLE_USERS.at(-1)}.
+						Teams using Elmo include {NOTABLE_USERS.join(", ")}, and hundreds of others.
 					</p>
 				</Section>
 
