@@ -1,0 +1,146 @@
+---
+title: "Do You Need a Wikipedia Page to Show Up in AI Answers?"
+description: "Wikipedia is upweighted in model training, dominates ChatGPT's citations, and sits in 72% of big-brand AI Overviews. It is also closed to brands that try to write their own. A decision rule for which side of that line you are on."
+date: "2026-10-09"
+author: ai
+metaTitle: "Does Wikipedia Help AI Visibility? A Decision Rule"
+tags:
+  - ai-visibility
+  - ai-citations
+  - aeo
+  - ai-search
+definedTerms:
+  - term: Parametric knowledge
+    definition: "Parametric knowledge is what a language model has absorbed into its weights during training, as opposed to what it reads from retrieved web pages at answer time. A model answering about a brand from memory is using parametric knowledge."
+  - term: Notability
+    definition: "On Wikipedia, notability is the threshold a subject must clear to have its own article. For companies it means significant, in-depth coverage in multiple reliable, independent, secondary sources. Press releases, routine announcements, and paid placements do not count."
+  - term: Response citation rate
+    definition: "Response citation rate is the share of AI responses that contain at least one link to a given domain. It produces much larger numbers than domain citation share, which counts a domain's fraction of all citations in a corpus."
+howTo:
+  name: "How to decide whether to pursue a Wikipedia article for AI visibility"
+  description: "Sort your brand into one of three cases, then put the effort where Wikipedia's rules and the AI citation data say it will count."
+  steps:
+    - name: Check whether an article about you already exists
+      text: "Search Wikipedia for your brand, your product names, and your founders. An existing article is already feeding branded AI answers whether or not you have read it."
+    - name: If it exists, audit it as an AI source
+      text: "Read it the way an engine would summarize it. Outdated product names, pricing, headcount, or leadership become lines in the answer above your homepage."
+    - name: Request corrections on the talk page, not in the article
+      text: "Wikipedia strongly discourages editors with a conflict of interest from editing directly and requires paid editors to disclose. Propose changes on the article's talk page with the sources that support them."
+    - name: If no article exists, count your independent in-depth sources
+      text: "List the articles about your company that are independent of you, published by reliable outlets, and cover you in depth rather than in passing. Press releases, funding announcements, and sponsored posts do not count. Wikipedia says a single such source is almost never enough."
+    - name: If you cannot list several, build coverage instead of chasing an article
+      text: "The coverage Wikipedia requires is the same third-party material retrieval engines cite for smaller brands. Earn it first; an article becomes possible as a side effect."
+    - name: Measure per engine
+      text: "Wikipedia's weight differs sharply between ChatGPT, Google's AI surfaces, and Perplexity. Check which engines cite it for your own prompts before deciding how much it matters to you."
+faq:
+  - question: Does having a Wikipedia page help a brand appear in AI answers?
+    answer: "It helps through three routes, but no published study isolates its effect on a brand's AI mention rate. Model builders upweight Wikipedia in training: GPT-3 saw its Wikipedia data 3.4 times against 0.44 for filtered Common Crawl, and LLaMA 2.45 times against 1.10. ChatGPT cites it heavily, and Ahrefs found it in 71.9% of the big-brand AI Overviews it checked. Whether an article causes better visibility, or just marks a brand that is widely covered anyway, has not been tested."
+  - question: How often do AI engines cite Wikipedia?
+    answer: "It depends heavily on the engine. Profound's 680 million citations from August 2024 to June 2025 put Wikipedia at 7.8% of ChatGPT's citations and 0.6% of Google AI Overviews'. Semrush's 230,000-prompt study found Wikipedia in roughly 55% of ChatGPT responses before a mid-September 2025 drop to under 20%, against about 2–3% on Google AI Mode and 0.8% on Perplexity."
+  - question: Can a company create its own Wikipedia page?
+    answer: "Not in practice. Wikipedia's conflict-of-interest guideline strongly discourages editors with a conflict of interest from editing affected articles directly and requires anyone editing for pay to disclose who is paying them. The company must also meet the notability guideline: significant coverage in multiple reliable, independent, secondary sources. Press releases and routine announcements do not count."
+  - question: What should a brand without a Wikipedia article do for AI visibility?
+    answer: "Build the independent, in-depth coverage that Wikipedia's notability guideline asks for. Research on language models shows they recall less popular entities poorly from memory and depend on retrieved pages to answer about them. For a smaller brand, those retrieved third-party pages, not a Wikipedia article, decide what AI engines say."
+  - question: Is Wikipedia's influence on AI declining?
+    answer: "Its traffic is, its reach is not. The Wikimedia Foundation reported human pageviews down roughly 8% year over year after reclassifying bot traffic, and links the drop partly to search engines answering directly. Meanwhile Amazon, Meta, Microsoft, Mistral AI, Perplexity, and Google pay for high-volume Wikipedia data feeds. More people now meet Wikipedia's text inside an AI answer than on Wikipedia."
+---
+
+**Wikipedia is the one source that touches AI answers at every stage: what models learn, what they cite, and what licensed data feeds they ingest. It is also the one source a brand is not allowed to write for itself.** The useful question for a marketing team is not "does Wikipedia matter?" (it does) but "is a Wikipedia article something we can realistically have, and if not, what substitutes for it?" The evidence answers both.
+
+**Key takeaways**
+
+- Model builders deliberately oversample Wikipedia. GPT-3 trained on its Wikipedia data [3.4 times over against 0.44 for filtered Common Crawl](https://arxiv.org/abs/2005.14165); LLaMA [2.45 times against 1.10](https://arxiv.org/abs/2302.13971).
+- Citation weight is engine-specific: 7.8% of ChatGPT's citations versus 0.6% of Google AI Overviews' in one dataset; about 2–3% of AI Mode responses and 0.8% of Perplexity's in another.
+- On branded searches for the world's biggest brands, Google's AI Overviews cited Wikipedia in 71.9% of cases, but every brand in that panel already had an article.
+- Peer-reviewed work shows models recall less popular entities poorly and depend on retrieval for them. For a smaller brand, retrieved third-party pages carry the answer, not memory.
+- Wikipedia's notability bar for companies is multiple independent, in-depth, secondary sources. That is the same coverage retrieval engines cite. If you cannot clear the bar, build the coverage; the article follows or it does not matter.
+
+## Three ways Wikipedia gets into an AI answer
+
+Most discussion treats "Wikipedia gets cited a lot" as the whole story. It is one of three separate routes, and they matter differently depending on how well known your brand already is.
+
+| Route | What the evidence shows | Who it favors |
+|---|---|---|
+| Training data | Oversampled relative to its size in GPT-3 and LLaMA | Brands with long, stable articles |
+| Live citation | Heavy on ChatGPT, light on Google's AI surfaces and Perplexity | Brands with articles, on ChatGPT especially |
+| Licensed data feeds | Paid high-throughput access for most major AI companies | Anyone with an article, through channels you cannot see |
+
+### Training: oversampled on purpose
+
+The GPT-3 paper is explicit that its training sets were "not sampled in proportion to their size" and that sets the authors viewed as higher quality were sampled more often. Wikipedia was 3 billion tokens, 3% of the training mix, and went through the model **3.4 times** in a 300-billion-token run. Filtered Common Crawl, at 410 billion tokens, went through 0.44 times.
+
+Meta's LLaMA paper shows the same pattern with different numbers: Wikipedia was 4.5% of sampling and ran **2.45 epochs**, against 1.10 for CommonCrawl, using dumps from June to August 2022 in 20 languages. Neither OpenAI nor Anthropic nor Google publishes current training mixes, so these are the clearest public examples rather than proof of what today's models do. The intent behind them is clear, though: when builders choose what to emphasize, Wikipedia is on the list.
+
+### Citation: one engine leans on it, the others barely do
+
+Two large datasets measure this with different metrics, which is why the numbers look so far apart.
+
+| Dataset | Metric | ChatGPT | Google | Perplexity |
+|---|---|---|---|---|
+| [Profound](https://www.tryprofound.com/blog/ai-platform-citation-patterns), 680M citations, Aug 2024–Jun 2025 | Share of all citations | 7.8% | 0.6% (AI Overviews) | Not in top 10 |
+| [Semrush](https://www.semrush.com/blog/most-cited-domains-ai/), 230k+ prompts, Jul–Oct 2025 | Share of responses citing it | ~55%, falling to under 20% in mid-September | ~2–3% (AI Mode) | ~0.8% |
+
+Share of all citations and share of responses are not the same quantity. A domain can appear in half of all answers and still hold under a tenth of all citations, because each answer cites many sources. Read across, the two agree on the thing that matters: **ChatGPT treats Wikipedia as a primary reference; Google's AI surfaces and Perplexity do not.** We covered how far apart the engines are in general in [do AI engines cite the same sources](/blog/do-ai-engines-cite-the-same-sources).
+
+Branded queries are the exception on Google. Ahrefs tracked exact-name searches for 100 brands from Interbrand's Best Global Brands list and found Wikipedia cited in [41 of 57 AI Overviews with visible sources, or 71.9%](https://ahrefs.com/blog/ai-overviews-on-branded-searches/), well ahead of YouTube at 38.6%. We broke that study down in [AI Overviews on brand searches](/blog/ai-overviews-for-brand-searches). The limitation that matters here: every brand on that panel is famous enough to have a substantial Wikipedia article. The study tells you what Google cites when an article exists, not what it cites when one does not.
+
+### Licensing: the route you cannot track
+
+In January 2026 the Wikimedia Foundation [named Amazon, Meta, Microsoft, Mistral AI, and Perplexity as Wikimedia Enterprise partners](https://enterprise.wikimedia.com/blog/wikipedia-25-enterprise-partners/), joining Google and several smaller companies. Enterprise sells high-throughput API access and hourly refreshed snapshots of Wikipedia. Terms were not disclosed and nothing on the announcement commits partners to attribution.
+
+The practical consequence is that an edit to your article can reach assistants and search products through data feeds, without a crawl and without a citation you could ever see in a tracking tool. It is the strongest argument for keeping an existing article accurate: its influence is larger than any citation count can show.
+
+## The Wikipedia traffic drop is not a decline in influence
+
+The Wikimedia Foundation reported in October 2025 that [human pageviews were down roughly 8%](https://diff.wikimedia.org/2025/10/17/new-user-trends-on-wikipedia/) compared with the same months in 2024. The decline appeared only after the Foundation reclassified traffic from bots built to evade detection, which had been inflating the apparent human numbers. The Foundation attributes the drop partly to search engines using generative AI to answer questions directly, often from Wikipedia's content, and notes that almost all large language models train on Wikipedia.
+
+Read that alongside the licensing deals and the direction is clear. Fewer people read your Wikipedia article on Wikipedia. More people read a summary of it in ChatGPT, an AI Overview, or an assistant drawing on an Enterprise feed. **The article's audience has moved, not shrunk**, and the new audience never sees the edit history, the citation-needed tags, or the talk page arguing about whether a claim holds up.
+
+## Why smaller brands should care less, not more
+
+The case for chasing a Wikipedia page usually rests on the big-brand data above. The research on how models handle obscure entities points the other way.
+
+Mallen and colleagues built PopQA, 14,000 questions about entities across a wide range of popularity, measured by Wikipedia monthly page views. Their [ACL 2023 paper](https://arxiv.org/abs/2212.10511) found that accuracy rises with popularity for almost every relationship type, and that **scaling up models barely improves recall of long-tail facts**. On the 4,000 least popular questions, GPT-3 davinci-003 answered 19% correctly. Adding retrieval changed the picture: a 2.7-billion-parameter model with a retriever beat GPT-3 on those same long-tail questions.
+
+Kandpal and colleagues reached the same conclusion from the other direction in an [ICML 2023 paper](https://arxiv.org/abs/2211.08411): a model's accuracy on a question tracks how many training documents mention the entities involved, with "strong correlational and causal relationships," and retrieval reduces that dependence.
+
+Put those findings next to a mid-market brand. One Wikipedia article is one document. Even oversampled three times, it will not lift a brand from the long tail into the set a model reliably remembers. What determines how that brand appears in AI answers is the retrieval layer: the reviews, comparisons, trade coverage, and forum threads an engine finds when someone asks. That is the territory covered in [where AI citations come from](/blog/where-ai-citations-come-from), and it is where a smaller brand's effort pays off first.
+
+There is a caveat both papers share and the Wikipedia argument usually skips. Popularity in PopQA is a proxy for how much the web discusses an entity, not a measure of the Wikipedia article's effect. **No published study isolates what a brand's Wikipedia article adds to its AI mention rate** once you control for the coverage that made the article possible in the first place. Anyone quoting a lift figure is quoting a correlation.
+
+## Wikipedia's rules set the decision for you
+
+Two Wikipedia guidelines decide whether an article is available to you at all.
+
+The [notability guideline for companies](https://en.wikipedia.org/wiki/Wikipedia:Notability_(organizations_and_companies)) presumes a company notable if it has received significant coverage in multiple reliable secondary sources independent of it. Each source must cover the company "directly and in depth." The guideline says "a single significant independent source is almost never sufficient," and excludes press releases, press kits, routine announcements, brief or passing mentions, and any form of paid media.
+
+The [conflict-of-interest guideline](https://en.wikipedia.org/wiki/Wikipedia:Conflict_of_interest) says editors with a conflict of interest "are strongly discouraged from editing affected articles directly" and requires anyone editing for pay to disclose who is paying them. The sanctioned route is to propose changes on the article's talk page.
+
+Notice what the notability test is actually asking for: independent, in-depth, secondary coverage from reliable outlets. That is almost exactly the kind of earned coverage that makes up the majority of AI citations, and that a [press release does not substitute for](/blog/press-releases-ai-visibility). Wikipedia does not create authority; it summarizes authority that exists elsewhere. A brand that clears the bar already has most of what an article would bring, and a brand that cannot clear it will not get an article that lasts.
+
+## A decision rule
+
+**Case 1: you have an article.** It is almost certainly being read by ChatGPT, cited in your branded AI Overview, and shipped in data feeds. Audit it the way you would audit your homepage. Every stale fact is a candidate line in an AI answer, and [engines do not reliably fact-check what they repeat](/blog/ai-search-fact-checking). Propose corrections on the talk page with independent sources attached, disclose your affiliation, and do not edit the article yourself.
+
+**Case 2: no article, but you can list several independent, in-depth pieces about your company.** A volunteer editor may write one, and you can point to the sources on the relevant talk pages with disclosure. Do not pay someone to write it undisclosed. Beyond breaking Wikipedia's rules, it buys you an article that can be deleted for promotional tone or weak sourcing, which leaves you where you started.
+
+**Case 3: you cannot list several such pieces.** Stop pursuing an article. Spend the effort on the coverage Wikipedia would have required anyway: analyst mentions, independent reviews, trade press that covers you in depth, and comparison pages that name you. That is what retrieval engines read for brands they do not remember, and it is the only route that also leads to an article later.
+
+Whichever case you are in, the [entity signals that help a model resolve your name](/blog/ghost-citations), such as consistent naming and accurate Organization markup, apply regardless, as does checking per engine. A brand whose buyers live in Perplexity has much less reason to worry about Wikipedia than one whose buyers live in ChatGPT.
+
+## How to check what Wikipedia is doing for you
+
+1. **Pull cited domains from your own tracked prompts, per engine.** If Wikipedia never appears in your category's citations, the article question is secondary. Your [prompt set](/blog/ai-prompt-tracking) is a better guide than any general benchmark.
+2. **Run your exact brand name on Google and ChatGPT.** Note whether Wikipedia is cited and which sentences in the answer trace back to it.
+3. **Compare the answer to the article line by line.** Mismatches tell you whether the engine is using the article or something else.
+4. **Recheck after any accepted talk-page edit.** Citation sets turn over quickly, as covered in [citation volatility](/blog/citation-volatility), so a single before-and-after snapshot will mislead you. Track the change over several weeks.
+
+## Where this leaves you
+
+Wikipedia is unusually powerful in AI answers and unusually hard for a brand to get into. Those two facts belong together. It earns its weight with model builders and engines because it refuses to let subjects write about themselves, and it admits companies only after independent sources have done so.
+
+For most brands asking the question, the answer is: not yet, and the work that would earn an article is the same work that improves AI visibility without one.
+
+[Elmo](https://www.elmohq.com/) is an open-source AI visibility platform that runs your prompts across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces and stores every cited URL per engine. That makes "does Wikipedia show up for our prompts, and on which engines" a query over your own data rather than a guess from someone else's benchmark.
+
+For the fundamentals, start with [AI citations](/blog/ai-citations) and [answer engine optimization](/answer-engine-optimization). For why big brands start ahead, see [do AI engines favor big brands](/blog/do-ai-engines-favor-big-brands). For the vocabulary, see the [AI search glossary](/glossary).
