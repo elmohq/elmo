@@ -32,7 +32,7 @@ howTo:
       text: "Log each change with a date and the prompts it targets, then compare equal windows before and after on the same prompts and engines."
 faq:
   - question: What is the best AEO skill for Claude Code?
-    answer: "By installs, the incumbent is coreyhaines31's ai-seo, with about 135,000 installs on skills.sh, and it is a solid, actively maintained general guide. We built Elmo's aeo skill because none of the popular skills closes the loop with measurement, and several repeat claims the research doesn't support. aeo is MIT-licensed, works without Elmo, and reads Elmo data over MCP when it is available. Judge it by its sources: every claim in it links to a primary study or platform document."
+    answer: "By installs, the incumbent is coreyhaines31's ai-seo, with about 135,000 installs on skills.sh, and it is a solid, actively maintained general guide. We built Elmo's aeo skill because none of the popular skills closes the loop with measurement, and several repeat claims the research doesn't support. aeo is MIT-licensed, works without Elmo, and reads Elmo data over MCP when it is available. Judge it by its sources: every claim in it links to a primary study or platform document. In our benchmark of 32 neutral evals, it cut the factual errors in Claude Sonnet's answers from about 4 per run to 0.3, while the other popular skills left them at 3.7 to 5.3."
   - question: How do I install the aeo skill?
     answer: "Run npx skills add elmohq/elmo. The skills CLI detects your agent (Claude Code, Cursor, Codex, Gemini CLI, and others) and installs the skill with its reference files and audit script. You can also copy the skills/aeo folder from the GitHub repository into your agent's skills directory."
   - question: Does the aeo skill require Elmo?
@@ -62,6 +62,7 @@ npx skills add elmohq/elmo
 | Skills that compute a composite "GEO score" | **4** |
 | Skills that can retrieve a real AI answer themselves | **2**: one via a paid scraper actor, one via an optional DataForSEO hook |
 | Skills that report visibility as a rate across repeated runs | **0**. One describes the method for a human to follow by hand |
+| Factual errors per 32-question benchmark run | **0.3** with `aeo`, 3.7–5.3 with the other top skills, 4.0 with no skill |
 | `aeo` SKILL.md length | **184 lines**, with 976 lines of references loaded on demand |
 
 **Key takeaways**
@@ -114,7 +115,7 @@ The order matters less than the context the table drops. The paper measured how 
 
 ### FAQ schema as a citation lever
 
-Six of the twelve present structured data, usually FAQPage, as something that gets you cited: "+40% AI visibility", "highest AI citation rate", "Critical", "15 FAQs with Schema". We couldn't find a primary source for any of these figures. Google [restricted FAQ rich results](https://developers.google.com/search/blog/2023/08/howto-faq-changes) to authoritative government and health sites in 2023, and says AI Overviews and AI Mode need [no special markup](https://developers.google.com/search/docs/appearance/ai-features). A difference-in-differences study of 1,885 pages that added schema found [no lift in AI citations](https://ahrefs.com/blog/schema-ai-citations/), and a small decline in AI Overviews.
+Six of the twelve present structured data, usually FAQPage, as something that gets you cited: "+40% AI visibility", "highest AI citation rate", "Critical", "15 FAQs with Schema". We couldn't find a primary source for any of these figures. Google [restricted FAQ rich results](https://developers.google.com/search/blog/2023/08/howto-faq-changes) in 2023 and [stopped showing them](https://developers.google.com/search/docs/appearance/structured-data/faqpage) altogether in May 2026, and its [AI optimization guide](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide) says AI Overviews and AI Mode need no special schema. A difference-in-differences study of 1,885 pages that added schema found [no lift in AI citations](https://ahrefs.com/blog/schema-ai-citations/), and a small decline in AI Overviews.
 
 ### llms.txt as something answer engines read
 
@@ -144,9 +145,30 @@ We kept what the incumbents get right: Google's guidance up front and the purpos
 4. **Off-site work driven by the brand's own citation data.** Instead of a generic "get on Reddit" list, it ranks the third-party pages engines actually cite for the prompts the brand loses, with a playbook for each source type and clear lines it won't cross.
 5. **An access audit that runs.** `scripts/check_ai_access.py` uses only the Python standard library. It evaluates robots.txt for 17 crawlers with RFC 9309 matching, fetches each page as each crawler to catch firewall blocks robots.txt doesn't show, flags noindex and nosnippet, and checks whether content is in the raw HTML that non-rendering AI crawlers see.
 6. **Receipts.** The dated facts live in one evidence file with a credibility rating and a primary source for each, plus a myths table, so the main instructions don't go stale and every number can be traced.
-7. **A short main file.** SKILL.md is 184 lines. References load only when the agent reaches the step that needs them.
+7. **The rules that carry legal or policy risk.** The FTC's rule on consumer reviews, disclosure for employees and paid placements, Google's link spam and scaled-content policies, and the extra bar for health and finance pages. It also covers the newer ground the others skip: product feeds and AI shopping results, pages AI agents have to use, and domain moves.
+8. **A short main file.** SKILL.md is 184 lines. References load only when the agent reaches the step that needs them.
 
-### Where Elmo fits
+## How it compares in practice
+
+Reading the skills tells you what they claim. To see what they do to an agent's answers, we ran a benchmark. We wrote 32 evals designed to be neutral and not Elmo-specific: no question mentions Elmo or needs a tracking tool, and they cover the work the other skills are built for too, including rewriting a page, fixing JSON-LD, local and ecommerce listings, hreflang, YouTube, rebrands, and review policy. Each comes with fixture files where it needs them (HTML, robots.txt, a CSV of tracked answers) and a rubric of 4–8 checks. Each check is either a fact with a primary source or a judgement call with a stated reason, and a separate review pass loosened any check that favored one school of thought.
+
+Claude Sonnet answered all 32 with each skill installed, and with none, three times each. Claude Opus graded every answer against the rubric without knowing which skill produced it.
+
+| Skill | Checks passed | Facts right | Quality (1–5) | Factual errors per run |
+|---|---|---|---|---|
+| **elmohq `aeo`** | **98.8%** | **98.5%** | **4.88** | **0.3** |
+| Sanity `seo-aeo-best-practices` | 95.5% | 92.7% | 4.49 | 4.3 |
+| AgriciDaniel `seo-geo` | 95.5% | 92.7% | 4.49 | 3.7 |
+| `bencium-aeo` | 94.9% | 92.1% | 4.51 | 4.7 |
+| resciencelab `seo-geo` | 94.7% | 91.8% | 4.42 | 4.0 |
+| No skill | 94.0% | 90.3% | 4.31 | 4.0 |
+| coreyhaines31 `ai-seo` | 93.4% | 90.9% | 4.43 | 5.3 |
+
+The judgement checks barely separate anyone: Sonnet already gives sensible advice, and every setup passed 96–99% of them. The difference is in the facts. Without help, the model often says FAQ rich results still show for health and government sites, that snippet controls are the only way out of AI Overviews, and that a canonical tag fixes syndicated copies. Most of the popular skills don't correct those, and the most-installed one scored below no skill at all.
+
+Two caveats. We revised `aeo` after earlier rounds of this benchmark, so its score is optimistic; before those revisions it passed 95.9% of checks, with 1.0 factual error per run, still the best on both. And Claude graded Claude. The [evals, fixtures, and sources](https://github.com/elmohq/elmo/tree/main/skills/aeo/evals) are in the repository, so you can run them against any skill.
+
+## Where Elmo fits
 
 Measurement is the step the skill can't do alone, because it needs the same prompts run many times across engines. That's what [Elmo](https://www.elmohq.com) does: it runs a brand's prompts across ChatGPT, Google AI Overviews and AI Mode, Perplexity, Gemini, Copilot, and others on a schedule, and records mentions, citations, and fan-out queries. The skill connects to it over [MCP](/docs/api/mcp) and maps each diagnostic question to a tool call.
 
