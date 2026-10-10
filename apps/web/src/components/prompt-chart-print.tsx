@@ -28,6 +28,8 @@ interface PromptRunData {
 	provider: string | null;
 	version: string;
 	webSearchEnabled: boolean;
+	country: string | null;
+	language: string | null;
 	rawOutput: any;
 	webQueries: string[];
 }

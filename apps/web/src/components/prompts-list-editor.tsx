@@ -11,6 +11,9 @@
 
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { DEFAULT_COUNTRY } from "@workspace/config/countries";
+import { DEFAULT_LANGUAGE } from "@workspace/config/languages";
+import type { Market } from "@workspace/config/markets";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -19,7 +22,7 @@ import {
 	premiumSlotsUsed,
 	selectPremiumModels,
 } from "@workspace/config/plans";
-import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
+import { describeSkipped, parseBulkPromptsInMarkets } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
@@ -34,6 +37,8 @@ import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { MarketsPicker } from "@/components/market-picker";
+import { PromptMarketChips } from "@/components/prompt-market-chips";
 import { useOrganizationParams } from "@/hooks/use-route-params";
 
 export interface EditablePrompt {
@@ -41,6 +46,11 @@ export interface EditablePrompt {
 	_key: string;
 	value: string;
 	enabled: boolean;
+	/** Editable until the prompt is saved; after that it's part of what the prompt measures. */
+	country: string;
+	language: string;
+	/** Prompts sharing one are the same question in other markets, edited as one row. */
+	groupId: string;
 	tags: string[];
 	systemTags: string[];
 	premiumModels: string[];
@@ -56,6 +66,9 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		_key: uuidv4(),
 		value: partial?.value ?? "",
 		enabled: partial?.enabled ?? true,
+		country: partial?.country ?? DEFAULT_COUNTRY,
+		language: partial?.language ?? DEFAULT_LANGUAGE,
+		groupId: partial?.groupId ?? uuidv4(),
 		tags: partial?.tags ?? [],
 		systemTags: partial?.systemTags ?? [],
 		premiumModels: partial?.premiumModels ?? [],
@@ -174,6 +187,9 @@ interface PromptsListEditorProps {
 	changedKeys?: ReadonlySet<string>;
 	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
 	premium?: PremiumAllowance;
+	/** The market new prompts start in. Omit to hide markets and add every
+	 *  prompt in the default one (the onboarding wizard). */
+	newPromptMarket?: Market;
 }
 
 /**
@@ -181,13 +197,19 @@ interface PromptsListEditorProps {
  * the rules (trim, dedupe, cap) are tested without a DOM; it runs on every
  * keystroke only to label the button and warn about what will be dropped.
  */
-function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void) {
+function useBulkPaste(
+	filled: (Market & { value: string })[],
+	defaultMarket: Market,
+	onAdd: (prompts: { value: string; country: string; language: string }[]) => void,
+) {
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
+	const [bulkMarkets, setBulkMarkets] = useState<Market[] | null>(null);
+	const markets = useMemo(() => bulkMarkets ?? [defaultMarket], [bulkMarkets, defaultMarket]);
 
 	const bulkPreview = useMemo(
-		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: MAX_PROMPTS }),
-		[bulkText, filledValues],
+		() => parseBulkPromptsInMarkets(bulkText, { existing: filled, markets, limit: MAX_PROMPTS }),
+		[bulkText, filled, markets],
 	);
 
 	// Over capacity blocks the whole paste rather than quietly taking the lines
@@ -196,6 +218,7 @@ function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void)
 	const closeBulk = () => {
 		setBulkOpen(false);
 		setBulkText("");
+		setBulkMarkets(null);
 	};
 
 	return {
@@ -203,6 +226,8 @@ function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void)
 		setBulkOpen,
 		bulkText,
 		setBulkText,
+		bulkMarkets: markets,
+		setBulkMarkets,
 		bulkPreview,
 		bulkNotice: bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null,
 		bulkError:
@@ -231,11 +256,15 @@ function useRowSelection(prompts: EditablePrompt[]) {
 		selectedKeys,
 		liveSelectedCount,
 		allSelected,
-		toggleSelect: (key: string) =>
+		/** Toggles a row, which is every market of its prompt together. */
+		toggleSelect: (keys: string[]) =>
 			setSelectedKeys((prev) => {
 				const next = new Set(prev);
-				if (next.has(key)) next.delete(key);
-				else next.add(key);
+				const on = keys.every((key) => next.has(key));
+				for (const key of keys) {
+					if (on) next.delete(key);
+					else next.add(key);
+				}
 				return next;
 			}),
 		toggleSelectAll: () => setSelectedKeys(allSelected ? new Set() : new Set(prompts.map((p) => p._key))),
@@ -329,6 +358,7 @@ function PromptRow({
 	update,
 	allTagOptions,
 	showSystemTags,
+	markets,
 	changedKeys,
 	premium,
 	premiumAtCapacity,
@@ -342,6 +372,8 @@ function PromptRow({
 	update: (index: number, patch: Partial<EditablePrompt>) => void;
 	allTagOptions: { value: string }[];
 	showSystemTags: boolean;
+	/** The prompt's market chips, shown under its text. */
+	markets?: ReactNode;
 	changedKeys?: ReadonlySet<string>;
 	premium?: PremiumAllowance;
 	premiumAtCapacity: boolean;
@@ -360,6 +392,7 @@ function PromptRow({
 			{changedKeys?.has(prompt._key) && <span className="sr-only">Has unsaved changes</span>}
 			{/* Mobile: stacked, no selection/bulk */}
 			<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < total - 1 ? "border-b" : ""}`}>
+				{markets}
 				<div className="flex items-start gap-2">
 					<Input
 						value={prompt.value}
@@ -399,12 +432,15 @@ function PromptRow({
 				<div className="flex justify-center pt-2">
 					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
 				</div>
-				<Input
-					value={prompt.value}
-					onChange={(e) => update(index, { value: e.target.value })}
-					placeholder="Enter prompt text..."
-					className="min-w-0"
-				/>
+				<div className="min-w-0 space-y-1.5">
+					<Input
+						value={prompt.value}
+						onChange={(e) => update(index, { value: e.target.value })}
+						placeholder="Enter prompt text..."
+						className="min-w-0"
+					/>
+					{markets}
+				</div>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
 				<TagsInput
 					value={prompt.tags}
@@ -436,7 +472,30 @@ function PromptRow({
 	);
 }
 
-function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
+type RowBlock = { prompt: EditablePrompt; index: number }[];
+
+/** Consecutive rows of one group: one prompt in several markets, shown as one row. */
+function rowBlocks(prompts: EditablePrompt[], grouped: boolean): RowBlock[] {
+	const blocks: RowBlock[] = [];
+	prompts.forEach((prompt, index) => {
+		const last = blocks.at(-1);
+		if (grouped && last && last[0].prompt.groupId === prompt.groupId) last.push({ prompt, index });
+		else blocks.push([{ prompt, index }]);
+	});
+	return blocks;
+}
+
+/** Inserts a row right after the last member of its group, so a group stays together on screen. */
+function placeInGroup(prompts: EditablePrompt[], entry: EditablePrompt): EditablePrompt[] {
+	let last = -1;
+	prompts.forEach((prompt, i) => {
+		if (prompt.groupId === entry.groupId) last = i;
+	});
+	if (last === -1) return [...prompts, entry];
+	return [...prompts.slice(0, last + 1), entry, ...prompts.slice(last + 1)];
+}
+
+function BulkPasteBox({ bulk, showMarket }: { bulk: ReturnType<typeof useBulkPaste>; showMarket: boolean }) {
 	return (
 		<div className="space-y-2 rounded-md border bg-muted/40 p-3">
 			<Textarea
@@ -446,6 +505,15 @@ function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
 				rows={6}
 				aria-label="Prompts to add, one per line"
 			/>
+			{showMarket && (
+				<div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+					<span>Track in</span>
+					<MarketsPicker value={bulk.bulkMarkets} onChange={bulk.setBulkMarkets} />
+					{bulk.bulkMarkets.length > 1 && (
+						<span className="text-xs">Each line becomes one prompt in every market.</span>
+					)}
+				</div>
+			)}
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
 					size="sm"
@@ -476,6 +544,7 @@ export function PromptsListEditor({
 	showSystemTags = true,
 	changedKeys,
 	premium,
+	newPromptMarket,
 }: PromptsListEditorProps) {
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
@@ -488,18 +557,52 @@ export function PromptsListEditor({
 	};
 	const add = () => {
 		if (prompts.length >= MAX_PROMPTS) return;
-		onChange([...prompts, newPromptEntry()]);
+		onChange([...prompts, newPromptEntry(defaultMarket)]);
 	};
 
 	// A row only takes a slot once it has text. Blank rows are how this editor
 	// stages a new prompt and they're dropped on save, so counting them against
 	// the cap would refuse prompts the list still has room for.
-	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
-	const atCapacity = filledValues.length >= MAX_PROMPTS;
+	const filled = useMemo(() => prompts.filter((p) => p.value.trim().length > 0), [prompts]);
+	const atCapacity = filled.length >= MAX_PROMPTS;
+	const showMarket = newPromptMarket !== undefined;
+	const defaultMarket = newPromptMarket ?? { country: DEFAULT_COUNTRY, language: DEFAULT_LANGUAGE };
 
-	const bulk = useBulkPaste(filledValues, (added) =>
-		onChange([...prompts, ...added.map((value) => newPromptEntry({ value }))]),
-	);
+	// One paste line added in several countries becomes one group.
+	const bulk = useBulkPaste(filled, defaultMarket, (added) => {
+		const groupByValue = new Map<string, string>();
+		const entries = added.map((prompt) => {
+			const groupId = groupByValue.get(prompt.value) ?? uuidv4();
+			groupByValue.set(prompt.value, groupId);
+			return newPromptEntry({ ...prompt, groupId });
+		});
+		onChange([...prompts, ...entries]);
+	});
+
+	// Which market a multi-market prompt's row is showing; its first until another is picked.
+	const [activeByGroup, setActiveByGroup] = useState<Record<string, string>>({});
+	const activeMember = (block: RowBlock) =>
+		block.find(({ prompt }) => prompt._key === activeByGroup[prompt.groupId]) ?? block[0];
+	const showMember = (groupId: string, key: string) => setActiveByGroup((prev) => ({ ...prev, [groupId]: key }));
+
+	const marketChips = (block: RowBlock) => {
+		const active = activeMember(block).prompt;
+		return (
+			<PromptMarketChips
+				members={block.map(({ prompt }) => prompt)}
+				activeKey={active._key}
+				onSelect={(key) => showMember(active.groupId, key)}
+				onAdd={(market) => {
+					// Starts from the shown market's text, to be translated.
+					const entry = newPromptEntry({ value: active.value, tags: active.tags, groupId: active.groupId, ...market });
+					onChange(placeInGroup(prompts, entry));
+					showMember(active.groupId, entry._key);
+				}}
+				onChangeMarket={(key, market) => onChange(prompts.map((p) => (p._key === key ? { ...p, ...market } : p)))}
+				onRemove={(key) => onChange(prompts.filter((p) => p._key !== key))}
+			/>
+		);
+	};
 
 	const { selectedKeys, liveSelectedCount, allSelected, toggleSelect, toggleSelectAll, clearSelection } =
 		useRowSelection(prompts);
@@ -517,8 +620,8 @@ export function PromptsListEditor({
 	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
 
 	// Desktop layout only — column order is
-	// [select] [text] [system?] [tags] [premium?] [switch]. Mobile renders a
-	// stacked per-prompt block instead (no selection, no bulk).
+	// [select] [text] [system?] [country?] [tags] [premium?] [switch]. Mobile
+	// renders a stacked per-prompt block instead (no selection, no bulk).
 	const gridCols = GRID_COLS[`${showSystemTags ? "system" : "plain"}-${premium ? "premium" : "basic"}`];
 
 	return (
@@ -588,23 +691,39 @@ export function PromptsListEditor({
 				</div>
 			) : (
 				<div className="space-y-3">
-					{prompts.map((prompt, index) => (
-						<PromptRow
-							key={prompt._key}
-							prompt={prompt}
-							index={index}
-							total={prompts.length}
-							update={update}
-							allTagOptions={allTagOptions}
-							showSystemTags={showSystemTags}
-							changedKeys={changedKeys}
-							premium={premium}
-							premiumAtCapacity={premiumAtCapacity}
-							gridCols={gridCols}
-							selected={selectedKeys.has(prompt._key)}
-							onToggleSelect={() => toggleSelect(prompt._key)}
-						/>
-					))}
+					{rowBlocks(prompts, showMarket).map((block) => {
+						const { prompt, index } = activeMember(block);
+						const keys = block.map((member) => member.prompt._key);
+						const changed = keys.some((key) => changedKeys?.has(key));
+						// Tags describe the question, so they follow it across markets;
+						// text, the switch, and premium pairings are per market.
+						const updateRow = (i: number, patch: Partial<EditablePrompt>) =>
+							patch.tags
+								? onChange(
+										prompts.map((p, at) =>
+											at === i ? { ...p, ...patch } : keys.includes(p._key) ? { ...p, tags: patch.tags ?? p.tags } : p,
+										),
+									)
+								: update(i, patch);
+						return (
+							<PromptRow
+								key={prompt.groupId + (showMarket ? "" : prompt._key)}
+								prompt={prompt}
+								index={index}
+								total={prompts.length}
+								update={updateRow}
+								allTagOptions={allTagOptions}
+								showSystemTags={showSystemTags}
+								markets={showMarket ? marketChips(block) : undefined}
+								changedKeys={changed ? new Set([prompt._key]) : undefined}
+								premium={premium}
+								premiumAtCapacity={premiumAtCapacity}
+								gridCols={gridCols}
+								selected={keys.every((key) => selectedKeys.has(key))}
+								onToggleSelect={() => toggleSelect(keys)}
+							/>
+						);
+					})}
 				</div>
 			)}
 
@@ -633,7 +752,7 @@ export function PromptsListEditor({
 				</div>
 			)}
 
-			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} />}
+			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} showMarket={showMarket} />}
 
 			{atCapacity && (
 				<p className="text-xs text-muted-foreground">

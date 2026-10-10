@@ -4,6 +4,12 @@ export interface SubmittedPrompt {
 	id?: string;
 	value: string;
 	enabled: boolean;
+	/** Only read for a new prompt; a saved prompt's country never changes. */
+	country?: string;
+	/** Likewise fixed once saved. */
+	language?: string;
+	/** Only read for a new prompt; omitted, it starts a group of its own. */
+	groupId?: string;
 	tags?: string[];
 	premiumModels?: string[];
 }
@@ -67,4 +73,24 @@ export function planPromptSave(
 	}
 
 	return { updates, inserts };
+}
+
+/**
+ * A write that would put two live prompts of one group in the same market —
+ * caught by the database's unique index rather than checked ahead of every
+ * write path.
+ */
+export class PromptMarketTakenError extends Error {
+	constructor() {
+		super("This prompt is already tracked in that market. Each market can hold one version of a prompt.");
+		this.name = "PromptMarketTakenError";
+	}
+}
+
+/** Rethrows the group-market unique violation as `PromptMarketTakenError`, anything else as is. */
+export function rethrowMarketTaken(error: unknown, indexName: string): never {
+	const pgError = (error as { cause?: unknown })?.cause ?? error;
+	const { code, constraint } = (pgError ?? {}) as { code?: string; constraint?: string };
+	if (code === "23505" && constraint === indexName) throw new PromptMarketTakenError();
+	throw error;
 }

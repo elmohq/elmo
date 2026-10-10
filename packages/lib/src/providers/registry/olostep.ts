@@ -5,6 +5,8 @@ import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { nonEmptyStrings } from "./scrape-shared";
 
+const OLOSTEP_COUNTRIES = new Set(["US", "GB", "DE", "FR", "SG"]);
+
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
 		parserId: "@olostep/chatgpt-results",
@@ -112,7 +114,14 @@ export const olostep: Provider = {
 		return null;
 	},
 
-	async run(model: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
+	// Olostep runs each batch through a browser in the requested country, so
+	// every surface localizes the same way — but only from the countries its
+	// SDK names; others aren't documented.
+	localizes(_config: ModelConfig, country: string) {
+		return OLOSTEP_COUNTRIES.has(country);
+	},
+
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const parserConfig = OLOSTEP_PARSERS[model];
 		if (!parserConfig) throw new Error(`Olostep does not support model "${model}"`);
 
@@ -120,7 +129,10 @@ export const olostep: Provider = {
 		const url = parserConfig.urlTemplate(prompt);
 
 		// Use batch API — the /scrapes endpoint doesn't support all parsers
-		const batch = await client.batches.create([{ url, customId: "1" }], { parser: { id: parserConfig.parserId } });
+		const batch = await client.batches.create([{ url, customId: "1" }], {
+			parser: { id: parserConfig.parserId },
+			...(options?.country ? { country: options.country } : {}),
+		});
 
 		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 1200 });
 

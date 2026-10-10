@@ -1,5 +1,7 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { countryName } from "@workspace/config/countries";
+import { languageName } from "@workspace/config/languages";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -19,6 +21,7 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
+import { PromptMarketsPanel } from "@/components/prompt-markets-panel";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SiteIcon } from "@/components/site-icon";
 import { useBrandId } from "@/hooks/use-brand-id";
@@ -44,6 +47,8 @@ type PromptMetadata = {
 	brandId: string;
 	value: string;
 	enabled: boolean;
+	country: string;
+	language: string;
 	tags: string[];
 	systemTags: string[];
 	nextRunAt?: string | null;
@@ -141,6 +146,18 @@ function PromptHeader({
 						</span>
 					) : (
 						<span className="text-muted-foreground">Disabled</span>
+					)}
+
+					{promptMeta && (
+						<>
+							<span className="text-border">|</span>
+							<span className="text-muted-foreground">
+								Asked from{" "}
+								<span className="text-foreground">
+									{countryName(promptMeta.country)} in {languageName(promptMeta.language)}
+								</span>
+							</span>
+						</>
 					)}
 
 					{promptMeta?.nextRunAt && (
@@ -297,6 +314,7 @@ function PromptHistoryPage() {
 	return (
 		<div className="space-y-0">
 			<PromptHeader promptMeta={promptMeta} isMetaLoading={isMetaLoading} onLookbackChange={handleLookbackChange} />
+			<PromptMarketsPanel brandId={brandId} promptId={promptId} />
 
 			{/* TABS */}
 			<div className="border-b border-border">

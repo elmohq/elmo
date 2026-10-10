@@ -1,10 +1,19 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
+import { countryCodeSchema, DEFAULT_COUNTRY } from "@workspace/config/countries";
+import { DEFAULT_LANGUAGE, languageCodeSchema } from "@workspace/config/languages";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { classifyUrl } from "@workspace/lib/citations/domain-lists";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import {
+	brands,
+	competitors,
+	PROMPT_GROUP_MARKET_INDEX,
+	promptRuns,
+	prompts,
+	SYSTEM_TAGS,
+} from "@workspace/lib/db/schema";
 import {
 	assertAllowed,
 	assertPromptSaveAllowed,
@@ -14,6 +23,7 @@ import {
 } from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
@@ -31,8 +41,8 @@ import {
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { parseTagFilter } from "@/server/prompt-resolution";
-import { planPromptSave } from "@/server/prompt-save";
+import { matchesMarketFilter, parseMarketFilter, parseTagFilter } from "@/server/prompt-resolution";
+import { planPromptSave, rethrowMarketTaken } from "@/server/prompt-save";
 // Server Functions
 // ============================================================================
 
@@ -79,6 +89,8 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			enabled: prompt.enabled,
 			tags: prompt.tags || [],
 			systemTags: prompt.systemTags || [],
+			country: prompt.country,
+			language: prompt.language,
 			nextRunAt,
 		};
 	});
@@ -93,6 +105,9 @@ function summarizePrompt(
 		id: string;
 		value: string;
 		enabled: boolean;
+		country: string;
+		language: string;
+		groupId: string;
 		createdAt: Date;
 		tags: string[] | null;
 		systemTags: string[] | null;
@@ -113,6 +128,9 @@ function summarizePrompt(
 		id: prompt.id,
 		value: prompt.value,
 		enabled: prompt.enabled,
+		country: prompt.country,
+		language: prompt.language,
+		groupId: prompt.groupId,
 		createdAt: prompt.createdAt,
 		totalRuns,
 		brandMentionRate,
@@ -147,6 +165,10 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			/** Comma-joined country codes; a prompt in any of them matches. */
+			countries: z.string().optional(),
+			/** Comma-joined language codes, matched the same way. */
+			languages: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
@@ -181,14 +203,16 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		// Collect all user tags (system tags are added separately)
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
+		const market = parseMarketFilter(data);
 
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
 			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
 		});
 
-		const filteredPrompts =
-			tagFilter.length > 0 ? promptSummaries.filter((p) => tagFilter.some((t) => p.tags.includes(t))) : promptSummaries;
+		const filteredPrompts = promptSummaries.filter(
+			(p) => (tagFilter.length === 0 || tagFilter.some((t) => p.tags.includes(t))) && matchesMarketFilter(p, market),
+		);
 		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
 		return {
@@ -488,6 +512,10 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					id: z.string().optional(),
 					value: z.string(),
 					enabled: z.boolean().optional().default(true),
+					country: countryCodeSchema.optional(),
+					language: languageCodeSchema.optional(),
+					/** Only read for a new prompt: joins it to an existing prompt as another market. */
+					groupId: z.guid().optional(),
 					tags: z.array(z.string()).optional(),
 					/**
 					 * Premium models to track this prompt on, grounded — one of the org's
@@ -517,37 +545,42 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
 
-		const saved = await db.transaction(async (tx) => {
-			for (const { id, prompt, after } of updates) {
-				await tx
-					.update(prompts)
-					.set({
-						value: prompt.value,
-						enabled: prompt.enabled,
-						tags: prompt.tags || [],
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
-						premiumModels: after.premiumModels,
-					})
-					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
-			}
+		const saved = await db
+			.transaction(async (tx) => {
+				for (const { id, prompt, after } of updates) {
+					await tx
+						.update(prompts)
+						.set({
+							value: prompt.value,
+							enabled: prompt.enabled,
+							tags: prompt.tags || [],
+							systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+							premiumModels: after.premiumModels,
+						})
+						.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
+				}
 
-			if (inserts.length > 0) {
-				await tx.insert(prompts).values(
-					inserts.map(({ prompt, after }) => ({
-						brandId: data.brandId,
-						value: prompt.value,
-						enabled: prompt.enabled,
-						tags: prompt.tags || [],
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
-						premiumModels: after.premiumModels,
-					})),
-				);
-			}
+				if (inserts.length > 0) {
+					await tx.insert(prompts).values(
+						inserts.map(({ prompt, after }) => ({
+							brandId: data.brandId,
+							value: prompt.value,
+							enabled: prompt.enabled,
+							country: prompt.country ?? DEFAULT_COUNTRY,
+							language: prompt.language ?? DEFAULT_LANGUAGE,
+							groupId: prompt.groupId ?? uuidv4(),
+							tags: prompt.tags || [],
+							systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+							premiumModels: after.premiumModels,
+						})),
+					);
+				}
 
-			return tx.query.prompts.findMany({
-				where: eq(prompts.brandId, data.brandId),
-			});
-		});
+				return tx.query.prompts.findMany({
+					where: eq(prompts.brandId, data.brandId),
+				});
+			})
+			.catch((error) => rethrowMarketTaken(error, PROMPT_GROUP_MARKET_INDEX));
 
 		const newPromptIds = saved.filter((p) => !existingIds.has(p.id)).map((p) => p.id);
 		if (newPromptIds.length > 0) {

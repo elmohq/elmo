@@ -11,6 +11,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requirePromptInScope } from "@/lib/api/scope";
+import { PromptMarketTakenError } from "@/server/prompt-save";
 import {
 	deletePrompt,
 	PromptNotFoundError,
@@ -26,8 +27,10 @@ const promptParams = z.object({ promptId: z.guid("Invalid prompt ID format") });
 /** The writes re-check under their own lock, so a prompt that a concurrent
  * delete takes between the scope check and the write reads as 404 here rather
  * than as a 500. */
-const mapPromptNotFound = (err: unknown) =>
-	err instanceof PromptNotFoundError ? new ApiError(404, "Not Found", err.message) : undefined;
+const mapPromptError = (err: unknown) => {
+	if (err instanceof PromptNotFoundError) return new ApiError(404, "Not Found", err.message);
+	return err instanceof PromptMarketTakenError ? new ApiError(409, "Conflict", err.message) : undefined;
+};
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 	server: {
@@ -42,7 +45,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				params: promptParams,
 				body: updatePromptInputSchema,
 				scopes: ["write"],
-				mapError: mapPromptNotFound,
+				mapError: mapPromptError,
 				handle: async ({ params, body, auth }) => {
 					const { brand } = await requirePromptInScope(auth, params.promptId);
 					return toPromptSummary(await updatePrompt(brand, params.promptId, body));
@@ -56,7 +59,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				params: promptParams,
 				adminOnly: true,
 				adminOnlyHint: "Send PATCH with `enabled: false` to stop tracking this prompt without losing its history.",
-				mapError: mapPromptNotFound,
+				mapError: mapPromptError,
 				handle: async ({ params, auth }) => {
 					await requirePromptInScope(auth, params.promptId);
 					const { prompt, deletedRunsCount } = await deletePrompt(params.promptId);

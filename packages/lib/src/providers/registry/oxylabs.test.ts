@@ -110,13 +110,14 @@ describe("oxylabs provider", () => {
 			.mockResolvedValueOnce(jsonResponse(RESULT_PAYLOAD));
 		vi.stubGlobal("fetch", fetchMock);
 
-		await oxylabs.run("google-ai-mode", "What are the best speakers?", { webSearch: true });
+		await oxylabs.run("google-ai-mode", "What are the best speakers?", { webSearch: true, country: "DE" });
 
 		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
 			source: "google_ai_mode",
 			query: "What are the best speakers?",
 			parse: true,
 			render: "html",
+			geo_location: "Germany",
 		});
 		expect(fetchMock.mock.calls[1][0]).toBe("https://data.oxylabs.io/v1/queries/job-google/results");
 	});

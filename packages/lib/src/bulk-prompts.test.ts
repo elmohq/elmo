@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeSkipped, parseBulkPrompts } from "./bulk-prompts";
+import { describeSkipped, parseBulkPrompts, parseBulkPromptsInMarkets } from "./bulk-prompts";
 import { MAX_PROMPTS } from "./constants";
 
 describe("bulk-prompts", () => {
@@ -122,5 +122,36 @@ describe("bulk-prompts", () => {
 				describeSkipped({ blank: 0, duplicateOfExisting: [], duplicateInPaste: [], overCapacity: ["b", "c"] }),
 			).toBeNull();
 		});
+	});
+});
+
+const US = { country: "US", language: "en" };
+const GB = { country: "GB", language: "en" };
+const DE = { country: "DE", language: "de" };
+
+describe("parseBulkPromptsInMarkets", () => {
+	it("adds every line once per market", () => {
+		const result = parseBulkPromptsInMarkets("best shoes\nbest boots", { markets: [US, GB] });
+		expect(result.added).toEqual([
+			{ value: "best shoes", ...US },
+			{ value: "best shoes", ...GB },
+			{ value: "best boots", ...US },
+			{ value: "best boots", ...GB },
+		]);
+	});
+
+	it("treats the same text in another market as a new prompt", () => {
+		const result = parseBulkPromptsInMarkets("Best Shoes", {
+			existing: [{ value: "best shoes", ...US }],
+			markets: [US, DE],
+		});
+		expect(result.added).toEqual([{ value: "Best Shoes", ...DE }]);
+		expect(result.skipped.duplicateOfExisting).toEqual(["Best Shoes"]);
+	});
+
+	it("counts each market's copy against the list's capacity", () => {
+		const result = parseBulkPromptsInMarkets("best shoes\nbest boots", { markets: [US, GB], limit: 3 });
+		expect(result.added).toHaveLength(3);
+		expect(result.skipped.overCapacity).toEqual(["best boots"]);
 	});
 });

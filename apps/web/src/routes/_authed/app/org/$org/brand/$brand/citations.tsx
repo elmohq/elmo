@@ -39,6 +39,8 @@ function CitationsPage() {
 	} = useCitations(brandId, {
 		lookback: filters.lookback,
 		tags: filters.tags.length > 0 ? filters.tags : undefined,
+		countries: filters.countries,
+		languages: filters.languages,
 		model: modelParam,
 	});
 

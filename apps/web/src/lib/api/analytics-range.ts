@@ -49,10 +49,17 @@ export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
 
 export type { AnalyticsFilters } from "@/server/analytics-core";
 
-export function parseAnalyticsFilters(url: URL): { model?: string; tags?: string } {
+export function parseAnalyticsFilters(url: URL): {
+	model?: string;
+	tags?: string;
+	countries?: string;
+	languages?: string;
+} {
 	return {
 		model: url.searchParams.get("model") ?? undefined,
 		tags: url.searchParams.get("tags") ?? undefined,
+		countries: url.searchParams.get("countries") ?? undefined,
+		languages: url.searchParams.get("languages") ?? undefined,
 	};
 }
 

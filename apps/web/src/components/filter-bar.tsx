@@ -14,7 +14,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
+import { ChevronDown, Clock, Globe, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
@@ -24,6 +24,8 @@ import { type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 
 export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 
+import { countryName } from "@workspace/config/countries";
+import { languageName } from "@workspace/config/languages";
 import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@workspace/config/model-filter";
 // Filter state lives in the URL, validated by the `$brand` layout route's
 // search schema (see `validateBrandFilterSearch`). The widgets here keep
@@ -33,6 +35,7 @@ import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@wo
 // the URL itself is the authoritative filter state.
 import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
 import { getAvailableModels, groupTrackedTargets, type TrackedTarget } from "@/lib/model-filter";
+import { countriesInUse, languagesInUse } from "@/lib/prompt-markets";
 
 /** The model filter's trigger glyph. `all` is the no-filter sentinel; every
  *  other value names one of the brand's targets, whose logo is decided by
@@ -256,6 +259,111 @@ function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 }
 
 // ------------------------------------------------------------------
+// Markets dropdown — one control for the "countries" and "languages" URL
+// keys. Reads the brand's own prompts, so it only appears once they span two
+// countries or two languages.
+// ------------------------------------------------------------------
+
+function MarketsDropdown() {
+	const { data: brand } = useBrand();
+	const prompts = brand?.prompts ?? [];
+	const countries = useMemo(() => countriesInUse(prompts), [prompts]);
+	const languages = useMemo(() => languagesInUse(prompts), [prompts]);
+	const urlCountries = useSearch({ strict: false, select: (s) => s.countries });
+	const urlLanguages = useSearch({ strict: false, select: (s) => s.languages });
+	const setFilters = useFilterNavigate();
+	const selected = {
+		countries: splitTags(urlCountries),
+		languages: splitTags(urlLanguages),
+	};
+	const [open, setOpen] = useState(false);
+
+	const total = selected.countries.length + selected.languages.length;
+	// A link can still carry a filter after its prompts are gone; keep the
+	// dropdown up so it can be cleared.
+	if (countries.length < 2 && languages.length < 2 && total === 0) return null;
+
+	const toggle = (key: "countries" | "languages", code: string) => {
+		const current = selected[key];
+		setFilters({ [key]: joinTags(current.includes(code) ? current.filter((c) => c !== code) : [...current, code]) });
+	};
+	const label =
+		total === 1
+			? selected.countries.length === 1
+				? countryName(selected.countries[0])
+				: languageName(selected.languages[0])
+			: "Markets";
+
+	const section = (
+		key: "countries" | "languages",
+		title: string,
+		codes: string[],
+		nameOf: (code: string) => string,
+	) => {
+		const all = [...new Set([...codes, ...selected[key]])];
+		if (all.length < 2 && selected[key].length === 0) return null;
+		return (
+			<div className="py-1">
+				<p className="px-3 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">{title}</p>
+				{all.map((code) => {
+					const checked = selected[key].includes(code);
+					return (
+						<button
+							key={code}
+							type="button"
+							onClick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								toggle(key, code);
+							}}
+							className={`flex w-full items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
+								checked ? "bg-accent" : "hover:bg-muted"
+							}`}
+						>
+							<Checkbox checked={checked} className="pointer-events-none" />
+							<span className="flex-1">{nameOf(code)}</span>
+						</button>
+					);
+				})}
+			</div>
+		);
+	};
+
+	return (
+		<Popover open={open} onOpenChange={setOpen} modal={false}>
+			<PopoverTrigger
+				render={
+					<FilterTriggerButton
+						icon={<Globe className="size-3.5" />}
+						label={label}
+						active={total > 0}
+						badgeCount={total > 1 ? total : undefined}
+					/>
+				}
+			/>
+			<PopoverContent align="start" className="w-64 p-0" initialFocus={false}>
+				<div className="flex items-center justify-between px-3 h-10 border-b">
+					<span className="font-medium text-sm">Markets</span>
+					{total > 0 && (
+						<button
+							type="button"
+							onClick={() => setFilters({ countries: undefined, languages: undefined })}
+							className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+						>
+							Clear
+						</button>
+					)}
+				</div>
+				<div className="max-h-72 divide-y overflow-y-auto">
+					{section("countries", "Countries", countries, countryName)}
+					{section("languages", "Languages", languages, languageName)}
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+// ------------------------------------------------------------------
 // Search input — subscribes to only the "q" URL key.
 // Debounces keystrokes and uses an effect-based sync (no render-time
 // setState) to avoid flashing back when the URL echo races with typing.
@@ -335,15 +443,17 @@ function SearchInput({
 }
 
 // ------------------------------------------------------------------
-// Result count — subscribes only to the two URL keys that gate its
-// visibility (tags + q). Parent passes the count as a prop so the
+// Result count — subscribes only to the URL keys that gate its
+// visibility (tags, countries, languages, q). Parent passes the count as a prop so the
 // prompts-summary query is read once by a single owner.
 // ------------------------------------------------------------------
 
 function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
 	const tags = useSearch({ strict: false, select: (s) => s.tags });
+	const countries = useSearch({ strict: false, select: (s) => s.countries });
+	const languages = useSearch({ strict: false, select: (s) => s.languages });
 	const q = useSearch({ strict: false, select: (s) => s.q });
-	const active = Boolean(tags) || Boolean(q);
+	const active = Boolean(tags) || Boolean(countries) || Boolean(languages) || Boolean(q);
 	if (!active || count === undefined) return null;
 	const showTotal = total !== undefined && total !== count;
 	return (
@@ -389,6 +499,7 @@ export function FilterBar({
 			<div className="flex flex-wrap items-center gap-1.5">
 				{showModelSelector && <ModelDropdown trackedTargets={trackedTargets} />}
 				<TagsDropdown availableTags={availableTags} />
+				<MarketsDropdown />
 				<LookbackDropdown />
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />

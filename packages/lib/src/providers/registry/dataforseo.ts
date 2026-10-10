@@ -13,9 +13,8 @@ import {
 	assertPromptLength,
 	createDfsAiApi,
 	createDfsSerpApi,
-	DFS_LANGUAGE_CODE,
-	DFS_LOCATION_CODE,
 	dfsFirstResult,
+	dfsLocale,
 	dfsResultOrError,
 	fanOutQueries,
 	isDataforseoConfigured,
@@ -56,27 +55,31 @@ const LLM_MODELS: Record<string, { defaultModelName: string; call: keyof typeof 
  * DataForSEO has no Perplexity scraper.
  */
 const SCRAPER_CALLS = {
-	chatgpt: (api: client.AiOptimizationApi, prompt: string) =>
+	chatgpt: (api: client.AiOptimizationApi, prompt: string, locale: DfsLocale) =>
 		api.chatGptLlmScraperLiveAdvanced([
 			new client.AiOptimizationChatGptLlmScraperLiveAdvancedRequestInfo({
 				keyword: prompt,
-				location_code: DFS_LOCATION_CODE,
-				language_code: DFS_LANGUAGE_CODE,
+				...locale,
 				// ChatGPT decides per prompt whether to search; force it so a tracked
 				// run always reflects the browsing experience. Gemini always searches
 				// and has no equivalent flag.
 				force_web_search: true,
 			}),
 		]),
-	gemini: (api: client.AiOptimizationApi, prompt: string) =>
+	gemini: (api: client.AiOptimizationApi, prompt: string, locale: DfsLocale) =>
 		api.geminiLlmScraperLiveAdvanced([
 			new client.AiOptimizationGeminiLlmScraperLiveAdvancedRequestInfo({
 				keyword: prompt,
-				location_code: DFS_LOCATION_CODE,
-				language_code: DFS_LANGUAGE_CODE,
+				...locale,
 			}),
 		]),
 } as const;
+
+type DfsLocale = ReturnType<typeof dfsLocale>;
+
+// Countries in Elmo's list that the ChatGPT and Gemini LLM Scraper location
+// lists don't include (checked against both endpoints' location lists).
+const SCRAPER_UNLISTED_COUNTRIES = new Set(["HK", "TW"]);
 
 // Google AI Overview is the AI summary block on a standard Google results page.
 // It comes from the Organic SERP endpoint (not AI Mode's dedicated SERP), so it
@@ -112,13 +115,12 @@ const LLM_CALLS = {
 		api.geminiLlmResponsesLive(body.map((b) => new client.AiOptimizationGeminiLlmResponsesLiveRequestInfo(b))),
 } as const;
 
-async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
+async function runGoogleAiMode(prompt: string, locale: DfsLocale): Promise<ScrapeResult> {
 	assertPromptLength(prompt);
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: DFS_LOCATION_CODE,
-		language_code: DFS_LANGUAGE_CODE,
+		...locale,
 		depth: 10,
 	});
 
@@ -138,13 +140,12 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	};
 }
 
-function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+function runGoogleAiOverview(prompt: string, locale: DfsLocale): Promise<ScrapeResult> {
 	assertPromptLength(prompt);
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleOrganicLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: DFS_LOCATION_CODE,
-		language_code: DFS_LANGUAGE_CODE,
+		...locale,
 		depth: 10,
 		// AI Overviews are generated on demand; without this DataForSEO only
 		// returns whatever it had cached, so most runs would come back empty.
@@ -247,9 +248,10 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 		model_name: modelName,
 		web_search: webSearch,
 	};
-	// Do not expose country localization yet: DataForSEO's LLM Responses
-	// support differs by surface/model (ChatGPT has model caveats, Perplexity
-	// only documents it for Sonar models, and Gemini does not document it).
+	// Not localized: LLM Responses support for a search country differs by
+	// model (ChatGPT has model caveats, Perplexity only documents it for Sonar
+	// models, and Gemini does not document it), so `localizes` leaves this
+	// route out and it only runs prompts in the default country.
 
 	const response = await LLM_CALLS[spec.call](api, [body]);
 	const result = dfsFirstResult<{ model_name?: string; fan_out_queries?: unknown }>(response);
@@ -268,8 +270,12 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	};
 }
 
-async function runLlmScraper(model: keyof typeof SCRAPER_CALLS, prompt: string): Promise<ScrapeResult> {
-	const response = await SCRAPER_CALLS[model](createDfsAiApi(), prompt);
+async function runLlmScraper(
+	model: keyof typeof SCRAPER_CALLS,
+	prompt: string,
+	locale: DfsLocale,
+): Promise<ScrapeResult> {
+	const response = await SCRAPER_CALLS[model](createDfsAiApi(), prompt, locale);
 	const result = dfsFirstResult<{ model?: string; fan_out_queries?: unknown }>(response);
 	const raw = sanitizeForJson(response);
 	const citations = extractCitationsFromDataforseoScraper(raw);
@@ -291,6 +297,13 @@ export const dataforseo: Provider = {
 	// A pinned version routes to LLM Responses; without one the surface is scraped.
 	accessFor: dataforseoAccess,
 	docsAnchor: "dataforseo",
+	// The scraped routes take a location and language; LLM Responses doesn't
+	// (see runLlmResponse). The LLM Scraper's location list leaves out a few
+	// countries the Google SERP endpoints serve.
+	localizes: (config, country) =>
+		dataforseoAccess(config) === "scraped" &&
+		!(config.model in SCRAPER_CALLS && SCRAPER_UNLISTED_COUNTRIES.has(country)),
+	sendsLanguage: (config) => dataforseoAccess(config) === "scraped",
 
 	isConfigured: isDataforseoConfigured,
 
@@ -316,15 +329,15 @@ export const dataforseo: Provider = {
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		assertPromptLength(prompt);
 		if (SERP_MODELS.has(model)) {
-			return runGoogleAiMode(prompt);
+			return runGoogleAiMode(prompt, dfsLocale(options));
 		}
 		if (model === AI_OVERVIEW_MODEL) {
-			return runGoogleAiOverview(prompt);
+			return runGoogleAiOverview(prompt, dfsLocale(options));
 		}
 		// Prefer the scraped consumer UI. Pinning a model_name is the opt-in to the
 		// LLM Responses API, which is the only route that can honor one.
 		if (!options?.version && model in SCRAPER_CALLS) {
-			return runLlmScraper(model as keyof typeof SCRAPER_CALLS, prompt);
+			return runLlmScraper(model as keyof typeof SCRAPER_CALLS, prompt, dfsLocale(options));
 		}
 		if (LLM_MODELS[model]) {
 			return runLlmResponse(model, prompt, options);

@@ -3,15 +3,19 @@
  * its own vocabulary. Callers decide the brand is theirs before calling in.
  */
 
+import { countryCodeSchema, DEFAULT_COUNTRY } from "@workspace/config/countries";
+import { DEFAULT_LANGUAGE, languageCodeSchema } from "@workspace/config/languages";
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { citations, PROMPT_GROUP_MARKET_INDEX, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { and, arrayOverlaps, count, desc, eq, ilike, type SQL } from "drizzle-orm";
+import { and, arrayOverlaps, count, desc, eq, ilike, inArray, type SQL } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
+import { rethrowMarketTaken } from "@/server/prompt-save";
 
 export const MAX_PROMPT_BATCH = 100;
 
@@ -33,6 +37,20 @@ const promptValueSchema = z
 
 const promptTagsSchema = z.array(z.string()).describe("Free-form labels used for filtering analytics.");
 
+const promptCountrySchema = countryCodeSchema.describe(
+	`ISO 3166-1 alpha-2 country to ask it from. Defaults to ${DEFAULT_COUNTRY}, and is fixed once the prompt exists: to track another country, add a variant in the same group.`,
+);
+
+const promptLanguageSchema = languageCodeSchema.describe(
+	`Language the prompt is written in, e.g. "de" or "pt-BR". Defaults to ${DEFAULT_LANGUAGE}, and is fixed once the prompt exists.`,
+);
+
+const promptGroupIdSchema = z
+	.guid()
+	.describe(
+		"Another prompt's groupId, to track this as the same question in another market. A group holds one enabled prompt per country and language. Omit to start a new group.",
+	);
+
 export const bulkPromptInputSchema = z.object({
 	brandId: brandIdSchema,
 	prompts: z
@@ -40,6 +58,9 @@ export const bulkPromptInputSchema = z.object({
 			z.object({
 				value: promptValueSchema,
 				tags: promptTagsSchema.optional(),
+				country: promptCountrySchema.optional(),
+				language: promptLanguageSchema.optional(),
+				groupId: promptGroupIdSchema.optional(),
 				enabled: z.boolean().optional().describe("Whether to start sampling it. Defaults to true."),
 				premiumModels: z.array(z.string()).optional().describe("Premium engines to pair this prompt with."),
 			}),
@@ -80,6 +101,9 @@ const PROMPT_COLUMNS = {
 	brandId: prompts.brandId,
 	value: prompts.value,
 	enabled: prompts.enabled,
+	country: prompts.country,
+	language: prompts.language,
+	groupId: prompts.groupId,
 	tags: prompts.tags,
 	systemTags: prompts.systemTags,
 	premiumModels: prompts.premiumModels,
@@ -100,6 +124,9 @@ export function toPromptSummary(prompt: Prompt): PromptSummary {
 		brandId: prompt.brandId,
 		value: prompt.value,
 		enabled: prompt.enabled,
+		country: prompt.country,
+		language: prompt.language,
+		groupId: prompt.groupId,
 		tags: prompt.tags,
 		systemTags: prompt.systemTags,
 		premiumModels: prompt.premiumModels,
@@ -112,6 +139,9 @@ export interface ListPromptsFilters {
 	brandId?: string;
 	enabled?: boolean;
 	tags?: string[];
+	countries?: string[];
+	languages?: string[];
+	groupId?: string;
 	q?: string;
 	limit: number;
 	offset: number;
@@ -124,6 +154,9 @@ export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: 
 	if (filters.enabled !== undefined) conditions.push(eq(prompts.enabled, filters.enabled));
 	const tags = (filters.tags ?? []).map((tag) => tag.trim().toLowerCase()).filter(Boolean);
 	if (tags.length > 0) conditions.push(arrayOverlaps(prompts.tags, tags));
+	if (filters.countries?.length) conditions.push(inArray(prompts.country, filters.countries));
+	if (filters.languages?.length) conditions.push(inArray(prompts.language, filters.languages));
+	if (filters.groupId) conditions.push(eq(prompts.groupId, filters.groupId));
 	if (filters.q?.trim()) conditions.push(ilike(prompts.value, `%${filters.q.trim()}%`));
 
 	const where = and(...conditions.filter(Boolean));
@@ -158,6 +191,9 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 		brandId: brand.id,
 		value: prompt.value,
 		enabled: prompt.enabled ?? true,
+		country: prompt.country ?? DEFAULT_COUNTRY,
+		language: prompt.language ?? DEFAULT_LANGUAGE,
+		groupId: prompt.groupId ?? uuidv4(),
 		tags: sanitizeUserTags(prompt.tags ?? []),
 		systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 		premiumModels: selectPremiumModels(prompt.premiumModels),
@@ -174,7 +210,11 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 			},
 			tx,
 		);
-		return tx.insert(prompts).values(rows).returning();
+		return tx
+			.insert(prompts)
+			.values(rows)
+			.returning()
+			.catch((error) => rethrowMarketTaken(error, PROMPT_GROUP_MARKET_INDEX));
 	});
 
 	// Outside the transaction: a queue hiccup must not roll back prompts the
@@ -229,11 +269,13 @@ async function applyPromptUpdate(
 		tx,
 	);
 
+	// Re-enabling can collide with another live prompt in the same market.
 	const [row] = await tx
 		.update(prompts)
 		.set(promptUpdateData(input, brand, nextPremium))
 		.where(eq(prompts.id, promptId))
-		.returning();
+		.returning()
+		.catch((error) => rethrowMarketTaken(error, PROMPT_GROUP_MARKET_INDEX));
 	if (input.enabled !== undefined && wasEnabled !== input.enabled) {
 		afterCommit(() => (input.enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
 	}

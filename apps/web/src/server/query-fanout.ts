@@ -50,6 +50,10 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			/** Comma-joined country codes; a prompt in any of them matches. */
+			countries: z.string().optional(),
+			/** Comma-joined language codes, matched the same way. */
+			languages: z.string().optional(),
 			search: z.string().optional(),
 			/** Scope to a single prompt (prompt-details Web Queries tab) — lists come back uncapped. */
 			promptId: z.string().optional(),
@@ -63,7 +67,7 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 		const analysis = await getBrandQueryFanout(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags, search: data.search },
+			{ model: data.model, tags: data.tags, countries: data.countries, languages: data.languages, search: data.search },
 			{ promptId: data.promptId },
 		);
 

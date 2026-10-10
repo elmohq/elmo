@@ -15,7 +15,7 @@ import {
 } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import { analyzeMentions } from "@workspace/lib/mentions";
-import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
+import { describeTargetRun, getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
@@ -157,7 +157,7 @@ async function resolvePlanForPrompt(
 		entitlements,
 		orgPrompts,
 		brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
-		prompts: [{ id: prompt.id, premiumModels: prompt.premiumModels }],
+		prompts: [{ id: prompt.id, premiumModels: prompt.premiumModels, country: prompt.country }],
 	});
 	const plan = plans.get(prompt.id) ?? { targets: [], rescheduleHours: null };
 	return { plan, entitlements };
@@ -206,6 +206,8 @@ async function savePromptRun(
 	provider: string | null,
 	version: string,
 	webSearchEnabled: boolean,
+	country: string | null,
+	language: string | null,
 	rawOutput: unknown,
 	webQueries: string[],
 	brandMentioned: boolean,
@@ -220,6 +222,8 @@ async function savePromptRun(
 			provider,
 			version,
 			webSearchEnabled,
+			country,
+			language,
 			rawOutput,
 			webQueries,
 			brandMentioned,
@@ -287,6 +291,7 @@ async function recordUsageEvent(input: {
 async function runModelIteration({
 	promptId,
 	promptValue,
+	promptLocale,
 	brand,
 	competitorsList,
 	config,
@@ -295,6 +300,7 @@ async function runModelIteration({
 }: {
 	promptId: string;
 	promptValue: string;
+	promptLocale: { country: string; language: string };
 	brand: Brand;
 	competitorsList: Competitor[];
 	config: ModelConfig;
@@ -302,11 +308,16 @@ async function runModelIteration({
 	runIndex: number;
 }): Promise<void> {
 	const logPrefix = `[${config.model}_${runIndex}]`;
+	const handling = describeTargetRun(config, promptLocale);
+	const country = handling.country === "localized" ? promptLocale.country : null;
+	const language = handling.language === "sent" ? promptLocale.language : null;
 
 	try {
 		const result = await providerImpl.run(config.model, promptValue, {
 			webSearch: config.webSearch,
 			version: config.version,
+			...(country ? { country } : {}),
+			...(language ? { language } : {}),
 		});
 
 		// `webQueries` is stored exactly as the provider reported it — engines do
@@ -334,6 +345,8 @@ async function runModelIteration({
 			config.provider,
 			recordedVersion,
 			config.webSearch,
+			country,
+			language,
 			rawOutput,
 			webQueries,
 			brandMentioned,
@@ -442,6 +455,7 @@ async function processPrompt(
 			runModelIteration({
 				promptId,
 				promptValue: prompt.value,
+				promptLocale: { country: prompt.country, language: prompt.language },
 				brand,
 				competitorsList,
 				config: target.config,

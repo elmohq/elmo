@@ -53,6 +53,21 @@
 						"type": "boolean",
 						"description": "Whether the prompt is currently enabled"
 					},
+					"country": {
+						"type": "string",
+						"description": "ISO 3166-1 alpha-2 country the prompt is asked from. Fixed once the prompt exists: to track the same question in another market, create a prompt with this one's `groupId`.",
+						"example": "US"
+					},
+					"language": {
+						"type": "string",
+						"description": "Language the prompt is written in (e.g. `en`, `de`, `pt-BR`). Sent to the providers that take one; fixed once the prompt exists.",
+						"example": "en"
+					},
+					"groupId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Prompts that are the same question in different markets share a group, which the dashboard shows as one prompt tracked in several markets. A group holds one enabled prompt per country and language."
+					},
 					"tags": {
 						"type": "array",
 						"items": {
@@ -90,6 +105,9 @@
 					"brandId",
 					"value",
 					"enabled",
+					"country",
+					"language",
+					"groupId",
 					"tags",
 					"systemTags",
 					"createdAt",
@@ -115,6 +133,21 @@
 							"type": "string"
 						},
 						"description": "User-defined tags for categorizing this prompt"
+					},
+					"country": {
+						"type": "string",
+						"description": "ISO 3166-1 alpha-2 country to ask the prompt from, case-insensitive. Defaults to US.",
+						"example": "GB"
+					},
+					"language": {
+						"type": "string",
+						"description": "Language the prompt is written in, case-insensitive. Defaults to `en`.",
+						"example": "de"
+					},
+					"groupId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Another prompt's `groupId`, to track this as the same question in another market. Omit to start a new group. Returns 409 if the group already has an enabled prompt in this country and language."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -1442,6 +1475,14 @@
 						"type": "boolean",
 						"description": "Whether the engine answered with its own web search on."
 					},
+					"country": {
+						"type": ["string", "null"],
+						"description": "ISO 3166-1 alpha-2 country the provider was asked to answer from. Null when the target can't be localized: a model called without web search, or a surface that only answers for its default market."
+					},
+					"language": {
+						"type": ["string", "null"],
+						"description": "Language sent to the provider. Null when the provider takes no language and the prompt's wording alone set it."
+					},
 					"brandMentioned": {
 						"type": "boolean"
 					},
@@ -1473,6 +1514,8 @@
 					"model",
 					"provider",
 					"webSearchEnabled",
+					"country",
+					"language",
 					"brandMentioned",
 					"competitorsMentioned",
 					"webQueries",
@@ -2040,6 +2083,26 @@
 				"schema": {
 					"type": "string"
 				}
+			},
+			"CountriesFilter": {
+				"name": "countries",
+				"in": "query",
+				"description": "Comma-separated ISO 3166-1 alpha-2 codes. Only prompts asked from one of these countries are counted.",
+				"required": false,
+				"schema": {
+					"type": "string"
+				},
+				"example": "US,GB"
+			},
+			"LanguagesFilter": {
+				"name": "languages",
+				"in": "query",
+				"description": "Comma-separated language codes. Only prompts written in one of these languages are counted.",
+				"required": false,
+				"schema": {
+					"type": "string"
+				},
+				"example": "de,fr"
 			}
 		},
 		"requestBodies": {
@@ -2341,6 +2404,12 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2397,6 +2466,12 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2453,6 +2528,12 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2551,6 +2632,12 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2607,6 +2694,12 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -3184,6 +3277,34 @@
 						"required": false,
 						"schema": {
 							"type": "string"
+						}
+					},
+					{
+						"name": "countries",
+						"in": "query",
+						"description": "Comma-separated ISO 3166-1 alpha-2 codes; a prompt asked from any of them matches.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "languages",
+						"in": "query",
+						"description": "Comma-separated language codes; a prompt written in any of them matches.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "groupId",
+						"in": "query",
+						"description": "Only the prompts in this group: a question and its variants in other countries or languages.",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"format": "uuid"
 						}
 					},
 					{

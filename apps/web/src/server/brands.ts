@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { DEFAULT_COUNTRY } from "@workspace/config/countries";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { targetFilterValue } from "@workspace/config/model-filter";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
@@ -25,7 +26,7 @@ import {
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
 import { isGroundedApiTarget, resolveProviderAccess, selectTargetsForBrand } from "@workspace/lib/providers";
-import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
+import { defaultPlatformPicks, resolvePromptRunPlan, type TargetPlan, targetKey } from "@workspace/lib/run-policy";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -52,7 +53,7 @@ import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
  */
 function computeTrackedTargets(
 	brand: Brand,
-	brandPrompts: { premiumModels: string[] }[],
+	brandPrompts: { premiumModels: string[]; country: string; enabled: boolean }[],
 	entitlements: Entitlements,
 ): TrackedTarget[] {
 	try {
@@ -62,16 +63,23 @@ function computeTrackedTargets(
 		// targets a brand runs, how often, and how many times per firing, and a
 		// second copy of that arithmetic here is how the page and the worker
 		// started disagreeing in the first place. Grounded targets are assigned
-		// per prompt, so the brand's set is the union across its prompts.
-		const plan = resolvePromptRunPlan({
-			scrapeTargets: configs,
-			brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
-			prompt: { premiumModels: [...new Set(brandPrompts.flatMap((prompt) => prompt.premiumModels))] },
-			entitlements,
-			defaultDelayHours: getDefaultDelayHours(),
-		});
+		// per prompt and a prompt's country can rule targets out, so the brand's
+		// set is the union across its prompts.
+		const premiumModels = [...new Set(brandPrompts.flatMap((prompt) => prompt.premiumModels))];
+		const countries = new Set(brandPrompts.filter((prompt) => prompt.enabled).map((prompt) => prompt.country));
+		const byKey = new Map<string, TargetPlan>();
+		for (const country of countries.size > 0 ? countries : [DEFAULT_COUNTRY]) {
+			const plan = resolvePromptRunPlan({
+				scrapeTargets: configs,
+				brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+				prompt: { premiumModels, country },
+				entitlements,
+				defaultDelayHours: getDefaultDelayHours(),
+			});
+			for (const target of plan.targets) byKey.set(targetKey(target.config), target);
+		}
 
-		return plan.targets.map((target) => {
+		return [...byKey.values()].map((target) => {
 			const premium = isGroundedApiTarget(target.config);
 			return {
 				value: targetFilterValue(target.config.model, premium),

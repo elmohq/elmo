@@ -16,6 +16,10 @@ export interface RunSummary {
 	model: string;
 	provider: string | null;
 	webSearchEnabled: boolean | null;
+	/** Where the provider was asked to answer from; null when the target couldn't be localized. */
+	country: string | null;
+	/** The language sent to the provider; null when only the prompt's wording carried it. */
+	language: string | null;
 	brandMentioned: boolean | null;
 	competitorsMentioned: unknown;
 	webQueries: unknown;
@@ -61,6 +65,8 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 			model: row.model,
 			provider: row.provider,
 			webSearchEnabled: row.web_search_enabled,
+			country: row.country,
+			language: row.language,
 			brandMentioned: row.brand_mentioned,
 			competitorsMentioned: row.competitors_mentioned,
 			webQueries: row.web_queries,
@@ -102,6 +108,8 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 		model: run.model,
 		provider: run.provider,
 		webSearchEnabled: run.webSearchEnabled,
+		country: run.country,
+		language: run.language,
 		brandMentioned: run.brandMentioned,
 		competitorsMentioned: run.competitorsMentioned,
 		webQueries: run.webQueries,

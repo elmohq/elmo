@@ -8,6 +8,8 @@ export interface ShareOfVoiceFilters {
 	model?: string;
 	/** Tag filter (resolved to prompt IDs server-side, like the visibility page). */
 	tags?: string[];
+	countries?: string[];
+	languages?: string[];
 }
 
 const shareOfVoiceKeys = {
@@ -27,6 +29,8 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					countries: filters?.countries?.join(","),
+					languages: filters?.languages?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

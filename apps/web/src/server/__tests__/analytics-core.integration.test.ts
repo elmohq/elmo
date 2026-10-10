@@ -26,7 +26,12 @@ beforeAll(async () => {
 	brandId = await createBrand({ name: "Acme", website: "https://acme.example" });
 	await createCompetitor(brandId, "Globex", ["globex.example"]);
 	pricing = await createPrompt(brandId, { value: "acme pricing alternatives", tags: ["pricing"] });
-	branded = await createPrompt(brandId, { value: "is acme any good", systemTags: ["branded"] });
+	branded = await createPrompt(brandId, {
+		value: "is acme any good",
+		systemTags: ["branded"],
+		country: "GB",
+		language: "fr",
+	});
 	idle = await createPrompt(brandId, { value: "never scheduled" });
 	const disabled = await createPrompt(brandId, { enabled: false });
 
@@ -83,6 +88,22 @@ describe("brand visibility", () => {
 		expect(visibility).toMatchObject({ totalRuns: 2, totalPrompts: 1, currentVisibility: 1 });
 		const brandedOnly = await getBrandVisibility(brandId, window, { tags: "branded" });
 		expect(brandedOnly.series.map((point) => point.visibility)).toEqual([0, 1, 1]);
+	});
+
+	it("narrows to prompts asked from the filtered countries", async () => {
+		expect(await getBrandVisibility(brandId, window, { countries: "gb" })).toMatchObject({
+			totalRuns: 2,
+			totalPrompts: 1,
+		});
+		expect(await getBrandVisibility(brandId, window, { countries: "US" })).toMatchObject({
+			totalRuns: 2,
+			totalPrompts: 2,
+		});
+		expect(await getBrandVisibility(brandId, window, { countries: "US,GB" })).toMatchObject({ totalPrompts: 3 });
+		expect(await getBrandVisibility(brandId, window, { languages: "fr" })).toMatchObject({ totalPrompts: 1 });
+		expect(await getBrandVisibility(brandId, window, { countries: "GB", languages: "en" })).toMatchObject({
+			totalPrompts: 0,
+		});
 	});
 
 	it("returns an empty result when no prompt is in scope", async () => {

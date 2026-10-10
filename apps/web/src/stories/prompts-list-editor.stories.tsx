@@ -20,16 +20,24 @@ function Harness({
 	initial,
 	showSystemTags = true,
 	premium,
+	newPromptMarket,
 }: {
 	initial: EditablePrompt[];
 	showSystemTags?: boolean;
 	premium?: PremiumAllowance;
+	newPromptMarket?: { country: string; language: string };
 }) {
 	const [prompts, setPrompts] = useState(initial);
 
 	return (
 		<div className="p-8">
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} showSystemTags={showSystemTags} premium={premium} />
+			<PromptsListEditor
+				prompts={prompts}
+				onChange={setPrompts}
+				showSystemTags={showSystemTags}
+				premium={premium}
+				newPromptMarket={newPromptMarket}
+			/>
 		</div>
 	);
 }
@@ -222,5 +230,56 @@ export const NoPremiumColumn: StoryObj = {
 		const canvas = within(canvasElement);
 		await expect(canvas.queryByRole("button", { name: /premium models:/i })).toBeNull();
 		await expect(canvas.queryByText(/pairings in use/i)).toBeNull();
+	},
+};
+
+const marketsFixture = () => [
+	...entries(["best running shoes for flat feet"], {
+		id: "saved-us",
+		groupId: "g1",
+		country: "US",
+		systemTags: ["unbranded"],
+	}),
+	...entries(["best running shoes for flat feet"], {
+		id: "saved-gb",
+		groupId: "g1",
+		country: "GB",
+		systemTags: ["unbranded"],
+	}),
+	...entries(["meilleures chaussures de running pieds plats"], { groupId: "g1", country: "FR", language: "fr" }),
+	...entries(["most durable trail runners"], { id: "saved-trail", groupId: "g2", systemTags: ["unbranded"] }),
+];
+
+/**
+ * One row per prompt, with its markets as chips under the text. Picking a
+ * chip shows that market's wording; "+ Market" adds one, starting from the
+ * text on screen.
+ */
+export const Markets: StoryObj = {
+	render: () => <Harness newPromptMarket={{ country: "US", language: "en" }} initial={marketsFixture()} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getAllByRole("button", { name: "FR · FR" })[0]);
+		await expect(canvas.getAllByDisplayValue("meilleures chaussures de running pieds plats")[0]).toBeVisible();
+
+		await userEvent.click(canvas.getAllByRole("button", { name: /market/i })[0]);
+		await userEvent.type(await within(document.body).findByPlaceholderText(/search country/i), "germany german");
+		await userEvent.click(await within(document.body).findByRole("option", { name: /germany \(german\)/i }));
+		await expect(canvas.getAllByRole("button", { name: /DE · DE/ })[0]).toBeVisible();
+	},
+};
+
+/** Pasting with a second market picked adds every line once per market. */
+export const AddMultipleInMarkets: StoryObj = {
+	render: () => <Harness newPromptMarket={{ country: "US", language: "en" }} initial={marketsFixture()} />,
+	play: async (ctx) => {
+		await addMultiple("trail shoes for wide feet\nbest running shoes for flat feet")(ctx);
+		const canvas = within(ctx.canvasElement);
+		await expect(canvas.getByRole("button", { name: /^add 1 prompt$/i })).toBeEnabled();
+
+		await userEvent.click(canvas.getByRole("button", { name: /markets to add in/i }));
+		await userEvent.click(await within(document.body).findByRole("option", { name: /united kingdom \(english\)/i }));
+		await expect(canvas.getByRole("button", { name: /^add 2 prompts$/i })).toBeEnabled();
+		await expect(canvas.getByText("Each line becomes one prompt in every market.")).toBeVisible();
 	},
 };

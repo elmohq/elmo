@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
 	boolean,
 	index,
@@ -62,6 +63,9 @@ export const brands = pgTable(
 	}),
 ).enableRLS();
 
+/** Named so a write can tell this violation apart from any other. */
+export const PROMPT_GROUP_MARKET_INDEX = "prompts_group_market_idx";
+
 export const prompts = pgTable(
 	"prompts",
 	{
@@ -76,6 +80,24 @@ export const prompts = pgTable(
 		 * per entry (see PREMIUM_MODELS). Empty = standard tracking only.
 		 */
 		premiumModels: text("premium_models").array().notNull().default([]),
+		/**
+		 * ISO 3166-1 alpha-2 country the prompt is asked from. Fixed once created:
+		 * measuring another country is another prompt, so a prompt's history is
+		 * never a mix of markets. Same text in two countries is two rows.
+		 */
+		country: text("country").notNull().default("US"),
+		/**
+		 * Language the prompt is written in. Sent to the providers that take one,
+		 * and fixed once created for the same reason as `country`.
+		 */
+		language: text("language").notNull().default("en"),
+		/**
+		 * Prompts asking the same question in other markets share a group, which
+		 * the dashboard presents as one prompt tracked in several markets. Every
+		 * prompt is in one, most of them alone; no table of its own, because a
+		 * group has nothing to it but its members.
+		 */
+		groupId: uuid("group_id").defaultRandom().notNull(),
 		tags: text("tags").array().notNull().default([]),
 		systemTags: text("system_tags").array().notNull().default([]),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -87,6 +109,11 @@ export const prompts = pgTable(
 	(table) => ({
 		brandIdIdx: index("prompts_brand_id_idx").on(table.brandId),
 		brandIdEnabledIdx: index("prompts_brand_id_enabled_idx").on(table.brandId, table.enabled),
+		// A group is one question across markets, so it holds one live prompt per
+		// market; removed prompts are disabled rows and keep their history.
+		groupMarketIdx: uniqueIndex(PROMPT_GROUP_MARKET_INDEX)
+			.on(table.groupId, table.country, table.language)
+			.where(sql`${table.enabled}`),
 	}),
 ).enableRLS();
 
@@ -119,6 +146,14 @@ export const promptRuns = pgTable(
 		provider: text("provider"),
 		version: text("version").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
+		/**
+		 * The country the provider was asked to answer from. Null when the target
+		 * takes no location — an API call without web search, or a surface that
+		 * can't be localized and answers for its default market.
+		 */
+		country: text("country"),
+		/** The language sent to the provider; null when the prompt's text alone sets it. */
+		language: text("language"),
 		rawOutput: json("raw_output").notNull(),
 		webQueries: text("web_queries").array().notNull().default([]),
 		brandMentioned: boolean("brand_mentioned").notNull(),

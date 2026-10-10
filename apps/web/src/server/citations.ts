@@ -42,7 +42,7 @@ import {
 	type PerPromptDailyCitationPageRow,
 } from "@/lib/postgres-read";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { parseTagFilter } from "@/server/prompt-resolution";
+import { matchesMarketFilter, parseMarketFilter, parseTagFilter } from "@/server/prompt-resolution";
 
 type Classify = (domain: string, url: string, title?: string | null) => CitationCategory;
 
@@ -345,6 +345,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: lookbackSchema.default("1w"),
 			tags: z.string().optional(),
+			/** Comma-joined country codes; a prompt in any of them matches. */
+			countries: z.string().optional(),
+			/** Comma-joined language codes, matched the same way. */
+			languages: z.string().optional(),
 			model: z.string().optional(),
 		}),
 	)
@@ -366,7 +370,14 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
 			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
 			db
-				.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
+				.select({
+					id: prompts.id,
+					value: prompts.value,
+					country: prompts.country,
+					language: prompts.language,
+					tags: prompts.tags,
+					systemTags: prompts.systemTags,
+				})
 				.from(prompts)
 				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
 		]);
@@ -388,8 +399,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		];
 
 		const tagFilter = parseTagFilter(data.tags);
+		const market = parseMarketFilter(data);
+		const inMarket = allPrompts.filter((prompt) => matchesMarketFilter(prompt, market));
 		const enabledPromptIds =
-			tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
+			tagFilter.length > 0 ? promptIdsMatchingTags(inMarket, tagFilter) : inMarket.map((p) => p.id);
 		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, days);
 
 		const [urlStats, perPromptDailyPages, perPromptPages, prevUrlStats] = await Promise.all([

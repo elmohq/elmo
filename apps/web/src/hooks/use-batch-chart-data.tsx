@@ -8,6 +8,8 @@ export interface BatchChartDataFilters {
 	model?: string;
 	/** Tag filter (resolved to prompt IDs server-side). */
 	tags?: string[];
+	countries?: string[];
+	languages?: string[];
 	/** Search term applied to prompt text (resolved server-side). */
 	search?: string;
 }
@@ -31,6 +33,8 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 					lookback: filters?.lookback || "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					countries: filters?.countries?.join(","),
+					languages: filters?.languages?.join(","),
 					search: filters?.search,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

@@ -8,6 +8,8 @@ export interface QueryFanoutFilters {
 	model?: string;
 	/** Tag filter (resolved to prompt IDs server-side, like Share of Voice). */
 	tags?: string[];
+	countries?: string[];
+	languages?: string[];
 	/** Scope to one prompt (prompt-details Web Queries tab) — lists come back uncapped. */
 	promptId?: string;
 }
@@ -29,6 +31,8 @@ export function useQueryFanout(brandId?: string, filters?: QueryFanoutFilters) {
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					countries: filters?.countries?.join(","),
+					languages: filters?.languages?.join(","),
 					promptId: filters?.promptId,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

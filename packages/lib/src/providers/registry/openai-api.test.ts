@@ -41,6 +41,12 @@ describe("openai-api run", () => {
 		expect(args.providerOptions).toEqual({ openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } });
 	});
 
+	it("searches from the prompt's country", async () => {
+		await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini", country: "JP" });
+
+		expect(sentArgs().tools.web_search.args.userLocation).toEqual({ type: "approximate", country: "JP" });
+	});
+
 	it("caps output tokens and sends no tool-call budget when webSearch is off", async () => {
 		await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
 
