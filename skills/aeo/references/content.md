@@ -1,6 +1,7 @@
 # Owned content
 
-Contents: what to write · how to write it · page patterns · keeping it true · what not to do
+Contents: what to write · how to write it · health, money, and AI-written pages · page patterns ·
+keeping it true · what not to do
 
 Owned pages win citations when they are the best available answer to a query the engine actually
 runs. Every content recommendation should name the lost prompts or fan-out queries it targets.
@@ -46,6 +47,21 @@ Work from the diagnosis, not a template:
   an author with relevant expertise. Engines and readers both use these to judge trust.
 - **Use tables where readers compare** (plans, specs, alternatives). Don't force tables or FAQ blocks
   onto pages that don't need them.
+
+## Health, money, and AI-written pages
+
+- **Topics where mistakes hurt.** Health, finance, legal, and safety pages are what Google calls "Your
+  Money or Your Life" topics: its systems put even more weight on signals of reliability there, and
+  engines are more cautious about citing them. Name real authors and reviewers with the relevant
+  credentials, cite primary sources (regulators, clinical guidance, statutes), date the review, and
+  cut claims you can't support ("cures in 7 days", "guaranteed returns"). Never invent an expert, a
+  reviewer, or a credential, in the page or in its structured data.
+- **AI-written content.** Google says appropriate use of AI or automation isn't against its
+  guidelines; generating many pages without adding value for users is scaled content abuse. Have a
+  person check every AI-drafted page, title, and structured-data field for accuracy before it
+  publishes, and the more so on trust-sensitive topics. Where readers might reasonably wonder how a
+  page was made, say so. Machine translation counts too: unreviewed translations at scale carry the
+  same risk.
 
 ## Page patterns
 

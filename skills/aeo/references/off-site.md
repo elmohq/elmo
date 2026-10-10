@@ -72,6 +72,16 @@ counts as advertising, not earned coverage.
 screenshots) match the site. Ask real customers for reviews through normal channels. Never write
 or buy them. Respond to negative reviews with facts, because engines quote them.
 
+Review rules are law, not just platform policy. In the US, the FTC's rule on consumer reviews
+(16 CFR Part 465, in force since October 2024) bans fake and AI-generated reviews, incentives
+conditioned on a positive review, undisclosed insider reviews, and review suppression: hiding reviews
+because of their rating while presenting the ones shown as representative. Neutral moderation is
+allowed when the criteria ignore sentiment and apply to every review (abuse, personal data, spam,
+content that's false). Google Maps goes further: its content policy bans any incentive for a review, disclosed or not, and
+selectively asking only happy customers.
+On your own site, review or rating markup about your own business (`LocalBusiness` or any
+`Organization`) is ineligible for Google's review stars.
+
 **Reddit, forums, and communities.** Participate as a disclosed company representative: answer
 questions in threads the engines cite, help without pitching, and correct factual errors with a
 source. Don't run sock-puppet accounts, astroturf, or buy upvotes or aged accounts. Communities
@@ -91,7 +101,11 @@ independent coverage, which is the editorial play above. Wikidata entries for th
 
 **Press and original research.** Data that journalists and bloggers cite generates the third-party
 mentions engines rely on. One credible study cited by twenty pages beats twenty press releases.
-Wire-only press releases are seldom what gets cited.
+Wire-only press releases are seldom what gets cited. Don't load releases with keyword-rich anchor
+links: Google's link spam policy names "links with optimized anchor text in articles, guest posts,
+or press releases distributed on other sites". Qualify such links with `rel="nofollow"` or
+`rel="sponsored"`, and put the report's key findings in crawlable text, not only in a gated PDF or an
+image.
 
 **Partners and integrations.** Partner directories, marketplace listings, and integration docs on
 other companies' sites are third-party pages that describe the brand's capabilities in specific
