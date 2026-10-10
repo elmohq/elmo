@@ -7,8 +7,6 @@ publicHoistPattern:
   - "@takumi-rs/core-*"
 
 overrides:
-  "glob>minimatch": "^10.2.5"
-  picomatch: "^4.0.4"
   # GHSA-67mh-4wv8-2f99 (drizzle-kit's @esbuild-kit loader asks for the 0.18 line) and
   # GHSA-g7r4-m6w7-qqqr (dev-server arbitrary file read on Windows).
   esbuild: "^0.28.1"
@@ -21,11 +19,13 @@ overrides:
   axios: "^1.18.0" # GHSA-gcfj-64vw-6mp9, GHSA-xj6q-8x83-jv6g, and seven more
   "@faker-js/faker": "^10.4.1" # GHSA-qxc2-j82w-r537
   csv-parse: "^7.0.2" # GHSA-8cw4-87c7-c6xx
-  # Scoped to v3 so the floor never drags a future v4+ consumer back down.
-  "nanoid@^3": "^3.3.18" # GHSA-xwg4-73v4-xw9w, GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8
   "@ai-sdk/provider-utils@^4": "^4.0.33"
-  "@tanstack/react-start": "^1.168.60"
-  "@tanstack/react-router": "^1.170.41"
+  # @usebruno/cli pins these exactly; only the e2e API suite pulls them in.
+  "js-yaml@^4": "^4.3.2" # GHSA-2883-xcg3-v3hh
+  "yaml@^2": "^2.8.3" # GHSA-48c2-rrv3-qjmp
+  # @tailwindcss/typography pins 6.0.10, and the fix only exists on the 7 line.
+  postcss-selector-parser: "^7.1.6" # GHSA-rj75-hqrm-r3gf
+  "@scalar/json-magic>undici": "^7.29.1" # GHSA-4cwx-7wf7-3272, GHSA-rfgv-xxqx-mfg5, and four more
 
 allowBuilds:
   "@tailwindcss/oxide": true
@@ -57,23 +57,5 @@ allowBuilds:
 
 blockExoticSubdeps: true
 minimumReleaseAge: 5760
-minimumReleaseAgeExclude:
-  - nitro
-  - srvx
-  - vite
-  - "@tanstack/react-router@1.170.41"
-  - "@tanstack/react-start-client@1.168.39"
-  - "@tanstack/react-start-rsc@0.1.59"
-  - "@tanstack/react-start-server@1.167.46"
-  - "@tanstack/react-start@1.168.60"
-  - "@tanstack/react-store@0.11.2"
-  - "@tanstack/router-core@1.171.34"
-  - "@tanstack/router-generator@1.167.40"
-  - "@tanstack/router-plugin@1.168.42"
-  - "@tanstack/start-client-core@1.170.34"
-  - "@tanstack/start-plugin-core@1.171.49"
-  - "@tanstack/start-server-core@1.169.39"
-  - "@tanstack/start-storage-context@1.167.36"
-  - "@tanstack/store@0.11.2"
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 129600

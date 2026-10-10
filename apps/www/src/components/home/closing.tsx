@@ -55,7 +55,7 @@ export function Closing({ from = "marketing-closing" }: { from?: ReferralSource 
 				</ul>
 				<p className="mt-8 text-sm text-zinc-500">
 					Want a walkthrough first?{" "}
-					<a href={BOOK_URL} target="_blank" rel={externalRel(BOOK_URL)} className={QUIET}>
+					<a href={BOOK_URL} className={QUIET}>
 						Book a 30-minute tour
 					</a>
 					.

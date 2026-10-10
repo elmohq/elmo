@@ -1,6 +1,6 @@
 // Client-safe citation taxonomy: types, display config, and lightweight URL
 // helpers. The heavy domain lists + `categorizeDomain` live in
-// `domain-categories.server.ts` (server-only) so the ~25k-entry editorial list
+// `domain-lists.ts` (server-only) so the ~25k-entry editorial list
 // never ships in the browser bundle.
 
 export type CitationCategory =

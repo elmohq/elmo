@@ -70,9 +70,9 @@ const PROVIDER_AFFILIATE_URLS: Record<string, string> = {
 	oxylabs: "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32",
 	searchapi: "https://www.searchapi.io/?via=elmo",
 	olostep: "https://olostep.com/?ref=elmo",
-	dataforseo: "https://dataforseo.com/?aff=184966",
-	"dataforseo-api": "https://dataforseo.com/?aff=184966",
-	"dataforseo-scraper": "https://dataforseo.com/?aff=184966",
+	dataforseo: "https://try.dataforseo.com/elmo",
+	"dataforseo-api": "https://try.dataforseo.com/elmo",
+	"dataforseo-scraper": "https://try.dataforseo.com/elmo",
 };
 
 export function providerAffiliateUrl(provider: string): string | undefined {

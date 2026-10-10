@@ -34,3 +34,8 @@ export function legalUrl(slug: string): string {
 export function showsLegalLinks(mode: DeploymentMode | undefined): boolean {
 	return mode === "cloud" || mode === "demo" || mode === "local";
 }
+
+/** Self-hosted deployments are governed by whoever runs them, so only ours ask for cookie consent. */
+export function isElmoHosted(mode: DeploymentMode | undefined): boolean {
+	return mode === "cloud" || mode === "demo";
+}

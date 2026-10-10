@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://github.com/elmohq/elmo">
+  <a href="https://www.elmohq.com/">
     <img src="apps/www/public/brand/logos/elmo-logo-xl.png" alt="Elmo" width="300">
   </a>
 </p>
@@ -78,7 +78,7 @@ Most AI visibility platforms are closed SaaS. Here is how Elmo compares to the w
 
 | Tool | Open source | Self-hostable | Auditable metrics | Data ownership | Pricing model | Engine coverage |
 |---|---|---|---|---|---|---|
-| **Elmo** | Yes (MIT) | Yes (Docker Compose) | Yes — scoring code is public | Yours — your own PostgreSQL | Free self-hosted; cloud from $29/mo | ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, Grok, Mistral, and more |
+| [**Elmo**](https://www.elmohq.com/) | Yes (MIT) | Yes (Docker Compose) | Yes — scoring code is public | Yours — your own PostgreSQL | Free self-hosted; cloud from $29/mo | ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, Grok, Mistral, and more |
 | [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound) | No | No | No — proprietary scoring | Vendor-hosted | Enterprise, custom pricing | Multiple engines, plus AI crawler analytics |
 | [Peec AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai) | No | No | No | Vendor-hosted | Paid subscription, custom pricing | Multiple engines |
 | [Otterly AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai) | No | No | No | Vendor-hosted | Paid subscription, custom pricing | Multiple engines, plus on-page GEO audits |
@@ -170,7 +170,7 @@ A web app serves the dashboard and REST API, a worker schedules and executes pro
 
 - [Discord](https://discord.gg/s24nubCtKz)
 - [Email](mailto:support@elmohq.com)
-- [Schedule a call](https://cal.com/jrhizor/elmo)
+- [Schedule a call](https://www.elmohq.com/demo)
 
 ## Contributing
 

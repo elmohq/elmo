@@ -1,6 +1,7 @@
 // Crisp replays anything pushed onto `window.$crisp` once its script loads, so
 // nothing here has to wait for a ready signal.
 import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
+import { bookDemoUrl } from "@workspace/config/referrals";
 import type { DeploymentMode } from "@workspace/config/types";
 
 type CrispCommand = unknown[];
@@ -14,7 +15,7 @@ declare global {
 
 const CRISP_SCRIPT_URL = "https://client.crisp.chat/l.js";
 
-const DEMO_WALKTHROUGH_URL = "https://cal.com/jrhizor/elmo";
+const DEMO_WALKTHROUGH_URL = bookDemoUrl("demo-chat");
 const SELF_HOST_DOCS_URL = "https://www.elmohq.com/docs/getting-started";
 
 const DEMO_GREETING =

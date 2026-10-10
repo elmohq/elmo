@@ -75,6 +75,11 @@ describe("tag-utils", () => {
 		it("should ignore blank variants", () => {
 			expect(isPromptBranded("best running shoes", brandName, brandWebsite, ["", "  "])).toBe(false);
 		});
+
+		it("should not treat every prompt as branded when the website has an empty host or label", () => {
+			expect(isPromptBranded("best running shoes", brandName, "www.")).toBe(false);
+			expect(isPromptBranded("best running shoes", brandName, ".com")).toBe(false);
+		});
 	});
 
 	describe("computeSystemTags", () => {
