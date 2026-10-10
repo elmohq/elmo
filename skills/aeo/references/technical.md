@@ -25,7 +25,7 @@ remove a site from AI answers. Blocking a search crawler does.
 | `Googlebot` | Google | Google Search, *including* AI Overviews and AI Mode | All of Google Search and its AI features |
 | `Google-Extended` | Google | Product token, not a separate crawler. Controls Gemini training **and grounding in the Gemini app and Vertex AI** | Gemini training, and possibly Gemini app answers. AI Overviews are unaffected |
 | `Bingbot` | Microsoft | Bing index, which powers Copilot and feeds others | Bing, Copilot, and engines that use Bing results |
-| `Applebot` / `Applebot-Extended` | Apple | Siri and Spotlight search / opt-out from Apple model training | Apple search features / Apple training only |
+| `Applebot` / `Applebot-Extended` | Apple | Applebot crawls for Siri and Spotlight. Applebot-Extended doesn't crawl: it only controls whether Applebot's data trains Apple's foundation models | Apple search features / Apple training only; blocking Applebot-Extended doesn't remove pages from Apple search |
 | `Meta-ExternalAgent` | Meta | Crawling for Meta AI products and training | Meta AI |
 | `Amazonbot` | Amazon | Amazon services, including Alexa and Rufus answers | Amazon AI surfaces |
 | `DuckAssistBot` | DuckDuckGo | Fetches for DuckAssist answers | DuckDuckGo AI answers |
@@ -114,7 +114,8 @@ fetching the raw HTML (`curl -s URL`) and searching it for a sentence from the p
 - Google: `nosnippet`, `max-snippet`, and `data-nosnippet` limit what AI Overviews and AI Mode can
   show from a page, the same way they limit normal snippets. A stray `nosnippet` silently removes a
   page from AI features. Search Console's **Search generative AI** control opts a whole site out of
-  AI Overviews and AI Mode (worldwide since 31 Aug 2026). To appear in those features at all, a page
+  AI Overviews and AI Mode (worldwide since 31 Aug 2026), and only those: Google says it isn't a
+  ranking signal for ordinary web results. To appear in those features at all, a page
   must be indexed, eligible for a snippet, and on a site that hasn't been excluded there.
 - Bing: per Bing's guidance, `NOCACHE` limits Copilot to the URL, title, and snippet, and
   `NOARCHIVE` keeps the page out of Copilot answers.
@@ -160,7 +161,9 @@ machine-readable output.
 - **Schema markup:** keep valid `Organization`, `Product`, `Article`, `BreadcrumbList`, and similar
   markup for rich results and to tie the brand's entity together (`sameAs` links to official
   profiles). Don't promise AI citations from it. Google says no special markup is needed, and live AI
-  fetchers read visible content. Any fact that matters must be in visible text. FAQ rich results no
+  fetchers read visible content. Any fact that matters must be in visible text, and markup must only
+  describe content readers can see on the page (Google's structured data policies), including any
+  FAQPage markup you keep. FAQ rich results no
   longer appear in Google Search (since 7 May 2026); existing FAQPage markup is harmless but earns
   nothing there.
 
@@ -171,8 +174,14 @@ in AI Mode, draw on `Product` structured data and Merchant Center feeds, and Goo
 both maximizes eligibility. Keep price, availability, currency, and variants identical across the
 feed, the markup, and the visible page; a mismatch is the most common reason product data gets
 ignored or disapproved. Other engines read the visible product page, so the same facts must be in
-HTML text. Where an engine runs its own merchant or product-feed program, check its current
-documentation rather than assuming one exists.
+HTML text. For Google merchant listings, the markup needs at least `name`, `image`, and an `Offer`
+with a `price` above zero and a `priceCurrency`.
+
+ChatGPT's product results are chosen by ChatGPT, not bought: OpenAI says they aren't ads (ads are
+labeled separately), and the merchant list comes from product metadata supplied by third-party
+providers or by merchants through OpenAI's product feed program. Shopify stores are included through
+Shopify Catalog. No engine guarantees placement, so promise eligibility, not inclusion, and check each
+engine's current merchant documentation before recommending a program.
 
 ## AI agents using the site
 

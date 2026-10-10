@@ -42,6 +42,9 @@ opaque method.
 - Google, syndication: cross-domain canonical is a hint; noindex recommended on syndicated copies (Office Hours, Jun 2023) — <https://developers.google.com/search/help/office-hours/2023/june>
 - Google, qualifying paid links with rel="sponsored" — <https://developers.google.com/search/docs/crawling-indexing/qualify-outbound-links>
 - Google, site moves with URL changes — <https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes>
+- Apple, Applebot-Extended doesn't crawl and isn't used in search ranking — <https://support.apple.com/en-us/119829>
+- Google, structured data policies: don't mark up content that isn't visible to readers — <https://developers.google.com/search/docs/appearance/structured-data/sd-policies>
+- OpenAI, shopping in ChatGPT: product results aren't ads; merchant data from feeds and third parties — <https://help.openai.com/en/articles/11128490>
 - FTC rule on consumer reviews and testimonials, 16 CFR Part 465 (fake and AI-generated reviews, sentiment-conditioned incentives, review suppression; effective Oct 2024) — <https://www.ecfr.gov/current/title-16/chapter-I/subchapter-D/part-465>
 - Google, review snippets: self-serving reviews of a `LocalBusiness` or `Organization` on its own site are ineligible for stars — <https://developers.google.com/search/docs/appearance/structured-data/review-snippet>
 - Google, AI-generated content: "Appropriate use of AI or automation is not against our guidelines"; more weight on reliability where information quality is critical (Feb 2023) — <https://developers.google.com/search/blog/2023/02/google-search-and-ai-content>
