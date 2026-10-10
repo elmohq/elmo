@@ -36,11 +36,11 @@ on:
           - minor
           - major
       adopt:
-        description: Repository, as owner/name, to commit one package into although it holds commits of its own. Leave blank on a routine run.
+        description: 'Only to move an existing SDK repository to Hey API: its owner/name. Lets this run commit over what that repository holds. Otherwise leave blank.'
         required: false
         type: string
       breaking:
-        description: One package that may remove exported names without a major version. Leave blank on a routine run.
+        description: 'Only to ship a breaking change without a major version: the name of the one package allowed to. Otherwise leave blank.'
         required: false
         type: string
   workflow_run:
@@ -75,7 +75,7 @@ jobs:
           CLIENT_ID: ${{ vars.HEY_API_APP_CLIENT_ID }}
         run: |
           if [ -n "$CLIENT_ID" ]; then exit 0; fi
-          echo "::error::No GitHub App connected yet. Run 'npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.1 init' and approve it in a browser, then push again or re-run this workflow."
+          echo "::error::No GitHub App connected yet. Run 'npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.3 init' and approve it in a browser, then push again or re-run this workflow."
           exit 1
 
       - name: Get a token from the GitHub App
@@ -87,7 +87,7 @@ jobs:
           private-key: ${{ secrets.HEY_API_APP_PRIVATE_KEY }}
 
       - name: Release each package that changed, in a pull request to its repository, to publish when Release succeeds
-        run: npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.1 publish --generate ${BUMP:+--bump "$BUMP"} ${BREAKING:+--breaking "$BREAKING"} ${ADOPT:+--adopt "$ADOPT"}
+        run: npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.3 publish --generate ${BUMP:+--bump "$BUMP"} ${BREAKING:+--breaking "$BREAKING"} ${ADOPT:+--adopt "$ADOPT"}
         env:
           npm_config_//npm.pkg.heyapi.dev/:_authToken: ${{ secrets.HEY_API_PKG_TOKEN }}
           HEY_API_PKG_TOKEN: ${{ secrets.HEY_API_PKG_TOKEN }}
@@ -111,7 +111,7 @@ jobs:
           CLIENT_ID: ${{ vars.HEY_API_APP_CLIENT_ID }}
         run: |
           if [ -n "$CLIENT_ID" ]; then exit 0; fi
-          echo "::error::No GitHub App connected yet. Run 'npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.1 init' and approve it in a browser, then push again or re-run this workflow."
+          echo "::error::No GitHub App connected yet. Run 'npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.3 init' and approve it in a browser, then push again or re-run this workflow."
           exit 1
 
       - name: Get a token from the GitHub App
@@ -123,7 +123,7 @@ jobs:
           private-key: ${{ secrets.HEY_API_APP_PRIVATE_KEY }}
 
       - name: Open a pull request moving Hey API to its latest release
-        run: npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.1 upgrade
+        run: npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.3 upgrade
         env:
           npm_config_//npm.pkg.heyapi.dev/:_authToken: ${{ secrets.HEY_API_PKG_TOKEN }}
           HEY_API_PKG_TOKEN: ${{ secrets.HEY_API_PKG_TOKEN }}
@@ -146,7 +146,7 @@ jobs:
           CLIENT_ID: ${{ vars.HEY_API_APP_CLIENT_ID }}
         run: |
           if [ -n "$CLIENT_ID" ]; then exit 0; fi
-          echo "::error::No GitHub App connected yet. Run 'npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.1 init' and approve it in a browser, then push again or re-run this workflow."
+          echo "::error::No GitHub App connected yet. Run 'npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.3 init' and approve it in a browser, then push again or re-run this workflow."
           exit 1
 
       - name: Get a token from the GitHub App
@@ -158,7 +158,7 @@ jobs:
           private-key: ${{ secrets.HEY_API_APP_PRIVATE_KEY }}
 
       - name: Publish each package from its own repository
-        run: npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.1 publish --wait
+        run: npx --yes --registry https://npm.pkg.heyapi.dev/ hey-api@0.1.0-elmo.3 publish --wait
         env:
           npm_config_//npm.pkg.heyapi.dev/:_authToken: ${{ secrets.HEY_API_PKG_TOKEN }}
           HEY_API_PKG_TOKEN: ${{ secrets.HEY_API_PKG_TOKEN }}
