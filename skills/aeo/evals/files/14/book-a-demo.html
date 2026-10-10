@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Book a demo | Harborline Fleet Software</title>
+  <style>
+    .cta { background:#0b5; color:#fff; padding:6px 10px; border-radius:4px; }
+    .promo-overlay { position:fixed; inset:0; background:transparent; z-index:50; }
+    .slot { display:inline-block; width:14px; height:14px; font-size:9px; }
+  </style>
+</head>
+<body>
+  <!-- Invisible full-screen layer used to track first click for a promo popup -->
+  <div class="promo-overlay" onclick="openPromo(); this.remove();"></div>
+
+  <header>
+    <img src="/img/logo.svg">
+    <div class="nav-item" onclick="location.href='/pricing'">Pricing</div>
+    <div class="nav-item" onclick="location.href='/customers'">Customers</div>
+  </header>
+
+  <main>
+    <h1>See Harborline in action</h1>
+
+    <form id="demo-form">
+      <input type="text" name="f1" placeholder="Name">
+      <input type="email" name="f2" placeholder="Work email">
+      <input type="text" name="f3" placeholder="">
+      <span>Fleet size</span>
+      <div class="dropdown" onclick="toggleFleet()">Select&hellip;</div>
+      <ul class="dropdown-menu" hidden>
+        <li onclick="pickFleet('1-25')">1&ndash;25</li>
+        <li onclick="pickFleet('26-100')">26&ndash;100</li>
+        <li onclick="pickFleet('100+')">100+</li>
+      </ul>
+
+      <p>Pick a time:</p>
+      <div class="calendar">
+        <span class="slot" onclick="pick(1)">9</span>
+        <span class="slot" onclick="pick(2)">10</span>
+        <span class="slot" onclick="pick(3)">11</span>
+        <span class="slot" onclick="pick(4)">2</span>
+      </div>
+
+      <div class="cta" onclick="submitDemo()">Continue</div>
+    </form>
+
+    <div id="testimonial-carousel"><!-- rotates every 3s; inserts a banner above the form after 5s --></div>
+  </main>
+
+  <script src="/assets/demo.js"></script>
+</body>
+</html>

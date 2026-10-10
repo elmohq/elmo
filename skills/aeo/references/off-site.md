@@ -72,15 +72,15 @@ counts as advertising, not earned coverage.
 screenshots) match the site. Ask real customers for reviews through normal channels. Never write
 or buy them. Respond to negative reviews with facts, because engines quote them.
 
-Review rules are law, not just platform policy. In the US, the FTC's rule on consumer reviews
-(16 CFR Part 465, in force since October 2024) bans fake and AI-generated reviews, incentives
-conditioned on a positive review, undisclosed insider reviews, and review suppression: hiding reviews
-because of their rating while presenting the ones shown as representative. Neutral moderation is
-allowed when the criteria ignore sentiment and apply to every review (abuse, personal data, spam,
-content that's false). Google Maps goes further: its content policy bans any incentive for a review, disclosed or not, and
-selectively asking only happy customers.
-On your own site, review or rating markup about your own business (`LocalBusiness` or any
-`Organization`) is ineligible for Google's review stars.
+Review rules are law, not just platform policy. In the US, the FTC's rule on consumer reviews (16
+CFR Part 465, in force since October 2024) bans fake and AI-generated reviews, incentives
+conditioned on a positive review, undisclosed insider reviews, and review suppression: hiding
+reviews because of their rating while presenting the ones shown as representative. Neutral
+moderation is allowed when the criteria ignore sentiment and apply to every review (abuse, personal
+data, spam, content that's false). Google Maps goes further: its content policy bans any incentive
+for a review, disclosed or not, and selectively asking only happy customers. On your own site,
+review or rating markup about your own business (`LocalBusiness` or any `Organization`) is
+ineligible for Google's review stars.
 
 **Reddit, forums, and communities.** Participate as a disclosed company representative: answer
 questions in threads the engines cite, help without pitching, and correct factual errors with a

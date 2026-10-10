@@ -1,0 +1,313 @@
+date,engine,prompt,prompt_type,run,brand_mentioned,competitors_mentioned,cited_urls
+2026-08-18,chatgpt,tallypath pricing,branded,1,true,InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/ https://tallypath.example/pricing
+2026-08-18,chatgpt,tallypath pricing,branded,2,true,Paydock,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/
+2026-08-18,chatgpt,tallypath pricing,branded,3,true,InvoNest;Paydock,https://tallypath.example/pricing https://tallypath.example/
+2026-08-18,chatgpt,is tallypath legit,branded,1,true,,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-08-18,chatgpt,is tallypath legit,branded,2,true,Ledgerly;Billwise;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/ https://tallypath.example/pricing
+2026-08-18,chatgpt,is tallypath legit,branded,3,false,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-08-18,chatgpt,tallypath vs ledgerly,branded,1,true,Ledgerly;Billwise;Paydock,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-08-18,chatgpt,tallypath vs ledgerly,branded,2,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/ https://tallypath.example/pricing
+2026-08-18,chatgpt,tallypath vs ledgerly,branded,3,true,Ledgerly,https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-08-18,chatgpt,best invoicing software for freelancers,category,1,true,Billwise;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,chatgpt,best invoicing software for freelancers,category,2,true,Billwise;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,chatgpt,best invoicing software for freelancers,category,3,true,Ledgerly;Billwise;InvoNest;Paydock,https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/ https://www.youtube.com/watch?v=Qx81invC0aA
+2026-08-18,chatgpt,best free invoicing app for freelancers,category,1,false,Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,chatgpt,best free invoicing app for freelancers,category,2,true,Billwise;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,chatgpt,best free invoicing app for freelancers,category,3,false,Billwise,https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,chatgpt,invoicing tool for freelance designers,category,1,true,Ledgerly;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,chatgpt,invoicing tool for freelance designers,category,2,false,InvoNest,https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,chatgpt,invoicing tool for freelance designers,category,3,false,InvoNest,https://freelancerdigest.example/best-invoicing-apps https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,chatgpt,how to charge late fees on an invoice as a freelancer,problem,1,false,Ledgerly;Billwise;InvoNest;Paydock,https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,chatgpt,how to charge late fees on an invoice as a freelancer,problem,2,false,Ledgerly;InvoNest,https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,chatgpt,how to charge late fees on an invoice as a freelancer,problem,3,false,Ledgerly;Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees
+2026-08-18,chatgpt,what to do when a client won't pay an invoice,problem,1,false,Billwise,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-08-18,chatgpt,what to do when a client won't pay an invoice,problem,2,true,Ledgerly;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-08-18,chatgpt,what to do when a client won't pay an invoice,problem,3,false,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,chatgpt,how to send a payment reminder email to a client,problem,1,true,Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-08-18,chatgpt,how to send a payment reminder email to a client,problem,2,false,Ledgerly;Billwise;Paydock,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-08-18,chatgpt,how to send a payment reminder email to a client,problem,3,true,Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice
+2026-08-18,chatgpt,how to invoice international clients in different currencies,problem,1,false,Ledgerly;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-08-18,chatgpt,how to invoice international clients in different currencies,problem,2,false,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice
+2026-08-18,chatgpt,how to invoice international clients in different currencies,problem,3,false,Paydock,https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-08-18,perplexity,tallypath pricing,branded,1,true,Billwise;InvoNest,https://tallypath.example/pricing https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-08-18,perplexity,tallypath pricing,branded,2,true,Ledgerly;Billwise;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/
+2026-08-18,perplexity,tallypath pricing,branded,3,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/
+2026-08-18,perplexity,is tallypath legit,branded,1,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/pricing
+2026-08-18,perplexity,is tallypath legit,branded,2,true,Billwise,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-08-18,perplexity,is tallypath legit,branded,3,true,Ledgerly;Billwise;Paydock,https://tallypath.example/
+2026-08-18,perplexity,tallypath vs ledgerly,branded,1,true,Ledgerly;InvoNest;Paydock,https://tallypath.example/
+2026-08-18,perplexity,tallypath vs ledgerly,branded,2,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-08-18,perplexity,tallypath vs ledgerly,branded,3,true,Ledgerly,https://tallypath.example/ https://tallypath.example/pricing https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-08-18,perplexity,best invoicing software for freelancers,category,1,false,InvoNest,https://www.reddit.com/r/freelance/comments/1m8abq/ https://www.youtube.com/watch?v=Qx81invC0aA
+2026-08-18,perplexity,best invoicing software for freelancers,category,2,true,Billwise,https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,perplexity,best invoicing software for freelancers,category,3,true,Ledgerly;Billwise;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,perplexity,best free invoicing app for freelancers,category,1,false,Ledgerly;Paydock,https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,perplexity,best free invoicing app for freelancers,category,2,true,Ledgerly;Billwise;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,perplexity,best free invoicing app for freelancers,category,3,true,,https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps https://www.youtube.com/watch?v=Qx81invC0aA
+2026-08-18,perplexity,invoicing tool for freelance designers,category,1,false,Ledgerly;Billwise;InvoNest,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,perplexity,invoicing tool for freelance designers,category,2,true,InvoNest;Paydock,https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,perplexity,invoicing tool for freelance designers,category,3,true,Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,perplexity,how to charge late fees on an invoice as a freelancer,problem,1,true,InvoNest;Paydock,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-08-18,perplexity,how to charge late fees on an invoice as a freelancer,problem,2,true,Billwise;Paydock,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice
+2026-08-18,perplexity,how to charge late fees on an invoice as a freelancer,problem,3,false,Billwise;InvoNest,https://smallbizlegal.example/late-fees
+2026-08-18,perplexity,what to do when a client won't pay an invoice,problem,1,false,Ledgerly;Billwise,https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,perplexity,what to do when a client won't pay an invoice,problem,2,false,Ledgerly,https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,perplexity,what to do when a client won't pay an invoice,problem,3,false,Ledgerly;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-08-18,perplexity,how to send a payment reminder email to a client,problem,1,false,Billwise,https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,perplexity,how to send a payment reminder email to a client,problem,2,false,Paydock,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-08-18,perplexity,how to send a payment reminder email to a client,problem,3,false,,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-08-18,perplexity,how to invoice international clients in different currencies,problem,1,false,InvoNest,https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,perplexity,how to invoice international clients in different currencies,problem,2,true,Billwise;InvoNest,https://en.wikipedia.org/wiki/Invoice
+2026-08-18,perplexity,how to invoice international clients in different currencies,problem,3,false,Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-08-18,google_ai_overview,tallypath pricing,branded,1,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/pricing
+2026-08-18,google_ai_overview,tallypath pricing,branded,2,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/
+2026-08-18,google_ai_overview,tallypath pricing,branded,3,true,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/ https://tallypath.example/pricing
+2026-08-18,google_ai_overview,is tallypath legit,branded,1,true,Ledgerly;InvoNest;Paydock,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-08-18,google_ai_overview,is tallypath legit,branded,2,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/
+2026-08-18,google_ai_overview,is tallypath legit,branded,3,true,Ledgerly;InvoNest;Paydock,https://tallypath.example/pricing https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/
+2026-08-18,google_ai_overview,tallypath vs ledgerly,branded,1,true,Ledgerly,https://tallypath.example/pricing
+2026-08-18,google_ai_overview,tallypath vs ledgerly,branded,2,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/pricing https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/
+2026-08-18,google_ai_overview,tallypath vs ledgerly,branded,3,true,Ledgerly;InvoNest;Paydock,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-08-18,google_ai_overview,best invoicing software for freelancers,category,1,false,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,google_ai_overview,best invoicing software for freelancers,category,2,false,Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,google_ai_overview,best invoicing software for freelancers,category,3,false,InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1m8abq/ https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,google_ai_overview,best free invoicing app for freelancers,category,1,true,Ledgerly;Billwise;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,google_ai_overview,best free invoicing app for freelancers,category,2,false,Ledgerly;Billwise;InvoNest,https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,google_ai_overview,best free invoicing app for freelancers,category,3,false,Billwise;InvoNest,https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,google_ai_overview,invoicing tool for freelance designers,category,1,false,InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA
+2026-08-18,google_ai_overview,invoicing tool for freelance designers,category,2,false,Billwise;InvoNest,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,google_ai_overview,invoicing tool for freelance designers,category,3,true,Ledgerly;Billwise;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA
+2026-08-18,google_ai_overview,how to charge late fees on an invoice as a freelancer,problem,1,true,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-08-18,google_ai_overview,how to charge late fees on an invoice as a freelancer,problem,2,true,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,google_ai_overview,how to charge late fees on an invoice as a freelancer,problem,3,false,Ledgerly;Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees
+2026-08-18,google_ai_overview,what to do when a client won't pay an invoice,problem,1,false,Billwise;Paydock,https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,google_ai_overview,what to do when a client won't pay an invoice,problem,2,false,Ledgerly;Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees
+2026-08-18,google_ai_overview,what to do when a client won't pay an invoice,problem,3,false,InvoNest,https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-08-18,google_ai_overview,how to send a payment reminder email to a client,problem,1,true,Billwise;InvoNest,https://en.wikipedia.org/wiki/Invoice
+2026-08-18,google_ai_overview,how to send a payment reminder email to a client,problem,2,false,InvoNest;Paydock,https://smallbizlegal.example/late-fees
+2026-08-18,google_ai_overview,how to send a payment reminder email to a client,problem,3,false,,https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,google_ai_overview,how to invoice international clients in different currencies,problem,1,false,Ledgerly;Billwise;Paydock,https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,google_ai_overview,how to invoice international clients in different currencies,problem,2,false,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees
+2026-08-18,google_ai_overview,how to invoice international clients in different currencies,problem,3,false,Paydock,https://smallbizlegal.example/late-fees
+2026-08-18,gemini,tallypath pricing,branded,1,true,Ledgerly,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-08-18,gemini,tallypath pricing,branded,2,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/
+2026-08-18,gemini,tallypath pricing,branded,3,true,Ledgerly;InvoNest,https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-08-18,gemini,is tallypath legit,branded,1,true,Ledgerly;Paydock,https://tallypath.example/ https://tallypath.example/pricing https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-08-18,gemini,is tallypath legit,branded,2,true,Ledgerly;Paydock,https://tallypath.example/ https://tallypath.example/pricing
+2026-08-18,gemini,is tallypath legit,branded,3,true,Ledgerly;Billwise;InvoNest,https://tallypath.example/ https://tallypath.example/pricing
+2026-08-18,gemini,tallypath vs ledgerly,branded,1,true,Ledgerly;Billwise;Paydock,https://tallypath.example/pricing https://tallypath.example/
+2026-08-18,gemini,tallypath vs ledgerly,branded,2,true,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-08-18,gemini,tallypath vs ledgerly,branded,3,false,Ledgerly;Billwise;Paydock,https://tallypath.example/pricing
+2026-08-18,gemini,best invoicing software for freelancers,category,1,true,Ledgerly;Paydock,https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/ https://www.youtube.com/watch?v=Qx81invC0aA
+2026-08-18,gemini,best invoicing software for freelancers,category,2,false,Ledgerly;Billwise;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,gemini,best invoicing software for freelancers,category,3,false,Billwise;InvoNest,https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,gemini,best free invoicing app for freelancers,category,1,true,Ledgerly;Billwise;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA
+2026-08-18,gemini,best free invoicing app for freelancers,category,2,false,Paydock,https://www.youtube.com/watch?v=Qx81invC0aA
+2026-08-18,gemini,best free invoicing app for freelancers,category,3,false,Ledgerly;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,gemini,invoicing tool for freelance designers,category,1,true,Ledgerly;Billwise;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-08-18,gemini,invoicing tool for freelance designers,category,2,true,InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,gemini,invoicing tool for freelance designers,category,3,false,Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps
+2026-08-18,gemini,how to charge late fees on an invoice as a freelancer,problem,1,false,InvoNest,https://en.wikipedia.org/wiki/Invoice
+2026-08-18,gemini,how to charge late fees on an invoice as a freelancer,problem,2,false,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice
+2026-08-18,gemini,how to charge late fees on an invoice as a freelancer,problem,3,false,Ledgerly;Billwise;Paydock,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,gemini,what to do when a client won't pay an invoice,problem,1,false,Billwise;Paydock,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,gemini,what to do when a client won't pay an invoice,problem,2,false,Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-08-18,gemini,what to do when a client won't pay an invoice,problem,3,false,Ledgerly;Billwise,https://en.wikipedia.org/wiki/Invoice
+2026-08-18,gemini,how to send a payment reminder email to a client,problem,1,true,Ledgerly;Billwise;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,gemini,how to send a payment reminder email to a client,problem,2,true,Billwise;InvoNest,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-08-18,gemini,how to send a payment reminder email to a client,problem,3,false,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees
+2026-08-18,gemini,how to invoice international clients in different currencies,problem,1,false,Ledgerly;Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,gemini,how to invoice international clients in different currencies,problem,2,false,InvoNest;Paydock,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-08-18,gemini,how to invoice international clients in different currencies,problem,3,false,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,chatgpt,tallypath pricing,branded,1,false,InvoNest;Paydock,https://tallypath.example/pricing https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/
+2026-09-15,chatgpt,tallypath pricing,branded,2,true,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-09-15,chatgpt,tallypath pricing,branded,3,true,InvoNest,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-09-15,chatgpt,is tallypath legit,branded,1,true,Ledgerly,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing https://tallypath.example/
+2026-09-15,chatgpt,is tallypath legit,branded,2,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-09-15,chatgpt,is tallypath legit,branded,3,true,Ledgerly;Paydock,https://tallypath.example/pricing
+2026-09-15,chatgpt,tallypath vs ledgerly,branded,1,true,Ledgerly;Billwise,https://tallypath.example/
+2026-09-15,chatgpt,tallypath vs ledgerly,branded,2,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-09-15,chatgpt,tallypath vs ledgerly,branded,3,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/
+2026-09-15,chatgpt,best invoicing software for freelancers,category,1,false,Billwise;InvoNest,https://freelancerdigest.example/best-invoicing-apps https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,chatgpt,best invoicing software for freelancers,category,2,false,InvoNest;Paydock,https://freelancerdigest.example/best-invoicing-apps https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,chatgpt,best invoicing software for freelancers,category,3,false,Ledgerly;Billwise,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,chatgpt,best free invoicing app for freelancers,category,1,false,Ledgerly;Billwise,https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,chatgpt,best free invoicing app for freelancers,category,2,false,,https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/ https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,chatgpt,best free invoicing app for freelancers,category,3,false,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,chatgpt,invoicing tool for freelance designers,category,1,false,Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,chatgpt,invoicing tool for freelance designers,category,2,false,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/best-invoicing-apps https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,chatgpt,invoicing tool for freelance designers,category,3,true,Billwise;Paydock,https://freelancerdigest.example/best-invoicing-apps https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,chatgpt,how to charge late fees on an invoice as a freelancer,problem,1,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/guides/late-payment-fees-freelancers https://smallbizlegal.example/late-fees
+2026-09-15,chatgpt,how to charge late fees on an invoice as a freelancer,problem,2,false,Ledgerly,https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-09-15,chatgpt,how to charge late fees on an invoice as a freelancer,problem,3,false,Billwise;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-09-15,chatgpt,what to do when a client won't pay an invoice,problem,1,true,Ledgerly;Billwise;Paydock,https://tallypath.example/guides/late-payment-fees-freelancers https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-09-15,chatgpt,what to do when a client won't pay an invoice,problem,2,true,Paydock,https://tallypath.example/guides/late-payment-fees-freelancers https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,chatgpt,what to do when a client won't pay an invoice,problem,3,true,Ledgerly;InvoNest,https://tallypath.example/guides/late-payment-fees-freelancers https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-09-15,chatgpt,how to send a payment reminder email to a client,problem,1,false,Ledgerly;Billwise;InvoNest;Paydock,https://en.wikipedia.org/wiki/Invoice
+2026-09-15,chatgpt,how to send a payment reminder email to a client,problem,2,true,Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,chatgpt,how to send a payment reminder email to a client,problem,3,true,Billwise;Paydock,https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees
+2026-09-15,chatgpt,how to invoice international clients in different currencies,problem,1,false,Billwise;InvoNest,https://en.wikipedia.org/wiki/Invoice
+2026-09-15,chatgpt,how to invoice international clients in different currencies,problem,2,false,Paydock,https://en.wikipedia.org/wiki/Invoice
+2026-09-15,chatgpt,how to invoice international clients in different currencies,problem,3,false,Billwise;InvoNest,https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-09-15,chatgpt,ledgerly vs billwise,comparison,1,false,Ledgerly;Billwise,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,chatgpt,ledgerly vs billwise,comparison,2,false,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,chatgpt,ledgerly vs billwise,comparison,3,false,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise
+2026-09-15,chatgpt,billwise vs invonest for freelancers,comparison,1,false,Billwise;InvoNest,https://ledgerly.example/compare/billwise
+2026-09-15,chatgpt,billwise vs invonest for freelancers,comparison,2,false,Ledgerly;Billwise;InvoNest;Paydock,https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,chatgpt,billwise vs invonest for freelancers,comparison,3,false,Billwise;InvoNest;Paydock,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise
+2026-09-15,chatgpt,ledgerly vs paydock,comparison,1,false,Ledgerly;Paydock,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise
+2026-09-15,chatgpt,ledgerly vs paydock,comparison,2,false,Ledgerly;InvoNest;Paydock,https://freelancerdigest.example/ledgerly-review
+2026-09-15,chatgpt,ledgerly vs paydock,comparison,3,false,Ledgerly;Billwise;Paydock,https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,chatgpt,invonest vs ledgerly pricing,comparison,1,false,Ledgerly;Billwise;InvoNest;Paydock,https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,chatgpt,invonest vs ledgerly pricing,comparison,2,false,Ledgerly;InvoNest,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,chatgpt,invonest vs ledgerly pricing,comparison,3,false,Ledgerly;InvoNest;Paydock,https://ledgerly.example/compare/billwise
+2026-09-15,chatgpt,paydock vs billwise which is better,comparison,1,true,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/ledgerly-review https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://ledgerly.example/compare/billwise
+2026-09-15,chatgpt,paydock vs billwise which is better,comparison,2,false,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/ledgerly-review https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,chatgpt,paydock vs billwise which is better,comparison,3,false,Billwise;InvoNest;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,chatgpt,ledgerly alternatives,comparison,1,false,Ledgerly;InvoNest;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,chatgpt,ledgerly alternatives,comparison,2,false,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://ledgerly.example/compare/billwise
+2026-09-15,chatgpt,ledgerly alternatives,comparison,3,false,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/ledgerly-review
+2026-09-15,perplexity,tallypath pricing,branded,1,true,InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/ https://tallypath.example/pricing
+2026-09-15,perplexity,tallypath pricing,branded,2,true,Billwise;InvoNest;Paydock,https://tallypath.example/
+2026-09-15,perplexity,tallypath pricing,branded,3,true,Ledgerly;Billwise,https://tallypath.example/
+2026-09-15,perplexity,is tallypath legit,branded,1,true,Billwise;InvoNest,https://tallypath.example/pricing https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-09-15,perplexity,is tallypath legit,branded,2,true,Ledgerly;Billwise;InvoNest,https://tallypath.example/
+2026-09-15,perplexity,is tallypath legit,branded,3,true,Ledgerly;InvoNest;Paydock,https://tallypath.example/
+2026-09-15,perplexity,tallypath vs ledgerly,branded,1,true,Ledgerly;Billwise;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/ https://tallypath.example/pricing
+2026-09-15,perplexity,tallypath vs ledgerly,branded,2,true,Ledgerly;InvoNest,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-09-15,perplexity,tallypath vs ledgerly,branded,3,true,Ledgerly;Billwise,https://tallypath.example/ https://tallypath.example/pricing
+2026-09-15,perplexity,best invoicing software for freelancers,category,1,true,Billwise,https://freelancerdigest.example/best-invoicing-apps https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,perplexity,best invoicing software for freelancers,category,2,false,Billwise,https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,perplexity,best invoicing software for freelancers,category,3,false,Billwise;InvoNest,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,perplexity,best free invoicing app for freelancers,category,1,false,Ledgerly;Paydock,https://www.reddit.com/r/freelance/comments/1m8abq/ https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,perplexity,best free invoicing app for freelancers,category,2,true,Billwise;Paydock,https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,perplexity,best free invoicing app for freelancers,category,3,true,Ledgerly,https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,perplexity,invoicing tool for freelance designers,category,1,false,Ledgerly;InvoNest;Paydock,https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,perplexity,invoicing tool for freelance designers,category,2,true,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/best-invoicing-apps https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,perplexity,invoicing tool for freelance designers,category,3,false,Ledgerly;InvoNest,https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,perplexity,how to charge late fees on an invoice as a freelancer,problem,1,true,Ledgerly;Paydock,https://tallypath.example/guides/late-payment-fees-freelancers https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,perplexity,how to charge late fees on an invoice as a freelancer,problem,2,true,Paydock,https://tallypath.example/guides/late-payment-fees-freelancers https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-09-15,perplexity,how to charge late fees on an invoice as a freelancer,problem,3,true,InvoNest;Paydock,https://tallypath.example/guides/late-payment-fees-freelancers https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,perplexity,what to do when a client won't pay an invoice,problem,1,true,InvoNest;Paydock,https://tallypath.example/guides/late-payment-fees-freelancers https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,perplexity,what to do when a client won't pay an invoice,problem,2,true,Ledgerly,https://tallypath.example/guides/late-payment-fees-freelancers https://smallbizlegal.example/late-fees
+2026-09-15,perplexity,what to do when a client won't pay an invoice,problem,3,true,Ledgerly;Billwise;Paydock,https://tallypath.example/guides/late-payment-fees-freelancers https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees
+2026-09-15,perplexity,how to send a payment reminder email to a client,problem,1,true,InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-09-15,perplexity,how to send a payment reminder email to a client,problem,2,true,InvoNest;Paydock,https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees
+2026-09-15,perplexity,how to send a payment reminder email to a client,problem,3,false,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-09-15,perplexity,how to invoice international clients in different currencies,problem,1,false,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice
+2026-09-15,perplexity,how to invoice international clients in different currencies,problem,2,false,Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees
+2026-09-15,perplexity,how to invoice international clients in different currencies,problem,3,true,InvoNest,https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,perplexity,ledgerly vs billwise,comparison,1,false,Ledgerly;Billwise;InvoNest;Paydock,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise
+2026-09-15,perplexity,ledgerly vs billwise,comparison,2,false,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise
+2026-09-15,perplexity,ledgerly vs billwise,comparison,3,true,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review
+2026-09-15,perplexity,billwise vs invonest for freelancers,comparison,1,false,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://ledgerly.example/compare/billwise
+2026-09-15,perplexity,billwise vs invonest for freelancers,comparison,2,false,Billwise;InvoNest,https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review
+2026-09-15,perplexity,billwise vs invonest for freelancers,comparison,3,false,Ledgerly;Billwise;InvoNest;Paydock,https://freelancerdigest.example/ledgerly-review
+2026-09-15,perplexity,ledgerly vs paydock,comparison,1,false,Ledgerly;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,perplexity,ledgerly vs paydock,comparison,2,false,Ledgerly;Paydock,https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,perplexity,ledgerly vs paydock,comparison,3,false,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,perplexity,invonest vs ledgerly pricing,comparison,1,false,Ledgerly;Billwise;InvoNest;Paydock,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,perplexity,invonest vs ledgerly pricing,comparison,2,false,Ledgerly;InvoNest;Paydock,https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,perplexity,invonest vs ledgerly pricing,comparison,3,false,Ledgerly;Billwise;InvoNest,https://freelancerdigest.example/ledgerly-review
+2026-09-15,perplexity,paydock vs billwise which is better,comparison,1,false,Billwise;Paydock,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise
+2026-09-15,perplexity,paydock vs billwise which is better,comparison,2,false,Billwise;InvoNest;Paydock,https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,perplexity,paydock vs billwise which is better,comparison,3,false,Ledgerly;Billwise;Paydock,https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,perplexity,ledgerly alternatives,comparison,1,true,Ledgerly;InvoNest;Paydock,https://freelancerdigest.example/ledgerly-review https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,perplexity,ledgerly alternatives,comparison,2,false,Ledgerly,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise
+2026-09-15,perplexity,ledgerly alternatives,comparison,3,false,Ledgerly;Billwise,https://ledgerly.example/compare/billwise
+2026-09-15,google_ai_overview,tallypath pricing,branded,1,true,Ledgerly;InvoNest,https://tallypath.example/
+2026-09-15,google_ai_overview,tallypath pricing,branded,2,true,Paydock,https://tallypath.example/pricing
+2026-09-15,google_ai_overview,tallypath pricing,branded,3,true,Billwise,https://tallypath.example/pricing
+2026-09-15,google_ai_overview,is tallypath legit,branded,1,true,InvoNest,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-09-15,google_ai_overview,is tallypath legit,branded,2,true,Ledgerly;Paydock,https://tallypath.example/pricing
+2026-09-15,google_ai_overview,is tallypath legit,branded,3,true,InvoNest,https://tallypath.example/pricing https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-09-15,google_ai_overview,tallypath vs ledgerly,branded,1,true,Ledgerly;Billwise;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-09-15,google_ai_overview,tallypath vs ledgerly,branded,2,true,Ledgerly;InvoNest;Paydock,https://tallypath.example/ https://tallypath.example/pricing https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-09-15,google_ai_overview,tallypath vs ledgerly,branded,3,true,Ledgerly,https://www.reddit.com/r/freelance/comments/1k2tpx/
+2026-09-15,google_ai_overview,best invoicing software for freelancers,category,1,false,Billwise;Paydock,https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/ https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,google_ai_overview,best invoicing software for freelancers,category,2,false,InvoNest,https://freelancerdigest.example/best-invoicing-apps https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,google_ai_overview,best invoicing software for freelancers,category,3,false,Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1m8abq/ https://www.youtube.com/watch?v=Qx81invC0aA https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,google_ai_overview,best free invoicing app for freelancers,category,1,false,Ledgerly;Billwise,https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/ https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,google_ai_overview,best free invoicing app for freelancers,category,2,true,InvoNest,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,google_ai_overview,best free invoicing app for freelancers,category,3,false,InvoNest,https://www.reddit.com/r/freelance/comments/1m8abq/ https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,google_ai_overview,invoicing tool for freelance designers,category,1,false,,https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,google_ai_overview,invoicing tool for freelance designers,category,2,false,Billwise;InvoNest,https://www.youtube.com/watch?v=Qx81invC0aA https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,google_ai_overview,invoicing tool for freelance designers,category,3,true,Paydock,https://www.reddit.com/r/freelance/comments/1m8abq/ https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,google_ai_overview,how to charge late fees on an invoice as a freelancer,problem,1,true,Ledgerly;InvoNest,https://smallbizlegal.example/late-fees
+2026-09-15,google_ai_overview,how to charge late fees on an invoice as a freelancer,problem,2,false,Ledgerly;Paydock,https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees
+2026-09-15,google_ai_overview,how to charge late fees on an invoice as a freelancer,problem,3,false,Ledgerly;Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,google_ai_overview,what to do when a client won't pay an invoice,problem,1,true,Ledgerly;Billwise;InvoNest;Paydock,https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,google_ai_overview,what to do when a client won't pay an invoice,problem,2,false,Ledgerly;InvoNest,https://smallbizlegal.example/late-fees
+2026-09-15,google_ai_overview,what to do when a client won't pay an invoice,problem,3,true,Ledgerly;Billwise;Paydock,https://en.wikipedia.org/wiki/Invoice https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,google_ai_overview,how to send a payment reminder email to a client,problem,1,false,InvoNest,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,google_ai_overview,how to send a payment reminder email to a client,problem,2,false,Paydock,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,google_ai_overview,how to send a payment reminder email to a client,problem,3,true,Ledgerly,https://en.wikipedia.org/wiki/Invoice
+2026-09-15,google_ai_overview,how to invoice international clients in different currencies,problem,1,false,Ledgerly;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice
+2026-09-15,google_ai_overview,how to invoice international clients in different currencies,problem,2,true,Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees
+2026-09-15,google_ai_overview,how to invoice international clients in different currencies,problem,3,false,Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees
+2026-09-15,google_ai_overview,ledgerly vs billwise,comparison,1,false,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review
+2026-09-15,google_ai_overview,ledgerly vs billwise,comparison,2,false,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,google_ai_overview,ledgerly vs billwise,comparison,3,false,Ledgerly;Billwise;InvoNest;Paydock,https://freelancerdigest.example/ledgerly-review
+2026-09-15,google_ai_overview,billwise vs invonest for freelancers,comparison,1,false,Ledgerly;Billwise;InvoNest;Paydock,https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,google_ai_overview,billwise vs invonest for freelancers,comparison,2,false,Billwise;InvoNest,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,google_ai_overview,billwise vs invonest for freelancers,comparison,3,false,Ledgerly;Billwise;InvoNest,https://ledgerly.example/compare/billwise
+2026-09-15,google_ai_overview,ledgerly vs paydock,comparison,1,false,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,google_ai_overview,ledgerly vs paydock,comparison,2,false,Ledgerly;InvoNest;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://ledgerly.example/compare/billwise
+2026-09-15,google_ai_overview,ledgerly vs paydock,comparison,3,false,Ledgerly;InvoNest;Paydock,https://freelancerdigest.example/ledgerly-review https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,google_ai_overview,invonest vs ledgerly pricing,comparison,1,false,Ledgerly;Billwise;InvoNest;Paydock,https://ledgerly.example/compare/billwise
+2026-09-15,google_ai_overview,invonest vs ledgerly pricing,comparison,2,false,Ledgerly;InvoNest;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review
+2026-09-15,google_ai_overview,invonest vs ledgerly pricing,comparison,3,false,Ledgerly;InvoNest,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,google_ai_overview,paydock vs billwise which is better,comparison,1,false,Ledgerly;Billwise;Paydock,https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,google_ai_overview,paydock vs billwise which is better,comparison,2,false,Billwise;InvoNest;Paydock,https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,google_ai_overview,paydock vs billwise which is better,comparison,3,false,Billwise;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,google_ai_overview,ledgerly alternatives,comparison,1,false,Ledgerly;InvoNest;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise
+2026-09-15,google_ai_overview,ledgerly alternatives,comparison,2,false,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise
+2026-09-15,google_ai_overview,ledgerly alternatives,comparison,3,false,Ledgerly;InvoNest,https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,gemini,tallypath pricing,branded,1,true,Ledgerly;Paydock,https://tallypath.example/pricing
+2026-09-15,gemini,tallypath pricing,branded,2,true,Ledgerly;Billwise;InvoNest,https://tallypath.example/pricing
+2026-09-15,gemini,tallypath pricing,branded,3,true,Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/ https://tallypath.example/pricing
+2026-09-15,gemini,is tallypath legit,branded,1,true,Ledgerly;Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/
+2026-09-15,gemini,is tallypath legit,branded,2,true,Ledgerly;Billwise;Paydock,https://tallypath.example/ https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/pricing
+2026-09-15,gemini,is tallypath legit,branded,3,false,Ledgerly;InvoNest;Paydock,https://tallypath.example/pricing
+2026-09-15,gemini,tallypath vs ledgerly,branded,1,true,Ledgerly;Billwise;InvoNest,https://tallypath.example/ https://tallypath.example/pricing
+2026-09-15,gemini,tallypath vs ledgerly,branded,2,false,Ledgerly;InvoNest;Paydock,https://tallypath.example/pricing https://www.reddit.com/r/freelance/comments/1k2tpx/ https://tallypath.example/
+2026-09-15,gemini,tallypath vs ledgerly,branded,3,true,Ledgerly;Billwise;InvoNest;Paydock,https://tallypath.example/ https://tallypath.example/pricing
+2026-09-15,gemini,best invoicing software for freelancers,category,1,false,Ledgerly;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,gemini,best invoicing software for freelancers,category,2,true,Billwise;InvoNest,https://www.youtube.com/watch?v=Qx81invC0aA
+2026-09-15,gemini,best invoicing software for freelancers,category,3,true,,https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,gemini,best free invoicing app for freelancers,category,1,true,InvoNest;Paydock,https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,gemini,best free invoicing app for freelancers,category,2,false,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/best-invoicing-apps https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,gemini,best free invoicing app for freelancers,category,3,false,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,gemini,invoicing tool for freelance designers,category,1,true,Ledgerly;Billwise;InvoNest,https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,gemini,invoicing tool for freelance designers,category,2,false,Ledgerly;Billwise,https://freelancerdigest.example/best-invoicing-apps
+2026-09-15,gemini,invoicing tool for freelance designers,category,3,false,Ledgerly;Billwise;InvoNest;Paydock,https://www.reddit.com/r/freelance/comments/1m8abq/
+2026-09-15,gemini,how to charge late fees on an invoice as a freelancer,problem,1,false,InvoNest,https://smallbizlegal.example/late-fees
+2026-09-15,gemini,how to charge late fees on an invoice as a freelancer,problem,2,true,Ledgerly,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,gemini,how to charge late fees on an invoice as a freelancer,problem,3,false,Ledgerly;InvoNest;Paydock,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-09-15,gemini,what to do when a client won't pay an invoice,problem,1,false,Ledgerly,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice
+2026-09-15,gemini,what to do when a client won't pay an invoice,problem,2,true,Billwise;Paydock,https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees
+2026-09-15,gemini,what to do when a client won't pay an invoice,problem,3,false,,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/ https://en.wikipedia.org/wiki/Invoice
+2026-09-15,gemini,how to send a payment reminder email to a client,problem,1,true,Ledgerly;InvoNest,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,gemini,how to send a payment reminder email to a client,problem,2,true,Ledgerly;Billwise;InvoNest,https://smallbizlegal.example/late-fees https://en.wikipedia.org/wiki/Invoice
+2026-09-15,gemini,how to send a payment reminder email to a client,problem,3,false,InvoNest;Paydock,https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,gemini,how to invoice international clients in different currencies,problem,1,false,Ledgerly;InvoNest;Paydock,https://en.wikipedia.org/wiki/Invoice https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,gemini,how to invoice international clients in different currencies,problem,2,false,Billwise;Paydock,https://www.reddit.com/r/freelance/comments/1h7ccz/ https://smallbizlegal.example/late-fees
+2026-09-15,gemini,how to invoice international clients in different currencies,problem,3,true,Ledgerly;Billwise;InvoNest;Paydock,https://smallbizlegal.example/late-fees https://www.reddit.com/r/freelance/comments/1h7ccz/
+2026-09-15,gemini,ledgerly vs billwise,comparison,1,false,Ledgerly;Billwise,https://freelancerdigest.example/ledgerly-review
+2026-09-15,gemini,ledgerly vs billwise,comparison,2,false,Ledgerly;Billwise;InvoNest;Paydock,https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,gemini,ledgerly vs billwise,comparison,3,false,Ledgerly;Billwise,https://freelancerdigest.example/ledgerly-review
+2026-09-15,gemini,billwise vs invonest for freelancers,comparison,1,false,Ledgerly;Billwise;InvoNest,https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review
+2026-09-15,gemini,billwise vs invonest for freelancers,comparison,2,false,Ledgerly;Billwise;InvoNest;Paydock,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,gemini,billwise vs invonest for freelancers,comparison,3,false,Billwise;InvoNest;Paydock,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise
+2026-09-15,gemini,ledgerly vs paydock,comparison,1,false,Ledgerly;InvoNest;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,gemini,ledgerly vs paydock,comparison,2,false,Ledgerly;Billwise;InvoNest;Paydock,https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/ https://freelancerdigest.example/ledgerly-review
+2026-09-15,gemini,ledgerly vs paydock,comparison,3,false,Ledgerly;Paydock,https://ledgerly.example/compare/billwise
+2026-09-15,gemini,invonest vs ledgerly pricing,comparison,1,false,Ledgerly;InvoNest,https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,gemini,invonest vs ledgerly pricing,comparison,2,false,Ledgerly;Billwise;InvoNest;Paydock,https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review
+2026-09-15,gemini,invonest vs ledgerly pricing,comparison,3,false,Ledgerly;InvoNest;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,gemini,paydock vs billwise which is better,comparison,1,false,Billwise;InvoNest;Paydock,https://ledgerly.example/compare/billwise https://freelancerdigest.example/ledgerly-review https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,gemini,paydock vs billwise which is better,comparison,2,false,Ledgerly;Billwise;InvoNest;Paydock,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,gemini,paydock vs billwise which is better,comparison,3,false,Billwise;Paydock,https://ledgerly.example/compare/billwise
+2026-09-15,gemini,ledgerly alternatives,comparison,1,false,Ledgerly;Billwise;Paydock,https://freelancerdigest.example/ledgerly-review https://ledgerly.example/compare/billwise https://www.reddit.com/r/smallbusiness/comments/1j4xyz/
+2026-09-15,gemini,ledgerly alternatives,comparison,2,false,Ledgerly,https://ledgerly.example/compare/billwise
+2026-09-15,gemini,ledgerly alternatives,comparison,3,false,Ledgerly,https://www.reddit.com/r/smallbusiness/comments/1j4xyz/

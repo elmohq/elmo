@@ -3,132 +3,1434 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "We're a project management tool and we keep getting left out when people ask ChatGPT and Perplexity for project management software. How do we fix that?",
-      "expected_output": "Starts with measurement rather than tactics: proposes a prompt set weighted toward unbranded discovery and comparison prompts, repeated runs per engine, and mention rate with n against a locked competitor set. Offers Elmo (cloud or self-hosted) or the manual fallback for the baseline. Diagnoses per engine, pulls the cited sources for lost prompts, and turns them into owned-content and off-site actions. Checks crawler access (OAI-SearchBot, PerplexityBot) and raw-HTML rendering. Sets a re-measure date.",
-      "assertions": [
-        "Proposes a baseline measurement before recommending changes",
-        "Recommends repeated runs per prompt and reports visibility as a rate, not a rank",
-        "Separates results by engine",
-        "Uses the sources cited for lost prompts to choose off-site targets",
-        "Checks OAI-SearchBot and PerplexityBot access rather than only GPTBot",
-        "Does not promise a percentage lift from rewriting tactics",
-        "Includes a re-measure step"
+      "topic": "Optimize an existing page so AI engines can quote it",
+      "prompt": "I do marketing for a plumbing company in Minneapolis. I've attached the HTML of our blog post on tankless water heaters. When people ask ChatGPT or Google \"how long do tankless water heaters last\" we never get quoted, even though the answer is in there somewhere. Can you restructure/rewrite it so AI tools can actually use it? Please keep it honest, I don't want to make stuff up.",
+      "files": [
+        "evals/files/1/tankless-lifespan.html"
       ],
-      "files": []
+      "expected_output": "A strong response diagnoses why the page is hard to use for that question and returns a revised page or detailed edit plan. The answer the page already contains (in the company's experience, about 20 years for a maintained tankless unit vs. 8-12 for tank units; hard water and scale are the main lifespan risk; descale yearly or more often without a softener) is buried in paragraph five under the heading \"Our Thoughts\", below a generic H1 (\"Everything You Need To Know\") and two paragraphs of company boilerplate. The rewrite gives the page a descriptive title/H1, puts a short self-contained answer at the top, then explains the factors (water hardness, maintenance, usage, installation) using the team's local first-hand experience, which is the page's real differentiator. It points out that the comparison chart is an image with no alt text or text equivalent and that the FAQ is injected by JavaScript from an API, so crawlers that don't render JavaScript (and anyone reading the raw HTML) can't see it; both should be present as HTML text. It removes or sources the unsupported \"studies show\" claim and the vague energy claim rather than inventing numbers, and marks any figure it can't verify as something for the client to confirm. It adds visible authorship (ideally a licensed plumber) and a published/updated date. It does not claim Google needs special AI files, chunking, or schema for AI Overviews; if it suggests structured data (e.g. Article), it frames it as optional and consistent with visible content.",
+      "assertions": [
+        {
+          "text": "Identifies that the direct answer to the lifespan question is buried mid-page (under a vague heading, after boilerplate) and makes it easy to find: a concise, self-contained answer placed at or near the top, or in an early, clearly labelled section under a descriptive title or heading.",
+          "type": "method",
+          "rationale": "Readers and retrieval systems both handle a page better when the passage that answers the query is explicit and stands on its own instead of being buried."
+        },
+        {
+          "text": "Flags that the comparison chart is an image with no alt text or text equivalent, and that the FAQ is loaded client-side by JavaScript, and recommends making that information available as text in the HTML.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/ai-features",
+          "rationale": "Google's AI-features guidance says to keep important content available in textual form, and Google's JavaScript SEO docs note that not all bots can run JavaScript."
+        },
+        {
+          "text": "Does not fabricate statistics, studies, quotes, or sources. The unsupported \"studies show\" claim is removed, softened, or given a real, checkable source, and any new figures are attributed or clearly marked for the client to verify.",
+          "type": "method",
+          "rationale": "The user asked for honesty. Invented evidence is harmful, and engines and readers can check it."
+        },
+        {
+          "text": "Keeps and foregrounds the company's own first-hand experience (local hard water, scale buildup, maintenance interval, warning signs) instead of replacing it with generic copy.",
+          "type": "method",
+          "rationale": "Original, experience-based detail is what sets this page apart from commodity content on the same question."
+        },
+        {
+          "text": "Recommends visible authorship (who wrote or reviewed it and their qualifications) and a publication or last-updated date.",
+          "type": "method",
+          "rationale": "Clear who/when information helps readers and systems judge reliability."
+        },
+        {
+          "text": "Does not claim Google's AI features need special AI-specific files, markup, or content chunking to use the page. Any structured data it suggests is presented as optional and must match the visible content. (Recommending clear headings or well-organised sections for readers is fine; only presenting them as a Google requirement fails.)",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/ai-optimization-guide",
+          "rationale": "Google's generative AI optimization guide says no new machine-readable files, AI text files, or special schema are needed, and that content doesn't need to be broken into tiny pieces."
+        }
+      ]
     },
     {
       "id": 2,
-      "prompt": "Should we block GPTBot and the other AI crawlers? We don't want our content used for training but we still want to show up in AI answers.",
-      "expected_output": "Separates training crawlers (GPTBot, ClaudeBot, CCBot, Google-Extended, Applebot-Extended) from search and live-fetch crawlers (OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User). Gives the 'stay in answers, opt out of training' robots.txt pattern. Warns that Google-Extended also controls Gemini app grounding, and that blocking it does not affect AI Overviews, which run on Googlebot. Mentions checking the CDN or firewall, and that OpenAI applies OAI-SearchBot changes in about 24 hours.",
-      "assertions": [
-        "Distinguishes training crawlers from search crawlers",
-        "Provides a robots.txt that blocks training and allows search crawlers",
-        "States that blocking Google-Extended does not remove a site from AI Overviews",
-        "Notes that Google-Extended also affects Gemini app grounding",
-        "Mentions firewall or CDN bot blocking as a separate check",
-        "Does not list anthropic-ai as a current crawler"
+      "topic": "Fix structured data (JSON-LD) on a product page",
+      "prompt": "Our dev added schema markup to our tent product page (HTML attached) but Search Console is flagging it and I'm not confident it's right. Can you give me corrected JSON-LD? We sell the tent directly on this page. Ideally I'd also like it to help us show up in AI shopping answers.",
+      "files": [
+        "evals/files/2/product.html"
       ],
-      "files": []
+      "expected_output": "A strong response returns corrected, valid JSON-LD and explains each fix. The existing Product block has a trailing comma after aggregateRating, so it isn't valid JSON and won't parse. The offer has price \"$349.00\" while the page shows $379.00 (sale price, was $429), so it uses a numeric price of 379.00 with priceCurrency USD. Availability says \"In stock\" while the page says the tent is backordered for 3-5 weeks, so it uses https://schema.org/BackOrder. The aggregateRating claims 4.9 from 312 reviews while the page shows 4.6 from 87, so it uses the visible values. brand becomes a Brand object; image, GTIN (00850012345671, as gtin14 or gtin), color, and similar properties come from the page. Shipping and returns markup, if added, matches the stated terms (free standard shipping only over $150 to the contiguous US; 30-day returns, customer pays return shipping). The FAQPage block marks up Q&A that doesn't appear on the page, includes a promotional \"best tent\" claim, and contradicts the shipping policy (\"free shipping on all orders\"), so it's removed. Google also stopped showing FAQ rich results in 2026, so FAQ markup wouldn't earn a FAQ rich result anyway. The response recommends validating the result with a structured data testing tool and keeping the markup, the visible page, and any Merchant Center or other product feed consistent. It doesn't promise that markup guarantees placement in Google or AI shopping answers.",
+      "assertions": [
+        {
+          "text": "Notes that the existing Product JSON-LD is not valid JSON (trailing comma after the aggregateRating object), so it won't parse as written.",
+          "type": "accuracy",
+          "source": "https://www.rfc-editor.org/rfc/rfc8259.html",
+          "rationale": "The JSON grammar doesn't allow a trailing comma after the last member of an object."
+        },
+        {
+          "text": "Corrects the offer price to a numeric value with no currency symbol, paired with priceCurrency (e.g. \"379.00\" and \"USD\"), and matches the visible price ($379.00) rather than $349.",
+          "type": "accuracy",
+          "source": "https://schema.org/price",
+          "rationale": "schema.org says to use priceCurrency instead of symbols like '$' in the price value. Google's structured data policies require markup to be a true representation of the page."
+        },
+        {
+          "text": "Replaces \"In stock\" with a schema.org ItemAvailability value that matches the page's backorder status (e.g. https://schema.org/BackOrder).",
+          "type": "accuracy",
+          "source": "https://schema.org/ItemAvailability",
+          "rationale": "BackOrder is a member of schema.org's ItemAvailability enumeration. The page says the tent is backordered."
+        },
+        {
+          "text": "Makes aggregateRating match the visible reviews (4.6 from 87) rather than 4.9 from 312.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/sd-policies",
+          "rationale": "Google requires structured data to truly represent the page and prohibits misleading markup, such as fake reviews."
+        },
+        {
+          "text": "Removes or flags the FAQPage markup because those questions and answers aren't visible on the page (and the shipping answer contradicts the stated policy).",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/sd-policies",
+          "rationale": "Google's structured data policies say not to mark up content that isn't visible to readers."
+        },
+        {
+          "text": "Does not promise that FAQ markup will produce FAQ rich results in Google Search.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/faqpage",
+          "rationale": "Google stopped showing the FAQ rich result in Search in 2026 and removed its documentation."
+        },
+        {
+          "text": "Fills recommended properties only with data actually on the page (e.g. GTIN, brand, image, color, shipping and return terms) and doesn't invent values the page doesn't support.",
+          "type": "method",
+          "rationale": "Invented attributes make the markup inaccurate, which is the problem being fixed."
+        },
+        {
+          "text": "Recommends validating the corrected markup, and doesn't claim the markup alone guarantees appearing in Google or AI shopping results.",
+          "type": "method",
+          "rationale": "Validation catches syntax and eligibility errors. Inclusion in any surface is at the platform's discretion."
+        }
+      ]
     },
     {
       "id": 3,
-      "prompt": "Our SEO agency says we need an llms.txt file and FAQ schema on every page to get cited by AI. Is that right?",
-      "expected_output": "Says the evidence doesn't support either as a citation lever: no consumer answer engine documents reading llms.txt, log studies show near-zero requests, and Google says no special files or markup are needed. A controlled schema study found no lift, and FAQ rich results have been restricted since 2023. llms.txt is fine for developer docs, and schema still matters for rich results and entity clarity. Redirects effort to access, indexing, owned pages for lost prompts, and off-site work, and offers to measure the effect of any change.",
+      "topic": "Content brief for a page targeting AI answers",
+      "prompt": "We sell and install home EV chargers in Ontario. I want a page that gets used when people ask ChatGPT, Perplexity or Google something like \"how much does it cost to install a level 2 charger at home in Ontario\". Can you write a content brief / outline my writer can work from?",
+      "files": [],
+      "expected_output": "A strong brief states the page's purpose and audience, then puts a direct, concise answer to the cost question first: a cost range broken into charger hardware and installation, plus the main cost drivers. It plans sections for the sub-questions a homeowner actually has, such as panel capacity and possible upgrade, distance from the panel and wiring run, permits and inspection, available rebates or incentives, hardwired vs. plug-in, timeline, and choosing an installer. These reflect the related queries an engine might fan out to. It requires numbers to come from the company's own job data (e.g. anonymized ranges from recent installs) or current, citable sources, and flags time-sensitive items like rebates for verification at publish time instead of putting invented figures in the brief. It gets regulatory facts right: in Ontario, EV charger installs require a notification of work (permit) with the Electrical Safety Authority, usually filed by a Licensed Electrical Contractor. It asks for original material the company uniquely has (photos, real install scenarios, an installer quote) and visible authorship or expert review with an update date. It may suggest useful formats like a cost table and avoids prescribing word counts or schema as requirements for AI visibility.",
       "assertions": [
-        "States that llms.txt is not a documented input for consumer answer engines",
-        "States that schema markup has no demonstrated causal effect on AI citations",
-        "Mentions the 2023 FAQ rich result restriction",
-        "Acknowledges the legitimate uses (developer docs, rich results)",
-        "Cites sources or points to the evidence file",
-        "Redirects to higher-evidence work"
-      ],
-      "files": []
+        {
+          "text": "The outline puts a direct, concise answer to the core cost question (e.g. a range with the main drivers) at or near the start, before the detailed supporting sections.",
+          "type": "method",
+          "rationale": "Answer-first structure serves people and makes the key passage easy to extract and quote."
+        },
+        {
+          "text": "Covers the related sub-questions a homeowner would realistically have (any reasonable set, e.g. panel capacity, permits/inspection, incentives, wiring distance, hardwired vs. plug-in, timeline), not just variations of the head query.",
+          "type": "method",
+          "rationale": "Engines answer with related sub-queries and readers have follow-up questions. Coverage of real decision factors matters more than keyword repetition."
+        },
+        {
+          "text": "Requires prices, incentive amounts, and regulatory statements to come from the company's own data or current citable sources, and flags time-sensitive items for verification instead of inventing figures.",
+          "type": "method",
+          "rationale": "Invented or stale numbers are a common, harmful failure in AI-targeted content."
+        },
+        {
+          "text": "Asks for original, first-hand material the company uniquely has (e.g. anonymized install-cost data, real job examples, photos, installer expertise).",
+          "type": "method",
+          "rationale": "Non-commodity content is what makes a page worth citing over many similar ones. Google's AI optimization guide makes this point too."
+        },
+        {
+          "text": "If permits or inspection are mentioned, doesn't say none is needed. ESA states that all EV charger installations in Ontario need an electrical permit filed before work starts, and that the Licensed Electrical Contractor must file a notification of work (permit) with ESA.",
+          "type": "accuracy",
+          "source": "https://esasafe.com/home-renovation-buying-and-selling/ev-charging-systems/",
+          "rationale": "ESA: 'All EV charger installations require an electrical permit to be filed before work starts' and 'A Licensed Electrical Contractor (LEC) must file a notification of work (i.e. permit) with ESA'."
+        },
+        {
+          "text": "Does not present a specific word count or content chunking as a requirement for appearing in AI answers. A planning length estimate is fine.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/ai-optimization-guide",
+          "rationale": "Google's generative AI optimization guide says there's no ideal page length and no need to break content into tiny pieces."
+        },
+        {
+          "text": "If structured data is suggested, it isn't presented as required for AI answers, and FAQ markup isn't promised to produce FAQ rich results.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/faqpage",
+          "rationale": "Google says no special schema is needed for its generative AI features, and FAQ rich results are no longer shown in Google Search."
+        }
+      ]
     },
     {
       "id": 4,
-      "prompt": "I read that adding statistics and quotes to content boosts AI visibility by 40%. Should we rewrite our whole blog that way?",
-      "expected_output": "Explains that the figure comes from the 2023 GEO paper's simulated engine (GPT-3.5 over five fixed sources), measured word share rather than citation, found its best method was adding quotations, and that its gains went mostly to low-ranked sources. Notes that C-SEO Bench (2025) found such rewrites largely ineffective on current models, while retrieval position dominated. Recommends adding real evidence where it improves the page, prioritizing pages for lost prompts and fan-out queries, and measuring before and after rather than rewriting everything.",
-      "assertions": [
-        "Identifies the simulated-engine and word-share caveats of the 40% figure",
-        "Correctly names quotation addition as the paper's top method",
-        "Mentions later evidence that rewrites are largely ineffective on current models",
-        "Recommends prioritizing retrieval and coverage over wholesale rewriting",
-        "Recommends measuring the effect on a subset first"
+      "topic": "Technical audit: AI crawler access and rendering",
+      "prompt": "Can you audit our site for AI crawler access? We're a B2B SaaS and we're not showing up in ChatGPT, Perplexity or Claude when people ask about tools like ours, and we're barely in Google's AI Overviews. Attached: our robots.txt, the raw HTML our pricing page returns (no JS executed), and some curl output with response headers.",
+      "files": [
+        "evals/files/4/robots.txt",
+        "evals/files/4/pricing.html",
+        "evals/files/4/response-headers.txt"
       ],
-      "files": []
+      "expected_output": "A strong audit finds the issues and ranks them by impact. (1) The pricing page's canonical points to staging.quillstack.example, which tells search engines to treat a staging URL as the preferred one. (2) The pricing page is an empty client-side-rendered shell: pricing tiers, comparison, FAQ, and even the JSON-LD only exist after JavaScript runs. Googlebot renders JS (with delay), but many AI crawlers don't execute JavaScript, so they see nothing. The fix is server-side rendering or pre-rendering of key content. (3) The response carries x-robots-tag: nosnippet, which prevents Google from showing snippets and from using the content as direct input to AI Overviews/AI Mode. (4) The edge/WAF returns 403 to a request with an OAI-SearchBot user agent (rule 'ai-crawlers-default'). The test came from an office IP, so the response should check the bot-protection rules and server logs for real crawler traffic, verified against published IP ranges, rather than infer from a spoofed UA. A default AI-crawler block at the CDN would override any robots.txt allowance. (5) robots.txt: PerplexityBot and Claude-SearchBot share a group that disallows /docs/ and /pricing, which reduces visibility in those search products. GPTBot and Google-Extended are disallowed, which only affects training (and, for Google-Extended, Gemini grounding outside Search) and is fine if intended. It doesn't block ChatGPT search or AI Overviews. OAI-SearchBot, ClaudeBot, and other bots fall back to the * group. The Googlebot group contains only Allow: /, so Googlebot ignores the * group's disallows for /app/, /api/ and /search, which is probably unintended. Google ignores Crawl-delay. (6) Minor: generic title tag. The audit ends with a prioritized fix list and how to verify each fix (e.g. URL Inspection, fetching as the crawler from logs).",
+      "assertions": [
+        {
+          "text": "Flags that the pricing page's canonical URL points to the staging host, telling search engines a different (staging) URL is preferred.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls",
+          "rationale": "Google treats rel=canonical as a strong signal for which URL should be canonical."
+        },
+        {
+          "text": "Identifies that the pricing content (and its JSON-LD) only exists after client-side JavaScript runs, so crawlers that don't execute JavaScript (which may include AI crawlers) see an empty shell. Recommends server-side rendering or pre-rendering.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics",
+          "rationale": "Google: server-side or pre-rendering 'is still a great idea' and 'not all bots can run JavaScript'. A 2024 CDN-log study (Vercel, a secondary source) found that major AI crawlers didn't render JS at that time."
+        },
+        {
+          "text": "Identifies that the x-robots-tag: nosnippet header prevents the pricing page's content from being used as direct input for Google's AI Overviews/AI Mode (and from showing snippets).",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag",
+          "rationale": "Google's robots meta documentation says nosnippet also prevents content being used as a direct input for AI Overviews and AI Mode."
+        },
+        {
+          "text": "Flags the 403 returned to the OAI-SearchBot user agent by the edge bot-protection rule as a likely block on ChatGPT search crawling, and recommends confirming with server/CDN logs or the provider's published IP ranges, since the test used a spoofed UA from an office IP.",
+          "type": "method",
+          "rationale": "A CDN/WAF block overrides robots.txt permissions. User-agent-only tests can mislead in both directions."
+        },
+        {
+          "text": "Correctly reads the robots.txt groups: PerplexityBot and Claude-SearchBot are disallowed from /docs/ and /pricing, while the GPTBot and Google-Extended disallows affect training/Gemini use, not ChatGPT search or Google Search/AI Overviews.",
+          "type": "accuracy",
+          "source": "https://developers.openai.com/api/docs/bots",
+          "rationale": "OpenAI documents GPTBot (training) and OAI-SearchBot (search) as independent. Google says Google-Extended doesn't affect Search inclusion. RFC 9309 allows multiple user-agent lines to share one group."
+        },
+        {
+          "text": "Does not claim that the * group's rules (e.g. Disallow: /app/, /api/, /search) also apply to Googlebot. Googlebot matches its own group, so only Allow: / applies to it.",
+          "type": "accuracy",
+          "source": "https://www.rfc-editor.org/rfc/rfc9309.html",
+          "rationale": "Under RFC 9309 a crawler obeys the group that matches its product token and only falls back to * when no group matches."
+        },
+        {
+          "text": "Prioritizes the findings by impact and gives a concrete way to verify each fix.",
+          "type": "method",
+          "rationale": "An audit is only useful if the team knows what to fix first and how to confirm the fix worked."
+        }
+      ]
     },
     {
       "id": 5,
-      "prompt": "Set up AI visibility tracking for acme.com. We want to self-host it.",
-      "expected_output": "Walks through self-hosting Elmo: prerequisites (Docker 24+ with Compose v2, Node 18+, one scraping provider, one direct LLM key), npm install -g @elmohq/cli, elmo init, elmo compose up -d, open localhost:1515. Explains SCRAPE_TARGETS. Recommends a scraping provider from the measured status page, with affiliate links, and discloses that they are affiliate links. Then proposes a prompt set and connects the agent over MCP at the instance's /api/mcp.",
+      "topic": "Crawler and robots.txt policy: training vs. search vs. user-triggered fetchers",
+      "prompt": "I run digital for a regional news publisher. We're in licensing talks with a couple of AI companies, so leadership doesn't want our archive feeding model training for free in the meantime. But ChatGPT and Perplexity now send us real referral traffic, and the audience team will revolt if that disappears. Can we stay out of training but keep appearing, with links, in ChatGPT, Perplexity, Claude, Copilot and Google's AI Overviews? I need the actual robots.txt and an honest rundown of the trade-offs.",
+      "files": [],
+      "expected_output": "A strong response explains that most major providers separate training crawlers from search/retrieval crawlers and user-triggered fetchers, then gives a valid robots.txt. OpenAI: disallow GPTBot (training) and allow OAI-SearchBot (ChatGPT search). ChatGPT-User is user-initiated and robots.txt may not apply. Anthropic: disallow ClaudeBot (training) and allow Claude-SearchBot (search). Claude-User makes user-directed fetches. Perplexity: PerplexityBot is for search and Perplexity says it isn't used for foundation-model training. Perplexity-User generally ignores robots.txt because it's user-requested. Apple: Applebot-Extended (a control token that doesn't crawl) governs training use without affecting Siri/Spotlight. Google: Google-Extended governs use for Gemini training and grounding outside Search, but doesn't affect Google Search, so it can't keep content out of AI Overviews. Google's AI Overviews/AI Mode draw on the Search index. The levers there are the Search Console 'Search generative AI' exclude control (rolled out to all sites in 2026, property-level, not a ranking signal for the rest of Search, doesn't affect training) or snippet controls like nosnippet/max-snippet, which also reduce regular snippets. Copilot is grounded in Bing's index, so Bingbot must stay allowed. Bing's own page-level controls for Copilot use (noarchive/nocache) exist; describing them is optional. Other training-oriented crawlers (e.g. CCBot) can be disallowed. The response is candid that robots.txt is a voluntary convention, not access control, that content already collected isn't removed, and that enforcement needs server-side measures. It frames the outcome as a business trade-off.",
       "assertions": [
-        "Gives the elmo CLI install and init commands",
-        "Lists the need for a scraping provider and a direct LLM key",
-        "Explains SCRAPE_TARGETS with an example",
-        "Includes provider links and discloses that they are affiliate links",
-        "Explains connecting the agent over MCP to the self-hosted /api/mcp endpoint",
-        "Proposes building a prompt set"
-      ],
-      "files": []
+        {
+          "text": "Explains that OpenAI's GPTBot (training) and OAI-SearchBot (ChatGPT search) are controlled independently, so a site can disallow GPTBot while allowing OAI-SearchBot, and that disallowing OAI-SearchBot keeps the site out of ChatGPT search answers (OpenAI notes it may still appear as a navigational link).",
+          "type": "accuracy",
+          "source": "https://developers.openai.com/api/docs/bots",
+          "rationale": "OpenAI: 'Each setting is independent of the others'. 'Sites that are opted out of OAI-SearchBot will not be shown in ChatGPT search answers', though they can still appear as navigational links."
+        },
+        {
+          "text": "Correctly distinguishes Anthropic's ClaudeBot (training) from Claude-SearchBot (search indexing) and Claude-User (user-directed retrieval).",
+          "type": "accuracy",
+          "source": "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "States that Google-Extended does not affect inclusion in Google Search and therefore isn't a way to opt out of AI Overviews. Any AI Overviews opt-out it describes is a real mechanism (e.g. the Search Console 'Search generative AI' control, or nosnippet/max-snippet, which also limit regular snippets).",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers",
+          "rationale": "Google-Extended doc: 'does not impact a site's inclusion in Google Search'. The Search Console control is documented at https://support.google.com/webmasters/answer/16908024."
+        },
+        {
+          "text": "Describes Perplexity's crawlers accurately: PerplexityBot powers search results and isn't used to train foundation models, while Perplexity-User is user-triggered and generally ignores robots.txt.",
+          "type": "accuracy",
+          "source": "https://docs.perplexity.ai/guides/bots",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "If Apple is covered, it states that Applebot-Extended doesn't crawl and only controls whether Applebot-collected content is used for model training, without removing pages from Apple search features.",
+          "type": "accuracy",
+          "source": "https://support.apple.com/en-us/119829",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Notes that robots.txt is a voluntary convention, not access control, and that some user-triggered fetchers may not follow it (e.g. OpenAI's ChatGPT-User, Perplexity-User). Hard enforcement needs server-side measures.",
+          "type": "accuracy",
+          "source": "https://www.rfc-editor.org/rfc/rfc9309.html",
+          "rationale": "RFC 9309: rules 'are not a form of access authorization'. OpenAI says robots.txt rules 'may not apply' to ChatGPT-User. Perplexity says Perplexity-User 'generally ignores robots.txt'. Anthropic says Claude-User does honour it, so an answer must not claim that every user fetcher ignores robots.txt."
+        },
+        {
+          "text": "The supplied robots.txt is syntactically valid and matches the stated goal: it doesn't block the search/retrieval crawlers the publisher wants (including Googlebot and Bingbot, since Copilot is grounded in Bing), while disallowing the training tokens.",
+          "type": "method",
+          "rationale": "A robots.txt that contradicts the stated goal is worse than no advice."
+        },
+        {
+          "text": "Is candid about limits and trade-offs (e.g. Google's AI features can't be separated from Search via robots.txt; already-collected data isn't removed; some third-party training crawlers exist) instead of promising complete protection.",
+          "type": "method",
+          "rationale": "The board is making a business decision and needs the real constraints."
+        }
+      ]
     },
     {
       "id": 6,
-      "prompt": "Using our Elmo data (exports attached), tell me why our visibility in Google AI Overviews dropped last month.",
-      "expected_output": "Reads the exports, not assumptions. Reports Google AI Overview visibility as percentages with n: 41% (123 of 300 runs) in August against 15% (27 of 180) in September. Notices that the 8 branded prompts were disabled on 1 September (list_prompts, and totals.prompts falling from 20 to 12), so September samples a different, harder prompt set, and every engine's headline rate falls for the same reason. Compares like for like on the 12 prompts sampled in both months: 39 of 180 (22%) against 27 of 180 (15%), a gap close to the sampling margin. Finds that the real loss is concentrated in the two agency prompts (22 of 30 runs to 3 of 30), where a new Zapier listicle that omits Tallyboard became the top cited page (zapier.com rose from 21 to 118 citations) while tallyboard.com fell from 96 to 29, and Tallyboard's own 2024 agency guide was cited only twice. Confirms the model list is unchanged. Recommends re-enabling or separately reporting the branded prompts, and targeted work on the agency prompts: refresh the agency page, and pitch the Zapier list and the other cited roundups.",
+      "topic": "Quick question: does Google-Extended remove you from AI Overviews?",
+      "prompt": "quick q - if we add \"User-agent: Google-Extended / Disallow: /\" to robots.txt, does that take us out of Google's AI Overviews?",
+      "files": [],
+      "expected_output": "No. Google-Extended controls whether content Google crawls is used to train Gemini models and for grounding in Gemini apps and Vertex AI. Google states it doesn't affect inclusion in Google Search, and AI Overviews/AI Mode are part of Search. To stay out of AI Overviews/AI Mode, use the Search Console 'Search generative AI' setting (Exclude; property-level, rolled out to all sites by 31 Aug 2026) or snippet controls (nosnippet, max-snippet, data-nosnippet), which also affect normal snippets. Two or three sentences is ideal.",
       "assertions": [
-        "Reports AI Overview visibility as percentages with run counts for both months",
-        "Identifies that 8 branded prompts were disabled on 1 September and that this changes what the headline rate measures",
-        "Compares the 12 prompts sampled in both months like for like",
-        "Treats the remaining overall difference as close to sampling noise rather than a confirmed decline",
-        "Locates the real loss in the two agency prompts",
-        "Uses the citation data to tie the agency loss to the new Zapier listicle and the brand's own agency page losing citations",
-        "Checks for an engine or model change rather than assuming one",
-        "Recommends concrete next steps for both the prompt set and the agency prompts"
-      ],
-      "files": [
-        "evals/files/aio-drop/"
+        {
+          "text": "Answers no: Google-Extended doesn't affect inclusion in Google Search (which includes AI Overviews). It governs use for Gemini model training and grounding outside Search.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "If it names a way to opt out of AI Overviews, the mechanism is real (Search Console's 'Search generative AI' exclude setting, or nosnippet/max-snippet/data-nosnippet, noting these also affect normal snippets).",
+          "type": "accuracy",
+          "source": "https://support.google.com/webmasters/answer/16908024",
+          "rationale": "Google's help page documents the property-level Include/Exclude control. The robots meta tag doc covers the snippet controls."
+        },
+        {
+          "text": "Leads with the direct answer and stays short. It doesn't pad the reply with a general AEO strategy.",
+          "type": "method",
+          "rationale": "The user asked a quick yes/no question. A long essay is worse here."
+        },
+        {
+          "text": "Doesn't suggest blocking Googlebot to avoid AI Overviews without warning that this removes the site from Google Search.",
+          "type": "method",
+          "rationale": "Blocking Googlebot has a far bigger cost than the user is asking about."
+        }
       ]
     },
     {
       "id": 7,
-      "prompt": "ChatGPT keeps saying our product costs $99/month but we changed pricing to $49 six months ago. How do we fix it?",
-      "expected_output": "Treats it as an accuracy issue: finds the branded runs with the wrong figure and the cited pages behind it, which are often old reviews, comparison listicles, or stale pages on the brand's own site. Makes sure the pricing page states the current price in server-rendered text with a date, removes contradicting owned pages, asks third-party publishers to correct the price starting with the most-cited pages, updates review-platform profiles, and re-checks the branded prompts over the following weeks.",
+      "topic": "Quick question: FAQPage schema and rich results",
+      "prompt": "Does adding FAQPage schema still get you those FAQ dropdowns in Google results? Our SEO plugin keeps nagging us to add it to every page.",
+      "files": [],
+      "expected_output": "No. Google no longer shows the FAQ rich result. It was limited to well-known government and health sites in 2023, stopped appearing in Search in May 2026, and the documentation was removed. Adding FAQPage markup to every page won't produce dropdowns, and Google says no special schema is needed for its AI features. If a page has a real, visible FAQ that helps readers, keep the content. Any markup must match what's visible. The plugin nag can be ignored or turned off.",
       "assertions": [
-        "Traces the wrong fact to the cited source pages",
-        "Fixes the owned pricing page with crawlable text",
-        "Removes or updates contradicting owned pages",
-        "Requests third-party corrections in order of citation frequency",
-        "Sets up re-measurement of the branded prompts"
-      ],
-      "files": []
+        {
+          "text": "Says Google no longer shows FAQ rich results (they stopped appearing in Google Search in May 2026, after being restricted to well-known government and health sites in 2023). Exact dates aren't required.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/faqpage",
+          "rationale": "FAQPage changelog: 14 Sept 2023 restriction; 'This feature will no longer appear in Google Search starting May 7, 2026'; documentation removed 15 June 2026."
+        },
+        {
+          "text": "Doesn't claim FAQ markup is needed to appear in Google's AI Overviews/AI Mode.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/ai-optimization-guide",
+          "rationale": "Google: 'there's no special schema.org markup you need to add' for generative AI search."
+        },
+        {
+          "text": "If it suggests keeping FAQ markup anywhere, it says the markup must reflect Q&A that's visible on the page.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/sd-policies",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Gives a short, direct answer without a long digression.",
+          "type": "method",
+          "rationale": "It's a quick factual question. Brevity is the right answer."
+        }
+      ]
     },
     {
       "id": 8,
-      "prompt": "Can you give our site a GEO score out of 100?",
-      "expected_output": "Declines to invent a composite score, explaining that GEO scores use unvalidated weights. Offers measured alternatives instead: mention rate, citation rate, and share of voice per engine with n, plus a pass/fail access audit from the script. Offers to run the audit and set up measurement.",
+      "topic": "Local business visibility (multi-location dental practice)",
+      "prompt": "I own a dental practice with 3 locations around Columbus, Ohio. When people ask ChatGPT or Google things like \"emergency dentist near me\" or \"best dentist in Dublin OH\" we almost never come up. My office manager has two ideas: (1) create separate Google Business Profiles for \"Emergency Dentist\", \"Invisalign\" and \"Pediatric Dentistry\" at each location, and (2) give patients a $10 gift card for leaving a 5-star review. Good ideas? What else should we do?",
+      "files": [],
+      "expected_output": "A strong response rejects both ideas with specific reasons and gives a practical alternative plan. (1) Google Business Profile guidelines allow one profile per business location and require the real-world business name without added keywords. Service-line profiles violate this and risk suspension. Services, categories (as few as needed), hours, and attributes belong on each location's single profile. (2) Rewarding reviews breaks Google's policies, which treat incentivized reviews as fake engagement and can remove reviews and restrict the profile. A reward tied to a 5-star rating is also squarely the kind of sentiment-conditioned incentive the FTC's 2024 consumer review rule prohibits. Instead: ask every patient for honest feedback without filtering or incentives, and respond to reviews. Keep each location's profile complete and current, since Google's AI features guidance explicitly points to Business Profile. Build a strong page per location on the site (address, hours, emergency/same-day availability, services, insurance, dentists) in plain HTML. Keep name/address/phone consistent across other maps and directories that non-Google assistants rely on (e.g. Apple and Bing business listings, health directories). If adding LocalBusiness/Dentist markup, don't mark up the practice's own reviews for stars, since self-serving reviews aren't eligible. It also notes that 'near me' answers depend on the user's location, so checks should be done from relevant locations and repeated.",
       "assertions": [
-        "Does not produce an invented composite score",
-        "Explains why composite scores are not meaningful",
-        "Offers measured metrics instead",
-        "Offers the access audit"
-      ],
-      "files": []
+        {
+          "text": "Says separate profiles for service lines aren't allowed: Google Business Profile guidelines prohibit creating more than one profile per location for the same business (or multiple profiles to cover specializations), and require the real-world business name without added service keywords. Mentioning legitimate exceptions (e.g. individual practitioner profiles or distinct public-facing departments) is fine.",
+          "type": "accuracy",
+          "source": "https://support.google.com/business/answer/3038177",
+          "rationale": "GBP guidelines: 'Do not create more than one page for each location of your business'; 'A practitioner shouldn't have multiple Business Profiles to cover all of their specializations'; names must not include 'Service or product information'."
+        },
+        {
+          "text": "Says offering gift cards for reviews violates Google's review policies (incentivized reviews are treated as fake engagement and can lead to review removal or profile restrictions).",
+          "type": "accuracy",
+          "source": "https://support.google.com/contributionpolicy/answer/7400114",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Notes that conditioning an incentive on a positive (5-star) review is prohibited under the FTC's Consumer Reviews and Testimonials rule (16 CFR Part 465, effective 21 October 2024), which bans incentives conditioned on reviews expressing a particular sentiment.",
+          "type": "accuracy",
+          "source": "https://www.federalregister.gov/documents/2024/08/22/2024-18519/trade-regulation-rule-on-the-use-of-consumer-reviews-and-testimonials",
+          "rationale": "FTC: the rule 'prohibits businesses from providing compensation or other incentives conditioned on the writing of consumer reviews expressing a particular sentiment, either positive or negative.'"
+        },
+        {
+          "text": "Recommends keeping each location's Business Profile complete and current as an input to Google's AI features.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/ai-features",
+          "rationale": "Google's AI-features guidance lists keeping Business Profile information up to date."
+        },
+        {
+          "text": "Offers a compliant way to get more reviews (e.g. asking all patients, without incentives or selecting only happy patients, and responding to reviews).",
+          "type": "method",
+          "rationale": "Users need an alternative that works, not just a 'no'."
+        },
+        {
+          "text": "Recommends consistent, accurate location information beyond Google (e.g. other maps platforms, directories, the practice's own location pages with services, hours, and emergency availability as text).",
+          "type": "method",
+          "rationale": "Non-Google assistants draw on other listings and the web. Inconsistent or thin location data hurts everywhere."
+        },
+        {
+          "text": "If it suggests review or rating structured data for the practice's own site, it notes that self-serving reviews of a LocalBusiness/Organization aren't eligible for review stars.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/review-snippet",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "If it suggests checking or monitoring how the practice appears, it treats 'near me' results as location-dependent (checks from the relevant areas, more than once) rather than relying on a single test.",
+          "type": "method",
+          "rationale": "Local answers vary by user location and from run to run, so a single check misleads."
+        }
+      ]
     },
     {
       "id": 9,
-      "prompt": "How's Acme doing in AI search this week? (Elmo exports attached.)",
-      "expected_output": "Treats it as a quick data question, not an audit. Compares the last 7 days with the previous 7: visibility 34% (71 of 210 runs) against 31% (65 of 210), a change inside the sampling noise. Strongest engine Perplexity (44%, 31 of 70), weakest Google AI Overview (21%, 15 of 70). Share of voice about 20%, third behind HubSpot and Pipedrive, against the tracked set of HubSpot, Pipedrive, Close, and Attio. One sentence on what it means and at most two next steps. Doesn't fold the 90-day figures into the weekly claim.",
+      "topic": "Ecommerce: getting products into AI shopping answers",
+      "prompt": "We're a small online running-shoe store (about 400 SKUs on our own site, not a marketplace seller). How do we get our products to show up when people ask ChatGPT or Google's AI Mode for running shoe recommendations? Where do these assistants even get product info from?",
+      "files": [],
+      "expected_output": "A strong answer explains the main sources each platform uses and gives a prioritized plan. Google: product data comes from crawled pages and Merchant Center. Google recommends Product/merchant-listing structured data and a Merchant Center feed, and says providing both maximizes eligibility. Its AI-features guidance also says to keep Merchant Center information current. Merchant listing markup needs name, image, and an Offer with price (greater than zero) and priceCurrency, plus recommended properties like availability, GTIN, brand, shipping, and returns. ChatGPT: OpenAI says product results in ChatGPT are selected independently and aren't ads. Merchant information comes from third-party providers or directly from merchants, and merchants can apply to provide a product feed. The site must not block OAI-SearchBot if it wants to appear in ChatGPT search. The plan keeps price, availability, and variant data identical across feed, markup, and visible page. It makes product pages useful and specific (specs like stack height, drop, weight, width options, use cases, honest fit notes) and collects genuine reviews. It also considers editorial content (e.g. shoe-finder guides) and third-party coverage, sets expectations that inclusion isn't guaranteed, and suggests how to monitor.",
       "assertions": [
-        "Answers briefly instead of running the full audit checklist",
-        "Compares the last 7 days with the previous 7 days: 34% (71/210) against 31% (65/210)",
-        "Says the weekly change is within sampling noise",
-        "Names the strongest and weakest engines with their rates",
-        "Names the competitor set behind share of voice",
-        "Gives at most two next steps",
-        "Does not mix the 90-day figures into the weekly claim"
-      ],
+        {
+          "text": "Explains that Google uses both on-page product structured data and Merchant Center feeds, and that providing both maximizes eligibility.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/product",
+          "rationale": "Google's product structured data intro says providing both 'maximizes your eligibility to experiences'. Its AI features guidance says to keep Merchant Center info up to date."
+        },
+        {
+          "text": "If it describes how ChatGPT sources products, it does so accurately: organic product results are selected by ChatGPT and aren't ads (separately labelled ads may exist), and merchant/product data comes from third-party providers or directly from merchants. Mentioning a merchant application/feed program or Shopify catalog integration is acceptable.",
+          "type": "accuracy",
+          "source": "https://help.openai.com/en/articles/11128490",
+          "rationale": "OpenAI's 'Shopping with ChatGPT search' help article (verified only via search-indexed copies, since the page returns 403): product results 'are not ads'; merchant lists use 'merchant and product metadata from third-party providers or directly from the merchants themselves'."
+        },
+        {
+          "text": "If it specifies merchant-listing markup, it correctly includes the required properties: name, image, and an Offer with price (greater than zero) and priceCurrency.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/merchant-listing",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Notes that product pages need to be crawlable by the relevant search crawlers, e.g. that blocking OAI-SearchBot keeps the site out of ChatGPT search answers.",
+          "type": "accuracy",
+          "source": "https://developers.openai.com/api/docs/bots",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Emphasizes consistency of price, availability, and variant data across the feed, structured data, and visible page.",
+          "type": "method",
+          "rationale": "Mismatches cause disapprovals and outdated or incorrect answers."
+        },
+        {
+          "text": "Recommends specific, useful product content (specs, use cases, fit guidance) and genuine customer reviews rather than generic manufacturer copy.",
+          "type": "method",
+          "rationale": "Assistants answering recommendation queries need distinguishing details. Duplicate manufacturer text gives them no reason to pick this store."
+        },
+        {
+          "text": "Doesn't promise guaranteed placement; makes clear inclusion is at each platform's discretion. (Suggesting a way to monitor appearance is a plus but not required.)",
+          "type": "method",
+          "rationale": "Inclusion is at each platform's discretion. Monitoring turns effort into evidence."
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "topic": "Measuring AI visibility: reading tracking data",
+      "prompt": "Attached is the export from our AI answer tracking (August and September snapshots). Our dashboard headline says our brand mention rate dropped from 52% in August to 38% in September. We published a big guide on late payment fees at the end of August, and now my CEO says the content program isn't working and wants to cut it. Can you look at the data and tell me what actually happened? I have to report back Monday.",
       "files": [
-        "evals/files/weekly/"
+        "evals/files/10/ai_answers_export.csv"
+      ],
+      "expected_output": "A careful analysis notices that the two months don't track the same prompts. August has 10 prompts (120 rows: 4 engines x 3 runs). September adds 6 competitor-comparison prompts (e.g. 'ledgerly vs billwise', 'ledgerly alternatives') where Tallypath is almost never mentioned (3/72), so the blended rate falls from 62/120 (52%) to 72/192 (38%) because the prompt mix changed. On the 10 matched prompts the rate is 62/120 (52%) in August vs 69/120 (57.5%) in September, flat to slightly up. Branded prompts sit near 100% both months (34/36 vs 33/36). Matched non-branded prompts go from 28/84 (33%) to 36/84 (43%). Problem-type prompts rose from 11/48 to 25/48. The two late-payment prompts went from 5/24 to 15/24 mentions, and the new guide URL appears in 10 September citations, all on those two prompts in ChatGPT and Perplexity. That's directionally encouraging evidence for the content, though not proof of causation. Category prompts dipped (17/36 to 11/36), which is worth watching but is within what small samples and run-to-run variation can produce. Runs often disagree within a prompt/engine cell, and there's one snapshot per month. The report recommends holding the prompt set constant (or reporting new prompts as a separate cohort), segmenting branded vs. non-branded and by engine, adding runs and dates, and tracking the guide's citations. It concludes the data doesn't support cutting the program, and frames this with appropriate uncertainty.",
+      "assertions": [
+        {
+          "text": "Identifies that September includes prompts not tracked in August (6 competitor-comparison/alternatives prompts) and that the 52% -> 38% headline therefore isn't a like-for-like comparison.",
+          "type": "accuracy",
+          "source": "files/10/ai_answers_export.csv",
+          "rationale": "Fixture design: August has 10 prompts, September 16."
+        },
+        {
+          "text": "Computes or describes the like-for-like result on the 10 prompts tracked in both months as flat-to-up (about 52% -> 57-58%; 62/120 -> 69/120), not a decline.",
+          "type": "accuracy",
+          "source": "files/10/ai_answers_export.csv",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Separates branded from non-branded prompts, or otherwise notes that near-100% branded prompts inflate the headline. If it reports figures, they match the data (matched non-branded prompts rose from 28/84 ≈ 33% to 36/84 ≈ 43%).",
+          "type": "accuracy",
+          "source": "files/10/ai_answers_export.csv",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Notices that the new late-payment guide URL is cited in September (10 citations, all on 'how to charge late fees…' and 'what to do when a client won't pay…', in ChatGPT and Perplexity) and that brand mentions on those two prompts rose (about 5/24 -> 15/24).",
+          "type": "accuracy",
+          "source": "files/10/ai_answers_export.csv",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Caveats sample size and variability (3 runs per prompt/engine, runs often disagree, one snapshot per month) and avoids claiming statistical certainty or definitive causation.",
+          "type": "method",
+          "rationale": "AI answers are non-deterministic and the sample is small. Overclaiming in either direction is a careless-analyst error."
+        },
+        {
+          "text": "Does not treat the category-prompt dip (17/36 -> 11/36) or any single engine's change as conclusive. If mentioned, it's framed as something to monitor.",
+          "type": "method",
+          "rationale": "Small cells can swing on noise. A careful analyst doesn't swap one overreaction for another."
+        },
+        {
+          "text": "Recommends fixing the reporting method: a constant prompt set or separate cohorts, segmentation by prompt type and engine, more runs and dates.",
+          "type": "method",
+          "rationale": "The root problem is a measurement design that mixed changing prompt sets into one headline."
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "topic": "Correcting a wrong fact AI engines state about a company",
+      "prompt": "ChatGPT, Perplexity and Google's AI Overview all keep saying our company (Brindle Analytics) is headquartered in Austin and has a free plan. We moved HQ to Denver in 2024 and we killed the free tier in March 2026. Customers are now showing up asking for the free plan. How do we get these AI tools to fix this?",
+      "files": [],
+      "expected_output": "A strong response explains that there's no 'edit' button. Answers come from live retrieval (which updates as sources are recrawled) and from model training data (which lags until models are retrained), so the fix is to correct the sources. Steps: (1) Find where the wrong facts come from: check the citations in the answers and search for old press releases, directory and data-aggregator profiles, review sites, old pages on their own site (an old free-plan signup page, an old pricing page, blog posts), and Wikipedia/Wikidata. (2) Make the official site unambiguous in crawlable HTML. The About/contact page states the Denver HQ. The pricing page states there is no free plan as of March 2026 and what replaced it (e.g. a trial). Outdated pages are updated or redirected rather than left live. (3) Optionally add or update Organization markup (address etc.) on the home or About page, matching visible content. (4) Update owned and third-party profiles they control, and ask publishers or directories to correct the record. (5) For Wikipedia, follow the conflict-of-interest process: propose changes on the talk page with an edit request and disclose the affiliation rather than editing directly. (6) Claim or verify the Google knowledge panel, if present, and submit feedback with supporting links. (7) Use in-product feedback where available as a supplement. (8) Handle the customer-facing problem now (support macro, clear pricing FAQ) and re-check answers periodically, without promising a timeline. Blocking AI crawlers would not fix this and would likely make it worse.",
+      "assertions": [
+        {
+          "text": "Includes tracing where the incorrect facts come from (the answers' citations, old press, directories, review sites, wikis, the company's own outdated pages) and correcting those sources. It doesn't have to come first.",
+          "type": "method",
+          "rationale": "Search-grounded answers repeat what sources say. Fixing the sources is the main lever."
+        },
+        {
+          "text": "Recommends making the current facts explicit in crawlable text on the company's own site (HQ location; pricing page stating there's no free plan and what replaced it) and updating or redirecting outdated pages, such as an old free-plan page.",
+          "type": "method",
+          "rationale": "The official site should be the clearest, most current source. Stale pages keep feeding the error."
+        },
+        {
+          "text": "If it recommends structured data, it suggests Organization markup (e.g. address) on the home or About page that matches the visible content.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/organization",
+          "rationale": "Google recommends Organization markup on the home page or a single about page. Its structured data policies require markup to match visible content."
+        },
+        {
+          "text": "If Wikipedia is mentioned, it advises following the conflict-of-interest process (proposing changes on the talk page via an edit request and disclosing the affiliation) rather than editing the article directly.",
+          "type": "accuracy",
+          "source": "https://en.wikipedia.org/wiki/Wikipedia:Conflict_of_interest",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "If Google's knowledge panel is mentioned, it describes the real process: claim/verify the panel and suggest changes via feedback with supporting links.",
+          "type": "accuracy",
+          "source": "https://support.google.com/knowledgepanel/answer/7534902",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Distinguishes between answers grounded in live retrieval (which can update after recrawl) and model training knowledge (which can lag), and doesn't promise a guaranteed correction channel or timeline.",
+          "type": "method",
+          "rationale": "Setting realistic expectations is part of sound advice. No major engine offers a guaranteed fact-correction service to brands."
+        },
+        {
+          "text": "Doesn't recommend blocking AI crawlers as a way to fix the wrong information.",
+          "type": "method",
+          "rationale": "Blocking crawlers stops engines from seeing the corrected pages and doesn't remove what's already learned."
+        },
+        {
+          "text": "Addresses the immediate customer impact (e.g. support messaging, clear pricing FAQ). Recommending re-checking the answers over time is a plus.",
+          "type": "method",
+          "rationale": "The business problem is confused customers now. Monitoring confirms whether fixes propagate."
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "topic": "Off-site presence: Reddit, listicles, Wikipedia",
+      "prompt": "We're a seed-stage startup making a password manager for small teams. Basically nobody knows us yet. My cofounder's plan for getting into ChatGPT/Perplexity answers: (1) have our 6 employees post in relevant subreddits from their personal accounts recommending us, without mentioning they work here, (2) pay a few blogs to include us in their \"best password managers\" lists, (3) write our own Wikipedia article. Thoughts? What would you do instead?",
+      "files": [],
+      "expected_output": "A strong answer explains the problems with each tactic and offers a credible alternative plan. (1) Undisclosed employee recommendations are deceptive. Reddit's rules require authentic participation and prohibit content manipulation, and US FTC endorsement guidance requires disclosing material connections such as employment. Getting caught is especially damaging for a security product whose value is trust. (2) Paying for list inclusion is a sponsorship that the publisher must disclose. Paid links should be qualified (rel=\"sponsored\" or nofollow) under Google's link spam policy, and Google says chasing inauthentic mentions isn't as helpful as it may seem. Disclosed sponsorships are legitimate advertising but shouldn't be treated as an earned signal. (3) Wikipedia strongly discourages editing about your own company and requires disclosure of paid editing. An article also needs significant coverage in reliable independent sources, which a seed-stage startup probably doesn't have yet, so it would likely be deleted. Instead: participate openly (founders with disclosed affiliation answering questions where allowed by subreddit rules), get genuine reviews from real customers on review platforms, earn coverage with something newsworthy (an independent security audit, original research, open-source components, a clear security whitepaper), offer reviewers access with disclosure, publish honest comparison and documentation content, and list in relevant directories and integrations marketplaces.",
+      "assertions": [
+        {
+          "text": "Notes that employees recommending the product on Reddit without disclosing their affiliation conflicts with Reddit's rules on authentic participation and content manipulation.",
+          "type": "accuracy",
+          "source": "https://redditinc.com/policies/reddit-rules",
+          "rationale": "Reddit Rule 2: post authentic content and don't engage in content manipulation. The redditinc.com page couldn't be fetched directly; the wording was verified via an archived copy and search results."
+        },
+        {
+          "text": "Notes that employees endorsing their employer's product must disclose the connection under FTC endorsement guidance (material connections).",
+          "type": "accuracy",
+          "source": "https://www.ftc.gov/business-guidance/resources/ftcs-endorsement-guides-what-people-are-asking",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "If paid list inclusion is discussed, it notes the arrangement should be disclosed and that paid links should be qualified (e.g. rel=\"sponsored\" or nofollow) to stay within Google's link spam policy.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/essentials/spam-policies",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Explains that writing their own Wikipedia article is a conflict of interest that Wikipedia strongly discourages (with paid-editing disclosure required) and that an article needs significant coverage in reliable, independent sources.",
+          "type": "accuracy",
+          "source": "https://en.wikipedia.org/wiki/Wikipedia:Conflict_of_interest",
+          "rationale": "See also https://en.wikipedia.org/wiki/Wikipedia:Notability (general notability guideline)."
+        },
+        {
+          "text": "If Google's view is referenced, it's accurate: Google says seeking inauthentic mentions across the web isn't as helpful as it might seem.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/ai-optimization-guide",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Proposes legitimate alternatives (e.g. transparent founder participation, genuine customer reviews, earned coverage via newsworthy work such as security audits or original research, disclosed reviewer access).",
+          "type": "method",
+          "rationale": "The user asked what to do instead. Credible alternatives are the useful part."
+        },
+        {
+          "text": "Points out the specific reputational risk for a security/trust product if astroturfing is exposed.",
+          "type": "method",
+          "rationale": "For a password manager, getting caught deceiving users directly damages what the product sells: trust."
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "topic": "Contested tactic: llms.txt",
+      "prompt": "An agency quoted us $4,000 to \"implement llms.txt and llms-full.txt\" and told us that without it ChatGPT and Claude basically can't read our site. Is that true? Should we do it?",
+      "files": [],
+      "expected_output": "A strong answer separates the false claim from the open question. The claim that AI tools can't read a site without llms.txt is false. AI search and retrieval crawlers fetch normal HTML pages, and access is governed by robots.txt, server/CDN rules, and whether content is in the HTML. llms.txt is a community proposal (Jeremy Howard, September 2024) for a Markdown file summarizing a site for LLMs. It isn't a ratified standard like robots.txt (RFC 9309). Google says its Search (including AI features) ignores such files, which neither help nor harm. The major answer engines haven't publicly documented using llms.txt as a ranking or citation signal, and the independent analyses published so far haven't shown a measurable citation benefit. It may still be useful in some contexts (e.g. developer documentation consumed by coding agents or tools that look for it). It's a small static file, so if they want one it's an hour or two of work, not a $4,000 project. Money is better spent on crawlability, server-rendered content, and genuinely useful pages. A good answer may recommend adding it cheaply or skipping it, as long as it describes the evidence accurately.",
+      "assertions": [
+        {
+          "text": "Describes llms.txt as a proposed/community convention (proposed by Jeremy Howard in 2024), not a ratified web standard.",
+          "type": "accuracy",
+          "source": "https://llmstxt.org/",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "States that Google Search (including its AI features) ignores llms.txt-type files, so they neither help nor harm Google visibility.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/ai-optimization-guide",
+          "rationale": "Google: 'You don't need to create new machine readable files, AI text files, markup, or Markdown to appear in Google Search.'"
+        },
+        {
+          "text": "Rejects the claim that AI assistants can't read a site without llms.txt. AI search/retrieval crawlers fetch regular pages, and access depends on robots.txt, server rules, and content being in the HTML.",
+          "type": "accuracy",
+          "source": "https://developers.openai.com/api/docs/bots",
+          "rationale": "OpenAI and Anthropic document their crawlers in terms of robots.txt and normal page fetching, with no llms.txt requirement (see also https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler)."
+        },
+        {
+          "text": "Describes the evidence accurately: no primary-source confirmation that major answer engines use llms.txt for ranking or citation, and no robust independent evidence of a measurable citation benefit so far. It may note plausible niche uses (e.g. developer docs, coding agents). Either 'optional, cheap to add' or 'skip it' is acceptable.",
+          "type": "method",
+          "rationale": "The rubric rewards accuracy about the state of evidence, not one side's opinion."
+        },
+        {
+          "text": "Addresses the spend decision: notes that a basic llms.txt is a small static file, so the quote should be weighed against the actual work involved (likely far less for a typical site), and that crawlability or content work may be a better use of budget.",
+          "type": "method",
+          "rationale": "The user's practical decision is about spend and priorities."
+        },
+        {
+          "text": "Doesn't overclaim in the other direction (e.g. that llms.txt is harmful or penalized, or that no system ever reads it).",
+          "type": "method",
+          "rationale": "Unsupported negative claims are as inaccurate as unsupported positive ones."
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "topic": "Agent-readiness of a site",
+      "prompt": "Someone on a podcast said sites need to be \"agent-ready\" now that AI browsers/agents book things for people. Attached is our book-a-demo page. Is it agent-ready? What would you change, and does any of this affect whether ChatGPT or Google recommend us?",
+      "files": [
+        "evals/files/14/book-a-demo.html"
+      ],
+      "expected_output": "A strong answer explains that browser agents perceive pages through screenshots, raw HTML, and the accessibility tree. Agent-friendliness largely overlaps with good accessibility and semantic HTML. It finds the fixture's problems: a transparent full-screen overlay (.promo-overlay) that intercepts the first click and can hide controls (a 'ghost element'). Navigation, the fleet-size dropdown, time slots, and the submit control are divs/spans/li with onclick instead of a, select/button, or proper roles. Inputs rely on placeholders, one has no placeholder or label at all (f3), and the 'Fleet size' text isn't associated with a control. Time slots are 14px with ambiguous labels ('9', '2' with no AM/PM, date, or timezone). The logo has no alt text. A testimonial carousel inserts a banner above the form after 5 seconds, causing layout shift. Fixes: remove the overlay, use semantic elements (button, a, select, label for=, fieldset/legend), make targets reasonably sized with full accessible names (e.g. 'Tue 14 Oct, 9:00 AM ET'), keep the layout stable, and test with accessibility tooling and an actual agent. WebMCP is a proposed, experimental API (Chrome origin trial) and optional. On the last question, it says this affects whether agents can complete tasks on the site, not whether AI search features cite or recommend the company. Google's guide treats agentic experiences as a separate, optional consideration.",
+      "assertions": [
+        {
+          "text": "Explains that agents perceive sites via some combination of screenshots, raw HTML, and the accessibility tree, so semantic, accessible markup matters.",
+          "type": "accuracy",
+          "source": "https://web.dev/articles/ai-agent-site-ux",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Identifies the transparent full-screen overlay as a problem that can intercept clicks or hide interactive elements from agents.",
+          "type": "accuracy",
+          "source": "https://web.dev/articles/ai-agent-site-ux",
+          "rationale": "web.dev: 'Avoid transparent overlays that hide interactive elements.'"
+        },
+        {
+          "text": "Identifies the clickable div/span/li controls and the unlabeled inputs (placeholder-only or missing labels) and recommends native elements (button, a, select) or proper roles, plus associated labels.",
+          "type": "accuracy",
+          "source": "https://web.dev/articles/ai-agent-site-ux",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Flags the tiny, ambiguously labeled time slots (no AM/PM, date, or timezone) and/or the late-inserted banner that shifts the layout.",
+          "type": "method",
+          "rationale": "Small, ambiguous targets and shifting layouts cause mis-clicks for screenshot-based agents and for people. The 14x14px slots with 9px text are below WCAG 2.2's 24x24 CSS px minimum target size (SC 2.5.8). web.dev says agents can be confused by layouts that keep shifting."
+        },
+        {
+          "text": "If WebMCP or similar agent APIs are mentioned, describes them as proposed/experimental rather than an established requirement.",
+          "type": "accuracy",
+          "source": "https://web.dev/articles/ai-agent-site-ux",
+          "rationale": "web.dev calls WebMCP 'a proposed web standard' in active development, available under an origin trial."
+        },
+        {
+          "text": "Doesn't claim agent-readiness is a documented ranking or citation factor for ChatGPT or Google's AI features. It distinguishes agents completing tasks on the site from the company being recommended in answers.",
+          "type": "method",
+          "rationale": "No engine documents agent-readiness as a citation signal. Google's AI optimization guide covers agents and emerging protocols (e.g. UCP) separately from its guidance on appearing in AI features."
+        },
+        {
+          "text": "Recommends a way to test (e.g. accessibility tree inspection, keyboard/screen-reader pass, automated accessibility audits, or trying the flow with a browser agent).",
+          "type": "method",
+          "rationale": "Testing confirms that fixes work for real agents."
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "topic": "YouTube/video visibility in AI answers",
+      "prompt": "I run a home espresso channel on YouTube: about 180 videos, mostly 15-25 minute deep dives (grinder setup, dialing in shots, milk steaming). For questions like \"how fine should I grind for espresso\", Google's AI Overview sometimes shows a YouTube video, and Perplexity/ChatGPT cite forums and blogs, but never us, even though our videos cover exactly that. How do we get our videos surfaced or cited in AI answers?",
+      "files": [],
+      "expected_output": "A strong answer first diagnoses before prescribing. It checks which sources are actually cited or shown for the target queries in each engine (video vs. text page vs. forum) and examines the videos that do get surfaced: their titles, descriptions, chapters, transcripts, and any companion web pages. Long deep dives make the specific answer hard to locate. What text-based systems can read is the title, description, captions/transcript, chapters, and pages that embed or describe the video. Recommendations: titles and descriptions that plainly state the question and answer; chapters/timestamps in the description so the relevant segment is addressable (Google prioritizes key moments that creators set, with timestamps on separate lines in chronological order); accurate captions rather than only auto-captions; stating the answer clearly in speech and on screen (e.g. the grind/ratio/time targets); and possibly short focused videos for high-demand questions. It suggests companion pages on their own site: a dedicated watch page or article with the video embedded, a written step-by-step, VideoObject markup, and video files not blocked. It's honest that there's no official documentation of exactly how transcripts are weighted. For measurement, it may suggest Search Console's platform properties (which cover YouTube in Google Search) and YouTube's own analytics. It avoids manipulative tactics such as buying views or stuffing descriptions with keywords.",
+      "assertions": [
+        {
+          "text": "Grounds its recommendations in the actual situation, e.g. by suggesting a check of what is cited or shown for the target queries (which engine, which URL/video), or by explaining concretely why the channel's long videos are hard to surface for these questions. It doesn't just give a generic checklist.",
+          "type": "method",
+          "rationale": "What already gets surfaced is the best available evidence. Guessing wastes effort."
+        },
+        {
+          "text": "If chapters or key moments are discussed, the guidance is accurate: Google prioritizes key moments set by the creator, and YouTube timestamps should be in the description, each on its own line, in chronological order.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/video",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Emphasizes making the answer findable in text that systems can read (titles/descriptions that state the question, accurate captions/transcripts, chapters pointing to the specific segment, the answer stated explicitly), without claiming certainty about undocumented weighting.",
+          "type": "method",
+          "rationale": "Text-based retrieval sees metadata and transcripts, and a 20-minute video hides a specific answer unless it's addressable. Honesty about uncertainty is required."
+        },
+        {
+          "text": "If it recommends hosting or embedding on their own site, it's consistent with Google's video guidance (e.g. a dedicated watch page, VideoObject structured data, not blocking the video file).",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/video",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Any first-party measurement suggestions are accurate. For example, Search Console platform properties let creators see how YouTube content performs in Google Search (available globally since July 2026). Not penalized if omitted.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/blog/2026/07/platform-properties-social-video-guide",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Doesn't recommend manipulative tactics (buying views or engagement, misleading titles, keyword-stuffed descriptions).",
+          "type": "method",
+          "rationale": "These violate platform policies and risk the channel."
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "topic": "Publishing on own domain vs. third-party platforms (syndication)",
+      "prompt": "Our CEO read that AI assistants cite big platforms way more than small company blogs, so she wants us to stop publishing on our own blog and post everything on Medium and as a LinkedIn newsletter instead, and also copy our 120 existing articles over there. We're a cybersecurity consultancy. Is this smart?",
+      "files": [],
+      "expected_output": "A strong answer treats the premise as a hypothesis to test rather than fact. Which domains get cited varies by topic, engine, and query type, so the first step is checking which sources are actually cited for the firm's target questions. Moving all publishing off the owned domain has real costs: the firm stops building its own site's authority and topical footprint, loses control of formatting, structured data, canonical tags, and analytics, and depends on platform rules and visibility. Bulk-copying 120 articles creates cross-domain duplicates that can compete with the originals. Google's guidance is that rel=canonical isn't recommended for avoiding duplication with syndication partners and the most effective approach is for the partner to block indexing, which the firm doesn't control on those platforms. A better approach keeps the canonical home on their own site and uses platforms for distribution with adapted, author-led pieces (original angle or summary plus link) where their audience is. A small controlled test with repeated measurement can show whether platform posts get cited for their prompts. The answer doesn't claim any platform has a documented arrangement that guarantees AI citations.",
+      "assertions": [
+        {
+          "text": "Treats 'AI cites big platforms more' as context-dependent rather than a settled fact, e.g. by suggesting a check of which sources are actually cited for the firm's target questions, or a small test, before restructuring publishing.",
+          "type": "method",
+          "rationale": "Claims about which domains AI engines favor vary widely by topic and engine and change over time."
+        },
+        {
+          "text": "Notes the duplicate-content trade-off of copying 120 articles to other domains (the platform copies can compete with or be chosen over the originals). If it proposes rel=canonical as the fix, it's accurate about the limits: Google doesn't recommend rel=canonical for avoiding syndication duplication and says the most effective solution is for the partner to block indexing.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/canonicalization-troubleshooting",
+          "rationale": "Google canonicalization troubleshooting: 'The canonical link element is not recommended for those who want to avoid duplication by syndication partners'; 'The most effective solution is for partners to block indexing of your content.'"
+        },
+        {
+          "text": "Explains the costs of abandoning the owned domain (authority and topical footprint, control over markup and analytics, platform dependence) and doesn't endorse moving everything off-site without evidence. A hybrid (owned site plus platform distribution) or a test-first approach is acceptable.",
+          "type": "method",
+          "rationale": "This is the strategic decision the CEO is actually making."
+        },
+        {
+          "text": "Recommends adapting content for platforms (original angle, summary plus link, author-led posts) rather than bulk-copying all 120 articles, ideally validated with a small controlled test.",
+          "type": "method",
+          "rationale": "Adapted posts add value on the platform without creating 120 competing duplicates. A test turns a rumor into evidence."
+        },
+        {
+          "text": "Doesn't claim any platform has a documented arrangement that guarantees citation by AI engines, and doesn't invent citation-share statistics.",
+          "type": "method",
+          "rationale": "Fabricated platform facts or numbers are a common failure on this question."
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "topic": "Rebrand / pivot and how AI describes the company",
+      "prompt": "We're a consumer meal-kit company called Sprigly and in January we're pivoting to corporate catering for offices, and renaming to \"Sprig & Table\" with a new domain (sprigandtable.com). When people ask ChatGPT or Google about us they'll get the old meal-kit story. How do we handle the rename and the pivot so AI assistants describe us correctly and start recommending us for office catering?",
+      "files": [],
+      "expected_output": "A strong answer sets expectations and gives a plan. AI answers reflect what the wider web says (press, review and listing sites, directories, social profiles, community discussion) plus model training data that lags. A new site changes one source among many, so descriptions will shift gradually. The plan: (1) Baseline how assistants currently describe Sprigly and whether they connect it to the new name, and track catering-intent prompts with repeated runs. (2) Handle the domain migration carefully: map every old URL to its best new equivalent, use permanent server-side redirects, update internal links, keep redirects in place long-term, and expect temporary fluctuation. (3) State the rename and pivot plainly on the new site (e.g. 'Sprig & Table, formerly Sprigly'), with an About page and a press announcement, so engines and people can connect the old and new entities. Organization markup can include the new name and alternateName and link official profiles. (4) Update every off-site profile (business listings, review sites, social handles, directories, app stores, partner pages) and ask publishers of high-visibility old coverage to add an update where appropriate. Any Wikipedia changes go through the conflict-of-interest process. (5) Substantiate the new catering offer with real proof (office clients, menus, service areas, ordering minimums, food-safety credentials) so third parties have something to repeat. It notes that retrieval-grounded answers can update after recrawl (days to months) while model knowledge updates more slowly, and that old meal-kit descriptions may persist for a while.",
+      "assertions": [
+        {
+          "text": "Explains that AI descriptions draw heavily on third-party sources and model training data, so launching the new site alone won't immediately change how the company is described, and old descriptions may persist for a while.",
+          "type": "method",
+          "rationale": "Sets realistic expectations and points effort at the sources that drive answers."
+        },
+        {
+          "text": "Recommends making the old-to-new connection explicit (e.g. 'formerly Sprigly' on the site, announcement/press, Organization markup with name and alternateName), so engines can link the entities.",
+          "type": "method",
+          "rationale": "Without an explicit bridge, engines may treat the new brand as unknown and keep describing the old one."
+        },
+        {
+          "text": "Recommends a careful domain migration: permanent server-side redirects (e.g. 301 or 308) from old URLs to their new equivalents, updated internal links, and redirects kept long-term, with temporary fluctuation expected.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes",
+          "rationale": "Google site-move guide: 'server side permanent redirects from the old URLs to the new URLs'; change internal links; 'Keep the redirects for as long as possible, generally at least 1 year'; visibility 'may fluctuate temporarily'."
+        },
+        {
+          "text": "Recommends updating off-site profiles and listings (business listings, review sites, social handles, directories) to the new name and offering, and substantiating the catering offer with real proof (clients, menus, service areas).",
+          "type": "method",
+          "rationale": "Engines cross-reference many sources. Inconsistency keeps the old story alive."
+        },
+        {
+          "text": "Includes some way to check progress, e.g. recording how assistants describe the company now and re-checking catering-intent questions periodically.",
+          "type": "method",
+          "rationale": "Without a baseline, the effect of the rebrand can't be judged."
+        },
+        {
+          "text": "If it gives timing expectations for search-grounded answers, they're consistent with recrawl delays (Google notes crawling can take days to months), rather than promising immediate change.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/ai-features",
+          "rationale": "Checkable against the cited source."
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "topic": "Listicle and programmatic page strategy",
+      "prompt": "We sell a CRM built for real estate agents. Our growth contractor wants to publish a \"Top 10 CRMs for Realtors in 2026\" article on our site with us at #1, then auto-generate 60 city versions of it (\"Best CRM for realtors in Phoenix\", \"...in Tampa\", etc.) with an AI writer, so we show up when agents ask ChatGPT or Google for CRM recommendations. Should we do it?",
+      "files": [],
+      "expected_output": "A strong answer advises against the plan as described and offers a better version. Sixty auto-generated city variants of the same list, where the product doesn't actually differ by city, are many pages made mainly to capture query variations. That risks Google's scaled content abuse policy, which explicitly covers using generative AI to create many pages without adding value, and Google's AI optimization guide says creating content for query variations mainly to manipulate rankings violates it. A self-ranking list is obviously biased, and readers and the engines that weigh corroboration tend to discount it. Google's guidance for ranked lists asks for first-hand evidence of why something is best, the decision factors that matter, and enough substance for the list to stand on its own. Better: one genuinely useful, transparently disclosed comparison page with honest criteria (MLS/IDX integrations, transaction management, lead routing, team pricing, mobile app) that acknowledges where competitors fit better. Add city or regional pages only where there's real local substance (e.g. a specific MLS integration or brokerage partnership). Put effort into earning inclusion in independent reviews and lists and into genuine user reviews. It doesn't claim certainty about how each engine treats self-promotional lists.",
+      "assertions": [
+        {
+          "text": "Warns that auto-generating dozens of near-duplicate city variants mainly to capture query variations risks Google's scaled content abuse policy.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/essentials/spam-policies",
+          "rationale": "Google's spam policy covers using generative AI tools to generate many pages without adding value. Its AI optimization guide (https://developers.google.com/search/docs/fundamentals/ai-optimization-guide) says creating content for query variations primarily to manipulate rankings violates the policy."
+        },
+        {
+          "text": "If it advises on how to write ranked or comparison lists, the advice is consistent with Google's guidance (first-hand evidence for why something is best, relevant decision factors, enough substance to stand alone).",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/specialty/ecommerce/write-high-quality-reviews",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Notes that first-party lists ranking yourself #1 are transparently biased and recommends clear disclosure and honest treatment of competitors (including where they're a better fit).",
+          "type": "method",
+          "rationale": "Credibility with readers, and with systems that weigh corroboration, depends on transparency."
+        },
+        {
+          "text": "Proposes a better alternative: one or a few genuinely useful comparison pages (local pages only where there's real local substance) plus earning inclusion in independent third-party reviews and lists.",
+          "type": "method",
+          "rationale": "Gives the user a workable path to the same goal."
+        },
+        {
+          "text": "Doesn't claim certainty about how specific engines treat self-promotional listicles, and doesn't cite unsourced statistics about listicle citation rates.",
+          "type": "method",
+          "rationale": "The evidence here is thin and changing. Invented certainty misleads."
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "topic": "International: hreflang and localized pages",
+      "prompt": "We sell heat pumps in the US, UK and Germany. Google AI Overviews and ChatGPT keep giving UK and German users our US page with dollar prices. Attached are the <head> sections of the three versions of one product page, plus a note on our redirects. What's wrong and how do we fix it?",
+      "files": [
+        "evals/files/19/heads.html"
+      ],
+      "expected_output": "A strong answer finds the issues. (1) The US page uses hreflang=\"en-uk\". UK isn't a valid ISO 3166-1 alpha-2 code for this purpose, so it should be en-GB. (2) The en-GB page has no hreflang annotations at all, and the de page doesn't list the en-GB version or x-default. hreflang needs every version to list every other version plus itself, and missing return links cause annotations to be ignored. The codes are also inconsistent (de-de vs de). (3) Both the en-GB and de-DE pages canonicalize to the en-US URL, which tells search engines the US page is the preferred version. Each localized page should be self-canonical (the German page is a full translation, and Google doesn't treat translated pages as duplicates). (4) The en-GB page is effectively a duplicate of the US page with a USD price in the HTML, and the GBP price is only swapped in client-side from IP lookup, so crawlers and non-rendering engines see $8,900. Server-render the GBP price and UK-specific details. (5) US-IP visitors to /en-gb/ and /de-de/ are 302-redirected to /en-us/. Googlebot's default crawl IPs appear US-based, and Google advises against automatic locale redirects, so crawlers may never see the UK/DE pages. Replace this with a non-forcing banner or selector. It also notes that non-Google engines may not use hreflang, so distinct, fully localized, crawlable content (currency, availability, local incentives, units) matters for them. It suggests verifying fixes (e.g. URL Inspection) and re-checking answers from each market.",
+      "assertions": [
+        {
+          "text": "Identifies 'en-uk' as an invalid hreflang value and gives the correct code 'en-gb'.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/specialty/international/localized-versions",
+          "rationale": "Google: using EU, UN, or UK in hreflang doesn't have an effect; region codes are ISO 3166-1 alpha-2."
+        },
+        {
+          "text": "Identifies missing return links and self-references (the en-GB page has no hreflang; the de page omits en-GB/x-default), noting annotations without return links may be ignored.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/specialty/international/localized-versions",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Flags that the en-GB and de-DE pages canonicalize to the en-US URL, which conflicts with hreflang and points search engines at the US page, and recommends self-referencing canonicals for each localized version.",
+          "type": "method",
+          "rationale": "Canonical tells engines which URL to show. Pointing localized pages at the US page produces exactly the symptom described."
+        },
+        {
+          "text": "Flags the IP-based redirect of US visitors away from /en-gb/ and /de-de/ as likely to stop crawlers from seeing those pages, and advises against automatic locale redirects.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/specialty/international/managing-multi-regional-sites",
+          "rationale": "Google advises avoiding automatic redirection between language/locale versions, and notes Googlebot's default crawl IPs appear US-based (https://developers.google.com/search/docs/specialty/international/locale-adaptive-pages)."
+        },
+        {
+          "text": "Notes that the GBP price only appears after a client-side IP-based swap, so the HTML shows USD. Recommends server-rendered, genuinely localized content (currency, availability, local details) on each version, which also matters for engines that may not use hreflang.",
+          "type": "method",
+          "rationale": "Crawlers and many AI fetchers read the delivered HTML. Localized signals have to be in it."
+        },
+        {
+          "text": "Notices the inconsistent language codes (de-de vs de) and/or the missing x-default on some pages, and recommends one consistent annotation set across all versions.",
+          "type": "method",
+          "rationale": "Consistent, complete clusters are easier for engines to interpret and to debug."
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "topic": "Traffic drop: is it AI Overviews?",
+      "prompt": "We run a recipe site. Google clicks in Search Console are down about 22% year over year for July-September, but impressions are roughly flat. The owner is convinced \"AI Overviews are stealing our traffic\" and wants to start blocking Google's AI. How do I figure out whether that's actually what's happening before we do anything drastic?",
+      "files": [],
+      "expected_output": "A strong answer treats the owner's claim as a hypothesis and lays out a diagnostic before any blocking. Flat impressions with falling clicks means CTR fell. That's consistent with AI Overviews but also with other causes: lost positions on high-CTR queries, other SERP features (e.g. recipe carousels, video, forums), changes in query mix or demand, or a core update. Year-over-year comparison handles basic seasonality. Steps: segment by query and page, compare CTR at similar average positions year over year, check whether the queries that lost CTR currently trigger AI Overviews (manual checks or third-party SERP data, treated as estimates), line up timing against known Google updates, and compare branded vs. non-branded. It notes AI Overviews/AI Mode traffic is included in the Search Console Performance report (Web), and that the Search Generative AI report shows impressions in AI features but no click metric. If it cites outside research, it cites it accurately (e.g. Pew found Google users clicked a traditional result on 8% of visits with an AI summary vs. 15% without, in March 2025 browsing data). On blocking: Google-Extended wouldn't remove the site from AI Overviews. The real options are the Search Console 'Search generative AI' exclude control or snippet restrictions, and either one gives up AI-feature visibility (snippet controls also affect normal results), so it's a trade-off to decide on evidence.",
+      "assertions": [
+        {
+          "text": "Treats the claim as a hypothesis and proposes a diagnostic: segment by query/page, compare CTR at similar positions over time, check which affected queries show AI Overviews, and rule out other causes (ranking/position changes, seasonality, demand shifts, other SERP features, tracking changes).",
+          "type": "method",
+          "rationale": "Several causes produce falling clicks. Attribution needs evidence."
+        },
+        {
+          "text": "States correctly that clicks and impressions from AI Overviews/AI Mode are included in Search Console's Performance report (Web search type), not a separate silo.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/ai-features",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "If it mentions Search Console's Search Generative AI report, describes it accurately: it reports impressions (by page, country, device, date) and it doesn't claim the report provides AI-feature click data.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/blog/2026/06/gen-ai-performance-reports",
+          "rationale": "Google's post lists one metric ('Impressions: How often URLs from your site appeared in generative AI features in Search and Discover') and the dimensions pages, countries, devices, and dates."
+        },
+        {
+          "text": "Any external statistics are accurate and attributed (e.g. Pew Research: 8% vs. 15% click rate on traditional results with vs. without an AI summary, March 2025 data). No invented figures.",
+          "type": "accuracy",
+          "source": "https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Explains that flat impressions with falling clicks means CTR fell, which is consistent with AI Overviews but doesn't prove it.",
+          "type": "method",
+          "rationale": "Correct reasoning about what the metrics can and can't show is the heart of the question."
+        },
+        {
+          "text": "If recommending third-party AI Overview tracking data, frames it as an estimate, consistent with Google's statement that no third-party tool has access to its internal systems.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/ai-optimization-guide",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "If it addresses 'blocking Google's AI', it's accurate: Google-Extended doesn't remove a site from AI Overviews; the Search Console 'Search generative AI' exclude control (or snippet restrictions, which also affect normal results) does, at the cost of AI-feature visibility.",
+          "type": "accuracy",
+          "source": "https://support.google.com/webmasters/answer/16908024",
+          "rationale": "Google-Extended doesn't affect Search inclusion (https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers)."
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "topic": "Not appearing in AI Overviews despite ranking",
+      "prompt": "Our dog boarding cost guide (HTML attached) is built on original survey data and ranks on page one, but Google's AI Overview for \"how much does dog boarding cost\" cites three other sites and never us. What's going on?",
+      "files": [
+        "evals/files/21/page.html"
+      ],
+      "expected_output": "A strong answer spots that the page restricts what Google may use. The robots meta sets max-snippet:40, which limits text used as direct input for AI Overviews and AI Mode to 40 characters. The 'Quick answer' section, the most quotable content, is wrapped in data-nosnippet. The price table also carries data-nosnippet, though Google documents the attribute only on span, div and section elements, so it may not take effect on a table (either way, max-snippet:40 already limits it). max-image-preview:none also limits image use. These were added by a past agency to deter scrapers. They don't stop scrapers, but they do limit Google's use of the content. The fix is to remove or relax these (a deliberate trade-off), then request recrawl or wait for it, and check with URL Inspection. It also suggests confirming the Search Console 'Search generative AI' setting isn't set to Exclude and that the page is indexed and snippet-eligible. It recognizes the page's real strengths (original survey of 410 facilities, methodology, downloadable data, named author, recent update) and doesn't recommend a wholesale rewrite, schema, or llms.txt as the fix. It notes that appearance in AI Overviews isn't guaranteed even when eligible.",
+      "assertions": [
+        {
+          "text": "Identifies that max-snippet:40 limits how much of the page Google can use as direct input for AI Overviews/AI Mode.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag",
+          "rationale": "Google: max-snippet 'will also limit how much of the content may be used as a direct input for AI Overviews and AI Mode.'"
+        },
+        {
+          "text": "Identifies that data-nosnippet on the 'Quick answer' section keeps the page's most quotable passage from being used. If it discusses the price table's data-nosnippet, it doesn't fail for noting that Google documents the attribute only on span, div and section elements, so it may not apply to a table.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag",
+          "rationale": "Google's robots meta tag docs list data-nosnippet as supported 'on span, div, and section elements'. The AI features guidance lists data-nosnippet among the controls that limit what's shown."
+        },
+        {
+          "text": "Recommends removing or relaxing these restrictions as a deliberate trade-off (noting they don't actually prevent scraping) and allowing time for recrawl or verifying via URL Inspection.",
+          "type": "method",
+          "rationale": "Fixing the cause and confirming Google has re-fetched the page is the practical path."
+        },
+        {
+          "text": "If it lists other things to rule out, they're real mechanisms (e.g. the property-level Search Console 'Search generative AI' control set to Exclude, indexing status, snippet eligibility).",
+          "type": "accuracy",
+          "source": "https://support.google.com/webmasters/answer/16908024",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Doesn't blame missing structured data or a missing llms.txt as the cause.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/ai-optimization-guide",
+          "rationale": "Google says neither special schema nor AI text files are needed to appear in its generative AI features."
+        },
+        {
+          "text": "Recognizes the page's existing strengths (original data, methodology, author, date) and doesn't call for a wholesale rewrite. Notes that eligibility doesn't guarantee appearance.",
+          "type": "method",
+          "rationale": "Changing what already works adds risk. Google states serving isn't guaranteed."
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "topic": "Where to start: B2B SaaS invisible in AI recommendations",
+      "prompt": "We sell field service scheduling software to HVAC and plumbing contractors (B2B, ~200 customers). If someone asks ChatGPT, Perplexity, or Copilot about us by name the answer is fine, but when they ask which field service software to buy, it's always the same three competitors and never us. It's just me doing marketing, on a small budget. What should I do first?",
+      "files": [],
+      "expected_output": "A strong answer gives a focused starting plan sized for one marketer. (1) Baseline: write 15-30 real buyer prompts (category, use-case, comparison, problem), run them several times per engine, and record whether they're mentioned, how competitors are described, and which sources are cited. Those cited sources are the target list. (2) Technical check: make sure search crawlers can reach the site (OAI-SearchBot for ChatGPT search, PerplexityBot, Bingbot since Copilot is grounded in Bing), that no CDN rule blocks them, and that key pages are server-rendered. (3) On-site clarity: plain statements of what the product is, who it's for, key features, integrations, pricing approach, and honest comparison/alternatives pages. (4) Off-site: get genuine reviews from existing customers on the review platforms that show up in citations, pursue inclusion in the independent lists and articles being cited, take part transparently in communities, and use partner/integration directories. (5) Measure monthly on the same prompt set, and use first-party data where available (e.g. Bing Webmaster Tools' AI Performance report for Copilot citations; Search Console for Google). It avoids manipulative tactics and invented statistics, and it prioritizes ruthlessly.",
+      "assertions": [
+        {
+          "text": "Grounds priorities in evidence about why competitors get mentioned, e.g. by running representative buyer prompts (ideally more than once per engine) and noting which sources are cited, or by examining the review sites, lists, and articles where competitors appear. Includes some way to tell whether the work is helping.",
+          "type": "method",
+          "rationale": "Answers vary run to run and by engine. The cited sources show where to act."
+        },
+        {
+          "text": "Includes a check that search/retrieval crawlers can reach the site, e.g. that OAI-SearchBot isn't blocked (required for ChatGPT search inclusion).",
+          "type": "accuracy",
+          "source": "https://developers.openai.com/api/docs/bots",
+          "rationale": "OpenAI: sites opted out of OAI-SearchBot won't be shown in ChatGPT search answers. Perplexity documents PerplexityBot similarly (https://docs.perplexity.ai/guides/bots)."
+        },
+        {
+          "text": "Prioritizes a small number of high-impact actions suited to one marketer, instead of an exhaustive checklist.",
+          "type": "method",
+          "rationale": "The user stated a resource constraint. Advice that ignores it isn't actionable."
+        },
+        {
+          "text": "Covers both on-site clarity (what the product is, for whom, pricing, integrations, comparisons) and third-party presence (genuine reviews, independent lists/articles, communities, partner directories).",
+          "type": "method",
+          "rationale": "Recommendation answers draw on third-party sources as well as the vendor's own site."
+        },
+        {
+          "text": "Doesn't recommend manipulative tactics (fake or incentivized reviews, undisclosed astroturfing, mass-generated pages).",
+          "type": "method",
+          "rationale": "These violate platform policies and law, and can backfire."
+        },
+        {
+          "text": "Doesn't present invented or unsourced statistics as fact (e.g. precise percentages of AI citations by source type without attribution).",
+          "type": "method",
+          "rationale": "Fabricated numbers are a common failure in this domain."
+        },
+        {
+          "text": "Any first-party measurement suggestions are accurate (e.g. Bing Webmaster Tools' AI Performance report shows Copilot/Bing AI citation data and has been in public preview since February 2026). Not penalized if omitted.",
+          "type": "accuracy",
+          "source": "https://blogs.bing.com/webmaster/February-2026/Introducing-AI-Performance-in-Bing-Webmaster-Tools-Public-Preview",
+          "rationale": "Checkable against the cited source."
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "topic": "Contested tactic: freshness and 'last updated' dates",
+      "prompt": "Our content lead wants to bump the \"last updated\" date on all 300 of our blog posts every month, because she read that AI engines prefer fresh content. Do they? Is this a good idea?",
+      "files": [],
+      "expected_output": "A strong answer separates the evidence question from the tactic. On evidence: there's some research support for a recency preference. A 2025 arXiv study found LLM rerankers promoted passages with injected newer dates in controlled experiments, and Google notes that grounding with retrieval helps keep AI answers fresh. But no public evidence shows that changing a date without changing the content durably improves citations in live engines, and engines can see whether content changed. On the tactic: Google's people-first content guidance explicitly lists changing page dates to seem fresh when the content hasn't substantially changed as a warning sign. Google's date guidance says visible and structured dates should reflect real publication or updates and match each other. Faking dates also misleads readers. The better plan: audit the 300 posts, identify time-sensitive ones (prices, stats, product details, regulations), substantively update those, update the date when that happens, and consider consolidating or retiring stale posts. A good answer can say freshness plausibly matters for time-sensitive queries while rejecting cosmetic date bumps.",
+      "assertions": [
+        {
+          "text": "Describes the evidence accurately and without overclaiming: there is some controlled research showing LLM rankers favor more recent dates, but no public evidence that cosmetic date changes durably improve citations in live engines. Penalize claims that it's proven to work, or flatly that freshness never matters.",
+          "type": "method",
+          "rationale": "The rubric rewards accuracy about a contested question, not one side's opinion."
+        },
+        {
+          "text": "If it cites research on recency bias, it's described accurately (e.g. controlled experiments with injected dates on LLM rerankers), not presented as proof about live commercial engines.",
+          "type": "accuracy",
+          "source": "https://arxiv.org/abs/2509.11353",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Notes that Google's people-first content guidance treats changing page dates to seem fresh without substantial content changes as a warning sign.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/creating-helpful-content",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "If it discusses dates in structured data, says visible dates and structured-data dates (datePublished/dateModified) should match and describe the page's actual publication or update.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/publication-dates",
+          "rationale": "Google: 'Ensure that the date ... match between the equivalent user-visible and structured values', and dates 'must describe the publication or update date of the page'."
+        },
+        {
+          "text": "Recommends substantive updates prioritized by time-sensitivity (and pruning or consolidation where appropriate) instead of blanket date bumps.",
+          "type": "method",
+          "rationale": "Real updates are what make content more accurate and useful, which is the point of freshness."
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "topic": "Contested tactic: does schema markup increase AI citations?",
+      "prompt": "I keep seeing claims like \"pages with schema get 40% more AI citations.\" Is there real evidence that schema markup helps you get cited by ChatGPT or Google's AI Overviews? Trying to decide whether to spend dev time on it.",
+      "files": [],
+      "expected_output": "A strong answer separates what's documented from what's claimed. Google says structured data isn't required for its generative AI features and there's no special schema for them, though structured data still matters for rich results and merchant/product experiences, and must match visible content. Other answer engines haven't documented schema as a citation signal. Much of the evidence for an AI-citation benefit is correlational: cited pages often have schema, but sites that implement schema also tend to be better maintained and more authoritative. Controlled comparisons published so far, and a 2026 critical survey of the GEO literature, haven't established a robust causal citation effect. A '40%' figure shouldn't be treated as established. If it traces such numbers, the well-known 'up to 40%' visibility figure from the GEO paper (Aggarwal et al., KDD 2024) concerns content changes like adding citations, quotations, and statistics in a benchmark setting, not schema. Practical advice: implement schema where it unlocks concrete features or clarifies key entities (Product/merchant listings, Organization, Article, Video, LocalBusiness), keep it accurate, and don't expect it to drive AI citations by itself. A good answer can lean 'worth doing for other reasons' or 'low priority' as long as it's accurate about the evidence.",
+      "assertions": [
+        {
+          "text": "States that Google says structured data isn't required for its generative AI search features and that there's no special schema for them (while it remains useful for rich results/merchant experiences).",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/ai-optimization-guide",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Does not present a '40% more citations from schema' figure as established. If it traces such numbers, it accurately notes, e.g., that the GEO paper's 'up to 40%' concerned content modifications (citations, quotations, statistics) in a benchmark, not schema markup.",
+          "type": "accuracy",
+          "source": "https://arxiv.org/abs/2311.09735",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Conveys that robust causal evidence of schema increasing AI citations is lacking or mixed (correlational findings are confounded by site quality; controlled results published so far are mixed or null). 'Mixed/inconclusive' framings are acceptable, and so is citing platform statements that structured data helps systems understand content, as long as they aren't presented as proof of more citations.",
+          "type": "method",
+          "rationale": "Google says schema isn't required for its generative AI features. A 2026 critical survey of 45 GEO studies (arXiv:2607.14035) found no reviewed technique with a stable, longitudinal, cross-platform causal effect, though it doesn't address schema specifically. The schema-specific evidence is industry studies (see SOURCES.md)."
+        },
+        {
+          "text": "Gives a practical decision rule: implement schema where it enables concrete features or clarifies entities, keep it accurate, and don't rely on it as an AI-citation lever by itself.",
+          "type": "method",
+          "rationale": "The user needs a resourcing decision, not only a literature review."
+        },
+        {
+          "text": "Doesn't recommend marking up content that isn't visible on the page, or other spammy markup, to chase AI citations.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/sd-policies",
+          "rationale": "Checkable against the cited source."
+        },
+        {
+          "text": "Doesn't overclaim in the skeptical direction (e.g. that schema is useless, harmful, or ignored by every AI system), and acknowledges that schema has documented uses (rich results, merchant listings, entity information).",
+          "type": "method",
+          "rationale": "Unsupported negative claims are as inaccurate as unsupported positive ones. Schema's non-AI benefits are documented by Google."
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "topic": "Developer docs site: AI assistants keep answering with a deprecated API version",
+      "prompt": "I run developer relations at Quillpay, a payments API (docs at docs.quillpay.dev). Our v1 Charges API is deprecated and shuts off on 31 March 2027, but when developers ask ChatGPT, Copilot, Perplexity or Google's AI Mode \"how do I create a payment with Quillpay\" they almost always get v1 `/v1/charges` code. v3 (`/v3/payment_intents`) launched in May. I've attached the v1 page, the v3 page as served, and our sitemap. What's going on and what should we change? We can't delete v1 docs yet because customers still on it need them.",
+      "files": [
+        "evals/files/101/v1-payments-create.html",
+        "evals/files/101/v3-payments-create.html",
+        "evals/files/101/sitemap.xml"
+      ],
+      "expected_output": "Several things on the site push assistants toward v1. (1) The v3 page as served is an empty JavaScript shell (generic title 'Quillpay Docs', empty #root, content fetched from JSON at runtime). Google can render JS, but Google itself notes not all bots run JavaScript, so many AI crawlers and fetchers likely see no v3 content at all. Server-render or pre-render the v3 docs, with a real title and description. (2) The sitemap lists only v1 and v2, leaves out v3, and stamps every URL with the same nightly lastmod. Google only uses lastmod when it's consistently accurate, and it ignores changefreq/priority. Add the v3 URLs and emit real modification dates. (3) The v1 page has no deprecation notice and a self-canonical, and its title/description read like the current way to take payments. Keep v1 live and indexable for existing customers, but add a prominent visible deprecation banner with the shutoff date and a link to the v3 equivalent. Put 'v1 (deprecated)' in titles and make the v3 page the one linked from navigation and the docs home. Canonicalizing v1 to v3 is only appropriate where the pages are true equivalents, and it's a strong signal, not a command. Don't block v1 in robots.txt or noindex it as a way of 'choosing' v3: robots.txt isn't a canonicalization tool and noindex removes the page entirely. Also publish a migration guide (v1 to v3 mapping) as plain HTML, and update code samples, SDK READMEs, and Q&A answers you control. Set expectations too: answers grounded in live retrieval can change as pages are recrawled, but what a model learned in training about v1 lags and won't change until future model updates. Then re-test the same prompts over time.",
+      "assertions": [
+        {
+          "text": "Identifies from the fixture that the v3 page's content is not present in the served HTML (an empty app shell with a generic title, filled in by JavaScript at runtime), and explains that crawlers or fetchers that don't execute JavaScript would see no v3 content.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics",
+          "rationale": "Google's JS SEO basics say not all bots can run JavaScript and recommend server-side or pre-rendering; the fixture shows an empty #root."
+        },
+        {
+          "text": "Notes that the sitemap omits the v3 URLs and/or that its identical, auto-generated lastmod dates are unreliable; does not claim that changefreq or priority values will help Google (Google ignores them).",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap",
+          "rationale": "Google uses lastmod only if it is consistently and verifiably accurate and ignores priority and changefreq."
+        },
+        {
+          "text": "Does not recommend blocking the v1 docs in robots.txt as the way to make v3 the preferred version, and does not present noindex as a canonicalization tool; if it suggests noindexing v1 at all, it acknowledges that noindex removes those pages from search entirely (including for existing v1 users). If canonicalization is discussed, rel=canonical is treated as a strong signal rather than a guaranteed outcome and is limited to pages that are genuinely duplicate or very similar.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls",
+          "rationale": "Google: 'Don't use the robots.txt file for canonicalization purposes'; 'We don't recommend using noindex to prevent selection of a canonical page within a single site' (noindex blocks the page from Search entirely); rel=canonical is 'a strong signal'; Google decides which pages are duplicates 'based on similarity of content'."
+        },
+        {
+          "text": "Recommends keeping v1 docs accessible but clearly marked as deprecated on the page itself (e.g., a visible notice with the shutoff date and a link to the v3 equivalent or a migration guide).",
+          "type": "method",
+          "rationale": "The user can't remove v1; on-page deprecation context is what any retrieving engine or reader will see alongside the v1 code."
+        },
+        {
+          "text": "Distinguishes between answers based on live retrieval/search (which can change as pages are recrawled) and what a model learned in training (which lags until future model updates), and sets expectations accordingly.",
+          "type": "method",
+          "rationale": "Stale API code in AI answers often comes from training data, so site fixes alone won't immediately change every answer."
+        },
+        {
+          "text": "Suggests verifying progress by re-running representative developer questions across the named assistants over time, rather than treating one check as conclusive.",
+          "type": "method",
+          "rationale": "AI answers vary between runs and engines, so before/after comparison needs repeated sampling."
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "topic": "Healthcare/YMYL: E-E-A-T and medical accuracy on a clinic's condition page",
+      "prompt": "I own Harbor Line Physical Therapy in Portland (three PTs). Our sciatica page used to bring in a lot of patients, but now Google's AI Overviews and ChatGPT answer sciatica questions by citing hospitals and the NHS, never us. My web agency says we need more 'E-E-A-T signals' and suggested adding a doctor reviewer to the schema, which I did. Page and my notes are attached. What should I do so AI answers cite us?",
+      "files": [
+        "evals/files/102/sciatica-article.html",
+        "evals/files/102/notes-from-owner.txt"
+      ],
+      "expected_output": "The page has bigger problems than missing signals, and some of them could hurt patients. Fix those first. Medically: it promises a 7-day permanent cure and '100% pain-free', but that figure comes from the 14 self-selected responders who finished the program. It tells readers to stop prescribed medication and says they never need a referral or imaging. That's unsafe. Authoritative sources say most sciatica improves over weeks to months, and certain symptoms (sciatica on both sides, severe or worsening weakness or numbness in both legs, numbness around the genitals or anus, bladder/bowel changes) need emergency care. Under the FTC's health-claims guidance, a cure/efficacy claim like this needs competent and reliable scientific evidence, generally RCTs, which the clinic doesn't have. Structured data: the reviewedBy neurosurgeon has never read the page and isn't named on it, lastReviewed is false (the footer says 2019), and the aggregateRating is the clinic's own GBP reviews copied in. That's markup that doesn't reflect visible content, a self-serving review, and a misrepresentation. Remove it. On E-E-A-T: Google says it isn't a specific ranking factor, though for YMYL topics its systems give more weight to content showing strong E-E-A-T. You can't add it with schema. Rewrite the page with the clinic's real expertise. Use bylines from the licensed DPTs (including the OCS), with credentials and a real review date. Give accurate, guideline-consistent information and cite reputable sources. Add red-flag guidance on when to seek urgent care. Describe what PT can realistically do, and what the clinic's own outcome data shows, with honest methodology. For a local clinic, AI answers to general medical questions will often still cite hospitals and national bodies. Your realistic wins are local/intent queries ('physical therapy for sciatica in Portland') and being an accurate, trustworthy source. No change can guarantee a citation.",
+      "assertions": [
+        {
+          "text": "Flags as potentially harmful the page's advice to stop prescribed medication and/or its claim that no referral or imaging is ever needed, and recommends removing or correcting it.",
+          "type": "method",
+          "rationale": "On a YMYL health page, advice that could lead readers to stop treatment or miss serious pathology is a patient-safety issue first, and a visibility issue second."
+        },
+        {
+          "text": "Identifies that the '7-day cure' / '100% pain-free' claims are unsupported (e.g., based on 14 self-selected responders) and/or inconsistent with mainstream medical information (e.g., sciatica usually gets better over a few weeks to a few months; some symptoms need emergency care).",
+          "type": "accuracy",
+          "source": "https://www.nhs.uk/conditions/sciatica/",
+          "rationale": "NHS: 'Sciatica usually gets better in a few weeks to a few months'; sciatica on both sides, severe or worsening weakness or numbness in both legs, numbness around the genitals or anus, or new bladder/bowel problems need emergency care. The owner's notes give the 14-patient basis."
+        },
+        {
+          "text": "If it discusses the legal or regulatory exposure of the cure/efficacy claims, it does so accurately and without inventing specific rules or penalties (e.g., US FTC guidance holds health claims to a 'competent and reliable scientific evidence' standard, generally meaning randomized controlled human trials for health benefit claims).",
+          "type": "accuracy",
+          "source": "https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance",
+          "rationale": "The FTC Health Products Compliance Guidance (2022) sets the 'competent and reliable scientific evidence' standard and calls RCTs the most reliable evidence, generally expected for health benefit claims. It is written for health products, not services, so an answer that removes the false claims on safety and honesty grounds without a legal discussion is also correct."
+        },
+        {
+          "text": "Recommends removing or correcting the structured data that misrepresents the page: the reviewedBy physician who never reviewed it and isn't shown on the page, and/or the false lastReviewed date, and/or the copied-in aggregateRating.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/sd-policies",
+          "rationale": "Google: 'Don't mark up content that is not visible to readers of the page'; 'Your structured data must be a true representation of the page content'; 'Don't mark up irrelevant or misleading content, such as fake reviews'. The visible byline is 'the Harbor Line Team', and the owner's notes confirm the reviewer never read the page and the ratings were copied from Google Business Profile."
+        },
+        {
+          "text": "Does not claim that E-E-A-T is itself a direct or specific ranking factor; if E-E-A-T is discussed, it's consistent with Google's statement that it isn't a specific ranking factor, while Google's systems give even more weight to content aligned with strong E-E-A-T on YMYL topics like health.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/creating-helpful-content",
+          "rationale": "Google: 'While E-E-A-T itself isn't a specific ranking factor...'; for topics that could significantly impact health, financial stability, or safety, 'our systems give even more weight to content that aligns with strong E-E-A-T'."
+        },
+        {
+          "text": "Recommends showing genuine, verifiable expertise the clinic actually has (e.g., the licensed DPTs/OCS as named authors or reviewers with credentials and a real review date) rather than borrowed or fabricated credentials.",
+          "type": "method",
+          "rationale": "Real, visible authorship by qualified clinicians is honest and is the kind of trust evidence readers and quality systems can verify."
+        },
+        {
+          "text": "Sets realistic expectations rather than promising citations, e.g., that hospitals and national health bodies are likely to keep being cited for general medical questions, that no change guarantees an AI citation, and/or that local or service-intent queries are a more achievable target.",
+          "type": "method",
+          "rationale": "Overpromising citations against hospitals and the NHS on broad medical queries would mislead the owner about what's achievable."
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "topic": "Scaling an AI-generated content program on a YMYL (personal finance) site",
+      "prompt": "I'm head of growth at Penny & Pine, a personal-finance publisher (~400 articles, all written by staff). The plan for Q4: use an LLM pipeline to generate 6,000 pages titled 'Cost of living in {city}: is it affordable on {salary}?' for every US city over 20k people, by filling a template with public census and rent data. Each page will carry the byline 'Reviewed by Jordan Hale, CFP'. Jordan is a persona we'd create, with a stock photo. The goal is to get these pages cited in AI Overviews and ChatGPT answers. My CEO wants to know: is this allowed by Google, and is it a good idea? Give me a straight answer and what you'd do instead or in addition.",
+      "files": [],
+      "expected_output": "Google doesn't prohibit AI-generated content as such ('Appropriate use of AI or automation is not against our guidelines'). Its guidance says generative AI can be useful, but content must meet Search Essentials and the spam policies. Generating many pages without adding value for users is named as an example of scaled content abuse, and that's true however the content is produced. 6,000 near-identical template pages with mostly public data are at real risk of falling into that. Personal finance is YMYL, where Google's systems give more weight to trust signals. Accuracy matters too: LLMs can produce wrong figures, and Google says to review AI content, including titles, descriptions, and structured data, for accuracy. The fake 'Jordan Hale, CFP' persona is the clearest no. Inventing an expert reviewer and credential is deceptive to readers. It risks being a deceptive endorsement under FTC principles and misuses the CFP certification mark. If discovered, it damages trust in the whole site. Google encourages accurate authorship information and transparency about how automation was used. Better plan: pilot a small set (e.g., the 50–100 largest metros). Add something genuinely useful that isn't elsewhere: your own calculation/methodology, combined data sources with citations, staff analysis, a transparent 'how we built this' note. Have real staff review accuracy. Only expand to cities where pages stay distinct and useful, and don't index thin pages. Measure both search performance and whether AI answers cite them, and expand or prune based on results.",
+      "assertions": [
+        {
+          "text": "States accurately that Google does not ban AI-generated content per se, but that generating many pages without adding value for users can violate its scaled content abuse spam policy regardless of how the content is made.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/essentials/spam-policies",
+          "rationale": "Google spam policies define scaled content abuse as many pages generated 'for the primary purpose of manipulating search rankings and not helping users', 'no matter how it's created', with the example 'Using generative AI tools or other similar tools to generate many pages without adding value for users'. Google's AI-content FAQ (Feb 2023): 'Appropriate use of AI or automation is not against our guidelines.'"
+        },
+        {
+          "text": "Clearly advises against the invented 'Jordan Hale, CFP' persona/credential as deceptive, and recommends using real, accurately identified reviewers or not claiming a review at all. (Mentioning legal, endorsement, or CFP-mark risk is welcome but not required.)",
+          "type": "method",
+          "rationale": "A fabricated expert endorsement misleads readers on a YMYL topic. It conflicts with Google's encouragement of accurate authorship and with FTC endorsement principles, and exposes the brand if discovered."
+        },
+        {
+          "text": "Mentions that AI-generated content (including titles, descriptions, and structured data) should be reviewed for accuracy before publishing, and/or that disclosing how automation was used can help readers.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/using-gen-ai-content",
+          "rationale": "Google's gen-AI guidance: 'It is critical to manually factcheck and review all AI-generated content for accuracy and trustworthiness before publishing', including metadata such as titles, meta descriptions, structured data and alt text; and 'consider adding information on how your content was created'."
+        },
+        {
+          "text": "Notes that personal finance is a YMYL topic where trust and accuracy carry extra weight.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/fundamentals/creating-helpful-content",
+          "rationale": "Google: for topics that could significantly affect health, financial stability, or safety, its systems give more weight to content aligned with strong E-E-A-T."
+        },
+        {
+          "text": "Recommends adding original value beyond templated public data (e.g., the publisher's own methodology, analysis, or expert input) and/or limiting scale to pages that are genuinely distinct and useful.",
+          "type": "method",
+          "rationale": "Unique information is what separates a useful programmatic page from scaled filler, and it gives AI engines a reason to cite this source over the underlying public data."
+        },
+        {
+          "text": "Does not endorse publishing all 6,000 pages at once: it either recommends a staged or limited rollout (e.g., pilot a subset, measure search and AI-answer outcomes, then expand or prune) or recommends a different format altogether (e.g., fewer, deeper pages or a single interactive tool).",
+          "type": "method",
+          "rationale": "Both a pilot and a non-programmatic alternative limit site-wide quality risk; the point is not to bet the site on an untested mass launch, not to prescribe one rollout method."
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "topic": "Site-wide CMS/framework migration and lost AI/search visibility",
+      "prompt": "Fern Hollow Gear (outdoor gear shop + blog, www.fernhollowgear.com) moved from an old PHP CMS to a new Next.js site on 28 September. Same domain, new URL structure. Since then our guides have vanished from Google, including AI Overviews where our tent-sizing guide used to be cited, and Perplexity seems to cite us less. Attached are our redirect map and some header checks. Our developer wants to file a Change of Address in Search Console to speed things up. What's wrong and what's the priority order?",
+      "files": [
+        "evals/files/104/redirects.csv",
+        "evals/files/104/response-headers.txt"
+      ],
+      "expected_output": "Priority 1: the production pages send `x-robots-tag: noindex, nofollow` (probably carried over from staging). That alone tells Google to drop them from the index, and only indexed, snippet-eligible pages can appear in AI Overviews/AI Mode. Remove it site-wide now and confirm with URL Inspection. Robots.txt is fine. Priority 2: the redirect map. The two blog redirects that have a new equivalent use 302 (temporary); use permanent 301/308. tent-sizing-guide goes through a 3-hop chain (old → /blog/tent-sizing → /guides/tent-sizing → /guides/tent-sizing-guide); point every old URL straight at the final destination and stop renaming. Five old articles are redirected to the homepage, which Google may treat as soft 404s. Map each to the closest relevant page, restore/republish the content, or return 404/410 if it's truly gone. Priority 3: update internal links and sitemaps to the final URLs and keep redirects in place for at least a year (ideally longer). Change of Address is not applicable: it's for moving between domains/subdomains, not path changes on the same domain. Afterwards, monitor indexing/coverage and re-check the AI answers you care about. Recovery takes recrawling, and other engines that use their own or Bing's index recover on their own schedules.",
+      "assertions": [
+        {
+          "text": "Identifies from the header checks that live production pages return an `x-robots-tag: noindex` header and treats removing it as the top priority.",
+          "type": "method",
+          "rationale": "Derivable from response-headers.txt. A site-wide noindex is enough on its own to explain disappearing from Google, so it outranks every other fix."
+        },
+        {
+          "text": "Explains that noindexed pages are excluded from Google's index and therefore can't appear as links in AI Overviews/AI Mode, which require pages to be indexed and snippet-eligible.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/ai-features",
+          "rationale": "Google: to be shown as a supporting link in AI features a page must be indexed and eligible to be shown with a snippet."
+        },
+        {
+          "text": "Recommends replacing the 302 redirects with permanent redirects (301 or 308) and collapsing the multi-hop chain so old URLs redirect directly to the final destination.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes",
+          "rationale": "Google: 'we recommend that you use HTTP permanent redirects if possible, such as 301 and 308' and 'we advise redirecting to the final destination directly'. The CSV shows 302s and a 3-hop chain for the tent-sizing guide."
+        },
+        {
+          "text": "Flags that redirecting several unrelated old articles to the homepage is problematic (may be treated as soft 404s) and recommends mapping to relevant equivalents, restoring the content, or returning 404/410.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes",
+          "rationale": "Google: 'Don't redirect many old URLs to one irrelevant single URL destination, such as the home page of the new site... might be treated as a soft 404 error.' The CSV shows five articles redirected to the home page."
+        },
+        {
+          "text": "Correctly says the Change of Address tool doesn't apply to a same-domain URL-structure change (it's for moving between domains or subdomains).",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes",
+          "rationale": "Google: Change of Address is needed only when moving from one domain or subdomain to another, not for moving paths within the same domain."
+        },
+        {
+          "text": "Recommends keeping the redirects in place long-term (at least about a year) and/or updating internal links and sitemaps to the final URLs.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes",
+          "rationale": "Google: 'Keep the redirects for as long as possible, generally at least 1 year'; change internal links to the new URLs and update sitemaps with the new URLs."
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "topic": "Multilingual content generated by unreviewed machine translation",
+      "prompt": "I run marketing for Kanaal Cycling Tours, a small Dutch company running bike holidays in the Netherlands and Belgium. Last month our developer ran all 1,150 of our English blog posts through a machine translation API into German, French, Spanish, Italian, Polish, Danish, Swedish, Japanese and Korean, about 10,000 new pages, published automatically under /de/, /fr/ and so on. Nobody on the team speaks most of these languages. We did set up hreflang. The goal is for German and French travellers asking ChatGPT, Perplexity or Google's AI Mode about Dutch cycling holidays to see us. Is this going to work, and what should we do now?",
+      "files": [],
+      "expected_output": "Probably not as-is, and it carries real risk. Google's scaled content abuse policy covers many pages that give users little value however they're produced, and its examples mention automated transformations such as translating. Machine translation isn't banned as such, but 10,000 unreviewed MT pages across nine languages nobody can check fits that risk pattern. Hreflang only tells Google which language version to show. It doesn't make a page good, and it doesn't address quality. Research suggests a large share of low-resource-language web content is low-quality multi-way MT. Unreviewed MT also often gets tourism facts and tone wrong, and anything wrong (prices, dates, booking terms, safety) becomes what an AI might quote back. Recommended: pick the markets that matter (German, French, and maybe one more based on actual bookings), and choose the subset of pages that serve those travellers: tour pages, practical planning guides, FAQs. Have fluent speakers (staff, freelancers, or native-speaking guides) post-edit and localize them: currency, travel from Germany/France, local holidays, terms people actually search. Remove or noindex the rest, especially Japanese/Korean/etc. with no market and no reviewer. Keep one language per page; Google detects language from visible content, not the lang attribute or URL. Don't auto-redirect by assumed language or adapt content by IP. Then build presence in those markets (local travel press, German/French cycling forums and guides) and track whether AI answers in those languages mention you.",
+      "assertions": [
+        {
+          "text": "Explains that ~10,000 unreviewed machine-translated pages risk being treated by Google as scaled, low-value content (its scaled content abuse policy covers many pages giving little value to users however they're produced, and its examples mention automated transformations such as translating); does not claim machine translation is banned as such.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/essentials/spam-policies",
+          "rationale": "Google's scaled content abuse definition applies 'no matter how it's created'; one example is scraping content to generate many pages 'including through automated transformations like synonymizing, translating' where little value is provided. That example is about scraped content, so the policy describes a risk for mass self-translation rather than an outright prohibition."
+        },
+        {
+          "text": "Does not suggest that hreflang fixes, or signals, content quality; if hreflang is mentioned, it's described as a way of indicating language/regional alternates.",
+          "type": "method",
+          "rationale": "The user may assume hreflang 'handles' international SEO. Correcting that misconception is central to the advice."
+        },
+        {
+          "text": "Recommends focusing review/post-editing by fluent speakers on the markets and pages that matter (e.g., German and French, high-value pages) and dealing with the unreviewed remainder (e.g., removing, noindexing, or unpublishing it until reviewed).",
+          "type": "method",
+          "rationale": "This focuses limited resources where travellers actually are and removes low-value scaled pages that could hurt the site."
+        },
+        {
+          "text": "Notes that unreviewed translations risk factual or practical errors (e.g., prices, dates, booking terms) that AI answers could repeat, and/or recommends localization beyond literal translation.",
+          "type": "method",
+          "rationale": "AI engines quote pages. Mistranslated facts become misinformation attributed to the brand, and travellers need locally relevant details."
+        },
+        {
+          "text": "If it discusses technical language handling, what it says is accurate (e.g., Google determines page language from visible content, not the lang attribute or URL; Google advises against automatically redirecting users by assumed language and against IP-based content adaptation).",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/specialty/international/managing-multi-regional-sites",
+          "rationale": "Google: 'We don't use any code-level language information such as lang attributes, or the URL'; 'Avoid automatically redirecting' between language versions; 'Don't use IP analysis to adapt your content.'"
+        },
+        {
+          "text": "If it cites research on machine-translated web content, it represents it accurately (e.g., Thompson et al., ACL Findings 2024, found much multi-way parallel web content is low-quality MT, especially in lower-resource languages), without overstating it as a search-ranking finding.",
+          "type": "accuracy",
+          "source": "https://arxiv.org/abs/2401.05749",
+          "rationale": "The paper is about the prevalence and quality of MT web content and its implications for LLM training data, not about ranking or citation effects."
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "topic": "Quick question: does a noarchive meta tag affect Microsoft Copilot?",
+      "prompt": "Quick one. Years ago our IT team added <meta name=\"robots\" content=\"noarchive\"> to every page of our law firm's site (Brightwater Legal, Toronto) to stop search engines showing cached copies. We rank fine on Bing but Microsoft Copilot never cites us. Could that tag be the reason? Yes or no and what to do. Keep it short.",
+      "files": [],
+      "expected_output": "Yes, very possibly. Microsoft has said that pages with NOARCHIVE aren't used in Copilot (formerly Bing Chat) answers or linked from them, though they still appear in normal Bing results. Bing's 2026 guidelines rewrite reportedly keeps this for Copilot and grounding. NOCACHE is the middle option: Copilot may use only the URL, title, and snippet. If you want to be cited, remove noarchive (Google no longer uses it anyway since cached pages went away), then re-check Copilot after Bing recrawls. Use Bing Webmaster Tools URL inspection/IndexNow to speed that up if you like. Removing it makes you eligible, but it doesn't guarantee citations.",
+      "assertions": [
+        {
+          "text": "Answers yes (or 'likely yes'): Microsoft has documented that NOARCHIVE content is not included in or linked from Bing Chat (now Copilot) answers, while still appearing in regular Bing search results.",
+          "type": "accuracy",
+          "source": "https://blogs.bing.com/search/september-2023/Announcing-new-options-for-webmasters-to-control-usage-of-their-content-in-Bing-Chat",
+          "rationale": "Bing (Sept 2023): content tagged NOARCHIVE 'will not be included in Bing Chat answers, not be linked to in the answers' but will still appear in search results; Search Engine Journal (Feb 2026) reports the rewritten Bing Webmaster Guidelines keep this for Copilot and grounding."
+        },
+        {
+          "text": "Recommends removing the noarchive directive if they want to be eligible for Copilot citations (and does not recommend NOCACHE as a way to get full citations).",
+          "type": "method",
+          "rationale": "Removing the tag is the direct fix. NOCACHE limits Copilot to URL, title, and snippet; per Search Engine Journal (Feb 2026), Bing's guidelines recommend against NOCACHE on content intended for Copilot if you want richer citations."
+        },
+        {
+          "text": "Does not claim that removing the tag guarantees Copilot citations.",
+          "type": "method",
+          "rationale": "The tag controls eligibility. Being chosen as a source still depends on relevance and quality."
+        },
+        {
+          "text": "Is brief, as requested: a direct yes/no-style answer with a short action, not a full audit.",
+          "type": "method",
+          "rationale": "The user explicitly asked for a short answer to a narrow question."
+        },
+        {
+          "text": "If Google is mentioned, does not claim noarchive affects Google's AI Overviews/AI Mode; Google says it no longer uses noarchive.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag",
+          "rationale": "Google's robots meta tag docs say noarchive is no longer used by Google Search since the cached link feature no longer exists."
+        }
+      ]
+    },
+    {
+      "id": 107,
+      "topic": "B2B original research report launch and PR campaign",
+      "prompt": "I'm the content lead at Tallyroll (payroll software for mid-market companies). We're launching our first big original research report in three weeks. Our goal is that when people ask AI assistants things like 'how common are payroll errors' or 'how much does a payroll error cost', the answers cite our numbers and mention us. Attached: the landing page draft and our launch plan. Please review it and tell me what to change.",
+      "files": [
+        "evals/files/107/report-landing.html",
+        "evals/files/107/launch-plan.txt"
+      ],
+      "expected_output": "As drafted, nothing crawlable states the findings. The headline stats are only in an image (alt text 'report stats'). The PDF sits behind a form and is served from a path robots.txt disallows, so crawlers and AI fetchers can't read your numbers or attribute them to you. Publish an ungated HTML summary page with the key findings as text: each stat as a clear, self-contained sentence with its population and date (e.g., '41% of US mid-market companies surveyed ran at least one off-cycle payroll to fix an error in 2025'). Include the methodology (n=1,140 US payroll leaders, fielded May–June 2026, panel sample weighted by company size), named authors, and a stable URL. Keep the gate for the full PDF or extra assets if you need leads, and make the PDF crawlable if it should be cited. Publish the aggregated tables legal approved (as HTML/CSV). Dataset markup is optional and aimed at Dataset Search; it requires name and description. Fix the PR plan. Wire releases with keyword anchor text like 'best payroll software' are named link spam by Google; use plain branded/report links (or nofollow) that point at the findings page. Paying listicle sites to cite you and rank you #1 is an undisclosed paid placement that misleads readers; disclose or drop it. Spend instead on journalists, analysts, and communities who'll cite the data on its merits. Research on generative engines (e.g., the GEO paper) suggests that adding statistics, quotations, and citations can raise visibility in tested setups, but results vary by domain and engine, so treat it as promising evidence, not a guarantee. Track whether AI answers to your target questions cite the report after launch.",
+      "assertions": [
+        {
+          "text": "Identifies from the fixtures that the key findings aren't available as crawlable text: they appear only in an image with uninformative alt text, and the full report is gated behind a form and/or on a robots.txt-disallowed path.",
+          "type": "method",
+          "rationale": "Derivable from report-landing.html. Engines can only cite and attribute numbers they can retrieve as text."
+        },
+        {
+          "text": "Recommends an ungated, indexable page (the landing page itself or a separate one) presenting the key statistics as text, with methodology details (e.g., sample size, population, fieldwork dates, weighting) so the numbers are attributable and verifiable. Keeping the full PDF gated is compatible with this.",
+          "type": "method",
+          "rationale": "Self-contained, sourced statistics with methodology are what journalists and AI answers can quote accurately."
+        },
+        {
+          "text": "Flags that press releases distributed with keyword-rich anchor-text links (e.g., 'best payroll software') fall under Google's link spam policy, and recommends removing them or using plain/branded or qualified (nofollow/sponsored) links.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/essentials/spam-policies",
+          "rationale": "Google's link spam examples include 'links with optimized anchor text in articles, guest posts, or press releases distributed on other sites.'"
+        },
+        {
+          "text": "Flags the plan to pay listicle sites to cite the report and rank Tallyroll #1 as problematic (e.g., a paid placement that misleads readers unless clearly disclosed, and/or a paid link scheme), and recommends dropping it or clearly disclosing the payment (and qualifying any paid links).",
+          "type": "method",
+          "rationale": "Undisclosed paid endorsements mislead readers and conflict with FTC endorsement disclosure principles; Google's link spam policy lists 'Exchanging money for links, or posts that contain links'."
+        },
+        {
+          "text": "If Dataset structured data is recommended, it is described accurately (aimed at dataset discovery, e.g., Dataset Search, with name and description required) and not as a requirement for AI citation.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/dataset",
+          "rationale": "Google's Dataset docs: the markup's purpose is to improve discovery of datasets; required properties are name and description."
+        },
+        {
+          "text": "If it cites research that adding statistics/citations increases generative-engine visibility, it presents it with appropriate caveats (e.g., experimental results that vary by domain/engine) rather than as a guaranteed effect.",
+          "type": "accuracy",
+          "source": "https://arxiv.org/abs/2311.09735",
+          "rationale": "Aggarwal et al. (KDD 2024) report visibility gains of up to 40% in their benchmark, and note efficacy varies across domains."
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "topic": "Marketplace with user reviews: review practices, review markup, and AI reputation",
+      "prompt": "I'm co-founder of TradeNest, a US marketplace connecting homeowners with local plumbers and electricians. When people ask ChatGPT or Perplexity 'is TradeNest legit' or 'best site to find a plumber', we're either missing or described as 'mixed reviews'. Our growth plan: (1) use an LLM to turn tradespeople's job notes into ~2,000 customer reviews to seed new city pages, (2) give customers a $10 credit when they leave a 5-star review, (3) automatically hide reviews under 3 stars 'for quality', and (4) add AggregateRating schema for TradeNest itself to our homepage so we get stars in Google. Thoughts?",
+      "files": [],
+      "expected_output": "Stop items 1–3. They're illegal in the US, not just risky. The FTC's Consumer Reviews and Testimonials Rule (16 CFR Part 465, in effect since October 2024) prohibits reviews that misrepresent that they come from real customers with real experience, including AI-generated ones. It prohibits incentives conditioned on a particular sentiment (a $10 credit for 5 stars), and suppressing reviews by rating while implying the displayed reviews represent all or most of what was submitted (sentiment-neutral filtering for fake, abusive, or unrelated content is allowed). The FTC can seek civil penalties per violation and sent warning letters in December 2025. Item 4: Google treats reviews a business controls about itself as self-serving, so Organization/LocalBusiness review stars on your own site aren't eligible. Fake reviews also violate Google's structured data policies. Do instead: ask every customer for a review after a verified job, with any incentive offered regardless of rating. Show all reviews with neutral moderation rules published, respond to negative ones, and fix the root causes behind them. Earn presence on independent platforms (independent review sites, local community forums, press). Publish transparent trust info (how you vet pros, guarantees, complaint handling). AI answers summarize what independent sources say, so a 'mixed reviews' description changes only when the underlying experience and third-party sentiment change. Track it over time.",
+      "assertions": [
+        {
+          "text": "States that AI-generated or otherwise fabricated customer reviews (reviews misrepresenting that they're from real customers with actual experience) are prohibited under the FTC's consumer reviews rule.",
+          "type": "accuracy",
+          "source": "https://www.ftc.gov/news-events/news/press-releases/2024/08/federal-trade-commission-announces-final-rule-banning-fake-reviews-testimonials",
+          "rationale": "The FTC rule bans reviews that misrepresent they are by someone who doesn't exist, such as AI-generated fake reviews, or by someone without actual experience."
+        },
+        {
+          "text": "States that offering an incentive conditioned on a positive (e.g., 5-star) review is prohibited, while noting or allowing that incentives offered regardless of sentiment are a different matter.",
+          "type": "accuracy",
+          "source": "https://www.law.cornell.edu/cfr/text/16/465.4",
+          "rationale": "16 CFR 465.4 bans compensation conditioned on reviews expressing a particular sentiment, positive or negative."
+        },
+        {
+          "text": "Flags that hiding reviews based on low ratings while presenting the displayed reviews as representative is prohibited review suppression; neutral, consistently applied moderation (e.g., removing fake, abusive, or unrelated reviews) is permissible.",
+          "type": "accuracy",
+          "source": "https://www.law.cornell.edu/cfr/text/16/465.7",
+          "rationale": "16 CFR 465.7(b) prohibits misrepresenting displayed reviews as representing most or all reviews when they're suppressed based on rating or negative sentiment, with exceptions for criteria applied equally regardless of sentiment."
+        },
+        {
+          "text": "Explains that review/rating markup about TradeNest placed on TradeNest's own site is self-serving and not eligible for Google review stars.",
+          "type": "accuracy",
+          "source": "https://developers.google.com/search/docs/appearance/structured-data/review-snippet",
+          "rationale": "Google: if the entity being reviewed controls the reviews about itself, its LocalBusiness/Organization pages are ineligible for the star review feature."
+        },
+        {
+          "text": "Recommends legitimate alternatives: soliciting reviews from all verified customers without sentiment conditions, showing negative reviews and responding to them, and/or addressing the service issues behind them.",
+          "type": "method",
+          "rationale": "Honest review collection builds the independent sentiment AI answers summarize, without legal exposure."
+        },
+        {
+          "text": "Notes that AI descriptions of a brand's reputation draw heavily on independent third-party sources, so improving the real customer experience and/or earning genuine coverage on independent platforms matters more than on-site manipulation.",
+          "type": "method",
+          "rationale": "'Is X legit' answers synthesize external reviews and discussions the brand doesn't control, so on-site changes alone won't change them."
+        }
       ]
     }
   ]
