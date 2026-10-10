@@ -1,4 +1,5 @@
 {
+  "$schema": "./.hey-api/_config.schema.json",
   "generate": "pull-request",
   "input": "./packages/api-spec/src/openapi.json",
   "docs": ".hey-api",
