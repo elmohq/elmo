@@ -23,7 +23,7 @@ const BLUEWHALE_URL = "https://bluewhale.dev?ref=elmo";
 
 const title = "About Elmo · Open-Source AI Visibility Platform";
 const description =
-	"Elmo is an open-source answer engine optimization (AEO) platform founded in 2025 by Jared Rhizor, a founding engineer at Airbyte. Company facts, team, pricing, and how we work.";
+	"Elmo is an open-source AEO and GEO platform for tracking brand visibility in AI search, founded in 2025 by Jared Rhizor, a founding engineer at Airbyte. Company facts, team, pricing, and how we work.";
 
 export const Route = createFileRoute("/about")({
 	head: () => ({
@@ -60,7 +60,7 @@ const ELMO_LINKS = [
 
 const services = [
 	{
-		title: "AI visibility tracking",
+		title: "AI search visibility tracking",
 		body: "Elmo runs the prompts your buyers ask across ChatGPT, Google AI Overviews, Google AI Mode, Perplexity, Gemini, Copilot, Claude, and more on a schedule. Each prompt gets a visibility score for how often your brand appears, so you can see where you show up and where you don't.",
 	},
 	{
@@ -113,9 +113,9 @@ const differentiators = [
 ];
 
 const audiences = [
-	"In-house SEO and content marketing teams at B2B SaaS companies tracking how AI recommends them against named competitors",
+	"In-house SEO and content marketing teams at B2B SaaS companies extending their SEO strategy to AI search",
 	"E-commerce and DTC brands monitoring product recommendations in ChatGPT and Google AI Overviews",
-	"SEO and AEO agencies managing AI visibility for multiple client brands, including white-label reporting",
+	"SEO, AEO, and GEO agencies managing AI visibility for multiple client brands, including white-label reporting",
 	"Software companies embedding AI visibility tracking into their own products",
 	"Developer teams and regulated companies that need to self-host and keep prompts and responses on their own infrastructure",
 	"Local and hospitality businesses checking how AI assistants describe and recommend them",
@@ -184,7 +184,11 @@ function AboutPage() {
 				</>
 			),
 		},
-		{ term: "Type", detail: "Open-source software; answer engine optimization (AEO) platform" },
+		{
+			term: "Type",
+			detail:
+				"Open-source AI search visibility platform for answer engine optimization (AEO), generative engine optimization (GEO), and AI SEO",
+		},
 		{ term: "Founded", detail: "July 2025" },
 		{ term: "Founder", detail: "Jared Rhizor, previously a founding engineer at Airbyte and tech lead at LiveRamp" },
 		{ term: "Headquarters", detail: "San Francisco, California, USA" },
@@ -249,6 +253,23 @@ function AboutPage() {
 								Elmo is an open-source answer engine optimization (AEO) platform that tracks how ChatGPT, Google AI
 								Overviews, Perplexity, Gemini, Claude, and other AI answer engines mention, cite, and describe brands,
 								for marketing teams, agencies, and software companies.
+							</p>
+							<p className="mt-4 max-w-2xl text-lg text-pretty text-zinc-600">
+								Teams use Elmo for{" "}
+								<Link
+									to="/answer-engine-optimization"
+									className="font-medium text-blue-600 underline-offset-4 hover:underline"
+								>
+									answer engine optimization (AEO)
+								</Link>
+								, also called{" "}
+								<Link
+									to="/generative-engine-optimization"
+									className="font-medium text-blue-600 underline-offset-4 hover:underline"
+								>
+									generative engine optimization (GEO)
+								</Link>{" "}
+								or AI SEO: measuring and improving how their brand shows up in AI search.
 							</p>
 						</div>
 					</div>

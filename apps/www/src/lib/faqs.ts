@@ -130,6 +130,11 @@ export const ABOUT_FAQS: FaqItem[] = [
 			"No. Elmo Cloud is billed month to month and you can cancel any time; annual billing is optional and gets you two months free. Self-hosting needs no contract at all.",
 	},
 	{
+		question: "Is Elmo an AEO, GEO, or AI SEO tool?",
+		answer:
+			"All three. Answer engine optimization (AEO), generative engine optimization (GEO), and AI SEO are different names for the same work: getting your brand mentioned and cited in AI search results from ChatGPT, Perplexity, Google AI Overviews, and other answer engines. Elmo measures that visibility so you can track and improve it.",
+	},
+	{
 		question: "Where does the name Elmo come from?",
 		answer:
 			"Elmo comes from LLMO, short for LLM optimization: the practice of improving how large language models like ChatGPT, Claude, and Gemini mention and cite your brand. Say LLMO out loud and you get Elmo.",
