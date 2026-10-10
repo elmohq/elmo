@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://github.com/elmohq/elmo">
+  <a href="https://www.elmohq.com/">
     <img src="apps/www/public/brand/logos/elmo-logo-xl.png" alt="Elmo" width="300">
   </a>
 </p>
