@@ -3,7 +3,7 @@
 
 # Mention-judge weights (MIT): a weights-only image published from elmohq/elmo-models.
 # Pinned by digest so a worker build always gets exactly the model it was tested with.
-ARG MENTION_JUDGE_IMAGE=ghcr.io/elmohq/mention-judge:0.1.1@sha256:aeb99b6c3c9a36a158a9b728b5b8e0f627c78fe0f7941536bf9002c5849379ad
+ARG MENTION_JUDGE_IMAGE=ghcr.io/elmohq/mention-judge:0.2.0@sha256:38212c8668192cce27acd6e2ec099626a11d3cc972a6bb07ace589a49cc87e2f
 FROM ${MENTION_JUDGE_IMAGE} AS mention-judge
 
 # Base stage with Node.js
