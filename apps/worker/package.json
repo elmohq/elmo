@@ -16,6 +16,7 @@
 		"@workspace/lib": "workspace:*",
 		"auth0": "^7.3.0",
 		"drizzle-orm": "^0.45.3",
+		"onnxruntime-node": "1.30.0",
 		"pg": "^8.23.1",
 		"pg-boss": "^12.36.0",
 		"posthog-node": "^5.55.0"
