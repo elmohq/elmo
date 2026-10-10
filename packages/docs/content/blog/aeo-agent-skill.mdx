@@ -1,0 +1,161 @@
+---
+title: "We Audited the Top AEO Agent Skills. Almost None Measure Anything."
+description: "We read every file of the 12 most-installed AEO and GEO skills on skills.sh and checked their claims against the research. Here is what they get wrong, and the open-source skill we built to fix it."
+date: "2026-10-09"
+author: ai
+metaTitle: "AEO Agent Skills Audited: What the Top 12 Get Wrong"
+tags:
+  - aeo
+  - geo
+  - ai-visibility
+  - tools
+definedTerms:
+  - term: Agent skill
+    definition: "An agent skill is a folder of instructions, reference files, and optional scripts, anchored by a SKILL.md file, that an AI coding agent such as Claude Code, Cursor, or Codex loads when a task matches the skill's description. Skills are installed per project or per user, and the skills.sh directory ranks public skills by install count."
+  - term: AEO skill
+    definition: "An AEO skill is an agent skill that teaches an AI agent how to improve a brand's visibility in AI answer engines such as ChatGPT, Perplexity, and Google AI Overviews: auditing crawler access, planning content and off-site work, and, in the better ones, measuring visibility before and after a change."
+  - term: Mention rate
+    definition: "Mention rate is the share of sampled AI answers to a prompt set that name a brand, measured over repeated runs per engine and reported with its sample size. Because answer engines are non-deterministic, it is the stable alternative to a single-run screenshot or an 'AI rank'."
+howTo:
+  name: "How to install and run the aeo skill"
+  description: "Add Elmo's open-source AEO skill to a coding agent and run a first audit."
+  steps:
+    - name: Install the skill
+      text: "Run npx skills add elmohq/elmo in a terminal. The skills CLI detects Claude Code, Cursor, Codex, and other agents and installs the aeo skill into the right folder."
+    - name: Ask for an audit
+      text: "In your agent, ask something like 'Audit our AI visibility for example.com against competitors A, B, and C.' The skill triggers on AEO, GEO, AI SEO, and AI visibility requests."
+    - name: Run the access check
+      text: "The skill runs its bundled Python script against your key pages to check robots.txt for each AI crawler, firewall blocks, noindex and nosnippet, and whether content is in the raw HTML."
+    - name: Set up measurement
+      text: "Connect Elmo over MCP (cloud or self-hosted) so the agent can read repeated-sample visibility, citations, and fan-out queries, or use the skill's manual sampling protocol for a first look."
+    - name: Ship changes and re-measure
+      text: "Log each change with a date and the prompts it targets, then compare equal windows before and after on the same prompts and engines."
+faq:
+  - question: What is the best AEO skill for Claude Code?
+    answer: "By installs, the incumbent is coreyhaines31's ai-seo, with about 135,000 installs on skills.sh, and it is a solid, actively maintained general guide. We built Elmo's aeo skill because none of the popular skills closes the loop with measurement, and several repeat claims the research doesn't support. aeo is MIT-licensed, works without Elmo, and reads Elmo data over MCP when it is available. Judge it by its sources: every claim in it links to a primary study or platform document."
+  - question: How do I install the aeo skill?
+    answer: "Run npx skills add elmohq/elmo. The skills CLI detects your agent (Claude Code, Cursor, Codex, Gemini CLI, and others) and installs the skill with its reference files and audit script. You can also copy the skills/aeo folder from the GitHub repository into your agent's skills directory."
+  - question: Does the aeo skill require Elmo?
+    answer: "No. The workflow, access audit, content and off-site playbooks, and evidence file all work on their own, and the skill includes a manual sampling protocol for measuring without any tool. Measurement at a useful sample size needs repeated runs across engines, which Elmo automates either on Elmo Cloud or on a free self-hosted install."
+  - question: What do popular AEO skills get wrong?
+    answer: "The most common errors in the skills we audited: a misquoted table from the 2023 GEO paper (which tested a simulated GPT-3.5 engine, not ChatGPT), FAQ schema sold as a citation booster with no primary source, llms.txt presented as something answer engines read, composite 'GEO scores' built on invented weights, contradictory magic passage lengths, and outdated or wrong crawler facts such as listing the retired anthropic-ai agent while omitting OAI-SearchBot."
+  - question: Does llms.txt help with AI visibility?
+    answer: "Not for consumer answer engines, on current evidence. Ahrefs found that 97% of 137,000 llms.txt files received zero requests in a month, and AI bots never requested the file when it didn't exist. Google's John Mueller has said no AI system uses it. It is still useful for developer documentation, which coding agents read."
+  - question: Why does an AEO skill need measurement?
+    answer: "AI answers change on almost every run. SparkToro found the same brand list repeated less than once in 100 runs, while the share of runs naming a given brand was fairly stable. Without repeated sampling, an agent can't tell whether a change worked, so every recommendation stays a guess."
+---
+
+**We read every file of the 12 most-installed answer engine optimization skills on [skills.sh](https://skills.sh), nearly 19,000 lines in all, and checked each claim against its source.** The two most-installed skills teach a misordered version of the GEO paper's results. Six present schema markup, usually FAQ schema, as a citation booster without a primary source. Four compute "GEO scores" from weights nobody validated. And none of them reports a brand's visibility as a rate from repeated runs, which is the only way to know whether any of the advice worked. So we wrote [`aeo`](https://github.com/elmohq/elmo/tree/main/skills/aeo), an open-source skill built around the loop the others skip: measure, diagnose, fix, measure again.
+
+```bash
+npx skills add elmohq/elmo
+```
+
+**Key facts**
+
+| | |
+|---|---|
+| Skills audited | **12**, by install count on skills.sh, 3 Oct 2026 |
+| Installs of the leading AEO skill | **~135,000** (coreyhaines31 `ai-seo`) |
+| Skills that misquote the GEO paper's results table | **2**, including the most-installed one |
+| Skills that sell FAQ or schema markup as an AI citation lever | **6** |
+| Skills that compute a composite "GEO score" | **4** |
+| Skills that can retrieve a real AI answer themselves | **2**: one via a paid scraper actor, one via an optional DataForSEO hook |
+| Skills that report visibility as a rate across repeated runs | **0**. One describes the method for a human to follow by hand |
+| `aeo` SKILL.md length | **184 lines**, with 976 lines of references loaded on demand |
+
+**Key takeaways**
+
+- The category leader is decent. coreyhaines31's `ai-seo` quotes Google's own guidance, splits crawlers by purpose, and tells you to sample answers repeatedly. Its main problems are a wrong results table, a claim that answer engines parse llms.txt, and a claim about Search Console that has been out of date since June 2026.
+- The long tail is worse. Below the top few, skills recommend `<meta name="keywords">`, "15 FAQs with schema", an "18-token extraction rule", and parasite SEO, and one labels ByteDance's crawler as Cohere's.
+- Almost everything that is wrong traces back to unsourced statistics: vendor correlations presented as causal weights, or numbers with no traceable source at all.
+- The research points somewhere else. Being retrieved matters more than rewriting, third-party coverage matters more than markup, and visibility can only be measured as a rate across many runs.
+- `aeo` keeps the good parts, drops the myths, adds a measurement loop, a stdlib-only access audit script, and an evidence file with a primary source for every claim. It works with or without Elmo.
+
+## What an agent skill is, and why AEO skills spread so fast
+
+An [agent skill](https://agentskills.io/specification) is a folder with a `SKILL.md` file: a description that tells the agent when to load it, instructions, and optional reference files and scripts. Claude Code, Cursor, Codex, Gemini CLI, and most other coding agents read the format, and skills.sh ranks public skills by how many times they've been installed.
+
+AEO is a natural fit. The work combines technical checks an agent can run (robots.txt, rendering, indexing), research it can do (what's being cited, by whom), and writing it can draft. That is why the leading AEO skill has around 135,000 installs. Whatever these skills say becomes what thousands of agents tell their users about AI search. So we checked what they say.
+
+## How we audited them
+
+On 3 October 2026 we pulled install counts from the skills.sh search API for the queries "aeo", "geo", "ai seo", "ai visibility", and "answer engine optimization". We took the 12 most-installed skills that are actually about AI search visibility, cloned each repository, and read every `SKILL.md` and reference file. We checked each factual claim against its primary source: the paper, the platform documentation, or the original study. Where a skill cited a statistic with no source, we looked for one. The sources we checked against are collected in the skill's [evidence file](https://github.com/elmohq/elmo/blob/main/skills/aeo/references/evidence.md).
+
+We build an AI visibility product, so weigh our conclusions accordingly. Every claim below links to something you can check.
+
+## The comparison
+
+| Skill | Installs | SKILL.md | Retrieves real AI answers | Crawler guidance | Unsupported claims we found |
+|---|---|---|---|---|---|
+| [coreyhaines31 `ai-seo`](https://github.com/coreyhaines31/marketingskills/tree/main/skills/ai-seo) | 135,271 | 486 lines + 9 refs | No; describes manual sampling | Correct, split by purpose | Misordered GEO table; "they parse llms.txt"; "no AI-specific Search Console reporting" (outdated); unsourced "+30–40%" for schema |
+| [resciencelab `seo-geo`](https://github.com/resciencelab/opc-skills/tree/main/skills/seo-geo) | 50,214 | 250 lines + 6 refs | No | Lists retired `anthropic-ai`, omits `OAI-SearchBot` | Same GEO table; "FAQPage schema +40% AI visibility"; recommends `<meta name="keywords">` |
+| [addyosmani `seo`](https://github.com/addyosmani/web-quality-skills/tree/main/skills/seo) | 48,332 | 409 lines | No | Correct, per agent with vendor links | None found. Mostly classic SEO, careful on llms.txt |
+| [sanity-io `seo-aeo-best-practices`](https://github.com/sanity-io/agent-toolkit/tree/main/skills/seo-aeo-best-practices) | 6,750 | 37 lines + 4 refs | No | Lumps training and search crawlers together | "Structured Data (Critical)" for AI, with FAQPage as the example |
+| [AgriciDaniel `seo-geo`](https://github.com/AgriciDaniel/claude-seo/tree/main/skills/seo-geo) | 6,324 | 400 lines + 2 refs | Optional DataForSEO hook | Correct, the most thorough | "GEO Readiness Score /100" from invented weights |
+| [aaron-he-zhu `geo-content-optimizer`](https://github.com/aaron-he-zhu/aaron-marketing-skills) | 5,367 + 1,440 | 102 lines + 6 refs | Proxy search API only | Partial | 1–10 "GEO score"; FAQ schema |
+| [bencium `bencium-aeo`](https://github.com/bencium/bencium-marketplace) | 3,105 | 140 lines + 984-line PRD | No; single manual runs | Partial | "18-Token Extraction Rule"; "95% of AI citations come from content updated in last 10 months"; "15 FAQs with Schema" |
+| [kostja94 `generative-engine-optimization`](https://github.com/kostja94/marketing-skills/tree/main/skills/strategies/commercial/geo) | 1,246 | 150 lines | No | Labels Bytespider as Cohere's | Recommends parasite SEO |
+| [zubair-trabzada `geo-*`](https://github.com/zubair-trabzada/geo-seo-claude) (15 skills) | ≤1,059 each | ~5,000 lines total | No; re-scores its own audit | Says Google-Extended affects AI Overviews; lists `anthropic-ai` | "GEO Score 0–100"; "134–167 word" passages attributed to Princeton; sells llms.txt |
+| [warpdotdev `seo-aeo-audit`](https://github.com/warpdotdev/oz-skills) | 628 | 752 lines | No | Partial | "FAQPage (highest AI citation rate)"; tracks `chat.openai.com` referrals instead of `chatgpt.com` |
+| [cognitic-labs `geo-audit` / `geo-monitor`](https://github.com/cognitic-labs/geoskills) | 181 / 154 | 502 / 325 lines | No; "monitor" re-runs the heuristic | Partial | Weighted "GEO score v2" |
+| [apify `ai-search-visibility-tracker`](https://github.com/apify/awesome-skills/tree/main/skills/apify-ai-search-visibility-tracker) | 166 | 297 lines | **Yes**, via a paid scraper actor | Not covered | None notable; single runs, no sampling statistics |
+| **[elmohq `aeo`](https://github.com/elmohq/elmo/tree/main/skills/aeo)** | new | 184 lines + 6 refs | **Yes**, via Elmo over MCP, or a manual protocol | Correct, split by purpose, with an audit script | Every claim sourced in `references/evidence.md` |
+
+Installs are from the skills.sh API on 3 October 2026. Line counts are from each repository's default branch the same day.
+
+## What they get wrong
+
+### The GEO paper, misquoted
+
+Nearly every AEO guide cites [GEO: Generative Engine Optimization](https://arxiv.org/abs/2311.09735) (Aggarwal et al., KDD 2024). The two most-installed skills reproduce the same results table: cite sources +40%, statistics +37%, quotations +30%, authoritative tone +25%. The paper's own results put **adding quotations first** (the paper reports its best methods improved its word-share metric by 41%), then statistics, fluency, and citing sources. Authoritative tone sits near the bottom, with a gain of roughly 11–13%.
+
+The order matters less than the context the table drops. The paper measured how much of the answer's text came from a page, in a simulated engine: GPT-3.5 summarizing five fixed Google results. The gains went mostly to pages ranked fifth, at the expense of pages ranked first. When [C-SEO Bench](https://arxiv.org/abs/2506.11097) (NeurIPS 2025) tested the same kinds of rewrites on current models, only 3 of 54 cases showed a significant improvement, and moving a page to the top of the retrieved results beat every rewrite. The coreyhaines31 skill's own evals assert the misquoted figures, so the error is checked into its tests.
+
+### FAQ schema as a citation lever
+
+Six of the twelve present structured data, usually FAQPage, as something that gets you cited: "+40% AI visibility", "highest AI citation rate", "Critical", "15 FAQs with Schema". We couldn't find a primary source for any of these figures. Google [restricted FAQ rich results](https://developers.google.com/search/blog/2023/08/howto-faq-changes) to authoritative government and health sites in 2023, and says AI Overviews and AI Mode need [no special markup](https://developers.google.com/search/docs/appearance/ai-features). A difference-in-differences study of 1,885 pages that added schema found [no lift in AI citations](https://ahrefs.com/blog/schema-ai-citations/), and a small decline in AI Overviews.
+
+### llms.txt as something answer engines read
+
+The leading skill says AI engines "parse `llms.txt`", and one suite has a whole skill for generating it. Ahrefs looked at server logs for 137,000 domains and found that [97% of llms.txt files got zero requests](https://ahrefs.com/blog/llmstxt-study/) in a month, and that AI bots never asked for the file on sites that didn't have one. It is useful for developer documentation, because coding agents read it. It isn't an AEO lever.
+
+### Scores nobody validated
+
+Four skills output a composite score: "GEO Readiness Score: 72/100", a 1–10 "GEO score", "GEO Score v2". Each is a weighted sum of heuristics (citability 25%, schema 20%, brand 20%, and so on) with no validation against which pages actually get cited. The "monitoring" in these skills re-runs the same heuristic, so the score goes up when you do what the score asks for, whether or not any engine noticed.
+
+### Crawler facts that do damage
+
+Crawler mistakes are the most expensive, because a wrong robots.txt rule silently removes a site from an engine. The audit turned up the retired `anthropic-ai` user agent listed as current while `OAI-SearchBot`, the crawler that [decides whether a site appears in ChatGPT search](https://developers.openai.com/api/docs/bots), went unmentioned; `Google-Extended` described as affecting AI Overviews (it controls Gemini training and Gemini app grounding, and [doesn't affect Search](https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers)); training and search crawlers lumped into one list; and ByteDance's crawler attributed to Cohere.
+
+### Measurement left as an exercise
+
+This is the gap that matters most. AI answers change on almost every run: SparkToro found the same brand list [less than once in 100 runs](https://sparktoro.com/blog/new-research-ais-are-highly-inconsistent-when-recommending-brands-or-products-marketers-should-take-care-when-tracking-ai-visibility/), while the share of runs naming a given brand was fairly stable. So the only honest measure is a rate across repeated runs, per engine, against a fixed set of competitors.
+
+The best of the incumbents say so, then leave it to the human ("run each query 3–5 times per platform") or point to a third-party tool. The rest skip measurement entirely, or "monitor" their own audit score. Without measurement, an agent can't tell whether its last recommendation worked, so it can't learn which of its advice to drop.
+
+## What `aeo` does differently
+
+We kept what the incumbents get right: Google's guidance up front and the purpose-by-purpose crawler split from coreyhaines31, AgriciDaniel's rule of deferring to primary sources, the Measured-versus-Estimated labels from aaron-he-zhu, Sanity's short-router structure, and cognitic-labs' treatment of fetched pages as untrusted input. Then:
+
+1. **A workflow with a measurement loop.** Scope, prompt set, baseline, diagnosis, access, owned content, off-site work, then re-measurement against a dated change log. The skill won't make a recommendation without a way to check it.
+2. **Prompt sets built from demand.** It builds prompts from Search Console queries, sales and support language, community threads, and engines' own fan-out queries, tagged by intent and weighted toward unbranded prompts, which is where brands win or lose.
+3. **Statistics an agent can apply.** Runs per prompt for exploratory versus confirmatory claims, and a margin-of-error table, so "down 8 points on 20 runs" gets reported as what it is: no detectable change.
+4. **Off-site work driven by the brand's own citation data.** Instead of a generic "get on Reddit" list, it ranks the third-party pages engines actually cite for the prompts the brand loses, with a playbook for each source type and clear lines it won't cross.
+5. **An access audit that runs.** `scripts/check_ai_access.py` uses only the Python standard library. It evaluates robots.txt for 17 crawlers with RFC 9309 matching, fetches each page as each crawler to catch firewall blocks robots.txt doesn't show, flags noindex and nosnippet, and checks whether content is in the raw HTML that non-rendering AI crawlers see.
+6. **Receipts.** The dated facts live in one evidence file with a credibility rating and a primary source for each, plus a myths table, so the main instructions don't go stale and every number can be traced.
+7. **A short main file.** SKILL.md is 184 lines. References load only when the agent reaches the step that needs them.
+
+### Where Elmo fits
+
+Measurement is the step the skill can't do alone, because it needs the same prompts run many times across engines. That's what [Elmo](https://www.elmohq.com) does: it runs a brand's prompts across ChatGPT, Google AI Overviews and AI Mode, Perplexity, Gemini, Copilot, and others on a schedule, and records mentions, citations, and fan-out queries. The skill connects to it over [MCP](/docs/api/mcp) and maps each diagnostic question to a tool call.
+
+Elmo is MIT-licensed. Self-hosting it is free, plus whatever you pay a scraping provider, and the skill walks through the setup. It recommends providers based on our [public status page](/status), and links to them with affiliate links that it discloses, because that's how the open-source project is funded. If you'd rather not run infrastructure, [Elmo Cloud](https://app.elmohq.com) runs the same software for you. If you use neither, the skill's manual sampling protocol gets you a rough first baseline.
+
+## Install it
+
+```bash
+npx skills add elmohq/elmo
+```
+
+The skills CLI installs `aeo` for whichever agents it finds. Then ask your agent something like "Audit our AI visibility for example.com against Acme and Globex." The skill is [on GitHub](https://github.com/elmohq/elmo/tree/main/skills/aeo) under the MIT license. If you find a claim in it that the evidence doesn't support, open an issue: that's the standard we're holding the other skills to.

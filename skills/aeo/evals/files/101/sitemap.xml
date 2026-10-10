@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://docs.quillpay.dev/v1/payments/create</loc><lastmod>2026-10-08</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://docs.quillpay.dev/v1/payments/refund</loc><lastmod>2026-10-08</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://docs.quillpay.dev/v1/customers/create</loc><lastmod>2026-10-08</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://docs.quillpay.dev/v2/payments/create</loc><lastmod>2026-10-08</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://docs.quillpay.dev/v2/payments/refund</loc><lastmod>2026-10-08</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <!-- generated nightly by build script; v3 section not yet added -->
+</urlset>
