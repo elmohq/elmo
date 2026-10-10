@@ -20,7 +20,7 @@ remove a site from AI answers. Blocking a search crawler does.
 | `Claude-SearchBot` | Anthropic | Indexes pages to improve Claude's search results | Visibility in Claude's search answers |
 | `Claude-User` | Anthropic | Live fetch for a Claude user's request | Live, user-triggered reads |
 | `ClaudeBot` | Anthropic | Training data | Use in future Claude training only |
-| `PerplexityBot` | Perplexity | Indexes pages for Perplexity answers | Citations in Perplexity |
+| `PerplexityBot` | Perplexity | Indexes pages for Perplexity answers; Perplexity says it isn't used to train foundation models | Citations in Perplexity |
 | `Perplexity-User` | Perplexity | Live fetch for a user's request; generally ignores robots.txt | Live, user-triggered reads |
 | `Googlebot` | Google | Google Search, *including* AI Overviews and AI Mode | All of Google Search and its AI features |
 | `Google-Extended` | Google | Product token, not a separate crawler. Controls Gemini training **and grounding in the Gemini app and Vertex AI** | Gemini training, and possibly Gemini app answers. AI Overviews are unaffected |
