@@ -1,6 +1,5 @@
 {
   "$schema": "./.hey-api/_config.schema.json",
-  "generate": "pull-request",
   "input": {
     "path": "./packages/api-spec/src/openapi.json",
     "declare": [
