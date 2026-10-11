@@ -22,14 +22,16 @@
       "package": {
         "name": "@elmohq/sdk",
         "destination": ["github", "npm"],
-        "repository": "https://github.com/elmohq/elmo-sdk-typescript"
+        "repository": "https://github.com/elmohq/elmo-sdk-typescript",
+        "homepage": "https://www.elmohq.com"
       }
     },
     "python": {
       "package": {
         "name": "elmo-sdk",
         "destination": ["github", "pypi"],
-        "repository": "https://github.com/elmohq/elmo-sdk-python"
+        "repository": "https://github.com/elmohq/elmo-sdk-python",
+        "homepage": "https://www.elmohq.com"
       }
     }
   },
