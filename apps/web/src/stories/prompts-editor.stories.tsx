@@ -82,6 +82,11 @@ function mockSuggestions({
 	setMockPromptSuggestionsRemaining(remaining);
 }
 
+const removeButtons = (canvas: ReturnType<typeof within>, prompt: string) =>
+	canvas.queryAllByRole("button", { name: `Remove "${prompt}"` });
+const findRemoveButton = async (canvas: ReturnType<typeof within>, prompt: string) =>
+	(await canvas.findAllByRole("button", { name: `Remove "${prompt}"` }))[0]!;
+
 export const SuggestPrompts: Story = {
 	args: Default.args,
 	render: (args) => {
@@ -92,12 +97,12 @@ export const SuggestPrompts: Story = {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: /suggest prompts/i }));
 
-		await canvas.findByRole("checkbox", { name: `Include "${SUGGESTIONS[0]!.prompt}"` });
+		await findRemoveButton(canvas, SUGGESTIONS[0]!.prompt);
 		await expect(canvas.getByText("4 runs left today")).toBeVisible();
-		await userEvent.click(canvas.getByRole("checkbox", { name: `Include "${SUGGESTIONS[2]!.prompt}"` }));
-		await userEvent.click(canvas.getByRole("button", { name: /^add 4 prompts$/i }));
+		await userEvent.click(await findRemoveButton(canvas, SUGGESTIONS[2]!.prompt));
 
-		await expect(canvas.queryByRole("region", { name: "Suggested Prompts" })).not.toBeInTheDocument();
+		await expect(removeButtons(canvas, SUGGESTIONS[2]!.prompt)).toHaveLength(0);
+		await expect(canvas.getByText(/suggested prompts below/)).toHaveTextContent("4 suggested prompts below");
 		await expect(canvas.getByText("4 added")).toBeVisible();
 	},
 };
@@ -111,8 +116,9 @@ export const SuggestPromptsLoading: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: /suggest prompts/i }));
-		await expect(await canvas.findByText(/finding prompts you don't track yet/i)).toBeVisible();
+		await expect(await canvas.findByText(/suggesting prompts\. this usually takes/i)).toBeVisible();
 		await expect(canvas.getByRole("button", { name: /suggest prompts/i })).toBeDisabled();
+		await expect(canvas.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
 	},
 };
 
@@ -132,7 +138,7 @@ export const SuggestPromptsLimitReached: Story = {
 	},
 };
 
-export const SuggestMoreKeepsEarlierPicks: Story = {
+export const SuggestMoreAddsToTheList: Story = {
 	args: Default.args,
 	render: (args) => {
 		mockSuggestions();
@@ -141,13 +147,30 @@ export const SuggestMoreKeepsEarlierPicks: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByRole("button", { name: /suggest prompts/i }));
-		const skipped = await canvas.findByRole("checkbox", { name: `Include "${SUGGESTIONS[2]!.prompt}"` });
-		await userEvent.click(skipped);
+		await userEvent.click(await findRemoveButton(canvas, SUGGESTIONS[2]!.prompt));
 
 		await userEvent.click(canvas.getByRole("button", { name: /suggest more/i }));
-		await canvas.findByRole("checkbox", { name: `Include "${MORE_SUGGESTIONS[0]!.prompt}"` });
+		await findRemoveButton(canvas, MORE_SUGGESTIONS[0]!.prompt);
 
-		await expect(canvas.getByRole("checkbox", { name: `Include "${SUGGESTIONS[2]!.prompt}"` })).not.toBeChecked();
-		await expect(canvas.getByRole("button", { name: /^add 6 prompts$/i })).toBeEnabled();
+		await expect(removeButtons(canvas, SUGGESTIONS[2]!.prompt)).toHaveLength(0);
+		await expect(canvas.getByText("6 added")).toBeVisible();
+	},
+};
+
+export const DismissAllSuggestions: Story = {
+	args: Default.args,
+	render: (args) => {
+		mockSuggestions();
+		return <PromptsEditor {...args} />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: /suggest prompts/i }));
+		await findRemoveButton(canvas, SUGGESTIONS[0]!.prompt);
+
+		await userEvent.click(canvas.getByRole("button", { name: /dismiss all/i }));
+
+		await expect(removeButtons(canvas, SUGGESTIONS[0]!.prompt)).toHaveLength(0);
+		await expect(canvas.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
 	},
 };

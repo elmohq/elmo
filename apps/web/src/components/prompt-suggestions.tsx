@@ -1,15 +1,10 @@
-import { dedupeKey, describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
+import { dedupeKey } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
-import { Checkbox } from "@workspace/ui/components/checkbox";
-import { Input } from "@workspace/ui/components/input";
-import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { TagsInput } from "@workspace/ui/components/tags-input";
-import { cn } from "@workspace/ui/lib/utils";
-import { AlertCircle, Plus, RefreshCw, Sparkles, X } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { v4 as uuidv4 } from "uuid";
+import { AlertCircle, ArrowUp, RefreshCw, Sparkles, X } from "lucide-react";
+import { type Ref, type RefObject, useEffect, useRef, useState } from "react";
+import { type EditablePrompt, newPromptEntry } from "@/components/prompts-list-editor";
 import { type PolledJobError, usePolledBrandJob } from "@/hooks/use-polled-brand-job";
 import { trackEvent } from "@/lib/posthog";
 import {
@@ -18,344 +13,214 @@ import {
 	startPromptSuggestionsFn,
 } from "@/server/prompt-suggestions";
 
-const ROW_GRID =
-	"grid grid-cols-[1rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 sm:grid-cols-[1rem_minmax(0,1fr)_16rem]";
+export const SUGGESTION_PLACEHOLDER_ROWS = 5;
 
-interface Suggestion {
-	key: string;
-	value: string;
-	tags: string[];
-	selected: boolean;
-}
+const filled = (prompts: EditablePrompt[]) => prompts.map((p) => p.value).filter((v) => v.trim());
 
-interface PromptSuggestionsProps {
+export function usePromptSuggestions({
+	brandId,
+	prompts,
+	setPrompts,
+}: {
 	brandId: string;
-	existingValues: string[];
-	tagOptions: string[];
-	onAdd: (prompts: { value: string; tags: string[] }[]) => void;
-	onClose: () => void;
-}
-
-function useSuggestionRuns(brandId: string, existingValues: string[]) {
+	prompts: EditablePrompt[];
+	setPrompts: (update: (prev: EditablePrompt[]) => EditablePrompt[]) => void;
+}) {
 	const [error, setError] = useState<PolledJobError | null>(null);
-	const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+	const [nothingNew, setNothingNew] = useState(false);
 	const [remaining, setRemaining] = useState<number | null>(null);
+	const [arrived, setArrived] = useState({ run: 0, count: 0 });
 	const offered = useRef<string[]>([]);
+	const latestPrompts = useRef(prompts);
+	latestPrompts.current = prompts;
 
 	const job = usePolledBrandJob({
 		queryKey: ["prompt-suggestions", brandId],
 		start: () =>
 			startPromptSuggestionsFn({
-				data: { brandId, exclude: [...existingValues, ...offered.current].slice(0, MAX_PROMPTS * 2) },
+				data: {
+					brandId,
+					exclude: [...filled(latestPrompts.current), ...offered.current].slice(0, MAX_PROMPTS * 2),
+				},
 			}),
 		poll: () => getPromptSuggestionsStatusFn({ data: { brandId } }),
 		cancel: () => cancelPromptSuggestionsFn({ data: { brandId } }),
 		onStarted: (result) => setRemaining(result.remaining),
-		onDone: ({ prompts }) => {
-			offered.current = [...offered.current, ...prompts.map((p) => p.prompt)];
-			setSuggestions((prev) => {
-				const seen = new Set([...existingValues, ...prev.map((s) => s.value)].map(dedupeKey));
-				const fresh = prompts
-					.filter((p) => !seen.has(dedupeKey(p.prompt)))
-					.map((p) => ({ key: uuidv4(), value: p.prompt, tags: p.tags, selected: true }));
-				return [...prev, ...fresh];
-			});
+		onDone: ({ prompts: suggested }) => {
+			offered.current = [...offered.current, ...suggested.map((p) => p.prompt)];
+			const current = filled(latestPrompts.current);
+			const seen = new Set(current.map(dedupeKey));
+			const fresh = suggested
+				.filter((p) => !seen.has(dedupeKey(p.prompt)))
+				.slice(0, Math.max(0, MAX_PROMPTS - current.length))
+				.map((p) => newPromptEntry({ value: p.prompt, tags: p.tags, suggested: true }));
+			setNothingNew(fresh.length === 0);
+			setArrived((prev) => ({ run: prev.run + 1, count: fresh.length }));
+			if (fresh.length > 0) setPrompts((prev) => [...fresh, ...prev]);
 		},
 		onError: setError,
 		startErrorFallback: "Couldn't suggest prompts.",
 		timeoutMessage: "Suggesting prompts timed out. Please try again.",
 	});
 
-	const requestRun = () => {
-		setError(null);
-		trackEvent("prompt_suggestions_requested");
-		job.run();
+	const suggestedCount = prompts.filter((p) => p.suggested && !p.id).length;
+
+	return {
+		running: job.running,
+		error,
+		nothingNew,
+		remaining,
+		suggestedCount,
+		arrived,
+		start: () => {
+			setError(null);
+			setNothingNew(false);
+			trackEvent("prompt_suggestions_requested");
+			job.run();
+		},
+		cancel: job.cancel,
+		dismissAll: () => setPrompts((prev) => prev.filter((p) => !(p.suggested && !p.id))),
+		clearNotice: () => {
+			setError(null);
+			setNothingNew(false);
+		},
 	};
-
-	const opened = useRef(false);
-	useEffect(() => {
-		if (opened.current) return;
-		opened.current = true;
-		requestRun();
-	});
-
-	return { loading: job.running, error, suggestions, setSuggestions, remaining, requestRun, cancel: job.cancel };
 }
 
-function SuggestionRow({
-	suggestion,
-	tagOptions,
-	onChange,
-}: {
-	suggestion: Suggestion;
-	tagOptions: { value: string }[];
-	onChange: (patch: Partial<Suggestion>) => void;
-}) {
+type Suggestions = ReturnType<typeof usePromptSuggestions>;
+
+function runsLeftLabel(remaining: number | null) {
+	if (remaining === null) return null;
+	if (remaining <= 0) return "No runs left today";
+	return `${remaining} ${remaining === 1 ? "run" : "runs"} left today`;
+}
+
+function StatusMessage({ suggestions }: { suggestions: Suggestions }) {
+	const { running, error, nothingNew, suggestedCount } = suggestions;
+	if (running) {
+		return (
+			<span className="flex items-center gap-2 text-muted-foreground">
+				<Spinner /> Suggesting prompts. This usually takes about a minute.
+			</span>
+		);
+	}
+	if (error) {
+		return (
+			<span role="alert" className="flex items-start gap-2 text-red-700 dark:text-red-300">
+				<AlertCircle className="mt-0.5 size-4 shrink-0" />
+				{error.message}
+			</span>
+		);
+	}
+	if (nothingNew && suggestedCount === 0) {
+		return (
+			<span className="text-muted-foreground">
+				Nothing new this time. Everything suggested is already in your list.
+			</span>
+		);
+	}
 	return (
-		<li className={cn(ROW_GRID, "px-4 py-2 transition-colors hover:bg-muted/40")}>
-			<Checkbox
-				checked={suggestion.selected}
-				onCheckedChange={(checked) => onChange({ selected: checked === true })}
-				aria-label={`Include "${suggestion.value}"`}
-			/>
-			<Input
-				value={suggestion.value}
-				onChange={(e) => onChange({ value: e.target.value })}
-				aria-label="Suggested prompt"
-				className={cn(
-					"-ml-2 h-8 border-transparent bg-transparent px-2 shadow-none hover:border-input focus-visible:border-ring dark:bg-transparent",
-					!suggestion.selected && "text-muted-foreground line-through decoration-muted-foreground/50",
-				)}
-			/>
-			<TagsInput
-				value={suggestion.tags}
-				onValueChange={(tags) => onChange({ tags })}
-				options={tagOptions}
-				placeholder="Add tag..."
-				searchPlaceholder="Search or create tag..."
-				normalizeValue={(raw) => raw.toLowerCase().trim()}
-				className={cn("col-start-2 sm:col-start-auto", !suggestion.selected && "opacity-50")}
-				triggerClassName="border-transparent bg-transparent shadow-none hover:border-input"
-			/>
-		</li>
+		<span className="flex items-center gap-2 text-muted-foreground">
+			<Sparkles className="size-4 shrink-0 text-primary" />
+			<span>
+				<strong className="text-foreground">{suggestedCount}</strong> suggested{" "}
+				{suggestedCount === 1 ? "prompt" : "prompts"} below. Remove any you don't want, then save to start tracking the
+				rest.
+			</span>
+		</span>
 	);
 }
 
-function LoadingRows() {
-	return (
-		<>
-			{[0.7, 0.5, 0.62, 0.45].map((width) => (
-				<li key={width} aria-hidden className={cn(ROW_GRID, "px-4 py-3.5")}>
-					<Skeleton className="size-4 rounded-[4px]" />
-					<Skeleton className="h-4" style={{ width: `${width * 100}%` }} />
-					<Skeleton className="hidden h-5 w-16 rounded-md sm:block" />
-				</li>
-			))}
-		</>
-	);
-}
+export function SuggestionsStatus({ suggestions, ref }: { suggestions: Suggestions; ref?: Ref<HTMLDivElement> }) {
+	const { running, error, nothingNew, suggestedCount, remaining } = suggestions;
+	if (!running && !error && !nothingNew && suggestedCount === 0) return null;
 
-function RunButton({
-	loading,
-	label,
-	disabled,
-	onClick,
-}: {
-	loading: boolean;
-	label: string;
-	disabled: boolean;
-	onClick: () => void;
-}) {
+	const canRunAgain = !running && (remaining === null || remaining > 0);
+	const runsLeft = runsLeftLabel(remaining);
+
 	return (
-		<Button
-			variant="outline"
-			size="sm"
-			type="button"
-			onClick={onClick}
-			disabled={disabled}
-			className="flex items-center gap-2"
+		<div
+			ref={ref}
+			className="flex scroll-mt-24 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-md border bg-muted/40 px-3 py-2 text-sm"
 		>
-			{loading ? <Spinner /> : <RefreshCw className="h-4 w-4" />}
-			{loading ? "Suggesting…" : label}
-		</Button>
-	);
-}
-
-function AddButton({ count, disabled, onClick }: { count: number; disabled: boolean; onClick: () => void }) {
-	return (
-		<Button
-			size="sm"
-			type="button"
-			onClick={onClick}
-			disabled={disabled || count === 0}
-			className="flex items-center gap-2"
-		>
-			<Plus className="h-4 w-4" />
-			Add {count > 0 ? `${count} ` : ""}
-			{count === 1 ? "Prompt" : "Prompts"}
-		</Button>
-	);
-}
-
-function PanelHeader({ status, onClose }: { status: "searching" | "picking" | "idle"; onClose: () => void }) {
-	return (
-		<header className="flex items-start justify-between gap-4 border-b px-4 py-3">
-			<div className="flex items-start gap-3">
-				<div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-					<Sparkles className="size-4" />
-				</div>
-				<div>
-					<h2 className="text-sm font-semibold">Suggested Prompts</h2>
-					<p className="text-sm text-muted-foreground">
-						{
-							{
-								searching: "Finding prompts you don't track yet. This usually takes about a minute.",
-								picking:
-									"Based on your website and the prompts you already track. Untick any you don't want, or edit them first.",
-								idle: "Prompts your brand doesn't track yet, based on your website and current list.",
-							}[status]
-						}
-					</p>
-				</div>
-			</div>
-			<Button variant="ghost" size="icon" type="button" onClick={onClose} aria-label="Close suggestions">
-				<X className="size-4" />
-			</Button>
-		</header>
-	);
-}
-
-function PanelFooter({
-	suggestions,
-	allSelected,
-	onToggleAll,
-	notice,
-	overCapacity,
-	remaining,
-	actions,
-}: {
-	suggestions: Suggestion[];
-	allSelected: boolean;
-	onToggleAll: () => void;
-	notice: string | null;
-	overCapacity: number;
-	remaining: number | null;
-	actions: ReactNode;
-}) {
-	const selectedCount = suggestions.filter((s) => s.selected).length;
-	return (
-		<footer className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t bg-muted/30 px-4 py-3">
-			<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-				{suggestions.length > 0 && (
+			<StatusMessage suggestions={suggestions} />
+			<div className="flex items-center gap-2">
+				{running ? (
+					<Button type="button" size="sm" variant="ghost" onClick={suggestions.cancel}>
+						Cancel
+					</Button>
+				) : (
 					<>
-						<span>
-							<strong className="text-foreground">{selectedCount}</strong> of {suggestions.length} selected
-						</span>
-						<button
-							type="button"
-							onClick={onToggleAll}
-							className="cursor-pointer underline-offset-2 hover:text-foreground hover:underline"
-						>
-							{allSelected ? "Deselect all" : "Select all"}
-						</button>
+						{runsLeft && <span className="hidden text-xs text-muted-foreground sm:inline">{runsLeft}</span>}
+						{error?.retryable !== false && (
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								onClick={suggestions.start}
+								disabled={!canRunAgain}
+								className="flex items-center gap-2"
+							>
+								<RefreshCw className="size-4" /> {error ? "Try Again" : "Suggest More"}
+							</Button>
+						)}
+						{suggestedCount > 0 ? (
+							<Button type="button" size="sm" variant="ghost" onClick={suggestions.dismissAll}>
+								Dismiss All
+							</Button>
+						) : (
+							<Button
+								type="button"
+								size="icon"
+								variant="ghost"
+								onClick={suggestions.clearNotice}
+								aria-label="Close"
+								className="size-8"
+							>
+								<X className="size-4" />
+							</Button>
+						)}
 					</>
 				)}
-				{notice && <span>{notice}</span>}
-				{overCapacity > 0 && (
-					<span role="alert" className="text-destructive">
-						{overCapacity} over the {MAX_PROMPTS}-prompt limit. Untick {overCapacity === 1 ? "one" : "some"} to
-						continue.
-					</span>
-				)}
 			</div>
-
-			<div className="flex items-center gap-2">
-				{remaining !== null && (
-					<span className="hidden text-xs text-muted-foreground sm:inline">
-						{remaining <= 0 ? "No runs left today" : `${remaining} ${remaining === 1 ? "run" : "runs"} left today`}
-					</span>
-				)}
-				{actions}
-			</div>
-		</footer>
+		</div>
 	);
 }
 
-export function PromptSuggestions({ brandId, existingValues, tagOptions, onAdd, onClose }: PromptSuggestionsProps) {
-	const { loading, error, suggestions, setSuggestions, remaining, requestRun, cancel } = useSuggestionRuns(
-		brandId,
-		existingValues,
-	);
+export function SuggestionsReadyPill({
+	arrived,
+	target,
+}: {
+	arrived: { run: number; count: number };
+	target: RefObject<HTMLElement | null>;
+}) {
+	const [visible, setVisible] = useState(false);
 
-	const picked = useMemo(() => suggestions.filter((s) => s.selected && s.value.trim()), [suggestions]);
-	const preview = useMemo(
-		() => parseBulkPrompts(picked.map((s) => s.value).join("\n"), { existing: existingValues, limit: MAX_PROMPTS }),
-		[picked, existingValues],
-	);
-	const overCapacity = preview.skipped.overCapacity.length;
-	const notice = picked.length > 0 ? describeSkipped(preview.skipped) : null;
+	useEffect(() => {
+		if (arrived.run === 0 || arrived.count === 0 || !target.current) return;
+		const rect = target.current.getBoundingClientRect();
+		const offscreen = rect.bottom < 0 || rect.top > window.innerHeight;
+		setVisible(offscreen);
+		if (!offscreen) return;
+		const observer = new IntersectionObserver(([entry]) => {
+			if (entry?.isIntersecting) setVisible(false);
+		});
+		observer.observe(target.current);
+		return () => observer.disconnect();
+	}, [arrived, target]);
 
-	const allTagOptions = useMemo(
-		() => [...new Set([...tagOptions, ...suggestions.flatMap((s) => s.tags)])].sort().map((value) => ({ value })),
-		[tagOptions, suggestions],
-	);
-
-	const update = (key: string, patch: Partial<Suggestion>) =>
-		setSuggestions((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
-	const allSelected = suggestions.length > 0 && suggestions.every((s) => s.selected);
-
-	const canRunAgain = !loading && !(remaining !== null && remaining <= 0) && error?.retryable !== false;
-
-	const add = () => {
-		if (preview.added.length === 0 || overCapacity > 0) return;
-		const tagsByKey = new Map(picked.map((s) => [dedupeKey(s.value), s.tags]));
-		onAdd(preview.added.map((value) => ({ value, tags: tagsByKey.get(dedupeKey(value)) ?? [] })));
-		trackEvent("prompt_suggestions_added", { offered: suggestions.length, added: preview.added.length });
-	};
-
-	const close = () => {
-		cancel();
-		onClose();
-	};
-
+	if (!visible) return null;
 	return (
-		<section
-			aria-label="Suggested Prompts"
-			className="overflow-hidden rounded-lg border bg-card shadow-sm animate-in fade-in slide-in-from-top-1"
+		<button
+			type="button"
+			onClick={() => {
+				target.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+				setVisible(false);
+			}}
+			className="fixed top-20 left-1/2 z-20 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-sm font-medium shadow-lg animate-in fade-in slide-in-from-top-2 hover:bg-accent"
 		>
-			<PanelHeader status={suggestions.length > 0 ? "picking" : loading ? "searching" : "idle"} onClose={close} />
-
-			<ul className="divide-y">
-				{suggestions.map((s) => (
-					<SuggestionRow
-						key={s.key}
-						suggestion={s}
-						tagOptions={allTagOptions}
-						onChange={(patch) => update(s.key, patch)}
-					/>
-				))}
-				{loading && <LoadingRows />}
-			</ul>
-
-			{!loading && !error && suggestions.length === 0 && (
-				<p className="px-4 py-6 text-center text-sm text-muted-foreground">
-					Nothing new this time. Everything suggested is already in your list.
-				</p>
-			)}
-
-			{error && (
-				<div
-					role="alert"
-					className="mx-4 my-3 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
-				>
-					<AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-					<span>{error.message}</span>
-				</div>
-			)}
-
-			{(suggestions.length > 0 || canRunAgain || loading) && (
-				<PanelFooter
-					suggestions={suggestions}
-					onToggleAll={() => setSuggestions((prev) => prev.map((s) => ({ ...s, selected: !allSelected })))}
-					allSelected={allSelected}
-					notice={notice}
-					overCapacity={overCapacity}
-					remaining={remaining}
-					actions={
-						<>
-							<RunButton
-								loading={loading}
-								label={suggestions.length > 0 ? "Suggest More" : "Try Again"}
-								disabled={!canRunAgain}
-								onClick={requestRun}
-							/>
-							{suggestions.length > 0 && (
-								<AddButton count={preview.added.length} disabled={overCapacity > 0} onClick={add} />
-							)}
-						</>
-					}
-				/>
-			)}
-		</section>
+			<ArrowUp className="size-4" />
+			{arrived.count} {arrived.count === 1 ? "suggestion" : "suggestions"} added
+		</button>
 	);
 }

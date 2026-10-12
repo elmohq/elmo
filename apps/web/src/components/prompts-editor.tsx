@@ -2,13 +2,13 @@ import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
 import { Sparkles } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { PromptSuggestions } from "@/components/prompt-suggestions";
 import {
-	type EditablePrompt,
-	newPromptEntry,
-	type PremiumAllowance,
-	PromptsListEditor,
-} from "@/components/prompts-list-editor";
+	SUGGESTION_PLACEHOLDER_ROWS,
+	SuggestionsReadyPill,
+	SuggestionsStatus,
+	usePromptSuggestions,
+} from "@/components/prompt-suggestions";
+import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@/components/prompts-list-editor";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import { trackEvent } from "@/lib/posthog";
@@ -106,7 +106,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(baseline);
 	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [suggesting, setSuggesting] = useState(false);
+	const suggestionsRef = useRef<HTMLDivElement>(null);
 	const saveInProgress = useRef(false);
 	const invalidatePromptsSummary = useInvalidatePromptsSummary();
 	const writeError = useWriteErrorMessage();
@@ -117,7 +117,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	);
 
 	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
-	const tagOptions = useMemo(() => [...new Set(prompts.flatMap((p) => p.tags))], [prompts]);
+	const suggestions = usePromptSuggestions({ brandId, prompts, setPrompts });
 	const isDirty = changedKeys.size > 0 || removedCount > 0;
 	const summary = [
 		addedCount && `${addedCount} added`,
@@ -154,7 +154,12 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 			const saved = await updatePromptsFn({ data: { brandId, prompts: allPrompts } });
 
-			trackEvent("prompts_updated", { added: addedCount, edited: editedCount, deleted: removedCount });
+			trackEvent("prompts_updated", {
+				added: addedCount,
+				edited: editedCount,
+				deleted: removedCount,
+				suggested: validPrompts.filter((p) => p.suggested && !p.id).length,
+			});
 
 			// Adopt the server's rows so newly inserted prompts carry their real
 			// ids — re-saving without them would insert duplicates.
@@ -181,28 +186,24 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				<Button
 					variant="outline"
 					type="button"
-					onClick={() => setSuggesting(true)}
-					disabled={suggesting || filledValues.length >= MAX_PROMPTS}
+					onClick={suggestions.start}
+					disabled={suggestions.running || filledValues.length >= MAX_PROMPTS || suggestions.remaining === 0}
 					className="flex shrink-0 items-center gap-2 cursor-pointer"
 				>
 					<Sparkles className="h-4 w-4" /> Suggest Prompts
 				</Button>
 			</div>
 
-			{suggesting && (
-				<PromptSuggestions
-					brandId={brandId}
-					existingValues={filledValues}
-					tagOptions={tagOptions}
-					onAdd={(added) => {
-						setPrompts((prev) => [...added.map((p) => newPromptEntry(p)), ...prev]);
-						setSuggesting(false);
-					}}
-					onClose={() => setSuggesting(false)}
-				/>
-			)}
+			<PromptsListEditor
+				prompts={prompts}
+				onChange={setPrompts}
+				changedKeys={changedKeys}
+				premium={premium}
+				leading={<SuggestionsStatus suggestions={suggestions} ref={suggestionsRef} />}
+				pendingRows={suggestions.running ? SUGGESTION_PLACEHOLDER_ROWS : 0}
+			/>
 
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} changedKeys={changedKeys} premium={premium} />
+			<SuggestionsReadyPill arrived={suggestions.arrived} target={suggestionsRef} />
 
 			<UnsavedChangesBar
 				isDirty={isDirty}
