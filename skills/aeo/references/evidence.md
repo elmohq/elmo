@@ -53,7 +53,8 @@ opaque method.
 - Google spam policies, link spam: optimized anchor text in press releases distributed on other sites — <https://developers.google.com/search/docs/essentials/spam-policies>
 - FTC Endorsement Guides (material connections must be disclosed) — <https://www.ftc.gov/legal-library/browse/rules/guides-concerning-use-endorsements-testimonials-advertising>
 - llms.txt proposal (Jeremy Howard, Sep 2024) — <https://llmstxt.org/>
-- Google spam policies apply to AI Overviews and AI Mode, including inauthentic mentions (May 2026) — <https://developers.google.com/search/docs/essentials/spam-policies>
+- Google spam policies: spam includes "attempting to manipulate generative AI responses in Google Search" — <https://developers.google.com/search/docs/essentials/spam-policies>
+- Google AI optimization guide: "Seeking inauthentic 'mentions' across the web isn't as helpful as it might seem" — <https://developers.google.com/search/docs/fundamentals/ai-optimization-guide>
 - Google, FAQ rich results no longer shown in Search from 7 May 2026, for all sites; existing FAQPage markup does no harm — <https://developers.google.com/search/docs/appearance/structured-data/faqpage>
 - Google, HowTo rich results removed and FAQ restricted (Aug 2023) — <https://developers.google.com/search/blog/2023/08/howto-faq-changes>
 - Google-Extended scope (Gemini training and grounding, not Search) — <https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers>

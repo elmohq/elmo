@@ -174,7 +174,7 @@ disclosed? Does the page add first-party data, expertise, or a view the top resu
   recommends that syndicated copies carry `noindex`; platforms you don't control often won't allow
   either. Prefer excerpts that link back, and original posts written for each platform.
 - Don't use AI to mass-produce pages for every keyword variant. Google's scaled-content policy covers
-  this, and its spam policies now explicitly apply to AI Overviews and AI Mode.
+  this, and its spam policies count attempts to manipulate generative AI responses as spam.
 - Don't rewrite pages chasing "GEO tactics" until the rewrites stop saying what the product actually
   does. Optimizing hard for visibility can drift away from accuracy, and the inaccuracy gets repeated
   under the brand's name.

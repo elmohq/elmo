@@ -63,7 +63,7 @@ npx skills add elmohq/elmo
 | Skills that can retrieve a real AI answer themselves | **2**: one via a paid scraper actor, one via an optional DataForSEO hook |
 | Skills that report visibility as a rate across repeated runs | **0**. One describes the method for a human to follow by hand |
 | Factual errors per 32-question benchmark run | **0.3** with `aeo`, 4.3–5.3 with the other top skills, 4.3 with no skill |
-| `aeo` SKILL.md length | **187 lines**, with 1009 lines of references loaded on demand |
+| `aeo` SKILL.md length | **189 lines**, with 1011 lines of references loaded on demand |
 
 **Key takeaways**
 
@@ -101,7 +101,7 @@ We build an AI visibility product, so weigh our conclusions accordingly. Every c
 | [warpdotdev `seo-aeo-audit`](https://github.com/warpdotdev/oz-skills) | 628 | 752 lines | No | Partial | "FAQPage (highest AI citation rate)"; tracks `chat.openai.com` referrals instead of `chatgpt.com` |
 | [cognitic-labs `geo-audit` / `geo-monitor`](https://github.com/cognitic-labs/geoskills) | 181 / 154 | 502 / 325 lines | No; "monitor" re-runs the heuristic | Partial | Weighted "GEO score v2" |
 | [apify `ai-search-visibility-tracker`](https://github.com/apify/awesome-skills/tree/main/skills/apify-ai-search-visibility-tracker) | 166 | 297 lines | **Yes**, via a paid scraper actor | Not covered | None notable; single runs, no sampling statistics |
-| **[elmohq `aeo`](https://github.com/elmohq/elmo/tree/main/skills/aeo)** | new | 187 lines + 6 refs | **Yes**, via Elmo over MCP, or a manual protocol | Correct, split by purpose, with an audit script | Every claim sourced in `references/evidence.md` |
+| **[elmohq `aeo`](https://github.com/elmohq/elmo/tree/main/skills/aeo)** | new | 189 lines + 6 refs | **Yes**, via Elmo over MCP, or a manual protocol | Correct, split by purpose, with an audit script | Every claim sourced in `references/evidence.md` |
 
 Installs are from the skills.sh API on 3 October 2026. Line counts are from each repository's default branch the same day.
 
@@ -146,7 +146,7 @@ We kept what the incumbents get right: Google's guidance up front and the purpos
 5. **An access audit that runs.** `scripts/check_ai_access.py` uses only the Python standard library. It evaluates robots.txt for 17 crawlers with RFC 9309 matching, fetches each page as each crawler to catch firewall blocks robots.txt doesn't show, flags noindex and nosnippet, and checks whether content is in the raw HTML that non-rendering AI crawlers see.
 6. **Receipts.** The dated facts live in one evidence file with a credibility rating and a primary source for each, plus a myths table, so the main instructions don't go stale and every number can be traced.
 7. **The rules that carry legal or policy risk.** The FTC's rule on consumer reviews, disclosure for employees and paid placements, Google's link spam and scaled-content policies, the extra bar for health and finance pages, and the ban on networks of sites posing as independent sources in [Anthropic's Usage Policy](https://www.anthropic.com/legal/aup). When asked for any of it, the skill declines and offers the earned version. It also covers the newer ground the others skip: product feeds and AI shopping results, pages AI agents have to use, and domain moves.
-8. **A short main file.** SKILL.md is 187 lines. References load only when the agent reaches the step that needs them.
+8. **A short main file.** SKILL.md is 189 lines. References load only when the agent reaches the step that needs them.
 
 ## How it compares in practice
 

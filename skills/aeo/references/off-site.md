@@ -85,8 +85,8 @@ ineligible for Google's review stars.
 **Reddit, forums, and communities.** Participate as a disclosed company representative: answer
 questions in threads the engines cite, help without pitching, and correct factual errors with a
 source. Don't run sock-puppet accounts, astroturf, or buy upvotes or aged accounts. Communities
-detect it, moderators remove it, and Google's spam policies now treat inauthentic mentions as spam
-in AI features.
+detect it, moderators remove it, and Google's spam policies count attempts to manipulate generative
+AI responses as spam.
 
 **YouTube.** Video mentions correlate strongly with AI visibility in industry data, and engines
 cite YouTube directly. Publish demos, tutorials, and comparisons with accurate titles, descriptions,
@@ -122,8 +122,9 @@ comparisons are the usual culprits.
   The FTC's Endorsement Guides require disclosing material connections. Reddit's rules prohibit
   content and vote manipulation, and many communities ban undisclosed self-promotion.
 - Paid list placements must be labeled as sponsored on the page, and their links qualified with
-  `rel="sponsored"`. Google says seeking inauthentic mentions across the web isn't as helpful as it
-  might seem, and its spam policies cover them in AI features too.
+  `rel="sponsored"`. Google's AI optimization guide says "seeking inauthentic 'mentions' across
+  the web isn't as helpful as it might seem", and its spam policies count manipulating generative
+  AI responses as spam.
 - No "parasite" content on high-authority domains you don't control. Google's site reputation abuse
   policy targets it.
 - No spam-pitching every author on a list. Prioritize by citation frequency and pitch with substance.
