@@ -170,9 +170,10 @@ disclosed? Does the page add first-party data, expertise, or a view the top resu
   isn't documented. If you publish one, say you make one of the products and treat competitors
   fairly.
 - Don't copy whole articles onto Medium, LinkedIn, or other platforms as a publishing strategy. The
-  copies can outrank or replace the original. Google calls cross-domain canonicals only a hint and
-  recommends that syndicated copies carry `noindex`; platforms you don't control often won't allow
-  either. Prefer excerpts that link back, and original posts written for each platform.
+  copies can outrank or replace the original. Some platforms set a canonical link back to you
+  (Medium's import tool does), but Google treats cross-domain canonicals only as a hint and
+  recommends `noindex` on syndicated copies, which platforms you don't control rarely offer. Prefer
+  excerpts that link back, and original posts written for each platform.
 - Don't use AI to mass-produce pages for every keyword variant. Google's scaled-content policy covers
   this, and its spam policies count attempts to manipulate generative AI responses as spam.
 - Don't rewrite pages chasing "GEO tactics" until the rewrites stop saying what the product actually
