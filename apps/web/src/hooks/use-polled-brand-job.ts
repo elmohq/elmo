@@ -33,13 +33,20 @@ export function usePolledBrandJob<Done extends { status: "done" }, Started = unk
 	const writeError = useWriteErrorMessage();
 	const [running, setRunning] = useState(false);
 	const [runId, setRunId] = useState(0);
+	// Polling waits for this run's enqueue: the previous run's mutation still
+	// reads as successful until the new one is under way, and polling before
+	// the new job exists would return the old job's result.
+	const [startedRun, setStartedRun] = useState<number | null>(null);
 
 	const latest = useRef(options);
 	latest.current = options;
 
-	const { mutate: start, isSuccess: started } = useMutation({
-		mutationFn: () => latest.current.start(),
-		onSuccess: (result) => latest.current.onStarted?.(result),
+	const { mutate: start } = useMutation({
+		mutationFn: (_run: number) => latest.current.start(),
+		onSuccess: (result, run) => {
+			setStartedRun(run);
+			latest.current.onStarted?.(result);
+		},
 		onError: (err) => {
 			setRunning(false);
 			latest.current.onError({ message: writeError(err, latest.current.startErrorFallback), retryable: false });
@@ -49,7 +56,7 @@ export function usePolledBrandJob<Done extends { status: "done" }, Started = unk
 	const { data: status } = useQuery({
 		queryKey: [...options.queryKey, "status", runId],
 		queryFn: () => latest.current.poll(),
-		enabled: running && started,
+		enabled: running && startedRun === runId,
 		staleTime: 0,
 		gcTime: 0,
 		refetchInterval: (query) => (query.state.data?.status === "pending" ? POLL_INTERVAL_MS : false),
@@ -81,10 +88,11 @@ export function usePolledBrandJob<Done extends { status: "done" }, Started = unk
 	}, [running, cancel]);
 
 	const run = useCallback(() => {
-		setRunId((n) => n + 1);
+		const next = runId + 1;
+		setRunId(next);
 		setRunning(true);
-		start();
-	}, [start]);
+		start(next);
+	}, [start, runId]);
 
 	return {
 		running,
