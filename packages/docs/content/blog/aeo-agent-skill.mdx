@@ -32,7 +32,7 @@ howTo:
       text: "Log each change with a date and the prompts it targets, then compare equal windows before and after on the same prompts and engines."
 faq:
   - question: What is the best AEO skill for Claude Code?
-    answer: "By installs, the incumbent is coreyhaines31's ai-seo, with about 135,000 installs on skills.sh, and it is a solid, actively maintained general guide. We built Elmo's aeo skill because none of the popular skills closes the loop with measurement, and several repeat claims the research doesn't support. aeo is MIT-licensed, works without Elmo, and reads Elmo data over MCP when it is available. Judge it by its sources: every claim in it links to a primary study or platform document. In our benchmark of 32 neutral evals, it cut the factual errors in Claude Sonnet's answers from about 4 per run to 0.3, while the other popular skills left them at 3.7 to 5.3."
+    answer: "By installs, the incumbent is coreyhaines31's ai-seo, with about 135,000 installs on skills.sh, and it is a solid, actively maintained general guide. We built Elmo's aeo skill because none of the popular skills closes the loop with measurement, and several repeat claims the research doesn't support. aeo is MIT-licensed, works without Elmo, and reads Elmo data over MCP when it is available. Judge it by its sources: every claim in it links to a primary study or platform document. In our benchmark of 32 neutral evals, it cut the factual errors in Claude Sonnet's answers from about 4 per run to 0.3, while the other popular skills left them at 4.3 to 5.3."
   - question: How do I install the aeo skill?
     answer: "Run npx skills add elmohq/elmo. The skills CLI detects your agent (Claude Code, Cursor, Codex, Gemini CLI, and others) and installs the skill with its reference files and audit script. You can also copy the skills/aeo folder from the GitHub repository into your agent's skills directory."
   - question: Does the aeo skill require Elmo?
@@ -62,7 +62,7 @@ npx skills add elmohq/elmo
 | Skills that compute a composite "GEO score" | **4** |
 | Skills that can retrieve a real AI answer themselves | **2**: one via a paid scraper actor, one via an optional DataForSEO hook |
 | Skills that report visibility as a rate across repeated runs | **0**. One describes the method for a human to follow by hand |
-| Factual errors per 32-question benchmark run | **0.3** with `aeo`, 3.7–5.3 with the other top skills, 4.0 with no skill |
+| Factual errors per 32-question benchmark run | **0.3** with `aeo`, 4.3–5.3 with the other top skills, 4.3 with no skill |
 | `aeo` SKILL.md length | **187 lines**, with 1009 lines of references loaded on demand |
 
 **Key takeaways**
@@ -156,15 +156,15 @@ Claude Sonnet answered all 32 with each skill installed, and with none, three ti
 
 | Skill | Checks passed | Facts right | Quality (1–5) | Factual errors per run |
 |---|---|---|---|---|
-| **elmohq `aeo`** | **98.8%** | **98.5%** | **4.88** | **0.3** |
-| Sanity `seo-aeo-best-practices` | 95.5% | 92.7% | 4.49 | 4.3 |
-| AgriciDaniel `seo-geo` | 95.5% | 92.7% | 4.49 | 3.7 |
-| `bencium-aeo` | 94.9% | 92.1% | 4.51 | 4.7 |
-| resciencelab `seo-geo` | 94.7% | 91.8% | 4.42 | 4.0 |
-| No skill | 94.0% | 90.3% | 4.31 | 4.0 |
-| coreyhaines31 `ai-seo` | 93.4% | 90.9% | 4.43 | 5.3 |
+| **elmohq `aeo`** | **97.5%** | **96.7%** | **4.78** | **0.3** |
+| `bencium-aeo` | 95.2% | 92.4% | 4.46 | 5.0 |
+| resciencelab `seo-geo` | 95.0% | 92.1% | 4.40 | 5.0 |
+| AgriciDaniel `seo-geo` | 95.0% | 92.4% | 4.51 | 4.3 |
+| Sanity `seo-aeo-best-practices` | 94.5% | 91.5% | 4.46 | 5.3 |
+| No skill | 94.4% | 90.9% | 4.33 | 4.3 |
+| coreyhaines31 `ai-seo` | 92.4% | 89.7% | 4.40 | 5.3 |
 
-The judgement checks barely separate anyone: Sonnet already gives sensible advice, and every setup passed 96–99% of them. The difference is in the facts. Without help, the model often says FAQ rich results still show for health and government sites, that snippet controls are the only way out of AI Overviews, and that a canonical tag fixes syndicated copies. Most of the popular skills don't correct those, and the most-installed one scored below no skill at all.
+The judgement checks barely separate anyone: Sonnet already gives sensible advice, and every setup passed 95–99% of them. The difference is in the facts. Without help, the model often says FAQ rich results still show for health and government sites, that snippet controls are the only way out of AI Overviews, and that a canonical tag fixes syndicated copies. Most of the popular skills don't correct those, and the most-installed one scored below no skill at all.
 
 Two caveats. We revised `aeo` after earlier rounds of this benchmark, so its score is optimistic; before those revisions it passed 95.9% of checks, with 1.0 factual error per run, still the best on both. And Claude graded Claude. The [evals, fixtures, and sources](https://github.com/elmohq/elmo/tree/main/skills/aeo/evals) are in the repository, so you can run them against any skill.
 
