@@ -1,13 +1,12 @@
 /**
- * Background jobs that belong to a brand: the onboarding analysis and prompt
- * suggestions. The web app enqueues one, then polls the latest job *by brand*
- * — the caller has already proved access to the brand, so a job's output never
- * reaches anyone outside the org that requested it.
+ * The web app enqueues the work and then polls the job's result *by brand* —
+ * the brand id is the org id, so callers prove access to the brand and we
+ * never hand a job's output to someone outside that org.
  *
- * Reads go straight at pg-boss's `pgboss.job` table rather than `getJobById`
- * because the client polls by brand, not by an opaque job id it would have to
- * round-trip. The columns used (`name`, `data`, `state`, `output`,
- * `created_on`) are stable across the pinned pg-boss v12 line.
+ * Reading the result goes straight at pg-boss's `pgboss.job` table rather than
+ * `getJobById`, because the client polls by brand (not by an opaque job id it
+ * has to round-trip). The columns used here (`name`, `data`, `state`,
+ * `output`, `created_on`) are stable across the pinned pg-boss v12 line.
  */
 
 import { db } from "@workspace/lib/db/db";
@@ -28,7 +27,6 @@ export type BrandJobStatus<T> =
 	| { status: "done"; output: T }
 	| { status: "failed"; error: string };
 
-/** The most recent job on `queue` for a brand, regardless of state. */
 export async function latestBrandJob(queue: string, brandId: string): Promise<BrandJob | undefined> {
 	const result = await db.execute(sql`
 		SELECT id, state, data, output
@@ -41,9 +39,9 @@ export async function latestBrandJob(queue: string, brandId: string): Promise<Br
 }
 
 /**
- * Where the brand's latest job on `queue` stands. `failureMessage` is what the
- * browser sees when it fails: the worker's real error is already in Sentry and
- * may carry provider details we don't forward.
+ * `failureMessage` is shown to the user when a job ends in a failed/cancelled
+ * state. The real error (provider messages, stack traces) is already captured
+ * server-side by the worker's Sentry wrapper; we never forward it to the browser.
  */
 export async function readBrandJob<T>(
 	queue: string,
@@ -63,7 +61,6 @@ export async function readBrandJob<T>(
 	return { status: "pending" };
 }
 
-/** Best-effort cancel, so the worker doesn't keep going on a result nobody is waiting for. */
 export async function cancelLatestBrandJob(queue: string, brandId: string): Promise<void> {
 	const job = await latestBrandJob(queue, brandId);
 	if (!job || !IN_FLIGHT_STATES.has(job.state)) return;
@@ -71,6 +68,6 @@ export async function cancelLatestBrandJob(queue: string, brandId: string): Prom
 	try {
 		await boss.cancel(queue, job.id);
 	} catch {
-		// It may have finished between the read and the cancel.
+		// Job may have completed between the read and the cancel — nothing to do.
 	}
 }

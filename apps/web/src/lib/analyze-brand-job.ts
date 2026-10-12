@@ -69,7 +69,6 @@ export async function getAnalyzeBrandStatus(brandId: string): Promise<AnalyzeBra
 	return job.status === "done" ? { status: "done", suggestion: job.output } : job;
 }
 
-/** Used when the user backs out of the wizard. */
 export async function cancelAnalyzeBrand(brandId: string): Promise<void> {
 	await cancelLatestBrandJob(ANALYZE_BRAND_QUEUE, brandId);
 }

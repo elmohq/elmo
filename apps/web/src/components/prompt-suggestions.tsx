@@ -1,10 +1,3 @@
-/**
- * "Suggest Prompts" panel for the prompts page: asks the worker for prompts
- * the brand doesn't track yet, then lets the user tick, edit, and add them to
- * the list. Added rows land in the editor unsaved, so the page's normal save
- * bar is what persists them.
- */
-
 import { dedupeKey, describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
@@ -25,7 +18,6 @@ import {
 	startPromptSuggestionsFn,
 } from "@/server/prompt-suggestions";
 
-/** Rows share one column layout so text and tags line up down the list. */
 const ROW_GRID =
 	"grid grid-cols-[1rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 sm:grid-cols-[1rem_minmax(0,1fr)_16rem]";
 
@@ -38,23 +30,16 @@ interface Suggestion {
 
 interface PromptSuggestionsProps {
 	brandId: string;
-	/** Every filled prompt currently in the editor, saved or not. */
 	existingValues: string[];
-	/** Tags already used in the editor, offered alongside the suggestions' own. */
 	tagOptions: string[];
 	onAdd: (prompts: { value: string; tags: string[] }[]) => void;
 	onClose: () => void;
 }
 
-/**
- * Runs accumulate: "Suggest More" appends to what's on screen rather than
- * replacing it, so ticks and edits on earlier suggestions survive.
- */
 function useSuggestionRuns(brandId: string, existingValues: string[]) {
 	const [error, setError] = useState<PolledJobError | null>(null);
 	const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 	const [remaining, setRemaining] = useState<number | null>(null);
-	// Everything any run has offered, so the next run doesn't offer it again.
 	const offered = useRef<string[]>([]);
 
 	const job = usePolledBrandJob({
@@ -69,8 +54,6 @@ function useSuggestionRuns(brandId: string, existingValues: string[]) {
 		onDone: ({ prompts }) => {
 			offered.current = [...offered.current, ...prompts.map((p) => p.prompt)];
 			setSuggestions((prev) => {
-				// Unsaved rows can't be known to the server until the run starts, and
-				// the model can still slip one through; filter again against the list.
 				const seen = new Set([...existingValues, ...prev.map((s) => s.value)].map(dedupeKey));
 				const fresh = prompts
 					.filter((p) => !seen.has(dedupeKey(p.prompt)))
@@ -89,7 +72,6 @@ function useSuggestionRuns(brandId: string, existingValues: string[]) {
 		job.run();
 	};
 
-	// One run on open; later runs come from the "Suggest More" button.
 	const opened = useRef(false);
 	useEffect(() => {
 		if (opened.current) return;
@@ -116,8 +98,6 @@ function SuggestionRow({
 				onCheckedChange={(checked) => onChange({ selected: checked === true })}
 				aria-label={`Include "${suggestion.value}"`}
 			/>
-			{/* Borderless until hovered or focused, so the list reads as a checklist
-			    rather than a form, while every field stays editable in place. */}
 			<Input
 				value={suggestion.value}
 				onChange={(e) => onChange({ value: e.target.value })}
@@ -287,8 +267,6 @@ export function PromptSuggestions({ brandId, existingValues, tagOptions, onAdd, 
 		existingValues,
 	);
 
-	// Same rules as pasting a list: duplicates are skipped and named, and going
-	// over the cap blocks the add instead of quietly taking what fits.
 	const picked = useMemo(() => suggestions.filter((s) => s.selected && s.value.trim()), [suggestions]);
 	const preview = useMemo(
 		() => parseBulkPrompts(picked.map((s) => s.value).join("\n"), { existing: existingValues, limit: MAX_PROMPTS }),
@@ -355,7 +333,6 @@ export function PromptSuggestions({ brandId, existingValues, tagOptions, onAdd, 
 				</div>
 			)}
 
-			{/* Nothing to pick and nothing to retry (e.g. out of runs): the alert says it all. */}
 			{(suggestions.length > 0 || canRunAgain || loading) && (
 				<PanelFooter
 					suggestions={suggestions}

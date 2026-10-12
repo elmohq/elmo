@@ -45,8 +45,6 @@ export function getDefaultDelayHours(): number {
 export const MAX_COMPETITORS = 500;
 export const MAX_PROMPTS = 100;
 
-/** "Suggest prompts" runs an LLM with web search per click, so each brand gets
- *  this many runs per rolling 24 hours. */
 export const PROMPT_SUGGESTION_RUNS_PER_DAY = 5;
 
 /**

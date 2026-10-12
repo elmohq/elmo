@@ -1,15 +1,8 @@
-/**
- * Client side of a brand background job (see @/lib/brand-jobs): start it, poll
- * until it finishes, give up after a timeout, and cancel it if the user walks
- * away. Callers decide what a result or failure means for their screen.
- */
-
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 
 const POLL_INTERVAL_MS = 2000;
-/** Runs routinely take about a minute; past this something is stuck. */
 const TIMEOUT_MS = 6 * 60 * 1000;
 
 export type PolledJobStatus<Done extends { status: "done" }> =
@@ -19,12 +12,10 @@ export type PolledJobStatus<Done extends { status: "done" }> =
 
 export interface PolledJobError {
 	message: string;
-	/** False when starting was refused (a limit, a permission), so retrying won't help. */
 	retryable: boolean;
 }
 
 interface PolledBrandJobOptions<Done extends { status: "done" }, Started> {
-	/** Identifies the job in the query cache, e.g. `["analyze-brand", brandId]`. */
 	queryKey: readonly unknown[];
 	start: () => Promise<Started>;
 	poll: () => Promise<PolledJobStatus<Done>>;
@@ -32,7 +23,6 @@ interface PolledBrandJobOptions<Done extends { status: "done" }, Started> {
 	onStarted?: (started: Started) => void;
 	onDone: (done: Done) => void;
 	onError: (error: PolledJobError) => void;
-	/** Shown when starting fails without a message of its own. */
 	startErrorFallback: string;
 	timeoutMessage: string;
 }
@@ -42,12 +32,8 @@ export function usePolledBrandJob<Done extends { status: "done" }, Started = unk
 ) {
 	const writeError = useWriteErrorMessage();
 	const [running, setRunning] = useState(false);
-	// Each run polls under its own key, so a finished run's cached status can't
-	// end the next one the moment it starts.
 	const [runId, setRunId] = useState(0);
 
-	// Callbacks change identity every render; the effects below only care about
-	// the latest ones.
 	const latest = useRef(options);
 	latest.current = options;
 
@@ -103,7 +89,6 @@ export function usePolledBrandJob<Done extends { status: "done" }, Started = unk
 	return {
 		running,
 		run,
-		/** Stops polling and cancels the job; a no-op when nothing is running. */
 		cancel: () => {
 			if (running) cancel();
 		},

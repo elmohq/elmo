@@ -1,8 +1,3 @@
-/**
- * Server functions for "Suggest prompts" on the prompts page. Server-fn-only
- * for the same reason as ./onboarding: anything else exported here would drag
- * the db into the client bundle.
- */
 import { createServerFn } from "@tanstack/react-start";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { z } from "zod";
@@ -18,7 +13,6 @@ export const startPromptSuggestionsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string().min(1),
-			// Room for a full list plus a few runs' worth of passed-over suggestions.
 			exclude: z
 				.array(z.string().max(500))
 				.max(MAX_PROMPTS * 2)
@@ -30,7 +24,6 @@ export const startPromptSuggestionsFn = createServerFn({ method: "POST" })
 		return enqueuePromptSuggestions(data);
 	});
 
-/** POST so nothing between here and the browser caches an early `pending`. */
 export const getPromptSuggestionsStatusFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string().min(1) }))
 	.handler(async ({ data }): Promise<PromptSuggestionsStatus> => {

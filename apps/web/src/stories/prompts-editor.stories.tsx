@@ -67,8 +67,6 @@ const MORE_SUGGESTIONS = [
 	{ prompt: "does google ai overviews mention small brands", tags: [] },
 ];
 
-/** Sets what a suggestion run returns. Called during render: the run starts
- *  from a click, after the story has mounted. */
 function mockSuggestions({
 	delayMs = 0,
 	startError = null,
@@ -84,10 +82,6 @@ function mockSuggestions({
 	setMockPromptSuggestionsRemaining(remaining);
 }
 
-/**
- * Suggestions arrive ticked. Passing on one and adding the rest puts them at
- * the top of the list as unsaved rows, for the save bar to persist.
- */
 export const SuggestPrompts: Story = {
 	args: Default.args,
 	render: (args) => {
@@ -108,7 +102,6 @@ export const SuggestPrompts: Story = {
 	},
 };
 
-/** While the worker is still thinking. */
 export const SuggestPromptsLoading: Story = {
 	args: Default.args,
 	render: (args) => {
@@ -123,7 +116,6 @@ export const SuggestPromptsLoading: Story = {
 	},
 };
 
-/** Out of runs for the day: the refusal says when more open up. */
 export const SuggestPromptsLimitReached: Story = {
 	args: Default.args,
 	render: (args) => {
@@ -140,10 +132,6 @@ export const SuggestPromptsLimitReached: Story = {
 	},
 };
 
-/**
- * "Suggest More" adds to the list instead of replacing it, so a suggestion
- * passed over in the first run stays passed over.
- */
 export const SuggestMoreKeepsEarlierPicks: Story = {
 	args: Default.args,
 	render: (args) => {

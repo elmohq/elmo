@@ -194,8 +194,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 					brandId={brandId}
 					existingValues={filledValues}
 					tagOptions={tagOptions}
-					// On top, right under the panel, rather than at the end of a list
-					// that can run to a hundred rows.
 					onAdd={(added) => {
 						setPrompts((prev) => [...added.map((p) => newPromptEntry(p)), ...prev]);
 						setSuggesting(false);

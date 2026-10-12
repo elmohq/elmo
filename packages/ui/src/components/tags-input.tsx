@@ -36,7 +36,6 @@ export interface TagsInputProps {
   minItems?: number;
   disabled?: boolean;
   className?: string;
-  /** Classes for the clickable field itself, e.g. to drop its border inside a table row. */
   triggerClassName?: string;
 }
 

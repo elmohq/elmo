@@ -1,12 +1,3 @@
-/**
- * Server-only helpers for "Suggest Prompts" on the prompts page, on top of
- * ./brand-jobs: the worker runs the LLM call and the client polls by brand.
- *
- * The daily allowance is counted straight from pg-boss's job rows, which keep
- * the brand id in `data` and outlive the 24-hour window, so it needs no table
- * of its own.
- */
-
 import { dedupeKey } from "@workspace/lib/bulk-prompts";
 import { PROMPT_SUGGESTION_RUNS_PER_DAY } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
@@ -29,16 +20,9 @@ export type PromptSuggestionsStatus =
 
 export interface PromptSuggestionsInput {
 	brandId: string;
-	/** Prompts on screen that aren't saved yet, or that an earlier run suggested
-	 *  and the user passed on — the model is told to steer clear of them too. */
 	exclude: string[];
 }
 
-/**
- * Runs that count toward today's allowance. A failed run isn't the user's
- * doing, so it doesn't use one up; a cancelled one may already have spent the
- * tokens, so it does.
- */
 async function runsInWindow(brandId: string): Promise<{ used: number; oldest: Date | null }> {
 	const since = new Date(Date.now() - WINDOW_MS);
 	const result = await db.execute(sql`
@@ -60,12 +44,6 @@ function describeWait(until: Date): string {
 	return `${hours} hour${hours === 1 ? "" : "s"}`;
 }
 
-/**
- * Start a run unless one is already going, in which case the caller just
- * polls that one. The count-then-send isn't atomic, so two clicks racing past
- * the check could both start; the button is disabled while a run is going, so
- * that costs at most one extra run.
- */
 export async function enqueuePromptSuggestions(input: PromptSuggestionsInput): Promise<{ remaining: number }> {
 	const { used, oldest } = await runsInWindow(input.brandId);
 
@@ -88,8 +66,6 @@ export async function enqueuePromptSuggestions(input: PromptSuggestionsInput): P
 	]);
 	if (!brand) throw new Error("Brand not found");
 
-	// Disabled prompts are in here too: removing a prompt on the prompts page
-	// disables it, and suggesting it straight back would be unwelcome.
 	const existing = new Map<string, string>();
 	for (const value of [...brandPrompts.map((p) => p.value), ...input.exclude]) {
 		const key = dedupeKey(value);

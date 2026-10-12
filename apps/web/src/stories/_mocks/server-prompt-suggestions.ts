@@ -1,7 +1,3 @@
-/**
- * Mock for @/server/prompt-suggestions. Stories set what a run returns, how
- * long it takes, and whether starting one is refused (the daily limit).
- */
 import type { OnboardingPrompt } from "@workspace/lib/onboarding";
 
 let _batches: OnboardingPrompt[][] = [[]];
@@ -11,7 +7,6 @@ let _startError: string | null = null;
 let _remaining = 4;
 let _readyAt = 0;
 
-/** Each run returns the next batch, cycling, so "Suggest More" can bring new rows. */
 export function setMockPromptSuggestions(...batches: OnboardingPrompt[][]) {
 	_batches = batches;
 	_runs = 0;
