@@ -3,39 +3,32 @@
  * the brand id is the org id, so callers prove access to the brand and we
  * never hand a job's output to someone outside that org.
  *
- * Reading the result goes straight at pg-boss's `pgboss.job` table rather than
- * `getJobById`, because the client polls by brand (not by an opaque job id it
- * has to round-trip). The columns used here (`name`, `data`, `state`,
- * `output`, `created_on`) are stable across the pinned pg-boss v12 line.
+ * Jobs are found by the brand id in their data rather than by job id, so the
+ * client never has to round-trip an opaque id.
  */
 
-import { db } from "@workspace/lib/db/db";
-import { sql } from "drizzle-orm";
+import type { JobWithMetadata } from "pg-boss";
 import { getBoss } from "@/lib/boss-client";
 
 export const IN_FLIGHT_STATES = new Set(["created", "active", "retry"]);
 
-export interface BrandJob {
-	id: string;
-	state: string;
-	data: Record<string, unknown> | null;
-	output: unknown;
-}
+export type BrandJob = JobWithMetadata<Record<string, unknown>>;
 
 export type BrandJobStatus<T> =
 	| { status: "pending" }
 	| { status: "done"; output: T }
 	| { status: "failed"; error: string };
 
+/** Newest first. Bounded by the queue's retention, so a brand only ever has a handful. */
+export async function brandJobs(queue: string, brandId: string): Promise<BrandJob[]> {
+	const boss = await getBoss();
+	const jobs = await boss.findJobs<Record<string, unknown>>(queue, { data: { brandId } });
+	return jobs.sort((a, b) => b.createdOn.getTime() - a.createdOn.getTime());
+}
+
 export async function latestBrandJob(queue: string, brandId: string): Promise<BrandJob | undefined> {
-	const result = await db.execute(sql`
-		SELECT id, state, data, output
-		FROM pgboss.job
-		WHERE name = ${queue} AND data->>'brandId' = ${brandId}
-		ORDER BY created_on DESC
-		LIMIT 1
-	`);
-	return result.rows[0] as unknown as BrandJob | undefined;
+	const [latest] = await brandJobs(queue, brandId);
+	return latest;
 }
 
 /**

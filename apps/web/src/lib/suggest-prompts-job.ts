@@ -3,9 +3,9 @@ import { PROMPT_SUGGESTION_RUNS_PER_DAY } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import type { OnboardingPrompt } from "@workspace/lib/onboarding";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
-import { cancelLatestBrandJob, IN_FLIGHT_STATES, latestBrandJob, readBrandJob } from "@/lib/brand-jobs";
+import { type BrandJob, brandJobs, cancelLatestBrandJob, IN_FLIGHT_STATES, readBrandJob } from "@/lib/brand-jobs";
 
 const SUGGEST_PROMPTS_QUEUE = "suggest-prompts";
 const SUGGESTIONS_PER_RUN = 5;
@@ -23,18 +23,10 @@ export interface PromptSuggestionsInput {
 	exclude: string[];
 }
 
-async function runsInWindow(brandId: string): Promise<{ used: number; oldest: Date | null }> {
-	const since = new Date(Date.now() - WINDOW_MS);
-	const result = await db.execute(sql`
-		SELECT count(*)::int AS used, min(created_on) AS oldest
-		FROM pgboss.job
-		WHERE name = ${SUGGEST_PROMPTS_QUEUE}
-		  AND data->>'brandId' = ${brandId}
-		  AND state <> 'failed'
-		  AND created_on > ${since.toISOString()}
-	`);
-	const row = result.rows[0] as { used: number; oldest: string | null } | undefined;
-	return { used: row?.used ?? 0, oldest: row?.oldest ? new Date(row.oldest) : null };
+function runsInWindow(jobs: BrandJob[]): { used: number; oldest: Date | null } {
+	const since = Date.now() - WINDOW_MS;
+	const counted = jobs.filter((job) => job.state !== "failed" && job.createdOn.getTime() > since);
+	return { used: counted.length, oldest: counted.at(-1)?.createdOn ?? null };
 }
 
 function describeWait(until: Date): string {
@@ -45,9 +37,10 @@ function describeWait(until: Date): string {
 }
 
 export async function enqueuePromptSuggestions(input: PromptSuggestionsInput): Promise<{ remaining: number }> {
-	const { used, oldest } = await runsInWindow(input.brandId);
+	const jobs = await brandJobs(SUGGEST_PROMPTS_QUEUE, input.brandId);
+	const { used, oldest } = runsInWindow(jobs);
 
-	const latest = await latestBrandJob(SUGGEST_PROMPTS_QUEUE, input.brandId);
+	const latest = jobs[0];
 	if (latest && IN_FLIGHT_STATES.has(latest.state)) {
 		return { remaining: Math.max(0, PROMPT_SUGGESTION_RUNS_PER_DAY - used) };
 	}
