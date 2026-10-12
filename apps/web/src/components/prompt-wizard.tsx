@@ -126,7 +126,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				prompt_count: suggestion.suggestedPrompts.length,
 			});
 		},
-		onError: ({ message }) => setError(message),
+		onError: setError,
 		startErrorFallback: "Analysis failed",
 		timeoutMessage: "Brand analysis timed out. Please try again.",
 	});

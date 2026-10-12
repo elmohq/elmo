@@ -10,11 +10,6 @@ export type PolledJobStatus<Done extends { status: "done" }> =
 	| { status: "failed"; error: string }
 	| Done;
 
-export interface PolledJobError {
-	message: string;
-	retryable: boolean;
-}
-
 interface PolledBrandJobOptions<Done extends { status: "done" }, Started> {
 	queryKey: readonly unknown[];
 	start: () => Promise<Started>;
@@ -22,7 +17,7 @@ interface PolledBrandJobOptions<Done extends { status: "done" }, Started> {
 	cancel: () => Promise<unknown>;
 	onStarted?: (started: Started) => void;
 	onDone: (done: Done) => void;
-	onError: (error: PolledJobError) => void;
+	onError: (message: string) => void;
 	startErrorFallback: string;
 	timeoutMessage: string;
 }
@@ -49,7 +44,7 @@ export function usePolledBrandJob<Done extends { status: "done" }, Started = unk
 		},
 		onError: (err) => {
 			setRunning(false);
-			latest.current.onError({ message: writeError(err, latest.current.startErrorFallback), retryable: false });
+			latest.current.onError(writeError(err, latest.current.startErrorFallback));
 		},
 	});
 
@@ -67,7 +62,7 @@ export function usePolledBrandJob<Done extends { status: "done" }, Started = unk
 		if (!running || !status || status.status === "pending") return;
 		setRunning(false);
 		if (status.status === "failed") {
-			latest.current.onError({ message: (status as { error: string }).error, retryable: true });
+			latest.current.onError((status as { error: string }).error);
 		} else {
 			latest.current.onDone(status as Done);
 		}
@@ -82,7 +77,7 @@ export function usePolledBrandJob<Done extends { status: "done" }, Started = unk
 		if (!running) return;
 		const timer = window.setTimeout(() => {
 			cancel();
-			latest.current.onError({ message: latest.current.timeoutMessage, retryable: true });
+			latest.current.onError(latest.current.timeoutMessage);
 		}, TIMEOUT_MS);
 		return () => window.clearTimeout(timer);
 	}, [running, cancel]);

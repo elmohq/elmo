@@ -5,7 +5,7 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { AlertCircle, ArrowUp, RefreshCw, Sparkles, X } from "lucide-react";
 import { type Ref, type RefObject, useEffect, useRef, useState } from "react";
 import { type EditablePrompt, newPromptEntry } from "@/components/prompts-list-editor";
-import { type PolledJobError, usePolledBrandJob } from "@/hooks/use-polled-brand-job";
+import { usePolledBrandJob } from "@/hooks/use-polled-brand-job";
 import { trackEvent } from "@/lib/posthog";
 import {
 	cancelPromptSuggestionsFn,
@@ -26,7 +26,7 @@ export function usePromptSuggestions({
 	prompts: EditablePrompt[];
 	setPrompts: (update: (prev: EditablePrompt[]) => EditablePrompt[]) => void;
 }) {
-	const [error, setError] = useState<PolledJobError | null>(null);
+	const [error, setError] = useState<string | null>(null);
 	const [nothingNew, setNothingNew] = useState(false);
 	const [remaining, setRemaining] = useState<number | null>(null);
 	const [arrived, setArrived] = useState({ run: 0, count: 0 });
@@ -108,7 +108,7 @@ function StatusMessage({ suggestions }: { suggestions: Suggestions }) {
 		return (
 			<span role="alert" className="flex items-start gap-2 text-red-700 dark:text-red-300">
 				<AlertCircle className="mt-0.5 size-4 shrink-0" />
-				{error.message}
+				{error}
 			</span>
 		);
 	}
@@ -131,12 +131,58 @@ function StatusMessage({ suggestions }: { suggestions: Suggestions }) {
 	);
 }
 
-export function SuggestionsStatus({ suggestions, ref }: { suggestions: Suggestions; ref?: Ref<HTMLDivElement> }) {
-	const { running, error, nothingNew, suggestedCount, remaining } = suggestions;
-	if (!running && !error && !nothingNew && suggestedCount === 0) return null;
+function StatusActions({ suggestions }: { suggestions: Suggestions }) {
+	const { running, error, suggestedCount, remaining } = suggestions;
+	const close = (
+		<Button
+			type="button"
+			size="icon"
+			variant="ghost"
+			onClick={suggestions.clearNotice}
+			aria-label="Close"
+			className="size-8"
+		>
+			<X className="size-4" />
+		</Button>
+	);
 
-	const canRunAgain = !running && (remaining === null || remaining > 0);
+	if (running) {
+		return (
+			<Button type="button" size="sm" variant="ghost" onClick={suggestions.cancel}>
+				Cancel
+			</Button>
+		);
+	}
+	if (error) return close;
+
 	const runsLeft = runsLeftLabel(remaining);
+	return (
+		<>
+			{runsLeft && <span className="hidden text-xs text-muted-foreground sm:inline">{runsLeft}</span>}
+			<Button
+				type="button"
+				size="sm"
+				variant="outline"
+				onClick={suggestions.start}
+				disabled={remaining !== null && remaining <= 0}
+				className="flex items-center gap-2"
+			>
+				<RefreshCw className="size-4" /> Suggest More
+			</Button>
+			{suggestedCount > 0 ? (
+				<Button type="button" size="sm" variant="ghost" onClick={suggestions.dismissAll}>
+					Dismiss All
+				</Button>
+			) : (
+				close
+			)}
+		</>
+	);
+}
+
+export function SuggestionsStatus({ suggestions, ref }: { suggestions: Suggestions; ref?: Ref<HTMLDivElement> }) {
+	const { running, error, nothingNew, suggestedCount } = suggestions;
+	if (!running && !error && !nothingNew && suggestedCount === 0) return null;
 
 	return (
 		<div
@@ -145,43 +191,7 @@ export function SuggestionsStatus({ suggestions, ref }: { suggestions: Suggestio
 		>
 			<StatusMessage suggestions={suggestions} />
 			<div className="flex items-center gap-2">
-				{running ? (
-					<Button type="button" size="sm" variant="ghost" onClick={suggestions.cancel}>
-						Cancel
-					</Button>
-				) : (
-					<>
-						{runsLeft && <span className="hidden text-xs text-muted-foreground sm:inline">{runsLeft}</span>}
-						{error?.retryable !== false && (
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								onClick={suggestions.start}
-								disabled={!canRunAgain}
-								className="flex items-center gap-2"
-							>
-								<RefreshCw className="size-4" /> {error ? "Try Again" : "Suggest More"}
-							</Button>
-						)}
-						{suggestedCount > 0 ? (
-							<Button type="button" size="sm" variant="ghost" onClick={suggestions.dismissAll}>
-								Dismiss All
-							</Button>
-						) : (
-							<Button
-								type="button"
-								size="icon"
-								variant="ghost"
-								onClick={suggestions.clearNotice}
-								aria-label="Close"
-								className="size-8"
-							>
-								<X className="size-4" />
-							</Button>
-						)}
-					</>
-				)}
+				<StatusActions suggestions={suggestions} />
 			</div>
 		</div>
 	);
