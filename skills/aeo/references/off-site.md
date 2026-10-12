@@ -128,6 +128,16 @@ comparisons are the usual culprits.
   policy targets it.
 - No spam-pitching every author on a list. Prioritize by citation frequency and pitch with substance.
 - No wiki edits by people paid to make them without disclosure.
+- No networks of sites, blogs, "independent" review or comparison sites, or accounts that the brand
+  controls or pays for while presenting them as unaffiliated, and no placing the same claims across
+  them so one source looks like several that agree. Don't build or run tools that do this either.
+  Anthropic's Usage Policy (from 12 Nov 2026) bans using Claude to seed the sources that search
+  engines and AI systems draw answers from with content that misrepresents its origin, authorship,
+  or independence, and bans building tools for it. Other providers' policies and Google's spam
+  policies cover the same ground.
+
+If a user asks for any of these, decline that part, say plainly why, and offer the version that
+works: disclosed participation, earned coverage, and pages the brand openly owns.
 
 These tactics carry policy risk, and they tend to stop working as engines and platforms adjust. The
 work that lasts is the brand being worth mentioning, and making sure the people who write about the

@@ -150,8 +150,11 @@ These are common in other AEO guides, and the evidence doesn't support them. Sou
 - **Composite "GEO scores" or "AI readiness scores".** They use invented weights and aren't
   validated against real citations. Report measured rates instead.
 - **Faking freshness** (bumping dates without changing content), **self-promotional "best X"
-  listicles at scale**, **seeded Reddit posts, paid mention farms, and parasite pages**. Google's
-  spam policies explicitly cover AI Overviews and AI Mode, including inauthentic mentions.
+  listicles at scale**, **seeded Reddit posts, paid mention farms, and parasite pages**, and
+  **sites or accounts that pose as independent sources** while one party controls or pays for them.
+  Google's spam policies explicitly cover AI Overviews and AI Mode, including inauthentic mentions.
+  If asked to build any of this, decline, say why, and offer the earned alternative in
+  `references/off-site.md`.
 - **`<meta name="keywords">`**, `changefreq`/`priority` in sitemaps, and blocking `Google-Extended`
   to get out of AI Overviews (it doesn't do that; see `references/technical.md`).
 

@@ -45,6 +45,7 @@ opaque method.
 - Apple, Applebot-Extended doesn't crawl and isn't used in search ranking — <https://support.apple.com/en-us/119829>
 - Google, structured data policies: don't mark up content that isn't visible to readers — <https://developers.google.com/search/docs/appearance/structured-data/sd-policies>
 - OpenAI, shopping in ChatGPT: product results aren't ads; merchant data from feeds and third parties — <https://help.openai.com/en/articles/11128490>
+- Anthropic Usage Policy (effective 12 Nov 2026), "Do Not Engage in Deceptive Campaigns or Artificial Activity": bans seeding the sources search engines or AI systems draw answers from with content that misrepresents its origin, authorship, or independence, networks of ostensibly independent sites, and tools built for either — <https://www.anthropic.com/legal/aup>
 - FTC rule on consumer reviews and testimonials, 16 CFR Part 465 (fake and AI-generated reviews, sentiment-conditioned incentives, review suppression; effective Oct 2024) — <https://www.ecfr.gov/current/title-16/chapter-I/subchapter-D/part-465>
 - Google, review snippets: self-serving reviews of a `LocalBusiness` or `Organization` on its own site are ineligible for stars — <https://developers.google.com/search/docs/appearance/structured-data/review-snippet>
 - Google, AI-generated content: "Appropriate use of AI or automation is not against our guidelines"; more weight on reliability where information quality is critical (Feb 2023) — <https://developers.google.com/search/blog/2023/02/google-search-and-ai-content>
