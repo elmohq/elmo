@@ -22,6 +22,7 @@ opaque method.
 | AI Mode and AI Overviews cited only 13.7% of the same URLs for the same queries, while reaching semantically similar answers 86% of the time | Ahrefs via SEJ, 2025 — <https://www.searchenginejournal.com/google-ai-mode-ai-overviews-cite-different-urls-per-ahrefs-report/563364/> | Medium-High |
 | AI-cited pages are on average about 26% fresher than Google organic results, most strongly in ChatGPT. AI Overviews show no freshness preference. LLM rerankers move passages with injected newer dates up sharply in lab tests | Ahrefs, 17M citations, 2025 — <https://ahrefs.com/blog/do-ai-assistants-prefer-to-cite-fresh-content>; Fang et al., Sep 2025 — <https://arxiv.org/abs/2509.11353> | Medium / High (lab) |
 | When an AI Overview cited a brand's own "best X" listicle, it left that brand out of its recommendations 69% of the time | Lily Ray, 80 B2B queries, Jun 2026 — <https://searchengineland.com/google-ai-overviews-cite-self-serving-listicles-recommend-competitors-480573> | Medium-Low |
+| Of 220+ sites publicly named as customers of AI content platforms, 54% lost 30%+ of peak organic traffic and 22% lost 75%+, typically within a year of peaking; the drops cluster on scaled comparison, glossary, listicle, location, FAQ-farm, and off-topic templates | Lily Ray, "It works until it doesn't", 2026 (Ahrefs and Sistrix estimates) — <https://lilyraynyc.substack.com/p/it-works-until-it-doesnt-ai-content-risks> | Medium-Low (third-party estimates, correlational) |
 
 ## Volatility and measurement
 

@@ -1,7 +1,7 @@
 # Owned content
 
 Contents: what to write · how to write it · health, money, and AI-written pages · page patterns ·
-keeping it true · what not to do
+templates that work until they don't · keeping it true · what not to do
 
 Owned pages win citations when they are the best available answer to a query the engine actually
 runs. Every content recommendation should name the lost prompts or fan-out queries it targets.
@@ -19,7 +19,8 @@ Work from the diagnosis, not a template:
    them. Without it, inspect the sources engines cite and infer the searches.
 3. **Comparison and alternatives pages** for the locked competitor set. They should be honest and
    specific, including where the competitor is the better fit. Engines draw on comparison content
-   heavily, and one-sided pages get used as sources while the engine recommends someone else.
+   heavily, and one-sided pages get used as sources while the engine recommends someone else. Write
+   them for the competitors buyers actually compare, not one page for every pair in the category.
 4. **Fact pages the engines get wrong.** Pricing, plans, limits, integrations, supported regions,
    security and compliance, and changelog. Each wrong fact found in branded answers needs a crawlable
    page that states the right one plainly, with a date.
@@ -127,6 +128,26 @@ The brand as one example, not the whole page.
 
 These are the pages buyers and engines read. Keep them on the main site, linked from navigation or
 related pages, not in an orphaned "AI content" section.
+
+## Templates that work until they don't
+
+Some page types win AI and search visibility quickly when produced at scale, then lose it. Lily Ray
+tracked 220+ sites publicly named as customers of AI content platforms: 54% later lost at least 30%
+of peak organic traffic, and 22% lost at least 75%, usually within a year of the peak (third-party
+estimates, correlational). The templates behind the drops:
+
+- comparison pages for most pairs in a category, and one "alternatives" page per competitor
+- "What is X" glossaries, one term per page, often machine-translated from one template
+- "Best X for Y" listicles across every niche variant, and self-ranked lists with no evidence of testing
+- location or language versions of one template, including places the business doesn't serve
+- FAQ farms: one question per URL, built for extraction
+- off-topic content for traffic (quotes, jokes, horoscopes, baby names)
+
+Each type can be a good single page. The risk is scale, which makes the pattern easy to detect and
+puts the whole site at risk, not just the pages. Before publishing a batch, ask: would a real reader
+need this page if no engine existed? Could a competitor publish a near-identical one tomorrow with
+the same prompt? Would we be comfortable if a journalist saw the full list of URLs? Is any bias
+disclosed? Does the page add first-party data, expertise, or a view the top results lack?
 
 ## Keeping it true
 
