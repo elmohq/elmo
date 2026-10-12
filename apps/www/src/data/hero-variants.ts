@@ -17,7 +17,7 @@ export const heroVariants: Record<string, HeroVariant> = {
 		lede: "See how often ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews mention your brand, how they describe it, and which competitors they recommend instead.",
 	},
 	chatgpt: {
-		title: "Is ChatGPT Recommending You?",
+		title: "Is ChatGPT Mentioning You?",
 		lede: "Elmo asks ChatGPT and every other major AI model the questions your buyers ask, then shows whether you're in the answer, who's there instead, and what to fix.",
 	},
 	"see-what-ai-says": {
