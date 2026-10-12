@@ -11,6 +11,17 @@ describe("analytics API query parsing", () => {
 		);
 	});
 
+	it("validates pagination against an endpoint-specific limit", () => {
+		expect(parsePaging(new URL("https://example.com?page=2&limit=1000"), { maxLimit: 1000 })).toEqual({
+			page: 2,
+			limit: 1000,
+			offset: 1000,
+		});
+		expect(() => parsePaging(new URL("https://example.com?limit=1001"), { maxLimit: 1000 })).toThrow(
+			"limit must be an integer between 1 and 1000",
+		);
+	});
+
 	it("requires both bounds of the window", () => {
 		expect(() => parseAnalyticsWindow(new URL("https://example.com?start=2026-01-01T00:00:00Z"))).toThrow(
 			"both start and end",
