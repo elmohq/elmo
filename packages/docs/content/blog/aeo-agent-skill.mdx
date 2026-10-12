@@ -71,6 +71,7 @@ npx skills add elmohq/elmo
 - The long tail is worse. Below the top few, skills recommend `<meta name="keywords">`, "15 FAQs with schema", an "18-token extraction rule", and parasite SEO, and one labels ByteDance's crawler as Cohere's.
 - Almost everything that is wrong traces back to unsourced statistics: vendor correlations presented as causal weights, or numbers with no traceable source at all.
 - The research points somewhere else. Being retrieved matters more than rewriting, third-party coverage matters more than markup, and visibility can only be measured as a rate across many runs.
+- In a 32-question benchmark, four of the five other popular skills scored at or below no skill at all. `aeo` scored highest and cut factual errors per run from about 5 to 1.3.
 - `aeo` keeps the good parts, drops the myths, adds a measurement loop, a stdlib-only access audit script, and an evidence file with a primary source for every claim. It works with or without Elmo.
 
 ## What an agent skill is, and why AEO skills spread so fast
@@ -164,9 +165,11 @@ Claude Sonnet answered all 32 with each skill installed, and with none, three ti
 | resciencelab `seo-geo` | 93.2% | 89.1% | 4.50 | 4.0 |
 | coreyhaines31 `ai-seo` | 93.0% | 90.0% | 4.49 | 5.0 |
 
-The judgement checks barely separate anyone: Sonnet already gives sensible advice, and every setup passed 97–99% of them. The difference is in the facts. Without help, the model often says FAQ rich results still show for health and government sites, that snippet controls are the only way out of AI Overviews, and that a canonical tag fixes syndicated copies. Most of the popular skills don't correct those, and the most-installed one scored below no skill at all.
+The judgement checks barely separate anyone: Sonnet already gives sensible advice, and every setup passed 97–99% of them. The difference is in the facts. Without help, the model often says FAQ rich results still show for health and government sites, that snippet controls are the only way out of AI Overviews, that Search Console has no AI report, and that a canonical tag fixes syndicated copies. A skill can only help by correcting facts like these, and most of the popular ones don't.
 
-Two caveats. We revised `aeo` after earlier rounds of this benchmark, so its score is optimistic; before those revisions it passed 95.9% of checks, with 1.0 factual error per run, still the best on both. And Claude graded Claude. The [evals, fixtures, and sources](https://github.com/elmohq/elmo/tree/main/skills/aeo/evals) are in the repository, so you can run them against any skill.
+Four of the five other skills scored at or below no skill. For Sanity's and bencium's, the gap is within run-to-run noise: they repeat the model's stale facts without adding new mistakes. resciencelab's and coreyhaines31's land below no skill on every run, because they add errors the model then repeats: no AI reporting in Search Console, answer engines parsing llms.txt, unsourced percentages, and product markup filled with values the page doesn't state. General-purpose checklists also pull answers away from the question asked, so specifics like testing a page with the accessibility tree or treating "near me" results as location-dependent get dropped.
+
+Two caveats. We revised `aeo` after earlier rounds of this benchmark, so its score is optimistic; before those revisions it passed 95.9% of checks with 1.0 factual error per run, already ahead of every other setup. And Claude graded Claude. The [evals, fixtures, and sources](https://github.com/elmohq/elmo/tree/main/skills/aeo/evals) are in the repository, so you can run them against any skill.
 
 ## Where Elmo fits
 
