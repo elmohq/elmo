@@ -17,7 +17,7 @@ on:
       - "skills/**"
       - ".claude/skills/**"
       - "apps/www/src/lib/agent-skills.ts"
-      - "apps/www/src/routes/[.]well-known/**"
+      - "apps/www/src/routes/*well-known/**"
       - ".github/workflows/skill-install.yaml"
   workflow_dispatch:
 
