@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Password managers no longer offer to fill the team invite email field, which knocked the invite form out of alignment.
+Fixed alignment issue for the team invite email for users with a password manager.
