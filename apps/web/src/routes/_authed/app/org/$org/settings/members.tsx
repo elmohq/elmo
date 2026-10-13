@@ -90,6 +90,12 @@ function TeamSettingsPage() {
 						value={inviteEmail}
 						onChange={(e) => setInviteEmail(e.target.value)}
 						required
+						// A teammate's address, not the user's own: keep password managers from treating this as a login
+						// field and injecting icons that shift the row out of alignment.
+						autoComplete="off"
+						data-lpignore="true"
+						data-1p-ignore
+						data-bwignore
 						className="w-64"
 					/>
 				</div>
