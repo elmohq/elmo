@@ -3,7 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { Route } from "@/routes/_authed/app/org/$org/settings/api-keys";
 import { type ApiKeysPageData, setMockApiKeys } from "./_mocks/server-api-keys";
-import { setMockLoaderData, setMockRouteContext } from "./_mocks/tanstack-router";
+import { setMockLoaderData, setMockRouteContext, setMockSearch } from "./_mocks/tanstack-router";
 
 const ApiKeysSettingsPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
@@ -72,7 +72,7 @@ const KEYS: ApiKeysPageData["keys"] = [
 	},
 ];
 
-function load(page: Partial<ApiKeysPageData>, readOnly = false) {
+function load(page: Partial<ApiKeysPageData>, readOnly = false, search: Record<string, unknown> = {}) {
 	const data: ApiKeysPageData = {
 		organization: { id: "org-1", name: "Acme", role: "admin" },
 		canManage: true,
@@ -84,6 +84,7 @@ function load(page: Partial<ApiKeysPageData>, readOnly = false) {
 	setMockApiKeys(data);
 	setMockLoaderData(data);
 	setMockRouteContext({ clientConfig: { features: { readOnly } } });
+	setMockSearch(search);
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -159,14 +160,38 @@ export const OnlyInactiveKeys: Story = {
 
 export const NonAdmin: Story = {
 	render: () => {
-		load({ keys: KEYS.map((key) => ({ ...key, canRevoke: false })), canManage: false });
+		load({ keys: KEYS.map((key) => ({ ...key, canRevoke: key.id === "key-2" })), canManage: false });
 		return <ApiKeysSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(canvas.queryByRole("button", { name: "Add Key" })).toBeNull();
-		await expect(canvas.queryByRole("button", { name: "Revoke" })).toBeNull();
+		await expect(await canvas.findByText("Limited Access")).toBeVisible();
+		// Only the key they issued can be revoked.
+		await expect((await canvas.findAllByRole("button", { name: "Revoke" })).length).toBe(1);
+		// A member issues for one brand: a single choice, not "all" or several.
+		await userEvent.click(await canvas.findByRole("button", { name: "Add Key" }));
+		const dialog = within(await within(document.body).findByRole("dialog"));
+		await expect(await dialog.findByLabelText("Brand")).toBeVisible();
+		await expect(dialog.queryByRole("tab", { name: "All brands" })).toBeNull();
+	},
+};
+
+export const FilteredToBrand: Story = {
+	render: () => {
+		load({ keys: KEYS, canManage: true }, false, { brand: "brand-1" });
+		return <ApiKeysSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// Keys for every brand reach it too; one for other brands does not.
 		await expect(await canvas.findByText("Reporting pipeline")).toBeVisible();
+		await expect(await canvas.findByText("Claude Code (MCP)")).toBeVisible();
+		await expect(canvas.queryByText("Old dashboard export")).toBeNull();
+		// A key issued from here starts out narrowed to the brand being looked at.
+		await userEvent.click(await canvas.findByRole("button", { name: "Add Key" }));
+		const dialog = within(await within(document.body).findByRole("dialog"));
+		await expect(await dialog.findByRole("tab", { name: "Specific brands" })).toHaveAttribute("aria-selected", "true");
+		await expect(await dialog.findByText("Acme Corp")).toBeVisible();
 	},
 };
 

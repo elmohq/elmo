@@ -18,7 +18,7 @@ Include your API key in the `Authorization` header:
 Authorization: Bearer YOUR_API_KEY
 ```
 
-Organization owners and admins can issue API keys from **Settings → API Keys** in the organization's settings sidebar, for every brand or for selected ones. Any member can issue a key for a single brand from **API Keys** in that brand's settings, and revoke the keys they issued. A key is issued either read-only or read-write and can be given an expiry date; it stops working if the person who issued it leaves the organization. Instance-wide admin keys can also be configured server-side via the `ADMIN_API_KEYS` environment variable.
+API keys are issued from **Settings → API Keys** in the organization's settings sidebar; **API Keys** in a brand's settings opens the same page filtered to that brand. Owners and admins can issue keys for every brand or for selected ones, and any member can issue a key for a single brand and revoke the keys they issued. A key is issued either read-only or read-write and can be given an expiry date; it stops working if the person who issued it leaves the organization. Instance-wide admin keys can also be configured server-side via the `ADMIN_API_KEYS` environment variable.
 
 To call the API from TypeScript or Python, use the [SDKs](/docs/api/sdks) rather than writing the
 requests yourself.

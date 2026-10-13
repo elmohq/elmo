@@ -7,7 +7,6 @@ import {
   NIKE_BRAND_ID,
   SLUGGED_BRAND_ID,
   TEST_BRAND_ID,
-  brandUrl,
   organizationUrl,
 } from "../../fixtures";
 
@@ -120,11 +119,13 @@ test.describe("API keys", () => {
     await expect(page.getByRole("row").filter({ hasText: name })).toHaveCount(0);
   });
 
-  test("a key issued from a brand's page reaches that brand and no other", async ({ page, request }, testInfo) => {
+  test("a key issued from a brand's settings link reaches that brand and no other", async ({ page, request }, testInfo) => {
     test.skip(testInfo.project.name === "demo", "demo refuses every write; covered by the Bruno demo suite");
 
-    await page.goto(`${brandUrl()}/settings/api-keys`, { waitUntil: "networkidle" });
-    await expect(page.getByRole("heading", { name: "Keys for this brand" })).toBeVisible();
+    // Where the brand sidebar's API Keys entry lands: the list filtered to it,
+    // and a new key narrowed to it unless changed.
+    await page.goto(`${KEYS_PAGE}?brand=${TEST_BRAND_ID}`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "API Keys" })).toBeVisible();
 
     const name = `Brand key ${Date.now()}`;
     await openCreateForm(page, name);

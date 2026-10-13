@@ -3,4 +3,4 @@
 "@workspace/docs": patch
 ---
 
-Added an API Keys page to brand settings where any member can issue and revoke keys for that brand; keys now stop working when their issuer leaves the organization.
+Any member can now issue API keys for a single brand and revoke the keys they issued, and keys stop working when their issuer leaves the organization.
