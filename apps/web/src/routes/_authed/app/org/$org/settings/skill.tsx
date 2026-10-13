@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/skill")({
 			throw notFound();
 		}
 	},
-	head: pageHead({ description: "Install the aeo agent skill for Claude Code, Cursor, Codex, and other agents." }),
+	head: pageHead({ description: "Install the aeo skill for Claude Code, Cursor, Codex, and other agents." }),
 	component: SkillPage,
 });
 
