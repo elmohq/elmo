@@ -1,5 +1,17 @@
 # @workspace/web
 
+## 0.4.6
+
+### Patch Changes
+
+- 772574c: The prompts page can now suggest new prompts your brand doesn't track yet, added to your list for you to review before saving.
+- @workspace/api-spec@0.4.6
+  - @workspace/config@0.4.6
+  - @workspace/deployment@0.4.6
+  - @workspace/lib@0.4.6
+  - @workspace/og@0.4.6
+  - @workspace/ui@0.4.6
+
 ## 0.4.5
 
 ### Patch Changes
