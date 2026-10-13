@@ -36,6 +36,7 @@ export interface ApiKeySummary {
 	createdBy: { id: string; name: string } | null;
 	/** False once the issuer has left the organization, which ends the key. */
 	issuerIsMember: boolean;
+	canRevoke: boolean;
 	createdAt: string | null;
 	lastUsedAt: string | null;
 	expiresAt: string | null;
@@ -43,7 +44,10 @@ export interface ApiKeySummary {
 
 export type ApiKeysPageData = {
 	organization: { id: string; name: string; role: string };
+	/** Issue keys for any brands, and revoke anyone's. */
 	canManage: boolean;
+	/** Issue a key for one brand, from that brand's settings. */
+	canIssueForBrand: boolean;
 	keys: ApiKeySummary[];
 	brands: { id: string; name: string }[];
 	expiryOptions: readonly number[];
@@ -63,7 +67,7 @@ type StoredApiKey = Awaited<ReturnType<typeof auth.api.listApiKeys>>["apiKeys"][
 /** A key without a grant does not authenticate, so it is shown reaching nothing. */
 const NO_GRANT: ApiKeyGrant = { brandIds: [], createdBy: null, issuerIsMember: true };
 
-function summarize(key: StoredApiKey, grant: ApiKeyGrant = NO_GRANT): ApiKeySummary {
+function summarize(key: StoredApiKey, grant: ApiKeyGrant, canRevoke: boolean): ApiKeySummary {
 	return {
 		id: key.id,
 		name: key.name ?? null,
@@ -73,6 +77,7 @@ function summarize(key: StoredApiKey, grant: ApiKeyGrant = NO_GRANT): ApiKeySumm
 		enabled: key.enabled !== false,
 		createdBy: grant.createdBy,
 		issuerIsMember: grant.issuerIsMember,
+		canRevoke,
 		createdAt: toDate(key.createdAt),
 		lastUsedAt: toDate(key.lastRequest),
 		expiresAt: toDate(key.expiresAt),
@@ -111,7 +116,8 @@ export const listApiKeysFn = createServerFn({ method: "GET" })
 		return {
 			organization: org,
 			canManage,
-			keys: keys.apiKeys.map((key) => summarize(key, grants.get(key.id))),
+			canIssueForBrand: canManage,
+			keys: keys.apiKeys.map((key) => summarize(key, grants.get(key.id) ?? NO_GRANT, canManage)),
 			brands: organizationBrands,
 			expiryOptions: EXPIRY_DAYS,
 		};
@@ -174,11 +180,11 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 
 		return {
 			key: created.key,
-			summary: summarize(created, {
-				brandIds: data.brandIds,
-				createdBy: { id: session.user.id, name: session.user.name },
-				issuerIsMember: true,
-			}),
+			summary: summarize(
+				created,
+				{ brandIds: data.brandIds, createdBy: { id: session.user.id, name: session.user.name }, issuerIsMember: true },
+				true,
+			),
 		};
 	});
 

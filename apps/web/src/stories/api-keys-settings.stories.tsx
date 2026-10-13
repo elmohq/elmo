@@ -23,6 +23,7 @@ const KEYS: ApiKeysPageData["keys"] = [
 		enabled: true,
 		createdBy: { id: "user-1", name: "Ada Lovelace" },
 		issuerIsMember: true,
+		canRevoke: true,
 		createdAt: "2026-06-14T10:00:00.000Z",
 		lastUsedAt: "2026-08-31T08:12:00.000Z",
 		expiresAt: null,
@@ -36,6 +37,7 @@ const KEYS: ApiKeysPageData["keys"] = [
 		enabled: true,
 		createdBy: { id: "user-1", name: "Ada Lovelace" },
 		issuerIsMember: true,
+		canRevoke: true,
 		createdAt: "2026-07-02T10:00:00.000Z",
 		lastUsedAt: null,
 		expiresAt: "2026-12-28T10:00:00.000Z",
@@ -49,6 +51,7 @@ const KEYS: ApiKeysPageData["keys"] = [
 		enabled: false,
 		createdBy: { id: "user-1", name: "Ada Lovelace" },
 		issuerIsMember: true,
+		canRevoke: true,
 		createdAt: "2025-09-01T10:00:00.000Z",
 		lastUsedAt: "2026-01-19T10:00:00.000Z",
 		expiresAt: "2026-03-01T10:00:00.000Z",
@@ -62,6 +65,7 @@ const KEYS: ApiKeysPageData["keys"] = [
 		enabled: true,
 		createdBy: { id: "user-1", name: "Ada Lovelace" },
 		issuerIsMember: true,
+		canRevoke: true,
 		createdAt: "2026-02-01T10:00:00.000Z",
 		lastUsedAt: "2026-04-10T10:00:00.000Z",
 		expiresAt: "2026-05-01T10:00:00.000Z",
@@ -72,6 +76,7 @@ function load(page: Partial<ApiKeysPageData>, readOnly = false) {
 	const data: ApiKeysPageData = {
 		organization: { id: "org-1", name: "Acme", role: "admin" },
 		canManage: true,
+		canIssueForBrand: true,
 		keys: [],
 		brands: BRANDS,
 		expiryOptions: [30, 90, 180, 365],
@@ -155,7 +160,7 @@ export const OnlyInactiveKeys: Story = {
 
 export const NonAdmin: Story = {
 	render: () => {
-		load({ keys: KEYS, canManage: false });
+		load({ keys: KEYS.map((key) => ({ ...key, canRevoke: false })), canManage: false });
 		return <ApiKeysSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
