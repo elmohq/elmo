@@ -34,6 +34,11 @@ export interface FeaturesConfig {
 	 */
 	teamInvites: boolean;
 	/**
+	 * Whether the app points users at Elmo's public agent skill. False in
+	 * whitelabel, where nothing may send users to elmohq.com.
+	 */
+	agentSkill: boolean;
+	/**
 	 * Whether the viewer picks which platforms a brand is tracked on. False in
 	 * whitelabel (the agency picks, and pays the provider bills) and demo.
 	 *

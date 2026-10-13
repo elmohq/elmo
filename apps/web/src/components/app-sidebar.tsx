@@ -12,6 +12,7 @@ import {
 	IconListDetails,
 	IconMessages,
 	IconPlugConnected,
+	IconSchool,
 	IconSitemap,
 	IconSpeakerphone,
 	IconTarget,
@@ -62,15 +63,18 @@ function organizationGroups(organization: OrganizationSummary, features?: Featur
 
 	items.push({ title: "API Keys", link: { to: "/app/org/$org/settings/api-keys", params }, icon: IconKey });
 
+	const docs: NavItem[] = [
+		{ title: "API", link: { to: "/app/org/$org/settings/api", params }, icon: IconCode },
+		{ title: "MCP", link: { to: "/app/org/$org/settings/mcp", params }, icon: IconPlugConnected },
+	];
+
+	if (features?.agentSkill) {
+		docs.push({ title: "Agent Skill", link: { to: "/app/org/$org/settings/agent-skill", params }, icon: IconSchool });
+	}
+
 	return [
 		{ label: "Organization Settings", items },
-		{
-			label: "Docs",
-			items: [
-				{ title: "API", link: { to: "/app/org/$org/settings/api", params }, icon: IconCode },
-				{ title: "MCP", link: { to: "/app/org/$org/settings/mcp", params }, icon: IconPlugConnected },
-			],
-		},
+		{ label: "Docs", items: docs },
 	];
 }
 
