@@ -36,7 +36,7 @@ test.describe("Support chat", () => {
         loaderScripts: document.querySelectorAll('script[src*="crisp.chat"]').length,
       }));
 
-    const supportButton = page.getByRole("banner").getByRole("button", { name: /^Support chat/ });
+    const supportButton = page.getByRole("button", { name: /^Support chat/ });
 
     if (mode === "cloud" || mode === "demo") {
       await expect.poll(readLoader, { timeout: 15_000 }).toEqual({ websiteId: expect.any(String), loaderScripts: 1 });
