@@ -12,8 +12,7 @@ on:
     paths:
       - "skills/**"
       - ".claude/skills/**"
-      - "apps/www/src/lib/agent-skills.ts"
-      - "apps/www/src/routes/*well-known/**"
+      - "apps/www/scripts/build-agent-skills.mjs"
       - ".github/workflows/skill-install.yaml"
   workflow_dispatch:
 

@@ -7,8 +7,8 @@
 	"scripts": {
 		"postinstall": "fumadocs-mdx",
 		"codegen": "fumadocs-mdx",
-		"dev": "vite dev --port 3001",
-		"build": "vite build && node ../../scripts/check-server-bundle.mjs .",
+		"dev": "node scripts/build-agent-skills.mjs && vite dev --port 3001",
+		"build": "node scripts/build-agent-skills.mjs && vite build && node ../../scripts/check-server-bundle.mjs .",
 		"start": "node .output/server/index.mjs",
 		"check-types": "tsc --noEmit",
 		"generate-icons": "tsx scripts/generate-brand-icons.tsx"
@@ -56,6 +56,7 @@
 		"@vercel/blob": "^2.6.1",
 		"@vitejs/plugin-react": "^6.1.1",
 		"png-to-ico": "^3.0.2",
+		"tar-stream": "3.2.0",
 		"typescript": "^7.0.2",
 		"vite": "^8.2.2"
 	}

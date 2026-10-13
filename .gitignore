@@ -89,3 +89,6 @@ apps/web/storybook-static/
 .claude/worktrees/
 .readonlydb
 .pnpm-store/
+
+# Built from skills/ by apps/www/scripts/build-agent-skills.mjs.
+apps/www/public/.well-known/agent-skills/

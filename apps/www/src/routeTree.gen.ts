@@ -49,8 +49,6 @@ import { Route as GlossarySlugRouteImport } from './routes/glossary/$slug'
 import { Route as LegalIndexRouteImport } from './routes/legal/index'
 import { Route as LegalSplatRouteImport } from './routes/legal/$'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
-import { Route as DotwellKnownAgentSkillsSplatRouteImport } from './routes/[.]well-known/agent-skills/$'
-import { Route as DotwellKnownAgentSkillsIndexDotjsonRouteImport } from './routes/[.]well-known/agent-skills/index[.]json'
 import { Route as AiVisibilityToolsAlternativesIndexRouteImport } from './routes/ai-visibility-tools/alternatives/index'
 import { Route as AiVisibilityToolsAlternativesSlugRouteImport } from './routes/ai-visibility-tools/alternatives/$slug'
 import { Route as AiVisibilityToolsCategoryIndexRouteImport } from './routes/ai-visibility-tools/category/index'
@@ -270,18 +268,6 @@ const OgStatusDotpngRoute = OgStatusDotpngRouteImport.update({
   path: '/og/status.png',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DotwellKnownAgentSkillsSplatRoute =
-  DotwellKnownAgentSkillsSplatRouteImport.update({
-    id: '/.well-known/agent-skills/$',
-    path: '/.well-known/agent-skills/$',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const DotwellKnownAgentSkillsIndexDotjsonRoute =
-  DotwellKnownAgentSkillsIndexDotjsonRouteImport.update({
-    id: '/.well-known/agent-skills/index.json',
-    path: '/.well-known/agent-skills/index.json',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AiVisibilityToolsAlternativesIndexRoute =
   AiVisibilityToolsAlternativesIndexRouteImport.update({
     id: '/ai-visibility-tools/alternatives/',
@@ -409,8 +395,6 @@ export interface FileRoutesByFullPath {
   '/docs/': typeof DocsIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
   '/legal/': typeof LegalIndexRoute
-  '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
-  '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -468,8 +452,6 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsIndexRoute
   '/glossary': typeof GlossaryIndexRoute
   '/legal': typeof LegalIndexRoute
-  '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
-  '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -528,8 +510,6 @@ export interface FileRoutesById {
   '/docs/': typeof DocsIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
   '/legal/': typeof LegalIndexRoute
-  '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
-  '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -589,8 +569,6 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/glossary/'
     | '/legal/'
-    | '/.well-known/agent-skills/$'
-    | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -648,8 +626,6 @@ export interface FileRouteTypes {
     | '/docs'
     | '/glossary'
     | '/legal'
-    | '/.well-known/agent-skills/$'
-    | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -707,8 +683,6 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/glossary/'
     | '/legal/'
-    | '/.well-known/agent-skills/$'
-    | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -767,8 +741,6 @@ export interface RootRouteChildren {
   DocsIndexRoute: typeof DocsIndexRoute
   GlossaryIndexRoute: typeof GlossaryIndexRoute
   LegalIndexRoute: typeof LegalIndexRoute
-  DotwellKnownAgentSkillsSplatRoute: typeof DotwellKnownAgentSkillsSplatRoute
-  DotwellKnownAgentSkillsIndexDotjsonRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   AiVisibilityToolsAlternativesSlugRoute: typeof AiVisibilityToolsAlternativesSlugRoute
   AiVisibilityToolsCategorySlugRoute: typeof AiVisibilityToolsCategorySlugRoute
   AiVisibilityToolsCategoryOpenSourceRoute: typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -1068,20 +1040,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OgStatusDotpngRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/agent-skills/$': {
-      id: '/.well-known/agent-skills/$'
-      path: '/.well-known/agent-skills/$'
-      fullPath: '/.well-known/agent-skills/$'
-      preLoaderRoute: typeof DotwellKnownAgentSkillsSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.well-known/agent-skills/index.json': {
-      id: '/.well-known/agent-skills/index.json'
-      path: '/.well-known/agent-skills/index.json'
-      fullPath: '/.well-known/agent-skills/index.json'
-      preLoaderRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/ai-visibility-tools/alternatives/': {
       id: '/ai-visibility-tools/alternatives/'
       path: '/ai-visibility-tools/alternatives'
@@ -1231,9 +1189,6 @@ const rootRouteChildren: RootRouteChildren = {
   DocsIndexRoute: DocsIndexRoute,
   GlossaryIndexRoute: GlossaryIndexRoute,
   LegalIndexRoute: LegalIndexRoute,
-  DotwellKnownAgentSkillsSplatRoute: DotwellKnownAgentSkillsSplatRoute,
-  DotwellKnownAgentSkillsIndexDotjsonRoute:
-    DotwellKnownAgentSkillsIndexDotjsonRoute,
   AiVisibilityToolsAlternativesSlugRoute:
     AiVisibilityToolsAlternativesSlugRoute,
   AiVisibilityToolsCategorySlugRoute: AiVisibilityToolsCategorySlugRoute,
