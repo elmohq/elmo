@@ -1,18 +1,18 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ComponentType, ReactNode } from "react";
 import { expect, within } from "storybook/test";
-import { Route } from "@/routes/_authed/app/org/$org/settings/agent-skill";
+import { Route } from "@/routes/_authed/app/org/$org/settings/skill";
 import { setMockLoaderData, setMockRouteContext } from "./_mocks/tanstack-router";
 
-const AgentSkillPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
+const SkillPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
 function Shell({ children }: { children: ReactNode }) {
 	return <div className="bg-background text-foreground antialiased min-h-svh p-4 md:p-6">{children}</div>;
 }
 
 const meta = {
-	title: "Settings/Agent Skill",
-	component: AgentSkillPage,
+	title: "Settings/Skill",
+	component: SkillPage,
 	parameters: { layout: "fullscreen" },
 	decorators: [
 		(Story) => (
@@ -21,7 +21,7 @@ const meta = {
 			</Shell>
 		),
 	],
-} satisfies Meta<typeof AgentSkillPage>;
+} satisfies Meta<typeof SkillPage>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -30,7 +30,7 @@ export const Install: Story = {
 	render: () => {
 		setMockRouteContext({ clientConfig: { features: { readOnly: false, agentSkill: true } } });
 		setMockLoaderData({ organization: { id: "org-1", name: "Acme", slug: "acme" } });
-		return <AgentSkillPage />;
+		return <SkillPage />;
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);

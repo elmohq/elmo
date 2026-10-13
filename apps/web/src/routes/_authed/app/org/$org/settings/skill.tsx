@@ -15,24 +15,24 @@ const EXAMPLE_ASKS = [
 	"Which pages do the engines cite when we lose, and how do we get onto them?",
 ];
 
-export const Route = createFileRoute("/_authed/app/org/$org/settings/agent-skill")({
-	staticData: { crumb: "Agent Skill" },
+export const Route = createFileRoute("/_authed/app/org/$org/settings/skill")({
+	staticData: { crumb: "Skill" },
 	beforeLoad: ({ context }) => {
 		if (context.clientConfig && !context.clientConfig.features.agentSkill) {
 			throw notFound();
 		}
 	},
 	head: pageHead({ description: "Install the aeo agent skill for Claude Code, Cursor, Codex, and other agents." }),
-	component: AgentSkillPage,
+	component: SkillPage,
 });
 
-function AgentSkillPage() {
+function SkillPage() {
 	const linkParams = orgLinkParams(useOrganization());
 
 	return (
 		<div className="max-w-4xl space-y-8">
 			<header className="space-y-1">
-				<h1 className="text-3xl font-bold">Agent Skill</h1>
+				<h1 className="text-3xl font-bold">Skill</h1>
 				<p className="max-w-2xl text-muted-foreground">
 					The <InlineCode>aeo</InlineCode> skill teaches Claude Code, Cursor, Codex, and other coding agents an
 					evidence-based answer engine optimization workflow: measure, diagnose, fix, then measure again.

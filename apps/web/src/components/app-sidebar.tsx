@@ -69,7 +69,7 @@ function organizationGroups(organization: OrganizationSummary, features?: Featur
 	];
 
 	if (features?.agentSkill) {
-		docs.push({ title: "Agent Skill", link: { to: "/app/org/$org/settings/agent-skill", params }, icon: IconSchool });
+		docs.push({ title: "Skill", link: { to: "/app/org/$org/settings/skill", params }, icon: IconSchool });
 	}
 
 	return [
