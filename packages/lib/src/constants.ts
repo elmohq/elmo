@@ -45,6 +45,8 @@ export function getDefaultDelayHours(): number {
 export const MAX_COMPETITORS = 500;
 export const MAX_PROMPTS = 100;
 
+export const PROMPT_SUGGESTION_RUNS_PER_DAY = 5;
+
 /**
  * Sentinel providers store in `prompt_runs.web_queries` when a web search
  * happened (citations prove it) but the provider doesn't expose the actual
