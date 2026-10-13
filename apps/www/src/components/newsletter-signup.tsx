@@ -52,7 +52,6 @@ export function NewsletterSignup({
 					id={id}
 					type="email"
 					autoComplete="email"
-					// Not a login field; password-manager icons crowd the input against the button.
 					data-lpignore="true"
 					data-1p-ignore
 					data-bwignore

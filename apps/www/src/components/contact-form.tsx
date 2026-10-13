@@ -93,7 +93,6 @@ export function ContactForm({ source, title = "White Label Inquiry" }: ContactFo
 									onChange={(e) => setEmail(e.target.value)}
 									placeholder="jane@agency.com"
 									required
-									// Not a login field, so keep password managers from offering to fill it.
 									data-lpignore="true"
 									data-1p-ignore
 									data-bwignore
