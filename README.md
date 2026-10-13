@@ -121,6 +121,16 @@ Once the services report healthy, open **http://localhost:1515** and create your
 > [!TIP]
 > **Watch** this repo's **releases** to get notified of major updates.
 
+## Agent Skill
+
+The [`aeo` skill](skills/aeo/SKILL.md) teaches Claude Code, Cursor, Codex, and other coding agents an evidence-based answer engine optimization workflow: measure, diagnose, fix, then measure again. It works with or without Elmo, and it can read Elmo's data over MCP.
+
+```bash
+npx skills add elmohq/elmo
+```
+
+Or copy [`skills/aeo`](skills/aeo) into your agent's skills directory (for Claude Code, `~/.claude/skills/aeo`). On claude.ai, zip the `aeo` folder and upload it in the Skills settings.
+
 ## Deployment Options
 
 | Option | What you get | Price |
