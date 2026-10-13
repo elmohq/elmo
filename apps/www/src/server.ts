@@ -94,6 +94,7 @@ function withAcceptHtml(request: Request): Request {
 // Keep permanent redirects server-side so backlinks and ranking signals reach
 // the canonical replacement rather than a client-rendered not-found page.
 const PERMANENT_REDIRECTS: Record<string, string> = {
+	"/blog/aeo-agent-skill": "/blog/aeo-skill",
 	"/blog/answer-engine-optimization": "/answer-engine-optimization",
 	"/blog/best-open-source-aeo-tools": "/ai-visibility-tools/category/open-source",
 	"/blog/generative-ai-for-marketing": "/blog/ai-for-seo",
