@@ -8,6 +8,7 @@
 - 4367820: The API Docs settings page now shows how to install and call the TypeScript and Python SDKs.
 - 8fffca1: Added start and end date pickers to the dashboard lookback filter, usable alone or together and kept in the shareable URL.
 - 365e583: Fixed date ranges outside UTC starting at the wrong hour, which pulled in or dropped runs from the edge of the first day.
+- 772574c: The prompts page can now suggest new prompts your brand doesn't track yet, added to your list for you to review before saving.
 - 1b027e3: Responses page paging now returns to the top, stays clear of the chat button, and shows when a search is still loading.
 - Updated dependencies [4ec5ac9]
 - Updated dependencies [9957eef]
