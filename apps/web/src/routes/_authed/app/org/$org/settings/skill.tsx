@@ -18,7 +18,7 @@ const EXAMPLE_ASKS = [
 export const Route = createFileRoute("/_authed/app/org/$org/settings/skill")({
 	staticData: { crumb: "Skill" },
 	beforeLoad: ({ context }) => {
-		if (context.clientConfig && !context.clientConfig.features.agentSkill) {
+		if (context.clientConfig?.mode === "whitelabel") {
 			throw notFound();
 		}
 	},

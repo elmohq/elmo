@@ -28,7 +28,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Install: Story = {
 	render: () => {
-		setMockRouteContext({ clientConfig: { features: { readOnly: false, agentSkill: true } } });
+		setMockRouteContext({ clientConfig: { mode: "cloud", features: { readOnly: false } } });
 		setMockLoaderData({ organization: { id: "org-1", name: "Acme", slug: "acme" } });
 		return <SkillPage />;
 	},

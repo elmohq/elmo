@@ -9,13 +9,11 @@ import { pack } from "tar-stream";
 
 const SKILLS_DIR = new URL("../../../skills/", import.meta.url).pathname;
 const OUT_DIR = new URL("../public/.well-known/agent-skills/", import.meta.url).pathname;
-const EXCLUDED = new Set(["evals"]);
 
 function listFiles(dir) {
 	return readdirSync(dir, { withFileTypes: true, recursive: true })
 		.filter((entry) => entry.isFile())
 		.map((entry) => join(entry.parentPath, entry.name))
-		.filter((file) => !EXCLUDED.has(relative(dir, file).split("/")[0]))
 		.sort();
 }
 
