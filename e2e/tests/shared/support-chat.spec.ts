@@ -40,7 +40,9 @@ test.describe("Support chat", () => {
 
     if (mode === "cloud" || mode === "demo") {
       await expect.poll(readLoader, { timeout: 15_000 }).toEqual({ websiteId: expect.any(String), loaderScripts: 1 });
-      await expect(supportButton).toBeVisible();
+      // The demo keeps Crisp's own floating launcher instead.
+      if (mode === "cloud") await expect(supportButton).toBeVisible();
+      else await expect(supportButton).toHaveCount(0);
     } else {
       expect(await readLoader()).toEqual({ websiteId: null, loaderScripts: 0 });
       await expect(supportButton).toHaveCount(0);

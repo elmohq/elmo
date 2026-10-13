@@ -45,16 +45,17 @@ interface CrispUser {
 }
 
 export interface CrispChatState {
-	available: boolean;
+	/** Which control opens the chatbox, if it loaded at all. */
+	launcher: "none" | "header" | "floating";
 	unread: number;
 }
 
 let loadedMode: DeploymentMode | null = null;
 let pendingUser: CrispUser | null = null;
 let chatOpen = false;
-let chatState: CrispChatState = { available: false, unread: 0 };
+let chatState: CrispChatState = { launcher: "none", unread: 0 };
 const chatListeners = new Set<() => void>();
-const SERVER_CHAT_STATE: CrispChatState = { available: false, unread: 0 };
+const SERVER_CHAT_STATE: CrispChatState = { launcher: "none", unread: 0 };
 
 function setChatState(next: Partial<CrispChatState>): void {
 	chatState = { ...chatState, ...next };
@@ -94,7 +95,11 @@ export function initCrisp(websiteId: string | undefined, mode: DeploymentMode): 
 
 	push(["set", "session:segments", [[mode]]]);
 	setSessionData([["deployment_mode", mode], ...(mode === "demo" ? DEMO_SESSION_DATA : [])]);
-	replaceFloatingLauncher(mode);
+	// The demo is a sales surface, so it keeps Crisp's own launcher, which draws
+	// visitors into a conversation better than a header button does.
+	const launcher = mode === "demo" ? "floating" : "header";
+	if (launcher === "header") replaceFloatingLauncher();
+	else push(["on", "chat:opened", demoNextStepsOffer()]);
 
 	const pending = pendingUser;
 	pendingUser = null;
@@ -104,7 +109,7 @@ export function initCrisp(websiteId: string | undefined, mode: DeploymentMode): 
 	script.src = CRISP_SCRIPT_URL;
 	script.async = true;
 	document.head.appendChild(script);
-	setChatState({ available: true });
+	setChatState({ launcher });
 }
 
 /**
@@ -113,18 +118,14 @@ export function initCrisp(websiteId: string | undefined, mode: DeploymentMode): 
  * no launcher to badge, replies that land while the chat is closed are counted
  * here for the button to show.
  */
-function replaceFloatingLauncher(mode: DeploymentMode): void {
-	const offerDemoNextSteps = mode === "demo" ? demoNextStepsOffer() : null;
-
+function replaceFloatingLauncher(): void {
 	push(["do", "chat:hide"]);
-	// Crisp keeps one handler per event, so everything that reacts to opening lives in this one.
 	push([
 		"on",
 		"chat:opened",
 		() => {
 			chatOpen = true;
 			setChatState({ unread: 0 });
-			offerDemoNextSteps?.();
 		},
 	]);
 	push([
@@ -154,7 +155,7 @@ function replaceFloatingLauncher(mode: DeploymentMode): void {
 }
 
 export function openCrispChat(): void {
-	if (!loadedMode) return;
+	if (chatState.launcher !== "header") return;
 	push(["do", "chat:show"]);
 	push(["do", "chat:open"]);
 }

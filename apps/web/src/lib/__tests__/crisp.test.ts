@@ -128,11 +128,22 @@ describe("the header launcher", () => {
 		initCrisp(undefined, "local");
 		openCrispChat();
 
-		expect(getCrispChatState().available).toBe(false);
+		expect(getCrispChatState().launcher).toBe("none");
 		expect(window.$crisp).toBeUndefined();
 
 		initCrisp("website-id", "cloud");
-		expect(getCrispChatState().available).toBe(true);
+		expect(getCrispChatState().launcher).toBe("header");
+	});
+
+	it("leaves the demo on Crisp's own floating launcher", async () => {
+		const { initCrisp, getCrispChatState, openCrispChat } = await loadCrisp();
+
+		initCrisp("website-id", "demo");
+		openCrispChat();
+
+		expect(getCrispChatState().launcher).toBe("floating");
+		expect(findCommand("do", "chat:hide")).toBeUndefined();
+		expect(findCommand("do", "chat:open")).toBeUndefined();
 	});
 
 	it("counts replies that arrive while the chat is closed until it is opened", async () => {

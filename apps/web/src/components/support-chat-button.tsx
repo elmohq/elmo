@@ -1,12 +1,12 @@
 import { IconMessageCircle } from "@tabler/icons-react";
 import { Button } from "@workspace/ui/components/button";
-import { useSyncExternalStore } from "react";
-import { getCrispChatState, getServerCrispChatState, openCrispChat, subscribeCrispChat } from "@/lib/crisp";
+import { useCrispChat } from "@/hooks/use-crisp-chat";
+import { openCrispChat } from "@/lib/crisp";
 
 export function SupportChatButton() {
-	const { available, unread } = useSyncExternalStore(subscribeCrispChat, getCrispChatState, getServerCrispChatState);
+	const { launcher, unread } = useCrispChat();
 
-	if (!available) return null;
+	if (launcher !== "header") return null;
 
 	return (
 		<Button
