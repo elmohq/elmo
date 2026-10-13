@@ -1,19 +1,19 @@
 ---
-title: "We Audited the Top AEO Agent Skills. Almost None Measure Anything."
+title: "We Audited the Top AEO Skills. Almost None Measure Anything."
 description: "We read every file of the 12 most-installed AEO and GEO skills on skills.sh and checked their claims against the research. Here is what they get wrong, and the open-source skill we built to fix it."
 date: "2026-10-09"
 author: ai
-metaTitle: "AEO Agent Skills Audited: What the Top 12 Get Wrong"
+metaTitle: "AEO Skills Audited: What the Top 12 Get Wrong"
 tags:
   - aeo
   - geo
   - ai-visibility
   - tools
 definedTerms:
-  - term: Agent skill
-    definition: "An agent skill is a folder of instructions, reference files, and optional scripts, anchored by a SKILL.md file, that an AI coding agent such as Claude Code, Cursor, or Codex loads when a task matches the skill's description. Skills are installed per project or per user, and the skills.sh directory ranks public skills by install count."
+  - term: Skill
+    definition: "A skill is a folder of instructions, reference files, and optional scripts, anchored by a SKILL.md file, that an AI coding agent such as Claude Code, Cursor, or Codex loads when a task matches the skill's description. Skills are installed per project or per user, and the skills.sh directory ranks public skills by install count."
   - term: AEO skill
-    definition: "An AEO skill is an agent skill that teaches an AI agent how to improve a brand's visibility in AI answer engines such as ChatGPT, Perplexity, and Google AI Overviews: auditing crawler access, planning content and off-site work, and, in the better ones, measuring visibility before and after a change."
+    definition: "An AEO skill is a skill that teaches an AI agent how to improve a brand's visibility in AI answer engines such as ChatGPT, Perplexity, and Google AI Overviews: auditing crawler access, planning content and off-site work, and, in the better ones, measuring visibility before and after a change."
   - term: Mention rate
     definition: "Mention rate is the share of sampled AI answers to a prompt set that name a brand, measured over repeated runs per engine and reported with its sample size. Because answer engines are non-deterministic, it is the stable alternative to a single-run screenshot or an 'AI rank'."
 howTo:
@@ -74,9 +74,9 @@ npx skills add elmohq/elmo
 - In a 32-question benchmark, four of the five other popular skills scored at or below no skill at all. `aeo` scored highest and cut factual errors per run from about 5 to 1.3.
 - `aeo` keeps the good parts, drops the myths, adds a measurement loop, a stdlib-only access audit script, and an evidence file with a primary source for every claim. It works with or without Elmo.
 
-## What an agent skill is, and why AEO skills spread so fast
+## What a skill is, and why AEO skills spread so fast
 
-An [agent skill](https://agentskills.io/specification) is a folder with a `SKILL.md` file: a description that tells the agent when to load it, instructions, and optional reference files and scripts. Claude Code, Cursor, Codex, Gemini CLI, and most other coding agents read the format, and skills.sh ranks public skills by how many times they've been installed.
+A [skill](https://agentskills.io/specification) is a folder with a `SKILL.md` file: a description that tells the agent when to load it, instructions, and optional reference files and scripts. Claude Code, Cursor, Codex, Gemini CLI, and most other coding agents read the format, and skills.sh ranks public skills by how many times they've been installed.
 
 AEO is a natural fit. The work combines technical checks an agent can run (robots.txt, rendering, indexing), research it can do (what's being cited, by whom), and writing it can draft. That is why the leading AEO skill has around 135,000 installs. Whatever these skills say becomes what thousands of agents tell their users about AI search. So we checked what they say.
 

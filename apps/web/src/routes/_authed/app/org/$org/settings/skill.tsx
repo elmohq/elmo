@@ -6,7 +6,7 @@ import { pageHead } from "@/lib/route-head";
 
 const INSTALL_COMMAND = "npx skills add elmohq/elmo";
 const SKILL_URL = "https://github.com/elmohq/elmo/tree/main/skills/aeo";
-const LAUNCH_POST_URL = "https://www.elmohq.com/blog/aeo-agent-skill";
+const LAUNCH_POST_URL = "https://www.elmohq.com/blog/aeo-skill";
 
 const EXAMPLE_ASKS = [
 	"How's our brand doing in AI search this week?",
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/skill")({
 			throw notFound();
 		}
 	},
-	head: pageHead({ description: "Install the aeo agent skill for Claude Code, Cursor, Codex, and other agents." }),
+	head: pageHead({ description: "Install the aeo skill for Claude Code, Cursor, Codex, and other agents." }),
 	component: SkillPage,
 });
 

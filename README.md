@@ -121,7 +121,7 @@ Once the services report healthy, open **http://localhost:1515** and create your
 > [!TIP]
 > **Watch** this repo's **releases** to get notified of major updates.
 
-## Agent Skill
+## Skill
 
 The [`aeo` skill](skills/aeo/SKILL.md) teaches Claude Code, Cursor, Codex, and other coding agents an evidence-based answer engine optimization workflow: measure, diagnose, fix, then measure again. It works with or without Elmo, and it can read Elmo's data over MCP.
 
