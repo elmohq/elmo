@@ -26,9 +26,8 @@ TIMEOUT = 15
 # Well above any real HTML page, so only runaway or binary responses get cut off.
 MAX_BYTES = 5_000_000
 
-# Raw HTML with almost no visible text but many scripts is an app shell that only fills in after
-# JavaScript runs, which most AI crawlers don't do. A server-rendered page, even a short pricing
-# page, carries well over 150 words of navigation, headings, and copy.
+# An app shell: little text in the raw HTML, many scripts. Even a short server-rendered page
+# carries well over 150 words of navigation, headings, and copy.
 CLIENT_RENDERED_MAX_WORDS = 150
 CLIENT_RENDERED_MIN_SCRIPTS = 5
 
@@ -90,7 +89,6 @@ def decode(body, headers):
     return body.decode(charset or "utf-8", errors="replace")
 
 
-# --- robots.txt (RFC 9309) -------------------------------------------------
 
 def parse_robots(text):
     """Return a list of (agents, rules) groups; rules are (allow: bool, path)."""
@@ -165,7 +163,6 @@ def robots_for(origin, cache):
     return result
 
 
-# --- page content -----------------------------------------------------------
 
 class PageReader(HTMLParser):
     SKIP = {"script", "style", "noscript", "template", "svg"}
@@ -236,7 +233,6 @@ def looks_blocked(status, body):
     return any(marker in sample for marker in CHALLENGE_MARKERS)
 
 
-# --- report -----------------------------------------------------------------
 
 def check(url, robots_cache):
     parsed = urllib.parse.urlsplit(url)

@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Usage: check-skill-install.sh SOURCE LABEL
-# Installs the aeo skill from SOURCE (a path, owner/repo, or URL) into a fresh
-# project with the pinned skills CLI, then checks the files users rely on.
+# Usage: check-skill-install.sh SOURCE LABEL, where SOURCE is a path, owner/repo, or URL.
 set -euo pipefail
 
 source="$1"

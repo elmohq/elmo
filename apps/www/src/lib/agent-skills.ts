@@ -13,7 +13,6 @@ const SKILL_ROOT = "../../../../skills/";
 
 interface Skill {
 	name: string;
-	/** Relative path inside the skill → contents, always including SKILL.md. */
 	files: Map<string, string>;
 	archive: Buffer;
 }

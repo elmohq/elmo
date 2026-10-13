@@ -1,10 +1,6 @@
-# Installs the aeo skill the way users do, with the skills CLI, and checks what
-# lands on disk. Pull requests test the checked-out tree; the weekly run also
-# installs from GitHub and from elmohq.com, whose /.well-known/agent-skills
-# archive can break on a site deploy without touching skills/.
-#
-# The CLI is pinned so a new release can't fail this job on its own; bump it
-# deliberately, and only to a version older than the repo's release cooldown.
+# The weekly run also installs from GitHub and elmohq.com, whose archive can
+# break on a site deploy without touching skills/. The CLI is pinned so a new
+# release can't fail this job on its own.
 
 name: Skill install
 
@@ -45,8 +41,6 @@ jobs:
         with:
           node-version: 24
 
-      # Only aeo is published; the internal dev skills are marked internal and
-      # must not be offered.
       - name: List skills in this checkout
         run: |
           out=$(cd "$RUNNER_TEMP" && pnpm dlx "$SKILLS_CLI" add "$GITHUB_WORKSPACE" --list 2>&1)
