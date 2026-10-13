@@ -73,7 +73,7 @@ function SkillPage() {
 			</section>
 
 			<p className="text-sm text-muted-foreground">
-				The skill is MIT-licensed, and every claim in it links to a primary source.{" "}
+				The skill is MIT-licensed.{" "}
 				<a href={LAUNCH_POST_URL} target="_blank" rel="noreferrer" className="underline underline-offset-4">
 					Read how it compares with other AEO skills
 				</a>
