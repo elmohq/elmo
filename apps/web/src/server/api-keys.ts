@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { type ApiScope, permissionsToScopes, scopesToPermissions } from "@/lib/api/scopes";
 import { type ApiKeyGrant, loadApiKeyGrants, recordApiKeyGrant } from "@/lib/auth/api-key-grants";
+import { issuanceRefusal, mayRevoke } from "@/lib/auth/api-key-policy";
 import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
 
@@ -44,10 +45,9 @@ export interface ApiKeySummary {
 
 export type ApiKeysPageData = {
 	organization: { id: string; name: string; role: string };
-	/** Issue keys for any brands, and revoke anyone's. */
+	/** Issue keys for any brands, and revoke anyone's. Every member may issue a
+	 * key for one brand and revoke the keys they issued. */
 	canManage: boolean;
-	/** Issue a key for one brand, from that brand's settings. */
-	canIssueForBrand: boolean;
 	keys: ApiKeySummary[];
 	brands: { id: string; name: string }[];
 	expiryOptions: readonly number[];
@@ -90,14 +90,10 @@ async function requireKeyAccess(organizationId: string) {
 	return { session, org, canManage: isOrgAdminRole(org.role) };
 }
 
-function requireManager(canManage: boolean): void {
-	if (!canManage) throw new Error("Only organization admins can manage API keys");
-}
-
 export const listApiKeysFn = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string() }))
 	.handler(async ({ data }): Promise<ApiKeysPageData> => {
-		const { org, canManage } = await requireKeyAccess(data.organizationId);
+		const { session, org, canManage } = await requireKeyAccess(data.organizationId);
 
 		const [keys, organizationBrands] = await Promise.all([
 			auth.api.listApiKeys({ query: { organizationId: org.id }, headers: getRequestHeaders() }),
@@ -116,8 +112,10 @@ export const listApiKeysFn = createServerFn({ method: "GET" })
 		return {
 			organization: org,
 			canManage,
-			canIssueForBrand: canManage,
-			keys: keys.apiKeys.map((key) => summarize(key, grants.get(key.id) ?? NO_GRANT, canManage)),
+			keys: keys.apiKeys.map((key) => {
+				const grant = grants.get(key.id) ?? NO_GRANT;
+				return summarize(key, grant, mayRevoke(canManage, session.user.id, grant.createdBy?.id ?? null));
+			}),
 			brands: organizationBrands,
 			expiryOptions: EXPIRY_DAYS,
 		};
@@ -146,7 +144,8 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 	.validator(createInput)
 	.handler(async ({ data }): Promise<{ key: string; summary: ApiKeySummary }> => {
 		const { session, org, canManage } = await requireKeyAccess(data.organizationId);
-		requireManager(canManage);
+		const refusal = issuanceRefusal(canManage, data.brandIds);
+		if (refusal) throw new Error(refusal);
 
 		if (data.brandIds) {
 			const owned = new Set(
@@ -191,8 +190,7 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 export const revokeApiKeyFn = createServerFn({ method: "POST" })
 	.validator(z.object({ organizationId: z.string(), keyId: z.string() }))
 	.handler(async ({ data }): Promise<{ revoked: true }> => {
-		const { org, canManage } = await requireKeyAccess(data.organizationId);
-		requireManager(canManage);
+		const { session, org, canManage } = await requireKeyAccess(data.organizationId);
 
 		// The id arrives from the browser and the plugin's delete trusts it.
 		const keys = await auth.api.listApiKeys({
@@ -201,6 +199,10 @@ export const revokeApiKeyFn = createServerFn({ method: "POST" })
 		});
 		if (!keys.apiKeys.some((key) => key.id === data.keyId)) {
 			throw new Error("API key not found in this organization");
+		}
+		const issuer = (await loadApiKeyGrants(org.id, [data.keyId])).get(data.keyId)?.createdBy ?? null;
+		if (!mayRevoke(canManage, session.user.id, issuer?.id ?? null)) {
+			throw new Error("Only organization admins can revoke keys issued by someone else");
 		}
 
 		// Disabled rather than deleted: it stops authenticating immediately either

@@ -26,9 +26,8 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 });
 
 function BrandApiKeysPage() {
-	const { keys, brands, brandId, expiryOptions, canIssueForBrand, organization } = Route.useLoaderData();
+	const { keys, brands, brandId, expiryOptions, organization } = Route.useLoaderData();
 	const readOnly = useDeploymentFeatures()?.readOnly ?? false;
-	const canIssue = canIssueForBrand && !readOnly;
 	const linkParams = orgLinkParams(useOrganization());
 	const router = useRouter();
 
@@ -51,7 +50,7 @@ function BrandApiKeysPage() {
 	);
 	const active = forThisBrand.filter(isActive);
 	const inactive = forThisBrand.filter((key) => !isActive(key));
-	const openCreate = canIssue ? () => setCreatingOpen(true) : undefined;
+	const openCreate = readOnly ? undefined : () => setCreatingOpen(true);
 
 	return (
 		<div className="max-w-6xl space-y-8">
@@ -84,7 +83,11 @@ function BrandApiKeysPage() {
 				{active.length === 0 ? (
 					<EmptyKeys
 						hasInactive={inactive.length > 0}
-						description={emptyDescription({ canIssue, readOnly, brandName: brand.name })}
+						description={
+							readOnly
+								? "Keys can't be issued in demo mode."
+								: `Issue one to call the REST API or connect an MCP client to ${brand.name}.`
+						}
 						onCreate={openCreate}
 					/>
 				) : (
@@ -138,18 +141,4 @@ function BrandApiKeysPage() {
 			<RevokeKeyDialog organizationId={organization.id} target={revokeTarget} onClose={() => setRevokeTarget(null)} />
 		</div>
 	);
-}
-
-function emptyDescription({
-	canIssue,
-	readOnly,
-	brandName,
-}: {
-	canIssue: boolean;
-	readOnly: boolean;
-	brandName: string;
-}): string {
-	if (readOnly) return "Keys can't be issued in demo mode.";
-	if (canIssue) return `Issue one to call the REST API or connect an MCP client to ${brandName}.`;
-	return "An organization admin can issue one.";
 }

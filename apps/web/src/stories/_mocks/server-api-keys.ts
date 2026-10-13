@@ -18,7 +18,6 @@ export interface ApiKeySummary {
 export type ApiKeysPageData = {
 	organization: { id: string; name: string; role: string };
 	canManage: boolean;
-	canIssueForBrand: boolean;
 	keys: ApiKeySummary[];
 	brands: { id: string; name: string }[];
 	expiryOptions: readonly number[];
@@ -27,7 +26,6 @@ export type ApiKeysPageData = {
 const DEFAULT: ApiKeysPageData = {
 	organization: { id: "org-1", name: "Acme", role: "admin" },
 	canManage: true,
-	canIssueForBrand: true,
 	keys: [],
 	brands: [
 		{ id: "brand-1", name: "Acme Corp" },

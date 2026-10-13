@@ -76,7 +76,6 @@ function load(page: Partial<ApiKeysPageData>, readOnly = false) {
 	const data: ApiKeysPageData = {
 		organization: { id: "org-1", name: "Acme", role: "admin" },
 		canManage: true,
-		canIssueForBrand: true,
 		keys: [],
 		brands: BRANDS,
 		expiryOptions: [30, 90, 180, 365],

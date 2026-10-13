@@ -73,7 +73,8 @@ function ApiKeysSettingsPage() {
 					<IconAlertTriangle />
 					<AlertTitle>Limited Access</AlertTitle>
 					<AlertDescription className="text-yellow-700">
-						Only organization admins can issue or revoke keys.
+						Only organization admins can issue keys for several or all brands, or revoke keys someone else issued. You
+						can issue a key for a single brand from that brand's API Keys settings.
 					</AlertDescription>
 				</Alert>
 			)}
@@ -129,5 +130,5 @@ function ApiKeysSettingsPage() {
 function emptyDescription({ canManage, readOnly }: { canManage: boolean; readOnly: boolean }): string {
 	if (readOnly) return "Keys can't be issued in demo mode.";
 	if (canManage) return "Issue one to call the REST API or connect an MCP client.";
-	return "An organization admin can issue one.";
+	return "An organization admin can issue one, or you can issue one for a single brand from its settings.";
 }
