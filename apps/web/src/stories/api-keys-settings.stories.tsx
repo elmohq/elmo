@@ -176,18 +176,15 @@ export const NonAdmin: Story = {
 	},
 };
 
-export const FilteredToBrand: Story = {
+export const LinkedFromBrand: Story = {
 	render: () => {
 		load({ keys: KEYS, canManage: true }, false, { brand: "brand-1" });
 		return <ApiKeysSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// Keys for every brand reach it too; one for other brands does not.
-		await expect(await canvas.findByText("Reporting pipeline")).toBeVisible();
-		await expect(await canvas.findByText("Claude Code (MCP)")).toBeVisible();
-		await expect(canvas.queryByText("Old dashboard export")).toBeNull();
-		// A key issued from here starts out narrowed to the brand being looked at.
+		// Every key stays listed; the brand only seeds a new key's reach.
+		await expect(await canvas.findByText("Old dashboard export")).toBeVisible();
 		await userEvent.click(await canvas.findByRole("button", { name: "Add Key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(await dialog.findByRole("tab", { name: "Specific brands" })).toHaveAttribute("aria-selected", "true");

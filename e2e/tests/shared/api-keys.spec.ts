@@ -122,8 +122,8 @@ test.describe("API keys", () => {
   test("a key issued from a brand's settings link reaches that brand and no other", async ({ page, request }, testInfo) => {
     test.skip(testInfo.project.name === "demo", "demo refuses every write; covered by the Bruno demo suite");
 
-    // Where the brand sidebar's API Keys entry lands: the list filtered to it,
-    // and a new key narrowed to it unless changed.
+    // Where the brand sidebar's API Keys entry lands: a new key is narrowed to
+    // that brand unless changed.
     await page.goto(`${KEYS_PAGE}?brand=${TEST_BRAND_ID}`, { waitUntil: "networkidle" });
     await expect(page.getByRole("heading", { name: "API Keys" })).toBeVisible();
 

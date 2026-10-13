@@ -5,7 +5,7 @@
  * what would be refused.
  */
 import { IconAlertTriangle, IconCircleCheck, IconKey, IconPlus, IconX } from "@tabler/icons-react";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { orgLinkParams } from "@workspace/lib/app-urls";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
@@ -60,8 +60,8 @@ import {
 
 type Brand = ApiKeysPageData["brands"][number];
 
-/** `brand` narrows the list to keys that reach it, and is what a brand's own
- * settings link here with. */
+/** `brand` is what a brand's own settings link here with: a new key starts out
+ * narrowed to it. */
 type ApiKeysSearch = { brand?: string };
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/api-keys")({
@@ -79,8 +79,6 @@ const ACCESS_LABELS: Record<ApiKeyAccess, string> = {
 	read: "Read",
 	write: "Read/Write",
 };
-
-const ALL_BRANDS = "all";
 
 function formatDate(value: string | null, empty = "—"): string {
 	return value
@@ -103,14 +101,9 @@ function inactiveReason(key: ApiKeySummary): string {
 	return `Expired ${formatDate(key.expiresAt)}`;
 }
 
-function reaches(key: ApiKeySummary, brandId: string): boolean {
-	return key.brandIds === null || key.brandIds.includes(brandId);
-}
-
 function ApiKeysSettingsPage() {
 	const { keys, brands, expiryOptions, canManage: isKeyAdmin, organization } = Route.useLoaderData();
 	const search = Route.useSearch();
-	const navigate = useNavigate({ from: Route.fullPath });
 	const readOnly = useDeploymentFeatures()?.readOnly ?? false;
 	const linkParams = orgLinkParams(useOrganization());
 	const router = useRouter();
@@ -126,12 +119,10 @@ function ApiKeysSettingsPage() {
 		await router.invalidate();
 	}
 
-	// An id that names no brand here filters nothing rather than hiding every key.
-	const brandFilter = brands.some((brand) => brand.id === search.brand) ? search.brand : undefined;
+	const linkedBrand = brands.some((brand) => brand.id === search.brand) ? search.brand : undefined;
 	const brandNames = new Map(brands.map((brand) => [brand.id, brand.name]));
-	const shown = brandFilter ? keys.filter((key) => reaches(key, brandFilter)) : keys;
-	const active = shown.filter(isActive);
-	const inactive = shown.filter((key) => !isActive(key));
+	const active = keys.filter(isActive);
+	const inactive = keys.filter((key) => !isActive(key));
 	// Every member may issue a key for one brand, so there is something to issue
 	// as long as the organization has a brand or the viewer is an admin.
 	const openCreate = !readOnly && (isKeyAdmin || brands.length > 0) ? () => setCreatingOpen(true) : undefined;
@@ -171,21 +162,12 @@ function ApiKeysSettingsPage() {
 			<section className="space-y-3">
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<h2 className="text-lg font-semibold">Active</h2>
-					<div className="flex items-center gap-2">
-						{brands.length > 1 && (
-							<BrandFilter
-								brands={brands}
-								value={brandFilter}
-								onChange={(brand) => navigate({ search: { brand }, replace: true })}
-							/>
-						)}
-						{openCreate && (
-							<Button type="button" size="sm" onClick={openCreate}>
-								<IconPlus className="size-4" />
-								Add Key
-							</Button>
-						)}
-					</div>
+					{openCreate && (
+						<Button type="button" size="sm" onClick={openCreate}>
+							<IconPlus className="size-4" />
+							Add Key
+						</Button>
+					)}
 				</div>
 
 				{active.length === 0 ? (
@@ -220,7 +202,7 @@ function ApiKeysSettingsPage() {
 						organizationId={organization.id}
 						brands={brands}
 						canManage={isKeyAdmin}
-						initialBrandId={brandFilter}
+						initialBrandId={linkedBrand}
 						expiryOptions={expiryOptions}
 						onCreated={handleCreated}
 						onCancel={() => setCreatingOpen(false)}
@@ -239,36 +221,6 @@ function emptyDescription({ canCreate, readOnly }: { canCreate: boolean; readOnl
 	return "Add a brand first, then issue a key for it.";
 }
 
-function BrandFilter({
-	brands,
-	value,
-	onChange,
-}: {
-	brands: Brand[];
-	value: string | undefined;
-	onChange: (brandId: string | undefined) => void;
-}) {
-	return (
-		<Select
-			items={{ [ALL_BRANDS]: "All brands", ...Object.fromEntries(brands.map((brand) => [brand.id, brand.name])) }}
-			value={value ?? ALL_BRANDS}
-			onValueChange={(next) => onChange(next && next !== ALL_BRANDS ? next : undefined)}
-		>
-			<SelectTrigger size="sm" aria-label="Filter by brand" className="w-48">
-				<SelectValue />
-			</SelectTrigger>
-			<SelectContent>
-				<SelectItem value={ALL_BRANDS}>All brands</SelectItem>
-				{brands.map((brand) => (
-					<SelectItem key={brand.id} value={brand.id}>
-						{brand.name}
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
-	);
-}
-
 function CreateKeyForm({
 	organizationId,
 	brands,
@@ -282,7 +234,7 @@ function CreateKeyForm({
 	brands: Brand[];
 	/** Admins choose any reach; everyone else issues for one brand. */
 	canManage: boolean;
-	/** The brand the list is filtered to, which is the likeliest one wanted. */
+	/** The brand the viewer arrived from, which is the likeliest one wanted. */
 	initialBrandId: string | undefined;
 	expiryOptions: readonly number[];
 	onCreated: (key: string) => void;
