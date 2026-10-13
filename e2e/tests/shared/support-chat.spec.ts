@@ -36,10 +36,14 @@ test.describe("Support chat", () => {
         loaderScripts: document.querySelectorAll('script[src*="crisp.chat"]').length,
       }));
 
+    const supportButton = page.getByRole("banner").getByRole("button", { name: /^Support chat/ });
+
     if (mode === "cloud" || mode === "demo") {
       await expect.poll(readLoader, { timeout: 15_000 }).toEqual({ websiteId: expect.any(String), loaderScripts: 1 });
+      await expect(supportButton).toBeVisible();
     } else {
       expect(await readLoader()).toEqual({ websiteId: null, loaderScripts: 0 });
+      await expect(supportButton).toHaveCount(0);
       expect(requestedCrisp, "a deployment we do not operate must not call Crisp").toBe(false);
     }
   });

@@ -86,9 +86,8 @@ function ResponsesPage() {
 		content = <EmptyState message={`No responses contain "${data.query}" in this period.`} />;
 	} else {
 		content = (
-			// Bottom padding keeps the pager clear of the floating support chat button.
 			<div
-				className={`space-y-4 pb-20 transition-opacity ${isPlaceholderData ? "opacity-50" : ""}`}
+				className={`space-y-4 transition-opacity ${isPlaceholderData ? "opacity-50" : ""}`}
 				aria-busy={isPlaceholderData}
 			>
 				{data.matches.map((match) => (

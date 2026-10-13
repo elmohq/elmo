@@ -8,7 +8,8 @@ type CrispCommand = unknown[];
 
 declare global {
 	interface Window {
-		$crisp?: CrispCommand[];
+		// Once loaded, Crisp swaps the queue for its own object, which can also be read from.
+		$crisp?: CrispCommand[] & { get?: (key: string) => unknown };
 		CRISP_WEBSITE_ID?: string;
 	}
 }
@@ -43,8 +44,35 @@ interface CrispUser {
 	name?: string;
 }
 
+export interface CrispChatState {
+	available: boolean;
+	unread: number;
+}
+
 let loadedMode: DeploymentMode | null = null;
 let pendingUser: CrispUser | null = null;
+let chatOpen = false;
+let chatState: CrispChatState = { available: false, unread: 0 };
+const chatListeners = new Set<() => void>();
+const SERVER_CHAT_STATE: CrispChatState = { available: false, unread: 0 };
+
+function setChatState(next: Partial<CrispChatState>): void {
+	chatState = { ...chatState, ...next };
+	for (const listener of chatListeners) listener();
+}
+
+export function subscribeCrispChat(listener: () => void): () => void {
+	chatListeners.add(listener);
+	return () => chatListeners.delete(listener);
+}
+
+export function getCrispChatState(): CrispChatState {
+	return chatState;
+}
+
+export function getServerCrispChatState(): CrispChatState {
+	return SERVER_CHAT_STATE;
+}
 
 function push(command: CrispCommand): void {
 	if (typeof window === "undefined") return;
@@ -66,7 +94,7 @@ export function initCrisp(websiteId: string | undefined, mode: DeploymentMode): 
 
 	push(["set", "session:segments", [[mode]]]);
 	setSessionData([["deployment_mode", mode], ...(mode === "demo" ? DEMO_SESSION_DATA : [])]);
-	if (mode === "demo") showDemoNextStepsOnOpen();
+	replaceFloatingLauncher(mode);
 
 	const pending = pendingUser;
 	pendingUser = null;
@@ -76,22 +104,71 @@ export function initCrisp(websiteId: string | undefined, mode: DeploymentMode): 
 	script.src = CRISP_SCRIPT_URL;
 	script.async = true;
 	document.head.appendChild(script);
+	setChatState({ available: true });
 }
 
-// `message:show` renders locally only, so this never lands in the inbox as an
-// unanswered conversation.
-function showDemoNextStepsOnOpen(): void {
-	let offered = false;
+/**
+ * Crisp's floating launcher sat on top of whatever pages put bottom-right, so it
+ * stays hidden and the header's support button opens the chatbox instead. With
+ * no launcher to badge, replies that land while the chat is closed are counted
+ * here for the button to show.
+ */
+function replaceFloatingLauncher(mode: DeploymentMode): void {
+	const offerDemoNextSteps = mode === "demo" ? demoNextStepsOffer() : null;
+
+	push(["do", "chat:hide"]);
+	// Crisp keeps one handler per event, so everything that reacts to opening lives in this one.
 	push([
 		"on",
 		"chat:opened",
 		() => {
-			if (offered) return;
-			offered = true;
-			push(["do", "message:show", ["text", DEMO_GREETING]]);
-			push(["do", "message:show", ["text", DEMO_NEXT_STEPS]]);
+			chatOpen = true;
+			setChatState({ unread: 0 });
+			offerDemoNextSteps?.();
 		},
 	]);
+	push([
+		"on",
+		"chat:closed",
+		() => {
+			chatOpen = false;
+			push(["do", "chat:hide"]);
+		},
+	]);
+	push([
+		"on",
+		"message:received",
+		() => {
+			if (!chatOpen) setChatState({ unread: chatState.unread + 1 });
+		},
+	]);
+	// Picks up replies that arrived while the visitor was on another page or away.
+	push([
+		"on",
+		"session:loaded",
+		() => {
+			const unread = Number(window.$crisp?.get?.("chat:unread:count") ?? 0);
+			if (!chatOpen && unread > 0) setChatState({ unread });
+		},
+	]);
+}
+
+export function openCrispChat(): void {
+	if (!loadedMode) return;
+	push(["do", "chat:show"]);
+	push(["do", "chat:open"]);
+}
+
+// `message:show` renders locally only, so this never lands in the inbox as an
+// unanswered conversation.
+function demoNextStepsOffer(): () => void {
+	let offered = false;
+	return () => {
+		if (offered) return;
+		offered = true;
+		push(["do", "message:show", ["text", DEMO_GREETING]]);
+		push(["do", "message:show", ["text", DEMO_NEXT_STEPS]]);
+	};
 }
 
 /**
@@ -116,5 +193,6 @@ export function identifyCrispUser(user: CrispUser): void {
 export function resetCrispSession(): void {
 	pendingUser = null;
 	if (!loadedMode) return;
+	setChatState({ unread: 0 });
 	push(["do", "session:reset"]);
 }
