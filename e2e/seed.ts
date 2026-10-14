@@ -198,6 +198,15 @@ async function seedOpportunities(client: pg.Client): Promise<void> {
   console.log(`  Created 1 opportunities report (${report.opportunities.length} opportunities)`);
 }
 
+/** A seeded run's derived rows, unstamped like a migrated run's: `prompt_runs` holds only what the provider returned. */
+async function insertDerived(client: pg.Client, runId: string, brandMentioned: boolean, competitorsMentioned: string[]) {
+  await client.query("INSERT INTO run_extractions (run_id) VALUES ($1)", [runId]);
+  await client.query(
+    "INSERT INTO run_mentions (run_id, brand_mentioned, competitors_mentioned) VALUES ($1, $2, $3)",
+    [runId, brandMentioned, competitorsMentioned],
+  );
+}
+
 async function seed(connectionString: string) {
   const client = new pg.Client({ connectionString });
   await client.connect();
@@ -467,8 +476,8 @@ async function seed(connectionString: string) {
 
     for (const run of promptRuns) {
       await client.query(
-        `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, version, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, version, web_search_enabled, raw_output, web_queries, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           run.id,
           run.promptId,
@@ -478,11 +487,10 @@ async function seed(connectionString: string) {
           run.webSearchEnabled,
           JSON.stringify(run.rawOutput),
           run.webQueries,
-          run.brandMentioned,
-          run.competitorsMentioned,
           run.createdAt,
         ]
       );
+      await insertDerived(client, run.id, run.brandMentioned, run.competitorsMentioned);
     }
     console.log(`  Created ${promptRuns.length} prompt runs (Postgres)`);
 
@@ -596,10 +604,11 @@ async function seed(connectionString: string) {
 
     const nikeRunId = "00000000-0000-0000-0000-420000000001";
     await client.query(
-      `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, provider, version, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)
-       VALUES ($1, $2, $3, 'chatgpt', 'brightdata', 'gpt-5-5', true, $4, $5, true, $6, NOW())`,
-      [nikeRunId, NIKE_PROMPT_IDS.training, NIKE_BRAND_ID, JSON.stringify({ response: "Nike Metcon and Romaleos are top picks; Adidas Powerlift is an alternative." }), ["best weightlifting shoes"], ["Adidas"]],
+      `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, provider, version, web_search_enabled, raw_output, web_queries, created_at)
+       VALUES ($1, $2, $3, 'chatgpt', 'brightdata', 'gpt-5-5', true, $4, $5, NOW())`,
+      [nikeRunId, NIKE_PROMPT_IDS.training, NIKE_BRAND_ID, JSON.stringify({ response: "Nike Metcon and Romaleos are top picks; Adidas Powerlift is an alternative." }), ["best weightlifting shoes"]],
     );
+    await insertDerived(client, nikeRunId, true, ["Adidas"]);
     for (const [i, cite] of [
       { url: "https://runrepeat.com/best-weightlifting-shoes", domain: "runrepeat.com", title: "Best Weightlifting Shoes" },
       { url: "https://www.nike.com/training", domain: "nike.com", title: "Nike Training" },

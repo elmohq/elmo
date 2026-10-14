@@ -200,7 +200,7 @@ export async function getDashboardSummary(
 			round(count(*) FILTER (WHERE brand_mentioned) * 100.0 / NULLIF(count(*), 0), 0)::int AS avg_visibility,
 			round(count(*) FILTER (WHERE brand_mentioned) * 100.0 / NULLIF(count(*), 0), 0)::int AS non_branded_visibility,
 			to_char(max(created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_updated
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -230,7 +230,7 @@ export async function getPerPromptVisibilityTimeSeries(
 			(created_at AT TIME ZONE ${timezone})::date AS date,
 			count(*)::int AS total_runs,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -316,7 +316,7 @@ export async function getVisibilityDailyAggregate(
 					(created_at AT TIME ZONE ${timezone})::date AS obs_date,
 					count(*)::int AS total_runs,
 					count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-				FROM prompt_runs
+				FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 				WHERE brand_id = ${brandId}
 					AND prompt_id IN (${uuidList(enabledPromptIds)})
 					AND created_at >= ${windowStart(fromDate, timezone)}
@@ -458,7 +458,7 @@ export async function getVisibilityTimeSeries(
 			count(*)::int AS total_runs,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
 			${isBranded} AS is_branded
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -479,7 +479,7 @@ export async function getPromptsFirstEvaluatedAt(
 		SELECT
 			prompt_id,
 			min(created_at) AS first_evaluated_at
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 			AND prompt_id IN (${uuidList(promptIds)})
 		GROUP BY prompt_id
@@ -504,7 +504,7 @@ export async function getPromptsSummary(
 			(count(*) FILTER (WHERE array_length(competitors_mentioned, 1) > 0)::float / NULLIF(count(*), 0)) AS competitor_mention_rate,
 			(count(*) FILTER (WHERE brand_mentioned) * 2 + COALESCE(sum(array_length(competitors_mentioned, 1)), 0))::int AS total_weighted_mentions,
 			max((created_at AT TIME ZONE ${timezone})::date) AS last_run_date
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${webSearchFilter(webSearchEnabled)}
@@ -537,7 +537,7 @@ export async function getPromptWebQueryCounts(
 			model,
 			web_query,
 			count(*)::int AS query_count
-		FROM prompt_runs, unnest(web_queries) AS web_query
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id, unnest(web_queries) AS web_query
 		WHERE prompt_id = ${promptId}
 			AND array_length(web_queries, 1) > 0
 			AND lower(btrim(web_query)) <> ${UNAVAILABLE_SENTINEL}
@@ -658,7 +658,7 @@ export async function getPromptMentionSummary(
 			count(*)::int AS total_runs,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
 			COALESCE(sum(array_length(competitors_mentioned, 1)), 0)::int AS competitor_mentioned_count
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE prompt_id = ${promptId}
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
@@ -677,7 +677,7 @@ export async function getPromptTopCompetitorMentions(
 		SELECT
 			competitor_name,
 			count(DISTINCT pr.id)::int AS mention_count
-		FROM prompt_runs pr, unnest(pr.competitors_mentioned) AS competitor_name
+		FROM prompt_runs pr JOIN run_mentions rm ON rm.run_id = pr.id, unnest(rm.competitors_mentioned) AS competitor_name
 		WHERE pr.prompt_id = ${promptId}
 			AND pr.created_at >= ${windowStart(fromDate, timezone)}
 			AND pr.created_at < ${windowEnd(toDate, timezone)}
@@ -773,7 +773,7 @@ export async function getPerPromptRunStats(
 			count(DISTINCT (created_at AT TIME ZONE ${timezone})::date)::int AS run_days,
 			round(avg(CASE WHEN brand_mentioned THEN 1 ELSE 0 END)::numeric, 4)::float AS brand_mention_rate,
 			round(avg(CASE WHEN cardinality(competitors_mentioned) > 0 THEN 1 ELSE 0 END)::numeric, 4)::float AS competitor_mention_rate
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -803,7 +803,7 @@ export async function getBrandMentionTotals(
 			count(*)::int AS total_runs,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_runs,
 			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_prompts
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -837,7 +837,7 @@ export async function getPerPromptDailyMentions(
 			(created_at AT TIME ZONE ${timezone})::date::text AS date,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentions,
 			COALESCE(sum(cardinality(competitors_mentioned)), 0)::int AS competitor_mentions
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -881,12 +881,12 @@ export async function getPromptRuns(
 			prompt_runs.model,
 			prompt_runs.provider,
 			prompt_runs.web_search_enabled,
-			prompt_runs.brand_mentioned,
-			prompt_runs.competitors_mentioned,
+			run_mentions.brand_mentioned,
+			run_mentions.competitors_mentioned,
 			prompt_runs.web_queries,
 			(SELECT count(*) FROM citations c WHERE c.prompt_run_id = prompt_runs.id)::int AS citation_count,
 			prompt_runs.created_at
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE prompt_id = ${promptId}::uuid
 			${dateFilter(fromDate, toDate, timezone)}
 			${modelFilter(model)}
@@ -904,7 +904,7 @@ export async function countPromptRuns(
 ): Promise<number> {
 	const rows = await queryPg<{ total: number }>(sql`
 		SELECT count(*)::int AS total
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE prompt_id = ${promptId}::uuid
 			${dateFilter(fromDate, toDate, timezone)}
 			${modelFilter(model)}
@@ -941,7 +941,7 @@ export async function getPerPromptDailyCompetitorMentions(
 			(created_at AT TIME ZONE ${timezone})::date::text AS date,
 			competitor,
 			count(*)::int AS mentions
-		FROM prompt_runs, unnest(competitors_mentioned) AS competitor
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id, unnest(competitors_mentioned) AS competitor
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -1052,7 +1052,7 @@ export async function getBrandMentionRateByModel(
 			model,
 			count(*)::int AS runs,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -1104,7 +1104,7 @@ export async function getBatchChartData(
 				(created_at AT TIME ZONE ${timezone})::date AS date,
 				count(*)::int AS total_runs,
 				count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-			FROM prompt_runs
+			FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 			WHERE brand_id = ${brandId}
 				AND prompt_id IN (${uuidList(promptIds)})
 				${dateFilter(fromDate, toDate, timezone)}
@@ -1124,7 +1124,7 @@ export async function getBatchChartData(
 				(created_at AT TIME ZONE ${timezone})::date AS date,
 				competitor_name,
 				count(*)::int AS mention_count
-			FROM prompt_runs, unnest(competitors_mentioned) AS competitor_name
+			FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id, unnest(competitors_mentioned) AS competitor_name
 			WHERE brand_id = ${brandId}
 				AND prompt_id IN (${uuidList(promptIds)})
 				${dateFilter(fromDate, toDate, timezone)}
@@ -1197,8 +1197,10 @@ export async function getFanoutBreakdown(
 			pr.model,
 			fq.query,
 			count(*)::int AS count,
-			count(*) FILTER (WHERE pr.brand_mentioned)::int AS brand_mentions
+			count(*) FILTER (WHERE rm.brand_mentioned)::int AS brand_mentions
 		FROM prompt_runs pr
+		JOIN run_mentions rm ON rm.run_id = pr.id
+		JOIN run_extractions re ON re.run_id = pr.id
 		JOIN prompts p ON p.id = pr.prompt_id
 		CROSS JOIN LATERAL (
 			SELECT DISTINCT lower(btrim(wq)) AS query FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
@@ -1235,6 +1237,8 @@ export async function getFanoutModelTotals(
 			count(*) FILTER (WHERE fq.cnt > 0)::int AS fanout_runs,
 			COALESCE(sum(fq.cnt), 0)::int AS total_queries
 		FROM prompt_runs pr
+		JOIN run_mentions rm ON rm.run_id = pr.id
+		JOIN run_extractions re ON re.run_id = pr.id
 		JOIN prompts p ON p.id = pr.prompt_id
 		CROSS JOIN LATERAL (
 			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
@@ -1268,6 +1272,8 @@ export async function getFanoutPromptTotals(
 			pr.prompt_id,
 			count(*) FILTER (WHERE fq.cnt > 0)::int AS runs
 		FROM prompt_runs pr
+		JOIN run_mentions rm ON rm.run_id = pr.id
+		JOIN run_extractions re ON re.run_id = pr.id
 		JOIN prompts p ON p.id = pr.prompt_id
 		CROSS JOIN LATERAL (
 			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
@@ -1355,13 +1361,15 @@ export async function getResponseMatches(
 			pr.provider,
 			pr.version,
 			pr.web_queries,
-			pr.brand_mentioned,
-			pr.competitors_mentioned,
+			rm.brand_mentioned,
+			rm.competitors_mentioned,
 			pr.raw_output,
-			pr.text_content,
+			re.text_content,
 			pr.created_at,
 			count(*) OVER ()::int AS matched
 		FROM prompt_runs pr
+		JOIN run_mentions rm ON rm.run_id = pr.id
+		JOIN run_extractions re ON re.run_id = pr.id
 		WHERE ${responseScopeFilter(scope)} AND ${responseMatch(scope)}
 		ORDER BY pr.created_at DESC, pr.id
 		LIMIT ${limit} OFFSET ${offset}

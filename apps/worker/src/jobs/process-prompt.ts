@@ -1,10 +1,11 @@
 import * as Sentry from "@sentry/node";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
-import { currentAnalysisVersions } from "@workspace/lib/analysis-versions";
+import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspace/lib/analysis-versions";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
+import { insertRuns } from "@workspace/lib/db/runs";
 import { type Brand, brands, citations, competitors, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
@@ -189,18 +190,6 @@ async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): P
 	return Number(row?.value ?? 0) >= ceiling;
 }
 
-async function savePromptRun(
-	conn: DbConnection,
-	input: typeof promptRuns.$inferInsert,
-): Promise<{ id: string; createdAt: Date }> {
-	const [result] = await conn
-		.insert(promptRuns)
-		.values(input)
-		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
-
-	return result;
-}
-
 async function saveCitations(
 	conn: DbConnection,
 	promptRunId: string,
@@ -295,21 +284,23 @@ async function runModelIteration({
 			// Read here rather than at the start of the cycle: a config edit made while the
 			// provider call ran would otherwise be stamped onto this run as current.
 			const mentionConfig = await loadMentionConfig(tx, brand.id);
-			const { brandMentioned, competitorsMentioned } = analyzeRunMentions(text, mentionConfig);
-			const run = await savePromptRun(tx, {
-				promptId,
-				brandId: brand.id,
-				model: config.model,
-				provider: config.provider,
-				version: recordedVersion,
-				webSearchEnabled: config.webSearch,
-				rawOutput,
-				webQueries,
-				brandMentioned,
-				competitorsMentioned,
-				textContent: text,
-				analysisVersions: currentAnalysisVersions(mentionConfig),
-			});
+			const stamps = currentAnalysisVersions(mentionConfig);
+			const [run] = await insertRuns(tx, [
+				{
+					promptId,
+					brandId: brand.id,
+					model: config.model,
+					provider: config.provider,
+					version: recordedVersion,
+					webSearchEnabled: config.webSearch,
+					rawOutput,
+					webQueries,
+					textContent: text,
+					extractionStamp: stamps[EXTRACTION_KEY],
+					...analyzeRunMentions(text, mentionConfig),
+					mentionsStamp: stamps[MENTIONS_KEY],
+				},
+			]);
 			await saveCitations(tx, run.id, promptId, brand.id, config.model, extractedCitations, run.createdAt);
 			return run.id;
 		});

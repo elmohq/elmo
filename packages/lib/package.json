@@ -15,6 +15,7 @@
 		"./db/db": "./src/db/db.ts",
 		"./db/db-connection": "./src/db/db-connection.ts",
 		"./db/schema": "./src/db/schema.ts",
+		"./db/runs": "./src/db/runs.ts",
 		"./db/auth-sync": "./src/db/auth-sync.ts",
 		"./db/provisioning": "./src/db/provisioning.ts",
 		"./db/unique-names": "./src/db/unique-names.ts",

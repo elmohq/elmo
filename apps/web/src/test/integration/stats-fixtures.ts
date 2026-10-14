@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@workspace/lib/db/db";
+import { insertRuns } from "@workspace/lib/db/runs";
 import { brands, citations, competitors, organization, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -74,9 +75,8 @@ export async function createRun(
 ): Promise<FixtureRun> {
 	const model = opts.model ?? "chatgpt";
 	const createdAt = new Date(opts.at);
-	const [row] = await db
-		.insert(promptRuns)
-		.values({
+	const [row] = await insertRuns(db, [
+		{
 			promptId,
 			brandId,
 			model,
@@ -88,8 +88,8 @@ export async function createRun(
 			brandMentioned: opts.brandMentioned,
 			competitorsMentioned: opts.competitors ?? [],
 			createdAt,
-		})
-		.returning({ id: promptRuns.id });
+		},
+	]);
 	return { id: row.id, promptId, brandId, model, createdAt };
 }
 

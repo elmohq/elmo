@@ -283,9 +283,13 @@ export function latestVisibility(chartData: ChartDataPoint[], id: string): numbe
 	return point ? (point[id] as number) : null;
 }
 
-import type { Competitor, PromptRun } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
 
-type VisibilityRun = Pick<PromptRun, "createdAt" | "brandMentioned" | "competitorsMentioned">;
+interface VisibilityRun {
+	createdAt: Date | string;
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
+}
 
 export function calculateVisibilityPercentages(
 	promptRuns: VisibilityRun[],

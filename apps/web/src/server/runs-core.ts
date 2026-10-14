@@ -3,6 +3,7 @@
  * exposing that would make its shape part of this contract.
  */
 import { db } from "@workspace/lib/db/db";
+import { selectRuns } from "@workspace/lib/db/runs";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq } from "drizzle-orm";
@@ -73,9 +74,7 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 
 /** Addressed through its prompt, so a run id cannot be read under another. */
 export async function findRunDetail(promptId: string, runId: string): Promise<RunDetail | null> {
-	const [run] = await db
-		.select()
-		.from(promptRuns)
+	const [run] = await selectRuns(db)
 		.where(and(eq(promptRuns.id, runId), eq(promptRuns.promptId, promptId)))
 		.limit(1);
 	if (!run) return null;
