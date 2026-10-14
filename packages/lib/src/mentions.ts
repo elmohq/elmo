@@ -82,6 +82,7 @@ export function analyzeRunMentions(
 	return analyzeMentions(textContent ?? "", config.brand, config.competitors);
 }
 
+/** Matching trims, ignores case and skips empty terms, so the stamp does too. */
 function canonicalTerms(terms: readonly string[]): string[] {
 	return [...new Set(terms.map((term) => term.trim().toLowerCase()).filter(Boolean))].sort();
 }
@@ -95,7 +96,7 @@ function canonicalDomains(domains: readonly string[]): string[] {
  * from. Configs that match the same text stamp alike, so reordering competitors
  * or recasing an alias doesn't reprocess a brand's whole history. Competitor
  * names are the exception: they're stored verbatim in `competitors_mentioned`
- * and key the rollups, so a rename must restamp even when only the case changed.
+ * and key the rollups, so a rename must restamp even when only case or whitespace changed.
  */
 export function mentionsStamp(config: MentionConfig): string {
 	const fingerprint = JSON.stringify({
@@ -104,7 +105,7 @@ export function mentionsStamp(config: MentionConfig): string {
 		competitors: config.competitors
 			.map((competitor) =>
 				JSON.stringify({
-					name: competitor.name.trim(),
+					name: competitor.name,
 					aliases: canonicalTerms(competitor.aliases),
 					domains: canonicalDomains(competitor.domains),
 				}),

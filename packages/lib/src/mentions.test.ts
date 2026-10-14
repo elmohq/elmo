@@ -99,7 +99,7 @@ describe("mentionsStamp", () => {
 		expect(mentionsStamp(reordered)).toBe(mentionsStamp(config));
 	});
 
-	it("survives a case or whitespace edit, which matching already ignores", () => {
+	it("survives a case, whitespace or URL-shape edit to a term, which matching already ignores", () => {
 		const recased: MentionConfig = {
 			brand: {
 				name: "ACME ",
@@ -107,17 +107,20 @@ describe("mentionsStamp", () => {
 				domains: ["https://WWW.acme.com", "https://acme.dev/", "Acme.io"],
 			},
 			competitors: [
-				{ name: "Globex ", aliases: ["globex inc "], domains: ["www.Globex.com"] },
-				{ name: " Initech", aliases: [], domains: ["https://initech.com/about"] },
+				{ name: "Globex", aliases: ["globex inc "], domains: ["www.Globex.com"] },
+				{ name: "Initech", aliases: [], domains: ["https://initech.com/about"] },
 			],
 		};
 		expect(mentionsStamp(recased)).toBe(mentionsStamp(config));
 	});
 
-	it("changes when a competitor is renamed, even only in case, since rollups key on the stored name", () => {
-		const recased = { ...config, competitors: [{ ...config.competitors[0], name: "GLOBEX" }, config.competitors[1]] };
-		expect(mentionsStamp(recased)).not.toBe(mentionsStamp(config));
-	});
+	it.each(["GLOBEX", "Globex "])(
+		"changes when a competitor is renamed to %j, since runs and rollups store the name verbatim",
+		(name) => {
+			const renamed = { ...config, competitors: [{ ...config.competitors[0], name }, config.competitors[1]] };
+			expect(mentionsStamp(renamed)).not.toBe(mentionsStamp(config));
+		},
+	);
 });
 
 describe("mentionConfigFrom", () => {
