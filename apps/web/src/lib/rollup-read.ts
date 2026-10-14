@@ -3,90 +3,63 @@
  * (quarter-hour buckets, refreshed about a minute behind the raw rows).
  */
 
-import { type SQL, sql } from "drizzle-orm";
-import {
-	modelFilter,
-	promptFilter,
-	queryPg,
-	uuidList,
-	webSearchFilter,
-	windowEnd,
-	windowFilter,
-	windowStart,
-} from "@/lib/analytics-sql";
-import type { ResponseSearchScope } from "@/lib/postgres-read";
+import { sql } from "drizzle-orm";
+import { type AnalyticsScope, isoInstant, localDate, queryPg, scopeFilter, uuidList } from "@/lib/analytics-sql";
 
-export interface DashboardSummary {
-	total_prompts: number;
-	total_runs: number;
-	avg_visibility: number;
-	non_branded_visibility: number;
-	last_updated: string | null;
+/** The run counts every run read selects, so a new rollup column reaches them all at once. */
+export interface RunSums {
+	runs: number;
+	brand_mentioned_runs: number;
+	/** Runs that mentioned any tracked competitor. */
+	competitor_runs: number;
+	/** Competitor mention instances, so a run naming two competitors counts twice. */
+	competitor_mentions: number;
 }
 
-export interface PromptSummary {
+export interface MentionTotals extends RunSums {
+	/** Runs that mentioned neither the brand nor any competitor. */
+	no_mention_runs: number;
+	/** Distinct prompts with a run in scope. */
+	prompts: number;
+	/** Distinct prompts in which the brand was mentioned at least once. */
+	brand_mentioned_prompts: number;
+	last_run_at: string | null;
+}
+
+export interface PerPromptDailyRuns extends RunSums {
 	prompt_id: string;
-	total_runs: number;
-	/** Fraction of runs in which the brand was mentioned, 0..1. */
-	brand_mention_rate: number;
-	/** Fraction of runs in which any tracked competitor was mentioned, 0..1. */
-	competitor_mention_rate: number;
-	total_weighted_mentions: number;
+	date: string;
+}
+
+export interface PerPromptDailyCompetitorRow {
+	prompt_id: string;
+	date: string;
+	competitor: string;
+	/** Runs that day (for this prompt) that mentioned the competitor. */
+	runs: number;
+}
+
+export interface CompetitorTotal {
+	competitor: string;
+	runs: number;
+}
+
+export interface PerPromptRunStats extends RunSums {
+	prompt_id: string;
+	/** Distinct days, in the scope's timezone, on which the prompt ran. */
+	run_days: number;
+	last_run_at: string | null;
+	/** The day of `last_run_at` in the scope's timezone. */
 	last_run_date: string | null;
+}
+
+export interface ModelRunSums extends RunSums {
+	model: string;
 }
 
 export interface PromptFirstEvaluatedAt {
 	prompt_id: string;
 	first_evaluated_at: string;
-}
-
-export interface CitationDomainStats {
-	domain: string;
-	count: number;
-	example_title: string | null;
-}
-
-export interface CitationUrlStats {
-	url: string;
-	domain: string;
-	title: string | null;
-	count: number;
-	avg_position: number | null;
-	prompt_count: number;
-}
-
-export interface PromptMentionSummary {
-	total_runs: number;
-	brand_mentioned_count: number;
-	competitor_mentioned_count: number;
-	/** Runs that mentioned neither the brand nor any competitor. */
-	no_mention_count: number;
-}
-
-export interface TopCompetitorMention {
-	competitor_name: string;
-	mention_count: number;
-}
-
-export interface DailyCitationStats {
-	date: string;
-	domain: string;
-	count: number;
-}
-
-export interface ProcessedBatchChartDataPoint {
-	prompt_id: string;
-	date: string;
-	total_runs: number;
-	brand_mentioned_count: number;
-	competitor_counts: Record<string, number>;
-}
-
-export interface PerPromptVisibilityPoint {
-	prompt_id: string;
-	date: string;
-	total_runs: number;
-	brand_mentioned_count: number;
 }
 
 export interface VisibilityDailyAggregate {
@@ -103,196 +76,159 @@ export interface VisibilityDailyAggregate {
 	lvcf_nonbranded_mentioned: number;
 }
 
-export interface PerPromptDailyCitationStats {
-	prompt_id: string;
-	date: string;
+export interface CitationUrlStats {
+	url: string;
 	domain: string;
+	title: string | null;
 	count: number;
-}
-
-export interface PerPromptRunStats {
-	prompt_id: string;
-	runs: number;
-	/** Distinct days on which this prompt was run (for the chosen model filter). */
-	run_days: number;
-	/** Fraction of runs in which the brand was mentioned, 0..1. */
-	brand_mention_rate: number;
-	/** Fraction of runs in which any tracked competitor was mentioned, 0..1. */
-	competitor_mention_rate: number;
-}
-
-export interface BrandMentionTotals {
-	total_runs: number;
-	brand_mentioned_runs: number;
-	/** Distinct prompts in which the brand was mentioned at least once. */
-	brand_mentioned_prompts: number;
-}
-
-export interface PerPromptDailyMentionRow {
-	prompt_id: string;
-	date: string;
-	/** Runs that day (for this prompt) mentioning the brand. */
-	brand_mentions: number;
-	/** Competitor mention instances that day (for this prompt). */
-	competitor_mentions: number;
-}
-
-export interface PerPromptDailyCompetitorRow {
-	prompt_id: string;
-	date: string;
-	competitor: string;
-	/** Competitor mention instances that day (for this prompt). */
-	mentions: number;
+	avg_position: number | null;
+	prompt_count: number;
 }
 
 export interface PerPromptCitationPageRow {
 	prompt_id: string;
 	url: string | null;
 	domain: string;
-	/** A representative cited page title for this URL (most recent non-null). */
 	title: string | null;
 	count: number;
 }
 
-export interface ModelMentionRateRow {
+export interface PerPromptDailyCitationDomainRow {
+	prompt_id: string;
+	date: string;
+	domain: string;
+	count: number;
+}
+
+export interface PerPromptDailyCitationClassRow {
+	prompt_id: string;
+	date: string;
+	domain: string;
+	static_category: string;
+	page_type: string;
+	count: number;
+}
+
+export interface CitationCountByModelRow {
 	model: string;
-	runs: number;
-	brand_mentioned_count: number;
+	count: number;
 }
 
-const rollupWindow = (fromDate: string | null, toDate: string | null, timezone: string): SQL =>
-	windowFilter(sql`bucket`, fromDate, toDate, timezone);
+/** A window over the full rollup span, read with an explicit list of prompts. */
+export type DailyScope = AnalyticsScope & { from: string; to: string; promptIds: string[] };
 
-export async function getDashboardSummary(
-	brandId: string,
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-	enabledPromptIds?: string[],
-): Promise<DashboardSummary[]> {
-	const rows = await queryPg<DashboardSummary>(sql`
+const rollupScope = (scope: AnalyticsScope, alias?: string) => scopeFilter(scope, { time: "bucket", alias });
+
+const runSums = sql`
+	coalesce(sum(runs), 0)::int AS runs,
+	coalesce(sum(brand_mentioned_runs), 0)::int AS brand_mentioned_runs,
+	coalesce(sum(competitor_runs), 0)::int AS competitor_runs,
+	coalesce(sum(competitor_mentions), 0)::int AS competitor_mentions`;
+
+export async function getMentionTotals(scope: AnalyticsScope): Promise<MentionTotals> {
+	const [row] = await queryPg<MentionTotals>(sql`
 		SELECT
-			count(DISTINCT prompt_id)::int AS total_prompts,
-			coalesce(sum(runs), 0)::int AS total_runs,
-			round(sum(brand_mentioned_runs) * 100.0 / NULLIF(sum(runs), 0), 0)::int AS avg_visibility,
-			round(sum(brand_mentioned_runs) * 100.0 / NULLIF(sum(runs), 0), 0)::int AS non_branded_visibility,
-			to_char(max(last_run_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_updated
+			${runSums},
+			coalesce(sum(no_mention_runs), 0)::int AS no_mention_runs,
+			count(DISTINCT prompt_id)::int AS prompts,
+			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned_runs > 0)::int AS brand_mentioned_prompts,
+			${isoInstant(sql`max(last_run_at)`)} AS last_run_at
 		FROM rollup_prompt_runs
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
+		WHERE ${rollupScope(scope)}
 	`);
-	return rows;
+	return row;
 }
 
-export async function getBrandEarliestRunDate(brandId: string): Promise<string | null> {
-	const rows = await queryPg<{ earliest_date: string | null }>(sql`
-		SELECT min(first_run_at) AS earliest_date
+export async function getPerPromptDailyRuns(scope: AnalyticsScope): Promise<PerPromptDailyRuns[]> {
+	return queryPg<PerPromptDailyRuns>(sql`
+		SELECT prompt_id, ${localDate(sql`bucket`, scope.timezone)} AS date, ${runSums}
 		FROM rollup_prompt_runs
-		WHERE brand_id = ${brandId}
+		WHERE ${rollupScope(scope)}
+		GROUP BY prompt_id, date
+		ORDER BY prompt_id, date
 	`);
-	return rows[0]?.earliest_date || null;
 }
 
-export async function getPromptsFirstEvaluatedAt(
-	brandId: string,
-	promptIds: string[],
-): Promise<PromptFirstEvaluatedAt[]> {
-	if (promptIds.length === 0) return [];
-	return queryPg<PromptFirstEvaluatedAt>(sql`
-		SELECT prompt_id, min(first_run_at) AS first_evaluated_at
+export async function getPerPromptDailyCompetitors(scope: AnalyticsScope): Promise<PerPromptDailyCompetitorRow[]> {
+	return queryPg<PerPromptDailyCompetitorRow>(sql`
+		SELECT
+			prompt_id,
+			${localDate(sql`bucket`, scope.timezone)} AS date,
+			competitor_name AS competitor,
+			sum(runs)::int AS runs
+		FROM rollup_competitor_mentions
+		WHERE ${rollupScope(scope)}
+		GROUP BY prompt_id, date, competitor
+		ORDER BY prompt_id, date, competitor
+	`);
+}
+
+export async function getCompetitorTotals(scope: AnalyticsScope, limit?: number): Promise<CompetitorTotal[]> {
+	return queryPg<CompetitorTotal>(sql`
+		SELECT competitor_name AS competitor, sum(runs)::int AS runs
+		FROM rollup_competitor_mentions
+		WHERE ${rollupScope(scope)}
+		GROUP BY competitor
+		ORDER BY runs DESC
+		LIMIT ${limit ?? null}
+	`);
+}
+
+export async function getPerPromptRunStats(scope: AnalyticsScope): Promise<PerPromptRunStats[]> {
+	return queryPg<PerPromptRunStats>(sql`
+		SELECT
+			prompt_id,
+			${runSums},
+			count(DISTINCT ${localDate(sql`bucket`, scope.timezone)})::int AS run_days,
+			${isoInstant(sql`max(last_run_at)`)} AS last_run_at,
+			${localDate(sql`max(last_run_at)`, scope.timezone)} AS last_run_date
 		FROM rollup_prompt_runs
-		WHERE brand_id = ${brandId}
-			AND prompt_id IN (${uuidList(promptIds)})
+		WHERE ${rollupScope(scope)}
 		GROUP BY prompt_id
 	`);
 }
 
-/** Every run a response search covers, matching its query or not. */
-export async function countResponses(scope: ResponseSearchScope): Promise<number> {
-	if (scope.promptIds.length === 0) return 0;
-	const rows = await queryPg<{ total: number }>(sql`
-		SELECT coalesce(sum(runs), 0)::int AS total
+export async function getRunsByModel(scope: AnalyticsScope): Promise<ModelRunSums[]> {
+	return queryPg<ModelRunSums>(sql`
+		SELECT model, ${runSums}
 		FROM rollup_prompt_runs
-		WHERE brand_id = ${scope.brandId}
-			${rollupWindow(scope.fromDate, scope.toDate, scope.timezone)}
-			${promptFilter(scope.promptIds)}
-			${modelFilter(scope.model)}
+		WHERE ${rollupScope(scope)}
+		GROUP BY model
+		ORDER BY runs DESC
 	`);
-	return rows[0]?.total ?? 0;
-}
-
-export async function getPerPromptVisibilityTimeSeries(
-	brandId: string,
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<PerPromptVisibilityPoint[]> {
-	const rows = await queryPg<PerPromptVisibilityPoint>(sql`
-		SELECT
-			prompt_id,
-			(bucket AT TIME ZONE ${timezone})::date AS date,
-			sum(runs)::int AS total_runs,
-			sum(brand_mentioned_runs)::int AS brand_mentioned_count
-		FROM rollup_prompt_runs
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY prompt_id, date
-		ORDER BY prompt_id, date
-	`);
-	return rows;
 }
 
 export async function getVisibilityDailyAggregate(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds: string[],
+	scope: DailyScope,
 	brandedPromptIds: string[],
-	model?: string,
 ): Promise<VisibilityDailyAggregate[]> {
-	if (enabledPromptIds.length === 0) return [];
+	if (scope.promptIds.length === 0) return [];
 
 	const brandedIdsRelation = brandedPromptIds.length
-		? sql`(SELECT unnest(ARRAY[${sql.join(
-				brandedPromptIds.map((id) => sql`${id}::uuid`),
-				sql`, `,
-			)}]::uuid[]) AS bid)`
+		? sql`(SELECT unnest(ARRAY[${uuidList(brandedPromptIds)}]::uuid[]) AS bid)`
 		: sql`(SELECT NULL::uuid AS bid WHERE FALSE)`;
 
-	const rows = await queryPg<VisibilityDailyAggregate>(sql`
+	return queryPg<VisibilityDailyAggregate>(sql`
 		WITH
 			date_range AS (
 				SELECT series::date AS day
-				FROM generate_series(${fromDate}::date, ${toDate}::date, interval '1 day') AS g(series)
+				FROM generate_series(${scope.from}::date, ${scope.to}::date, interval '1 day') AS g(series)
 			),
 			prompts_list AS (
 				SELECT
 					p.pid AS prompt_id,
 					bp.bid IS NOT NULL AS is_branded
-				FROM unnest(ARRAY[${sql.join(
-					enabledPromptIds.map((id) => sql`${id}::uuid`),
-					sql`, `,
-				)}]::uuid[]) AS p(pid)
+				FROM unnest(ARRAY[${uuidList(scope.promptIds)}]::uuid[]) AS p(pid)
 				LEFT JOIN ${brandedIdsRelation} bp ON bp.bid = p.pid
 			),
 			observations AS (
 				SELECT
 					prompt_id,
-					(bucket AT TIME ZONE ${timezone})::date AS obs_date,
+					${localDate(sql`bucket`, scope.timezone)} AS obs_date,
 					sum(runs)::int AS total_runs,
 					sum(brand_mentioned_runs)::int AS brand_mentioned_count
 				FROM rollup_prompt_runs
-				WHERE brand_id = ${brandId}
-					AND prompt_id IN (${uuidList(enabledPromptIds)})
-					AND bucket >= ${windowStart(fromDate, timezone)}
-					AND bucket < ${windowEnd(toDate, timezone)}
-					${modelFilter(model)}
+				WHERE ${rollupScope(scope)}
 				GROUP BY prompt_id, obs_date
 			),
 			first_obs AS (
@@ -348,108 +284,42 @@ export async function getVisibilityDailyAggregate(
 		GROUP BY date
 		ORDER BY date
 	`);
-	return rows;
 }
 
-export async function getCitationsTotalCount(
+export async function getBrandEarliestRunDate(brandId: string): Promise<string | null> {
+	const rows = await queryPg<{ earliest_date: string | null }>(sql`
+		SELECT min(first_run_at) AS earliest_date
+		FROM rollup_prompt_runs
+		WHERE brand_id = ${brandId}
+	`);
+	return rows[0]?.earliest_date || null;
+}
+
+export async function getPromptsFirstEvaluatedAt(
 	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<number> {
+	promptIds: string[],
+): Promise<PromptFirstEvaluatedAt[]> {
+	if (promptIds.length === 0) return [];
+	return queryPg<PromptFirstEvaluatedAt>(sql`
+		SELECT prompt_id, min(first_run_at) AS first_evaluated_at
+		FROM rollup_prompt_runs
+		WHERE brand_id = ${brandId}
+			AND prompt_id IN (${uuidList(promptIds)})
+		GROUP BY prompt_id
+	`);
+}
+
+export async function getCitationTotal(scope: AnalyticsScope): Promise<number> {
 	const rows = await queryPg<{ total: number }>(sql`
 		SELECT coalesce(sum(citations), 0)::int AS total
 		FROM rollup_citation_urls
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
+		WHERE ${rollupScope(scope)}
 	`);
 	return Number(rows[0]?.total ?? 0);
 }
 
-export async function getPromptsSummary(
-	brandId: string,
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-	webSearchEnabled?: boolean,
-	model?: string,
-	enabledPromptIds?: string[],
-): Promise<PromptSummary[]> {
-	const rows = await queryPg<PromptSummary>(sql`
-		SELECT
-			prompt_id,
-			sum(runs)::int AS total_runs,
-			(sum(brand_mentioned_runs)::float / NULLIF(sum(runs), 0)) AS brand_mention_rate,
-			(sum(competitor_runs)::float / NULLIF(sum(runs), 0)) AS competitor_mention_rate,
-			(sum(brand_mentioned_runs) * 2 + sum(competitor_mentions))::int AS total_weighted_mentions,
-			(max(last_run_at) AT TIME ZONE ${timezone})::date AS last_run_date
-		FROM rollup_prompt_runs
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${webSearchFilter(webSearchEnabled)}
-			${modelFilter(model)}
-			${promptFilter(enabledPromptIds)}
-		GROUP BY prompt_id
-		ORDER BY total_runs DESC
-	`);
-	return rows;
-}
-
-// `example_title` is the most-cited page's title, not the most recently cited one as in
-// the raw read: rollups hold bucket sums, not per-citation timestamps.
-export async function getCitationDomainStats(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<CitationDomainStats[]> {
-	// A function so each query site (CTE, lateral) gets its own SQL parameters.
-	const scope = () => sql`
-		${rollupWindow(fromDate, toDate, timezone)}
-		${promptFilter(enabledPromptIds)}
-		${modelFilter(model)}
-	`;
-	const rows = await queryPg<CitationDomainStats>(sql`
-		WITH domain_totals AS (
-			SELECT domain, sum(citations)::int AS count
-			FROM rollup_citation_urls
-			WHERE brand_id = ${brandId} ${scope()}
-			GROUP BY domain
-		)
-		SELECT
-			dt.domain AS domain,
-			dt.count AS count,
-			top_page.title AS example_title
-		FROM domain_totals dt
-		LEFT JOIN LATERAL (
-			SELECT cp.title
-			FROM rollup_citation_urls rcu
-			JOIN cited_pages cp ON cp.id = rcu.page_id
-			WHERE rcu.brand_id = ${brandId} ${scope()} AND rcu.domain = dt.domain
-			GROUP BY rcu.page_id, cp.title
-			ORDER BY sum(rcu.citations) DESC, rcu.page_id ASC
-			LIMIT 1
-		) top_page ON true
-		ORDER BY dt.count DESC
-	`);
-	return rows;
-}
-
-export async function getCitationUrlStats(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<CitationUrlStats[]> {
-	const rows = await queryPg<CitationUrlStats>(sql`
+export async function getCitationUrlStats(scope: AnalyticsScope): Promise<CitationUrlStats[]> {
+	return queryPg<CitationUrlStats>(sql`
 		SELECT
 			cp.url AS url,
 			cp.domain AS domain,
@@ -459,255 +329,24 @@ export async function getCitationUrlStats(
 			count(DISTINCT rcu.prompt_id)::int AS prompt_count
 		FROM rollup_citation_urls rcu
 		JOIN cited_pages cp ON cp.id = rcu.page_id
-		WHERE rcu.brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
+		WHERE ${rollupScope(scope, "rcu")}
 		GROUP BY rcu.page_id, cp.url, cp.domain, cp.title
 		ORDER BY count DESC
 	`);
-	return rows;
 }
 
-export async function getCitationDomainPromptCounts(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<Map<string, number>> {
+export async function getCitationDomainPromptCounts(scope: AnalyticsScope): Promise<Map<string, number>> {
 	const rows = await queryPg<{ domain: string; prompt_count: number }>(sql`
 		SELECT domain, count(DISTINCT prompt_id)::int AS prompt_count
 		FROM rollup_citation_urls
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
+		WHERE ${rollupScope(scope)}
 		GROUP BY domain
 	`);
 	return new Map(rows.map((row) => [row.domain, Number(row.prompt_count)]));
 }
 
-export async function getPromptCitationUrlStats(
-	promptId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-): Promise<CitationUrlStats[]> {
-	const rows = await queryPg<CitationUrlStats>(sql`
-		SELECT
-			cp.url AS url,
-			cp.domain AS domain,
-			cp.title AS title,
-			sum(rcu.citations)::int AS count,
-			round(sum(rcu.position_sum)::numeric / NULLIF(sum(rcu.citations), 0), 1)::float AS avg_position,
-			count(DISTINCT rcu.prompt_id)::int AS prompt_count
-		FROM rollup_citation_urls rcu
-		JOIN cited_pages cp ON cp.id = rcu.page_id
-		WHERE rcu.prompt_id = ${promptId}
-			${rollupWindow(fromDate, toDate, timezone)}
-		GROUP BY rcu.page_id, cp.url, cp.domain, cp.title
-		ORDER BY count DESC
-	`);
-	return rows;
-}
-
-export async function getPromptMentionSummary(
-	promptId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-): Promise<PromptMentionSummary> {
-	const rows = await queryPg<PromptMentionSummary>(sql`
-		SELECT
-			coalesce(sum(runs), 0)::int AS total_runs,
-			coalesce(sum(brand_mentioned_runs), 0)::int AS brand_mentioned_count,
-			coalesce(sum(competitor_mentions), 0)::int AS competitor_mentioned_count,
-			coalesce(sum(no_mention_runs), 0)::int AS no_mention_count
-		FROM rollup_prompt_runs
-		WHERE prompt_id = ${promptId}
-			${rollupWindow(fromDate, toDate, timezone)}
-	`);
-	return rows[0] || { total_runs: 0, brand_mentioned_count: 0, competitor_mentioned_count: 0, no_mention_count: 0 };
-}
-
-export async function getPromptTopCompetitorMentions(
-	promptId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	limit?: number,
-): Promise<TopCompetitorMention[]> {
-	const rows = await queryPg<TopCompetitorMention>(sql`
-		SELECT
-			competitor_name,
-			sum(runs)::int AS mention_count
-		FROM rollup_competitor_mentions
-		WHERE prompt_id = ${promptId}
-			${rollupWindow(fromDate, toDate, timezone)}
-		GROUP BY competitor_name
-		ORDER BY mention_count DESC
-		LIMIT ${limit ?? null}
-	`);
-	return rows;
-}
-
-export async function getDailyCitationStats(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<DailyCitationStats[]> {
-	const rows = await queryPg<DailyCitationStats>(sql`
-		SELECT
-			(bucket AT TIME ZONE ${timezone})::date AS date,
-			domain,
-			sum(citations)::int AS count
-		FROM rollup_citation_urls
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY date, domain
-		ORDER BY date
-	`);
-	return rows;
-}
-
-export async function getPerPromptDailyCitationStats(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<PerPromptDailyCitationStats[]> {
-	const rows = await queryPg<PerPromptDailyCitationStats>(sql`
-		SELECT
-			prompt_id,
-			(bucket AT TIME ZONE ${timezone})::date AS date,
-			domain,
-			sum(citations)::int AS count
-		FROM rollup_citation_urls
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY prompt_id, date, domain
-		ORDER BY prompt_id, date
-	`);
-	return rows;
-}
-
-export async function getPerPromptRunStats(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<PerPromptRunStats[]> {
-	const rows = await queryPg<PerPromptRunStats>(sql`
-		SELECT
-			prompt_id,
-			sum(runs)::int AS runs,
-			count(DISTINCT (bucket AT TIME ZONE ${timezone})::date)::int AS run_days,
-			round((sum(brand_mentioned_runs)::float / NULLIF(sum(runs), 0))::numeric, 4)::float AS brand_mention_rate,
-			round((sum(competitor_runs)::float / NULLIF(sum(runs), 0))::numeric, 4)::float AS competitor_mention_rate
-		FROM rollup_prompt_runs
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY prompt_id
-	`);
-	return rows;
-}
-
-export async function getBrandMentionTotals(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<BrandMentionTotals> {
-	const rows = await queryPg<BrandMentionTotals>(sql`
-		SELECT
-			coalesce(sum(runs), 0)::int AS total_runs,
-			coalesce(sum(brand_mentioned_runs), 0)::int AS brand_mentioned_runs,
-			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned_runs > 0)::int AS brand_mentioned_prompts
-		FROM rollup_prompt_runs
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
-	`);
-	return rows[0] ?? { total_runs: 0, brand_mentioned_runs: 0, brand_mentioned_prompts: 0 };
-}
-
-export async function getPerPromptDailyMentions(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<PerPromptDailyMentionRow[]> {
-	const rows = await queryPg<PerPromptDailyMentionRow>(sql`
-		SELECT
-			prompt_id,
-			(bucket AT TIME ZONE ${timezone})::date::text AS date,
-			sum(brand_mentioned_runs)::int AS brand_mentions,
-			sum(competitor_mentions)::int AS competitor_mentions
-		FROM rollup_prompt_runs
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY prompt_id, date
-		ORDER BY prompt_id, date
-	`);
-	return rows;
-}
-
-export async function getPerPromptDailyCompetitorMentions(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<PerPromptDailyCompetitorRow[]> {
-	const rows = await queryPg<PerPromptDailyCompetitorRow>(sql`
-		SELECT
-			prompt_id,
-			(bucket AT TIME ZONE ${timezone})::date::text AS date,
-			competitor_name AS competitor,
-			sum(runs)::int AS mentions
-		FROM rollup_competitor_mentions
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY prompt_id, date, competitor
-		ORDER BY prompt_id, date
-	`);
-	return rows;
-}
-
-export async function getPerPromptCitationPages(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<PerPromptCitationPageRow[]> {
-	const rows = await queryPg<PerPromptCitationPageRow>(sql`
+export async function getPerPromptCitationPages(scope: AnalyticsScope): Promise<PerPromptCitationPageRow[]> {
+	return queryPg<PerPromptCitationPageRow>(sql`
 		SELECT
 			rcu.prompt_id AS prompt_id,
 			cp.url AS url,
@@ -716,149 +355,26 @@ export async function getPerPromptCitationPages(
 			sum(rcu.citations)::int AS count
 		FROM rollup_citation_urls rcu
 		JOIN cited_pages cp ON cp.id = rcu.page_id
-		WHERE rcu.brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
+		WHERE ${rollupScope(scope, "rcu")}
 		GROUP BY rcu.prompt_id, rcu.page_id, cp.url, cp.domain, cp.title
 		ORDER BY rcu.prompt_id, count DESC
 	`);
-	return rows;
 }
 
-export async function getBrandMentionRateByModel(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<ModelMentionRateRow[]> {
-	const rows = await queryPg<ModelMentionRateRow>(sql`
+export async function getPerPromptDailyCitationDomains(
+	scope: AnalyticsScope,
+): Promise<PerPromptDailyCitationDomainRow[]> {
+	return queryPg<PerPromptDailyCitationDomainRow>(sql`
 		SELECT
-			model,
-			sum(runs)::int AS runs,
-			sum(brand_mentioned_runs)::int AS brand_mentioned_count
-		FROM rollup_prompt_runs
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY model
-		ORDER BY runs DESC
-	`);
-	return rows;
-}
-
-export async function getBatchChartData(
-	brandId: string,
-	promptIds: string[],
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-	webSearchEnabled?: boolean,
-	model?: string,
-): Promise<ProcessedBatchChartDataPoint[]> {
-	if (promptIds.length === 0) return [];
-
-	const [brandData, competitorData] = await Promise.all([
-		queryPg<{
-			prompt_id: string;
-			date: string;
-			total_runs: number;
-			brand_mentioned_count: number;
-		}>(sql`
-			SELECT
-				prompt_id,
-				(bucket AT TIME ZONE ${timezone})::date AS date,
-				sum(runs)::int AS total_runs,
-				sum(brand_mentioned_runs)::int AS brand_mentioned_count
-			FROM rollup_prompt_runs
-			WHERE brand_id = ${brandId}
-				AND prompt_id IN (${uuidList(promptIds)})
-				${rollupWindow(fromDate, toDate, timezone)}
-				${webSearchFilter(webSearchEnabled)}
-				${modelFilter(model)}
-			GROUP BY prompt_id, date
-			ORDER BY prompt_id, date
-		`),
-		queryPg<{
-			prompt_id: string;
-			date: string;
-			competitor_name: string;
-			mention_count: number;
-		}>(sql`
-			SELECT
-				prompt_id,
-				(bucket AT TIME ZONE ${timezone})::date AS date,
-				competitor_name,
-				sum(runs)::int AS mention_count
-			FROM rollup_competitor_mentions
-			WHERE brand_id = ${brandId}
-				AND prompt_id IN (${uuidList(promptIds)})
-				${rollupWindow(fromDate, toDate, timezone)}
-				${webSearchFilter(webSearchEnabled)}
-				${modelFilter(model)}
-			GROUP BY prompt_id, date, competitor_name
-			ORDER BY prompt_id, date, competitor_name
-		`),
-	]);
-
-	const competitorMap = new Map<string, Map<string, Record<string, number>>>();
-	for (const row of competitorData) {
-		const dateKey = String(row.date);
-		if (!competitorMap.has(row.prompt_id)) competitorMap.set(row.prompt_id, new Map());
-		const promptData = competitorMap.get(row.prompt_id)!;
-		if (!promptData.has(dateKey)) promptData.set(dateKey, {});
-		promptData.get(dateKey)![row.competitor_name] = Number(row.mention_count);
-	}
-
-	return brandData.map((row) => ({
-		prompt_id: row.prompt_id,
-		date: row.date,
-		total_runs: row.total_runs,
-		brand_mentioned_count: row.brand_mentioned_count,
-		competitor_counts: competitorMap.get(row.prompt_id)?.get(String(row.date)) || {},
-	}));
-}
-
-export interface CitationCountByModelRow {
-	model: string;
-	provider: string;
-	web_search_enabled: boolean;
-	count: number;
-}
-
-// Callers split grounded vs standard in JS, the same way `modelFilter` does.
-export async function getCitationsCountByModel(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-): Promise<CitationCountByModelRow[]> {
-	const rows = await queryPg<CitationCountByModelRow>(sql`
-		SELECT
-			model,
-			provider,
-			web_search_enabled,
+			prompt_id,
+			${localDate(sql`bucket`, scope.timezone)} AS date,
+			domain,
 			sum(citations)::int AS count
 		FROM rollup_citation_urls
-		WHERE brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-		GROUP BY model, provider, web_search_enabled
+		WHERE ${rollupScope(scope)}
+		GROUP BY prompt_id, date, domain
+		ORDER BY prompt_id, date
 	`);
-	return rows;
-}
-
-export interface PerPromptDailyCitationClassRow {
-	prompt_id: string;
-	date: string;
-	domain: string;
-	static_category: string;
-	page_type: string;
-	count: number;
 }
 
 // The page's stored classification, so a day's breakdown needs no per-URL rows.
@@ -866,29 +382,29 @@ export interface PerPromptDailyCitationClassRow {
 // domain override on top. The URL table classifies the same pages live, so the
 // two agree except while a classifier bump is still being reclassified.
 export async function getPerPromptDailyCitationClasses(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
+	scope: AnalyticsScope,
 ): Promise<PerPromptDailyCitationClassRow[]> {
-	const rows = await queryPg<PerPromptDailyCitationClassRow>(sql`
+	return queryPg<PerPromptDailyCitationClassRow>(sql`
 		SELECT
 			rcu.prompt_id,
-			(rcu.bucket AT TIME ZONE ${timezone})::date AS date,
+			${localDate(sql`rcu.bucket`, scope.timezone)} AS date,
 			rcu.domain,
 			cp.static_category,
 			cp.page_type,
 			sum(rcu.citations)::int AS count
 		FROM rollup_citation_urls rcu
 		JOIN cited_pages cp ON cp.id = rcu.page_id
-		WHERE rcu.brand_id = ${brandId}
-			${rollupWindow(fromDate, toDate, timezone)}
-			${promptFilter(enabledPromptIds)}
-			${modelFilter(model, { alias: "rcu" })}
+		WHERE ${rollupScope(scope, "rcu")}
 		GROUP BY rcu.prompt_id, date, rcu.domain, cp.static_category, cp.page_type
 		ORDER BY rcu.prompt_id, date
 	`);
-	return rows;
+}
+
+export async function getCitationsCountByModel(scope: AnalyticsScope): Promise<CitationCountByModelRow[]> {
+	return queryPg<CitationCountByModelRow>(sql`
+		SELECT model, sum(citations)::int AS count
+		FROM rollup_citation_urls
+		WHERE ${rollupScope(scope)}
+		GROUP BY model
+	`);
 }

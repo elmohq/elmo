@@ -2,9 +2,7 @@
 /**
  * Checks that rollup-read.ts returns the same results as the raw reference reads in
  * src/test/raw-analytics-reads.ts, and times both. Citation URL rows are folded through `rollUpCitationUrls` first
- * because raw rows are pre-fold. `getCitationDomainStats` compares only
- * `domain`/`count`: `example_title` intentionally answers a different question
- * once rollups are live ("most-cited page" vs "most recently cited").
+ * because raw rows are pre-fold.
  *
  * Usage (never loads .env; point it only at a throwaway database):
  *   cd apps/web
@@ -15,6 +13,7 @@ import { rollUpCitationUrls } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { sql } from "drizzle-orm";
 import { getBoundedLookbackRange } from "@/lib/timezone-utils";
+import type { DailyScope } from "../src/lib/rollup-read";
 import * as rollupRead from "../src/lib/rollup-read";
 import * as rawRead from "../src/test/raw-analytics-reads";
 
@@ -187,153 +186,49 @@ async function topBrands(limit: number): Promise<BrandCase[]> {
 
 async function compareWindow(brand: BrandCase, from: string, to: string, tz: string, model: string | undefined) {
 	const ctx = `${brand.brandId} ${from}..${to} ${tz} model=${model ?? "unset"}`;
-	const ids = brand.promptIds;
+	const scope: DailyScope = { brandId: brand.brandId, from, to, timezone: tz, promptIds: brand.promptIds, model };
+	const both = async <T>(
+		label: string,
+		read: (module: typeof rawRead | typeof rollupRead, scope: DailyScope) => Promise<T>,
+		canonicalize: (value: T) => string,
+	) =>
+		compare(
+			label,
+			ctx,
+			() => read(rawRead, scope),
+			() => read(rollupRead, scope),
+			canonicalize,
+		);
 
-	await compare(
-		"getDashboardSummary",
-		ctx,
-		() => rawRead.getDashboardSummary(brand.brandId, from, to, tz, ids),
-		() => rollupRead.getDashboardSummary(brand.brandId, from, to, tz, ids),
-		canonArray([]),
-	);
-	await compare(
-		"getPerPromptVisibilityTimeSeries",
-		ctx,
-		() => rawRead.getPerPromptVisibilityTimeSeries(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getPerPromptVisibilityTimeSeries(brand.brandId, from, to, tz, ids, model),
-		canonArray(["prompt_id", "date"]),
-	);
-	await compare(
-		"getVisibilityDailyAggregate",
-		ctx,
-		() => rawRead.getVisibilityDailyAggregate(brand.brandId, from, to, tz, ids, ids, model),
-		() => rollupRead.getVisibilityDailyAggregate(brand.brandId, from, to, tz, ids, ids, model),
-		canonArray(["date"]),
-	);
-	await compare(
-		"getCitationsTotalCount",
-		ctx,
-		() => rawRead.getCitationsTotalCount(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getCitationsTotalCount(brand.brandId, from, to, tz, ids, model),
-		canonOne,
-	);
-	await compare(
-		"getPromptsSummary",
-		ctx,
-		() => rawRead.getPromptsSummary(brand.brandId, from, to, tz, undefined, model, ids),
-		() => rollupRead.getPromptsSummary(brand.brandId, from, to, tz, undefined, model, ids),
-		canonArray(["prompt_id"]),
-	);
-	await compare(
-		"getCitationDomainStats",
-		ctx,
-		() => rawRead.getCitationDomainStats(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getCitationDomainStats(brand.brandId, from, to, tz, ids, model),
-		(rows) => canonArray(["domain"])(rows.map((r) => ({ domain: r.domain, count: r.count }))),
-	);
-	await compare(
-		"getCitationUrlStats",
-		ctx,
-		() => rawRead.getCitationUrlStats(brand.brandId, from, to, tz, ids, model).then(foldCitationUrlRows),
-		() => rollupRead.getCitationUrlStats(brand.brandId, from, to, tz, ids, model).then(foldCitationUrlRows),
-		canonArray(["url"]),
-	);
-	await compare(
-		"getCitationDomainPromptCounts",
-		ctx,
-		() => rawRead.getCitationDomainPromptCounts(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getCitationDomainPromptCounts(brand.brandId, from, to, tz, ids, model),
-		canonMap,
-	);
-	await compare(
-		"getDailyCitationStats",
-		ctx,
-		() => rawRead.getDailyCitationStats(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getDailyCitationStats(brand.brandId, from, to, tz, ids, model),
-		canonArray(["date", "domain"]),
-	);
-	await compare(
-		"getPerPromptDailyCitationStats",
-		ctx,
-		() => rawRead.getPerPromptDailyCitationStats(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getPerPromptDailyCitationStats(brand.brandId, from, to, tz, ids, model),
-		canonArray(["prompt_id", "date", "domain"]),
-	);
-	await compare(
-		"getPerPromptRunStats",
-		ctx,
-		() => rawRead.getPerPromptRunStats(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getPerPromptRunStats(brand.brandId, from, to, tz, ids, model),
-		canonArray(["prompt_id"]),
-	);
-	await compare(
-		"getBrandMentionTotals",
-		ctx,
-		() => rawRead.getBrandMentionTotals(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getBrandMentionTotals(brand.brandId, from, to, tz, ids, model),
-		canonOne,
-	);
-	await compare(
-		"getPerPromptDailyMentions",
-		ctx,
-		() => rawRead.getPerPromptDailyMentions(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getPerPromptDailyMentions(brand.brandId, from, to, tz, ids, model),
-		canonArray(["prompt_id", "date"]),
-	);
-	await compare(
-		"getPerPromptDailyCompetitorMentions",
-		ctx,
-		() => rawRead.getPerPromptDailyCompetitorMentions(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getPerPromptDailyCompetitorMentions(brand.brandId, from, to, tz, ids, model),
+	await both("getMentionTotals", (m, s) => m.getMentionTotals(s), canonOne);
+	await both("getPerPromptDailyRuns", (m, s) => m.getPerPromptDailyRuns(s), canonArray(["prompt_id", "date"]));
+	await both(
+		"getPerPromptDailyCompetitors",
+		(m, s) => m.getPerPromptDailyCompetitors(s),
 		canonArray(["prompt_id", "date", "competitor"]),
 	);
-	await compare(
+	await both("getCompetitorTotals", (m, s) => m.getCompetitorTotals(s), canonArray(["competitor"]));
+	await both("getPerPromptRunStats", (m, s) => m.getPerPromptRunStats(s), canonArray(["prompt_id"]));
+	await both("getRunsByModel", (m, s) => m.getRunsByModel(s), canonArray(["model"]));
+	await both(
+		"getVisibilityDailyAggregate",
+		(m, s) => m.getVisibilityDailyAggregate(s, s.promptIds),
+		canonArray(["date"]),
+	);
+	await both("getCitationTotal", (m, s) => m.getCitationTotal(s), canonOne);
+	await both("getCitationUrlStats", (m, s) => m.getCitationUrlStats(s).then(foldCitationUrlRows), canonArray(["url"]));
+	await both("getCitationDomainPromptCounts", (m, s) => m.getCitationDomainPromptCounts(s), canonMap);
+	await both(
 		"getPerPromptCitationPages",
-		ctx,
-		() => rawRead.getPerPromptCitationPages(brand.brandId, from, to, tz, ids, model).then(foldPerPromptCitationPages),
-		() =>
-			rollupRead.getPerPromptCitationPages(brand.brandId, from, to, tz, ids, model).then(foldPerPromptCitationPages),
+		(m, s) => m.getPerPromptCitationPages(s).then(foldPerPromptCitationPages),
 		canonArray(["prompt_id", "url"]),
 	);
-	await compare(
-		"getBrandMentionRateByModel",
-		ctx,
-		() => rawRead.getBrandMentionRateByModel(brand.brandId, from, to, tz, ids, model),
-		() => rollupRead.getBrandMentionRateByModel(brand.brandId, from, to, tz, ids, model),
-		canonArray(["model"]),
+	await both(
+		"getPerPromptDailyCitationDomains",
+		(m, s) => m.getPerPromptDailyCitationDomains(s),
+		canonArray(["prompt_id", "date", "domain"]),
 	);
-	await compare(
-		"getBatchChartData",
-		ctx,
-		() => rawRead.getBatchChartData(brand.brandId, ids, from, to, tz, undefined, model),
-		() => rollupRead.getBatchChartData(brand.brandId, ids, from, to, tz, undefined, model),
-		canonArray(["prompt_id", "date"]),
-	);
-
-	const promptId = ids[0];
-	if (promptId) {
-		await compare(
-			"getPromptCitationUrlStats",
-			ctx,
-			() => rawRead.getPromptCitationUrlStats(promptId, from, to, tz).then(foldCitationUrlRows),
-			() => rollupRead.getPromptCitationUrlStats(promptId, from, to, tz).then(foldCitationUrlRows),
-			canonArray(["url"]),
-		);
-		await compare(
-			"getPromptMentionSummary",
-			ctx,
-			() => rawRead.getPromptMentionSummary(promptId, from, to, tz),
-			() => rollupRead.getPromptMentionSummary(promptId, from, to, tz),
-			canonOne,
-		);
-		await compare(
-			"getPromptTopCompetitorMentions",
-			ctx,
-			() => rawRead.getPromptTopCompetitorMentions(promptId, from, to, tz, 10),
-			() => rollupRead.getPromptTopCompetitorMentions(promptId, from, to, tz, 10),
-			canonArray(["competitor_name"]),
-		);
-	}
+	await both("getCitationsCountByModel", (m, s) => m.getCitationsCountByModel(s), canonArray(["model"]));
 }
 
 async function compareBrand(brand: BrandCase): Promise<void> {

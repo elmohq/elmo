@@ -4,7 +4,7 @@
  */
 
 import { type SQL, sql } from "drizzle-orm";
-import { modelFilter, queryPg, uuidList, windowEnd, windowFilter, windowStart } from "@/lib/analytics-sql";
+import { type AnalyticsScope, modelFilter, queryPg, scopeFilter, windowFilter } from "@/lib/analytics-sql";
 import {
 	type FanoutBreakdownRow,
 	type FanoutModelTotalRow,
@@ -133,6 +133,8 @@ function genuineFanoutWq(): SQL {
 	return sql`length(btrim(wq)) > 0 AND lower(btrim(wq)) <> ${UNAVAILABLE_SENTINEL} AND lower(btrim(wq)) <> lower(btrim(p.value))`;
 }
 
+type FanoutScope = AnalyticsScope & { promptIds: string[] };
+
 /**
  * (prompt × model × query) fan-out counts with how often the brand was mentioned.
  * The LATERAL emits each run's DISTINCT normalized queries, so a run that lists
@@ -141,15 +143,8 @@ function genuineFanoutWq(): SQL {
  * meaning "ran in 2+ runs"). Normalizing here (lowercase + trim) merges case
  * variants exactly like the aggregator's `norm`.
  */
-export async function getFanoutBreakdown(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<FanoutBreakdownRow[]> {
-	if (!enabledPromptIds?.length) return [];
+export async function getFanoutBreakdown(scope: FanoutScope): Promise<FanoutBreakdownRow[]> {
+	if (scope.promptIds.length === 0) return [];
 	return queryPg<FanoutBreakdownRow>(sql`
 		SELECT
 			pr.prompt_id,
@@ -162,25 +157,14 @@ export async function getFanoutBreakdown(
 		CROSS JOIN LATERAL (
 			SELECT DISTINCT lower(btrim(wq)) AS query FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
 		) fq
-		WHERE pr.brand_id = ${brandId}
-			AND pr.created_at >= ${windowStart(fromDate, timezone)}
-			AND pr.created_at < ${windowEnd(toDate, timezone)}
-			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
-			${modelFilter(model, { alias: "pr" })}
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
 		GROUP BY pr.prompt_id, pr.model, fq.query
 	`);
 }
 
 /** Per-model run counts and fan-out totals (the denominators for fan-outs-per-execution). */
-export async function getFanoutModelTotals(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<FanoutModelTotalRow[]> {
-	if (!enabledPromptIds?.length) return [];
+export async function getFanoutModelTotals(scope: FanoutScope): Promise<FanoutModelTotalRow[]> {
+	if (scope.promptIds.length === 0) return [];
 	// `runs` counts every web-search-enabled run ("Search Prompt Runs"); `fanout_runs`
 	// and `total_queries` count only genuine fan-out (via `genuineFanoutWq`), so they
 	// stay consistent with `getFanoutBreakdown`. The per-run LATERAL yields one row per
@@ -198,11 +182,7 @@ export async function getFanoutModelTotals(
 		CROSS JOIN LATERAL (
 			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
 		) fq
-		WHERE pr.brand_id = ${brandId}
-			AND pr.created_at >= ${windowStart(fromDate, timezone)}
-			AND pr.created_at < ${windowEnd(toDate, timezone)}
-			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
-			${modelFilter(model, { alias: "pr" })}
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
 		GROUP BY pr.model
 		ORDER BY total_queries DESC
 	`);
@@ -213,15 +193,8 @@ export async function getFanoutModelTotals(
  * denominator for avg fan-out per run. Uses the same `genuineFanoutWq` filter as
  * the breakdown, so echoes/sentinels don't inflate it.
  */
-export async function getFanoutPromptTotals(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<FanoutPromptTotalRow[]> {
-	if (!enabledPromptIds?.length) return [];
+export async function getFanoutPromptTotals(scope: FanoutScope): Promise<FanoutPromptTotalRow[]> {
+	if (scope.promptIds.length === 0) return [];
 	return queryPg<FanoutPromptTotalRow>(sql`
 		SELECT
 			pr.prompt_id,
@@ -231,11 +204,7 @@ export async function getFanoutPromptTotals(
 		CROSS JOIN LATERAL (
 			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
 		) fq
-		WHERE pr.brand_id = ${brandId}
-			AND pr.created_at >= ${windowStart(fromDate, timezone)}
-			AND pr.created_at < ${windowEnd(toDate, timezone)}
-			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
-			${modelFilter(model, { alias: "pr" })}
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
 		GROUP BY pr.prompt_id
 	`);
 }
@@ -245,15 +214,7 @@ export async function getFanoutPromptTotals(
 // ============================================================================
 
 /** Runs a response search covers. Without a `query` every run in scope matches. */
-export interface ResponseSearchScope {
-	brandId: string;
-	fromDate: string;
-	toDate: string;
-	timezone: string;
-	promptIds: string[];
-	model?: string;
-	query?: string;
-}
+export type ResponseSearchScope = AnalyticsScope & { promptIds: string[]; query?: string };
 
 export interface ResponseMatchRow {
 	id: string;
@@ -269,14 +230,6 @@ export interface ResponseMatchRow {
 	created_at: string;
 	/** Every match in scope, not just this page — counted in the same scan. */
 	matched: number;
-}
-
-function responseScopeFilter(scope: ResponseSearchScope): SQL {
-	return sql`pr.brand_id = ${scope.brandId}
-		AND pr.created_at >= ${windowStart(scope.fromDate, scope.timezone)}
-		AND pr.created_at < ${windowEnd(scope.toDate, scope.timezone)}
-		AND pr.prompt_id IN (${uuidList(scope.promptIds)})
-		${modelFilter(scope.model, { alias: "pr" })}`;
 }
 
 /**
@@ -312,7 +265,7 @@ export async function getResponseMatches(
 			pr.created_at,
 			count(*) OVER ()::int AS matched
 		FROM prompt_runs pr
-		WHERE ${responseScopeFilter(scope)} AND ${responseMatch(scope)}
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
 		ORDER BY pr.created_at DESC, pr.id
 		LIMIT ${limit} OFFSET ${offset}
 	`);

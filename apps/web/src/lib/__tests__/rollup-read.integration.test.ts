@@ -1,17 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { AnalyticsScope } from "@/lib/analytics-sql";
 import {
-	getBrandMentionRateByModel,
-	getBrandMentionTotals,
 	getCitationDomainPromptCounts,
-	getCitationDomainStats,
-	getCitationsTotalCount,
+	getCitationsCountByModel,
+	getCitationTotal,
 	getCitationUrlStats,
-	getDashboardSummary,
-	getPerPromptDailyCompetitorMentions,
-	getPerPromptDailyMentions,
-	getPromptMentionSummary,
-	getPromptsSummary,
-	getPromptTopCompetitorMentions,
+	getCompetitorTotals,
+	getMentionTotals,
+	getPerPromptDailyCompetitors,
+	getPerPromptDailyRuns,
+	getPerPromptRunStats,
+	getRunsByModel,
 	getVisibilityDailyAggregate,
 } from "@/lib/rollup-read";
 import {
@@ -35,7 +34,17 @@ afterAll(async () => {
 	for (const id of brandIds) await deleteBrand(id);
 });
 
-describe("dashboard summary", () => {
+function scope(
+	brandId: string,
+	from: string | null,
+	to: string | null,
+	timezone: string,
+	rest: Partial<AnalyticsScope> = {},
+): AnalyticsScope {
+	return { brandId, from, to, timezone, ...rest };
+}
+
+describe("mention totals", () => {
 	let brandId: string;
 	let p1: string;
 
@@ -56,24 +65,29 @@ describe("dashboard summary", () => {
 		await rebuildRollups(otherBrand);
 	});
 
-	it("counts runs, prompts and visibility for the brand within the window", async () => {
-		const [summary] = await getDashboardSummary(brandId, "2026-03-01", "2026-03-03", "UTC");
-		expect(summary).toMatchObject({
-			total_prompts: 2,
-			total_runs: 3,
-			avg_visibility: 67,
-			last_updated: "2026-03-02T12:00:00.000Z",
+	it("counts runs, prompts and mentions for the brand within the window", async () => {
+		expect(await getMentionTotals(scope(brandId, "2026-03-01", "2026-03-03", "UTC"))).toMatchObject({
+			prompts: 2,
+			runs: 3,
+			brand_mentioned_runs: 2,
+			brand_mentioned_prompts: 2,
+			last_run_at: "2026-03-02T12:00:00.000Z",
 		});
 	});
 
-	it("narrows to the enabled prompts", async () => {
-		const [summary] = await getDashboardSummary(brandId, "2026-03-01", "2026-03-03", "UTC", [p1]);
-		expect(summary).toMatchObject({ total_prompts: 1, total_runs: 2, avg_visibility: 50 });
+	it("narrows to the given prompts", async () => {
+		const totals = await getMentionTotals(scope(brandId, "2026-03-01", "2026-03-03", "UTC", { promptIds: [p1] }));
+		expect(totals).toMatchObject({ prompts: 1, runs: 2, brand_mentioned_runs: 1 });
+	});
+
+	it("matches nothing for an empty prompt list", async () => {
+		const totals = await getMentionTotals(scope(brandId, null, null, "UTC", { promptIds: [] }));
+		expect(totals).toMatchObject({ runs: 0, prompts: 0, last_run_at: null });
 	});
 
 	it("covers all time without a window", async () => {
-		const [summary] = await getDashboardSummary(brandId, null, null, "UTC");
-		expect(summary).toMatchObject({ total_runs: 4, avg_visibility: 50 });
+		const totals = await getMentionTotals(scope(brandId, null, null, "UTC"));
+		expect(totals).toMatchObject({ runs: 4, brand_mentioned_runs: 2 });
 	});
 });
 
@@ -91,33 +105,34 @@ describe("date windows", () => {
 	});
 
 	it("reads calendar days in the caller's timezone", async () => {
-		const ny = await getBrandMentionTotals(brandId, "2026-03-03", "2026-03-03", "America/New_York", [promptId]);
-		const utc = await getBrandMentionTotals(brandId, "2026-03-03", "2026-03-03", "UTC", [promptId]);
-		expect(ny.total_runs).toBe(1);
-		expect(utc.total_runs).toBe(0);
+		const runs = async (day: string, timezone: string) =>
+			(await getMentionTotals(scope(brandId, day, day, timezone, { promptIds: [promptId] }))).runs;
+		expect(await runs("2026-03-03", "America/New_York")).toBe(1);
+		expect(await runs("2026-03-03", "UTC")).toBe(0);
 		// Ahead of UTC, the day starts the evening before: 03:00Z is already mid-morning.
-		const kolkata = await getBrandMentionTotals(brandId, "2026-03-04", "2026-03-04", "Asia/Kolkata", [promptId]);
-		expect(kolkata.total_runs).toBe(2);
+		expect(await runs("2026-03-04", "Asia/Kolkata")).toBe(2);
 	});
 
 	it("includes the whole of the last calendar day", async () => {
-		const totals = await getBrandMentionTotals(brandId, "2026-03-04", "2026-03-04", "UTC", [promptId]);
-		expect(totals.total_runs).toBe(2);
+		const totals = await getMentionTotals(scope(brandId, "2026-03-04", "2026-03-04", "UTC", { promptIds: [promptId] }));
+		expect(totals.runs).toBe(2);
 	});
 
 	it("buckets daily rows by the caller's local date", async () => {
-		const ny = await getPerPromptDailyMentions(brandId, "2026-03-01", "2026-03-05", "America/New_York", [promptId]);
-		expect(ny.map((row) => [row.date, row.brand_mentions, row.competitor_mentions])).toEqual([
-			["2026-03-03", 1, 1],
-			["2026-03-04", 0, 0],
+		const ny = await getPerPromptDailyRuns(
+			scope(brandId, "2026-03-01", "2026-03-05", "America/New_York", { promptIds: [promptId] }),
+		);
+		expect(ny.map((row) => [row.date, row.runs, row.brand_mentioned_runs, row.competitor_mentions])).toEqual([
+			["2026-03-03", 1, 1, 1],
+			["2026-03-04", 1, 0, 0],
 		]);
 	});
 
 	it("treats instant bounds as half-open", async () => {
-		const totals = await getBrandMentionTotals(brandId, "2026-03-04T03:00:00.000Z", "2026-03-04T15:00:00.000Z", "UTC", [
-			promptId,
-		]);
-		expect(totals.total_runs).toBe(1);
+		const totals = await getMentionTotals(
+			scope(brandId, "2026-03-04T03:00:00.000Z", "2026-03-04T15:00:00.000Z", "UTC", { promptIds: [promptId] }),
+		);
+		expect(totals.runs).toBe(1);
 	});
 });
 
@@ -141,11 +156,7 @@ describe("daily visibility aggregate", () => {
 
 	it("carries each prompt's last observation across days it did not run", async () => {
 		const rows = await getVisibilityDailyAggregate(
-			brandId,
-			"2026-03-01",
-			"2026-03-05",
-			"UTC",
-			[branded, unbranded, neverRan],
+			{ brandId, from: "2026-03-01", to: "2026-03-05", timezone: "UTC", promptIds: [branded, unbranded, neverRan] },
 			[branded],
 		);
 
@@ -169,11 +180,7 @@ describe("daily visibility aggregate", () => {
 
 	it("keeps actual totals free of carried-forward values", async () => {
 		const rows = await getVisibilityDailyAggregate(
-			brandId,
-			"2026-03-01",
-			"2026-03-05",
-			"UTC",
-			[branded, unbranded, neverRan],
+			{ brandId, from: "2026-03-01", to: "2026-03-05", timezone: "UTC", promptIds: [branded, unbranded, neverRan] },
 			[branded],
 		);
 
@@ -196,11 +203,7 @@ describe("daily visibility aggregate", () => {
 
 	it("counts every prompt as non-branded when none are branded", async () => {
 		const rows = await getVisibilityDailyAggregate(
-			brandId,
-			"2026-03-03",
-			"2026-03-03",
-			"UTC",
-			[branded, unbranded],
+			{ brandId, from: "2026-03-03", to: "2026-03-03", timezone: "UTC", promptIds: [branded, unbranded] },
 			[],
 		);
 		expect(rows).toEqual([
@@ -238,33 +241,32 @@ describe("model filter", () => {
 		await rebuildRollups(brandId);
 	});
 
+	const day = (model?: string) => scope(brandId, "2026-03-02", "2026-03-02", "UTC", { promptIds: [promptId], model });
+
 	it("separates a grounded API run from the scraped product", async () => {
-		const standard = await getBrandMentionTotals(brandId, "2026-03-02", "2026-03-02", "UTC", [promptId], "chatgpt");
-		const premium = await getBrandMentionTotals(
-			brandId,
-			"2026-03-02",
-			"2026-03-02",
-			"UTC",
-			[promptId],
-			"chatgpt::premium",
-		);
-		expect(standard).toMatchObject({ total_runs: 2, brand_mentioned_runs: 0 });
-		expect(premium).toMatchObject({ total_runs: 1, brand_mentioned_runs: 1 });
+		expect(await getMentionTotals(day("chatgpt"))).toMatchObject({ runs: 2, brand_mentioned_runs: 0 });
+		expect(await getMentionTotals(day("chatgpt::premium"))).toMatchObject({ runs: 1, brand_mentioned_runs: 1 });
 	});
 
 	it("attributes citations through the run that produced them", async () => {
-		const window: [string, string, string, string[]] = ["2026-03-02", "2026-03-02", "UTC", [promptId]];
-		expect(await getCitationsTotalCount(brandId, ...window, "chatgpt")).toBe(2);
-		expect(await getCitationsTotalCount(brandId, ...window, "chatgpt::premium")).toBe(1);
-		expect(await getCitationsTotalCount(brandId, ...window)).toBe(3);
+		expect(await getCitationTotal(day("chatgpt"))).toBe(2);
+		expect(await getCitationTotal(day("chatgpt::premium"))).toBe(1);
+		expect(await getCitationTotal(day())).toBe(3);
 	});
 
-	it("breaks mention rate down by model", async () => {
-		const rows = await getBrandMentionRateByModel(brandId, "2026-03-02", "2026-03-02", "UTC", [promptId]);
-		expect(rows).toEqual([
-			{ model: "chatgpt", runs: 3, brand_mentioned_count: 1 },
-			{ model: "claude", runs: 1, brand_mentioned_count: 1 },
+	it("breaks runs down by model", async () => {
+		const rows = await getRunsByModel(day());
+		expect(rows.map((row) => [row.model, row.runs, row.brand_mentioned_runs])).toEqual([
+			["chatgpt", 3, 1],
+			["claude", 1, 1],
 		]);
+	});
+
+	it("breaks citations down by model within the model filter", async () => {
+		expect(await getCitationsCountByModel(day())).toEqual([{ model: "chatgpt", count: 3 }]);
+		expect(await getCitationsCountByModel(day("chatgpt"))).toEqual([{ model: "chatgpt", count: 2 }]);
+		expect(await getCitationsCountByModel(day("chatgpt::premium"))).toEqual([{ model: "chatgpt", count: 1 }]);
+		expect(await getCitationsCountByModel(day("claude"))).toEqual([]);
 	});
 });
 
@@ -287,30 +289,51 @@ describe("prompt mention stats", () => {
 		await rebuildRollups(brandId);
 	});
 
-	it("summarizes brand and competitor mention rates", async () => {
-		const [summary] = await getPromptsSummary(brandId, "2026-03-01", "2026-03-02", "UTC");
-		expect(summary).toMatchObject({ prompt_id: promptId, total_runs: 3, total_weighted_mentions: 5 });
-		expect(summary.brand_mention_rate).toBeCloseTo(1 / 3);
-		expect(summary.competitor_mention_rate).toBeCloseTo(2 / 3);
-		expect(await getPromptMentionSummary(promptId, "2026-03-01", "2026-03-02", "UTC")).toEqual({
-			total_runs: 3,
-			brand_mentioned_count: 1,
-			competitor_mentioned_count: 3,
-			no_mention_count: 1,
+	const window = () => scope(brandId, "2026-03-01", "2026-03-02", "UTC", { promptIds: [promptId] });
+
+	it("totals a prompt's runs by who they mentioned", async () => {
+		expect(await getMentionTotals(window())).toEqual({
+			runs: 3,
+			brand_mentioned_runs: 1,
+			competitor_runs: 2,
+			competitor_mentions: 3,
+			no_mention_runs: 1,
+			prompts: 1,
+			brand_mentioned_prompts: 1,
+			last_run_at: "2026-03-02T11:00:00.000Z",
 		});
 	});
 
-	it("ranks competitors by the runs that mentioned them", async () => {
-		expect(await getPromptTopCompetitorMentions(promptId, "2026-03-01", "2026-03-02", "UTC", 5)).toEqual([
-			{ competitor_name: "Globex", mention_count: 2 },
-			{ competitor_name: "Initech", mention_count: 1 },
+	it("reports each prompt's run days and last run in the scope's timezone", async () => {
+		expect(await getPerPromptRunStats(window())).toEqual([
+			expect.objectContaining({
+				prompt_id: promptId,
+				runs: 3,
+				run_days: 2,
+				brand_mentioned_runs: 1,
+				competitor_runs: 2,
+				last_run_at: "2026-03-02T11:00:00.000Z",
+				last_run_date: "2026-03-02",
+			}),
 		]);
-		expect(await getPromptTopCompetitorMentions(promptId, "2026-03-01", "2026-03-02", "UTC", 1)).toHaveLength(1);
+		// 11:00Z is already the next morning at UTC+14.
+		const [kiritimati] = await getPerPromptRunStats(
+			scope(brandId, null, null, "Pacific/Kiritimati", { promptIds: [promptId] }),
+		);
+		expect(kiritimati).toMatchObject({ last_run_at: "2026-03-02T11:00:00.000Z", last_run_date: "2026-03-03" });
+	});
+
+	it("ranks competitors by the runs that mentioned them", async () => {
+		expect(await getCompetitorTotals(window(), 5)).toEqual([
+			{ competitor: "Globex", runs: 2 },
+			{ competitor: "Initech", runs: 1 },
+		]);
+		expect(await getCompetitorTotals(window(), 1)).toHaveLength(1);
 	});
 
 	it("counts competitor mentions per prompt and day", async () => {
-		const rows = await getPerPromptDailyCompetitorMentions(brandId, "2026-03-01", "2026-03-02", "UTC", [promptId]);
-		expect(rows.map((row) => [row.date, row.competitor, row.mentions])).toEqual(
+		const rows = await getPerPromptDailyCompetitors(window());
+		expect(rows.map((row) => [row.date, row.competitor, row.runs])).toEqual(
 			expect.arrayContaining([
 				["2026-03-01", "Globex", 1],
 				["2026-03-01", "Initech", 1],
@@ -340,16 +363,8 @@ describe("citation stats", () => {
 		await rebuildRollups(brandId);
 	});
 
-	it("counts citations per domain with the latest known title", async () => {
-		const rows = await getCitationDomainStats(brandId, "2026-03-01", "2026-03-02", "UTC");
-		expect(rows).toEqual([
-			{ domain: "docs.example.com", count: 4, example_title: "New title" },
-			{ domain: "news.example.org", count: 1, example_title: null },
-		]);
-	});
-
 	it("reports each URL's count, average position and prompt reach", async () => {
-		const rows = await getCitationUrlStats(brandId, "2026-03-01", "2026-03-02", "UTC");
+		const rows = await getCitationUrlStats(scope(brandId, "2026-03-01", "2026-03-02", "UTC"));
 		expect(rows[0]).toEqual({
 			url: "https://docs.example.com/a",
 			domain: "docs.example.com",
@@ -362,9 +377,11 @@ describe("citation stats", () => {
 	});
 
 	it("counts distinct prompts citing each domain", async () => {
-		const counts = await getCitationDomainPromptCounts(brandId, "2026-03-01", "2026-03-02", "UTC");
+		const counts = await getCitationDomainPromptCounts(scope(brandId, "2026-03-01", "2026-03-02", "UTC"));
 		expect(Object.fromEntries(counts)).toEqual({ "docs.example.com": 2, "news.example.org": 1 });
-		const onlyP1 = await getCitationDomainPromptCounts(brandId, "2026-03-01", "2026-03-02", "UTC", [p1]);
+		const onlyP1 = await getCitationDomainPromptCounts(
+			scope(brandId, "2026-03-01", "2026-03-02", "UTC", { promptIds: [p1] }),
+		);
 		expect(Object.fromEntries(onlyP1)).toEqual({ "docs.example.com": 1, "news.example.org": 1 });
 	});
 });

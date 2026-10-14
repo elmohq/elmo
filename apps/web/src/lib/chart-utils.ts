@@ -1,7 +1,11 @@
 import { CITATION_CATEGORIES, type CitationCategory } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { daysInRange, type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
-import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/rollup-read";
+import type {
+	PerPromptDailyCitationDomainRow,
+	PerPromptDailyCompetitorRow,
+	PerPromptDailyRuns,
+} from "@/lib/rollup-read";
 
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
 export interface ChartSubject {
@@ -106,6 +110,37 @@ export function citationDateWindow(
 	};
 }
 
+/** One prompt's day on the per-prompt charts. */
+export interface ProcessedBatchChartDataPoint {
+	prompt_id: string;
+	date: string;
+	total_runs: number;
+	brand_mentioned_count: number;
+	/** Runs that day naming each competitor. */
+	competitor_counts: Record<string, number>;
+}
+
+export function toBatchChartData(
+	runs: PerPromptDailyRuns[],
+	competitors: PerPromptDailyCompetitorRow[],
+): ProcessedBatchChartDataPoint[] {
+	const dayKey = (promptId: string, date: string) => `${promptId}|${date}`;
+	const countsByDay = new Map<string, Record<string, number>>();
+	for (const row of competitors) {
+		const key = dayKey(row.prompt_id, row.date);
+		const counts = countsByDay.get(key) ?? {};
+		counts[row.competitor] = row.runs;
+		countsByDay.set(key, counts);
+	}
+	return runs.map((row) => ({
+		prompt_id: row.prompt_id,
+		date: row.date,
+		total_runs: row.runs,
+		brand_mentioned_count: row.brand_mentioned_runs,
+		competitor_counts: countsByDay.get(dayKey(row.prompt_id, row.date)) ?? {},
+	}));
+}
+
 export interface DailyVisibilityBucket {
 	branded: { total: number; mentioned: number };
 	nonBranded: { total: number; mentioned: number };
@@ -137,7 +172,7 @@ function carryForward<V>(
 /**
  * Per-prompt Last Value Carried Forward (LVCF) for visibility data.
  *
- * For each prompt, carries forward its last known (total_runs, brand_mentioned_count)
+ * For each prompt, carries forward its last known (runs, brand_mentioned_runs)
  * to fill gap days when it didn't run. Then aggregates across all prompts per day,
  * split by branded/non-branded status.
  *
@@ -145,7 +180,7 @@ function carryForward<V>(
  * every prompt contributes to every day's aggregate via its last observation.
  */
 export function applyPerPromptLVCF(
-	perPromptData: PerPromptVisibilityPoint[],
+	perPromptData: Pick<PerPromptDailyRuns, "prompt_id" | "date" | "runs" | "brand_mentioned_runs">[],
 	dateRange: string[],
 	brandedPromptIds: string[],
 ): {
@@ -160,7 +195,7 @@ export function applyPerPromptLVCF(
 	const byPrompt = new Map<string, Map<string, { total: number; mentioned: number }>>();
 	for (const row of perPromptData) {
 		const byDate = byPrompt.get(row.prompt_id) ?? new Map<string, { total: number; mentioned: number }>();
-		byDate.set(String(row.date), { total: Number(row.total_runs), mentioned: Number(row.brand_mentioned_count) });
+		byDate.set(String(row.date), { total: Number(row.runs), mentioned: Number(row.brand_mentioned_runs) });
 		byPrompt.set(row.prompt_id, byDate);
 	}
 
@@ -242,7 +277,7 @@ export function applyPerPromptKeyedLVCF<K extends string>(
 
 /** Dashboard wrapper that converts citation domains to category keys before smoothing. */
 export function applyPerPromptCitationLVCF(
-	perPromptData: PerPromptDailyCitationStats[],
+	perPromptData: PerPromptDailyCitationDomainRow[],
 	dateRange: string[],
 	cadenceHours: number | null | undefined,
 	categorizeDomain: (domain: string) => CitationCategory,

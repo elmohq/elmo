@@ -83,54 +83,24 @@ async function benchBrand(brandId: string, runCount: number, hasCitations: boole
 
 	console.log(`\n### Brand: ${brandId.slice(0, 8)}... (${runCount} runs, ${promptIds.length} prompts)\n`);
 
+	const scope = { brandId, from: fromDate, to: toDate, timezone: tz, promptIds };
+	const promptScope = { ...scope, promptIds: [firstPromptId] };
+
 	const results: BenchResult[] = [];
 
-	results.push(
-		await bench("getDashboardSummary", () => pgRead.getDashboardSummary(brandId, fromDate, toDate, tz, promptIds)),
-	);
-
-	results.push(await bench("getPromptsSummary", () => pgRead.getPromptsSummary(brandId, fromDate, toDate, tz)));
-
+	results.push(await bench("getMentionTotals", () => pgRead.getMentionTotals(scope)));
+	results.push(await bench("getPerPromptRunStats", () => pgRead.getPerPromptRunStats(scope)));
 	results.push(await bench("getPromptsFirstEvaluatedAt", () => pgRead.getPromptsFirstEvaluatedAt(brandId, promptIds)));
-
-	results.push(
-		await bench("getPromptMentionSummary", () => pgRead.getPromptMentionSummary(firstPromptId, fromDate, toDate, tz)),
-	);
-
-	results.push(
-		await bench("getPromptTopCompetitorMentions", () =>
-			pgRead.getPromptTopCompetitorMentions(firstPromptId, fromDate, toDate, tz, 10),
-		),
-	);
-
-	results.push(
-		await bench("getBatchChartData", () => pgRead.getBatchChartData(brandId, promptIds, fromDate, toDate, tz)),
-	);
-
+	results.push(await bench("getMentionTotals (one prompt)", () => pgRead.getMentionTotals(promptScope)));
+	results.push(await bench("getCompetitorTotals (one prompt)", () => pgRead.getCompetitorTotals(promptScope, 10)));
+	results.push(await bench("getPerPromptDailyRuns", () => pgRead.getPerPromptDailyRuns(scope)));
+	results.push(await bench("getPerPromptDailyCompetitors", () => pgRead.getPerPromptDailyCompetitors(scope)));
 	results.push(await bench("getBrandEarliestRunDate", () => pgRead.getBrandEarliestRunDate(brandId)));
 
 	if (hasCitations) {
-		results.push(
-			await bench("getCitationDomainStats", () =>
-				pgRead.getCitationDomainStats(brandId, fromDate, toDate, tz, promptIds),
-			),
-		);
-
-		results.push(
-			await bench("getCitationUrlStats", () => pgRead.getCitationUrlStats(brandId, fromDate, toDate, tz, promptIds)),
-		);
-
-		results.push(
-			await bench("getDailyCitationStats", () =>
-				pgRead.getDailyCitationStats(brandId, fromDate, toDate, tz, promptIds),
-			),
-		);
-
-		results.push(
-			await bench("getPromptCitationUrlStats", () =>
-				pgRead.getPromptCitationUrlStats(firstPromptId, fromDate, toDate, tz),
-			),
-		);
+		results.push(await bench("getCitationUrlStats", () => pgRead.getCitationUrlStats(scope)));
+		results.push(await bench("getPerPromptDailyCitationDomains", () => pgRead.getPerPromptDailyCitationDomains(scope)));
+		results.push(await bench("getCitationUrlStats (one prompt)", () => pgRead.getCitationUrlStats(promptScope)));
 	}
 
 	return results;

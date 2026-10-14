@@ -10,9 +10,10 @@ import {
 } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { AnalyticsScope } from "@/lib/analytics-sql";
 import type { LookbackPeriod } from "@/lib/lookback";
 import { countPromptRuns, getResponseMatches } from "@/lib/postgres-read";
-import type { CitationDomainStats, PerPromptCitationPageRow } from "@/lib/rollup-read";
+import type { PerPromptCitationPageRow } from "@/lib/rollup-read";
 import * as rollupRead from "@/lib/rollup-read";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { deletePrompt } from "@/server/prompts-core";
@@ -89,264 +90,89 @@ function foldPerPromptCitationPageRows(rows: PerPromptCitationPageRow[]): object
 	return out;
 }
 
-// example_title differs from raw by design: rollups can't tell which page was cited most recently.
-function stripExampleTitle(rows: CitationDomainStats[]): object[] {
-	return rows.map(({ domain, count }) => ({ domain, count }));
-}
-
-interface EquivalenceCombo {
-	fromDateStr: string;
-	toDateStr: string;
-	timezone: string;
-	model?: string;
-	promptIds: string[];
-}
+type EquivalenceScope = AnalyticsScope & { from: string; to: string; promptIds: string[] };
 
 interface EquivalenceCase {
 	name: string;
-	check(combo: EquivalenceCombo, label: string): Promise<void>;
+	check(scope: EquivalenceScope, label: string): Promise<void>;
 }
 
-type GroupAFn<R> = (
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-) => Promise<R>;
+type ScopedRead<R> = (scope: EquivalenceScope) => Promise<R>;
 
-function arrayCase<R extends object>(name: string, rollupFn: GroupAFn<R[]>, rawFn: GroupAFn<R[]>): EquivalenceCase {
+function rowsCase<R extends object>(
+	name: string,
+	rollupFn: ScopedRead<R[]>,
+	rawFn: ScopedRead<R[]>,
+	fold: (rows: R[]) => object[] = (rows) => rows,
+): EquivalenceCase {
 	return {
 		name,
-		async check(combo, label) {
-			const [rollupRows, rawRows] = await Promise.all([
-				rollupFn(BRAND_ID, combo.fromDateStr, combo.toDateStr, combo.timezone, combo.promptIds, combo.model),
-				rawFn(BRAND_ID, combo.fromDateStr, combo.toDateStr, combo.timezone, combo.promptIds, combo.model),
-			]);
-			expectSameRows(label, rollupRows, rawRows);
+		async check(scope, label) {
+			const [rollupRows, rawRows] = await Promise.all([rollupFn(scope), rawFn(scope)]);
+			expectSameRows(label, fold(rollupRows), fold(rawRows));
 		},
 	};
 }
 
-function scalarCase<R>(name: string, rollupFn: GroupAFn<R>, rawFn: GroupAFn<R>): EquivalenceCase {
+function valueCase<R>(name: string, rollupFn: ScopedRead<R>, rawFn: ScopedRead<R>): EquivalenceCase {
 	return {
 		name,
-		async check(combo, label) {
-			const [rollupValue, rawValue] = await Promise.all([
-				rollupFn(BRAND_ID, combo.fromDateStr, combo.toDateStr, combo.timezone, combo.promptIds, combo.model),
-				rawFn(BRAND_ID, combo.fromDateStr, combo.toDateStr, combo.timezone, combo.promptIds, combo.model),
-			]);
+		async check(scope, label) {
+			const [rollupValue, rawValue] = await Promise.all([rollupFn(scope), rawFn(scope)]);
 			expect(rollupValue, label).toEqual(rawValue);
 		},
 	};
 }
 
 const EQUIVALENCE_CASES: EquivalenceCase[] = [
-	arrayCase("getDashboardSummary", rollupRead.getDashboardSummary, rawRead.getDashboardSummary),
-	arrayCase(
-		"getPerPromptVisibilityTimeSeries",
-		rollupRead.getPerPromptVisibilityTimeSeries,
-		rawRead.getPerPromptVisibilityTimeSeries,
+	valueCase("getMentionTotals", rollupRead.getMentionTotals, rawRead.getMentionTotals),
+	rowsCase("getPerPromptDailyRuns", rollupRead.getPerPromptDailyRuns, rawRead.getPerPromptDailyRuns),
+	// The competitor reads only agree while no run lists a competitor twice: the rollup
+	// counts distinct runs, raw counts unnested rows.
+	rowsCase(
+		"getPerPromptDailyCompetitors",
+		rollupRead.getPerPromptDailyCompetitors,
+		rawRead.getPerPromptDailyCompetitors,
 	),
-	scalarCase("getCitationsTotalCount", rollupRead.getCitationsTotalCount, rawRead.getCitationsTotalCount),
-	{
-		name: "getCitationDomainStats",
-		async check(combo, label) {
-			const [rollupRows, rawRows] = await Promise.all([
-				rollupRead.getCitationDomainStats(
-					BRAND_ID,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					combo.promptIds,
-					combo.model,
-				),
-				rawRead.getCitationDomainStats(
-					BRAND_ID,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					combo.promptIds,
-					combo.model,
-				),
-			]);
-			expectSameRows(label, stripExampleTitle(rollupRows), stripExampleTitle(rawRows));
-		},
-	},
-	{
-		name: "getCitationUrlStats",
-		async check(combo, label) {
-			const [rollupRows, rawRows] = await Promise.all([
-				rollupRead.getCitationUrlStats(
-					BRAND_ID,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					combo.promptIds,
-					combo.model,
-				),
-				rawRead.getCitationUrlStats(
-					BRAND_ID,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					combo.promptIds,
-					combo.model,
-				),
-			]);
-			expectSameRows(label, foldCitationUrlRows(rollupRows), foldCitationUrlRows(rawRows));
-		},
-	},
-	scalarCase(
+	rowsCase("getCompetitorTotals", rollupRead.getCompetitorTotals, rawRead.getCompetitorTotals),
+	rowsCase("getPerPromptRunStats", rollupRead.getPerPromptRunStats, rawRead.getPerPromptRunStats),
+	rowsCase("getRunsByModel", rollupRead.getRunsByModel, rawRead.getRunsByModel),
+	rowsCase(
+		"getVisibilityDailyAggregate",
+		(scope) => rollupRead.getVisibilityDailyAggregate(scope, BRANDED_PROMPT_IDS),
+		(scope) => rawRead.getVisibilityDailyAggregate(scope, BRANDED_PROMPT_IDS),
+	),
+	valueCase("getCitationTotal", rollupRead.getCitationTotal, rawRead.getCitationTotal),
+	rowsCase("getCitationUrlStats", rollupRead.getCitationUrlStats, rawRead.getCitationUrlStats, foldCitationUrlRows),
+	valueCase(
 		"getCitationDomainPromptCounts",
 		rollupRead.getCitationDomainPromptCounts,
 		rawRead.getCitationDomainPromptCounts,
 	),
-	arrayCase("getDailyCitationStats", rollupRead.getDailyCitationStats, rawRead.getDailyCitationStats),
-	arrayCase(
-		"getPerPromptDailyCitationStats",
-		rollupRead.getPerPromptDailyCitationStats,
-		rawRead.getPerPromptDailyCitationStats,
+	rowsCase(
+		"getPerPromptCitationPages",
+		rollupRead.getPerPromptCitationPages,
+		rawRead.getPerPromptCitationPages,
+		foldPerPromptCitationPageRows,
 	),
-	arrayCase("getPerPromptRunStats", rollupRead.getPerPromptRunStats, rawRead.getPerPromptRunStats),
-	scalarCase("getBrandMentionTotals", rollupRead.getBrandMentionTotals, rawRead.getBrandMentionTotals),
-	arrayCase("getPerPromptDailyMentions", rollupRead.getPerPromptDailyMentions, rawRead.getPerPromptDailyMentions),
-	// Only agrees while no run lists a competitor twice: the rollup counts distinct runs,
-	// raw counts unnested rows.
-	arrayCase(
-		"getPerPromptDailyCompetitorMentions",
-		rollupRead.getPerPromptDailyCompetitorMentions,
-		rawRead.getPerPromptDailyCompetitorMentions,
+	rowsCase(
+		"getPerPromptDailyCitationDomains",
+		rollupRead.getPerPromptDailyCitationDomains,
+		rawRead.getPerPromptDailyCitationDomains,
 	),
-	{
-		name: "getPerPromptCitationPages",
-		async check(combo, label) {
-			const [rollupRows, rawRows] = await Promise.all([
-				rollupRead.getPerPromptCitationPages(
-					BRAND_ID,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					combo.promptIds,
-					combo.model,
-				),
-				rawRead.getPerPromptCitationPages(
-					BRAND_ID,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					combo.promptIds,
-					combo.model,
-				),
-			]);
-			expectSameRows(label, foldPerPromptCitationPageRows(rollupRows), foldPerPromptCitationPageRows(rawRows));
-		},
-	},
-	arrayCase("getBrandMentionRateByModel", rollupRead.getBrandMentionRateByModel, rawRead.getBrandMentionRateByModel),
-	{
-		name: "getPromptsSummary",
-		async check(combo, label) {
-			const [rollupRows, rawRows] = await Promise.all([
-				rollupRead.getPromptsSummary(
-					BRAND_ID,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					undefined,
-					combo.model,
-					combo.promptIds,
-				),
-				rawRead.getPromptsSummary(
-					BRAND_ID,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					undefined,
-					combo.model,
-					combo.promptIds,
-				),
-			]);
-			expectSameRows(label, rollupRows, rawRows);
-		},
-	},
-	{
-		name: "getVisibilityDailyAggregate",
-		async check(combo, label) {
-			const [rollupRows, rawRows] = await Promise.all([
-				rollupRead.getVisibilityDailyAggregate(
-					BRAND_ID,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					combo.promptIds,
-					BRANDED_PROMPT_IDS,
-					combo.model,
-				),
-				rawRead.getVisibilityDailyAggregate(
-					BRAND_ID,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					combo.promptIds,
-					BRANDED_PROMPT_IDS,
-					combo.model,
-				),
-			]);
-			expectSameRows(label, rollupRows, rawRows);
-		},
-	},
-	{
-		name: "getBatchChartData",
-		async check(combo, label) {
-			const [rollupRows, rawRows] = await Promise.all([
-				rollupRead.getBatchChartData(
-					BRAND_ID,
-					combo.promptIds,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					undefined,
-					combo.model,
-				),
-				rawRead.getBatchChartData(
-					BRAND_ID,
-					combo.promptIds,
-					combo.fromDateStr,
-					combo.toDateStr,
-					combo.timezone,
-					undefined,
-					combo.model,
-				),
-			]);
-			expectSameRows(label, rollupRows, rawRows);
-		},
-	},
-	{
-		name: "countResponses",
-		async check(combo, label) {
-			const scope = {
-				brandId: BRAND_ID,
-				fromDate: combo.fromDateStr,
-				toDate: combo.toDateStr,
-				timezone: combo.timezone,
-				promptIds: combo.promptIds,
-				model: combo.model,
-			};
-			expect(await rollupRead.countResponses(scope), label).toBe(await rawRead.countResponses(scope));
-		},
-	},
-	{
-		name: "getPromptsFirstEvaluatedAt",
-		async check(combo, label) {
-			const [rollupRows, rawRows] = await Promise.all([
-				rollupRead.getPromptsFirstEvaluatedAt(BRAND_ID, combo.promptIds),
-				rawRead.getPromptsFirstEvaluatedAt(BRAND_ID, combo.promptIds),
-			]);
-			expectSameRows(label, rollupRows, rawRows);
-		},
-	},
+	rowsCase("getCitationsCountByModel", rollupRead.getCitationsCountByModel, rawRead.getCitationsCountByModel),
+	rowsCase(
+		"getPromptsFirstEvaluatedAt",
+		(scope) => rollupRead.getPromptsFirstEvaluatedAt(scope.brandId, scope.promptIds),
+		(scope) => rawRead.getPromptsFirstEvaluatedAt(scope.brandId, scope.promptIds),
+	),
 ];
+
+async function expectEquivalent(scope: EquivalenceScope, label: string): Promise<void> {
+	for (const equivalenceCase of EQUIVALENCE_CASES) {
+		await equivalenceCase.check(scope, `${equivalenceCase.name} ${label}`);
+	}
+}
 
 // Windows are resolved inside each test because "all" depends on data seeded in beforeEach.
 
@@ -398,15 +224,39 @@ describe("rollup reads against raw", () => {
 		for (const combo of COMBOS) {
 			it(combo.label, async () => {
 				const window = await resolveBrandWindow(BRAND_ID, combo.lookback, combo.timezone, { now: NOW });
-				const resolved: EquivalenceCombo = { ...window, model: combo.model, promptIds: combo.promptIds };
-				for (const equivalenceCase of EQUIVALENCE_CASES) {
-					await equivalenceCase.check(resolved, `${equivalenceCase.name} ${combo.label}`);
-				}
+				await expectEquivalent(
+					{
+						brandId: BRAND_ID,
+						from: window.fromDateStr,
+						to: window.toDateStr,
+						timezone: window.timezone,
+						promptIds: combo.promptIds,
+						model: combo.model,
+					},
+					combo.label,
+				);
+			});
+		}
+
+		for (const webSearchEnabled of [true, false]) {
+			it(`all UTC webSearchEnabled=${webSearchEnabled}`, async () => {
+				const window = await resolveBrandWindow(BRAND_ID, "all", "UTC", { now: NOW });
+				await expectEquivalent(
+					{
+						brandId: BRAND_ID,
+						from: window.fromDateStr,
+						to: window.toDateStr,
+						timezone: "UTC",
+						promptIds: ALL_PROMPT_IDS,
+						webSearchEnabled,
+					},
+					`webSearchEnabled=${webSearchEnabled}`,
+				);
 			});
 		}
 	});
 
-	describe("read equivalence: prompt-scoped functions", () => {
+	describe("read equivalence: a single prompt", () => {
 		const representativePromptIds = [PROMPTS[0].id, PROMPTS[2].id, PROMPTS[5].id];
 
 		for (const lookback of LOOKBACKS) {
@@ -415,23 +265,25 @@ describe("rollup reads against raw", () => {
 					const window = await resolveBrandWindow(BRAND_ID, lookback, timezone, { now: NOW });
 					for (const promptId of representativePromptIds) {
 						const label = `promptId=${promptId} ${lookback} ${timezone}`;
+						const scope = {
+							brandId: BRAND_ID,
+							from: window.fromDateStr,
+							to: window.toDateStr,
+							timezone,
+							promptIds: [promptId],
+						};
 
 						const [rollupUrlRows, rawUrlRows] = await Promise.all([
-							rollupRead.getPromptCitationUrlStats(promptId, window.fromDateStr, window.toDateStr, timezone),
-							rawRead.getPromptCitationUrlStats(promptId, window.fromDateStr, window.toDateStr, timezone),
+							rollupRead.getCitationUrlStats(scope),
+							rawRead.getCitationUrlStats(scope),
 						]);
 						expectSameRows(label, foldCitationUrlRows(rollupUrlRows), foldCitationUrlRows(rawUrlRows));
 
-						const [rollupSummary, rawSummary] = await Promise.all([
-							rollupRead.getPromptMentionSummary(promptId, window.fromDateStr, window.toDateStr, timezone),
-							rawRead.getPromptMentionSummary(promptId, window.fromDateStr, window.toDateStr, timezone),
-						]);
-						expect(rollupSummary, label).toEqual(rawSummary);
+						expect(await rollupRead.getMentionTotals(scope), label).toEqual(await rawRead.getMentionTotals(scope));
 
-						// Same duplicate-competitor caveat as getPerPromptDailyCompetitorMentions.
 						const [rollupTop, rawTop] = await Promise.all([
-							rollupRead.getPromptTopCompetitorMentions(promptId, window.fromDateStr, window.toDateStr, timezone, 10),
-							rawRead.getPromptTopCompetitorMentions(promptId, window.fromDateStr, window.toDateStr, timezone, 10),
+							rollupRead.getCompetitorTotals(scope, 10),
+							rawRead.getCompetitorTotals(scope, 10),
 						]);
 						expectSameRows(label, rollupTop, rawTop);
 					}
@@ -496,22 +348,22 @@ describe("rollup reads against raw", () => {
 		const localTime = (createdAt: string) => new Date(Date.parse(createdAt) + OFFSET_MS).toISOString();
 		const attributedDay = (createdAt: string) => localTime(createdAt).slice(0, 10);
 		const totalRuns = async (from: string, to: string) =>
-			(await rollupRead.getBrandMentionTotals(BRAND_ID, from, to, timezone)).total_runs;
+			(await rollupRead.getMentionTotals({ brandId: BRAND_ID, from, to, timezone })).runs;
 
 		it("seeds runs in the first quarter hour of a local day", () => {
 			expect(SEED_RUNS.some((run) => localTime(run.createdAt).slice(11, 16) < "00:15")).toBe(true);
 		});
 
 		it("puts each run on its local day", async () => {
-			const rows = await rollupRead.getPerPromptDailyMentions(
-				BRAND_ID,
-				"2026-06-30",
-				"2026-07-11",
+			const rows = await rollupRead.getPerPromptDailyRuns({
+				brandId: BRAND_ID,
+				from: "2026-06-30",
+				to: "2026-07-11",
 				timezone,
-				ALL_PROMPT_IDS,
-			);
+				promptIds: ALL_PROMPT_IDS,
+			});
 			const byDay: Record<string, number> = {};
-			for (const row of rows) byDay[row.date] = (byDay[row.date] ?? 0) + row.brand_mentions;
+			for (const row of rows) byDay[row.date] = (byDay[row.date] ?? 0) + row.brand_mentioned_runs;
 			const expected: Record<string, number> = {};
 			for (const run of SEED_RUNS.filter((r) => r.brandMentioned)) {
 				const day = attributedDay(run.createdAt);
@@ -534,14 +386,14 @@ describe("rollup reads against raw", () => {
 				["2026-07-02", "2026-07-02"],
 				["2026-07-03", "2026-07-06"],
 			]) {
-				const scope = { brandId: BRAND_ID, fromDate: from, toDate: to, timezone, promptIds: ALL_PROMPT_IDS };
+				const scope = { brandId: BRAND_ID, from, to, timezone, promptIds: ALL_PROMPT_IDS };
 				const expected = SEED_RUNS.filter((run) => {
 					const day = attributedDay(run.createdAt);
 					return day >= from && day <= to;
 				}).length;
 				const [firstMatch] = await getResponseMatches(scope, 1, 0);
 				expect(firstMatch?.matched ?? 0).toBe(expected);
-				expect(await rollupRead.countResponses(scope)).toBe(expected);
+				expect((await rollupRead.getMentionTotals(scope)).runs).toBe(expected);
 				let listed = 0;
 				for (const promptId of ALL_PROMPT_IDS) listed += await countPromptRuns(promptId, from, to, timezone);
 				expect(listed).toBe(expected);

@@ -384,11 +384,19 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
 		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, days);
 
+		const scope = {
+			brandId: data.brandId,
+			from: fromDateStr,
+			to: toDateStr,
+			timezone,
+			promptIds: enabledPromptIds,
+			model: data.model,
+		};
 		const [urlStats, perPromptDailyClasses, perPromptPages, prevUrlStats] = await Promise.all([
-			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
-			getPerPromptDailyCitationClasses(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
-			getPerPromptCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
-			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateStr, timezone, enabledPromptIds, data.model),
+			getCitationUrlStats(scope),
+			getPerPromptDailyCitationClasses(scope),
+			getPerPromptCitationPages(scope),
+			getCitationUrlStats({ ...scope, from: prevFromDateStr, to: prevToDateStr }),
 		]);
 
 		const categorizeDomain = (domain: string): CitationCategory =>
