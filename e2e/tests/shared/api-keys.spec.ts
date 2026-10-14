@@ -3,7 +3,12 @@
  * table, which says nothing about whether the product can mint one.
  */
 import { expect, test } from "../../test";
-import { NIKE_BRAND_ID, TEST_BRAND_ID, organizationUrl } from "../../fixtures";
+import {
+  NIKE_BRAND_ID,
+  SLUGGED_BRAND_ID,
+  TEST_BRAND_ID,
+  organizationUrl,
+} from "../../fixtures";
 
 const KEYS_PAGE = `${organizationUrl()}/settings/api-keys`;
 
@@ -112,5 +117,28 @@ test.describe("API keys", () => {
 
     await expect(page.getByRole("dialog").getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("row").filter({ hasText: name })).toHaveCount(0);
+  });
+
+  test("a key issued from a brand's settings link reaches that brand and no other", async ({ page, request }, testInfo) => {
+    test.skip(testInfo.project.name === "demo", "demo refuses every write; covered by the Bruno demo suite");
+
+    // Where the brand sidebar's API Keys entry lands: a new key is narrowed to
+    // that brand unless changed.
+    await page.goto(`${KEYS_PAGE}?brand=${TEST_BRAND_ID}`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "API Keys" })).toBeVisible();
+
+    const name = `Brand key ${Date.now()}`;
+    await openCreateForm(page, name);
+    await page.getByRole("button", { name: "Create", exact: true }).click();
+
+    const issued = page.locator("[data-slot=card]").filter({ hasText: "Key Created" });
+    await expect(issued).toBeVisible({ timeout: 30_000 });
+    const auth = { Authorization: `Bearer ${(await issued.locator("code").innerText()).trim()}` };
+
+    const me = await request.get("/api/v1/me", { headers: auth });
+    expect((await me.json()).brandIds).toEqual([TEST_BRAND_ID]);
+
+    const sibling = await request.get(`/api/v1/brands/${SLUGGED_BRAND_ID}`, { headers: auth, failOnStatusCode: false });
+    expect(sibling.status()).toBe(404);
   });
 });

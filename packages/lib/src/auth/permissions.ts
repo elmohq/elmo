@@ -40,9 +40,12 @@ export const ownerRole = ac.newRole({
 	apiKey: ["create", "read", "update", "delete"],
 });
 
+/** The plugin's own create and update endpoints are blocked over HTTP, so these
+ * grants only let the app's server functions act for a member; those narrow a
+ * member to keys for one brand, and to revoking their own. */
 export const memberRole = ac.newRole({
 	...memberAc.statements,
 	brand: ["read", "create", "update", "delete"],
 	report: ["generate"],
-	apiKey: ["read"],
+	apiKey: ["read", "create", "update"],
 });

@@ -169,6 +169,13 @@
       "when": 1790972601833,
       "tag": "0023_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791921961978,
+      "tag": "0024_api_key_grants",
+      "breakpoints": true
     }
   ]
 }

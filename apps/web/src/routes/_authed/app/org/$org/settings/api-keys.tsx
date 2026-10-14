@@ -1,7 +1,8 @@
 /**
- * The role check here is UX only — the boundary is in the server functions and
- * the api-key plugin's own membership check. This page just avoids showing a
- * form that would be refused.
+ * The one place keys are issued and revoked, for admins and members alike. The
+ * role checks here are UX only — the boundary is in the server functions and
+ * the api-key plugin's own membership check. This page just avoids offering
+ * what would be refused.
  */
 import { IconAlertTriangle, IconCircleCheck, IconKey, IconPlus, IconX } from "@tabler/icons-react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
@@ -57,7 +58,16 @@ import {
 	revokeApiKeyFn,
 } from "@/server/api-keys";
 
+type Brand = ApiKeysPageData["brands"][number];
+
+/** `brand` is what a brand's own settings link here with: a new key starts out
+ * narrowed to it. */
+type ApiKeysSearch = { brand?: string };
+
 export const Route = createFileRoute("/_authed/app/org/$org/settings/api-keys")({
+	validateSearch: (search: Record<string, unknown>): ApiKeysSearch => ({
+		brand: typeof search.brand === "string" && search.brand ? search.brand : undefined,
+	}),
 	loader: ({ context }): Promise<ApiKeysPageData> =>
 		listApiKeysFn({ data: { organizationId: context.organization.id } }),
 	staticData: { crumb: "API Keys" },
@@ -76,29 +86,30 @@ function formatDate(value: string | null, empty = "—"): string {
 		: empty;
 }
 
-/** Disabled or past its expiry: either way it no longer authenticates anything. */
+/** Revoked, past its expiry, or orphaned by its issuer leaving: any of them and
+ * it no longer authenticates anything. */
 function isActive(key: ApiKeySummary): boolean {
-	if (!key.enabled) return false;
+	if (!key.enabled || !key.issuerIsMember) return false;
 	return !(key.expiresAt && new Date(key.expiresAt).getTime() < Date.now());
 }
 
 /** Why it stopped authenticating: the act somebody took if there was one, the
  * expiry that overtook it otherwise. */
 function inactiveReason(key: ApiKeySummary): string {
-	return key.enabled ? `Expired ${formatDate(key.expiresAt)}` : "Revoked";
+	if (!key.enabled) return "Revoked";
+	if (!key.issuerIsMember) return "Issuer left";
+	return `Expired ${formatDate(key.expiresAt)}`;
 }
 
 function ApiKeysSettingsPage() {
 	const { keys, brands, expiryOptions, canManage: isKeyAdmin, organization } = Route.useLoaderData();
+	const search = Route.useSearch();
 	const readOnly = useDeploymentFeatures()?.readOnly ?? false;
-	const canManage = isKeyAdmin && !readOnly;
 	const linkParams = orgLinkParams(useOrganization());
 	const router = useRouter();
 
 	const [creatingOpen, setCreatingOpen] = useState(false);
 	const [revokeTarget, setRevokeTarget] = useState<ApiKeySummary | null>(null);
-	const [revoking, setRevoking] = useState(false);
-	const [revokeError, setRevokeError] = useState<string | null>(null);
 	/** Shown once and never again — only the hash is stored. */
 	const [issuedKey, setIssuedKey] = useState<string | null>(null);
 
@@ -108,23 +119,13 @@ function ApiKeysSettingsPage() {
 		await router.invalidate();
 	}
 
-	async function handleRevoke(keyId: string) {
-		setRevokeError(null);
-		setRevoking(true);
-		try {
-			await revokeApiKeyFn({ data: { organizationId: organization.id, keyId } });
-			setRevokeTarget(null);
-			await router.invalidate();
-		} catch (err) {
-			setRevokeError(err instanceof Error ? err.message : "Failed to revoke the API key");
-		} finally {
-			setRevoking(false);
-		}
-	}
-
+	const linkedBrand = brands.some((brand) => brand.id === search.brand) ? search.brand : undefined;
 	const brandNames = new Map(brands.map((brand) => [brand.id, brand.name]));
 	const active = keys.filter(isActive);
 	const inactive = keys.filter((key) => !isActive(key));
+	// Every member may issue a key for one brand, so there is something to issue
+	// as long as the organization has a brand or the viewer is an admin.
+	const openCreate = !readOnly && (isKeyAdmin || brands.length > 0) ? () => setCreatingOpen(true) : undefined;
 
 	return (
 		<div className="max-w-6xl space-y-8">
@@ -152,7 +153,8 @@ function ApiKeysSettingsPage() {
 					<IconAlertTriangle />
 					<AlertTitle>Limited Access</AlertTitle>
 					<AlertDescription className="text-yellow-700">
-						Only organization admins can issue or revoke keys.
+						You can issue keys for a single brand and revoke the keys you issued. Keys for several or all brands, and
+						revoking someone else's, are for organization admins.
 					</AlertDescription>
 				</Alert>
 			)}
@@ -160,8 +162,8 @@ function ApiKeysSettingsPage() {
 			<section className="space-y-3">
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<h2 className="text-lg font-semibold">Active</h2>
-					{canManage && (
-						<Button type="button" size="sm" onClick={() => setCreatingOpen(true)}>
+					{openCreate && (
+						<Button type="button" size="sm" onClick={openCreate}>
 							<IconPlus className="size-4" />
 							Add Key
 						</Button>
@@ -170,24 +172,12 @@ function ApiKeysSettingsPage() {
 
 				{active.length === 0 ? (
 					<EmptyKeys
-						canManage={canManage}
-						readOnly={readOnly}
 						hasInactive={inactive.length > 0}
-						onCreate={() => setCreatingOpen(true)}
+						description={emptyDescription({ canCreate: Boolean(openCreate), readOnly })}
+						onCreate={openCreate}
 					/>
 				) : (
-					<KeyTable
-						keys={active}
-						brandNames={brandNames}
-						onRevoke={
-							canManage
-								? (key) => {
-										setRevokeError(null);
-										setRevokeTarget(key);
-									}
-								: undefined
-						}
-					/>
+					<KeyTable keys={active} brandNames={brandNames} onRevoke={readOnly ? undefined : setRevokeTarget} />
 				)}
 			</section>
 
@@ -195,7 +185,9 @@ function ApiKeysSettingsPage() {
 				<section className="space-y-3">
 					<div className="space-y-1">
 						<h2 className="text-lg font-semibold text-muted-foreground">Inactive</h2>
-						<p className="text-sm text-muted-foreground">Revoked or expired — they no longer authenticate anything.</p>
+						<p className="text-sm text-muted-foreground">
+							Revoked, expired, or issued by someone who has left — they no longer authenticate anything.
+						</p>
 					</div>
 					<KeyTable keys={inactive} brandNames={brandNames} inactive />
 				</section>
@@ -209,6 +201,8 @@ function ApiKeysSettingsPage() {
 					<CreateKeyForm
 						organizationId={organization.id}
 						brands={brands}
+						canManage={isKeyAdmin}
+						initialBrandId={linkedBrand}
 						expiryOptions={expiryOptions}
 						onCreated={handleCreated}
 						onCancel={() => setCreatingOpen(false)}
@@ -216,81 +210,68 @@ function ApiKeysSettingsPage() {
 				</DialogContent>
 			</Dialog>
 
-			<Dialog
-				open={revokeTarget !== null}
-				onOpenChange={(open) => {
-					if (!open && !revoking) setRevokeTarget(null);
-				}}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Revoke “{revokeTarget?.name ?? "Untitled key"}”?</DialogTitle>
-						<DialogDescription>This key will immediately and permanently have its access revoked.</DialogDescription>
-					</DialogHeader>
-					{revokeError && (
-						<Alert variant="destructive">
-							<IconAlertTriangle />
-							<AlertDescription>{revokeError}</AlertDescription>
-						</Alert>
-					)}
-					<DialogFooter>
-						<Button type="button" variant="outline" disabled={revoking} onClick={() => setRevokeTarget(null)}>
-							Cancel
-						</Button>
-						<Button
-							type="button"
-							variant="destructive"
-							disabled={revoking}
-							onClick={() => revokeTarget && handleRevoke(revokeTarget.id)}
-						>
-							{revoking ? <Spinner /> : null}
-							{revoking ? "Revoking…" : "Revoke"}
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+			<RevokeKeyDialog organizationId={organization.id} target={revokeTarget} onClose={() => setRevokeTarget(null)} />
 		</div>
 	);
+}
+
+function emptyDescription({ canCreate, readOnly }: { canCreate: boolean; readOnly: boolean }): string {
+	if (readOnly) return "Keys can't be issued in demo mode.";
+	if (canCreate) return "Issue one to call the REST API or connect an MCP client.";
+	return "Add a brand first, then issue a key for it.";
 }
 
 function CreateKeyForm({
 	organizationId,
 	brands,
+	canManage,
+	initialBrandId,
 	expiryOptions,
 	onCreated,
 	onCancel,
 }: {
 	organizationId: string;
-	brands: ApiKeysPageData["brands"];
+	brands: Brand[];
+	/** Admins choose any reach; everyone else issues for one brand. */
+	canManage: boolean;
+	/** The brand the viewer arrived from, which is the likeliest one wanted. */
+	initialBrandId: string | undefined;
 	expiryOptions: readonly number[];
 	onCreated: (key: string) => void;
 	onCancel: () => void;
 }) {
 	const [name, setName] = useState("");
 	const [access, setAccess] = useState<ApiKeyAccess>("read");
-	const [restrictBrands, setRestrictBrands] = useState(false);
-	const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+	const [restrictBrands, setRestrictBrands] = useState(initialBrandId !== undefined);
+	const [selectedBrands, setSelectedBrands] = useState<string[]>(initialBrandId ? [initialBrandId] : []);
+	const [singleBrand, setSingleBrand] = useState<string | undefined>(initialBrandId ?? brands[0]?.id);
 	const [expiresInDays, setExpiresInDays] = useState<string>("never");
 	const [creating, setCreating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	function brandIds(): string[] | null {
+		if (!canManage) return singleBrand ? [singleBrand] : [];
+		// Null, not `[]`: unrestricted is the absence of a restriction. The server
+		// rejects `[]` rather than reading it as "all".
+		return restrictBrands ? selectedBrands : null;
+	}
 
 	async function handleSubmit(event: React.FormEvent) {
 		event.preventDefault();
 		setError(null);
 		setCreating(true);
 		try {
+			const reach = brandIds();
 			const { key } = await createApiKeyFn({
 				data: {
 					organizationId,
 					name,
 					access,
-					// Null, not `[]`: unrestricted is the absence of a restriction. The
-					// server rejects `[]` rather than reading it as "all".
-					brandIds: restrictBrands ? selectedBrands : null,
+					brandIds: reach,
 					expiresInDays: expiresInDays === "never" ? null : Number(expiresInDays),
 				},
 			});
-			trackEvent("api_key_created", { access, restricted: restrictBrands });
+			trackEvent("api_key_created", { access, restricted: reach !== null });
 			onCreated(key);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create the API key");
@@ -351,13 +332,17 @@ function CreateKeyForm({
 
 				<Separator />
 
-				<BrandPicker
-					brands={brands}
-					restricted={restrictBrands}
-					selected={selectedBrands}
-					onRestricted={setRestrictBrands}
-					onSelected={setSelectedBrands}
-				/>
+				{canManage ? (
+					<BrandPicker
+						brands={brands}
+						restricted={restrictBrands}
+						selected={selectedBrands}
+						onRestricted={setRestrictBrands}
+						onSelected={setSelectedBrands}
+					/>
+				) : (
+					<SingleBrandPicker brands={brands} value={singleBrand} onChange={setSingleBrand} />
+				)}
 			</div>
 
 			<DialogFooter className="shrink-0 items-center border-t pt-4">
@@ -370,6 +355,41 @@ function CreateKeyForm({
 				</Button>
 			</DialogFooter>
 		</form>
+	);
+}
+
+function SingleBrandPicker({
+	brands,
+	value,
+	onChange,
+}: {
+	brands: Brand[];
+	value: string | undefined;
+	onChange: (brandId: string | undefined) => void;
+}) {
+	return (
+		<section className="space-y-2">
+			<Label htmlFor="key-brand">Brand</Label>
+			<Select
+				items={Object.fromEntries(brands.map((brand) => [brand.id, brand.name]))}
+				value={value ?? null}
+				onValueChange={(next) => onChange(next ?? undefined)}
+			>
+				<SelectTrigger id="key-brand" className="w-full">
+					<SelectValue placeholder="Choose a brand" />
+				</SelectTrigger>
+				<SelectContent>
+					{brands.map((brand) => (
+						<SelectItem key={brand.id} value={brand.id}>
+							{brand.name}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+			<p className="text-sm text-muted-foreground">
+				The key reaches this brand only. An organization admin can issue keys for several brands.
+			</p>
+		</section>
 	);
 }
 
@@ -394,7 +414,7 @@ function BrandPicker({
 	onRestricted,
 	onSelected,
 }: {
-	brands: ApiKeysPageData["brands"];
+	brands: Brand[];
 	restricted: boolean;
 	selected: string[];
 	onRestricted: (restricted: boolean) => void;
@@ -479,6 +499,72 @@ function BrandCombobox({
 	);
 }
 
+function RevokeKeyDialog({
+	organizationId,
+	target,
+	onClose,
+}: {
+	organizationId: string;
+	target: ApiKeySummary | null;
+	onClose: () => void;
+}) {
+	const router = useRouter();
+	const [revoking, setRevoking] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	async function handleRevoke(keyId: string) {
+		setError(null);
+		setRevoking(true);
+		try {
+			await revokeApiKeyFn({ data: { organizationId, keyId } });
+			onClose();
+			await router.invalidate();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to revoke the API key");
+		} finally {
+			setRevoking(false);
+		}
+	}
+
+	return (
+		<Dialog
+			open={target !== null}
+			onOpenChange={(open) => {
+				if (open || revoking) return;
+				setError(null);
+				onClose();
+			}}
+		>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Revoke “{target?.name ?? "Untitled key"}”?</DialogTitle>
+					<DialogDescription>This key will immediately and permanently have its access revoked.</DialogDescription>
+				</DialogHeader>
+				{error && (
+					<Alert variant="destructive">
+						<IconAlertTriangle />
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+				<DialogFooter>
+					<Button type="button" variant="outline" disabled={revoking} onClick={onClose}>
+						Cancel
+					</Button>
+					<Button
+						type="button"
+						variant="destructive"
+						disabled={revoking}
+						onClick={() => target && handleRevoke(target.id)}
+					>
+						{revoking ? <Spinner /> : null}
+						{revoking ? "Revoking…" : "Revoke"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 function IssuedKeyCard({ value }: { value: string }) {
 	return (
 		<Card className="flex-row flex-wrap items-center justify-between gap-3 border-emerald-500/40 bg-emerald-50/60 px-4 py-3">
@@ -520,22 +606,24 @@ function KeyTable({
 	keys: ApiKeySummary[];
 	brandNames: Map<string, string>;
 	inactive?: boolean;
+	/** Offered only on the keys the viewer may revoke. */
 	onRevoke?: (key: ApiKeySummary) => void;
 }) {
 	return (
 		<Card className={cn("gap-0 overflow-hidden py-0", inactive && "bg-muted/40 text-muted-foreground")}>
 			{/* Fixed widths so the two tables line up as one grid when stacked. */}
-			<Table className="min-w-[58rem] table-fixed [&_td]:px-4 [&_th]:px-4">
+			<Table className="min-w-[64rem] table-fixed [&_td]:px-4 [&_th]:px-4">
 				<TableHeader>
 					<TableRow className="hover:bg-transparent">
-						<TableHead className="w-[22%]">Name</TableHead>
-						<TableHead className="w-[10%]">Key</TableHead>
-						<TableHead className="w-[14%]">Access</TableHead>
+						<TableHead className="w-[18%]">Name</TableHead>
+						<TableHead className="w-[9%]">Key</TableHead>
+						<TableHead className="w-[12%]">Access</TableHead>
 						<TableHead className="w-[12%]">Brands</TableHead>
+						<TableHead className="w-[12%]">Created by</TableHead>
 						<TableHead className="w-[10%]">Created</TableHead>
 						<TableHead className="w-[10%]">Last used</TableHead>
-						<TableHead className="w-[15%]">{inactive ? "Reason" : "Expires"}</TableHead>
-						<TableHead className="w-[7%] text-right">
+						<TableHead className="w-[12%]">{inactive ? "Reason" : "Expires"}</TableHead>
+						<TableHead className="w-[5%] text-right">
 							<span className="sr-only">Actions</span>
 						</TableHead>
 					</TableRow>
@@ -553,7 +641,14 @@ function KeyTable({
 								<AccessCell scopes={key.scopes} />
 							</TableCell>
 							<TableCell>
-								<BrandsCell names={key.brandIds?.map((id) => brandNames.get(id) ?? id) ?? null} />
+								<TruncatedCell label={brandsLabel(key.brandIds, brandNames)} />
+							</TableCell>
+							<TableCell>
+								{key.createdBy ? (
+									<TruncatedCell label={key.createdBy.name} />
+								) : (
+									<span className="text-muted-foreground">—</span>
+								)}
 							</TableCell>
 							<TableCell className="whitespace-nowrap">{formatDate(key.createdAt)}</TableCell>
 							<TableCell className="whitespace-nowrap">{formatDate(key.lastUsedAt, "Never")}</TableCell>
@@ -564,13 +659,21 @@ function KeyTable({
 									<span className="whitespace-nowrap">{formatDate(key.expiresAt, "Never")}</span>
 								)}
 							</TableCell>
-							<TableCell className="text-right">{onRevoke && <RevokeButton onClick={() => onRevoke(key)} />}</TableCell>
+							<TableCell className="text-right">
+								{onRevoke && key.canRevoke && <RevokeButton onClick={() => onRevoke(key)} />}
+							</TableCell>
 						</TableRow>
 					))}
 				</TableBody>
 			</Table>
 		</Card>
 	);
+}
+
+function brandsLabel(brandIds: string[] | null, brandNames: Map<string, string>): string {
+	if (brandIds === null) return "All brands";
+	if (brandIds.length === 0) return "No brands";
+	return brandIds.map((id) => brandNames.get(id) ?? id).join(", ");
 }
 
 /** Only the opening characters of a key are kept, so the cell says where the
@@ -593,10 +696,9 @@ function KeyCell({ start }: { start: string | null }) {
 }
 
 /** A key narrowed to several brands names more of them than the column can
- * hold, so the ones it clips are a hover away rather than lost. */
-function BrandsCell({ names }: { names: string[] | null }) {
+ * hold, so whatever it clips is a hover away rather than lost. */
+function TruncatedCell({ label }: { label: string }) {
 	const { ref, truncated } = useIsTruncated<HTMLSpanElement>();
-	const label = names ? names.join(", ") : "All brands";
 
 	return (
 		<Tooltip disabled={!truncated}>
@@ -631,18 +733,15 @@ function RevokeButton({ onClick }: { onClick: () => void }) {
 }
 
 function EmptyKeys({
-	canManage,
-	readOnly,
 	hasInactive,
+	description,
 	onCreate,
 }: {
-	canManage: boolean;
-	readOnly: boolean;
 	hasInactive: boolean;
-	onCreate: () => void;
+	description: string;
+	/** Absent when the viewer can't issue a key here. */
+	onCreate?: () => void;
 }) {
-	const reason = readOnly ? "Keys can't be issued in demo mode." : "An organization admin can issue one.";
-
 	return (
 		<div className="flex flex-col items-center gap-3 rounded-md border border-dashed px-6 py-12 text-center">
 			<span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -650,11 +749,9 @@ function EmptyKeys({
 			</span>
 			<div className="space-y-1">
 				<p className="font-medium">{hasInactive ? "No active API keys" : "No API keys yet"}</p>
-				<p className="max-w-sm text-sm text-muted-foreground">
-					{canManage ? "Issue one to call the REST API or connect an MCP client." : reason}
-				</p>
+				<p className="max-w-sm text-sm text-muted-foreground">{description}</p>
 			</div>
-			{canManage && (
+			{onCreate && (
 				<Button type="button" onClick={onCreate}>
 					<IconPlus className="size-4" />
 					{hasInactive ? "Create a key" : "Create your first key"}

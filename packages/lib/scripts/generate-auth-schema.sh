@@ -99,8 +99,8 @@ cat <<'HEADER'
  *
  * One column deserves a warning the generator can't carry: `apikey.metadata` is
  * writable by anyone with a session, by plugin design. Never store anything
- * there that grants access — see readBrandRestriction in
- * apps/web/src/lib/auth/api-auth.ts.
+ * there that grants access — what a key reaches lives in `api_key_grants` and
+ * `api_key_brands` instead.
  */
 HEADER
 cat "$TMP_OUTPUT"

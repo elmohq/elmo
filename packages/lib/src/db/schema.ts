@@ -7,6 +7,7 @@ import {
 	numeric,
 	pgEnum,
 	pgTable,
+	primaryKey,
 	smallint,
 	text,
 	timestamp,
@@ -15,7 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
 // (and the rest of the auth schema) visible to `import * as schema` consumers.
-import { organization } from "./schema-auth";
+import { apikey, organization, user } from "./schema-auth";
 
 // Better-auth tables & relations — re-exported so `import * as schema` sees everything.
 // Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
@@ -319,3 +320,37 @@ export const secrets = pgTable("secrets", {
 		.$onUpdate(() => new Date())
 		.notNull(),
 }).enableRLS();
+
+/**
+ * What an API key reaches and who issued it, kept beside `apikey` rather than
+ * in its `metadata`, which anyone with a session can write. A key with no row
+ * here does not authenticate.
+ */
+export const apiKeyGrants = pgTable("api_key_grants", {
+	apiKeyId: text("api_key_id")
+		.primaryKey()
+		.notNull()
+		.references(() => apikey.id, { onDelete: "cascade" }),
+	/** Explicit rather than inferred from an empty `api_key_brands`, which is
+	 * what deleting a key's last brand leaves behind. */
+	allBrands: boolean("all_brands").notNull(),
+	/** Null only for keys issued before issuers were recorded. Deleting the user
+	 * takes the grant, and with it the key's reach. */
+	createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "cascade" }),
+}).enableRLS();
+
+export const apiKeyBrands = pgTable(
+	"api_key_brands",
+	{
+		apiKeyId: text("api_key_id")
+			.notNull()
+			.references(() => apikey.id, { onDelete: "cascade" }),
+		brandId: text("brand_id")
+			.notNull()
+			.references(() => brands.id, { onDelete: "cascade" }),
+	},
+	(table) => ({
+		pk: primaryKey({ columns: [table.apiKeyId, table.brandId] }),
+		brandIdx: index("api_key_brands_brand_idx").on(table.brandId),
+	}),
+).enableRLS();

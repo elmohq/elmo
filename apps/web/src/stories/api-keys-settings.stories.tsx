@@ -3,7 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { Route } from "@/routes/_authed/app/org/$org/settings/api-keys";
 import { type ApiKeysPageData, setMockApiKeys } from "./_mocks/server-api-keys";
-import { setMockLoaderData, setMockRouteContext } from "./_mocks/tanstack-router";
+import { setMockLoaderData, setMockRouteContext, setMockSearch } from "./_mocks/tanstack-router";
 
 const ApiKeysSettingsPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
@@ -21,6 +21,9 @@ const KEYS: ApiKeysPageData["keys"] = [
 		scopes: ["read", "write"],
 		brandIds: null,
 		enabled: true,
+		createdBy: { id: "user-1", name: "Ada Lovelace" },
+		issuerIsMember: true,
+		canRevoke: true,
 		createdAt: "2026-06-14T10:00:00.000Z",
 		lastUsedAt: "2026-08-31T08:12:00.000Z",
 		expiresAt: null,
@@ -32,6 +35,9 @@ const KEYS: ApiKeysPageData["keys"] = [
 		scopes: ["read"],
 		brandIds: ["brand-1"],
 		enabled: true,
+		createdBy: { id: "user-1", name: "Ada Lovelace" },
+		issuerIsMember: true,
+		canRevoke: true,
 		createdAt: "2026-07-02T10:00:00.000Z",
 		lastUsedAt: null,
 		expiresAt: "2026-12-28T10:00:00.000Z",
@@ -43,6 +49,9 @@ const KEYS: ApiKeysPageData["keys"] = [
 		scopes: ["read"],
 		brandIds: ["brand-2", "brand-3"],
 		enabled: false,
+		createdBy: { id: "user-1", name: "Ada Lovelace" },
+		issuerIsMember: true,
+		canRevoke: true,
 		createdAt: "2025-09-01T10:00:00.000Z",
 		lastUsedAt: "2026-01-19T10:00:00.000Z",
 		expiresAt: "2026-03-01T10:00:00.000Z",
@@ -54,13 +63,16 @@ const KEYS: ApiKeysPageData["keys"] = [
 		scopes: ["read", "write"],
 		brandIds: null,
 		enabled: true,
+		createdBy: { id: "user-1", name: "Ada Lovelace" },
+		issuerIsMember: true,
+		canRevoke: true,
 		createdAt: "2026-02-01T10:00:00.000Z",
 		lastUsedAt: "2026-04-10T10:00:00.000Z",
 		expiresAt: "2026-05-01T10:00:00.000Z",
 	},
 ];
 
-function load(page: Partial<ApiKeysPageData>, readOnly = false) {
+function load(page: Partial<ApiKeysPageData>, readOnly = false, search: Record<string, unknown> = {}) {
 	const data: ApiKeysPageData = {
 		organization: { id: "org-1", name: "Acme", role: "admin" },
 		canManage: true,
@@ -72,6 +84,7 @@ function load(page: Partial<ApiKeysPageData>, readOnly = false) {
 	setMockApiKeys(data);
 	setMockLoaderData(data);
 	setMockRouteContext({ clientConfig: { features: { readOnly } } });
+	setMockSearch(search);
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -147,14 +160,35 @@ export const OnlyInactiveKeys: Story = {
 
 export const NonAdmin: Story = {
 	render: () => {
-		load({ keys: KEYS, canManage: false });
+		load({ keys: KEYS.map((key) => ({ ...key, canRevoke: key.id === "key-2" })), canManage: false });
 		return <ApiKeysSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(canvas.queryByRole("button", { name: "Add Key" })).toBeNull();
-		await expect(canvas.queryByRole("button", { name: "Revoke" })).toBeNull();
-		await expect(await canvas.findByText("Reporting pipeline")).toBeVisible();
+		await expect(await canvas.findByText("Limited Access")).toBeVisible();
+		// Only the key they issued can be revoked.
+		await expect((await canvas.findAllByRole("button", { name: "Revoke" })).length).toBe(1);
+		// A member issues for one brand: a single choice, not "all" or several.
+		await userEvent.click(await canvas.findByRole("button", { name: "Add Key" }));
+		const dialog = within(await within(document.body).findByRole("dialog"));
+		await expect(await dialog.findByLabelText("Brand")).toBeVisible();
+		await expect(dialog.queryByRole("tab", { name: "All brands" })).toBeNull();
+	},
+};
+
+export const LinkedFromBrand: Story = {
+	render: () => {
+		load({ keys: KEYS, canManage: true }, false, { brand: "brand-1" });
+		return <ApiKeysSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// Every key stays listed; the brand only seeds a new key's reach.
+		await expect(await canvas.findByText("Old dashboard export")).toBeVisible();
+		await userEvent.click(await canvas.findByRole("button", { name: "Add Key" }));
+		const dialog = within(await within(document.body).findByRole("dialog"));
+		await expect(await dialog.findByRole("tab", { name: "Specific brands" })).toHaveAttribute("aria-selected", "true");
+		await expect(await dialog.findByText("Acme Corp")).toBeVisible();
 	},
 };
 

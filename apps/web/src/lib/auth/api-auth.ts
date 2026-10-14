@@ -1,8 +1,9 @@
 import { API_KEY_RATE_LIMIT_PER_MINUTE } from "@workspace/config/constants";
 import { db } from "@workspace/lib/db/db";
-import { brands, organization } from "@workspace/lib/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { organization } from "@workspace/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { API_SCOPES, type ApiScope, permissionsToScopes } from "@/lib/api/scopes";
+import { loadApiKeyGrants } from "./api-key-grants";
 import { getAdminApiKeys, timingSafeStringEqual } from "./policies";
 
 export interface AdminAuth {
@@ -118,20 +119,6 @@ function isAdminKey(token: string): boolean {
 	return keys.length > 0 && keys.some((key) => timingSafeStringEqual(key, token));
 }
 
-/**
- * `metadata` is client-writable, so nothing read from it may widen a key. This
- * one is safe only because it is intersected with the key's organization below.
- */
-export function readBrandRestriction(metadata: unknown): string[] | null {
-	if (!metadata || typeof metadata !== "object") return null;
-	if (!("brandIds" in metadata)) return null;
-
-	const raw = (metadata as Record<string, unknown>).brandIds;
-	// Narrowed to something unreadable: reaching nothing is the safe answer.
-	if (!Array.isArray(raw)) return [];
-	return raw.filter((id): id is string => typeof id === "string" && id.length > 0);
-}
-
 function asDate(value: unknown): Date | null {
 	if (value instanceof Date) return value;
 	if (typeof value === "string" || typeof value === "number") {
@@ -141,13 +128,15 @@ function asDate(value: unknown): Date | null {
 	return null;
 }
 
-async function intersectWithOrgBrands(organizationId: string, restriction: string[] | null): Promise<string[] | null> {
-	if (!restriction) return null;
-	const rows = await db
-		.select({ id: brands.id })
-		.from(brands)
-		.where(and(inArray(brands.id, restriction), eq(brands.organizationId, organizationId)));
-	return rows.map((row) => row.id);
+function rateLimited(error: unknown): ApiAuthFailure {
+	const tryAgainIn = (error as { details?: { tryAgainIn?: unknown } }).details?.tryAgainIn;
+	return {
+		status: 429,
+		error: "Too Many Requests",
+		message: "Rate limit exceeded for this API key",
+		code: "rate_limited",
+		retryAfterSeconds: typeof tryAgainIn === "number" ? Math.max(1, Math.ceil(tryAgainIn)) : 60,
+	};
 }
 
 export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
@@ -172,19 +161,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 
 	const key = result?.key;
 	if (!result?.valid || !key) {
-		if (result?.error?.code === "RATE_LIMITED") {
-			const tryAgainIn = (result.error as { details?: { tryAgainIn?: unknown } }).details?.tryAgainIn;
-			return {
-				failure: {
-					status: 429,
-					error: "Too Many Requests",
-					message: "Rate limit exceeded for this API key",
-					code: "rate_limited",
-					retryAfterSeconds: typeof tryAgainIn === "number" ? Math.max(1, Math.ceil(tryAgainIn)) : 60,
-				},
-			};
-		}
-		return { failure: INVALID_KEY };
+		return { failure: result?.error?.code === "RATE_LIMITED" ? rateLimited(result.error) : INVALID_KEY };
 	}
 
 	const organizationId = key.referenceId;
@@ -196,8 +173,11 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 	// A key whose organization is gone is invalid, not a key with empty scope.
 	if (!org) return { failure: INVALID_KEY };
 
+	// No grant, or an issuer who has since left, and the key reaches nothing.
+	const grant = (await loadApiKeyGrants(organizationId, [key.id])).get(key.id);
+	if (!grant?.issuerIsMember) return { failure: INVALID_KEY };
+
 	const scopes = new Set(permissionsToScopes(key.permissions));
-	const brandIds = await intersectWithOrgBrands(organizationId, readBrandRestriction(key.metadata));
 
 	return {
 		auth: {
@@ -207,7 +187,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 			organizationId,
 			organizationName: org.name,
 			scopes,
-			brandIds,
+			brandIds: grant.brandIds,
 			createdAt: asDate(key.createdAt),
 			lastUsedAt: asDate(key.lastRequest),
 			expiresAt: asDate(key.expiresAt),

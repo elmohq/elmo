@@ -7,6 +7,9 @@ export interface ApiKeySummary {
 	scopes: ApiScope[];
 	brandIds: string[] | null;
 	enabled: boolean;
+	createdBy: { id: string; name: string } | null;
+	issuerIsMember: boolean;
+	canRevoke: boolean;
 	createdAt: string | null;
 	lastUsedAt: string | null;
 	expiresAt: string | null;

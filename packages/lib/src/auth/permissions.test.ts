@@ -32,8 +32,9 @@ describe("organization roles", () => {
 	it("keeps the application's own grants, which is why these roles are custom at all", () => {
 		expect(ownerRole.authorize({ apiKey: ["create"] }).success).toBe(true);
 		expect(ownerRole.authorize({ brand: ["delete"] }).success).toBe(true);
-		// A key acts as the whole organization, so issuing one is an owner's call.
-		expect(memberRole.authorize({ apiKey: ["read"] }).success).toBe(true);
-		expect(memberRole.authorize({ apiKey: ["create"] }).success).toBe(false);
+		// A member issues and revokes their own brand keys; the server functions
+		// hold them to that, and deleting a key is nobody's.
+		expect(memberRole.authorize({ apiKey: ["create", "update"] }).success).toBe(true);
+		expect(memberRole.authorize({ apiKey: ["delete"] }).success).toBe(false);
 	});
 });

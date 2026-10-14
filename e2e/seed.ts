@@ -64,9 +64,8 @@ function toPermissions(scopes: readonly string[]): Record<string, string[]> {
 
 /**
  * The rate limit is production's rather than an inflated test value, so the
- * suite exercises the ceiling callers actually get. Only the brand narrowing
- * lives in metadata, which anyone with a session can write and so may never
- * grant anything.
+ * suite exercises the ceiling callers actually get. A database from before
+ * grants existed reads the brand narrowing from metadata instead.
  */
 async function seedApiKeys(client: pg.Client): Promise<void> {
   const [{ exists }] = (
@@ -80,9 +79,15 @@ async function seedApiKeys(client: pg.Client): Promise<void> {
   }
 
   await client.query("DELETE FROM apikey WHERE name LIKE 'E2E %'");
+  const [{ hasGrants }] = (
+    await client.query<{ hasGrants: boolean }>(
+      "SELECT to_regclass('public.api_key_grants') IS NOT NULL AS \"hasGrants\"",
+    )
+  ).rows;
 
   const keys = Object.values(API_KEYS) as ApiKeyFixture[];
   for (const [index, key] of keys.entries()) {
+    const id = `e2e-apikey-${index + 1}`;
     await client.query(
       `INSERT INTO apikey (
          id, name, start, prefix, key, reference_id, enabled,
@@ -90,7 +95,7 @@ async function seedApiKeys(client: pg.Client): Promise<void> {
          request_count, expires_at, permissions, metadata, created_at, updated_at
        ) VALUES ($1, $2, $3, 'elmo', $4, $5, $6, true, 60000, 1000, 0, $7, $8, $9, NOW(), NOW())`,
       [
-        `e2e-apikey-${index + 1}`,
+        id,
         key.name,
         key.token.slice(0, 12),
         hashApiKey(key.token),
@@ -98,9 +103,17 @@ async function seedApiKeys(client: pg.Client): Promise<void> {
         key.enabled !== false,
         key.expiresInMs === undefined ? null : new Date(Date.now() + key.expiresInMs),
         JSON.stringify(toPermissions(key.scopes)),
-        key.brandIds === null ? null : JSON.stringify({ brandIds: key.brandIds }),
+        hasGrants || key.brandIds === null ? null : JSON.stringify({ brandIds: key.brandIds }),
       ],
     );
+    if (!hasGrants) continue;
+    await client.query("INSERT INTO api_key_grants (api_key_id, all_brands) VALUES ($1, $2)", [
+      id,
+      key.brandIds === null,
+    ]);
+    for (const brandId of key.brandIds ?? []) {
+      await client.query("INSERT INTO api_key_brands (api_key_id, brand_id) VALUES ($1, $2)", [id, brandId]);
+    }
   }
   console.log(`  Created ${keys.length} API keys`);
 }

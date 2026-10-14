@@ -1,7 +1,7 @@
 /**
  * The only way to mint a key; the plugin's HTTP endpoints are blocked. This is
- * where the brand narrowing, which lives in client-writable `metadata`, is
- * checked against the organization's own brands.
+ * where a key's brands are checked against the organization's own and recorded
+ * in its grant.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
@@ -11,7 +11,8 @@ import { brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { type ApiScope, permissionsToScopes, scopesToPermissions } from "@/lib/api/scopes";
-import { readBrandRestriction } from "@/lib/auth/api-auth";
+import { type ApiKeyGrant, loadApiKeyGrants, recordApiKeyGrant } from "@/lib/auth/api-key-grants";
+import { issuanceRefusal, mayRevoke } from "@/lib/auth/api-key-policy";
 import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
 
@@ -33,6 +34,10 @@ export interface ApiKeySummary {
 	scopes: ApiScope[];
 	brandIds: string[] | null;
 	enabled: boolean;
+	createdBy: { id: string; name: string } | null;
+	/** False once the issuer has left the organization, which ends the key. */
+	issuerIsMember: boolean;
+	canRevoke: boolean;
 	createdAt: string | null;
 	lastUsedAt: string | null;
 	expiresAt: string | null;
@@ -40,6 +45,8 @@ export interface ApiKeySummary {
 
 export type ApiKeysPageData = {
 	organization: { id: string; name: string; role: string };
+	/** Issue keys for any brands, and revoke anyone's. Every member may issue a
+	 * key for one brand and revoke the keys they issued. */
 	canManage: boolean;
 	keys: ApiKeySummary[];
 	brands: { id: string; name: string }[];
@@ -57,14 +64,20 @@ function toDate(value: unknown): string | null {
 
 type StoredApiKey = Awaited<ReturnType<typeof auth.api.listApiKeys>>["apiKeys"][number];
 
-function summarize(key: StoredApiKey): ApiKeySummary {
+/** A key without a grant does not authenticate, so it is shown reaching nothing. */
+const NO_GRANT: ApiKeyGrant = { brandIds: [], createdBy: null, issuerIsMember: true };
+
+function summarize(key: StoredApiKey, grant: ApiKeyGrant, canRevoke: boolean): ApiKeySummary {
 	return {
 		id: key.id,
 		name: key.name ?? null,
 		start: key.start ?? null,
 		scopes: permissionsToScopes(key.permissions),
-		brandIds: readBrandRestriction(key.metadata),
+		brandIds: grant.brandIds,
 		enabled: key.enabled !== false,
+		createdBy: grant.createdBy,
+		issuerIsMember: grant.issuerIsMember,
+		canRevoke,
 		createdAt: toDate(key.createdAt),
 		lastUsedAt: toDate(key.lastRequest),
 		expiresAt: toDate(key.expiresAt),
@@ -77,14 +90,10 @@ async function requireKeyAccess(organizationId: string) {
 	return { session, org, canManage: isOrgAdminRole(org.role) };
 }
 
-function requireManager(canManage: boolean): void {
-	if (!canManage) throw new Error("Only organization admins can manage API keys");
-}
-
 export const listApiKeysFn = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string() }))
 	.handler(async ({ data }): Promise<ApiKeysPageData> => {
-		const { org, canManage } = await requireKeyAccess(data.organizationId);
+		const { session, org, canManage } = await requireKeyAccess(data.organizationId);
 
 		const [keys, organizationBrands] = await Promise.all([
 			auth.api.listApiKeys({ query: { organizationId: org.id }, headers: getRequestHeaders() }),
@@ -95,10 +104,18 @@ export const listApiKeysFn = createServerFn({ method: "GET" })
 				.orderBy(brands.name),
 		]);
 
+		const grants = await loadApiKeyGrants(
+			org.id,
+			keys.apiKeys.map((key) => key.id),
+		);
+
 		return {
 			organization: org,
 			canManage,
-			keys: keys.apiKeys.map(summarize),
+			keys: keys.apiKeys.map((key) => {
+				const grant = grants.get(key.id) ?? NO_GRANT;
+				return summarize(key, grant, mayRevoke(canManage, session.user.id, grant.createdBy?.id ?? null));
+			}),
 			brands: organizationBrands,
 			expiryOptions: EXPIRY_DAYS,
 		};
@@ -127,7 +144,8 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 	.validator(createInput)
 	.handler(async ({ data }): Promise<{ key: string; summary: ApiKeySummary }> => {
 		const { session, org, canManage } = await requireKeyAccess(data.organizationId);
-		requireManager(canManage);
+		const refusal = issuanceRefusal(canManage, data.brandIds);
+		if (refusal) throw new Error(refusal);
 
 		if (data.brandIds) {
 			const owned = new Set(
@@ -146,20 +164,33 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 				userId: session.user.id,
 				prefix: "elmo_",
 				permissions: scopesToPermissions(ACCESS_SCOPES[data.access]),
-				// Absent, not empty: "every brand" is the absence of a narrowing.
-				metadata: data.brandIds ? { brandIds: data.brandIds } : {},
 				...(data.expiresInDays !== null && { expiresIn: data.expiresInDays * 24 * 60 * 60 }),
 			},
 		});
 
-		return { key: created.key, summary: summarize(created) };
+		try {
+			await recordApiKeyGrant({ apiKeyId: created.id, brandIds: data.brandIds, createdByUserId: session.user.id });
+		} catch (err) {
+			// Without a grant the key already authenticates nothing; disabling it
+			// keeps it from sitting among the active ones as if it did.
+			await auth.api.updateApiKey({ body: { keyId: created.id, userId: session.user.id, enabled: false } });
+			throw err;
+		}
+
+		return {
+			key: created.key,
+			summary: summarize(
+				created,
+				{ brandIds: data.brandIds, createdBy: { id: session.user.id, name: session.user.name }, issuerIsMember: true },
+				true,
+			),
+		};
 	});
 
 export const revokeApiKeyFn = createServerFn({ method: "POST" })
 	.validator(z.object({ organizationId: z.string(), keyId: z.string() }))
 	.handler(async ({ data }): Promise<{ revoked: true }> => {
-		const { org, canManage } = await requireKeyAccess(data.organizationId);
-		requireManager(canManage);
+		const { session, org, canManage } = await requireKeyAccess(data.organizationId);
 
 		// The id arrives from the browser and the plugin's delete trusts it.
 		const keys = await auth.api.listApiKeys({
@@ -168,6 +199,10 @@ export const revokeApiKeyFn = createServerFn({ method: "POST" })
 		});
 		if (!keys.apiKeys.some((key) => key.id === data.keyId)) {
 			throw new Error("API key not found in this organization");
+		}
+		const issuer = (await loadApiKeyGrants(org.id, [data.keyId])).get(data.keyId)?.createdBy ?? null;
+		if (!mayRevoke(canManage, session.user.id, issuer?.id ?? null)) {
+			throw new Error("Only organization admins can revoke keys issued by someone else");
 		}
 
 		// Disabled rather than deleted: it stops authenticating immediately either
