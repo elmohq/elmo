@@ -327,8 +327,8 @@ const EQUIVALENCE_CASES: EquivalenceCase[] = [
 		async check(combo, label) {
 			const scope = {
 				brandId: BRAND_ID,
-				fromDate: combo.fromDateStr,
-				toDate: combo.toDateStr,
+				from: combo.fromDateStr,
+				to: combo.toDateStr,
 				timezone: combo.timezone,
 				promptIds: combo.promptIds,
 				model: combo.model,
@@ -534,7 +534,7 @@ describe("rollup reads against raw", () => {
 				["2026-07-02", "2026-07-02"],
 				["2026-07-03", "2026-07-06"],
 			]) {
-				const scope = { brandId: BRAND_ID, fromDate: from, toDate: to, timezone, promptIds: ALL_PROMPT_IDS };
+				const scope = { brandId: BRAND_ID, from, to, timezone, promptIds: ALL_PROMPT_IDS };
 				const expected = SEED_RUNS.filter((run) => {
 					const day = attributedDay(run.createdAt);
 					return day >= from && day <= to;

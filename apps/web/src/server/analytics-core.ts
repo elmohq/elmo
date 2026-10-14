@@ -373,10 +373,11 @@ export async function getBrandQueryFanout(
 	const promptIds = options.promptId ? scope.promptIds.filter((id) => id === options.promptId) : scope.promptIds;
 	if (promptIds.length === 0) return { brandName, ...emptyFanout() };
 
+	const fanoutScope = { brandId, from, to, timezone, promptIds, model: filters.model };
 	const [breakdown, modelTotals, promptTotals] = await Promise.all([
-		getFanoutBreakdown(brandId, from, to, timezone, promptIds, filters.model),
-		getFanoutModelTotals(brandId, from, to, timezone, promptIds, filters.model),
-		getFanoutPromptTotals(brandId, from, to, timezone, promptIds, filters.model),
+		getFanoutBreakdown(fanoutScope),
+		getFanoutModelTotals(fanoutScope),
+		getFanoutPromptTotals(fanoutScope),
 	]);
 
 	const promptValues = new Map(

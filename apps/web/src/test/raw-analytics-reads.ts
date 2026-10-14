@@ -741,7 +741,7 @@ export async function countResponses(scope: ResponseSearchScope): Promise<number
 		SELECT count(*)::int AS total
 		FROM prompt_runs
 		WHERE brand_id = ${scope.brandId}
-			${dateFilter(scope.fromDate, scope.toDate, scope.timezone)}
+			${dateFilter(scope.from, scope.to, scope.timezone)}
 			${promptFilter(scope.promptIds)}
 			${modelFilter(scope.model)}
 	`);

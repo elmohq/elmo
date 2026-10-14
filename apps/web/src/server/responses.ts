@@ -36,8 +36,8 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const scope: ResponseSearchScope = {
 			brandId: data.brandId,
-			fromDate: fromDateStr,
-			toDate: toDateStr,
+			from: fromDateStr,
+			to: toDateStr,
 			timezone,
 			promptIds: prompts.map((prompt) => prompt.id),
 			model: data.model,

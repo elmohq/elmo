@@ -71,7 +71,7 @@ describe("runs without a provider", () => {
 		const window = ["2026-03-02", "2026-03-02", "UTC"] as const;
 		expect(await countPromptRuns(promptId, ...window, "chatgpt")).toBe(1);
 		expect(await countPromptRuns(promptId, ...window, "chatgpt::premium")).toBe(1);
-		const scope = { brandId, fromDate: "2026-03-02", toDate: "2026-03-02", timezone: "UTC", promptIds: [promptId] };
+		const scope = { brandId, from: "2026-03-02", to: "2026-03-02", timezone: "UTC", promptIds: [promptId] };
 		const standard = await getResponseMatches({ ...scope, model: "chatgpt" }, 10, 0);
 		expect(standard.map((row) => row.provider)).toEqual([null]);
 	});
@@ -80,6 +80,7 @@ describe("runs without a provider", () => {
 describe("query fan-out", () => {
 	let brandId: string;
 	let promptId: string;
+	const scope = () => ({ brandId, from: "2026-03-02", to: "2026-03-02", timezone: "UTC", promptIds: [promptId] });
 
 	beforeAll(async () => {
 		brandId = await brand();
@@ -100,7 +101,7 @@ describe("query fan-out", () => {
 	});
 
 	it("counts genuine queries once per run, ignoring echoes of the prompt and the unavailable sentinel", async () => {
-		const rows = await getFanoutBreakdown(brandId, "2026-03-02", "2026-03-02", "UTC", [promptId]);
+		const rows = await getFanoutBreakdown(scope());
 		expect(rows.map((row) => [row.query, row.count, row.brand_mentions]).sort()).toEqual([
 			["crm pricing", 2, 1],
 			["hubspot alternatives", 1, 0],
@@ -108,11 +109,9 @@ describe("query fan-out", () => {
 	});
 
 	it("totals search runs separately from runs that fanned out", async () => {
-		expect(await getFanoutModelTotals(brandId, "2026-03-02", "2026-03-02", "UTC", [promptId])).toEqual([
+		expect(await getFanoutModelTotals(scope())).toEqual([
 			{ model: "chatgpt", runs: 3, fanout_runs: 2, total_queries: 3 },
 		]);
-		expect(await getFanoutPromptTotals(brandId, "2026-03-02", "2026-03-02", "UTC", [promptId])).toEqual([
-			{ prompt_id: promptId, runs: 2 },
-		]);
+		expect(await getFanoutPromptTotals(scope())).toEqual([{ prompt_id: promptId, runs: 2 }]);
 	});
 });

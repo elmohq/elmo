@@ -30,6 +30,16 @@ export function windowFilter(column: SQL, fromDate: string | null, toDate: strin
 	return sql`${from} ${to}`;
 }
 
+/** The calendar day `column` falls on in `timezone`. */
+export function localDate(column: SQL, timezone: string): SQL {
+	return sql`(${column} AT TIME ZONE ${timezone})::date`;
+}
+
+// Whole seconds with a fixed `.000Z`, the shape the dashboard has always published.
+export function isoInstant(value: SQL): SQL {
+	return sql`to_char(${value} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z'`;
+}
+
 export function uuidList(ids: string[]): SQL {
 	return sql.join(
 		ids.map((id) => sql`${id}::uuid`),
@@ -37,11 +47,42 @@ export function uuidList(ids: string[]): SQL {
 	);
 }
 
-/** Without ids, every prompt; an empty list is an empty scope. */
-export function promptFilter(promptIds?: string[]): SQL {
+/** What an analytics read covers. Every read filters on all of it. */
+export interface AnalyticsScope {
+	brandId: string;
+	/** A calendar day (YYYY-MM-DD, read in `timezone`) or an instant; null for unbounded. */
+	from: string | null;
+	/** A calendar day (inclusive) or an instant (exclusive); null for unbounded. */
+	to: string | null;
+	timezone: string;
+	/** Undefined for every prompt; an empty list matches nothing. */
+	promptIds?: string[];
+	model?: string;
+	webSearchEnabled?: boolean;
+}
+
+interface ScopeColumns {
+	/** Rollups are windowed on their bucket, raw rows on when they were written. */
+	time: "bucket" | "created_at";
+	alias?: string;
+}
+
+const column = (name: string, alias?: string): SQL => sql.raw(alias ? `${alias}.${name}` : name);
+
+/** The whole WHERE body for `scope`, over a table carrying the shared run columns. */
+export function scopeFilter(scope: AnalyticsScope, columns: ScopeColumns): SQL {
+	const { alias } = columns;
+	return sql`${column("brand_id", alias)} = ${scope.brandId}
+		${windowFilter(column(columns.time, alias), scope.from, scope.to, scope.timezone)}
+		${promptFilter(scope.promptIds, alias)}
+		${modelFilter(scope.model, { alias })}
+		${webSearchFilter(scope.webSearchEnabled, alias)}`;
+}
+
+export function promptFilter(promptIds: string[] | undefined, alias?: string): SQL {
 	if (!promptIds) return sql``;
 	if (promptIds.length === 0) return sql`AND FALSE`;
-	return sql`AND prompt_id IN (${uuidList(promptIds)})`;
+	return sql`AND ${column("prompt_id", alias)} IN (${uuidList(promptIds)})`;
 }
 
 // With `web_search_enabled`, the provider is what separates a grounded API answer from
@@ -58,12 +99,12 @@ export const API_PROVIDER_IDS = getAllProviders()
 export function modelFilter(model?: string, opts?: { alias?: string }): SQL {
 	const target = model ? parseModelFilter(model) : null;
 	if (!target) return sql``;
-	const prefix = opts?.alias ? sql.raw(`${opts.alias}.`) : sql``;
+	const col = (name: string) => column(name, opts?.alias);
 	if (API_PROVIDER_IDS.length === 0) {
-		return target.premium ? sql`AND FALSE` : sql`AND ${prefix}model = ${target.model}`;
+		return target.premium ? sql`AND FALSE` : sql`AND ${col("model")} = ${target.model}`;
 	}
-	const grounded = sql`(${prefix}web_search_enabled AND coalesce(${prefix}provider, '') IN (${apiProviderList()}))`;
-	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
+	const grounded = sql`(${col("web_search_enabled")} AND coalesce(${col("provider")}, '') IN (${apiProviderList()}))`;
+	return sql`AND ${col("model")} = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
 }
 
 export function apiProviderList(): SQL {
@@ -73,7 +114,7 @@ export function apiProviderList(): SQL {
 	);
 }
 
-export function webSearchFilter(webSearchEnabled?: boolean): SQL {
+export function webSearchFilter(webSearchEnabled: boolean | undefined, alias?: string): SQL {
 	if (webSearchEnabled === undefined) return sql``;
-	return sql`AND web_search_enabled = ${webSearchEnabled}`;
+	return sql`AND ${column("web_search_enabled", alias)} = ${webSearchEnabled}`;
 }

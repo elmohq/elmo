@@ -215,7 +215,7 @@ export async function countResponses(scope: ResponseSearchScope): Promise<number
 		SELECT coalesce(sum(runs), 0)::int AS total
 		FROM rollup_prompt_runs
 		WHERE brand_id = ${scope.brandId}
-			${rollupWindow(scope.fromDate, scope.toDate, scope.timezone)}
+			${rollupWindow(scope.from, scope.to, scope.timezone)}
 			${promptFilter(scope.promptIds)}
 			${modelFilter(scope.model)}
 	`);
