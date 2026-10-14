@@ -9,7 +9,6 @@ import type { Brand, Competitor } from "./db/schema";
  */
 
 export const MENTIONS_VERSION = 1;
-export const MENTIONS_ANALYSIS_KEY = "mentions";
 
 export interface MentionSubject {
 	name: string;

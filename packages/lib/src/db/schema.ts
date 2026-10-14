@@ -130,8 +130,7 @@ export const promptRuns = pgTable(
 		competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
 		/** Answer text extracted from `raw_output`; null when there was none or the run predates extraction. */
 		textContent: text("text_content"),
-		extractorVersion: integer("extractor_version"),
-		/** Deriver name -> the version stamp of the code and brand config that produced its columns. */
+		/** Layer -> the stamp of the code and brand config its columns were derived with; see `analysis-versions`. */
 		analysisVersions: jsonb("analysis_versions").$type<Record<string, string>>().notNull().default({}),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	},

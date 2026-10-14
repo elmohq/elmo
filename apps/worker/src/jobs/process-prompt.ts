@@ -1,18 +1,13 @@
 import * as Sentry from "@sentry/node";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
+import { currentAnalysisVersions } from "@workspace/lib/analysis-versions";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { type Brand, brands, citations, competitors, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
-import {
-	analyzeRunMentions,
-	MENTIONS_ANALYSIS_KEY,
-	type MentionConfig,
-	mentionConfigFrom,
-	mentionsStamp,
-} from "@workspace/lib/mentions";
+import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
@@ -25,7 +20,7 @@ import {
 	slowestIntervalHours,
 	targetKey,
 } from "@workspace/lib/run-policy";
-import { type Citation, EXTRACTOR_VERSION, storableText } from "@workspace/lib/text-extraction";
+import { type Citation, storableText } from "@workspace/lib/text-extraction";
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
@@ -313,8 +308,7 @@ async function runModelIteration({
 				brandMentioned,
 				competitorsMentioned,
 				textContent: text,
-				extractorVersion: EXTRACTOR_VERSION,
-				analysisVersions: { [MENTIONS_ANALYSIS_KEY]: mentionsStamp(mentionConfig) },
+				analysisVersions: currentAnalysisVersions(mentionConfig),
 			});
 			await saveCitations(tx, run.id, promptId, brand.id, config.model, extractedCitations, run.createdAt);
 			return run.id;
