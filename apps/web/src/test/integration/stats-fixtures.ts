@@ -11,6 +11,7 @@ import {
 	rollupCompetitorMentions,
 	rollupDirty,
 	rollupPromptRuns,
+	rollupWebQueries,
 } from "@workspace/lib/db/schema";
 import { bucketEnd, bucketStart, rebuildRange } from "@workspace/lib/rollups";
 import { eq, max, min } from "drizzle-orm";
@@ -34,7 +35,7 @@ export async function createBrand(opts: { name?: string; website?: string; addit
 }
 
 export async function deleteBrand(brandId: string) {
-	for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupCitationUrls, rollupDirty]) {
+	for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupWebQueries, rollupCitationUrls, rollupDirty]) {
 		await db.delete(table).where(eq(table.brandId, brandId));
 	}
 	await db.delete(citations).where(eq(citations.brandId, brandId));

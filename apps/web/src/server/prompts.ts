@@ -11,6 +11,7 @@ import {
 	promptSaveDelta,
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
+import { markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
@@ -479,7 +480,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		if (!brand) throw new Error("Brand not found");
 
 		const existingRows = await db
-			.select({ id: prompts.id, enabled: prompts.enabled, premiumModels: prompts.premiumModels })
+			.select({ id: prompts.id, value: prompts.value, enabled: prompts.enabled, premiumModels: prompts.premiumModels })
 			.from(prompts)
 			.where(eq(prompts.brandId, data.brandId));
 		const existingIds = new Set(existingRows.map((p) => p.id));
@@ -502,6 +503,12 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
+			const retexted = updates.filter(({ id, prompt }) => existingById.get(id)?.value !== prompt.value);
+			await markPromptRunsDirty(
+				tx,
+				data.brandId,
+				retexted.map(({ id }) => id),
+			);
 
 			if (inserts.length > 0) {
 				await tx.insert(prompts).values(

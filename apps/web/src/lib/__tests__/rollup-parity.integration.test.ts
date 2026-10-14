@@ -158,6 +158,9 @@ const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	),
 	valueCase("getCitationTotal", rollupRead.getCitationTotal, rawRead.getCitationTotal),
 	rowsCase("getCitationUrlStats", rollupRead.getCitationUrlStats, rawRead.getCitationUrlStats, foldCitationUrlRows),
+	rowsCase("getFanoutBreakdown", rollupRead.getFanoutBreakdown, rawRead.getFanoutBreakdown),
+	rowsCase("getFanoutModelTotals", rollupRead.getFanoutModelTotals, rawRead.getFanoutModelTotals),
+	rowsCase("getFanoutPromptTotals", rollupRead.getFanoutPromptTotals, rawRead.getFanoutPromptTotals),
 	valueCase(
 		"getCitationDomainPromptCounts",
 		rollupRead.getCitationDomainPromptCounts,
@@ -235,6 +238,12 @@ describe("rollup reads against raw", () => {
 	});
 
 	describe("read equivalence: rollup-read matches the raw reference", () => {
+		it("has fan-out in the seeded window, so the fan-out cases compare real rows", async () => {
+			const scope = { brandId: BRAND_ID, from: null, to: null, timezone: "UTC" };
+			const queries = (await rollupRead.getFanoutBreakdown(scope)).map((row) => row.query);
+			expect(new Set(queries)).toEqual(new Set(["crm pricing", "hubspot alternatives", "best crm tools"]));
+		});
+
 		for (const combo of COMBOS) {
 			it(combo.label, async () => {
 				const window = await resolveBrandWindow(BRAND_ID, combo.lookback, combo.timezone, { now: NOW });

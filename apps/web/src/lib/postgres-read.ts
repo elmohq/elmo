@@ -1,6 +1,6 @@
 /**
- * Reads that need individual runs: run lists, response search, and query fan-out.
- * Aggregates come from the rollups in `rollup-read.ts`.
+ * Reads that need individual runs: run lists, run detail and response search.
+ * Aggregates, query fan-out included, come from the rollups in `rollup-read.ts`.
  */
 
 import { type SQL, sql } from "drizzle-orm";
@@ -12,12 +12,7 @@ import {
 	scopeFilter,
 	windowFilter,
 } from "@/lib/analytics-sql";
-import {
-	type FanoutBreakdownRow,
-	type FanoutModelTotalRow,
-	type FanoutPromptTotalRow,
-	UNAVAILABLE_SENTINEL,
-} from "@/lib/fanout-analysis";
+import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
 
 const dateFilter = (fromDate: string | null, toDate: string | null, timezone: string): SQL =>
 	windowFilter(sql`created_at`, fromDate, toDate, timezone);
@@ -117,103 +112,6 @@ export async function countPromptRuns(
 			${modelFilter(model)}
 	`);
 	return rows[0]?.total ?? 0;
-}
-
-/**
- * Predicate selecting genuine fan-out queries: non-empty, not the `unavailable`
- * sentinel (OpenRouter and DataForSEO always; BrightData/Olostep on extraction
- * failure), and not the prompt repeated verbatim. Shared by the breakdown, model
- * totals, and per-prompt totals so all three count the same set. Requires a
- * `wq` unnest alias plus the `pr` prompt_runs and `p` prompts rows in scope.
- *
- * The verbatim-repeat exclusion is a display rule, not data cleaning: engines
- * genuinely search the prompt verbatim sometimes, and those entries stay in
- * `web_queries` — but a repeat says nothing about how the prompt was rewritten,
- * so it isn't fan-out. The comparison uses the prompt's CURRENT text, so after
- * a prompt edit, searches of the old wording start surfacing as queries: for
- * honest providers those are real searches; only pre-2026-06 DataForSEO rows
- * (which fabricated `[prompt]` as their query field; the provider now writes
- * the sentinel) would surface something that never ran, and those age out of
- * the lookback windows.
- */
-function genuineFanoutWq(): SQL {
-	return sql`length(btrim(wq)) > 0 AND lower(btrim(wq)) <> ${UNAVAILABLE_SENTINEL} AND lower(btrim(wq)) <> lower(btrim(p.value))`;
-}
-
-type FanoutScope = PromptListScope;
-
-/**
- * (prompt × model × query) fan-out counts with how often the brand was mentioned.
- * The LATERAL emits each run's DISTINCT normalized queries, so a run that lists
- * the same query twice contributes one instance (`count` = runs that searched it,
- * keeping `brand_mentions <= count` and the count >= 2 Invisible/Won gate
- * meaning "ran in 2+ runs"). Normalizing here (lowercase + trim) merges case
- * variants exactly like the aggregator's `norm`.
- */
-export async function getFanoutBreakdown(scope: FanoutScope): Promise<FanoutBreakdownRow[]> {
-	if (scope.promptIds.length === 0) return [];
-	return queryPg<FanoutBreakdownRow>(sql`
-		SELECT
-			pr.prompt_id,
-			pr.model,
-			fq.query,
-			count(*)::int AS count,
-			count(*) FILTER (WHERE pr.brand_mentioned)::int AS brand_mentions
-		FROM prompt_runs pr
-		JOIN prompts p ON p.id = pr.prompt_id
-		CROSS JOIN LATERAL (
-			SELECT DISTINCT lower(btrim(wq)) AS query FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
-		) fq
-		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
-		GROUP BY pr.prompt_id, pr.model, fq.query
-	`);
-}
-
-/** Per-model run counts and fan-out totals (the denominators for fan-outs-per-execution). */
-export async function getFanoutModelTotals(scope: FanoutScope): Promise<FanoutModelTotalRow[]> {
-	if (scope.promptIds.length === 0) return [];
-	// `runs` counts every web-search-enabled run ("Search Prompt Runs"); `fanout_runs`
-	// and `total_queries` count only genuine fan-out (via `genuineFanoutWq`), so they
-	// stay consistent with `getFanoutBreakdown`. The per-run LATERAL yields one row per
-	// run holding its DISTINCT genuine-query count (per-run duplicates count once, as
-	// in the breakdown). Engines that don't expose their searches contribute runs
-	// but no queries.
-	return queryPg<FanoutModelTotalRow>(sql`
-		SELECT
-			pr.model,
-			count(*) FILTER (WHERE pr.web_search_enabled)::int AS runs,
-			count(*) FILTER (WHERE fq.cnt > 0)::int AS fanout_runs,
-			COALESCE(sum(fq.cnt), 0)::int AS total_queries
-		FROM prompt_runs pr
-		JOIN prompts p ON p.id = pr.prompt_id
-		CROSS JOIN LATERAL (
-			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
-		) fq
-		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
-		GROUP BY pr.model
-		ORDER BY total_queries DESC
-	`);
-}
-
-/**
- * Per-prompt count of runs that produced ≥1 genuine fan-out query — the
- * denominator for avg fan-out per run. Uses the same `genuineFanoutWq` filter as
- * the breakdown, so echoes/sentinels don't inflate it.
- */
-export async function getFanoutPromptTotals(scope: FanoutScope): Promise<FanoutPromptTotalRow[]> {
-	if (scope.promptIds.length === 0) return [];
-	return queryPg<FanoutPromptTotalRow>(sql`
-		SELECT
-			pr.prompt_id,
-			count(*) FILTER (WHERE fq.cnt > 0)::int AS runs
-		FROM prompt_runs pr
-		JOIN prompts p ON p.id = pr.prompt_id
-		CROSS JOIN LATERAL (
-			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
-		) fq
-		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
-		GROUP BY pr.prompt_id
-	`);
 }
 
 // ============================================================================

@@ -15,6 +15,7 @@ import {
 	rollupCompetitorMentions,
 	rollupDirty,
 	rollupPromptRuns,
+	rollupWebQueries,
 	SYSTEM_TAGS,
 } from "@workspace/lib/db/schema";
 import { rebuildRange } from "@workspace/lib/rollups";
@@ -87,7 +88,18 @@ export interface SeedRun {
 	webSearchEnabled: boolean;
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
+	webQueries: string[];
 }
+
+// Repeats, case and spacing variants, the sentinel, a blank, and the prompt itself
+// (WEB_QUERY_SETS[2] is replaced per run), so every fan-out rule is exercised.
+const WEB_QUERY_SETS: string[][] = [
+	[],
+	["CRM pricing", " crm pricing"],
+	["<prompt>", "HubSpot alternatives"],
+	["unavailable"],
+	["best CRM tools", "crm pricing", ""],
+];
 
 function buildSeedRuns(): SeedRun[] {
 	const runs: SeedRun[] = [];
@@ -106,6 +118,9 @@ function buildSeedRuns(): SeedRun[] {
 				webSearchEnabled: variant.webSearchEnabled,
 				brandMentioned: n % 3 !== 0,
 				competitorsMentioned: COMPETITOR_SUBSETS[n % COMPETITOR_SUBSETS.length],
+				webQueries: WEB_QUERY_SETS[n % WEB_QUERY_SETS.length].map((query) =>
+					query === "<prompt>" ? PROMPTS[promptIndex].value.toUpperCase() : query,
+				),
 			});
 		}
 	}
@@ -193,6 +208,7 @@ export async function reset(db: DbConnection): Promise<void> {
 	for (const table of [
 		rollupPromptRuns,
 		rollupCompetitorMentions,
+		rollupWebQueries,
 		rollupCitationUrls,
 		rollupDirty,
 		citations,
@@ -247,6 +263,7 @@ export async function seed(db: DbConnection): Promise<void> {
 			rawOutput: { text: "seed" },
 			brandMentioned: run.brandMentioned,
 			competitorsMentioned: run.competitorsMentioned,
+			webQueries: run.webQueries,
 			createdAt: new Date(run.createdAt),
 		})),
 	);

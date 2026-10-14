@@ -1,11 +1,18 @@
+import { db } from "@workspace/lib/db/db";
+import { prompts } from "@workspace/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AnalyticsScope } from "@/lib/analytics-sql";
+import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
 import {
 	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
 	getCitationTotal,
 	getCitationUrlStats,
 	getCompetitorTotals,
+	getFanoutBreakdown,
+	getFanoutModelTotals,
+	getFanoutPromptTotals,
 	getMentionTotals,
 	getPerPromptDailyCompetitors,
 	getPerPromptDailyRuns,
@@ -385,5 +392,54 @@ describe("citation stats", () => {
 			scope(brandId, "2026-03-01", "2026-03-02", "UTC", { promptIds: [p1] }),
 		);
 		expect(Object.fromEntries(onlyP1)).toEqual({ "docs.example.com": 1, "news.example.org": 1 });
+	});
+});
+
+describe("query fan-out", () => {
+	let brandId: string;
+	let promptId: string;
+	const scope = () => ({ brandId, from: "2026-03-02", to: "2026-03-02", timezone: "UTC", promptIds: [promptId] });
+
+	beforeAll(async () => {
+		brandId = await brand();
+		promptId = await createPrompt(brandId, { value: "Best CRM for startups" });
+		const at = "2026-03-02T10:00:00Z";
+		await createRun(brandId, promptId, {
+			at,
+			brandMentioned: true,
+			webQueries: ["CRM pricing", " crm pricing", "best crm for startups", UNAVAILABLE_SENTINEL, ""],
+		});
+		await createRun(brandId, promptId, {
+			at,
+			brandMentioned: false,
+			webQueries: ["crm pricing", "hubspot alternatives"],
+		});
+		await createRun(brandId, promptId, { at, brandMentioned: false, webQueries: [UNAVAILABLE_SENTINEL] });
+		await createRun(brandId, promptId, { at, brandMentioned: false, webSearch: false });
+		await rebuildRollups(brandId);
+	});
+
+	it("counts genuine queries once per run, ignoring echoes of the prompt and the unavailable sentinel", async () => {
+		const rows = await getFanoutBreakdown(scope());
+		expect(rows.map((row) => [row.query, row.count, row.brand_mentions]).sort()).toEqual([
+			["crm pricing", 2, 1],
+			["hubspot alternatives", 1, 0],
+		]);
+	});
+
+	it("totals search runs separately from runs that fanned out", async () => {
+		expect(await getFanoutModelTotals(scope())).toEqual([
+			{ model: "chatgpt", runs: 3, fanout_runs: 2, total_queries: 3 },
+		]);
+		expect(await getFanoutPromptTotals(scope())).toEqual([{ prompt_id: promptId, runs: 2 }]);
+	});
+
+	it("follows the prompt's current text once its buckets are rebuilt", async () => {
+		await db.update(prompts).set({ value: "CRM pricing" }).where(eq(prompts.id, promptId));
+		await rebuildRollups(brandId);
+		const rows = await getFanoutBreakdown(scope());
+		expect(rows.map((row) => row.query).sort()).toEqual(["best crm for startups", "hubspot alternatives"]);
+		await db.update(prompts).set({ value: "Best CRM for startups" }).where(eq(prompts.id, promptId));
+		await rebuildRollups(brandId);
 	});
 });

@@ -67,19 +67,37 @@ CREATE TABLE "rollup_prompt_runs" (
 	"competitor_runs" integer NOT NULL,
 	"competitor_mentions" integer NOT NULL,
 	"no_mention_runs" integer NOT NULL,
+	"fanout_runs" integer NOT NULL,
+	"fanout_queries" integer NOT NULL,
 	"first_run_at" timestamp with time zone NOT NULL,
 	"last_run_at" timestamp with time zone NOT NULL,
 	CONSTRAINT "rollup_prompt_runs_pk" PRIMARY KEY("brand_id","bucket","prompt_id","model","provider","web_search_enabled")
 );
 --> statement-breakpoint
 ALTER TABLE "rollup_prompt_runs" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE "rollup_web_queries" (
+	"brand_id" text NOT NULL,
+	"bucket" timestamp with time zone NOT NULL,
+	"prompt_id" uuid NOT NULL,
+	"model" text NOT NULL,
+	"provider" text DEFAULT '' NOT NULL,
+	"web_search_enabled" boolean NOT NULL,
+	"query" text NOT NULL,
+	"runs" integer NOT NULL,
+	"brand_mentioned_runs" integer NOT NULL,
+	CONSTRAINT "rollup_web_queries_pk" PRIMARY KEY("brand_id","bucket","prompt_id","model","provider","web_search_enabled","query")
+);
+--> statement-breakpoint
+ALTER TABLE "rollup_web_queries" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "rollup_citation_urls" ADD CONSTRAINT "rollup_citation_urls_prompt_id_prompts_id_fk" FOREIGN KEY ("prompt_id") REFERENCES "public"."prompts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rollup_citation_urls" ADD CONSTRAINT "rollup_citation_urls_page_id_cited_pages_id_fk" FOREIGN KEY ("page_id") REFERENCES "public"."cited_pages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rollup_competitor_mentions" ADD CONSTRAINT "rollup_competitor_mentions_prompt_id_prompts_id_fk" FOREIGN KEY ("prompt_id") REFERENCES "public"."prompts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rollup_prompt_runs" ADD CONSTRAINT "rollup_prompt_runs_prompt_id_prompts_id_fk" FOREIGN KEY ("prompt_id") REFERENCES "public"."prompts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "rollup_web_queries" ADD CONSTRAINT "rollup_web_queries_prompt_id_prompts_id_fk" FOREIGN KEY ("prompt_id") REFERENCES "public"."prompts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "cited_pages_domain_idx" ON "cited_pages" USING btree ("domain");--> statement-breakpoint
 CREATE INDEX "rollup_citation_urls_prompt_id_bucket_idx" ON "rollup_citation_urls" USING btree ("prompt_id","bucket");--> statement-breakpoint
 CREATE INDEX "rollup_competitor_mentions_prompt_id_bucket_idx" ON "rollup_competitor_mentions" USING btree ("prompt_id","bucket");--> statement-breakpoint
 CREATE INDEX "rollup_dirty_bucket_idx" ON "rollup_dirty" USING btree ("bucket");--> statement-breakpoint
 CREATE INDEX "rollup_prompt_runs_prompt_id_bucket_idx" ON "rollup_prompt_runs" USING btree ("prompt_id","bucket");--> statement-breakpoint
+CREATE INDEX "rollup_web_queries_prompt_id_bucket_idx" ON "rollup_web_queries" USING btree ("prompt_id","bucket");--> statement-breakpoint
 INSERT INTO "pipeline_state" ("id") VALUES (1) ON CONFLICT DO NOTHING;

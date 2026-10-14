@@ -17,7 +17,7 @@ import {
 	rollupPromptRuns,
 } from "../db/schema";
 import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
-import { markDirty, markRunsDirty, pendingMarks, refreshRange } from "./dirty";
+import { markDirty, markPromptRunsDirty, markRunsDirty, pendingMarks, refreshRange } from "./dirty";
 import { getPipelineState, setPipelineState } from "./pipeline-state";
 import { rebuildRange } from "./rebuild";
 import { reclassifyPages } from "./reclassify";
@@ -534,6 +534,11 @@ describe("rollups against postgres", () => {
 			const [first] = await brandMarks();
 			await markDirty(db, BRAND_ID, [B0]);
 			expect(await brandMarks()).toEqual([first]);
+		});
+
+		it("marks every bucket a prompt has runs in", async () => {
+			expect(await markPromptRunsDirty(db, BRAND_ID, [PROMPT_2])).toBe(2);
+			expect(bucketsOf(await pendingMarks(db, 10))).toEqual([B2.toISOString(), B0.toISOString()]);
 		});
 
 		it("marks every bucket with runs created since an instant", async () => {

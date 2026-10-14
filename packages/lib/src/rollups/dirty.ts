@@ -46,20 +46,44 @@ export async function markDirty(conn: DbConnection, brandId: string, buckets: It
 	return result.rowCount ?? 0;
 }
 
-/**
- * Marks every bucket with runs created since `since`, or with any runs at all.
- * For writes that have already committed, which a rebuild is sure to see, so a
- * conflicting mark needs no lock.
- */
-export async function markRunsDirty(conn: DbConnection, since: Date | null): Promise<number> {
+// For writes that have already committed, which a rebuild is sure to see, so a
+// conflicting mark needs no lock.
+async function markRunsWhere(conn: DbConnection, where: SQL): Promise<number> {
 	const result = await conn.execute(sql`
 		INSERT INTO ${rollupDirty} (brand_id, bucket)
 		SELECT DISTINCT brand_id, ${bucketSql(sql`created_at`)}
 		FROM prompt_runs
-		${since ? sql`WHERE created_at >= ${since}` : sql``}
+		WHERE ${where}
 		ON CONFLICT (brand_id, bucket) DO NOTHING
 	`);
 	return result.rowCount ?? 0;
+}
+
+/** Marks every bucket with runs created since `since`, or with any runs at all. */
+export function markRunsDirty(conn: DbConnection, since: Date | null): Promise<number> {
+	return markRunsWhere(conn, since ? sql`created_at >= ${since}` : sql`TRUE`);
+}
+
+/**
+ * Marks every bucket the prompts have runs in, inside the transaction that edits
+ * them (their text decides which web queries count as fan-out), with the same
+ * hold-until-commit as `markDirty`.
+ */
+export async function markPromptRunsDirty(conn: DbConnection, brandId: string, promptIds: string[]): Promise<number> {
+	if (promptIds.length === 0) return 0;
+	const rows = await conn.execute<{ bucket: Date | string }>(sql`
+		SELECT DISTINCT ${bucketSql(sql`created_at`)} AS bucket
+		FROM prompt_runs
+		WHERE brand_id = ${brandId} AND prompt_id IN (${sql.join(
+			promptIds.map((id) => sql`${id}::uuid`),
+			sql`, `,
+		)})
+	`);
+	return markDirty(
+		conn,
+		brandId,
+		rows.rows.map((row) => new Date(row.bucket)),
+	);
 }
 
 const markKey = (mark: Pick<DirtyMark, "brandId" | "bucket">): SQL =>

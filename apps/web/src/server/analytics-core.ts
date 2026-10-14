@@ -15,12 +15,14 @@ import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
-import { getFanoutBreakdown, getFanoutModelTotals, getFanoutPromptTotals } from "@/lib/postgres-read";
 import {
 	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
 	getCitationTotal,
 	getCitationUrlStats,
+	getFanoutBreakdown,
+	getFanoutModelTotals,
+	getFanoutPromptTotals,
 	getMentionTotals,
 	getPerPromptDailyCompetitors,
 	getPerPromptDailyRuns,

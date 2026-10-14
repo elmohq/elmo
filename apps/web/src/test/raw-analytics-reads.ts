@@ -5,6 +5,7 @@
  */
 
 import { parseModelFilter } from "@workspace/config/model-filter";
+import { isFanoutQuery, normalizedWebQuery } from "@workspace/lib/rollups/fanout";
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type AnalyticsScope,
@@ -17,6 +18,7 @@ import {
 	scopeFilter,
 	uuidList,
 } from "@/lib/analytics-sql";
+import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
 import type {
 	CitationCountByModelRow,
 	CitationUrlStats,
@@ -331,5 +333,50 @@ export async function getCitationsCountByModel(scope: AnalyticsScope): Promise<C
 		FROM citations
 		WHERE ${citationScope(scope)}
 		GROUP BY model
+	`);
+}
+
+// Fan-out straight from `web_queries`, with the rule the rebuild applies (`isFanoutQuery`).
+const genuineQueries = (select: SQL) => sql`
+	FROM prompt_runs pr
+	JOIN prompts p ON p.id = pr.prompt_id
+	CROSS JOIN LATERAL (
+		SELECT ${select} FROM unnest(pr.web_queries) AS q WHERE ${isFanoutQuery(sql`q`, sql`p.value`)}
+	) fq`;
+
+export async function getFanoutBreakdown(scope: AnalyticsScope): Promise<FanoutBreakdownRow[]> {
+	return queryPg<FanoutBreakdownRow>(sql`
+		SELECT
+			pr.prompt_id,
+			pr.model,
+			fq.query,
+			count(*)::int AS count,
+			count(*) FILTER (WHERE pr.brand_mentioned)::int AS brand_mentions
+		${genuineQueries(sql`DISTINCT ${normalizedWebQuery(sql`q`)} AS query`)}
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
+		GROUP BY pr.prompt_id, pr.model, fq.query
+	`);
+}
+
+export async function getFanoutModelTotals(scope: AnalyticsScope): Promise<FanoutModelTotalRow[]> {
+	return queryPg<FanoutModelTotalRow>(sql`
+		SELECT
+			pr.model,
+			count(*) FILTER (WHERE pr.web_search_enabled)::int AS runs,
+			count(*) FILTER (WHERE fq.queries > 0)::int AS fanout_runs,
+			coalesce(sum(fq.queries), 0)::int AS total_queries
+		${genuineQueries(sql`count(DISTINCT ${normalizedWebQuery(sql`q`)})::int AS queries`)}
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
+		GROUP BY pr.model
+		ORDER BY total_queries DESC
+	`);
+}
+
+export async function getFanoutPromptTotals(scope: AnalyticsScope): Promise<FanoutPromptTotalRow[]> {
+	return queryPg<FanoutPromptTotalRow>(sql`
+		SELECT pr.prompt_id, count(*) FILTER (WHERE fq.queries > 0)::int AS runs
+		${genuineQueries(sql`count(DISTINCT ${normalizedWebQuery(sql`q`)})::int AS queries`)}
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
+		GROUP BY pr.prompt_id
 	`);
 }

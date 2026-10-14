@@ -362,6 +362,10 @@ export const rollupPromptRuns = pgTable(
 		competitorMentions: integer("competitor_mentions").notNull(),
 		/** Runs mentioning neither the brand nor any competitor. */
 		noMentionRuns: integer("no_mention_runs").notNull(),
+		/** Runs with at least one genuine fan-out query (see `isFanoutQuery`). */
+		fanoutRuns: integer("fanout_runs").notNull(),
+		/** Distinct genuine fan-out queries summed over runs. */
+		fanoutQueries: integer("fanout_queries").notNull(),
 		firstRunAt: timestamp("first_run_at", { withTimezone: true }).notNull(),
 		lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
 	},
@@ -447,6 +451,33 @@ export const rollupCitationUrls = pgTable(
 			],
 		}),
 		index("rollup_citation_urls_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/** Genuine fan-out queries, each counted once per run that searched it. */
+export const rollupWebQueries = pgTable(
+	"rollup_web_queries",
+	{
+		...rollupKeyColumns(),
+		/** Normalized; see `normalizedWebQuery`. */
+		query: text("query").notNull(),
+		runs: integer("runs").notNull(),
+		brandMentionedRuns: integer("brand_mentioned_runs").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_web_queries_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.query,
+			],
+		}),
+		index("rollup_web_queries_prompt_id_bucket_idx").on(table.promptId, table.bucket),
 	],
 ).enableRLS();
 

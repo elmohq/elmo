@@ -8,7 +8,7 @@ import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
-import { lockBrandRollups } from "@workspace/lib/rollups";
+import { lockBrandRollups, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, type SQL } from "drizzle-orm";
 import { z } from "zod";
@@ -235,6 +235,9 @@ async function applyPromptUpdate(
 		.set(promptUpdateData(input, brand, nextPremium))
 		.where(eq(prompts.id, promptId))
 		.returning();
+	if (input.value !== undefined && input.value !== existing.value) {
+		await markPromptRunsDirty(tx, brand.id, [promptId]);
+	}
 	if (input.enabled !== undefined && wasEnabled !== input.enabled) {
 		afterCommit(() => (input.enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
 	}

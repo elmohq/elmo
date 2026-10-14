@@ -14,6 +14,7 @@ import {
 	scopeFilter,
 	uuidList,
 } from "@/lib/analytics-sql";
+import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
 
 /** The run counts every run read selects, so a new rollup column reaches them all at once. */
 export interface RunSums {
@@ -408,5 +409,44 @@ export async function getCitationsCountByModel(scope: AnalyticsScope): Promise<C
 		FROM rollup_citation_urls
 		WHERE ${rollupScope(scope)}
 		GROUP BY model
+	`);
+}
+
+/** Each genuine fan-out query per prompt and model, counted once per run that searched it. */
+export async function getFanoutBreakdown(scope: AnalyticsScope): Promise<FanoutBreakdownRow[]> {
+	return queryPg<FanoutBreakdownRow>(sql`
+		SELECT
+			prompt_id,
+			model,
+			query,
+			sum(runs)::int AS count,
+			sum(brand_mentioned_runs)::int AS brand_mentions
+		FROM rollup_web_queries
+		WHERE ${rollupScope(scope)}
+		GROUP BY prompt_id, model, query
+	`);
+}
+
+/** Per model: web-search runs, runs that fanned out, and their distinct queries summed (the per-run denominators). */
+export async function getFanoutModelTotals(scope: AnalyticsScope): Promise<FanoutModelTotalRow[]> {
+	return queryPg<FanoutModelTotalRow>(sql`
+		SELECT
+			model,
+			coalesce(sum(runs) FILTER (WHERE web_search_enabled), 0)::int AS runs,
+			coalesce(sum(fanout_runs), 0)::int AS fanout_runs,
+			coalesce(sum(fanout_queries), 0)::int AS total_queries
+		FROM rollup_prompt_runs
+		WHERE ${rollupScope(scope)}
+		GROUP BY model
+		ORDER BY total_queries DESC
+	`);
+}
+
+export async function getFanoutPromptTotals(scope: AnalyticsScope): Promise<FanoutPromptTotalRow[]> {
+	return queryPg<FanoutPromptTotalRow>(sql`
+		SELECT prompt_id, coalesce(sum(fanout_runs), 0)::int AS runs
+		FROM rollup_prompt_runs
+		WHERE ${rollupScope(scope)}
+		GROUP BY prompt_id
 	`);
 }
