@@ -27,6 +27,7 @@ export type BillingState = {
 	entitlements: Entitlements;
 	subscription: {
 		id: string;
+		stripeSubscriptionId: string | null;
 		plan: string;
 		status: string;
 		periodEnd: string | null;
@@ -72,6 +73,7 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 			subscription: state.subscription
 				? {
 						id: state.subscription.id,
+						stripeSubscriptionId: state.subscription.stripeSubscriptionId ?? null,
 						plan: state.subscription.plan,
 						status: state.subscription.status ?? "incomplete",
 						periodEnd: state.subscription.periodEnd?.toISOString() ?? null,

@@ -7,6 +7,7 @@ import { type GenerateReportData, generateReportJob } from "./jobs/generate-repo
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
 import { REPROCESS_QUEUE, type ReprocessData, reprocessJob } from "./jobs/reprocess";
 import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
+import { type SuggestPromptsData, type SuggestPromptsResult, suggestPromptsJob } from "./jobs/suggest-prompts";
 import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/sync-auth0-memberships";
 
 /**
@@ -55,6 +56,13 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		withSentry("analyze-brand", analyzeBrandJob),
 	);
 	console.log("Registered handler: analyze-brand");
+
+	await boss.work<SuggestPromptsData, SuggestPromptsResult>(
+		"suggest-prompts",
+		{ batchSize: 1, localConcurrency: 2 },
+		withSentry("suggest-prompts", suggestPromptsJob),
+	);
+	console.log("Registered handler: suggest-prompts");
 
 	await boss.work<ScheduleMaintenanceData>(
 		"schedule-maintenance",

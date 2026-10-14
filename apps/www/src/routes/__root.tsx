@@ -6,8 +6,9 @@
 import geistMonoFont from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url";
 import geistSansFont from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
-import { Asset, createRootRoute, Outlet, Scripts, useTags } from "@tanstack/react-router";
+import { Asset, createRootRoute, Outlet, Scripts, useLocation, useTags } from "@tanstack/react-router";
 import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
+import { initAdTags, trackAdPageView } from "@workspace/ui/lib/ad-tags";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
 import { type ReactNode, useEffect, useState } from "react";
 import { NotFound } from "@/components/not-found";
@@ -107,8 +108,16 @@ function RootComponent() {
 		const required = isConsentRequired(consentRegion);
 		setConsentRequired(required);
 		initCrisp();
-		return initAnalytics(required);
+		const stops = [initAnalytics(required), initAdTags(required)];
+		return () => {
+			for (const stop of stops) stop();
+		};
 	}, [consentRegion]);
+
+	const pathname = useLocation({ select: (location) => location.pathname });
+	useEffect(() => {
+		trackAdPageView(pathname);
+	}, [pathname]);
 
 	return (
 		<RootDocument>

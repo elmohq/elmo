@@ -1,6 +1,5 @@
 import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
 import { bookDemoUrl } from "@workspace/config/referrals";
-import { externalRel } from "@/lib/external-link";
 import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
 import { QuickstartBlock } from "./quickstart-block";
 
@@ -33,12 +32,7 @@ export function CTA() {
 						    that suits someone still deciding is offered as a sentence. */}
 						<p className="mt-4 text-sm text-zinc-500">
 							Would you rather be shown around?{" "}
-							<a
-								href={DEMO_URL}
-								target="_blank"
-								rel={externalRel(DEMO_URL)}
-								className="font-medium text-zinc-700 underline underline-offset-2 hover:text-zinc-950"
-							>
+							<a href={DEMO_URL} className="font-medium text-zinc-700 underline underline-offset-2 hover:text-zinc-950">
 								Book a 30-minute demo
 							</a>
 							.

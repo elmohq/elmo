@@ -1,5 +1,13 @@
 # @workspace/lib
 
+## 0.4.5
+
+### Patch Changes
+
+- 4ec5ac9: Prevent some types of deployments from failing while generating the auth schema.
+- 9957eef: Fixed brands and competitors with a blank alias or domain being counted as mentioned in every answer.
+- @workspace/config@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

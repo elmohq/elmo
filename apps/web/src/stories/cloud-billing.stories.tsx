@@ -51,6 +51,7 @@ function billingState(spec: StateSpec = {}): BillingState {
 		subscription: plan
 			? {
 					id: "sub_1",
+					stripeSubscriptionId: "sub_stripe_1",
 					plan,
 					status,
 					periodEnd: periodEnd?.toISOString() ?? null,

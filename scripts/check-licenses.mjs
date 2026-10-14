@@ -70,6 +70,8 @@ const PACKAGE_EXCEPTIONS = new Map([
   ["@sentry/cli-win32-i686", "FSL-1.1-MIT"],
   ["@sentry/cli-win32-x64", "FSL-1.1-MIT"],
 
+  ["sentry", "FSL-1.1-Apache-2.0"],
+
   // Web fonts – OFL-1.1 permits bundling in web applications.
   ["@fontsource/geist-mono", "OFL-1.1"],
   ["@fontsource/geist-sans", "OFL-1.1"],
