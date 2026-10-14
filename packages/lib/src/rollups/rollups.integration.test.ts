@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../db/db";
 import type { DbConnection } from "../db/db-connection";
+import { insertRuns } from "../db/runs";
 import * as schema from "../db/schema";
 import {
 	brands,
@@ -157,7 +158,7 @@ async function seed(db: TestDb): Promise<void> {
 		{ id: PROMPT_1, brandId: BRAND_ID, value: "best crm" },
 		{ id: PROMPT_2, brandId: BRAND_ID, value: "crm alternatives" },
 	]);
-	await insertRuns(db, SEED_RUNS);
+	await insertSeedRuns(db, SEED_RUNS);
 	await db.insert(citations).values(
 		SEED_CITATIONS.map((citation) => {
 			const run = SEED_RUNS.find((r) => r.id === citation.run);
@@ -177,8 +178,9 @@ async function seed(db: TestDb): Promise<void> {
 	);
 }
 
-function insertRuns(db: DbConnection, runs: SeedRun[]) {
-	return db.insert(promptRuns).values(
+function insertSeedRuns(db: DbConnection, runs: SeedRun[]) {
+	return insertRuns(
+		db,
 		runs.map((run) => ({
 			id: run.id,
 			promptId: run.promptId,
@@ -427,7 +429,7 @@ describe("rollups against postgres", () => {
 		await rebuildAll(db);
 		const before = await snapshot(db);
 
-		await insertRuns(db, [
+		await insertSeedRuns(db, [
 			{
 				id: RUN(6),
 				promptId: PROMPT_2,
@@ -583,7 +585,7 @@ describe("rollups against postgres", () => {
 				release = resolve;
 			});
 			const write = db.transaction(async (tx) => {
-				await insertRuns(tx, [{ ...SEED_RUNS[0], id: RUN(8), createdAt: "2026-01-15T10:02:00.000Z" }]);
+				await insertSeedRuns(tx, [{ ...SEED_RUNS[0], id: RUN(8), createdAt: "2026-01-15T10:02:00.000Z" }]);
 				await markDirty(tx, BRAND_ID, [B0]);
 				marked();
 				await released;
@@ -611,7 +613,7 @@ describe("rollups against postgres", () => {
 				const refresh = refreshRange(db, wholeDay);
 				await waitForLockWaiters(1);
 				const write = db.transaction(async (tx) => {
-					await insertRuns(tx, [{ ...SEED_RUNS[0], id: RUN(8), createdAt: "2026-01-15T10:02:00.000Z" }]);
+					await insertSeedRuns(tx, [{ ...SEED_RUNS[0], id: RUN(8), createdAt: "2026-01-15T10:02:00.000Z" }]);
 					await markDirty(tx, BRAND_ID, [new Date("2026-01-15T10:02:00.000Z")]);
 				});
 				// The write now waits on the mark the refresh deleted.

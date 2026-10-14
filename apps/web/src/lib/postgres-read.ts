@@ -83,12 +83,12 @@ export async function getPromptRuns(
 			prompt_runs.model,
 			prompt_runs.provider,
 			prompt_runs.web_search_enabled,
-			prompt_runs.brand_mentioned,
-			prompt_runs.competitors_mentioned,
+			run_mentions.brand_mentioned,
+			run_mentions.competitors_mentioned,
 			prompt_runs.web_queries,
 			(SELECT count(*) FROM citations c WHERE c.prompt_run_id = prompt_runs.id)::int AS citation_count,
 			prompt_runs.created_at
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE prompt_id = ${promptId}::uuid
 			${dateFilter(fromDate, toDate, timezone)}
 			${modelFilter(model)}
@@ -163,13 +163,15 @@ export async function getResponseMatches(
 			pr.provider,
 			pr.version,
 			pr.web_queries,
-			pr.brand_mentioned,
-			pr.competitors_mentioned,
+			rm.brand_mentioned,
+			rm.competitors_mentioned,
 			pr.raw_output,
-			pr.text_content,
+			re.text_content,
 			pr.created_at,
 			count(*) OVER ()::int AS matched
 		FROM prompt_runs pr
+		JOIN run_mentions rm ON rm.run_id = pr.id
+		JOIN run_extractions re ON re.run_id = pr.id
 		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
 		ORDER BY pr.created_at DESC, pr.id
 		LIMIT ${limit} OFFSET ${offset}

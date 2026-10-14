@@ -9,6 +9,7 @@ import {
 	rollupCompetitorMentions,
 	rollupPromptRuns,
 	rollupWebQueries,
+	runMentions,
 } from "../db/schema";
 import {
 	aggregateCitationBucket,
@@ -82,12 +83,13 @@ async function clearRange(tx: DbConnection, brandId: string, from: Date, toExclu
 const bucket = bucketSql(sql`pr.created_at`);
 const keyColumns = sql`pr.brand_id, ${bucket}, pr.prompt_id, pr.model, coalesce(pr.provider, ''), pr.web_search_enabled`;
 
-// `pr` is a run joined to its prompt `p`. Reaching runs through the brand's prompts
+// `pr` is a run joined to its prompt `p` and its mentions `m`. Reaching runs through the brand's prompts
 // lets each lookup use `(prompt_id, created_at)`: prompt_runs has no brand index,
 // and `created_at` alone would scan every brand's runs.
 const brandRuns = (brandId: string) => sql`
 	FROM ${promptRuns} pr
-	JOIN ${prompts} p ON p.id = pr.prompt_id AND p.brand_id = ${brandId}`;
+	JOIN ${prompts} p ON p.id = pr.prompt_id AND p.brand_id = ${brandId}
+	JOIN ${runMentions} m ON m.run_id = pr.id`;
 
 const inRange = (brandId: string, from: Date, toExclusive: Date) =>
 	sql`WHERE pr.brand_id = ${brandId} AND pr.created_at >= ${from} AND pr.created_at < ${toExclusive}`;
@@ -107,10 +109,10 @@ async function insertPromptRunRollup(
 		SELECT
 			${keyColumns},
 			count(*)::int,
-			count(*) FILTER (WHERE pr.brand_mentioned)::int,
-			count(*) FILTER (WHERE cardinality(pr.competitors_mentioned) > 0)::int,
-			coalesce(sum(cardinality(pr.competitors_mentioned)), 0)::int,
-			count(*) FILTER (WHERE NOT pr.brand_mentioned AND coalesce(cardinality(pr.competitors_mentioned), 0) = 0)::int,
+			count(*) FILTER (WHERE m.brand_mentioned)::int,
+			count(*) FILTER (WHERE cardinality(m.competitors_mentioned) > 0)::int,
+			coalesce(sum(cardinality(m.competitors_mentioned)), 0)::int,
+			count(*) FILTER (WHERE NOT m.brand_mentioned AND coalesce(cardinality(m.competitors_mentioned), 0) = 0)::int,
 			count(*) FILTER (WHERE fanout.queries > 0)::int,
 			coalesce(sum(fanout.queries), 0)::int,
 			min(pr.created_at),
@@ -139,7 +141,7 @@ async function insertCompetitorRollup(
 		)
 		SELECT ${keyColumns}, competitor_name, count(DISTINCT pr.id)::int
 		${brandRuns(brandId)}
-		CROSS JOIN LATERAL unnest(pr.competitors_mentioned) AS competitor_name
+		CROSS JOIN LATERAL unnest(m.competitors_mentioned) AS competitor_name
 		${inRange(brandId, from, toExclusive)}
 		GROUP BY ${keyColumns}, competitor_name
 	`);
@@ -151,7 +153,7 @@ async function insertWebQueryRollup(tx: DbConnection, brandId: string, from: Dat
 		INSERT INTO ${rollupWebQueries} (
 			brand_id, bucket, prompt_id, model, provider, web_search_enabled, query, runs, brand_mentioned_runs
 		)
-		SELECT ${keyColumns}, fanout.query, count(*)::int, count(*) FILTER (WHERE pr.brand_mentioned)::int
+		SELECT ${keyColumns}, fanout.query, count(*)::int, count(*) FILTER (WHERE m.brand_mentioned)::int
 		${brandRuns(brandId)}
 		CROSS JOIN LATERAL (
 			SELECT DISTINCT ${normalizedWebQuery(sql`q`)} AS query

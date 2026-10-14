@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@workspace/lib/db/db";
+import { insertRuns, type NewRun } from "@workspace/lib/db/runs";
 import * as schema from "@workspace/lib/db/schema";
 import {
 	brands,
@@ -74,22 +75,21 @@ async function deleteFixture({ brandId }: Fixture): Promise<void> {
 	await db.delete(organization).where(eq(organization.id, brandId));
 }
 
-function insertRun(
-	fixture: Fixture,
-	overrides: Partial<typeof promptRuns.$inferInsert> & { createdAt: Date },
-): Promise<unknown> {
-	return db.insert(promptRuns).values({
-		promptId: fixture.promptId,
-		brandId: fixture.brandId,
-		model: "gpt-5",
-		provider: null,
-		version: "1",
-		webSearchEnabled: false,
-		rawOutput: { text: "seed" },
-		brandMentioned: true,
-		competitorsMentioned: [],
-		...overrides,
-	});
+function insertRun(fixture: Fixture, overrides: Partial<NewRun> & { createdAt: Date }): Promise<unknown> {
+	return insertRuns(db, [
+		{
+			promptId: fixture.promptId,
+			brandId: fixture.brandId,
+			model: "gpt-5",
+			provider: null,
+			version: "1",
+			webSearchEnabled: false,
+			rawOutput: { text: "seed" },
+			brandMentioned: true,
+			competitorsMentioned: [],
+			...overrides,
+		},
+	]);
 }
 
 const marksOf = (brandId: string) => db.select().from(rollupDirty).where(eq(rollupDirty.brandId, brandId));

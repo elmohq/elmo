@@ -6,6 +6,7 @@ import {
 } from "@workspace/lib/analysis-versions";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
+import { loadRawOutputs } from "@workspace/lib/db/runs";
 import {
 	type Brand,
 	brands,
@@ -14,6 +15,8 @@ import {
 	competitors,
 	promptRuns,
 	prompts,
+	runExtractions,
+	runMentions,
 } from "@workspace/lib/db/schema";
 import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { markDirty } from "@workspace/lib/rollups";
@@ -44,25 +47,38 @@ export interface StaleRun {
 	model: string;
 	provider: string | null;
 	textContent: string | null;
-	/** Loaded only when the run's text has to be (re)extracted. */
+	/** Loaded (through `loadRawOutputs`) only when the run's text has to be (re)extracted. */
 	rawOutput: unknown;
-	analysisVersions: AnalysisVersions;
+	/** The stamps its derived rows carry, keyed like the brand's. */
+	stamps: AnalysisVersions;
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
+	citationCount: number;
 }
 
 export interface RunUpdate {
-	columns: { textContent?: string | null; brandMentioned?: boolean; competitorsMentioned?: string[] };
-	stamps: AnalysisVersions;
+	/** A null `stamp` leaves the stored one alone: text filled in for matching, citations untouched. */
+	extraction?: { textContent: string | null; stamp: string | null };
+	mentions?: { brandMentioned: boolean; competitorsMentioned: string[]; stamp: string };
 	/** Present only when extraction ran: the run's citations are replaced wholesale. */
 	citations?: Citation[];
+	/** What the stored payload no longer yields, so the run keeps what it has (see `deriveRunUpdate`). */
+	kept: ("text" | "citations" | "mentions")[];
 }
 
 const isStale = (run: StaleRun, layer: ReprocessLayer, target: AnalysisVersions) =>
-	run.analysisVersions[LAYER_KEY[layer]] !== target[LAYER_KEY[layer]];
+	run.stamps[LAYER_KEY[layer]] !== target[LAYER_KEY[layer]];
 
 /**
  * Brings one run up to `target` for the requested layers. A run that predates
  * stored text gets it filled in for mention matching, but keeps its extraction
  * stamp: its citations weren't re-extracted.
+ *
+ * A replay never replaces something with nothing. Payloads stored by older code
+ * may lack what that code read at the time, so when the stored payload yields no
+ * text, no citations, or (for want of text) no mentions where the run has some,
+ * the run keeps what it has and `kept` says so. The stamp still moves, so the run
+ * isn't retried forever.
  */
 export function deriveRunUpdate(
 	run: StaleRun,
@@ -70,57 +86,78 @@ export function deriveRunUpdate(
 	target: AnalysisVersions,
 	config: MentionConfig,
 ): RunUpdate {
-	const update: RunUpdate = { columns: {}, stamps: {} };
-	let text = run.textContent;
-
+	const update: RunUpdate = { kept: [] };
 	const extract = layers.includes("extraction") && isStale(run, "extraction", target);
-	if (extract || text === null) {
-		const extracted = extractRun(run.rawOutput, run.provider ?? run.model);
-		text = extracted.textContent;
-		update.columns.textContent = text;
-		if (extract) {
-			update.citations = extracted.citations;
-			update.stamps[EXTRACTION_KEY] = target[EXTRACTION_KEY];
-		}
-	}
-
+	const text = extract || run.textContent === null ? reextract(run, extract, target, update) : run.textContent;
 	if (layers.includes("interpretation") && isStale(run, "interpretation", target)) {
-		Object.assign(update.columns, analyzeRunMentions(text, config));
-		update.stamps[MENTIONS_KEY] = target[MENTIONS_KEY];
+		update.mentions = { ...rederiveMentions(run, text, config, update), stamp: target[MENTIONS_KEY] };
 	}
 	return update;
 }
 
+/** Fills `update.extraction` (and citations when `extract`), returning the text mentions should read. */
+function reextract(run: StaleRun, extract: boolean, target: AnalysisVersions, update: RunUpdate): string | null {
+	const extracted = extractRun(run.rawOutput, run.provider ?? run.model);
+	const lostText = extracted.textContent === null && run.textContent !== null;
+	if (lostText) update.kept.push("text");
+	const text = lostText ? run.textContent : extracted.textContent;
+	update.extraction = { textContent: text, stamp: extract ? target[EXTRACTION_KEY] : null };
+	if (!extract) return text;
+	if (extracted.citations.length === 0 && run.citationCount > 0) update.kept.push("citations");
+	else update.citations = extracted.citations;
+	return text;
+}
+
+function rederiveMentions(
+	run: StaleRun,
+	text: string | null,
+	config: MentionConfig,
+	update: RunUpdate,
+): { brandMentioned: boolean; competitorsMentioned: string[] } {
+	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
+		return analyzeRunMentions(text, config);
+	}
+	update.kept.push("mentions");
+	return { brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned };
+}
+
+const STAMP_COLUMN: Record<ReprocessLayer, SQL> = {
+	extraction: sql`${runExtractions.stamp}`,
+	interpretation: sql`${runMentions.stamp}`,
+};
+
 const staleFor = (layer: ReprocessLayer, target: AnalysisVersions): SQL =>
-	sql`${promptRuns.analysisVersions} ->> ${LAYER_KEY[layer]} IS DISTINCT FROM ${target[LAYER_KEY[layer]]}`;
+	sql`${STAMP_COLUMN[layer]} IS DISTINCT FROM ${target[LAYER_KEY[layer]]}`;
 
 /**
  * The next stale runs of one prompt, oldest first. Rewritten runs stop matching,
  * so the walk needs no cursor beyond "not before the last batch": runs sharing
  * its last timestamp are read again but only rewritten if still stale.
  */
-function loadStaleRuns(
+async function loadStaleRuns(
 	conn: DbConnection,
 	pass: Pass,
 	promptId: string,
 	from: Date | null,
 	limit = BATCH_SIZE,
 ): Promise<StaleRun[]> {
-	const needsRaw = pass.layers.includes("extraction")
-		? sql`${promptRuns.textContent} IS NULL OR ${staleFor("extraction", pass.target)}`
-		: sql`${promptRuns.textContent} IS NULL`;
-	return conn
+	const rows = await conn
 		.select({
 			id: promptRuns.id,
 			promptId: promptRuns.promptId,
 			createdAt: promptRuns.createdAt,
 			model: promptRuns.model,
 			provider: promptRuns.provider,
-			textContent: promptRuns.textContent,
-			rawOutput: sql<unknown>`CASE WHEN ${needsRaw} THEN ${promptRuns.rawOutput} END`,
-			analysisVersions: promptRuns.analysisVersions,
+			textContent: runExtractions.textContent,
+			extractionStamp: runExtractions.stamp,
+			mentionsStamp: runMentions.stamp,
+			brandMentioned: runMentions.brandMentioned,
+			competitorsMentioned: runMentions.competitorsMentioned,
+			citationCount: sql<number>`(SELECT count(*) FROM ${citations} WHERE ${citations.promptRunId} = ${promptRuns.id})::int`,
 		})
 		.from(promptRuns)
+		.innerJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
+		.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 		.where(
 			and(
 				eq(promptRuns.promptId, promptId),
@@ -131,6 +168,23 @@ function loadStaleRuns(
 		)
 		.orderBy(asc(promptRuns.createdAt))
 		.limit(limit);
+	const needsRaw = rows.filter(
+		(row) =>
+			row.textContent === null ||
+			(pass.layers.includes("extraction") && row.extractionStamp !== pass.target[EXTRACTION_KEY]),
+	);
+	const raw = await loadRawOutputs(
+		conn,
+		needsRaw.map((row) => row.id),
+	);
+	return rows.map(({ extractionStamp, mentionsStamp, ...run }) => ({
+		...run,
+		rawOutput: raw.get(run.id),
+		stamps: {
+			...(extractionStamp ? { [EXTRACTION_KEY]: extractionStamp } : {}),
+			...(mentionsStamp ? { [MENTIONS_KEY]: mentionsStamp } : {}),
+		},
+	}));
 }
 
 async function replaceCitations(
@@ -161,26 +215,37 @@ interface Pass {
 	layers: ReprocessLayer[];
 	target: AnalysisVersions;
 	config: MentionConfig;
+	/** Runs whose stored payload yielded less than they already had; see `deriveRunUpdate`. */
+	keptRuns: number;
 }
 
-function rewriteRuns(conn: DbConnection, pass: Pass, runs: StaleRun[]): Promise<void> {
+async function writeRunUpdate(tx: DbConnection, pass: Pass, run: StaleRun, update: RunUpdate): Promise<void> {
+	if (update.extraction) {
+		const { textContent, stamp } = update.extraction;
+		await tx
+			.update(runExtractions)
+			.set(stamp ? { textContent, stamp } : { textContent })
+			.where(eq(runExtractions.runId, run.id));
+	}
+	if (update.mentions) await tx.update(runMentions).set(update.mentions).where(eq(runMentions.runId, run.id));
+	if (update.citations) await replaceCitations(tx, run, pass.brandId, update.citations);
+}
+
+/** Rewrites only the derived rows: `prompt_runs` itself is append-only. Returns how many runs kept something. */
+function rewriteRuns(conn: DbConnection, pass: Pass, runs: StaleRun[]): Promise<number> {
 	return conn.transaction(async (tx) => {
+		let keptRuns = 0;
 		for (const run of runs) {
 			const update = deriveRunUpdate(run, pass.layers, pass.target, pass.config);
-			await tx
-				.update(promptRuns)
-				.set({
-					...update.columns,
-					analysisVersions: sql`${promptRuns.analysisVersions} || ${JSON.stringify(update.stamps)}::jsonb`,
-				})
-				.where(eq(promptRuns.id, run.id));
-			if (update.citations) await replaceCitations(tx, run, pass.brandId, update.citations);
+			if (update.kept.length > 0) keptRuns++;
+			await writeRunUpdate(tx, pass, run, update);
 		}
 		await markDirty(
 			tx,
 			pass.brandId,
 			runs.map((run) => run.createdAt),
 		);
+		return keptRuns;
 	});
 }
 
@@ -190,10 +255,23 @@ async function reprocessPrompt(conn: DbConnection, pass: Pass, promptId: string,
 	for (;;) {
 		if (Date.now() > deadline) return false;
 		const runs = await loadStaleRuns(conn, pass, promptId, from);
-		if (runs.length > 0) await rewriteRuns(conn, pass, runs);
+		if (runs.length > 0) pass.keptRuns += await rewriteRuns(conn, pass, runs);
 		if (runs.length < BATCH_SIZE) return true;
 		from = runs[runs.length - 1].createdAt;
 	}
+}
+
+/** False when the deadline cut the walk short. */
+async function reprocessPrompts(
+	conn: DbConnection,
+	pass: Pass,
+	promptIds: string[],
+	deadline: number,
+): Promise<boolean> {
+	for (const id of promptIds) {
+		if (!(await reprocessPrompt(conn, pass, id, deadline))) return false;
+	}
+	return true;
 }
 
 function sameTags(a: string[], b: string[]): boolean {
@@ -258,15 +336,31 @@ export async function runReprocess(
 		console.log(`[reprocess] brand ${data.brandId} no longer exists, skipping`);
 		return;
 	}
-	const pass: Pass = { brandId: data.brandId, layers: data.layers, target: context.current, config: context.config };
+	const pass: Pass = {
+		brandId: data.brandId,
+		layers: data.layers,
+		target: context.current,
+		config: context.config,
+		keptRuns: 0,
+	};
 
 	const brandPrompts = await conn
 		.select({ id: prompts.id })
 		.from(prompts)
 		.where(eq(prompts.brandId, data.brandId))
 		.orderBy(asc(prompts.id));
-	for (const { id } of brandPrompts) {
-		if (await reprocessPrompt(conn, pass, id, deadline)) continue;
+	const done = await reprocessPrompts(
+		conn,
+		pass,
+		brandPrompts.map(({ id }) => id),
+		deadline,
+	);
+	if (pass.keptRuns > 0) {
+		console.warn(
+			`[reprocess] brand ${data.brandId}: ${pass.keptRuns} runs kept existing data their stored payload no longer yields`,
+		);
+	}
+	if (!done) {
 		const sent = await sendReprocess(boss, data);
 		console.log(`[reprocess] brand ${data.brandId} out of time; ${sent ? "continuing" : "a queued pass continues"}`);
 		return;

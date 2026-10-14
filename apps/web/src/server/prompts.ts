@@ -3,7 +3,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { selectRuns } from "@workspace/lib/db/runs";
+import { brands, competitors, promptRuns, prompts, runMentions, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
 	assertAllowed,
 	assertPromptSaveAllowed,
@@ -420,12 +421,11 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		const offset = (data.page - 1) * data.limit;
 
 		const [runs, totalResult] = await Promise.all([
-			db.query.promptRuns.findMany({
-				where: and(eq(promptRuns.promptId, data.promptId), timeCondition),
-				orderBy: desc(promptRuns.createdAt),
-				limit: data.limit,
-				offset,
-			}),
+			selectRuns(db)
+				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition))
+				.orderBy(desc(promptRuns.createdAt))
+				.limit(data.limit)
+				.offset(offset),
 			db
 				.select({ count: count() })
 				.from(promptRuns)

@@ -4,6 +4,7 @@
 // two paths legitimately diverge.
 
 import type { DbConnection } from "@workspace/lib/db/db-connection";
+import { insertRuns } from "@workspace/lib/db/runs";
 import {
 	brands,
 	citations,
@@ -251,7 +252,8 @@ export async function seed(db: DbConnection): Promise<void> {
 			tags: p.tags ?? [],
 		})),
 	);
-	await db.insert(promptRuns).values(
+	await insertRuns(
+		db,
 		SEED_RUNS.map((run) => ({
 			id: run.id,
 			promptId: run.promptId,

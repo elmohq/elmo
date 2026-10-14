@@ -72,7 +72,7 @@ export async function getMentionTotals(scope: AnalyticsScope): Promise<MentionTo
 			count(DISTINCT prompt_id)::int AS prompts,
 			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_prompts,
 			${isoInstant(sql`max(created_at)`)} AS last_run_at
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE ${runScope(scope)}
 	`);
 	return row;
@@ -83,7 +83,7 @@ export async function getPerPromptDailyRuns(scope: AnalyticsScope): Promise<PerP
 	// interpolation, so Postgres wouldn't see a repeated expression as the same one.
 	return queryPg<PerPromptDailyRuns>(sql`
 		SELECT prompt_id, ${localDate(sql`created_at`, scope.timezone)} AS date, ${runCounts}
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE ${runScope(scope)}
 		GROUP BY prompt_id, date
 		ORDER BY prompt_id, date
@@ -97,7 +97,7 @@ export async function getPerPromptDailyCompetitors(scope: AnalyticsScope): Promi
 			${localDate(sql`created_at`, scope.timezone)} AS date,
 			competitor,
 			count(*)::int AS runs
-		FROM prompt_runs, unnest(competitors_mentioned) AS competitor
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id, unnest(competitors_mentioned) AS competitor
 		WHERE ${runScope(scope)}
 		GROUP BY prompt_id, date, competitor
 		ORDER BY prompt_id, date, competitor
@@ -107,7 +107,7 @@ export async function getPerPromptDailyCompetitors(scope: AnalyticsScope): Promi
 export async function getCompetitorTotals(scope: AnalyticsScope, limit?: number): Promise<CompetitorTotal[]> {
 	return queryPg<CompetitorTotal>(sql`
 		SELECT competitor, count(DISTINCT pr.id)::int AS runs
-		FROM prompt_runs pr, unnest(pr.competitors_mentioned) AS competitor
+		FROM prompt_runs pr JOIN run_mentions rm ON rm.run_id = pr.id, unnest(rm.competitors_mentioned) AS competitor
 		WHERE ${runScope(scope, "pr")}
 		GROUP BY competitor
 		ORDER BY runs DESC
@@ -123,7 +123,7 @@ export async function getPerPromptRunStats(scope: AnalyticsScope): Promise<PerPr
 			count(DISTINCT ${localDate(sql`created_at`, scope.timezone)})::int AS run_days,
 			${isoInstant(sql`max(created_at)`)} AS last_run_at,
 			max(${localDate(sql`created_at`, scope.timezone)}) AS last_run_date
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE ${runScope(scope)}
 		GROUP BY prompt_id
 	`);
@@ -132,7 +132,7 @@ export async function getPerPromptRunStats(scope: AnalyticsScope): Promise<PerPr
 export async function getRunsByModel(scope: AnalyticsScope): Promise<ModelRunSums[]> {
 	return queryPg<ModelRunSums>(sql`
 		SELECT model, ${runCounts}
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE ${runScope(scope)}
 		GROUP BY model
 		ORDER BY runs DESC
@@ -176,7 +176,7 @@ export async function getVisibilityDailyAggregate(
 					${localDate(sql`created_at`, scope.timezone)} AS obs_date,
 					count(*)::int AS total_runs,
 					count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-				FROM prompt_runs
+				FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 				WHERE ${runScope(scope)}
 				GROUP BY prompt_id, obs_date
 			),
@@ -238,7 +238,7 @@ export async function getVisibilityDailyAggregate(
 export async function getBrandEarliestRunDate(brandId: string): Promise<string | null> {
 	const rows = await queryPg<{ earliest_date: string | null }>(sql`
 		SELECT min(created_at) AS earliest_date
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 	`);
 	return rows[0]?.earliest_date || null;
@@ -251,7 +251,7 @@ export async function getPromptsFirstEvaluatedAt(
 	if (promptIds.length === 0) return [];
 	return queryPg<PromptFirstEvaluatedAt>(sql`
 		SELECT prompt_id, min(created_at) AS first_evaluated_at
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE brand_id = ${brandId}
 			AND prompt_id IN (${uuidList(promptIds)})
 		GROUP BY prompt_id
@@ -340,6 +340,7 @@ export async function getCitationsCountByModel(scope: AnalyticsScope): Promise<C
 const genuineQueries = (select: SQL) => sql`
 	FROM prompt_runs pr
 	JOIN prompts p ON p.id = pr.prompt_id
+	JOIN run_mentions rm ON rm.run_id = pr.id
 	CROSS JOIN LATERAL (
 		SELECT ${select} FROM unnest(pr.web_queries) AS q WHERE ${isFanoutQuery(sql`q`, sql`p.value`)}
 	) fq`;
@@ -351,7 +352,7 @@ export async function getFanoutBreakdown(scope: AnalyticsScope): Promise<FanoutB
 			pr.model,
 			fq.query,
 			count(*)::int AS count,
-			count(*) FILTER (WHERE pr.brand_mentioned)::int AS brand_mentions
+			count(*) FILTER (WHERE rm.brand_mentioned)::int AS brand_mentions
 		${genuineQueries(sql`DISTINCT ${normalizedWebQuery(sql`q`)} AS query`)}
 		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
 		GROUP BY pr.prompt_id, pr.model, fq.query
