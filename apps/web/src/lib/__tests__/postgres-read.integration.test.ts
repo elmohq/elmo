@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { countPromptRuns, getPromptRuns, getResponseMatches } from "@/lib/postgres-read";
+import { countPromptRuns, getPromptRuns, getPromptWebQueryCounts, getResponseMatches } from "@/lib/postgres-read";
 import { createBrand, createCitation, createPrompt, createRun, deleteBrand } from "@/test/integration/stats-fixtures";
 
 const brandIds: string[] = [];
@@ -66,5 +66,24 @@ describe("runs without a provider", () => {
 		const scope = { brandId, from: "2026-03-02", to: "2026-03-02", timezone: "UTC", promptIds: [promptId] };
 		const standard = await getResponseMatches({ ...scope, model: "chatgpt" }, 10, 0);
 		expect(standard.map((row) => row.provider)).toEqual([null]);
+	});
+});
+
+describe("prompt web queries", () => {
+	it("reads a prompt's web queries only under the brand that owns it", async () => {
+		const owner = await brand();
+		const other = await brand();
+		const promptId = await createPrompt(owner);
+		await createRun(owner, promptId, {
+			at: "2026-03-02T10:00:00Z",
+			brandMentioned: false,
+			webQueries: ["best crm"],
+		});
+		const window = ["2026-03-02", "2026-03-02", "UTC"] as const;
+
+		expect(await getPromptWebQueryCounts(owner, promptId, ...window)).toEqual([
+			{ model: "chatgpt", web_query: "best crm", query_count: 1 },
+		]);
+		expect(await getPromptWebQueryCounts(other, promptId, ...window)).toEqual([]);
 	});
 });

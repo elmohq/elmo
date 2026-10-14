@@ -24,6 +24,7 @@ export interface WebQueryCount {
 }
 
 export async function getPromptWebQueryCounts(
+	brandId: string,
 	promptId: string,
 	fromDate: string | null,
 	toDate: string | null,
@@ -39,7 +40,8 @@ export async function getPromptWebQueryCounts(
 			web_query,
 			count(*)::int AS query_count
 		FROM prompt_runs, unnest(web_queries) AS web_query
-		WHERE prompt_id = ${promptId}
+		WHERE brand_id = ${brandId}
+			AND prompt_id = ${promptId}
 			AND array_length(web_queries, 1) > 0
 			AND lower(btrim(web_query)) <> ${UNAVAILABLE_SENTINEL}
 			${dateFilter(fromDate, toDate, timezone)}
