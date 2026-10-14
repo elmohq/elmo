@@ -1,14 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { BUCKET_MS, type DirtyReason } from "./constants";
+import { BUCKET_MS } from "./constants";
 import { coalesceMarks, type DirtyMark } from "./dirty";
 
 const base = Date.parse("2026-01-15T00:00:00.000Z");
 const bucket = (index: number) => new Date(base + index * BUCKET_MS);
-const mark = (brandId: string, index: number, reason: DirtyReason = "run"): DirtyMark => ({
-	brandId,
-	bucket: bucket(index),
-	reason,
-});
+const mark = (brandId: string, index: number): DirtyMark => ({ brandId, bucket: bucket(index) });
 const spans = (ranges: { from: Date; toExclusive: Date; brandId: string }[]) =>
 	ranges.map((r) => [r.brandId, r.from.toISOString(), r.toExclusive.toISOString()]);
 
@@ -63,10 +59,8 @@ describe("coalesceMarks", () => {
 	});
 
 	it("keeps every mark it folds into a range", () => {
-		const marks = [mark("a", 0, "run"), mark("a", 1, "backfill"), mark("b", 9, "reprocess")];
-		expect(coalesceMarks(marks).flatMap((r) => r.marks)).toEqual(
-			expect.arrayContaining(marks.map((m) => expect.objectContaining({ reason: m.reason }))),
-		);
+		const marks = [mark("a", 0), mark("a", 1), mark("b", 9)];
+		expect(coalesceMarks(marks).flatMap((r) => r.marks)).toEqual(expect.arrayContaining(marks));
 	});
 
 	it("does not depend on input order", () => {

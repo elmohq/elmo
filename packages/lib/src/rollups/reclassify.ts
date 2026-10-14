@@ -42,10 +42,9 @@ async function writeClassifications(conn: DbConnection, pages: StalePage[]): Pro
 }
 
 /**
- * Re-runs the classifier over every page stamped with an older version, in id
- * order so a crash resumes where it stopped. Marking the affected buckets dirty
- * is the caller's job: which buckets are worth rebuilding depends on why the
- * classifier moved.
+ * Re-runs the classifier over every page stamped with an older version. Each
+ * chunk commits on its own and is stamped as it goes, so a crash resumes where
+ * it stopped. Reads join page rows live, so nothing needs rebuilding after.
  */
 export async function reclassifyPages(conn: DbConnection, batchSize = 1000): Promise<number> {
 	let afterId = 0;

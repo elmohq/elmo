@@ -17,7 +17,7 @@ import {
 	rollupPromptRuns,
 } from "../db/schema";
 import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
-import { markDirty, markPromptDirty, markRunsSinceDirty, pendingMarks, refreshRange } from "./dirty";
+import { markDirty, markRunsSinceDirty, pendingMarks, refreshRange } from "./dirty";
 import { getPipelineState, setPipelineState } from "./pipeline-state";
 import { rebuildRange } from "./rebuild";
 import { reclassifyPages } from "./reclassify";
@@ -43,9 +43,9 @@ const PROMPT_2 = "aaaaaaaa-0000-4000-8000-000000000002";
 const RUN = (n: number) => `bbbbbbbb-0000-4000-8000-00000000000${n}`;
 
 const B0 = new Date("2026-01-15T10:00:00.000Z");
-const B1 = new Date("2026-01-15T10:30:00.000Z");
-const B2 = new Date("2026-01-15T11:00:00.000Z");
-const B3 = new Date("2026-01-15T11:30:00.000Z");
+const B1 = new Date("2026-01-15T10:15:00.000Z");
+const B2 = new Date("2026-01-15T10:30:00.000Z");
+const B3 = new Date("2026-01-15T10:45:00.000Z");
 
 const GUIDE = "https://example.com/guide";
 const GOOGLE_SEARCH = "https://www.google.com/search?q=best+crm";
@@ -65,7 +65,7 @@ const SEED_RUNS: SeedRun[] = [
 	{
 		id: RUN(1),
 		promptId: PROMPT_1,
-		createdAt: "2026-01-15T10:05:00.000Z",
+		createdAt: "2026-01-15T10:02:00.000Z",
 		model: "gpt-5",
 		provider: null,
 		webSearchEnabled: false,
@@ -75,7 +75,7 @@ const SEED_RUNS: SeedRun[] = [
 	{
 		id: RUN(2),
 		promptId: PROMPT_1,
-		createdAt: "2026-01-15T10:15:00.000Z",
+		createdAt: "2026-01-15T10:08:00.000Z",
 		model: "gpt-5",
 		provider: null,
 		webSearchEnabled: false,
@@ -85,7 +85,7 @@ const SEED_RUNS: SeedRun[] = [
 	{
 		id: RUN(3),
 		promptId: PROMPT_2,
-		createdAt: "2026-01-15T10:20:00.000Z",
+		createdAt: "2026-01-15T10:12:00.000Z",
 		model: "gpt-5",
 		provider: null,
 		webSearchEnabled: false,
@@ -95,7 +95,7 @@ const SEED_RUNS: SeedRun[] = [
 	{
 		id: RUN(4),
 		promptId: PROMPT_1,
-		createdAt: "2026-01-15T10:35:00.000Z",
+		createdAt: "2026-01-15T10:20:00.000Z",
 		model: "gpt-5",
 		provider: "openai-api",
 		webSearchEnabled: true,
@@ -105,7 +105,7 @@ const SEED_RUNS: SeedRun[] = [
 	{
 		id: RUN(5),
 		promptId: PROMPT_2,
-		createdAt: "2026-01-15T11:10:00.000Z",
+		createdAt: "2026-01-15T10:35:00.000Z",
 		model: "claude-sonnet-4-5",
 		provider: null,
 		webSearchEnabled: false,
@@ -137,7 +137,7 @@ async function reset(db: TestDb): Promise<void> {
 		RESTART IDENTITY CASCADE
 	`);
 	await db.execute(sql`INSERT INTO pipeline_state (id) VALUES (1) ON CONFLICT DO NOTHING`);
-	await db.execute(sql`UPDATE pipeline_state SET rollup_version = 0, classifier_version = 0`);
+	await db.execute(sql`UPDATE pipeline_state SET rollup_version = 0`);
 }
 
 async function seed(db: TestDb): Promise<void> {
@@ -336,8 +336,8 @@ describe("rollups against postgres", () => {
 			},
 		]);
 		const first = rows[0];
-		expect(first.firstRunAt.toISOString()).toBe("2026-01-15T10:05:00.000Z");
-		expect(first.lastRunAt.toISOString()).toBe("2026-01-15T10:15:00.000Z");
+		expect(first.firstRunAt.toISOString()).toBe("2026-01-15T10:02:00.000Z");
+		expect(first.lastRunAt.toISOString()).toBe("2026-01-15T10:08:00.000Z");
 	});
 
 	it("counts one row per competitor mentioned", async () => {
@@ -370,8 +370,8 @@ describe("rollups against postgres", () => {
 		]);
 
 		const guide = pages.find((page) => page.url === GUIDE);
-		expect(guide?.firstSeenAt.toISOString()).toBe("2026-01-15T10:05:00.000Z");
-		expect(guide?.lastSeenAt.toISOString()).toBe("2026-01-15T11:10:00.000Z");
+		expect(guide?.firstSeenAt.toISOString()).toBe("2026-01-15T10:02:00.000Z");
+		expect(guide?.lastSeenAt.toISOString()).toBe("2026-01-15T10:35:00.000Z");
 
 		const urls = await urlRows(db);
 		const guideRow = urls.find(
@@ -411,7 +411,7 @@ describe("rollups against postgres", () => {
 			{
 				id: RUN(6),
 				promptId: PROMPT_2,
-				createdAt: "2026-01-15T11:20:00.000Z",
+				createdAt: "2026-01-15T10:40:00.000Z",
 				model: "claude-sonnet-4-5",
 				provider: null,
 				webSearchEnabled: false,
@@ -498,40 +498,31 @@ describe("rollups against postgres", () => {
 		const wholeDay = { brandId: BRAND_ID, from: B0, toExclusive: B4 };
 
 		it("lists pending marks newest bucket first, without taking them", async () => {
-			await markDirty(db, BRAND_ID, [B0, B2, B1], "run");
+			await markDirty(db, BRAND_ID, [B0, B2, B1]);
 			expect(bucketsOf(await pendingMarks(db, 2))).toEqual([B2.toISOString(), B1.toISOString()]);
 			expect(bucketsOf(await pendingMarks(db, 10))).toEqual([B2, B1, B0].map((b) => b.toISOString()));
 		});
 
 		it("leaves out the marks a tick has already tried", async () => {
-			await markDirty(db, BRAND_ID, [B0, B1, B2], "run");
+			await markDirty(db, BRAND_ID, [B0, B1, B2]);
 			const [newest] = await pendingMarks(db, 1);
 			expect(bucketsOf(await pendingMarks(db, 10, [newest]))).toEqual([B1.toISOString(), B0.toISOString()]);
 		});
 
-		it("keeps a bucket's first reason and time when it is marked again", async () => {
-			await markDirty(db, BRAND_ID, [B0], "run");
+		it("keeps a bucket's first mark time when it is marked again", async () => {
+			await markDirty(db, BRAND_ID, [B0]);
 			const [first] = await brandMarks();
-			await markDirty(db, BRAND_ID, [B0], "reprocess");
+			await markDirty(db, BRAND_ID, [B0]);
 			expect(await brandMarks()).toEqual([first]);
-			expect(first.reason).toBe("run");
-		});
-
-		it("marks every bucket a prompt has runs in", async () => {
-			await markPromptDirty(db, PROMPT_2, "run");
-			expect(bucketsOf(await pendingMarks(db, 10))).toEqual([B2.toISOString(), B0.toISOString()]);
 		});
 
 		it("marks every bucket with runs created since an instant", async () => {
-			expect(await markRunsSinceDirty(db, new Date("2026-01-15T10:30:00.000Z"), "catch-up")).toBe(2);
-			expect((await pendingMarks(db, 10)).map((mark) => [mark.bucket.toISOString(), mark.reason])).toEqual([
-				[B2.toISOString(), "catch-up"],
-				[B1.toISOString(), "catch-up"],
-			]);
+			expect(await markRunsSinceDirty(db, new Date("2026-01-15T10:15:00.000Z"))).toBe(2);
+			expect(bucketsOf(await pendingMarks(db, 10))).toEqual([B2.toISOString(), B1.toISOString()]);
 		});
 
 		it("rebuilds a range and drops its marks in one commit", async () => {
-			await markDirty(db, BRAND_ID, [B0, B2], "run");
+			await markDirty(db, BRAND_ID, [B0, B2]);
 			const refreshed = await refreshRange(db, wholeDay);
 			expect(bucketsOf(refreshed?.marks ?? []).sort()).toEqual([B0.toISOString(), B2.toISOString()]);
 			expect(await brandMarks()).toEqual([]);
@@ -546,7 +537,7 @@ describe("rollups against postgres", () => {
 		});
 
 		it("keeps the marks when the rebuild fails", async () => {
-			await markDirty(db, BRAND_ID, [B0], "run");
+			await markDirty(db, BRAND_ID, [B0]);
 			await withBrandLocked(() =>
 				expect(refreshRange(impatient, wholeDay)).rejects.toMatchObject({ cause: { code: "55P03" } }),
 			);
@@ -555,14 +546,14 @@ describe("rollups against postgres", () => {
 		});
 
 		it("re-marks a bucket written to while its rebuild is in flight", async () => {
-			await markDirty(db, BRAND_ID, [B0], "run");
+			await markDirty(db, BRAND_ID, [B0]);
 			await withBrandLocked(async () => {
 				// The refresh takes the mark, then waits on the rebuild lock with it uncommitted.
 				const refresh = refreshRange(db, wholeDay);
 				await waitForLockWaiters(1);
 				const write = db.transaction(async (tx) => {
-					await insertRuns(tx, [{ ...SEED_RUNS[0], id: RUN(8), createdAt: "2026-01-15T10:25:00.000Z" }]);
-					await markDirty(tx, BRAND_ID, [new Date("2026-01-15T10:25:00.000Z")], "run");
+					await insertRuns(tx, [{ ...SEED_RUNS[0], id: RUN(8), createdAt: "2026-01-15T10:02:00.000Z" }]);
+					await markDirty(tx, BRAND_ID, [new Date("2026-01-15T10:02:00.000Z")]);
 				});
 				// The write now waits on the mark the refresh deleted.
 				await waitForLockWaiters(2);
@@ -572,7 +563,7 @@ describe("rollups against postgres", () => {
 				await write;
 			});
 
-			expect(await brandMarks()).toEqual([expect.objectContaining({ bucket: B0, reason: "run" })]);
+			expect(await brandMarks()).toEqual([expect.objectContaining({ bucket: B0 })]);
 			await refreshRange(db, wholeDay);
 			const [row] = (await runRollupRows(db)).filter(
 				(r) => r.promptId === PROMPT_1 && r.bucket.getTime() === B0.getTime(),
@@ -581,7 +572,7 @@ describe("rollups against postgres", () => {
 		});
 
 		it("skips marks another refresh holds instead of waiting for them", async () => {
-			await markDirty(db, BRAND_ID, [B0], "run");
+			await markDirty(db, BRAND_ID, [B0]);
 			await withBrandLocked(async () => {
 				const first = refreshRange(db, wholeDay);
 				await waitForLockWaiters(1);

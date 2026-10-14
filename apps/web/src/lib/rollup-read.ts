@@ -1,13 +1,12 @@
 /**
- * Analytics aggregates, read from the rollup tables the worker maintains (30-minute
- * UTC buckets, refreshed about a minute behind the raw rows). A calendar day is the
- * buckets that start on it in the reader's timezone; see `windowStart`.
+ * Analytics aggregates, read from the rollup tables the worker maintains
+ * (quarter-hour buckets, refreshed about a minute behind the raw rows).
  */
 
 import { type SQL, sql } from "drizzle-orm";
 import {
 	modelFilter,
-	promptScope,
+	promptFilter,
 	queryPg,
 	uuidList,
 	webSearchFilter,
@@ -181,7 +180,7 @@ export async function getDashboardSummary(
 		FROM rollup_prompt_runs
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 	`);
 	return rows;
 }
@@ -191,7 +190,6 @@ export async function getBrandEarliestRunDate(brandId: string): Promise<string |
 		SELECT min(first_run_at) AS earliest_date
 		FROM rollup_prompt_runs
 		WHERE brand_id = ${brandId}
-			${promptScope(brandId)}
 	`);
 	return rows[0]?.earliest_date || null;
 }
@@ -218,7 +216,7 @@ export async function countResponses(scope: ResponseSearchScope): Promise<number
 		FROM rollup_prompt_runs
 		WHERE brand_id = ${scope.brandId}
 			${rollupWindow(scope.fromDate, scope.toDate, scope.timezone)}
-			${promptScope(scope.brandId, scope.promptIds)}
+			${promptFilter(scope.promptIds)}
 			${modelFilter(scope.model)}
 	`);
 	return rows[0]?.total ?? 0;
@@ -242,7 +240,7 @@ export async function getPerPromptVisibilityTimeSeries(
 		FROM rollup_prompt_runs
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id, date
 		ORDER BY prompt_id, date
@@ -368,7 +366,7 @@ export async function getCitationsTotalCount(
 		FROM rollup_citation_urls
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 	`);
 	return Number(rows[0]?.total ?? 0);
@@ -396,7 +394,7 @@ export async function getPromptsSummary(
 			${rollupWindow(fromDate, toDate, timezone)}
 			${webSearchFilter(webSearchEnabled)}
 			${modelFilter(model)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 		GROUP BY prompt_id
 		ORDER BY total_runs DESC
 	`);
@@ -416,7 +414,7 @@ export async function getCitationDomainStats(
 	// A function so each query site (CTE, lateral) gets its own SQL parameters.
 	const scope = () => sql`
 		${rollupWindow(fromDate, toDate, timezone)}
-		${promptScope(brandId, enabledPromptIds)}
+		${promptFilter(enabledPromptIds)}
 		${modelFilter(model)}
 	`;
 	const rows = await queryPg<CitationDomainStats>(sql`
@@ -465,7 +463,7 @@ export async function getCitationUrlStats(
 		JOIN cited_pages cp ON cp.id = rcu.page_id
 		WHERE rcu.brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY rcu.page_id, cp.url, cp.domain, cp.title
 		ORDER BY count DESC
@@ -486,7 +484,7 @@ export async function getCitationDomainPromptCounts(
 		FROM rollup_citation_urls
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY domain
 	`);
@@ -573,7 +571,7 @@ export async function getDailyCitationStats(
 		FROM rollup_citation_urls
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY date, domain
 		ORDER BY date
@@ -599,7 +597,7 @@ export async function getPerPromptDailyCitationStats(
 		FROM rollup_citation_urls
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id, date, domain
 		ORDER BY prompt_id, date
@@ -625,7 +623,7 @@ export async function getPerPromptRunStats(
 		FROM rollup_prompt_runs
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id
 	`);
@@ -648,7 +646,7 @@ export async function getBrandMentionTotals(
 		FROM rollup_prompt_runs
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 	`);
 	return rows[0] ?? { total_runs: 0, brand_mentioned_runs: 0, brand_mentioned_prompts: 0 };
@@ -672,7 +670,7 @@ export async function getPerPromptDailyMentions(
 		FROM rollup_prompt_runs
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id, date
 		ORDER BY prompt_id, date
@@ -698,7 +696,7 @@ export async function getPerPromptDailyCompetitorMentions(
 		FROM rollup_competitor_mentions
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id, date, competitor
 		ORDER BY prompt_id, date
@@ -726,7 +724,7 @@ export async function getPerPromptCitationPages(
 		JOIN cited_pages cp ON cp.id = rcu.page_id
 		WHERE rcu.brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY rcu.prompt_id, rcu.page_id, cp.url, cp.domain, cp.title
 		ORDER BY rcu.prompt_id, count DESC
@@ -751,7 +749,7 @@ export async function getBrandMentionRateByModel(
 		FROM rollup_prompt_runs
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "prompt_runs" })}
 		GROUP BY model
 		ORDER BY runs DESC
@@ -855,7 +853,7 @@ export async function getCitationsCountByModel(
 		FROM rollup_citation_urls
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 		GROUP BY model, provider, web_search_enabled
 	`);
 	return rows;
@@ -894,7 +892,7 @@ export async function getPerPromptDailyCitationClasses(
 		JOIN cited_pages cp ON cp.id = rcu.page_id
 		WHERE rcu.brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model, { alias: "rcu" })}
 		GROUP BY rcu.prompt_id, date, rcu.domain, cp.static_category, cp.page_type
 		ORDER BY rcu.prompt_id, date

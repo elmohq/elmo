@@ -11,7 +11,7 @@
 import { type SQL, sql } from "drizzle-orm";
 import {
 	modelFilter,
-	promptScope,
+	promptFilter,
 	queryPg,
 	uuidList,
 	webSearchFilter,
@@ -61,7 +61,7 @@ export async function getDashboardSummary(
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 	`);
 	return rows;
 }
@@ -84,7 +84,7 @@ export async function getPerPromptVisibilityTimeSeries(
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id, date
 		ORDER BY prompt_id, date
@@ -241,7 +241,7 @@ export async function getCitationsTotalCount(
 		WHERE brand_id = ${brandId}
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 	`);
 	return Number(rows[0]?.total ?? 0);
@@ -287,7 +287,7 @@ export async function getPromptsSummary(
 			${dateFilter(fromDate, toDate, timezone)}
 			${webSearchFilter(webSearchEnabled)}
 			${modelFilter(model)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 		GROUP BY prompt_id
 		ORDER BY total_runs DESC
 	`);
@@ -311,7 +311,7 @@ export async function getCitationDomainStats(
 		WHERE brand_id = ${brandId}
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 		GROUP BY domain
 		ORDER BY count DESC
@@ -339,7 +339,7 @@ export async function getCitationUrlStats(
 		WHERE brand_id = ${brandId}
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 		GROUP BY url, domain
 		ORDER BY count DESC
@@ -361,7 +361,7 @@ export async function getCitationDomainPromptCounts(
 		WHERE brand_id = ${brandId}
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 		GROUP BY domain
 	`);
@@ -452,7 +452,7 @@ export async function getDailyCitationStats(
 		WHERE brand_id = ${brandId}
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 		GROUP BY date, domain
 		ORDER BY date
@@ -479,7 +479,7 @@ export async function getPerPromptDailyCitationStats(
 		WHERE brand_id = ${brandId}
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 		GROUP BY prompt_id, date, domain
 		ORDER BY prompt_id, date
@@ -505,7 +505,7 @@ export async function getPerPromptRunStats(
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id
 	`);
@@ -528,7 +528,7 @@ export async function getBrandMentionTotals(
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 	`);
 	return rows[0] ?? { total_runs: 0, brand_mentioned_runs: 0, brand_mentioned_prompts: 0 };
@@ -553,7 +553,7 @@ export async function getPerPromptDailyMentions(
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id, date
 		ORDER BY prompt_id, date
@@ -585,7 +585,7 @@ export async function getPerPromptDailyCompetitorMentions(
 		FROM prompt_runs, unnest(competitors_mentioned) AS competitor
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id, date, competitor
 		ORDER BY prompt_id, date
@@ -615,7 +615,7 @@ export async function getPerPromptCitationPages(
 		FROM citations
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 		GROUP BY prompt_id, url, domain
 		ORDER BY prompt_id, count DESC
@@ -642,7 +642,7 @@ export async function getBrandMentionRateByModel(
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
-			${promptScope(brandId, enabledPromptIds)}
+			${promptFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "prompt_runs" })}
 		GROUP BY model
 		ORDER BY runs DESC
@@ -738,7 +738,7 @@ export async function countResponses(scope: ResponseSearchScope): Promise<number
 		FROM prompt_runs
 		WHERE brand_id = ${scope.brandId}
 			${dateFilter(scope.fromDate, scope.toDate, scope.timezone)}
-			${promptScope(scope.brandId, scope.promptIds)}
+			${promptFilter(scope.promptIds)}
 			${modelFilter(scope.model)}
 	`);
 	return rows[0]?.total ?? 0;

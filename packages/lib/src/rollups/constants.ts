@@ -1,4 +1,9 @@
-export const BUCKET_MINUTES = 30;
+/**
+ * Every timezone's offset is a whole number of quarter hours, so with this grain
+ * local midnight is always a bucket boundary and a bucket belongs to exactly one
+ * local day, wherever the reader is.
+ */
+export const BUCKET_MINUTES = 15;
 export const BUCKET_MS = BUCKET_MINUTES * 60 * 1000;
 
 /**
@@ -21,5 +26,3 @@ export const ROLLUP_CATCH_UP_MARGIN_MS = 60 * 60 * 1000;
 
 export const REFRESH_ROLLUPS_QUEUE = "refresh-rollups";
 export const ROLLUP_CATCH_UP_QUEUE = "rollup-catch-up";
-
-export type DirtyReason = "run" | "reprocess" | "backfill" | "schema" | "catch-up";

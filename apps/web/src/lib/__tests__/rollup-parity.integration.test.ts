@@ -6,10 +6,8 @@ import {
 	promptRuns,
 	rollupCitationUrls,
 	rollupCompetitorMentions,
-	rollupDirty,
 	rollupPromptRuns,
 } from "@workspace/lib/db/schema";
-import { bucketStart } from "@workspace/lib/rollups";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { LookbackPeriod } from "@/lib/lookback";
@@ -464,7 +462,6 @@ describe("rollup reads against raw", () => {
 				await db.select().from(rollupCompetitorMentions).where(eq(rollupCompetitorMentions.promptId, promptId)),
 			).toEqual([]);
 			expect(await db.select().from(rollupCitationUrls).where(eq(rollupCitationUrls.promptId, promptId))).toEqual([]);
-			expect((await db.select().from(rollupDirty).where(eq(rollupDirty.brandId, BRAND_ID))).length).toBeGreaterThan(0);
 
 			expect((await db.select().from(promptRuns).where(eq(promptRuns.promptId, otherPromptId))).length).toBeGreaterThan(
 				0,
@@ -492,49 +489,20 @@ describe("rollup reads against raw", () => {
 		});
 	});
 
-	describe("live prompts only", () => {
-		it("ignores rollup rows left behind by a prompt the brand no longer has", async () => {
-			const before = await rollupRead.getDashboardSummary(BRAND_ID, null, null, "UTC");
-			// What a prompt deleted by a release without rollups leaves behind.
-			await db.insert(rollupPromptRuns).values({
-				brandId: BRAND_ID,
-				bucket: new Date("2026-06-01T00:00:00.000Z"),
-				promptId: "dddddddd-0000-4000-8000-0000000000ff",
-				model: "chatgpt",
-				provider: "",
-				webSearchEnabled: false,
-				runs: 5,
-				brandMentionedRuns: 5,
-				competitorRuns: 0,
-				competitorMentions: 0,
-				noMentionRuns: 0,
-				firstRunAt: new Date("2026-06-01T00:01:00.000Z"),
-				lastRunAt: new Date("2026-06-01T00:02:00.000Z"),
-			});
-
-			expect(await rollupRead.getDashboardSummary(BRAND_ID, null, null, "UTC")).toEqual(before);
-			expect(await rollupRead.getBrandEarliestRunDate(BRAND_ID)).toEqual(
-				await rawRead.getBrandEarliestRunDate(BRAND_ID),
-			);
-		});
-	});
-
-	// Local midnight here falls mid-bucket, so the rollups put a run from the first
-	// quarter hour of a day on the day before, and every window agrees with that.
-	describe("a timezone whose midnight isn't on a bucket boundary", () => {
+	// UTC+05:45: local midnight is a bucket boundary only because buckets are a quarter hour.
+	describe("a timezone with a quarter-hour offset", () => {
 		const timezone = "Asia/Kathmandu";
 		const OFFSET_MS = (5 * 60 + 45) * 60 * 1000;
-		const attributedDay = (createdAt: string) =>
-			new Date(bucketStart(new Date(createdAt)).getTime() + OFFSET_MS).toISOString().slice(0, 10);
-		const trueLocalDay = (createdAt: string) => new Date(Date.parse(createdAt) + OFFSET_MS).toISOString().slice(0, 10);
+		const localTime = (createdAt: string) => new Date(Date.parse(createdAt) + OFFSET_MS).toISOString();
+		const attributedDay = (createdAt: string) => localTime(createdAt).slice(0, 10);
 		const totalRuns = async (from: string, to: string) =>
 			(await rollupRead.getBrandMentionTotals(BRAND_ID, from, to, timezone)).total_runs;
 
 		it("seeds runs in the first quarter hour of a local day", () => {
-			expect(SEED_RUNS.some((run) => attributedDay(run.createdAt) !== trueLocalDay(run.createdAt))).toBe(true);
+			expect(SEED_RUNS.some((run) => localTime(run.createdAt).slice(11, 16) < "00:15")).toBe(true);
 		});
 
-		it("puts each run on the local day its bucket starts on", async () => {
+		it("puts each run on its local day", async () => {
 			const rows = await rollupRead.getPerPromptDailyMentions(
 				BRAND_ID,
 				"2026-06-30",

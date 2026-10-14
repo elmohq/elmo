@@ -312,7 +312,7 @@ async function runModelIteration({
 				analysisVersions: currentAnalysisVersions(mentionConfig),
 			});
 			await saveCitations(tx, run.id, promptId, brand.id, config.model, extractedCitations, run.createdAt);
-			await markDirty(tx, brand.id, [run.createdAt], "run");
+			await markDirty(tx, brand.id, [run.createdAt]);
 			return run.id;
 		});
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);

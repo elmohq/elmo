@@ -9,7 +9,7 @@ export interface RollupCatchUpData {
 }
 
 export async function runRollupCatchUp(data: RollupCatchUpData, conn: DbConnection = db): Promise<number> {
-	const marked = await markRunsSinceDirty(conn, new Date(data.since), "catch-up");
+	const marked = await markRunsSinceDirty(conn, new Date(data.since));
 	console.log(`[rollup-catch-up] marked ${marked} buckets with runs since ${data.since}`);
 	return marked;
 }

@@ -336,13 +336,15 @@ export const secrets = pgTable("secrets", {
 /**
  * A function so each table gets its own column builders. `provider` is '' rather
  * than null because null key parts never compare equal, which would let a bucket
- * rebuild insert duplicates. No foreign keys: a rebuild deletes and reinserts a
- * range, and prompt deletion removes these rows explicitly.
+ * rebuild insert duplicates. Deleting a prompt cascades here, so no read has to
+ * guard against rows that outlived theirs.
  */
 const rollupKeyColumns = () => ({
 	brandId: text("brand_id").notNull(),
 	bucket: timestamp("bucket", { withTimezone: true }).notNull(),
-	promptId: uuid("prompt_id").notNull(),
+	promptId: uuid("prompt_id")
+		.notNull()
+		.references(() => prompts.id, { onDelete: "cascade" }),
 	model: text("model").notNull(),
 	provider: text("provider").notNull().default(""),
 	webSearchEnabled: boolean("web_search_enabled").notNull(),
@@ -460,8 +462,6 @@ export const rollupDirty = pgTable(
 	{
 		brandId: text("brand_id").notNull(),
 		bucket: timestamp("bucket", { withTimezone: true }).notNull(),
-		/** Why the bucket was first marked; later marks before the rebuild don't overwrite it. */
-		reason: text("reason").notNull(),
 		firstMarkedAt: timestamp("first_marked_at", { withTimezone: true }).defaultNow().notNull(),
 	},
 	(table) => [
@@ -471,16 +471,15 @@ export const rollupDirty = pgTable(
 ).enableRLS();
 
 /**
- * Single row recording which code versions the stored derived data reflects.
- * The worker compares it to the constants in lib on startup and enqueues the
- * work that closes the gap.
+ * Single row recording which `ROLLUP_VERSION` the stored rollups were built
+ * with. The worker compares it on startup and marks everything for a rebuild
+ * when the code has moved on.
  */
 export const pipelineState = pgTable(
 	"pipeline_state",
 	{
 		id: smallint("id").primaryKey().default(1),
 		rollupVersion: integer("rollup_version").notNull().default(0),
-		classifierVersion: integer("classifier_version").notNull().default(0),
 	},
 	() => [check("pipeline_state_singleton", sql`id = 1`)],
 ).enableRLS();

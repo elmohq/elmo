@@ -132,7 +132,7 @@ afterAll(async () => {
 describe("runRefreshTick", () => {
 	it("rebuilds a marked bucket and drops the mark", async () => {
 		await insertRun(fixture, { createdAt: B0 });
-		await markDirty(db, fixture.brandId, [B0], "run");
+		await markDirty(db, fixture.brandId, [B0]);
 
 		const result = await runRefreshTick({ source: "test" });
 
@@ -142,7 +142,7 @@ describe("runRefreshTick", () => {
 	});
 
 	it("leaves marks in place when the time budget is already spent", async () => {
-		await markDirty(db, fixture.brandId, [B0], "run");
+		await markDirty(db, fixture.brandId, [B0]);
 
 		const result = await runRefreshTick({ timeBudgetMs: -60_000 });
 
@@ -155,7 +155,7 @@ describe("runRefreshTick", () => {
 		const healthy = await createFixture();
 		for (const f of [stuck, healthy]) {
 			await insertRun(f, { createdAt: B0 });
-			await markDirty(db, f.brandId, [B0], "run");
+			await markDirty(db, f.brandId, [B0]);
 		}
 
 		const result = await withBrandLocked(stuck.brandId, () => runRefreshTick({ source: "test" }, impatient));
@@ -173,7 +173,7 @@ describe("runRefreshTick", () => {
 
 	it("runs one tick per queued job", async () => {
 		await insertRun(fixture, { createdAt: B0 });
-		await markDirty(db, fixture.brandId, [B0], "run");
+		await markDirty(db, fixture.brandId, [B0]);
 
 		await refreshRollupsJob([{ data: { source: "test" } } as never]);
 
@@ -192,12 +192,7 @@ describe("rollup version changes", () => {
 		const before = Date.now();
 		await initializePipeline(boss);
 
-		expect((await marksOf(fixture.brandId)).map((mark) => [mark.bucket, mark.reason])).toEqual(
-			expect.arrayContaining([
-				[B0, "backfill"],
-				[B1, "backfill"],
-			]),
-		);
+		expect((await marksOf(fixture.brandId)).map((mark) => mark.bucket)).toEqual(expect.arrayContaining([B0, B1]));
 		expect(boss.send).toHaveBeenCalledTimes(1);
 		const [queue, data, options] = boss.send.mock.calls[0];
 		expect(queue).toBe(ROLLUP_CATCH_UP_QUEUE);
@@ -216,7 +211,7 @@ describe("rollup version changes", () => {
 
 		await runRollupCatchUp({ since: new Date(B1.getTime() - 1).toISOString() });
 
-		expect((await marksOf(fixture.brandId)).map((mark) => [mark.bucket, mark.reason])).toEqual([[B1, "catch-up"]]);
+		expect((await marksOf(fixture.brandId)).map((mark) => mark.bucket)).toEqual([B1]);
 	});
 });
 
@@ -256,7 +251,7 @@ describe("reprocess through to a refresh, after a competitor's domain changes", 
 			.where(eq(competitors.id, competitor.id));
 		await runReprocess({ layers: ["interpretation"], brandId }, db, fakeBoss());
 
-		expect((await marksOf(brandId)).map((mark) => [mark.bucket, mark.reason])).toEqual([[B0, "reprocess"]]);
+		expect((await marksOf(brandId)).map((mark) => mark.bucket)).toEqual([B0]);
 
 		await runRefreshTick({ source: "test" });
 

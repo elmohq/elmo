@@ -1,5 +1,5 @@
 {
-  "id": "65554545-5428-4fd1-8c09-1910f8f1b4b2",
+  "id": "eabfe277-509d-4bd6-9611-7324f4f227a3",
   "prevId": "2ae39572-f793-4db5-8141-15f8ec04c361",
   "version": "7",
   "dialect": "postgresql",
@@ -701,13 +701,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "classifier_version": {
-          "name": "classifier_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
         }
       },
       "indexes": {},
@@ -1290,6 +1283,19 @@
         }
       },
       "foreignKeys": {
+        "rollup_citation_urls_prompt_id_prompts_id_fk": {
+          "name": "rollup_citation_urls_prompt_id_prompts_id_fk",
+          "tableFrom": "rollup_citation_urls",
+          "tableTo": "prompts",
+          "columnsFrom": [
+            "prompt_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "rollup_citation_urls_page_id_cited_pages_id_fk": {
           "name": "rollup_citation_urls_page_id_cited_pages_id_fk",
           "tableFrom": "rollup_citation_urls",
@@ -1400,7 +1406,21 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "rollup_competitor_mentions_prompt_id_prompts_id_fk": {
+          "name": "rollup_competitor_mentions_prompt_id_prompts_id_fk",
+          "tableFrom": "rollup_competitor_mentions",
+          "tableTo": "prompts",
+          "columnsFrom": [
+            "prompt_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "rollup_competitor_mentions_pk": {
           "name": "rollup_competitor_mentions_pk",
@@ -1433,12 +1453,6 @@
         "bucket": {
           "name": "bucket",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reason": {
-          "name": "reason",
-          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -1589,7 +1603,21 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "rollup_prompt_runs_prompt_id_prompts_id_fk": {
+          "name": "rollup_prompt_runs_prompt_id_prompts_id_fk",
+          "tableFrom": "rollup_prompt_runs",
+          "tableTo": "prompts",
+          "columnsFrom": [
+            "prompt_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "rollup_prompt_runs_pk": {
           "name": "rollup_prompt_runs_pk",

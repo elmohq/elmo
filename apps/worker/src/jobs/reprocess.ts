@@ -166,7 +166,6 @@ function rewriteRuns(conn: DbConnection, pass: Pass, runs: StaleRun[]): Promise<
 			tx,
 			pass.brandId,
 			runs.map((run) => run.createdAt),
-			"reprocess",
 		);
 	});
 }

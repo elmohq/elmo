@@ -15,7 +15,6 @@ ALTER TABLE "cited_pages" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "pipeline_state" (
 	"id" smallint PRIMARY KEY DEFAULT 1 NOT NULL,
 	"rollup_version" integer DEFAULT 0 NOT NULL,
-	"classifier_version" integer DEFAULT 0 NOT NULL,
 	CONSTRAINT "pipeline_state_singleton" CHECK (id = 1)
 );
 --> statement-breakpoint
@@ -52,7 +51,6 @@ ALTER TABLE "rollup_competitor_mentions" ENABLE ROW LEVEL SECURITY;--> statement
 CREATE TABLE "rollup_dirty" (
 	"brand_id" text NOT NULL,
 	"bucket" timestamp with time zone NOT NULL,
-	"reason" text NOT NULL,
 	"first_marked_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "rollup_dirty_pk" PRIMARY KEY("brand_id","bucket")
 );
@@ -76,7 +74,10 @@ CREATE TABLE "rollup_prompt_runs" (
 );
 --> statement-breakpoint
 ALTER TABLE "rollup_prompt_runs" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "rollup_citation_urls" ADD CONSTRAINT "rollup_citation_urls_prompt_id_prompts_id_fk" FOREIGN KEY ("prompt_id") REFERENCES "public"."prompts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rollup_citation_urls" ADD CONSTRAINT "rollup_citation_urls_page_id_cited_pages_id_fk" FOREIGN KEY ("page_id") REFERENCES "public"."cited_pages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "rollup_competitor_mentions" ADD CONSTRAINT "rollup_competitor_mentions_prompt_id_prompts_id_fk" FOREIGN KEY ("prompt_id") REFERENCES "public"."prompts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "rollup_prompt_runs" ADD CONSTRAINT "rollup_prompt_runs_prompt_id_prompts_id_fk" FOREIGN KEY ("prompt_id") REFERENCES "public"."prompts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "cited_pages_domain_idx" ON "cited_pages" USING btree ("domain");--> statement-breakpoint
 CREATE INDEX "rollup_citation_urls_prompt_id_bucket_idx" ON "rollup_citation_urls" USING btree ("prompt_id","bucket");--> statement-breakpoint
 CREATE INDEX "rollup_competitor_mentions_prompt_id_bucket_idx" ON "rollup_competitor_mentions" USING btree ("prompt_id","bucket");--> statement-breakpoint
