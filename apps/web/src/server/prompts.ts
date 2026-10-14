@@ -335,9 +335,9 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			mentionStats.push({ name: brandName, count: mentionTotals.brand_mentioned_runs });
 		}
 
-		// Only current competitors, each listed even when no run named it.
+		// Only current competitors, each listed once (two rows can share a name) even when no run named it.
 		const mentionsByName = new Map(competitorMentions.map((row) => [row.competitor, row.runs]));
-		for (const { name } of allCompetitors) {
+		for (const name of new Set(allCompetitors.map((c) => c.name))) {
 			mentionStats.push({ name, count: mentionsByName.get(name) ?? 0 });
 		}
 
