@@ -46,24 +46,20 @@ export async function markDirty(conn: DbConnection, brandId: string, buckets: It
 	return result.rowCount ?? 0;
 }
 
-/** For writes that have already committed, which a rebuild is sure to see. */
-async function markRunsDirty(conn: DbConnection, where: SQL): Promise<number> {
+/**
+ * Marks every bucket with runs created since `since`, or with any runs at all.
+ * For writes that have already committed, which a rebuild is sure to see, so a
+ * conflicting mark needs no lock.
+ */
+export async function markRunsDirty(conn: DbConnection, since: Date | null): Promise<number> {
 	const result = await conn.execute(sql`
 		INSERT INTO ${rollupDirty} (brand_id, bucket)
 		SELECT DISTINCT brand_id, ${bucketSql(sql`created_at`)}
 		FROM prompt_runs
-		WHERE ${where}
+		${since ? sql`WHERE created_at >= ${since}` : sql``}
 		ON CONFLICT (brand_id, bucket) DO NOTHING
 	`);
 	return result.rowCount ?? 0;
-}
-
-export function markAllDirty(conn: DbConnection): Promise<number> {
-	return markRunsDirty(conn, sql`TRUE`);
-}
-
-export function markRunsSinceDirty(conn: DbConnection, since: Date): Promise<number> {
-	return markRunsDirty(conn, sql`created_at >= ${since}`);
 }
 
 const markKey = (mark: Pick<DirtyMark, "brandId" | "bucket">): SQL =>

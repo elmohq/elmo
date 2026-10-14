@@ -12,7 +12,7 @@
  */
 import { createHash } from "node:crypto";
 import { createDb } from "@workspace/lib/db/db";
-import { markAllDirty, refreshAllMarked } from "@workspace/lib/rollups/dirty";
+import { markRunsDirty, refreshAllMarked } from "@workspace/lib/rollups/dirty";
 import pg from "pg";
 import {
   API_KEYS,
@@ -204,7 +204,7 @@ async function seedOpportunities(client: pg.Client): Promise<void> {
 async function buildRollups(connectionString: string): Promise<void> {
   const conn = createDb(connectionString);
   try {
-    await markAllDirty(conn);
+    await markRunsDirty(conn, null);
     await refreshAllMarked(conn);
   } finally {
     await conn.$client.end();

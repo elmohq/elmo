@@ -189,7 +189,7 @@ describe("runRefreshTick", () => {
 });
 
 describe("rollup version changes", () => {
-	it("marks every bucket with runs and schedules a catch-up, once", async () => {
+	it("queues a full mark and a delayed catch-up, once", async () => {
 		await insertRun(fixture, { createdAt: B0 });
 		await insertRun(fixture, { createdAt: B1 });
 		await db.update(pipelineState).set({ rollupVersion: 0 }).where(eq(pipelineState.id, 1));
@@ -198,16 +198,17 @@ describe("rollup version changes", () => {
 		const before = Date.now();
 		await initializePipeline(boss);
 
-		expect((await marksOf(fixture.brandId)).map((mark) => mark.bucket)).toEqual(expect.arrayContaining([B0, B1]));
-		expect(boss.send).toHaveBeenCalledTimes(1);
-		const [queue, data, options] = boss.send.mock.calls[0];
-		expect(queue).toBe(ROLLUP_CATCH_UP_QUEUE);
-		expect(options).toEqual({ startAfter: ROLLUP_CATCH_UP_DELAY_SECONDS });
-		expect(Date.parse(data.since)).toBeLessThan(before);
+		expect(boss.send.mock.calls.map(([queue]) => queue)).toEqual([ROLLUP_CATCH_UP_QUEUE, ROLLUP_CATCH_UP_QUEUE]);
+		const [[, rebuild], [, catchUp, catchUpOptions]] = boss.send.mock.calls;
+		expect(catchUpOptions).toEqual({ startAfter: ROLLUP_CATCH_UP_DELAY_SECONDS });
+		expect(Date.parse(catchUp.since)).toBeLessThan(before);
 		expect((await db.select().from(pipelineState))[0].rollupVersion).toBe(ROLLUP_VERSION);
 
+		await runRollupCatchUp(rebuild);
+		expect((await marksOf(fixture.brandId)).map((mark) => mark.bucket)).toEqual(expect.arrayContaining([B0, B1]));
+
 		await initializePipeline(boss);
-		expect(boss.send).toHaveBeenCalledTimes(1);
+		expect(boss.send).toHaveBeenCalledTimes(2);
 	});
 
 	it("catches up runs written after the full rebuild was requested", async () => {
