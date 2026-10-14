@@ -82,9 +82,9 @@ export function analyzeRunMentions(
 	return analyzeMentions(textContent ?? "", config.brand, config.competitors);
 }
 
-/** Matching ignores case and skips empty terms, so the stamp does too; whitespace still matters to it. */
+/** Matching trims, ignores case and skips empty terms, so the stamp does too. */
 function canonicalTerms(terms: readonly string[]): string[] {
-	return [...new Set(terms.map((term) => term.toLowerCase()).filter(Boolean))].sort();
+	return [...new Set(terms.map((term) => term.trim().toLowerCase()).filter(Boolean))].sort();
 }
 
 function canonicalDomains(domains: readonly string[]): string[] {

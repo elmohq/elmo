@@ -99,15 +99,15 @@ describe("mentionsStamp", () => {
 		expect(mentionsStamp(reordered)).toBe(mentionsStamp(config));
 	});
 
-	it("survives a case or URL-shape edit, which matching already ignores", () => {
+	it("survives a case, whitespace or URL-shape edit to a term, which matching already ignores", () => {
 		const recased: MentionConfig = {
 			brand: {
-				name: "ACME",
-				aliases: ["acme corp"],
+				name: "ACME ",
+				aliases: [" acme corp"],
 				domains: ["https://WWW.acme.com", "https://acme.dev/", "Acme.io"],
 			},
 			competitors: [
-				{ name: "Globex", aliases: ["globex inc"], domains: ["www.Globex.com"] },
+				{ name: "Globex", aliases: ["globex inc "], domains: ["www.Globex.com"] },
 				{ name: "Initech", aliases: [], domains: ["https://initech.com/about"] },
 			],
 		};
