@@ -23,21 +23,30 @@ function uniqueBuckets(buckets: Iterable<Date>): Date[] {
 		const start = bucketStart(bucket);
 		byTime.set(start.getTime(), start);
 	}
-	return Array.from(byTime.values());
+	// A fixed lock order, so two writers marking overlapping buckets can't deadlock.
+	return Array.from(byTime.values()).sort((a, b) => a.getTime() - b.getTime());
 }
 
 /**
- * A bucket already marked stays marked. If a refresh has deleted that mark but
- * not yet committed, the insert waits for it and then lands as a new mark, so a
- * write that commits mid-rebuild always leaves a mark for the next one.
+ * A conflicting mark is updated rather than skipped so the writer holds its row
+ * lock until commit: a refresh skips a mark a writer holds, and a writer waits on
+ * one a refresh has taken, landing a fresh mark once it commits. Either way the
+ * write's bucket is rebuilt after the write is visible.
  */
 export async function markDirty(conn: DbConnection, brandId: string, buckets: Iterable<Date>): Promise<number> {
 	const values = uniqueBuckets(buckets).map((bucket) => ({ brandId, bucket }));
 	if (values.length === 0) return 0;
-	const result = await conn.insert(rollupDirty).values(values).onConflictDoNothing();
+	const result = await conn
+		.insert(rollupDirty)
+		.values(values)
+		.onConflictDoUpdate({
+			target: [rollupDirty.brandId, rollupDirty.bucket],
+			set: { firstMarkedAt: sql`${rollupDirty.firstMarkedAt}` },
+		});
 	return result.rowCount ?? 0;
 }
 
+/** For writes that have already committed, which a rebuild is sure to see. */
 async function markRunsDirty(conn: DbConnection, where: SQL): Promise<number> {
 	const result = await conn.execute(sql`
 		INSERT INTO ${rollupDirty} (brand_id, bucket)
@@ -79,7 +88,7 @@ export async function pendingMarks(conn: DbConnection, limit: number, skip: Dirt
 }
 
 /**
- * Deletes a range's marks and rebuilds what they cover in one transaction, so
+ * Deletes a range's marks and rebuilds what they span in one transaction, so
  * the marks go exactly when the rebuild commits and survive if it fails. Marks
  * another refresh holds are skipped rather than waited on. Returns null when
  * there was nothing left to take.
@@ -91,7 +100,7 @@ export async function pendingMarks(conn: DbConnection, limit: number, skip: Dirt
 export function refreshRange(
 	conn: DbConnection,
 	range: Pick<RebuildRange, "brandId" | "from" | "toExclusive">,
-): Promise<{ marks: DirtyMark[]; stats: RebuildStats[] } | null> {
+): Promise<{ marks: DirtyMark[]; stats: RebuildStats } | null> {
 	return conn.transaction(async (tx) => {
 		const marks = (await tx
 			.delete(rollupDirty)
@@ -102,11 +111,13 @@ export function refreshRange(
 			)`)
 			.returning({ brandId: rollupDirty.brandId, bucket: rollupDirty.bucket })) as DirtyMark[];
 		if (marks.length === 0) return null;
-		const stats: RebuildStats[] = [];
-		for (const taken of coalesceMarks(marks)) {
-			stats.push(await rebuildRange(tx, taken.brandId, taken.from, taken.toExclusive));
-		}
-		return { marks, stats };
+		// One rebuild from the first taken bucket to the last: any unmarked bucket in
+		// between is rebuilt to the same rows, and a single rebuild takes its page
+		// locks in one sorted pass, so concurrent refreshes can't deadlock on them.
+		const times = marks.map((mark) => mark.bucket.getTime());
+		const from = new Date(Math.min(...times));
+		const toExclusive = new Date(Math.max(...times) + BUCKET_MS);
+		return { marks, stats: await rebuildRange(tx, range.brandId, from, toExclusive) };
 	});
 }
 

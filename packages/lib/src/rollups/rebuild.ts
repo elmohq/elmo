@@ -26,6 +26,15 @@ export interface RebuildStats {
 }
 
 /**
+ * Serializes everything that rewrites a brand's rollup rows: two rebuilds can't
+ * interleave their deletes and inserts, and a prompt delete can't deadlock a
+ * rebuild between its cascade into the rollups and the rebuild's foreign key check.
+ */
+export async function lockBrandRollups(tx: DbConnection, brandId: string): Promise<void> {
+	await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('elmo-rollups'), hashtext(${brandId}))`);
+}
+
+/**
  * Delete-and-reinsert is the only way rollup rows are written, so a bucket can be
  * replayed from raw at any time. Given an open transaction, the rebuild runs in a
  * savepoint and rolls back without taking the caller with it.
@@ -39,9 +48,7 @@ export async function rebuildRange(
 	assertBucketAligned(from);
 	assertBucketAligned(toExclusive);
 	return conn.transaction(async (tx) => {
-		// Serializes with any other rebuild of this brand, so a manual rebuild and
-		// the scheduled one cannot interleave their deletes and inserts.
-		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${brandId}))`);
+		await lockBrandRollups(tx, brandId);
 		await clearRange(tx, brandId, from, toExclusive);
 		const runs = await insertPromptRunRollup(tx, brandId, from, toExclusive);
 		const competitorRows = await insertCompetitorRollup(tx, brandId, from, toExclusive);
@@ -59,8 +66,11 @@ async function clearRange(tx: DbConnection, brandId: string, from: Date, toExclu
 	}
 }
 
-const runsInRange = (brandId: string, from: Date, toExclusive: Date) =>
-	sql`WHERE brand_id = ${brandId} AND created_at >= ${from} AND created_at < ${toExclusive}`;
+// Through the brand's prompts so each lookup uses `(prompt_id, created_at)`:
+// prompt_runs has no brand index, and `created_at` alone would scan every brand's runs.
+const runsInRange = (brandId: string, from: Date, toExclusive: Date) => sql`
+	WHERE prompt_id IN (SELECT id FROM prompts WHERE brand_id = ${brandId})
+		AND brand_id = ${brandId} AND created_at >= ${from} AND created_at < ${toExclusive}`;
 
 async function insertPromptRunRollup(
 	tx: DbConnection,

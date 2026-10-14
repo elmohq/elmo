@@ -99,11 +99,11 @@ const rollupRunsOf = (brandId: string) =>
 async function withBrandLocked<T>(brandId: string, fn: () => Promise<T>): Promise<T> {
 	const client = await db.$client.connect();
 	try {
-		await client.query("SELECT pg_advisory_lock(hashtext($1))", [brandId]);
+		await client.query("SELECT pg_advisory_lock(hashtext('elmo-rollups'), hashtext($1))", [brandId]);
 		try {
 			return await fn();
 		} finally {
-			await client.query("SELECT pg_advisory_unlock(hashtext($1))", [brandId]);
+			await client.query("SELECT pg_advisory_unlock(hashtext('elmo-rollups'), hashtext($1))", [brandId]);
 		}
 	} finally {
 		client.release();

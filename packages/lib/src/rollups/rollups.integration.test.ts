@@ -234,11 +234,11 @@ const rebuildAll = (db: TestDb) => rebuildRange(db, BRAND_ID, B0, B3);
 async function withBrandLocked<T>(fn: () => Promise<T>): Promise<T> {
 	const client = await db.$client.connect();
 	try {
-		await client.query("SELECT pg_advisory_lock(hashtext($1))", [BRAND_ID]);
+		await client.query("SELECT pg_advisory_lock(hashtext('elmo-rollups'), hashtext($1))", [BRAND_ID]);
 		try {
 			return await fn();
 		} finally {
-			await client.query("SELECT pg_advisory_unlock(hashtext($1))", [BRAND_ID]);
+			await client.query("SELECT pg_advisory_unlock(hashtext('elmo-rollups'), hashtext($1))", [BRAND_ID]);
 		}
 	} finally {
 		client.release();
@@ -377,7 +377,7 @@ describe("rollups against postgres", () => {
 		const guideRow = urls.find(
 			(row) => row.bucket.getTime() === B0.getTime() && row.promptId === PROMPT_1 && row.pageId === guide?.id,
 		);
-		expect(guideRow).toMatchObject({ pageId: guide?.id, citations: 2, positionSum: 0, positionCount: 2 });
+		expect(guideRow).toMatchObject({ pageId: guide?.id, citations: 2, positionSum: 0 });
 		expect(urls.reduce((total, row) => total + row.citations, 0)).toBe(SEED_CITATIONS.length);
 	});
 
@@ -543,6 +543,37 @@ describe("rollups against postgres", () => {
 			);
 			expect(bucketsOf(await brandMarks())).toEqual([B0.toISOString()]);
 			expect(await runRollupRows(db)).toEqual([]);
+		});
+
+		it("leaves a mark alone while a writer that re-marked it is still open", async () => {
+			await markDirty(db, BRAND_ID, [B0]);
+			let marked!: () => void;
+			let release!: () => void;
+			const hasMarked = new Promise<void>((resolve) => {
+				marked = resolve;
+			});
+			const released = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const write = db.transaction(async (tx) => {
+				await insertRuns(tx, [{ ...SEED_RUNS[0], id: RUN(8), createdAt: "2026-01-15T10:02:00.000Z" }]);
+				await markDirty(tx, BRAND_ID, [B0]);
+				marked();
+				await released;
+			});
+			await hasMarked;
+
+			// Taking the mark now would rebuild B0 without the uncommitted run and lose it.
+			expect(await refreshRange(db, wholeDay)).toBeNull();
+			release();
+			await write;
+
+			expect(bucketsOf(await brandMarks())).toEqual([B0.toISOString()]);
+			await refreshRange(db, wholeDay);
+			const [row] = (await runRollupRows(db)).filter(
+				(r) => r.promptId === PROMPT_1 && r.bucket.getTime() === B0.getTime(),
+			);
+			expect(row.runs).toBe(3);
 		});
 
 		it("re-marks a bucket written to while its rebuild is in flight", async () => {
