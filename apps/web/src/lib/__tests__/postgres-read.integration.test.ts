@@ -19,6 +19,7 @@ import {
 	getPromptRuns,
 	getPromptsSummary,
 	getPromptTopCompetitorMentions,
+	getPromptWebQueryCounts,
 	getVisibilityDailyAggregate,
 } from "@/lib/postgres-read";
 import { createBrand, createCitation, createPrompt, createRun, deleteBrand } from "@/test/integration/stats-fixtures";
@@ -434,5 +435,24 @@ describe("query fan-out", () => {
 		expect(await getFanoutPromptTotals(brandId, "2026-03-02", "2026-03-02", "UTC", [promptId])).toEqual([
 			{ prompt_id: promptId, runs: 2 },
 		]);
+	});
+});
+
+describe("prompt web queries", () => {
+	it("reads a prompt's web queries only under the brand that owns it", async () => {
+		const owner = await brand();
+		const other = await brand();
+		const promptId = await createPrompt(owner);
+		await createRun(owner, promptId, {
+			at: "2026-03-02T10:00:00Z",
+			brandMentioned: false,
+			webQueries: ["best crm"],
+		});
+		const window = ["2026-03-02", "2026-03-02", "UTC"] as const;
+
+		expect(await getPromptWebQueryCounts(owner, promptId, ...window)).toEqual([
+			{ model: "chatgpt", web_query: "best crm", query_count: 1 },
+		]);
+		expect(await getPromptWebQueryCounts(other, promptId, ...window)).toEqual([]);
 	});
 });
