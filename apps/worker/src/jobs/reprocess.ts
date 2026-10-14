@@ -6,7 +6,15 @@ import {
 } from "@workspace/lib/analysis-versions";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { type Brand, brands, citations, competitors, promptRuns, prompts } from "@workspace/lib/db/schema";
+import {
+	type Brand,
+	brands,
+	type Competitor,
+	citations,
+	competitors,
+	promptRuns,
+	prompts,
+} from "@workspace/lib/db/schema";
 import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, extractRun } from "@workspace/lib/text-extraction";
@@ -297,12 +305,15 @@ export async function requestStaleReprocesses(
 	boss: Pick<PgBoss, "send"> = getBoss(),
 ): Promise<number> {
 	const [allBrands, allCompetitors] = await Promise.all([conn.select().from(brands), conn.select().from(competitors)]);
+	const competitorsByBrand = new Map<string, Competitor[]>();
+	for (const competitor of allCompetitors) {
+		competitorsByBrand.set(competitor.brandId, [...(competitorsByBrand.get(competitor.brandId) ?? []), competitor]);
+	}
 	let requested = 0;
 	for (const brand of allBrands) {
 		// Not yet adopted at startup; its history is taken as is until then.
 		if (brand.analysisVersions === null) continue;
-		const brandCompetitors = allCompetitors.filter((competitor) => competitor.brandId === brand.id);
-		const current = currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors));
+		const current = currentAnalysisVersions(mentionConfigFrom(brand, competitorsByBrand.get(brand.id) ?? []));
 		const layers = staleLayers(brand.analysisVersions, current);
 		if (layers.length > 0 && (await sendReprocess(boss, { brandId: brand.id, layers }))) requested++;
 	}
