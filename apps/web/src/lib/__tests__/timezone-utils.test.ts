@@ -98,6 +98,20 @@ describe("getTimezoneLookbackRange", () => {
 		expect(getTimezoneLookbackRange(lookback, "UTC", { now })).toEqual({ fromDateStr, toDateStr });
 	});
 
+	it("returns a custom range as-is, whatever the timezone or today", () => {
+		expect(getTimezoneLookbackRange("2023-11-02..2024-01-15", "Asia/Tokyo", { now })).toEqual({
+			fromDateStr: "2023-11-02",
+			toDateStr: "2024-01-15",
+		});
+	});
+
+	it.each<[string, string | null, string]>([
+		["2024-01-15..", "2024-01-15", "2024-03-31"],
+		["..2024-01-15", null, "2024-01-15"],
+	])("resolves the open-ended range %s", (lookback, fromDateStr, toDateStr) => {
+		expect(getTimezoneLookbackRange(lookback as LookbackPeriod, "UTC", { now })).toEqual({ fromDateStr, toDateStr });
+	});
+
 	it.each<[string, string, string]>([
 		["UTC", "2025-12-25", "2025-12-31"],
 		["Asia/Tokyo", "2025-12-26", "2026-01-01"],

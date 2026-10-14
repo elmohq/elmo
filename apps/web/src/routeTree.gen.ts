@@ -73,6 +73,7 @@ import { Route as AuthedAppOrgOrgSettingsBillingRouteImport } from './routes/_au
 import { Route as AuthedAppOrgOrgSettingsBrandsRouteImport } from './routes/_authed/app/org/$org/settings/brands'
 import { Route as AuthedAppOrgOrgSettingsMcpRouteImport } from './routes/_authed/app/org/$org/settings/mcp'
 import { Route as AuthedAppOrgOrgSettingsMembersRouteImport } from './routes/_authed/app/org/$org/settings/members'
+import { Route as AuthedAppOrgOrgSettingsSkillRouteImport } from './routes/_authed/app/org/$org/settings/skill'
 import { Route as ApiV1BrandsBrandIdCitationsDomainsRouteImport } from './routes/api/v1/brands/$brandId/citations/domains'
 import { Route as ApiV1BrandsBrandIdCitationsUrlsRouteImport } from './routes/api/v1/brands/$brandId/citations/urls'
 import { Route as ApiV1BrandsBrandIdTagsIndexRouteImport } from './routes/api/v1/brands/$brandId/tags/index'
@@ -437,6 +438,12 @@ const AuthedAppOrgOrgSettingsMembersRoute =
     path: '/members',
     getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
   } as any)
+const AuthedAppOrgOrgSettingsSkillRoute =
+  AuthedAppOrgOrgSettingsSkillRouteImport.update({
+    id: '/skill',
+    path: '/skill',
+    getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
+  } as any)
 const ApiV1BrandsBrandIdCitationsDomainsRoute =
   ApiV1BrandsBrandIdCitationsDomainsRouteImport.update({
     id: '/citations/domains',
@@ -627,6 +634,7 @@ export interface FileRoutesByFullPath {
   '/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/app/org/$org/settings/mcp': typeof AuthedAppOrgOrgSettingsMcpRoute
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
+  '/app/org/$org/settings/skill': typeof AuthedAppOrgOrgSettingsSkillRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
   '/api/v1/prompts/$promptId/runs/$runId': typeof ApiV1PromptsPromptIdRunsRunIdRoute
@@ -707,6 +715,7 @@ export interface FileRoutesByTo {
   '/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/app/org/$org/settings/mcp': typeof AuthedAppOrgOrgSettingsMcpRoute
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
+  '/app/org/$org/settings/skill': typeof AuthedAppOrgOrgSettingsSkillRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
   '/api/v1/prompts/$promptId/runs/$runId': typeof ApiV1PromptsPromptIdRunsRunIdRoute
@@ -795,6 +804,7 @@ export interface FileRoutesById {
   '/_authed/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/_authed/app/org/$org/settings/mcp': typeof AuthedAppOrgOrgSettingsMcpRoute
   '/_authed/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
+  '/_authed/app/org/$org/settings/skill': typeof AuthedAppOrgOrgSettingsSkillRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
   '/api/v1/prompts/$promptId/runs/$runId': typeof ApiV1PromptsPromptIdRunsRunIdRoute
@@ -883,6 +893,7 @@ export interface FileRouteTypes {
     | '/app/org/$org/settings/brands'
     | '/app/org/$org/settings/mcp'
     | '/app/org/$org/settings/members'
+    | '/app/org/$org/settings/skill'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
     | '/api/v1/prompts/$promptId/runs/$runId'
@@ -963,6 +974,7 @@ export interface FileRouteTypes {
     | '/app/org/$org/settings/brands'
     | '/app/org/$org/settings/mcp'
     | '/app/org/$org/settings/members'
+    | '/app/org/$org/settings/skill'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
     | '/api/v1/prompts/$promptId/runs/$runId'
@@ -1050,6 +1062,7 @@ export interface FileRouteTypes {
     | '/_authed/app/org/$org/settings/brands'
     | '/_authed/app/org/$org/settings/mcp'
     | '/_authed/app/org/$org/settings/members'
+    | '/_authed/app/org/$org/settings/skill'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
     | '/api/v1/prompts/$promptId/runs/$runId'
@@ -1561,6 +1574,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppOrgOrgSettingsMembersRouteImport
       parentRoute: typeof AuthedAppOrgOrgSettingsRoute
     }
+    '/_authed/app/org/$org/settings/skill': {
+      id: '/_authed/app/org/$org/settings/skill'
+      path: '/skill'
+      fullPath: '/app/org/$org/settings/skill'
+      preLoaderRoute: typeof AuthedAppOrgOrgSettingsSkillRouteImport
+      parentRoute: typeof AuthedAppOrgOrgSettingsRoute
+    }
     '/api/v1/brands/$brandId/citations/domains': {
       id: '/api/v1/brands/$brandId/citations/domains'
       path: '/citations/domains'
@@ -1734,6 +1754,7 @@ interface AuthedAppOrgOrgSettingsRouteChildren {
   AuthedAppOrgOrgSettingsBrandsRoute: typeof AuthedAppOrgOrgSettingsBrandsRoute
   AuthedAppOrgOrgSettingsMcpRoute: typeof AuthedAppOrgOrgSettingsMcpRoute
   AuthedAppOrgOrgSettingsMembersRoute: typeof AuthedAppOrgOrgSettingsMembersRoute
+  AuthedAppOrgOrgSettingsSkillRoute: typeof AuthedAppOrgOrgSettingsSkillRoute
   AuthedAppOrgOrgSettingsIndexRoute: typeof AuthedAppOrgOrgSettingsIndexRoute
 }
 
@@ -1745,6 +1766,7 @@ const AuthedAppOrgOrgSettingsRouteChildren: AuthedAppOrgOrgSettingsRouteChildren
     AuthedAppOrgOrgSettingsBrandsRoute: AuthedAppOrgOrgSettingsBrandsRoute,
     AuthedAppOrgOrgSettingsMcpRoute: AuthedAppOrgOrgSettingsMcpRoute,
     AuthedAppOrgOrgSettingsMembersRoute: AuthedAppOrgOrgSettingsMembersRoute,
+    AuthedAppOrgOrgSettingsSkillRoute: AuthedAppOrgOrgSettingsSkillRoute,
     AuthedAppOrgOrgSettingsIndexRoute: AuthedAppOrgOrgSettingsIndexRoute,
   }
 

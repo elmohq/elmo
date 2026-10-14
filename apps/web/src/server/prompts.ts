@@ -14,7 +14,7 @@ import {
 } from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
-import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
@@ -22,7 +22,7 @@ import { generateDateRange } from "@/lib/chart-utils";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
-import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
+import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
 import { getPromptWebQueryCounts } from "@/lib/postgres-read";
 import {
 	type CitationUrlStats,
@@ -147,7 +147,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			lookback: z.string().optional().default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
 			tags: z.string().optional(),
@@ -170,7 +170,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		}
 
 		const timezone = resolveTimezone(data.timezone, "UTC");
-		const { fromDateStr, toDateStr } = getTimezoneLookbackRange((data.lookback || "1m") as LookbackPeriod, timezone);
+		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(data.lookback, timezone);
 
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
@@ -261,6 +261,22 @@ function computePromptCitationStats(input: {
 	};
 }
 
+/** Run window for the prompt detail endpoints: the last `days` up to now, or —
+ *  for a custom range — the `days` UTC calendar days ending on `endDate`. */
+function promptRunWindow(days: number, endDate?: string): { fromDate: Date; toDate: Date } {
+	if (!endDate) {
+		const toDate = new Date();
+		const fromDate = new Date(toDate);
+		fromDate.setDate(fromDate.getDate() - days);
+		return { fromDate, toDate };
+	}
+	const toDate = new Date(`${endDate}T00:00:00Z`);
+	toDate.setUTCDate(toDate.getUTCDate() + 1);
+	const fromDate = new Date(toDate);
+	fromDate.setUTCDate(fromDate.getUTCDate() - days);
+	return { fromDate, toDate };
+}
+
 /**
  * Get stats for a single prompt (mentions, web queries, citations)
  * Replicates: apps/web/src/app/api/prompts/[promptId]/stats/route.ts
@@ -284,11 +300,13 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		if (prompt.length === 0) throw new Error("Prompt not found");
 		await requireBrandAccess(session.user.id, prompt[0].brandId);
 
-		const fromDate = new Date();
-		fromDate.setDate(fromDate.getDate() - (await resolveBrandLookbackDays(prompt[0].brandId, data.lookback)));
-		const toDate = new Date();
+		const endDate = customRangeEnd(data.lookback);
+		const { fromDate, toDate } = promptRunWindow(
+			await resolveBrandLookbackDays(prompt[0].brandId, data.lookback),
+			endDate,
+		);
 		const fromDateStr = fromDate.toISOString().split("T")[0];
-		const toDateStr = toDate.toISOString().split("T")[0];
+		const toDateStr = endDate ?? toDate.toISOString().split("T")[0];
 		const timezone = "UTC";
 		const [mentionSummary, competitorMentions, brandResult, allCompetitors] = await Promise.all([
 			getPromptMentionSummary(data.promptId, fromDateStr, toDateStr, timezone),
@@ -380,14 +398,17 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 
 		await requireBrandAccess(session.user.id, prompt.brandId);
 
-		const fromDate = new Date();
-		fromDate.setDate(fromDate.getDate() - (await resolveBrandLookbackDays(prompt.brandId, data.lookback)));
+		const { fromDate, toDate } = promptRunWindow(
+			await resolveBrandLookbackDays(prompt.brandId, data.lookback),
+			customRangeEnd(data.lookback),
+		);
+		const timeCondition = and(gte(promptRuns.createdAt, fromDate), lt(promptRuns.createdAt, toDate));
 
 		const offset = (data.page - 1) * data.limit;
 
 		const [runs, totalResult] = await Promise.all([
 			db.query.promptRuns.findMany({
-				where: and(eq(promptRuns.promptId, data.promptId), gte(promptRuns.createdAt, fromDate)),
+				where: and(eq(promptRuns.promptId, data.promptId), timeCondition),
 				orderBy: desc(promptRuns.createdAt),
 				limit: data.limit,
 				offset,
@@ -395,7 +416,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 			db
 				.select({ count: count() })
 				.from(promptRuns)
-				.where(and(eq(promptRuns.promptId, data.promptId), gte(promptRuns.createdAt, fromDate))),
+				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
 		]);
 
 		return {
@@ -508,7 +529,7 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		z.object({
 			brandId: z.string(),
 			promptId: z.string(),
-			lookback: z.string().optional().default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
@@ -517,8 +538,9 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		await requireBrandSession(data.brandId);
 
 		const timezone = resolveTimezone(data.timezone, "UTC");
-		const { fromDateStr } = getTimezoneLookbackRange((data.lookback || "1m") as LookbackPeriod, timezone);
-		const toDateStr = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
+		const range = getTimezoneLookbackRange(data.lookback, timezone);
+		const toDateStr = range.toDateStr ?? new Date().toLocaleDateString("en-CA", { timeZone: timezone });
+		const fromDateStr = range.fromDateStr;
 
 		const webQueryData = await getPromptWebQueryCounts(data.promptId, fromDateStr, toDateStr, timezone, data.model);
 

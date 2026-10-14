@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 import { Footer } from "@/components/footer";
+import { Closing } from "@/components/home/closing";
+import { LogoStrip } from "@/components/home/logos";
+import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
+import { CARD, SectionHeading } from "@/components/home/ui";
 import { Navbar } from "@/components/navbar";
-import { aeoVerticals } from "@/data/aeo-verticals";
+import { aeoHeadline, aeoVerticals } from "@/data/aeo-verticals";
 import { breadcrumbJsonLd, canonicalUrl, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "Answer Engine Optimization by Industry · Elmo";
@@ -10,7 +15,7 @@ const description =
 
 export const Route = createFileRoute("/aeo-for/")({
 	loader: () => ({
-		items: aeoVerticals.map((v) => ({ name: `AEO for ${v.audience}`, path: `/aeo-for/${v.slug}` })),
+		items: aeoVerticals.map((v) => ({ name: aeoHeadline(v), path: `/aeo-for/${v.slug}` })),
 	}),
 	head: ({ loaderData }) => ({
 		meta: [
@@ -32,43 +37,56 @@ export const Route = createFileRoute("/aeo-for/")({
 
 function AeoForIndex() {
 	return (
-		<div className="min-h-screen">
+		<div className={`${HOME_FONT_CLASS} min-h-screen bg-white antialiased`}>
+			<HomeStyles />
 			<Navbar />
 			<main>
-				<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
-					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ AEO by industry</p>
-						<h1 className="font-heading mt-2 text-4xl text-balance text-zinc-950 md:text-5xl">
+				<section className="relative overflow-hidden bg-white">
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgb(0_0_0/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(0_0_0/0.04)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
+					/>
+					<div className="relative mx-auto flex max-w-3xl flex-col items-center px-4 pb-16 pt-14 text-center md:px-6 md:pt-20">
+						<h1 className="text-[2.75rem] font-semibold leading-[1] tracking-[-0.04em] text-balance text-zinc-950 sm:text-6xl">
 							Answer engine optimization, by industry
 						</h1>
-						<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">
+						<p className="mt-6 max-w-[60ch] text-pretty text-[17px]/7 text-zinc-600 md:text-xl/8">
 							The fundamentals of AEO are the same everywhere, but the prompts that matter and the stakes are not. Pick
 							your world.
 						</p>
 					</div>
 				</section>
 
-				<section className="bg-white py-10">
+				<section className="bg-white pb-20 lg:pb-28">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+						<ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 							{aeoVerticals.map((v) => (
-								<a
-									key={v.slug}
-									href={`/aeo-for/${v.slug}`}
-									className="flex flex-col rounded-md border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-300"
-								>
-									<h2 className="font-semibold text-zinc-950">AEO for {v.audience}</h2>
-									<p className="mt-2 text-sm leading-relaxed text-zinc-600">{v.short}</p>
-								</a>
+								<li key={v.slug} className="flex">
+									<a
+										href={`/aeo-for/${v.slug}`}
+										className={`group flex flex-1 flex-col p-6 transition hover:shadow-[0_0_0_1px_rgb(37_99_235/0.45),0_16px_40px_-20px_rgb(37_99_235/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${CARD}`}
+									>
+										<h2 className="flex items-center justify-between gap-3 text-base font-semibold text-zinc-950">
+											{aeoHeadline(v)}
+											<ArrowRight
+												className="size-4 shrink-0 text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-blue-600"
+												aria-hidden="true"
+											/>
+										</h2>
+										<p className="mt-2 text-pretty text-sm/6 text-zinc-600">{v.short}</p>
+									</a>
+								</li>
 							))}
-						</div>
+						</ul>
 					</div>
 				</section>
 
-				<section className="border-t border-zinc-200 bg-white py-12">
-					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<div className="max-w-3xl space-y-5 leading-relaxed text-zinc-600">
-							<h2 className="font-heading text-2xl text-zinc-950">Why AEO differs by industry</h2>
+				<LogoStrip />
+
+				<section className="border-t border-zinc-200/80 bg-zinc-50/70">
+					<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
+						<SectionHeading title="Why AEO differs by industry" />
+						<div className="mt-8 max-w-3xl space-y-5 text-pretty text-[17px]/8 text-zinc-600">
 							<p>
 								Answer engine optimization is the practice of getting a brand named, cited, and described accurately
 								when someone asks an AI engine a question. The mechanics are consistent across industries: engines
@@ -92,12 +110,14 @@ function AeoForIndex() {
 								measurable instead of anecdotal.
 							</p>
 							<p>
-								Each guide below covers the prompts worth tracking in that industry, what to publish so engines have
+								Each guide above covers the prompts worth tracking in that industry, what to publish so engines have
 								something specific to cite, and where the category's answers are currently sourced from.
 							</p>
 						</div>
 					</div>
 				</section>
+
+				<Closing from="marketing-aeo-for-closing" />
 			</main>
 			<Footer />
 		</div>

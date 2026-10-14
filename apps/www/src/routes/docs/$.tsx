@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import type { SerializedPageTree } from "fumadocs-core/source/client";
-import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
+import type { OpenAPIPageProps } from "fumadocs-openapi/ui";
 import { DocsPageLayout } from "@/components/docs-page-layout";
 import { getPageImage } from "@/lib/og";
 import { articleJsonLd, breadcrumbJsonLd, canonicalUrl, ogMeta, SITE_NAME } from "@/lib/seo";
@@ -24,7 +24,7 @@ interface OpenApiLoaderData {
 	title: string;
 	description: string;
 	pageTree: SerializedPageTree;
-	apiProps: ClientApiPageProps;
+	apiProps: OpenAPIPageProps;
 }
 
 type LoaderData = DocsLoaderData | OpenApiLoaderData;
@@ -94,7 +94,7 @@ export const serverLoader = createServerFn({
 				title: page.data.title ?? "",
 				description: page.data.description ?? "",
 				pageTree,
-				apiProps: await page.data.getClientAPIPageProps(),
+				apiProps: page.data.getOpenAPIPageProps(),
 			};
 		}
 

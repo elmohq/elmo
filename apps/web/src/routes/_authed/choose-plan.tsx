@@ -11,20 +11,21 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import type { PlanKey } from "@workspace/config/plans";
+import { isPlanKey, PLANS, type PlanKey } from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { Switch } from "@workspace/ui/components/switch";
+import { trackAdConversion } from "@workspace/ui/lib/ad-tags";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
 import { PlanComparison } from "@/components/plan-comparison";
 import { forgetPaywall } from "@/lib/billing/queries";
 import { pageHead } from "@/lib/route-head";
-import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/server/billing";
+import { getBillingStateFn, getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/server/billing";
 
 const searchSchema = z.object({
 	status: z.enum(["success"]).optional(),
@@ -67,8 +68,22 @@ function ChoosePlanPage() {
 	return body;
 }
 
+/** Read back what the webhook recorded rather than trusting the success URL. */
+async function reportPurchase(organizationId: string, email: string): Promise<void> {
+	const { subscription } = await getBillingStateFn({ data: { organizationId } });
+	if (!subscription?.stripeSubscriptionId || !isPlanKey(subscription.plan)) return;
+	const plan = PLANS[subscription.plan];
+	trackAdConversion("purchase", {
+		id: subscription.stripeSubscriptionId,
+		valueUsd: subscription.billingInterval === "year" ? plan.annualPriceUsd : plan.monthlyPriceUsd,
+		email,
+	});
+}
+
 /** Post-checkout: wait for the Stripe webhook to record the subscription. */
 function ActivatingOrganization({ organizationId }: { organizationId?: string }) {
+	const { session } = Route.useRouteContext();
+	const email = session.user.email;
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 
@@ -78,6 +93,7 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 			for (let i = 0; i < 30 && !cancelled; i++) {
 				const state = await getPaywallStateFn({ data: { organizationId } });
 				if (!state.needsPlan) {
+					if (organizationId) void reportPurchase(organizationId, email);
 					forgetPaywall(queryClient);
 					navigate({ to: "/app" });
 					return;
@@ -89,7 +105,7 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 		return () => {
 			cancelled = true;
 		};
-	}, [navigate, organizationId, queryClient]);
+	}, [navigate, organizationId, queryClient, email]);
 
 	return (
 		<div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
@@ -101,10 +117,18 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 }
 
 function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
+	const { session } = Route.useRouteContext();
+	const { id: userId, email } = session.user;
 	const [annual, setAnnual] = useState(false);
 	const [subscribing, setSubscribing] = useState<PlanKey | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const isAdmin = paywall.isOrgAdmin;
+
+	// Every new cloud account lands here first, whether it signed up with a
+	// password or with Google, so this is where a signup is complete.
+	useEffect(() => {
+		trackAdConversion("sign_up", { id: userId, email });
+	}, [userId, email]);
 
 	const subscribe = async (plan: PlanKey) => {
 		setSubscribing(plan);

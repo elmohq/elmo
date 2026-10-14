@@ -99,6 +99,25 @@ export const AddMultipleOverCapacity: StoryObj = {
 	},
 };
 
+export const RemoveUnsavedRow: StoryObj = {
+	render: () => (
+		<Harness
+			initial={[
+				...entries(["best running shoes for flat feet"], { id: "saved-1" }),
+				...entries(["trail shoes for wide feet"], { suggested: true }),
+			]}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryAllByRole("button", { name: 'Remove "best running shoes for flat feet"' })).toHaveLength(
+			0,
+		);
+		await userEvent.click(canvas.getAllByRole("button", { name: 'Remove "trail shoes for wide feet"' })[0]!);
+		await expect(canvas.queryAllByDisplayValue("trail shoes for wide feet")).toHaveLength(0);
+	},
+};
+
 /** At the cap: both toolbar buttons are hidden and the limit message shows. */
 export const AtCapacity = () => <Harness showSystemTags={false} initial={filler(MAX_PROMPTS)} />;
 

@@ -125,6 +125,7 @@ const anthropicResponse: Anthropic.Messages.Message = {
 	stop_details: null,
 	stop_sequence: null,
 	container: null,
+	diagnostics: null,
 	usage: { input_tokens: 1, output_tokens: 1 } as Anthropic.Messages.Usage,
 	content: [
 		{

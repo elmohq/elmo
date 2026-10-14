@@ -13,7 +13,7 @@ import { expect, userEvent, within } from "storybook/test";
 import { Route } from "@/routes/_authed/choose-plan";
 import type { PaywallRequired } from "@/server/billing";
 import { getMockSubscriptionCalls, resetMockAuthClient, setMockSubscriptionError } from "./_mocks/auth-client";
-import { setMockLoaderData, setMockSearch } from "./_mocks/tanstack-router";
+import { setMockLoaderData, setMockRouteContext, setMockSearch } from "./_mocks/tanstack-router";
 
 const ChoosePlanPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
@@ -37,6 +37,7 @@ const meta = {
 			resetMockAuthClient();
 			setMockSearch({});
 			setMockLoaderData(NEEDS_PLAN);
+			setMockRouteContext({ session: { user: { id: "user-1", email: "owner@acme.test" } } });
 			return (
 				<Shell>
 					<Story />

@@ -2,6 +2,8 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
+import { getDaysFromLookback } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 
 interface VisibilityTimeSeriesPoint {
 	date: string;
@@ -14,7 +16,7 @@ interface VisibilityBarProps {
 	totalPrompts: number;
 	totalCitations: number;
 	visibilityTimeSeries: VisibilityTimeSeriesPoint[];
-	lookback: string;
+	lookback: LookbackPeriod;
 	isLoading?: boolean;
 }
 
@@ -68,7 +70,8 @@ export function VisibilityBar({
 	}
 
 	const colors = getVisibilityColors(currentVisibility);
-	const showChart = lookback !== "1w";
+	// A week or less is too few points for the sparkline to read as a trend.
+	const showChart = getDaysFromLookback(lookback) > 7;
 
 	// Prepare chart data
 	const chartData = visibilityTimeSeries.map((point) => ({

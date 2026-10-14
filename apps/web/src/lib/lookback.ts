@@ -1,5 +1,68 @@
 import { z } from "zod";
 
 export const LOOKBACK_PERIODS = ["1w", "1m", "3m", "6m", "1y", "all"] as const;
-export const lookbackSchema = z.enum(LOOKBACK_PERIODS);
-export type LookbackPeriod = z.infer<typeof lookbackSchema>;
+export type LookbackPreset = (typeof LOOKBACK_PERIODS)[number];
+
+/** A custom range rides in the same `lookback` value as the presets, so every
+ *  URL param, query key and server fn that already carries a lookback carries
+ *  it unchanged. Ends are inclusive calendar dates in the viewer's timezone,
+ *  and either may be left open: `2026-01-05..` runs to today, `..2026-02-10`
+ *  reaches back as far as "all" does. */
+export type CustomLookback = `${string}..${string}`;
+export type LookbackPeriod = LookbackPreset | CustomLookback;
+
+export interface DateRange {
+	from: string | null;
+	to: string | null;
+}
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const CUSTOM_SEPARATOR = "..";
+
+function isCalendarDate(value: string): boolean {
+	if (!DATE_PATTERN.test(value)) return false;
+	// Round-trip rejects dates like 2026-02-30 that `Date` would roll over.
+	const parsed = new Date(`${value}T00:00:00Z`);
+	return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+export function isLookbackPreset(value: unknown): value is LookbackPreset {
+	return typeof value === "string" && (LOOKBACK_PERIODS as readonly string[]).includes(value);
+}
+
+export function parseCustomLookback(value: string | null | undefined): DateRange | null {
+	if (!value) return null;
+	const parts = value.split(CUSTOM_SEPARATOR);
+	if (parts.length !== 2) return null;
+	const [from, to] = parts.map((part) => part || null);
+	if (!from && !to) return null;
+	if ((from && !isCalendarDate(from)) || (to && !isCalendarDate(to))) return null;
+	if (from && to && from > to) return null;
+	return { from, to };
+}
+
+/** The fixed last day of a custom range, for endpoints that otherwise count
+ *  back from today. */
+export function customRangeEnd(lookback: LookbackPeriod): string | undefined {
+	return parseCustomLookback(lookback)?.to ?? undefined;
+}
+
+export function formatCustomLookback(range: DateRange): CustomLookback {
+	return `${range.from ?? ""}${CUSTOM_SEPARATOR}${range.to ?? ""}`;
+}
+
+export function isLookbackPeriod(value: unknown): value is LookbackPeriod {
+	return isLookbackPreset(value) || (typeof value === "string" && parseCustomLookback(value) !== null);
+}
+
+export const lookbackSchema = z.custom<LookbackPeriod>(isLookbackPeriod, {
+	message: "Expected a lookback preset or a YYYY-MM-DD..YYYY-MM-DD range",
+});
+
+export const calendarDateSchema = z.string().refine(isCalendarDate, "Expected a YYYY-MM-DD date");
+
+/** Inclusive number of calendar days between two dates. */
+export function daysInRange(range: { from: string; to: string }): number {
+	const ms = Date.parse(`${range.to}T00:00:00Z`) - Date.parse(`${range.from}T00:00:00Z`);
+	return Math.round(ms / 86_400_000) + 1;
+}

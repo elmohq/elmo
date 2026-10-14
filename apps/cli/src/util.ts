@@ -26,7 +26,7 @@ export const log = {
 	step: (msg: string) => p.log.step(msg),
 };
 
-export function assertNotCancelled<T>(value: T | symbol): asserts value is T {
+export function assertNotCancelled<T>(value: T | typeof p.CANCEL_SYMBOL): asserts value is T {
 	if (p.isCancel(value)) {
 		p.cancel("Setup cancelled.");
 		process.exit(0);

@@ -137,7 +137,11 @@ function SupportPage() {
 					<ContactCard
 						heading="Book a call"
 						body="Walk through your setup, your prompts, or what the results mean with someone from the team."
-						action={<ExternalButton href={bookDemoUrl("marketing-support")}>Book a time</ExternalButton>}
+						action={
+							<a href={bookDemoUrl("marketing-support")} className={buttonVariants({ variant: "outline", size: "sm" })}>
+								Book a time
+							</a>
+						}
 					/>
 					<ContactCard
 						heading="Community"

@@ -1,4 +1,4 @@
-import type { LookbackPeriod } from "@/lib/lookback";
+import { type LookbackPeriod, type LookbackPreset, parseCustomLookback } from "@/lib/lookback";
 
 type DateShift = {
 	days?: number;
@@ -11,7 +11,7 @@ type TimezoneDateRange = {
 	toDateStr: string | null;
 };
 
-export type BoundedLookbackPeriod = Exclude<LookbackPeriod, "all">;
+export type BoundedLookbackPeriod = Exclude<LookbackPreset, "all">;
 
 export type CalendarDayRange = {
 	fromDateStr: string;
@@ -79,10 +79,18 @@ export function getTimezoneLookbackRange(
 	timezone: string,
 	options?: { now?: Date },
 ): TimezoneDateRange {
+	const custom = parseCustomLookback(lookback);
+	if (custom) {
+		// An open start is unbounded, the way "all" is.
+		return {
+			fromDateStr: custom.from,
+			toDateStr: custom.to ?? calendarDayInTimezone(timezone, options?.now ?? new Date()),
+		};
+	}
 	if (lookback === "all") {
 		return { fromDateStr: null, toDateStr: null };
 	}
-	return getBoundedLookbackRange(lookback, timezone, options);
+	return getBoundedLookbackRange(lookback as BoundedLookbackPeriod, timezone, options);
 }
 
 export function getBoundedLookbackRange(

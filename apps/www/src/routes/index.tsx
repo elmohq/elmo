@@ -13,6 +13,7 @@ import { SelfHost } from "@/components/home/self-host";
 import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { WhySwitch } from "@/components/home/why-switch";
 import { Navbar } from "@/components/navbar";
+import { getHeroVariant } from "@/data/hero-variants";
 import { HOME_FAQS } from "@/lib/faqs";
 import { canonicalUrl, faqJsonLd, ogMeta, SITE_NAME, softwareApplicationJsonLd } from "@/lib/seo";
 
@@ -24,6 +25,9 @@ const description =
 	"Elmo is open-source answer engine optimization (AEO): track your brand's AI visibility in ChatGPT, Perplexity, and Gemini. Cloud from $29/mo or self-host free.";
 
 export const Route = createFileRoute("/")({
+	// Passes every other param through untouched: ad clicks carry gclid and UTM
+	// tags that the conversion tags read from the landing URL.
+	validateSearch: (search: Record<string, unknown>): { v?: unknown } => search,
 	head: () => ({
 		meta: [
 			{ title },
@@ -41,12 +45,13 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
+	const variant = getHeroVariant(Route.useSearch().v);
 	return (
 		<div className={`${HOME_FONT_CLASS} min-h-screen bg-white antialiased`}>
 			<HomeStyles />
 			<Navbar />
 			<main>
-				<Hero />
+				<Hero {...variant} />
 				<LogoStrip />
 				<ModelCoverage />
 				<Reviews />

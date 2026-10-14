@@ -6,7 +6,7 @@ import { CardFooter } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Download } from "lucide-react";
 import { useCallback } from "react";
-import type { LookbackPeriod } from "@/lib/lookback";
+import { isLookbackPeriod, type LookbackPeriod } from "@/lib/lookback";
 import { getPromptWebQueryFn } from "@/server/prompts";
 import { HistoryButton } from "./history-button";
 
@@ -88,7 +88,7 @@ export function ChartActionsFooter({
 				data: {
 					brandId,
 					promptId: pId,
-					lookback: lb,
+					lookback: isLookbackPeriod(lb) ? lb : undefined,
 					model,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

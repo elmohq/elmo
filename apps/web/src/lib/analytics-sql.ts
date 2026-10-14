@@ -35,8 +35,9 @@ export function windowEnd(to: string, timezone: string): SQL {
 }
 
 export function windowFilter(column: SQL, fromDate: string | null, toDate: string | null, timezone: string): SQL {
-	if (!fromDate || !toDate) return sql``;
-	return sql`AND ${column} >= ${windowStart(fromDate, timezone)} AND ${column} < ${windowEnd(toDate, timezone)}`;
+	const from = fromDate ? sql`AND ${column} >= ${windowStart(fromDate, timezone)}` : sql``;
+	const to = toDate ? sql`AND ${column} < ${windowEnd(toDate, timezone)}` : sql``;
+	return sql`${from} ${to}`;
 }
 
 export function uuidList(ids: string[]): SQL {

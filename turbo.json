@@ -1,5 +1,6 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
+  "agentGuidance": false,
   "globalEnv": [
     "DATABASE_URL",
     "APP_URL",
@@ -73,6 +74,11 @@
     },
     "build": {
       "dependsOn": ["^build", "check-types"],
+      "outputs": [".output/**", ".vercel/output/**", "dist/**"]
+    },
+    "@workspace/www#build": {
+      "dependsOn": ["^build", "check-types"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/skills/**"],
       "outputs": [".output/**", ".vercel/output/**", "dist/**"]
     },
     "@workspace/worker#build": {
