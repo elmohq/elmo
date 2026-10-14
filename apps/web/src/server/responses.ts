@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
 import { getResponseMatches, type ResponseSearchScope } from "@/lib/postgres-read";
-import { countResponses } from "@/lib/rollup-read";
+import { getMentionTotals } from "@/lib/rollup-read";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -44,14 +44,14 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			query,
 		};
 
-		const [totalRuns, rows] = await Promise.all([
-			countResponses(scope),
+		const [totals, rows] = await Promise.all([
+			getMentionTotals(scope),
 			getResponseMatches(scope, PAGE_SIZE, data.page * PAGE_SIZE),
 		]);
 
 		return {
 			query: query ?? null,
-			totalRuns,
+			totalRuns: totals.runs,
 			matchedRuns: rows[0]?.matched ?? 0,
 			pageSize: PAGE_SIZE,
 			matches: rows.map((row) => ({

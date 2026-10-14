@@ -26,11 +26,12 @@ import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
 import { getPromptWebQueryCounts } from "@/lib/postgres-read";
 import {
 	type CitationUrlStats,
-	getPromptCitationUrlStats,
-	getPromptMentionSummary,
+	getCitationUrlStats,
+	getCompetitorTotals,
+	getMentionTotals,
+	getPerPromptRunStats,
 	getPromptsFirstEvaluatedAt,
-	getPromptsSummary,
-	getPromptTopCompetitorMentions,
+	type PerPromptRunStats,
 } from "@/lib/rollup-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
@@ -90,8 +91,6 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 /**
  * Get prompts summary for a brand (visibility scores, tags, etc.)
  */
-type PromptSummaryStat = Awaited<ReturnType<typeof getPromptsSummary>>[number];
-
 function summarizePrompt(
 	prompt: {
 		id: string;
@@ -101,17 +100,19 @@ function summarizePrompt(
 		tags: string[] | null;
 		systemTags: string[] | null;
 	},
-	stats: PromptSummaryStat | undefined,
+	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
 ) {
 	const userTags = prompt.tags || [];
 	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
 	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
-	const totalRuns = Number(stats?.total_runs ?? 0);
-	// The query answers in ratios so the API can publish them unrounded; the
-	// dashboard renders percentages, and this is where it rounds.
-	const brandMentionRate = Math.round(Number(stats?.brand_mention_rate ?? 0) * 100);
-	const competitorMentionRate = Math.round(Number(stats?.competitor_mention_rate ?? 0) * 100);
+	const totalRuns = stats?.runs ?? 0;
+	// The API publishes these ratios unrounded; the dashboard renders
+	// percentages, and this is where it rounds.
+	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
+	const brandMentionRate = Math.round(ratio(stats?.brand_mentioned_runs) * 100);
+	const competitorMentionRate = Math.round(ratio(stats?.competitor_runs) * 100);
+	const weightedMentions = (stats?.brand_mentioned_runs ?? 0) * 2 + (stats?.competitor_mentions ?? 0);
 
 	return {
 		id: prompt.id,
@@ -121,7 +122,7 @@ function summarizePrompt(
 		totalRuns,
 		brandMentionRate,
 		competitorMentionRate,
-		averageWeightedMentions: totalRuns > 0 ? Number(stats?.total_weighted_mentions ?? 0) / totalRuns : 0,
+		averageWeightedMentions: totalRuns > 0 ? weightedMentions / totalRuns : 0,
 		hasVisibilityData: totalRuns > 0 && (brandMentionRate > 0 || competitorMentionRate > 0),
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
@@ -175,7 +176,15 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
 		const [summaryData, firstEvaluatedData] = await Promise.all([
-			getPromptsSummary(data.brandId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model, promptIds),
+			getPerPromptRunStats({
+				brandId: data.brandId,
+				from: fromDateStr,
+				to: toDateStr,
+				timezone,
+				promptIds,
+				model: data.model,
+				webSearchEnabled,
+			}),
 			getPromptsFirstEvaluatedAt(data.brandId, promptIds),
 		]);
 
@@ -307,10 +316,16 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		);
 		const fromDateStr = fromDate.toISOString().split("T")[0];
 		const toDateStr = endDate ?? toDate.toISOString().split("T")[0];
-		const timezone = "UTC";
-		const [mentionSummary, competitorMentions, brandResult, allCompetitors] = await Promise.all([
-			getPromptMentionSummary(data.promptId, fromDateStr, toDateStr, timezone),
-			getPromptTopCompetitorMentions(data.promptId, fromDateStr, toDateStr, timezone),
+		const scope = {
+			brandId: prompt[0].brandId,
+			from: fromDateStr,
+			to: toDateStr,
+			timezone: "UTC",
+			promptIds: [data.promptId],
+		};
+		const [mentionTotals, competitorMentions, brandResult, allCompetitors] = await Promise.all([
+			getMentionTotals(scope),
+			getCompetitorTotals(scope),
 			db.select({ name: brands.name }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
 			db.select({ name: competitors.name }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
@@ -320,16 +335,16 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 		const brandName = brandResult[0]?.name;
 		if (brandName) {
-			mentionStats.push({ name: brandName, count: Number(mentionSummary.brand_mentioned_count) });
+			mentionStats.push({ name: brandName, count: mentionTotals.brand_mentioned_runs });
 		}
 
 		// Only current competitors, each listed even when no run named it.
-		const mentionsByName = new Map(competitorMentions.map((row) => [row.competitor_name, Number(row.mention_count)]));
+		const mentionsByName = new Map(competitorMentions.map((row) => [row.competitor, row.runs]));
 		for (const { name } of allCompetitors) {
 			mentionStats.push({ name, count: mentionsByName.get(name) ?? 0 });
 		}
 
-		const noMentionCount = Number(mentionSummary.no_mention_count);
+		const noMentionCount = mentionTotals.no_mention_runs;
 		if (noMentionCount > 0) {
 			mentionStats.push({ name: "(no brand mentions)", count: noMentionCount });
 		}
@@ -354,7 +369,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
 		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
 
-		const urlStats = await getPromptCitationUrlStats(data.promptId, fromDateStr, toDateStr, timezone);
+		const urlStats = await getCitationUrlStats(scope);
 
 		const citationStats = computePromptCitationStats({
 			urlStats,
@@ -371,7 +386,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			aggregations: {
 				mentionStats,
 				citationStats,
-				totalRuns: Number(mentionSummary.total_runs),
+				totalRuns: mentionTotals.runs,
 			},
 		};
 	});

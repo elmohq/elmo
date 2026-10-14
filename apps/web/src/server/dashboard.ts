@@ -15,11 +15,7 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
 import { lookbackSchema } from "@/lib/lookback";
-import {
-	getDashboardSummary,
-	getPerPromptDailyCitationStats,
-	getPerPromptVisibilityTimeSeries,
-} from "@/lib/rollup-read";
+import { getMentionTotals, getPerPromptDailyCitationDomains, getPerPromptDailyRuns } from "@/lib/rollup-read";
 import { resolveBrandWindow } from "@/server/brand-window";
 
 interface VisibilityTimeSeriesPoint {
@@ -91,15 +87,15 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			.filter((p) => getEffectiveBrandedStatus(p.systemTags || [], p.tags || []).isBranded)
 			.map((p) => p.id);
 
-		const [summaryResult, perPromptVisibility, perPromptCitations] = await Promise.all([
-			getDashboardSummary(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
-			getPerPromptVisibilityTimeSeries(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
-			getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
+		const scope = { brandId: data.brandId, from: fromDateStr, to: toDateStr, timezone, promptIds: enabledPromptIds };
+		const [totals, perPromptVisibility, perPromptCitations] = await Promise.all([
+			getMentionTotals(scope),
+			getPerPromptDailyRuns(scope),
+			getPerPromptDailyCitationDomains(scope),
 		]);
 
-		const summary = summaryResult[0];
-		const totalRuns = summary ? Number(summary.total_runs) : 0;
-		const lastUpdatedAt = summary?.last_updated || null;
+		const totalRuns = totals.runs;
+		const lastUpdatedAt = totals.last_run_at;
 
 		// Same window as the DB queries above (and as share-of-voice), so LVCF
 		// smoothing and the emitted series cover exactly this date domain.

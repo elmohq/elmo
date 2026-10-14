@@ -16,11 +16,11 @@ export const isCalendarDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value
 // the other way: midnight in the session's zone, as wall time in this one.
 const localMidnight = (day: SQL, timezone: string): SQL => sql`(${day}::timestamp AT TIME ZONE ${timezone})`;
 
-export function windowStart(from: string, timezone: string): SQL {
+function windowStart(from: string, timezone: string): SQL {
 	return isCalendarDay(from) ? localMidnight(sql`${from}::date`, timezone) : sql`${from}::timestamptz`;
 }
 
-export function windowEnd(to: string, timezone: string): SQL {
+function windowEnd(to: string, timezone: string): SQL {
 	return isCalendarDay(to) ? localMidnight(sql`(${to}::date + 1)`, timezone) : sql`${to}::timestamptz`;
 }
 
@@ -79,7 +79,7 @@ export function scopeFilter(scope: AnalyticsScope, columns: ScopeColumns): SQL {
 		${webSearchFilter(scope.webSearchEnabled, alias)}`;
 }
 
-export function promptFilter(promptIds: string[] | undefined, alias?: string): SQL {
+function promptFilter(promptIds: string[] | undefined, alias?: string): SQL {
 	if (!promptIds) return sql``;
 	if (promptIds.length === 0) return sql`AND FALSE`;
 	return sql`AND ${column("prompt_id", alias)} IN (${uuidList(promptIds)})`;
@@ -114,7 +114,7 @@ export function apiProviderList(): SQL {
 	);
 }
 
-export function webSearchFilter(webSearchEnabled: boolean | undefined, alias?: string): SQL {
+function webSearchFilter(webSearchEnabled: boolean | undefined, alias?: string): SQL {
 	if (webSearchEnabled === undefined) return sql``;
 	return sql`AND ${column("web_search_enabled", alias)} = ${webSearchEnabled}`;
 }
