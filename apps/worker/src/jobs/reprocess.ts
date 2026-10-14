@@ -19,7 +19,7 @@ import {
 	runMentions,
 } from "@workspace/lib/db/schema";
 import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
-import { markDirty } from "@workspace/lib/rollups";
+import { insertCitations, markDirty } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, extractRun } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gte, isNull, or, type SQL, sql } from "drizzle-orm";
@@ -194,20 +194,7 @@ async function replaceCitations(
 	extracted: Citation[],
 ): Promise<void> {
 	await tx.delete(citations).where(eq(citations.promptRunId, run.id));
-	if (extracted.length === 0) return;
-	await tx.insert(citations).values(
-		extracted.map((c) => ({
-			promptRunId: run.id,
-			promptId: run.promptId,
-			brandId,
-			model: run.model,
-			url: c.url,
-			domain: c.domain,
-			title: c.title || null,
-			citationIndex: c.citationIndex,
-			createdAt: run.createdAt,
-		})),
-	);
+	await insertCitations(tx, { ...run, brandId }, extracted);
 }
 
 interface Pass {

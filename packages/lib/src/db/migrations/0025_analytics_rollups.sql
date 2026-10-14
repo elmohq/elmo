@@ -89,6 +89,7 @@ CREATE TABLE "rollup_web_queries" (
 );
 --> statement-breakpoint
 ALTER TABLE "rollup_web_queries" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "citations" ADD COLUMN "page_id" bigint;--> statement-breakpoint
 ALTER TABLE "rollup_citation_urls" ADD CONSTRAINT "rollup_citation_urls_prompt_id_prompts_id_fk" FOREIGN KEY ("prompt_id") REFERENCES "public"."prompts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rollup_citation_urls" ADD CONSTRAINT "rollup_citation_urls_page_id_cited_pages_id_fk" FOREIGN KEY ("page_id") REFERENCES "public"."cited_pages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rollup_competitor_mentions" ADD CONSTRAINT "rollup_competitor_mentions_prompt_id_prompts_id_fk" FOREIGN KEY ("prompt_id") REFERENCES "public"."prompts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -100,4 +101,5 @@ CREATE INDEX "rollup_competitor_mentions_prompt_id_bucket_idx" ON "rollup_compet
 CREATE INDEX "rollup_dirty_bucket_idx" ON "rollup_dirty" USING btree ("bucket");--> statement-breakpoint
 CREATE INDEX "rollup_prompt_runs_prompt_id_bucket_idx" ON "rollup_prompt_runs" USING btree ("prompt_id","bucket");--> statement-breakpoint
 CREATE INDEX "rollup_web_queries_prompt_id_bucket_idx" ON "rollup_web_queries" USING btree ("prompt_id","bucket");--> statement-breakpoint
+ALTER TABLE "citations" ADD CONSTRAINT "citations_page_id_cited_pages_id_fk" FOREIGN KEY ("page_id") REFERENCES "public"."cited_pages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 INSERT INTO "pipeline_state" ("id") VALUES (1) ON CONFLICT DO NOTHING;

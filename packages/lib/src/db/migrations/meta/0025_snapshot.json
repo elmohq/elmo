@@ -1,5 +1,5 @@
 {
-  "id": "c5eee696-9068-49e5-a615-c984dc2ef267",
+  "id": "d6d83aca-7cee-4bc1-bdd0-2ea71df2c766",
   "prevId": "8700a627-2fd1-4e3e-b53b-d8c457160d8d",
   "version": "7",
   "dialect": "postgresql",
@@ -304,6 +304,12 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
+        },
+        "page_id": {
+          "name": "page_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -434,6 +440,19 @@
           "tableTo": "brands",
           "columnsFrom": [
             "brand_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "citations_page_id_cited_pages_id_fk": {
+          "name": "citations_page_id_cited_pages_id_fk",
+          "tableFrom": "citations",
+          "tableTo": "cited_pages",
+          "columnsFrom": [
+            "page_id"
           ],
           "columnsTo": [
             "id"

@@ -49,6 +49,7 @@
 		"./rollups": "./src/rollups/index.ts",
 		"./rollups/constants": "./src/rollups/constants.ts",
 		"./rollups/dirty": "./src/rollups/dirty.ts",
+		"./rollups/citation-pages": "./src/rollups/citation-pages.ts",
 		"./rollups/fanout": "./src/rollups/fanout.ts"
 	},
 	"dependencies": {

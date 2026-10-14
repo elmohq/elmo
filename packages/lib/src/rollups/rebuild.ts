@@ -1,4 +1,4 @@
-import { and, eq, gte, lt, type SQL, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { DbConnection } from "../db/db-connection";
 import {
 	citations,
@@ -11,14 +11,7 @@ import {
 	rollupWebQueries,
 	runMentions,
 } from "../db/schema";
-import {
-	aggregateCitationBucket,
-	type CitationSourceRow,
-	type PageUpsert,
-	type UrlRollupRow,
-} from "./aggregate-citations";
 import { assertBucketAligned, bucketSql } from "./bucket";
-import { chunked } from "./chunk";
 import { isFanoutQuery, normalizedWebQuery } from "./fanout";
 
 export interface RebuildStats {
@@ -27,7 +20,6 @@ export interface RebuildStats {
 	competitorRows: number;
 	webQueryRows: number;
 	urlRows: number;
-	pages: number;
 }
 
 /**
@@ -66,8 +58,8 @@ export async function rebuildRange(
 		const runs = await insertPromptRunRollup(tx, brandId, from, toExclusive);
 		const competitorRows = await insertCompetitorRollup(tx, brandId, from, toExclusive);
 		const webQueryRows = await insertWebQueryRollup(tx, brandId, from, toExclusive);
-		const citationStats = await rebuildCitations(tx, brandId, from, toExclusive);
-		return { runs, competitorRows, webQueryRows, ...citationStats };
+		const urlRows = await insertCitationRollup(tx, brandId, from, toExclusive);
+		return { runs, competitorRows, webQueryRows, urlRows };
 	});
 }
 
@@ -166,84 +158,17 @@ async function insertWebQueryRollup(tx: DbConnection, brandId: string, from: Dat
 	return result.rowCount ?? 0;
 }
 
-function readCitations(tx: DbConnection, brandId: string, from: Date, toExclusive: Date): Promise<CitationSourceRow[]> {
-	return tx
-		.select({
-			brandId: citations.brandId,
-			promptId: citations.promptId,
-			createdAt: citations.createdAt,
-			model: citations.model,
-			provider: promptRuns.provider,
-			webSearchEnabled: promptRuns.webSearchEnabled,
-			url: citations.url,
-			domain: citations.domain,
-			title: citations.title,
-			citationIndex: citations.citationIndex,
-		})
-		.from(citations)
-		.innerJoin(promptRuns, eq(promptRuns.id, citations.promptRunId))
-		.where(and(eq(citations.brandId, brandId), gte(citations.createdAt, from), lt(citations.createdAt, toExclusive)));
-}
-
-/**
- * Ranges are rebuilt in any order (the backfill goes newest-first), so a page
- * must keep the title that was seen most recently, not the one from whichever
- * rebuild ran last. A titled range beats an untitled row outright; otherwise
- * the more recent range wins. The classification travels with the title it
- * was computed from.
- */
-const incomingTitleWins = sql`CASE
-	WHEN excluded.title IS NOT NULL THEN (${citedPages.title} IS NULL OR excluded.last_seen_at >= ${citedPages.lastSeenAt})
-	ELSE (${citedPages.title} IS NULL AND excluded.last_seen_at >= ${citedPages.lastSeenAt})
-END`;
-
-const withTitle = (incoming: SQL, existing: SQL): SQL =>
-	sql`CASE WHEN ${incomingTitleWins} THEN ${incoming} ELSE ${existing} END`;
-
-/** A page row is shared by every tenant, so the upsert keeps the widest window seen. */
-async function upsertPages(tx: DbConnection, pages: PageUpsert[]): Promise<Map<string, number>> {
-	const ids = new Map<string, number>();
-	for (const chunk of chunked(pages)) {
-		const rows = await tx
-			.insert(citedPages)
-			.values(chunk)
-			.onConflictDoUpdate({
-				target: citedPages.url,
-				set: {
-					domain: sql`excluded.domain`,
-					title: withTitle(sql`excluded.title`, sql`${citedPages.title}`),
-					pageType: withTitle(sql`excluded.page_type`, sql`${citedPages.pageType}`),
-					staticCategory: withTitle(sql`excluded.static_category`, sql`${citedPages.staticCategory}`),
-					classifierVersion: withTitle(sql`excluded.classifier_version`, sql`${citedPages.classifierVersion}`),
-					firstSeenAt: sql`least(${citedPages.firstSeenAt}, excluded.first_seen_at)`,
-					lastSeenAt: sql`greatest(${citedPages.lastSeenAt}, excluded.last_seen_at)`,
-				},
-			})
-			.returning({ id: citedPages.id, url: citedPages.url });
-		for (const row of rows) ids.set(row.url, row.id);
-	}
-	return ids;
-}
-
-async function insertUrlRollup(tx: DbConnection, rows: UrlRollupRow[], pageIds: Map<string, number>): Promise<number> {
-	const values = rows.map(({ url, ...row }) => {
-		const pageId = pageIds.get(url);
-		if (pageId === undefined) throw new Error(`cited_pages row missing for ${url}`);
-		return { ...row, pageId };
-	});
-	for (const chunk of chunked(values)) await tx.insert(rollupCitationUrls).values(chunk);
-	return values.length;
-}
-
-async function rebuildCitations(
-	tx: DbConnection,
-	brandId: string,
-	from: Date,
-	toExclusive: Date,
-): Promise<Pick<RebuildStats, "urlRows" | "pages">> {
-	const source = await readCitations(tx, brandId, from, toExclusive);
-	const { pages, urls } = aggregateCitationBucket(source);
-	const pageIds = await upsertPages(tx, pages);
-	const urlRows = await insertUrlRollup(tx, urls, pageIds);
-	return { urlRows, pages: pages.length };
+async function insertCitationRollup(tx: DbConnection, brandId: string, from: Date, toExclusive: Date): Promise<number> {
+	const result = await tx.execute(sql`
+		INSERT INTO ${rollupCitationUrls} (
+			brand_id, bucket, prompt_id, model, provider, web_search_enabled, page_id, domain, citations, position_sum
+		)
+		SELECT ${keyColumns}, c.page_id, cp.domain, count(*)::int, sum(c.citation_index)::int
+		${brandRuns(brandId)}
+		JOIN ${citations} c ON c.prompt_run_id = pr.id
+		JOIN ${citedPages} cp ON cp.id = c.page_id
+		${inRange(brandId, from, toExclusive)}
+		GROUP BY ${keyColumns}, c.page_id, cp.domain
+	`);
+	return result.rowCount ?? 0;
 }

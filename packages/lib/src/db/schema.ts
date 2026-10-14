@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+	type AnyPgColumn,
 	bigint,
 	boolean,
 	check,
@@ -199,6 +200,8 @@ export const citations = pgTable(
 		title: text("title"),
 		citationIndex: smallint("citation_index").notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+		/** The normalized page this URL is; null only until a backfill resolves citations stored before pages were. */
+		pageId: bigint("page_id", { mode: "number" }).references((): AnyPgColumn => citedPages.id),
 	},
 	(table) => ({
 		brandAnalyticsIdx: index("citations_brand_created_analytics_idx").on(

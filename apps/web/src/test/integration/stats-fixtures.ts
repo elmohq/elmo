@@ -14,7 +14,7 @@ import {
 	rollupPromptRuns,
 	rollupWebQueries,
 } from "@workspace/lib/db/schema";
-import { bucketEnd, bucketStart, rebuildRange } from "@workspace/lib/rollups";
+import { bucketEnd, bucketStart, rebuildRange, resolveUnpagedCitations } from "@workspace/lib/rollups";
 import { eq, max, min } from "drizzle-orm";
 
 /**
@@ -129,6 +129,7 @@ export async function createCitation(
 
 /** Brings the brand's rollups up to date with its raw rows, as the worker's refresh would. */
 export async function rebuildRollups(brandId: string) {
+	await resolveUnpagedCitations(db);
 	const [span] = await db
 		.select({ first: min(promptRuns.createdAt), last: max(promptRuns.createdAt) })
 		.from(promptRuns)

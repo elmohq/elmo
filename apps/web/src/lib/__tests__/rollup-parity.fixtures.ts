@@ -19,7 +19,7 @@ import {
 	rollupWebQueries,
 	SYSTEM_TAGS,
 } from "@workspace/lib/db/schema";
-import { rebuildRange } from "@workspace/lib/rollups";
+import { rebuildRange, resolveUnpagedCitations } from "@workspace/lib/rollups";
 import { eq } from "drizzle-orm";
 
 export const ORG_ID = "org-rollup-parity-test";
@@ -292,5 +292,6 @@ export async function seed(db: DbConnection): Promise<void> {
 
 export async function seedAndRebuild(db: DbConnection): Promise<void> {
 	await seed(db);
+	await resolveUnpagedCitations(db);
 	await rebuildRange(db, BRAND_ID, REBUILD_FROM, REBUILD_TO);
 }

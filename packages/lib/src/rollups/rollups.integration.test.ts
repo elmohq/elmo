@@ -17,6 +17,7 @@ import {
 	rollupDirty,
 	rollupPromptRuns,
 } from "../db/schema";
+import { resolveUnpagedCitations } from "./citation-pages";
 import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
 import { markDirty, markPromptRunsDirty, markRunsDirty, pendingMarks, refreshRange } from "./dirty";
 import { getPipelineState, setPipelineState } from "./pipeline-state";
@@ -176,6 +177,9 @@ async function seed(db: TestDb): Promise<void> {
 			};
 		}),
 	);
+	await resolveUnpagedCitations(db);
+	// The backfill marks what it resolved; the tests start from no marks.
+	await db.delete(rollupDirty);
 }
 
 function insertSeedRuns(db: DbConnection, runs: SeedRun[]) {
@@ -378,7 +382,7 @@ describe("rollups against postgres", () => {
 
 	it("folds citation URLs and keeps one page per normalized URL", async () => {
 		const stats = await rebuildAll(db);
-		expect(stats).toMatchObject({ urlRows: 6, pages: 4 });
+		expect(stats).toMatchObject({ urlRows: 6 });
 
 		const pages = await pageRows(db);
 		expect(

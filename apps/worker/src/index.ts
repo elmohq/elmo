@@ -2,7 +2,9 @@ import * as Sentry from "@sentry/node";
 import { assertRequiredEnv } from "@workspace/config/env";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeploymentFeatures } from "@workspace/deployment";
+import { db } from "@workspace/lib/db/db";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
+import { resolveUnpagedCitations } from "@workspace/lib/rollups";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { getBoss } from "./boss";
@@ -141,6 +143,12 @@ async function main() {
 			if (filled > 0) console.log(`Filled stored text for ${filled} runs that predate it`);
 		})
 		.catch((error) => console.error("Filling stored text for older runs failed:", error));
+	// Likewise for citations stored before their pages were resolved at write time.
+	resolveUnpagedCitations(db)
+		.then((resolved) => {
+			if (resolved > 0) console.log(`Resolved pages for ${resolved} older citations`);
+		})
+		.catch((error) => console.error("Resolving pages for older citations failed:", error));
 }
 
 main().catch(async (error) => {

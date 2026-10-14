@@ -10,7 +10,7 @@ import { type Brand, brands, citations, competitors, promptRuns, prompts, usageE
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
-import { markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
+import { insertCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
@@ -191,32 +191,6 @@ async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): P
 	return Number(row?.value ?? 0) >= ceiling;
 }
 
-async function saveCitations(
-	conn: DbConnection,
-	promptRunId: string,
-	promptId: string,
-	brandId: string,
-	model: string,
-	extracted: Citation[],
-	createdAt: Date,
-): Promise<void> {
-	if (extracted.length === 0) return;
-
-	await conn.insert(citations).values(
-		extracted.map((c) => ({
-			promptRunId,
-			promptId,
-			brandId,
-			model,
-			url: c.url,
-			domain: c.domain,
-			title: c.title || null,
-			citationIndex: c.citationIndex,
-			createdAt,
-		})),
-	);
-}
-
 /**
  * Billing-grade attribution: one row per provider call, success
  * or failure. Never fails the run — attribution must not break tracking.
@@ -303,7 +277,11 @@ async function runModelIteration({
 					mentionsStamp: stamps[MENTIONS_KEY],
 				},
 			]);
-			await saveCitations(tx, run.id, promptId, brand.id, config.model, extractedCitations, run.createdAt);
+			await insertCitations(
+				tx,
+				{ id: run.id, promptId, brandId: brand.id, model: config.model, createdAt: run.createdAt },
+				extractedCitations,
+			);
 			await markDirty(tx, brand.id, [run.createdAt]);
 			return run.id;
 		});
