@@ -42,7 +42,7 @@ function extractTextFromOpenRouterResponse(data: any): string {
 	if (chatContent) return chatContent;
 
 	const texts = responsesApiTexts(data?.output);
-	return texts.length > 0 ? texts.join("\n") : "No text content found in OpenRouter response.";
+	return texts.join("\n");
 }
 
 function extractCitationsFromOpenRouterResponse(data: any): Citation[] {

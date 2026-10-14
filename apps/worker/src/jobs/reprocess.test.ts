@@ -1,25 +1,13 @@
-import { type MentionConfig, mentionsStamp } from "@workspace/lib/mentions";
-import { EXTRACTOR_VERSION } from "@workspace/lib/text-extraction";
+import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspace/lib/analysis-versions";
+import type { MentionConfig } from "@workspace/lib/mentions";
 import { describe, expect, it } from "vitest";
-import { type BrandMentions, brandVersions, buildRowUpdate, type RunHead, staleLayers } from "./reprocess";
+import { deriveRunUpdate, type StaleRun, staleLayers } from "./reprocess";
 
 const config: MentionConfig = {
 	brand: { name: "Acme", aliases: [], domains: ["https://acme.com"] },
 	competitors: [],
 };
-const mentions: BrandMentions = { config, stamp: mentionsStamp(config) };
-
-const baseRow: RunHead = {
-	id: "run-1",
-	promptId: "prompt-1",
-	createdAt: new Date("2026-01-15T10:05:00.000Z"),
-	cursorAt: "2026-01-15T10:05:00.000000Z",
-	model: "gpt-5",
-	provider: "openai-api",
-	hasText: false,
-	extractorVersion: null,
-	analysisVersions: {},
-};
+const target = currentAnalysisVersions(config);
 
 const openAiPayload = (text: string) => ({
 	output: [
@@ -36,68 +24,64 @@ const openAiPayload = (text: string) => ({
 	],
 });
 
-describe("buildRowUpdate", () => {
-	it("returns null when nothing is stale", () => {
-		expect(buildRowUpdate(baseRow, { extraction: false, mentions: false }, {}, mentions)).toBeNull();
-	});
+const legacyRun = (text: string): StaleRun => ({
+	id: "run-1",
+	promptId: "prompt-1",
+	createdAt: new Date("2026-01-15T10:05:00.000Z"),
+	model: "gpt-5",
+	provider: "openai-api",
+	textContent: null,
+	rawOutput: openAiPayload(text),
+	analysisVersions: {},
+});
 
-	it("re-extracts text and citations without touching mentions when only extraction is stale", () => {
-		const raw = openAiPayload("Acme is great.");
-		const update = buildRowUpdate(baseRow, { extraction: true, mentions: false }, { raw }, mentions);
-		expect(update?.columns.textContent).toBe("Acme is great.");
-		expect(update?.columns.extractorVersion).toBe(EXTRACTOR_VERSION);
-		expect(update?.citations).toEqual([
+describe("deriveRunUpdate", () => {
+	it("re-extracts text and citations, then derives mentions from the new text", () => {
+		const update = deriveRunUpdate(legacyRun("Acme is great."), ["extraction", "interpretation"], target, config);
+		expect(update.columns).toEqual({ textContent: "Acme is great.", brandMentioned: true, competitorsMentioned: [] });
+		expect(update.citations).toEqual([
 			{ url: "https://example.com/a", title: "A", domain: "example.com", citationIndex: 0 },
 		]);
-		expect(update?.columns.brandMentioned).toBeUndefined();
-		expect(update?.columns.analysisVersions).toBeUndefined();
+		expect(update.stamps).toEqual(target);
 	});
 
-	it("fills missing text for stale mentions without touching citations or the extractor stamp", () => {
-		const raw = openAiPayload("Acme is great.");
-		const update = buildRowUpdate(baseRow, { extraction: false, mentions: true }, { raw }, mentions);
-		expect(update?.columns.textContent).toBe("Acme is great.");
-		expect(update?.columns.extractorVersion).toBeUndefined();
-		expect(update?.citations).toBeUndefined();
-		expect(update?.columns.brandMentioned).toBe(true);
-		expect(update?.columns.analysisVersions).toBeDefined();
+	it("fills a legacy run's text for mentions but leaves its citations and extraction stamp alone", () => {
+		const update = deriveRunUpdate(legacyRun("Acme is great."), ["interpretation"], target, config);
+		expect(update.columns.textContent).toBe("Acme is great.");
+		expect(update.columns.brandMentioned).toBe(true);
+		expect(update.citations).toBeUndefined();
+		expect(update.stamps).toEqual({ [MENTIONS_KEY]: target[MENTIONS_KEY] });
 	});
 
-	it("derives mentions from stored text when the run already has it", () => {
-		const row = { ...baseRow, hasText: true };
-		const update = buildRowUpdate(
-			row,
-			{ extraction: false, mentions: true },
-			{ text: "Acme is already stored here." },
-			mentions,
-		);
-		expect(update?.columns.textContent).toBeUndefined();
-		expect(update?.columns.brandMentioned).toBe(true);
+	it("derives mentions from stored text without re-extracting", () => {
+		const run = { ...legacyRun("ignored"), textContent: "Acme is stored here.", rawOutput: null };
+		const update = deriveRunUpdate(run, ["interpretation"], target, config);
+		expect(update.columns).toEqual({ brandMentioned: true, competitorsMentioned: [] });
 	});
 
-	it("derives mentions from freshly extracted text when both layers are stale", () => {
-		const raw = openAiPayload("No brand mention here.");
-		const row = { ...baseRow, hasText: true };
-		const update = buildRowUpdate(row, { extraction: true, mentions: true }, { raw }, mentions);
-		expect(update?.columns.textContent).toBe("No brand mention here.");
-		expect(update?.citations).toHaveLength(1);
-		expect(update?.columns.brandMentioned).toBe(false);
+	it("leaves a layer that is already current alone", () => {
+		const run = {
+			...legacyRun("Acme"),
+			textContent: "Acme",
+			analysisVersions: { [EXTRACTION_KEY]: target[EXTRACTION_KEY] },
+		};
+		const update = deriveRunUpdate(run, ["extraction", "interpretation"], target, config);
+		expect(update.citations).toBeUndefined();
+		expect(update.stamps).toEqual({ [MENTIONS_KEY]: target[MENTIONS_KEY] });
 	});
 });
 
 describe("staleLayers", () => {
-	const current = brandVersions(config);
-
 	it("asks for nothing when history matches today's code and config", () => {
-		expect(staleLayers(current, current)).toEqual([]);
+		expect(staleLayers(target, target)).toEqual([]);
 	});
 
 	it("re-derives mentions alone after a config change", () => {
-		const moved = brandVersions({ ...config, brand: { ...config.brand, aliases: ["Acme Corp"] } });
-		expect(staleLayers(current, moved)).toEqual(["interpretation"]);
+		const moved = currentAnalysisVersions({ ...config, brand: { ...config.brand, aliases: ["Acme Corp"] } });
+		expect(staleLayers(target, moved)).toEqual(["interpretation"]);
 	});
 
 	it("brings interpretation along with extraction, since new text changes what is found", () => {
-		expect(staleLayers({ ...current, extraction: "0" }, current)).toEqual(["extraction", "interpretation"]);
+		expect(staleLayers({ ...target, [EXTRACTION_KEY]: "0" }, target)).toEqual(["extraction", "interpretation"]);
 	});
 });

@@ -1,25 +1,17 @@
+import {
+	type AnalysisVersions,
+	currentAnalysisVersions,
+	EXTRACTION_KEY,
+	MENTIONS_KEY,
+} from "@workspace/lib/analysis-versions";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import {
-	type Brand,
-	brands,
-	type Competitor,
-	citations,
-	competitors,
-	promptRuns,
-	prompts,
-} from "@workspace/lib/db/schema";
-import {
-	analyzeRunMentions,
-	MENTIONS_ANALYSIS_KEY,
-	type MentionConfig,
-	mentionConfigFrom,
-	mentionsStamp,
-} from "@workspace/lib/mentions";
-import { markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
+import { type Brand, brands, citations, competitors, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
+import { markDirty } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
-import { type Citation, EXTRACTOR_VERSION, extractRun, tryExtractTextContent } from "@workspace/lib/text-extraction";
-import { and, asc, eq, gte, inArray, isNull, type SQL, sql } from "drizzle-orm";
+import { type Citation, extractRun } from "@workspace/lib/text-extraction";
+import { and, asc, eq, gte, isNull, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
 
@@ -27,270 +19,168 @@ export const REPROCESS_QUEUE = "reprocess";
 
 export type ReprocessLayer = "extraction" | "interpretation";
 
-export type AnalysisVersions = Record<string, string>;
-
 export interface ReprocessData {
 	brandId: string;
 	layers: ReprocessLayer[];
-	/**
-	 * The brand stamps this pass brings history to. Carried across continuations
-	 * so a segment that finds the brand's config has since moved knows the rows
-	 * behind its cursor were derived from the old one.
-	 */
-	target?: AnalysisVersions;
-	after?: RunCursor | null;
 }
 
-/**
- * Keyset position in a brand's runs, walked prompt by prompt (in id order) and
- * within a prompt by `(created_at, id)`, so the `(prompt_id, created_at)` index
- * serves every batch. `createdAt` is the exact microsecond text Postgres
- * returned: a JS Date drops the microseconds, and a cursor rounded down to the
- * millisecond would hand back the same rows forever once a batch's worth of
- * runs share that millisecond.
- */
-export interface RunCursor {
-	promptId: string;
-	/** The last run handled in that prompt; null to start at its first run. */
-	last: RunPosition | null;
-}
-
-interface RunPosition {
-	createdAt: string;
-	id: string;
-}
+const LAYER_KEY: Record<ReprocessLayer, string> = { extraction: EXTRACTION_KEY, interpretation: MENTIONS_KEY };
 
 const BATCH_SIZE = 200;
 const TIME_BUDGET_MS = 4 * 60 * 1000;
 
-export type BossClient = Pick<PgBoss, "send" | "findJobs">;
-
-export interface RunHead {
+export interface StaleRun {
 	id: string;
 	promptId: string;
 	createdAt: Date;
-	cursorAt: string;
 	model: string;
 	provider: string | null;
-	hasText: boolean;
-	extractorVersion: number | null;
+	textContent: string | null;
+	/** Loaded only when the run's text has to be (re)extracted. */
+	rawOutput: unknown;
 	analysisVersions: AnalysisVersions;
 }
 
-export interface BrandMentions {
-	config: MentionConfig;
-	stamp: string;
-}
-
-export interface RowWork {
-	extraction: boolean;
-	mentions: boolean;
-}
-
-/** What a row's update derives from; each part is present only when the plan needed it. */
-export interface RowSource {
-	text?: string | null;
-	raw?: unknown;
-}
-
-function planRow(row: RunHead, layers: ReprocessLayer[], mentions: BrandMentions): RowWork {
-	return {
-		extraction: layers.includes("extraction") && row.extractorVersion !== EXTRACTOR_VERSION,
-		mentions: layers.includes("interpretation") && row.analysisVersions[MENTIONS_ANALYSIS_KEY] !== mentions.stamp,
-	};
-}
-
-const needsRaw = (row: RunHead, work: RowWork) => work.extraction || (work.mentions && !row.hasText);
-const needsText = (row: RunHead, work: RowWork) => work.mentions && !work.extraction && row.hasText;
-
-interface RowColumns {
-	textContent?: string | null;
-	extractorVersion?: number;
-	brandMentioned?: boolean;
-	competitorsMentioned?: string[];
-	analysisVersions?: SQL;
-}
-
-interface RowUpdate {
-	columns: RowColumns;
+export interface RunUpdate {
+	columns: { textContent?: string | null; brandMentioned?: boolean; competitorsMentioned?: string[] };
+	stamps: AnalysisVersions;
 	/** Present only when extraction ran: the run's citations are replaced wholesale. */
 	citations?: Citation[];
 }
 
-export function buildRowUpdate(
-	row: RunHead,
-	work: RowWork,
-	source: RowSource,
-	mentions: BrandMentions,
-): RowUpdate | null {
-	const columns: RowColumns = {};
-	let citations: Citation[] | undefined;
-	let text = source.text ?? null;
+const isStale = (run: StaleRun, layer: ReprocessLayer, target: AnalysisVersions) =>
+	run.analysisVersions[LAYER_KEY[layer]] !== target[LAYER_KEY[layer]];
 
-	if (work.extraction) {
-		if (source.raw === undefined) return null;
-		const extracted = extractRun(source.raw, row.provider ?? row.model);
-		columns.textContent = extracted.textContent;
-		columns.extractorVersion = EXTRACTOR_VERSION;
-		citations = extracted.citations;
+/**
+ * Brings one run up to `target` for the requested layers. A run that predates
+ * stored text gets it filled in for mention matching, but keeps its extraction
+ * stamp: its citations weren't re-extracted.
+ */
+export function deriveRunUpdate(
+	run: StaleRun,
+	layers: ReprocessLayer[],
+	target: AnalysisVersions,
+	config: MentionConfig,
+): RunUpdate {
+	const update: RunUpdate = { columns: {}, stamps: {} };
+	let text = run.textContent;
+
+	const extract = layers.includes("extraction") && isStale(run, "extraction", target);
+	if (extract || text === null) {
+		const extracted = extractRun(run.rawOutput, run.provider ?? run.model);
 		text = extracted.textContent;
-	} else if (work.mentions && !row.hasText && source.raw !== undefined) {
-		// The extractor stamp stays as it was: citations weren't re-extracted, so
-		// an extraction pass must still treat the row as stale.
-		columns.textContent = tryExtractTextContent(source.raw, row.provider ?? row.model);
-		text = columns.textContent;
+		update.columns.textContent = text;
+		if (extract) {
+			update.citations = extracted.citations;
+			update.stamps[EXTRACTION_KEY] = target[EXTRACTION_KEY];
+		}
 	}
 
-	if (work.mentions) {
-		Object.assign(columns, analyzeRunMentions(text, mentions.config));
-		columns.analysisVersions = sql`${promptRuns.analysisVersions} || ${JSON.stringify({ [MENTIONS_ANALYSIS_KEY]: mentions.stamp })}::jsonb`;
+	if (layers.includes("interpretation") && isStale(run, "interpretation", target)) {
+		Object.assign(update.columns, analyzeRunMentions(text, config));
+		update.stamps[MENTIONS_KEY] = target[MENTIONS_KEY];
 	}
-
-	if (Object.keys(columns).length === 0) return null;
-	return { columns, citations };
+	return update;
 }
 
-async function loadBrandPromptIds(conn: DbConnection, brandId: string, from: string | null): Promise<string[]> {
-	const rows = await conn
-		.select({ id: prompts.id })
-		.from(prompts)
-		.where(and(eq(prompts.brandId, brandId), from ? gte(prompts.id, from) : undefined))
-		.orderBy(asc(prompts.id));
-	return rows.map((row) => row.id);
-}
+const staleFor = (layer: ReprocessLayer, target: AnalysisVersions): SQL =>
+	sql`${promptRuns.analysisVersions} ->> ${LAYER_KEY[layer]} IS DISTINCT FROM ${target[LAYER_KEY[layer]]}`;
 
-async function loadRunBatch(
-	conn: DbConnection,
-	brandId: string,
-	promptId: string,
-	after: RunPosition | null,
-): Promise<RunHead[]> {
+/**
+ * The next stale runs of one prompt, oldest first. Rewritten runs stop matching,
+ * so the walk needs no cursor beyond "not before the last batch": runs sharing
+ * its last timestamp are read again but only rewritten if still stale.
+ */
+function loadStaleRuns(conn: DbConnection, pass: Pass, promptId: string, from: Date | null): Promise<StaleRun[]> {
+	const needsRaw = pass.layers.includes("extraction")
+		? sql`${promptRuns.textContent} IS NULL OR ${staleFor("extraction", pass.target)}`
+		: sql`${promptRuns.textContent} IS NULL`;
 	return conn
 		.select({
 			id: promptRuns.id,
 			promptId: promptRuns.promptId,
 			createdAt: promptRuns.createdAt,
-			cursorAt: sql<string>`to_char(${promptRuns.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
 			model: promptRuns.model,
 			provider: promptRuns.provider,
-			hasText: sql<boolean>`${promptRuns.textContent} IS NOT NULL`,
-			extractorVersion: promptRuns.extractorVersion,
+			textContent: promptRuns.textContent,
+			rawOutput: sql<unknown>`CASE WHEN ${needsRaw} THEN ${promptRuns.rawOutput} END`,
 			analysisVersions: promptRuns.analysisVersions,
 		})
 		.from(promptRuns)
 		.where(
 			and(
 				eq(promptRuns.promptId, promptId),
-				eq(promptRuns.brandId, brandId),
-				after
-					? sql`(${promptRuns.createdAt}, ${promptRuns.id}) > (${after.createdAt}::timestamptz, ${after.id}::uuid)`
-					: undefined,
+				eq(promptRuns.brandId, pass.brandId),
+				from ? gte(promptRuns.createdAt, from) : undefined,
+				or(...pass.layers.map((layer) => staleFor(layer, pass.target))),
 			),
 		)
-		.orderBy(asc(promptRuns.createdAt), asc(promptRuns.id))
+		.orderBy(asc(promptRuns.createdAt))
 		.limit(BATCH_SIZE);
 }
 
-/** Text and raw payloads are fetched only for the rows that need them, so skimming current rows stays cheap. */
-async function loadSources(
-	conn: DbConnection,
-	planned: { row: RunHead; work: RowWork }[],
-): Promise<Map<string, RowSource>> {
-	const rawIds = planned.filter(({ row, work }) => needsRaw(row, work)).map(({ row }) => row.id);
-	const textIds = planned.filter(({ row, work }) => needsText(row, work)).map(({ row }) => row.id);
-	const sources = new Map<string, RowSource>();
-	if (rawIds.length > 0) {
-		const rows = await conn
-			.select({ id: promptRuns.id, rawOutput: promptRuns.rawOutput })
-			.from(promptRuns)
-			.where(inArray(promptRuns.id, rawIds));
-		for (const row of rows) sources.set(row.id, { raw: row.rawOutput });
-	}
-	if (textIds.length > 0) {
-		const rows = await conn
-			.select({ id: promptRuns.id, textContent: promptRuns.textContent })
-			.from(promptRuns)
-			.where(inArray(promptRuns.id, textIds));
-		for (const row of rows) sources.set(row.id, { text: row.textContent });
-	}
-	return sources;
-}
-
-async function replaceCitations(tx: DbConnection, row: RunHead, brandId: string, extracted: Citation[]): Promise<void> {
-	await tx.delete(citations).where(eq(citations.promptRunId, row.id));
+async function replaceCitations(
+	tx: DbConnection,
+	run: StaleRun,
+	brandId: string,
+	extracted: Citation[],
+): Promise<void> {
+	await tx.delete(citations).where(eq(citations.promptRunId, run.id));
 	if (extracted.length === 0) return;
 	await tx.insert(citations).values(
 		extracted.map((c) => ({
-			promptRunId: row.id,
-			promptId: row.promptId,
+			promptRunId: run.id,
+			promptId: run.promptId,
 			brandId,
-			model: row.model,
+			model: run.model,
 			url: c.url,
 			domain: c.domain,
 			title: c.title || null,
 			citationIndex: c.citationIndex,
-			createdAt: row.createdAt,
+			createdAt: run.createdAt,
 		})),
 	);
 }
 
-async function processBatch(
-	conn: DbConnection,
-	brandId: string,
-	mentions: BrandMentions,
-	planned: { row: RunHead; work: RowWork }[],
-	sources: Map<string, RowSource>,
-): Promise<number> {
+interface Pass {
+	brandId: string;
+	layers: ReprocessLayer[];
+	target: AnalysisVersions;
+	config: MentionConfig;
+}
+
+function rewriteRuns(conn: DbConnection, pass: Pass, runs: StaleRun[]): Promise<void> {
 	return conn.transaction(async (tx) => {
-		const touched: Date[] = [];
-		for (const { row, work } of planned) {
-			const update = buildRowUpdate(row, work, sources.get(row.id) ?? {}, mentions);
-			if (!update) continue;
-			await tx.update(promptRuns).set(update.columns).where(eq(promptRuns.id, row.id));
-			if (update.citations) await replaceCitations(tx, row, brandId, update.citations);
-			touched.push(row.createdAt);
+		for (const run of runs) {
+			const update = deriveRunUpdate(run, pass.layers, pass.target, pass.config);
+			await tx
+				.update(promptRuns)
+				.set({
+					...update.columns,
+					analysisVersions: sql`${promptRuns.analysisVersions} || ${JSON.stringify(update.stamps)}::jsonb`,
+				})
+				.where(eq(promptRuns.id, run.id));
+			if (update.citations) await replaceCitations(tx, run, pass.brandId, update.citations);
 		}
-		await markDirty(tx, brandId, touched, "reprocess");
-		return touched.length;
+		await markDirty(
+			tx,
+			pass.brandId,
+			runs.map((run) => run.createdAt),
+			"reprocess",
+		);
 	});
 }
 
-interface BrandProcessResult {
-	processed: number;
-	rewritten: number;
-	/** Where to resume, or null once every prompt's runs have been walked. */
-	resumeAt: RunCursor | null;
-}
-
-async function processRunsForBrand(
-	conn: DbConnection,
-	brandId: string,
-	mentions: BrandMentions,
-	layers: ReprocessLayer[],
-	startAt: RunCursor | null,
-	deadline: number,
-): Promise<BrandProcessResult> {
-	let processed = 0;
-	let rewritten = 0;
-
-	for (const promptId of await loadBrandPromptIds(conn, brandId, startAt?.promptId ?? null)) {
-		let after = startAt?.promptId === promptId ? startAt.last : null;
-		for (;;) {
-			if (Date.now() > deadline) return { processed, rewritten, resumeAt: { promptId, last: after } };
-			const rows = await loadRunBatch(conn, brandId, promptId, after);
-			if (rows.length === 0) break;
-
-			const planned = rows.map((row) => ({ row, work: planRow(row, layers, mentions) }));
-			const sources = await loadSources(conn, planned);
-			processed += rows.length;
-			rewritten += await processBatch(conn, brandId, mentions, planned, sources);
-
-			const last = rows[rows.length - 1];
-			after = { createdAt: last.cursorAt, id: last.id };
-			if (rows.length < BATCH_SIZE) break;
-		}
+/** Rewrites a prompt's stale runs; false when the deadline cut it short. */
+async function reprocessPrompt(conn: DbConnection, pass: Pass, promptId: string, deadline: number): Promise<boolean> {
+	let from: Date | null = null;
+	for (;;) {
+		if (Date.now() > deadline) return false;
+		const runs = await loadStaleRuns(conn, pass, promptId, from);
+		if (runs.length > 0) await rewriteRuns(conn, pass, runs);
+		if (runs.length < BATCH_SIZE) return true;
+		from = runs[runs.length - 1].createdAt;
 	}
-	return { processed, rewritten, resumeAt: null };
 }
 
 function sameTags(a: string[], b: string[]): boolean {
@@ -311,64 +201,39 @@ async function recomputeSystemTags(conn: DbConnection, brand: Brand): Promise<vo
 	}
 }
 
-const EXTRACTION_ANALYSIS_KEY = "extraction";
-
-/** The stamps a brand's whole run history should carry under today's code and config. */
-export function brandVersions(config: MentionConfig): AnalysisVersions {
-	return { [EXTRACTION_ANALYSIS_KEY]: String(EXTRACTOR_VERSION), [MENTIONS_ANALYSIS_KEY]: mentionsStamp(config) };
-}
-
 /** Re-deriving text changes what mentions are found, so extraction always brings interpretation along. */
 export function staleLayers(stored: AnalysisVersions, current: AnalysisVersions): ReprocessLayer[] {
-	if (stored[EXTRACTION_ANALYSIS_KEY] !== current[EXTRACTION_ANALYSIS_KEY]) return ["extraction", "interpretation"];
-	if (stored[MENTIONS_ANALYSIS_KEY] !== current[MENTIONS_ANALYSIS_KEY]) return ["interpretation"];
+	if (stored[EXTRACTION_KEY] !== current[EXTRACTION_KEY]) return ["extraction", "interpretation"];
+	if (stored[MENTIONS_KEY] !== current[MENTIONS_KEY]) return ["interpretation"];
 	return [];
 }
 
 function pickLayers(versions: AnalysisVersions, layers: ReprocessLayer[]): AnalysisVersions {
-	return Object.fromEntries(
-		Object.entries(versions).filter(([key]) =>
-			key === EXTRACTION_ANALYSIS_KEY ? layers.includes("extraction") : layers.includes("interpretation"),
-		),
-	);
-}
-
-function sameVersions(a: AnalysisVersions, b: AnalysisVersions): boolean {
-	const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-	return [...keys].every((key) => a[key] === b[key]);
+	return Object.fromEntries(layers.map((layer) => [LAYER_KEY[layer], versions[LAYER_KEY[layer]]]));
 }
 
 async function loadBrand(
 	conn: DbConnection,
 	brandId: string,
-): Promise<{ brand: Brand; mentions: BrandMentions; current: AnalysisVersions } | null> {
+): Promise<{ brand: Brand; config: MentionConfig; current: AnalysisVersions } | null> {
 	const [brand] = await conn.select().from(brands).where(eq(brands.id, brandId)).limit(1);
 	if (!brand) return null;
 	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));
 	const config = mentionConfigFrom(brand, brandCompetitors);
-	return { brand, mentions: { config, stamp: mentionsStamp(config) }, current: brandVersions(config) };
+	return { brand, config, current: currentAnalysisVersions(config) };
 }
 
-/**
- * Stately per brand: one job runs and at most one waits, so jobs for a brand
- * never interleave.
- */
+/** Stately per brand: one job runs and at most one waits, so passes for a brand never interleave. */
 export function sendReprocess(boss: Pick<PgBoss, "send">, data: ReprocessData): Promise<string | null> {
 	return boss.send(REPROCESS_QUEUE, data, { singletonKey: data.brandId });
 }
 
-async function triggerRefresh(boss: Pick<PgBoss, "send">): Promise<void> {
-	try {
-		await boss.send(
-			REFRESH_ROLLUPS_QUEUE,
-			{ source: "reprocess" },
-			{ singletonKey: REFRESH_ROLLUPS_QUEUE, singletonSeconds: 10 },
-		);
-	} catch (error) {
-		console.error("[reprocess] failed to send refresh-rollups trigger:", error);
-	}
-}
-
+/**
+ * Brings a brand's runs up to its current config and today's code. A pass that
+ * runs out of time re-queues itself and starts over: rewritten runs no longer
+ * match the stale filter, and runs written under a config that has since moved
+ * match it again, so a mid-pass config change needs no special handling.
+ */
 export async function runReprocess(
 	data: ReprocessData,
 	conn: DbConnection = db,
@@ -380,79 +245,57 @@ export async function runReprocess(
 		console.log(`[reprocess] brand ${data.brandId} no longer exists, skipping`);
 		return;
 	}
+	const pass: Pass = { brandId: data.brandId, layers: data.layers, target: context.current, config: context.config };
 
-	const target = context.current;
-	const moved = data.target !== undefined && !sameVersions(data.target, target);
-	const layers = moved ? [...new Set([...data.layers, ...staleLayers(data.target ?? {}, target)])] : data.layers;
-	let startAt = data.after ?? null;
-	// Rows behind a continuation's cursor were derived for its target; if the
-	// brand has moved on since, they're stale too, so the walk starts over.
-	if (startAt && (moved || data.target === undefined)) {
-		startAt = null;
-		console.log(`[reprocess] brand ${data.brandId} config changed mid-pass, restarting from the beginning`);
-	}
-
-	const result = await processRunsForBrand(conn, data.brandId, context.mentions, layers, startAt, deadline);
-	console.log(
-		`[reprocess] brand ${data.brandId} processed=${result.processed} rewritten=${result.rewritten} resume=${result.resumeAt !== null}`,
-	);
-	if (result.rewritten > 0) await triggerRefresh(boss);
-	if (result.resumeAt) {
-		const sent = await sendReprocess(boss, { brandId: data.brandId, layers, target, after: result.resumeAt });
-		// A queued job already holds the brand's slot; it walks from the start and
-		// skims the rows this pass brought current.
-		if (!sent) console.log(`[reprocess] brand ${data.brandId} already has a queued pass, not continuing this one`);
+	const brandPrompts = await conn
+		.select({ id: prompts.id })
+		.from(prompts)
+		.where(eq(prompts.brandId, data.brandId))
+		.orderBy(asc(prompts.id));
+	for (const { id } of brandPrompts) {
+		if (await reprocessPrompt(conn, pass, id, deadline)) continue;
+		const sent = await sendReprocess(boss, data);
+		console.log(`[reprocess] brand ${data.brandId} out of time; ${sent ? "continuing" : "a queued pass continues"}`);
 		return;
 	}
 
-	if (layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
+	if (data.layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
 
-	// History now matches `target`. Stamping it after a newer config landed
-	// would hide that history from the stale pass, so it only goes on if the
-	// brand still resolves to it; otherwise the stale pass requests a new one.
+	// Stamping the brand after its config moved would hide the history derived
+	// from the old one; left stale, the next maintenance pass requests a new pass.
+	const target = pickLayers(pass.target, data.layers);
 	const latest = await loadBrand(conn, data.brandId);
-	if (!latest || !sameVersions(latest.current, target)) {
+	if (!latest || JSON.stringify(pickLayers(latest.current, data.layers)) !== JSON.stringify(target)) {
 		console.log(`[reprocess] brand ${data.brandId} config changed during the pass, leaving it stale`);
 		return;
 	}
 	await conn
 		.update(brands)
 		.set({
-			analysisVersions: sql`coalesce(${brands.analysisVersions}, '{}'::jsonb) || ${JSON.stringify(pickLayers(target, layers))}::jsonb`,
+			analysisVersions: sql`coalesce(${brands.analysisVersions}, '{}'::jsonb) || ${JSON.stringify(target)}::jsonb`,
 		})
 		.where(eq(brands.id, data.brandId));
-}
-
-const PENDING_STATES = new Set(["created", "retry", "active"]);
-
-async function hasPendingReprocess(boss: Pick<PgBoss, "findJobs">, brandId: string): Promise<boolean> {
-	const jobs = await boss.findJobs(REPROCESS_QUEUE, { key: brandId });
-	return jobs.some((job) => PENDING_STATES.has(job.state));
+	console.log(`[reprocess] brand ${data.brandId} brought to ${JSON.stringify(target)}`);
 }
 
 /**
- * Finds brands whose history no longer matches their current config or today's
- * code and requests a reprocess for each, so a missed config change or a
- * dropped job heals on the next pass. A brand with a pass already queued or
- * running is left to it: that pass restarts itself if the config moved, and a
- * second request would take the slot its continuation needs.
+ * Requests a pass for every brand whose history no longer matches its config or
+ * today's code, so a missed config change or a dropped job heals on the next
+ * maintenance tick. A brand already waiting on a pass keeps that one.
  */
-export async function requestStaleReprocesses(conn: DbConnection = db, boss: BossClient = getBoss()): Promise<number> {
+export async function requestStaleReprocesses(
+	conn: DbConnection = db,
+	boss: Pick<PgBoss, "send"> = getBoss(),
+): Promise<number> {
 	const [allBrands, allCompetitors] = await Promise.all([conn.select().from(brands), conn.select().from(competitors)]);
-	const competitorsByBrand = new Map<string, Competitor[]>();
-	for (const competitor of allCompetitors) {
-		competitorsByBrand.set(competitor.brandId, [...(competitorsByBrand.get(competitor.brandId) ?? []), competitor]);
-	}
-
 	let requested = 0;
 	for (const brand of allBrands) {
 		// Not yet adopted at startup; its history is taken as is until then.
 		if (brand.analysisVersions === null) continue;
-		const current = brandVersions(mentionConfigFrom(brand, competitorsByBrand.get(brand.id) ?? []));
+		const brandCompetitors = allCompetitors.filter((competitor) => competitor.brandId === brand.id);
+		const current = currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors));
 		const layers = staleLayers(brand.analysisVersions, current);
-		if (layers.length === 0) continue;
-		if (await hasPendingReprocess(boss, brand.id)) continue;
-		if (await sendReprocess(boss, { brandId: brand.id, layers, target: current })) requested++;
+		if (layers.length > 0 && (await sendReprocess(boss, { brandId: brand.id, layers }))) requested++;
 	}
 	return requested;
 }
@@ -469,7 +312,7 @@ export async function adoptCurrentStamps(conn: DbConnection = db): Promise<numbe
 		const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brand.id));
 		const updated = await conn
 			.update(brands)
-			.set({ analysisVersions: brandVersions(mentionConfigFrom(brand, brandCompetitors)) })
+			.set({ analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors)) })
 			.where(and(eq(brands.id, brand.id), isNull(brands.analysisVersions)))
 			.returning({ id: brands.id });
 		adopted += updated.length;

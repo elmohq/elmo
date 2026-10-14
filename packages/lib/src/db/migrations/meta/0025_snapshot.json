@@ -802,12 +802,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "extractor_version": {
-          "name": "extractor_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "analysis_versions": {
           "name": "analysis_versions",
           "type": "jsonb",
