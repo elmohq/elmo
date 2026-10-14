@@ -7,11 +7,13 @@ import { type NewPromptRun, promptRuns, runExtractions, runMentions } from "./sc
  * Runs with what has been derived from them: the append-only `prompt_runs` row
  * joined to its extraction and mentions. Every run has both, so inner joins
  * lose nothing. Chain `.where`, `.orderBy` and `.limit` as on any select.
+ * Payloads are left out; read them with `loadRawOutputs`.
  */
 export function selectRuns(conn: DbConnection) {
+	const { rawOutput, ...columns } = getTableColumns(promptRuns);
 	return conn
 		.select({
-			...getTableColumns(promptRuns),
+			...columns,
 			textContent: runExtractions.textContent,
 			brandMentioned: runMentions.brandMentioned,
 			competitorsMentioned: runMentions.competitorsMentioned,
@@ -20,8 +22,6 @@ export function selectRuns(conn: DbConnection) {
 		.innerJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
 		.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id));
 }
-
-export type RunWithDerived = Awaited<ReturnType<typeof selectRuns>>[number];
 
 export interface NewRun extends Omit<NewPromptRun, "id"> {
 	id?: string;
