@@ -46,7 +46,8 @@
 		"./citations/rollup": "./src/citations/rollup.ts",
 		"./citations/page-classification": "./src/citations/page-classification.ts",
 		"./rollups": "./src/rollups/index.ts",
-		"./rollups/constants": "./src/rollups/constants.ts"
+		"./rollups/constants": "./src/rollups/constants.ts",
+		"./rollups/dirty": "./src/rollups/dirty.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^4.0.71",

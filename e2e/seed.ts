@@ -11,6 +11,8 @@
  * Usage: tsx seed.ts
  */
 import { createHash } from "node:crypto";
+import { createDb } from "@workspace/lib/db/db";
+import { markAllDirty, refreshAllMarked } from "@workspace/lib/rollups/dirty";
 import pg from "pg";
 import {
   API_KEYS,
@@ -198,6 +200,17 @@ async function seedOpportunities(client: pg.Client): Promise<void> {
   console.log(`  Created 1 opportunities report (${report.opportunities.length} opportunities)`);
 }
 
+/** The worker is down while the fixture suites run, so the seed builds the rollups analytics read itself. */
+async function buildRollups(connectionString: string): Promise<void> {
+  const conn = createDb(connectionString);
+  try {
+    await markAllDirty(conn);
+    await refreshAllMarked(conn);
+  } finally {
+    await conn.$client.end();
+  }
+}
+
 async function seed(connectionString: string) {
   const client = new pg.Client({ connectionString });
   await client.connect();
@@ -212,6 +225,8 @@ async function seed(connectionString: string) {
     await client.query("DELETE FROM competitors");
     await client.query("DELETE FROM reports");
     await client.query("DELETE FROM brands");
+    await client.query("DELETE FROM rollup_dirty");
+    await client.query("DELETE FROM cited_pages");
 
     // Signup provisions the "default" org as well, but the seed re-creates the
     // brand independently — ensure the org exists for the NOT NULL FK.
@@ -622,6 +637,7 @@ async function seed(connectionString: string) {
     await seedOpportunities(client);
     await seedBillingTenants(client);
     await seedApiKeys(client);
+    await buildRollups(connectionString);
 
     console.log("\nE2E database seeding complete!");
     console.log(`  Brand: ${TEST_BRAND_ID} (${TEST_BRAND_NAME})`);

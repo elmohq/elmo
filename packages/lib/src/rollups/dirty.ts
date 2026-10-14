@@ -2,13 +2,12 @@ import { desc, type SQL, sql } from "drizzle-orm";
 import type { DbConnection } from "../db/db-connection";
 import { rollupDirty } from "../db/schema";
 import { bucketSql, bucketStart } from "./bucket";
-import { BUCKET_MS, type DirtyReason } from "./constants";
+import { BUCKET_MS } from "./constants";
 import { type RebuildStats, rebuildRange } from "./rebuild";
 
 export interface DirtyMark {
 	brandId: string;
 	bucket: Date;
-	reason: DirtyReason;
 }
 
 export interface RebuildRange {
@@ -32,22 +31,17 @@ function uniqueBuckets(buckets: Iterable<Date>): Date[] {
  * not yet committed, the insert waits for it and then lands as a new mark, so a
  * write that commits mid-rebuild always leaves a mark for the next one.
  */
-export async function markDirty(
-	conn: DbConnection,
-	brandId: string,
-	buckets: Iterable<Date>,
-	reason: DirtyReason,
-): Promise<number> {
-	const values = uniqueBuckets(buckets).map((bucket) => ({ brandId, bucket, reason }));
+export async function markDirty(conn: DbConnection, brandId: string, buckets: Iterable<Date>): Promise<number> {
+	const values = uniqueBuckets(buckets).map((bucket) => ({ brandId, bucket }));
 	if (values.length === 0) return 0;
 	const result = await conn.insert(rollupDirty).values(values).onConflictDoNothing();
 	return result.rowCount ?? 0;
 }
 
-async function markRunsDirty(conn: DbConnection, reason: DirtyReason, where: SQL): Promise<number> {
+async function markRunsDirty(conn: DbConnection, where: SQL): Promise<number> {
 	const result = await conn.execute(sql`
-		INSERT INTO ${rollupDirty} (brand_id, bucket, reason)
-		SELECT DISTINCT brand_id, ${bucketSql(sql`created_at`)}, ${reason}::text
+		INSERT INTO ${rollupDirty} (brand_id, bucket)
+		SELECT DISTINCT brand_id, ${bucketSql(sql`created_at`)}
 		FROM prompt_runs
 		WHERE ${where}
 		ON CONFLICT (brand_id, bucket) DO NOTHING
@@ -55,16 +49,12 @@ async function markRunsDirty(conn: DbConnection, reason: DirtyReason, where: SQL
 	return result.rowCount ?? 0;
 }
 
-export function markPromptDirty(conn: DbConnection, promptId: string, reason: DirtyReason): Promise<number> {
-	return markRunsDirty(conn, reason, sql`prompt_id = ${promptId}`);
+export function markAllDirty(conn: DbConnection): Promise<number> {
+	return markRunsDirty(conn, sql`TRUE`);
 }
 
-export function markAllDirty(conn: DbConnection, reason: DirtyReason): Promise<number> {
-	return markRunsDirty(conn, reason, sql`TRUE`);
-}
-
-export function markRunsSinceDirty(conn: DbConnection, since: Date, reason: DirtyReason): Promise<number> {
-	return markRunsDirty(conn, reason, sql`created_at >= ${since}`);
+export function markRunsSinceDirty(conn: DbConnection, since: Date): Promise<number> {
+	return markRunsDirty(conn, sql`created_at >= ${since}`);
 }
 
 const markKey = (mark: Pick<DirtyMark, "brandId" | "bucket">): SQL =>
@@ -80,7 +70,7 @@ export async function pendingMarks(conn: DbConnection, limit: number, skip: Dirt
 		? sql`(${rollupDirty.brandId}, ${rollupDirty.bucket}) NOT IN (${sql.join(skip.map(markKey), sql`, `)})`
 		: undefined;
 	const marks = await conn
-		.select({ brandId: rollupDirty.brandId, bucket: rollupDirty.bucket, reason: rollupDirty.reason })
+		.select({ brandId: rollupDirty.brandId, bucket: rollupDirty.bucket })
 		.from(rollupDirty)
 		.where(notSkipped)
 		.orderBy(desc(rollupDirty.bucket))
@@ -110,11 +100,7 @@ export function refreshRange(
 				WHERE brand_id = ${range.brandId} AND bucket >= ${range.from} AND bucket < ${range.toExclusive}
 				FOR UPDATE SKIP LOCKED
 			)`)
-			.returning({
-				brandId: rollupDirty.brandId,
-				bucket: rollupDirty.bucket,
-				reason: rollupDirty.reason,
-			})) as DirtyMark[];
+			.returning({ brandId: rollupDirty.brandId, bucket: rollupDirty.bucket })) as DirtyMark[];
 		if (marks.length === 0) return null;
 		const stats: RebuildStats[] = [];
 		for (const taken of coalesceMarks(marks)) {
@@ -122,6 +108,15 @@ export function refreshRange(
 		}
 		return { marks, stats };
 	});
+}
+
+/** Rebuilds every marked bucket now, for seeds and scripts; the worker drains marks on a schedule instead. */
+export async function refreshAllMarked(conn: DbConnection): Promise<void> {
+	for (;;) {
+		const marks = await pendingMarks(conn, 500);
+		if (marks.length === 0) return;
+		for (const range of coalesceMarks(marks)) await refreshRange(conn, range);
+	}
 }
 
 function groupMarksByBrand(marks: DirtyMark[]): Map<string, DirtyMark[]> {
