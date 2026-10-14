@@ -9,13 +9,13 @@ import { openSourceTools } from "@/lib/competitors";
 import type { FaqItem } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
-const title = "Best Free & Open-Source AEO Tools (2026) · Elmo";
+const title = "Best Free & Open-Source AI Visibility & AEO Tools (2026) · Elmo";
 const description =
-	"The best free and open-source answer engine optimization (AEO) tools you can self-host and audit, ranked on public GitHub data. Elmo, OneGlanse, GEO/AEO Tracker, Canonry, and Gego compared.";
+	"The best free and open-source AI visibility and answer engine optimization (AEO) tools you can self-host and audit, ranked on public GitHub data. Elmo, OneGlanse, GEO/AEO Tracker, Canonry, and Gego compared.";
 const path = "/ai-visibility-tools/category/open-source";
 
 const lead =
-	"The most complete open-source answer engine optimization tool is Elmo: MIT-licensed, free to self-host, and auditable down to how each metric is computed. Smaller projects like OneGlanse, GEO/AEO Tracker, and Gego exist alongside it. This is a thin, early space: one mature platform, a handful of small projects, and the option to script your own checks.";
+	"The most complete open-source AI visibility and answer engine optimization tool is Elmo: MIT-licensed, free to self-host, and auditable down to how each metric is computed. Smaller projects like OneGlanse, GEO/AEO Tracker, and Gego exist alongside it. This is a thin, early space: one mature platform, a handful of small projects, and the option to script your own checks.";
 
 // Public GitHub data, captured 11 August 2026. Kept as a dated snapshot rather
 // than fetched live: the point is a like-for-like comparison across projects at
@@ -289,7 +289,7 @@ function OpenSourcePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero eyebrow="Open source" title="Best free and open-source AEO tools (2026)" lead={lead} />
+				<DirectoryHero eyebrow="Open source" title="Best free and open-source AI visibility and AEO tools (2026)" lead={lead} />
 
 				<DirectorySection title="Key takeaways">
 					<ul className="max-w-3xl list-disc space-y-3 pl-5 leading-relaxed text-zinc-600">
