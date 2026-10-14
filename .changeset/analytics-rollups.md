@@ -5,4 +5,4 @@
 "@workspace/api-spec": patch
 ---
 
-Analytics pages and the analytics API load much faster, and date ranges in time zones ahead of UTC now include the whole first day.
+Analytics pages and the analytics API load much faster; API analytics windows are aligned down to the quarter hour.

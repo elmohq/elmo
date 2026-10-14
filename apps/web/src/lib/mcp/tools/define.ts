@@ -58,9 +58,11 @@ export const windowArgs = {
 	start: z
 		.string()
 		.describe(
-			"Start of the window, an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z. Inclusive, and aligned down to the half hour.",
+			"Start of the window, an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z. Inclusive, and aligned down to the quarter hour.",
 		),
-	end: z.string().describe("End of the window, an ISO 8601 timestamp. Exclusive, and aligned down to the half hour."),
+	end: z
+		.string()
+		.describe("End of the window, an ISO 8601 timestamp. Exclusive, and aligned down to the quarter hour."),
 	model: modelArg,
 	tags: z.string().optional().describe("Comma-separated prompt tags; only prompts carrying one are counted."),
 };

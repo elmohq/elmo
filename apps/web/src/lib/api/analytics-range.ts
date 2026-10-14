@@ -30,7 +30,7 @@ function parseInstant(name: string, raw: string): string {
 	return parsed.toISOString();
 }
 
-// Analytics are aggregated per half-hour bucket, which can't be split; flooring
+// Analytics are aggregated per quarter-hour bucket, which can't be split; flooring
 // lets the response echo the window that was actually answered.
 function alignToBucket(instant: string): string {
 	return bucketStart(new Date(instant)).toISOString();
@@ -50,7 +50,7 @@ export function resolveAnalyticsWindow(rawStart: string | null, rawEnd: string |
 	if (start >= end) {
 		invalid(
 			requestedStart < requestedEnd
-				? "start and end fall in the same half-hour bucket, which leaves an empty window"
+				? "start and end fall in the same quarter-hour bucket, which leaves an empty window"
 				: "start must be before end",
 		);
 	}

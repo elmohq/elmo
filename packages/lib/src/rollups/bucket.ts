@@ -23,21 +23,8 @@ export function bucketSql(column: SQL): SQL {
 	return sql`date_bin(${BUCKET_STRIDE_SQL}, ${column}, ${BUCKET_ORIGIN_SQL})`;
 }
 
-export function isBucketAligned(date: Date): boolean {
-	return date.getTime() % BUCKET_MS === 0;
-}
-
 export function assertBucketAligned(date: Date): void {
-	if (!isBucketAligned(date)) {
+	if (date.getTime() % BUCKET_MS !== 0) {
 		throw new Error(`${date.toISOString()} is not aligned to a ${BUCKET_MINUTES}-minute bucket boundary`);
 	}
-}
-
-export function bucketsBetween(from: Date, toExclusive: Date): Date[] {
-	const buckets: Date[] = [];
-	const end = toExclusive.getTime();
-	for (let t = bucketStart(from).getTime(); t < end; t += BUCKET_MS) {
-		buckets.push(new Date(t));
-	}
-	return buckets;
 }

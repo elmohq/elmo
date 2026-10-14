@@ -3,7 +3,7 @@ import { aggregateCitationBucket, type CitationSourceRow } from "./aggregate-cit
 import { CLASSIFIER_VERSION } from "./constants";
 
 const BUCKET_A = "2026-01-15T10:00:00.000Z";
-const BUCKET_B = "2026-01-15T10:30:00.000Z";
+const BUCKET_B = "2026-01-15T10:15:00.000Z";
 
 function row(overrides: Partial<CitationSourceRow> = {}): CitationSourceRow {
 	return {
@@ -44,10 +44,10 @@ describe("aggregateCitationBucket", () => {
 
 	it("takes the most recent non-null title", () => {
 		const { pages, urls } = aggregateCitationBucket([
-			row({ createdAt: new Date("2026-01-15T10:20:00.000Z"), title: "Newer title" }),
+			row({ createdAt: new Date("2026-01-15T10:08:00.000Z"), title: "Newer title" }),
 			row({ createdAt: new Date("2026-01-15T10:05:00.000Z"), title: "Older title" }),
-			row({ createdAt: new Date("2026-01-15T10:25:00.000Z"), title: null }),
-			row({ createdAt: new Date("2026-01-15T10:27:00.000Z"), title: "   " }),
+			row({ createdAt: new Date("2026-01-15T10:10:00.000Z"), title: null }),
+			row({ createdAt: new Date("2026-01-15T10:12:00.000Z"), title: "   " }),
 		]);
 
 		expect(pages[0].title).toBe("Newer title");
@@ -106,9 +106,9 @@ describe("aggregateCitationBucket", () => {
 	it("splits rows by bucket, prompt, model and grounding", () => {
 		const { urls, pages } = aggregateCitationBucket([
 			row({ createdAt: new Date("2026-01-15T10:05:00.000Z") }),
-			row({ createdAt: new Date("2026-01-15T10:35:00.000Z") }),
-			row({ createdAt: new Date("2026-01-15T10:55:00.000Z"), model: "claude-sonnet-4-5" }),
-			row({ createdAt: new Date("2026-01-15T10:40:00.000Z"), webSearchEnabled: false }),
+			row({ createdAt: new Date("2026-01-15T10:17:00.000Z") }),
+			row({ createdAt: new Date("2026-01-15T10:29:00.000Z"), model: "claude-sonnet-4-5" }),
+			row({ createdAt: new Date("2026-01-15T10:20:00.000Z"), webSearchEnabled: false }),
 		]);
 
 		expect(urls.map((u) => [u.bucket.toISOString(), u.model, u.webSearchEnabled, u.citations])).toEqual([
