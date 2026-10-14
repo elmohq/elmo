@@ -3,7 +3,7 @@ import type { DbConnection } from "../db/db-connection";
 import { rollupDirty } from "../db/schema";
 import { bucketSql, bucketStart } from "./bucket";
 import { BUCKET_MS } from "./constants";
-import { type RebuildStats, rebuildRange } from "./rebuild";
+import { type RebuildStats, rebuildRange, tryLockBrandRollups } from "./rebuild";
 
 export interface DirtyMark {
 	brandId: string;
@@ -90,8 +90,8 @@ export async function pendingMarks(conn: DbConnection, limit: number, skip: Dirt
 /**
  * Deletes a range's marks and rebuilds what they span in one transaction, so
  * the marks go exactly when the rebuild commits and survive if it fails. Marks
- * another refresh holds are skipped rather than waited on. Returns null when
- * there was nothing left to take.
+ * a writer still holds are skipped rather than waited on. Returns null when
+ * there was nothing left to take or the brand is busy.
  *
  * Every rebuild statement runs after the delete under READ COMMITTED, so it
  * sees every write that committed before the delete; a write that commits later
@@ -102,6 +102,10 @@ export function refreshRange(
 	range: Pick<RebuildRange, "brandId" | "from" | "toExclusive">,
 ): Promise<{ marks: DirtyMark[]; stats: RebuildStats } | null> {
 	return conn.transaction(async (tx) => {
+		// A brand another refresh or a prompt delete is rewriting waits for the next
+		// tick. Not waiting also means a refresh never holds marks while blocked, so
+		// it can't close a lock cycle with a delete and that prompt's run writer.
+		if (!(await tryLockBrandRollups(tx, range.brandId))) return null;
 		const marks = (await tx
 			.delete(rollupDirty)
 			.where(sql`(${rollupDirty.brandId}, ${rollupDirty.bucket}) IN (
@@ -125,8 +129,9 @@ export function refreshRange(
 export async function refreshAllMarked(conn: DbConnection): Promise<void> {
 	for (;;) {
 		const marks = await pendingMarks(conn, 500);
-		if (marks.length === 0) return;
-		for (const range of coalesceMarks(marks)) await refreshRange(conn, range);
+		let refreshed = false;
+		for (const range of coalesceMarks(marks)) refreshed = (await refreshRange(conn, range)) !== null || refreshed;
+		if (!refreshed) return;
 	}
 }
 

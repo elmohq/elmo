@@ -34,6 +34,14 @@ export async function lockBrandRollups(tx: DbConnection, brandId: string): Promi
 	await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('elmo-rollups'), hashtext(${brandId}))`);
 }
 
+/** `lockBrandRollups` without waiting: false when someone else is rewriting the brand. */
+export async function tryLockBrandRollups(tx: DbConnection, brandId: string): Promise<boolean> {
+	const result = await tx.execute<{ locked: boolean }>(
+		sql`SELECT pg_try_advisory_xact_lock(hashtext('elmo-rollups'), hashtext(${brandId})) AS locked`,
+	);
+	return result.rows[0]?.locked === true;
+}
+
 /**
  * Delete-and-reinsert is the only way rollup rows are written, so a bucket can be
  * replayed from raw at any time. Given an open transaction, the rebuild runs in a

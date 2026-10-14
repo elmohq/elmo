@@ -96,14 +96,16 @@ const marksOf = (brandId: string) => db.select().from(rollupDirty).where(eq(roll
 const rollupRunsOf = (brandId: string) =>
 	db.select().from(rollupPromptRuns).where(eq(rollupPromptRuns.brandId, brandId));
 
-async function withBrandLocked<T>(brandId: string, fn: () => Promise<T>): Promise<T> {
+/** Holds a brand's rollup rows from another session, so a rebuild of it stalls at its first delete. */
+async function withRollupRowsLocked<T>(brandId: string, fn: () => Promise<T>): Promise<T> {
 	const client = await db.$client.connect();
 	try {
-		await client.query("SELECT pg_advisory_lock(hashtext('elmo-rollups'), hashtext($1))", [brandId]);
+		await client.query("BEGIN");
+		await client.query("SELECT 1 FROM rollup_prompt_runs WHERE brand_id = $1 FOR UPDATE", [brandId]);
 		try {
 			return await fn();
 		} finally {
-			await client.query("SELECT pg_advisory_unlock(hashtext('elmo-rollups'), hashtext($1))", [brandId]);
+			await client.query("ROLLBACK");
 		}
 	} finally {
 		client.release();
@@ -153,21 +155,25 @@ describe("runRefreshTick", () => {
 	it("finishes the other ranges when one fails, and retries the failed one on a later tick", async () => {
 		const stuck = fixture;
 		const healthy = await createFixture();
+		await insertRun(stuck, { createdAt: B0 });
+		await markDirty(db, stuck.brandId, [B0]);
+		await runRefreshTick({ source: "test" });
 		for (const f of [stuck, healthy]) {
 			await insertRun(f, { createdAt: B0 });
 			await markDirty(db, f.brandId, [B0]);
 		}
+		const runsOf = async (brandId: string) => (await rollupRunsOf(brandId)).map((row) => row.runs);
 
-		const result = await withBrandLocked(stuck.brandId, () => runRefreshTick({ source: "test" }, impatient));
+		const result = await withRollupRowsLocked(stuck.brandId, () => runRefreshTick({ source: "test" }, impatient));
 
 		expect(result.failed).toBeGreaterThanOrEqual(1);
-		expect(await rollupRunsOf(healthy.brandId)).toHaveLength(1);
+		expect(await runsOf(healthy.brandId)).toEqual([1]);
 		expect(await marksOf(healthy.brandId)).toEqual([]);
-		expect(await rollupRunsOf(stuck.brandId)).toEqual([]);
+		expect(await runsOf(stuck.brandId)).toEqual([1]);
 		expect((await marksOf(stuck.brandId)).map((mark) => mark.bucket)).toEqual([B0]);
 
 		await runRefreshTick({ source: "test" });
-		expect(await rollupRunsOf(stuck.brandId)).toHaveLength(1);
+		expect(await runsOf(stuck.brandId)).toEqual([2]);
 		expect(await marksOf(stuck.brandId)).toEqual([]);
 	});
 

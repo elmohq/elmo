@@ -245,6 +245,26 @@ async function withBrandLocked<T>(fn: () => Promise<T>): Promise<T> {
 	}
 }
 
+/**
+ * Holds the brand's rollup rows from another session while `fn` runs, so a
+ * refresh that has taken its marks stalls (or, with a lock timeout, fails) at
+ * its first delete.
+ */
+async function withRollupRowsLocked<T>(fn: () => Promise<T>): Promise<T> {
+	const client = await db.$client.connect();
+	try {
+		await client.query("BEGIN");
+		await client.query("SELECT 1 FROM rollup_prompt_runs WHERE brand_id = $1 FOR UPDATE", [BRAND_ID]);
+		try {
+			return await fn();
+		} finally {
+			await client.query("ROLLBACK");
+		}
+	} finally {
+		client.release();
+	}
+}
+
 async function waitForLockWaiters(count: number): Promise<void> {
 	for (let attempt = 0; attempt < 200; attempt++) {
 		const { rows } = await db.execute(sql`
@@ -538,11 +558,13 @@ describe("rollups against postgres", () => {
 
 		it("keeps the marks when the rebuild fails", async () => {
 			await markDirty(db, BRAND_ID, [B0]);
-			await withBrandLocked(() =>
+			await rebuildAll(db);
+			const before = await runRollupRows(db);
+			await withRollupRowsLocked(() =>
 				expect(refreshRange(impatient, wholeDay)).rejects.toMatchObject({ cause: { code: "55P03" } }),
 			);
 			expect(bucketsOf(await brandMarks())).toEqual([B0.toISOString()]);
-			expect(await runRollupRows(db)).toEqual([]);
+			expect(await runRollupRows(db)).toEqual(before);
 		});
 
 		it("leaves a mark alone while a writer that re-marked it is still open", async () => {
@@ -578,8 +600,9 @@ describe("rollups against postgres", () => {
 
 		it("re-marks a bucket written to while its rebuild is in flight", async () => {
 			await markDirty(db, BRAND_ID, [B0]);
-			await withBrandLocked(async () => {
-				// The refresh takes the mark, then waits on the rebuild lock with it uncommitted.
+			await rebuildAll(db);
+			await withRollupRowsLocked(async () => {
+				// The refresh takes the mark, then stalls rebuilding with it uncommitted.
 				const refresh = refreshRange(db, wholeDay);
 				await waitForLockWaiters(1);
 				const write = db.transaction(async (tx) => {
@@ -602,17 +625,12 @@ describe("rollups against postgres", () => {
 			expect(row.runs).toBe(3);
 		});
 
-		it("skips marks another refresh holds instead of waiting for them", async () => {
+		it("leaves a brand another session is rewriting for the next tick", async () => {
 			await markDirty(db, BRAND_ID, [B0]);
 			await withBrandLocked(async () => {
-				const first = refreshRange(db, wholeDay);
-				await waitForLockWaiters(1);
 				expect(await refreshRange(db, wholeDay)).toBeNull();
-				// Wrapped: returning the promise itself would wait on it with the lock still held.
-				return { first };
-			}).then(async ({ first }) => {
-				expect(bucketsOf((await first)?.marks ?? [])).toEqual([B0.toISOString()]);
 			});
+			expect(bucketsOf(await brandMarks())).toEqual([B0.toISOString()]);
 		});
 	});
 });

@@ -26,13 +26,22 @@ async function writeChunk(conn: DbConnection, pages: StalePage[]): Promise<numbe
 		const { pageType, staticCategory } = classifyPage(page.url, page.domain, page.title);
 		return sql`(${page.id}::bigint, ${pageType}::text, ${staticCategory}::text, ${CLASSIFIER_VERSION}::int)`;
 	});
-	const result = await conn.execute(sql`
+	// Rebuilds upsert pages in URL order; locking in the same order keeps the two from deadlocking.
+	return conn.transaction(async (tx) => {
+		await tx.execute(sql`
+			SELECT 1 FROM ${citedPages} WHERE id IN (${sql.join(
+				pages.map((page) => sql`${page.id}::bigint`),
+				sql`, `,
+			)}) ORDER BY url FOR UPDATE
+		`);
+		const result = await tx.execute(sql`
 		UPDATE ${citedPages} AS p
 		SET page_type = v.page_type, static_category = v.static_category, classifier_version = v.classifier_version
 		FROM (VALUES ${sql.join(values, sql`, `)}) AS v(id, page_type, static_category, classifier_version)
 		WHERE p.id = v.id
 	`);
-	return result.rowCount ?? 0;
+		return result.rowCount ?? 0;
+	});
 }
 
 async function writeClassifications(conn: DbConnection, pages: StalePage[]): Promise<number> {
