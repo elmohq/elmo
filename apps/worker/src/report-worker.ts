@@ -6,6 +6,7 @@ import { analyzeMentions } from "@workspace/lib/mentions";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getProvider, type ModelConfig } from "@workspace/lib/providers";
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
+import { extractRun } from "@workspace/lib/text-extraction";
 import { eq } from "drizzle-orm";
 
 interface CompetitorResult {
@@ -179,8 +180,9 @@ async function runPrompt(
 			webSearch: config.webSearch,
 			version: config.version,
 		});
+		const textContent = extractRun(result.rawOutput, config.provider).textContent ?? "";
 		const { brandMentioned, competitorsMentioned } = analyzeMentions(
-			result.textContent,
+			textContent,
 			{ name: brandName, aliases: brandAliases, domains: [brandWebsite] },
 			competitors.map((competitor) => ({ name: competitor.name, domains: [competitor.domain] })),
 		);
@@ -190,7 +192,7 @@ async function runPrompt(
 			webSearchEnabled: config.webSearch,
 			rawOutput: result.rawOutput,
 			webQueries: result.webQueries,
-			textContent: result.textContent,
+			textContent,
 			brandMentioned,
 			competitorsMentioned,
 		};

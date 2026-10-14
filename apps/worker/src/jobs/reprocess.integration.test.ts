@@ -14,6 +14,7 @@ import {
 import { mentionConfigFrom } from "@workspace/lib/mentions";
 import { asc, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fillLegacyText, LEGACY_EXTRACTION_STAMP } from "./fill-legacy-text";
 import {
 	adoptCurrentStamps,
 	REPROCESS_QUEUE,
@@ -209,6 +210,33 @@ describe("runReprocess", () => {
 		await expect(
 			runReprocess({ brandId: "no-such-brand", layers: ["extraction"] }, db, fakeBoss().boss),
 		).resolves.toBeUndefined();
+	});
+});
+
+describe("fillLegacyText", () => {
+	it("stores a legacy run's text from its payload and leaves its citations and mentions as recorded", async () => {
+		const run = legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"));
+		await insertLegacyRuns([run]);
+		await db.update(runMentions).set({ brandMentioned: true, competitorsMentioned: ["Globex"] });
+
+		expect(await fillLegacyText(db)).toBeGreaterThanOrEqual(1);
+		await db.update(runExtractions).set({ textContent: "Filled once." }).where(eq(runExtractions.runId, run.id));
+		await fillLegacyText(db);
+		expect((await runsInWalkOrder())[0].textContent).toBe("Filled once.");
+		await db
+			.update(runExtractions)
+			.set({ textContent: "Acme is the best CRM." })
+			.where(eq(runExtractions.runId, run.id));
+
+		const [filled] = await runsInWalkOrder();
+		expect(filled).toMatchObject({
+			textContent: "Acme is the best CRM.",
+			extractionStamp: LEGACY_EXTRACTION_STAMP,
+			brandMentioned: true,
+			competitorsMentioned: ["Globex"],
+			mentionsStamp: null,
+		});
+		expect(await db.select().from(citations).where(eq(citations.promptRunId, run.id))).toEqual([]);
 	});
 });
 

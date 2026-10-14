@@ -137,16 +137,11 @@ export interface ResponseMatchRow {
 	matched: number;
 }
 
-/**
- * Answers are stored only as each provider's raw JSON, so the search runs over
- * that text. The term is JSON-escaped first so quotes and backslashes match
- * how they're stored, then LIKE-escaped so `%` and `_` are literal.
- */
+/** Searches the stored answer text; `%` and `_` in the term are literal. */
 function responseMatch(scope: ResponseSearchScope): SQL {
 	if (!scope.query) return sql`TRUE`;
-	const stored = JSON.stringify(scope.query).slice(1, -1);
-	const pattern = `%${stored.replace(/[\\%_]/g, "\\$&")}%`;
-	return sql`pr.raw_output::text ILIKE ${pattern}`;
+	const pattern = `%${scope.query.replace(/[\\%_]/g, "\\$&")}%`;
+	return sql`re.text_content ILIKE ${pattern}`;
 }
 
 export async function getResponseMatches(
