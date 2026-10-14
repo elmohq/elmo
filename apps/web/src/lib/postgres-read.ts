@@ -1326,19 +1326,14 @@ function responseScopeFilter(scope: ResponseSearchScope): SQL {
 		${modelFilter(scope.model, { alias: "pr" })}`;
 }
 
-/**
- * Answers are stored only as each provider's raw JSON, so the search runs over
- * that text. The term is JSON-escaped first so quotes and backslashes match
- * how they're stored, then LIKE-escaped so `%` and `_` are literal.
- */
+/** Searches the stored answer text; `%` and `_` in the term are literal. */
 function responseMatch(scope: ResponseSearchScope): SQL {
 	if (!scope.query) return sql`TRUE`;
-	const stored = JSON.stringify(scope.query).slice(1, -1);
-	const pattern = `%${stored.replace(/[\\%_]/g, "\\$&")}%`;
-	return sql`pr.raw_output::text ILIKE ${pattern}`;
+	const pattern = `%${scope.query.replace(/[\\%_]/g, "\\$&")}%`;
+	return sql`re.text_content ILIKE ${pattern}`;
 }
 
-/** Runs in scope, ignoring the search — cheap, since it never reads `raw_output`. */
+/** Runs in scope, ignoring the search. */
 export async function countResponses(scope: ResponseSearchScope): Promise<number> {
 	if (scope.promptIds.length === 0) return 0;
 	const rows = await queryPg<{ total: number }>(sql`

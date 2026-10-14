@@ -6,6 +6,7 @@ import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
+import { fillLegacyText } from "./jobs/fill-legacy-text";
 import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
 import { shutdownTelemetry } from "./telemetry";
 
@@ -108,6 +109,13 @@ async function main() {
 	// Register job handlers
 	await registerHandlers(boss);
 	console.log("All handlers registered, worker is ready");
+
+	// Background, and a no-op once done: runs from before stored text get it from their payloads.
+	fillLegacyText()
+		.then((filled) => {
+			if (filled > 0) console.log(`Filled stored text for ${filled} runs that predate it`);
+		})
+		.catch((error) => console.error("Filling stored text for older runs failed:", error));
 }
 
 main().catch(async (error) => {
