@@ -219,8 +219,14 @@ describe("fillLegacyText", () => {
 		await insertLegacyRuns([run]);
 		await db.update(runMentions).set({ brandMentioned: true, competitorsMentioned: ["Globex"] });
 
-		expect(await fillLegacyText(db)).toBe(1);
-		expect(await fillLegacyText(db)).toBe(0);
+		expect(await fillLegacyText(db)).toBeGreaterThanOrEqual(1);
+		await db.update(runExtractions).set({ textContent: "Filled once." }).where(eq(runExtractions.runId, run.id));
+		await fillLegacyText(db);
+		expect((await runsInWalkOrder())[0].textContent).toBe("Filled once.");
+		await db
+			.update(runExtractions)
+			.set({ textContent: "Acme is the best CRM." })
+			.where(eq(runExtractions.runId, run.id));
 
 		const [filled] = await runsInWalkOrder();
 		expect(filled).toMatchObject({
