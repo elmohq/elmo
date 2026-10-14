@@ -582,7 +582,7 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		const toDateStr = range.toDateStr ?? new Date().toLocaleDateString("en-CA", { timeZone: timezone });
 		const fromDateStr = range.fromDateStr;
 
-		const webQueryData = await getPromptWebQueryCounts(data.promptId, fromDateStr, toDateStr, timezone, data.model);
+		const webQueryData = await getPromptWebQueryCounts(data.brandId, data.promptId, fromDateStr, toDateStr, timezone, data.model);
 
 		let webQuery: string | null = null;
 		let maxOverallCount = 0;
