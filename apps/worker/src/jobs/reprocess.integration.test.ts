@@ -1,14 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { currentAnalysisVersions, EXTRACTION_KEY } from "@workspace/lib/analysis-versions";
 import { db } from "@workspace/lib/db/db";
 import { brands, citations, competitors, organization, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { mentionConfigFrom } from "@workspace/lib/mentions";
-import { EXTRACTOR_VERSION } from "@workspace/lib/text-extraction";
 import { asc, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	adoptCurrentStamps,
-	type BossClient,
-	brandVersions,
 	REPROCESS_QUEUE,
 	type ReprocessData,
 	requestStaleReprocesses,
@@ -24,10 +22,9 @@ const openAiPayload = (text: string, url = "https://example.com/a") => ({
 	],
 });
 
-function fakeBoss(pendingStates: string[] = []) {
+function fakeBoss() {
 	const send = vi.fn().mockResolvedValue("job-id");
-	const findJobs = vi.fn().mockResolvedValue(pendingStates.map((state) => ({ state })));
-	return { send, findJobs, boss: { send, findJobs } as unknown as BossClient };
+	return { send, boss: { send } };
 }
 
 const sentFor = (send: ReturnType<typeof vi.fn>, brandId: string): ReprocessData[] =>
@@ -81,7 +78,7 @@ function legacyRun(text: string, createdAt: Date | ReturnType<typeof sql>) {
 async function currentVersions(id: string) {
 	const [brand] = await db.select().from(brands).where(eq(brands.id, id));
 	const brandCompetitors = await db.select().from(competitors).where(eq(competitors.brandId, id));
-	return brandVersions(mentionConfigFrom(brand, brandCompetitors));
+	return currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors));
 }
 
 async function runsInWalkOrder() {
@@ -115,7 +112,7 @@ describe("runReprocess", () => {
 
 		const [run] = await runsInWalkOrder();
 		expect(run.textContent).toBe("Acme is the best CRM.");
-		expect(run.extractorVersion).toBe(EXTRACTOR_VERSION);
+		expect(run.analysisVersions).toEqual(await currentVersions(brandId));
 		expect(run.brandMentioned).toBe(true);
 		const cited = await db.select().from(citations).where(eq(citations.promptRunId, run.id));
 		expect(cited.map((citation) => citation.url)).toEqual(["https://example.com/a"]);
@@ -147,70 +144,29 @@ describe("runReprocess", () => {
 
 		const runs = await runsInWalkOrder();
 		expect(runs).toHaveLength(450);
-		expect(runs.every((run) => run.brandMentioned && run.extractorVersion === EXTRACTOR_VERSION)).toBe(true);
+		const extracted = (await currentVersions(brandId))[EXTRACTION_KEY];
+		expect(runs.every((run) => run.brandMentioned && run.analysisVersions[EXTRACTION_KEY] === extracted)).toBe(true);
 		expect(send).not.toHaveBeenCalled();
 	});
 
-	it("resumes a continuation exactly after its cursor, even inside a shared microsecond", async () => {
-		const sharedInstant = sql`'2026-02-01 10:00:00.123456+00'::timestamptz`;
-		await db
-			.insert(promptRuns)
-			.values(Array.from({ length: 450 }, () => legacyRun("Acme is the best CRM.", sharedInstant)));
-		const ordered = await runsInWalkOrder();
-		const done = ordered[199];
-
-		await runReprocess(
-			{
-				brandId,
-				layers: ["extraction", "interpretation"],
-				target: await currentVersions(brandId),
-				after: { promptId, last: { createdAt: "2026-02-01T10:00:00.123456Z", id: done.id } },
-			},
-			db,
-			fakeBoss().boss,
-		);
-
-		const runs = await runsInWalkOrder();
-		expect(runs.slice(0, 200).every((run) => run.extractorVersion === null)).toBe(true);
-		expect(runs.slice(200).every((run) => run.extractorVersion === EXTRACTOR_VERSION)).toBe(true);
-	});
-
-	it("starts a continuation over when the brand's config changed after the pass began", async () => {
+	it("re-derives runs a pass already handled when the brand's config changes before it finishes", async () => {
 		const [competitor] = await db
 			.insert(competitors)
 			.values({ brandId, name: "Globex", domains: ["oldsite.example"] })
 			.returning({ id: competitors.id });
 		const answer = "According to newsite.example, Acme is the best CRM.";
-		await db
-			.insert(promptRuns)
-			.values([
-				legacyRun(answer, new Date("2026-02-01T10:00:00Z")),
-				legacyRun(answer, new Date("2026-02-01T11:00:00Z")),
-			]);
-		// The pass's first segment handled the earlier run under the old config...
-		const startedUnder = await currentVersions(brandId);
+		await db.insert(promptRuns).values([legacyRun(answer, new Date("2026-02-01T10:00:00Z"))]);
 		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
-		const [first] = await runsInWalkOrder();
-		expect(first.competitorsMentioned).toEqual([]);
+		expect((await runsInWalkOrder())[0].competitorsMentioned).toEqual([]);
 
-		// ...then the config moved before its continuation ran.
+		// The same pass's continuation, after the config moved.
 		await db
 			.update(competitors)
 			.set({ domains: ["newsite.example"] })
 			.where(eq(competitors.id, competitor.id));
-		await runReprocess(
-			{
-				brandId,
-				layers: ["extraction", "interpretation"],
-				target: startedUnder,
-				after: { promptId, last: { createdAt: "2026-02-01T10:00:00.000000Z", id: first.id } },
-			},
-			db,
-			fakeBoss().boss,
-		);
+		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
 
-		const runs = await runsInWalkOrder();
-		expect(runs.map((run) => run.competitorsMentioned)).toEqual([["Globex"], ["Globex"]]);
+		expect((await runsInWalkOrder())[0].competitorsMentioned).toEqual(["Globex"]);
 		const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
 		expect(brand.analysisVersions).toEqual(await currentVersions(brandId));
 	});
@@ -226,9 +182,7 @@ describe("requestStaleReprocesses", () => {
 	it("requests a pass toward today's stamps, and none once history matches", async () => {
 		const first = fakeBoss();
 		await requestStaleReprocesses(db, first.boss);
-		expect(sentFor(first.send, brandId)).toEqual([
-			{ brandId, layers: ["extraction", "interpretation"], target: await currentVersions(brandId) },
-		]);
+		expect(sentFor(first.send, brandId)).toEqual([{ brandId, layers: ["extraction", "interpretation"] }]);
 
 		await runReprocess(sentFor(first.send, brandId)[0], db, fakeBoss().boss);
 		const second = fakeBoss();
@@ -239,12 +193,6 @@ describe("requestStaleReprocesses", () => {
 		const afterEdit = fakeBoss();
 		await requestStaleReprocesses(db, afterEdit.boss);
 		expect(sentFor(afterEdit.send, brandId).map((data) => data.layers)).toEqual([["interpretation"]]);
-	});
-
-	it("leaves a brand alone while a pass for it is queued or running", async () => {
-		const { boss, send } = fakeBoss(["active"]);
-		await requestStaleReprocesses(db, boss);
-		expect(sentFor(send, brandId)).toEqual([]);
 	});
 
 	it("does not replay the history of a brand that predates stamping, which adopts today's stamps instead", async () => {
