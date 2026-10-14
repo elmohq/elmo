@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { Check, X } from "lucide-react";
 import { useState } from "react";
 import {
 	CATEGORY_LABELS,
@@ -14,10 +13,7 @@ import {
 	getPopularityGrade,
 	sortedCompetitors,
 } from "@/lib/competitors";
-
-function FeatureIcon({ has }: { has: boolean }) {
-	return has ? <Check className="mx-auto h-4 w-4 text-blue-600" /> : <X className="mx-auto h-4 w-4 text-zinc-300" />;
-}
+import { FeatureMark } from "./feature-mark";
 
 const visibleCompetitors = sortedCompetitors.filter((c) => c.status !== "shutting-down" && c.category !== "other");
 
@@ -160,11 +156,11 @@ function FeatureMatrix({ competitors: items }: { competitors: Competitor[] }) {
 									{getFeatureLabel(featureKey as FeatureKey)}
 								</td>
 								<td className="border-x border-zinc-200 bg-blue-50 px-2 py-2">
-									<FeatureIcon has={ELMO_FEATURES[featureKey as FeatureKey] ?? false} />
+									<FeatureMark has={ELMO_FEATURES[featureKey as FeatureKey] ?? false} />
 								</td>
 								{items.map((c) => (
 									<td key={c.slug} className="px-2 py-2">
-										<FeatureIcon has={c.features[featureKey as FeatureKey] ?? false} />
+										<FeatureMark has={c.features[featureKey as FeatureKey] ?? false} />
 									</td>
 								))}
 							</tr>

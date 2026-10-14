@@ -2,7 +2,8 @@ import { PLANS } from "@workspace/config/plans";
 
 export interface HeroVariant {
 	title: string;
-	lede: string;
+	/** Omit to keep the homepage's default lede. */
+	lede?: string;
 }
 
 /**
@@ -51,6 +52,9 @@ export const heroVariants: Record<string, HeroVariant> = {
 	price: {
 		title: `AI Visibility Tracking From $${PLANS.starter.monthlyPriceUsd}/mo`,
 		lede: "Track how AI models talk about your brand without an enterprise contract. Unlimited seats on every plan, no sales call, and you can start in minutes.",
+	},
+	"win-ai-search": {
+		title: "Win AI Search",
 	},
 	"open-source": {
 		title: "Open-Source AI Visibility Tracking",
