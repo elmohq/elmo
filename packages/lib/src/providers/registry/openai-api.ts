@@ -1,7 +1,6 @@
 import { createOpenAI, openai } from "@ai-sdk/openai";
 import { generateText, type InferToolOutput } from "ai";
 import { getCredential } from "../../secrets";
-import { extractCitationsFromOpenAI, extractTextFromOpenAI } from "../../text-extraction";
 import {
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
 	configuredWhen,
@@ -93,8 +92,6 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 	return {
 		rawOutput,
 		webQueries: reportedWebQueries(webQueries, { webSearch: options?.webSearch ?? false }),
-		textContent: extractTextFromOpenAI(rawOutput),
-		citations: extractCitationsFromOpenAI(rawOutput),
 		modelVersion: model,
 	};
 }

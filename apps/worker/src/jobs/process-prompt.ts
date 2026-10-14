@@ -21,7 +21,7 @@ import {
 	slowestIntervalHours,
 	targetKey,
 } from "@workspace/lib/run-policy";
-import { type Citation, storableText } from "@workspace/lib/text-extraction";
+import { type Citation, extractRun } from "@workspace/lib/text-extraction";
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
@@ -273,10 +273,11 @@ async function runModelIteration({
 		// fan-out page excludes verbatim repeats at read time as a display rule;
 		// providers whose query field is fabricated (DataForSEO) write the
 		// `unavailable` sentinel in their own extractor instead.
-		const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
-		console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
+		const { rawOutput, webQueries, modelVersion } = result;
+		// The same extraction a replay runs, so a run stores only what its payload yields.
+		const { textContent: text, citations: extractedCitations } = extractRun(rawOutput, config.provider);
+		console.log(`${logPrefix} AI call completed, text length: ${text?.length ?? "null"}`);
 
-		const text = storableText(textContent);
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
 		// One transaction so a reprocess never sees a run without its citations.

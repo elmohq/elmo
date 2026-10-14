@@ -143,18 +143,16 @@ export const searchapi: Provider = {
 		const serp = await search(params);
 		const payload = target.nested === "ai_overview" ? await redeemAiOverviewToken(serp) : serp;
 
-		const { answer, text } = readAnswer(payload, target);
+		const { answer } = readAnswer(payload, target);
 		const stored = storedOutput(payload, target);
 		const citations: Citation[] = extractCitationsFromSearchapi(stored);
 
 		return {
 			rawOutput: stored,
-			textContent: text,
 			webQueries: reportedWebQueries(nonEmptyStrings(answer.search_queries), {
 				webSearch: model !== "chatgpt" || (options?.webSearch ?? false),
 				searchProven: citations.length > 0,
 			}),
-			citations,
 			modelVersion: typeof answer.response_metadata?.model === "string" ? answer.response_metadata.model : undefined,
 		};
 	},
