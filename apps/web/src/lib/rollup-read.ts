@@ -230,7 +230,6 @@ export async function getPerPromptVisibilityTimeSeries(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<PerPromptVisibilityPoint[]> {
-	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<PerPromptVisibilityPoint>(sql`
 		SELECT
 			prompt_id,
@@ -360,7 +359,6 @@ export async function getCitationsTotalCount(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<number> {
-	if (enabledPromptIds && enabledPromptIds.length === 0) return 0;
 	const rows = await queryPg<{ total: number }>(sql`
 		SELECT coalesce(sum(citations), 0)::int AS total
 		FROM rollup_citation_urls
@@ -587,7 +585,6 @@ export async function getPerPromptDailyCitationStats(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<PerPromptDailyCitationStats[]> {
-	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<PerPromptDailyCitationStats>(sql`
 		SELECT
 			prompt_id,
@@ -660,7 +657,6 @@ export async function getPerPromptDailyMentions(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<PerPromptDailyMentionRow[]> {
-	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<PerPromptDailyMentionRow>(sql`
 		SELECT
 			prompt_id,
@@ -686,7 +682,6 @@ export async function getPerPromptDailyCompetitorMentions(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<PerPromptDailyCompetitorRow[]> {
-	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<PerPromptDailyCompetitorRow>(sql`
 		SELECT
 			prompt_id,
@@ -712,7 +707,6 @@ export async function getPerPromptCitationPages(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<PerPromptCitationPageRow[]> {
-	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<PerPromptCitationPageRow>(sql`
 		SELECT
 			rcu.prompt_id AS prompt_id,
@@ -740,7 +734,6 @@ export async function getBrandMentionRateByModel(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<ModelMentionRateRow[]> {
-	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<ModelMentionRateRow>(sql`
 		SELECT
 			model,
@@ -880,7 +873,6 @@ export async function getPerPromptDailyCitationClasses(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<PerPromptDailyCitationClassRow[]> {
-	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<PerPromptDailyCitationClassRow>(sql`
 		SELECT
 			rcu.prompt_id,

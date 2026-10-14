@@ -5,4 +5,4 @@
 "@workspace/api-spec": patch
 ---
 
-Analytics pages and the analytics API load much faster; API analytics windows are aligned down to the quarter hour.
+Analytics pages and the analytics API load much faster (after upgrading, older history fills back in, newest first, while the worker rebuilds it), and API analytics windows are aligned down to the quarter hour.
