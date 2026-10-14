@@ -1,5 +1,5 @@
 import { Badge } from "@workspace/ui/components/badge";
-import { Check, ExternalLink, X } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import {
 	CATEGORY_LABELS,
 	type Competitor,
@@ -7,11 +7,12 @@ import {
 	FEATURE_CATEGORIES,
 	type FeatureKey,
 } from "@/lib/competitors";
+import { FeatureMark } from "./feature-mark";
 
 function Cell({ on, highlight }: { on: boolean; highlight?: boolean }) {
 	return (
 		<td className={`px-4 py-3 text-center ${highlight ? "bg-blue-50" : ""}`}>
-			{on ? <Check className="mx-auto h-4 w-4 text-blue-600" /> : <X className="mx-auto h-4 w-4 text-zinc-300" />}
+			<FeatureMark has={on} />
 		</td>
 	);
 }
