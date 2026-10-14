@@ -12,7 +12,7 @@ import {
 	promptSaveDelta,
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
-import { markPromptRunsDirty } from "@workspace/lib/rollups";
+import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
@@ -308,17 +308,15 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		if (prompt.length === 0) throw new Error("Prompt not found");
 		await requireBrandAccess(session.user.id, prompt[0].brandId);
 
-		const endDate = customRangeEnd(data.lookback);
 		const { fromDate, toDate } = promptRunWindow(
 			await resolveBrandLookbackDays(prompt[0].brandId, data.lookback),
-			endDate,
+			customRangeEnd(data.lookback),
 		);
-		const fromDateStr = fromDate.toISOString().split("T")[0];
-		const toDateStr = endDate ?? toDate.toISOString().split("T")[0];
+		// A rolling window, like the runs list beside it; the rollups answer it to the quarter hour.
 		const scope = {
 			brandId: prompt[0].brandId,
-			from: fromDateStr,
-			to: toDateStr,
+			from: bucketStart(fromDate).toISOString(),
+			to: toDate.toISOString(),
 			timezone: "UTC",
 			promptIds: [data.promptId],
 		};
