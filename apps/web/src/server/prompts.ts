@@ -4,7 +4,7 @@ import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { classifyUrl } from "@workspace/lib/citations/domain-lists";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
-import { selectRuns } from "@workspace/lib/db/runs";
+import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
 import { brands, competitors, promptRuns, prompts, runMentions, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
 	assertAllowed,
@@ -469,13 +469,17 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
 		]);
 
+		const raw = await loadRawOutputs(
+			db,
+			runs.map((r) => r.id),
+		);
 		return {
 			// Older rows carry no text and may predate the provider column; the
 			// extractor also accepts the model name.
 			runs: runs.map((r) => ({
 				...r,
-				rawOutput: r.rawOutput as {},
-				textContent: r.textContent ?? extractTextContent(r.rawOutput, r.provider ?? r.model),
+				rawOutput: raw.get(r.id) as {},
+				textContent: r.textContent ?? extractTextContent(raw.get(r.id), r.provider ?? r.model),
 			})),
 			total: totalResult[0]?.count || 0,
 			page: data.page,

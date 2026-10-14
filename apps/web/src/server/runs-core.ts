@@ -3,7 +3,7 @@
  * exposing that would make its shape part of this contract.
  */
 import { db } from "@workspace/lib/db/db";
-import { selectRuns } from "@workspace/lib/db/runs";
+import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq } from "drizzle-orm";
@@ -92,7 +92,8 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 
 	// Older rows carry no text and may predate the provider column; the
 	// extractor also accepts the model name.
-	const text = run.textContent ?? extractTextContent(run.rawOutput, run.provider ?? run.model);
+	const text =
+		run.textContent ?? extractTextContent((await loadRawOutputs(db, [run.id])).get(run.id), run.provider ?? run.model);
 
 	return {
 		id: run.id,
