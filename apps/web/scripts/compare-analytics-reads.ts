@@ -12,7 +12,7 @@ import { normalizeUrl } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
 import { sql } from "drizzle-orm";
 import { getBoundedLookbackRange } from "@/lib/timezone-utils";
-import type { DailyScope } from "../src/lib/rollup-read";
+import type { DailyScope } from "../src/lib/analytics-sql";
 import * as rollupRead from "../src/lib/rollup-read";
 import * as rawRead from "../src/test/raw-analytics-reads";
 

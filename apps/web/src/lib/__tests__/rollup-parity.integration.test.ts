@@ -10,7 +10,7 @@ import {
 } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { AnalyticsScope } from "@/lib/analytics-sql";
+import type { DailyScope } from "@/lib/analytics-sql";
 import type { LookbackPeriod } from "@/lib/lookback";
 import { countPromptRuns, getResponseMatches } from "@/lib/postgres-read";
 import type { PerPromptCitationPageRow } from "@/lib/rollup-read";
@@ -104,7 +104,7 @@ function foldPerPromptCitationPageRows(rows: PerPromptCitationPageRow[]): object
 	return out;
 }
 
-type EquivalenceScope = AnalyticsScope & { from: string; to: string; promptIds: string[] };
+type EquivalenceScope = DailyScope;
 
 interface EquivalenceCase {
 	name: string;

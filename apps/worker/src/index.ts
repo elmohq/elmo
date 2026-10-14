@@ -95,7 +95,8 @@ async function main() {
 		retryLimit: 5,
 		retryDelay: 60,
 		retryBackoff: true,
-		expireInSeconds: 60 * 10,
+		// A full mark scans all of prompt_runs once.
+		expireInSeconds: 60 * 60,
 	});
 	await boss.createQueue(REPROCESS_QUEUE, {
 		policy: "stately",

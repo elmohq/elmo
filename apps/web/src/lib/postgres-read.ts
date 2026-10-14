@@ -4,7 +4,14 @@
  */
 
 import { type SQL, sql } from "drizzle-orm";
-import { type AnalyticsScope, modelFilter, queryPg, scopeFilter, windowFilter } from "@/lib/analytics-sql";
+import {
+	type AnalyticsScope,
+	modelFilter,
+	type PromptListScope,
+	queryPg,
+	scopeFilter,
+	windowFilter,
+} from "@/lib/analytics-sql";
 import {
 	type FanoutBreakdownRow,
 	type FanoutModelTotalRow,
@@ -133,7 +140,7 @@ function genuineFanoutWq(): SQL {
 	return sql`length(btrim(wq)) > 0 AND lower(btrim(wq)) <> ${UNAVAILABLE_SENTINEL} AND lower(btrim(wq)) <> lower(btrim(p.value))`;
 }
 
-type FanoutScope = AnalyticsScope & { promptIds: string[] };
+type FanoutScope = PromptListScope;
 
 /**
  * (prompt × model × query) fan-out counts with how often the brand was mentioned.
@@ -214,7 +221,7 @@ export async function getFanoutPromptTotals(scope: FanoutScope): Promise<FanoutP
 // ============================================================================
 
 /** Runs a response search covers. Without a `query` every run in scope matches. */
-export type ResponseSearchScope = AnalyticsScope & { promptIds: string[]; query?: string };
+export type ResponseSearchScope = PromptListScope & { query?: string };
 
 export interface ResponseMatchRow {
 	id: string;

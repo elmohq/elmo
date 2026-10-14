@@ -1,6 +1,6 @@
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { markRunsDirty } from "@workspace/lib/rollups";
+import { getPipelineState, markRunsDirty, ROLLUP_VERSION, setPipelineState } from "@workspace/lib/rollups";
 import type { Job } from "pg-boss";
 
 export interface RollupCatchUpData {
@@ -9,9 +9,21 @@ export interface RollupCatchUpData {
 }
 
 export async function runRollupCatchUp(data: RollupCatchUpData, conn: DbConnection = db): Promise<number> {
-	const marked = await markRunsDirty(conn, data.since ? new Date(data.since) : null);
-	console.log(`[rollup-catch-up] marked ${marked} buckets with runs since ${data.since ?? "the beginning"}`);
-	return marked;
+	if (data.since) {
+		const marked = await markRunsDirty(conn, new Date(data.since));
+		console.log(`[rollup-catch-up] marked ${marked} buckets with runs since ${data.since}`);
+		return marked;
+	}
+	// The full mark records the version it rebuilds toward in the same commit, so
+	// one that never succeeds leaves the version behind for the next startup to retry.
+	return conn.transaction(async (tx) => {
+		const state = await getPipelineState(tx, { forUpdate: true });
+		if (state.rollupVersion >= ROLLUP_VERSION) return 0;
+		const marked = await markRunsDirty(tx, null);
+		await setPipelineState(tx, { rollupVersion: ROLLUP_VERSION });
+		console.log(`[rollup-catch-up] rollups moving to version ${ROLLUP_VERSION}: marked ${marked} buckets`);
+		return marked;
+	});
 }
 
 export async function rollupCatchUpJob(jobs: Job<RollupCatchUpData>[]): Promise<void> {

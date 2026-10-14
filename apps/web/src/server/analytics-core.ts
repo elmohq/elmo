@@ -11,12 +11,12 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
+import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
 import { getFanoutBreakdown, getFanoutModelTotals, getFanoutPromptTotals } from "@/lib/postgres-read";
 import {
-	type DailyScope,
 	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
 	getCitationTotal,

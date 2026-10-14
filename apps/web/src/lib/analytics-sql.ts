@@ -61,6 +61,12 @@ export interface AnalyticsScope {
 	webSearchEnabled?: boolean;
 }
 
+/** A scope over an explicit list of prompts, for reads that join or page through them. */
+export type PromptListScope = AnalyticsScope & { promptIds: string[] };
+
+/** A bounded window over an explicit list of prompts, for reads that lay out every day. */
+export type DailyScope = PromptListScope & { from: string; to: string };
+
 interface ScopeColumns {
 	/** Rollups are windowed on their bucket, raw rows on when they were written. */
 	time: "bucket" | "created_at";

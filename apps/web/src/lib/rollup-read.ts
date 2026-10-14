@@ -5,7 +5,15 @@
 
 import type { CitationUrlRow } from "@workspace/lib/citations/rollup";
 import { sql } from "drizzle-orm";
-import { type AnalyticsScope, isoInstant, localDate, queryPg, scopeFilter, uuidList } from "@/lib/analytics-sql";
+import {
+	type AnalyticsScope,
+	type DailyScope,
+	isoInstant,
+	localDate,
+	queryPg,
+	scopeFilter,
+	uuidList,
+} from "@/lib/analytics-sql";
 
 /** The run counts every run read selects, so a new rollup column reaches them all at once. */
 export interface RunSums {
@@ -109,9 +117,6 @@ export interface CitationCountByModelRow {
 	model: string;
 	count: number;
 }
-
-/** A window over the full rollup span, read with an explicit list of prompts. */
-export type DailyScope = AnalyticsScope & { from: string; to: string; promptIds: string[] };
 
 const rollupScope = (scope: AnalyticsScope, alias?: string) => scopeFilter(scope, { time: "bucket", alias });
 

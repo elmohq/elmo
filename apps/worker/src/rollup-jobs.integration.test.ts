@@ -189,7 +189,7 @@ describe("runRefreshTick", () => {
 });
 
 describe("rollup version changes", () => {
-	it("queues a full mark and a delayed catch-up, once", async () => {
+	it("queues a full mark and a delayed catch-up until the full mark lands", async () => {
 		await insertRun(fixture, { createdAt: B0 });
 		await insertRun(fixture, { createdAt: B1 });
 		await db.update(pipelineState).set({ rollupVersion: 0 }).where(eq(pipelineState.id, 1));
@@ -202,10 +202,12 @@ describe("rollup version changes", () => {
 		const [[, rebuild], [, catchUp, catchUpOptions]] = boss.send.mock.calls;
 		expect(catchUpOptions).toEqual({ startAfter: ROLLUP_CATCH_UP_DELAY_SECONDS });
 		expect(Date.parse(catchUp.since)).toBeLessThan(before);
-		expect((await db.select().from(pipelineState))[0].rollupVersion).toBe(ROLLUP_VERSION);
+		expect((await db.select().from(pipelineState))[0].rollupVersion).toBe(0);
 
 		await runRollupCatchUp(rebuild);
 		expect((await marksOf(fixture.brandId)).map((mark) => mark.bucket)).toEqual(expect.arrayContaining([B0, B1]));
+		expect((await db.select().from(pipelineState))[0].rollupVersion).toBe(ROLLUP_VERSION);
+		expect(await runRollupCatchUp(rebuild)).toBe(0);
 
 		await initializePipeline(boss);
 		expect(boss.send).toHaveBeenCalledTimes(2);
