@@ -1,0 +1,1 @@
+CREATE INDEX "citations_prompt_run_id_idx" ON "citations" USING btree ("prompt_run_id");
