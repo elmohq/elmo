@@ -1,5 +1,5 @@
-import { classifyUrl } from "@workspace/lib/citations/domain-lists";
-import { rollUpCitationUrls } from "@workspace/lib/citations/rollup";
+import { normalizeUrl } from "@workspace/lib/citations/domain-categories";
+import { classifyPage } from "@workspace/lib/citations/page-classification";
 import { db } from "@workspace/lib/db/db";
 import {
 	citations,
@@ -52,31 +52,45 @@ function expectSameRows(label: string, rollupRows: object[], rawRows: object[]):
 	expect(canonicalRows(rollupRows), label).toEqual(canonicalRows(rawRows));
 }
 
+interface UrlRow {
+	url: string;
+	domain: string;
+	title: string | null;
+	count: number;
+	avg_position: number | null;
+	static_category?: string;
+	page_type?: string;
+}
+
 // Raw URL rows are grouped by literal url and rollup rows by normalized page, so both
-// sides are folded through rollUpCitationUrls before comparing.
-
-const classify = (domain: string, url: string, title?: string) =>
-	classifyUrl(domain, url, title ?? null, new Set(), new Set());
-
-function foldCitationUrlRows(
-	rows: { url: string; domain: string; title: string | null; count: number; avg_position: number | null }[],
-): object[] {
-	return rollUpCitationUrls(rows, classify).map((u) => ({
-		url: u.url,
-		domain: u.domain,
-		title: u.title ?? null,
-		count: u.count,
-		category: u.category,
-		pageType: u.pageType,
-		avgPosition: u.avgPosition,
-	}));
+// sides are folded to pages. Raw pages are classified the way a rebuild stores them.
+function foldCitationUrlRows(rows: UrlRow[]): object[] {
+	const pages = new Map<string, UrlRow & { positionSum: number }>();
+	for (const row of rows) {
+		const url = normalizeUrl(row.url);
+		const page = pages.get(url) ?? { ...row, url, title: null, count: 0, positionSum: 0 };
+		page.count += Number(row.count);
+		page.positionSum += (row.avg_position ?? 0) * Number(row.count);
+		page.title ??= row.title;
+		pages.set(url, page);
+	}
+	return [...pages.values()].map((page) => {
+		const stored = page.static_category
+			? { staticCategory: page.static_category, pageType: page.page_type }
+			: classifyPage(page.url, page.domain, page.title);
+		return {
+			url: page.url,
+			domain: page.domain,
+			title: page.title,
+			count: page.count,
+			avgPosition: Math.round((page.positionSum / page.count) * 10) / 10,
+			...stored,
+		};
+	});
 }
 
 function foldPerPromptCitationPageRows(rows: PerPromptCitationPageRow[]): object[] {
-	const byPrompt = new Map<
-		string,
-		{ url: string; domain: string; title: string | null; count: number; avg_position: number | null }[]
-	>();
+	const byPrompt = new Map<string, UrlRow[]>();
 	for (const row of rows) {
 		if (!row.url) continue;
 		const list = byPrompt.get(row.prompt_id) ?? [];

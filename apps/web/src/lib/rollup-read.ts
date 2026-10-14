@@ -3,6 +3,7 @@
  * (quarter-hour buckets, refreshed about a minute behind the raw rows).
  */
 
+import type { CitationUrlRow } from "@workspace/lib/citations/rollup";
 import { sql } from "drizzle-orm";
 import { type AnalyticsScope, isoInstant, localDate, queryPg, scopeFilter, uuidList } from "@/lib/analytics-sql";
 
@@ -76,12 +77,7 @@ export interface VisibilityDailyAggregate {
 	lvcf_nonbranded_mentioned: number;
 }
 
-export interface CitationUrlStats {
-	url: string;
-	domain: string;
-	title: string | null;
-	count: number;
-	avg_position: number | null;
+export interface CitationUrlStats extends CitationUrlRow {
 	prompt_count: number;
 }
 
@@ -324,13 +320,15 @@ export async function getCitationUrlStats(scope: AnalyticsScope): Promise<Citati
 			cp.url AS url,
 			cp.domain AS domain,
 			cp.title AS title,
+			cp.static_category,
+			cp.page_type,
 			sum(rcu.citations)::int AS count,
 			round(sum(rcu.position_sum)::numeric / NULLIF(sum(rcu.citations), 0), 1)::float AS avg_position,
 			count(DISTINCT rcu.prompt_id)::int AS prompt_count
 		FROM rollup_citation_urls rcu
 		JOIN cited_pages cp ON cp.id = rcu.page_id
 		WHERE ${rollupScope(scope, "rcu")}
-		GROUP BY rcu.page_id, cp.url, cp.domain, cp.title
+		GROUP BY rcu.page_id, cp.url, cp.domain, cp.title, cp.static_category, cp.page_type
 		ORDER BY count DESC
 	`);
 }
@@ -379,8 +377,7 @@ export async function getPerPromptDailyCitationDomains(
 
 // The page's stored classification, so a day's breakdown needs no per-URL rows.
 // `static_category` is tenant-independent; callers apply the brand/competitor
-// domain override on top. The URL table classifies the same pages live, so the
-// two agree except while a classifier bump is still being reclassified.
+// domain override on top, as they do for `getCitationUrlStats`.
 export async function getPerPromptDailyCitationClasses(
 	scope: AnalyticsScope,
 ): Promise<PerPromptDailyCitationClassRow[]> {

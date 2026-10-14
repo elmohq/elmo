@@ -1,7 +1,6 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
-import { classifyUrl } from "@workspace/lib/citations/domain-lists";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
@@ -252,9 +251,7 @@ function computePromptCitationStats(input: {
 		() => input.promptValue,
 	);
 
-	const specificUrls = rollUpCitationUrls(urlStats, (domain, url, title) =>
-		classifyUrl(domain, url, title, input.brandDomains, input.competitorDomains),
-	);
+	const specificUrls = rollUpCitationUrls(urlStats, input.brandDomains, input.competitorDomains);
 	const domainDistribution = rollUpCitationDomains(specificUrls);
 	const { categoryCounts, totalCitations, pageTypeDistribution } = tallyCitations(specificUrls);
 	if (totalCitations === 0) return undefined;

@@ -8,14 +8,9 @@ import {
 	emptyCategoryCounts,
 	emptyPageTypeCounts,
 	extractDomain,
-	isGoogleSurfaceUrl,
-	normalizeUrl,
 	toRoundedPercentages,
 } from "@workspace/lib/citations/domain-categories";
-import {
-	categorizeDomain as categorizeDomainShared,
-	classifyUrl as classifyUrlShared,
-} from "@workspace/lib/citations/domain-lists";
+import { categorizeDomain as categorizeDomainShared } from "@workspace/lib/citations/domain-lists";
 import { type ResolvedPageClass, resolvePageClass } from "@workspace/lib/citations/page-classification";
 import {
 	type CitationDomain,
@@ -34,7 +29,6 @@ import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
 import {
-	type CitationUrlStats,
 	getCitationUrlStats,
 	getPerPromptCitationPages,
 	getPerPromptDailyCitationClasses,
@@ -44,15 +38,13 @@ import {
 import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 
-type Classify = (domain: string, url: string, title?: string | null) => CitationCategory;
-
 type BrandCitationUrl = CitationUrl & { promptCount: number; isNew: boolean };
 
 type BrandCitationDomain = CitationDomain & { previousCount: number; changePercent: number | null };
 
 interface PreviousPeriod {
 	countByDomain: Map<string, number>;
-	byUrl: Map<string, { count: number; title?: string; domain: string }>;
+	byUrl: Map<string, CitationUrl>;
 }
 
 interface WhatsChanged {
@@ -128,45 +120,10 @@ function promptIdsMatchingTags(
 		.map((prompt) => prompt.id);
 }
 
-/**
- * Google search/shopping surfaces (Google AI Mode) are pulled OUT of the source
- * mix everywhere — they get their own module and would otherwise be
- * double-counted — so the previous window drops them before it is keyed.
- */
-function rollUpPreviousPeriod(prevUrlStats: CitationUrlStats[]): PreviousPeriod {
+function rollUpPreviousPeriod(previousUrls: CitationUrl[]): PreviousPeriod {
 	const countByDomain = new Map<string, number>();
-	const byUrl = new Map<string, { count: number; title?: string; domain: string }>();
-
-	for (const { url, domain, title, count } of prevUrlStats) {
-		if (isGoogleSurfaceUrl(url)) continue;
-		countByDomain.set(domain, (countByDomain.get(domain) ?? 0) + Number(count));
-
-		const normalizedUrl = normalizeUrl(url);
-		const existing = byUrl.get(normalizedUrl);
-		if (!existing) {
-			byUrl.set(normalizedUrl, { count: Number(count), title: title || undefined, domain });
-			continue;
-		}
-		existing.count += Number(count);
-		existing.title ||= title || undefined;
-	}
-
-	return { countByDomain, byUrl };
-}
-
-/**
- * How many prompts cited each URL. Kept beside the shared rollup rather than
- * inside it: it is the only thing the brand-wide view needs that the per-prompt
- * view has no meaning for.
- */
-function promptCountsByUrl(urlStats: CitationUrlStats[]): Map<string, number> {
-	const byUrl = new Map<string, number>();
-	for (const { url, prompt_count } of urlStats) {
-		if (isGoogleSurfaceUrl(url)) continue;
-		const normalizedUrl = normalizeUrl(url);
-		byUrl.set(normalizedUrl, Math.max(byUrl.get(normalizedUrl) ?? 0, Number(prompt_count)));
-	}
-	return byUrl;
+	for (const { domain, count } of previousUrls) countByDomain.set(domain, (countByDomain.get(domain) ?? 0) + count);
+	return { countByDomain, byUrl: new Map(previousUrls.map((url) => [url.url, url])) };
 }
 
 /**
@@ -200,10 +157,9 @@ function buildWhatsChanged(args: {
 	specificUrls: BrandCitationUrl[];
 	domainDistribution: BrandCitationDomain[];
 	previous: PreviousPeriod;
-	classify: Classify;
 	categorizeDomain: (domain: string) => CitationCategory;
 }): WhatsChanged {
-	const { specificUrls, domainDistribution, previous, classify, categorizeDomain } = args;
+	const { specificUrls, domainDistribution, previous, categorizeDomain } = args;
 	const currentUrls = new Map(specificUrls.map((url) => [url.url, url]));
 	const currentDomains = new Set(domainDistribution.map((domain) => domain.domain));
 
@@ -226,7 +182,7 @@ function buildWhatsChanged(args: {
 			domain: prev.domain,
 			previousCount: prev.count,
 			currentCount,
-			category: classify(prev.domain, url, prev.title),
+			category: prev.category,
 		}));
 
 	const titleChanges = [...currentUrls.entries()]
@@ -237,7 +193,7 @@ function buildWhatsChanged(args: {
 			domain: current.domain,
 			currentTitle: current.title as string,
 			previousTitle: previousTitle as string,
-			category: classify(current.domain, url, current.title),
+			category: current.category,
 		}))
 		.slice(0, WHATS_CHANGED_LIMIT);
 
@@ -401,17 +357,16 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 
 		const categorizeDomain = (domain: string): CitationCategory =>
 			categorizeDomainShared(domain, brandDomains, competitorDomains);
-		const classify: Classify = (domain, url, title) =>
-			classifyUrlShared(domain, url, title, brandDomains, competitorDomains);
+		const previous = rollUpPreviousPeriod(rollUpCitationUrls(prevUrlStats, brandDomains, competitorDomains));
+		const promptCounts = new Map(urlStats.map((stat) => [stat.url, Number(stat.prompt_count)]));
 
-		const previous = rollUpPreviousPeriod(prevUrlStats);
-		const promptCounts = promptCountsByUrl(urlStats);
-
-		const specificUrls: BrandCitationUrl[] = rollUpCitationUrls(urlStats, classify).map((url) => ({
-			...url,
-			promptCount: promptCounts.get(url.url) ?? 0,
-			isNew: !previous.byUrl.has(url.url),
-		}));
+		const specificUrls: BrandCitationUrl[] = rollUpCitationUrls(urlStats, brandDomains, competitorDomains).map(
+			(url) => ({
+				...url,
+				promptCount: promptCounts.get(url.url) ?? 0,
+				isNew: !previous.byUrl.has(url.url),
+			}),
+		);
 
 		const domainDistribution: BrandCitationDomain[] = rollUpCitationDomains(specificUrls).map((domain) => {
 			const previousCount = previous.countByDomain.get(domain.domain) || 0;
@@ -478,7 +433,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 				specificUrls,
 				domainDistribution,
 				previous,
-				classify,
 				categorizeDomain,
 			}),
 		};

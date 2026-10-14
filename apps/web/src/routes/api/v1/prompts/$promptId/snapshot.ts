@@ -5,7 +5,7 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { extractDomain, inDomainSet, normalizeUrl } from "@workspace/lib/citations/domain-categories";
+import { extractDomain, inDomainSet } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -93,23 +93,11 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 
 					const mentionsTopK = topCompetitors.map((row) => ({ entity: row.competitor, count: row.runs }));
 
-					const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
-					for (const { url, domain, title, count } of citationUrlStats) {
-						const normalizedUrl = normalizeUrl(url);
-						const existing = urlCounts.get(normalizedUrl);
-						if (existing) {
-							existing.count += Number(count);
-							if (!existing.title && title) existing.title = title;
-						} else {
-							urlCounts.set(normalizedUrl, { count: Number(count), title: title || undefined, domain });
-						}
-					}
-
 					let brandCitationsTotal = 0;
 					let competitorCitationsTotal = 0;
 					let citationsTotal = 0;
-					const allCitationUrls = Array.from(urlCounts.entries())
-						.map(([url, { count, title, domain }]) => {
+					const allCitationUrls = citationUrlStats
+						.map(({ url, title, domain, count }) => {
 							citationsTotal += count;
 							if (inDomainSet(domain, brandDomains)) {
 								brandCitationsTotal += count;

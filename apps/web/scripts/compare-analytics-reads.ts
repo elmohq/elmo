@@ -1,15 +1,14 @@
 #!/usr/bin/env tsx
 /**
  * Checks that rollup-read.ts returns the same results as the raw reference reads in
- * src/test/raw-analytics-reads.ts, and times both. Citation URL rows are folded through `rollUpCitationUrls` first
- * because raw rows are pre-fold.
+ * src/test/raw-analytics-reads.ts, and times both. Citation URL rows are folded to pages first
+ * because raw rows are per literal URL.
  *
  * Usage (never loads .env; point it only at a throwaway database):
  *   cd apps/web
  *   DATABASE_URL=postgres://... pnpm exec tsx scripts/compare-analytics-reads.ts --brands=10
  */
-import type { CitationCategory } from "@workspace/lib/citations/domain-categories";
-import { rollUpCitationUrls } from "@workspace/lib/citations/rollup";
+import { normalizeUrl } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
 import { sql } from "drizzle-orm";
 import { getBoundedLookbackRange } from "@/lib/timezone-utils";
@@ -112,9 +111,6 @@ const canonMap = (map: Map<string, number>): string =>
 		),
 	);
 
-/** Category correctness is covered by the rollup integration tests, not here. */
-const dummyClassify = (): CitationCategory => "other";
-
 interface FoldedUrlRow {
 	url: string;
 	domain: string;
@@ -123,15 +119,29 @@ interface FoldedUrlRow {
 	avgPosition: number | null;
 }
 
+/** Raw rows are per literal URL and rollup rows per normalized page, so both fold to pages. */
 function foldCitationUrlRows(
 	rows: { url: string; domain: string; title: string | null; count: number; avg_position: number | null }[],
 ): FoldedUrlRow[] {
-	return rollUpCitationUrls(rows, dummyClassify).map((r) => ({
-		url: r.url,
-		domain: r.domain,
-		title: r.title ?? null,
-		count: r.count,
-		avgPosition: r.avgPosition,
+	const pages = new Map<string, FoldedUrlRow & { positionSum: number }>();
+	for (const row of rows) {
+		const url = normalizeUrl(row.url);
+		const page = pages.get(url) ?? {
+			url,
+			domain: row.domain,
+			title: null,
+			count: 0,
+			avgPosition: null,
+			positionSum: 0,
+		};
+		page.count += Number(row.count);
+		page.positionSum += (row.avg_position ?? 0) * Number(row.count);
+		page.title ??= row.title;
+		pages.set(url, page);
+	}
+	return [...pages.values()].map(({ positionSum, ...page }) => ({
+		...page,
+		avgPosition: Math.round((positionSum / page.count) * 10) / 10,
 	}));
 }
 

@@ -265,8 +265,11 @@ export async function getCitationTotal(scope: AnalyticsScope): Promise<number> {
 	return Number(rows[0]?.total ?? 0);
 }
 
-export async function getCitationUrlStats(scope: AnalyticsScope): Promise<CitationUrlStats[]> {
-	return queryPg<CitationUrlStats>(sql`
+/** Per literal URL: the raw rows carry no page classification, so these lack the stored class columns. */
+export async function getCitationUrlStats(
+	scope: AnalyticsScope,
+): Promise<Omit<CitationUrlStats, "static_category" | "page_type">[]> {
+	return queryPg(sql`
 		SELECT
 			url,
 			domain,

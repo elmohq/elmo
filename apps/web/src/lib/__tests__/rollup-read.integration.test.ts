@@ -369,6 +369,8 @@ describe("citation stats", () => {
 			url: "https://docs.example.com/a",
 			domain: "docs.example.com",
 			title: "New title",
+			static_category: expect.any(String),
+			page_type: expect.any(String),
 			count: 3,
 			avg_position: 2,
 			prompt_count: 2,

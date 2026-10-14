@@ -5,8 +5,7 @@
  */
 
 import { getModelMeta } from "@workspace/config/models";
-import { extractDomain, normalizeUrl } from "@workspace/lib/citations/domain-categories";
-import { classifyUrl as classifyUrlShared } from "@workspace/lib/citations/domain-lists";
+import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
@@ -293,24 +292,14 @@ export async function getBrandCitations(brandId: string, window: AnalyticsWindow
 		getCitationDomainPromptCounts(scope),
 	]);
 
-	const classify = (domain: string, url: string, title?: string | null) =>
-		classifyUrlShared(domain, url, title, brandDomains, competitorDomains);
-
-	const previousUrls = new Set(previous.map((stat) => normalizeUrl(stat.url)));
+	const previousUrls = new Set(previous.map((stat) => stat.url));
 	const previousDomainCounts = new Map<string, number>();
 	for (const stat of previous) {
 		previousDomainCounts.set(stat.domain, (previousDomainCounts.get(stat.domain) ?? 0) + Number(stat.count));
 	}
 
-	// A domain's URLs can be cited by disjoint prompts, so its distinct count
-	// cannot be the largest of its parts the way a single URL's can.
-	const promptCounts = new Map<string, number>();
-	for (const stat of current) {
-		const url = normalizeUrl(stat.url);
-		promptCounts.set(url, Math.max(promptCounts.get(url) ?? 0, Number(stat.prompt_count)));
-	}
-
-	const rolled = rollUpCitationUrls(current, classify);
+	const promptCounts = new Map(current.map((stat) => [stat.url, Number(stat.prompt_count)]));
+	const rolled = rollUpCitationUrls(current, brandDomains, competitorDomains);
 	const totalCitations = rolled.reduce((sum, row) => sum + row.count, 0);
 
 	const urls = rolled.map((row) => ({
