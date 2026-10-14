@@ -457,7 +457,7 @@ export async function getCitationUrlStats(
 			cp.domain AS domain,
 			cp.title AS title,
 			sum(rcu.citations)::int AS count,
-			round(sum(rcu.position_sum)::numeric / NULLIF(sum(rcu.position_count), 0), 1)::float AS avg_position,
+			round(sum(rcu.position_sum)::numeric / NULLIF(sum(rcu.citations), 0), 1)::float AS avg_position,
 			count(DISTINCT rcu.prompt_id)::int AS prompt_count
 		FROM rollup_citation_urls rcu
 		JOIN cited_pages cp ON cp.id = rcu.page_id
@@ -503,7 +503,7 @@ export async function getPromptCitationUrlStats(
 			cp.domain AS domain,
 			cp.title AS title,
 			sum(rcu.citations)::int AS count,
-			round(sum(rcu.position_sum)::numeric / NULLIF(sum(rcu.position_count), 0), 1)::float AS avg_position,
+			round(sum(rcu.position_sum)::numeric / NULLIF(sum(rcu.citations), 0), 1)::float AS avg_position,
 			count(DISTINCT rcu.prompt_id)::int AS prompt_count
 		FROM rollup_citation_urls rcu
 		JOIN cited_pages cp ON cp.id = rcu.page_id
@@ -750,7 +750,7 @@ export async function getBrandMentionRateByModel(
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
 			${promptFilter(enabledPromptIds)}
-			${modelFilter(model, { source: "prompt_runs" })}
+			${modelFilter(model)}
 		GROUP BY model
 		ORDER BY runs DESC
 	`);
@@ -868,9 +868,10 @@ export interface PerPromptDailyCitationClassRow {
 	count: number;
 }
 
-// Classified through `cited_pages`, the same page rows the URL table reads, so a page
-// lands in the same category in the chart as in the table. `static_category` is
-// tenant-independent; callers apply the brand/competitor domain override on top.
+// The page's stored classification, so a day's breakdown needs no per-URL rows.
+// `static_category` is tenant-independent; callers apply the brand/competitor
+// domain override on top. The URL table classifies the same pages live, so the
+// two agree except while a classifier bump is still being reclassified.
 export async function getPerPromptDailyCitationClasses(
 	brandId: string,
 	fromDate: string,

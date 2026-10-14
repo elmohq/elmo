@@ -88,14 +88,10 @@ describe("aggregateCitationBucket", () => {
 		expect(pages[0].staticCategory).toBe("social");
 	});
 
-	it("counts positions only for citations that reported one", () => {
-		const { urls } = aggregateCitationBucket([
-			row({ citationIndex: 1 }),
-			row({ citationIndex: 3 }),
-			row({ citationIndex: null }),
-		]);
+	it("sums positions alongside the citation count", () => {
+		const { urls } = aggregateCitationBucket([row({ citationIndex: 1 }), row({ citationIndex: 3 })]);
 
-		expect(urls[0]).toMatchObject({ citations: 3, positionSum: 4, positionCount: 2 });
+		expect(urls[0]).toMatchObject({ citations: 2, positionSum: 4 });
 	});
 
 	it("stores a missing provider as the empty string", () => {

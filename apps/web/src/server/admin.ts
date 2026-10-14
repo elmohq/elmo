@@ -74,17 +74,13 @@ async function adminRows<T>(query: SQL): Promise<T[]> {
 	return result.rows as T[];
 }
 
-// Off the rollups rather than prompt_runs; `live` drops rows a deleted prompt
-// left behind, which the raw rows no longer have either.
-const live = sql`prompt_id IN (SELECT id FROM prompts)`;
-
 async function getAdminRunsOverTime(): Promise<AdminRunsOverTime[]> {
 	const rows = await adminRows<AdminRunsOverTime>(sql`
 		SELECT
 			(bucket AT TIME ZONE 'UTC')::date AS date,
 			sum(runs)::int AS count
 		FROM rollup_prompt_runs
-		WHERE bucket >= now() - interval '30 days' AND ${live}
+		WHERE bucket >= now() - interval '30 days'
 		GROUP BY date
 		ORDER BY date
 	`);
@@ -99,7 +95,6 @@ async function getAdminBrandRunStats(): Promise<AdminBrandRunStats[]> {
 			coalesce(sum(runs) FILTER (WHERE bucket >= now() - interval '30 days'), 0)::int AS runs_30d,
 			to_char(max(last_run_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_run_at
 		FROM rollup_prompt_runs
-		WHERE ${live}
 		GROUP BY brand_id
 	`);
 	return rows;
@@ -116,7 +111,7 @@ async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime
 				(bucket AT TIME ZONE 'UTC')::date + d AS target_date
 			FROM rollup_prompt_runs,
 				generate_series(0, 29) AS d
-			WHERE bucket >= now() - interval '60 days' AND ${live}
+			WHERE bucket >= now() - interval '60 days'
 		) expanded
 		WHERE target_date >= current_date - 30
 			AND target_date <= current_date

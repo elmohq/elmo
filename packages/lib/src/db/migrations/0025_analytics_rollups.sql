@@ -30,7 +30,6 @@ CREATE TABLE "rollup_citation_urls" (
 	"domain" text NOT NULL,
 	"citations" integer NOT NULL,
 	"position_sum" integer NOT NULL,
-	"position_count" integer NOT NULL,
 	CONSTRAINT "rollup_citation_urls_pk" PRIMARY KEY("brand_id","bucket","prompt_id","model","provider","web_search_enabled","page_id")
 );
 --> statement-breakpoint

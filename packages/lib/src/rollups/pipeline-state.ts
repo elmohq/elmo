@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { DbConnection } from "../db/db-connection";
 import { type PipelineState, pipelineState } from "../db/schema";
 
-export type PipelineStatePatch = Partial<Omit<PipelineState, "id">>;
+type PipelineStatePatch = Partial<Omit<PipelineState, "id">>;
 
 const SINGLETON_ID = 1;
 

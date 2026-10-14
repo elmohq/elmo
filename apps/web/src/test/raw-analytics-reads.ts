@@ -2,14 +2,13 @@
  * The analytics aggregates computed straight from `prompt_runs` and `citations`,
  * as a reference the rollup reads are checked against (the parity integration
  * tests and `scripts/compare-analytics-reads.ts`). Not used in production.
- *
- * Days here are the true local day of each run, so in a zone whose midnight
- * isn't on a bucket boundary a run in the first minutes of a day lands a day
- * later than the rollups put it.
  */
 
+import { parseModelFilter } from "@workspace/config/model-filter";
 import { type SQL, sql } from "drizzle-orm";
 import {
+	API_PROVIDER_IDS,
+	apiProviderList,
 	modelFilter,
 	promptFilter,
 	queryPg,
@@ -40,6 +39,18 @@ import type {
 	TopCompetitorMention,
 	VisibilityDailyAggregate,
 } from "@/lib/rollup-read";
+
+// `modelFilter` for raw citations, which don't record how their model was reached.
+function citationModelFilter(model?: string): SQL {
+	const target = model ? parseModelFilter(model) : null;
+	if (!target) return sql``;
+	if (API_PROVIDER_IDS.length === 0) return target.premium ? sql`AND FALSE` : sql`AND model = ${target.model}`;
+	const grounded = sql`EXISTS (
+		SELECT 1 FROM prompt_runs AS mf_run
+		WHERE mf_run.id = prompt_run_id AND mf_run.web_search_enabled AND mf_run.provider IN (${apiProviderList()})
+	)`;
+	return sql`AND model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
+}
 
 const dateFilter = (fromDate: string | null, toDate: string | null, timezone: string): SQL =>
 	windowFilter(sql`created_at`, fromDate, toDate, timezone);
@@ -242,7 +253,7 @@ export async function getCitationsTotalCount(
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptFilter(enabledPromptIds)}
-			${modelFilter(model, { source: "citations" })}
+			${citationModelFilter(model)}
 	`);
 	return Number(rows[0]?.total ?? 0);
 }
@@ -312,7 +323,7 @@ export async function getCitationDomainStats(
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptFilter(enabledPromptIds)}
-			${modelFilter(model, { source: "citations" })}
+			${citationModelFilter(model)}
 		GROUP BY domain
 		ORDER BY count DESC
 	`);
@@ -340,7 +351,7 @@ export async function getCitationUrlStats(
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptFilter(enabledPromptIds)}
-			${modelFilter(model, { source: "citations" })}
+			${citationModelFilter(model)}
 		GROUP BY url, domain
 		ORDER BY count DESC
 	`);
@@ -362,7 +373,7 @@ export async function getCitationDomainPromptCounts(
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptFilter(enabledPromptIds)}
-			${modelFilter(model, { source: "citations" })}
+			${citationModelFilter(model)}
 		GROUP BY domain
 	`);
 	return new Map(rows.map((row) => [row.domain, Number(row.prompt_count)]));
@@ -453,7 +464,7 @@ export async function getDailyCitationStats(
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptFilter(enabledPromptIds)}
-			${modelFilter(model, { source: "citations" })}
+			${citationModelFilter(model)}
 		GROUP BY date, domain
 		ORDER BY date
 	`);
@@ -480,7 +491,7 @@ export async function getPerPromptDailyCitationStats(
 			AND created_at >= ${windowStart(fromDate, timezone)}
 			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptFilter(enabledPromptIds)}
-			${modelFilter(model, { source: "citations" })}
+			${citationModelFilter(model)}
 		GROUP BY prompt_id, date, domain
 		ORDER BY prompt_id, date
 	`);
@@ -616,7 +627,7 @@ export async function getPerPromptCitationPages(
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptFilter(enabledPromptIds)}
-			${modelFilter(model, { source: "citations" })}
+			${citationModelFilter(model)}
 		GROUP BY prompt_id, url, domain
 		ORDER BY prompt_id, count DESC
 	`);
@@ -643,7 +654,7 @@ export async function getBrandMentionRateByModel(
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptFilter(enabledPromptIds)}
-			${modelFilter(model, { source: "prompt_runs" })}
+			${modelFilter(model)}
 		GROUP BY model
 		ORDER BY runs DESC
 	`);

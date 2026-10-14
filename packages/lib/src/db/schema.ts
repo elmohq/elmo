@@ -430,9 +430,8 @@ export const rollupCitationUrls = pgTable(
 		/** Denormalized from cited_pages so domain reads need no join. */
 		domain: text("domain").notNull(),
 		citations: integer("citations").notNull(),
-		/** Sum and count are kept apart so citations without a position do not skew the mean. */
+		/** Over `citations`, so the mean position can be re-aggregated across buckets. */
 		positionSum: integer("position_sum").notNull(),
-		positionCount: integer("position_count").notNull(),
 	},
 	(table) => [
 		primaryKey({
@@ -484,19 +483,6 @@ export const pipelineState = pgTable(
 	() => [check("pipeline_state_singleton", sql`id = 1`)],
 ).enableRLS();
 
-export type RollupPromptRun = typeof rollupPromptRuns.$inferSelect;
-export type NewRollupPromptRun = typeof rollupPromptRuns.$inferInsert;
-
-export type RollupCompetitorMention = typeof rollupCompetitorMentions.$inferSelect;
-export type NewRollupCompetitorMention = typeof rollupCompetitorMentions.$inferInsert;
-
 export type CitedPage = typeof citedPages.$inferSelect;
-export type NewCitedPage = typeof citedPages.$inferInsert;
-
-export type RollupCitationUrl = typeof rollupCitationUrls.$inferSelect;
-export type NewRollupCitationUrl = typeof rollupCitationUrls.$inferInsert;
-
-export type RollupDirty = typeof rollupDirty.$inferSelect;
-export type NewRollupDirty = typeof rollupDirty.$inferInsert;
 
 export type PipelineState = typeof pipelineState.$inferSelect;

@@ -55,28 +55,22 @@ export const API_PROVIDER_IDS = getAllProviders()
 
 // Providers are bound one parameter per id, not as an array: drizzle flattens a JS
 // array into a single text parameter, which `ANY(...)` can't compare element-wise.
-export function modelFilter(model?: string, opts?: { alias?: string; source?: "prompt_runs" | "citations" }): SQL {
+export function modelFilter(model?: string, opts?: { alias?: string }): SQL {
 	const target = model ? parseModelFilter(model) : null;
 	if (!target) return sql``;
 	const prefix = opts?.alias ? sql.raw(`${opts.alias}.`) : sql``;
 	if (API_PROVIDER_IDS.length === 0) {
 		return target.premium ? sql`AND FALSE` : sql`AND ${prefix}model = ${target.model}`;
 	}
-	const providers = sql.join(
+	const grounded = sql`(${prefix}web_search_enabled AND coalesce(${prefix}provider, '') IN (${apiProviderList()}))`;
+	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
+}
+
+export function apiProviderList(): SQL {
+	return sql.join(
 		API_PROVIDER_IDS.map((id) => sql`${id}`),
 		sql`, `,
 	);
-	// A citation doesn't record how its model was reached, so check via its run.
-	const grounded =
-		opts?.source === "citations"
-			? sql`EXISTS (
-					SELECT 1 FROM prompt_runs AS mf_run
-					WHERE mf_run.id = ${prefix}prompt_run_id
-						AND mf_run.web_search_enabled
-						AND mf_run.provider IN (${providers})
-				)`
-			: sql`(${prefix}web_search_enabled AND coalesce(${prefix}provider, '') IN (${providers}))`;
-	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
 }
 
 export function webSearchFilter(webSearchEnabled?: boolean): SQL {

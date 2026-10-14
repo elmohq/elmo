@@ -22,7 +22,7 @@ import {
 	resolvePageType,
 } from "./domain-categories";
 
-/** The row shape both callers read out of postgres-read. */
+/** The row shape both callers read out of rollup-read. */
 export interface CitationUrlRow {
 	url: string;
 	domain: string;

@@ -13,7 +13,7 @@ export interface CitationSourceRow {
 	url: string;
 	domain: string;
 	title: string | null;
-	citationIndex: number | null;
+	citationIndex: number;
 }
 
 export interface PageUpsert {
@@ -38,10 +38,9 @@ export interface UrlRollupRow {
 	domain: string;
 	citations: number;
 	positionSum: number;
-	positionCount: number;
 }
 
-export interface AggregatedCitations {
+interface AggregatedCitations {
 	pages: PageUpsert[];
 	urls: UrlRollupRow[];
 }
@@ -56,7 +55,7 @@ interface NormalizedRow {
 	url: string;
 	domain: string;
 	title: string | null;
-	citationIndex: number | null;
+	citationIndex: number;
 	createdAt: Date;
 }
 
@@ -64,7 +63,6 @@ interface UrlGroup {
 	row: NormalizedRow;
 	citations: number;
 	positionSum: number;
-	positionCount: number;
 }
 
 interface PageGroup {
@@ -118,12 +116,9 @@ function foldUrls(rows: NormalizedRow[]): Map<string, UrlGroup> {
 	const groups = new Map<string, UrlGroup>();
 	for (const row of rows) {
 		const key = `${rollupKey(row)}\u0000${row.url}`;
-		const group = groups.get(key) ?? { row, citations: 0, positionSum: 0, positionCount: 0 };
+		const group = groups.get(key) ?? { row, citations: 0, positionSum: 0 };
 		group.citations += 1;
-		if (row.citationIndex != null) {
-			group.positionSum += row.citationIndex;
-			group.positionCount += 1;
-		}
+		group.positionSum += row.citationIndex;
 		groups.set(key, group);
 	}
 	return groups;
@@ -166,7 +161,7 @@ function toPages(pages: Map<string, PageGroup>): PageUpsert[] {
 
 function toUrlRows(groups: Map<string, UrlGroup>): UrlRollupRow[] {
 	return Array.from(groups.values())
-		.map(({ row, citations, positionSum, positionCount }) => ({
+		.map(({ row, citations, positionSum }) => ({
 			brandId: row.brandId,
 			bucket: row.bucket,
 			promptId: row.promptId,
@@ -177,7 +172,6 @@ function toUrlRows(groups: Map<string, UrlGroup>): UrlRollupRow[] {
 			domain: row.domain,
 			citations,
 			positionSum,
-			positionCount,
 		}))
 		.sort((a, b) => compareRollupKeys(a, b) || compareStrings(a.url, b.url));
 }

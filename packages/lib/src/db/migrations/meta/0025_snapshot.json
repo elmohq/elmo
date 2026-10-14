@@ -1,5 +1,5 @@
 {
-  "id": "eabfe277-509d-4bd6-9611-7324f4f227a3",
+  "id": "1a22fc13-7aff-43de-8235-2101b4e0fca4",
   "prevId": "2ae39572-f793-4db5-8141-15f8ec04c361",
   "version": "7",
   "dialect": "postgresql",
@@ -1248,12 +1248,6 @@
         },
         "position_sum": {
           "name": "position_sum",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position_count": {
-          "name": "position_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": true

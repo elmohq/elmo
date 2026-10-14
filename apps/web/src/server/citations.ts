@@ -171,10 +171,7 @@ function promptCountsByUrl(urlStats: CitationUrlStats[]): Map<string, number> {
 
 /**
  * Per-day percentage trends over the window, smoothed per prompt so a
- * staggered cadence doesn't read as a gap. Rows are already at (prompt, day,
- * domain, category, page type) grain, so — unlike the per-URL rows this
- * replaced — there's no separate "whole-window canonical classification" to
- * look up: each row carries what it needs to classify itself.
+ * staggered cadence doesn't read as a gap.
  */
 function buildClassTimeSeries<K extends string>(args: {
 	rows: PerPromptDailyCitationClassRow[];
