@@ -1,5 +1,19 @@
 # @workspace/web
 
+## 0.4.6
+
+### Patch Changes
+
+- ee6d260: Add a Skill page under Docs that shows how to install the `aeo` skill for Claude Code, Cursor, Codex, and other agents.
+- 76efbc6: Support chat on Elmo Cloud now opens from a button in the header instead of a floating bubble that covered page controls.
+- 7b1f35c: Fixed alignment issue for the team invite email for users with a password manager.
+- @workspace/api-spec@0.4.6
+  - @workspace/config@0.4.6
+  - @workspace/deployment@0.4.6
+  - @workspace/lib@0.4.6
+  - @workspace/og@0.4.6
+  - @workspace/ui@0.4.6
+
 ## 0.4.5
 
 ### Patch Changes
