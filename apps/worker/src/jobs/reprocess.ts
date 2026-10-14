@@ -90,7 +90,13 @@ const staleFor = (layer: ReprocessLayer, target: AnalysisVersions): SQL =>
  * so the walk needs no cursor beyond "not before the last batch": runs sharing
  * its last timestamp are read again but only rewritten if still stale.
  */
-function loadStaleRuns(conn: DbConnection, pass: Pass, promptId: string, from: Date | null): Promise<StaleRun[]> {
+function loadStaleRuns(
+	conn: DbConnection,
+	pass: Pass,
+	promptId: string,
+	from: Date | null,
+	limit = BATCH_SIZE,
+): Promise<StaleRun[]> {
 	const needsRaw = pass.layers.includes("extraction")
 		? sql`${promptRuns.textContent} IS NULL OR ${staleFor("extraction", pass.target)}`
 		: sql`${promptRuns.textContent} IS NULL`;
@@ -115,7 +121,7 @@ function loadStaleRuns(conn: DbConnection, pass: Pass, promptId: string, from: D
 			),
 		)
 		.orderBy(asc(promptRuns.createdAt))
-		.limit(BATCH_SIZE);
+		.limit(limit);
 }
 
 async function replaceCitations(
@@ -269,6 +275,16 @@ export async function runReprocess(
 		})
 		.where(eq(brands.id, data.brandId));
 	console.log(`[reprocess] brand ${data.brandId} brought to ${JSON.stringify(target)}`);
+
+	// A run whose writer read the old config can commit after the walk passed its
+	// prompt. Checking after stamping misses it only if that write stayed open
+	// through the whole pass.
+	for (const { id } of brandPrompts) {
+		if ((await loadStaleRuns(conn, pass, id, null, 1)).length === 0) continue;
+		await sendReprocess(boss, data);
+		console.log(`[reprocess] brand ${data.brandId} has runs written mid-pass, going again`);
+		return;
+	}
 }
 
 /**
