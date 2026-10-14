@@ -168,6 +168,11 @@ async function insertCitationRollup(tx: DbConnection, brandId: string, from: Dat
 		JOIN ${citations} c ON c.prompt_run_id = pr.id
 		JOIN ${citedPages} cp ON cp.id = c.page_id
 		${inRange(brandId, from, toExclusive)}
+			-- citations has no run index; its copy of the run's brand and time (to the
+			-- millisecond) reaches the rows through (brand_id, created_at) instead.
+			AND c.brand_id = ${brandId}
+			AND c.created_at >= ${from}::timestamptz - interval '1 second'
+			AND c.created_at < ${toExclusive}::timestamptz + interval '1 second'
 		GROUP BY ${keyColumns}, c.page_id, cp.domain
 	`);
 	return result.rowCount ?? 0;
