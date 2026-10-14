@@ -208,6 +208,8 @@ export const citations = pgTable(
 			table.citationIndex,
 		),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
+		// Replay, run detail and rollup rebuilds all reach a run's citations by its id.
+		runIdx: index("citations_prompt_run_id_idx").on(table.promptRunId),
 		domainIdx: index("citations_domain_idx").on(table.domain),
 	}),
 ).enableRLS();
