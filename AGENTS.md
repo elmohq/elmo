@@ -55,6 +55,7 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 - Commit as you go: small, atomic commits that show real progress. Don't rewrite history (amend, rebase, force-push) to make it look tidy afterward.
 - Commit subjects are plain imperative sentences — no conventional-commit prefixes. Write `paginate top cited domains`, not `feat(web): paginate top cited domains`.
 - Don't bump package versions; releases go through Changesets.
+- Don't add coding-agent attribution (such as "Generated with …" lines or `Co-Authored-By` trailers) to commit messages or PR descriptions.
 
 ## Comments and docs
 
