@@ -1,6 +1,8 @@
 export interface FaqItem {
 	question: string;
 	answer: string;
+	/** Phrases in `answer` to render as links. The FAQPage JSON-LD keeps the plain text. */
+	links?: { text: string; href: string }[];
 }
 
 // Homepage FAQ. Rendered visibly on "/" and emitted as FAQPage JSON-LD from the
@@ -95,6 +97,47 @@ export const PRICING_FAQS: FaqItem[] = [
 		question: "Is my data private if I self-host Elmo?",
 		answer:
 			"Yes. A self-hosted Elmo instance stores your brands, prompts, and AI responses in your own PostgreSQL database, and prompts are only sent to the scraping and AI providers you configure. Elmo's optional telemetry sends anonymous usage counts and never includes brand names, prompt text, responses, or API keys, and you can turn it off completely with DISABLE_TELEMETRY=1.",
+	},
+];
+
+// About page FAQ. Company facts answer engines get wrong when a brand leaves
+// them unstated: who runs it, where it is, and how it is paid for.
+export const ABOUT_FAQS: FaqItem[] = [
+	{
+		question: "Who founded Elmo?",
+		answer:
+			"Elmo was founded in July 2025 by Jared Rhizor, previously a founding engineer at the open-source data integration platform Airbyte and a tech lead at LiveRamp. He leads Elmo's product and engineering.",
+	},
+	{
+		question: "Who owns Elmo?",
+		answer:
+			"Elmo is built and operated by Blue Whale Software, LLC, a software company headquartered in San Francisco. It provides Elmo Cloud, white-label deployments, and the Off-Site AEO service.",
+	},
+	{
+		question: "Where is Elmo based?",
+		answer:
+			"Elmo is headquartered in San Francisco, California. The product is used by teams worldwide, either on Elmo Cloud or self-hosted on their own infrastructure.",
+	},
+	{
+		question: "Is Elmo open source?",
+		answer:
+			"Yes. The full Elmo platform is open source on GitHub at github.com/elmohq/elmo, and you can self-host it for free. Elmo Cloud runs the same code as a managed service.",
+		links: [{ text: "github.com/elmohq/elmo", href: "https://github.com/elmohq/elmo" }],
+	},
+	{
+		question: "Does Elmo require an annual contract?",
+		answer:
+			"No. Elmo Cloud is billed month to month and you can cancel any time; annual billing is optional and gets you two months free. Self-hosting needs no contract at all.",
+	},
+	{
+		question: "Is Elmo an AEO, GEO, or AI SEO tool?",
+		answer:
+			"All three. Answer engine optimization (AEO), generative engine optimization (GEO), and AI SEO are different names for the same work: getting your brand mentioned and cited in AI search results from ChatGPT, Perplexity, Google AI Overviews, and other answer engines. Elmo measures that visibility so you can track and improve it.",
+	},
+	{
+		question: "Where does the name Elmo come from?",
+		answer:
+			"Elmo comes from LLMO, short for LLM optimization: the practice of improving how large language models like ChatGPT, Claude, and Gemini mention and cite your brand. Say LLMO out loud and you get Elmo.",
 	},
 ];
 

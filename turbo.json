@@ -76,6 +76,11 @@
       "dependsOn": ["^build", "check-types"],
       "outputs": [".output/**", ".vercel/output/**", "dist/**"]
     },
+    "@workspace/www#build": {
+      "dependsOn": ["^build", "check-types"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/skills/**"],
+      "outputs": [".output/**", ".vercel/output/**", "dist/**"]
+    },
     "@workspace/worker#build": {
       "dependsOn": ["^build"],
       "outputs": []

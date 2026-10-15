@@ -2,6 +2,8 @@
 name: add-competitor
 description: Add a new competitor to the AI Visibility Tool Directory — researches the tool, generates data, takes a screenshot, and inserts into the codebase
 argument-hint: <url>
+metadata:
+  internal: true
 ---
 
 Add a new competitor to the AI visibility tool directory at `apps/www/src/lib/competitors/data.ts`.

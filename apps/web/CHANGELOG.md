@@ -1,5 +1,73 @@
 # @workspace/web
 
+## 0.5.1
+
+### Patch Changes
+
+- 57653b2: Restore the category colors on citation badges.
+- @workspace/api-spec@0.5.1
+  - @workspace/config@0.5.1
+  - @workspace/deployment@0.5.1
+  - @workspace/lib@0.5.1
+  - @workspace/og@0.5.1
+  - @workspace/ui@0.5.1
+
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+### Patch Changes
+
+- f1daf53: Citation lists now show one title and page type per page whatever the date range, count each prompt citing a page once, and report exact average positions.
+- f1daf53: Fixed the overview counting runs from disabled prompts when a brand had no enabled prompts.
+- f1daf53: Fixed competitors that share a name being counted twice per response in share of voice and listed twice in prompt stats.
+- f1daf53: Fixed the per-model citation counts in the analytics API which would leave out citations from some runs with web search.
+- a55f182: Response search now matches only the answer text, not the provider's raw response data.
+- Analytics window boundaries are rounded to the quarter hour.
+- Updated dependencies [f1daf53]
+- Updated dependencies [a55f182]
+  - @workspace/lib@0.5.0
+  - @workspace/api-spec@0.5.0
+  - @workspace/deployment@0.5.0
+  - @workspace/config@0.5.0
+  - @workspace/og@0.5.0
+  - @workspace/ui@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- ee6d260: Add a Skill page under Docs that shows how to install the `aeo` skill for Claude Code, Cursor, Codex, and other agents.
+- 76efbc6: Support chat on Elmo Cloud now opens from a button in the header instead of a floating bubble that covered page controls.
+- 7b1f35c: Fixed alignment issue for the team invite email for users with a password manager.
+- @workspace/api-spec@0.4.6
+  - @workspace/config@0.4.6
+  - @workspace/deployment@0.4.6
+  - @workspace/lib@0.4.6
+  - @workspace/og@0.4.6
+  - @workspace/ui@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- dab250c: The "All time" range now covers a brand's whole history on every page, instead of stopping at the last 12 months or two years on some of them.
+- 4367820: The API Docs settings page now shows how to install and call the TypeScript and Python SDKs.
+- 8fffca1: Added start and end date pickers to the dashboard lookback filter, usable alone or together and kept in the shareable URL.
+- 365e583: Fixed date ranges outside UTC starting at the wrong hour, which pulled in or dropped runs from the edge of the first day.
+- 772574c: The prompts page can now suggest new prompts your brand doesn't track yet, added to your list for you to review before saving.
+- 1b027e3: Responses page paging now returns to the top, stays clear of the chat button, and shows when a search is still loading.
+- Updated dependencies [4ec5ac9]
+- Updated dependencies [9957eef]
+  - @workspace/lib@0.4.5
+  - @workspace/deployment@0.4.5
+  - @workspace/api-spec@0.4.5
+  - @workspace/config@0.4.5
+  - @workspace/og@0.4.5
+  - @workspace/ui@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

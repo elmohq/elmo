@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { extractTextContent } from "@workspace/lib/text-extraction";
+import { cn } from "@workspace/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
@@ -9,6 +9,7 @@ import { PromptsFilterDropdown } from "@/components/prompts-filter-dropdown";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
+import { useCrispChat } from "@/hooks/use-crisp-chat";
 import { joinTags, splitTags, useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useResponseSearch } from "@/hooks/use-responses";
@@ -30,6 +31,7 @@ function ResponsesPage() {
 	const { model, lookback, tags, search: query } = useListFilters();
 
 	const { data: brand } = useBrand(brandId);
+	const { launcher } = useCrispChat();
 	const { domainFor } = useSiteIcons(brandId);
 	const trackedTargets = brand?.trackedTargets ?? [];
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
@@ -86,17 +88,20 @@ function ResponsesPage() {
 		content = <EmptyState message={`No responses contain "${data.query}" in this period.`} />;
 	} else {
 		content = (
-			// Bottom padding keeps the pager clear of the floating support chat button.
 			<div
-				className={`space-y-4 pb-20 transition-opacity ${isPlaceholderData ? "opacity-50" : ""}`}
+				// Bottom padding keeps the pager clear of the floating support chat button.
+				className={cn(
+					"space-y-4 transition-opacity",
+					launcher === "floating" && "pb-20",
+					isPlaceholderData && "opacity-50",
+				)}
 				aria-busy={isPlaceholderData}
 			>
 				{data.matches.map((match) => (
 					<ResponseCard
 						key={match.id}
 						run={match}
-						// Older rows predate the provider column; the model name is the extractor's other accepted key.
-						text={extractTextContent(match.rawOutput, match.provider ?? match.model)}
+						text={match.textContent}
 						highlight={data.query ?? undefined}
 						prompt={
 							<BrandPromptLink

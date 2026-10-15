@@ -1,11 +1,16 @@
 import * as Sentry from "@sentry/node";
 import { getDeploymentFeatures } from "@workspace/deployment";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
+import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import type { Job, PgBoss } from "pg-boss";
 import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
+import { type RefreshRollupsData, refreshRollupsJob } from "./jobs/refresh-rollups";
+import { REPROCESS_QUEUE, type ReprocessData, reprocessJob } from "./jobs/reprocess";
+import { type RollupCatchUpData, rollupCatchUpJob } from "./jobs/rollup-catch-up";
 import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
+import { type SuggestPromptsData, type SuggestPromptsResult, suggestPromptsJob } from "./jobs/suggest-prompts";
 import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/sync-auth0-memberships";
 
 /**
@@ -55,12 +60,22 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 	);
 	console.log("Registered handler: analyze-brand");
 
+	await boss.work<SuggestPromptsData, SuggestPromptsResult>(
+		"suggest-prompts",
+		{ batchSize: 1, localConcurrency: 2 },
+		withSentry("suggest-prompts", suggestPromptsJob),
+	);
+	console.log("Registered handler: suggest-prompts");
+
 	await boss.work<ScheduleMaintenanceData>(
 		"schedule-maintenance",
 		{ localConcurrency: 1 },
 		withSentry("schedule-maintenance", scheduleMaintenanceJob),
 	);
 	console.log("Registered handler: schedule-maintenance");
+
+	await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
+	console.log(`Registered handler: ${REPROCESS_QUEUE}`);
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.work<SyncAuth0MembershipsData>(
@@ -70,4 +85,18 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		);
 		console.log("Registered handler: sync-auth0-memberships");
 	}
+
+	await boss.work<RefreshRollupsData>(
+		REFRESH_ROLLUPS_QUEUE,
+		{ localConcurrency: 1 },
+		withSentry(REFRESH_ROLLUPS_QUEUE, refreshRollupsJob),
+	);
+	console.log(`Registered handler: ${REFRESH_ROLLUPS_QUEUE}`);
+
+	await boss.work<RollupCatchUpData>(
+		ROLLUP_CATCH_UP_QUEUE,
+		{ localConcurrency: 1 },
+		withSentry(ROLLUP_CATCH_UP_QUEUE, rollupCatchUpJob),
+	);
+	console.log(`Registered handler: ${ROLLUP_CATCH_UP_QUEUE}`);
 }

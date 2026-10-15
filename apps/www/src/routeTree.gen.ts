@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as AnswerEngineOptimizationRouteImport } from './routes/answer-engine-optimization'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
@@ -52,8 +53,6 @@ import { Route as LegalIndexRouteImport } from './routes/legal/index'
 import { Route as LegalSplatRouteImport } from './routes/legal/$'
 import { Route as OffSiteAeoBookRouteImport } from './routes/off-site-aeo_.book'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
-import { Route as DotwellKnownAgentSkillsSplatRouteImport } from './routes/[.]well-known/agent-skills/$'
-import { Route as DotwellKnownAgentSkillsIndexDotjsonRouteImport } from './routes/[.]well-known/agent-skills/index[.]json'
 import { Route as AiVisibilityToolsAlternativesIndexRouteImport } from './routes/ai-visibility-tools/alternatives/index'
 import { Route as AiVisibilityToolsAlternativesSlugRouteImport } from './routes/ai-visibility-tools/alternatives/$slug'
 import { Route as AiVisibilityToolsCategoryIndexRouteImport } from './routes/ai-visibility-tools/category/index'
@@ -73,6 +72,11 @@ import { Route as ApiPlausibleJsScriptIndexRouteImport } from './routes/api/plau
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnswerEngineOptimizationRoute =
@@ -288,18 +292,6 @@ const OgStatusDotpngRoute = OgStatusDotpngRouteImport.update({
   path: '/og/status.png',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DotwellKnownAgentSkillsSplatRoute =
-  DotwellKnownAgentSkillsSplatRouteImport.update({
-    id: '/.well-known/agent-skills/$',
-    path: '/.well-known/agent-skills/$',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const DotwellKnownAgentSkillsIndexDotjsonRoute =
-  DotwellKnownAgentSkillsIndexDotjsonRouteImport.update({
-    id: '/.well-known/agent-skills/index.json',
-    path: '/.well-known/agent-skills/index.json',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AiVisibilityToolsAlternativesIndexRoute =
   AiVisibilityToolsAlternativesIndexRouteImport.update({
     id: '/ai-visibility-tools/alternatives/',
@@ -388,6 +380,7 @@ const ApiPlausibleJsScriptIndexRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
@@ -430,8 +423,6 @@ export interface FileRoutesByFullPath {
   '/docs/': typeof DocsIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
   '/legal/': typeof LegalIndexRoute
-  '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
-  '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -450,6 +441,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
@@ -492,8 +484,6 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsIndexRoute
   '/glossary': typeof GlossaryIndexRoute
   '/legal': typeof LegalIndexRoute
-  '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
-  '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -513,6 +503,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
@@ -555,8 +546,6 @@ export interface FileRoutesById {
   '/docs/': typeof DocsIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
   '/legal/': typeof LegalIndexRoute
-  '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
-  '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -577,6 +566,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
@@ -619,8 +609,6 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/glossary/'
     | '/legal/'
-    | '/.well-known/agent-skills/$'
-    | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -639,6 +627,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
@@ -681,8 +670,6 @@ export interface FileRouteTypes {
     | '/docs'
     | '/glossary'
     | '/legal'
-    | '/.well-known/agent-skills/$'
-    | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -701,6 +688,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/about'
     | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
@@ -743,8 +731,6 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/glossary/'
     | '/legal/'
-    | '/.well-known/agent-skills/$'
-    | '/.well-known/agent-skills/index.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -764,6 +750,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   AnswerEngineOptimizationRoute: typeof AnswerEngineOptimizationRoute
   BrandRoute: typeof BrandRoute
   ChangelogRoute: typeof ChangelogRoute
@@ -806,8 +793,6 @@ export interface RootRouteChildren {
   DocsIndexRoute: typeof DocsIndexRoute
   GlossaryIndexRoute: typeof GlossaryIndexRoute
   LegalIndexRoute: typeof LegalIndexRoute
-  DotwellKnownAgentSkillsSplatRoute: typeof DotwellKnownAgentSkillsSplatRoute
-  DotwellKnownAgentSkillsIndexDotjsonRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   AiVisibilityToolsAlternativesSlugRoute: typeof AiVisibilityToolsAlternativesSlugRoute
   AiVisibilityToolsCategorySlugRoute: typeof AiVisibilityToolsCategorySlugRoute
   AiVisibilityToolsCategoryOpenSourceRoute: typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -832,6 +817,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/answer-engine-optimization': {
@@ -1128,20 +1120,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OgStatusDotpngRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/agent-skills/$': {
-      id: '/.well-known/agent-skills/$'
-      path: '/.well-known/agent-skills/$'
-      fullPath: '/.well-known/agent-skills/$'
-      preLoaderRoute: typeof DotwellKnownAgentSkillsSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.well-known/agent-skills/index.json': {
-      id: '/.well-known/agent-skills/index.json'
-      path: '/.well-known/agent-skills/index.json'
-      fullPath: '/.well-known/agent-skills/index.json'
-      preLoaderRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/ai-visibility-tools/alternatives/': {
       id: '/ai-visibility-tools/alternatives/'
       path: '/ai-visibility-tools/alternatives'
@@ -1252,6 +1230,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   AnswerEngineOptimizationRoute: AnswerEngineOptimizationRoute,
   BrandRoute: BrandRoute,
   ChangelogRoute: ChangelogRoute,
@@ -1294,9 +1273,6 @@ const rootRouteChildren: RootRouteChildren = {
   DocsIndexRoute: DocsIndexRoute,
   GlossaryIndexRoute: GlossaryIndexRoute,
   LegalIndexRoute: LegalIndexRoute,
-  DotwellKnownAgentSkillsSplatRoute: DotwellKnownAgentSkillsSplatRoute,
-  DotwellKnownAgentSkillsIndexDotjsonRoute:
-    DotwellKnownAgentSkillsIndexDotjsonRoute,
   AiVisibilityToolsAlternativesSlugRoute:
     AiVisibilityToolsAlternativesSlugRoute,
   AiVisibilityToolsCategorySlugRoute: AiVisibilityToolsCategorySlugRoute,

@@ -83,7 +83,7 @@ const DEFAULT_LEDE =
  */
 export function Hero({
 	badge = GITHUB_BADGE,
-	title = "Win AI Search",
+	title = "The Open-Source AI Visibility Tracker",
 	lede = DEFAULT_LEDE,
 	selfHost = true,
 	from = "marketing-hero",

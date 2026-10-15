@@ -36,6 +36,21 @@ describe("analytics API query parsing", () => {
 		expect(() => parseAnalyticsWindow(new URL(`https://example.com?${empty}`))).toThrow("start must be before end");
 	});
 
+	it.each<[string, string, string, string]>([
+		["mid-bucket bounds", "2026-01-01T00:17:33Z", "2026-02-01T10:59:59.999Z", "2026-01-01T00:15:00.000Z"],
+		["the last quarter of the hour", "2026-01-01T00:47:00Z", "2026-02-01T10:59:59.999Z", "2026-01-01T00:45:00.000Z"],
+	])("floors %s down to the quarter hour the analytics are bucketed by", (_label, start, end, expectedStart) => {
+		const window = parseAnalyticsWindow(new URL(`https://example.com?start=${start}&end=${end}`));
+
+		expect(publicRange(window)).toEqual({ start: expectedStart, end: "2026-02-01T10:45:00.000Z" });
+	});
+
+	it("refuses a window that alignment collapses to nothing", () => {
+		expect(() =>
+			parseAnalyticsWindow(new URL("https://example.com?start=2026-01-01T10:05:00Z&end=2026-01-01T10:10:00Z")),
+		).toThrow("same quarter-hour bucket");
+	});
+
 	it("keeps the instant the caller sent, normalized to UTC", () => {
 		// An offset is what makes a timestamp self-describing: -05:00 midnight is
 		// 05:00 UTC, and the window has to land on that moment rather than on the

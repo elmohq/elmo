@@ -1,5 +1,5 @@
 import { getCredential } from "../../secrets";
-import { type Citation, cloroAnswer, extractCitationsFromCloro, extractTextFromCloro } from "../../text-extraction";
+import { type Citation, cloroAnswer, extractCitationsFromCloro } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ScrapeResult } from "../types";
 import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, responseError, sleep } from "./scrape-shared";
@@ -179,18 +179,15 @@ export const cloro: Provider = {
 		const response = await runAsyncTask(task.taskType, payload);
 		const answer = cloroAnswer(response) ?? {};
 
-		const textContent = extractTextFromCloro(response);
 		const citations: Citation[] = extractCitationsFromCloro(response);
 		const webQueries = queriesFromKeys(answer, CLORO_QUERY_KEYS);
 
 		return {
 			rawOutput: response,
-			textContent,
 			// Every Cloro surface web-searches, so surface the queries Cloro
 			// exposed, or mark them unavailable when citations prove a search
 			// happened but no query strings came back.
 			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
-			citations,
 			modelVersion: typeof answer.model === "string" ? answer.model : undefined,
 		};
 	},

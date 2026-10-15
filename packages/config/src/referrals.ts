@@ -35,6 +35,7 @@ export type ReferralSource =
 	| "marketing-profound-users-closing"
 	| "marketing-page-cta"
 	| "marketing-vision"
+	| "marketing-about"
 	| "marketing-support"
 	| "demo-chat"
 	| "marketing-plan-starter"

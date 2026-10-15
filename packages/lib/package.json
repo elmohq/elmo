@@ -1,12 +1,13 @@
 {
 	"name": "@workspace/lib",
-	"version": "0.4.4",
+	"version": "0.5.1",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
 		"check-types": "tsc --noEmit",
 		"codegen": "pnpm run generate:auth-schema",
-		"test": "vitest run",
+		"test": "vitest run --project=unit",
+		"test:integration": "vitest run --project=integration",
 		"compare:onboarding": "tsx scripts/compare-onboarding.ts",
 		"generate:auth-schema": "bash scripts/generate-auth-schema.sh",
 		"verify:membership-dedupe": "tsx scripts/verify-membership-dedupe.ts"
@@ -15,6 +16,7 @@
 		"./db/db": "./src/db/db.ts",
 		"./db/db-connection": "./src/db/db-connection.ts",
 		"./db/schema": "./src/db/schema.ts",
+		"./db/runs": "./src/db/runs.ts",
 		"./db/auth-sync": "./src/db/auth-sync.ts",
 		"./db/provisioning": "./src/db/provisioning.ts",
 		"./db/unique-names": "./src/db/unique-names.ts",
@@ -29,6 +31,7 @@
 		"./text-extraction": "./src/text-extraction.ts",
 		"./onboarding": "./src/onboarding/index.ts",
 		"./mentions": "./src/mentions.ts",
+		"./analysis-versions": "./src/analysis-versions.ts",
 		"./tag-utils": "./src/tag-utils.ts",
 		"./bulk-prompts": "./src/bulk-prompts.ts",
 		"./website-excerpt": "./src/website-excerpt.ts",
@@ -41,7 +44,13 @@
 		"./usage": "./src/usage/cost.ts",
 		"./citations/domain-categories": "./src/citations/domain-categories.ts",
 		"./citations/domain-lists": "./src/citations/domain-lists.ts",
-		"./citations/rollup": "./src/citations/rollup.ts"
+		"./citations/rollup": "./src/citations/rollup.ts",
+		"./citations/page-classification": "./src/citations/page-classification.ts",
+		"./rollups": "./src/rollups/index.ts",
+		"./rollups/constants": "./src/rollups/constants.ts",
+		"./rollups/dirty": "./src/rollups/dirty.ts",
+		"./rollups/citation-pages": "./src/rollups/citation-pages.ts",
+		"./rollups/fanout": "./src/rollups/fanout.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^4.0.71",

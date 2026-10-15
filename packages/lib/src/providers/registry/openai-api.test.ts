@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractRun } from "../../text-extraction";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } from "../config";
 
 const aiMock = vi.hoisted(() => ({ generateText: vi.fn() }));
@@ -9,6 +10,9 @@ vi.mock("ai", () => ({
 }));
 
 import { openaiApi } from "./openai-api";
+
+/** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
+const stored = (result: { rawOutput: unknown }) => extractRun(result.rawOutput, "openai-api");
 
 const CAP = API_PROVIDER_MAX_OUTPUT_TOKENS["openai-api"];
 
@@ -74,7 +78,7 @@ describe("openai-api citations", () => {
 
 		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
 
-		expect(res.citations).toEqual([
+		expect(stored(res).citations).toEqual([
 			{ url: "https://example.com/a", title: "A", domain: "example.com", citationIndex: 0 },
 		]);
 	});
@@ -112,8 +116,8 @@ describe("openai-api stored payload", () => {
 		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
 
 		expect(res.rawOutput).toBe(body);
-		expect(res.textContent).toBe("answer");
-		expect(res.citations.map((c) => c.url)).toEqual(["https://example.com/a"]);
+		expect(stored(res).textContent).toBe("answer");
+		expect(stored(res).citations.map((c) => c.url)).toEqual(["https://example.com/a"]);
 	});
 
 	it("rebuilds an answer-and-citations payload when the SDK reports no body", async () => {

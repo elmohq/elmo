@@ -1,5 +1,36 @@
 # @workspace/lib
 
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/config@0.5.1
+
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+### Patch Changes
+
+- a55f182: Editing a brand's name, aliases or competitors now updates mentions in past responses too, not only in new ones.
+- @workspace/config@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/config@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- 4ec5ac9: Prevent some types of deployments from failing while generating the auth schema.
+- 9957eef: Fixed brands and competitors with a blank alias or domain being counted as mentioned in every answer.
+- @workspace/config@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

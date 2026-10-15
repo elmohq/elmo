@@ -16,6 +16,7 @@ Elmo is Answer Engine Optimization (AEO), also called generative engine optimiza
 - [Features](https://www.elmohq.com/features): Visibility dashboard, per-prompt and per-model tracking, citation analysis, competitor intelligence, prompt management, response deep-dives, and long-term trends.
 - [Pricing](https://www.elmohq.com/pricing): Free and open source to self-host, managed cloud from $${CLOUD_ENTRY_PRICE_USD}/month, and white-label available for agencies.
 - [Live Demo](https://demo.elmohq.com): Explore a fully populated Elmo instance — no installation required.
+- [About](https://www.elmohq.com/about): Company facts, founder, pricing, contract terms, and how the team works.
 - [Vision](https://www.elmohq.com/vision): Why we believe AI visibility monitoring should be affordable, transparent, and built to last.
 
 ## Documentation

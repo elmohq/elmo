@@ -1,5 +1,47 @@
 # @workspace/worker
 
+## 0.5.1
+
+### Patch Changes
+
+- Improve rollup backfill speed.
+- @workspace/config@0.5.1
+  - @workspace/deployment@0.5.1
+  - @workspace/lib@0.5.1
+
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+### Patch Changes
+
+- a55f182: Editing a brand's name, aliases or competitors now updates mentions in past responses too, not only in new ones.
+- Updated dependencies [f1daf53]
+- Updated dependencies [a55f182]
+  - @workspace/lib@0.5.0
+  - @workspace/deployment@0.5.0
+  - @workspace/config@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/config@0.4.6
+  - @workspace/deployment@0.4.6
+  - @workspace/lib@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- Updated dependencies [4ec5ac9]
+- Updated dependencies [9957eef]
+  - @workspace/lib@0.4.5
+  - @workspace/deployment@0.4.5
+  - @workspace/config@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

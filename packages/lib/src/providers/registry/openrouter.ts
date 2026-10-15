@@ -27,24 +27,6 @@ function openrouterHeaders(): Record<string, string> {
 	};
 }
 
-/** The Responses-style shape, where text lives in `output[].content[].text`. */
-function responsesApiTexts(output: unknown): string[] {
-	if (!Array.isArray(output)) return [];
-	return output
-		.filter((item: any) => item?.type === "message")
-		.flatMap((msg: any) => msg.content ?? [])
-		.filter((c: any) => c?.type === "output_text" && c.text)
-		.map((c: any) => c.text as string);
-}
-
-function extractTextFromOpenRouterResponse(data: any): string {
-	const chatContent = data?.choices?.[0]?.message?.content;
-	if (chatContent) return chatContent;
-
-	const texts = responsesApiTexts(data?.output);
-	return texts.length > 0 ? texts.join("\n") : "No text content found in OpenRouter response.";
-}
-
 function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 	const citations: Citation[] = [];
 	let idx = 0;
@@ -163,10 +145,8 @@ export const openrouter: Provider = {
 
 		return {
 			rawOutput: data,
-			textContent: extractTextFromOpenRouterResponse(data),
 			// OpenRouter doesn't expose the search queries the model made internally.
 			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
-			citations,
 			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
 		};
 	},
