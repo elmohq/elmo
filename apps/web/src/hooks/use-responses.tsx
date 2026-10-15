@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
+import type { ResponseSort, ToneFilter } from "@/lib/tone";
 import { searchResponsesFn } from "@/server/responses";
 
 export interface ResponseSearchFilters {
@@ -9,6 +10,8 @@ export interface ResponseSearchFilters {
 	model?: string;
 	tags?: string[];
 	promptIds?: string[];
+	sentiment?: ToneFilter;
+	sort?: ResponseSort;
 	page?: number;
 }
 
@@ -31,6 +34,8 @@ export function useResponseSearch(brandId?: string, filters?: ResponseSearchFilt
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
 					prompts: filters?.promptIds?.length ? filters.promptIds.join(",") : undefined,
+					sentiment: filters?.sentiment,
+					sort: filters?.sort ?? "newest",
 					page: filters?.page ?? 0,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

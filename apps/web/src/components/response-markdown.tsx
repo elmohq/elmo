@@ -1,6 +1,6 @@
 import ReactMarkdown, { type Components, defaultUrlTransform, type UrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { HIGHLIGHT_CLASS, rehypeHighlight } from "@/lib/highlight";
+import { HIGHLIGHT_CLASS, type MarkRange, rehypeHighlight, rehypeMarkRange } from "@/lib/highlight";
 
 /**
  * Engines inline their source favicons as `data:image/…` payloads, which the
@@ -19,7 +19,7 @@ const urlTransform: UrlTransform = (url, key, node) => {
 };
 
 const components: Components = {
-	mark: ({ children }) => <mark className={HIGHLIGHT_CLASS}>{children}</mark>,
+	mark: ({ className, children }) => <mark className={className ?? HIGHLIGHT_CLASS}>{children}</mark>,
 	// Answers link out to their sources, so a plain click would navigate the
 	// dashboard away to a third-party page.
 	a: ({ href, children }) => (
@@ -55,12 +55,24 @@ const components: Components = {
  * GFM is what makes this readable: engines answer comparison prompts with pipe
  * tables, and CommonMark alone leaves those as a wall of literal `|`.
  */
-export function ResponseMarkdown({ children, highlight }: { children: string; highlight?: string }) {
+export function ResponseMarkdown({
+	children,
+	highlight,
+	markRange,
+}: {
+	children: string;
+	highlight?: string;
+	/** A span of `children` to mark, such as the passage a mention verdict rests on. */
+	markRange?: MarkRange;
+}) {
 	return (
 		<div className="prose prose-sm dark:prose-invert max-w-none break-words">
 			<ReactMarkdown
 				remarkPlugins={[remarkGfm]}
-				rehypePlugins={highlight ? [rehypeHighlight(highlight)] : []}
+				rehypePlugins={[
+					...(markRange ? [rehypeMarkRange(markRange)] : []),
+					...(highlight ? [rehypeHighlight(highlight)] : []),
+				]}
 				components={components}
 				urlTransform={urlTransform}
 			>

@@ -36,6 +36,8 @@ import {
 } from "@/lib/rollup-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { responseSortSchema, toneFilterSchema } from "@/lib/tone";
+import { responseOrder, toneBucket, toneCondition, toToneCounts } from "@/lib/tone-sql";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
@@ -388,6 +390,8 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		};
 	});
 
+const RUN_TONE = { mentioned: sql`${runMentions.brandMentioned}`, assessments: sql`${runMentions.assessments}` };
+
 /**
  * Get paginated prompt runs
  */
@@ -398,6 +402,8 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 			page: z.number().optional().default(1),
 			limit: z.number().optional().default(10),
 			lookback: lookbackSchema.default("1w"),
+			sentiment: toneFilterSchema.optional(),
+			sort: responseSortSchema.default("newest"),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -418,17 +424,22 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 
 		const offset = (data.page - 1) * data.limit;
 
-		const [runs, totalResult] = await Promise.all([
+		const inScope = and(eq(promptRuns.promptId, data.promptId), timeCondition);
+		const [runs, buckets] = await Promise.all([
 			selectRuns(db)
-				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition))
-				.orderBy(desc(promptRuns.createdAt))
+				.where(and(inScope, toneCondition(RUN_TONE, data.sentiment)))
+				.orderBy(responseOrder(RUN_TONE, data.sort, sql`${promptRuns.createdAt}`, sql`${promptRuns.id}`))
 				.limit(data.limit)
 				.offset(offset),
 			db
-				.select({ count: count() })
+				.select({ bucket: sql<string | null>`${toneBucket(RUN_TONE)}`, runs: sql<number>`count(*)::int` })
 				.from(promptRuns)
-				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
+				.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id))
+				.where(inScope)
+				.groupBy(sql`1`),
 		]);
+		const toneCounts = toToneCounts(buckets);
+		const total = data.sentiment ? toneCounts[data.sentiment] : toneCounts.all;
 
 		const raw = await loadRawOutputs(
 			db,
@@ -444,10 +455,12 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 				// Evidence offsets index the stored text, so they mean nothing against re-extracted text.
 				mentionAssessments: r.textContent === null ? null : r.mentionAssessments,
 			})),
-			total: totalResult[0]?.count || 0,
+			total,
+			/** This prompt's runs in the window by tone, before the sentiment filter narrows them. */
+			toneCounts,
 			page: data.page,
 			limit: data.limit,
-			hasMore: offset + runs.length < (totalResult[0]?.count || 0),
+			hasMore: offset + runs.length < total,
 		};
 	});
 

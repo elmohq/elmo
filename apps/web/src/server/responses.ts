@@ -3,8 +3,9 @@ import { extractTextContent } from "@workspace/lib/text-extraction";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
-import { getResponseMatches, type ResponseSearchScope } from "@/lib/postgres-read";
+import { getResponseMatches, getResponseToneCounts, type ResponseSearchScope } from "@/lib/postgres-read";
 import { getMentionTotals } from "@/lib/rollup-read";
+import { responseSortSchema, toneFilterSchema } from "@/lib/tone";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -20,6 +21,8 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			tags: z.string().optional(),
 			/** Comma-joined prompt IDs; absent means every prompt. */
 			prompts: z.string().optional(),
+			sentiment: toneFilterSchema.optional(),
+			sort: responseSortSchema.default("newest"),
 			page: z.number().int().min(0).default(0),
 			timezone: z.string().default("UTC"),
 		}),
@@ -44,15 +47,18 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			query,
 		};
 
-		const [totals, rows] = await Promise.all([
+		const [totals, toneCounts, rows] = await Promise.all([
 			getMentionTotals(scope),
-			getResponseMatches(scope, PAGE_SIZE, data.page * PAGE_SIZE),
+			getResponseToneCounts(scope),
+			getResponseMatches({ ...scope, tone: data.sentiment }, PAGE_SIZE, data.page * PAGE_SIZE, data.sort),
 		]);
 
 		return {
 			query: query ?? null,
 			totalRuns: totals.runs,
 			matchedRuns: rows[0]?.matched ?? 0,
+			/** The search's matches by tone, before the sentiment filter narrows them. */
+			toneCounts,
 			pageSize: PAGE_SIZE,
 			matches: rows.map((row) => ({
 				id: row.id,

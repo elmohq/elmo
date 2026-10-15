@@ -3,7 +3,7 @@
  * Aggregates, query fan-out included, come from the rollups in `rollup-read.ts`.
  */
 
-import type { RunMentionAssessments } from "@workspace/lib/mentions";
+import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/lib/mentions";
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type AnalyticsScope,
@@ -14,6 +14,10 @@ import {
 	windowFilter,
 } from "@/lib/analytics-sql";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
+import type { ResponseSort, Tone, ToneCounts, ToneFilter } from "@/lib/tone";
+import { brandTone, responseOrder, toneBucket, toneColumns, toneCondition, toToneCounts } from "@/lib/tone-sql";
+
+const RM = toneColumns("rm");
 
 const dateFilter = (fromDate: string | null, toDate: string | null, timezone: string): SQL =>
 	windowFilter(sql`created_at`, fromDate, toDate, timezone);
@@ -124,7 +128,7 @@ export async function countPromptRuns(
 // ============================================================================
 
 /** Runs a response search covers. Without a `query` every run in scope matches. */
-export type ResponseSearchScope = PromptListScope & { query?: string };
+export type ResponseSearchScope = PromptListScope & { query?: string; tone?: ToneFilter };
 
 export interface ResponseMatchRow {
 	id: string;
@@ -154,6 +158,7 @@ export async function getResponseMatches(
 	scope: ResponseSearchScope,
 	limit: number,
 	offset: number,
+	sort?: ResponseSort,
 ): Promise<ResponseMatchRow[]> {
 	if (scope.promptIds.length === 0) return [];
 	return queryPg<ResponseMatchRow>(sql`
@@ -175,7 +180,76 @@ export async function getResponseMatches(
 		JOIN run_mentions rm ON rm.run_id = pr.id
 		JOIN run_extractions re ON re.run_id = pr.id
 		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
-		ORDER BY pr.created_at DESC, pr.id
+			AND ${toneCondition(RM, scope.tone)}
+		ORDER BY ${responseOrder(RM, sort, sql`pr.created_at`, sql`pr.id`)}
 		LIMIT ${limit} OFFSET ${offset}
+	`);
+}
+
+/** How the search's matches split by tone, before any tone filter. */
+export async function getResponseToneCounts(scope: ResponseSearchScope): Promise<ToneCounts> {
+	if (scope.promptIds.length === 0) return toToneCounts([]);
+	const rows = await queryPg<{ bucket: string | null; runs: number }>(sql`
+		SELECT ${toneBucket(RM)} AS bucket, count(*)::int AS runs
+		FROM prompt_runs pr
+		JOIN run_mentions rm ON rm.run_id = pr.id
+		JOIN run_extractions re ON re.run_id = pr.id
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
+		GROUP BY 1
+	`);
+	return toToneCounts(rows);
+}
+
+// ============================================================================
+// Sentiment quotes
+// ============================================================================
+
+export interface SentimentQuoteRow {
+	id: string;
+	prompt_id: string;
+	model: string;
+	created_at: string;
+	brand: MentionAssessmentRecord;
+	text_content: string;
+}
+
+/**
+ * The verdicts in `tones` the judge was surest of, one per prompt so a prompt that runs daily
+ * doesn't fill the list with the same answer. Stronger tones in `tones` order come first.
+ */
+export async function getSentimentQuotes(
+	scope: PromptListScope,
+	tones: readonly Tone[],
+	limit: number,
+): Promise<SentimentQuoteRow[]> {
+	if (scope.promptIds.length === 0 || tones.length === 0) return [];
+	const tone = brandTone(RM);
+	const confidence = sql`COALESCE((rm.assessments->'brand'->'sentimentProbabilities'->>(rm.assessments->'brand'->>'sentiment'))::float8, 0)`;
+	const rank = sql`array_position(ARRAY[${sql.join(
+		tones.map((t) => sql`${t}`),
+		sql`, `,
+	)}]::text[], ${tone})`;
+	return queryPg<SentimentQuoteRow>(sql`
+		SELECT id, prompt_id, model, created_at, brand, text_content FROM (
+			SELECT DISTINCT ON (pr.prompt_id)
+				pr.id::text AS id,
+				pr.prompt_id::text AS prompt_id,
+				pr.model,
+				pr.created_at,
+				rm.assessments->'brand' AS brand,
+				re.text_content,
+				${rank} AS rank,
+				${confidence} AS confidence
+			FROM prompt_runs pr
+			JOIN run_mentions rm ON rm.run_id = pr.id
+			JOIN run_extractions re ON re.run_id = pr.id
+			WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
+				AND ${rank} IS NOT NULL
+				AND re.text_content IS NOT NULL
+				AND rm.assessments->'brand' ? 'evidence'
+			ORDER BY pr.prompt_id, rank, confidence DESC, pr.created_at DESC
+		) best
+		ORDER BY rank, confidence DESC, created_at DESC
+		LIMIT ${limit}
 	`);
 }

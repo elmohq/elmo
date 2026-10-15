@@ -3,12 +3,14 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import type { ReactNode } from "react";
+import { cn } from "@workspace/ui/lib/utils";
+import { type ReactNode, useState } from "react";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
-import { evidencePassage } from "@/lib/evidence";
-import { HIGHLIGHT_CLASS, splitHighlights } from "@/lib/highlight";
+import { evidenceRange } from "@/lib/evidence";
+import { HIGHLIGHT_CLASS, type MarkRange, splitHighlights } from "@/lib/highlight";
 import { skeletonRows } from "@/lib/skeleton-rows";
+import { isTone, TONE_STYLES } from "@/lib/tone";
 import { getModelDisplayName } from "@/lib/utils";
 
 export interface ResponseCardRun {
@@ -43,6 +45,9 @@ export function ResponseCard({
 	brandName?: string;
 	domainFor: (name: string) => string | undefined;
 }) {
+	const [selected, setSelected] = useState<string | null>(null);
+	const companies = mentionedCompanies(run, brandName);
+	const markRange = passageMark(text, companies.find((c) => c.name === selected)?.record);
 	return (
 		<Card>
 			<CardHeader className="pb-0 gap-y-0">
@@ -84,15 +89,21 @@ export function ResponseCard({
 
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
-					<MentionedBrands run={run} brandName={brandName} domainFor={domainFor} />
+					<MentionedBrands
+						companies={companies}
+						text={text}
+						selected={selected}
+						onSelect={setSelected}
+						domainFor={domainFor}
+					/>
 				</div>
-
-				<MentionEvidence assessments={run.mentionAssessments} text={text} brandName={brandName} />
 
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
 					<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
-						<ResponseMarkdown highlight={highlight}>{text}</ResponseMarkdown>
+						<ResponseMarkdown highlight={highlight} markRange={markRange}>
+							{text}
+						</ResponseMarkdown>
 					</div>
 				</div>
 
@@ -113,48 +124,22 @@ export function ResponseCard({
 	);
 }
 
-/** Each company the answer counts as mentioning, with its position among them when the judge ranked it. */
-function MentionedBrands({
-	run,
-	brandName,
-	domainFor,
-}: {
-	run: ResponseCardRun;
-	brandName?: string;
-	domainFor: (name: string) => string | undefined;
-}) {
-	const competitors = [...new Set<string>(run.competitorsMentioned ?? [])];
-	if (!run.brandMentioned && competitors.length === 0) {
-		return <span className="text-xs text-muted-foreground">None</span>;
-	}
-	const positions = run.mentionAssessments;
-	return (
-		<div className="flex flex-wrap gap-1.5">
-			{run.brandMentioned && brandName && (
-				<Badge className="text-xs font-normal">
-					<SiteIcon domain={domainFor(brandName)} size="xs" />
-					{brandName}
-					<Position value={positions?.brand?.position} />
-				</Badge>
-			)}
-			{competitors.map((competitor) => (
-				<Badge key={competitor} variant="outline" className="text-xs font-normal">
-					<SiteIcon domain={domainFor(competitor)} size="xs" />
-					{competitor}
-					<Position value={positions?.competitors?.[competitor]?.position} />
-				</Badge>
-			))}
-		</div>
-	);
+interface MentionedCompany {
+	name: string;
+	isBrand: boolean;
+	record?: MentionAssessmentRecord;
 }
 
-function Position({ value }: { value?: number }) {
-	if (value === undefined) return null;
-	return (
-		<span className="opacity-60 tabular-nums" title={`Named ${ordinal(value)} among the tracked companies`}>
-			#{value}
-		</span>
-	);
+/** Each company the answer counts as mentioning: the brand first, then competitors as the answer names them. */
+function mentionedCompanies(run: ResponseCardRun, brandName?: string): MentionedCompany[] {
+	const companies: MentionedCompany[] = [];
+	if (run.brandMentioned && brandName) {
+		companies.push({ name: brandName, isBrand: true, record: run.mentionAssessments?.brand });
+	}
+	for (const name of new Set(run.competitorsMentioned ?? [])) {
+		companies.push({ name, isBrand: false, record: run.mentionAssessments?.competitors?.[name] });
+	}
+	return companies;
 }
 
 const ordinal = (n: number) => {
@@ -162,70 +147,78 @@ const ordinal = (n: number) => {
 	return `${n}${suffix}`;
 };
 
-const REASONS: Record<string, string> = {
-	other_meaning: "the name is used in another sense",
-	other_company: "a different company with the same name",
-	no_info: "the answer says it has no information about it",
-};
-
-const SENTIMENTS: Record<string, string> = {
-	positive: "Positive",
-	neutral: "Neutral",
-	negative: "Negative",
-	mixed: "Mixed",
-	uncertain: "Unclear sentiment",
-};
-
-function verdictLabel(record: MentionAssessmentRecord): string {
-	if (record.mention === "uncertain") return "Unsure whether this is a mention; counted";
-	if (record.mention === "not_mentioned") return `Not counted: ${REASONS[record.reason ?? ""] ?? "not about it"}`;
-	return record.sentiment ? SENTIMENTS[record.sentiment] : "Mentioned";
+function badgeTip(company: MentionedCompany, canShow: boolean): string {
+	const parts: string[] = [];
+	if (company.record?.position) parts.push(`Named ${ordinal(company.record.position)} among the tracked companies.`);
+	if (company.record?.mention === "uncertain") parts.push("Unsure whether this is a mention; counted.");
+	if (canShow) parts.push("Click to mark the passage this rests on.");
+	return parts.join(" ");
 }
 
 /**
- * The passage each verdict rests on: always the brand's, and a competitor's when it wasn't a
- * plain mention, since those are the calls worth checking.
+ * A badge per company with its position and the answer's tone toward it. Clicking one marks the
+ * passage its verdict rests on in the answer below; clicking it again clears the mark.
  */
-function MentionEvidence({
-	assessments,
+function MentionedBrands({
+	companies,
 	text,
-	brandName,
+	selected,
+	onSelect,
+	domainFor,
 }: {
-	assessments?: RunMentionAssessments | null;
+	companies: MentionedCompany[];
 	text: string;
-	brandName?: string;
+	selected: string | null;
+	onSelect: (name: string | null) => void;
+	domainFor: (name: string) => string | undefined;
 }) {
-	const entries: { key: string; name: string; record: MentionAssessmentRecord }[] = [];
-	if (assessments?.brand) entries.push({ key: "brand", name: brandName ?? "Your brand", record: assessments.brand });
-	for (const [name, record] of Object.entries(assessments?.competitors ?? {})) {
-		if (record.mention !== "mentioned") entries.push({ key: `competitor:${name}`, name, record });
-	}
-	const shown = entries.flatMap((entry) => {
-		const passage = evidencePassage(text, entry.record);
-		return passage ? [{ ...entry, passage }] : [];
-	});
-	if (shown.length === 0) return null;
+	if (companies.length === 0) return <span className="text-xs text-muted-foreground">None</span>;
 	return (
-		<div>
-			<span className="text-xs text-muted-foreground block mb-1.5">Evidence</span>
-			<div className="space-y-2">
-				{shown.map(({ key, name, record, passage }) => (
-					<figure key={key} className="rounded-md border p-3 text-sm space-y-1.5">
-						<figcaption className="flex flex-wrap items-center gap-1.5 text-xs">
-							<span className="font-medium">{name}</span>
-							<Badge variant={record.mention === "uncertain" ? "secondary" : "outline"} className="text-xs font-normal">
-								{verdictLabel(record)}
-							</Badge>
-						</figcaption>
-						<blockquote className="border-l-2 pl-3 text-muted-foreground">
-							{/* Passages are cut from the stored answer, which is markdown. */}
-							<ResponseMarkdown>{passage}</ResponseMarkdown>
-						</blockquote>
-					</figure>
-				))}
-			</div>
+		<div className="flex flex-wrap items-center gap-1.5">
+			{companies.map((company) => {
+				const tone = isTone(company.record?.sentiment) ? company.record.sentiment : undefined;
+				const canShow = company.record ? evidenceRange(text, company.record) !== null : false;
+				const active = selected === company.name;
+				const tip = badgeTip(company, canShow);
+				return (
+					<button
+						key={company.name}
+						type="button"
+						disabled={!canShow}
+						aria-pressed={canShow ? active : undefined}
+						title={tip || undefined}
+						onClick={() => onSelect(active ? null : company.name)}
+						className={cn(
+							"inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors",
+							company.isBrand && "border-foreground/30 font-medium",
+							canShow && "cursor-pointer hover:bg-muted/60",
+							active && tone && cn("border-transparent", TONE_STYLES[tone].soft),
+							active && !tone && "border-transparent bg-muted",
+						)}
+					>
+						<SiteIcon domain={domainFor(company.name)} size="xs" />
+						{company.name}
+						{company.record?.position !== undefined && (
+							<span className="tabular-nums text-muted-foreground">#{company.record.position}</span>
+						)}
+						{tone && (
+							<>
+								<span className="h-3 w-px bg-border" />
+								<span className={cn("font-medium", TONE_STYLES[tone].text)}>{TONE_STYLES[tone].label}</span>
+							</>
+						)}
+					</button>
+				);
+			})}
 		</div>
 	);
+}
+
+function passageMark(text: string, record?: MentionAssessmentRecord): MarkRange | undefined {
+	const range = record ? evidenceRange(text, record) : null;
+	if (!range) return undefined;
+	const tone = isTone(record?.sentiment) ? record.sentiment : undefined;
+	return { ...range, className: cn("rounded-sm px-0.5 text-inherit", tone ? TONE_STYLES[tone].soft : "bg-muted") };
 }
 
 function Highlighted({ text, term }: { text: string; term?: string }) {

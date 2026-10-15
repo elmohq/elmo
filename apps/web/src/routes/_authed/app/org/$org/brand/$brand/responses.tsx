@@ -7,6 +7,7 @@ import { ListPagination } from "@/components/list-pagination";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { PromptsFilterDropdown } from "@/components/prompts-filter-dropdown";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
+import { ToneFilterCard } from "@/components/tone-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { useCrispChat } from "@/hooks/use-crisp-chat";
@@ -15,16 +16,26 @@ import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useResponseSearch } from "@/hooks/use-responses";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { pageHead } from "@/lib/route-head";
+import { type ResponseSort, responseSortSchema, type ToneFilter, toneFilterSchema } from "@/lib/tone";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/responses")({
 	staticData: { crumb: "Responses" },
 	// Comma-joined IDs, like `tags`, so a filtered view stays linkable.
-	validateSearch: (search: Record<string, unknown>): { prompts?: string } => ({
+	validateSearch: (search: Record<string, unknown>): ResponsesSearch => ({
 		prompts: typeof search.prompts === "string" && search.prompts ? search.prompts : undefined,
+		sentiment: toneFilterSchema.safeParse(search.sentiment).data,
+		sort: responseSortSchema.exclude(["newest"]).safeParse(search.sort).data,
 	}),
 	head: pageHead({ description: "Read and search every AI answer to your prompts." }),
 	component: ResponsesPage,
 });
+
+interface ResponsesSearch {
+	prompts?: string;
+	sentiment?: ToneFilter;
+	/** Absent means newest first. */
+	sort?: Exclude<ResponseSort, "newest">;
+}
 
 function ResponsesPage() {
 	const brandId = useBrandId();
@@ -49,8 +60,10 @@ function ResponsesPage() {
 			resetScroll: false,
 		});
 
+	const { sentiment, sort, setSentiment, setSort } = useToneSearch();
+
 	// A new search starts from its first page.
-	const filterKey = JSON.stringify([query, lookback, modelParam, tags, promptIds]);
+	const filterKey = JSON.stringify([query, lookback, modelParam, tags, promptIds, sentiment, sort]);
 	const [paging, setPaging] = useState({ filterKey, page: 0 });
 	const page = paging.filterKey === filterKey ? paging.page : 0;
 	const setPage = (next: number) => {
@@ -65,6 +78,8 @@ function ResponsesPage() {
 		model: modelParam,
 		tags,
 		promptIds,
+		sentiment,
+		sort,
 		page,
 	});
 
@@ -75,17 +90,12 @@ function ResponsesPage() {
 		</p>
 	);
 
+	const empty = emptyMessage(data, error);
 	let content: React.ReactNode;
 	if (isLoading && !data) {
 		content = <ResponseCardSkeletons count={3} />;
-	} else if (error && !data) {
-		content = <EmptyState message="Couldn't load responses right now. Reload the page to try again." />;
-	} else if (!data || data.totalRuns === 0) {
-		content = (
-			<EmptyState message="No responses for the selected filters yet. Responses appear once your prompts have been run." />
-		);
-	} else if (data.matches.length === 0) {
-		content = <EmptyState message={`No responses contain "${data.query}" in this period.`} />;
+	} else if (empty || !data) {
+		content = <EmptyState message={empty ?? ""} />;
 	} else {
 		content = (
 			<div
@@ -142,9 +152,47 @@ function ResponsesPage() {
 					searching={isPlaceholderData}
 				/>
 			</FilterSection>
+			{data && data.totalRuns > 0 && (
+				<ToneFilterCard
+					counts={data.toneCounts}
+					value={sentiment}
+					onChange={setSentiment}
+					sort={sort}
+					onSortChange={setSort}
+				/>
+			)}
 			{content}
 		</PageHeader>
 	);
+}
+
+/** The sentiment filter and sort, kept in the URL so a filtered list can be linked to. */
+function useToneSearch() {
+	const navigate = Route.useNavigate();
+	const sentiment = Route.useSearch({ select: (s) => s.sentiment });
+	const sort: ResponseSort = Route.useSearch({ select: (s) => s.sort }) ?? "newest";
+	const update = (patch: Partial<ResponsesSearch>) =>
+		navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true, resetScroll: false });
+	return {
+		sentiment,
+		sort,
+		setSentiment: (next: ToneFilter | undefined) => update({ sentiment: next }),
+		setSort: (next: ResponseSort) => update({ sort: next === "newest" ? undefined : next }),
+	};
+}
+
+function emptyMessage(
+	data: { totalRuns: number; matches: unknown[]; query: string | null } | undefined,
+	error: unknown,
+): string | null {
+	if (error && !data) return "Couldn't load responses right now. Reload the page to try again.";
+	if (!data || data.totalRuns === 0) {
+		return "No responses for the selected filters yet. Responses appear once your prompts have been run.";
+	}
+	if (data.matches.length > 0) return null;
+	return data.query
+		? `No responses contain "${data.query}" in this period.`
+		: "No responses match the selected filters in this period.";
 }
 
 function EmptyState({ message }: { message: string }) {

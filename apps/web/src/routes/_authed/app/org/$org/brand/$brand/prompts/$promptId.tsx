@@ -20,6 +20,7 @@ import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selec
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SiteIcon } from "@/components/site-icon";
+import { ToneFilterCard } from "@/components/tone-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
@@ -31,6 +32,7 @@ import { promptKeywords } from "@/lib/fanout-analysis";
 import { PROMPT_DETAIL_TABS, type PromptDetailTab } from "@/lib/prompt-detail-tabs";
 import { pageHead } from "@/lib/route-head";
 import { skeletonRows } from "@/lib/skeleton-rows";
+import type { ResponseSort, ToneCounts, ToneFilter } from "@/lib/tone";
 import { getModelDisplayName } from "@/lib/utils";
 import { getPromptMetadataFn } from "@/server/prompts";
 
@@ -211,6 +213,11 @@ function PromptHistoryPage() {
 	);
 	const [visitedTabs, setVisitedTabs] = useState<Set<PromptDetailTab>>(() => new Set([activeTab]));
 	const [currentPage, setCurrentPage] = useState(1);
+	const [runFilter, setRunFilter] = useState<{ sentiment?: ToneFilter; sort: ResponseSort }>({ sort: "newest" });
+	const changeRunFilter = (next: { sentiment?: ToneFilter; sort: ResponseSort }) => {
+		setRunFilter(next);
+		setCurrentPage(1);
+	};
 	const { promptMeta, isMetaLoading } = usePromptMetadata(brandId, promptId);
 
 	const { data: brand } = useBrand(brandId);
@@ -234,6 +241,7 @@ function PromptHistoryPage() {
 		page: currentPage,
 		limit: RUNS_PER_PAGE,
 		lookback,
+		...runFilter,
 	});
 
 	const { runs, total: totalRunCount, totalPages } = runsPage(runsData);
@@ -358,6 +366,9 @@ function PromptHistoryPage() {
 					<ResponsesTab
 						runs={runs}
 						totalRuns={totalRunCount}
+						toneCounts={runsData?.toneCounts}
+						filter={runFilter}
+						onFilterChange={changeRunFilter}
 						isLoading={isRunsLoading}
 						currentPage={currentPage}
 						onPageChange={handlePageChange}
@@ -583,6 +594,9 @@ function CitationsTab({
 function ResponsesTab({
 	runs,
 	totalRuns,
+	toneCounts,
+	filter,
+	onFilterChange,
 	isLoading,
 	currentPage,
 	onPageChange,
@@ -591,15 +605,18 @@ function ResponsesTab({
 }: {
 	runs: PromptRun[];
 	totalRuns: number;
+	toneCounts?: ToneCounts;
+	filter: { sentiment?: ToneFilter; sort: ResponseSort };
+	onFilterChange: (filter: { sentiment?: ToneFilter; sort: ResponseSort }) => void;
 	isLoading: boolean;
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	brandName?: string;
 	domainFor: (name: string) => string | undefined;
 }) {
-	if (isLoading && runs.length === 0) return <ResponseCardSkeletons count={3} />;
+	if (isLoading && runs.length === 0 && !toneCounts) return <ResponseCardSkeletons count={3} />;
 
-	if (runs.length === 0) {
+	if (!toneCounts || toneCounts.all === 0) {
 		return (
 			<div className="py-12 text-center text-muted-foreground text-sm">No prompt runs found for this time period.</div>
 		);
@@ -608,6 +625,18 @@ function ResponsesTab({
 	return (
 		<div className="space-y-4">
 			<h3 className="text-base font-medium">Individual Prompt Runs</h3>
+
+			<ToneFilterCard
+				counts={toneCounts}
+				value={filter.sentiment}
+				onChange={(sentiment) => onFilterChange({ ...filter, sentiment })}
+				sort={filter.sort}
+				onSortChange={(sort) => onFilterChange({ ...filter, sort })}
+			/>
+
+			{runs.length === 0 && (
+				<div className="py-12 text-center text-muted-foreground text-sm">No runs match this filter.</div>
+			)}
 
 			{runs.map((run) => (
 				<ResponseCard key={run.id} run={run} text={run.textContent} brandName={brandName} domainFor={domainFor} />
