@@ -46,22 +46,32 @@ function linkSpans(text: string): [number, number][] {
 
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /** A match inside a longer word ("ace" in "place") is never the brand, so it isn't judged at all. */
 function isWholeWord(text: string, start: number, end: number): boolean {
 	return !WORD_CHAR.test(text[start - 1] ?? "") && !WORD_CHAR.test(text[end] ?? "");
 }
 
 export function matchWindows(text: string, terms: string[]): AnswerMatches {
-	const lower = text.toLowerCase();
-	const needles = [...new Set(terms.map((t) => t.trim().toLowerCase()).filter(Boolean))];
+	const needles = new Map(
+		terms
+			.map((t) => t.trim())
+			.filter(Boolean)
+			.map((t) => [t.toLowerCase(), t]),
+	);
 	const sentences = sentenceSpans(text);
 	const links = linkSpans(text);
 	const windows = new Map<string, MatchWindow>();
 	let linkMatches = 0;
 	const hits: [number, number][] = [];
-	for (const needle of needles) {
-		for (let i = lower.indexOf(needle); i !== -1; i = lower.indexOf(needle, i + needle.length)) {
-			if (isWholeWord(text, i, i + needle.length)) hits.push([i, i + needle.length]);
+	// Searched case-insensitively in the original text: lowercasing first can change its length
+	// ("İ" becomes two code units) and shift every offset after it.
+	for (const needle of needles.values()) {
+		for (const match of text.matchAll(new RegExp(escapeRegExp(needle), "giu"))) {
+			const start = match.index ?? 0;
+			const end = start + match[0].length;
+			if (isWholeWord(text, start, end)) hits.push([start, end]);
 		}
 	}
 	for (const [hit] of hits.sort((a, b) => a[0] - b[0])) {

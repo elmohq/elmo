@@ -25,7 +25,7 @@ import { type Citation, extractRun } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gte, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
-import { type MentionAnalyzer, mentionAnalyzer } from "../mention-judge/analyze";
+import { mentionAnalyzer } from "../mention-judge/analyze";
 
 export const REPROCESS_QUEUE = "reprocess";
 
@@ -92,13 +92,12 @@ export async function deriveRunUpdate(
 	layers: ReprocessLayer[],
 	target: AnalysisVersions,
 	config: MentionConfig,
-	analyzer: MentionAnalyzer = mentionAnalyzer(),
 ): Promise<RunUpdate> {
 	const update: RunUpdate = { kept: [] };
 	const extract = layers.includes("extraction") && isStale(run, "extraction", target);
 	const text = extract || run.textContent === null ? reextract(run, extract, target, update) : run.textContent;
 	if (layers.includes("interpretation") && isStale(run, "interpretation", target)) {
-		update.mentions = { ...(await rederiveMentions(run, text, config, update, analyzer)), stamp: target[MENTIONS_KEY] };
+		update.mentions = { ...(await rederiveMentions(run, text, config, update)), stamp: target[MENTIONS_KEY] };
 	}
 	return update;
 }
@@ -121,10 +120,9 @@ async function rederiveMentions(
 	text: string | null,
 	config: MentionConfig,
 	update: RunUpdate,
-	analyzer: MentionAnalyzer,
 ): Promise<Omit<NonNullable<RunUpdate["mentions"]>, "stamp">> {
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
-		const { mentionAssessments, ...mentions } = await analyzer.analyze(text, config);
+		const { mentionAssessments, ...mentions } = await mentionAnalyzer().analyze(text, config);
 		return { ...mentions, assessments: mentionAssessments };
 	}
 	update.kept.push("mentions");
@@ -467,10 +465,10 @@ export async function requestStaleReprocesses(
 }
 
 /**
- * Brands that predate stamping adopt today's stamps instead of replaying their
- * whole history on deploy: what they've stored is taken as is until their
- * config or the code next changes. Their mentions were substring-matched, so
- * they adopt that stamp, and a worker with the judge goes on to re-judge them.
+ * Brands that predate stamping adopt today's extraction stamp rather than
+ * re-extracting their whole history on deploy. Their mentions were
+ * substring-matched, so they adopt that stamp too, and a worker with the judge
+ * goes on to re-judge them.
  */
 export async function adoptCurrentStamps(conn: DbConnection = db): Promise<number> {
 	const unstamped = await conn.select().from(brands).where(isNull(brands.analysisVersions));
@@ -479,9 +477,7 @@ export async function adoptCurrentStamps(conn: DbConnection = db): Promise<numbe
 		const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brand.id));
 		const updated = await conn
 			.update(brands)
-			.set({
-				analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors)),
-			})
+			.set({ analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors)) })
 			.where(and(eq(brands.id, brand.id), isNull(brands.analysisVersions)))
 			.returning({ id: brands.id });
 		adopted += updated.length;

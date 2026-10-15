@@ -25,8 +25,8 @@ interface JudgeConfig {
 }
 
 /** The label order the integration relies on; a model trained with different labels must not load. */
-export const REFERENCE_LABELS = ["brand", "other_meaning", "other_company", "link_only", "no_info"];
-export const SENTIMENT_LABELS = ["positive", "neutral", "negative", "mixed"];
+const REFERENCE_LABELS = ["brand", "other_meaning", "other_company", "link_only", "no_info"];
+const SENTIMENT_LABELS = ["positive", "neutral", "negative", "mixed"];
 
 /** Temperature-scales a probability vector: softmax(log p / T). */
 function calibrate(probs: Float32Array, temperature = 1): number[] {
