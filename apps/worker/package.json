@@ -9,9 +9,11 @@
 		"build": "tsc -p tsconfig.json",
 		"check-types": "tsc --noEmit",
 		"test": "vitest run --project=unit",
-		"test:integration": "vitest run --project=integration"
+		"test:integration": "vitest run --project=integration",
+		"judge:pull": "sh scripts/pull-mention-judge.sh"
 	},
 	"dependencies": {
+		"@huggingface/tokenizers": "0.2.0",
 		"@sentry/node": "^11.4.0",
 		"@workspace/config": "workspace:*",
 		"@workspace/deployment": "workspace:*",
