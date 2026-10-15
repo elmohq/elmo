@@ -173,12 +173,10 @@ function rangesForBrand(brandId: string, sorted: DirtyMark[], maxBuckets: number
 	let current: RebuildRange | null = null;
 	for (const mark of sorted) {
 		const end = new Date(mark.bucket.getTime() + BUCKET_MS);
-		// A single missing bucket inside a run is cheaper to swallow than to skip:
-		// it costs one empty delete and saves a whole extra rebuild transaction.
-		const joinable =
-			current !== null &&
-			mark.bucket.getTime() - current.toExclusive.getTime() <= BUCKET_MS &&
-			(end.getTime() - current.from.getTime()) / BUCKET_MS <= maxBuckets;
+		// A rebuild costs the same handful of statements however many buckets it
+		// spans, and an unmarked bucket in between rebuilds to the rows it already
+		// has, so gaps are swallowed up to the cap rather than split on.
+		const joinable = current !== null && (end.getTime() - current.from.getTime()) / BUCKET_MS <= maxBuckets;
 		if (current && joinable) {
 			current.toExclusive = end;
 			current.marks.push(mark);
@@ -190,11 +188,14 @@ function rangesForBrand(brandId: string, sorted: DirtyMark[], maxBuckets: number
 	return ranges;
 }
 
+/** A week: a backfill of a busy brand rebuilds in about a second per range. */
+const MAX_RANGE_BUCKETS = (7 * 24 * 60 * 60 * 1000) / BUCKET_MS;
+
 /**
- * Folds marks into as few rebuild ranges as possible, so a brand's busy hour is
- * one transaction rather than dozens.
+ * Folds marks into as few rebuild ranges as possible: each range pays a fixed
+ * number of round trips, so a backfill is a few ranges per brand, not thousands.
  */
-export function coalesceMarks(marks: DirtyMark[], maxBuckets = 48): RebuildRange[] {
+export function coalesceMarks(marks: DirtyMark[], maxBuckets = MAX_RANGE_BUCKETS): RebuildRange[] {
 	const ranges: RebuildRange[] = [];
 	for (const [brandId, group] of groupMarksByBrand(marks)) {
 		ranges.push(...rangesForBrand(brandId, group, maxBuckets));

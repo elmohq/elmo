@@ -25,11 +25,17 @@ describe("coalesceMarks", () => {
 		expect(ranges[0].marks).toHaveLength(3);
 	});
 
-	it("swallows a single missing bucket but splits on a wider gap", () => {
-		const ranges = coalesceMarks([mark("a", 0), mark("a", 2), mark("a", 5)]);
+	it("joins marks across gaps within the cap", () => {
+		const ranges = coalesceMarks([mark("a", 0), mark("a", 2), mark("a", 40)]);
+		expect(spans(ranges)).toEqual([["a", bucket(0).toISOString(), bucket(41).toISOString()]]);
+		expect(ranges[0].marks).toHaveLength(3);
+	});
+
+	it("starts a new range for a mark beyond the cap", () => {
+		const ranges = coalesceMarks([mark("a", 0), mark("a", 3)], 3);
 		expect(spans(ranges)).toEqual([
-			["a", bucket(0).toISOString(), bucket(3).toISOString()],
-			["a", bucket(5).toISOString(), bucket(6).toISOString()],
+			["a", bucket(0).toISOString(), bucket(1).toISOString()],
+			["a", bucket(3).toISOString(), bucket(4).toISOString()],
 		]);
 	});
 
@@ -52,10 +58,10 @@ describe("coalesceMarks", () => {
 		expect(ranges.flatMap((r) => r.marks)).toHaveLength(5);
 	});
 
-	it("covers a day by default", () => {
-		const marks = Array.from({ length: 48 }, (_, i) => mark("a", i));
-		expect(coalesceMarks(marks)).toHaveLength(1);
-		expect(coalesceMarks([...marks, mark("a", 48)])).toHaveLength(2);
+	it("covers a week by default", () => {
+		const week = (7 * 24 * 60 * 60 * 1000) / BUCKET_MS;
+		expect(coalesceMarks([mark("a", 0), mark("a", week - 1)])).toHaveLength(1);
+		expect(coalesceMarks([mark("a", 0), mark("a", week)])).toHaveLength(2);
 	});
 
 	it("keeps every mark it folds into a range", () => {
