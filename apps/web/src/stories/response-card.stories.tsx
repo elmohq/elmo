@@ -1,8 +1,4 @@
-/**
- * Stories for <ResponseCard />, the answer card on the Responses page and the
- * prompt detail page, focused on the Passages block: the passage behind each
- * mention assessment and the sentiment read from it.
- */
+/** Focused on the Passages block: the passage behind each mention assessment and the sentiment read from it. */
 import type { Meta, StoryObj } from "@storybook/react";
 import type { MentionAssessment } from "@workspace/lib/mentions";
 import { ResponseCard, type ResponseCardRun } from "@/components/response-card";

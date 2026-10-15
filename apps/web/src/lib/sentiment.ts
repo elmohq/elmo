@@ -2,9 +2,8 @@
 import type { DailyAssessments } from "@/lib/rollup-read";
 import { shiftDateStr } from "@/lib/timezone-utils";
 
-/** The mention judge's assessments summed over runs that mention a company, as every assessment read selects them. */
+/** The mention judge's assessments summed over runs that mention a company. */
 export interface AssessmentSums {
-	/** Runs by the judge's sentiment toward the company. */
 	positive_runs: number;
 	neutral_runs: number;
 	negative_runs: number;
@@ -59,7 +58,7 @@ export function sentimentSeries(
 
 export interface PositionPoint {
 	date: string;
-	/** The brand's average position over the trailing window, 1 being named first; null when never ranked. */
+	/** 1 is named first; null when never ranked. */
 	average: number | null;
 }
 
@@ -68,7 +67,7 @@ export function averagePosition(sum: number, runs: number): number | null {
 	return runs > 0 ? Math.round((sum / runs) * 10) / 10 : null;
 }
 
-/** The brand's average position per day over a trailing window, for the same reason as `sentimentSeries`. */
+/** Trailing window for the same reason as `sentimentSeries`. */
 export function positionSeries(
 	rows: DailyAssessments[],
 	dateRange: string[],

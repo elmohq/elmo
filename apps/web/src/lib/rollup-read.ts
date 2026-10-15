@@ -464,7 +464,6 @@ export interface DailyAssessments extends AssessmentSums {
 	date: string;
 }
 
-/** Per local day, the runs mentioning the brand by the judge's sentiment toward it, and its position. */
 export async function getDailyAssessments(scope: AnalyticsScope): Promise<DailyAssessments[]> {
 	return queryPg<DailyAssessments>(sql`
 		SELECT
