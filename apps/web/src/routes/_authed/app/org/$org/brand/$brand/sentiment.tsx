@@ -14,7 +14,7 @@ import { ModelGrid } from "@/components/overview/competitive-landscape";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { RingChart } from "@/components/ring-chart";
-import { ToneBar } from "@/components/tone-filter";
+import { SentimentBar } from "@/components/sentiment-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrandSentiment } from "@/hooks/use-brand-sentiment";
 import { useBrand } from "@/hooks/use-brands";
@@ -26,7 +26,7 @@ import { useCompanyColors } from "@/lib/company-colors";
 import { brandOf, chartedCompanies, type Landscape } from "@/lib/landscape";
 import { METRIC_META } from "@/lib/overview-metrics";
 import { pageHead } from "@/lib/route-head";
-import { TONE_STYLES, TONES, toneTotal } from "@/lib/tone";
+import { SENTIMENT_STYLES, SENTIMENTS, sentimentTotal } from "@/lib/sentiment";
 import type { PromptSentiment, SentimentQuote } from "@/server/analytics-core";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/sentiment")({
@@ -51,11 +51,11 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 				<CardContent>
 					<RingChart
 						center={brand.totals.sentiment === null ? "—" : percent(brand.totals.sentiment)}
-						slices={TONES.map((tone) => ({
-							name: TONE_STYLES[tone].label,
-							value: brand.tones[tone],
-							color: TONE_STYLES[tone].color,
-							emphasis: tone === "positive",
+						slices={SENTIMENTS.map((sentiment) => ({
+							name: SENTIMENT_STYLES[sentiment].label,
+							value: brand.sentiments[sentiment],
+							color: SENTIMENT_STYLES[sentiment].color,
+							emphasis: sentiment === "positive",
 						}))}
 					/>
 				</CardContent>
@@ -89,7 +89,7 @@ function Quotes({ criticism, praise }: { criticism: SentimentQuote[]; praise: Se
 		<Card>
 			<CardHeader className={`${ROW_HEADER} flex-wrap justify-between gap-4`}>
 				<CardTitle>What AI Says About You</CardTitle>
-				<div role="tablist" aria-label="Tone" className="inline-flex rounded-lg bg-muted p-0.5 text-sm">
+				<div role="tablist" aria-label="Sentiment" className="inline-flex rounded-lg bg-muted p-0.5 text-sm">
 					{(["criticism", "praise"] as const).map((value) => (
 						<button
 							key={value}
@@ -139,13 +139,13 @@ function QuoteRow({ quote }: { quote: SentimentQuote }) {
 					<ResponseMarkdown>{quote.passage}</ResponseMarkdown>
 				</blockquote>
 				<figcaption className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-					<span className={cn("shrink-0 font-medium", TONE_STYLES[quote.tone].text)}>
-						{TONE_STYLES[quote.tone].label}
+					<span className={cn("shrink-0 font-medium", SENTIMENT_STYLES[quote.sentiment].text)}>
+						{SENTIMENT_STYLES[quote.sentiment].label}
 					</span>
 					<span>·</span>
 					<BrandPromptLink
 						promptId={quote.promptId}
-						search={{ tab: "responses", sentiment: quote.tone }}
+						search={{ tab: "responses", sentiment: quote.sentiment }}
 						className="truncate hover:text-foreground hover:underline"
 					>
 						{quote.prompt || "(untitled prompt)"}
@@ -181,7 +181,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 						</TableHeader>
 						<TableBody>
 							{prompts.map((p) => {
-								const clear = toneTotal(p.sentiment);
+								const clear = sentimentTotal(p.sentiment);
 								return (
 									<TableRow key={p.promptId}>
 										<TableCell className="whitespace-normal">
@@ -198,7 +198,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 											{clear.toLocaleString()}
 										</TableCell>
 										<TableCell>
-											<ToneBar counts={p.sentiment} className="h-1.5" />
+											<SentimentBar counts={p.sentiment} className="h-1.5" />
 										</TableCell>
 										<TableCell className="text-right font-medium tabular-nums">
 											{p.sentiment.positiveShare === null ? "—" : percent(p.sentiment.positiveShare)}
@@ -209,7 +209,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 													to="/app/org/$org/brand/$brand/responses"
 													params={params}
 													search={(prev) => ({ ...prev, prompts: p.promptId, sentiment: "negative" })}
-													className={cn("whitespace-nowrap hover:underline", TONE_STYLES.negative.text)}
+													className={cn("whitespace-nowrap hover:underline", SENTIMENT_STYLES.negative.text)}
 												>
 													{p.sentiment.negative} {p.sentiment.negative === 1 ? "answer" : "answers"}
 												</Link>
@@ -241,9 +241,9 @@ function SentimentPage() {
 
 	const infoContent = (
 		<p>
-			Each answer that mentions your brand is read for its tone toward it: positive, neutral, mixed or negative. Answers
-			that don't mention you aren't counted. Like visibility, the figures count each prompt's latest answers; the prompt
-			table covers the whole period.
+			Each answer that mentions your brand is read for its sentiment toward it: positive, neutral, mixed or negative.
+			Answers that don't mention you aren't counted. Like visibility, the figures count each prompt's latest answers;
+			the prompt table covers the whole period.
 		</p>
 	);
 

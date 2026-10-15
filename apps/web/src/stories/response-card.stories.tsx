@@ -1,7 +1,7 @@
 /**
  * Stories for <ResponseCard />, the answer card on the Responses page and the
  * prompt detail page, focused on the mentioned-company badges: each one's
- * position and tone, and the passage it rests on, marked when it's clicked.
+ * position and sentiment, and the passage it rests on, marked when it's clicked.
  */
 import type { Meta, StoryObj } from "@storybook/react";
 import type { MentionAssessment } from "@workspace/lib/mentions";
@@ -99,12 +99,12 @@ const withCompetitors = {
 	judged: JUDGED,
 } satisfies ResponseCardRun["mentionAssessments"];
 
-/** Each company's badge carries its position and the answer's tone toward it; nothing is marked until one is clicked. */
+/** Each company's badge carries its position and the answer's sentiment toward it; nothing is marked until one is clicked. */
 export const PositiveBrand: Story = {
 	args: { run: { ...baseRun, mentionAssessments: withCompetitors } },
 };
 
-/** Clicking a badge marks the passage its assessment rests on, in that tone's colour; clicking again clears it. */
+/** Clicking a badge marks the passage its assessment rests on, in that sentiment's colour; clicking again clears it. */
 export const PassageMarked: Story = {
 	args: { run: { ...baseRun, mentionAssessments: withCompetitors } },
 	play: async ({ canvasElement }) => {
@@ -193,7 +193,7 @@ export const CompetitorNotCounted: Story = {
 	},
 };
 
-/** Runs matched by name before the judge, or whose text wasn't stored, have no assessments: badges show no tone and mark nothing. */
+/** Runs matched by name before the judge, or whose text wasn't stored, have no assessments: badges show no sentiment and mark nothing. */
 export const NotJudged: Story = {
 	args: { run: { ...baseRun, mentionAssessments: null } },
 };

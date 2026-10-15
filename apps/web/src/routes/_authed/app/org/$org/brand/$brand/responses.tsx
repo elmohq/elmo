@@ -7,15 +7,15 @@ import { ListPagination } from "@/components/list-pagination";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { PromptsFilterDropdown } from "@/components/prompts-filter-dropdown";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
-import { ToneFilterCard } from "@/components/tone-filter";
+import { SentimentFilterCard } from "@/components/sentiment-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { useCrispChat } from "@/hooks/use-crisp-chat";
 import { joinTags, splitTags, useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
-import { useResponseSearch, useResponseToneCounts } from "@/hooks/use-responses";
+import { useResponseSearch, useResponseSentimentCounts } from "@/hooks/use-responses";
+import { type SentimentSearch, useSentimentSearch, validateSentimentSearch } from "@/hooks/use-sentiment-search";
 import { useSiteIcons } from "@/hooks/use-site-icons";
-import { type ToneSearch, useToneSearch, validateToneSearch } from "@/hooks/use-tone-search";
 import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/responses")({
@@ -23,13 +23,13 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/respons
 	// Comma-joined IDs, like `tags`, so a filtered view stays linkable.
 	validateSearch: (search: Record<string, unknown>): ResponsesSearch => ({
 		prompts: typeof search.prompts === "string" && search.prompts ? search.prompts : undefined,
-		...validateToneSearch(search),
+		...validateSentimentSearch(search),
 	}),
 	head: pageHead({ description: "Read and search every AI answer to your prompts." }),
 	component: ResponsesPage,
 });
 
-interface ResponsesSearch extends ToneSearch {
+interface ResponsesSearch extends SentimentSearch {
 	prompts?: string;
 }
 
@@ -56,7 +56,7 @@ function ResponsesPage() {
 			resetScroll: false,
 		});
 
-	const { sentiment, sort, setSentiment, setSort } = useToneSearch();
+	const { sentiment, sort, setSentiment, setSort } = useSentimentSearch();
 
 	// A new search starts from its first page.
 	const filterKey = JSON.stringify([query, lookback, modelParam, tags, promptIds, sentiment, sort]);
@@ -75,7 +75,7 @@ function ResponsesPage() {
 		sort,
 		page,
 	});
-	const { data: toneCounts } = useResponseToneCounts(brandId, search);
+	const { data: sentimentFilterCounts } = useResponseSentimentCounts(brandId, search);
 
 	const infoContent = (
 		<p>
@@ -84,7 +84,7 @@ function ResponsesPage() {
 		</p>
 	);
 
-	const empty = emptyMessage(data, error, toneCounts?.all);
+	const empty = emptyMessage(data, error, sentimentFilterCounts?.all);
 	let content: React.ReactNode;
 	if (isLoading && !data) {
 		content = <ResponseCardSkeletons count={3} />;
@@ -146,9 +146,9 @@ function ResponsesPage() {
 					searching={isPlaceholderData}
 				/>
 			</FilterSection>
-			{toneCounts && toneCounts.all > 0 && (
-				<ToneFilterCard
-					counts={toneCounts}
+			{sentimentFilterCounts && sentimentFilterCounts.all > 0 && (
+				<SentimentFilterCard
+					counts={sentimentFilterCounts}
 					value={sentiment}
 					onChange={setSentiment}
 					sort={sort}
@@ -163,7 +163,7 @@ function ResponsesPage() {
 function emptyMessage(
 	data: { totalRuns: number; matches: unknown[]; query: string | null } | undefined,
 	error: unknown,
-	/** Answers the search finds before the tone filter; with some, it's the filter that left none. */
+	/** Answers the search finds before the sentiment filter; with some, it's the filter that left none. */
 	searchMatches: number | undefined,
 ): string | null {
 	if (error && !data) return "Couldn't load responses right now. Reload the page to try again.";

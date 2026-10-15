@@ -80,7 +80,7 @@ const endingAt = (values: number[], target: number) => {
 };
 
 /** 600 current mentions of a company, split so the positive share is `positive`. */
-const tonesFor = (positive: number) => {
+const sentimentsFor = (positive: number) => {
 	const pos = Math.round(positive * 600);
 	const negative = Math.round((600 - pos) * 0.15);
 	const mixed = Math.round((600 - pos) * 0.2);
@@ -95,7 +95,7 @@ export const mockLandscape = {
 		isBrand: c.isBrand,
 		domain: c.domain,
 		totals: { visibility: c.visibility, share: c.share, sentiment: c.sentiment, position: c.position },
-		tones: tonesFor(c.sentiment),
+		sentiments: sentimentsFor(c.sentiment),
 		byModel: Object.fromEntries(
 			MODELS.map((model, mi) => {
 				const wobble = Math.sin((ci + 3) * (mi + 1)) * 0.12;
@@ -293,7 +293,7 @@ export const mockBrandSentiment: BrandSentiment = {
 			prompt: "enterprise crm with custom reporting",
 			model: "perplexity",
 			createdAt: "2026-06-02T10:00:00.000Z",
-			tone: "negative",
+			sentiment: "negative",
 			passage:
 				"**Acme**'s reporting is limited compared with Salesforce; custom dashboards need an add-on and exports are capped.",
 		},
@@ -303,7 +303,7 @@ export const mockBrandSentiment: BrandSentiment = {
 			prompt: "cheapest crm for startups",
 			model: "gemini",
 			createdAt: "2026-06-01T10:00:00.000Z",
-			tone: "negative",
+			sentiment: "negative",
 			passage:
 				"Several reviewers note that Acme raised prices twice last year, which pushed some small teams elsewhere.",
 		},
@@ -313,7 +313,7 @@ export const mockBrandSentiment: BrandSentiment = {
 			prompt: "acme vs hubspot pricing",
 			model: "claude",
 			createdAt: "2026-05-31T10:00:00.000Z",
-			tone: "mixed",
+			sentiment: "mixed",
 			passage: "Acme is easier to learn, though its higher tiers cost more than HubSpot for the same seats.",
 		},
 	],
@@ -324,7 +324,7 @@ export const mockBrandSentiment: BrandSentiment = {
 			prompt: "best crm for small sales teams",
 			model: "chatgpt",
 			createdAt: "2026-06-03T10:00:00.000Z",
-			tone: "positive",
+			sentiment: "positive",
 			passage:
 				"For a small sales team, **Acme** is the easiest CRM to get running: setup takes an afternoon and the mobile app is genuinely good.",
 		},
@@ -334,7 +334,7 @@ export const mockBrandSentiment: BrandSentiment = {
 			prompt: "crm with best mobile app",
 			model: "google-ai-overview",
 			createdAt: "2026-06-02T10:00:00.000Z",
-			tone: "positive",
+			sentiment: "positive",
 			passage: "Users consistently rate Acme's mobile app highest for logging calls on the go.",
 		},
 	],

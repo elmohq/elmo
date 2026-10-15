@@ -14,8 +14,15 @@ import {
 	windowFilter,
 } from "@/lib/analytics-sql";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
-import type { ResponseSort, Tone, ToneCounts, ToneFilter } from "@/lib/tone";
-import { responseOrder, toneBucket, toneCondition, toneConfidence, toneRank, toToneCounts } from "@/lib/tone-sql";
+import type { ResponseSort, Sentiment, SentimentFilter, SentimentFilterCounts } from "@/lib/sentiment";
+import {
+	responseOrder,
+	sentimentBucket,
+	sentimentCondition,
+	sentimentConfidence,
+	sentimentRank,
+	toSentimentFilterCounts,
+} from "@/lib/sentiment-sql";
 
 const dateFilter = (fromDate: string | null, toDate: string | null, timezone: string): SQL =>
 	windowFilter(sql`created_at`, fromDate, toDate, timezone);
@@ -129,7 +136,7 @@ export async function countPromptRuns(
 // ============================================================================
 
 /** Runs a response search covers. Without a `query` every run in scope matches. */
-export type ResponseSearchScope = PromptListScope & { query?: string; tone?: ToneFilter };
+export type ResponseSearchScope = PromptListScope & { query?: string; sentiment?: SentimentFilter };
 
 export interface ResponseMatchRow {
 	id: string;
@@ -182,23 +189,23 @@ export async function getResponseMatches(
 		JOIN run_mentions rm ON rm.run_id = pr.id
 		JOIN run_extractions re ON re.run_id = pr.id
 		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
-			AND ${toneCondition(scope.tone)}
+			AND ${sentimentCondition(scope.sentiment)}
 		ORDER BY ${responseOrder(sort)}
 		LIMIT ${limit} OFFSET ${offset}
 	`);
 }
 
-export async function getResponseToneCounts(scope: ResponseSearchScope): Promise<ToneCounts> {
-	if (scope.promptIds.length === 0) return toToneCounts([]);
+export async function getResponseSentimentCounts(scope: ResponseSearchScope): Promise<SentimentFilterCounts> {
+	if (scope.promptIds.length === 0) return toSentimentFilterCounts([]);
 	const rows = await queryPg<{ bucket: string | null; runs: number }>(sql`
-		SELECT ${toneBucket} AS bucket, count(*)::int AS runs
+		SELECT ${sentimentBucket} AS bucket, count(*)::int AS runs
 		FROM prompt_runs pr
 		JOIN run_mentions rm ON rm.run_id = pr.id
 		JOIN run_extractions re ON re.run_id = pr.id
 		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
 		GROUP BY 1
 	`);
-	return toToneCounts(rows);
+	return toSentimentFilterCounts(rows);
 }
 
 // ============================================================================
@@ -214,14 +221,14 @@ export interface SentimentQuoteRow {
 	text_content: string;
 }
 
-/** One per prompt, so a daily prompt doesn't fill the list with the same answer; earlier `tones` rank first. */
+/** One per prompt, so a daily prompt doesn't fill the list with the same answer; earlier `sentiments` rank first. */
 export async function getSentimentQuotes(
 	scope: PromptListScope,
-	tones: readonly Tone[],
+	sentiments: readonly Sentiment[],
 	limit: number,
 ): Promise<SentimentQuoteRow[]> {
-	if (scope.promptIds.length === 0 || tones.length === 0) return [];
-	const rank = toneRank(tones);
+	if (scope.promptIds.length === 0 || sentiments.length === 0) return [];
+	const rank = sentimentRank(sentiments);
 	const passage = sql`rm.assessments->'brand'->'passage'`;
 	return queryPg<SentimentQuoteRow>(sql`
 		SELECT id, prompt_id, model, created_at, brand, text_content FROM (
@@ -233,7 +240,7 @@ export async function getSentimentQuotes(
 				rm.assessments->'brand' AS brand,
 				re.text_content,
 				${rank} AS rank,
-				${toneConfidence} AS confidence
+				${sentimentConfidence} AS confidence
 			FROM prompt_runs pr
 			JOIN run_mentions rm ON rm.run_id = pr.id
 			JOIN run_extractions re ON re.run_id = pr.id

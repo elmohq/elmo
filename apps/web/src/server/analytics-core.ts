@@ -41,10 +41,12 @@ import {
 } from "@/lib/rollup-read";
 import {
 	averagePosition,
+	isSentiment,
 	type MentionQuality,
 	mentionQuality,
 	NO_ASSESSMENTS,
 	type PositionPoint,
+	type Sentiment,
 	type SentimentCounts,
 	type SentimentSummary,
 	sentimentCounts,
@@ -52,7 +54,6 @@ import {
 	sumAssessments,
 } from "@/lib/sentiment";
 import { shiftDateStr } from "@/lib/timezone-utils";
-import { isTone, type Tone } from "@/lib/tone";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -578,7 +579,7 @@ export interface SentimentQuote {
 	prompt: string;
 	model: string;
 	createdAt: string;
-	tone: Tone;
+	sentiment: Sentiment;
 	/** Markdown. */
 	passage: string;
 }
@@ -616,8 +617,8 @@ export async function getBrandSentiment(
 	const promptsById = new Map(resolved.prompts.map((prompt) => [prompt.id, prompt]));
 	const quote = (row: SentimentQuoteRow): SentimentQuote[] => {
 		const passage = assessedPassage(row.text_content, row.brand);
-		const tone = row.brand.sentiment;
-		if (!passage || !isTone(tone)) return [];
+		const sentiment = row.brand.sentiment;
+		if (!passage || !isSentiment(sentiment)) return [];
 		return [
 			{
 				runId: row.id,
@@ -625,7 +626,7 @@ export async function getBrandSentiment(
 				prompt: promptsById.get(row.prompt_id)?.value ?? "",
 				model: row.model,
 				createdAt: new Date(row.created_at).toISOString(),
-				tone,
+				sentiment,
 				passage,
 			},
 		];

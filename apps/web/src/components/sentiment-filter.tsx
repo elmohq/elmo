@@ -12,52 +12,52 @@ import type { ReactNode } from "react";
 import { FilterTriggerButton } from "@/components/filter-bar";
 import {
 	type ResponseSort,
-	TONE_STYLES,
-	TONES,
-	type Tone,
-	type ToneCounts,
-	type ToneFilter,
-	toneTotal,
-} from "@/lib/tone";
+	SENTIMENT_STYLES,
+	SENTIMENTS,
+	type Sentiment,
+	type SentimentFilter,
+	type SentimentFilterCounts,
+	sentimentTotal,
+} from "@/lib/sentiment";
 
 const percent = (part: number, whole: number) => `${Math.round((part / whole) * 100)}%`;
 
-export function ToneBar({
+export function SentimentBar({
 	counts,
 	selected,
 	onSelect,
 	className,
 }: {
-	counts: Record<Tone, number>;
-	selected?: ToneFilter;
-	onSelect?: (tone: Tone) => void;
+	counts: Record<Sentiment, number>;
+	selected?: SentimentFilter;
+	onSelect?: (sentiment: Sentiment) => void;
 	className?: string;
 }) {
-	const total = toneTotal(counts);
+	const total = sentimentTotal(counts);
 	if (total === 0) return <div className={cn("h-2 w-full rounded-full bg-muted", className)} />;
 	return (
 		<div className={cn("flex h-2 w-full gap-[3px]", className)}>
-			{TONES.filter((tone) => counts[tone] > 0).map((tone) => {
-				const style = { flexGrow: counts[tone] / total, background: TONE_STYLES[tone].color };
+			{SENTIMENTS.filter((sentiment) => counts[sentiment] > 0).map((sentiment) => {
+				const style = { flexGrow: counts[sentiment] / total, background: SENTIMENT_STYLES[sentiment].color };
 				const segment = cn(
 					"min-w-1 basis-0 rounded-full transition-opacity",
-					selected && selected !== tone && "opacity-25",
+					selected && selected !== sentiment && "opacity-25",
 				);
-				const label = `${TONE_STYLES[tone].label}: ${percent(counts[tone], total)}`;
+				const label = `${SENTIMENT_STYLES[sentiment].label}: ${percent(counts[sentiment], total)}`;
 				return onSelect ? (
 					// A mouse shortcut: the legend below is the same control for keyboards and screen readers.
 					<button
-						key={tone}
+						key={sentiment}
 						type="button"
 						tabIndex={-1}
 						aria-hidden
 						title={label}
-						onClick={() => onSelect(tone)}
+						onClick={() => onSelect(sentiment)}
 						className={cn(segment, "cursor-pointer")}
 						style={style}
 					/>
 				) : (
-					<div key={tone} title={label} className={segment} style={style} />
+					<div key={sentiment} title={label} className={segment} style={style} />
 				);
 			})}
 		</div>
@@ -134,22 +134,22 @@ function FilterOption({
 	);
 }
 
-/** Choosing a segment or legend entry filters the list to that tone; choosing it again clears the filter. */
-export function ToneFilterCard({
+/** Choosing a segment or legend entry filters the list to that sentiment; choosing it again clears the filter. */
+export function SentimentFilterCard({
 	counts,
 	value,
 	onChange,
 	sort,
 	onSortChange,
 }: {
-	counts: ToneCounts;
-	value?: ToneFilter;
-	onChange: (tone: ToneFilter | undefined) => void;
+	counts: SentimentFilterCounts;
+	value?: SentimentFilter;
+	onChange: (sentiment: SentimentFilter | undefined) => void;
 	sort: ResponseSort;
 	onSortChange: (sort: ResponseSort) => void;
 }) {
-	const toggle = (tone: ToneFilter) => onChange(value === tone ? undefined : tone);
-	const clear = toneTotal(counts);
+	const toggle = (sentiment: SentimentFilter) => onChange(value === sentiment ? undefined : sentiment);
+	const clear = sentimentTotal(counts);
 	return (
 		<Card className="gap-0 py-4">
 			<CardContent className="space-y-3">
@@ -158,23 +158,23 @@ export function ToneFilterCard({
 						{clear > 0 ? (
 							<span className="font-semibold tabular-nums">{percent(counts.positive, clear)} positive</span>
 						) : (
-							<span className="font-semibold">No tone yet</span>
+							<span className="font-semibold">No sentiment yet</span>
 						)}
 						<span className="text-muted-foreground"> across {counts.all.toLocaleString()} answers</span>
 					</div>
 					<ResponseSortDropdown value={sort} onChange={onSortChange} />
 				</div>
-				<ToneBar counts={counts} selected={value === "unmentioned" ? undefined : value} onSelect={toggle} />
+				<SentimentBar counts={counts} selected={value === "unmentioned" ? undefined : value} onSelect={toggle} />
 				<div className="-mx-2 flex flex-wrap items-center gap-0.5">
-					{TONES.map((tone) => (
+					{SENTIMENTS.map((sentiment) => (
 						<FilterOption
-							key={tone}
-							active={value === tone}
-							dimmed={Boolean(value) && value !== tone}
-							onClick={() => toggle(tone)}
-							dot={<span className="size-2 rounded-full" style={{ background: TONE_STYLES[tone].color }} />}
-							label={TONE_STYLES[tone].label}
-							count={counts[tone]}
+							key={sentiment}
+							active={value === sentiment}
+							dimmed={Boolean(value) && value !== sentiment}
+							onClick={() => toggle(sentiment)}
+							dot={<span className="size-2 rounded-full" style={{ background: SENTIMENT_STYLES[sentiment].color }} />}
+							label={SENTIMENT_STYLES[sentiment].label}
+							count={counts[sentiment]}
 						/>
 					))}
 					<span className="mx-1 h-4 w-px bg-border" />

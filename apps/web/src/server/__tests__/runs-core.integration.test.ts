@@ -115,7 +115,7 @@ describe("mention quality", () => {
 		const brand = entries.find((entry) => entry.isBrand);
 		const globex = entries.find((entry) => entry.name === "Globex");
 		expect(brand).toMatchObject({ position: { average: 1 }, sentiment: { positive: 1 } });
-		// It has no tone, so it counts in no sentiment, but it was still named second.
+		// It has no sentiment, so it counts in no sentiment, but it was still named second.
 		expect(globex).toMatchObject({ position: { average: 2 }, sentiment: { positiveShare: null } });
 	});
 });

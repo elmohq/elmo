@@ -5,18 +5,18 @@ import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
 import {
 	getResponseMatches,
-	getResponseToneCounts,
+	getResponseSentimentCounts,
 	type ResponseMatchRow,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
 import { getMentionTotals } from "@/lib/rollup-read";
-import { responseSortSchema, toneFilterSchema } from "@/lib/tone";
+import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 const PAGE_SIZE = 15;
 
-/** What narrows a search: everything but the tone filter, sort and page. */
+/** What narrows a search: everything but the sentiment filter, sort and page. */
 const searchScopeSchema = z.object({
 	brandId: z.string(),
 	query: z.string().max(500).optional(),
@@ -51,7 +51,7 @@ async function resolveSearch(data: z.infer<typeof searchScopeSchema>) {
 export const searchResponsesFn = createServerFn({ method: "GET" })
 	.validator(
 		searchScopeSchema.extend({
-			sentiment: toneFilterSchema.optional(),
+			sentiment: sentimentFilterSchema.optional(),
 			sort: responseSortSchema.default("newest"),
 			page: z.number().int().min(0).default(0),
 		}),
@@ -61,7 +61,7 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 		const promptValues = new Map(prompts.map((prompt) => [prompt.id, prompt.value]));
 		const [totals, rows] = await Promise.all([
 			getMentionTotals(scope),
-			getResponseMatches({ ...scope, tone: data.sentiment }, PAGE_SIZE, data.page * PAGE_SIZE, data.sort),
+			getResponseMatches({ ...scope, sentiment: data.sentiment }, PAGE_SIZE, data.page * PAGE_SIZE, data.sort),
 		]);
 		return {
 			query: scope.query ?? null,
@@ -72,10 +72,10 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/** Separate from the search so paging, sorting or picking a tone doesn't scan the window again. */
-export const getResponseToneCountsFn = createServerFn({ method: "GET" })
+/** Separate from the search so paging, sorting or picking a sentiment doesn't scan the window again. */
+export const getResponseSentimentCountsFn = createServerFn({ method: "GET" })
 	.validator(searchScopeSchema)
-	.handler(async ({ data }) => getResponseToneCounts((await resolveSearch(data)).scope));
+	.handler(async ({ data }) => getResponseSentimentCounts((await resolveSearch(data)).scope));
 
 export function toResponse(row: ResponseMatchRow) {
 	return {

@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import type { LookbackPeriod } from "@/lib/lookback";
-import type { ResponseSort, ToneFilter } from "@/lib/tone";
+import type { ResponseSort, SentimentFilter } from "@/lib/sentiment";
 import { getPromptRunsFn } from "@/server/prompts";
 
 interface PromptRunsOptions {
 	page: number;
 	limit: number;
 	lookback: LookbackPeriod;
-	sentiment?: ToneFilter;
+	sentiment?: SentimentFilter;
 	sort: ResponseSort;
 }
 

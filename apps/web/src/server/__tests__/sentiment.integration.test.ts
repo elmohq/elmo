@@ -1,7 +1,7 @@
 import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getResponseMatches, getResponseToneCounts, type ResponseSearchScope } from "@/lib/postgres-read";
-import type { Tone } from "@/lib/tone";
+import { getResponseMatches, getResponseSentimentCounts, type ResponseSearchScope } from "@/lib/postgres-read";
+import type { Sentiment } from "@/lib/sentiment";
 import { getBrandSentiment, getCompetitiveLandscape } from "@/server/analytics-core";
 import { createBrand, createPrompt, createRun, deleteBrand, rebuildRollups } from "@/test/integration/stats-fixtures";
 
@@ -14,7 +14,7 @@ const runIds: Record<string, string> = {};
 const judged = (
 	text: string,
 	passage: string,
-	sentiment: Tone,
+	sentiment: Sentiment,
 	confidence: number,
 ): { text: string; assessments: RunMentionAssessments } => {
 	const start = text.indexOf(passage);
@@ -81,8 +81,8 @@ beforeAll(async () => {
 				false,
 				{ text: "Globex is fine.", assessments: { competitors: {}, judged: { brand: "acme", competitors: {} } } },
 			],
-			// Matched without the judge, so it counts as a mention but has no tone.
-			["untoned", pricing, "2026-03-03T12:00:00Z", true],
+			// Matched without the judge, so it counts as a mention but has no sentiment.
+			["withoutSentiment", pricing, "2026-03-03T12:00:00Z", true],
 			["unquotable", reviews, "2026-03-02T09:00:00Z", true, unquotable],
 			[
 				"quotable",
@@ -105,8 +105,8 @@ afterAll(async () => {
 });
 
 describe("responses by sentiment", () => {
-	it("counts every run in scope by its tone toward the brand", async () => {
-		expect(await getResponseToneCounts(scope)).toEqual({
+	it("counts every run in scope by its sentiment toward the brand", async () => {
+		expect(await getResponseSentimentCounts(scope)).toEqual({
 			positive: 1,
 			neutral: 0,
 			mixed: 1,
@@ -116,22 +116,22 @@ describe("responses by sentiment", () => {
 		});
 	});
 
-	it("narrows the list to one tone, or to answers that don't mention the brand", async () => {
-		const negative = await getResponseMatches({ ...scope, tone: "negative" }, 10, 0);
+	it("narrows the list to one sentiment, or to answers that don't mention the brand", async () => {
+		const negative = await getResponseMatches({ ...scope, sentiment: "negative" }, 10, 0);
 		expect(negative.map((row) => row.id).sort()).toEqual([runIds.sureNegative, runIds.unsureNegative].sort());
 		expect(negative[0].matched).toBe(2);
-		const unmentioned = await getResponseMatches({ ...scope, tone: "unmentioned" }, 10, 0);
+		const unmentioned = await getResponseMatches({ ...scope, sentiment: "unmentioned" }, 10, 0);
 		expect(unmentioned.map((row) => row.id)).toEqual([runIds.unmentioned]);
 	});
 
-	it("puts the surest negative assessments first, and runs without a tone last", async () => {
+	it("puts the surest negative assessments first, and runs without a sentiment last", async () => {
 		const rows = await getResponseMatches(scope, 10, 0, "negative");
 		expect(rows.map((row) => row.id)).toEqual([
 			runIds.sureNegative,
 			runIds.unsureNegative,
 			runIds.mixed,
 			runIds.positive,
-			runIds.untoned,
+			runIds.withoutSentiment,
 			runIds.unmentioned,
 		]);
 	});
@@ -143,14 +143,14 @@ describe("responses by sentiment", () => {
 });
 
 describe("brand sentiment", () => {
-	it("splits the current answers by tone from each prompt's latest day, as every headline does", async () => {
+	it("splits the current answers by sentiment from each prompt's latest day, as every headline does", async () => {
 		const brand = (await getCompetitiveLandscape(brandId, window)).companies[0];
-		// Pricing's latest answer has no tone; set-up's and reviews' latest are positive.
-		expect(brand.tones).toEqual({ positive: 2, neutral: 0, mixed: 0, negative: 0 });
+		// Pricing's latest answer has no sentiment; set-up's and reviews' latest are positive.
+		expect(brand.sentiments).toEqual({ positive: 2, neutral: 0, mixed: 0, negative: 0 });
 		expect(brand.totals.sentiment).toBe(1);
 	});
 
-	it("totals each prompt's tone over the whole period, least positive first", async () => {
+	it("totals each prompt's sentiment over the whole period, least positive first", async () => {
 		const sentiment = await getBrandSentiment(brandId, window);
 		expect(sentiment.prompts.map((p) => [p.value, p.sentiment.positiveShare])).toEqual([
 			["acme pricing", 0],
@@ -161,7 +161,7 @@ describe("brand sentiment", () => {
 
 	it("quotes the passage behind the surest assessment on each side, one per prompt", async () => {
 		const { criticism, praise } = await getBrandSentiment(brandId, window);
-		expect(criticism.map((q) => [q.tone, q.passage])).toEqual([
+		expect(criticism.map((q) => [q.sentiment, q.passage])).toEqual([
 			["negative", "Acme raised prices twice last year."],
 			["mixed", "Acme is easy, though pricey."],
 		]);

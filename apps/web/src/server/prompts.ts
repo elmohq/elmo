@@ -27,7 +27,7 @@ import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
 import {
 	getPromptWebQueryCounts,
 	getResponseMatches,
-	getResponseToneCounts,
+	getResponseSentimentCounts,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
 import {
@@ -40,8 +40,8 @@ import {
 	type PerPromptRunStats,
 } from "@/lib/rollup-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
+import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
-import { responseSortSchema, toneFilterSchema } from "@/lib/tone";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
@@ -405,7 +405,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 			page: z.number().optional().default(1),
 			limit: z.number().optional().default(10),
 			lookback: lookbackSchema.default("1w"),
-			sentiment: toneFilterSchema.optional(),
+			sentiment: sentimentFilterSchema.optional(),
 			sort: responseSortSchema.default("newest"),
 		}),
 	)
@@ -432,16 +432,16 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 			promptIds: [data.promptId],
 		};
 		const offset = (data.page - 1) * data.limit;
-		const [rows, toneCounts] = await Promise.all([
-			getResponseMatches({ ...scope, tone: data.sentiment }, data.limit, offset, data.sort),
-			getResponseToneCounts(scope),
+		const [rows, sentimentFilterCounts] = await Promise.all([
+			getResponseMatches({ ...scope, sentiment: data.sentiment }, data.limit, offset, data.sort),
+			getResponseSentimentCounts(scope),
 		]);
-		const total = data.sentiment ? toneCounts[data.sentiment] : toneCounts.all;
+		const total = data.sentiment ? sentimentFilterCounts[data.sentiment] : sentimentFilterCounts.all;
 		return {
 			runs: rows.map(toResponse),
 			total,
 			/** Before the sentiment filter narrows them. */
-			toneCounts,
+			sentimentFilterCounts,
 			page: data.page,
 			limit: data.limit,
 			hasMore: offset + rows.length < total,

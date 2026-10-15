@@ -9,8 +9,8 @@ import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
 import { HIGHLIGHT_CLASS, type MarkRange, splitHighlights } from "@/lib/highlight";
 import { passageRange } from "@/lib/passage";
+import { isSentiment, SENTIMENT_STYLES, type Sentiment } from "@/lib/sentiment";
 import { skeletonRows } from "@/lib/skeleton-rows";
-import { isTone, TONE_STYLES, type Tone } from "@/lib/tone";
 import { getModelDisplayName } from "@/lib/utils";
 
 export interface ResponseCardRun {
@@ -127,7 +127,7 @@ interface MentionedCompany {
 	name: string;
 	isBrand: boolean;
 	record?: MentionAssessment;
-	tone?: Tone;
+	sentiment?: Sentiment;
 	passage: { start: number; end: number } | null;
 }
 
@@ -137,7 +137,7 @@ function mentionedCompanies(run: ResponseCardRun, text: string, brandName?: stri
 		name,
 		isBrand,
 		record,
-		tone: isTone(record?.sentiment) ? record.sentiment : undefined,
+		sentiment: isSentiment(record?.sentiment) ? record.sentiment : undefined,
 		passage: record ? passageRange(text, record) : null,
 	});
 	return [
@@ -161,7 +161,7 @@ function badgeTip(company: MentionedCompany): string {
 }
 
 /**
- * A badge per company with its position and the answer's tone toward it. Clicking one marks the
+ * A badge per company with its position and the answer's sentiment toward it. Clicking one marks the
  * passage its assessment rests on in the answer below; clicking it again clears the mark.
  */
 function MentionedBrands({
@@ -179,7 +179,7 @@ function MentionedBrands({
 	return (
 		<div className="flex flex-wrap items-center gap-1.5">
 			{companies.map((company) => {
-				const { tone } = company;
+				const { sentiment } = company;
 				const canShow = company.passage !== null;
 				const active = selected === company.name;
 				const tip = badgeTip(company);
@@ -190,10 +190,12 @@ function MentionedBrands({
 						{company.record?.position !== undefined && (
 							<span className="tabular-nums text-muted-foreground">#{company.record.position}</span>
 						)}
-						{tone && (
+						{sentiment && (
 							<>
 								<span className="h-3 w-px bg-border" />
-								<span className={cn("font-medium", TONE_STYLES[tone].text)}>{TONE_STYLES[tone].label}</span>
+								<span className={cn("font-medium", SENTIMENT_STYLES[sentiment].text)}>
+									{SENTIMENT_STYLES[sentiment].label}
+								</span>
 							</>
 						)}
 					</>
@@ -220,8 +222,8 @@ function MentionedBrands({
 						className={cn(
 							className,
 							"cursor-pointer hover:bg-muted/60",
-							active && tone && cn("border-transparent", TONE_STYLES[tone].soft),
-							active && !tone && "border-transparent bg-muted",
+							active && sentiment && cn("border-transparent", SENTIMENT_STYLES[sentiment].soft),
+							active && !sentiment && "border-transparent bg-muted",
 						)}
 					>
 						{content}
@@ -234,7 +236,7 @@ function MentionedBrands({
 
 function passageMark(company?: MentionedCompany): MarkRange | undefined {
 	if (!company?.passage) return undefined;
-	const tint = company.tone ? TONE_STYLES[company.tone].soft : "bg-muted";
+	const tint = company.sentiment ? SENTIMENT_STYLES[company.sentiment].soft : "bg-muted";
 	return { ...company.passage, className: cn("rounded-sm px-0.5 text-inherit", tint) };
 }
 
