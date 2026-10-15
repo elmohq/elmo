@@ -113,7 +113,6 @@ export function ResponseCard({
 	);
 }
 
-/** Each company the answer counts as mentioning, with its position among them when the judge ranked it. */
 function MentionedBrands({
 	run,
 	brandName,

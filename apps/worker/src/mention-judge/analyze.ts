@@ -19,7 +19,7 @@ export interface RunMentions {
 export interface MentionAnalyzer {
 	/** Part of the mentions stamp. */
 	judgeVersion: string;
-	/** How many answers to analyze at once: as many as there are model sessions to keep busy. */
+	/** One per model session, to keep them all busy. */
 	concurrency: number;
 	/**
 	 * `previous` is what the run already has; subjects judged under an unchanged fingerprint keep
@@ -34,7 +34,6 @@ function entity(subject: Subject, rivals: string[]): JudgedEntity {
 	return { ...judgedSubject(subject), competitors: rivals.filter((name) => name !== subject.name) };
 }
 
-/** Ranks the companies an answer names by where it first mentions each. */
 function rank(records: (MentionAssessment | undefined)[]): void {
 	const placed = records.filter(
 		(record): record is MentionAssessment & { firstMention: number } =>
@@ -95,7 +94,6 @@ export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnal
 /** Where the worker image puts the model; a checkout gets it with `pnpm --filter @workspace/worker judge:pull`. */
 export const MENTION_JUDGE_DIR = join(__dirname, "../../mention-judge");
 
-/** `MENTION_JUDGE_WORKERS`: model sessions to run side by side, one per worker thread. */
 function sessionCount(): number {
 	const raw = process.env.MENTION_JUDGE_WORKERS?.trim();
 	const sessions = raw ? Number(raw) : 1;
