@@ -96,7 +96,8 @@ export function TrendChart({
 					stroke={color}
 					strokeWidth={2}
 					fill={color}
-					fillOpacity={0.18}
+					// On a flipped axis the area would shade above the line, away from the baseline.
+					fillOpacity={lowerIsBetter ? 0 : 0.18}
 					connectNulls
 				/>
 			</AreaChart>
