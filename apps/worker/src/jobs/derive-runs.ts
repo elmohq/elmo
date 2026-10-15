@@ -277,9 +277,9 @@ export async function deriveRuns(
 			failed.push(run.id);
 		}
 	}
-	// A moved config leaves the brand stale, and the replay that follows queues these runs again.
-	if (updates.length > 0 && !(await writeUpdates(conn, data.brandId, context.target, updates, analyzer))) return;
 	if (updates.length > 0) {
+		// A moved config leaves the brand stale, and the replay that follows queues these runs again.
+		if (!(await writeUpdates(conn, data.brandId, context.target, updates, analyzer))) return;
 		// Seconds-fresh dashboards instead of waiting for the once-a-minute refresh.
 		await boss
 			.send(REFRESH_ROLLUPS_QUEUE, { source: "derive" }, { singletonKey: REFRESH_ROLLUPS_QUEUE, singletonSeconds: 10 })
