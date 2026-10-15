@@ -398,7 +398,11 @@ export const rollupPromptRuns = pgTable(
 		competitorMentions: integer("competitor_mentions").notNull(),
 		/** Runs mentioning neither the brand nor any competitor. */
 		noMentionRuns: integer("no_mention_runs").notNull(),
-		/** Runs mentioning the brand, by the judge's confident sentiment toward it; an unsure sentiment counts in none. */
+		/**
+		 * Runs mentioning the brand, by the judge's confident sentiment toward it; an unsure sentiment counts in none.
+		 * No default on these: a worker still on the previous release fails its rebuild, keeping the range marked
+		 * for the new one, rather than writing zeros over it.
+		 */
 		positiveRuns: integer("positive_runs").notNull(),
 		neutralRuns: integer("neutral_runs").notNull(),
 		negativeRuns: integer("negative_runs").notNull(),
