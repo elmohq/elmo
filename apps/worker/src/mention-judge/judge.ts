@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import { Tokenizer } from "@huggingface/tokenizers";
 
@@ -102,7 +101,7 @@ export interface MentionJudge {
 	judge(entity: JudgedEntity, passage: string): Promise<Judgment>;
 }
 
-export async function loadMentionJudge(dir: string, threads = availableParallelism()): Promise<MentionJudge> {
+export async function loadMentionJudge(dir: string, threads: number): Promise<MentionJudge> {
 	const config: JudgeConfig = JSON.parse(readFileSync(join(dir, "config.json"), "utf8"));
 	if (config.references.join() !== REFERENCE_LABELS.join() || config.sentiments.join() !== SENTIMENT_LABELS.join()) {
 		throw new Error(`mention judge ${config.version} has unexpected labels`);

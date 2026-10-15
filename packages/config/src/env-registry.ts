@@ -217,6 +217,20 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"model:provider override for the LLM behind brand onboarding and the Opportunities report (e.g., 'claude:anthropic-api'). Defaults to the first configured provider in RESEARCH_PROVIDER_PREFERENCE.",
 	},
 	{
+		name: "MENTION_JUDGE_WORKERS",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"How many copies of the mention-judge model the worker runs in parallel (default 1). One copy uses up to four CPU cores; with more, each uses one, so values from 2 to 4 are no faster than 1. Each extra copy needs about 0.5 GB of memory.",
+	},
+	{
+		name: "WORKER_ROLE",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Set to 'judge' for extra worker copies that only judge answers, started to work through a backlog; the default 'all' runs everything.",
+	},
+	{
 		name: "JINA_API_KEY",
 		scope: "server",
 		requiredBy: "optional",

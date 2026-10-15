@@ -7,7 +7,8 @@ import {
 	subjectFingerprint,
 } from "@workspace/lib/mentions";
 import { assessMention } from "./assess";
-import { type JudgedEntity, loadMentionJudge, type MentionJudge } from "./judge";
+import type { JudgedEntity, MentionJudge } from "./judge";
+import { loadJudgePool } from "./pool";
 
 export interface RunMentions {
 	brandMentioned: boolean;
@@ -18,6 +19,8 @@ export interface RunMentions {
 export interface MentionAnalyzer {
 	/** Part of the mentions stamp. */
 	judgeVersion: string;
+	/** One per model session, to keep them all busy. */
+	concurrency: number;
 	/**
 	 * `previous` is what the run already has; subjects judged under an unchanged fingerprint keep
 	 * their verdicts. Pass it only when the text is the one those verdicts were judged on.
@@ -42,9 +45,10 @@ function rank(records: (MentionAssessment | undefined)[]): void {
 	});
 }
 
-export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
+export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnalyzer {
 	return {
 		judgeVersion: judge.version,
+		concurrency,
 		async analyze(text, config, previous) {
 			const answer = text ?? "";
 			const rivals = [config.brand.name, ...config.competitors.map((competitor) => competitor.name)];
@@ -90,15 +94,21 @@ export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
 /** Where the worker image puts the model; a checkout gets it with `pnpm --filter @workspace/worker judge:pull`. */
 export const MENTION_JUDGE_DIR = join(__dirname, "../../mention-judge");
 
+function sessionCount(): number {
+	const raw = process.env.MENTION_JUDGE_WORKERS?.trim();
+	const sessions = raw ? Number(raw) : 1;
+	if (!Number.isInteger(sessions) || sessions < 1) {
+		throw new Error(`MENTION_JUDGE_WORKERS must be a positive whole number, got "${raw}"`);
+	}
+	return sessions;
+}
+
 let current: MentionAnalyzer | undefined;
 
 export async function loadMentionAnalyzer(dir = MENTION_JUDGE_DIR): Promise<MentionAnalyzer> {
-	current = judgeAnalyzer(await loadMentionJudge(dir));
+	const sessions = sessionCount();
+	current = judgeAnalyzer(await loadJudgePool(dir, sessions), sessions);
 	return current;
-}
-
-export function mentionJudgeLoaded(): boolean {
-	return current !== undefined;
 }
 
 export function mentionAnalyzer(): MentionAnalyzer {

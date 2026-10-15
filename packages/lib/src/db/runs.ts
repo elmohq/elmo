@@ -82,9 +82,9 @@ export interface ExtractionUpdate {
 }
 
 /**
- * Rewrites many runs' extractions in one statement: backfills and replays write
- * in batches, and a statement per run is a round trip per run. `onlyUnstamped`
- * skips runs something else has stamped since they were read.
+ * Writes many runs' extractions in one statement, extracted for the first time or again:
+ * derivation and backfills write in batches, and a statement per run is a round trip per run.
+ * `onlyUnstamped` skips runs something else has stamped since they were read.
  */
 export async function updateExtractions(
 	conn: DbConnection,
@@ -94,10 +94,11 @@ export async function updateExtractions(
 	if (updates.length === 0) return;
 	const values = updates.map((u) => sql`(${u.runId}::uuid, ${u.textContent}::text, ${u.stamp}::text)`);
 	await conn.execute(sql`
-		UPDATE ${runExtractions} AS e
-		SET text_content = v.text_content, stamp = coalesce(v.stamp, e.stamp)
-		FROM (VALUES ${sql.join(values, sql`, `)}) AS v(run_id, text_content, stamp)
-		WHERE e.run_id = v.run_id ${options.onlyUnstamped ? sql`AND e.stamp IS NULL` : sql``}
+		INSERT INTO ${runExtractions} AS e (run_id, text_content, stamp)
+		SELECT * FROM (VALUES ${sql.join(values, sql`, `)}) AS v(run_id, text_content, stamp)
+		ON CONFLICT (run_id) DO UPDATE
+		SET text_content = excluded.text_content, stamp = coalesce(excluded.stamp, e.stamp)
+		${options.onlyUnstamped ? sql`WHERE e.stamp IS NULL` : sql``}
 	`);
 }
 
@@ -109,7 +110,6 @@ export interface MentionsUpdate {
 	stamp: string;
 }
 
-/** Rewrites many runs' mentions in one statement; see `updateExtractions`. */
 export async function updateMentions(conn: DbConnection, updates: MentionsUpdate[]): Promise<void> {
 	if (updates.length === 0) return;
 	const values = updates.map(
@@ -117,10 +117,10 @@ export async function updateMentions(conn: DbConnection, updates: MentionsUpdate
 			sql`(${u.runId}::uuid, ${u.brandMentioned}::boolean, ${sql.param(u.competitorsMentioned)}::text[], ${u.assessments === null ? null : JSON.stringify(u.assessments)}::jsonb, ${u.stamp}::text)`,
 	);
 	await conn.execute(sql`
-		UPDATE ${runMentions} AS m
-		SET brand_mentioned = v.brand_mentioned, competitors_mentioned = v.competitors_mentioned,
-			assessments = v.assessments, stamp = v.stamp
-		FROM (VALUES ${sql.join(values, sql`, `)}) AS v(run_id, brand_mentioned, competitors_mentioned, assessments, stamp)
-		WHERE m.run_id = v.run_id
+		INSERT INTO ${runMentions} (run_id, brand_mentioned, competitors_mentioned, assessments, stamp)
+		VALUES ${sql.join(values, sql`, `)}
+		ON CONFLICT (run_id) DO UPDATE SET
+			brand_mentioned = excluded.brand_mentioned, competitors_mentioned = excluded.competitors_mentioned,
+			assessments = excluded.assessments, stamp = excluded.stamp
 	`);
 }
