@@ -1,10 +1,10 @@
 // Imported by the browser too, so it reads nothing from the database layer but types.
-import type { DailyVerdicts } from "@/lib/rollup-read";
+import type { DailyAssessments } from "@/lib/rollup-read";
 import { shiftDateStr } from "@/lib/timezone-utils";
 
-/** The mention judge's verdicts summed over runs that mention a company, as every verdict read selects them. */
-export interface VerdictSums {
-	/** Runs by the judge's confident sentiment toward the company. */
+/** The mention judge's assessments summed over runs that mention a company, as every assessment read selects them. */
+export interface AssessmentSums {
+	/** Runs by the judge's sentiment toward the company. */
 	positive_runs: number;
 	neutral_runs: number;
 	negative_runs: number;
@@ -14,7 +14,7 @@ export interface VerdictSums {
 	positioned_runs: number;
 }
 
-export const NO_VERDICTS: VerdictSums = {
+export const NO_ASSESSMENTS: AssessmentSums = {
 	positive_runs: 0,
 	neutral_runs: 0,
 	negative_runs: 0,
@@ -32,7 +32,7 @@ export interface SentimentCounts {
 
 export interface SentimentPoint {
 	date: string;
-	/** Share of the trailing window's mentions with a clear tone that were positive; null with none. */
+	/** Share of the trailing window's mentions with a sentiment that were positive; null with none. */
 	positive: number | null;
 	negative: number | null;
 }
@@ -47,13 +47,13 @@ const share = (part: number, whole: number) => (whole > 0 ? Math.round((part / w
  * `windowDays - 1` days before `dateRange` so its first days get a full window.
  */
 export function sentimentSeries(
-	rows: DailyVerdicts[],
+	rows: DailyAssessments[],
 	dateRange: string[],
 	windowDays = SENTIMENT_WINDOW_DAYS,
 ): SentimentPoint[] {
 	return trailing(rows, dateRange, windowDays, (window) => {
-		const clear = window.positive_runs + window.neutral_runs + window.negative_runs + window.mixed_runs;
-		return { positive: share(window.positive_runs, clear), negative: share(window.negative_runs, clear) };
+		const toned = window.positive_runs + window.neutral_runs + window.negative_runs + window.mixed_runs;
+		return { positive: share(window.positive_runs, toned), negative: share(window.negative_runs, toned) };
 	});
 }
 
@@ -70,7 +70,7 @@ export function averagePosition(sum: number, runs: number): number | null {
 
 /** The brand's average position per day over a trailing window, for the same reason as `sentimentSeries`. */
 export function positionSeries(
-	rows: DailyVerdicts[],
+	rows: DailyAssessments[],
 	dateRange: string[],
 	windowDays = SENTIMENT_WINDOW_DAYS,
 ): PositionPoint[] {
@@ -79,23 +79,28 @@ export function positionSeries(
 	}));
 }
 
-const VERDICT_KEYS = Object.keys(NO_VERDICTS) as (keyof VerdictSums)[];
+const ASSESSMENT_KEYS = Object.keys(NO_ASSESSMENTS) as (keyof AssessmentSums)[];
 
-export function sumVerdicts(rows: VerdictSums[]): VerdictSums {
-	const total = { ...NO_VERDICTS };
-	for (const row of rows) for (const key of VERDICT_KEYS) total[key] += row[key];
+export function sumAssessments(rows: AssessmentSums[]): AssessmentSums {
+	const total = { ...NO_ASSESSMENTS };
+	for (const row of rows) for (const key of ASSESSMENT_KEYS) total[key] += row[key];
 	return total;
 }
 
-function trailing<T>(rows: DailyVerdicts[], dateRange: string[], windowDays: number, read: (window: VerdictSums) => T) {
+function trailing<T>(
+	rows: DailyAssessments[],
+	dateRange: string[],
+	windowDays: number,
+	read: (window: AssessmentSums) => T,
+) {
 	const byDate = new Map(rows.map((row) => [row.date, row]));
 	return dateRange.map((date) => {
 		const days = Array.from({ length: windowDays }, (_, back) => byDate.get(shiftDateStr(date, { days: -back })));
-		return { date, ...read(sumVerdicts(days.filter((row) => row !== undefined))) };
+		return { date, ...read(sumAssessments(days.filter((row) => row !== undefined))) };
 	});
 }
 
-export function sentimentCounts(sums: VerdictSums): SentimentCounts {
+export function sentimentCounts(sums: AssessmentSums): SentimentCounts {
 	return {
 		positive: sums.positive_runs,
 		neutral: sums.neutral_runs,

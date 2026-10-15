@@ -15,7 +15,7 @@ import {
 	uuidList,
 } from "@/lib/analytics-sql";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
-import { NO_VERDICTS, type VerdictSums } from "@/lib/sentiment";
+import { type AssessmentSums, NO_ASSESSMENTS } from "@/lib/sentiment";
 
 /** The run counts every run read selects, so a new rollup column reaches them all at once. */
 export interface RunSums {
@@ -27,14 +27,14 @@ export interface RunSums {
 	competitor_mentions: number;
 }
 
-export type { VerdictSums } from "@/lib/sentiment";
+export type { AssessmentSums } from "@/lib/sentiment";
 
-const verdictSums = sql.join(
-	Object.keys(NO_VERDICTS).map((column) => sql.raw(`coalesce(sum(${column}), 0)::int AS ${column}`)),
+const assessmentSums = sql.join(
+	Object.keys(NO_ASSESSMENTS).map((column) => sql.raw(`coalesce(sum(${column}), 0)::int AS ${column}`)),
 	sql`, `,
 );
 
-export interface MentionTotals extends RunSums, VerdictSums {
+export interface MentionTotals extends RunSums, AssessmentSums {
 	/** Runs that mentioned neither the brand nor any competitor. */
 	no_mention_runs: number;
 	/** Distinct prompts with a run in scope. */
@@ -140,7 +140,7 @@ export async function getMentionTotals(scope: AnalyticsScope): Promise<MentionTo
 		SELECT
 			${runSums},
 			coalesce(sum(no_mention_runs), 0)::int AS no_mention_runs,
-			${verdictSums},
+			${assessmentSums},
 			count(DISTINCT prompt_id)::int AS prompts,
 			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned_runs > 0)::int AS brand_mentioned_prompts,
 			${isoInstant(sql`max(last_run_at)`)} AS last_run_at
@@ -460,16 +460,16 @@ export async function getFanoutPromptTotals(scope: AnalyticsScope): Promise<Fano
 	`);
 }
 
-export interface DailyVerdicts extends VerdictSums {
+export interface DailyAssessments extends AssessmentSums {
 	date: string;
 }
 
 /** Per local day, the runs mentioning the brand by the judge's sentiment toward it, and its position. */
-export async function getDailyVerdicts(scope: AnalyticsScope): Promise<DailyVerdicts[]> {
-	return queryPg<DailyVerdicts>(sql`
+export async function getDailyAssessments(scope: AnalyticsScope): Promise<DailyAssessments[]> {
+	return queryPg<DailyAssessments>(sql`
 		SELECT
 			to_char(${localDate(sql`bucket`, scope.timezone)}, 'YYYY-MM-DD') AS date,
-			${verdictSums}
+			${assessmentSums}
 		FROM rollup_prompt_runs
 		WHERE ${rollupScope(scope)}
 		GROUP BY 1

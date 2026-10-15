@@ -89,7 +89,7 @@ export function judgedSubject(subject: Subject): Subject {
 }
 
 /**
- * What a subject's verdicts depend on: the subject as judged, and the judge. Rival names are left
+ * What a subject's assessments depend on: the subject as judged, and the judge. Rival names are left
  * out on purpose, so adding a competitor re-judges only that competitor rather than every subject
  * whose list of rivals it joined; those rivals are context for the model, not what it decides.
  */

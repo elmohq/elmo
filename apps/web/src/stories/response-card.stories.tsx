@@ -1,10 +1,10 @@
 /**
  * Stories for <ResponseCard />, the answer card on the Responses page and the
- * prompt detail page, focused on the Evidence block: the passage behind each
- * mention verdict and the sentiment read from it.
+ * prompt detail page, focused on the Passages block: the passage behind each
+ * mention assessment and the sentiment read from it.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import type { MentionAssessmentRecord } from "@workspace/lib/mentions";
+import type { MentionAssessment } from "@workspace/lib/mentions";
 import { ResponseCard, type ResponseCardRun } from "@/components/response-card";
 
 const ANSWER = `For a small sales team, **Acme** is the easiest CRM to get running: setup takes an afternoon and the mobile app is genuinely good.
@@ -17,12 +17,12 @@ const NEGATIVE_ANSWER = `Acme used to be the default pick, but recent reviews de
 
 Most teams comparing CRMs now shortlist Globex instead.`;
 
-const UNCERTAIN_ANSWER = `For reporting, some teams pair their CRM with Acme Insights, which adds dashboards on top of most pipelines.
+const DOUBTFUL_ANSWER = `For reporting, some teams pair their CRM with Acme Insights, which adds dashboards on top of most pipelines.
 
 Globex has reporting built in.`;
 
 /** Offsets of `passage` in `text`, as the worker stores them. */
-function evidence(passage: string, text = ANSWER): MentionAssessmentRecord["evidence"] {
+function passageAt(passage: string, text = ANSWER): MentionAssessment["passage"] {
 	const start = text.indexOf(passage);
 	return { start, end: start + passage.length };
 }
@@ -38,12 +38,12 @@ const baseRun: ResponseCardRun = {
 	mentionAssessments: null,
 };
 
-const positiveBrand: MentionAssessmentRecord = {
-	mention: "mentioned",
+const positiveBrand: MentionAssessment = {
+	mentioned: true,
 	probability: 0.98,
 	sentiment: "positive",
 	sentimentProbabilities: { positive: 0.91, neutral: 0.06, negative: 0.01, mixed: 0.02 },
-	evidence: evidence("For a small sales team, **Acme** is the easiest CRM to get running"),
+	passage: passageAt("For a small sales team, **Acme** is the easiest CRM to get running"),
 	firstMention: ANSWER.indexOf("Acme"),
 	mentionCount: 1,
 	position: 1,
@@ -82,11 +82,11 @@ export const NegativeBrand: Story = {
 			competitorsMentioned: ["Globex"],
 			mentionAssessments: {
 				brand: {
-					mention: "mentioned",
+					mentioned: true,
 					probability: 0.97,
 					sentiment: "negative",
 					sentimentProbabilities: { positive: 0.03, neutral: 0.08, negative: 0.86, mixed: 0.03 },
-					evidence: evidence(
+					passage: passageAt(
 						"Acme used to be the default pick, but recent reviews describe frequent outages and a support team that takes days to reply.",
 						NEGATIVE_ANSWER,
 					),
@@ -96,24 +96,23 @@ export const NegativeBrand: Story = {
 	},
 };
 
-/** The model couldn't call it either way: it still counts as a mention, and the tone is unclear. */
-export const UncertainBrand: Story = {
+/** The model couldn't call it either way: it still counts as a mention, read as neutral. */
+export const DoubtfulBrand: Story = {
 	args: {
-		text: UNCERTAIN_ANSWER,
+		text: DOUBTFUL_ANSWER,
 		run: {
 			...baseRun,
-			rawOutput: { text: UNCERTAIN_ANSWER },
+			rawOutput: { text: DOUBTFUL_ANSWER },
 			competitorsMentioned: ["Globex"],
 			mentionAssessments: {
 				brand: {
-					mention: "uncertain",
+					mentioned: true,
 					probability: 0.55,
-					reason: "other_company",
-					sentiment: "uncertain",
+					sentiment: "neutral",
 					sentimentProbabilities: { positive: 0.4, neutral: 0.45, negative: 0.1, mixed: 0.05 },
-					evidence: evidence(
+					passage: passageAt(
 						"For reporting, some teams pair their CRM with Acme Insights, which adds dashboards on top of most pipelines.",
-						UNCERTAIN_ANSWER,
+						DOUBTFUL_ANSWER,
 					),
 				},
 			},
@@ -130,12 +129,12 @@ export const CompetitorNotCounted: Story = {
 			mentionAssessments: {
 				brand: positiveBrand,
 				competitors: {
-					Globex: { mention: "mentioned", probability: 0.96, sentiment: "negative", position: 2 },
+					Globex: { mentioned: true, probability: 0.96, sentiment: "negative", position: 2 },
 					Initech: {
-						mention: "not_mentioned",
+						mentioned: false,
 						probability: 0.08,
 						reason: "other_company",
-						evidence: evidence(
+						passage: passageAt(
 							"If you need deep customization, Initech is worth a look, though it takes longer to configure.",
 						),
 					},
@@ -145,7 +144,7 @@ export const CompetitorNotCounted: Story = {
 	},
 };
 
-/** Runs matched by substring, or whose text wasn't stored, have no verdicts and show no Evidence block. */
+/** Runs whose text wasn't stored have no assessments and show no Passages block. */
 export const NotJudged: Story = {
 	args: { run: { ...baseRun, mentionAssessments: null } },
 };

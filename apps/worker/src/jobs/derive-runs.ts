@@ -143,7 +143,7 @@ async function rederiveMentions(
 	update: RunUpdate,
 ): Promise<RunMentions> {
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
-		// Verdicts can be kept only while the text they were judged on, and point into, is unchanged.
+		// Assessments can be kept only while the text they were judged on, and point into, is unchanged.
 		const previous = text === run.textContent ? run.assessments : null;
 		return analyzer.analyze(text, config, previous);
 	}
@@ -208,7 +208,7 @@ async function loadTarget(conn: DbConnection, brandId: string, analyzer: Mention
 /**
  * Writes the derived rows, a few statements per chunk: `prompt_runs` itself is append-only.
  * False, writing nothing, when the brand's config moved while the chunk was derived: those
- * verdicts would be stale on arrival.
+ * assessments would be stale on arrival.
  */
 function writeUpdates(
 	conn: DbConnection,
