@@ -38,36 +38,40 @@ export interface MentionAssessment {
 	position: number | null;
 	/** How many times the answer mentions it; null when it isn't counted as a mention. */
 	mentionCount: number | null;
-	/** The passage the verdict rests on. Only on a single run, and only where the answer's text was stored. */
-	evidence?: string | null;
 }
 
-export interface RunAssessments {
+/** As a single run reports a verdict. */
+export interface MentionAssessmentDetail extends MentionAssessment {
+	/** The passage the verdict rests on; null when there is none, as for a link-only mention. */
+	evidence: string | null;
+}
+
+export interface RunAssessments<T extends MentionAssessment = MentionAssessment> {
 	/** Null when the answer never names the brand. */
-	brand: MentionAssessment | null;
+	brand: T | null;
 	/** Keyed by competitor name; only competitors the answer names. */
-	competitors: Record<string, MentionAssessment>;
+	competitors: Record<string, T>;
 }
 
-/**
- * Evidence is stored as offsets into the run's stored text; clients don't hold that text, so a
- * single run gets the passage itself.
- */
-function publicAssessments(stored: RunMentionAssessments | null, text?: string | null): RunAssessments | null {
+const publicAssessment = (record: MentionAssessmentRecord): MentionAssessment => ({
+	mention: record.mention,
+	probability: record.probability,
+	reason: record.reason ?? null,
+	sentiment: record.sentiment ?? null,
+	sentimentProbabilities: record.sentimentProbabilities ?? null,
+	position: record.position ?? null,
+	mentionCount: record.mentionCount ?? null,
+});
+
+/** Fingerprints and offsets stay internal; `convert` decides what each verdict shows. */
+function publicAssessments<T extends MentionAssessment>(
+	stored: RunMentionAssessments | null,
+	convert: (record: MentionAssessmentRecord) => T,
+): RunAssessments<T> | null {
 	if (!stored) return null;
-	const convert = (record: MentionAssessmentRecord): MentionAssessment => ({
-		mention: record.mention,
-		probability: record.probability,
-		reason: record.reason ?? null,
-		sentiment: record.sentiment ?? null,
-		sentimentProbabilities: record.sentimentProbabilities ?? null,
-		position: record.position ?? null,
-		mentionCount: record.mentionCount ?? null,
-		...(text === undefined ? {} : { evidence: evidencePassage(text, record) }),
-	});
 	return {
 		brand: stored.brand ? convert(stored.brand) : null,
-		competitors: Object.fromEntries(Object.entries(stored.competitors ?? {}).map(([name, r]) => [name, convert(r)])),
+		competitors: Object.fromEntries(Object.entries(stored.competitors).map(([name, r]) => [name, convert(r)])),
 	};
 }
 
@@ -78,7 +82,9 @@ interface RunCitation {
 	citationIndex: number | null;
 }
 
-export interface RunDetail extends Omit<RunSummary, "citationCount"> {
+export interface RunDetail extends Omit<RunSummary, "citationCount" | "assessments"> {
+	/** Clients don't hold the stored text the evidence offsets index, so a single run quotes the passages. */
+	assessments: RunAssessments<MentionAssessmentDetail> | null;
 	citationCount: number;
 	answer: { text: string | null };
 	citations: RunCitation[];
@@ -111,7 +117,7 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 			webSearchEnabled: row.web_search_enabled,
 			brandMentioned: row.brand_mentioned,
 			competitorsMentioned: row.competitors_mentioned,
-			assessments: publicAssessments(row.assessments),
+			assessments: publicAssessments(row.assessments, publicAssessment),
 			webQueries: row.web_queries,
 			citationCount: row.citation_count,
 			createdAt: row.created_at,
@@ -152,7 +158,10 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 		webSearchEnabled: run.webSearchEnabled,
 		brandMentioned: run.brandMentioned,
 		competitorsMentioned: run.competitorsMentioned,
-		assessments: publicAssessments(run.mentionAssessments, run.textContent),
+		assessments: publicAssessments(run.mentionAssessments, (record) => ({
+			...publicAssessment(record),
+			evidence: evidencePassage(run.textContent, record),
+		})),
 		webQueries: run.webQueries,
 		citationCount: cited.length,
 		createdAt: run.createdAt,
