@@ -1,10 +1,7 @@
 /**
- * Brings recorded runs up to today's code and their brand's config: their extracted text and
- * citations, and their judged mentions. Every derivation goes through here, a new run as a chunk
- * of one and a brand's replayed history as many, so any worker takes any chunk and one brand's
- * history spreads across all of them. Apart from the provider call that recorded each run, so it
- * retries on its own and never asks a provider again; a run counts in no mention figure until
- * it's judged.
+ * Every derivation goes through here, a new run as a chunk of one and a replayed history as many,
+ * so one brand's history spreads across all workers. Kept apart from the provider call so it
+ * retries on its own and never asks a provider again; a run counts in no mention figure until judged.
  */
 import * as Sentry from "@sentry/node";
 import {
@@ -27,7 +24,6 @@ import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../ment
 
 export const DERIVE_RUNS_QUEUE = "derive-runs";
 
-/** Retries on its own, apart from the provider call that recorded each run. */
 export const DERIVE_RUNS_QUEUE_OPTIONS = {
 	retryLimit: 5,
 	retryDelay: 30,
@@ -69,7 +65,6 @@ export interface StaleRun {
 	createdAt: Date;
 	model: string;
 	provider: string | null;
-	/** False for a run recorded but never extracted. */
 	extracted: boolean;
 	textContent: string | null;
 	/** Loaded (through `loadRawOutputs`) only when the run's text has to be (re)extracted. */

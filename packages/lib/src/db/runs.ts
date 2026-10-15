@@ -113,7 +113,6 @@ export interface MentionsUpdate {
 	stamp: string;
 }
 
-/** Writes many runs' mentions in one statement, judged for the first time or again. */
 export async function updateMentions(conn: DbConnection, updates: MentionsUpdate[]): Promise<void> {
 	if (updates.length === 0) return;
 	const values = updates.map(
