@@ -44,7 +44,7 @@ export const getAnalytics = analyticsTool({
 	name: "get_analytics",
 	title: "Get a brand's analytics",
 	description:
-		"Everything a brand's window says in one call: visibility and its daily trend, share of voice against tracked competitors, the per-model breakdown, how many answers mentioning the brand were positive, neutral, negative or mixed toward it (beta), and citation totals. The first thing to read when asked how a brand is doing. Rates are fractions of 1, not percentages.",
+		"Everything a brand's window says in one call: visibility and its daily trend, share of voice against tracked competitors, the per-model breakdown, how many answers mentioning the brand were positive, neutral, negative or mixed toward it (experimental), and citation totals. The first thing to read when asked how a brand is doing. Rates are fractions of 1, not percentages.",
 	run: async ({ brand, range, filters }) => getBrandAnalytics(brand.id, range, filters),
 });
 
