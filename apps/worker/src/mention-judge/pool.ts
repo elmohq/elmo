@@ -26,6 +26,8 @@ export async function loadJudgePool(dir: string, size: number, threadsPerSession
 	process.env.ORT_DISABLE_TELEMETRY ??= "1";
 	const queue: Task[] = [];
 	const slots: Slot[] = [];
+	const workers = new Set<Worker>();
+	let closed = false;
 	let version = "";
 
 	const dispatch = () => {
@@ -59,6 +61,7 @@ export async function loadJudgePool(dir: string, size: number, threadsPerSession
 				// The worker runs under tsx like the rest of the app.
 				execArgv: ["--import", "tsx"],
 			});
+			workers.add(worker);
 			const slot: Slot = { worker, task: null };
 			let started = false;
 			worker.on("message", (message: PoolResponse) => {
@@ -81,7 +84,8 @@ export async function loadJudgePool(dir: string, size: number, threadsPerSession
 			});
 			// A crashed session fails only the passage it held; a fresh one takes its place.
 			worker.on("exit", () => {
-				if (!started) return;
+				workers.delete(worker);
+				if (!started || closed) return;
 				slot.task?.reject(new Error("mention judge session exited"));
 				slots.splice(slots.indexOf(slot), 1);
 				failQueuedIfEmpty();
@@ -89,7 +93,14 @@ export async function loadJudgePool(dir: string, size: number, threadsPerSession
 			});
 		});
 
-	await Promise.all(Array.from({ length: size }, spawn));
+	try {
+		await Promise.all(Array.from({ length: size }, spawn));
+	} catch (error) {
+		// Sessions that did load would otherwise keep their threads, and the model, alive.
+		closed = true;
+		await Promise.all([...workers].map((worker) => worker.terminate()));
+		throw error;
+	}
 
 	return {
 		version,
