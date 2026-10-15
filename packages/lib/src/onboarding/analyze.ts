@@ -12,6 +12,7 @@
  * to communicate context + quality guidelines, not field-by-field shape.
  */
 import { z } from "zod";
+import { wholeWordPattern } from "../mentions";
 import { getWebsiteExcerpt } from "../website-excerpt";
 import { runStructuredResearchPrompt } from "./llm";
 import {
@@ -229,9 +230,8 @@ function toKebabCase(tag: string): string {
 function filterRedundantAliases(aliases: string[], canonicalName: string): string[] {
 	const canonical = canonicalName.trim();
 	if (!canonical) return aliases;
-	const escaped = canonical.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-	const asWord = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "iu");
-	return aliases.filter((a) => !asWord.test(a));
+	// A fresh pattern per alias: it's global, so a shared one would carry `lastIndex` between tests.
+	return aliases.filter((a) => !wholeWordPattern(canonical).test(a));
 }
 
 export async function safeGetExcerpt(website: string): Promise<string> {
