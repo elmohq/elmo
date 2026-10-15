@@ -19,8 +19,8 @@ import {
 	getPerPromptRunStats,
 	getRunsByModel,
 	getVisibilityDailyAggregate,
-	NO_VERDICTS,
 } from "@/lib/rollup-read";
+import { NO_VERDICTS } from "@/lib/sentiment";
 import {
 	createBrand,
 	createCitation,
