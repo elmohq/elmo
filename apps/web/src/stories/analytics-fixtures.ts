@@ -140,7 +140,6 @@ export const mockDashboardSummary = {
 	landscape: mockLandscape,
 };
 
-// Share of voice: brand hovering in the low-30s against its competitors.
 export const mockShareOfVoice = {
 	brandName: "Acme",
 	brandShare: 0.31,

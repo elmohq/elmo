@@ -43,7 +43,6 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 	};
 }
 
-/** Every tracked company on each measure, overall, per model and per day. */
 export function useCompetitiveLandscape(brandId?: string, filters?: ShareOfVoiceFilters) {
 	const resolvedBrandId = useResolvedBrandId(brandId);
 	return useQuery({

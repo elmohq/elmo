@@ -7,18 +7,13 @@ import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 /** For companies past the charted few, so the long tail reads as one quiet group. */
 export const OTHERS_COLOR = "#cbd5e1";
 
-/** The deployment's chart colours, which the visibility charts use too. */
 export function useChartColors(): readonly string[] {
 	const context = useRouteContext({ from: BRAND_ROUTE_ID }) as { clientConfig?: ClientConfig };
 	const colors = context.clientConfig?.branding?.chartColors;
 	return colors && colors.length > 0 ? colors : DEFAULT_CHART_COLORS;
 }
 
-/**
- * One colour per company, the same on every chart and table that shows them together: the brand
- * takes the first colour whatever its rank, the next companies in the given order take the
- * following ones, and once the palette runs out the rest share `OTHERS_COLOR`.
- */
+/** One colour per company across every chart and table on the page; the brand takes the first whatever its rank. */
 export function companyColorMap(
 	companies: readonly { name: string; isBrand: boolean }[],
 	chartColors: readonly string[],
@@ -33,9 +28,8 @@ export function companyColorMap(
 }
 
 /**
- * Tracked companies ranked by overall visibility, which fixes each one's colour whichever measure is
- * shown; then any `others` a page also lists, such as companies the answers name but nobody tracks.
- * Until the landscape loads, `others` alone set the order.
+ * Ranked by overall visibility so a company's colour holds whichever measure is shown; `others` (e.g.
+ * named but untracked companies) follow, and alone set the order until the landscape loads.
  */
 export function useCompanyColors(
 	landscape: Landscape | undefined,

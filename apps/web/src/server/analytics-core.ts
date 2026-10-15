@@ -542,10 +542,6 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 	};
 }
 
-/**
- * The brand and its tracked competitors on visibility, share of voice, sentiment and position,
- * as of each day of the window, overall and per model.
- */
 export async function getCompetitiveLandscape(
 	brandId: string,
 	window: AnalyticsWindow,

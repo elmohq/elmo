@@ -93,7 +93,6 @@ export function ShareOfVoiceDonut({
 						/>
 					</PieChart>
 				</ChartContainer>
-				{/* The brand's share sits in the hole, so the number and the ring read as one figure. */}
 				<div className="pointer-events-none absolute inset-0 flex items-center justify-center">
 					<span className="text-3xl font-bold tracking-tight tabular-nums">
 						{brand ? percent(brand.value, total) : "—"}
