@@ -18,7 +18,6 @@ export const SENTIMENT_WINDOW_DAYS = 7;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** `date` (YYYY-MM-DD) moved by `days`. */
 export function shiftDate(date: string, days: number): string {
 	return new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 }
