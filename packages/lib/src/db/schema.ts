@@ -398,6 +398,13 @@ export const rollupPromptRuns = pgTable(
 		competitorMentions: integer("competitor_mentions").notNull(),
 		/** Runs mentioning neither the brand nor any competitor. */
 		noMentionRuns: integer("no_mention_runs").notNull(),
+		/** Runs counted as mentioning the brand that the judge couldn't call either way. */
+		uncertainMentionRuns: integer("uncertain_mention_runs").notNull().default(0),
+		/** Runs mentioning the brand, by the judge's confident sentiment toward it; an unsure sentiment counts in none. */
+		positiveRuns: integer("positive_runs").notNull().default(0),
+		neutralRuns: integer("neutral_runs").notNull().default(0),
+		negativeRuns: integer("negative_runs").notNull().default(0),
+		mixedRuns: integer("mixed_runs").notNull().default(0),
 		/** Runs with at least one genuine fan-out query (see `isFanoutQuery`). */
 		fanoutRuns: integer("fanout_runs").notNull(),
 		/** Distinct genuine fan-out queries summed over runs. */

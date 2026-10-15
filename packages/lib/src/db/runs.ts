@@ -18,6 +18,7 @@ export function selectRuns(conn: DbConnection) {
 			textContent: runExtractions.textContent,
 			brandMentioned: runMentions.brandMentioned,
 			competitorsMentioned: runMentions.competitorsMentioned,
+			mentionAssessments: runMentions.assessments,
 		})
 		.from(promptRuns)
 		.innerJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
