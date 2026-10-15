@@ -5,6 +5,7 @@ import {
 	type MentionConfig,
 	normalizeDomain,
 	type RunMentionAssessments,
+	subjectFingerprint,
 } from "@workspace/lib/mentions";
 import { assessMention, type MentionAssessment } from "./assess";
 import type { JudgedEntity, MentionJudge } from "./judge";
@@ -21,7 +22,11 @@ export interface MentionAnalyzer {
 	judgeVersion: string | null;
 	/** How many answers to analyze at once: as many as there are model sessions to keep busy. */
 	concurrency: number;
-	analyze(text: string | null, config: MentionConfig): Promise<RunMentions>;
+	/**
+	 * `previous` is what the run already has; subjects judged under an unchanged fingerprint keep
+	 * their verdicts. Pass it only when the text is the one those verdicts were judged on.
+	 */
+	analyze(text: string | null, config: MentionConfig, previous?: RunMentionAssessments | null): Promise<RunMentions>;
 }
 
 const substringAnalyzer: MentionAnalyzer = {
@@ -76,19 +81,51 @@ export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnal
 	return {
 		judgeVersion: judge.version,
 		concurrency,
-		async analyze(text, config) {
+		async analyze(text, config, previous) {
 			const answer = text ?? "";
 			const competitorNames = config.competitors.map((competitor) => competitor.name);
-			const assessments: RunMentionAssessments = {};
-			const brand = await assessMention(judge, entity(config.brand, competitorNames), answer);
-			if (brand) assessments.brand = toRecord(brand);
 			const rivals = [config.brand.name, ...competitorNames];
+			const judgeSubject = async (
+				subject: MentionConfig["brand"],
+				fingerprint: string,
+				before: { fingerprint?: string; record?: MentionAssessmentRecord },
+				rivalNames: string[],
+			): Promise<MentionAssessmentRecord | undefined> => {
+				if (before.fingerprint === fingerprint) return before.record && { ...before.record };
+				const assessment = await assessMention(judge, entity(subject, rivalNames), answer);
+				return assessment ? toRecord(assessment) : undefined;
+			};
+
+			const brandFingerprint = subjectFingerprint(config.brand, judge.version);
+			const judgedCompetitors: Record<string, string> = {};
+			const assessments: RunMentionAssessments = {
+				judged: { brand: brandFingerprint, competitors: judgedCompetitors },
+			};
+			const brand = await judgeSubject(
+				config.brand,
+				brandFingerprint,
+				{ fingerprint: previous?.judged?.brand, record: previous?.brand },
+				competitorNames,
+			);
+			if (brand) assessments.brand = brand;
 			const competitors: Record<string, MentionAssessmentRecord> = {};
 			for (const competitor of config.competitors) {
-				const assessment = await assessMention(judge, entity(competitor, rivals), answer);
-				if (assessment) competitors[competitor.name] = toRecord(assessment);
+				const fingerprint = subjectFingerprint(competitor, judge.version);
+				judgedCompetitors[competitor.name] = fingerprint;
+				const record = await judgeSubject(
+					competitor,
+					fingerprint,
+					{
+						fingerprint: previous?.judged?.competitors?.[competitor.name],
+						record: previous?.competitors?.[competitor.name],
+					},
+					rivals,
+				);
+				if (record) competitors[competitor.name] = record;
 			}
 			if (Object.keys(competitors).length > 0) assessments.competitors = competitors;
+			// Recomputed every time from the stored first-mention offsets, so a new competitor
+			// reorders everyone without re-judging them.
 			rank([assessments.brand, ...Object.values(competitors)]);
 			return {
 				brandMentioned: counts(assessments.brand),

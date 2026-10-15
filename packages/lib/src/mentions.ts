@@ -100,6 +100,25 @@ export interface RunMentionAssessments {
 	brand?: MentionAssessmentRecord;
 	/** Keyed by competitor name, as in `competitors_mentioned`. */
 	competitors?: Record<string, MentionAssessmentRecord>;
+	/**
+	 * The `subjectFingerprint` each subject was judged under, including subjects the answer never
+	 * names. A replay re-judges only the subjects whose fingerprint has changed.
+	 */
+	judged?: { brand?: string; competitors?: Record<string, string> };
+}
+
+/**
+ * What a subject's verdicts depend on: its names and domains, and the judge. Rival names are left
+ * out on purpose, so adding a competitor re-judges only that competitor rather than every subject
+ * whose list of rivals it joined; those rivals are context for the model, not what it decides.
+ */
+export function subjectFingerprint(subject: MentionConfig["brand"], judgeVersion: string): string {
+	const fingerprint = JSON.stringify({
+		names: canonicalTerms([subject.name, ...subject.aliases]),
+		domains: canonicalDomains(subject.domains),
+		judgeVersion,
+	});
+	return createHash("sha256").update(fingerprint).digest("hex").slice(0, 16);
 }
 
 export function analyzeRunMentions(
