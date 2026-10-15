@@ -158,14 +158,14 @@ describe("runReprocess", () => {
 	});
 
 	it("leaves runs that are already current untouched", async () => {
-		await insertLegacyRuns([legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"))]);
+		const run = legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"));
+		await insertLegacyRuns([run]);
 		await replay({ brandId, layers: BOTH_LAYERS });
-		await db.update(runMentions).set({ brandMentioned: false });
+		await db.update(runMentions).set({ brandMentioned: false }).where(eq(runMentions.runId, run.id));
 
 		expect(await replay({ brandId, layers: BOTH_LAYERS })).toEqual([]);
 
-		const [run] = await runsInWalkOrder();
-		expect(run.brandMentioned).toBe(false);
+		expect((await runsInWalkOrder())[0].brandMentioned).toBe(false);
 	});
 
 	it("derives a history spread over many chunks, even where creation times tie", async () => {
@@ -241,7 +241,10 @@ describe("fillLegacyText", () => {
 	it("stores a legacy run's text from its payload and leaves its citations and mentions as recorded", async () => {
 		const run = legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"));
 		await insertLegacyRuns([run]);
-		await db.update(runMentions).set({ brandMentioned: true, competitorsMentioned: ["Globex"] });
+		await db
+			.update(runMentions)
+			.set({ brandMentioned: true, competitorsMentioned: ["Globex"] })
+			.where(eq(runMentions.runId, run.id));
 
 		expect(await fillLegacyText(db)).toBeGreaterThanOrEqual(1);
 		await db.update(runExtractions).set({ textContent: "Filled once." }).where(eq(runExtractions.runId, run.id));
