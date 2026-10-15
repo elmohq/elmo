@@ -23,10 +23,11 @@ import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } fro
 import { insertRunsCitations, markDirty } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, extractRun } from "@workspace/lib/text-extraction";
-import { and, asc, eq, gte, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, notInArray, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
 import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge/analyze";
+import { sendJudgeRuns } from "./judge-runs";
 
 export const REPROCESS_QUEUE = "reprocess";
 
@@ -72,6 +73,8 @@ export interface RunUpdate {
 	citations?: Citation[];
 	/** What the stored payload no longer yields, so the run keeps what it has (see `deriveRunUpdate`). */
 	kept: ("text" | "citations" | "mentions")[];
+	/** The judge failed on it: its mentions are left as they are, for the judging queue to redo. */
+	unjudged?: true;
 }
 
 const isStale = (run: StaleRun, layer: ReprocessLayer, target: AnalysisVersions) =>
@@ -100,7 +103,8 @@ export async function deriveRunUpdate(
 	const text = extract || run.textContent === null ? reextract(run, extract, target, update) : run.textContent;
 	if (layers.includes("interpretation") && isStale(run, "interpretation", target)) {
 		const mentions = await rederiveMentions(run, text, config, analyzer, update);
-		update.mentions = { ...mentions, stamp: target[MENTIONS_KEY] };
+		if (mentions) update.mentions = { ...mentions, stamp: target[MENTIONS_KEY] };
+		else update.unjudged = true;
 	}
 	return update;
 }
@@ -124,16 +128,18 @@ async function rederiveMentions(
 	config: MentionConfig,
 	analyzer: MentionAnalyzer,
 	update: RunUpdate,
-): Promise<RunMentions> {
+): Promise<RunMentions | null> {
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
 		// Verdicts can be kept only while the text they were judged on, and point into, is unchanged.
 		const previous = text === run.textContent ? run.assessments : null;
 		try {
 			return await analyzer.analyze(text, config, previous);
 		} catch (error) {
-			// One answer the judge can't read mustn't stall the brand's whole replay; it keeps what it has.
-			console.error(`[reprocess] run ${run.id}: mention judge failed, keeping its mentions:`, error);
+			// One answer the judge can't read mustn't stall the brand's whole replay; the judging
+			// queue retries it on its own, and until then it keeps what it has.
+			console.error(`[reprocess] run ${run.id}: mention judge failed, handing it to the judging queue:`, error);
 			Sentry.captureException(error);
+			return null;
 		}
 	}
 	update.kept.push("mentions");
@@ -184,6 +190,7 @@ async function loadStaleRuns(
 				eq(promptRuns.promptId, promptId),
 				eq(promptRuns.brandId, pass.brandId),
 				from ? gte(promptRuns.createdAt, from) : undefined,
+				pass.unjudged.length > 0 ? notInArray(promptRuns.id, pass.unjudged) : undefined,
 				or(...pass.layers.map((layer) => staleFor(layer, pass.target))),
 			),
 		)
@@ -216,6 +223,8 @@ interface Pass {
 	analyzer: MentionAnalyzer;
 	/** Runs whose stored payload yielded less than they already had; see `deriveRunUpdate`. */
 	keptRuns: number;
+	/** Runs the judge failed on, left to the judging queue and skipped for the rest of the pass. */
+	unjudged: string[];
 }
 
 /**
@@ -226,7 +235,9 @@ async function deriveUpdates(pass: Pass, runs: StaleRun[], deadline: number) {
 	const updates: { run: StaleRun; update: RunUpdate }[] = [];
 	for (const run of runs) {
 		if (Date.now() > deadline) break;
-		updates.push({ run, update: await deriveRunUpdate(run, pass.layers, pass.target, pass.config, pass.analyzer) });
+		const update = await deriveRunUpdate(run, pass.layers, pass.target, pass.config, pass.analyzer);
+		if (update.unjudged) pass.unjudged.push(run.id);
+		updates.push({ run, update });
 	}
 	return updates;
 }
@@ -350,7 +361,7 @@ export function sendReprocess(boss: Pick<PgBoss, "send">, data: ReprocessData): 
 export async function runReprocess(
 	data: ReprocessData,
 	conn: DbConnection = db,
-	boss: Pick<PgBoss, "send"> = getBoss(),
+	boss: Pick<PgBoss, "send" | "insert"> = getBoss(),
 	analyzer: MentionAnalyzer = mentionAnalyzer(),
 ): Promise<void> {
 	const deadline = Date.now() + TIME_BUDGET_MS;
@@ -366,6 +377,7 @@ export async function runReprocess(
 		config: context.config,
 		analyzer,
 		keptRuns: 0,
+		unjudged: [],
 	};
 
 	const brandPrompts = await conn
@@ -379,6 +391,10 @@ export async function runReprocess(
 		brandPrompts.map(({ id }) => id),
 		deadline,
 	);
+	if (pass.unjudged.length > 0) {
+		await sendJudgeRuns(boss, pass.unjudged);
+		console.warn(`[reprocess] brand ${data.brandId}: ${pass.unjudged.length} runs left to the judging queue`);
+	}
 	if (pass.keptRuns > 0) {
 		console.warn(
 			`[reprocess] brand ${data.brandId}: ${pass.keptRuns} runs kept existing data their stored payload no longer yields`,

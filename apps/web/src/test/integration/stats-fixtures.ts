@@ -101,8 +101,12 @@ export async function createRun(
 			webSearchEnabled: opts.webSearch ?? true,
 			rawOutput: {},
 			webQueries: opts.webQueries ?? [],
-			brandMentioned: opts.brandMentioned,
-			competitorsMentioned: opts.competitors ?? [],
+			mentions: {
+				brandMentioned: opts.brandMentioned,
+				competitorsMentioned: opts.competitors ?? [],
+				assessments: null,
+				stamp: null,
+			},
 			createdAt,
 		},
 	]);

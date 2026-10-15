@@ -16,7 +16,7 @@ export interface MatchWindow {
 
 export interface AnswerMatches {
 	windows: MatchWindow[];
-	/** Offsets of whole-word matches in a link's host: a link to the company's own site, which counts as citing it. */
+	/** Offsets of whole-word matches inside links, which count as the brand being cited. */
 	linkHits: number[];
 	/** Offsets of matches past the passages judged, which still count toward how often it's named. */
 	unjudgedHits: number[];
@@ -43,23 +43,11 @@ function sentenceSpans(text: string): [number, number][] {
 	return spans;
 }
 
-interface LinkSpan {
-	start: number;
-	end: number;
-	/** Where the host sits in the link; the rest is path, query and fragment. */
-	hostStart: number;
-	hostEnd: number;
-}
-
-function linkSpans(text: string): LinkSpan[] {
-	return [...text.matchAll(/\]\(([^)\s]+)\)|https?:\/\/[^\s)\]]+/g)].map((m) => {
-		const start = m.index ?? 0;
-		const end = start + m[0].length;
-		const scheme = m[0].indexOf("://");
-		const hostStart = scheme === -1 ? start : start + scheme + 3;
-		const slash = m[0].slice(hostStart - start).search(/[/?#)]/);
-		return { start, end, hostStart, hostEnd: slash === -1 ? end : hostStart + slash };
-	});
+function linkSpans(text: string): [number, number][] {
+	return [...text.matchAll(/\]\(([^)\s]+)\)|https?:\/\/[^\s)\]]+/g)].map((m) => [
+		m.index ?? 0,
+		(m.index ?? 0) + m[0].length,
+	]);
 }
 
 /**
@@ -98,10 +86,8 @@ export function matchWindows(text: string, terms: string[]): AnswerMatches {
 	const linkHits: number[] = [];
 	const unjudgedHits: number[] = [];
 	for (const hit of findHits(text, terms)) {
-		const link = links.find(({ start, end }) => hit >= start && hit < end);
-		if (link) {
-			// A name in another site's path ("/recipes/apple_pie") says nothing about the company.
-			if (hit >= link.hostStart && hit < link.hostEnd) linkHits.push(hit);
+		if (links.some(([a, z]) => hit >= a && hit < z)) {
+			linkHits.push(hit);
 			continue;
 		}
 		const k = sentences.findIndex(([a, z]) => hit >= a && hit < z);
