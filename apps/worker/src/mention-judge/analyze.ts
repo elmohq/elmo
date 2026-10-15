@@ -46,7 +46,22 @@ function toRecord(assessment: MentionAssessment): MentionAssessmentRecord {
 		...(reason ? { reason } : {}),
 		...(sentiment ? { sentiment, sentimentProbabilities } : {}),
 		...(evidence ? { evidence: { start: evidence.start, end: evidence.end } } : {}),
+		...(assessment.firstMention === undefined
+			? {}
+			: { firstMention: assessment.firstMention, mentionCount: assessment.mentionCount }),
 	};
+}
+
+/** Ranks the companies an answer names by where it first mentions each. */
+function rank(records: (MentionAssessmentRecord | undefined)[]): void {
+	const placed = records.filter(
+		(record): record is MentionAssessmentRecord & { firstMention: number } =>
+			!!record && record.mention !== "not_mentioned" && record.firstMention !== undefined,
+	);
+	placed.sort((a, b) => a.firstMention - b.firstMention);
+	placed.forEach((record, i) => {
+		record.position = i + 1;
+	});
 }
 
 /** An uncertain verdict still counts, so a judge that can't tell never hides a real mention. */
@@ -68,6 +83,7 @@ export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
 				if (assessment) competitors[competitor.name] = toRecord(assessment);
 			}
 			if (Object.keys(competitors).length > 0) assessments.competitors = competitors;
+			rank([assessments.brand, ...Object.values(competitors)]);
 			return {
 				brandMentioned: counts(assessments.brand),
 				competitorsMentioned: competitorNames.filter((name) => counts(assessments.competitors?.[name])),

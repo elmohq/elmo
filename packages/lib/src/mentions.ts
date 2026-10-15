@@ -85,6 +85,15 @@ export interface MentionAssessmentRecord {
 	sentimentProbabilities?: Record<string, number>;
 	/** Offsets into the run's stored text of the passage the verdict rests on. */
 	evidence?: { start: number; end: number };
+	/** For a verdict that counts: offset into the run's stored text of the first mention. */
+	firstMention?: number;
+	/** For a verdict that counts: how many times the answer mentions the subject. */
+	mentionCount?: number;
+	/**
+	 * For a verdict that counts: 1 for the tracked company the answer names first, 2 for the next,
+	 * and so on. Only tracked companies are ranked; others the answer names are not known.
+	 */
+	position?: number;
 }
 
 export interface RunMentionAssessments {
