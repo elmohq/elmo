@@ -142,7 +142,7 @@ export const NegativeBrand: Story = {
 	},
 };
 
-/** The model couldn't call it either way: it still counts as a mention, read as neutral. */
+/** The model couldn't call it either way: it still counts as a mention, with its likeliest sentiment. */
 export const DoubtfulBrand: Story = {
 	args: {
 		text: DOUBTFUL_ANSWER,

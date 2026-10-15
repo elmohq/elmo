@@ -8,7 +8,7 @@ import { type MatchWindow, matchWindows } from "./windows";
  */
 const MENTION_REFERENCES = ["brand", "link_only"];
 
-/** How sure the judge must be: that a name isn't a mention for it not to count, and of a tone for it to stand. */
+/** How sure the judge must be that a name isn't a mention for it not to count. */
 const CONFIDENT = 0.7;
 
 /** A passage counts toward the entity's sentiment once it's more likely about the entity than not. */
@@ -102,10 +102,10 @@ function combineSentiment(
 			probabilities[label] = (probabilities[label] ?? 0) + (p * j.pMention) / weight;
 		}
 	}
-	const [label, p] = top(probabilities);
+	const [label] = top(probabilities);
 	const strongest = about.reduce((a, b) => ((b.sentiment[label] ?? 0) > (a.sentiment[label] ?? 0) ? b : a));
 	return {
-		sentiment: p >= CONFIDENT ? (label as Sentiment) : "neutral",
+		sentiment: label as Sentiment,
 		sentimentProbabilities: probabilities,
 		passage: span(strongest.window),
 	};
