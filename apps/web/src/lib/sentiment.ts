@@ -36,7 +36,6 @@ export interface SentimentSummary extends SentimentCounts {
 	negativeShare: number | null;
 }
 
-/** A company's sentiment and position across the answers that mention it. */
 export interface MentionQuality {
 	sentiment: SentimentSummary;
 	/** `average` is 1 when it's always the first tracked company named; null when never ranked. */

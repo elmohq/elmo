@@ -474,7 +474,6 @@ export interface BrandMentionQuality {
 	position: { average: number | null; series: PositionPoint[] };
 }
 
-/** The brand's sentiment and position over the window, with their day-by-day values. */
 export async function getBrandMentionQuality(
 	brandId: string,
 	window: AnalyticsWindow,

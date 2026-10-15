@@ -35,7 +35,7 @@ export interface MentionAssessment {
 	sentimentProbabilities: Record<string, number> | null;
 	/** 1 for the tracked company the answer names first, and so on; null when it isn't counted as a mention. */
 	position: number | null;
-	/** How many times the answer mentions it; null when it isn't counted as a mention. */
+	/** Null when it isn't counted as a mention. */
 	mentionCount: number | null;
 }
 
