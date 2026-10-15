@@ -64,8 +64,7 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 				webQueries: row.web_queries ?? [],
 				brandMentioned: row.brand_mentioned,
 				competitorsMentioned: row.competitors_mentioned ?? [],
-				// Evidence offsets index the stored text, so they mean nothing against re-extracted text.
-				mentionAssessments: row.text_content === null ? null : row.assessments,
+				mentionAssessments: row.assessments,
 				rawOutput: row.raw_output as {},
 				// Older rows carry no text and may predate the provider column; the
 				// extractor also accepts the model name.

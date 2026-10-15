@@ -30,8 +30,8 @@ import {
 	type SentimentPoint,
 	sentimentSeries,
 	sentimentSummary,
-	shiftDate,
 } from "@/lib/sentiment";
+import { shiftDateStr } from "@/lib/timezone-utils";
 import { resolveBrandWindow } from "@/server/brand-window";
 
 interface VisibilityTimeSeriesPoint {
@@ -116,7 +116,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			// Reaching back so the trailing window is full from the first plotted day.
 			getDailyVerdicts({
 				...scope,
-				from: shiftDate(fromDateStr, 1 - SENTIMENT_WINDOW_DAYS),
+				from: shiftDateStr(fromDateStr, { days: 1 - SENTIMENT_WINDOW_DAYS }),
 			}),
 		]);
 

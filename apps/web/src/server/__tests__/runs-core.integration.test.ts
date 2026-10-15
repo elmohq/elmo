@@ -49,6 +49,7 @@ beforeAll(async () => {
 					position: 2,
 				},
 			},
+			judged: { brand: "brand-fingerprint", competitors: { Globex: "globex-fingerprint" } },
 		},
 	});
 	judgedRunId = judged.id;

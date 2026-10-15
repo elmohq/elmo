@@ -1,3 +1,9 @@
+import type {
+	MentionAssessmentRecord,
+	MentionVerdict,
+	NonMentionReason,
+	SentimentVerdict,
+} from "@workspace/lib/mentions";
 import type { JudgedEntity, MentionJudge } from "./judge";
 import { type MatchWindow, matchWindows } from "./windows";
 
@@ -10,30 +16,13 @@ const MENTION_REFERENCES = ["brand", "link_only"];
 /** Below this calibrated probability either way, the verdict is "uncertain"; it still counts as a mention. */
 const CONFIDENT = 0.7;
 
-export type MentionVerdict = "mentioned" | "not_mentioned" | "uncertain";
-export type SentimentVerdict = "positive" | "neutral" | "negative" | "mixed" | "uncertain";
+/** A passage counts toward the entity's sentiment once it's more likely about the entity than not. */
+const ABOUT = 0.5;
 
-export interface Evidence {
-	start: number;
-	end: number;
-}
+/** Positions are ranked across all the companies an answer names, so a single assessment has none. */
+export type MentionAssessment = Omit<MentionAssessmentRecord, "position">;
 
-export interface MentionAssessment {
-	mention: MentionVerdict;
-	/** Calibrated probability that the answer mentions the entity, from its most convincing passage. */
-	mentionProbability: number;
-	/** For a verdict short of a confident mention: the likeliest non-mention reading. */
-	reason?: string;
-	sentiment?: SentimentVerdict;
-	sentimentProbabilities?: Record<string, number>;
-	evidence?: Evidence;
-	/** For a verdict that counts: the offset in the answer of its first mention of the entity. */
-	firstMention?: number;
-	/** For a verdict that counts: how many times the answer mentions the entity, among the passages judged. */
-	mentionCount?: number;
-}
-
-const span = ({ start, end }: MatchWindow): Evidence => ({ start, end });
+const span = ({ start, end }: MatchWindow) => ({ start, end });
 
 function top(probs: Record<string, number>): [string, number] {
 	return Object.entries(probs).sort((a, b) => b[1] - a[1])[0];
@@ -55,7 +44,7 @@ export async function assessMention(
 	const linksToEntity = linkHits.length > 0;
 	if (windows.length === 0) {
 		if (!linksToEntity) return null;
-		return { mention: "mentioned", mentionProbability: 1, firstMention: linkHits[0], mentionCount: linkHits.length };
+		return { mention: "mentioned", probability: 1, firstMention: linkHits[0], mentionCount: linkHits.length };
 	}
 
 	const judged: JudgedWindow[] = [];
@@ -70,17 +59,19 @@ export async function assessMention(
 	if (disclaimer) {
 		return {
 			mention: "not_mentioned",
-			mentionProbability: 1 - (disclaimer.reference.no_info ?? 0),
+			probability: 1 - (disclaimer.reference.no_info ?? 0),
 			reason: "no_info",
 			evidence: span(disclaimer.window),
 		};
 	}
 
-	const assessment = mentionFromPassages(judged, linksToEntity);
-	const sentiment = combineSentiment(judged.filter((j) => j.pMention >= 0.5));
-	if (sentiment) Object.assign(assessment, sentiment);
-	if (assessment.mention !== "not_mentioned") Object.assign(assessment, placement(judged, linkHits));
-	return assessment;
+	const mention = mentionFromPassages(judged, linksToEntity);
+	return {
+		...mention,
+		// The sentiment's passage replaces the mention's as the evidence: it's the one the UI quotes.
+		...combineSentiment(judged.filter((j) => j.pMention >= ABOUT)),
+		...(mention.mention === "not_mentioned" ? {} : placement(judged, linkHits)),
+	};
 }
 
 /**
@@ -106,8 +97,8 @@ interface JudgedWindow {
 
 function combineSentiment(
 	about: JudgedWindow[],
-): Pick<MentionAssessment, "sentiment" | "sentimentProbabilities" | "evidence"> | null {
-	if (about.length === 0) return null;
+): Pick<MentionAssessment, "sentiment" | "sentimentProbabilities" | "evidence"> {
+	if (about.length === 0) return {};
 	const weight = about.reduce((sum, j) => sum + j.pMention, 0);
 	const probabilities: Record<string, number> = {};
 	for (const j of about) {
@@ -129,16 +120,10 @@ function mentionFromPassages(judged: JudgedWindow[], linksToEntity: boolean): Me
 	const pMention = linksToEntity ? 1 : best.pMention;
 	const mention: MentionVerdict =
 		pMention >= CONFIDENT ? "mentioned" : pMention <= 1 - CONFIDENT ? "not_mentioned" : "uncertain";
-	const assessment: MentionAssessment = {
-		mention,
-		mentionProbability: pMention,
-		evidence: span(best.window),
-	};
-	if (mention !== "mentioned") {
-		const nonMention = Object.fromEntries(
-			Object.entries(best.reference).filter(([label]) => !MENTION_REFERENCES.includes(label)),
-		);
-		assessment.reason = top(nonMention)[0];
-	}
-	return assessment;
+	const assessment: MentionAssessment = { mention, probability: pMention, evidence: span(best.window) };
+	if (mention === "mentioned") return assessment;
+	const nonMention = Object.fromEntries(
+		Object.entries(best.reference).filter(([label]) => !MENTION_REFERENCES.includes(label)),
+	);
+	return { ...assessment, reason: top(nonMention)[0] as NonMentionReason };
 }

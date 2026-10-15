@@ -19,7 +19,7 @@ export interface ResponseCardRun {
 	brandMentioned: boolean;
 	competitorsMentioned: string[] | null;
 	/** Null when mentions came from substring matching, or when `text` isn't the stored text the offsets index. */
-	mentionAssessments?: RunMentionAssessments | null;
+	mentionAssessments: RunMentionAssessments | null;
 	rawOutput: unknown;
 }
 
