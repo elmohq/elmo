@@ -32,14 +32,18 @@ import {
 	getPromptsFirstEvaluatedAt,
 	getRunsByModel,
 	getVisibilityDailyAggregate,
-	type VerdictSums,
+	NO_VERDICTS,
 } from "@/lib/rollup-read";
 import {
 	averagePosition,
 	type MentionQuality,
 	mentionQuality,
+	type PositionPoint,
+	type SentimentCounts,
 	type SentimentSummary,
+	sentimentCounts,
 	sentimentSummary,
+	sumVerdicts,
 } from "@/lib/sentiment";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
@@ -175,13 +179,7 @@ export async function getBrandShareOfVoice(
 	]);
 	const brandName = brandRow[0]?.name ?? "Your brand";
 	if (resolved.promptIds.length === 0) {
-		return {
-			brandName,
-			brandShare: null,
-			totalRuns: 0,
-			entries: [],
-			series: [],
-		};
+		return { brandName, brandShare: null, totalRuns: 0, entries: [], series: [] };
 	}
 
 	const bounds = windowInstants(window);
@@ -471,20 +469,9 @@ export async function getBrandPromptPerformance(
 	});
 }
 
-const NO_VERDICTS: VerdictSums = {
-	positive_runs: 0,
-	neutral_runs: 0,
-	negative_runs: 0,
-	mixed_runs: 0,
-	position_sum: 0,
-	positioned_runs: 0,
-};
-
 export interface BrandMentionQuality {
-	sentiment: SentimentSummary & {
-		series: { date: string; positive: number; neutral: number; negative: number; mixed: number }[];
-	};
-	position: { average: number | null; series: { date: string; average: number | null }[] };
+	sentiment: SentimentSummary & { series: (SentimentCounts & { date: string })[] };
+	position: { average: number | null; series: PositionPoint[] };
 }
 
 /** The brand's sentiment and position over the window, with their day-by-day values. */
@@ -494,26 +481,19 @@ export async function getBrandMentionQuality(
 	filters: AnalyticsFilters = {},
 ): Promise<BrandMentionQuality> {
 	const { promptIds } = await resolveScope(brandId, filters);
+	if (promptIds.length === 0) {
+		return { sentiment: { ...sentimentSummary(NO_VERDICTS), series: [] }, position: { average: null, series: [] } };
+	}
 	const bounds = windowInstants(window);
 	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
-	const rows =
-		promptIds.length === 0 ? [] : await getDailyVerdicts(analyticsScope(brandId, window, promptIds, filters));
+	const rows = await getDailyVerdicts(analyticsScope(brandId, window, promptIds, filters));
 	const byDate = new Map(rows.map((row) => [row.date, row]));
-	const totals = { ...NO_VERDICTS };
-	for (const row of rows) {
-		for (const key of Object.keys(totals) as (keyof VerdictSums)[]) totals[key] += row[key];
-	}
 	const day = (date: string) => byDate.get(date) ?? NO_VERDICTS;
+	const totals = sumVerdicts(rows);
 	return {
 		sentiment: {
 			...sentimentSummary(totals),
-			series: dateRange.map((date) => ({
-				date,
-				positive: day(date).positive_runs,
-				neutral: day(date).neutral_runs,
-				negative: day(date).negative_runs,
-				mixed: day(date).mixed_runs,
-			})),
+			series: dateRange.map((date) => ({ date, ...sentimentCounts(day(date)) })),
 		},
 		position: {
 			average: averagePosition(totals.position_sum, totals.positioned_runs),

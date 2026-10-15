@@ -113,4 +113,3 @@ export function mentionQuality(sums: VerdictSums): MentionQuality {
 		averagePosition: averagePosition(sums.position_sum, sums.positioned_runs),
 	};
 }
-

@@ -89,11 +89,14 @@ export async function getPromptRuns(
 			prompt_runs.web_search_enabled,
 			run_mentions.brand_mentioned,
 			run_mentions.competitors_mentioned,
-			run_mentions.assessments,
+			-- Verdicts point into the stored text, so a run without it has none to show.
+			CASE WHEN run_extractions.text_content IS NULL THEN NULL ELSE run_mentions.assessments END AS assessments,
 			prompt_runs.web_queries,
 			(SELECT count(*) FROM citations c WHERE c.prompt_run_id = prompt_runs.id)::int AS citation_count,
 			prompt_runs.created_at
-		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
+		FROM prompt_runs
+		JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
+		JOIN run_extractions ON run_extractions.run_id = prompt_runs.id
 		WHERE prompt_id = ${promptId}::uuid
 			${dateFilter(fromDate, toDate, timezone)}
 			${modelFilter(model)}
