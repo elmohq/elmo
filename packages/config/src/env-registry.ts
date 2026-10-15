@@ -228,7 +228,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: "optional",
 		description:
-			"How many copies of the mention-judge model the worker runs in parallel (default 1). Each extra copy uses one more CPU and about 0.5 GB of memory, and speeds up replaying history.",
+			"How many copies of the mention-judge model the worker runs in parallel (default 1). One copy uses up to four CPU cores; with more, each uses one, so values from 2 to 4 are no faster than 1. Each extra copy needs about 0.5 GB of memory.",
 	},
 	{
 		name: "JINA_API_KEY",

@@ -89,9 +89,9 @@ let current: MentionAnalyzer = substringAnalyzer;
 const SINGLE_SESSION_THREADS = 4;
 
 /**
- * Loads the judge from `MENTION_JUDGE_DIR` once per process, as `MENTION_JUDGE_WORKERS` sessions
- * (default 1, about 1 GB, plus about 0.5 GB per extra session). The worker image always sets the
- * directory; a checkout without the model falls back to substring matching rather than refusing to run.
+ * Loads the judge from `MENTION_JUDGE_DIR` once per process, as `MENTION_JUDGE_WORKERS` sessions.
+ * The worker image always sets the directory; a checkout without the model falls back to
+ * substring matching rather than refusing to run.
  */
 export async function loadMentionAnalyzer(env: NodeJS.ProcessEnv = process.env): Promise<MentionAnalyzer> {
 	const dir = env.MENTION_JUDGE_DIR;
