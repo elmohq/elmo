@@ -140,3 +140,51 @@ describe("judged mentions", () => {
 		expect(result.mentionAssessments?.competitors?.Globex?.mention).toBe("mentioned");
 	});
 });
+
+describe("re-judging after a config change", () => {
+	const text = "Initech leads the pack. Apple is great value. Globex is a solid alternative.";
+
+	function countingJudge(version = "test") {
+		const judged: string[] = [];
+		const judge: MentionJudge = {
+			version,
+			judge: async (entity, passage) => {
+				judged.push(entity.name);
+				return cuedJudgment(passage);
+			},
+		};
+		return { judged, analyzer: judgeAnalyzer(judge) };
+	}
+
+	it("judges only a newly added competitor, and reorders everyone's positions", async () => {
+		const first = countingJudge();
+		const before = await first.analyzer.analyze(text, config);
+		expect(before.mentionAssessments?.brand?.position).toBe(1);
+
+		const second = countingJudge();
+		const withInitech = {
+			...config,
+			competitors: [...config.competitors, { name: "Initech", aliases: [], domains: [] }],
+		};
+		const after = await second.analyzer.analyze(text, withInitech, before.mentionAssessments);
+		expect(new Set(second.judged)).toEqual(new Set(["Initech"]));
+		expect(after.mentionAssessments?.competitors?.Initech?.position).toBe(1);
+		expect(after.mentionAssessments?.brand?.position).toBe(2);
+		expect(after.mentionAssessments?.competitors?.Globex?.position).toBe(3);
+	});
+
+	it("re-judges a subject whose names changed, and only that one", async () => {
+		const before = await countingJudge().analyzer.analyze(text, config);
+		const rejudge = countingJudge();
+		const renamed = { ...config, brand: { ...config.brand, aliases: ["Apple Inc"] } };
+		await rejudge.analyzer.analyze(text, renamed, before.mentionAssessments);
+		expect(new Set(rejudge.judged)).toEqual(new Set(["Apple"]));
+	});
+
+	it("re-judges everything under a new judge", async () => {
+		const before = await countingJudge("1").analyzer.analyze(text, config);
+		const upgraded = countingJudge("2");
+		await upgraded.analyzer.analyze(text, config, before.mentionAssessments);
+		expect(new Set(upgraded.judged)).toEqual(new Set(["Apple", "Globex"]));
+	});
+});

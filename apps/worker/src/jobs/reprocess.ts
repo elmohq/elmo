@@ -54,6 +54,7 @@ export interface StaleRun {
 	stamps: AnalysisVersions;
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
+	assessments: RunMentionAssessments | null;
 	citationCount: number;
 }
 
@@ -121,7 +122,9 @@ async function rederiveMentions(
 	update: RunUpdate,
 ): Promise<Omit<NonNullable<RunUpdate["mentions"]>, "stamp">> {
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
-		const { mentionAssessments, ...mentions } = await mentionAnalyzer().analyze(text, config);
+		// Verdicts can be kept only while the text they were judged on, and point into, is unchanged.
+		const previous = text === run.textContent ? run.assessments : null;
+		const { mentionAssessments, ...mentions } = await mentionAnalyzer().analyze(text, config, previous);
 		return { ...mentions, assessments: mentionAssessments };
 	}
 	update.kept.push("mentions");
@@ -160,6 +163,7 @@ async function loadStaleRuns(
 			mentionsStamp: runMentions.stamp,
 			brandMentioned: runMentions.brandMentioned,
 			competitorsMentioned: runMentions.competitorsMentioned,
+			assessments: runMentions.assessments,
 			citationCount: sql<number>`(SELECT count(*) FROM ${citations} WHERE ${citations.promptRunId} = ${promptRuns.id})::int`,
 		})
 		.from(promptRuns)
