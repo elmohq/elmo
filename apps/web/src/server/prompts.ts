@@ -24,7 +24,12 @@ import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
-import { getPromptWebQueryCounts } from "@/lib/postgres-read";
+import {
+	getPromptWebQueryCounts,
+	getResponseMatches,
+	getResponseToneCounts,
+	type ResponseSearchScope,
+} from "@/lib/postgres-read";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -37,10 +42,10 @@ import {
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { responseSortSchema, toneFilterSchema } from "@/lib/tone";
-import { responseOrder, toneBucket, toneCondition, toToneCounts } from "@/lib/tone-sql";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
+import { toResponse } from "@/server/responses";
 // Server Functions
 // ============================================================================
 
@@ -390,8 +395,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		};
 	});
 
-const RUN_TONE = { mentioned: sql`${runMentions.brandMentioned}`, assessments: sql`${runMentions.assessments}` };
-
 /**
  * Get paginated prompt runs
  */
@@ -420,45 +423,28 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 			await resolveBrandLookbackDays(prompt.brandId, data.lookback),
 			customRangeEnd(data.lookback),
 		);
-		const timeCondition = and(gte(promptRuns.createdAt, fromDate), lt(promptRuns.createdAt, toDate));
-
+		// The same read as the Responses page, over this prompt and the rolling window beside it.
+		const scope: ResponseSearchScope = {
+			brandId: prompt.brandId,
+			from: fromDate.toISOString(),
+			to: toDate.toISOString(),
+			timezone: "UTC",
+			promptIds: [data.promptId],
+		};
 		const offset = (data.page - 1) * data.limit;
-
-		const inScope = and(eq(promptRuns.promptId, data.promptId), timeCondition);
-		const [runs, buckets] = await Promise.all([
-			selectRuns(db)
-				.where(and(inScope, toneCondition(RUN_TONE, data.sentiment)))
-				.orderBy(responseOrder(RUN_TONE, data.sort, sql`${promptRuns.createdAt}`, sql`${promptRuns.id}`))
-				.limit(data.limit)
-				.offset(offset),
-			db
-				.select({ bucket: sql<string | null>`${toneBucket(RUN_TONE)}`, runs: sql<number>`count(*)::int` })
-				.from(promptRuns)
-				.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id))
-				.where(inScope)
-				.groupBy(sql`1`),
+		const [rows, toneCounts] = await Promise.all([
+			getResponseMatches({ ...scope, tone: data.sentiment }, data.limit, offset, data.sort),
+			getResponseToneCounts(scope),
 		]);
-		const toneCounts = toToneCounts(buckets);
 		const total = data.sentiment ? toneCounts[data.sentiment] : toneCounts.all;
-
-		const raw = await loadRawOutputs(
-			db,
-			runs.map((r) => r.id),
-		);
 		return {
-			// Older rows carry no text and may predate the provider column; the
-			// extractor also accepts the model name.
-			runs: runs.map((r) => ({
-				...r,
-				rawOutput: raw.get(r.id) as {},
-				textContent: r.textContent ?? extractTextContent(raw.get(r.id), r.provider ?? r.model),
-			})),
+			runs: rows.map(toResponse),
 			total,
 			/** This prompt's runs in the window by tone, before the sentiment filter narrows them. */
 			toneCounts,
 			page: data.page,
 			limit: data.limit,
-			hasMore: offset + runs.length < total,
+			hasMore: offset + rows.length < total,
 		};
 	});
 

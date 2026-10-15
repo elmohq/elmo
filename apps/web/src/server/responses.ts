@@ -3,7 +3,12 @@ import { extractTextContent } from "@workspace/lib/text-extraction";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
-import { getResponseMatches, getResponseToneCounts, type ResponseSearchScope } from "@/lib/postgres-read";
+import {
+	getResponseMatches,
+	getResponseToneCounts,
+	type ResponseMatchRow,
+	type ResponseSearchScope,
+} from "@/lib/postgres-read";
 import { getMentionTotals } from "@/lib/rollup-read";
 import { responseSortSchema, toneFilterSchema } from "@/lib/tone";
 import { resolveBrandWindow } from "@/server/brand-window";
@@ -60,22 +65,26 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			/** The search's matches by tone, before the sentiment filter narrows them. */
 			toneCounts,
 			pageSize: PAGE_SIZE,
-			matches: rows.map((row) => ({
-				id: row.id,
-				promptId: row.prompt_id,
-				promptValue: promptValues.get(row.prompt_id) ?? "",
-				model: row.model,
-				provider: row.provider,
-				version: row.version,
-				webQueries: row.web_queries ?? [],
-				brandMentioned: row.brand_mentioned,
-				competitorsMentioned: row.competitors_mentioned ?? [],
-				mentionAssessments: row.assessments,
-				rawOutput: row.raw_output as {},
-				// Older rows carry no text and may predate the provider column; the
-				// extractor also accepts the model name.
-				textContent: row.text_content ?? extractTextContent(row.raw_output, row.provider ?? row.model),
-				createdAt: new Date(row.created_at).toISOString(),
-			})),
+			matches: rows.map((row) => ({ ...toResponse(row), promptValue: promptValues.get(row.prompt_id) ?? "" })),
 		};
 	});
+
+/** A run as the response cards show it. */
+export function toResponse(row: ResponseMatchRow) {
+	return {
+		id: row.id,
+		promptId: row.prompt_id,
+		model: row.model,
+		provider: row.provider,
+		version: row.version,
+		webQueries: row.web_queries ?? [],
+		brandMentioned: row.brand_mentioned,
+		competitorsMentioned: row.competitors_mentioned ?? [],
+		mentionAssessments: row.assessments,
+		rawOutput: row.raw_output as {},
+		// Older rows carry no text and may predate the provider column; the
+		// extractor also accepts the model name.
+		textContent: row.text_content ?? extractTextContent(row.raw_output, row.provider ?? row.model),
+		createdAt: new Date(row.created_at).toISOString(),
+	};
+}

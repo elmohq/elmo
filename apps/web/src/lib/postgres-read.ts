@@ -15,9 +15,7 @@ import {
 } from "@/lib/analytics-sql";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
 import type { ResponseSort, Tone, ToneCounts, ToneFilter } from "@/lib/tone";
-import { brandTone, responseOrder, toneBucket, toneColumns, toneCondition, toToneCounts } from "@/lib/tone-sql";
-
-const RM = toneColumns("rm");
+import { responseOrder, toneBucket, toneCondition, toneConfidence, toneRank, toToneCounts } from "@/lib/tone-sql";
 
 const dateFilter = (fromDate: string | null, toDate: string | null, timezone: string): SQL =>
 	windowFilter(sql`created_at`, fromDate, toDate, timezone);
@@ -184,8 +182,8 @@ export async function getResponseMatches(
 		JOIN run_mentions rm ON rm.run_id = pr.id
 		JOIN run_extractions re ON re.run_id = pr.id
 		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
-			AND ${toneCondition(RM, scope.tone)}
-		ORDER BY ${responseOrder(RM, sort, sql`pr.created_at`, sql`pr.id`)}
+			AND ${toneCondition(scope.tone)}
+		ORDER BY ${responseOrder(sort)}
 		LIMIT ${limit} OFFSET ${offset}
 	`);
 }
@@ -194,7 +192,7 @@ export async function getResponseMatches(
 export async function getResponseToneCounts(scope: ResponseSearchScope): Promise<ToneCounts> {
 	if (scope.promptIds.length === 0) return toToneCounts([]);
 	const rows = await queryPg<{ bucket: string | null; runs: number }>(sql`
-		SELECT ${toneBucket(RM)} AS bucket, count(*)::int AS runs
+		SELECT ${toneBucket} AS bucket, count(*)::int AS runs
 		FROM prompt_runs pr
 		JOIN run_mentions rm ON rm.run_id = pr.id
 		JOIN run_extractions re ON re.run_id = pr.id
@@ -227,12 +225,8 @@ export async function getSentimentQuotes(
 	limit: number,
 ): Promise<SentimentQuoteRow[]> {
 	if (scope.promptIds.length === 0 || tones.length === 0) return [];
-	const tone = brandTone(RM);
-	const confidence = sql`COALESCE((rm.assessments->'brand'->'sentimentProbabilities'->>(rm.assessments->'brand'->>'sentiment'))::float8, 0)`;
-	const rank = sql`array_position(ARRAY[${sql.join(
-		tones.map((t) => sql`${t}`),
-		sql`, `,
-	)}]::text[], ${tone})`;
+	const rank = toneRank(tones);
+	const evidence = sql`rm.assessments->'brand'->'evidence'`;
 	return queryPg<SentimentQuoteRow>(sql`
 		SELECT id, prompt_id, model, created_at, brand, text_content FROM (
 			SELECT DISTINCT ON (pr.prompt_id)
@@ -243,14 +237,15 @@ export async function getSentimentQuotes(
 				rm.assessments->'brand' AS brand,
 				re.text_content,
 				${rank} AS rank,
-				${confidence} AS confidence
+				${toneConfidence} AS confidence
 			FROM prompt_runs pr
 			JOIN run_mentions rm ON rm.run_id = pr.id
 			JOIN run_extractions re ON re.run_id = pr.id
 			WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
 				AND ${rank} IS NOT NULL
-				AND re.text_content IS NOT NULL
-				AND rm.assessments->'brand' ? 'evidence'
+				-- Checked before picking each prompt's best, so a run with no passage to quote can't stand in for one that has.
+				AND (${evidence}->>'start')::int < (${evidence}->>'end')::int
+				AND (${evidence}->>'end')::int <= char_length(re.text_content)
 			ORDER BY pr.prompt_id, rank, confidence DESC, pr.created_at DESC
 		) best
 		ORDER BY rank, confidence DESC, created_at DESC
