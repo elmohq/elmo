@@ -12,7 +12,6 @@ import {
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { labelForModelFilter } from "@workspace/config/model-filter";
 import type { ClientConfig } from "@workspace/config/types";
-import { Badge } from "@workspace/ui/components/badge";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -160,7 +159,6 @@ function TrendSection({
 	value,
 	series,
 	loading,
-	beta = false,
 	graded = true,
 }: {
 	icon: typeof IconEye;
@@ -176,7 +174,6 @@ function TrendSection({
 	value: number | null;
 	series: TrendPoint[];
 	loading: boolean;
-	beta?: boolean;
 	/** Whether the number reads on the visibility scale, where higher is better and low is a warning. */
 	graded?: boolean;
 }) {
@@ -188,11 +185,6 @@ function TrendSection({
 				<h2 className="text-lg font-semibold flex items-center gap-2">
 					<Icon className="h-5 w-5 text-muted-foreground" />
 					{title}
-					{beta && (
-						<Badge variant="outline" className="text-xs font-normal">
-							Beta
-						</Badge>
-					)}
 				</h2>
 				<Link
 					to={linkTo}
@@ -471,7 +463,6 @@ function SentimentSection({
 			value={lastValue(series, "positive")}
 			series={series.map((p) => ({ date: p.date, value: p.positive }))}
 			loading={false}
-			beta
 			graded={false}
 		/>
 	);
