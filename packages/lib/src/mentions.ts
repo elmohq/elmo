@@ -76,7 +76,7 @@ export function mentionConfigFrom(brand: Brand, competitors: Competitor[]): Ment
 
 /** The mention judge's verdict on one subject, for the answers that name it. */
 export interface MentionAssessmentRecord {
-	/** `uncertain` counts as a mention but wants a human to look. */
+	/** `uncertain` still counts as a mention. */
 	mention: "mentioned" | "not_mentioned" | "uncertain";
 	probability: number;
 	/** The likeliest non-mention reading, when it isn't a confident mention. */
