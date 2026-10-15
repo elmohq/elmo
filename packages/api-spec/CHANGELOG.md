@@ -1,5 +1,11 @@
 # @workspace/api-spec
 
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
 ## 0.4.6
 
 No changes in this release.

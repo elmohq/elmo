@@ -1,5 +1,28 @@
 # @workspace/web
 
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+### Patch Changes
+
+- f1daf53: Citation lists now show one title and page type per page whatever the date range, count each prompt citing a page once, and report exact average positions.
+- f1daf53: Fixed the overview counting runs from disabled prompts when a brand had no enabled prompts.
+- f1daf53: Fixed competitors that share a name being counted twice per response in share of voice and listed twice in prompt stats.
+- f1daf53: Fixed the per-model citation counts in the analytics API which would leave out citations from some runs with web search.
+- a55f182: Response search now matches only the answer text, not the provider's raw response data.
+- Analytics window boundaries are rounded to the quarter hour.
+- Updated dependencies [f1daf53]
+- Updated dependencies [a55f182]
+  - @workspace/lib@0.5.0
+  - @workspace/api-spec@0.5.0
+  - @workspace/deployment@0.5.0
+  - @workspace/config@0.5.0
+  - @workspace/og@0.5.0
+  - @workspace/ui@0.5.0
+
 ## 0.4.6
 
 ### Patch Changes

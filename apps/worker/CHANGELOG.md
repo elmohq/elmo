@@ -1,5 +1,20 @@
 # @workspace/worker
 
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+### Patch Changes
+
+- a55f182: Editing a brand's name, aliases or competitors now updates mentions in past responses too, not only in new ones.
+- Updated dependencies [f1daf53]
+- Updated dependencies [a55f182]
+  - @workspace/lib@0.5.0
+  - @workspace/deployment@0.5.0
+  - @workspace/config@0.5.0
+
 ## 0.4.6
 
 ### Patch Changes

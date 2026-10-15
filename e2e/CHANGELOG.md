@@ -1,5 +1,13 @@
 # e2e
 
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [f1daf53]
+- Updated dependencies [a55f182]
+  - @workspace/lib@0.5.0
+
 ## 0.4.6
 
 ### Patch Changes
