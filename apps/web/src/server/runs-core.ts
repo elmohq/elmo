@@ -146,7 +146,6 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 		webSearchEnabled: run.webSearchEnabled,
 		brandMentioned: run.brandMentioned,
 		competitorsMentioned: run.competitorsMentioned,
-		// Offsets index the stored text; text re-extracted for an older run may not line up.
 		assessments: publicAssessments(run.mentionAssessments, run.textContent),
 		webQueries: run.webQueries,
 		citationCount: cited.length,
