@@ -194,6 +194,25 @@ describe("runReprocess", () => {
 		expect(brand.analysisVersions).toEqual(await currentVersions(brandId));
 	});
 
+	it("re-judges every brand's last 30 days before any older history", async () => {
+		const old = legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"));
+		const recent = legacyRun("Acme is the best CRM.", new Date(Date.now() - 24 * 60 * 60 * 1000));
+		await insertLegacyRuns([old, recent]);
+		const stamped = async () =>
+			Object.fromEntries((await runsInWalkOrder()).map((run) => [run.id, run.mentionsStamp !== null]));
+
+		const first = fakeBoss();
+		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, first.boss);
+		// The pass yields after the recent runs, so brands queued behind it get theirs done next.
+		expect(await stamped()).toEqual({ [old.id]: false, [recent.id]: true });
+		expect(sentFor(first.send, brandId)).toHaveLength(1);
+
+		const second = fakeBoss();
+		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, second.boss);
+		expect(await stamped()).toEqual({ [old.id]: true, [recent.id]: true });
+		expect(sentFor(second.send, brandId)).toEqual([]);
+	});
+
 	it("rewrites only derived rows, since prompt_runs rejects updates", async () => {
 		await insertLegacyRuns([legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"))]);
 		await expect(
