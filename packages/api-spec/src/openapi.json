@@ -1549,9 +1549,6 @@
 					{
 						"type": "object",
 						"properties": {
-							"assessments": {
-								"$ref": "#/components/schemas/RunAssessmentsDetail"
-							},
 							"answer": {
 								"type": "object",
 								"properties": {
@@ -2009,51 +2006,6 @@
 						"type": "object",
 						"additionalProperties": {
 							"$ref": "#/components/schemas/MentionAssessment"
-						},
-						"description": "Keyed by competitor name; only competitors the answer names."
-					}
-				},
-				"required": ["brand", "competitors"],
-				"x-stability": "experimental"
-			},
-			"MentionAssessmentDetail": {
-				"description": "A verdict with the passage it rests on, as a single run reports it.",
-				"allOf": [
-					{
-						"$ref": "#/components/schemas/MentionAssessment"
-					},
-					{
-						"type": "object",
-						"properties": {
-							"evidence": {
-								"type": ["string", "null"],
-								"description": "The passage the verdict rests on — for a mention with a sentiment, the passage that most shows that sentiment. Null when there is no passage (a link-only mention) or the run's stored text no longer matches what was judged."
-							}
-						},
-						"required": ["evidence"]
-					}
-				],
-				"x-stability": "experimental"
-			},
-			"RunAssessmentsDetail": {
-				"description": "**Experimental — the shape may still change.**\n\nThe mention judge's verdicts for one answer. Null on runs matched by name alone, which happens on deployments without the judge. Each verdict carries the passage it rests on.",
-				"type": ["object", "null"],
-				"properties": {
-					"brand": {
-						"oneOf": [
-							{
-								"$ref": "#/components/schemas/MentionAssessmentDetail"
-							},
-							{
-								"type": "null"
-							}
-						],
-						"description": "Null when the answer never names the brand."
-					},
-					"competitors": {
-						"type": "object",
-						"additionalProperties": {
-							"$ref": "#/components/schemas/MentionAssessmentDetail"
 						},
 						"description": "Keyed by competitor name; only competitors the answer names."
 					}
