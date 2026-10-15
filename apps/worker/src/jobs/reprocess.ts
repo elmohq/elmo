@@ -434,7 +434,8 @@ export async function requestStaleReprocesses(
 /**
  * Brands that predate stamping adopt today's stamps instead of replaying their
  * whole history on deploy: what they've stored is taken as is until their
- * config or the code next changes.
+ * config or the code next changes. Their mentions were substring-matched, so
+ * they adopt that stamp, and a worker with the judge goes on to re-judge them.
  */
 export async function adoptCurrentStamps(conn: DbConnection = db): Promise<number> {
 	const unstamped = await conn.select().from(brands).where(isNull(brands.analysisVersions));
@@ -444,10 +445,7 @@ export async function adoptCurrentStamps(conn: DbConnection = db): Promise<numbe
 		const updated = await conn
 			.update(brands)
 			.set({
-				analysisVersions: currentAnalysisVersions(
-					mentionConfigFrom(brand, brandCompetitors),
-					mentionAnalyzer().judgeVersion,
-				),
+				analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors)),
 			})
 			.where(and(eq(brands.id, brand.id), isNull(brands.analysisVersions)))
 			.returning({ id: brands.id });
