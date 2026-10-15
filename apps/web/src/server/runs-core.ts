@@ -8,6 +8,7 @@ import { citations, promptRuns } from "@workspace/lib/db/schema";
 import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/lib/mentions";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq } from "drizzle-orm";
+import { evidencePassage } from "@/lib/evidence";
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 
@@ -46,7 +47,7 @@ export interface RunAssessments {
 
 /**
  * Evidence is stored as offsets into the run's stored text; clients don't hold that text, so a
- * single run gets the passage itself. `text` is undefined for lists, which leave it out.
+ * single run gets the passage itself.
  */
 function publicAssessments(stored: RunMentionAssessments | null, text?: string | null): RunAssessments | null {
 	if (!stored) return null;
@@ -56,9 +57,7 @@ function publicAssessments(stored: RunMentionAssessments | null, text?: string |
 		reason: record.reason ?? null,
 		sentiment: record.sentiment ?? null,
 		sentimentProbabilities: record.sentimentProbabilities ?? null,
-		...(text === undefined
-			? {}
-			: { evidence: text !== null && record.evidence ? text.slice(record.evidence.start, record.evidence.end) : null }),
+		...(text === undefined ? {} : { evidence: evidencePassage(text, record) }),
 	});
 	return {
 		brand: stored.brand ? convert(stored.brand) : null,

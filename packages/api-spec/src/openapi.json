@@ -1872,7 +1872,7 @@
 				"required": ["id", "label", "premiumCapable", "configured"]
 			},
 			"SentimentCounts": {
-				"description": "Answers that mention the brand, by the mention judge's confident sentiment toward it. An answer whose sentiment the judge couldn't call counts in none. All zero on deployments without the judge.",
+				"description": "**Beta**: the shape may change while sentiment and mention verdicts settle. Answers that mention the brand, by the mention judge's confident sentiment toward it. An answer whose tone the judge couldn't call counts in none. All zero on deployments without the judge, and for history the judge hasn't re-judged yet.",
 				"type": "object",
 				"properties": {
 					"positive": {
@@ -1892,10 +1892,11 @@
 						"minimum": 0
 					}
 				},
-				"required": ["positive", "neutral", "negative", "mixed"]
+				"required": ["positive", "neutral", "negative", "mixed"],
+				"x-beta": true
 			},
 			"MentionAssessment": {
-				"description": "The mention judge's verdict on one brand or competitor named in an answer.",
+				"description": "**Beta**: the shape may change while sentiment and mention verdicts settle. The mention judge's verdict on one brand or competitor named in an answer.",
 				"type": "object",
 				"properties": {
 					"mention": {
@@ -1911,12 +1912,12 @@
 					},
 					"reason": {
 						"type": ["string", "null"],
-						"description": "Why it isn't a confident mention, when it isn't: `other_meaning` (the name used as an ordinary word), `other_company` (a different company with the same name), `no_info` (the answer says it knows nothing about it) or `link_only`. Informational; not a stable enum."
+						"description": "For a verdict short of a confident mention, the likeliest other reading: `other_meaning` (the name used as an ordinary word), `other_company` (a different company with the same name) or `no_info` (the answer says it knows nothing about it). Informational; not a stable enum."
 					},
 					"sentiment": {
 						"type": ["string", "null"],
 						"enum": ["positive", "neutral", "negative", "mixed", "uncertain", null],
-						"description": "Tone toward this company in the passages about it; null when the answer isn't about it."
+						"description": "Tone toward this company in the passages about it. Null when the answer isn't about it, or when it only links to the company."
 					},
 					"sentimentProbabilities": {
 						"type": ["object", "null"],
@@ -1929,13 +1930,14 @@
 					},
 					"evidence": {
 						"type": ["string", "null"],
-						"description": "Only on a single run: the passage the verdict rests on. Null when the answer's text wasn't stored when it was judged."
+						"description": "Only on a single run: the passage the verdict rests on — for a mention with a sentiment, the passage that most shows that sentiment. Null when there is no passage (a link-only mention) or the run's stored text no longer matches what was judged."
 					}
 				},
-				"required": ["mention", "probability", "reason", "sentiment", "sentimentProbabilities"]
+				"required": ["mention", "probability", "reason", "sentiment", "sentimentProbabilities"],
+				"x-beta": true
 			},
 			"RunAssessments": {
-				"description": "The mention judge's verdicts for one answer. Null on runs matched by name alone, which happens on deployments without the judge.",
+				"description": "**Beta**: the shape may change while sentiment and mention verdicts settle. The mention judge's verdicts for one answer. Null on runs matched by name alone, which happens on deployments without the judge.",
 				"type": ["object", "null"],
 				"properties": {
 					"brand": {
@@ -1957,7 +1959,8 @@
 						"description": "Keyed by competitor name; only competitors the answer names."
 					}
 				},
-				"required": ["brand", "competitors"]
+				"required": ["brand", "competitors"],
+				"x-beta": true
 			}
 		},
 		"responses": {

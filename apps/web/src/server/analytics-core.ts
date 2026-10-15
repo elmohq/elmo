@@ -29,10 +29,9 @@ import {
 	getPerPromptRunStats,
 	getPromptsFirstEvaluatedAt,
 	getRunsByModel,
-	getSentimentTotals,
 	getVisibilityDailyAggregate,
 } from "@/lib/rollup-read";
-import type { SentimentCounts } from "@/lib/sentiment";
+import { type SentimentCounts, sentimentCounts } from "@/lib/sentiment";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -452,8 +451,6 @@ export async function getBrandPromptPerformance(
 	});
 }
 
-/** The long lists — cited domains and URLs, sub-queries, per-prompt results —
- * are endpoints of their own. */
 /** Answers mentioning the brand, by the judge's confident sentiment toward it. All zero where no judge runs. */
 export async function getBrandSentiment(
 	brandId: string,
@@ -462,9 +459,11 @@ export async function getBrandSentiment(
 ): Promise<SentimentCounts> {
 	const { promptIds } = await resolveScope(brandId, filters);
 	if (promptIds.length === 0) return { positive: 0, neutral: 0, negative: 0, mixed: 0 };
-	return getSentimentTotals(analyticsScope(brandId, window, promptIds, filters));
+	return sentimentCounts(await getMentionTotals(analyticsScope(brandId, window, promptIds, filters)));
 }
 
+/** The long lists — cited domains and URLs, sub-queries, per-prompt results —
+ * are endpoints of their own. */
 export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
 	const [visibility, shareOfVoice, models, citations, sentiment] = await Promise.all([
 		getBrandVisibility(brandId, window, filters),
