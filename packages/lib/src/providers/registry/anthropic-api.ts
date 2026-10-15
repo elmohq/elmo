@@ -18,7 +18,7 @@ import type {
 import { structuredResearch } from "./ai-sdk";
 import { nonEmptyStrings, sanitizeForJson, sleep } from "./scrape-shared";
 
-const DEFAULT_RESEARCH_MODEL = "claude-sonnet-5";
+const DEFAULT_RESEARCH_MODEL = "claude-sonnet-5-5";
 
 function getAnthropicLanguageModel(model: string) {
 	const apiKey = getCredential("ANTHROPIC_API_KEY");

@@ -58,7 +58,7 @@ describe("collectProvider", () => {
 		const targets: string[] = [];
 		await collectProvider(providerSpec("anthropic"), {}, targets);
 
-		expect(targets).toEqual(["claude:anthropic-api:claude-sonnet-5:online"]);
+		expect(targets).toEqual(["claude:anthropic-api:claude-haiku-5-5:online"]);
 	});
 
 	it("collects both scraper credentials and the picked surfaces", async () => {

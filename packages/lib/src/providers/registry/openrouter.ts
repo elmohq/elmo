@@ -12,11 +12,9 @@ import { jsonSchemaResponseFormat, parseSchemaJson } from "./ai-sdk";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
-// Default to GPT-5 Mini via OpenRouter — supports OpenRouter's *native*
-// web-search plugin (vs the Exa fallback) and produced the best brand-info
-// recall + cheapest cost in our compare-onboarding runs. Other families that
-// support native search per the docs: Anthropic, Perplexity, xAI.
-const DEFAULT_RESEARCH_MODEL = "openai/gpt-5-mini";
+// Must be a family with OpenRouter's *native* web-search plugin (vs the Exa
+// fallback); per the docs that's OpenAI, Anthropic, Perplexity, and xAI.
+const DEFAULT_RESEARCH_MODEL = "anthropic/claude-sonnet-5.5";
 
 function openrouterHeaders(): Record<string, string> {
 	return {
