@@ -452,8 +452,6 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 				...r,
 				rawOutput: raw.get(r.id) as {},
 				textContent: r.textContent ?? extractTextContent(raw.get(r.id), r.provider ?? r.model),
-				// Evidence offsets index the stored text, so they mean nothing against re-extracted text.
-				mentionAssessments: r.textContent === null ? null : r.mentionAssessments,
 			})),
 			total,
 			/** This prompt's runs in the window by tone, before the sentiment filter narrows them. */

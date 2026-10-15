@@ -3,6 +3,7 @@
  * domain, the sentence containing it plus one sentence either side. Judging each match separately
  * keeps long answers within the model's input limit and lets later mentions count.
  */
+import { wholeWordPattern } from "@workspace/lib/mentions";
 
 export interface MatchWindow {
 	/** Character offsets of the window in the answer, for pointing the UI at the evidence. */
@@ -47,15 +48,6 @@ function linkSpans(text: string): [number, number][] {
 	]);
 }
 
-const WORD_CHAR = /[\p{L}\p{N}]/u;
-
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-/** A match inside a longer word ("ace" in "place") is never the brand, so it isn't judged at all. */
-function isWholeWord(text: string, start: number, end: number): boolean {
-	return !WORD_CHAR.test(text[start - 1] ?? "") && !WORD_CHAR.test(text[end] ?? "");
-}
-
 /**
  * The sentence before the hit, its own, and the one after. The model reads only so much of a
  * passage and drops the tail, so a long lead-in is shortened until the hit sits near the start.
@@ -80,10 +72,7 @@ function findHits(text: string, terms: string[]): number[] {
 	// Searched case-insensitively in the original text: lowercasing first can change its length
 	// ("İ" becomes two code units) and shift every offset after it.
 	for (const needle of needles.values()) {
-		for (const match of text.matchAll(new RegExp(escapeRegExp(needle), "giu"))) {
-			const start = match.index ?? 0;
-			if (isWholeWord(text, start, start + match[0].length)) hits.push(start);
-		}
+		for (const match of text.matchAll(wholeWordPattern(needle))) hits.push(match.index ?? 0);
 	}
 	return hits.sort((a, b) => a - b);
 }

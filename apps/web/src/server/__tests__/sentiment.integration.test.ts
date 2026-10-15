@@ -26,7 +26,7 @@ const judged = (
 		evidence: { start, end: start + passage.length },
 		position: 1,
 	};
-	return { text, assessments: { brand } };
+	return { text, assessments: { brand, competitors: {}, judged: { brand: "acme", competitors: {} } } };
 };
 
 beforeAll(async () => {
@@ -68,7 +68,13 @@ beforeAll(async () => {
 			true,
 			judged("Acme is the easiest CRM to set up.", "Acme is the easiest CRM to set up.", "positive", 0.97),
 		],
-		["unmentioned", setup, "2026-03-03T11:00:00Z", false, { text: "Globex is fine.", assessments: {} }],
+		[
+			"unmentioned",
+			setup,
+			"2026-03-03T11:00:00Z",
+			false,
+			{ text: "Globex is fine.", assessments: { competitors: {}, judged: { brand: "acme", competitors: {} } } },
+		],
 		// Matched without the judge, so it counts as a mention but has no tone.
 		["untoned", pricing, "2026-03-03T12:00:00Z", true],
 	];

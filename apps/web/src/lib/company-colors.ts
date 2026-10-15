@@ -15,29 +15,35 @@ export function useChartColors(): readonly string[] {
 
 /**
  * One colour per company, the same on every chart and table that shows them together: the brand
- * takes the first colour whatever its rank, the first `topN` competitors in the given order take the
- * next ones, and the rest share `OTHERS_COLOR`.
+ * takes the first colour whatever its rank, the next companies in the given order take the
+ * following ones, and once the palette runs out the rest share `OTHERS_COLOR`.
  */
 export function companyColorMap(
 	companies: readonly { name: string; isBrand: boolean }[],
 	chartColors: readonly string[],
-	topN = 4,
 ): Map<string, string> {
 	const map = new Map<string, string>();
 	let next = 1;
 	for (const company of companies) {
 		if (company.isBrand) map.set(company.name, chartColors[0]);
-		else if (next <= topN) map.set(company.name, chartColors[next++ % chartColors.length]);
-		else map.set(company.name, OTHERS_COLOR);
+		else map.set(company.name, next < chartColors.length ? chartColors[next++] : OTHERS_COLOR);
 	}
 	return map;
 }
 
-/** Companies ranked by overall visibility, which fixes each one's colour whichever measure is shown. */
-export function useCompanyColors(landscape: Landscape | undefined): Map<string, string> {
+/**
+ * Tracked companies ranked by overall visibility, which fixes each one's colour whichever measure is
+ * shown; then any `others` a page also lists, such as companies the answers name but nobody tracks.
+ * Until the landscape loads, `others` alone set the order.
+ */
+export function useCompanyColors(
+	landscape: Landscape | undefined,
+	others: readonly { name: string; isBrand: boolean }[] = [],
+): Map<string, string> {
 	const chartColors = useChartColors();
 	const ranked = [...(landscape?.companies ?? [])].sort(
 		(a, b) => (b.totals.visibility ?? -1) - (a.totals.visibility ?? -1),
 	);
-	return companyColorMap(ranked, chartColors, Math.min(chartColors.length - 1, ranked.length));
+	const listed = new Set(ranked.map((company) => company.name));
+	return companyColorMap([...ranked, ...others.filter((company) => !listed.has(company.name))], chartColors);
 }

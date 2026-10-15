@@ -86,14 +86,19 @@ const brandRuns = (brandId: string) => sql`
 const inRange = (brandId: string, from: Date, toExclusive: Date) =>
 	sql`WHERE pr.brand_id = ${brandId} AND pr.created_at >= ${from} AND pr.created_at < ${toExclusive}`;
 
-/** Sentiment and position measures over the runs that mention `subject`, a verdict in `run_mentions.assessments`. */
-const verdictMeasures = (subject: SQL, mentioned: SQL) => sql`
-	count(*) FILTER (WHERE ${mentioned} AND ${subject}->>'sentiment' = 'positive')::int,
-	count(*) FILTER (WHERE ${mentioned} AND ${subject}->>'sentiment' = 'neutral')::int,
-	count(*) FILTER (WHERE ${mentioned} AND ${subject}->>'sentiment' = 'negative')::int,
-	count(*) FILTER (WHERE ${mentioned} AND ${subject}->>'sentiment' = 'mixed')::int,
-	coalesce(sum((${subject}->>'position')::int) FILTER (WHERE ${mentioned}), 0)::int,
-	count(${subject}->'position') FILTER (WHERE ${mentioned})::int`;
+const verdictColumns = sql.raw("positive_runs, neutral_runs, negative_runs, mixed_runs, position_sum, positioned_runs");
+
+/**
+ * Sentiment and position measures, in `verdictColumns` order, over `subject`: a verdict in
+ * `run_mentions.assessments`, null for runs that don't count as mentioning it.
+ */
+const verdictMeasures = (subject: SQL) => sql`
+	count(*) FILTER (WHERE ${subject}->>'sentiment' = 'positive')::int,
+	count(*) FILTER (WHERE ${subject}->>'sentiment' = 'neutral')::int,
+	count(*) FILTER (WHERE ${subject}->>'sentiment' = 'negative')::int,
+	count(*) FILTER (WHERE ${subject}->>'sentiment' = 'mixed')::int,
+	coalesce(sum((${subject}->>'position')::int), 0)::int,
+	count(${subject}->'position')::int`;
 
 async function insertPromptRunRollup(
 	tx: DbConnection,
@@ -105,7 +110,7 @@ async function insertPromptRunRollup(
 		INSERT INTO ${rollupPromptRuns} (
 			brand_id, bucket, prompt_id, model, provider, web_search_enabled,
 			runs, brand_mentioned_runs, competitor_runs, competitor_mentions, no_mention_runs,
-			positive_runs, neutral_runs, negative_runs, mixed_runs, position_sum, positioned_runs,
+			${verdictColumns},
 			fanout_runs, fanout_queries, first_run_at, last_run_at
 		)
 		SELECT
@@ -115,7 +120,7 @@ async function insertPromptRunRollup(
 			count(*) FILTER (WHERE cardinality(m.competitors_mentioned) > 0)::int,
 			coalesce(sum(cardinality(m.competitors_mentioned)), 0)::int,
 			count(*) FILTER (WHERE NOT m.brand_mentioned AND coalesce(cardinality(m.competitors_mentioned), 0) = 0)::int,
-			${verdictMeasures(sql`m.assessments->'brand'`, sql`m.brand_mentioned`)},
+			${verdictMeasures(sql`(CASE WHEN m.brand_mentioned THEN m.assessments->'brand' END)`)},
 			count(*) FILTER (WHERE fanout.queries > 0)::int,
 			coalesce(sum(fanout.queries), 0)::int,
 			min(pr.created_at),
@@ -141,13 +146,13 @@ async function insertCompetitorRollup(
 	const result = await tx.execute(sql`
 		INSERT INTO ${rollupCompetitorMentions} (
 			brand_id, bucket, prompt_id, model, provider, web_search_enabled, competitor_name, runs,
-			positive_runs, neutral_runs, negative_runs, mixed_runs, position_sum, positioned_runs
+			${verdictColumns}
 		)
 		SELECT
 			${keyColumns},
 			c.competitor_name,
 			count(*)::int,
-			${verdictMeasures(sql`m.assessments->'competitors'->c.competitor_name`, sql`TRUE`)}
+			${verdictMeasures(sql`m.assessments->'competitors'->c.competitor_name`)}
 		${brandRuns(brandId)}
 		CROSS JOIN LATERAL (SELECT DISTINCT unnest(m.competitors_mentioned) AS competitor_name) c
 		${inRange(brandId, from, toExclusive)}

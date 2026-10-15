@@ -14,7 +14,7 @@ import { useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { CompanyTrendChart } from "@/components/company-trend-chart";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
-import { ModelGrid, sortByMetric } from "@/components/overview/competitive-landscape";
+import { ModelGrid } from "@/components/overview/competitive-landscape";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { RingChart } from "@/components/share-of-voice-donut";
@@ -27,7 +27,7 @@ import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { useCompetitiveLandscape } from "@/hooks/use-share-of-voice";
 import { useCompanyColors } from "@/lib/company-colors";
-import type { Landscape } from "@/lib/landscape";
+import { chartedCompanies, type Landscape } from "@/lib/landscape";
 import { METRIC_META } from "@/lib/overview-metrics";
 import { pageHead } from "@/lib/route-head";
 import type { SentimentSummary } from "@/lib/sentiment";
@@ -52,9 +52,6 @@ const toneCounts = (s: SentimentSummary) => ({
 /** Side-by-side cards share a header height, so a title beside a control lines up with one beside none. */
 const ROW_HEADER = "flex min-h-8 flex-row items-center";
 
-/** Competitors charted beside the brand. */
-const CHARTED_COMPETITORS = 4;
-
 function SentimentOverview({
 	summary,
 	landscape,
@@ -64,15 +61,6 @@ function SentimentOverview({
 	landscape?: Landscape;
 	colors: Map<string, string>;
 }) {
-	const brand = landscape?.companies.find((c) => c.isBrand);
-	const charted = landscape
-		? [
-				...(brand ? [brand] : []),
-				...sortByMetric(landscape.companies, "sentiment")
-					.filter((c) => !c.isBrand)
-					.slice(0, CHARTED_COMPETITORS),
-			]
-		: [];
 	return (
 		<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 			<Card>
@@ -99,7 +87,7 @@ function SentimentOverview({
 					{landscape ? (
 						<CompanyTrendChart
 							dates={landscape.dates}
-							companies={charted.map((c) => ({
+							companies={chartedCompanies(landscape, "sentiment").map((c) => ({
 								name: c.name,
 								isBrand: c.isBrand,
 								color: colors.get(c.name) ?? "#94a3b8",

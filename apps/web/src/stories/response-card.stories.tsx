@@ -36,6 +36,7 @@ const baseRun: ResponseCardRun = {
 	brandMentioned: true,
 	competitorsMentioned: ["Globex", "Initech"],
 	rawOutput: { text: ANSWER },
+	mentionAssessments: null,
 };
 
 const positiveBrand: MentionAssessmentRecord = {

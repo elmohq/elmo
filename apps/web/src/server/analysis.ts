@@ -38,8 +38,6 @@ export interface ShareOfVoiceResponse {
 	brandShare: number | null;
 	totalRuns: number;
 	model: string | null;
-	/** Brand share of voice over time (percentage 0..100, null on days with no runs). */
-	shareTimeSeries: Array<{ date: string; share: number | null }>;
 }
 
 export const getShareOfVoiceFn = createServerFn({ method: "GET" })
@@ -65,18 +63,11 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 
 		return {
 			brandName: result.brandName,
-			// Exact ratios, not percentages: the leaderboard, donut, and trend each
-			// round the same ratio once, so they can never read a point apart.
+			// Exact ratios, not percentages: the leaderboard and donut each round the
+			// same ratio once, so they can never read a point apart.
 			brandShare: result.brandShare,
 			totalRuns: result.totalRuns,
 			model: data.model ?? null,
-			// The trend is the one figure this response carries as a percentage;
-			// `brandShare` and `entries` stay ratios because the leaderboard, donut,
-			// and headline each round the same ratio once at the point of display.
-			shareTimeSeries: result.series.map((point) => ({
-				...point,
-				share: point.share === null ? null : Math.round(point.share * 100),
-			})),
 			entries: result.entries,
 		};
 	});

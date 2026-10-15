@@ -2,10 +2,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
-import type { Landscape, LandscapeMetric } from "@/lib/landscape";
+import { brandOf, type Landscape, type LandscapeMetric } from "@/lib/landscape";
 import { lookbackSchema } from "@/lib/lookback";
 import { getMentionTotals } from "@/lib/rollup-read";
-import { getBrandShareOfVoice, getBrandVisibility, getCompetitiveLandscape } from "@/server/analytics-core";
+import { getBrandShareSeries, getBrandVisibility, getCompetitiveLandscape } from "@/server/analytics-core";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -53,27 +53,34 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const window = { from: fromDateStr, to: toDateStr, timezone };
 		const filters = { model: data.model, tags: data.tags };
-		const prompts = await resolveFilteredPrompts(data.brandId, { tags: data.tags });
-
-		const [visibility, shareOfVoice, landscape, totals] = await Promise.all([
+		const [visibility, shareSeries, landscape, lastRunAt] = await Promise.all([
 			getBrandVisibility(data.brandId, window, filters),
-			getBrandShareOfVoice(data.brandId, window, filters),
+			getBrandShareSeries(data.brandId, window, filters),
 			getCompetitiveLandscape(data.brandId, window, filters),
-			prompts.length > 0
-				? getMentionTotals({ brandId: data.brandId, ...window, promptIds: prompts.map((p) => p.id), model: data.model })
-				: null,
+			resolveFilteredPrompts(data.brandId, { tags: data.tags }).then(async (prompts) =>
+				prompts.length === 0
+					? null
+					: (
+							await getMentionTotals({
+								...window,
+								brandId: data.brandId,
+								promptIds: prompts.map((p) => p.id),
+								model: data.model,
+							})
+						).last_run_at,
+			),
 		]);
-		const brand = landscape.companies.find((company) => company.isBrand);
+		const brand = brandOf(landscape);
 		const brandSeries = (metric: "sentiment" | "position") =>
-			landscape.dates.map((date, i) => ({ date, value: brand?.series[metric][i] ?? null }));
+			landscape.dates.map((date, i) => ({ date, value: brand.series[metric][i] }));
 
 		return {
-			totalPrompts: prompts.length,
+			totalPrompts: visibility.totalPrompts,
 			totalRuns: visibility.totalRuns,
-			lastUpdatedAt: totals?.last_run_at ?? null,
+			lastUpdatedAt: lastRunAt,
 			cards: {
 				visibility: card(visibility.series.map((p) => ({ date: p.date, value: p.visibility }))),
-				share: card(shareOfVoice.series.map((p) => ({ date: p.date, value: p.share }))),
+				share: card(shareSeries.map((p) => ({ date: p.date, value: p.share }))),
 				sentiment: card(brandSeries("sentiment")),
 				position: card(brandSeries("position")),
 			},

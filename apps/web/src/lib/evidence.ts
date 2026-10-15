@@ -1,9 +1,8 @@
 import type { MentionAssessmentRecord } from "@workspace/lib/mentions";
 
 /**
- * Where in `text` the passage a verdict rests on lies, or null when there is none or `text` is not
- * the text it was judged on: offsets only index the run's stored text, and an offset past its end
- * means the text has changed since.
+ * Where in the run's stored text the passage a verdict rests on lies, or null when there is none
+ * or it runs past the text's end.
  */
 export function evidenceRange(
 	text: string | null,

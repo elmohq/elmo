@@ -1,13 +1,14 @@
 import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspace/lib/analysis-versions";
 import type { MentionConfig } from "@workspace/lib/mentions";
 import { describe, expect, it } from "vitest";
+import { substringAnalyzer } from "../mention-judge/analyze";
 import { deriveRunUpdate, type StaleRun, staleLayers } from "./reprocess";
 
 const config: MentionConfig = {
 	brand: { name: "Acme", aliases: [], domains: ["https://acme.com"] },
 	competitors: [],
 };
-const target = currentAnalysisVersions(config);
+const target = currentAnalysisVersions(config, null);
 
 const openAiPayload = (text: string) => ({
 	output: [
@@ -41,7 +42,13 @@ const legacyRun = (text: string): StaleRun => ({
 
 describe("deriveRunUpdate", () => {
 	it("re-extracts text and citations, then derives mentions from the new text", async () => {
-		const update = await deriveRunUpdate(legacyRun("Acme is great."), ["extraction", "interpretation"], target, config);
+		const update = await deriveRunUpdate(
+			legacyRun("Acme is great."),
+			["extraction", "interpretation"],
+			target,
+			config,
+			substringAnalyzer,
+		);
 		expect(update.extraction).toEqual({ textContent: "Acme is great.", stamp: target[EXTRACTION_KEY] });
 		expect(update.mentions).toMatchObject({
 			brandMentioned: true,
@@ -54,7 +61,13 @@ describe("deriveRunUpdate", () => {
 	});
 
 	it("fills a legacy run's text for mentions but leaves its citations and extraction stamp alone", async () => {
-		const update = await deriveRunUpdate(legacyRun("Acme is great."), ["interpretation"], target, config);
+		const update = await deriveRunUpdate(
+			legacyRun("Acme is great."),
+			["interpretation"],
+			target,
+			config,
+			substringAnalyzer,
+		);
 		expect(update.extraction).toEqual({ textContent: "Acme is great.", stamp: null });
 		expect(update.mentions?.brandMentioned).toBe(true);
 		expect(update.citations).toBeUndefined();
@@ -62,7 +75,7 @@ describe("deriveRunUpdate", () => {
 
 	it("derives mentions from stored text without re-extracting", async () => {
 		const run = { ...legacyRun("ignored"), textContent: "Acme is stored here.", rawOutput: null };
-		const update = await deriveRunUpdate(run, ["interpretation"], target, config);
+		const update = await deriveRunUpdate(run, ["interpretation"], target, config, substringAnalyzer);
 		expect(update.extraction).toBeUndefined();
 		expect(update.mentions).toMatchObject({
 			brandMentioned: true,
@@ -77,7 +90,7 @@ describe("deriveRunUpdate", () => {
 			textContent: "Acme",
 			stamps: { [EXTRACTION_KEY]: target[EXTRACTION_KEY] },
 		};
-		const update = await deriveRunUpdate(run, ["extraction", "interpretation"], target, config);
+		const update = await deriveRunUpdate(run, ["extraction", "interpretation"], target, config, substringAnalyzer);
 		expect(update.extraction).toBeUndefined();
 		expect(update.citations).toBeUndefined();
 		expect(update.mentions?.stamp).toBe(target[MENTIONS_KEY]);
@@ -90,7 +103,7 @@ describe("deriveRunUpdate on a payload that yields less than the run has", () =>
 
 	it("keeps stored text and citations instead of replacing them with nothing", async () => {
 		const run = { ...emptied, textContent: "Acme is great.", citationCount: 3 };
-		const update = await deriveRunUpdate(run, ["extraction", "interpretation"], target, config);
+		const update = await deriveRunUpdate(run, ["extraction", "interpretation"], target, config, substringAnalyzer);
 		expect(update.kept).toEqual(["text", "citations"]);
 		expect(update.extraction).toEqual({ textContent: "Acme is great.", stamp: target[EXTRACTION_KEY] });
 		expect(update.citations).toBeUndefined();
@@ -99,7 +112,7 @@ describe("deriveRunUpdate on a payload that yields less than the run has", () =>
 
 	it("keeps a legacy run's mentions when there is no text to derive them from", async () => {
 		const run = { ...emptied, brandMentioned: true, competitorsMentioned: ["Globex"] };
-		const update = await deriveRunUpdate(run, ["interpretation"], target, config);
+		const update = await deriveRunUpdate(run, ["interpretation"], target, config, substringAnalyzer);
 		expect(update.kept).toEqual(["mentions"]);
 		expect(update.mentions).toMatchObject({
 			brandMentioned: true,
@@ -109,7 +122,7 @@ describe("deriveRunUpdate on a payload that yields less than the run has", () =>
 	});
 
 	it("still records an empty result for a run that never had anything", async () => {
-		const update = await deriveRunUpdate(emptied, ["extraction", "interpretation"], target, config);
+		const update = await deriveRunUpdate(emptied, ["extraction", "interpretation"], target, config, substringAnalyzer);
 		expect(update.kept).toEqual([]);
 		expect(update.citations).toEqual([]);
 		expect(update.mentions?.brandMentioned).toBe(false);
@@ -122,7 +135,7 @@ describe("staleLayers", () => {
 	});
 
 	it("re-derives mentions alone after a config change", () => {
-		const moved = currentAnalysisVersions({ ...config, brand: { ...config.brand, aliases: ["Acme Corp"] } });
+		const moved = currentAnalysisVersions({ ...config, brand: { ...config.brand, aliases: ["Acme Corp"] } }, null);
 		expect(staleLayers(target, moved)).toEqual(["interpretation"]);
 	});
 

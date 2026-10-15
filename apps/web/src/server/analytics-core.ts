@@ -38,17 +38,22 @@ import {
 	getPromptsFirstEvaluatedAt,
 	getRunsByModel,
 	getVisibilityDailyAggregate,
-	type VerdictSums,
+	NO_VERDICTS,
+	type PerPromptDailyRuns,
 } from "@/lib/rollup-read";
 import {
 	averagePosition,
 	type MentionQuality,
 	mentionQuality,
+	type PositionPoint,
 	SENTIMENT_WINDOW_DAYS,
+	type SentimentCounts,
 	type SentimentSummary,
+	sentimentCounts,
 	sentimentSummary,
-	shiftDate,
+	sumVerdicts,
 } from "@/lib/sentiment";
+import { shiftDateStr } from "@/lib/timezone-utils";
 import { isTone, type Tone } from "@/lib/tone";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
@@ -173,6 +178,33 @@ export interface BrandShareOfVoice {
 
 /** Standings carry each prompt's latest counts forward, so the headline and the
  * trend's last point are the same number. */
+// Off the per-prompt rows rather than the per-competitor query, which counts mention instances
+// and would not agree with them.
+function shareSeries(perPromptDaily: PerPromptDailyRuns[], dateRange: string[]) {
+	return shareOfVoiceTimeSeriesLVCF(
+		perPromptDaily.map((row) => ({
+			promptId: row.prompt_id,
+			date: String(row.date),
+			brandMentions: row.brand_mentioned_runs,
+			competitorMentions: row.competitor_mentions,
+		})),
+		dateRange,
+	);
+}
+
+/** The brand's share-of-voice trend alone, as the full standings plot it. */
+export async function getBrandShareSeries(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+): Promise<BrandShareOfVoice["series"]> {
+	const { promptIds } = await resolveScope(brandId, filters);
+	if (promptIds.length === 0) return [];
+	const bounds = windowInstants(window);
+	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
+	return shareSeries(await getPerPromptDailyRuns(analyticsScope(brandId, window, promptIds, filters)), dateRange);
+}
+
 export async function getBrandShareOfVoice(
 	brandId: string,
 	window: AnalyticsWindow,
@@ -184,13 +216,7 @@ export async function getBrandShareOfVoice(
 	]);
 	const brandName = brandRow[0]?.name ?? "Your brand";
 	if (resolved.promptIds.length === 0) {
-		return {
-			brandName,
-			brandShare: null,
-			totalRuns: 0,
-			entries: [],
-			series: [],
-		};
+		return { brandName, brandShare: null, totalRuns: 0, entries: [], series: [] };
 	}
 
 	const bounds = windowInstants(window);
@@ -225,17 +251,7 @@ export async function getBrandShareOfVoice(
 		standings.competitors.map((c) => ({ name: c.name, mentions: c.mentions })),
 	);
 
-	// Off this row rather than the per-competitor query, which counts mention
-	// instances and would not agree with it.
-	const series = shareOfVoiceTimeSeriesLVCF(
-		perPromptDaily.map((row) => ({
-			promptId: row.prompt_id,
-			date: String(row.date),
-			brandMentions: row.brand_mentioned_runs,
-			competitorMentions: row.competitor_mentions,
-		})),
-		dateRange,
-	);
+	const series = shareSeries(perPromptDaily, dateRange);
 
 	// Exact ratios: each edge rounds once, on the way out.
 	return {
@@ -480,20 +496,9 @@ export async function getBrandPromptPerformance(
 	});
 }
 
-const NO_VERDICTS: VerdictSums = {
-	positive_runs: 0,
-	neutral_runs: 0,
-	negative_runs: 0,
-	mixed_runs: 0,
-	position_sum: 0,
-	positioned_runs: 0,
-};
-
 export interface BrandMentionQuality {
-	sentiment: SentimentSummary & {
-		series: { date: string; positive: number; neutral: number; negative: number; mixed: number }[];
-	};
-	position: { average: number | null; series: { date: string; average: number | null }[] };
+	sentiment: SentimentSummary & { series: (SentimentCounts & { date: string })[] };
+	position: { average: number | null; series: PositionPoint[] };
 }
 
 /** The brand's sentiment and position over the window, with their day-by-day values. */
@@ -503,26 +508,19 @@ export async function getBrandMentionQuality(
 	filters: AnalyticsFilters = {},
 ): Promise<BrandMentionQuality> {
 	const { promptIds } = await resolveScope(brandId, filters);
+	if (promptIds.length === 0) {
+		return { sentiment: { ...sentimentSummary(NO_VERDICTS), series: [] }, position: { average: null, series: [] } };
+	}
 	const bounds = windowInstants(window);
 	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
-	const rows =
-		promptIds.length === 0 ? [] : await getDailyVerdicts(analyticsScope(brandId, window, promptIds, filters));
+	const rows = await getDailyVerdicts(analyticsScope(brandId, window, promptIds, filters));
 	const byDate = new Map(rows.map((row) => [row.date, row]));
-	const totals = { ...NO_VERDICTS };
-	for (const row of rows) {
-		for (const key of Object.keys(totals) as (keyof VerdictSums)[]) totals[key] += row[key];
-	}
 	const day = (date: string) => byDate.get(date) ?? NO_VERDICTS;
+	const totals = sumVerdicts(rows);
 	return {
 		sentiment: {
 			...sentimentSummary(totals),
-			series: dateRange.map((date) => ({
-				date,
-				positive: day(date).positive_runs,
-				neutral: day(date).neutral_runs,
-				negative: day(date).negative_runs,
-				mixed: day(date).mixed_runs,
-			})),
+			series: dateRange.map((date) => ({ date, ...sentimentCounts(day(date)) })),
 		},
 		position: {
 			average: averagePosition(totals.position_sum, totals.positioned_runs),
@@ -600,7 +598,7 @@ export async function getCompetitiveLandscape(
 	}
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
 	const reachBack = isCalendarDay(window.from)
-		? { ...scope, from: shiftDate(window.from, 1 - SENTIMENT_WINDOW_DAYS) }
+		? { ...scope, from: shiftDateStr(window.from, { days: 1 - SENTIMENT_WINDOW_DAYS }) }
 		: scope;
 	const [brandDaily, competitorDaily, brandByModel, competitorsByModel] = await Promise.all([
 		getDailyRunSums(reachBack),

@@ -18,9 +18,9 @@ import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
-import type { LandscapeMetric } from "@/lib/landscape";
+import { brandRank, LANDSCAPE_METRICS } from "@/lib/landscape";
 import { describeTargetSchedule, type TrackedTarget } from "@/lib/model-filter";
-import { METRIC_META, rankAmong } from "@/lib/overview-metrics";
+import { METRIC_META } from "@/lib/overview-metrics";
 import { setPersonProperties } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 
@@ -144,9 +144,9 @@ function TrackingStats({
 			/>
 			<StatWithTooltip
 				icon={IconActivity}
-				label="evaluations (30d)"
+				label="evaluations"
 				value={totalRuns.toLocaleString()}
-				tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
+				tooltip="Total number of times we have evaluated prompts against LLMs in the selected period. Each prompt is evaluated multiple times across different AI models."
 			/>
 			<StatWithTooltip
 				icon={IconClock}
@@ -259,8 +259,6 @@ function useReportedPromptCount(totalPrompts: number | undefined) {
 	}, [totalPrompts]);
 }
 
-const HEADLINES: LandscapeMetric[] = ["visibility", "share", "sentiment", "position"];
-
 function DashboardPage() {
 	const brandId = useBrandId();
 	const { data: brand, isLoading: isLoadingBrand } = useBrand();
@@ -272,7 +270,8 @@ function DashboardPage() {
 		model: modelParam,
 		tags,
 	});
-	useReportedPromptCount(summary?.totalPrompts);
+	// A tag filter narrows the count, which would understate the brand's prompts.
+	useReportedPromptCount(tags.length === 0 ? summary?.totalPrompts : undefined);
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 	// The footer reports what this brand actually runs, resolved server-side.
@@ -291,11 +290,6 @@ function DashboardPage() {
 	}
 
 	const landscape = summary?.landscape;
-	const rankOf = (metric: LandscapeMetric) => {
-		const values = landscape?.companies.map((c) => c.totals[metric]) ?? [];
-		const own = landscape?.companies.find((c) => c.isBrand)?.totals[metric] ?? null;
-		return rankAmong(own, values, METRIC_META[metric].lowerIsBetter);
-	};
 
 	return (
 		<div className="flex flex-1 flex-col">
@@ -321,12 +315,12 @@ function DashboardPage() {
 				</PageHeader>
 
 				<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-					{HEADLINES.map((metric) => (
+					{LANDSCAPE_METRICS.map((metric) => (
 						<HeadlineCard
 							key={metric}
 							metric={metric}
 							card={summary?.cards[metric]}
-							rank={rankOf(metric)}
+							rank={landscape ? brandRank(landscape, metric) : 0}
 							loading={loading}
 						/>
 					))}

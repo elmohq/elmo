@@ -1,11 +1,10 @@
-import { CITATION_CATEGORIES, type CitationCategory } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { daysInRange, type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
-import type {
-	PerPromptDailyCitationDomainRow,
-	PerPromptDailyCompetitorRow,
-	PerPromptDailyRuns,
-} from "@/lib/rollup-read";
+import type { PerPromptDailyCompetitorRow, PerPromptDailyRuns } from "@/lib/rollup-read";
+
+/** A calendar day ("2026-03-04") as a chart labels it ("Mar 4"). */
+export const formatShortDate = (date: string) =>
+	new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
 export interface ChartSubject {
@@ -141,11 +140,6 @@ export function toBatchChartData(
 	}));
 }
 
-export interface DailyVisibilityBucket {
-	branded: { total: number; mentioned: number };
-	nonBranded: { total: number; mentioned: number };
-}
-
 /**
  * Walk each prompt's series across `dateRange`, carrying its last observation
  * forward over the days it didn't run. Pre-seeded with the prompt's earliest
@@ -168,72 +162,6 @@ function carryForward<V>(
 		}
 	}
 }
-
-/**
- * Per-prompt Last Value Carried Forward (LVCF) for visibility data.
- *
- * For each prompt, carries forward its last known (runs, brand_mentioned_runs)
- * to fill gap days when it didn't run. Then aggregates across all prompts per day,
- * split by branded/non-branded status.
- *
- * This eliminates periodic artifacts caused by staggered prompt schedules:
- * every prompt contributes to every day's aggregate via its last observation.
- */
-export function applyPerPromptLVCF(
-	perPromptData: Pick<PerPromptDailyRuns, "prompt_id" | "date" | "runs" | "brand_mentioned_runs">[],
-	dateRange: string[],
-	brandedPromptIds: string[],
-): {
-	dailyVisibilityMap: Map<string, DailyVisibilityBucket>;
-	totalBrandedRuns: number;
-	totalBrandedMentioned: number;
-	totalNonBrandedRuns: number;
-	totalNonBrandedMentioned: number;
-} {
-	const brandedSet = new Set(brandedPromptIds);
-
-	const byPrompt = new Map<string, Map<string, { total: number; mentioned: number }>>();
-	for (const row of perPromptData) {
-		const byDate = byPrompt.get(row.prompt_id) ?? new Map<string, { total: number; mentioned: number }>();
-		byDate.set(String(row.date), { total: Number(row.runs), mentioned: Number(row.brand_mentioned_runs) });
-		byPrompt.set(row.prompt_id, byDate);
-	}
-
-	const dailyVisibilityMap = new Map<string, DailyVisibilityBucket>();
-	const observed = {
-		branded: { runs: 0, mentioned: 0 },
-		nonBranded: { runs: 0, mentioned: 0 },
-	};
-
-	carryForward(byPrompt, dateRange, (promptId, date, carried, actual) => {
-		const isBranded = brandedSet.has(promptId);
-		const bucket = dailyVisibilityMap.get(date) ?? {
-			branded: { total: 0, mentioned: 0 },
-			nonBranded: { total: 0, mentioned: 0 },
-		};
-		dailyVisibilityMap.set(date, bucket);
-
-		const day = isBranded ? bucket.branded : bucket.nonBranded;
-		day.total += carried.total;
-		day.mentioned += carried.mentioned;
-
-		// Period totals measure observations, not the synthetic daily series.
-		if (!actual) return;
-		const period = isBranded ? observed.branded : observed.nonBranded;
-		period.runs += actual.total;
-		period.mentioned += actual.mentioned;
-	});
-
-	return {
-		dailyVisibilityMap,
-		totalBrandedRuns: observed.branded.runs,
-		totalBrandedMentioned: observed.branded.mentioned,
-		totalNonBrandedRuns: observed.nonBranded.runs,
-		totalNonBrandedMentioned: observed.nonBranded.mentioned,
-	};
-}
-
-export type CitationCategories = Record<CitationCategory, number>;
 
 /**
  * Generalized per-prompt LVCF with cadence normalization over arbitrary string
@@ -273,26 +201,6 @@ export function applyPerPromptKeyedLVCF<K extends string>(
 	// cancels exactly — so cadence can't shift the chart, and a tiny category isn't
 	// rounded to zero before the percentage is taken.
 	return daily;
-}
-
-/** Dashboard wrapper that converts citation domains to category keys before smoothing. */
-export function applyPerPromptCitationLVCF(
-	perPromptData: PerPromptDailyCitationDomainRow[],
-	dateRange: string[],
-	cadenceHours: number | null | undefined,
-	categorizeDomain: (domain: string) => CitationCategory,
-): Map<string, CitationCategories> {
-	return applyPerPromptKeyedLVCF(
-		perPromptData.map((r) => ({
-			prompt_id: r.prompt_id,
-			date: r.date,
-			key: categorizeDomain(r.domain),
-			count: Number(r.count),
-		})),
-		dateRange,
-		cadenceHours,
-		CITATION_CATEGORIES,
-	);
 }
 
 export interface ChartDataPoint {

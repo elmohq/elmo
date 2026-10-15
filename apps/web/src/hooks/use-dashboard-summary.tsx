@@ -25,7 +25,7 @@ export function useDashboardSummary(brandId?: string, filters: DashboardFilters 
 					brandId: resolvedBrandId!,
 					lookback: filters.lookback,
 					model: filters.model,
-					tags: filters.tags?.length ? filters.tags.join(",") : undefined,
+					tags: filters.tags?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

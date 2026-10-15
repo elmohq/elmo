@@ -753,18 +753,8 @@
 					"sentiment": {
 						"$ref": "#/components/schemas/SentimentSummary"
 					},
-					"position": {
-						"type": "object",
-						"description": "**Experimental — the shape may still change.**\n\nThe brand's average position among the tracked companies the answers name, 1 being named first.",
-						"x-stability": "experimental",
-						"properties": {
-							"average": {
-								"type": ["number", "null"],
-								"minimum": 1,
-								"description": "Experimental. The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it."
-							}
-						},
-						"required": ["average"]
+					"averagePosition": {
+						"$ref": "#/components/schemas/AveragePosition"
 					},
 					"citations": {
 						"type": "object",
@@ -801,7 +791,7 @@
 					"mentions",
 					"citations",
 					"sentiment",
-					"position"
+					"averagePosition"
 				]
 			},
 			"Pagination": {
@@ -1082,6 +1072,12 @@
 				},
 				"required": ["date", "visibility"]
 			},
+			"AveragePosition": {
+				"type": ["number", "null"],
+				"minimum": 1,
+				"description": "The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it.",
+				"x-stability": "experimental"
+			},
 			"ShareOfVoiceEntry": {
 				"type": "object",
 				"properties": {
@@ -1110,9 +1106,7 @@
 						"$ref": "#/components/schemas/SentimentSummary"
 					},
 					"averagePosition": {
-						"type": ["number", "null"],
-						"minimum": 1,
-						"description": "Experimental. The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it."
+						"$ref": "#/components/schemas/AveragePosition"
 					}
 				},
 				"required": ["name", "isBrand", "mentions", "prompts", "share", "sentiment", "averagePosition"]
@@ -1423,9 +1417,7 @@
 						"$ref": "#/components/schemas/SentimentSummary"
 					},
 					"averagePosition": {
-						"type": ["number", "null"],
-						"minimum": 1,
-						"description": "Experimental. The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it."
+						"$ref": "#/components/schemas/AveragePosition"
 					}
 				},
 				"required": [
@@ -1557,6 +1549,9 @@
 					{
 						"type": "object",
 						"properties": {
+							"assessments": {
+								"$ref": "#/components/schemas/RunAssessmentsDetail"
+							},
 							"answer": {
 								"type": "object",
 								"properties": {
@@ -1785,9 +1780,7 @@
 						"$ref": "#/components/schemas/SentimentSummary"
 					},
 					"averagePosition": {
-						"type": ["number", "null"],
-						"minimum": 1,
-						"description": "Experimental. The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it."
+						"$ref": "#/components/schemas/AveragePosition"
 					}
 				},
 				"required": [
@@ -1802,7 +1795,7 @@
 				]
 			},
 			"BrandAnalytics": {
-				"description": "Every non-paginated figure for a brand over one window. There is no parameter for selecting a subset: the computations behind this share one scope resolution and run concurrently, so a subset would save a caller a fraction of one request and cost everyone a parameter to reason about.",
+				"description": "Every non-paginated figure for a brand over one window. There is no parameter for selecting a subset: the computations behind this cover the same prompts and run concurrently, so a subset would save a caller a fraction of one request and cost everyone a parameter to reason about.",
 				"type": "object",
 				"properties": {
 					"brandId": {
@@ -1984,10 +1977,6 @@
 						"type": ["integer", "null"],
 						"minimum": 1,
 						"description": "How many times the answer mentions it. Null when the answer isn't counted as mentioning it."
-					},
-					"evidence": {
-						"type": ["string", "null"],
-						"description": "Only on a single run: the passage the verdict rests on — for a mention with a sentiment, the passage that most shows that sentiment. Null when there is no passage (a link-only mention) or the run's stored text no longer matches what was judged."
 					}
 				},
 				"required": [
@@ -2020,6 +2009,51 @@
 						"type": "object",
 						"additionalProperties": {
 							"$ref": "#/components/schemas/MentionAssessment"
+						},
+						"description": "Keyed by competitor name; only competitors the answer names."
+					}
+				},
+				"required": ["brand", "competitors"],
+				"x-stability": "experimental"
+			},
+			"MentionAssessmentDetail": {
+				"description": "A verdict with the passage it rests on, as a single run reports it.",
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/MentionAssessment"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"evidence": {
+								"type": ["string", "null"],
+								"description": "The passage the verdict rests on — for a mention with a sentiment, the passage that most shows that sentiment. Null when there is no passage (a link-only mention) or the run's stored text no longer matches what was judged."
+							}
+						},
+						"required": ["evidence"]
+					}
+				],
+				"x-stability": "experimental"
+			},
+			"RunAssessmentsDetail": {
+				"description": "**Experimental — the shape may still change.**\n\nThe mention judge's verdicts for one answer. Null on runs matched by name alone, which happens on deployments without the judge. Each verdict carries the passage it rests on.",
+				"type": ["object", "null"],
+				"properties": {
+					"brand": {
+						"oneOf": [
+							{
+								"$ref": "#/components/schemas/MentionAssessmentDetail"
+							},
+							{
+								"type": "null"
+							}
+						],
+						"description": "Null when the answer never names the brand."
+					},
+					"competitors": {
+						"type": "object",
+						"additionalProperties": {
+							"$ref": "#/components/schemas/MentionAssessmentDetail"
 						},
 						"description": "Keyed by competitor name; only competitors the answer names."
 					}
@@ -3986,9 +4020,7 @@
 										"positiveShare": 0.72,
 										"negativeShare": 0.03
 									},
-									"position": {
-										"average": 1.6
-									},
+									"averagePosition": 1.6,
 									"citations": {
 										"citationsTotal": 1240,
 										"brandCitationsTotal": 85,

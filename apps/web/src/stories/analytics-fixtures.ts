@@ -128,17 +128,11 @@ export const mockDashboardSummary = {
 };
 
 // Share of voice: brand hovering in the low-30s against its competitors.
-const shareTimeSeries = DATES.map((date, i) => ({
-	date,
-	share: clamp(29 + i * 0.18 + 4 * Math.sin(i / 4.5)),
-}));
-
 export const mockShareOfVoice = {
 	brandName: "Acme",
 	brandShare: 0.31,
 	totalRuns: 3120,
 	model: null,
-	shareTimeSeries,
 	entries: [
 		{ name: "Acme", mentions: 1050, share: 0.31, isBrand: true, prompts: 31 },
 		{ name: "HubSpot", mentions: 915, share: 0.27, isBrand: false, prompts: 28 },

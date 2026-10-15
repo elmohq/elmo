@@ -8,7 +8,8 @@ import { type NewPromptRun, promptRuns, runExtractions, runMentions } from "./sc
  * Runs with what has been derived from them: the append-only `prompt_runs` row
  * joined to its extraction and mentions. Every run has both, so inner joins
  * lose nothing. Chain `.where`, `.orderBy` and `.limit` as on any select.
- * Payloads are left out; read them with `loadRawOutputs`.
+ * Payloads are left out; read them with `loadRawOutputs`. Verdicts come only with stored text:
+ * their evidence offsets index it, and mean nothing against text re-extracted on read.
  */
 export function selectRuns(conn: DbConnection) {
 	const { rawOutput, ...columns } = getTableColumns(promptRuns);
@@ -18,7 +19,7 @@ export function selectRuns(conn: DbConnection) {
 			textContent: runExtractions.textContent,
 			brandMentioned: runMentions.brandMentioned,
 			competitorsMentioned: runMentions.competitorsMentioned,
-			mentionAssessments: runMentions.assessments,
+			mentionAssessments: sql<RunMentionAssessments | null>`CASE WHEN ${runExtractions.textContent} IS NULL THEN NULL ELSE ${runMentions.assessments} END`,
 		})
 		.from(promptRuns)
 		.innerJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
@@ -30,7 +31,7 @@ export interface NewRun extends Omit<NewPromptRun, "id"> {
 	textContent?: string | null;
 	brandMentioned: boolean;
 	competitorsMentioned?: string[];
-	mentionAssessments?: RunMentionAssessments | null;
+	assessments?: RunMentionAssessments | null;
 	/** The stamps the derived values were computed with; null leaves them to the next replay. */
 	extractionStamp?: string | null;
 	mentionsStamp?: string | null;
@@ -44,15 +45,8 @@ export async function insertRuns(conn: DbConnection, runs: NewRun[]): Promise<{ 
 		.insert(promptRuns)
 		.values(
 			rows.map(
-				({
-					textContent,
-					brandMentioned,
-					competitorsMentioned,
-					mentionAssessments,
-					extractionStamp,
-					mentionsStamp,
-					...raw
-				}) => raw,
+				({ textContent, brandMentioned, competitorsMentioned, assessments, extractionStamp, mentionsStamp, ...raw }) =>
+					raw,
 			),
 		)
 		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
@@ -66,7 +60,7 @@ export async function insertRuns(conn: DbConnection, runs: NewRun[]): Promise<{ 
 			runId: run.id,
 			brandMentioned: run.brandMentioned,
 			competitorsMentioned: run.competitorsMentioned ?? [],
-			assessments: run.mentionAssessments ?? null,
+			assessments: run.assessments ?? null,
 			stamp: run.mentionsStamp ?? null,
 		})),
 	);
