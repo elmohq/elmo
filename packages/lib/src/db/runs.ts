@@ -6,8 +6,8 @@ import { type NewPromptRun, promptRuns, runExtractions, runMentions } from "./sc
 
 /**
  * Runs with what has been derived from them: the append-only `prompt_runs` row
- * joined to its extraction and mentions. Every run has both, so inner joins
- * lose nothing. Chain `.where`, `.orderBy` and `.limit` as on any select.
+ * joined to its extraction and mentions. A run not yet judged has no mentions
+ * and is left out until it is. Chain `.where`, `.orderBy` and `.limit` as on any select.
  * Payloads are left out; read them with `loadRawOutputs`. Verdicts come only with stored text:
  * their evidence offsets index it, and mean nothing against text re-extracted on read.
  */
@@ -29,41 +29,38 @@ export function selectRuns(conn: DbConnection) {
 export interface NewRun extends Omit<NewPromptRun, "id"> {
 	id?: string;
 	textContent?: string | null;
-	brandMentioned: boolean;
-	competitorsMentioned?: string[];
-	assessments?: RunMentionAssessments | null;
-	/** The stamps the derived values were computed with; null leaves them to the next replay. */
+	/** Absent for a run not yet judged: it gets its mentions from the judging job. */
+	mentions?: RunMentionsRow;
+	/** The stamp the text was extracted with; null leaves it to the next replay. */
 	extractionStamp?: string | null;
-	mentionsStamp?: string | null;
 }
 
-/** Writes runs with their derived rows. The one way a run enters the database, so none lacks either. */
+export interface RunMentionsRow {
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
+	assessments: RunMentionAssessments | null;
+	/** The `mentions` stamp they were derived with; null leaves them to the next replay. */
+	stamp: string | null;
+}
+
+/**
+ * Writes runs with their extraction, and their mentions where they come with them. A run without
+ * mentions is left out of every mention figure and rollup until it's judged.
+ */
 export async function insertRuns(conn: DbConnection, runs: NewRun[]): Promise<{ id: string; createdAt: Date }[]> {
 	if (runs.length === 0) return [];
 	const rows = runs.map((run) => ({ ...run, id: run.id ?? randomUUID() }));
 	const saved = await conn
 		.insert(promptRuns)
-		.values(
-			rows.map(
-				({ textContent, brandMentioned, competitorsMentioned, assessments, extractionStamp, mentionsStamp, ...raw }) =>
-					raw,
-			),
-		)
+		.values(rows.map(({ textContent, mentions, extractionStamp, ...raw }) => raw))
 		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
 	await conn
 		.insert(runExtractions)
 		.values(
 			rows.map((run) => ({ runId: run.id, textContent: run.textContent ?? null, stamp: run.extractionStamp ?? null })),
 		);
-	await conn.insert(runMentions).values(
-		rows.map((run) => ({
-			runId: run.id,
-			brandMentioned: run.brandMentioned,
-			competitorsMentioned: run.competitorsMentioned ?? [],
-			assessments: run.assessments ?? null,
-			stamp: run.mentionsStamp ?? null,
-		})),
-	);
+	const judged = rows.flatMap((run) => (run.mentions ? [{ runId: run.id, ...run.mentions }] : []));
+	if (judged.length > 0) await conn.insert(runMentions).values(judged);
 	const byId = new Map(saved.map((row) => [row.id, row]));
 	return rows.map((run) => byId.get(run.id) as { id: string; createdAt: Date });
 }
