@@ -11,7 +11,7 @@ import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
 import { JUDGE_RUNS_QUEUE } from "./jobs/judge-runs";
 import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
-import { loadMentionAnalyzer } from "./mention-judge/analyze";
+import { loadMentionAnalyzer, MENTION_JUDGE_DIR } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 
@@ -36,11 +36,14 @@ async function main() {
 	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
 	console.log("SCRAPE_TARGETS validated");
 
-	// Before anything stamps runs or brands: the stamp names the judge, so it has to be known.
-	const { judgeVersion } = await loadMentionAnalyzer();
-	console.log(
-		judgeVersion ? `Mention judge ${judgeVersion} loaded` : "No mention judge; matching mentions by substring",
-	);
+	// Before anything stamps runs or brands: the stamp names the judge, so it has to be known. Without
+	// it the worker still records answers; they wait unjudged until a restart loads it.
+	const analyzer = await loadMentionAnalyzer().catch((error) => {
+		console.error(`Couldn't load the mention judge from ${MENTION_JUDGE_DIR}; answers wait unjudged:`, error);
+		Sentry.captureException(error);
+		return null;
+	});
+	if (analyzer) console.log(`Mention judge ${analyzer.judgeVersion} loaded`);
 
 	boss.on("error", (error) => {
 		console.error("pg-boss error:", error);
@@ -150,7 +153,7 @@ async function main() {
 	await initializePipeline(boss);
 
 	// Register job handlers
-	await registerHandlers(boss);
+	await registerHandlers(boss, { judging: analyzer !== null });
 	console.log("All handlers registered, worker is ready");
 
 	await startBackfills();

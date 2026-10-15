@@ -35,7 +35,7 @@ function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promis
 /**
  * Register all job handlers with pg-boss.
  */
-export async function registerHandlers(boss: PgBoss): Promise<void> {
+export async function registerHandlers(boss: PgBoss, { judging }: { judging: boolean }): Promise<void> {
 	await boss.work<ProcessPromptData>(
 		"process-prompt",
 		{ localConcurrency: 10 },
@@ -75,16 +75,18 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 	);
 	console.log("Registered handler: schedule-maintenance");
 
-	// One run per job, so each run retries on its own.
-	await boss.work<JudgeRunData>(
-		JUDGE_RUNS_QUEUE,
-		{ batchSize: 1, localConcurrency: 4 },
-		withSentry(JUDGE_RUNS_QUEUE, judgeRunsJob),
-	);
-	console.log(`Registered handler: ${JUDGE_RUNS_QUEUE}`);
+	if (judging) {
+		// One run per job, so each run retries on its own.
+		await boss.work<JudgeRunData>(
+			JUDGE_RUNS_QUEUE,
+			{ batchSize: 1, localConcurrency: 4 },
+			withSentry(JUDGE_RUNS_QUEUE, judgeRunsJob),
+		);
+		console.log(`Registered handler: ${JUDGE_RUNS_QUEUE}`);
 
-	await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
-	console.log(`Registered handler: ${REPROCESS_QUEUE}`);
+		await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
+		console.log(`Registered handler: ${REPROCESS_QUEUE}`);
+	}
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.work<SyncAuth0MembershipsData>(

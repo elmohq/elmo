@@ -14,6 +14,7 @@ import {
 import { mentionConfigFrom } from "@workspace/lib/mentions";
 import { asc, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
 import { fillLegacyText, LEGACY_EXTRACTION_STAMP } from "./fill-legacy-text";
 import {
 	adoptCurrentStamps,
@@ -93,7 +94,7 @@ async function insertLegacyRuns(runs: ReturnType<typeof legacyRun>[]): Promise<v
 async function currentVersions(id: string) {
 	const [brand] = await db.select().from(brands).where(eq(brands.id, id));
 	const brandCompetitors = await db.select().from(competitors).where(eq(competitors.brandId, id));
-	return currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors), null);
+	return currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors), cuedAnalyzer.judgeVersion);
 }
 
 async function runsInWalkOrder() {
@@ -132,7 +133,7 @@ describe("runReprocess", () => {
 		await insertLegacyRuns([legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"))]);
 
 		const { boss, send } = fakeBoss();
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, boss);
+		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, boss, cuedAnalyzer);
 
 		const [run] = await runsInWalkOrder();
 		expect(run.textContent).toBe("Acme is the best CRM.");
@@ -149,10 +150,10 @@ describe("runReprocess", () => {
 
 	it("leaves runs that are already current untouched", async () => {
 		await insertLegacyRuns([legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"))]);
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
+		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss, cuedAnalyzer);
 		await db.update(runMentions).set({ brandMentioned: false });
 
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
+		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss, cuedAnalyzer);
 
 		const [run] = await runsInWalkOrder();
 		expect(run.brandMentioned).toBe(false);
@@ -163,7 +164,7 @@ describe("runReprocess", () => {
 		await insertLegacyRuns(Array.from({ length: 450 }, () => legacyRun("Acme is the best CRM.", sharedInstant)));
 
 		const { boss, send } = fakeBoss();
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, boss);
+		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, boss, cuedAnalyzer);
 
 		const runs = await runsInWalkOrder();
 		expect(runs).toHaveLength(450);
@@ -179,7 +180,7 @@ describe("runReprocess", () => {
 			.returning({ id: competitors.id });
 		const answer = "According to newsite.example, Acme is the best CRM.";
 		await insertLegacyRuns([legacyRun(answer, new Date("2026-02-01T10:00:00Z"))]);
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
+		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss, cuedAnalyzer);
 		expect((await runsInWalkOrder())[0].competitorsMentioned).toEqual([]);
 
 		// The same pass's continuation, after the config moved.
@@ -187,7 +188,7 @@ describe("runReprocess", () => {
 			.update(competitors)
 			.set({ domains: ["newsite.example"] })
 			.where(eq(competitors.id, competitor.id));
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
+		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss, cuedAnalyzer);
 
 		expect((await runsInWalkOrder())[0].competitorsMentioned).toEqual(["Globex"]);
 		const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
@@ -202,13 +203,13 @@ describe("runReprocess", () => {
 			cause: { message: expect.stringContaining("append-only") },
 		});
 		await expect(
-			runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss),
+			runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss, cuedAnalyzer),
 		).resolves.toBeUndefined();
 	});
 
 	it("skips a brand that no longer exists", async () => {
 		await expect(
-			runReprocess({ brandId: "no-such-brand", layers: ["extraction"] }, db, fakeBoss().boss),
+			runReprocess({ brandId: "no-such-brand", layers: ["extraction"] }, db, fakeBoss().boss, cuedAnalyzer),
 		).resolves.toBeUndefined();
 	});
 });
@@ -243,34 +244,31 @@ describe("fillLegacyText", () => {
 describe("requestStaleReprocesses", () => {
 	it("requests a pass toward today's stamps, and none once history matches", async () => {
 		const first = fakeBoss();
-		await requestStaleReprocesses(db, first.boss);
+		await requestStaleReprocesses(db, first.boss, cuedAnalyzer);
 		expect(sentFor(first.send, brandId)).toEqual([{ brandId, layers: ["extraction", "interpretation"] }]);
 
-		await runReprocess(sentFor(first.send, brandId)[0], db, fakeBoss().boss);
+		await runReprocess(sentFor(first.send, brandId)[0], db, fakeBoss().boss, cuedAnalyzer);
 		const second = fakeBoss();
-		await requestStaleReprocesses(db, second.boss);
+		await requestStaleReprocesses(db, second.boss, cuedAnalyzer);
 		expect(sentFor(second.send, brandId)).toEqual([]);
 
 		await db.insert(competitors).values({ brandId, name: "Globex", domains: ["globex.example"] });
 		const afterEdit = fakeBoss();
-		await requestStaleReprocesses(db, afterEdit.boss);
+		await requestStaleReprocesses(db, afterEdit.boss, cuedAnalyzer);
 		expect(sentFor(afterEdit.send, brandId).map((data) => data.layers)).toEqual([["interpretation"]]);
 	});
 
-	it("does not replay the history of a brand that predates stamping, which adopts today's stamps instead", async () => {
+	it("keeps the extracted history of a brand that predates stamping, and re-judges its mentions", async () => {
 		const legacyBrand = await createBrand(null);
 		try {
 			const before = fakeBoss();
-			await requestStaleReprocesses(db, before.boss);
+			await requestStaleReprocesses(db, before.boss, cuedAnalyzer);
 			expect(sentFor(before.send, legacyBrand)).toEqual([]);
 
 			await adoptCurrentStamps(db);
-			const [brand] = await db.select().from(brands).where(eq(brands.id, legacyBrand));
-			expect(brand.analysisVersions).toEqual(await currentVersions(legacyBrand));
-
 			const after = fakeBoss();
-			await requestStaleReprocesses(db, after.boss);
-			expect(sentFor(after.send, legacyBrand)).toEqual([]);
+			await requestStaleReprocesses(db, after.boss, cuedAnalyzer);
+			expect(sentFor(after.send, legacyBrand).map((data) => data.layers)).toEqual([["interpretation"]]);
 		} finally {
 			await deleteBrand(legacyBrand);
 		}

@@ -1,7 +1,7 @@
+import { join } from "node:path";
 import {
-	analyzeRunMentions,
 	judgedSubject,
-	type MentionAssessmentRecord,
+	type MentionAssessment,
 	type MentionConfig,
 	type RunMentionAssessments,
 	subjectFingerprint,
@@ -16,19 +16,14 @@ export interface RunMentions {
 }
 
 export interface MentionAnalyzer {
-	/** Null when mentions come from substring matching; part of the mentions stamp otherwise. */
-	judgeVersion: string | null;
+	/** Part of the mentions stamp. */
+	judgeVersion: string;
 	/**
 	 * `previous` is what the run already has; subjects judged under an unchanged fingerprint keep
 	 * their verdicts. Pass it only when the text is the one those verdicts were judged on.
 	 */
 	analyze(text: string | null, config: MentionConfig, previous?: RunMentionAssessments | null): Promise<RunMentions>;
 }
-
-export const substringAnalyzer: MentionAnalyzer = {
-	judgeVersion: null,
-	analyze: async (text, config) => ({ ...analyzeRunMentions(text, config), assessments: null }),
-};
 
 type Subject = MentionConfig["brand"];
 
@@ -37,19 +32,16 @@ function entity(subject: Subject, rivals: string[]): JudgedEntity {
 }
 
 /** Ranks the companies an answer names by where it first mentions each. */
-function rank(records: (MentionAssessmentRecord | undefined)[]): void {
+function rank(records: (MentionAssessment | undefined)[]): void {
 	const placed = records.filter(
-		(record): record is MentionAssessmentRecord & { firstMention: number } =>
-			!!record && record.mention !== "not_mentioned" && record.firstMention !== undefined,
+		(record): record is MentionAssessment & { firstMention: number } =>
+			!!record?.mentioned && record.firstMention !== undefined,
 	);
 	placed.sort((a, b) => a.firstMention - b.firstMention);
 	placed.forEach((record, i) => {
 		record.position = i + 1;
 	});
 }
-
-/** An uncertain verdict still counts, so a judge that can't tell never hides a real mention. */
-const counts = (record: MentionAssessmentRecord | undefined) => !!record && record.mention !== "not_mentioned";
 
 export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
 	return {
@@ -58,7 +50,7 @@ export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
 			const answer = text ?? "";
 			const rivals = [config.brand.name, ...config.competitors.map((competitor) => competitor.name)];
 			/** Keeps the verdict judged under the same fingerprint, a copy since `rank` rewrites positions. */
-			const judgeSubject = async (subject: Subject, judgedAs?: string, kept?: MentionAssessmentRecord) => {
+			const judgeSubject = async (subject: Subject, judgedAs?: string, kept?: MentionAssessment) => {
 				const fingerprint = subjectFingerprint(subject, judge.version);
 				const record =
 					judgedAs === fingerprint
@@ -68,7 +60,7 @@ export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
 			};
 
 			const brand = await judgeSubject(config.brand, previous?.judged.brand, previous?.brand);
-			const competitors: { name: string; fingerprint: string; record?: MentionAssessmentRecord }[] = [];
+			const competitors: { name: string; fingerprint: string; record?: MentionAssessment }[] = [];
 			for (const competitor of config.competitors) {
 				const { name } = competitor;
 				competitors.push({
@@ -88,25 +80,29 @@ export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
 			// reorders everyone without re-judging them.
 			rank([assessments.brand, ...Object.values(assessments.competitors)]);
 			return {
-				brandMentioned: counts(assessments.brand),
-				competitorsMentioned: competitors.filter((c) => counts(c.record)).map((c) => c.name),
+				brandMentioned: !!assessments.brand?.mentioned,
+				competitorsMentioned: competitors.filter((c) => c.record?.mentioned).map((c) => c.name),
 				assessments,
 			};
 		},
 	};
 }
 
-let current: MentionAnalyzer = substringAnalyzer;
+/** Where the worker image puts the model; a checkout gets it with `pnpm --filter @workspace/worker judge:pull`. */
+export const MENTION_JUDGE_DIR = join(__dirname, "../../mention-judge");
 
-/**
- * Loads the judge from `MENTION_JUDGE_DIR` once per process. The worker image always sets it;
- * a checkout without the model falls back to substring matching rather than refusing to run.
- */
-export async function loadMentionAnalyzer(dir = process.env.MENTION_JUDGE_DIR): Promise<MentionAnalyzer> {
-	current = dir ? judgeAnalyzer(await loadMentionJudge(dir)) : substringAnalyzer;
+let current: MentionAnalyzer | undefined;
+
+export async function loadMentionAnalyzer(dir = MENTION_JUDGE_DIR): Promise<MentionAnalyzer> {
+	current = judgeAnalyzer(await loadMentionJudge(dir));
 	return current;
 }
 
+export function mentionJudgeLoaded(): boolean {
+	return current !== undefined;
+}
+
 export function mentionAnalyzer(): MentionAnalyzer {
+	if (!current) throw new Error("the mention judge isn't loaded");
 	return current;
 }

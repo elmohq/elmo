@@ -13,7 +13,8 @@ import {
 import { mentionConfigFrom } from "@workspace/lib/mentions";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type MentionAnalyzer, substringAnalyzer } from "../mention-judge/analyze";
+import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
+import type { MentionAnalyzer } from "../mention-judge/analyze";
 import { JUDGE_RUNS_QUEUE, judgeRun, requestUnjudgedRuns } from "./judge-runs";
 import { REPROCESS_QUEUE, runReprocess } from "./reprocess";
 
@@ -22,10 +23,10 @@ let promptId: string;
 
 /** Fails on any answer containing "unreadable", as a judge might on input it can't handle. */
 const flakyAnalyzer: MentionAnalyzer = {
-	...substringAnalyzer,
+	...cuedAnalyzer,
 	analyze: async (text, config, previous) => {
 		if (text?.includes("unreadable")) throw new Error("judge failed");
-		return substringAnalyzer.analyze(text, config, previous);
+		return cuedAnalyzer.analyze(text, config, previous);
 	},
 };
 
@@ -69,13 +70,13 @@ const mentionsOf = async (runId: string) =>
 
 async function currentMentionsStamp() {
 	const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
-	return currentAnalysisVersions(mentionConfigFrom(brand, []), null)[MENTIONS_KEY];
+	return currentAnalysisVersions(mentionConfigFrom(brand, []), cuedAnalyzer.judgeVersion)[MENTIONS_KEY];
 }
 
 describe("judging a recorded run", () => {
 	it("gives it mentions under the brand's current config, and marks its rollups for a rebuild", async () => {
 		const runId = await recordedRun("Acme is the easiest CRM to set up.");
-		await judgeRun(runId, db, substringAnalyzer);
+		await judgeRun(runId, db, cuedAnalyzer);
 		expect(await mentionsOf(runId)).toMatchObject({ brandMentioned: true, stamp: await currentMentionsStamp() });
 		expect(await db.select().from(rollupDirty).where(eq(rollupDirty.brandId, brandId))).not.toHaveLength(0);
 	});
@@ -92,7 +93,7 @@ describe("the unjudged-run sweep", () => {
 		const stuck = await recordedRun("Acme again.", new Date(Date.now() - 60 * 60 * 1000));
 		await recordedRun("Acme, just now.");
 		const judged = await recordedRun("Acme, judged.", new Date(Date.now() - 60 * 60 * 1000));
-		await judgeRun(judged, db, substringAnalyzer);
+		await judgeRun(judged, db, cuedAnalyzer);
 
 		const insert = vi.fn();
 		await requestUnjudgedRuns(db, { insert });

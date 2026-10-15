@@ -54,7 +54,6 @@ declare global {
 			readonly OXYLABS_USERNAME?: string;
 			readonly OXYLABS_PASSWORD?: string;
 			readonly CLORO_API_KEY?: string;
-			readonly MENTION_JUDGE_DIR?: string;
 			readonly JINA_API_KEY?: string;
 			readonly ONBOARDING_LLM_TARGET?: string;
 			readonly ELMO_ENCRYPTION_KEY?: string;
