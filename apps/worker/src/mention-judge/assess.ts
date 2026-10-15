@@ -40,7 +40,7 @@ export async function assessMention(
 	answer: string,
 ): Promise<MentionAssessment | null> {
 	const terms = [entity.name, ...(entity.aliases ?? []), ...(entity.domains ?? [])];
-	const { windows, linkHits } = matchWindows(answer, terms);
+	const { windows, linkHits, unjudgedHits } = matchWindows(answer, terms);
 	const linksToEntity = linkHits.length > 0;
 	if (windows.length === 0) {
 		if (!linksToEntity) return null;
@@ -70,7 +70,7 @@ export async function assessMention(
 		...mention,
 		// The sentiment's passage replaces the mention's as the evidence: it's the one the UI quotes.
 		...combineSentiment(judged.filter((j) => j.pMention >= ABOUT)),
-		...(mention.mention === "not_mentioned" ? {} : placement(judged, linkHits)),
+		...(mention.mention === "not_mentioned" ? {} : placement(judged, [...linkHits, ...unjudgedHits])),
 	};
 }
 
@@ -81,9 +81,10 @@ export async function assessMention(
  */
 function placement(
 	judged: JudgedWindow[],
-	linkHits: number[],
+	/** Links to its site, and matches past the passages judged. */
+	otherHits: number[],
 ): Pick<MentionAssessment, "firstMention" | "mentionCount"> {
-	const hits = [...judged.filter((j) => j.pMention > 1 - CONFIDENT).flatMap((j) => j.window.hits), ...linkHits];
+	const hits = [...judged.filter((j) => j.pMention > 1 - CONFIDENT).flatMap((j) => j.window.hits), ...otherHits];
 	if (hits.length === 0) return {};
 	return { firstMention: Math.min(...hits), mentionCount: new Set(hits).size };
 }

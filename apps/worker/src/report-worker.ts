@@ -7,7 +7,7 @@ import { getProvider, type ModelConfig } from "@workspace/lib/providers";
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
 import { extractRun } from "@workspace/lib/text-extraction";
 import { eq } from "drizzle-orm";
-import { mentionAnalyzer } from "./mention-judge/analyze";
+import { analyzeOrMatch, mentionAnalyzer } from "./mention-judge/analyze";
 
 interface CompetitorResult {
 	name: string;
@@ -181,7 +181,7 @@ async function runPrompt(
 			version: config.version,
 		});
 		const textContent = extractRun(result.rawOutput, config.provider).textContent ?? "";
-		const { brandMentioned, competitorsMentioned } = await mentionAnalyzer().analyze(textContent, {
+		const { mentions } = await analyzeOrMatch(mentionAnalyzer(), textContent, {
 			brand: { name: brandName, aliases: brandAliases, domains: [brandWebsite] },
 			competitors: competitors.map((competitor) => ({
 				name: competitor.name,
@@ -189,6 +189,7 @@ async function runPrompt(
 				domains: [competitor.domain],
 			})),
 		});
+		const { brandMentioned, competitorsMentioned } = mentions;
 		return {
 			model: config.model,
 			version: result.modelVersion ?? config.version ?? config.provider,
