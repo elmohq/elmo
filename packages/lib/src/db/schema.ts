@@ -40,6 +40,11 @@ export const brands = pgTable(
 		onboarded: boolean("onboarded").default(false).notNull(),
 		delayOverrideHours: integer("delay_override_hours"),
 		enabledModels: text("enabled_models").array(),
+		/**
+		 * Analysis name -> the stamp this brand's run history was last reprocessed to.
+		 * Null for brands that predate stamping until the worker adopts today's stamps.
+		 */
+		analysisVersions: jsonb("analysis_versions").$type<Record<string, string>>().default({}),
 		// Hard tenancy scope. Every brand belongs to exactly one better-auth
 		// organization; org membership (the `member` table) is the access-control
 		// mechanism. Brand and organization ids are independent, so billing and
@@ -105,6 +110,11 @@ export const competitors = pgTable("competitors", {
 		.notNull(),
 }).enableRLS();
 
+/**
+ * Append-only: what was asked and what the provider returned, never rewritten (a
+ * trigger rejects updates). Everything derived from it lives in `run_extractions`,
+ * `run_mentions` and `citations`, which can be thrown away and re-derived.
+ */
 export const promptRuns = pgTable(
 	"prompt_runs",
 	{
@@ -120,9 +130,11 @@ export const promptRuns = pgTable(
 		version: text("version").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
 		rawOutput: json("raw_output").notNull(),
+		/**
+		 * The searches the provider reported running. Kept with the raw response
+		 * because nothing can re-derive it from `raw_output` yet.
+		 */
 		webQueries: text("web_queries").array().notNull().default([]),
-		brandMentioned: boolean("brand_mentioned").notNull(),
-		competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	},
 	(table) => ({
@@ -138,6 +150,31 @@ export const promptRuns = pgTable(
 		modelCreatedAtIdx: index("prompt_runs_model_created_at_idx").on(table.model, table.createdAt),
 	}),
 ).enableRLS();
+
+/**
+ * What a run's answer says, derived from `raw_output` and replaced wholesale when
+ * the extractor changes (with the run's `citations`). One row per run.
+ */
+export const runExtractions = pgTable("run_extractions", {
+	runId: uuid("run_id")
+		.primaryKey()
+		.references(() => promptRuns.id, { onDelete: "cascade" }),
+	/** Null when the answer had no text, or the run predates stored text. */
+	textContent: text("text_content"),
+	/** The `extraction` stamp it was derived with; null for runs that predate stamping. */
+	stamp: text("stamp"),
+}).enableRLS();
+
+/** Which tracked brands a run's answer mentions, under the brand config in `stamp`. One row per run. */
+export const runMentions = pgTable("run_mentions", {
+	runId: uuid("run_id")
+		.primaryKey()
+		.references(() => promptRuns.id, { onDelete: "cascade" }),
+	brandMentioned: boolean("brand_mentioned").notNull(),
+	competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
+	/** The `mentions` stamp it was derived with; null for runs that predate stamping. */
+	stamp: text("stamp"),
+}).enableRLS();
 
 export const citations = pgTable(
 	"citations",
@@ -171,6 +208,8 @@ export const citations = pgTable(
 			table.citationIndex,
 		),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
+		// Replay, run detail and rollup rebuilds all reach a run's citations by its id.
+		runIdx: index("citations_prompt_run_id_idx").on(table.promptRunId),
 		domainIdx: index("citations_domain_idx").on(table.domain),
 	}),
 ).enableRLS();

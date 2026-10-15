@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { extractRun } from "../../text-extraction";
 
 const dataforseoClient = vi.hoisted(() => ({
 	chatgptLlmResponsesLive: vi.fn(),
@@ -62,6 +63,9 @@ vi.mock("dataforseo-client", () => ({
 import { extractCitations, extractTextContent } from "../../text-extraction";
 import { dataforseo } from "./dataforseo";
 
+/** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
+const stored = (result: { rawOutput: unknown }) => extractRun(result.rawOutput, "dataforseo");
+
 afterEach(() => {
 	vi.clearAllMocks();
 	vi.unstubAllGlobals();
@@ -124,10 +128,10 @@ describe("dataforseo provider", () => {
 			const [payload] = dataforseoClient.chatGptLlmScraperLiveAdvanced.mock.calls[0];
 			expect(payload[0]).toMatchObject({ location_code: 2840, force_web_search: true });
 
-			expect(result.textContent).toContain("JBL Xtreme 5");
+			expect(stored(result).textContent).toContain("JBL Xtreme 5");
 			expect(result.webQueries).toEqual(["best speakers released July 2026"]);
-			expect(result.citations).toHaveLength(1);
-			expect(result.citations[0].domain).toBe("techradar.com");
+			expect(stored(result).citations).toHaveLength(1);
+			expect(stored(result).citations[0].domain).toBe("techradar.com");
 			expect(result.modelVersion).toBe("gpt-5-5");
 		});
 
@@ -194,8 +198,8 @@ describe("dataforseo provider", () => {
 
 			const result = await dataforseo.run("gemini", "What speaker reviews well?", { webSearch: true });
 
-			expect(result.citations).toHaveLength(1);
-			expect(result.citations[0].domain).toBe("whathifi.com");
+			expect(stored(result).citations).toHaveLength(1);
+			expect(stored(result).citations[0].domain).toBe("whathifi.com");
 			// Gemini's scraper reports no fan-out queries.
 			expect(result.webQueries).toEqual(["unavailable"]);
 		});
@@ -275,9 +279,9 @@ describe("dataforseo provider", () => {
 			load_async_ai_overview: true,
 		});
 
-		expect(result.textContent).toContain("Sonos Era 300");
-		expect(result.citations).toHaveLength(1);
-		expect(result.citations[0].domain).toBe("whathifi.com");
+		expect(stored(result).textContent).toContain("Sonos Era 300");
+		expect(stored(result).citations).toHaveLength(1);
+		expect(stored(result).citations[0].domain).toBe("whathifi.com");
 		expect(result.webQueries).toEqual(["unavailable"]);
 	});
 
@@ -296,8 +300,8 @@ describe("dataforseo provider", () => {
 		const result = await promise;
 
 		expect(dataforseoClient.googleOrganicLiveAdvanced).toHaveBeenCalledTimes(2);
-		expect(result.textContent).toContain("Sonos Era 300");
-		expect(result.citations).toHaveLength(1);
+		expect(stored(result).textContent).toContain("Sonos Era 300");
+		expect(stored(result).citations).toHaveLength(1);
 	});
 
 	it("throws after exhausting retries when every AI Overview attempt fails", async () => {
@@ -360,9 +364,9 @@ describe("dataforseo provider", () => {
 		});
 
 		expect(fetchMock).toHaveBeenCalledWith(redirectUrl, expect.objectContaining({ redirect: "manual" }));
-		expect(result.citations).toHaveLength(1);
-		expect(result.citations[0].url).toBe(realUrl);
-		expect(result.citations[0].domain).toBe("whathifi.com");
+		expect(stored(result).citations).toHaveLength(1);
+		expect(stored(result).citations[0].url).toBe(realUrl);
+		expect(stored(result).citations[0].domain).toBe("whathifi.com");
 		// The raw output is rewritten in place, so re-extraction stays consistent.
 		const raw = result.rawOutput as {
 			tasks: { result: { items: { sections: { annotations: { url: string }[] }[] }[] }[] }[];

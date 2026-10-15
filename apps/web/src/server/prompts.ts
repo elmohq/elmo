@@ -4,7 +4,8 @@ import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { classifyUrl } from "@workspace/lib/citations/domain-lists";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
+import { brands, competitors, promptRuns, prompts, runMentions, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
 	assertAllowed,
 	assertPromptSaveAllowed,
@@ -13,6 +14,7 @@ import {
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
@@ -311,20 +313,22 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			db
 				.select({
 					totalRuns: count(),
-					brandMentions: sql<number>`SUM(CASE WHEN ${promptRuns.brandMentioned} THEN 1 ELSE 0 END)`,
+					brandMentions: sql<number>`SUM(CASE WHEN ${runMentions.brandMentioned} THEN 1 ELSE 0 END)`,
 				})
 				.from(promptRuns)
+				.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
 
 			// Competitor mentions (separate to avoid unnest issues)
 			db
-				.select({ competitorsMentioned: promptRuns.competitorsMentioned })
+				.select({ competitorsMentioned: runMentions.competitorsMentioned })
 				.from(promptRuns)
+				.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 				.where(
 					and(
 						eq(promptRuns.promptId, data.promptId),
 						timeCondition,
-						sql`array_length(${promptRuns.competitorsMentioned}, 1) > 0`,
+						sql`array_length(${runMentions.competitorsMentioned}, 1) > 0`,
 					),
 				),
 		]);
@@ -365,12 +369,13 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			const noMentionRuns = await db
 				.select({ count: count() })
 				.from(promptRuns)
+				.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 				.where(
 					and(
 						eq(promptRuns.promptId, data.promptId),
 						timeCondition,
-						eq(promptRuns.brandMentioned, false),
-						sql`array_length(${promptRuns.competitorsMentioned}, 1) IS NULL OR array_length(${promptRuns.competitorsMentioned}, 1) = 0`,
+						eq(runMentions.brandMentioned, false),
+						sql`array_length(${runMentions.competitorsMentioned}, 1) IS NULL OR array_length(${runMentions.competitorsMentioned}, 1) = 0`,
 					),
 				);
 
@@ -453,20 +458,29 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		const offset = (data.page - 1) * data.limit;
 
 		const [runs, totalResult] = await Promise.all([
-			db.query.promptRuns.findMany({
-				where: and(eq(promptRuns.promptId, data.promptId), timeCondition),
-				orderBy: desc(promptRuns.createdAt),
-				limit: data.limit,
-				offset,
-			}),
+			selectRuns(db)
+				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition))
+				.orderBy(desc(promptRuns.createdAt))
+				.limit(data.limit)
+				.offset(offset),
 			db
 				.select({ count: count() })
 				.from(promptRuns)
 				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
 		]);
 
+		const raw = await loadRawOutputs(
+			db,
+			runs.map((r) => r.id),
+		);
 		return {
-			runs: runs.map((r) => ({ ...r, rawOutput: r.rawOutput as {} })),
+			// Older rows carry no text and may predate the provider column; the
+			// extractor also accepts the model name.
+			runs: runs.map((r) => ({
+				...r,
+				rawOutput: raw.get(r.id) as {},
+				textContent: r.textContent ?? extractTextContent(raw.get(r.id), r.provider ?? r.model),
+			})),
 			total: totalResult[0]?.count || 0,
 			page: data.page,
 			limit: data.limit,

@@ -1,6 +1,5 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { extractTextContent } from "@workspace/lib/text-extraction";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -611,13 +610,7 @@ function ResponsesTab({
 			<h3 className="text-base font-medium">Individual Prompt Runs</h3>
 
 			{runs.map((run) => (
-				<ResponseCard
-					key={run.id}
-					run={run}
-					text={extractTextContent(run.rawOutput, run.provider ?? run.model)}
-					brandName={brandName}
-					domainFor={domainFor}
-				/>
+				<ResponseCard key={run.id} run={run} text={run.textContent} brandName={brandName} domainFor={domainFor} />
 			))}
 
 			<ListPagination

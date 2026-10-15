@@ -6,6 +6,8 @@ import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
+import { fillLegacyText } from "./jobs/fill-legacy-text";
+import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
 import { shutdownTelemetry } from "./telemetry";
 
 if (process.env.SENTRY_DSN) {
@@ -82,6 +84,13 @@ async function main() {
 			expireInSeconds: 60 * 10,
 		});
 	}
+	await boss.createQueue(REPROCESS_QUEUE, {
+		policy: "stately",
+		retryLimit: 2,
+		retryDelay: 60,
+		retryBackoff: true,
+		expireInSeconds: 60 * 10,
+	});
 	console.log("Queues created");
 
 	await boss.schedule("schedule-maintenance", "*/5 * * * *", { source: "scheduled" }, { tz: "UTC" });
@@ -92,9 +101,21 @@ async function main() {
 		console.log("Scheduled Auth0 membership sync (every 15 minutes)");
 	}
 
+	// Before any handler runs, so the stale pass never mistakes a brand that
+	// predates stamping for one whose whole history needs replaying.
+	const adopted = await adoptCurrentStamps();
+	if (adopted > 0) console.log(`Adopted current analysis stamps for ${adopted} brands`);
+
 	// Register job handlers
 	await registerHandlers(boss);
 	console.log("All handlers registered, worker is ready");
+
+	// Background, and a no-op once done: runs from before stored text get it from their payloads.
+	fillLegacyText()
+		.then((filled) => {
+			if (filled > 0) console.log(`Filled stored text for ${filled} runs that predate it`);
+		})
+		.catch((error) => console.error("Filling stored text for older runs failed:", error));
 }
 
 main().catch(async (error) => {
