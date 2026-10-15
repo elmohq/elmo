@@ -15,7 +15,7 @@ import {
 	uuidList,
 } from "@/lib/analytics-sql";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
-import { NO_VERDICTS, type VerdictSums } from "@/lib/sentiment";
+import type { VerdictSums } from "@/lib/sentiment";
 
 /** The run counts every run read selects, so a new rollup column reaches them all at once. */
 export interface RunSums {
