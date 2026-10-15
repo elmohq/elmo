@@ -27,8 +27,9 @@ import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
-import { mentionAnalyzer } from "../mention-judge/analyze";
+import { mentionAnalyzer, type RunMentions, substringAnalyzer } from "../mention-judge/analyze";
 import { trackWorkerEvent } from "../telemetry";
+import { sendReprocess } from "./reprocess";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -114,6 +115,26 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 	}
 
 	return { prompt, brand };
+}
+
+/**
+ * A judge outage (Jev down, say) mustn't lose an answer that was already paid for: the run is
+ * matched by substring under the substring stamp instead, and a reprocess re-judges it later.
+ */
+async function judgeMentions(
+	text: string | null,
+	config: MentionConfig,
+): Promise<{ mentions: RunMentions; stamp: string; ok: boolean }> {
+	const analyzer = mentionAnalyzer();
+	try {
+		const mentions = await analyzer.analyze(text, config);
+		return { mentions, stamp: currentAnalysisVersions(config, analyzer.judgeVersion)[MENTIONS_KEY], ok: true };
+	} catch (error) {
+		console.error("Mention judge failed; matching by substring until a reprocess re-judges the run:", error);
+		Sentry.captureException(error);
+		const mentions = await substringAnalyzer.analyze(text, config);
+		return { mentions, stamp: currentAnalysisVersions(config)[MENTIONS_KEY], ok: false };
+	}
 }
 
 async function loadMentionConfig(conn: DbConnection, brandId: string): Promise<MentionConfig> {
@@ -259,17 +280,14 @@ async function runModelIteration({
 		// Judging takes too long to hold a transaction open for, so it runs first on the
 		// config as it stands now: one read at the start of the cycle would stamp an edit
 		// made during the provider call onto this run as current.
-		const analyzer = mentionAnalyzer();
-		const judgedConfig = await loadMentionConfig(db, brand.id);
-		let mentions = await analyzer.analyze(text, judgedConfig);
-		const judgedStamp = currentAnalysisVersions(judgedConfig, analyzer.judgeVersion)[MENTIONS_KEY];
+		let judged = await judgeMentions(text, await loadMentionConfig(db, brand.id));
 
 		// One transaction so a reprocess never sees a run without its citations.
 		const promptRunId = await db.transaction(async (tx) => {
 			const mentionConfig = await loadMentionConfig(tx, brand.id);
-			const stamps = currentAnalysisVersions(mentionConfig, analyzer.judgeVersion);
+			const stamps = currentAnalysisVersions(mentionConfig, mentionAnalyzer().judgeVersion);
 			// An edit that landed while judging would otherwise slip past the reprocess it started.
-			if (stamps[MENTIONS_KEY] !== judgedStamp) mentions = await analyzer.analyze(text, mentionConfig);
+			if (judged.ok && stamps[MENTIONS_KEY] !== judged.stamp) judged = await judgeMentions(text, mentionConfig);
 			const [run] = await insertRuns(tx, [
 				{
 					promptId,
@@ -282,8 +300,8 @@ async function runModelIteration({
 					webQueries,
 					textContent: text,
 					extractionStamp: stamps[EXTRACTION_KEY],
-					...mentions,
-					mentionsStamp: stamps[MENTIONS_KEY],
+					...judged.mentions,
+					mentionsStamp: judged.stamp,
 				},
 			]);
 			await insertCitations(
@@ -295,6 +313,7 @@ async function runModelIteration({
 			return run.id;
 		});
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
+		if (!judged.ok) await sendReprocess(getBoss(), { brandId: brand.id, layers: ["interpretation"] });
 
 		await recordUsageEvent({
 			organizationId: brand.organizationId,

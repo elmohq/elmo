@@ -77,6 +77,12 @@ Brand onboarding and the Opportunities report also need one direct LLM API key â
 | `DATAFORSEO_PASSWORD` | DataForSEO password |
 | `SCRAPE_TARGETS` | Comma-separated `model:provider[:version][:online]` entries. See [Providers](/docs/user-guide/providers#scrape_targets-format). |
 
+### Mention Judging
+
+The worker decides which answers really mention a brand, and how they describe it, with a model bundled in its image. It runs on the worker's CPU and needs no key.
+
+To use TypeSafe's hosted Jev model instead, set `JEV_API_KEY`. Jev is billed per call. It suits a large existing history better, because many calls can run at once while the bundled model is limited by the worker's cores. `JEV_CONCURRENCY` (default 16) caps how many answers are judged at once during a replay. Switching judges in either direction re-judges every brand's history in the background.
+
 ## Updating Configuration
 
 To change environment variables after initial setup:

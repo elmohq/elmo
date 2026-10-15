@@ -210,10 +210,13 @@ interface Pass {
  * batch can outlast the pass's budget; what was derived is still written.
  */
 async function deriveUpdates(pass: Pass, runs: StaleRun[], deadline: number) {
+	const { concurrency } = mentionAnalyzer();
 	const updates: { run: StaleRun; update: RunUpdate }[] = [];
-	for (const run of runs) {
+	for (let i = 0; i < runs.length; i += concurrency) {
 		if (Date.now() > deadline) break;
-		updates.push({ run, update: await deriveRunUpdate(run, pass.layers, pass.target, pass.config) });
+		const chunk = runs.slice(i, i + concurrency);
+		const derived = await Promise.all(chunk.map((run) => deriveRunUpdate(run, pass.layers, pass.target, pass.config)));
+		updates.push(...chunk.map((run, j) => ({ run, update: derived[j] })));
 	}
 	return updates;
 }

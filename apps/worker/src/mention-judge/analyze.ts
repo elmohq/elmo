@@ -6,6 +6,7 @@ import {
 	type RunMentionAssessments,
 } from "@workspace/lib/mentions";
 import { assessMention, type MentionAssessment } from "./assess";
+import { jevJudge } from "./jev";
 import { type JudgedEntity, loadMentionJudge, type MentionJudge } from "./judge";
 
 export interface RunMentions {
@@ -17,11 +18,14 @@ export interface RunMentions {
 export interface MentionAnalyzer {
 	/** Null when mentions come from substring matching; part of the mentions stamp otherwise. */
 	judgeVersion: string | null;
+	/** How many answers to analyze at once: one for CPU-bound judging, more for a remote judge. */
+	concurrency: number;
 	analyze(text: string | null, config: MentionConfig): Promise<RunMentions>;
 }
 
 export const substringAnalyzer: MentionAnalyzer = {
 	judgeVersion: null,
+	concurrency: 1,
 	analyze: async (text, config) => ({ ...analyzeRunMentions(text, config), mentionAssessments: null }),
 };
 
@@ -53,9 +57,10 @@ function toRecord(assessment: MentionAssessment): MentionAssessmentRecord {
 /** An uncertain verdict still counts, so a judge that can't tell never hides a real mention. */
 const counts = (record: MentionAssessmentRecord | undefined) => !!record && record.mention !== "not_mentioned";
 
-export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
+export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnalyzer {
 	return {
 		judgeVersion: judge.version,
+		concurrency,
 		async analyze(text, config) {
 			const answer = text ?? "";
 			const competitorNames = config.competitors.map((competitor) => competitor.name);
@@ -79,12 +84,22 @@ export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
 
 let current: MentionAnalyzer = substringAnalyzer;
 
+const DEFAULT_JEV_CONCURRENCY = 16;
+
 /**
- * Loads the judge from `MENTION_JUDGE_DIR` once per process. The worker image always sets it;
- * a checkout without the model falls back to substring matching rather than refusing to run.
+ * Picks the judge once per process: Jev when `JEV_API_KEY` is set, else the bundled model in
+ * `MENTION_JUDGE_DIR` (the worker image always sets it), else substring matching, so a checkout
+ * without the model still runs. The stamp names the judge, so switching replays every brand.
  */
-export async function loadMentionAnalyzer(dir = process.env.MENTION_JUDGE_DIR): Promise<MentionAnalyzer> {
-	current = dir ? judgeAnalyzer(await loadMentionJudge(dir)) : substringAnalyzer;
+export async function loadMentionAnalyzer(env: NodeJS.ProcessEnv = process.env): Promise<MentionAnalyzer> {
+	const jevKey = env.JEV_API_KEY?.trim();
+	if (jevKey) {
+		current = judgeAnalyzer(jevJudge(jevKey), Number(env.JEV_CONCURRENCY) || DEFAULT_JEV_CONCURRENCY);
+	} else if (env.MENTION_JUDGE_DIR) {
+		current = judgeAnalyzer(await loadMentionJudge(env.MENTION_JUDGE_DIR));
+	} else {
+		current = substringAnalyzer;
+	}
 	return current;
 }
 

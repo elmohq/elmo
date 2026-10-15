@@ -217,6 +217,26 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"model:provider override for the LLM behind brand onboarding and the Opportunities report (e.g., 'claude:anthropic-api'). Defaults to the first configured provider in RESEARCH_PROVIDER_PREFERENCE.",
 	},
 	{
+		name: "MENTION_JUDGE_DIR",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Directory of the bundled mention-judge model; the worker image sets it. Without it (and without JEV_API_KEY), mentions are matched by substring.",
+	},
+	{
+		name: "JEV_API_KEY",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"TypeSafe API key. When set, the worker judges mentions and sentiment with Jev instead of the bundled model. Switching either way re-judges every brand's history.",
+	},
+	{
+		name: "JEV_CONCURRENCY",
+		scope: "server",
+		requiredBy: "optional",
+		description: "How many answers the worker sends to Jev at once when replaying history. Defaults to 16.",
+	},
+	{
 		name: "JINA_API_KEY",
 		scope: "server",
 		requiredBy: "optional",
