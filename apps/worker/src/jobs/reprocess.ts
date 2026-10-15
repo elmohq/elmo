@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import {
 	type AnalysisVersions,
 	currentAnalysisVersions,
@@ -127,7 +128,13 @@ async function rederiveMentions(
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
 		// Verdicts can be kept only while the text they were judged on, and point into, is unchanged.
 		const previous = text === run.textContent ? run.assessments : null;
-		return analyzer.analyze(text, config, previous);
+		try {
+			return await analyzer.analyze(text, config, previous);
+		} catch (error) {
+			// One answer the judge can't read mustn't stall the brand's whole replay; it keeps what it has.
+			console.error(`[reprocess] run ${run.id}: mention judge failed, keeping its mentions:`, error);
+			Sentry.captureException(error);
+		}
 	}
 	update.kept.push("mentions");
 	const { brandMentioned, competitorsMentioned, assessments } = run;
