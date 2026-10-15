@@ -1,11 +1,7 @@
 import { NO_VERDICTS, type VerdictSums } from "@/lib/rollup-read";
+import type { Tone } from "@/lib/tone";
 
-export interface SentimentCounts {
-	positive: number;
-	neutral: number;
-	negative: number;
-	mixed: number;
-}
+export type SentimentCounts = Record<Tone, number>;
 
 export interface SentimentSummary extends SentimentCounts {
 	/** Fractions of 1 of the mentions with a clear tone; null with none. */

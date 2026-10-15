@@ -17,7 +17,7 @@ import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { ModelGrid } from "@/components/overview/competitive-landscape";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { ResponseMarkdown } from "@/components/response-markdown";
-import { RingChart } from "@/components/share-of-voice-donut";
+import { RingChart } from "@/components/ring-chart";
 import { ToneBar } from "@/components/tone-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrandSentiment } from "@/hooks/use-brand-sentiment";
@@ -31,7 +31,7 @@ import { chartedCompanies, type Landscape } from "@/lib/landscape";
 import { METRIC_META } from "@/lib/overview-metrics";
 import { pageHead } from "@/lib/route-head";
 import type { SentimentSummary } from "@/lib/sentiment";
-import { TONE_STYLES, TONES } from "@/lib/tone";
+import { TONE_STYLES, TONES, toneTotal } from "@/lib/tone";
 import type { PromptSentiment, SentimentQuote } from "@/server/analytics-core";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/sentiment")({
@@ -41,13 +41,6 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/sentime
 });
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
-
-const toneCounts = (s: SentimentSummary) => ({
-	positive: s.positive,
-	neutral: s.neutral,
-	mixed: s.mixed,
-	negative: s.negative,
-});
 
 /** Side-by-side cards share a header height, so a title beside a control lines up with one beside none. */
 const ROW_HEADER = "flex min-h-8 flex-row items-center";
@@ -206,8 +199,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 						</TableHeader>
 						<TableBody>
 							{prompts.map((p) => {
-								const counts = toneCounts(p.sentiment);
-								const clear = TONES.reduce((sum, tone) => sum + counts[tone], 0);
+								const clear = toneTotal(p.sentiment);
 								return (
 									<TableRow key={p.promptId}>
 										<TableCell className="whitespace-normal">
@@ -224,7 +216,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 											{clear.toLocaleString()}
 										</TableCell>
 										<TableCell>
-											<ToneBar counts={counts} className="h-1.5" />
+											<ToneBar counts={p.sentiment} className="h-1.5" />
 										</TableCell>
 										<TableCell className="text-right font-medium tabular-nums">
 											{p.sentiment.positiveShare === null ? "—" : percent(p.sentiment.positiveShare)}
@@ -234,7 +226,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 												<Link
 													to="/app/org/$org/brand/$brand/responses"
 													params={params}
-													search={{ prompts: p.promptId, sentiment: "negative" }}
+													search={(prev) => ({ ...prev, prompts: p.promptId, sentiment: "negative" })}
 													className={cn("whitespace-nowrap hover:underline", TONE_STYLES.negative.text)}
 												>
 													{p.sentiment.negative} {p.sentiment.negative === 1 ? "answer" : "answers"}

@@ -1,8 +1,10 @@
 /** The tone of an answer toward the brand, as the mention judge reads it, and how lists filter on it. */
+import type { SentimentVerdict } from "@workspace/lib/mentions";
 import { z } from "zod";
 
-export const TONES = ["positive", "neutral", "mixed", "negative"] as const;
-export type Tone = (typeof TONES)[number];
+/** The tones the judge can call; `uncertain` is the absence of one. */
+export type Tone = Exclude<SentimentVerdict, "uncertain">;
+export const TONES = ["positive", "neutral", "mixed", "negative"] as const satisfies readonly Tone[];
 
 /** A tone, or answers that don't mention the brand at all. */
 export const toneFilterSchema = z.enum([...TONES, "unmentioned"]);
@@ -44,5 +46,8 @@ export const TONE_STYLES: Record<Tone, { label: string; color: string; text: str
 		soft: "bg-[#D55E00]/15 dark:bg-[#D55E00]/30",
 	},
 };
+
+/** Answers whose tone the judge could call: the base every tone share is of. */
+export const toneTotal = (counts: Record<Tone, number>) => TONES.reduce((sum, tone) => sum + counts[tone], 0);
 
 export const isTone = (value: unknown): value is Tone => TONES.includes(value as Tone);

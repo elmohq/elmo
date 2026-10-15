@@ -8,7 +8,7 @@ import { Area, AreaChart, Tooltip as ChartTooltip, ResponsiveContainer, YAxis } 
 import { useBrandParams } from "@/hooks/use-route-params";
 import { formatShortDate } from "@/lib/chart-utils";
 import { type LandscapeMetric, lowerIsBetter } from "@/lib/landscape";
-import { METRIC_META, TONE_STYLES, type Tone } from "@/lib/overview-metrics";
+import { GRADE_STYLES, type Grade, METRIC_META } from "@/lib/overview-metrics";
 import type { OverviewCard } from "@/server/dashboard";
 
 function Change({ metric, change }: { metric: LandscapeMetric; change: number | null }) {
@@ -60,8 +60,8 @@ export function HeadlineCard({
 }) {
 	const meta = METRIC_META[metric];
 	const params = useBrandParams();
-	const tone: Tone | null = card?.value == null ? null : meta.tone(card.value, rank);
-	const style = tone ? TONE_STYLES[tone] : null;
+	const grade: Grade | null = card?.value == null ? null : meta.grade(card.value, rank);
+	const style = grade ? GRADE_STYLES[grade] : null;
 	return (
 		// The whole card leads to the measure's page; the chart's tooltip still works on hover.
 		<Link

@@ -10,7 +10,15 @@ import { cn } from "@workspace/ui/lib/utils";
 import { ArrowUpDown } from "lucide-react";
 import type { ReactNode } from "react";
 import { FilterTriggerButton } from "@/components/filter-bar";
-import { type ResponseSort, TONE_STYLES, TONES, type Tone, type ToneCounts, type ToneFilter } from "@/lib/tone";
+import {
+	type ResponseSort,
+	TONE_STYLES,
+	TONES,
+	type Tone,
+	type ToneCounts,
+	type ToneFilter,
+	toneTotal,
+} from "@/lib/tone";
 
 const percent = (part: number, whole: number) => `${Math.round((part / whole) * 100)}%`;
 
@@ -29,7 +37,7 @@ export function ToneBar({
 	onSelect?: (tone: Tone) => void;
 	className?: string;
 }) {
-	const total = TONES.reduce((sum, tone) => sum + counts[tone], 0);
+	const total = toneTotal(counts);
 	if (total === 0) return <div className={cn("h-2 w-full rounded-full bg-muted", className)} />;
 	return (
 		<div className={cn("flex h-2 w-full gap-[3px]", className)}>
@@ -146,7 +154,7 @@ export function ToneFilterCard({
 	onSortChange: (sort: ResponseSort) => void;
 }) {
 	const toggle = (tone: ToneFilter) => onChange(value === tone ? undefined : tone);
-	const clear = TONES.reduce((sum, tone) => sum + counts[tone], 0);
+	const clear = toneTotal(counts);
 	return (
 		<Card className="gap-0 py-4">
 			<CardContent className="space-y-3">

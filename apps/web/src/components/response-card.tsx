@@ -10,7 +10,7 @@ import { SiteIcon } from "@/components/site-icon";
 import { evidenceRange } from "@/lib/evidence";
 import { HIGHLIGHT_CLASS, type MarkRange, splitHighlights } from "@/lib/highlight";
 import { skeletonRows } from "@/lib/skeleton-rows";
-import { isTone, TONE_STYLES } from "@/lib/tone";
+import { isTone, TONE_STYLES, type Tone } from "@/lib/tone";
 import { getModelDisplayName } from "@/lib/utils";
 
 export interface ResponseCardRun {
@@ -46,8 +46,8 @@ export function ResponseCard({
 	domainFor: (name: string) => string | undefined;
 }) {
 	const [selected, setSelected] = useState<string | null>(null);
-	const companies = mentionedCompanies(run, brandName);
-	const markRange = passageMark(text, companies.find((c) => c.name === selected)?.record);
+	const companies = mentionedCompanies(run, text, brandName);
+	const markRange = passageMark(companies.find((c) => c.name === selected));
 	return (
 		<Card>
 			<CardHeader className="pb-0 gap-y-0">
@@ -89,13 +89,7 @@ export function ResponseCard({
 
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
-					<MentionedBrands
-						companies={companies}
-						text={text}
-						selected={selected}
-						onSelect={setSelected}
-						domainFor={domainFor}
-					/>
+					<MentionedBrands companies={companies} selected={selected} onSelect={setSelected} domainFor={domainFor} />
 				</div>
 
 				<div>
@@ -128,18 +122,26 @@ interface MentionedCompany {
 	name: string;
 	isBrand: boolean;
 	record?: MentionAssessmentRecord;
+	tone?: Tone;
+	/** Where in the answer the passage its verdict rests on lies; null when there's none to mark. */
+	passage: { start: number; end: number } | null;
 }
 
 /** Each company the answer counts as mentioning: the brand first, then competitors as the answer names them. */
-function mentionedCompanies(run: ResponseCardRun, brandName?: string): MentionedCompany[] {
-	const companies: MentionedCompany[] = [];
-	if (run.brandMentioned && brandName) {
-		companies.push({ name: brandName, isBrand: true, record: run.mentionAssessments?.brand });
-	}
-	for (const name of new Set(run.competitorsMentioned ?? [])) {
-		companies.push({ name, isBrand: false, record: run.mentionAssessments?.competitors?.[name] });
-	}
-	return companies;
+function mentionedCompanies(run: ResponseCardRun, text: string, brandName?: string): MentionedCompany[] {
+	const company = (name: string, isBrand: boolean, record?: MentionAssessmentRecord): MentionedCompany => ({
+		name,
+		isBrand,
+		record,
+		tone: isTone(record?.sentiment) ? record.sentiment : undefined,
+		passage: record ? evidenceRange(text, record) : null,
+	});
+	return [
+		...(run.brandMentioned && brandName ? [company(brandName, true, run.mentionAssessments?.brand)] : []),
+		...[...new Set(run.competitorsMentioned ?? [])].map((name) =>
+			company(name, false, run.mentionAssessments?.competitors[name]),
+		),
+	];
 }
 
 const ordinal = (n: number) => {
@@ -147,11 +149,11 @@ const ordinal = (n: number) => {
 	return `${n}${suffix}`;
 };
 
-function badgeTip(company: MentionedCompany, canShow: boolean): string {
+function badgeTip(company: MentionedCompany): string {
 	const parts: string[] = [];
 	if (company.record?.position) parts.push(`Named ${ordinal(company.record.position)} among the tracked companies.`);
 	if (company.record?.mention === "uncertain") parts.push("Unsure whether this is a mention; counted.");
-	if (canShow) parts.push("Click to mark the passage this rests on.");
+	if (company.passage) parts.push("Click to mark the passage this rests on.");
 	return parts.join(" ");
 }
 
@@ -161,13 +163,11 @@ function badgeTip(company: MentionedCompany, canShow: boolean): string {
  */
 function MentionedBrands({
 	companies,
-	text,
 	selected,
 	onSelect,
 	domainFor,
 }: {
 	companies: MentionedCompany[];
-	text: string;
 	selected: string | null;
 	onSelect: (name: string | null) => void;
 	domainFor: (name: string) => string | undefined;
@@ -176,10 +176,10 @@ function MentionedBrands({
 	return (
 		<div className="flex flex-wrap items-center gap-1.5">
 			{companies.map((company) => {
-				const tone = isTone(company.record?.sentiment) ? company.record.sentiment : undefined;
-				const canShow = company.record ? evidenceRange(text, company.record) !== null : false;
+				const { tone } = company;
+				const canShow = company.passage !== null;
 				const active = selected === company.name;
-				const tip = badgeTip(company, canShow);
+				const tip = badgeTip(company);
 				return (
 					<button
 						key={company.name}
@@ -214,11 +214,10 @@ function MentionedBrands({
 	);
 }
 
-function passageMark(text: string, record?: MentionAssessmentRecord): MarkRange | undefined {
-	const range = record ? evidenceRange(text, record) : null;
-	if (!range) return undefined;
-	const tone = isTone(record?.sentiment) ? record.sentiment : undefined;
-	return { ...range, className: cn("rounded-sm px-0.5 text-inherit", tone ? TONE_STYLES[tone].soft : "bg-muted") };
+function passageMark(company?: MentionedCompany): MarkRange | undefined {
+	if (!company?.passage) return undefined;
+	const tint = company.tone ? TONE_STYLES[company.tone].soft : "bg-muted";
+	return { ...company.passage, className: cn("rounded-sm px-0.5 text-inherit", tint) };
 }
 
 function Highlighted({ text, term }: { text: string; term?: string }) {
