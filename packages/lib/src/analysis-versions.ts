@@ -14,7 +14,9 @@ export const MENTIONS_KEY = "mentions";
 /** The extraction stamp alone: it depends on the code, not on any brand's config. */
 export const EXTRACTION_STAMP = String(EXTRACTOR_VERSION);
 
-/** `judgeVersion` is null when mentions come from substring matching. */
-export function currentAnalysisVersions(config: MentionConfig, judgeVersion: string | null): AnalysisVersions {
+/** What brands that predate the judge carry: their mentions were matched by name, so all are stale. */
+export const NAME_MATCHED_MENTIONS_STAMP = "name-matched";
+
+export function currentAnalysisVersions(config: MentionConfig, judgeVersion: string): AnalysisVersions {
 	return { [EXTRACTION_KEY]: EXTRACTION_STAMP, [MENTIONS_KEY]: mentionsStamp(config, judgeVersion) };
 }

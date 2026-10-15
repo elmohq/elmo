@@ -87,9 +87,9 @@ export interface ExtractionUpdate {
 }
 
 /**
- * Rewrites many runs' extractions in one statement: backfills and replays write
- * in batches, and a statement per run is a round trip per run. `onlyUnstamped`
- * skips runs something else has stamped since they were read.
+ * Writes many runs' extractions in one statement, extracted for the first time or again:
+ * derivation and backfills write in batches, and a statement per run is a round trip per run.
+ * `onlyUnstamped` skips runs something else has stamped since they were read.
  */
 export async function updateExtractions(
 	conn: DbConnection,
@@ -99,10 +99,11 @@ export async function updateExtractions(
 	if (updates.length === 0) return;
 	const values = updates.map((u) => sql`(${u.runId}::uuid, ${u.textContent}::text, ${u.stamp}::text)`);
 	await conn.execute(sql`
-		UPDATE ${runExtractions} AS e
-		SET text_content = v.text_content, stamp = coalesce(v.stamp, e.stamp)
-		FROM (VALUES ${sql.join(values, sql`, `)}) AS v(run_id, text_content, stamp)
-		WHERE e.run_id = v.run_id ${options.onlyUnstamped ? sql`AND e.stamp IS NULL` : sql``}
+		INSERT INTO ${runExtractions} AS e (run_id, text_content, stamp)
+		SELECT * FROM (VALUES ${sql.join(values, sql`, `)}) AS v(run_id, text_content, stamp)
+		ON CONFLICT (run_id) DO UPDATE
+		SET text_content = excluded.text_content, stamp = coalesce(excluded.stamp, e.stamp)
+		${options.onlyUnstamped ? sql`WHERE e.stamp IS NULL` : sql``}
 	`);
 }
 

@@ -2,7 +2,9 @@ import {
 	type AnalysisVersions,
 	currentAnalysisVersions,
 	EXTRACTION_KEY,
+	EXTRACTION_STAMP,
 	MENTIONS_KEY,
+	NAME_MATCHED_MENTIONS_STAMP,
 } from "@workspace/lib/analysis-versions";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
@@ -79,7 +81,7 @@ async function queueStaleRuns(
 			const rows: { id: string }[] = await conn
 				.select({ id: promptRuns.id })
 				.from(promptRuns)
-				.innerJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
+				.leftJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
 				.leftJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 				.where(
 					and(
@@ -100,6 +102,7 @@ async function queueStaleRuns(
 				brandId,
 				rows.map(({ id }) => id),
 				priority,
+				{ reextract: layers.includes("extraction") },
 			);
 			queued += rows.length;
 			if (rows.length < PAGE_SIZE) break;
@@ -199,6 +202,7 @@ export async function runReprocess(
 export async function requestStaleReprocesses(
 	conn: DbConnection = db,
 	boss: Pick<PgBoss, "send"> = getBoss(),
+	analyzer: MentionAnalyzer = mentionAnalyzer(),
 ): Promise<number> {
 	const [allBrands, allCompetitors] = await Promise.all([conn.select().from(brands), conn.select().from(competitors)]);
 	const competitorsByBrand = new Map<string, Competitor[]>();
@@ -211,7 +215,7 @@ export async function requestStaleReprocesses(
 		if (brand.analysisVersions === null) continue;
 		const current = currentAnalysisVersions(
 			mentionConfigFrom(brand, competitorsByBrand.get(brand.id) ?? []),
-			mentionAnalyzer().judgeVersion,
+			analyzer.judgeVersion,
 		);
 		const layers = staleLayers(brand.analysisVersions, current);
 		const sent =
@@ -223,24 +227,16 @@ export async function requestStaleReprocesses(
 }
 
 /**
- * Brands that predate stamping adopt today's extraction stamp rather than
- * re-extracting their whole history on deploy. Their mentions were
- * substring-matched, so they adopt that stamp too, and a worker with the judge
- * goes on to re-judge them.
+ * Brands that predate stamping adopt today's extraction stamp rather than re-extracting their
+ * whole history on deploy. Their mentions were matched by name, so they're stale for the judge.
  */
 export async function adoptCurrentStamps(conn: DbConnection = db): Promise<number> {
-	const unstamped = await conn.select().from(brands).where(isNull(brands.analysisVersions));
-	let adopted = 0;
-	for (const brand of unstamped) {
-		const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brand.id));
-		const updated = await conn
-			.update(brands)
-			.set({ analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors), null) })
-			.where(and(eq(brands.id, brand.id), isNull(brands.analysisVersions)))
-			.returning({ id: brands.id });
-		adopted += updated.length;
-	}
-	return adopted;
+	const adopted = await conn
+		.update(brands)
+		.set({ analysisVersions: { [EXTRACTION_KEY]: EXTRACTION_STAMP, [MENTIONS_KEY]: NAME_MATCHED_MENTIONS_STAMP } })
+		.where(isNull(brands.analysisVersions))
+		.returning({ id: brands.id });
+	return adopted.length;
 }
 
 export async function requestReprocessesJob(): Promise<void> {

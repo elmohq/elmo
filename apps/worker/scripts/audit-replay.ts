@@ -10,12 +10,12 @@ import { normalizeUrl } from "@workspace/lib/citations/domain-categories";
  * Reprocess already refuses to replace something with nothing; this shows how
  * often that will happen and where replay would change history instead.
  *
- * Mentions are re-matched the way the worker would: with the mention judge when
- * MENTION_JUDGE_DIR points at one, by substring otherwise.
+ * Mentions are re-judged the way the worker would, so the model has to be in place
+ * (`pnpm judge:pull`).
  *
  * Usage (never loads .env; point it at a database you mean to read):
  *   cd apps/worker
- *   DATABASE_URL=postgres://... [MENTION_JUDGE_DIR=...] pnpm exec tsx scripts/audit-replay.ts [--brand=<id>] [--since=2026-01-01] [--limit=50000]
+ *   DATABASE_URL=postgres://... pnpm exec tsx scripts/audit-replay.ts [--brand=<id>] [--since=2026-01-01] [--limit=50000]
  */
 import { db } from "@workspace/lib/db/db";
 import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
