@@ -26,17 +26,35 @@ export interface RunSums {
 	competitor_mentions: number;
 }
 
-export interface MentionTotals extends RunSums {
-	/** Runs that mentioned neither the brand nor any competitor. */
-	no_mention_runs: number;
-	/** Runs mentioning the brand, by the mention judge's confident sentiment toward it. */
+/** The mention judge's verdicts summed over runs that mention a company, as every verdict read selects them. */
+export interface VerdictSums {
+	/** Runs by the judge's confident sentiment toward the company. */
 	positive_runs: number;
 	neutral_runs: number;
 	negative_runs: number;
 	mixed_runs: number;
-	/** The brand's position summed over the runs that rank it; see `averagePosition`. */
+	/** The company's position summed over the runs that rank it; see `averagePosition`. */
 	position_sum: number;
 	positioned_runs: number;
+}
+
+export const NO_VERDICTS: VerdictSums = {
+	positive_runs: 0,
+	neutral_runs: 0,
+	negative_runs: 0,
+	mixed_runs: 0,
+	position_sum: 0,
+	positioned_runs: 0,
+};
+
+const verdictSums = sql.join(
+	Object.keys(NO_VERDICTS).map((column) => sql.raw(`coalesce(sum(${column}), 0)::int AS ${column}`)),
+	sql`, `,
+);
+
+export interface MentionTotals extends RunSums, VerdictSums {
+	/** Runs that mentioned neither the brand nor any competitor. */
+	no_mention_runs: number;
 	/** Distinct prompts with a run in scope. */
 	prompts: number;
 	/** Distinct prompts in which the brand was mentioned at least once. */
@@ -140,12 +158,7 @@ export async function getMentionTotals(scope: AnalyticsScope): Promise<MentionTo
 		SELECT
 			${runSums},
 			coalesce(sum(no_mention_runs), 0)::int AS no_mention_runs,
-			coalesce(sum(positive_runs), 0)::int AS positive_runs,
-			coalesce(sum(neutral_runs), 0)::int AS neutral_runs,
-			coalesce(sum(negative_runs), 0)::int AS negative_runs,
-			coalesce(sum(mixed_runs), 0)::int AS mixed_runs,
-			coalesce(sum(position_sum), 0)::int AS position_sum,
-			coalesce(sum(positioned_runs), 0)::int AS positioned_runs,
+			${verdictSums},
 			count(DISTINCT prompt_id)::int AS prompts,
 			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned_runs > 0)::int AS brand_mentioned_prompts,
 			${isoInstant(sql`max(last_run_at)`)} AS last_run_at
@@ -465,14 +478,8 @@ export async function getFanoutPromptTotals(scope: AnalyticsScope): Promise<Fano
 	`);
 }
 
-export interface DailyVerdicts {
+export interface DailyVerdicts extends VerdictSums {
 	date: string;
-	positive_runs: number;
-	neutral_runs: number;
-	negative_runs: number;
-	mixed_runs: number;
-	position_sum: number;
-	positioned_runs: number;
 }
 
 /** Per local day, the runs mentioning the brand by the judge's sentiment toward it, and its position. */
@@ -480,12 +487,7 @@ export async function getDailyVerdicts(scope: AnalyticsScope): Promise<DailyVerd
 	return queryPg<DailyVerdicts>(sql`
 		SELECT
 			to_char(${localDate(sql`bucket`, scope.timezone)}, 'YYYY-MM-DD') AS date,
-			sum(positive_runs)::int AS positive_runs,
-			sum(neutral_runs)::int AS neutral_runs,
-			sum(negative_runs)::int AS negative_runs,
-			sum(mixed_runs)::int AS mixed_runs,
-			sum(position_sum)::int AS position_sum,
-			sum(positioned_runs)::int AS positioned_runs
+			${verdictSums}
 		FROM rollup_prompt_runs
 		WHERE ${rollupScope(scope)}
 		GROUP BY 1
