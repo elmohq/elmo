@@ -11,6 +11,7 @@ export type AnalysisVersions = Record<string, string>;
 export const EXTRACTION_KEY = "extraction";
 export const MENTIONS_KEY = "mentions";
 
-export function currentAnalysisVersions(config: MentionConfig, judgeVersion?: string | null): AnalysisVersions {
+/** `judgeVersion` is null when mentions come from substring matching. */
+export function currentAnalysisVersions(config: MentionConfig, judgeVersion: string | null): AnalysisVersions {
 	return { [EXTRACTION_KEY]: String(EXTRACTOR_VERSION), [MENTIONS_KEY]: mentionsStamp(config, judgeVersion) };
 }

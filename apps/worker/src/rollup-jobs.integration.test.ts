@@ -113,7 +113,7 @@ async function withRollupRowsLocked<T>(brandId: string, fn: () => Promise<T>): P
 }
 
 function fakeBoss() {
-	return { send: vi.fn().mockResolvedValue("fake-job-id"), findJobs: vi.fn().mockResolvedValue([]) };
+	return { send: vi.fn().mockResolvedValue("fake-job-id"), update: vi.fn(), findJobs: vi.fn().mockResolvedValue([]) };
 }
 
 let fixture: Fixture;

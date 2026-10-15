@@ -74,16 +74,24 @@ export function mentionConfigFrom(brand: Brand, competitors: Competitor[]): Ment
 	};
 }
 
+/** `uncertain` still counts as a mention. */
+export type MentionVerdict = "mentioned" | "not_mentioned" | "uncertain";
+export type SentimentVerdict = "positive" | "neutral" | "negative" | "mixed" | "uncertain";
+/** The judge's readings of a name that aren't a mention of the company. */
+export type NonMentionReason = "other_meaning" | "other_company" | "no_info";
+
 /** The mention judge's verdict on one subject, for the answers that name it. */
 export interface MentionAssessmentRecord {
-	/** `uncertain` still counts as a mention. */
-	mention: "mentioned" | "not_mentioned" | "uncertain";
+	mention: MentionVerdict;
 	probability: number;
 	/** The likeliest non-mention reading, when it isn't a confident mention. */
-	reason?: string;
-	sentiment?: "positive" | "neutral" | "negative" | "mixed" | "uncertain";
+	reason?: NonMentionReason;
+	sentiment?: SentimentVerdict;
 	sentimentProbabilities?: Record<string, number>;
-	/** Offsets into the run's stored text of the passage the verdict rests on. */
+	/**
+	 * Offsets into the run's stored text of the passage the verdict rests on: the one that most
+	 * carries its sentiment when it has one, otherwise the one that most decided the mention.
+	 */
 	evidence?: { start: number; end: number };
 	/** For a verdict that counts: offset into the run's stored text of the first mention. */
 	firstMention?: number;
@@ -97,28 +105,47 @@ export interface MentionAssessmentRecord {
 }
 
 export interface RunMentionAssessments {
+	/** Absent when the answer never names the brand. */
 	brand?: MentionAssessmentRecord;
-	/** Keyed by competitor name, as in `competitors_mentioned`. */
-	competitors?: Record<string, MentionAssessmentRecord>;
+	/** Keyed by competitor name, as in `competitors_mentioned`; only competitors the answer names. */
+	competitors: Record<string, MentionAssessmentRecord>;
 	/**
 	 * The `subjectFingerprint` each subject was judged under, including subjects the answer never
 	 * names. A replay re-judges only the subjects whose fingerprint has changed.
 	 */
-	judged?: { brand?: string; competitors?: Record<string, string> };
+	judged: { brand: string; competitors: Record<string, string> };
+}
+
+type Subject = MentionConfig["brand"];
+
+/**
+ * A subject as the judge reads it. Case is kept: unlike substring matching, the model sees the
+ * names as written, so recasing one is a different input.
+ */
+export function judgedSubject(subject: Subject): Subject {
+	const present = (values: string[]) => values.map((value) => value.trim()).filter(Boolean);
+	return {
+		name: subject.name.trim(),
+		aliases: present(subject.aliases),
+		domains: present(subject.domains).map(normalizeDomain),
+	};
 }
 
 /**
- * What a subject's verdicts depend on: its names and domains, and the judge. Rival names are left
+ * What a subject's verdicts depend on: the subject as judged, and the judge. Rival names are left
  * out on purpose, so adding a competitor re-judges only that competitor rather than every subject
  * whose list of rivals it joined; those rivals are context for the model, not what it decides.
  */
-export function subjectFingerprint(subject: MentionConfig["brand"], judgeVersion: string): string {
-	const fingerprint = JSON.stringify({
-		names: canonicalTerms([subject.name, ...subject.aliases]),
-		domains: canonicalDomains(subject.domains),
-		judgeVersion,
-	});
-	return createHash("sha256").update(fingerprint).digest("hex").slice(0, 16);
+export function subjectFingerprint(subject: Subject, judgeVersion: string): string {
+	return digest({ ...judgedSubject(subject), judgeVersion });
+}
+
+const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
+
+/** A term inside a longer word ("ace" in "place") is never the subject, so only whole words match. */
+export function wholeWordPattern(term: string): RegExp {
+	const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "giu");
 }
 
 export function analyzeRunMentions(
@@ -138,14 +165,21 @@ function canonicalDomains(domains: readonly string[]): string[] {
 }
 
 /**
- * Identifies the matcher version and brand config a run's mentions were derived
- * from. Configs that match the same text stamp alike, so reordering competitors
- * or recasing an alias doesn't reprocess a brand's whole history. Competitor
- * names are the exception: they're stored verbatim in `competitors_mentioned`
- * and key the rollups, so a rename must restamp even when only case or whitespace changed.
- * A judged stamp names the judge, so a new model replays every brand's history.
+ * Identifies the matcher and brand config a run's mentions were derived from; `judgeVersion` is
+ * null for substring matching. Substring configs that match the same text stamp alike, so
+ * reordering competitors or recasing an alias doesn't reprocess a brand's whole history.
+ * Competitor names are the exception: they're stored verbatim in `competitors_mentioned` and key
+ * the rollups, so a rename must restamp even when only case or whitespace changed. A judged stamp
+ * is made of each subject's fingerprint, so it changes exactly when some subject must be re-judged.
  */
-export function mentionsStamp(config: MentionConfig, judgeVersion?: string | null): string {
+export function mentionsStamp(config: MentionConfig, judgeVersion: string | null): string {
+	if (judgeVersion) {
+		const subjects = digest({
+			brand: subjectFingerprint(config.brand, judgeVersion),
+			competitors: config.competitors.map((c) => [c.name, subjectFingerprint(c, judgeVersion)]).sort(),
+		});
+		return `${MENTIONS_VERSION}:${subjects}:judge-${judgeVersion}`;
+	}
 	const fingerprint = JSON.stringify({
 		names: canonicalTerms([config.brand.name, ...config.brand.aliases]),
 		domains: canonicalDomains(config.brand.domains),
@@ -159,7 +193,5 @@ export function mentionsStamp(config: MentionConfig, judgeVersion?: string | nul
 			)
 			.sort(),
 	});
-	const digest = createHash("sha256").update(fingerprint).digest("hex");
-	const stamp = `${MENTIONS_VERSION}:${digest.slice(0, 16)}`;
-	return judgeVersion ? `${stamp}:judge-${judgeVersion}` : stamp;
+	return `${MENTIONS_VERSION}:${createHash("sha256").update(fingerprint).digest("hex").slice(0, 16)}`;
 }

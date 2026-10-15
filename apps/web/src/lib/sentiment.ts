@@ -1,4 +1,5 @@
-import type { DailyVerdicts, VerdictSums } from "@/lib/rollup-read";
+import { type DailyVerdicts, NO_VERDICTS, type VerdictSums } from "@/lib/rollup-read";
+import { shiftDateStr } from "@/lib/timezone-utils";
 
 export interface SentimentCounts {
 	positive: number;
@@ -29,11 +30,8 @@ export interface SentimentPoint {
 
 export const SENTIMENT_WINDOW_DAYS = 7;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-export function shiftDate(date: string, days: number): string {
-	return new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
-}
+/** Runs with a tone the judge could call; shares are of these. */
+const clearRuns = (sums: VerdictSums) => sums.positive_runs + sums.neutral_runs + sums.negative_runs + sums.mixed_runs;
 
 const share = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : null);
 
@@ -48,7 +46,7 @@ export function sentimentSeries(
 	windowDays = SENTIMENT_WINDOW_DAYS,
 ): SentimentPoint[] {
 	return trailing(rows, dateRange, windowDays, (window) => {
-		const clear = window.positive_runs + window.neutral_runs + window.negative_runs + window.mixed_runs;
+		const clear = clearRuns(window);
 		return { positive: share(window.positive_runs, clear), negative: share(window.negative_runs, clear) };
 	});
 }
@@ -75,35 +73,35 @@ export function positionSeries(
 	}));
 }
 
-type Sums = Omit<DailyVerdicts, "date">;
+const VERDICT_KEYS = Object.keys(NO_VERDICTS) as (keyof VerdictSums)[];
 
-function trailing<T>(rows: DailyVerdicts[], dateRange: string[], windowDays: number, read: (window: Sums) => T) {
+export function sumVerdicts(rows: VerdictSums[]): VerdictSums {
+	const total = { ...NO_VERDICTS };
+	for (const row of rows) for (const key of VERDICT_KEYS) total[key] += row[key];
+	return total;
+}
+
+function trailing<T>(rows: DailyVerdicts[], dateRange: string[], windowDays: number, read: (window: VerdictSums) => T) {
 	const byDate = new Map(rows.map((row) => [row.date, row]));
 	return dateRange.map((date) => {
-		const window: Sums = {
-			positive_runs: 0,
-			neutral_runs: 0,
-			negative_runs: 0,
-			mixed_runs: 0,
-			position_sum: 0,
-			positioned_runs: 0,
-		};
-		for (let back = 0; back < windowDays; back++) {
-			const row = byDate.get(shiftDate(date, -back));
-			if (!row) continue;
-			for (const key of Object.keys(window) as (keyof Sums)[]) window[key] += row[key];
-		}
-		return { date, ...read(window) };
+		const days = Array.from({ length: windowDays }, (_, back) => byDate.get(shiftDateStr(date, { days: -back })));
+		return { date, ...read(sumVerdicts(days.filter((row) => row !== undefined))) };
 	});
 }
 
-export function sentimentSummary(sums: VerdictSums): SentimentSummary {
-	const clear = sums.positive_runs + sums.neutral_runs + sums.negative_runs + sums.mixed_runs;
+export function sentimentCounts(sums: VerdictSums): SentimentCounts {
 	return {
 		positive: sums.positive_runs,
 		neutral: sums.neutral_runs,
 		negative: sums.negative_runs,
 		mixed: sums.mixed_runs,
+	};
+}
+
+export function sentimentSummary(sums: VerdictSums): SentimentSummary {
+	const clear = clearRuns(sums);
+	return {
+		...sentimentCounts(sums),
 		positiveShare: clear > 0 ? sums.positive_runs / clear : null,
 		negativeShare: clear > 0 ? sums.negative_runs / clear : null,
 	};

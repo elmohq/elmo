@@ -9,7 +9,8 @@ import type {
 	ModelRunSums,
 	VerdictSums,
 } from "@/lib/rollup-read";
-import { SENTIMENT_WINDOW_DAYS, shiftDate } from "@/lib/sentiment";
+import { SENTIMENT_WINDOW_DAYS } from "@/lib/sentiment";
+import { shiftDateStr } from "@/lib/timezone-utils";
 
 export const LANDSCAPE_METRICS = ["visibility", "share", "sentiment", "position"] as const;
 export type LandscapeMetric = (typeof LANDSCAPE_METRICS)[number];
@@ -139,7 +140,7 @@ export function buildLandscape(input: LandscapeInput): Landscape {
 			return s;
 		};
 		const windowed = input.dates.map((date) =>
-			measure(sumOver(Array.from({ length: windowDays }, (_, back) => shiftDate(date, -back)))),
+			measure(sumOver(Array.from({ length: windowDays }, (_, back) => shiftDateStr(date, { days: -back })))),
 		);
 		return {
 			name,

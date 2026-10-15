@@ -107,7 +107,7 @@ export async function createRun(
 			brandMentioned: opts.brandMentioned,
 			competitorsMentioned: opts.competitors ?? [],
 			textContent: opts.text ?? null,
-			mentionAssessments: opts.assessments ?? null,
+			assessments: opts.assessments ?? null,
 			createdAt,
 		},
 	]);

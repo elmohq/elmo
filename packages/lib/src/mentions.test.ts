@@ -79,13 +79,13 @@ describe("mentionsStamp", () => {
 	};
 
 	it("changes when mentions start coming from the judge, or from a new judge", () => {
-		expect(mentionsStamp(config, "0.3.0")).not.toBe(mentionsStamp(config));
+		expect(mentionsStamp(config, "0.3.0")).not.toBe(mentionsStamp(config, null));
 		expect(mentionsStamp(config, "0.4.0")).not.toBe(mentionsStamp(config, "0.3.0"));
 	});
 
 	it("changes when the brand gains an alias", () => {
 		const withAlias = { ...config, brand: { ...config.brand, aliases: [...config.brand.aliases, "Acme Software"] } };
-		expect(mentionsStamp(withAlias)).not.toBe(mentionsStamp(config));
+		expect(mentionsStamp(withAlias, null)).not.toBe(mentionsStamp(config, null));
 	});
 
 	it("changes when a competitor's domain changes", () => {
@@ -93,7 +93,7 @@ describe("mentionsStamp", () => {
 			...config,
 			competitors: [{ ...config.competitors[0], domains: ["globex.io"] }, config.competitors[1]],
 		};
-		expect(mentionsStamp(moved)).not.toBe(mentionsStamp(config));
+		expect(mentionsStamp(moved, null)).not.toBe(mentionsStamp(config, null));
 	});
 
 	it("survives reordering, so a bulk competitor save does not restamp history", () => {
@@ -101,7 +101,7 @@ describe("mentionsStamp", () => {
 			brand: { ...config.brand, domains: [...config.brand.domains].reverse() },
 			competitors: [...config.competitors].reverse(),
 		};
-		expect(mentionsStamp(reordered)).toBe(mentionsStamp(config));
+		expect(mentionsStamp(reordered, null)).toBe(mentionsStamp(config, null));
 	});
 
 	it("survives a case, whitespace or URL-shape edit to a term, which matching already ignores", () => {
@@ -116,14 +116,27 @@ describe("mentionsStamp", () => {
 				{ name: "Initech", aliases: [], domains: ["https://initech.com/about"] },
 			],
 		};
-		expect(mentionsStamp(recased)).toBe(mentionsStamp(config));
+		expect(mentionsStamp(recased, null)).toBe(mentionsStamp(config, null));
+	});
+
+	it("under the judge, changes when a term is only recased, since the model reads names as written", () => {
+		const recased = {
+			...config,
+			brand: { ...config.brand, aliases: config.brand.aliases.map((a) => a.toLowerCase()) },
+		};
+		expect(mentionsStamp(recased, "0.3.0")).not.toBe(mentionsStamp(config, "0.3.0"));
+	});
+
+	it("under the judge, survives reordering competitors", () => {
+		const reordered = { ...config, competitors: [...config.competitors].reverse() };
+		expect(mentionsStamp(reordered, "0.3.0")).toBe(mentionsStamp(config, "0.3.0"));
 	});
 
 	it.each(["GLOBEX", "Globex "])(
 		"changes when a competitor is renamed to %j, since runs and rollups store the name verbatim",
 		(name) => {
 			const renamed = { ...config, competitors: [{ ...config.competitors[0], name }, config.competitors[1]] };
-			expect(mentionsStamp(renamed)).not.toBe(mentionsStamp(config));
+			expect(mentionsStamp(renamed, null)).not.toBe(mentionsStamp(config, null));
 		},
 	);
 });
