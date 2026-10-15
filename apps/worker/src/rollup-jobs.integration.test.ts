@@ -29,6 +29,7 @@ import { deriveQueue } from "./jobs/__fixtures__/derive-queue";
 import { refreshRollupsJob, runRefreshTick } from "./jobs/refresh-rollups";
 import { type ReprocessData, runReprocess } from "./jobs/reprocess";
 import { runRollupCatchUp } from "./jobs/rollup-catch-up";
+import { cuedAnalyzer } from "./mention-judge/__fixtures__/cued-judge";
 import { initializePipeline } from "./rollups-startup";
 
 // Bucket-aligned (a whole 30-minute mark from the date_bin origin).
@@ -124,7 +125,7 @@ function fakeBoss() {
 /** A whole replay: the pass queues the brand's stale runs, and the derivation workers take them. */
 async function replay(data: ReprocessData) {
 	const queue = deriveQueue();
-	await runReprocess(data, db, queue.boss);
+	await runReprocess(data, db, queue.boss, cuedAnalyzer);
 	await queue.drain();
 }
 
@@ -240,7 +241,7 @@ describe("reprocess through to a refresh, after a competitor's domain changes", 
 	it("re-marks the run's bucket so the rollup picks up the new mention", async () => {
 		const { brandId } = fixture;
 		// Domain strings deliberately share no substring with the competitor's own
-		// name or with each other: mentionsSubject also matches on the bare name,
+		// name or with each other: the judge also reads the bare name,
 		// so a domain built from it (e.g. "globex-new.example") would flag the
 		// competitor by name alone and the domain change below would test nothing.
 		const [competitor] = await db

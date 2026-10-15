@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { brandRank, buildLandscape, chartedCompanies } from "@/lib/landscape";
-import { NO_VERDICTS } from "@/lib/sentiment";
+import { NO_ASSESSMENTS } from "@/lib/sentiment";
 
 const run = (
 	prompt: string,
@@ -9,7 +9,7 @@ const run = (
 	runs: number,
 	brand: number,
 	competitorMentions: number,
-	verdicts = {},
+	sums = {},
 ) => ({
 	prompt_id: prompt,
 	model,
@@ -18,18 +18,18 @@ const run = (
 	brand_mentioned_runs: brand,
 	competitor_runs: competitorMentions,
 	competitor_mentions: competitorMentions,
-	...NO_VERDICTS,
-	...verdicts,
+	...NO_ASSESSMENTS,
+	...sums,
 });
 
-const competitorRun = (prompt: string, model: string, date: string, runs: number, verdicts = {}) => ({
+const competitorRun = (prompt: string, model: string, date: string, runs: number, sums = {}) => ({
 	prompt_id: prompt,
 	model,
 	date,
 	competitor: "Globex",
 	runs,
-	...NO_VERDICTS,
-	...verdicts,
+	...NO_ASSESSMENTS,
+	...sums,
 });
 
 const input = {

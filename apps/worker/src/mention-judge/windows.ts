@@ -6,7 +6,7 @@
 import { wholeWordPattern } from "@workspace/lib/mentions";
 
 export interface MatchWindow {
-	/** Character offsets of the window in the answer, for pointing the UI at the evidence. */
+	/** Character offsets of the window in the answer, for pointing the UI at the passage. */
 	start: number;
 	end: number;
 	text: string;

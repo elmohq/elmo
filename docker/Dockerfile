@@ -104,8 +104,6 @@ ARG TARGETARCH
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV MENTION_JUDGE_DIR=/app/mention-judge
-ENV ORT_DISABLE_TELEMETRY=1
 
 RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs worker
 

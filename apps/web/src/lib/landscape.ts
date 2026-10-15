@@ -8,11 +8,11 @@
 import { carryForward } from "@/lib/chart-utils";
 import type { PromptModelDailyCompetitor, PromptModelDailyRuns } from "@/lib/rollup-read";
 import {
-	NO_VERDICTS,
+	type AssessmentSums,
+	NO_ASSESSMENTS,
 	type SentimentCounts,
 	sentimentCounts,
 	sentimentSummary,
-	type VerdictSums,
 } from "@/lib/sentiment";
 
 export const LANDSCAPE_METRICS = ["visibility", "share", "sentiment", "position"] as const;
@@ -75,7 +75,7 @@ export function brandRank(landscape: Landscape, metric: LandscapeMetric): number
 }
 
 /** One company's part of a prompt's answers. */
-interface CompanyCounts extends VerdictSums {
+interface CompanyCounts extends AssessmentSums {
 	mentions: number;
 }
 
@@ -89,12 +89,12 @@ interface Observation {
 
 const emptyObservation = (): Observation => ({ runs: 0, allMentions: 0, companies: new Map() });
 
-const VERDICT_KEYS = Object.keys(NO_VERDICTS) as (keyof VerdictSums)[];
+const ASSESSMENT_KEYS = Object.keys(NO_ASSESSMENTS) as (keyof AssessmentSums)[];
 
-function addCounts(into: Map<string, CompanyCounts>, name: string, mentions: number, verdicts: VerdictSums): void {
-	const counts = into.get(name) ?? { ...NO_VERDICTS, mentions: 0 };
+function addCounts(into: Map<string, CompanyCounts>, name: string, mentions: number, sums: AssessmentSums): void {
+	const counts = into.get(name) ?? { ...NO_ASSESSMENTS, mentions: 0 };
 	counts.mentions += mentions;
-	for (const key of VERDICT_KEYS) counts[key] += verdicts[key];
+	for (const key of ASSESSMENT_KEYS) counts[key] += sums[key];
 	into.set(name, counts);
 }
 
@@ -180,7 +180,7 @@ function latestByModel(byPrompt: Map<string, Map<string, Map<string, Observation
 const ratio = (part: number, whole: number) => (whole > 0 ? part / whole : null);
 
 function measure(name: string, day: Observation | undefined): MetricValues {
-	const counts = day?.companies.get(name) ?? { ...NO_VERDICTS, mentions: 0 };
+	const counts = day?.companies.get(name) ?? { ...NO_ASSESSMENTS, mentions: 0 };
 	return {
 		visibility: ratio(counts.mentions, day?.runs ?? 0),
 		share: ratio(counts.mentions, day?.allMentions ?? 0),
@@ -207,7 +207,7 @@ export function buildLandscape(input: LandscapeInput): Landscape {
 			isBrand,
 			domain,
 			totals: measure(name, days.get(lastDate)),
-			tones: sentimentCounts(last ?? NO_VERDICTS),
+			tones: sentimentCounts(last ?? NO_ASSESSMENTS),
 			byModel: Object.fromEntries(models.map((model) => [model, measure(name, lastByModel.get(model))])),
 			series: Object.fromEntries(
 				LANDSCAPE_METRICS.map((metric) => [metric, daily.map((values) => values[metric])]),

@@ -14,6 +14,7 @@ import {
 import { mentionConfigFrom } from "@workspace/lib/mentions";
 import { asc, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
 import { deriveQueue } from "./__fixtures__/derive-queue";
 import { fillLegacyText, LEGACY_EXTRACTION_STAMP } from "./fill-legacy-text";
 import {
@@ -94,7 +95,7 @@ async function insertLegacyRuns(runs: ReturnType<typeof legacyRun>[]): Promise<v
 async function currentVersions(id: string) {
 	const [brand] = await db.select().from(brands).where(eq(brands.id, id));
 	const brandCompetitors = await db.select().from(competitors).where(eq(competitors.brandId, id));
-	return currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors), null);
+	return currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors), cuedAnalyzer.judgeVersion);
 }
 
 async function runsInWalkOrder() {
@@ -131,7 +132,7 @@ afterAll(async () => {
 /** A whole pass: the replay queues the brand's stale runs, and the derivation workers take them. */
 async function replay(data: ReprocessData) {
 	const queue = deriveQueue();
-	await runReprocess(data, db, queue.boss);
+	await runReprocess(data, db, queue.boss, cuedAnalyzer);
 	const queued = [...queue.jobs];
 	expect(await queue.drain()).toEqual([]);
 	return queued;
@@ -270,34 +271,31 @@ describe("fillLegacyText", () => {
 describe("requestStaleReprocesses", () => {
 	it("requests a pass toward today's stamps, and none once history matches", async () => {
 		const first = fakeBoss();
-		await requestStaleReprocesses(db, first.boss);
+		await requestStaleReprocesses(db, first.boss, cuedAnalyzer);
 		expect(sentFor(first.send, brandId)).toEqual([{ brandId, layers: ["extraction", "interpretation"] }]);
 
 		await replay(sentFor(first.send, brandId)[0]);
 		const second = fakeBoss();
-		await requestStaleReprocesses(db, second.boss);
+		await requestStaleReprocesses(db, second.boss, cuedAnalyzer);
 		expect(sentFor(second.send, brandId)).toEqual([]);
 
 		await db.insert(competitors).values({ brandId, name: "Globex", domains: ["globex.example"] });
 		const afterEdit = fakeBoss();
-		await requestStaleReprocesses(db, afterEdit.boss);
+		await requestStaleReprocesses(db, afterEdit.boss, cuedAnalyzer);
 		expect(sentFor(afterEdit.send, brandId).map((data) => data.layers)).toEqual([["interpretation"]]);
 	});
 
-	it("does not replay the history of a brand that predates stamping, which adopts today's stamps instead", async () => {
+	it("keeps the extracted history of a brand that predates stamping, and re-judges its mentions", async () => {
 		const legacyBrand = await createBrand(null);
 		try {
 			const before = fakeBoss();
-			await requestStaleReprocesses(db, before.boss);
+			await requestStaleReprocesses(db, before.boss, cuedAnalyzer);
 			expect(sentFor(before.send, legacyBrand)).toEqual([]);
 
 			await adoptCurrentStamps(db);
-			const [brand] = await db.select().from(brands).where(eq(brands.id, legacyBrand));
-			expect(brand.analysisVersions).toEqual(await currentVersions(legacyBrand));
-
 			const after = fakeBoss();
-			await requestStaleReprocesses(db, after.boss);
-			expect(sentFor(after.send, legacyBrand)).toEqual([]);
+			await requestStaleReprocesses(db, after.boss, cuedAnalyzer);
+			expect(sentFor(after.send, legacyBrand).map((data) => data.layers)).toEqual([["interpretation"]]);
 		} finally {
 			await deleteBrand(legacyBrand);
 		}

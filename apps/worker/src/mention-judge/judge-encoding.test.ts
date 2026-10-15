@@ -1,6 +1,7 @@
-import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { UnigramTokenizer } from "./tokenizer";
+import { MENTION_JUDGE_DIR } from "./analyze";
+import { pairEncoder } from "./judge";
 
 /**
  * Ids from the Hugging Face tokenizer for the same `tokenizer.json`, which the model was trained
@@ -34,10 +35,10 @@ const PAIRS: [entity: string, passage: string, ids: number[]][] = [
 	],
 ];
 
-const dir = process.env.MENTION_JUDGE_DIR;
+const hasModel = existsSync(MENTION_JUDGE_DIR);
 
-describe.skipIf(!dir)("tokenizer parity with Hugging Face", () => {
-	const tokenizer = dir ? UnigramTokenizer.fromFile(join(dir, "tokenizer.json")) : null;
+describe.skipIf(!hasModel)("the model's input, as the Hugging Face tokenizer it was trained with makes it", () => {
+	const tokenizer = hasModel ? pairEncoder(MENTION_JUDGE_DIR) : null;
 	it.each(SINGLES)("encodes %j", (text, ids) => {
 		expect(tokenizer?.encode(text)).toEqual(ids);
 	});

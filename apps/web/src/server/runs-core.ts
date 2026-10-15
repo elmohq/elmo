@@ -5,7 +5,7 @@
 import { db } from "@workspace/lib/db/db";
 import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
-import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/lib/mentions";
+import type { RunMentionAssessments, MentionAssessment as StoredAssessment } from "@workspace/lib/mentions";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq } from "drizzle-orm";
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
@@ -20,7 +20,7 @@ export interface RunSummary {
 	webSearchEnabled: boolean | null;
 	brandMentioned: boolean | null;
 	competitorsMentioned: unknown;
-	/** The mention judge's verdicts; null for runs matched by substring, which have none. */
+	/** The mention judge's assessments; null for mentions matched by name, before the judge. */
 	assessments: RunAssessments | null;
 	webQueries: unknown;
 	citationCount: number;
@@ -28,10 +28,10 @@ export interface RunSummary {
 }
 
 export interface MentionAssessment {
-	mention: MentionAssessmentRecord["mention"];
+	mentioned: boolean;
 	probability: number;
 	reason: string | null;
-	sentiment: NonNullable<MentionAssessmentRecord["sentiment"]> | null;
+	sentiment: NonNullable<StoredAssessment["sentiment"]> | null;
 	sentimentProbabilities: Record<string, number> | null;
 	/** 1 for the tracked company the answer names first, and so on; null when it isn't counted as a mention. */
 	position: number | null;
@@ -46,8 +46,8 @@ export interface RunAssessments {
 	competitors: Record<string, MentionAssessment>;
 }
 
-const publicAssessment = (record: MentionAssessmentRecord): MentionAssessment => ({
-	mention: record.mention,
+const publicAssessment = (record: StoredAssessment): MentionAssessment => ({
+	mentioned: record.mentioned,
 	probability: record.probability,
 	reason: record.reason ?? null,
 	sentiment: record.sentiment ?? null,
@@ -56,7 +56,7 @@ const publicAssessment = (record: MentionAssessmentRecord): MentionAssessment =>
 	mentionCount: record.mentionCount ?? null,
 });
 
-/** Fingerprints and evidence offsets stay internal. */
+/** Fingerprints and passage offsets stay internal. */
 function publicAssessments(stored: RunMentionAssessments | null): RunAssessments | null {
 	if (!stored) return null;
 	return {
