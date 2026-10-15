@@ -28,6 +28,7 @@ import { useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { describeTargetSchedule, type TrackedTarget } from "@/lib/model-filter";
 import { setPersonProperties } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
+import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 import type { PositionPoint, SentimentCounts, SentimentPoint } from "@/lib/sentiment";
 
 function getVisibilityBgColor(value: number): string {
@@ -531,7 +532,7 @@ function DashboardPage() {
 		lastUpdatedAt,
 	} = useDashboardMetrics(brand?.id);
 	useReportedPromptCount(totalPrompts);
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const context = useRouteContext({ from: BRAND_ROUTE_ID }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 
 	const loadingVisibility = isLoadingBrand || isLoadingSummary;
