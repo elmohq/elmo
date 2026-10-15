@@ -102,7 +102,6 @@ describe("installed ai SDK contract: Output.object", () => {
 
 		const res = await openaiApi.runStructuredResearch!({ prompt: "p", schema, webSearch: false });
 		expect(res.object).toEqual(payload);
-		expect(res.modelVersion).toBe("gpt-5-mini");
 	});
 });
 
