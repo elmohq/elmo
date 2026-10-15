@@ -101,7 +101,7 @@ not discount its premium slot — `resolvePromptRunPlan` builds the two sets fro
 (`brand.enabledModels` and `prompt.premiumModels`) and simply concatenates them.
 
 Which models are sellable that way is a `premium` flag in `CLOUD_PLATFORMS`, not a model id threaded
-through the code: today Claude, Grok and ChatGPT (GPT-5 Search). Adding another means adding the flag
+through the code: today Claude, Grok and ChatGPT (GPT Search). Adding another means adding the flag
 and a grounded target — nothing in the schema, the guards or the run policy names a model.
 
 "Grounded" means **a direct API call with the model's own web search on**, which is what
