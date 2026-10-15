@@ -37,6 +37,7 @@ import {
 	getRunsByModel,
 	getVisibilityDailyAggregate,
 	NO_VERDICTS,
+	type PerPromptDailyRuns,
 } from "@/lib/rollup-read";
 import {
 	averagePosition,
@@ -174,6 +175,33 @@ export interface BrandShareOfVoice {
 
 /** Standings carry each prompt's latest counts forward, so the headline and the
  * trend's last point are the same number. */
+// Off the per-prompt rows rather than the per-competitor query, which counts mention instances
+// and would not agree with them.
+function shareSeries(perPromptDaily: PerPromptDailyRuns[], dateRange: string[]) {
+	return shareOfVoiceTimeSeriesLVCF(
+		perPromptDaily.map((row) => ({
+			promptId: row.prompt_id,
+			date: String(row.date),
+			brandMentions: row.brand_mentioned_runs,
+			competitorMentions: row.competitor_mentions,
+		})),
+		dateRange,
+	);
+}
+
+/** The brand's share-of-voice trend alone, as the full standings plot it. */
+export async function getBrandShareSeries(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+): Promise<BrandShareOfVoice["series"]> {
+	const { promptIds } = await resolveScope(brandId, filters);
+	if (promptIds.length === 0) return [];
+	const bounds = windowInstants(window);
+	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
+	return shareSeries(await getPerPromptDailyRuns(analyticsScope(brandId, window, promptIds, filters)), dateRange);
+}
+
 export async function getBrandShareOfVoice(
 	brandId: string,
 	window: AnalyticsWindow,
@@ -220,17 +248,7 @@ export async function getBrandShareOfVoice(
 		standings.competitors.map((c) => ({ name: c.name, mentions: c.mentions })),
 	);
 
-	// Off this row rather than the per-competitor query, which counts mention
-	// instances and would not agree with it.
-	const series = shareOfVoiceTimeSeriesLVCF(
-		perPromptDaily.map((row) => ({
-			promptId: row.prompt_id,
-			date: String(row.date),
-			brandMentions: row.brand_mentioned_runs,
-			competitorMentions: row.competitor_mentions,
-		})),
-		dateRange,
-	);
+	const series = shareSeries(perPromptDaily, dateRange);
 
 	// Exact ratios: each edge rounds once, on the way out.
 	return {
