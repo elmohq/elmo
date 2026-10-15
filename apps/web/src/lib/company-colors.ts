@@ -2,13 +2,14 @@ import { useRouteContext } from "@tanstack/react-router";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
 import type { Landscape } from "@/lib/landscape";
+import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
 /** For companies past the charted few, so the long tail reads as one quiet group. */
 export const OTHERS_COLOR = "#cbd5e1";
 
 /** The deployment's chart colours, which the visibility charts use too. */
 export function useChartColors(): readonly string[] {
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const context = useRouteContext({ from: BRAND_ROUTE_ID }) as { clientConfig?: ClientConfig };
 	const colors = context.clientConfig?.branding?.chartColors;
 	return colors && colors.length > 0 ? colors : DEFAULT_CHART_COLORS;
 }
