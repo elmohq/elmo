@@ -40,7 +40,6 @@ const LAYER_KEY: Record<ReprocessLayer, string> = { extraction: EXTRACTION_KEY, 
 
 const BATCH_SIZE = 200;
 const TIME_BUDGET_MS = 4 * 60 * 1000;
-const RECENT_FIRST_MS = 30 * 24 * 60 * 60 * 1000;
 
 export interface StaleRun {
 	id: string;
@@ -173,7 +172,6 @@ async function loadStaleRuns(
 				eq(promptRuns.promptId, promptId),
 				eq(promptRuns.brandId, pass.brandId),
 				from ? gte(promptRuns.createdAt, from) : undefined,
-				pass.since ? gte(promptRuns.createdAt, pass.since) : undefined,
 				or(...pass.layers.map((layer) => staleFor(layer, pass.target))),
 			),
 		)
@@ -205,10 +203,6 @@ interface Pass {
 	config: MentionConfig;
 	/** Runs whose stored payload yielded less than they already had; see `deriveRunUpdate`. */
 	keptRuns: number;
-	/** Limits the walk to runs created since then; null walks the whole history. */
-	since: Date | null;
-	/** Runs rewritten so far in this pass. */
-	rewritten: number;
 }
 
 /**
@@ -217,17 +211,10 @@ interface Pass {
  */
 async function deriveUpdates(pass: Pass, runs: StaleRun[], deadline: number) {
 	const updates: { run: StaleRun; update: RunUpdate }[] = [];
-	let started = 0;
-	// As many lanes as the judge has sessions. Runs are taken in order and every one started
-	// finishes, so what's derived is always a prefix and the walk's cursor never skips a run.
-	const lane = async () => {
-		while (started < runs.length && Date.now() <= deadline) {
-			const i = started++;
-			const update = await deriveRunUpdate(runs[i], pass.layers, pass.target, pass.config);
-			updates[i] = { run: runs[i], update };
-		}
-	};
-	await Promise.all(Array.from({ length: mentionAnalyzer().concurrency }, lane));
+	for (const run of runs) {
+		if (Date.now() > deadline) break;
+		updates.push({ run, update: await deriveRunUpdate(run, pass.layers, pass.target, pass.config) });
+	}
 	return updates;
 }
 
@@ -276,7 +263,6 @@ async function reprocessPrompt(conn: DbConnection, pass: Pass, promptId: string,
 		const runs = await loadStaleRuns(conn, pass, promptId, from);
 		const updates = await deriveUpdates(pass, runs, deadline);
 		if (updates.length > 0) pass.keptRuns += await rewriteRuns(conn, pass, updates);
-		pass.rewritten += updates.length;
 		if (updates.length < runs.length) return false;
 		if (runs.length < BATCH_SIZE) return true;
 		from = runs[runs.length - 1].createdAt;
@@ -342,24 +328,6 @@ export function sendReprocess(boss: Pick<PgBoss, "send">, data: ReprocessData): 
 }
 
 /**
- * Recent runs first, across every prompt: they're what the dashboards show. Having rewritten any,
- * the pass yields, so every brand queued behind it gets its recent runs done before any brand
- * moves on to older history.
- */
-async function walkRecentFirst(
-	conn: DbConnection,
-	pass: Pass,
-	promptIds: string[],
-	deadline: number,
-): Promise<"done" | "yielded" | "out of time"> {
-	pass.since = new Date(Date.now() - RECENT_FIRST_MS);
-	if (!(await reprocessPrompts(conn, pass, promptIds, deadline))) return "out of time";
-	if (pass.rewritten > 0) return "yielded";
-	pass.since = null;
-	return (await reprocessPrompts(conn, pass, promptIds, deadline)) ? "done" : "out of time";
-}
-
-/**
  * Brings a brand's runs up to its current config and today's code. A pass that
  * runs out of time re-queues itself and starts over: rewritten runs no longer
  * match the stale filter, and runs written under a config that has since moved
@@ -382,8 +350,6 @@ export async function runReprocess(
 		target: context.current,
 		config: context.config,
 		keptRuns: 0,
-		since: null,
-		rewritten: 0,
 	};
 
 	const brandPrompts = await conn
@@ -391,7 +357,7 @@ export async function runReprocess(
 		.from(prompts)
 		.where(eq(prompts.brandId, data.brandId))
 		.orderBy(asc(prompts.id));
-	const walk = await walkRecentFirst(
+	const done = await reprocessPrompts(
 		conn,
 		pass,
 		brandPrompts.map(({ id }) => id),
@@ -402,10 +368,9 @@ export async function runReprocess(
 			`[reprocess] brand ${data.brandId}: ${pass.keptRuns} runs kept existing data their stored payload no longer yields`,
 		);
 	}
-	if (walk !== "done") {
+	if (!done) {
 		const sent = await sendReprocess(boss, data);
-		const why = walk === "yielded" ? "recent runs done, older history next" : "out of time";
-		console.log(`[reprocess] brand ${data.brandId} ${why}; ${sent ? "continuing" : "a queued pass continues"}`);
+		console.log(`[reprocess] brand ${data.brandId} out of time; ${sent ? "continuing" : "a queued pass continues"}`);
 		return;
 	}
 

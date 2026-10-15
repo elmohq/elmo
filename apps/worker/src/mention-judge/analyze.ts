@@ -1,4 +1,3 @@
-import { availableParallelism } from "node:os";
 import {
 	analyzeRunMentions,
 	type MentionAssessmentRecord,
@@ -7,8 +6,7 @@ import {
 	type RunMentionAssessments,
 } from "@workspace/lib/mentions";
 import { assessMention, type MentionAssessment } from "./assess";
-import type { JudgedEntity, MentionJudge } from "./judge";
-import { loadJudgePool } from "./pool";
+import { type JudgedEntity, loadMentionJudge, type MentionJudge } from "./judge";
 
 export interface RunMentions {
 	brandMentioned: boolean;
@@ -19,14 +17,11 @@ export interface RunMentions {
 export interface MentionAnalyzer {
 	/** Null when mentions come from substring matching; part of the mentions stamp otherwise. */
 	judgeVersion: string | null;
-	/** How many answers to analyze at once: as many as there are model sessions to keep busy. */
-	concurrency: number;
 	analyze(text: string | null, config: MentionConfig): Promise<RunMentions>;
 }
 
 export const substringAnalyzer: MentionAnalyzer = {
 	judgeVersion: null,
-	concurrency: 1,
 	analyze: async (text, config) => ({ ...analyzeRunMentions(text, config), mentionAssessments: null }),
 };
 
@@ -58,10 +53,9 @@ function toRecord(assessment: MentionAssessment): MentionAssessmentRecord {
 /** An uncertain verdict still counts, so a judge that can't tell never hides a real mention. */
 const counts = (record: MentionAssessmentRecord | undefined) => !!record && record.mention !== "not_mentioned";
 
-export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnalyzer {
+export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
 	return {
 		judgeVersion: judge.version,
-		concurrency,
 		async analyze(text, config) {
 			const answer = text ?? "";
 			const competitorNames = config.competitors.map((competitor) => competitor.name);
@@ -85,23 +79,12 @@ export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnal
 
 let current: MentionAnalyzer = substringAnalyzer;
 
-/** One session gets no faster past about four threads; more cores are used by adding sessions. */
-const SINGLE_SESSION_THREADS = 4;
-
 /**
- * Loads the judge from `MENTION_JUDGE_DIR` once per process, as `MENTION_JUDGE_WORKERS` sessions
- * (default 1, about 1 GB, plus about 0.5 GB per extra session). The worker image always sets the
- * directory; a checkout without the model falls back to substring matching rather than refusing to run.
+ * Loads the judge from `MENTION_JUDGE_DIR` once per process. The worker image always sets it;
+ * a checkout without the model falls back to substring matching rather than refusing to run.
  */
-export async function loadMentionAnalyzer(env: NodeJS.ProcessEnv = process.env): Promise<MentionAnalyzer> {
-	const dir = env.MENTION_JUDGE_DIR;
-	if (!dir) {
-		current = substringAnalyzer;
-		return current;
-	}
-	const sessions = Math.max(1, Math.floor(Number(env.MENTION_JUDGE_WORKERS) || 1));
-	const threads = sessions === 1 ? Math.min(SINGLE_SESSION_THREADS, availableParallelism()) : 1;
-	current = judgeAnalyzer(await loadJudgePool(dir, sessions, threads), sessions);
+export async function loadMentionAnalyzer(dir = process.env.MENTION_JUDGE_DIR): Promise<MentionAnalyzer> {
+	current = dir ? judgeAnalyzer(await loadMentionJudge(dir)) : substringAnalyzer;
 	return current;
 }
 
