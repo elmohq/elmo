@@ -20,6 +20,8 @@ export interface AnswerMatches {
 
 const MAX_WINDOWS = 8;
 const MAX_WINDOW_CHARS = 1800;
+/** Well inside what the model reads of a passage once the entity's own description is counted. */
+const MAX_LEAD_CHARS = 400;
 
 /** Sentence spans; a "." followed by a non-space (domains, URLs, decimals) does not end a sentence. */
 function sentenceSpans(text: string): [number, number][] {
@@ -53,6 +55,18 @@ function isWholeWord(text: string, start: number, end: number): boolean {
 	return !WORD_CHAR.test(text[start - 1] ?? "") && !WORD_CHAR.test(text[end] ?? "");
 }
 
+/**
+ * The sentence before the hit, its own, and the one after. The model reads only so much of a
+ * passage and drops the tail, so a long lead-in is shortened until the hit sits near the start.
+ */
+function windowAround(sentences: [number, number][], k: number, hit: number): { start: number; end: number } {
+	let start = sentences[Math.max(0, k - 1)][0];
+	if (hit - start > MAX_LEAD_CHARS) start = sentences[k][0];
+	if (hit - start > MAX_LEAD_CHARS) start = hit - MAX_LEAD_CHARS;
+	const end = Math.min(sentences[Math.min(sentences.length - 1, k + 1)][1], start + MAX_WINDOW_CHARS);
+	return { start, end };
+}
+
 export function matchWindows(text: string, terms: string[]): AnswerMatches {
 	const needles = new Map(
 		terms
@@ -81,11 +95,9 @@ export function matchWindows(text: string, terms: string[]): AnswerMatches {
 		}
 		const k = sentences.findIndex(([a, z]) => hit >= a && hit < z);
 		if (k === -1 || windows.size === MAX_WINDOWS) continue;
-		const start = sentences[Math.max(0, k - 1)][0];
-		const end = sentences[Math.min(sentences.length - 1, k + 1)][1];
+		const { start, end } = windowAround(sentences, k, hit);
 		const key = `${start}:${end}`;
-		if (!windows.has(key))
-			windows.set(key, { start, end, text: text.slice(start, end).trim().slice(0, MAX_WINDOW_CHARS) });
+		if (!windows.has(key)) windows.set(key, { start, end, text: text.slice(start, end).trim() });
 	}
 	return { windows: [...windows.values()], linkMatches };
 }

@@ -1,7 +1,7 @@
 import type { MentionConfig } from "@workspace/lib/mentions";
 import { describe, expect, it } from "vitest";
 import { judgeAnalyzer } from "./analyze";
-import type { Judgment, MentionJudge } from "./judge";
+import type { JudgedEntity, Judgment, MentionJudge } from "./judge";
 
 /**
  * Stands in for the model: reads a cue word in the passage and answers with
@@ -84,13 +84,37 @@ describe("judged mentions", () => {
 		expect(text.slice(evidence?.start, evidence?.end)).toContain("Apple is great value there.");
 	});
 
-	it("ignores blank aliases and domains", async () => {
+	it("describes the brand to the model without blank aliases or domains", async () => {
+		const seen: JudgedEntity[] = [];
+		const recording = judgeAnalyzer({
+			version: "test",
+			judge: async (entity, passage) => {
+				seen.push(entity);
+				return cuedJudgment(passage);
+			},
+		});
 		const padded = {
 			...config,
 			brand: { ...config.brand, aliases: ["", "  "], domains: [" ", "https://www.apple.com"] },
 		};
-		const result = await analyzer.analyze("Nothing relevant here.", padded);
-		expect(result.brandMentioned).toBe(false);
+		await recording.analyze("Apple is great value.", padded);
+		expect(seen[0]).toMatchObject({ aliases: [], domains: ["apple.com"] });
+	});
+
+	it("keeps the brand in what the model reads after a long run-on lead-in", async () => {
+		const passages: string[] = [];
+		const recording = judgeAnalyzer({
+			version: "test",
+			judge: async (_entity, passage) => {
+				passages.push(passage);
+				return cuedJudgment(passage);
+			},
+		});
+		const leadIn = "word ".repeat(1000);
+		await recording.analyze(`${leadIn}\nApple is great value.`, config);
+		const at = passages[0].indexOf("Apple");
+		expect(at).toBeGreaterThanOrEqual(0);
+		expect(at).toBeLessThan(500);
 	});
 
 	it("judges competitors by their names and aliases", async () => {
