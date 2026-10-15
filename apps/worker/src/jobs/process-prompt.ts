@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
-import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspace/lib/analysis-versions";
+import { EXTRACTION_STAMP } from "@workspace/lib/analysis-versions";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
@@ -10,7 +10,7 @@ import { type Brand, brands, citations, competitors, promptRuns, prompts, usageE
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import { type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
-import { insertCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
+import { insertCitations, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
@@ -27,9 +27,8 @@ import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
-import { analyzeOrMatch, mentionAnalyzer } from "../mention-judge/analyze";
 import { trackWorkerEvent } from "../telemetry";
-import { sendReprocess } from "./reprocess";
+import { sendJudgeRuns } from "./judge-runs";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -115,12 +114,6 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 	}
 
 	return { prompt, brand };
-}
-
-async function loadMentionConfig(conn: DbConnection, brandId: string): Promise<MentionConfig> {
-	const [brand] = await conn.select().from(brands).where(eq(brands.id, brandId));
-	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));
-	return mentionConfigFrom(brand, brandCompetitors);
 }
 
 /**
@@ -257,24 +250,9 @@ async function runModelIteration({
 
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
-		// Judging takes too long to hold a transaction open for, so it runs first on the
-		// config as it stands now: one read at the start of the cycle would stamp an edit
-		// made during the provider call onto this run as current.
-		const analyzer = mentionAnalyzer();
-		const judgedConfig = await loadMentionConfig(db, brand.id);
-		// A failed judge leaves the run unstamped and queues the replay that judges it.
-		let { mentions, judged } = await analyzeOrMatch(analyzer, text, judgedConfig);
-		const judgedStamp = currentAnalysisVersions(judgedConfig, analyzer.judgeVersion)[MENTIONS_KEY];
-
-		// One transaction so a reprocess never sees a run without its citations.
+		// One transaction so a reprocess never sees a run without its citations. Mentions come
+		// from the judging job, apart from this call, so judging never asks the provider again.
 		const promptRunId = await db.transaction(async (tx) => {
-			const mentionConfig = await loadMentionConfig(tx, brand.id);
-			const stamps = currentAnalysisVersions(mentionConfig, analyzer.judgeVersion);
-			// An edit that landed while judging would otherwise slip past the reprocess it started.
-			// Only the subjects it changed are judged again, so the transaction stays short.
-			if (judged && stamps[MENTIONS_KEY] !== judgedStamp) {
-				({ mentions, judged } = await analyzeOrMatch(analyzer, text, mentionConfig, mentions.assessments));
-			}
 			const [run] = await insertRuns(tx, [
 				{
 					promptId,
@@ -286,10 +264,7 @@ async function runModelIteration({
 					rawOutput,
 					webQueries,
 					textContent: text,
-					extractionStamp: stamps[EXTRACTION_KEY],
-					...mentions,
-					// Unstamped, a run matched by name instead is stale to the replay that judges it.
-					mentionsStamp: judged ? stamps[MENTIONS_KEY] : null,
+					extractionStamp: EXTRACTION_STAMP,
 				},
 			]);
 			await insertCitations(
@@ -297,11 +272,13 @@ async function runModelIteration({
 				{ id: run.id, promptId, brandId: brand.id, model: config.model, createdAt: run.createdAt },
 				extractedCitations,
 			);
-			await markDirty(tx, brand.id, [run.createdAt]);
 			return run.id;
 		});
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
-		if (!judged) await sendReprocess(getBoss(), { brandId: brand.id, layers: ["interpretation"] });
+		// The answer is saved either way; a job that fails to queue here is picked up by the sweep.
+		await sendJudgeRuns(getBoss(), [promptRunId]).catch((error) =>
+			console.error(`${logPrefix} Couldn't queue judging for run ${promptRunId}; the sweep will:`, error),
+		);
 
 		await recordUsageEvent({
 			organizationId: brand.organizationId,

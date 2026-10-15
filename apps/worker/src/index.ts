@@ -9,6 +9,7 @@ import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
+import { JUDGE_RUNS_QUEUE } from "./jobs/judge-runs";
 import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE } from "./jobs/reprocess";
 import { loadMentionAnalyzer } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
@@ -106,6 +107,15 @@ async function main() {
 		retryBackoff: true,
 		// A full mark scans all of prompt_runs once.
 		expireInSeconds: 60 * 60,
+	});
+	// Stately per run, so a run is queued once however often it's asked for; judging retries on
+	// its own, apart from the provider call that recorded the run.
+	await boss.createQueue(JUDGE_RUNS_QUEUE, {
+		policy: "stately",
+		retryLimit: 5,
+		retryDelay: 30,
+		retryBackoff: true,
+		expireInSeconds: 60 * 10,
 	});
 	await boss.createQueue(REPROCESS_QUEUE, {
 		policy: "stately",
