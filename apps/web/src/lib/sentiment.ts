@@ -1,9 +1,8 @@
 // Imported by the browser too, so it reads nothing from the database layer.
 import type { Tone } from "@/lib/tone";
 
-/** The mention judge's assessments summed over runs that mention a company, as every assessment read selects them. */
+/** The mention judge's assessments summed over runs that mention a company. */
 export interface AssessmentSums {
-	/** Runs by the judge's sentiment toward the company. */
 	positive_runs: number;
 	neutral_runs: number;
 	negative_runs: number;
@@ -30,7 +29,6 @@ export interface SentimentSummary extends SentimentCounts {
 	negativeShare: number | null;
 }
 
-/** A company's sentiment and position across the answers that mention it. */
 export interface MentionQuality {
 	sentiment: SentimentSummary;
 	/** `average` is 1 when it's always the first tracked company named; null when never ranked. */

@@ -468,7 +468,6 @@ export interface DailyAssessments extends AssessmentSums {
 	date: string;
 }
 
-/** Per local day, the runs mentioning the brand by the judge's sentiment toward it, and its position. */
 export async function getDailyAssessments(scope: AnalyticsScope): Promise<DailyAssessments[]> {
 	return queryPg<DailyAssessments>(sql`
 		SELECT
@@ -487,7 +486,6 @@ export interface PromptModelDailyRuns extends RunSums, AssessmentSums {
 	date: string;
 }
 
-/** Per prompt, model and local day, the run and brand assessment sums. */
 export async function getPromptModelDailyRuns(scope: AnalyticsScope): Promise<PromptModelDailyRuns[]> {
 	return queryPg<PromptModelDailyRuns>(sql`
 		SELECT
@@ -511,7 +509,6 @@ export interface PromptModelDailyCompetitor extends AssessmentSums {
 	runs: number;
 }
 
-/** Per prompt, model, local day and competitor, the runs mentioning it and its assessment sums. */
 export async function getPromptModelDailyCompetitors(scope: AnalyticsScope): Promise<PromptModelDailyCompetitor[]> {
 	return queryPg<PromptModelDailyCompetitor>(sql`
 		SELECT

@@ -1,9 +1,7 @@
 /**
- * The brand and each tracked competitor on the same four measures, as of each day, overall and per
- * model. Every figure follows the rule the visibility and share-of-voice pages use: each prompt's
- * latest result, carried forward over the days it didn't run, summed across prompts. So the last
- * day is the current figure, and it's the one every headline shows. Shares are fractions of 1;
- * position is an average place, 1 being named first.
+ * Every figure follows the visibility and share-of-voice pages' rule: each prompt's latest result,
+ * carried forward over the days it didn't run, summed across prompts. So the last day is the current
+ * figure every headline shows. Shares are fractions of 1; position is an average place, 1 being named first.
  */
 import { carryForward } from "@/lib/chart-utils";
 import type { PromptModelDailyCompetitor, PromptModelDailyRuns } from "@/lib/rollup-read";
@@ -24,11 +22,11 @@ export interface LandscapeCompany {
 	name: string;
 	isBrand: boolean;
 	domain: string | null;
-	/** As of the last day: the current figures. */
+	/** As of the last day. */
 	totals: MetricValues;
 	/** The current answers mentioning it, by tone. */
 	tones: SentimentCounts;
-	/** Current figures per model, keyed by model id. */
+	/** Current figures, keyed by model id. */
 	byModel: Record<string, MetricValues>;
 	/** One value per entry of `Landscape.dates`. */
 	series: Record<LandscapeMetric, (number | null)[]>;
@@ -42,7 +40,6 @@ export interface Landscape {
 	companies: LandscapeCompany[];
 }
 
-/** Position is the one measure where a lower value is better. */
 export const lowerIsBetter = (metric: LandscapeMetric) => metric === "position";
 
 export const brandOf = (landscape: Landscape): LandscapeCompany => landscape.companies[0];
@@ -58,7 +55,6 @@ export function sortByMetric(companies: LandscapeCompany[], metric: LandscapeMet
 	});
 }
 
-/** The brand and its strongest few competitors on `metric`, for a chart that can't show them all. */
 export function chartedCompanies(landscape: Landscape, metric: LandscapeMetric, competitors = 4): LandscapeCompany[] {
 	return [brandOf(landscape), ...sortByMetric(landscape.companies.slice(1), metric).slice(0, competitors)];
 }
@@ -74,7 +70,6 @@ export function brandRank(landscape: Landscape, metric: LandscapeMetric): number
 	);
 }
 
-/** One company's part of a prompt's answers. */
 interface CompanyCounts extends AssessmentSums {
 	mentions: number;
 }

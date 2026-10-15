@@ -486,7 +486,6 @@ export interface BrandMentionQuality {
 	position: { average: number | null; series: PositionPoint[] };
 }
 
-/** The brand's sentiment and position over the window, with their day-by-day values. */
 export async function getBrandMentionQuality(
 	brandId: string,
 	window: AnalyticsWindow,
@@ -545,10 +544,6 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 	};
 }
 
-/**
- * The brand and its tracked competitors on visibility, share of voice, sentiment and position,
- * as of each day of the window, overall and per model.
- */
 export async function getCompetitiveLandscape(
 	brandId: string,
 	window: AnalyticsWindow,

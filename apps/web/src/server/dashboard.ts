@@ -1,4 +1,3 @@
-/** Server functions for the brand overview. */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";

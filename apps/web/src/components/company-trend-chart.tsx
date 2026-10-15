@@ -1,7 +1,3 @@
-/**
- * Lines for the brand and a few competitors on one measure, styled like the visibility charts:
- * the brand's line heavier with solid dots, competitors with hollow ones, and the legend below.
- */
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { formatShortDate } from "@/lib/chart-utils";

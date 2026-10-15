@@ -4,7 +4,6 @@ export type Grade = "good" | "fair" | "poor";
 
 export interface MetricMeta {
 	label: string;
-	/** Shorter, for the metric switch. */
 	short: string;
 	info: string;
 	format: (value: number) => string;

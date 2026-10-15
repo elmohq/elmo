@@ -34,14 +34,11 @@ export function mentionConfigFrom(brand: Brand, competitors: Competitor[]): Ment
 }
 
 export type Sentiment = "positive" | "neutral" | "negative" | "mixed";
-/** The judge's readings of a name that aren't a mention of the company. */
 export type NonMentionReason = "other_meaning" | "other_company" | "no_info";
 
-/** The mention judge's assessment of one subject, for the answers that name it. */
 export interface MentionAssessment {
 	mentioned: boolean;
 	probability: number;
-	/** The likeliest reading of the name, when it isn't a mention. */
 	reason?: NonMentionReason;
 	sentiment?: Sentiment;
 	sentimentProbabilities?: Record<string, number>;
@@ -52,7 +49,6 @@ export interface MentionAssessment {
 	passage?: { start: number; end: number };
 	/** For a mention: offset into the run's stored text of the first one. */
 	firstMention?: number;
-	/** For a mention: how many times the answer names the subject. */
 	mentionCount?: number;
 	/**
 	 * For a mention: 1 for the tracked company the answer names first, 2 for the next, and so on.

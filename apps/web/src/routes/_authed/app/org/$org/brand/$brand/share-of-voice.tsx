@@ -41,7 +41,6 @@ const TIPS = {
 	prompts: "Number of distinct prompts this brand appeared in.",
 };
 
-/** The donut of today's split beside the trend for you and your top competitors, in shared colours. */
 function ShareOfVoiceOverview({
 	entries,
 	landscape,

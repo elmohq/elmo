@@ -261,7 +261,6 @@ function useReportedPromptCount(totalPrompts: number | undefined) {
 	}, [totalPrompts]);
 }
 
-/** The headline cards and the competitive landscape, all read off the same landscape. */
 function OverviewFigures({
 	summary,
 	loading,

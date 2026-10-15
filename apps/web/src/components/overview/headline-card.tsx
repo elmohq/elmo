@@ -46,7 +46,6 @@ function PointTooltip({
 	);
 }
 
-/** One headline measure: the number, its change over the period, and its trend, tinted by how it's doing. */
 export function HeadlineCard({
 	metric,
 	card,

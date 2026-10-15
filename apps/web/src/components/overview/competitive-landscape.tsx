@@ -117,7 +117,6 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 	);
 }
 
-/** The brand against its tracked competitors on one measure at a time, over time and by model. */
 export function CompetitiveLandscape({ landscape, loading }: { landscape?: Landscape; loading: boolean }) {
 	const [metric, setMetric] = useState<LandscapeMetric>("visibility");
 	const colors = useCompanyColors(landscape);

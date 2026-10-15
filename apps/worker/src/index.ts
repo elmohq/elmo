@@ -23,10 +23,7 @@ if (process.env.SENTRY_DSN) {
 	});
 }
 
-/**
- * `WORKER_ROLE=judge` runs only the derivation queue: extra copies of the worker, started to work
- * through a backlog of judging alongside the one that runs everything else.
- */
+/** `WORKER_ROLE=judge` runs only the derivation queue, for extra workers that clear a judging backlog. */
 function isJudgeOnly(): boolean {
 	const role = process.env.WORKER_ROLE?.trim() || "all";
 	if (role !== "all" && role !== "judge") throw new Error(`WORKER_ROLE must be "all" or "judge", got "${role}"`);
@@ -57,7 +54,6 @@ async function main() {
 		return null;
 	});
 	if (analyzer) console.log(`Mention judge ${analyzer.judgeVersion} loaded`);
-	// A judge-only worker has nothing else to do.
 	if (judgeOnly && !analyzer) throw new Error(`WORKER_ROLE=judge needs the mention judge at ${MENTION_JUDGE_DIR}`);
 
 	boss.on("error", (error) => {
