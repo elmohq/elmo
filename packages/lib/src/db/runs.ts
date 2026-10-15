@@ -114,7 +114,7 @@ export interface MentionsUpdate {
 	stamp: string;
 }
 
-/** Rewrites many runs' mentions in one statement; see `updateExtractions`. */
+/** Writes many runs' mentions in one statement, judged for the first time or again. */
 export async function updateMentions(conn: DbConnection, updates: MentionsUpdate[]): Promise<void> {
 	if (updates.length === 0) return;
 	const values = updates.map(
@@ -122,10 +122,10 @@ export async function updateMentions(conn: DbConnection, updates: MentionsUpdate
 			sql`(${u.runId}::uuid, ${u.brandMentioned}::boolean, ${sql.param(u.competitorsMentioned)}::text[], ${u.assessments === null ? null : JSON.stringify(u.assessments)}::jsonb, ${u.stamp}::text)`,
 	);
 	await conn.execute(sql`
-		UPDATE ${runMentions} AS m
-		SET brand_mentioned = v.brand_mentioned, competitors_mentioned = v.competitors_mentioned,
-			assessments = v.assessments, stamp = v.stamp
-		FROM (VALUES ${sql.join(values, sql`, `)}) AS v(run_id, brand_mentioned, competitors_mentioned, assessments, stamp)
-		WHERE m.run_id = v.run_id
+		INSERT INTO ${runMentions} (run_id, brand_mentioned, competitors_mentioned, assessments, stamp)
+		VALUES ${sql.join(values, sql`, `)}
+		ON CONFLICT (run_id) DO UPDATE SET
+			brand_mentioned = excluded.brand_mentioned, competitors_mentioned = excluded.competitors_mentioned,
+			assessments = excluded.assessments, stamp = excluded.stamp
 	`);
 }
