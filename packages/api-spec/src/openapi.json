@@ -1075,7 +1075,7 @@
 			"AveragePosition": {
 				"type": ["number", "null"],
 				"minimum": 1,
-				"description": "The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it.",
+				"description": "**Experimental — the shape may still change.**\n\nThe company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it. Counted over every answer in the window, unlike `visibility.current` and the share-of-voice `mentions` and `share`, which count each prompt's latest result.",
 				"x-stability": "experimental"
 			},
 			"ShareOfVoiceEntry": {
@@ -1988,7 +1988,7 @@
 				"x-stability": "experimental"
 			},
 			"RunAssessments": {
-				"description": "**Experimental — the shape may still change.**\n\nThe mention judge's verdicts for one answer. Null on runs matched by name alone, which happens on deployments without the judge.",
+				"description": "**Experimental — the shape may still change.**\n\nThe mention judge's verdicts for one answer. Null when the run's mentions came from name matching: on deployments without the judge, and until a replay judges a run the judge couldn't.",
 				"type": ["object", "null"],
 				"properties": {
 					"brand": {
@@ -2014,7 +2014,7 @@
 				"x-stability": "experimental"
 			},
 			"SentimentSummary": {
-				"description": "**Experimental — the shape may still change.**\n\nAnswers that mention the company, by the mention judge's confident sentiment toward it. An answer whose tone the judge couldn't call counts in none. All zero on deployments without the judge, and for history the judge hasn't re-judged yet.",
+				"description": "**Experimental — the shape may still change.**\n\nAnswers that mention the company, by the mention judge's confident sentiment toward it. An answer whose tone the judge couldn't call counts in none. All zero on deployments without the judge, and for history the judge hasn't re-judged yet. Counted over every answer in the window, unlike `visibility.current` and the share-of-voice `mentions` and `share`, which count each prompt's latest result.",
 				"type": "object",
 				"properties": {
 					"positive": {
@@ -2099,9 +2099,7 @@
 				"type": "object",
 				"properties": {
 					"average": {
-						"type": ["number", "null"],
-						"minimum": 1,
-						"description": "Experimental. The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it."
+						"$ref": "#/components/schemas/AveragePosition"
 					},
 					"series": {
 						"type": "array",

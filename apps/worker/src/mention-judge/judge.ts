@@ -40,13 +40,37 @@ function calibrate(probs: Float32Array, temperature = 1): number[] {
 }
 
 /** Matches the training format exactly; the model has never seen any other layout. */
-export function entityText(entity: JudgedEntity): string {
+function formatEntity(entity: JudgedEntity): string {
 	const parts = [entity.name];
 	if (entity.aliases?.length) parts.push(`aka ${entity.aliases.join(", ")}`);
 	if (entity.domains?.length) parts.push(`site ${entity.domains.join(", ")}`);
-	if (entity.competitors?.length) parts.push(`competitors ${entity.competitors.slice(0, 5).join(", ")}`);
+	if (entity.competitors?.length) parts.push(`competitors ${entity.competitors.join(", ")}`);
 	return parts.join(" | ");
 }
+
+/**
+ * The entity as the model reads it: its name, then as many aliases, domains and (up to five)
+ * competitors as `fits`, in that order. The passage shares the model's input, and a company with
+ * dozens of aliases would otherwise leave no room for the text being judged.
+ */
+export function entityText(entity: JudgedEntity, fits: (text: string) => boolean = () => true): string {
+	const kept = { name: entity.name, aliases: [] as string[], domains: [] as string[], competitors: [] as string[] };
+	const extras = [
+		...(entity.aliases ?? []).map((value) => ["aliases", value] as const),
+		...(entity.domains ?? []).map((value) => ["domains", value] as const),
+		...(entity.competitors ?? []).slice(0, 5).map((value) => ["competitors", value] as const),
+	];
+	for (const [field, value] of extras) {
+		kept[field].push(value);
+		if (fits(formatEntity(kept))) continue;
+		kept[field].pop();
+		break;
+	}
+	return formatEntity(kept);
+}
+
+/** Kept for the passage: windows put the match up to about 100 tokens in, and it must stay in view. */
+const PASSAGE_TOKENS = 160;
 
 export interface MentionJudge {
 	version: string;
@@ -68,7 +92,8 @@ export async function loadMentionJudge(dir: string, threads: number): Promise<Me
 	return {
 		version: config.version,
 		async judge(entity, passage) {
-			const encoded = tokenizer.encodePair(entityText(entity), passage, config.max_len);
+			const fits = (text: string) => tokenizer.encode(text).length <= config.max_len - PASSAGE_TOKENS;
+			const encoded = tokenizer.encodePair(entityText(entity, fits), passage, config.max_len);
 			const shape = [1, encoded.inputIds.length];
 			const columns: Record<string, number[]> = {
 				input_ids: encoded.inputIds,

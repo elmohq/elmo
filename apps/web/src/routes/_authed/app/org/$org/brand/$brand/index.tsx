@@ -23,6 +23,7 @@ import { describeTargetSchedule, type TrackedTarget } from "@/lib/model-filter";
 import { METRIC_META } from "@/lib/overview-metrics";
 import { setPersonProperties } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
+import type { DashboardSummaryResponse } from "@/server/dashboard";
 
 function formatRelativeTime(dateString: string | null): string {
 	if (!dateString) return "Never";
@@ -259,13 +260,53 @@ function useReportedPromptCount(totalPrompts: number | undefined) {
 	}, [totalPrompts]);
 }
 
+/** The headline cards and the competitive landscape, all read off the same landscape. */
+function OverviewFigures({
+	summary,
+	loading,
+	failed,
+}: {
+	summary?: DashboardSummaryResponse;
+	loading: boolean;
+	failed: boolean;
+}) {
+	if (failed) {
+		return (
+			<p className="py-8 text-center text-sm text-muted-foreground">
+				Couldn't load the overview right now. Reload the page to try again.
+			</p>
+		);
+	}
+	const landscape = summary?.landscape;
+	return (
+		<>
+			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+				{LANDSCAPE_METRICS.map((metric) => (
+					<HeadlineCard
+						key={metric}
+						metric={metric}
+						card={summary?.cards[metric]}
+						rank={landscape ? brandRank(landscape, metric) : 0}
+						loading={loading}
+					/>
+				))}
+			</div>
+			<CompetitiveLandscape landscape={landscape} loading={loading} />
+		</>
+	);
+}
+
 function DashboardPage() {
 	const brandId = useBrandId();
 	const { data: brand, isLoading: isLoadingBrand } = useBrand();
 	const { model, lookback, tags } = useListFilters();
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
-	const { data: summary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, {
+	const {
+		data: summary,
+		isLoading: isLoadingSummary,
+		error: summaryError,
+	} = useDashboardSummary(brand?.id, {
 		lookback,
 		model: modelParam,
 		tags,
@@ -289,8 +330,6 @@ function DashboardPage() {
 		);
 	}
 
-	const landscape = summary?.landscape;
-
 	return (
 		<div className="flex flex-1 flex-col">
 			<div className="m-auto flex w-full max-w-[1600px] flex-col gap-4 p-4">
@@ -299,8 +338,8 @@ function DashboardPage() {
 					subtitle="How AI answers talk about your brand and your competitors."
 					infoContent={
 						<p>
-							Every figure covers the selected period, models and tags. The change beside each number is from the start
-							of the period to its end.
+							Each figure counts every prompt's latest answers, as of the end of the selected period, for the selected
+							models and tags. The change beside it is from the start of the period to its end.
 						</p>
 					}
 				>
@@ -314,19 +353,7 @@ function DashboardPage() {
 					</FilterSection>
 				</PageHeader>
 
-				<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-					{LANDSCAPE_METRICS.map((metric) => (
-						<HeadlineCard
-							key={metric}
-							metric={metric}
-							card={summary?.cards[metric]}
-							rank={landscape ? brandRank(landscape, metric) : 0}
-							loading={loading}
-						/>
-					))}
-				</div>
-
-				<CompetitiveLandscape landscape={landscape} loading={loading} />
+				<OverviewFigures summary={summary} loading={loading} failed={!!summaryError && !summary} />
 
 				<section className="pt-2">
 					<TrackingStats

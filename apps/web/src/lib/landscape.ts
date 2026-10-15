@@ -89,10 +89,12 @@ interface Observation {
 
 const emptyObservation = (): Observation => ({ runs: 0, allMentions: 0, companies: new Map() });
 
+const VERDICT_KEYS = Object.keys(NO_VERDICTS) as (keyof VerdictSums)[];
+
 function addCounts(into: Map<string, CompanyCounts>, name: string, mentions: number, verdicts: VerdictSums): void {
 	const counts = into.get(name) ?? { ...NO_VERDICTS, mentions: 0 };
 	counts.mentions += mentions;
-	for (const key of Object.keys(NO_VERDICTS) as (keyof VerdictSums)[]) counts[key] += verdicts[key];
+	for (const key of VERDICT_KEYS) counts[key] += verdicts[key];
 	into.set(name, counts);
 }
 
@@ -110,33 +112,69 @@ export interface LandscapeInput {
 	competitorRuns: PromptModelDailyCompetitor[];
 }
 
-/** Each day's carried sums across prompts, over the rows of the models `keep` admits. */
-function carriedDays(input: LandscapeInput, keep: (model: string) => boolean): Map<string, Observation> {
-	const byPrompt = new Map<string, Map<string, Observation>>();
-	const at = (promptId: string, date: string) => {
-		const days = byPrompt.get(promptId) ?? new Map<string, Observation>();
-		byPrompt.set(promptId, days);
+/** Each prompt's answers per model and day, keyed by prompt, then model, then day. */
+function observations(input: LandscapeInput): Map<string, Map<string, Map<string, Observation>>> {
+	const byPrompt = new Map<string, Map<string, Map<string, Observation>>>();
+	const at = (promptId: string, model: string, date: string) => {
+		const models = byPrompt.get(promptId) ?? new Map<string, Map<string, Observation>>();
+		byPrompt.set(promptId, models);
+		const days = models.get(model) ?? new Map<string, Observation>();
+		models.set(model, days);
 		const observation = days.get(date) ?? emptyObservation();
 		days.set(date, observation);
 		return observation;
 	};
 	for (const row of input.runs) {
-		if (!keep(row.model)) continue;
-		const observation = at(row.prompt_id, row.date);
+		const observation = at(row.prompt_id, row.model, row.date);
 		observation.runs += row.runs;
 		observation.allMentions += row.brand_mentioned_runs + row.competitor_mentions;
 		addCounts(observation.companies, input.brand.name, row.brand_mentioned_runs, row);
 	}
 	for (const row of input.competitorRuns) {
-		if (keep(row.model)) addCounts(at(row.prompt_id, row.date).companies, row.competitor, row.runs, row);
+		addCounts(at(row.prompt_id, row.model, row.date).companies, row.competitor, row.runs, row);
 	}
-	const days = new Map<string, Observation>();
-	carryForward(byPrompt, input.dates, (_promptId, date, carried) => {
-		const day = days.get(date) ?? emptyObservation();
+	return byPrompt;
+}
+
+/** Each day's sums across prompts, every prompt carried at its latest result as of that day. */
+function carriedDays(byPrompt: Map<string, Map<string, Map<string, Observation>>>, dates: string[]) {
+	const byPromptDay = new Map<string, Map<string, Observation>>();
+	for (const [promptId, models] of byPrompt) {
+		const days = new Map<string, Observation>();
+		for (const modelDays of models.values()) {
+			for (const [date, observation] of modelDays) {
+				const day = days.get(date) ?? emptyObservation();
+				addObservation(day, observation);
+				days.set(date, day);
+			}
+		}
+		byPromptDay.set(promptId, days);
+	}
+	const totals = new Map<string, Observation>();
+	carryForward(byPromptDay, dates, (_promptId, date, carried) => {
+		const day = totals.get(date) ?? emptyObservation();
 		addObservation(day, carried);
-		days.set(date, day);
+		totals.set(date, day);
 	});
-	return days;
+	return totals;
+}
+
+/**
+ * Per model, the sum of each prompt's latest result: what carrying that model's results to the
+ * window's last day gives, since every row is inside the window.
+ */
+function latestByModel(byPrompt: Map<string, Map<string, Map<string, Observation>>>) {
+	const totals = new Map<string, Observation>();
+	for (const models of byPrompt.values()) {
+		for (const [model, days] of models) {
+			const latest = [...days.keys()].sort().at(-1);
+			if (latest === undefined) continue;
+			const total = totals.get(model) ?? emptyObservation();
+			addObservation(total, days.get(latest) ?? emptyObservation());
+			totals.set(model, total);
+		}
+	}
+	return totals;
 }
 
 const ratio = (part: number, whole: number) => (whole > 0 ? part / whole : null);
@@ -157,8 +195,9 @@ export function buildLandscape(input: LandscapeInput): Landscape {
 	const models = [...runsByModel.entries()].sort((a, b) => b[1] - a[1]).map(([model]) => model);
 
 	const lastDate = input.dates.at(-1) ?? "";
-	const days = carriedDays(input, () => true);
-	const lastByModel = new Map(models.map((model) => [model, carriedDays(input, (m) => m === model).get(lastDate)]));
+	const byPrompt = observations(input);
+	const days = carriedDays(byPrompt, input.dates);
+	const lastByModel = latestByModel(byPrompt);
 
 	const company = (name: string, domain: string | null, isBrand: boolean): LandscapeCompany => {
 		const daily = input.dates.map((date) => measure(name, days.get(date)));

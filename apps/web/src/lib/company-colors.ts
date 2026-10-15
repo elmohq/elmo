@@ -41,8 +41,9 @@ export function useCompanyColors(
 	others: readonly { name: string; isBrand: boolean }[] = [],
 ): Map<string, string> {
 	const chartColors = useChartColors();
+	// Ties broken by name, so a company keeps its colour from one load to the next.
 	const ranked = [...(landscape?.companies ?? [])].sort(
-		(a, b) => (b.totals.visibility ?? -1) - (a.totals.visibility ?? -1),
+		(a, b) => (b.totals.visibility ?? -1) - (a.totals.visibility ?? -1) || a.name.localeCompare(b.name),
 	);
 	const listed = new Set(ranked.map((company) => company.name));
 	return companyColorMap([...ranked, ...others.filter((company) => !listed.has(company.name))], chartColors);

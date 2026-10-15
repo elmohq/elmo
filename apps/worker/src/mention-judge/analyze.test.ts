@@ -55,6 +55,11 @@ describe("judged mentions", () => {
 		expect(result.brandMentioned).toBe(true);
 	});
 
+	it("doesn't count the name in another site's link path", async () => {
+		const result = await analyzer.analyze("Try this [recipe](https://www.bbc.co.uk/food/recipes/apple_pie).", config);
+		expect(result.brandMentioned).toBe(false);
+	});
+
 	it("doesn't count an answer that says it knows nothing about the brand, even when it links to it", async () => {
 		const text = "I have no information about Apple's warranty terms. Check https://apple.com/support for details.";
 		const result = await analyzer.analyze(text, config);

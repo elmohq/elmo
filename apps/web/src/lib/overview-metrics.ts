@@ -80,5 +80,3 @@ export const GRADE_STYLES: Record<Grade, { card: string; text: string; stroke: s
 		fill: "#fecdd3",
 	},
 };
-
-/** 1 for the best value among `values`, honouring which direction is better; null values rank last. */
