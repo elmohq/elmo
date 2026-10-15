@@ -82,7 +82,7 @@ export const ComparesPlansAcrossSharedRows: Story = {
 		await expect((await canvas.findAllByText(`${PREMIUM_RUNS_PER_DAY}×/day`)).length).toBeGreaterThan(0);
 
 		// The premium tier names the grounded product, not the pick.
-		await expect(await canvas.findByText("GPT-5 Search")).toBeVisible();
+		await expect(await canvas.findByText("GPT Search")).toBeVisible();
 
 		// Limits read off the catalog rather than being restated in prose.
 		await expect(await canvas.findByText("Tracked prompts")).toBeVisible();

@@ -117,11 +117,11 @@ describe("planPlatformBreakdown", () => {
 	});
 
 	it("names a premium model by the grounded product, not the pick", () => {
-		// "ChatGPT" and "GPT-5 Search" are different things to a customer, and the
+		// "ChatGPT" and "GPT Search" are different things to a customer, and the
 		// same model id backs both.
 		const premium = planPlatformBreakdown(PLANS.pro).premium;
 		const labels = new Map(premium?.models.map((m) => [m.model, m.label]));
-		expect(labels.get("chatgpt")).toBe("GPT-5 Search");
+		expect(labels.get("chatgpt")).toBe("GPT Search");
 		expect(labels.get("claude")).toMatch(/\(web\)$/);
 		// The same model is listed plainly where it is sold as a pick.
 		const api = groupsById("pro").get("api");
