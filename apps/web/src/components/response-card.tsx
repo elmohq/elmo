@@ -184,7 +184,10 @@ function MentionEvidence({
 								{verdictLabel(record)}
 							</Badge>
 						</figcaption>
-						<blockquote className="border-l-2 pl-3 text-muted-foreground whitespace-pre-wrap">{passage}</blockquote>
+						<blockquote className="border-l-2 pl-3 text-muted-foreground">
+							{/* Passages are cut from the stored answer, which is markdown. */}
+							<ResponseMarkdown>{passage}</ResponseMarkdown>
+						</blockquote>
 					</figure>
 				))}
 			</div>
