@@ -5,6 +5,7 @@
 import { db } from "@workspace/lib/db/db";
 import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
+import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/lib/mentions";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq } from "drizzle-orm";
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
@@ -19,9 +20,50 @@ export interface RunSummary {
 	webSearchEnabled: boolean | null;
 	brandMentioned: boolean | null;
 	competitorsMentioned: unknown;
+	/** The mention judge's verdicts; null for runs matched by substring, which have none. */
+	assessments: RunAssessments | null;
 	webQueries: unknown;
 	citationCount: number;
 	createdAt: Date | string;
+}
+
+export interface MentionAssessment {
+	mention: MentionAssessmentRecord["mention"];
+	probability: number;
+	reason: string | null;
+	sentiment: NonNullable<MentionAssessmentRecord["sentiment"]> | null;
+	sentimentProbabilities: Record<string, number> | null;
+	/** The passage the verdict rests on. Only on a single run, and only where the answer's text was stored. */
+	evidence?: string | null;
+}
+
+export interface RunAssessments {
+	/** Null when the answer never names the brand. */
+	brand: MentionAssessment | null;
+	/** Keyed by competitor name; only competitors the answer names. */
+	competitors: Record<string, MentionAssessment>;
+}
+
+/**
+ * Evidence is stored as offsets into the run's stored text; clients don't hold that text, so a
+ * single run gets the passage itself. `text` is undefined for lists, which leave it out.
+ */
+function publicAssessments(stored: RunMentionAssessments | null, text?: string | null): RunAssessments | null {
+	if (!stored) return null;
+	const convert = (record: MentionAssessmentRecord): MentionAssessment => ({
+		mention: record.mention,
+		probability: record.probability,
+		reason: record.reason ?? null,
+		sentiment: record.sentiment ?? null,
+		sentimentProbabilities: record.sentimentProbabilities ?? null,
+		...(text === undefined
+			? {}
+			: { evidence: text !== null && record.evidence ? text.slice(record.evidence.start, record.evidence.end) : null }),
+	});
+	return {
+		brand: stored.brand ? convert(stored.brand) : null,
+		competitors: Object.fromEntries(Object.entries(stored.competitors ?? {}).map(([name, r]) => [name, convert(r)])),
+	};
 }
 
 interface RunCitation {
@@ -64,6 +106,7 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 			webSearchEnabled: row.web_search_enabled,
 			brandMentioned: row.brand_mentioned,
 			competitorsMentioned: row.competitors_mentioned,
+			assessments: publicAssessments(row.assessments),
 			webQueries: row.web_queries,
 			citationCount: row.citation_count,
 			createdAt: row.created_at,
@@ -104,6 +147,8 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 		webSearchEnabled: run.webSearchEnabled,
 		brandMentioned: run.brandMentioned,
 		competitorsMentioned: run.competitorsMentioned,
+		// Offsets index the stored text; text re-extracted for an older run may not line up.
+		assessments: publicAssessments(run.mentionAssessments, run.textContent),
 		webQueries: run.webQueries,
 		citationCount: cited.length,
 		createdAt: run.createdAt,

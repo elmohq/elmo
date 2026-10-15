@@ -14,6 +14,7 @@ import {
 	rollupPromptRuns,
 	rollupWebQueries,
 } from "@workspace/lib/db/schema";
+import type { RunMentionAssessments } from "@workspace/lib/mentions";
 import { bucketEnd, bucketStart, rebuildRange, resolveUnpagedCitations } from "@workspace/lib/rollups";
 import { eq, max, min } from "drizzle-orm";
 
@@ -87,6 +88,8 @@ export async function createRun(
 		provider?: string | null;
 		webSearch?: boolean;
 		webQueries?: string[];
+		text?: string;
+		assessments?: RunMentionAssessments;
 	},
 ): Promise<FixtureRun> {
 	const model = opts.model ?? "chatgpt";
@@ -103,6 +106,8 @@ export async function createRun(
 			webQueries: opts.webQueries ?? [],
 			brandMentioned: opts.brandMentioned,
 			competitorsMentioned: opts.competitors ?? [],
+			textContent: opts.text ?? null,
+			mentionAssessments: opts.assessments ?? null,
 			createdAt,
 		},
 	]);

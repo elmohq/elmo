@@ -62,6 +62,7 @@ export interface PromptRunRow {
 	web_search_enabled: boolean;
 	brand_mentioned: boolean;
 	competitors_mentioned: string[];
+	assessments: RunMentionAssessments | null;
 	web_queries: string[];
 	citation_count: number;
 	created_at: string;
@@ -88,6 +89,7 @@ export async function getPromptRuns(
 			prompt_runs.web_search_enabled,
 			run_mentions.brand_mentioned,
 			run_mentions.competitors_mentioned,
+			run_mentions.assessments,
 			prompt_runs.web_queries,
 			(SELECT count(*) FROM citations c WHERE c.prompt_run_id = prompt_runs.id)::int AS citation_count,
 			prompt_runs.created_at

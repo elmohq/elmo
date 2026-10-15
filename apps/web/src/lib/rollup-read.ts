@@ -15,6 +15,7 @@ import {
 	uuidList,
 } from "@/lib/analytics-sql";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
+import type { SentimentCounts } from "@/lib/sentiment";
 
 /** The run counts every run read selects, so a new rollup column reaches them all at once. */
 export interface RunSums {
@@ -473,4 +474,18 @@ export async function getDailySentiment(scope: AnalyticsScope): Promise<DailySen
 		GROUP BY 1
 		ORDER BY 1
 	`);
+}
+
+/** Runs mentioning the brand, by the judge's confident sentiment toward it. */
+export async function getSentimentTotals(scope: AnalyticsScope): Promise<SentimentCounts> {
+	const [row] = await queryPg<SentimentCounts>(sql`
+		SELECT
+			coalesce(sum(positive_runs), 0)::int AS positive,
+			coalesce(sum(neutral_runs), 0)::int AS neutral,
+			coalesce(sum(negative_runs), 0)::int AS negative,
+			coalesce(sum(mixed_runs), 0)::int AS mixed
+		FROM rollup_prompt_runs
+		WHERE ${rollupScope(scope)}
+	`);
+	return row;
 }

@@ -12,7 +12,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requirePromptInScope } from "@/lib/api/scope";
-import { getCitationUrlStats, getCompetitorTotals, getMentionTotals } from "@/lib/rollup-read";
+import { getCitationUrlStats, getCompetitorTotals, getMentionTotals, getSentimentTotals } from "@/lib/rollup-read";
 
 function isValidDate(dateStr: string): boolean {
 	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -85,10 +85,11 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						timezone: "UTC",
 						promptIds: [prompt.id],
 					};
-					const [mentionData, topCompetitors, citationUrlStats] = await Promise.all([
+					const [mentionData, topCompetitors, citationUrlStats, sentiment] = await Promise.all([
 						getMentionTotals(scope),
 						getCompetitorTotals(scope, kMentions),
 						getCitationUrlStats(scope),
+						getSentimentTotals(scope),
 					]);
 
 					const mentionsTopK = topCompetitors.map((row) => ({ entity: row.competitor, count: row.runs }));
@@ -126,6 +127,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 							competitorMentionsTotal: mentionData.competitor_mentions,
 							mentionsTopK,
 						},
+						sentiment,
 						citations: {
 							citationsTotal,
 							brandCitationsTotal,

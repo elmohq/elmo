@@ -750,6 +750,9 @@
 					"mentions": {
 						"$ref": "#/components/schemas/MentionsSummary"
 					},
+					"sentiment": {
+						"$ref": "#/components/schemas/SentimentCounts"
+					},
 					"citations": {
 						"type": "object",
 						"properties": {
@@ -776,7 +779,7 @@
 						"required": ["citationsTotal", "brandCitationsTotal", "competitorCitationsTotal", "citedUrlsTopK"]
 					}
 				},
-				"required": ["brandId", "promptId", "promptValue", "startDate", "endDate", "mentions", "citations"]
+				"required": ["brandId", "promptId", "promptValue", "startDate", "endDate", "mentions", "citations", "sentiment"]
 			},
 			"Pagination": {
 				"type": "object",
@@ -1451,6 +1454,9 @@
 							"type": "string"
 						}
 					},
+					"assessments": {
+						"$ref": "#/components/schemas/RunAssessments"
+					},
 					"webQueries": {
 						"type": "array",
 						"items": {
@@ -1475,6 +1481,7 @@
 					"webSearchEnabled",
 					"brandMentioned",
 					"competitorsMentioned",
+					"assessments",
 					"webQueries",
 					"citationCount",
 					"createdAt"
@@ -1737,7 +1744,7 @@
 				"required": ["model", "label", "runs", "brandMentions", "visibility", "citations"]
 			},
 			"BrandAnalytics": {
-				"description": "Every non-paginated figure for a brand over one window. There is no parameter for selecting a subset: the four computations behind this share one scope resolution and run concurrently, so a subset would save a caller a fraction of one request and cost everyone a parameter to reason about.",
+				"description": "Every non-paginated figure for a brand over one window. There is no parameter for selecting a subset: the computations behind this share one scope resolution and run concurrently, so a subset would save a caller a fraction of one request and cost everyone a parameter to reason about.",
 				"type": "object",
 				"properties": {
 					"brandId": {
@@ -1802,6 +1809,9 @@
 						},
 						"description": "Per-model visibility and run counts. Only models that produced a run in the window appear."
 					},
+					"sentiment": {
+						"$ref": "#/components/schemas/SentimentCounts"
+					},
 					"totals": {
 						"type": "object",
 						"properties": {
@@ -1825,7 +1835,7 @@
 						"required": ["runs", "prompts", "citations", "uniqueDomains", "uniqueUrls"]
 					}
 				},
-				"required": ["brandId", "brandName", "range", "visibility", "shareOfVoice", "models", "totals"]
+				"required": ["brandId", "brandName", "range", "visibility", "shareOfVoice", "models", "totals", "sentiment"]
 			},
 			"ModelList": {
 				"type": "object",
@@ -1860,6 +1870,94 @@
 					}
 				},
 				"required": ["id", "label", "premiumCapable", "configured"]
+			},
+			"SentimentCounts": {
+				"description": "Answers that mention the brand, by the mention judge's confident sentiment toward it. An answer whose sentiment the judge couldn't call counts in none. All zero on deployments without the judge.",
+				"type": "object",
+				"properties": {
+					"positive": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"neutral": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"negative": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"mixed": {
+						"type": "integer",
+						"minimum": 0
+					}
+				},
+				"required": ["positive", "neutral", "negative", "mixed"]
+			},
+			"MentionAssessment": {
+				"description": "The mention judge's verdict on one brand or competitor named in an answer.",
+				"type": "object",
+				"properties": {
+					"mention": {
+						"type": "string",
+						"enum": ["mentioned", "not_mentioned", "uncertain"],
+						"description": "Whether the answer is really about this company. `uncertain` counts as a mention."
+					},
+					"probability": {
+						"type": "number",
+						"minimum": 0,
+						"maximum": 1,
+						"description": "Calibrated probability that the answer mentions this company."
+					},
+					"reason": {
+						"type": ["string", "null"],
+						"description": "Why it isn't a confident mention, when it isn't: `other_meaning` (the name used as an ordinary word), `other_company` (a different company with the same name), `no_info` (the answer says it knows nothing about it) or `link_only`. Informational; not a stable enum."
+					},
+					"sentiment": {
+						"type": ["string", "null"],
+						"enum": ["positive", "neutral", "negative", "mixed", "uncertain", null],
+						"description": "Tone toward this company in the passages about it; null when the answer isn't about it."
+					},
+					"sentimentProbabilities": {
+						"type": ["object", "null"],
+						"additionalProperties": {
+							"type": "number",
+							"minimum": 0,
+							"maximum": 1
+						},
+						"description": "Probability of each sentiment, keyed by label."
+					},
+					"evidence": {
+						"type": ["string", "null"],
+						"description": "Only on a single run: the passage the verdict rests on. Null when the answer's text wasn't stored when it was judged."
+					}
+				},
+				"required": ["mention", "probability", "reason", "sentiment", "sentimentProbabilities"]
+			},
+			"RunAssessments": {
+				"description": "The mention judge's verdicts for one answer. Null on runs matched by name alone, which happens on deployments without the judge.",
+				"type": ["object", "null"],
+				"properties": {
+					"brand": {
+						"oneOf": [
+							{
+								"$ref": "#/components/schemas/MentionAssessment"
+							},
+							{
+								"type": "null"
+							}
+						],
+						"description": "Null when the answer never names the brand."
+					},
+					"competitors": {
+						"type": "object",
+						"additionalProperties": {
+							"$ref": "#/components/schemas/MentionAssessment"
+						},
+						"description": "Keyed by competitor name; only competitors the answer names."
+					}
+				},
+				"required": ["brand", "competitors"]
 			}
 		},
 		"responses": {
@@ -3701,6 +3799,12 @@
 												"count": 27
 											}
 										]
+									},
+									"sentiment": {
+										"positive": 96,
+										"neutral": 31,
+										"negative": 4,
+										"mixed": 2
 									},
 									"citations": {
 										"citationsTotal": 1240,
