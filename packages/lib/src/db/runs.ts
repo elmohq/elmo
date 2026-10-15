@@ -29,7 +29,7 @@ export interface NewRun extends Omit<NewPromptRun, "id"> {
 	textContent?: string | null;
 	brandMentioned: boolean;
 	competitorsMentioned?: string[];
-	mentionAssessments?: RunMentionAssessments | null;
+	assessments?: RunMentionAssessments | null;
 	/** The stamps the derived values were computed with; null leaves them to the next replay. */
 	extractionStamp?: string | null;
 	mentionsStamp?: string | null;
@@ -43,15 +43,8 @@ export async function insertRuns(conn: DbConnection, runs: NewRun[]): Promise<{ 
 		.insert(promptRuns)
 		.values(
 			rows.map(
-				({
-					textContent,
-					brandMentioned,
-					competitorsMentioned,
-					mentionAssessments,
-					extractionStamp,
-					mentionsStamp,
-					...raw
-				}) => raw,
+				({ textContent, brandMentioned, competitorsMentioned, assessments, extractionStamp, mentionsStamp, ...raw }) =>
+					raw,
 			),
 		)
 		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
@@ -65,7 +58,7 @@ export async function insertRuns(conn: DbConnection, runs: NewRun[]): Promise<{ 
 			runId: run.id,
 			brandMentioned: run.brandMentioned,
 			competitorsMentioned: run.competitorsMentioned ?? [],
-			assessments: run.mentionAssessments ?? null,
+			assessments: run.assessments ?? null,
 			stamp: run.mentionsStamp ?? null,
 		})),
 	);

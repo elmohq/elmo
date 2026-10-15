@@ -269,7 +269,10 @@ async function runModelIteration({
 			const mentionConfig = await loadMentionConfig(tx, brand.id);
 			const stamps = currentAnalysisVersions(mentionConfig, analyzer.judgeVersion);
 			// An edit that landed while judging would otherwise slip past the reprocess it started.
-			if (stamps[MENTIONS_KEY] !== judgedStamp) mentions = await analyzer.analyze(text, mentionConfig);
+			// Only the subjects it changed are judged again, so the transaction stays short.
+			if (stamps[MENTIONS_KEY] !== judgedStamp) {
+				mentions = await analyzer.analyze(text, mentionConfig, mentions.assessments);
+			}
 			const [run] = await insertRuns(tx, [
 				{
 					promptId,
