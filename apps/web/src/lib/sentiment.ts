@@ -29,6 +29,18 @@ export interface SentimentCounts {
 	mixed: number;
 }
 
+export interface SentimentSummary extends SentimentCounts {
+	/** Fractions of 1 of the mentions with a sentiment; null with none. */
+	positiveShare: number | null;
+	negativeShare: number | null;
+}
+
+export interface MentionQuality {
+	sentiment: SentimentSummary;
+	/** `average` is 1 when it's always the first tracked company named; null when never ranked. */
+	position: { average: number | null };
+}
+
 export interface SentimentPoint {
 	date: string;
 	/** Share of the trailing window's mentions with a sentiment that were positive; null with none. */
@@ -37,6 +49,10 @@ export interface SentimentPoint {
 }
 
 export const SENTIMENT_WINDOW_DAYS = 7;
+
+/** Runs with a tone the judge could call; shares are of these. */
+const tonedRuns = (sums: AssessmentSums) =>
+	sums.positive_runs + sums.neutral_runs + sums.negative_runs + sums.mixed_runs;
 
 const share = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : null);
 
@@ -51,7 +67,7 @@ export function sentimentSeries(
 	windowDays = SENTIMENT_WINDOW_DAYS,
 ): SentimentPoint[] {
 	return trailing(rows, dateRange, windowDays, (window) => {
-		const toned = window.positive_runs + window.neutral_runs + window.negative_runs + window.mixed_runs;
+		const toned = tonedRuns(window);
 		return { positive: share(window.positive_runs, toned), negative: share(window.negative_runs, toned) };
 	});
 }
@@ -105,5 +121,21 @@ export function sentimentCounts(sums: AssessmentSums): SentimentCounts {
 		neutral: sums.neutral_runs,
 		negative: sums.negative_runs,
 		mixed: sums.mixed_runs,
+	};
+}
+
+export function sentimentSummary(sums: AssessmentSums): SentimentSummary {
+	const toned = tonedRuns(sums);
+	return {
+		...sentimentCounts(sums),
+		positiveShare: toned > 0 ? sums.positive_runs / toned : null,
+		negativeShare: toned > 0 ? sums.negative_runs / toned : null,
+	};
+}
+
+export function mentionQuality(sums: AssessmentSums): MentionQuality {
+	return {
+		sentiment: sentimentSummary(sums),
+		position: { average: averagePosition(sums.position_sum, sums.positioned_runs) },
 	};
 }

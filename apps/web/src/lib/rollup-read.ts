@@ -15,7 +15,7 @@ import {
 	uuidList,
 } from "@/lib/analytics-sql";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
-import { type AssessmentSums, NO_ASSESSMENTS } from "@/lib/sentiment";
+import type { AssessmentSums } from "@/lib/sentiment";
 
 /** The run counts every run read selects, so a new rollup column reaches them all at once. */
 export interface RunSums {
@@ -28,11 +28,6 @@ export interface RunSums {
 }
 
 export type { AssessmentSums } from "@/lib/sentiment";
-
-const assessmentSums = sql.join(
-	Object.keys(NO_ASSESSMENTS).map((column) => sql.raw(`coalesce(sum(${column}), 0)::int AS ${column}`)),
-	sql`, `,
-);
 
 export interface MentionTotals extends RunSums, AssessmentSums {
 	/** Runs that mentioned neither the brand nor any competitor. */
@@ -57,12 +52,12 @@ export interface PerPromptDailyCompetitorRow {
 	runs: number;
 }
 
-export interface CompetitorTotal {
+export interface CompetitorTotal extends AssessmentSums {
 	competitor: string;
 	runs: number;
 }
 
-export interface PerPromptRunStats extends RunSums {
+export interface PerPromptRunStats extends RunSums, AssessmentSums {
 	prompt_id: string;
 	/** Distinct days, in the scope's timezone, on which the prompt ran. */
 	run_days: number;
@@ -71,7 +66,7 @@ export interface PerPromptRunStats extends RunSums {
 	last_run_date: string | null;
 }
 
-export interface ModelRunSums extends RunSums {
+export interface ModelRunSums extends RunSums, AssessmentSums {
 	model: string;
 }
 
@@ -135,6 +130,14 @@ const runSums = sql`
 	coalesce(sum(competitor_runs), 0)::int AS competitor_runs,
 	coalesce(sum(competitor_mentions), 0)::int AS competitor_mentions`;
 
+const assessmentSums = sql`
+	coalesce(sum(positive_runs), 0)::int AS positive_runs,
+	coalesce(sum(neutral_runs), 0)::int AS neutral_runs,
+	coalesce(sum(negative_runs), 0)::int AS negative_runs,
+	coalesce(sum(mixed_runs), 0)::int AS mixed_runs,
+	coalesce(sum(position_sum), 0)::int AS position_sum,
+	coalesce(sum(positioned_runs), 0)::int AS positioned_runs`;
+
 export async function getMentionTotals(scope: AnalyticsScope): Promise<MentionTotals> {
 	const [row] = await queryPg<MentionTotals>(sql`
 		SELECT
@@ -176,7 +179,7 @@ export async function getPerPromptDailyCompetitors(scope: AnalyticsScope): Promi
 
 export async function getCompetitorTotals(scope: AnalyticsScope, limit?: number): Promise<CompetitorTotal[]> {
 	return queryPg<CompetitorTotal>(sql`
-		SELECT competitor_name AS competitor, sum(runs)::int AS runs
+		SELECT competitor_name AS competitor, sum(runs)::int AS runs, ${assessmentSums}
 		FROM rollup_competitor_mentions
 		WHERE ${rollupScope(scope)}
 		GROUP BY competitor
@@ -190,6 +193,7 @@ export async function getPerPromptRunStats(scope: AnalyticsScope): Promise<PerPr
 		SELECT
 			prompt_id,
 			${runSums},
+			${assessmentSums},
 			count(DISTINCT ${localDate(sql`bucket`, scope.timezone)})::int AS run_days,
 			${isoInstant(sql`max(last_run_at)`)} AS last_run_at,
 			${localDate(sql`max(last_run_at)`, scope.timezone)} AS last_run_date
@@ -201,7 +205,7 @@ export async function getPerPromptRunStats(scope: AnalyticsScope): Promise<PerPr
 
 export async function getRunsByModel(scope: AnalyticsScope): Promise<ModelRunSums[]> {
 	return queryPg<ModelRunSums>(sql`
-		SELECT model, ${runSums}
+		SELECT model, ${runSums}, ${assessmentSums}
 		FROM rollup_prompt_runs
 		WHERE ${rollupScope(scope)}
 		GROUP BY model
