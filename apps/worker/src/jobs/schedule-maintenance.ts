@@ -17,7 +17,7 @@ import {
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
-import { requestUnjudgedRuns } from "./judge-runs";
+import { requestUnjudgedRuns } from "./derive-runs";
 import { PROMPT_JOB_OPTIONS } from "./process-prompt";
 
 export interface ScheduleMaintenanceData {

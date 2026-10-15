@@ -4,8 +4,8 @@ import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import type { Job, PgBoss } from "pg-boss";
 import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
+import { DERIVE_RUNS_QUEUE, type DeriveRunsData, deriveRunsJob } from "./jobs/derive-runs";
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
-import { JUDGE_RUNS_QUEUE, type JudgeRunData, judgeRunsJob } from "./jobs/judge-runs";
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
 import { type RefreshRollupsData, refreshRollupsJob } from "./jobs/refresh-rollups";
 import {
@@ -82,13 +82,13 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 	);
 	console.log("Registered handler: schedule-maintenance");
 
-	// One run per job, so each run retries on its own; as many at once as the judge has sessions.
-	await boss.work<JudgeRunData>(
-		JUDGE_RUNS_QUEUE,
+	// One chunk per job, so each retries on its own; as many at once as the judge has sessions.
+	await boss.work<DeriveRunsData>(
+		DERIVE_RUNS_QUEUE,
 		{ batchSize: 1, localConcurrency: mentionAnalyzer().concurrency },
-		withSentry(JUDGE_RUNS_QUEUE, judgeRunsJob),
+		withSentry(DERIVE_RUNS_QUEUE, deriveRunsJob),
 	);
-	console.log(`Registered handler: ${JUDGE_RUNS_QUEUE}`);
+	console.log(`Registered handler: ${DERIVE_RUNS_QUEUE}`);
 
 	await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
 	console.log(`Registered handler: ${REPROCESS_QUEUE}`);
