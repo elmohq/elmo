@@ -6,7 +6,7 @@ import {
 } from "@workspace/lib/analysis-versions";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { loadRawOutputs } from "@workspace/lib/db/runs";
+import { loadRawOutputs, updateExtractions, updateMentions } from "@workspace/lib/db/runs";
 import {
 	type Brand,
 	brands,
@@ -19,10 +19,10 @@ import {
 	runMentions,
 } from "@workspace/lib/db/schema";
 import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
-import { insertCitations, markDirty } from "@workspace/lib/rollups";
+import { insertRunsCitations, markDirty } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, extractRun } from "@workspace/lib/text-extraction";
-import { and, asc, eq, gte, isNull, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
 
@@ -187,16 +187,6 @@ async function loadStaleRuns(
 	}));
 }
 
-async function replaceCitations(
-	tx: DbConnection,
-	run: StaleRun,
-	brandId: string,
-	extracted: Citation[],
-): Promise<void> {
-	await tx.delete(citations).where(eq(citations.promptRunId, run.id));
-	await insertCitations(tx, { ...run, brandId }, extracted);
-}
-
 interface Pass {
 	brandId: string;
 	layers: ReprocessLayer[];
@@ -206,33 +196,40 @@ interface Pass {
 	keptRuns: number;
 }
 
-async function writeRunUpdate(tx: DbConnection, pass: Pass, run: StaleRun, update: RunUpdate): Promise<void> {
-	if (update.extraction) {
-		const { textContent, stamp } = update.extraction;
-		await tx
-			.update(runExtractions)
-			.set(stamp ? { textContent, stamp } : { textContent })
-			.where(eq(runExtractions.runId, run.id));
-	}
-	if (update.mentions) await tx.update(runMentions).set(update.mentions).where(eq(runMentions.runId, run.id));
-	if (update.citations) await replaceCitations(tx, run, pass.brandId, update.citations);
-}
-
-/** Rewrites only the derived rows: `prompt_runs` itself is append-only. Returns how many runs kept something. */
+/** Rewrites only the derived rows, a few statements per batch: `prompt_runs` itself is append-only. Returns how many runs kept something. */
 function rewriteRuns(conn: DbConnection, pass: Pass, runs: StaleRun[]): Promise<number> {
+	const updates = runs.map((run) => ({ run, update: deriveRunUpdate(run, pass.layers, pass.target, pass.config) }));
+	const recited = updates.filter(({ update }) => update.citations);
 	return conn.transaction(async (tx) => {
-		let keptRuns = 0;
-		for (const run of runs) {
-			const update = deriveRunUpdate(run, pass.layers, pass.target, pass.config);
-			if (update.kept.length > 0) keptRuns++;
-			await writeRunUpdate(tx, pass, run, update);
+		await updateExtractions(
+			tx,
+			updates.flatMap(({ run, update }) => (update.extraction ? [{ runId: run.id, ...update.extraction }] : [])),
+		);
+		await updateMentions(
+			tx,
+			updates.flatMap(({ run, update }) => (update.mentions ? [{ runId: run.id, ...update.mentions }] : [])),
+		);
+		if (recited.length > 0) {
+			await tx.delete(citations).where(
+				inArray(
+					citations.promptRunId,
+					recited.map(({ run }) => run.id),
+				),
+			);
+			await insertRunsCitations(
+				tx,
+				recited.map(({ run, update }) => ({
+					run: { ...run, brandId: pass.brandId },
+					citations: update.citations ?? [],
+				})),
+			);
 		}
 		await markDirty(
 			tx,
 			pass.brandId,
 			runs.map((run) => run.createdAt),
 		);
-		return keptRuns;
+		return updates.filter(({ update }) => update.kept.length > 0).length;
 	});
 }
 

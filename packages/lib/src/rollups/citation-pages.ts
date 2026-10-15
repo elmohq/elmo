@@ -6,7 +6,7 @@ import { citations, citedPages } from "../db/schema";
 import type { Citation } from "../text-extraction";
 import { chunked } from "./chunk";
 import { CLASSIFIER_VERSION } from "./constants";
-import { markDirty } from "./dirty";
+import { markWritesDirty } from "./dirty";
 
 interface Sighting {
 	url: string;
@@ -95,15 +95,30 @@ export interface CitingRun {
 	createdAt: Date;
 }
 
-/** Stores a run's citations, each pointing at its page. The one way citations are written. */
-export async function insertCitations(conn: DbConnection, run: CitingRun, extracted: Citation[]): Promise<void> {
-	if (extracted.length === 0) return;
+/** Stores a run's citations, each pointing at its page. */
+export function insertCitations(conn: DbConnection, run: CitingRun, extracted: Citation[]): Promise<void> {
+	return insertRunsCitations(conn, [{ run, citations: extracted }]);
+}
+
+/**
+ * Stores many runs' citations with one page upsert and one insert, so a replay
+ * batch costs a few statements rather than a few per run. The one way citations
+ * are written.
+ */
+export async function insertRunsCitations(
+	conn: DbConnection,
+	runs: { run: CitingRun; citations: Citation[] }[],
+): Promise<void> {
+	const withCitations = runs.filter(({ citations: cited }) => cited.length > 0);
+	if (withCitations.length === 0) return;
 	const pageIds = await upsertCitedPages(
 		conn,
-		extracted.map((c) => ({ url: c.url, domain: c.domain, title: c.title ?? null, seenAt: run.createdAt })),
+		withCitations.flatMap(({ run, citations: cited }) =>
+			cited.map((c) => ({ url: c.url, domain: c.domain, title: c.title ?? null, seenAt: run.createdAt })),
+		),
 	);
-	await conn.insert(citations).values(
-		extracted.map((c) => ({
+	const rows = withCitations.flatMap(({ run, citations: cited }) =>
+		cited.map((c) => ({
 			promptRunId: run.id,
 			promptId: run.promptId,
 			brandId: run.brandId,
@@ -116,6 +131,7 @@ export async function insertCitations(conn: DbConnection, run: CitingRun, extrac
 			pageId: pageIds.get(normalizeUrl(c.url)),
 		})),
 	);
+	for (const chunk of chunked(rows)) await conn.insert(citations).values(chunk);
 }
 
 /**
@@ -123,7 +139,7 @@ export async function insertCitations(conn: DbConnection, run: CitingRun, extrac
  * straight to the table by a seed) at their pages, and marks their buckets so the
  * rollups pick them up. Resumable: resolved citations leave the filter.
  */
-export async function resolveUnpagedCitations(conn: DbConnection, batchSize = 1000): Promise<number> {
+export async function resolveUnpagedCitations(conn: DbConnection, batchSize = 5000): Promise<number> {
 	let resolved = 0;
 	let after: string | null = null;
 	for (;;) {
@@ -152,13 +168,10 @@ export async function resolveUnpagedCitations(conn: DbConnection, batchSize = 10
 				FROM (VALUES ${sql.join(values, sql`, `)}) AS v(id, page_id)
 				WHERE c.id = v.id
 			`);
-			for (const brandId of new Set(batch.map((c) => c.brandId))) {
-				await markDirty(
-					tx,
-					brandId,
-					batch.filter((c) => c.brandId === brandId).map((c) => c.createdAt),
-				);
-			}
+			await markWritesDirty(
+				tx,
+				batch.map((c) => ({ brandId: c.brandId, at: c.createdAt })),
+			);
 		});
 		resolved += batch.length;
 		after = batch[batch.length - 1].id;
