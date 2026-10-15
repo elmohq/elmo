@@ -43,10 +43,7 @@ export interface RunMentionsRow {
 	stamp: string | null;
 }
 
-/**
- * Writes runs with their extraction, and their mentions where they come with them. A run without
- * mentions is left out of every mention figure and rollup until it's judged.
- */
+/** A run inserted without mentions is left out of every mention figure and rollup until it's judged. */
 export async function insertRuns(conn: DbConnection, runs: NewRun[]): Promise<{ id: string; createdAt: Date }[]> {
 	if (runs.length === 0) return [];
 	const rows = runs.map((run) => ({ ...run, id: run.id ?? randomUUID() }));
