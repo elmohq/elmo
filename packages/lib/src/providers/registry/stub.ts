@@ -34,10 +34,9 @@ export const stub: Provider = {
 		return true;
 	},
 
-	async run(): Promise<ScrapeResult> {
-		// The stub exists for the structured-research path; the scrape path is
-		// never pointed at it in practice, so return an empty-but-valid result.
-		return { rawOutput: {}, webQueries: [], modelVersion: "stub" };
+	// Answers with the prompt itself, so a test chooses the answer the rest of the pipeline reads.
+	async run(_model: string, prompt: string): Promise<ScrapeResult> {
+		return { rawOutput: { answer_markdown: prompt }, webQueries: [], modelVersion: "stub" };
 	},
 
 	async runStructuredResearch<T>({ schema }: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
