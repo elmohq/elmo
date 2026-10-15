@@ -178,7 +178,7 @@ export const runMentions = pgTable("run_mentions", {
 		.references(() => promptRuns.id, { onDelete: "cascade" }),
 	brandMentioned: boolean("brand_mentioned").notNull(),
 	competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
-	/** The mention judge's verdicts behind the columns above; null when they came from substring matching. */
+	/** The mention judge's assessments behind the columns above; null for mentions matched by name, before the judge. */
 	assessments: jsonb("assessments").$type<RunMentionAssessments>(),
 	/** The `mentions` stamp it was derived with; null for runs that predate stamping. */
 	stamp: text("stamp"),

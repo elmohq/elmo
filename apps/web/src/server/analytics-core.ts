@@ -21,7 +21,7 @@ import {
 	getCitationTotal,
 	getCitationUrlStats,
 	getCompetitorTotals,
-	getDailyVerdicts,
+	getDailyAssessments,
 	getFanoutBreakdown,
 	getFanoutModelTotals,
 	getFanoutPromptTotals,
@@ -37,13 +37,13 @@ import {
 	averagePosition,
 	type MentionQuality,
 	mentionQuality,
-	NO_VERDICTS,
+	NO_ASSESSMENTS,
 	type PositionPoint,
 	type SentimentCounts,
 	type SentimentSummary,
 	sentimentCounts,
 	sentimentSummary,
-	sumVerdicts,
+	sumAssessments,
 } from "@/lib/sentiment";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
@@ -237,7 +237,7 @@ export async function getBrandShareOfVoice(
 			mentions: entry.mentions,
 			prompts: entry.isBrand ? standings.brandPrompts : (promptsByName.get(entry.name) ?? 0),
 			share: entry.share,
-			...mentionQuality((entry.isBrand ? totals : competitorTotals.get(entry.name)) ?? NO_VERDICTS),
+			...mentionQuality((entry.isBrand ? totals : competitorTotals.get(entry.name)) ?? NO_ASSESSMENTS),
 		})),
 		series,
 	};
@@ -464,7 +464,7 @@ export async function getBrandPromptPerformance(
 			competitorMentionRate: runs > 0 ? (stats?.competitor_runs ?? 0) / runs : 0,
 			lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date).toISOString() : null,
 			firstEvaluatedAt: first ? new Date(first).toISOString() : null,
-			...mentionQuality(stats ?? NO_VERDICTS),
+			...mentionQuality(stats ?? NO_ASSESSMENTS),
 		};
 	});
 }
@@ -482,14 +482,14 @@ export async function getBrandMentionQuality(
 ): Promise<BrandMentionQuality> {
 	const { promptIds } = await resolveScope(brandId, filters);
 	if (promptIds.length === 0) {
-		return { sentiment: { ...sentimentSummary(NO_VERDICTS), series: [] }, position: { average: null, series: [] } };
+		return { sentiment: { ...sentimentSummary(NO_ASSESSMENTS), series: [] }, position: { average: null, series: [] } };
 	}
 	const bounds = windowInstants(window);
 	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
-	const rows = await getDailyVerdicts(analyticsScope(brandId, window, promptIds, filters));
+	const rows = await getDailyAssessments(analyticsScope(brandId, window, promptIds, filters));
 	const byDate = new Map(rows.map((row) => [row.date, row]));
-	const day = (date: string) => byDate.get(date) ?? NO_VERDICTS;
-	const totals = sumVerdicts(rows);
+	const day = (date: string) => byDate.get(date) ?? NO_ASSESSMENTS;
+	const totals = sumAssessments(rows);
 	return {
 		sentiment: {
 			...sentimentSummary(totals),

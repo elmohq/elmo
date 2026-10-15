@@ -16,7 +16,7 @@ import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
 import { lookbackSchema } from "@/lib/lookback";
 import {
-	getDailyVerdicts,
+	getDailyAssessments,
 	getMentionTotals,
 	getPerPromptDailyCitationDomains,
 	getPerPromptDailyRuns,
@@ -109,12 +109,12 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			.map((p) => p.id);
 
 		const scope = { brandId: data.brandId, from: fromDateStr, to: toDateStr, timezone, promptIds: enabledPromptIds };
-		const [totals, perPromptVisibility, perPromptCitations, dailyVerdicts] = await Promise.all([
+		const [totals, perPromptVisibility, perPromptCitations, dailyAssessments] = await Promise.all([
 			getMentionTotals(scope),
 			getPerPromptDailyRuns(scope),
 			getPerPromptDailyCitationDomains(scope),
 			// Reaching back so the trailing window is full from the first plotted day.
-			getDailyVerdicts({
+			getDailyAssessments({
 				...scope,
 				from: shiftDateStr(fromDateStr, { days: 1 - SENTIMENT_WINDOW_DAYS }),
 			}),
@@ -177,9 +177,9 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			visibilityTimeSeries,
 			citationTimeSeries,
 			sentiment: sentimentSummary(totals),
-			sentimentTimeSeries: sentimentSeries(dailyVerdicts, dateRange),
+			sentimentTimeSeries: sentimentSeries(dailyAssessments, dateRange),
 			averagePosition: averagePosition(totals.position_sum, totals.positioned_runs),
-			positionTimeSeries: positionSeries(dailyVerdicts, dateRange),
+			positionTimeSeries: positionSeries(dailyAssessments, dateRange),
 			lastUpdatedAt,
 		};
 	});

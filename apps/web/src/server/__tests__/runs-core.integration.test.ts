@@ -29,21 +29,20 @@ beforeAll(async () => {
 		text: ANSWER,
 		assessments: {
 			brand: {
-				mention: "mentioned",
+				mentioned: true,
 				probability: 0.97,
 				sentiment: "positive",
 				sentimentProbabilities: { positive: 0.9, neutral: 0.06, negative: 0.02, mixed: 0.02 },
-				evidence: { start: 0, end: 42 },
+				passage: { start: 0, end: 42 },
 				firstMention: 17,
 				mentionCount: 1,
 				position: 1,
 			},
 			competitors: {
 				Globex: {
-					mention: "uncertain",
+					mentioned: true,
 					probability: 0.55,
-					reason: "other_company",
-					evidence: { start: 43, end: 72 },
+					passage: { start: 43, end: 72 },
 					firstMention: 43,
 					mentionCount: 1,
 					position: 2,
@@ -66,11 +65,11 @@ afterAll(async () => {
 	await deleteBrand(brandId);
 });
 
-describe("run verdicts", () => {
-	it("gives a single run each verdict, without the passages it rests on", async () => {
+describe("run assessments", () => {
+	it("gives a single run each assessment, without the passages it rests on", async () => {
 		const run = await findRunDetail(promptId, judgedRunId);
 		expect(run?.assessments?.brand).toEqual({
-			mention: "mentioned",
+			mentioned: true,
 			probability: 0.97,
 			reason: null,
 			sentiment: "positive",
@@ -79,17 +78,17 @@ describe("run verdicts", () => {
 			mentionCount: 1,
 		});
 		expect(run?.assessments?.competitors.Globex).toMatchObject({
-			mention: "uncertain",
-			reason: "other_company",
+			mentioned: true,
+			reason: null,
 			sentiment: null,
 		});
-		expect(run?.assessments?.competitors.Globex).not.toHaveProperty("evidence");
+		expect(run?.assessments?.competitors.Globex).not.toHaveProperty("passage");
 	});
 
-	it("lists verdicts, and none for runs the judge never saw", async () => {
+	it("lists assessments, and none for runs the judge never saw", async () => {
 		const { data } = await listPromptRuns({ promptId, window, limit: 10, offset: 0 });
 		const byId = new Map(data.map((run) => [run.id, run]));
-		expect(byId.get(judgedRunId)?.assessments?.brand).not.toHaveProperty("evidence");
+		expect(byId.get(judgedRunId)?.assessments?.brand).not.toHaveProperty("passage");
 		expect(byId.get(judgedRunId)?.assessments?.brand?.sentiment).toBe("positive");
 		expect(byId.get(unjudgedRunId)?.assessments).toBeNull();
 	});
@@ -115,8 +114,8 @@ describe("mention quality", () => {
 		const { entries } = await getBrandShareOfVoice(brandId, window);
 		const brand = entries.find((entry) => entry.isBrand);
 		const globex = entries.find((entry) => entry.name === "Globex");
-		expect(brand).toMatchObject({ averagePosition: 1, sentiment: { positive: 1 } });
+		expect(brand).toMatchObject({ position: { average: 1 }, sentiment: { positive: 1 } });
 		// Its tone was unclear, so it counts in no sentiment, but it was still named second.
-		expect(globex).toMatchObject({ averagePosition: 2, sentiment: { positiveShare: null } });
+		expect(globex).toMatchObject({ position: { average: 2 }, sentiment: { positiveShare: null } });
 	});
 });

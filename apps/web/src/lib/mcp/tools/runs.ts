@@ -9,7 +9,7 @@ export const listRuns = defineTool({
 	name: "list_runs",
 	title: "List answers recorded for a prompt",
 	description:
-		"Metadata for the answers recorded for one prompt, newest first, including the mention judge's verdict, sentiment and position (experimental) for the brand and each competitor named. The answer text lives on get_run, which keeps this list small enough to page through.",
+		"Metadata for the answers recorded for one prompt, newest first, including the mention judge's assessment, sentiment and position (experimental) for the brand and each competitor named. The answer text lives on get_run, which keeps this list small enough to page through.",
 	scopes: ["read"],
 	readOnly: true,
 	input: {

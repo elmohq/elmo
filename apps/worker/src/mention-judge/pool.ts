@@ -31,7 +31,7 @@ export async function loadJudgePool(
 	script = join(__dirname, "pool-worker.ts"),
 ): Promise<MentionJudge> {
 	// The native library reads the real process environment, which workers only get a copy of.
-	process.env.ORT_DISABLE_TELEMETRY ??= "1";
+	process.env.ORT_DISABLE_TELEMETRY = "1";
 	const threads = size === 1 ? Math.min(SINGLE_SESSION_THREADS, availableParallelism()) : 1;
 	const queue: Task[] = [];
 	const slots: Slot[] = [];

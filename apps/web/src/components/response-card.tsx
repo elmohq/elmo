@@ -1,4 +1,4 @@
-import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/lib/mentions";
+import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -6,8 +6,8 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import type { ReactNode } from "react";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
-import { evidencePassage } from "@/lib/evidence";
 import { HIGHLIGHT_CLASS, splitHighlights } from "@/lib/highlight";
+import { assessedPassage } from "@/lib/passage";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 
@@ -87,7 +87,7 @@ export function ResponseCard({
 					<MentionedBrands run={run} brandName={brandName} domainFor={domainFor} />
 				</div>
 
-				<MentionEvidence assessments={run.mentionAssessments} text={text} brandName={brandName} />
+				<MentionPassages assessments={run.mentionAssessments} text={text} brandName={brandName} />
 
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
@@ -173,20 +173,18 @@ const SENTIMENTS: Record<string, string> = {
 	neutral: "Neutral",
 	negative: "Negative",
 	mixed: "Mixed",
-	uncertain: "Unclear sentiment",
 };
 
-function verdictLabel(record: MentionAssessmentRecord): string {
-	if (record.mention === "uncertain") return "Unsure whether this is a mention; counted";
-	if (record.mention === "not_mentioned") return `Not counted: ${REASONS[record.reason ?? ""] ?? "not about it"}`;
+function assessmentLabel(record: MentionAssessment): string {
+	if (!record.mentioned) return `Not counted: ${REASONS[record.reason ?? ""] ?? "not about it"}`;
 	return record.sentiment ? SENTIMENTS[record.sentiment] : "Mentioned";
 }
 
 /**
- * The passage each verdict rests on: always the brand's, and a competitor's when it wasn't a
- * plain mention, since those are the calls worth checking.
+ * The passage each assessment rests on: always the brand's, and a competitor's when it wasn't
+ * counted, since those are the calls worth checking.
  */
-function MentionEvidence({
+function MentionPassages({
 	assessments,
 	text,
 	brandName,
@@ -195,26 +193,26 @@ function MentionEvidence({
 	text: string;
 	brandName?: string;
 }) {
-	const entries: { key: string; name: string; record: MentionAssessmentRecord }[] = [];
+	const entries: { key: string; name: string; record: MentionAssessment }[] = [];
 	if (assessments?.brand) entries.push({ key: "brand", name: brandName ?? "Your brand", record: assessments.brand });
 	for (const [name, record] of Object.entries(assessments?.competitors ?? {})) {
-		if (record.mention !== "mentioned") entries.push({ key: `competitor:${name}`, name, record });
+		if (!record.mentioned) entries.push({ key: `competitor:${name}`, name, record });
 	}
 	const shown = entries.flatMap((entry) => {
-		const passage = evidencePassage(text, entry.record);
+		const passage = assessedPassage(text, entry.record);
 		return passage ? [{ ...entry, passage }] : [];
 	});
 	if (shown.length === 0) return null;
 	return (
 		<div>
-			<span className="text-xs text-muted-foreground block mb-1.5">Evidence</span>
+			<span className="text-xs text-muted-foreground block mb-1.5">Passages</span>
 			<div className="space-y-2">
 				{shown.map(({ key, name, record, passage }) => (
 					<figure key={key} className="rounded-md border p-3 text-sm space-y-1.5">
 						<figcaption className="flex flex-wrap items-center gap-1.5 text-xs">
 							<span className="font-medium">{name}</span>
-							<Badge variant={record.mention === "uncertain" ? "secondary" : "outline"} className="text-xs font-normal">
-								{verdictLabel(record)}
+							<Badge variant="outline" className="text-xs font-normal">
+								{assessmentLabel(record)}
 							</Badge>
 						</figcaption>
 						<blockquote className="border-l-2 pl-3 text-muted-foreground">
