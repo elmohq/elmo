@@ -94,8 +94,8 @@ function canonicalDomains(domains: readonly string[]): string[] {
  * Identifies the matcher version and brand config a run's mentions were derived
  * from. Configs that match the same text stamp alike, so reordering competitors
  * or recasing an alias doesn't reprocess a brand's whole history. Competitor
- * names are the exception: they're stored verbatim in `competitors_mentioned`,
- * so a rename must restamp even when only the case changed.
+ * names are the exception: they're stored verbatim in `competitors_mentioned`
+ * and key the rollups, so a rename must restamp even when only case or whitespace changed.
  */
 export function mentionsStamp(config: MentionConfig): string {
 	const fingerprint = JSON.stringify({

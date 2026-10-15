@@ -3,7 +3,8 @@ import { extractTextContent } from "@workspace/lib/text-extraction";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
-import { countResponses, getResponseMatches, type ResponseSearchScope } from "@/lib/postgres-read";
+import { getResponseMatches, type ResponseSearchScope } from "@/lib/postgres-read";
+import { getMentionTotals } from "@/lib/rollup-read";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -35,22 +36,22 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const scope: ResponseSearchScope = {
 			brandId: data.brandId,
-			fromDate: fromDateStr,
-			toDate: toDateStr,
+			from: fromDateStr,
+			to: toDateStr,
 			timezone,
 			promptIds: prompts.map((prompt) => prompt.id),
 			model: data.model,
 			query,
 		};
 
-		const [totalRuns, rows] = await Promise.all([
-			countResponses(scope),
+		const [totals, rows] = await Promise.all([
+			getMentionTotals(scope),
 			getResponseMatches(scope, PAGE_SIZE, data.page * PAGE_SIZE),
 		]);
 
 		return {
 			query: query ?? null,
-			totalRuns,
+			totalRuns: totals.runs,
 			matchedRuns: rows[0]?.matched ?? 0,
 			pageSize: PAGE_SIZE,
 			matches: rows.map((row) => ({

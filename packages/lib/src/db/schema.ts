@@ -1,5 +1,9 @@
+import { sql } from "drizzle-orm";
 import {
+	type AnyPgColumn,
+	bigint,
 	boolean,
+	check,
 	index,
 	integer,
 	json,
@@ -7,6 +11,7 @@ import {
 	numeric,
 	pgEnum,
 	pgTable,
+	primaryKey,
 	smallint,
 	text,
 	timestamp,
@@ -195,6 +200,8 @@ export const citations = pgTable(
 		title: text("title"),
 		citationIndex: smallint("citation_index").notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+		/** The normalized page this URL is; null only until a backfill resolves citations stored before pages were. */
+		pageId: bigint("page_id", { mode: "number" }).references((): AnyPgColumn => citedPages.id),
 	},
 	(table) => ({
 		brandAnalyticsIdx: index("citations_brand_created_analytics_idx").on(
@@ -358,3 +365,188 @@ export const secrets = pgTable("secrets", {
 		.$onUpdate(() => new Date())
 		.notNull(),
 }).enableRLS();
+
+/**
+ * A function so each table gets its own column builders. `provider` is '' rather
+ * than null because null key parts never compare equal, which would let a bucket
+ * rebuild insert duplicates. Deleting a prompt cascades here, so no read has to
+ * guard against rows that outlived theirs.
+ */
+const rollupKeyColumns = () => ({
+	brandId: text("brand_id").notNull(),
+	bucket: timestamp("bucket", { withTimezone: true }).notNull(),
+	promptId: uuid("prompt_id")
+		.notNull()
+		.references(() => prompts.id, { onDelete: "cascade" }),
+	model: text("model").notNull(),
+	provider: text("provider").notNull().default(""),
+	webSearchEnabled: boolean("web_search_enabled").notNull(),
+});
+
+export const rollupPromptRuns = pgTable(
+	"rollup_prompt_runs",
+	{
+		...rollupKeyColumns(),
+		runs: integer("runs").notNull(),
+		brandMentionedRuns: integer("brand_mentioned_runs").notNull(),
+		/** Runs mentioning at least one competitor. */
+		competitorRuns: integer("competitor_runs").notNull(),
+		/** Total competitor mentions across the bucket's runs. */
+		competitorMentions: integer("competitor_mentions").notNull(),
+		/** Runs mentioning neither the brand nor any competitor. */
+		noMentionRuns: integer("no_mention_runs").notNull(),
+		/** Runs with at least one genuine fan-out query (see `isFanoutQuery`). */
+		fanoutRuns: integer("fanout_runs").notNull(),
+		/** Distinct genuine fan-out queries summed over runs. */
+		fanoutQueries: integer("fanout_queries").notNull(),
+		firstRunAt: timestamp("first_run_at", { withTimezone: true }).notNull(),
+		lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_prompt_runs_pk",
+			columns: [table.brandId, table.bucket, table.promptId, table.model, table.provider, table.webSearchEnabled],
+		}),
+		index("rollup_prompt_runs_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+export const rollupCompetitorMentions = pgTable(
+	"rollup_competitor_mentions",
+	{
+		...rollupKeyColumns(),
+		/** Keyed by name, not competitor id: a bulk competitor save reinserts rows with new ids. */
+		competitorName: text("competitor_name").notNull(),
+		runs: integer("runs").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_competitor_mentions_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.competitorName,
+			],
+		}),
+		index("rollup_competitor_mentions_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/**
+ * Shared by every tenant, so classification here is the tenant-independent half;
+ * brand and competitor domains are applied at read time.
+ */
+export const citedPages = pgTable(
+	"cited_pages",
+	{
+		id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey().notNull(),
+		url: text("url").notNull().unique(),
+		domain: text("domain").notNull(),
+		/** Most recently seen non-null title. */
+		title: text("title"),
+		pageType: text("page_type").notNull(),
+		staticCategory: text("static_category").notNull(),
+		classifierVersion: integer("classifier_version").notNull(),
+		firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),
+		lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+	},
+	(table) => [index("cited_pages_domain_idx").on(table.domain)],
+).enableRLS();
+
+export const rollupCitationUrls = pgTable(
+	"rollup_citation_urls",
+	{
+		...rollupKeyColumns(),
+		pageId: bigint("page_id", { mode: "number" })
+			.notNull()
+			.references(() => citedPages.id),
+		/** Denormalized from cited_pages so domain reads need no join. */
+		domain: text("domain").notNull(),
+		citations: integer("citations").notNull(),
+		/** Over `citations`, so the mean position can be re-aggregated across buckets. */
+		positionSum: integer("position_sum").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_citation_urls_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.pageId,
+			],
+		}),
+		index("rollup_citation_urls_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/** Genuine fan-out queries, each counted once per run that searched it. */
+export const rollupWebQueries = pgTable(
+	"rollup_web_queries",
+	{
+		...rollupKeyColumns(),
+		/** Normalized; see `normalizedWebQuery`. */
+		query: text("query").notNull(),
+		runs: integer("runs").notNull(),
+		brandMentionedRuns: integer("brand_mentioned_runs").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_web_queries_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.query,
+			],
+		}),
+		index("rollup_web_queries_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/**
+ * Invalidation outbox. Whoever changes raw data or interpretation marks the
+ * affected buckets in the same transaction; the refresh job deletes marks in
+ * the transaction that rebuilds them, so a rebuild that fails leaves its marks
+ * behind and a write that lands mid-rebuild leaves a fresh one.
+ */
+export const rollupDirty = pgTable(
+	"rollup_dirty",
+	{
+		brandId: text("brand_id").notNull(),
+		bucket: timestamp("bucket", { withTimezone: true }).notNull(),
+		firstMarkedAt: timestamp("first_marked_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => [
+		primaryKey({ name: "rollup_dirty_pk", columns: [table.brandId, table.bucket] }),
+		index("rollup_dirty_bucket_idx").on(table.bucket),
+	],
+).enableRLS();
+
+/**
+ * Single row recording which `ROLLUP_VERSION` the stored rollups were built
+ * with. The worker compares it on startup and marks everything for a rebuild
+ * when the code has moved on.
+ */
+export const pipelineState = pgTable(
+	"pipeline_state",
+	{
+		id: smallint("id").primaryKey().default(1),
+		rollupVersion: integer("rollup_version").notNull().default(0),
+	},
+	() => [check("pipeline_state_singleton", sql`id = 1`)],
+).enableRLS();
+
+export type CitedPage = typeof citedPages.$inferSelect;
+
+export type PipelineState = typeof pipelineState.$inferSelect;

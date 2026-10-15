@@ -144,7 +144,7 @@ describe("runReprocess", () => {
 
 		const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
 		expect(brand.analysisVersions).toEqual(await currentVersions(brandId));
-		expect(send).not.toHaveBeenCalled();
+		expect(sentFor(send, brandId)).toEqual([]);
 	});
 
 	it("leaves runs that are already current untouched", async () => {
@@ -169,7 +169,7 @@ describe("runReprocess", () => {
 		expect(runs).toHaveLength(450);
 		const extracted = (await currentVersions(brandId))[EXTRACTION_KEY];
 		expect(runs.every((run) => run.brandMentioned && run.extractionStamp === extracted)).toBe(true);
-		expect(send).not.toHaveBeenCalled();
+		expect(sentFor(send, brandId)).toEqual([]);
 	});
 
 	it("re-derives runs a pass already handled when the brand's config changes before it finishes", async () => {

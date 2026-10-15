@@ -2,12 +2,16 @@ import * as Sentry from "@sentry/node";
 import { assertRequiredEnv } from "@workspace/config/env";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeploymentFeatures } from "@workspace/deployment";
+import { db } from "@workspace/lib/db/db";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
+import { resolveUnpagedCitations } from "@workspace/lib/rollups";
+import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
 import { fillLegacyText } from "./jobs/fill-legacy-text";
 import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
+import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 
 if (process.env.SENTRY_DSN) {
@@ -84,6 +88,19 @@ async function main() {
 			expireInSeconds: 60 * 10,
 		});
 	}
+	await boss.createQueue(REFRESH_ROLLUPS_QUEUE, {
+		retryLimit: 2,
+		retryDelay: 30,
+		retryBackoff: true,
+		expireInSeconds: 60 * 5,
+	});
+	await boss.createQueue(ROLLUP_CATCH_UP_QUEUE, {
+		retryLimit: 5,
+		retryDelay: 60,
+		retryBackoff: true,
+		// A full mark scans all of prompt_runs once.
+		expireInSeconds: 60 * 60,
+	});
 	await boss.createQueue(REPROCESS_QUEUE, {
 		policy: "stately",
 		retryLimit: 2,
@@ -106,6 +123,16 @@ async function main() {
 	const adopted = await adoptCurrentStamps();
 	if (adopted > 0) console.log(`Adopted current analysis stamps for ${adopted} brands`);
 
+	await boss.schedule(
+		REFRESH_ROLLUPS_QUEUE,
+		"* * * * *",
+		{ source: "scheduled" },
+		{ tz: "UTC", singletonKey: REFRESH_ROLLUPS_QUEUE },
+	);
+	console.log("Scheduled refresh-rollups job (every minute)");
+
+	await initializePipeline(boss);
+
 	// Register job handlers
 	await registerHandlers(boss);
 	console.log("All handlers registered, worker is ready");
@@ -116,6 +143,12 @@ async function main() {
 			if (filled > 0) console.log(`Filled stored text for ${filled} runs that predate it`);
 		})
 		.catch((error) => console.error("Filling stored text for older runs failed:", error));
+	// Likewise for citations stored before their pages were resolved at write time.
+	resolveUnpagedCitations(db)
+		.then((resolved) => {
+			if (resolved > 0) console.log(`Resolved pages for ${resolved} older citations`);
+		})
+		.catch((error) => console.error("Resolving pages for older citations failed:", error));
 }
 
 main().catch(async (error) => {

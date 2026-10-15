@@ -92,8 +92,12 @@ jobs:
       - name: Unit tests
         run: pnpm turbo test
 
+      # One package at a time: the lib suite truncates tables the others write to.
       - name: Integration tests
-        run: pnpm -C apps/web test:integration
+        run: |
+          pnpm -C apps/web test:integration
+          pnpm -C apps/worker test:integration
+          pnpm -C packages/lib test:integration
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/elmo_test
           # Off UTC on purpose: a timestamp that loses its zone between Postgres

@@ -114,10 +114,13 @@ describe("mentionsStamp", () => {
 		expect(mentionsStamp(recased)).toBe(mentionsStamp(config));
 	});
 
-	it("changes when a competitor is renamed, even only in case, since runs store the name verbatim", () => {
-		const recased = { ...config, competitors: [{ ...config.competitors[0], name: "GLOBEX" }, config.competitors[1]] };
-		expect(mentionsStamp(recased)).not.toBe(mentionsStamp(config));
-	});
+	it.each(["GLOBEX", "Globex "])(
+		"changes when a competitor is renamed to %j, since runs and rollups store the name verbatim",
+		(name) => {
+			const renamed = { ...config, competitors: [{ ...config.competitors[0], name }, config.competitors[1]] };
+			expect(mentionsStamp(renamed)).not.toBe(mentionsStamp(config));
+		},
+	);
 });
 
 describe("mentionConfigFrom", () => {
