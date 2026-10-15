@@ -146,7 +146,7 @@ export function toBatchChartData(
  * observation so days before its first run still contribute — otherwise a
  * staggered schedule reads as a ramp-up rather than steady coverage.
  */
-function carryForward<V>(
+export function carryForward<V>(
 	byPrompt: Map<string, Map<string, V>>,
 	dateRange: string[],
 	visit: (promptId: string, date: string, carried: V, actual: V | undefined) => void,

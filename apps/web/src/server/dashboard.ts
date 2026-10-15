@@ -2,10 +2,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
-import { brandOf, type Landscape, type LandscapeMetric } from "@/lib/landscape";
+import { brandOf, LANDSCAPE_METRICS, type Landscape, type LandscapeMetric } from "@/lib/landscape";
 import { lookbackSchema } from "@/lib/lookback";
 import { getMentionTotals } from "@/lib/rollup-read";
-import { getBrandShareSeries, getBrandVisibility, getCompetitiveLandscape } from "@/server/analytics-core";
+import { getCompetitiveLandscape } from "@/server/analytics-core";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -53,37 +53,33 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const window = { from: fromDateStr, to: toDateStr, timezone };
 		const filters = { model: data.model, tags: data.tags };
-		const [visibility, shareSeries, landscape, lastRunAt] = await Promise.all([
-			getBrandVisibility(data.brandId, window, filters),
-			getBrandShareSeries(data.brandId, window, filters),
+		const [landscape, prompts] = await Promise.all([
 			getCompetitiveLandscape(data.brandId, window, filters),
-			resolveFilteredPrompts(data.brandId, { tags: data.tags }).then(async (prompts) =>
-				prompts.length === 0
-					? null
-					: (
-							await getMentionTotals({
-								...window,
-								brandId: data.brandId,
-								promptIds: prompts.map((p) => p.id),
-								model: data.model,
-							})
-						).last_run_at,
-			),
+			resolveFilteredPrompts(data.brandId, { tags: data.tags }),
 		]);
+		const totals =
+			prompts.length === 0
+				? null
+				: await getMentionTotals({
+						...window,
+						brandId: data.brandId,
+						promptIds: prompts.map((p) => p.id),
+						model: data.model,
+					});
+		// Every card is the brand's own line in the landscape, so each matches its row and its page.
 		const brand = brandOf(landscape);
-		const brandSeries = (metric: "sentiment" | "position") =>
-			landscape.dates.map((date, i) => ({ date, value: brand.series[metric][i] }));
+		const cards = Object.fromEntries(
+			LANDSCAPE_METRICS.map((metric) => [
+				metric,
+				card(landscape.dates.map((date, i) => ({ date, value: brand.series[metric][i] }))),
+			]),
+		) as DashboardSummaryResponse["cards"];
 
 		return {
-			totalPrompts: visibility.totalPrompts,
-			totalRuns: visibility.totalRuns,
-			lastUpdatedAt: lastRunAt,
-			cards: {
-				visibility: card(visibility.series.map((p) => ({ date: p.date, value: p.visibility }))),
-				share: card(shareSeries.map((p) => ({ date: p.date, value: p.share }))),
-				sentiment: card(brandSeries("sentiment")),
-				position: card(brandSeries("position")),
-			},
+			totalPrompts: prompts.length,
+			totalRuns: totals?.runs ?? 0,
+			lastUpdatedAt: totals?.last_run_at ?? null,
+			cards,
 			landscape,
 		};
 	});

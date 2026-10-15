@@ -481,54 +481,48 @@ export async function getDailyVerdicts(scope: AnalyticsScope): Promise<DailyVerd
 	`);
 }
 
-export interface DailyRunSums extends RunSums, VerdictSums {
+export interface PromptModelDailyRuns extends RunSums, VerdictSums {
+	prompt_id: string;
+	model: string;
 	date: string;
 }
 
-/** Per local day, the brand's run and verdict sums. */
-export async function getDailyRunSums(scope: AnalyticsScope): Promise<DailyRunSums[]> {
-	return queryPg<DailyRunSums>(sql`
-		SELECT to_char(${localDate(sql`bucket`, scope.timezone)}, 'YYYY-MM-DD') AS date, ${runSums}, ${verdictSums}
+/** Per prompt, model and local day, the run and brand verdict sums. */
+export async function getPromptModelDailyRuns(scope: AnalyticsScope): Promise<PromptModelDailyRuns[]> {
+	return queryPg<PromptModelDailyRuns>(sql`
+		SELECT
+			prompt_id,
+			model,
+			to_char(${localDate(sql`bucket`, scope.timezone)}, 'YYYY-MM-DD') AS date,
+			${runSums},
+			${verdictSums}
 		FROM rollup_prompt_runs
 		WHERE ${rollupScope(scope)}
-		GROUP BY 1
-		ORDER BY 1
+		GROUP BY 1, 2, 3
 	`);
 }
 
-export interface DailyCompetitorSums extends VerdictSums {
+export interface PromptModelDailyCompetitor extends VerdictSums {
+	prompt_id: string;
+	model: string;
 	date: string;
 	competitor: string;
 	/** Runs that mentioned the competitor. */
 	runs: number;
 }
 
-/** Per local day and competitor, the runs mentioning it and its verdict sums. */
-export async function getDailyCompetitorSums(scope: AnalyticsScope): Promise<DailyCompetitorSums[]> {
-	return queryPg<DailyCompetitorSums>(sql`
+/** Per prompt, model, local day and competitor, the runs mentioning it and its verdict sums. */
+export async function getPromptModelDailyCompetitors(scope: AnalyticsScope): Promise<PromptModelDailyCompetitor[]> {
+	return queryPg<PromptModelDailyCompetitor>(sql`
 		SELECT
+			prompt_id,
+			model,
 			to_char(${localDate(sql`bucket`, scope.timezone)}, 'YYYY-MM-DD') AS date,
 			competitor_name AS competitor,
 			sum(runs)::int AS runs,
 			${verdictSums}
 		FROM rollup_competitor_mentions
 		WHERE ${rollupScope(scope)}
-		GROUP BY 1, 2
-		ORDER BY 1, 2
-	`);
-}
-
-export interface CompetitorModelSums extends VerdictSums {
-	competitor: string;
-	model: string;
-	runs: number;
-}
-
-export async function getCompetitorsByModel(scope: AnalyticsScope): Promise<CompetitorModelSums[]> {
-	return queryPg<CompetitorModelSums>(sql`
-		SELECT competitor_name AS competitor, model, sum(runs)::int AS runs, ${verdictSums}
-		FROM rollup_competitor_mentions
-		WHERE ${rollupScope(scope)}
-		GROUP BY 1, 2
+		GROUP BY 1, 2, 3, 4
 	`);
 }

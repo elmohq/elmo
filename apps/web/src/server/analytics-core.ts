@@ -21,10 +21,7 @@ import {
 	getCitationsCountByModel,
 	getCitationTotal,
 	getCitationUrlStats,
-	getCompetitorsByModel,
 	getCompetitorTotals,
-	getDailyCompetitorSums,
-	getDailyRunSums,
 	getDailyVerdicts,
 	getFanoutBreakdown,
 	getFanoutModelTotals,
@@ -33,6 +30,8 @@ import {
 	getPerPromptDailyCompetitors,
 	getPerPromptDailyRuns,
 	getPerPromptRunStats,
+	getPromptModelDailyCompetitors,
+	getPromptModelDailyRuns,
 	getPromptsFirstEvaluatedAt,
 	getRunsByModel,
 	getVisibilityDailyAggregate,
@@ -44,7 +43,6 @@ import {
 	mentionQuality,
 	NO_VERDICTS,
 	type PositionPoint,
-	SENTIMENT_WINDOW_DAYS,
 	type SentimentCounts,
 	type SentimentSummary,
 	sentimentCounts,
@@ -187,19 +185,6 @@ function shareSeries(perPromptDaily: PerPromptDailyRuns[], dateRange: string[]) 
 		})),
 		dateRange,
 	);
-}
-
-/** The brand's share-of-voice trend alone, as the full standings plot it. */
-export async function getBrandShareSeries(
-	brandId: string,
-	window: AnalyticsWindow,
-	filters: AnalyticsFilters = {},
-): Promise<BrandShareOfVoice["series"]> {
-	const { promptIds } = await resolveScope(brandId, filters);
-	if (promptIds.length === 0) return [];
-	const bounds = windowInstants(window);
-	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
-	return shareSeries(await getPerPromptDailyRuns(analyticsScope(brandId, window, promptIds, filters)), dateRange);
 }
 
 export async function getBrandShareOfVoice(
@@ -559,8 +544,7 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 
 /**
  * The brand and its tracked competitors on visibility, share of voice, sentiment and position,
- * overall, per model and per day. Daily values cover a trailing week, so the query reaches back
- * a week before the window when it starts on a calendar day.
+ * as of each day of the window, overall and per model.
  */
 export async function getCompetitiveLandscape(
 	brandId: string,
@@ -582,34 +566,10 @@ export async function getCompetitiveLandscape(
 		name: c.name,
 		domain: c.domains[0] ? extractDomain(c.domains[0]) : null,
 	}));
-	if (resolved.promptIds.length === 0) {
-		return buildLandscape({
-			brand,
-			competitors: tracked,
-			dates,
-			brandDaily: [],
-			competitorDaily: [],
-			brandByModel: [],
-			competitorsByModel: [],
-		});
-	}
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
-	const reachBack = isCalendarDay(window.from)
-		? { ...scope, from: shiftDateStr(window.from, { days: 1 - SENTIMENT_WINDOW_DAYS }) }
-		: scope;
-	const [brandDaily, competitorDaily, brandByModel, competitorsByModel] = await Promise.all([
-		getDailyRunSums(reachBack),
-		getDailyCompetitorSums(reachBack),
-		getRunsByModel(scope),
-		getCompetitorsByModel(scope),
-	]);
-	return buildLandscape({
-		brand,
-		competitors: tracked,
-		dates,
-		brandDaily,
-		competitorDaily,
-		brandByModel,
-		competitorsByModel,
-	});
+	const [runs, competitorRuns] =
+		resolved.promptIds.length === 0
+			? [[], []]
+			: await Promise.all([getPromptModelDailyRuns(scope), getPromptModelDailyCompetitors(scope)]);
+	return buildLandscape({ brand, competitors: tracked, dates, runs, competitorRuns });
 }
