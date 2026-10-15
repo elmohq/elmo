@@ -67,7 +67,7 @@ afterAll(async () => {
 });
 
 describe("run verdicts", () => {
-	it("gives a single run each verdict with the passage it rests on", async () => {
+	it("gives a single run each verdict, without the passages it rests on", async () => {
 		const run = await findRunDetail(promptId, judgedRunId);
 		expect(run?.assessments?.brand).toEqual({
 			mention: "mentioned",
@@ -77,17 +77,16 @@ describe("run verdicts", () => {
 			sentimentProbabilities: { positive: 0.9, neutral: 0.06, negative: 0.02, mixed: 0.02 },
 			position: 1,
 			mentionCount: 1,
-			evidence: "For small teams, Acme is the easiest pick.",
 		});
 		expect(run?.assessments?.competitors.Globex).toMatchObject({
 			mention: "uncertain",
 			reason: "other_company",
 			sentiment: null,
-			evidence: "Globex is cheaper but clunky.",
 		});
+		expect(run?.assessments?.competitors.Globex).not.toHaveProperty("evidence");
 	});
 
-	it("lists verdicts without passages, and none for runs the judge never saw", async () => {
+	it("lists verdicts, and none for runs the judge never saw", async () => {
 		const { data } = await listPromptRuns({ promptId, window, limit: 10, offset: 0 });
 		const byId = new Map(data.map((run) => [run.id, run]));
 		expect(byId.get(judgedRunId)?.assessments?.brand).not.toHaveProperty("evidence");

@@ -8,7 +8,6 @@ import { citations, promptRuns } from "@workspace/lib/db/schema";
 import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/lib/mentions";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq } from "drizzle-orm";
-import { evidencePassage } from "@/lib/evidence";
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 
@@ -40,17 +39,11 @@ export interface MentionAssessment {
 	mentionCount: number | null;
 }
 
-/** As a single run reports a verdict. */
-export interface MentionAssessmentDetail extends MentionAssessment {
-	/** The passage the verdict rests on; null when there is none, as for a link-only mention. */
-	evidence: string | null;
-}
-
-export interface RunAssessments<T extends MentionAssessment = MentionAssessment> {
+export interface RunAssessments {
 	/** Null when the answer never names the brand. */
-	brand: T | null;
+	brand: MentionAssessment | null;
 	/** Keyed by competitor name; only competitors the answer names. */
-	competitors: Record<string, T>;
+	competitors: Record<string, MentionAssessment>;
 }
 
 const publicAssessment = (record: MentionAssessmentRecord): MentionAssessment => ({
@@ -63,15 +56,12 @@ const publicAssessment = (record: MentionAssessmentRecord): MentionAssessment =>
 	mentionCount: record.mentionCount ?? null,
 });
 
-/** Fingerprints and offsets stay internal; `convert` decides what each verdict shows. */
-function publicAssessments<T extends MentionAssessment>(
-	stored: RunMentionAssessments | null,
-	convert: (record: MentionAssessmentRecord) => T,
-): RunAssessments<T> | null {
+/** Fingerprints and evidence offsets stay internal. */
+function publicAssessments(stored: RunMentionAssessments | null): RunAssessments | null {
 	if (!stored) return null;
 	return {
-		brand: stored.brand ? convert(stored.brand) : null,
-		competitors: Object.fromEntries(Object.entries(stored.competitors).map(([name, r]) => [name, convert(r)])),
+		brand: stored.brand ? publicAssessment(stored.brand) : null,
+		competitors: Object.fromEntries(Object.entries(stored.competitors).map(([name, r]) => [name, publicAssessment(r)])),
 	};
 }
 
@@ -82,9 +72,7 @@ interface RunCitation {
 	citationIndex: number | null;
 }
 
-export interface RunDetail extends Omit<RunSummary, "citationCount" | "assessments"> {
-	/** Clients don't hold the stored text the evidence offsets index, so a single run quotes the passages. */
-	assessments: RunAssessments<MentionAssessmentDetail> | null;
+export interface RunDetail extends Omit<RunSummary, "citationCount"> {
 	citationCount: number;
 	answer: { text: string | null };
 	citations: RunCitation[];
@@ -117,7 +105,7 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 			webSearchEnabled: row.web_search_enabled,
 			brandMentioned: row.brand_mentioned,
 			competitorsMentioned: row.competitors_mentioned,
-			assessments: publicAssessments(row.assessments, publicAssessment),
+			assessments: publicAssessments(row.assessments),
 			webQueries: row.web_queries,
 			citationCount: row.citation_count,
 			createdAt: row.created_at,
@@ -158,10 +146,7 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 		webSearchEnabled: run.webSearchEnabled,
 		brandMentioned: run.brandMentioned,
 		competitorsMentioned: run.competitorsMentioned,
-		assessments: publicAssessments(run.mentionAssessments, (record) => ({
-			...publicAssessment(record),
-			evidence: evidencePassage(run.textContent, record),
-		})),
+		assessments: publicAssessments(run.mentionAssessments),
 		webQueries: run.webQueries,
 		citationCount: cited.length,
 		createdAt: run.createdAt,
