@@ -93,7 +93,7 @@ async function insertLegacyRuns(runs: ReturnType<typeof legacyRun>[]): Promise<v
 async function currentVersions(id: string) {
 	const [brand] = await db.select().from(brands).where(eq(brands.id, id));
 	const brandCompetitors = await db.select().from(competitors).where(eq(competitors.brandId, id));
-	return currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors));
+	return currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors), null);
 }
 
 async function runsInWalkOrder() {

@@ -25,7 +25,7 @@ import { type Citation, extractRun } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gte, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
-import { mentionAnalyzer } from "../mention-judge/analyze";
+import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge/analyze";
 
 export const REPROCESS_QUEUE = "reprocess";
 
@@ -92,12 +92,14 @@ export async function deriveRunUpdate(
 	layers: ReprocessLayer[],
 	target: AnalysisVersions,
 	config: MentionConfig,
+	analyzer: MentionAnalyzer,
 ): Promise<RunUpdate> {
 	const update: RunUpdate = { kept: [] };
 	const extract = layers.includes("extraction") && isStale(run, "extraction", target);
 	const text = extract || run.textContent === null ? reextract(run, extract, target, update) : run.textContent;
 	if (layers.includes("interpretation") && isStale(run, "interpretation", target)) {
-		update.mentions = { ...(await rederiveMentions(run, text, config, update)), stamp: target[MENTIONS_KEY] };
+		const mentions = await rederiveMentions(run, text, config, analyzer, update);
+		update.mentions = { ...mentions, stamp: target[MENTIONS_KEY] };
 	}
 	return update;
 }
@@ -119,16 +121,17 @@ async function rederiveMentions(
 	run: StaleRun,
 	text: string | null,
 	config: MentionConfig,
+	analyzer: MentionAnalyzer,
 	update: RunUpdate,
-): Promise<Omit<NonNullable<RunUpdate["mentions"]>, "stamp">> {
+): Promise<RunMentions> {
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
 		// Verdicts can be kept only while the text they were judged on, and point into, is unchanged.
 		const previous = text === run.textContent ? run.assessments : null;
-		const { mentionAssessments, ...mentions } = await mentionAnalyzer().analyze(text, config, previous);
-		return { ...mentions, assessments: mentionAssessments };
+		return analyzer.analyze(text, config, previous);
 	}
 	update.kept.push("mentions");
-	return { brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned, assessments: null };
+	const { brandMentioned, competitorsMentioned, assessments } = run;
+	return { brandMentioned, competitorsMentioned, assessments };
 }
 
 const STAMP_COLUMN: Record<ReprocessLayer, SQL> = {
@@ -203,6 +206,7 @@ interface Pass {
 	layers: ReprocessLayer[];
 	target: AnalysisVersions;
 	config: MentionConfig;
+	analyzer: MentionAnalyzer;
 	/** Runs whose stored payload yielded less than they already had; see `deriveRunUpdate`. */
 	keptRuns: number;
 }
@@ -215,7 +219,7 @@ async function deriveUpdates(pass: Pass, runs: StaleRun[], deadline: number) {
 	const updates: { run: StaleRun; update: RunUpdate }[] = [];
 	for (const run of runs) {
 		if (Date.now() > deadline) break;
-		updates.push({ run, update: await deriveRunUpdate(run, pass.layers, pass.target, pass.config) });
+		updates.push({ run, update: await deriveRunUpdate(run, pass.layers, pass.target, pass.config, pass.analyzer) });
 	}
 	return updates;
 }
@@ -316,12 +320,13 @@ function pickLayers(versions: AnalysisVersions, layers: ReprocessLayer[]): Analy
 async function loadBrand(
 	conn: DbConnection,
 	brandId: string,
+	analyzer: MentionAnalyzer,
 ): Promise<{ brand: Brand; config: MentionConfig; current: AnalysisVersions } | null> {
 	const [brand] = await conn.select().from(brands).where(eq(brands.id, brandId)).limit(1);
 	if (!brand) return null;
 	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));
 	const config = mentionConfigFrom(brand, brandCompetitors);
-	return { brand, config, current: currentAnalysisVersions(config, mentionAnalyzer().judgeVersion) };
+	return { brand, config, current: currentAnalysisVersions(config, analyzer.judgeVersion) };
 }
 
 /** Stately per brand: one job runs and at most one waits, so passes for a brand never interleave. */
@@ -339,9 +344,10 @@ export async function runReprocess(
 	data: ReprocessData,
 	conn: DbConnection = db,
 	boss: Pick<PgBoss, "send"> = getBoss(),
+	analyzer: MentionAnalyzer = mentionAnalyzer(),
 ): Promise<void> {
 	const deadline = Date.now() + TIME_BUDGET_MS;
-	const context = await loadBrand(conn, data.brandId);
+	const context = await loadBrand(conn, data.brandId, analyzer);
 	if (!context) {
 		console.log(`[reprocess] brand ${data.brandId} no longer exists, skipping`);
 		return;
@@ -351,6 +357,7 @@ export async function runReprocess(
 		layers: data.layers,
 		target: context.current,
 		config: context.config,
+		analyzer,
 		keptRuns: 0,
 	};
 
@@ -381,7 +388,7 @@ export async function runReprocess(
 	// Stamping the brand after its config moved would hide the history derived
 	// from the old one; left stale, the next maintenance pass requests a new pass.
 	const target = pickLayers(pass.target, data.layers);
-	const latest = await loadBrand(conn, data.brandId);
+	const latest = await loadBrand(conn, data.brandId, analyzer);
 	if (!latest || JSON.stringify(pickLayers(latest.current, data.layers)) !== JSON.stringify(target)) {
 		console.log(`[reprocess] brand ${data.brandId} config changed during the pass, leaving it stale`);
 		return;
@@ -446,7 +453,7 @@ export async function adoptCurrentStamps(conn: DbConnection = db): Promise<numbe
 		const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brand.id));
 		const updated = await conn
 			.update(brands)
-			.set({ analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors)) })
+			.set({ analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors), null) })
 			.where(and(eq(brands.id, brand.id), isNull(brands.analysisVersions)))
 			.returning({ id: brands.id });
 		adopted += updated.length;
