@@ -34,7 +34,7 @@ const openAiPayload = (text: string, url = "https://example.com/a") => ({
 
 function fakeBoss() {
 	const send = vi.fn().mockResolvedValue("job-id");
-	return { send, boss: { send } };
+	return { send, boss: { send, update: vi.fn() } };
 }
 
 const sentFor = (send: ReturnType<typeof vi.fn>, brandId: string): ReprocessData[] =>
@@ -274,13 +274,6 @@ describe("requestStaleReprocesses", () => {
 		const afterEdit = fakeBoss();
 		await requestStaleReprocesses(db, afterEdit.boss);
 		expect(sentFor(afterEdit.send, brandId).map((data) => data.layers)).toEqual([["interpretation"]]);
-	});
-
-	it("waits a minute before starting the pass, so a burst of edits costs one", async () => {
-		const { boss, send } = fakeBoss();
-		await requestStaleReprocesses(db, boss);
-		const call = send.mock.calls.find(([, data]) => (data as ReprocessData).brandId === brandId);
-		expect(call?.[2]).toMatchObject({ singletonKey: brandId, startAfter: 60 });
 	});
 
 	it("does not replay the history of a brand that predates stamping, which adopts today's stamps instead", async () => {

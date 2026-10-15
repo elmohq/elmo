@@ -22,7 +22,7 @@ import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } fro
 import { insertRunsCitations, markDirty } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, extractRun } from "@workspace/lib/text-extraction";
-import { and, asc, eq, gte, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
 import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge/analyze";
@@ -159,9 +159,8 @@ async function loadStaleRuns(
 	conn: DbConnection,
 	pass: Pass,
 	promptId: string,
+	/** Runs created before this are skipped; null walks the whole history. */
 	from: Date | null,
-	/** Limits the walk to runs created since then; null walks the whole history. */
-	since: Date | null,
 	limit = BATCH_SIZE,
 ): Promise<StaleRun[]> {
 	const rows = await conn
@@ -187,7 +186,6 @@ async function loadStaleRuns(
 				eq(promptRuns.promptId, promptId),
 				eq(promptRuns.brandId, pass.brandId),
 				from ? gte(promptRuns.createdAt, from) : undefined,
-				since ? gte(promptRuns.createdAt, since) : undefined,
 				or(...pass.layers.map((layer) => staleFor(layer, pass.target))),
 			),
 		)
@@ -218,6 +216,7 @@ interface Pass {
 	target: AnalysisVersions;
 	config: MentionConfig;
 	analyzer: MentionAnalyzer;
+	rewrittenRuns: number;
 	/** Runs whose stored payload yielded less than they already had; see `deriveRunUpdate`. */
 	keptRuns: number;
 }
@@ -285,43 +284,56 @@ function rewriteRuns(conn: DbConnection, pass: Pass, updates: { run: StaleRun; u
 	});
 }
 
-/** Rewrites a prompt's stale runs, returning how many; null when the deadline cut it short. */
+/** Rewrites a prompt's stale runs created since `since`; false when the deadline cut it short. */
 async function reprocessPrompt(
 	conn: DbConnection,
 	pass: Pass,
 	promptId: string,
 	deadline: number,
 	since: Date | null,
-): Promise<number | null> {
-	let from: Date | null = null;
-	let rewritten = 0;
+): Promise<boolean> {
+	let from = since;
 	for (;;) {
-		if (Date.now() > deadline) return null;
-		const runs = await loadStaleRuns(conn, pass, promptId, from, since);
+		if (Date.now() > deadline) return false;
+		const runs = await loadStaleRuns(conn, pass, promptId, from);
 		const updates = await deriveUpdates(pass, runs, deadline);
 		if (updates.length > 0) pass.keptRuns += await rewriteRuns(conn, pass, updates);
-		rewritten += updates.length;
-		if (updates.length < runs.length) return null;
-		if (runs.length < BATCH_SIZE) return rewritten;
+		pass.rewrittenRuns += updates.length;
+		if (updates.length < runs.length) return false;
+		if (runs.length < BATCH_SIZE) return true;
 		from = runs[runs.length - 1].createdAt;
 	}
 }
 
-/** How many runs were rewritten; null when the deadline cut the walk short. */
 async function reprocessPrompts(
 	conn: DbConnection,
 	pass: Pass,
 	promptIds: string[],
 	deadline: number,
 	since: Date | null,
-): Promise<number | null> {
-	let rewritten = 0;
+): Promise<boolean> {
 	for (const id of promptIds) {
-		const count = await reprocessPrompt(conn, pass, id, deadline, since);
-		if (count === null) return null;
-		rewritten += count;
+		if (!(await reprocessPrompt(conn, pass, id, deadline, since))) return false;
 	}
-	return rewritten;
+	return true;
+}
+
+/** Whether any of the brand's runs, or any created before `before`, still need the pass. */
+async function hasStaleRuns(conn: DbConnection, pass: Pass, before?: Date): Promise<boolean> {
+	const [row] = await conn
+		.select({ id: promptRuns.id })
+		.from(promptRuns)
+		.innerJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
+		.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id))
+		.where(
+			and(
+				eq(promptRuns.brandId, pass.brandId),
+				before ? lt(promptRuns.createdAt, before) : undefined,
+				or(...pass.layers.map((layer) => staleFor(layer, pass.target))),
+			),
+		)
+		.limit(1);
+	return row !== undefined;
 }
 
 function sameTags(a: string[], b: string[]): boolean {
@@ -378,6 +390,15 @@ export function sendReprocess(
 }
 
 /**
+ * Queues the next pass now. A pass the minute's request already queued holds the brand's one
+ * waiting slot, but behind its settling delay, so it's brought forward instead.
+ */
+async function continueReprocess(boss: Pick<PgBoss, "send" | "update">, data: ReprocessData): Promise<void> {
+	if (await sendReprocess(boss, data)) return;
+	await boss.update(REPROCESS_QUEUE, undefined, { singletonKey: data.brandId, startAfter: new Date() });
+}
+
+/**
  * Recent runs first, across every prompt: they're what the dashboards show. Having rewritten any,
  * the pass yields, so every brand queued behind it gets its recent runs done before any brand
  * moves on to older history.
@@ -388,10 +409,11 @@ async function walkRecentFirst(
 	promptIds: string[],
 	deadline: number,
 ): Promise<"done" | "yielded" | "out of time"> {
-	const recent = await reprocessPrompts(conn, pass, promptIds, deadline, new Date(Date.now() - RECENT_FIRST_MS));
-	if (recent === null) return "out of time";
-	if (recent > 0) return "yielded";
-	return (await reprocessPrompts(conn, pass, promptIds, deadline, null)) === null ? "out of time" : "done";
+	const cutoff = new Date(Date.now() - RECENT_FIRST_MS);
+	if (!(await reprocessPrompts(conn, pass, promptIds, deadline, cutoff))) return "out of time";
+	// Yielding only matters when older history is left; otherwise the pass finishes here.
+	if (pass.rewrittenRuns > 0 && (await hasStaleRuns(conn, pass, cutoff))) return "yielded";
+	return (await reprocessPrompts(conn, pass, promptIds, deadline, null)) ? "done" : "out of time";
 }
 
 /**
@@ -403,7 +425,7 @@ async function walkRecentFirst(
 export async function runReprocess(
 	data: ReprocessData,
 	conn: DbConnection = db,
-	boss: Pick<PgBoss, "send"> = getBoss(),
+	boss: Pick<PgBoss, "send" | "update"> = getBoss(),
 	analyzer: MentionAnalyzer = mentionAnalyzer(),
 ): Promise<void> {
 	const deadline = Date.now() + TIME_BUDGET_MS;
@@ -418,6 +440,7 @@ export async function runReprocess(
 		target: context.current,
 		config: context.config,
 		analyzer,
+		rewrittenRuns: 0,
 		keptRuns: 0,
 	};
 
@@ -438,9 +461,9 @@ export async function runReprocess(
 		);
 	}
 	if (walk !== "done") {
-		const sent = await sendReprocess(boss, data);
+		await continueReprocess(boss, data);
 		const why = walk === "yielded" ? "recent runs done, older history next" : "out of time";
-		console.log(`[reprocess] brand ${data.brandId} ${why}; ${sent ? "continuing" : "a queued pass continues"}`);
+		console.log(`[reprocess] brand ${data.brandId} ${why}; continuing`);
 		return;
 	}
 
@@ -465,11 +488,9 @@ export async function runReprocess(
 	// A run whose writer read the old config can commit after the walk passed its
 	// prompt. Checking after stamping misses it only if that write stayed open
 	// through the whole pass.
-	for (const { id } of brandPrompts) {
-		if ((await loadStaleRuns(conn, pass, id, null, null, 1)).length === 0) continue;
-		await sendReprocess(boss, data);
+	if (await hasStaleRuns(conn, pass)) {
+		await continueReprocess(boss, data);
 		console.log(`[reprocess] brand ${data.brandId} has runs written mid-pass, going again`);
-		return;
 	}
 }
 
