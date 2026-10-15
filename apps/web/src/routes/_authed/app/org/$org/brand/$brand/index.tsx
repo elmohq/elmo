@@ -152,7 +152,6 @@ function TrendSection({
 	icon: Icon,
 	title,
 	linkTo,
-	linkSearch,
 	linkLabel,
 	chartTitle,
 	chartLabel,
@@ -167,7 +166,6 @@ function TrendSection({
 		| "/app/org/$org/brand/$brand/visibility"
 		| "/app/org/$org/brand/$brand/share-of-voice"
 		| "/app/org/$org/brand/$brand/responses";
-	linkSearch?: { uncertain?: boolean };
 	linkLabel: string;
 	chartTitle: string;
 	chartLabel: string;
@@ -188,7 +186,6 @@ function TrendSection({
 				<Link
 					to={linkTo}
 					params={params}
-					search={linkSearch}
 					className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
 				>
 					{linkLabel} <IconArrowRight className="h-4 w-4 ml-1" />
@@ -426,10 +423,10 @@ function useReportedPromptCount(totalPrompts: number | undefined) {
 const visibilityTooltipText = (nonBrandedVisibility: number) =>
 	`The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${nonBrandedVisibility}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`;
 
-function sentimentTooltipText(sentiment: SentimentCounts & { uncertainMentions: number }) {
+function sentimentTooltipText(sentiment: SentimentCounts) {
 	const judged = sentiment.positive + sentiment.neutral + sentiment.negative + sentiment.mixed;
 	const negative = judged > 0 ? Math.round((sentiment.negative / judged) * 100) : 0;
-	return `The share of AI answers mentioning your brand that speak of it positively, over the trailing week — the big number is the latest point on this line. Over the month, ${negative}% were negative; the rest were neutral, mixed, or too unclear to call. ${sentiment.uncertainMentions} answers were unclear about whether they meant your brand at all; review them under Responses.`;
+	return `The share of AI answers mentioning your brand that speak of it positively, over the trailing week — the big number is the latest point on this line. Over the month, ${negative}% were negative; the rest were neutral, mixed, or too unclear to call.`;
 }
 
 /** Sentiment comes from the mention judge; a brand with nothing judged has nothing to plot. */
@@ -438,19 +435,17 @@ function SentimentSection({
 	series,
 	loading,
 }: {
-	sentiment?: SentimentCounts & { uncertainMentions: number };
+	sentiment?: SentimentCounts;
 	series: SentimentPoint[];
 	loading: boolean;
 }) {
 	if (!loading && !series.some((p) => p.positive !== null)) return null;
-	const unclear = sentiment?.uncertainMentions ?? 0;
 	return (
 		<TrendSection
 			icon={IconMoodSmile}
 			title="Sentiment"
 			linkTo="/app/org/$org/brand/$brand/responses"
-			linkSearch={unclear > 0 ? { uncertain: true } : undefined}
-			linkLabel={unclear > 0 ? "Review Unclear Answers" : "View Responses"}
+			linkLabel="View Responses"
 			chartTitle="Positive Mentions (30d)"
 			chartLabel="Positive (7d)"
 			tooltip={sentiment ? sentimentTooltipText(sentiment) : undefined}

@@ -37,15 +37,14 @@ export function sentimentSeries(rows: DailySentiment[], dateRange: string[], win
 	});
 }
 
-export function sentimentTotals(rows: DailySentiment[]): SentimentCounts & { uncertainMentions: number } {
+export function sentimentTotals(rows: DailySentiment[]): SentimentCounts {
 	return rows.reduce(
 		(sum, row) => ({
 			positive: sum.positive + row.positive_runs,
 			neutral: sum.neutral + row.neutral_runs,
 			negative: sum.negative + row.negative_runs,
 			mixed: sum.mixed + row.mixed_runs,
-			uncertainMentions: sum.uncertainMentions + row.uncertain_mention_runs,
 		}),
-		{ positive: 0, neutral: 0, negative: 0, mixed: 0, uncertainMentions: 0 },
+		{ positive: 0, neutral: 0, negative: 0, mixed: 0 },
 	);
 }

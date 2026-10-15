@@ -99,7 +99,7 @@ async function insertPromptRunRollup(
 		INSERT INTO ${rollupPromptRuns} (
 			brand_id, bucket, prompt_id, model, provider, web_search_enabled,
 			runs, brand_mentioned_runs, competitor_runs, competitor_mentions, no_mention_runs,
-			uncertain_mention_runs, positive_runs, neutral_runs, negative_runs, mixed_runs,
+			positive_runs, neutral_runs, negative_runs, mixed_runs,
 			fanout_runs, fanout_queries, first_run_at, last_run_at
 		)
 		SELECT
@@ -109,7 +109,6 @@ async function insertPromptRunRollup(
 			count(*) FILTER (WHERE cardinality(m.competitors_mentioned) > 0)::int,
 			coalesce(sum(cardinality(m.competitors_mentioned)), 0)::int,
 			count(*) FILTER (WHERE NOT m.brand_mentioned AND coalesce(cardinality(m.competitors_mentioned), 0) = 0)::int,
-			count(*) FILTER (WHERE m.brand_mentioned AND m.assessments->'brand'->>'mention' = 'uncertain')::int,
 			${brandSentiment("positive")},
 			${brandSentiment("neutral")},
 			${brandSentiment("negative")},

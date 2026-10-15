@@ -7,7 +7,6 @@ const day = (date: string, positive: number, negative: number, neutral = 0) => (
 	neutral_runs: neutral,
 	negative_runs: negative,
 	mixed_runs: 0,
-	uncertain_mention_runs: 0,
 });
 
 describe("sentimentSeries", () => {

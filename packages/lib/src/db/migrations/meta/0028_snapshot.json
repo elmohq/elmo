@@ -1,5 +1,5 @@
 {
-  "id": "f07046eb-1990-41bd-adf4-9f0397458f9e",
+  "id": "be080d90-1f3a-445d-a296-c006cb4b7aeb",
   "prevId": "02b16db2-3fc7-4b4d-bc68-22dba60ea92b",
   "version": "7",
   "dialect": "postgresql",
@@ -1568,13 +1568,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
-        },
-        "uncertain_mention_runs": {
-          "name": "uncertain_mention_runs",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
         },
         "positive_runs": {
           "name": "positive_runs",

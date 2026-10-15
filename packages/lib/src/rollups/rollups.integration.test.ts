@@ -368,7 +368,7 @@ describe("rollups against postgres", () => {
 		expect(first.lastRunAt.toISOString()).toBe("2026-01-15T10:08:00.000Z");
 	});
 
-	it("counts the judge's sentiment and unsure verdicts for runs that mention the brand", async () => {
+	it("counts the judge's sentiment for runs that mention the brand", async () => {
 		const judged = (runId: string, brand: RunMentionAssessments["brand"]) =>
 			db.update(runMentions).set({ assessments: { brand } }).where(eq(runMentions.runId, runId));
 		await judged(RUN(1), { mention: "mentioned", probability: 0.95, sentiment: "positive" });
@@ -380,10 +380,10 @@ describe("rollups against postgres", () => {
 		const rows = await runRollupRows(db);
 		const sentiment = (promptId: string) => {
 			const row = rows.find((r) => r.bucket.getTime() === B0.getTime() && r.promptId === promptId);
-			return [row?.positiveRuns, row?.negativeRuns, row?.uncertainMentionRuns];
+			return [row?.positiveRuns, row?.negativeRuns];
 		};
-		expect(sentiment(PROMPT_1)).toEqual([1, 0, 0]);
-		expect(sentiment(PROMPT_2)).toEqual([0, 1, 1]);
+		expect(sentiment(PROMPT_1)).toEqual([1, 0]);
+		expect(sentiment(PROMPT_2)).toEqual([0, 1]);
 	});
 
 	it("counts one row per competitor mentioned", async () => {

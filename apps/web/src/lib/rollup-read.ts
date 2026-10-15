@@ -457,7 +457,6 @@ export interface DailySentiment {
 	neutral_runs: number;
 	negative_runs: number;
 	mixed_runs: number;
-	uncertain_mention_runs: number;
 }
 
 /** Per local day, the runs mentioning the brand by the judge's sentiment toward it. */
@@ -468,8 +467,7 @@ export async function getDailySentiment(scope: AnalyticsScope): Promise<DailySen
 			sum(positive_runs)::int AS positive_runs,
 			sum(neutral_runs)::int AS neutral_runs,
 			sum(negative_runs)::int AS negative_runs,
-			sum(mixed_runs)::int AS mixed_runs,
-			sum(uncertain_mention_runs)::int AS uncertain_mention_runs
+			sum(mixed_runs)::int AS mixed_runs
 		FROM rollup_prompt_runs
 		WHERE ${rollupScope(scope)}
 		GROUP BY 1

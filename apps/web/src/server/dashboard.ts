@@ -41,7 +41,7 @@ export interface DashboardSummaryResponse {
 	brandedVisibility: number;
 	visibilityTimeSeries: VisibilityTimeSeriesPoint[];
 	citationTimeSeries: CitationTimeSeriesPoint[];
-	sentiment: SentimentCounts & { uncertainMentions: number };
+	sentiment: SentimentCounts;
 	sentimentTimeSeries: SentimentPoint[];
 	lastUpdatedAt: string | null;
 }

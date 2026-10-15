@@ -122,11 +122,7 @@ export async function countPromptRuns(
 // ============================================================================
 
 /** Runs a response search covers. Without a `query` every run in scope matches. */
-export type ResponseSearchScope = PromptListScope & {
-	query?: string;
-	/** Only answers where the mention judge couldn't tell whether the brand or a competitor was meant. */
-	uncertainOnly?: boolean;
-};
+export type ResponseSearchScope = PromptListScope & { query?: string };
 
 export interface ResponseMatchRow {
 	id: string;
@@ -150,14 +146,6 @@ function responseMatch(scope: ResponseSearchScope): SQL {
 	if (!scope.query) return sql`TRUE`;
 	const pattern = `%${scope.query.replace(/[\\%_]/g, "\\$&")}%`;
 	return sql`re.text_content ILIKE ${pattern}`;
-}
-
-function uncertainMatch(scope: ResponseSearchScope): SQL {
-	if (!scope.uncertainOnly) return sql`TRUE`;
-	return sql`(
-		rm.assessments->'brand'->>'mention' = 'uncertain'
-		OR EXISTS (SELECT 1 FROM jsonb_each(rm.assessments->'competitors') c WHERE c.value->>'mention' = 'uncertain')
-	)`;
 }
 
 export async function getResponseMatches(
@@ -184,7 +172,7 @@ export async function getResponseMatches(
 		FROM prompt_runs pr
 		JOIN run_mentions rm ON rm.run_id = pr.id
 		JOIN run_extractions re ON re.run_id = pr.id
-		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)} AND ${uncertainMatch(scope)}
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
 		ORDER BY pr.created_at DESC, pr.id
 		LIMIT ${limit} OFFSET ${offset}
 	`);
