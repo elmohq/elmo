@@ -16,7 +16,7 @@ export interface MetricMeta {
 	page:
 		| "/app/org/$org/brand/$brand/visibility"
 		| "/app/org/$org/brand/$brand/share-of-voice"
-		| "/app/org/$org/brand/$brand/responses";
+		| "/app/org/$org/brand/$brand/sentiment";
 }
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
@@ -52,7 +52,7 @@ export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 		formatChange: points,
 		lowerIsBetter: false,
 		tone: (value) => (value > 0.7 ? "good" : value > 0.5 ? "fair" : "poor"),
-		page: "/app/org/$org/brand/$brand/responses",
+		page: "/app/org/$org/brand/$brand/sentiment",
 	},
 	position: {
 		label: "Position",

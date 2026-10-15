@@ -9,6 +9,7 @@
  */
 import type { Landscape } from "@/lib/landscape";
 import type { ShareOfVoiceResponse } from "@/server/analysis";
+import type { BrandSentiment } from "@/server/analytics-core";
 
 export type { ShareOfVoiceResponse } from "@/server/analysis";
 
@@ -27,3 +28,11 @@ export function setMockLandscape(data: Landscape) {
 }
 
 export const getCompetitiveLandscapeFn = async (..._args: unknown[]) => _landscape;
+
+let _sentiment: BrandSentiment | null = null;
+
+export function setMockBrandSentiment(data: BrandSentiment) {
+	_sentiment = data;
+}
+
+export const getBrandSentimentFn = async (..._args: unknown[]) => _sentiment;

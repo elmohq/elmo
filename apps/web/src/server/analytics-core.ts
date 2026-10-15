@@ -14,8 +14,10 @@ import { eq } from "drizzle-orm";
 import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
+import { evidencePassage } from "@/lib/evidence";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
 import { buildLandscape, type Landscape } from "@/lib/landscape";
+import { getSentimentQuotes, type SentimentQuoteRow } from "@/lib/postgres-read";
 import {
 	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
@@ -47,6 +49,7 @@ import {
 	sentimentSummary,
 	shiftDate,
 } from "@/lib/sentiment";
+import { isTone, type Tone } from "@/lib/tone";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -614,4 +617,80 @@ export async function getCompetitiveLandscape(
 		brandByModel,
 		competitorsByModel,
 	});
+}
+
+export interface SentimentQuote {
+	runId: string;
+	promptId: string;
+	prompt: string;
+	model: string;
+	createdAt: string;
+	tone: Tone;
+	/** The passage of the answer the verdict rests on, as markdown. */
+	passage: string;
+}
+
+export interface PromptSentiment {
+	promptId: string;
+	value: string;
+	tags: string[];
+	sentiment: SentimentSummary;
+}
+
+export interface BrandSentiment {
+	summary: SentimentSummary;
+	/** Prompts with at least one mention whose tone was called, least positive first. */
+	prompts: PromptSentiment[];
+	/** The negative and mixed verdicts the judge was surest of, one per prompt. */
+	criticism: SentimentQuote[];
+	praise: SentimentQuote[];
+}
+
+const QUOTES_PER_SIDE = 5;
+
+/** How the answers that mention the brand talk about it: overall, per prompt, and in their own words. */
+export async function getBrandSentiment(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+): Promise<BrandSentiment> {
+	const resolved = await resolveScope(brandId, filters);
+	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
+	const [totals, perPrompt, criticism, praise] = await Promise.all([
+		resolved.promptIds.length > 0 ? getMentionTotals(scope) : NO_VERDICTS,
+		resolved.promptIds.length > 0 ? getPerPromptRunStats(scope) : [],
+		getSentimentQuotes(scope, ["negative", "mixed"], QUOTES_PER_SIDE),
+		getSentimentQuotes(scope, ["positive"], QUOTES_PER_SIDE),
+	]);
+	const promptsById = new Map(resolved.prompts.map((prompt) => [prompt.id, prompt]));
+	const quote = (row: SentimentQuoteRow): SentimentQuote[] => {
+		const passage = evidencePassage(row.text_content, row.brand);
+		const tone = row.brand.sentiment;
+		if (!passage || !isTone(tone)) return [];
+		return [
+			{
+				runId: row.id,
+				promptId: row.prompt_id,
+				prompt: promptsById.get(row.prompt_id)?.value ?? "",
+				model: row.model,
+				createdAt: new Date(row.created_at).toISOString(),
+				tone,
+				passage,
+			},
+		];
+	};
+	const prompts = perPrompt
+		.flatMap((row): PromptSentiment[] => {
+			const prompt = promptsById.get(row.prompt_id);
+			const sentiment = sentimentSummary(row);
+			if (!prompt || sentiment.positiveShare === null) return [];
+			return [{ promptId: prompt.id, value: prompt.value, tags: prompt.tags ?? [], sentiment }];
+		})
+		.sort((a, b) => (a.sentiment.positiveShare ?? 0) - (b.sentiment.positiveShare ?? 0));
+	return {
+		summary: sentimentSummary(totals),
+		prompts,
+		criticism: criticism.flatMap(quote),
+		praise: praise.flatMap(quote),
+	};
 }

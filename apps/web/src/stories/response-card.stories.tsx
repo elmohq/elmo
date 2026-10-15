@@ -1,10 +1,11 @@
 /**
  * Stories for <ResponseCard />, the answer card on the Responses page and the
- * prompt detail page, focused on the Evidence block: the passage behind each
- * mention verdict and the sentiment read from it.
+ * prompt detail page, focused on the mentioned-company badges: each one's
+ * position and tone, and the passage it rests on, marked when it's clicked.
  */
 import type { Meta, StoryObj } from "@storybook/react";
 import type { MentionAssessmentRecord } from "@workspace/lib/mentions";
+import { expect, userEvent, within } from "storybook/test";
 import { ResponseCard, type ResponseCardRun } from "@/components/response-card";
 
 const ANSWER = `For a small sales team, **Acme** is the easiest CRM to get running: setup takes an afternoon and the mobile app is genuinely good.
@@ -69,8 +70,47 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The brand is praised; competitors that are plainly mentioned show no passage. */
-export const PositiveBrand: Story = {};
+const withCompetitors = {
+	brand: positiveBrand,
+	competitors: {
+		Globex: {
+			mention: "mentioned",
+			probability: 0.96,
+			sentiment: "negative",
+			evidence: evidence(
+				"Globex is cheaper, but reviewers keep complaining about its clunky reporting and slow support.",
+			),
+			position: 2,
+		},
+		Initech: {
+			mention: "mentioned",
+			probability: 0.93,
+			sentiment: "mixed",
+			evidence: evidence(
+				"If you need deep customization, Initech is worth a look, though it takes longer to configure.",
+			),
+			position: 3,
+		},
+	},
+} satisfies ResponseCardRun["mentionAssessments"];
+
+/** Each company's badge carries its position and the answer's tone toward it; nothing is marked until one is clicked. */
+export const PositiveBrand: Story = {
+	args: { run: { ...baseRun, mentionAssessments: withCompetitors } },
+};
+
+/** Clicking a badge marks the passage its verdict rests on, in that tone's colour; clicking again clears it. */
+export const PassageMarked: Story = {
+	args: { run: { ...baseRun, mentionAssessments: withCompetitors } },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const globex = canvas.getByRole("button", { name: /Globex/ });
+		await userEvent.click(globex);
+		await expect(globex).toHaveAttribute("aria-pressed", "true");
+		const marked = canvasElement.querySelector("mark");
+		await expect(marked?.textContent).toContain("clunky reporting");
+	},
+};
 
 export const NegativeBrand: Story = {
 	args: {
@@ -120,7 +160,7 @@ export const UncertainBrand: Story = {
 	},
 };
 
-/** A competitor whose name was used for a different company isn't counted, and its passage says why. */
+/** A competitor whose name was used for a different company isn't counted, so it gets no badge. */
 export const CompetitorNotCounted: Story = {
 	args: {
 		run: {
@@ -144,7 +184,7 @@ export const CompetitorNotCounted: Story = {
 	},
 };
 
-/** Runs matched by substring, or whose text wasn't stored, have no verdicts and show no Evidence block. */
+/** Runs matched by substring, or whose text wasn't stored, have no verdicts: badges show no tone and mark nothing. */
 export const NotJudged: Story = {
 	args: { run: { ...baseRun, mentionAssessments: null } },
 };

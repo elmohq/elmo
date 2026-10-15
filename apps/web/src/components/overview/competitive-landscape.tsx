@@ -53,7 +53,8 @@ function MetricSwitch({ value, onChange }: { value: LandscapeMetric; onChange: (
 	);
 }
 
-function ModelGrid({ landscape, metric }: { landscape: Landscape; metric: LandscapeMetric }) {
+/** Every company on one measure, overall and per model, best first. */
+export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric: LandscapeMetric }) {
 	const meta = METRIC_META[metric];
 	const rows = sortByMetric(landscape.companies, metric);
 	const maxShare = Math.max(
