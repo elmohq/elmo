@@ -164,7 +164,8 @@ export async function getResponseMatches(
 			pr.web_queries,
 			rm.brand_mentioned,
 			rm.competitors_mentioned,
-			rm.assessments,
+			-- Verdicts point into the stored text, so a run without it has none to show.
+			CASE WHEN re.text_content IS NULL THEN NULL ELSE rm.assessments END AS assessments,
 			pr.raw_output,
 			re.text_content,
 			pr.created_at,
