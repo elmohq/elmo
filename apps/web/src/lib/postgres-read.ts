@@ -89,7 +89,7 @@ export async function getPromptRuns(
 			prompt_runs.web_search_enabled,
 			run_mentions.brand_mentioned,
 			run_mentions.competitors_mentioned,
-			-- The same gate as `selectRuns`, so a run's list entry and its detail agree.
+			-- The same gate as selectRuns, so a run's list entry and its detail agree.
 			CASE WHEN run_extractions.text_content IS NULL THEN NULL ELSE run_mentions.assessments END AS assessments,
 			prompt_runs.web_queries,
 			(SELECT count(*) FROM citations c WHERE c.prompt_run_id = prompt_runs.id)::int AS citation_count,
