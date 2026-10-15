@@ -15,7 +15,13 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
 import { lookbackSchema } from "@/lib/lookback";
-import { getMentionTotals, getPerPromptDailyCitationDomains, getPerPromptDailyRuns } from "@/lib/rollup-read";
+import {
+	getDailySentiment,
+	getMentionTotals,
+	getPerPromptDailyCitationDomains,
+	getPerPromptDailyRuns,
+} from "@/lib/rollup-read";
+import { type SentimentCounts, type SentimentPoint, sentimentSeries, sentimentTotals } from "@/lib/sentiment";
 import { resolveBrandWindow } from "@/server/brand-window";
 
 interface VisibilityTimeSeriesPoint {
@@ -35,6 +41,8 @@ export interface DashboardSummaryResponse {
 	brandedVisibility: number;
 	visibilityTimeSeries: VisibilityTimeSeriesPoint[];
 	citationTimeSeries: CitationTimeSeriesPoint[];
+	sentiment: SentimentCounts & { uncertainMentions: number };
+	sentimentTimeSeries: SentimentPoint[];
 	lastUpdatedAt: string | null;
 }
 
@@ -88,10 +96,11 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			.map((p) => p.id);
 
 		const scope = { brandId: data.brandId, from: fromDateStr, to: toDateStr, timezone, promptIds: enabledPromptIds };
-		const [totals, perPromptVisibility, perPromptCitations] = await Promise.all([
+		const [totals, perPromptVisibility, perPromptCitations, dailySentiment] = await Promise.all([
 			getMentionTotals(scope),
 			getPerPromptDailyRuns(scope),
 			getPerPromptDailyCitationDomains(scope),
+			getDailySentiment(scope),
 		]);
 
 		const totalRuns = totals.runs;
@@ -150,6 +159,8 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			brandedVisibility,
 			visibilityTimeSeries,
 			citationTimeSeries,
+			sentiment: sentimentTotals(dailySentiment),
+			sentimentTimeSeries: sentimentSeries(dailySentiment, dateRange),
 			lastUpdatedAt,
 		};
 	});
