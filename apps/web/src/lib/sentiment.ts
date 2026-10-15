@@ -37,8 +37,6 @@ export interface MentionQuality {
 	averagePosition: number | null;
 }
 
-export const SENTIMENT_WINDOW_DAYS = 7;
-
 /** Runs with a tone the judge could call; shares are of these. */
 const clearRuns = (sums: VerdictSums) => sums.positive_runs + sums.neutral_runs + sums.negative_runs + sums.mixed_runs;
 

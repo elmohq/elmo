@@ -73,6 +73,20 @@ const COMPANIES = [
 
 const METRICS = ["visibility", "share", "sentiment", "position"] as const;
 
+/** Shifts a line so it ends on `target`: as in the app, the last day is the current figure. */
+const endingAt = (values: number[], target: number) => {
+	const shift = target - values[values.length - 1];
+	return values.map((v) => Math.round((v + shift) * 1000) / 1000);
+};
+
+/** 600 current mentions of a company, split so the positive share is `positive`. */
+const tonesFor = (positive: number) => {
+	const pos = Math.round(positive * 600);
+	const negative = Math.round((600 - pos) * 0.15);
+	const mixed = Math.round((600 - pos) * 0.2);
+	return { positive: pos, neutral: 600 - pos - negative - mixed, mixed, negative };
+};
+
 export const mockLandscape = {
 	dates: DATES,
 	models: MODELS,
@@ -81,6 +95,7 @@ export const mockLandscape = {
 		isBrand: c.isBrand,
 		domain: c.domain,
 		totals: { visibility: c.visibility, share: c.share, sentiment: c.sentiment, position: c.position },
+		tones: tonesFor(c.sentiment),
 		byModel: Object.fromEntries(
 			MODELS.map((model, mi) => {
 				const wobble = Math.sin((ci + 3) * (mi + 1)) * 0.12;
@@ -96,10 +111,10 @@ export const mockLandscape = {
 			}),
 		),
 		series: {
-			visibility: wave(c.visibility - 0.04, 0.03, ci, 0.0015),
-			share: wave(c.share - 0.02, 0.015, ci + 1, 0.0008),
-			sentiment: wave(c.sentiment - 0.03, 0.03, ci + 2, 0.001),
-			position: wave(c.position + 0.2, 0.15, ci + 3, -0.007),
+			visibility: endingAt(wave(c.visibility - 0.04, 0.03, ci, 0.0015), c.visibility),
+			share: endingAt(wave(c.share - 0.02, 0.015, ci + 1, 0.0008), c.share),
+			sentiment: endingAt(wave(c.sentiment - 0.03, 0.03, ci + 2, 0.001), c.sentiment),
+			position: endingAt(wave(c.position + 0.2, 0.15, ci + 3, -0.007), c.position),
 		},
 	})),
 };

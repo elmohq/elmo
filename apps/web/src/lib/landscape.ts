@@ -1,10 +1,19 @@
 /**
- * The brand and each tracked competitor on the same four measures, overall, per model and per day,
- * built from rollup sums. Shares are fractions of 1; position is an average place, 1 being named first.
+ * The brand and each tracked competitor on the same four measures, as of each day, overall and per
+ * model. Every figure follows the rule the visibility and share-of-voice pages use: each prompt's
+ * latest result, carried forward over the days it didn't run, summed across prompts. So the last
+ * day is the current figure, and it's the one every headline shows. Shares are fractions of 1;
+ * position is an average place, 1 being named first.
  */
-import type { CompetitorModelSums, DailyCompetitorSums, DailyRunSums, ModelRunSums } from "@/lib/rollup-read";
-import { NO_VERDICTS, SENTIMENT_WINDOW_DAYS, sentimentSummary, type VerdictSums } from "@/lib/sentiment";
-import { shiftDateStr } from "@/lib/timezone-utils";
+import { carryForward } from "@/lib/chart-utils";
+import type { PromptModelDailyCompetitor, PromptModelDailyRuns } from "@/lib/rollup-read";
+import {
+	NO_VERDICTS,
+	type SentimentCounts,
+	sentimentCounts,
+	sentimentSummary,
+	type VerdictSums,
+} from "@/lib/sentiment";
 
 export const LANDSCAPE_METRICS = ["visibility", "share", "sentiment", "position"] as const;
 export type LandscapeMetric = (typeof LANDSCAPE_METRICS)[number];
@@ -15,15 +24,19 @@ export interface LandscapeCompany {
 	name: string;
 	isBrand: boolean;
 	domain: string | null;
+	/** As of the last day: the current figures. */
 	totals: MetricValues;
-	/** Keyed by model id. */
+	/** The current answers mentioning it, by tone. */
+	tones: SentimentCounts;
+	/** Current figures per model, keyed by model id. */
 	byModel: Record<string, MetricValues>;
-	/** One value per entry of `Landscape.dates`, over a trailing week so a quiet day doesn't swing the line. */
+	/** One value per entry of `Landscape.dates`. */
 	series: Record<LandscapeMetric, (number | null)[]>;
 }
 
 export interface Landscape {
 	dates: string[];
+	/** Most-run first. */
 	models: string[];
 	/** The brand first, then each tracked competitor. */
 	companies: LandscapeCompany[];
@@ -61,115 +74,111 @@ export function brandRank(landscape: Landscape, metric: LandscapeMetric): number
 	);
 }
 
-/** What one company contributes over some span, alongside the span's totals it is measured against. */
-interface Sums extends VerdictSums {
+/** One company's part of a prompt's answers. */
+interface CompanyCounts extends VerdictSums {
 	mentions: number;
+}
+
+/** A prompt's answers on one day, or the sum of every prompt's as carried to it. */
+interface Observation {
 	runs: number;
+	/** Mentions of the brand and every competitor, the base of each share. */
 	allMentions: number;
+	companies: Map<string, CompanyCounts>;
 }
 
-const ZERO: Sums = { ...NO_VERDICTS, mentions: 0, runs: 0, allMentions: 0 };
-const SUM_KEYS = Object.keys(ZERO) as (keyof Sums)[];
+const emptyObservation = (): Observation => ({ runs: 0, allMentions: 0, companies: new Map() });
 
-function add(a: Sums, b: Sums): Sums {
-	const total = { ...a };
-	for (const key of SUM_KEYS) total[key] += b[key];
-	return total;
+function addCounts(into: Map<string, CompanyCounts>, name: string, mentions: number, verdicts: VerdictSums): void {
+	const counts = into.get(name) ?? { ...NO_VERDICTS, mentions: 0 };
+	counts.mentions += mentions;
+	for (const key of Object.keys(NO_VERDICTS) as (keyof VerdictSums)[]) counts[key] += verdicts[key];
+	into.set(name, counts);
 }
 
-/** The runs and mentions a company's count is measured against. */
-const NO_CONTEXT = { runs: 0, allMentions: 0 };
-
-const ratio = (part: number, whole: number) => (whole > 0 ? part / whole : null);
-
-function measure(s: Sums): MetricValues {
-	return {
-		visibility: ratio(s.mentions, s.runs),
-		share: ratio(s.mentions, s.allMentions),
-		sentiment: sentimentSummary(s).positiveShare,
-		position: ratio(s.position_sum, s.positioned_runs),
-	};
+function addObservation(into: Observation, from: Observation): void {
+	into.runs += from.runs;
+	into.allMentions += from.allMentions;
+	for (const [name, counts] of from.companies) addCounts(into.companies, name, counts.mentions, counts);
 }
 
 export interface LandscapeInput {
 	brand: { name: string; domain: string | null };
 	competitors: { name: string; domain: string | null }[];
-	/** Days to plot; `brandDaily` and `competitorDaily` may start up to a week earlier to fill the first windows. */
 	dates: string[];
-	brandDaily: DailyRunSums[];
-	competitorDaily: DailyCompetitorSums[];
-	brandByModel: ModelRunSums[];
-	competitorsByModel: CompetitorModelSums[];
-	windowDays?: number;
+	runs: PromptModelDailyRuns[];
+	competitorRuns: PromptModelDailyCompetitor[];
+}
+
+/** Each day's carried sums across prompts, over the rows of the models `keep` admits. */
+function carriedDays(input: LandscapeInput, keep: (model: string) => boolean): Map<string, Observation> {
+	const byPrompt = new Map<string, Map<string, Observation>>();
+	const at = (promptId: string, date: string) => {
+		const days = byPrompt.get(promptId) ?? new Map<string, Observation>();
+		byPrompt.set(promptId, days);
+		const observation = days.get(date) ?? emptyObservation();
+		days.set(date, observation);
+		return observation;
+	};
+	for (const row of input.runs) {
+		if (!keep(row.model)) continue;
+		const observation = at(row.prompt_id, row.date);
+		observation.runs += row.runs;
+		observation.allMentions += row.brand_mentioned_runs + row.competitor_mentions;
+		addCounts(observation.companies, input.brand.name, row.brand_mentioned_runs, row);
+	}
+	for (const row of input.competitorRuns) {
+		if (keep(row.model)) addCounts(at(row.prompt_id, row.date).companies, row.competitor, row.runs, row);
+	}
+	const days = new Map<string, Observation>();
+	carryForward(byPrompt, input.dates, (_promptId, date, carried) => {
+		const day = days.get(date) ?? emptyObservation();
+		addObservation(day, carried);
+		days.set(date, day);
+	});
+	return days;
+}
+
+const ratio = (part: number, whole: number) => (whole > 0 ? part / whole : null);
+
+function measure(name: string, day: Observation | undefined): MetricValues {
+	const counts = day?.companies.get(name) ?? { ...NO_VERDICTS, mentions: 0 };
+	return {
+		visibility: ratio(counts.mentions, day?.runs ?? 0),
+		share: ratio(counts.mentions, day?.allMentions ?? 0),
+		sentiment: sentimentSummary(counts).positiveShare,
+		position: ratio(counts.position_sum, counts.positioned_runs),
+	};
 }
 
 export function buildLandscape(input: LandscapeInput): Landscape {
-	const windowDays = input.windowDays ?? SENTIMENT_WINDOW_DAYS;
-	const inRange = new Set(input.dates);
-	const runsByDate = new Map(input.brandDaily.map((d) => [d.date, d]));
-	const context = (date: string) => {
-		const d = runsByDate.get(date);
-		return { runs: d?.runs ?? 0, allMentions: (d?.brand_mentioned_runs ?? 0) + (d?.competitor_mentions ?? 0) };
-	};
+	const runsByModel = new Map<string, number>();
+	for (const row of input.runs) runsByModel.set(row.model, (runsByModel.get(row.model) ?? 0) + row.runs);
+	const models = [...runsByModel.entries()].sort((a, b) => b[1] - a[1]).map(([model]) => model);
 
-	// Each company's sums per day, with the day's runs and mentions to measure them against.
-	const daily = new Map<string, Map<string, Sums>>();
-	const put = (name: string, date: string, sums: Sums) => {
-		const days = daily.get(name) ?? new Map<string, Sums>();
-		days.set(date, sums);
-		daily.set(name, days);
-	};
-	for (const d of input.brandDaily)
-		put(input.brand.name, d.date, { ...d, ...context(d.date), mentions: d.brand_mentioned_runs });
-	for (const d of input.competitorDaily) put(d.competitor, d.date, { ...d, ...context(d.date), mentions: d.runs });
-
-	const modelContext = new Map(
-		input.brandByModel.map((m) => [
-			m.model,
-			{ runs: m.runs, allMentions: m.brand_mentioned_runs + m.competitor_mentions },
-		]),
-	);
-	const byModel = new Map<string, Record<string, MetricValues>>();
-	byModel.set(
-		input.brand.name,
-		Object.fromEntries(
-			input.brandByModel.map((m) => [
-				m.model,
-				measure({ ...m, ...(modelContext.get(m.model) ?? NO_CONTEXT), mentions: m.brand_mentioned_runs }),
-			]),
-		),
-	);
-	for (const m of input.competitorsByModel) {
-		const models = byModel.get(m.competitor) ?? {};
-		models[m.model] = measure({ ...m, ...(modelContext.get(m.model) ?? NO_CONTEXT), mentions: m.runs });
-		byModel.set(m.competitor, models);
-	}
+	const lastDate = input.dates.at(-1) ?? "";
+	const days = carriedDays(input, () => true);
+	const lastByModel = new Map(models.map((model) => [model, carriedDays(input, (m) => m === model).get(lastDate)]));
 
 	const company = (name: string, domain: string | null, isBrand: boolean): LandscapeCompany => {
-		const days = daily.get(name) ?? new Map<string, Sums>();
-		const sumOver = (dates: Iterable<string>) => {
-			let s = ZERO;
-			for (const date of dates) s = add(s, days.get(date) ?? { ...ZERO, ...context(date) });
-			return s;
-		};
-		const windowed = input.dates.map((date) =>
-			measure(sumOver(Array.from({ length: windowDays }, (_, back) => shiftDateStr(date, { days: -back })))),
-		);
+		const daily = input.dates.map((date) => measure(name, days.get(date)));
+		const last = days.get(lastDate)?.companies.get(name);
 		return {
 			name,
 			isBrand,
 			domain,
-			totals: measure(sumOver([...inRange])),
-			byModel: byModel.get(name) ?? {},
+			totals: measure(name, days.get(lastDate)),
+			tones: sentimentCounts(last ?? NO_VERDICTS),
+			byModel: Object.fromEntries(models.map((model) => [model, measure(name, lastByModel.get(model))])),
 			series: Object.fromEntries(
-				LANDSCAPE_METRICS.map((metric) => [metric, windowed.map((values) => values[metric])]),
+				LANDSCAPE_METRICS.map((metric) => [metric, daily.map((values) => values[metric])]),
 			) as LandscapeCompany["series"],
 		};
 	};
 
 	return {
 		dates: input.dates,
-		models: input.brandByModel.map((m) => m.model),
+		models,
 		companies: [
 			company(input.brand.name, input.brand.domain, true),
 			...input.competitors.map((c) => company(c.name, c.domain, false)),

@@ -43,7 +43,7 @@ export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 	sentiment: {
 		label: "Sentiment",
 		short: "Sentiment",
-		info: "Of the answers that mention your brand with a clear tone, the share that speak of it positively, over the trailing week.",
+		info: "Of the answers that mention your brand with a clear tone, the share that speak of it positively. Like visibility, it counts each prompt's latest answers.",
 		format: percent,
 		formatChange: points,
 		grade: (value) => (value > 0.7 ? "good" : value > 0.5 ? "fair" : "poor"),
@@ -52,7 +52,7 @@ export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 	position: {
 		label: "Position",
 		short: "Position",
-		info: "Where your brand comes among the tracked companies an answer names, averaged over the trailing week. 1 means named first.",
+		info: "Where your brand comes among the tracked companies an answer names, averaged over each prompt's latest answers. 1 means named first.",
 		format: (value) => value.toFixed(1),
 		formatChange: (change) => Math.abs(change).toFixed(1),
 		grade: (value) => (value <= 1.5 ? "good" : value <= 2.5 ? "fair" : "poor"),

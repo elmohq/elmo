@@ -185,17 +185,19 @@ describe("brand analytics", () => {
 });
 
 describe("competitive landscape", () => {
-	it("measures the brand and each tracked competitor on the same runs", async () => {
-		const landscape = await getCompetitiveLandscape(brandId, window);
-		expect(landscape.dates).toEqual(["2026-03-01", "2026-03-02", "2026-03-03"]);
-		expect(landscape.models).toEqual(["chatgpt"]);
-		const byName = new Map(landscape.companies.map((c) => [c.name, c]));
+	it("gives the brand the same figures as the visibility and share-of-voice pages, day by day", async () => {
+		const [landscape, visibility, sov] = await Promise.all([
+			getCompetitiveLandscape(brandId, window),
+			getBrandVisibility(brandId, window),
+			getBrandShareOfVoice(brandId, window),
+		]);
+		const acme = landscape.companies[0];
+		expect(acme.series.visibility).toEqual(visibility.series.map((point) => point.visibility));
+		expect(acme.series.share).toEqual(sov.series.map((point) => point.share));
+		expect(acme.totals.visibility).toBe(visibility.currentVisibility);
+		expect(acme.totals.share).toBe(sov.brandShare);
+		expect(acme.byModel.chatgpt?.visibility).toBe(visibility.currentVisibility);
 		// Only tracked competitors are listed; a company the answers name but nobody tracks isn't.
-		expect([...byName.keys()]).toEqual(["Acme", "Globex"]);
-		expect(byName.get("Acme")?.totals.visibility).toBe(0.75);
-		expect(byName.get("Globex")?.totals.visibility).toBe(0.75);
-		// Shares count every mention, including one of a company nobody tracks.
-		expect(byName.get("Acme")?.totals.share).toBeCloseTo(3 / 7);
-		expect(byName.get("Acme")?.byModel.chatgpt?.visibility).toBe(0.75);
+		expect(landscape.companies.map((c) => c.name)).toEqual(["Acme", "Globex"]);
 	});
 });
