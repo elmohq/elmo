@@ -1,4 +1,4 @@
-import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/lib/mentions";
+import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getResponseMatches, getResponseToneCounts, type ResponseSearchScope } from "@/lib/postgres-read";
 import type { Tone } from "@/lib/tone";
@@ -18,12 +18,12 @@ const judged = (
 	confidence: number,
 ): { text: string; assessments: RunMentionAssessments } => {
 	const start = text.indexOf(passage);
-	const brand: MentionAssessmentRecord = {
-		mention: "mentioned",
+	const brand: MentionAssessment = {
+		mentioned: true,
 		probability: 0.99,
 		sentiment,
 		sentimentProbabilities: { [sentiment]: confidence },
-		evidence: { start, end: start + passage.length },
+		passage: { start, end: start + passage.length },
 		position: 1,
 	};
 	return { text, assessments: { brand, competitors: {}, judged: { brand: "acme", competitors: {} } } };
@@ -37,62 +37,63 @@ beforeAll(async () => {
 	// A link-only mention has no passage, so there's nothing to quote.
 	const unquotable = judged("Acme is loved.", "Acme is loved.", "positive", 0.99);
 	const unquotableBrand = unquotable.assessments.brand;
-	if (unquotableBrand) unquotableBrand.evidence = undefined;
+	if (unquotableBrand) unquotableBrand.passage = undefined;
 
-	const runs: [key: string, prompt: string, at: string, mentioned: boolean, verdict?: ReturnType<typeof judged>][] = [
+	const runs: [key: string, prompt: string, at: string, mentioned: boolean, assessment?: ReturnType<typeof judged>][] =
 		[
-			"sureNegative",
-			pricing,
-			"2026-03-01T10:00:00Z",
-			true,
-			judged(
-				"Intro. Acme raised prices twice last year. Outro.",
-				"Acme raised prices twice last year.",
-				"negative",
-				0.95,
-			),
-		],
-		[
-			"unsureNegative",
-			pricing,
-			"2026-03-02T10:00:00Z",
-			true,
-			judged("Acme costs a bit more than most.", "Acme costs a bit more than most.", "negative", 0.6),
-		],
-		[
-			"mixed",
-			setup,
-			"2026-03-02T11:00:00Z",
-			true,
-			judged("Acme is easy, though pricey.", "Acme is easy, though pricey.", "mixed", 0.8),
-		],
-		[
-			"positive",
-			setup,
-			"2026-03-03T10:00:00Z",
-			true,
-			judged("Acme is the easiest CRM to set up.", "Acme is the easiest CRM to set up.", "positive", 0.97),
-		],
-		[
-			"unmentioned",
-			setup,
-			"2026-03-03T11:00:00Z",
-			false,
-			{ text: "Globex is fine.", assessments: { competitors: {}, judged: { brand: "acme", competitors: {} } } },
-		],
-		// Matched without the judge, so it counts as a mention but has no tone.
-		["untoned", pricing, "2026-03-03T12:00:00Z", true],
-		["unquotable", reviews, "2026-03-02T09:00:00Z", true, unquotable],
-		[
-			"quotable",
-			reviews,
-			"2026-03-01T09:00:00Z",
-			true,
-			judged("Reviewers love Acme.", "Reviewers love Acme.", "positive", 0.8),
-		],
-	];
-	for (const [key, prompt, at, brandMentioned, verdict] of runs) {
-		const run = await createRun(brandId, prompt, { at, brandMentioned, ...verdict });
+			[
+				"sureNegative",
+				pricing,
+				"2026-03-01T10:00:00Z",
+				true,
+				judged(
+					"Intro. Acme raised prices twice last year. Outro.",
+					"Acme raised prices twice last year.",
+					"negative",
+					0.95,
+				),
+			],
+			[
+				"unsureNegative",
+				pricing,
+				"2026-03-02T10:00:00Z",
+				true,
+				judged("Acme costs a bit more than most.", "Acme costs a bit more than most.", "negative", 0.6),
+			],
+			[
+				"mixed",
+				setup,
+				"2026-03-02T11:00:00Z",
+				true,
+				judged("Acme is easy, though pricey.", "Acme is easy, though pricey.", "mixed", 0.8),
+			],
+			[
+				"positive",
+				setup,
+				"2026-03-03T10:00:00Z",
+				true,
+				judged("Acme is the easiest CRM to set up.", "Acme is the easiest CRM to set up.", "positive", 0.97),
+			],
+			[
+				"unmentioned",
+				setup,
+				"2026-03-03T11:00:00Z",
+				false,
+				{ text: "Globex is fine.", assessments: { competitors: {}, judged: { brand: "acme", competitors: {} } } },
+			],
+			// Matched without the judge, so it counts as a mention but has no tone.
+			["untoned", pricing, "2026-03-03T12:00:00Z", true],
+			["unquotable", reviews, "2026-03-02T09:00:00Z", true, unquotable],
+			[
+				"quotable",
+				reviews,
+				"2026-03-01T09:00:00Z",
+				true,
+				judged("Reviewers love Acme.", "Reviewers love Acme.", "positive", 0.8),
+			],
+		];
+	for (const [key, prompt, at, brandMentioned, assessment] of runs) {
+		const run = await createRun(brandId, prompt, { at, brandMentioned, ...assessment });
 		runIds[key] = run.id;
 	}
 	await rebuildRollups(brandId);
@@ -123,7 +124,7 @@ describe("responses by sentiment", () => {
 		expect(unmentioned.map((row) => row.id)).toEqual([runIds.unmentioned]);
 	});
 
-	it("puts the surest negative verdicts first, and runs without a tone last", async () => {
+	it("puts the surest negative assessments first, and runs without a tone last", async () => {
 		const rows = await getResponseMatches(scope, 10, 0, "negative");
 		expect(rows.map((row) => row.id)).toEqual([
 			runIds.sureNegative,
@@ -135,7 +136,7 @@ describe("responses by sentiment", () => {
 		]);
 	});
 
-	it("puts positive verdicts first when sorting by most positive", async () => {
+	it("puts positive assessments first when sorting by most positive", async () => {
 		const rows = await getResponseMatches(scope, 1, 0, "positive");
 		expect(rows.map((row) => row.id)).toEqual([runIds.positive]);
 	});
@@ -158,13 +159,13 @@ describe("brand sentiment", () => {
 		]);
 	});
 
-	it("quotes the passage behind the surest verdict on each side, one per prompt", async () => {
+	it("quotes the passage behind the surest assessment on each side, one per prompt", async () => {
 		const { criticism, praise } = await getBrandSentiment(brandId, window);
 		expect(criticism.map((q) => [q.tone, q.passage])).toEqual([
 			["negative", "Acme raised prices twice last year."],
 			["mixed", "Acme is easy, though pricey."],
 		]);
-		// A prompt whose surest verdict has no passage to quote falls back to its next one.
+		// A prompt whose surest assessment has no passage to quote falls back to its next one.
 		expect(praise.map((q) => [q.prompt, q.passage])).toEqual([
 			["easiest crm to set up", "Acme is the easiest CRM to set up."],
 			["acme reviews", "Reviewers love Acme."],

@@ -1,4 +1,4 @@
-import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/lib/mentions";
+import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -7,8 +7,8 @@ import { cn } from "@workspace/ui/lib/utils";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
-import { evidenceRange } from "@/lib/evidence";
 import { HIGHLIGHT_CLASS, type MarkRange, splitHighlights } from "@/lib/highlight";
+import { passageRange } from "@/lib/passage";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { isTone, TONE_STYLES, type Tone } from "@/lib/tone";
 import { getModelDisplayName } from "@/lib/utils";
@@ -126,20 +126,20 @@ export function ResponseCard({
 interface MentionedCompany {
 	name: string;
 	isBrand: boolean;
-	record?: MentionAssessmentRecord;
+	record?: MentionAssessment;
 	tone?: Tone;
-	/** Where in the answer the passage its verdict rests on lies; null when there's none to mark. */
+	/** Where in the answer the passage its assessment rests on lies; null when there's none to mark. */
 	passage: { start: number; end: number } | null;
 }
 
 /** Each company the answer counts as mentioning: the brand first, then competitors as the answer names them. */
 function mentionedCompanies(run: ResponseCardRun, text: string, brandName?: string): MentionedCompany[] {
-	const company = (name: string, isBrand: boolean, record?: MentionAssessmentRecord): MentionedCompany => ({
+	const company = (name: string, isBrand: boolean, record?: MentionAssessment): MentionedCompany => ({
 		name,
 		isBrand,
 		record,
 		tone: isTone(record?.sentiment) ? record.sentiment : undefined,
-		passage: record ? evidenceRange(text, record) : null,
+		passage: record ? passageRange(text, record) : null,
 	});
 	return [
 		...(run.brandMentioned && brandName ? [company(brandName, true, run.mentionAssessments?.brand)] : []),
@@ -157,14 +157,13 @@ const ordinal = (n: number) => {
 function badgeTip(company: MentionedCompany): string {
 	const parts: string[] = [];
 	if (company.record?.position) parts.push(`Named ${ordinal(company.record.position)} among the tracked companies.`);
-	if (company.record?.mention === "uncertain") parts.push("Unsure whether this is a mention; counted.");
 	if (company.passage) parts.push("Click to mark the passage this rests on.");
 	return parts.join(" ");
 }
 
 /**
  * A badge per company with its position and the answer's tone toward it. Clicking one marks the
- * passage its verdict rests on in the answer below; clicking it again clears the mark.
+ * passage its assessment rests on in the answer below; clicking it again clears the mark.
  */
 function MentionedBrands({
 	companies,

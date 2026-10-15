@@ -43,7 +43,7 @@ export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 	sentiment: {
 		label: "Sentiment",
 		short: "Sentiment",
-		info: "Of the answers that mention your brand with a clear tone, the share that speak of it positively. Like visibility, it counts each prompt's latest answers.",
+		info: "Of the answers that mention your brand, the share that speak of it positively. Like visibility, it counts each prompt's latest answers.",
 		format: percent,
 		formatChange: points,
 		grade: (value) => (value > 0.7 ? "good" : value > 0.5 ? "fair" : "poor"),

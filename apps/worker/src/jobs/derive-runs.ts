@@ -18,7 +18,7 @@ import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { loadRawOutputs, updateExtractions, updateMentions } from "@workspace/lib/db/runs";
 import { brands, citations, competitors, promptRuns, runExtractions, runMentions } from "@workspace/lib/db/schema";
 import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } from "@workspace/lib/mentions";
-import { insertRunsCitations, markDirty } from "@workspace/lib/rollups";
+import { insertRunsCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { type Citation, extractRun } from "@workspace/lib/text-extraction";
 import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { Job, PgBoss, QueueOptions } from "pg-boss";
@@ -38,6 +38,8 @@ export const DERIVE_RUNS_QUEUE_OPTIONS = {
 export interface DeriveRunsData {
 	brandId: string;
 	runIds: string[];
+	/** Re-extract runs extracted by older code too: a replay for a new extractor. */
+	reextract?: boolean;
 }
 
 /** New answers first, then the last 30 days of history, which the dashboards show, then the rest. */
@@ -51,11 +53,12 @@ export async function sendDeriveRuns(
 	brandId: string,
 	runIds: string[],
 	priority: number,
-	chunkSize = CHUNK_SIZE,
+	{ reextract = false, chunkSize = CHUNK_SIZE } = {},
 ): Promise<void> {
 	const jobs = [];
 	for (let i = 0; i < runIds.length; i += chunkSize) {
-		jobs.push({ data: { brandId, runIds: runIds.slice(i, i + chunkSize) } satisfies DeriveRunsData, priority });
+		const data: DeriveRunsData = { brandId, runIds: runIds.slice(i, i + chunkSize), ...(reextract && { reextract }) };
+		jobs.push({ data, priority });
 	}
 	for (let i = 0; i < jobs.length; i += 1000) await boss.insert(DERIVE_RUNS_QUEUE, jobs.slice(i, i + 1000));
 }
@@ -66,6 +69,8 @@ export interface StaleRun {
 	createdAt: Date;
 	model: string;
 	provider: string | null;
+	/** False for a run recorded but never extracted. */
+	extracted: boolean;
 	textContent: string | null;
 	/** Loaded (through `loadRawOutputs`) only when the run's text has to be (re)extracted. */
 	rawOutput: unknown;
@@ -106,10 +111,11 @@ export async function deriveRunUpdate(
 	target: AnalysisVersions,
 	config: MentionConfig,
 	analyzer: MentionAnalyzer,
+	reextract = false,
 ): Promise<RunUpdate> {
 	const update: RunUpdate = { kept: [] };
-	const extract = run.stamps[EXTRACTION_KEY] !== target[EXTRACTION_KEY];
-	const text = extract || run.textContent === null ? reextract(run, extract, target, update) : run.textContent;
+	const extract = !run.extracted || (reextract && run.stamps[EXTRACTION_KEY] !== target[EXTRACTION_KEY]);
+	const text = extract || run.textContent === null ? extractAgain(run, extract, target, update) : run.textContent;
 	if (run.stamps[MENTIONS_KEY] !== target[MENTIONS_KEY]) {
 		update.mentions = { ...(await rederiveMentions(run, text, config, analyzer, update)), stamp: target[MENTIONS_KEY] };
 	}
@@ -117,7 +123,7 @@ export async function deriveRunUpdate(
 }
 
 /** Fills `update.extraction` (and citations when `extract`), returning the text mentions should read. */
-function reextract(run: StaleRun, extract: boolean, target: AnalysisVersions, update: RunUpdate): string | null {
+function extractAgain(run: StaleRun, extract: boolean, target: AnalysisVersions, update: RunUpdate): string | null {
 	const extracted = extractRun(run.rawOutput, run.provider ?? run.model);
 	const lostText = extracted.textContent === null && run.textContent !== null;
 	if (lostText) update.kept.push("text");
@@ -137,7 +143,7 @@ async function rederiveMentions(
 	update: RunUpdate,
 ): Promise<RunMentions> {
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
-		// Verdicts can be kept only while the text they were judged on, and point into, is unchanged.
+		// Assessments can be kept only while the text they were judged on, and point into, is unchanged.
 		const previous = text === run.textContent ? run.assessments : null;
 		return analyzer.analyze(text, config, previous);
 	}
@@ -146,7 +152,12 @@ async function rederiveMentions(
 	return { brandMentioned, competitorsMentioned, assessments };
 }
 
-async function loadRuns(conn: DbConnection, runIds: string[], target: AnalysisVersions): Promise<StaleRun[]> {
+async function loadRuns(
+	conn: DbConnection,
+	runIds: string[],
+	target: AnalysisVersions,
+	reextract: boolean,
+): Promise<StaleRun[]> {
 	const rows = await conn
 		.select({
 			id: promptRuns.id,
@@ -154,6 +165,7 @@ async function loadRuns(conn: DbConnection, runIds: string[], target: AnalysisVe
 			createdAt: promptRuns.createdAt,
 			model: promptRuns.model,
 			provider: promptRuns.provider,
+			extracted: sql<boolean>`${runExtractions.runId} IS NOT NULL`,
 			textContent: runExtractions.textContent,
 			extractionStamp: runExtractions.stamp,
 			mentionsStamp: runMentions.stamp,
@@ -163,10 +175,12 @@ async function loadRuns(conn: DbConnection, runIds: string[], target: AnalysisVe
 			citationCount: sql<number>`(SELECT count(*) FROM ${citations} WHERE ${citations.promptRunId} = ${promptRuns.id})::int`,
 		})
 		.from(promptRuns)
-		.innerJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
+		.leftJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
 		.leftJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 		.where(inArray(promptRuns.id, runIds));
-	const needsRaw = rows.filter((row) => row.textContent === null || row.extractionStamp !== target[EXTRACTION_KEY]);
+	const needsRaw = rows.filter(
+		(row) => row.textContent === null || (reextract && row.extractionStamp !== target[EXTRACTION_KEY]),
+	);
 	const raw = await loadRawOutputs(
 		conn,
 		needsRaw.map((row) => row.id),
@@ -194,7 +208,7 @@ async function loadTarget(conn: DbConnection, brandId: string, analyzer: Mention
 /**
  * Writes the derived rows, a few statements per chunk: `prompt_runs` itself is append-only.
  * False, writing nothing, when the brand's config moved while the chunk was derived: those
- * verdicts would be stale on arrival.
+ * assessments would be stale on arrival.
  */
 function writeUpdates(
 	conn: DbConnection,
@@ -243,17 +257,18 @@ function writeUpdates(
 export async function deriveRuns(
 	data: DeriveRunsData,
 	conn: DbConnection = db,
-	boss: Pick<PgBoss, "insert"> = getBoss(),
+	boss: Pick<PgBoss, "insert" | "send"> = getBoss(),
 	analyzer: MentionAnalyzer = mentionAnalyzer(),
 ): Promise<void> {
 	const context = await loadTarget(conn, data.brandId, analyzer);
 	if (!context) return;
-	const runs = await loadRuns(conn, data.runIds, context.target);
+	const reextract = data.reextract ?? false;
+	const runs = await loadRuns(conn, data.runIds, context.target, reextract);
 	const updates: { run: StaleRun; update: RunUpdate }[] = [];
 	const failed: string[] = [];
 	for (const run of runs) {
 		try {
-			const update = await deriveRunUpdate(run, context.target, context.config, analyzer);
+			const update = await deriveRunUpdate(run, context.target, context.config, analyzer, reextract);
 			if (update.extraction || update.mentions || update.citations) updates.push({ run, update });
 		} catch (error) {
 			if (data.runIds.length === 1) throw error;
@@ -262,11 +277,17 @@ export async function deriveRuns(
 			failed.push(run.id);
 		}
 	}
-	// A moved config leaves the brand stale, and the replay that follows queues these runs again.
-	if (updates.length > 0 && !(await writeUpdates(conn, data.brandId, context.target, updates, analyzer))) return;
+	if (updates.length > 0) {
+		// A moved config leaves the brand stale, and the replay that follows queues these runs again.
+		if (!(await writeUpdates(conn, data.brandId, context.target, updates, analyzer))) return;
+		// Seconds-fresh dashboards instead of waiting for the once-a-minute refresh.
+		await boss
+			.send(REFRESH_ROLLUPS_QUEUE, { source: "derive" }, { singletonKey: REFRESH_ROLLUPS_QUEUE, singletonSeconds: 10 })
+			.catch((error) => console.error("[derive-runs] Couldn't trigger a rollup refresh:", error));
+	}
 	const kept = updates.filter(({ update }) => update.kept.length > 0).length;
 	if (kept > 0) console.warn(`[derive-runs] ${kept} runs kept data their stored payload no longer yields`);
-	await sendDeriveRuns(boss, data.brandId, failed, DERIVE_PRIORITY.new, 1);
+	await sendDeriveRuns(boss, data.brandId, failed, DERIVE_PRIORITY.new, { reextract, chunkSize: 1 });
 }
 
 /** How far back the sweep looks for runs whose judging was lost or gave up. */

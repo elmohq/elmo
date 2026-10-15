@@ -3,7 +3,7 @@ import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { ShareOfVoiceFilters } from "@/hooks/use-share-of-voice";
 import { getBrandSentimentFn } from "@/server/analysis";
 
-/** The brand's sentiment overall and per prompt, with the passages behind its strongest verdicts. */
+/** The brand's sentiment overall and per prompt, with the passages behind its strongest assessments. */
 export function useBrandSentiment(brandId?: string, filters?: ShareOfVoiceFilters) {
 	const resolvedBrandId = useResolvedBrandId(brandId);
 	return useQuery({

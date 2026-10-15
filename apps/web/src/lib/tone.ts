@@ -1,9 +1,8 @@
 /** The tone of an answer toward the brand, as the mention judge reads it, and how lists filter on it. */
-import type { SentimentVerdict } from "@workspace/lib/mentions";
+import type { Sentiment } from "@workspace/lib/mentions";
 import { z } from "zod";
 
-/** The tones the judge can call; `uncertain` is the absence of one. */
-export type Tone = Exclude<SentimentVerdict, "uncertain">;
+export type Tone = Sentiment;
 export const TONES = ["positive", "neutral", "mixed", "negative"] as const satisfies readonly Tone[];
 
 /** A tone, or answers that don't mention the brand at all. */

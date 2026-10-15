@@ -1,6 +1,6 @@
 /**
  * Filtering and ordering individual runs by the tone of the answer toward the brand, read from the
- * mention judge's verdict, over a query that joins `run_mentions` as `rm`. Runs without a verdict,
+ * mention judge's assessment, over a query that joins `run_mentions` as `rm`. Runs without an assessment,
  * or whose tone the judge couldn't call, match no tone but still count among all runs.
  */
 import { type SQL, sql } from "drizzle-orm";
@@ -28,7 +28,7 @@ export const toneRank = (order: readonly Tone[]): SQL =>
 const probability = (tone: Tone): SQL =>
 	sql`COALESCE((rm.assessments->'brand'->'sentimentProbabilities'->>${tone}::text)::float8, 0)`;
 
-/** The strongest tone first; within a tone, the verdicts the judge was surest of. Runs with no tone go last. */
+/** The strongest tone first; within a tone, the assessments the judge was surest of. Runs with no tone go last. */
 export function responseOrder(sort: ResponseSort | undefined): SQL {
 	if (sort === "negative") {
 		return sql`${toneRank(["negative", "mixed", "neutral", "positive"])} NULLS LAST, ${probability("negative")} DESC, pr.created_at DESC, pr.id`;

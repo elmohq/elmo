@@ -14,9 +14,9 @@ import { eq } from "drizzle-orm";
 import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
-import { evidencePassage } from "@/lib/evidence";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
 import { buildLandscape, type Landscape } from "@/lib/landscape";
+import { assessedPassage } from "@/lib/passage";
 import { getSentimentQuotes, type SentimentQuoteRow } from "@/lib/postgres-read";
 import {
 	getCitationDomainPromptCounts,
@@ -24,7 +24,7 @@ import {
 	getCitationTotal,
 	getCitationUrlStats,
 	getCompetitorTotals,
-	getDailyVerdicts,
+	getDailyAssessments,
 	getFanoutBreakdown,
 	getFanoutModelTotals,
 	getFanoutPromptTotals,
@@ -43,13 +43,13 @@ import {
 	averagePosition,
 	type MentionQuality,
 	mentionQuality,
-	NO_VERDICTS,
+	NO_ASSESSMENTS,
 	type PositionPoint,
 	type SentimentCounts,
 	type SentimentSummary,
 	sentimentCounts,
 	sentimentSummary,
-	sumVerdicts,
+	sumAssessments,
 } from "@/lib/sentiment";
 import { shiftDateStr } from "@/lib/timezone-utils";
 import { isTone, type Tone } from "@/lib/tone";
@@ -249,7 +249,7 @@ export async function getBrandShareOfVoice(
 			mentions: entry.mentions,
 			prompts: entry.isBrand ? standings.brandPrompts : (promptsByName.get(entry.name) ?? 0),
 			share: entry.share,
-			...mentionQuality((entry.isBrand ? totals : competitorTotals.get(entry.name)) ?? NO_VERDICTS),
+			...mentionQuality((entry.isBrand ? totals : competitorTotals.get(entry.name)) ?? NO_ASSESSMENTS),
 		})),
 		series,
 	};
@@ -476,7 +476,7 @@ export async function getBrandPromptPerformance(
 			competitorMentionRate: runs > 0 ? (stats?.competitor_runs ?? 0) / runs : 0,
 			lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date).toISOString() : null,
 			firstEvaluatedAt: first ? new Date(first).toISOString() : null,
-			...mentionQuality(stats ?? NO_VERDICTS),
+			...mentionQuality(stats ?? NO_ASSESSMENTS),
 		};
 	});
 }
@@ -494,14 +494,14 @@ export async function getBrandMentionQuality(
 ): Promise<BrandMentionQuality> {
 	const { promptIds } = await resolveScope(brandId, filters);
 	if (promptIds.length === 0) {
-		return { sentiment: { ...sentimentSummary(NO_VERDICTS), series: [] }, position: { average: null, series: [] } };
+		return { sentiment: { ...sentimentSummary(NO_ASSESSMENTS), series: [] }, position: { average: null, series: [] } };
 	}
 	const bounds = windowInstants(window);
 	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
-	const rows = await getDailyVerdicts(analyticsScope(brandId, window, promptIds, filters));
+	const rows = await getDailyAssessments(analyticsScope(brandId, window, promptIds, filters));
 	const byDate = new Map(rows.map((row) => [row.date, row]));
-	const day = (date: string) => byDate.get(date) ?? NO_VERDICTS;
-	const totals = sumVerdicts(rows);
+	const day = (date: string) => byDate.get(date) ?? NO_ASSESSMENTS;
+	const totals = sumAssessments(rows);
 	return {
 		sentiment: {
 			...sentimentSummary(totals),
@@ -584,7 +584,7 @@ export interface SentimentQuote {
 	model: string;
 	createdAt: string;
 	tone: Tone;
-	/** The passage of the answer the verdict rests on, as markdown. */
+	/** The passage of the answer the assessment rests on, as markdown. */
 	passage: string;
 }
 
@@ -598,7 +598,7 @@ export interface PromptSentiment {
 export interface BrandSentiment {
 	/** Prompts with at least one mention whose tone was called, least positive first. */
 	prompts: PromptSentiment[];
-	/** The negative and mixed verdicts the judge was surest of, one per prompt. */
+	/** The negative and mixed assessments the judge was surest of, one per prompt. */
 	criticism: SentimentQuote[];
 	praise: SentimentQuote[];
 }
@@ -623,7 +623,7 @@ export async function getBrandSentiment(
 	]);
 	const promptsById = new Map(resolved.prompts.map((prompt) => [prompt.id, prompt]));
 	const quote = (row: SentimentQuoteRow): SentimentQuote[] => {
-		const passage = evidencePassage(row.text_content, row.brand);
+		const passage = assessedPassage(row.text_content, row.brand);
 		const tone = row.brand.sentiment;
 		if (!passage || !isTone(tone)) return [];
 		return [

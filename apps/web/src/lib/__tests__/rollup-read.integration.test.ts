@@ -20,7 +20,7 @@ import {
 	getRunsByModel,
 	getVisibilityDailyAggregate,
 } from "@/lib/rollup-read";
-import { NO_VERDICTS } from "@/lib/sentiment";
+import { NO_ASSESSMENTS } from "@/lib/sentiment";
 import {
 	createBrand,
 	createCitation,
@@ -340,8 +340,8 @@ describe("prompt mention stats", () => {
 
 	it("ranks competitors by the runs that mentioned them", async () => {
 		expect(await getCompetitorTotals(window(), 5)).toEqual([
-			{ competitor: "Globex", runs: 2, ...NO_VERDICTS },
-			{ competitor: "Initech", runs: 1, ...NO_VERDICTS },
+			{ competitor: "Globex", runs: 2, ...NO_ASSESSMENTS },
+			{ competitor: "Initech", runs: 1, ...NO_ASSESSMENTS },
 		]);
 		expect(await getCompetitorTotals(window(), 1)).toHaveLength(1);
 	});

@@ -1,6 +1,6 @@
 /**
  * "How do AI answers talk about us?" The tone of the answers that mention the brand, against its
- * competitors and per engine and prompt, with the passages behind the strongest verdicts.
+ * competitors and per engine and prompt, with the passages behind the strongest assessments.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getModelMeta } from "@workspace/config/models";
@@ -171,9 +171,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 			</CardHeader>
 			<CardContent>
 				{prompts.length === 0 ? (
-					<p className="py-8 text-center text-sm text-muted-foreground">
-						No prompt mentions you with a clear tone yet.
-					</p>
+					<p className="py-8 text-center text-sm text-muted-foreground">No prompt mentions you yet.</p>
 				) : (
 					<Table>
 						<TableHeader>
@@ -268,7 +266,7 @@ function SentimentPage() {
 		content = (
 			<Card>
 				<CardContent className="py-8 text-center text-muted-foreground">
-					No answers mention you with a clear tone for the selected filters yet.
+					No answers mention you for the selected filters yet.
 				</CardContent>
 			</Card>
 		);

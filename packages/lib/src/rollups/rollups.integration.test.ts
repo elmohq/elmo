@@ -379,10 +379,10 @@ describe("rollups against postgres", () => {
 				.update(runMentions)
 				.set({ assessments: { brand, competitors: {}, judged: { brand: "acme", competitors: {} } } })
 				.where(eq(runMentions.runId, runId));
-		await judged(RUN(1), { mention: "mentioned", probability: 0.95, sentiment: "positive", position: 2 });
+		await judged(RUN(1), { mentioned: true, probability: 0.95, sentiment: "positive", position: 2 });
 		// Not counted as a mention, so its sentiment isn't the brand's.
-		await judged(RUN(2), { mention: "not_mentioned", probability: 0.1, sentiment: "positive" });
-		await judged(RUN(3), { mention: "uncertain", probability: 0.5, sentiment: "negative", position: 1 });
+		await judged(RUN(2), { mentioned: false, probability: 0.1, sentiment: "positive" });
+		await judged(RUN(3), { mentioned: true, probability: 0.5, sentiment: "negative", position: 1 });
 		await rebuildAll(db);
 
 		const rows = await runRollupRows(db);
@@ -400,8 +400,8 @@ describe("rollups against postgres", () => {
 			.set({
 				assessments: {
 					competitors: {
-						Acme: { mention: "mentioned", probability: 0.9, sentiment: "negative", position: 1 },
-						Globex: { mention: "mentioned", probability: 0.9, sentiment: "positive", position: 3 },
+						Acme: { mentioned: true, probability: 0.9, sentiment: "negative", position: 1 },
+						Globex: { mentioned: true, probability: 0.9, sentiment: "positive", position: 3 },
 					},
 					judged: { brand: "acme", competitors: { Acme: "acme", Globex: "globex" } },
 				},

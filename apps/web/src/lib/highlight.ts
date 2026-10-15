@@ -59,7 +59,7 @@ interface PositionedNode extends HastNode {
 }
 
 export interface MarkRange {
-	/** Offsets into the markdown source, as the mention judge's evidence records them. */
+	/** Offsets into the markdown source, as the mention judge's assessments record them. */
 	start: number;
 	end: number;
 	className: string;

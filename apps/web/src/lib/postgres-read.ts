@@ -3,7 +3,7 @@
  * Aggregates, query fan-out included, come from the rollups in `rollup-read.ts`.
  */
 
-import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/lib/mentions";
+import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type AnalyticsScope,
@@ -172,7 +172,7 @@ export async function getResponseMatches(
 			pr.web_queries,
 			rm.brand_mentioned,
 			rm.competitors_mentioned,
-			-- Verdicts point into the stored text, so a run without it has none to show.
+			-- Assessments point into the stored text, so a run without it has none to show.
 			CASE WHEN re.text_content IS NULL THEN NULL ELSE rm.assessments END AS assessments,
 			pr.raw_output,
 			re.text_content,
@@ -211,12 +211,12 @@ export interface SentimentQuoteRow {
 	prompt_id: string;
 	model: string;
 	created_at: string;
-	brand: MentionAssessmentRecord;
+	brand: MentionAssessment;
 	text_content: string;
 }
 
 /**
- * The verdicts in `tones` the judge was surest of, one per prompt so a prompt that runs daily
+ * The assessments in `tones` the judge was surest of, one per prompt so a prompt that runs daily
  * doesn't fill the list with the same answer. Stronger tones in `tones` order come first.
  */
 export async function getSentimentQuotes(
@@ -226,7 +226,7 @@ export async function getSentimentQuotes(
 ): Promise<SentimentQuoteRow[]> {
 	if (scope.promptIds.length === 0 || tones.length === 0) return [];
 	const rank = toneRank(tones);
-	const evidence = sql`rm.assessments->'brand'->'evidence'`;
+	const passage = sql`rm.assessments->'brand'->'passage'`;
 	return queryPg<SentimentQuoteRow>(sql`
 		SELECT id, prompt_id, model, created_at, brand, text_content FROM (
 			SELECT DISTINCT ON (pr.prompt_id)
@@ -244,7 +244,7 @@ export async function getSentimentQuotes(
 			WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
 				AND ${rank} IS NOT NULL
 				AND re.text_content IS NOT NULL
-				AND (${evidence}->>'start')::int < (${evidence}->>'end')::int
+				AND (${passage}->>'start')::int < (${passage}->>'end')::int
 			ORDER BY pr.prompt_id, rank, confidence DESC, pr.created_at DESC
 		) best
 		ORDER BY rank, confidence DESC, created_at DESC

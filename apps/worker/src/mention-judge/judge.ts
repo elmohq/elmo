@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { UnigramTokenizer } from "./tokenizer";
+import { Tokenizer } from "@huggingface/tokenizers";
 
 export interface JudgedEntity {
 	name: string;
@@ -72,6 +72,31 @@ export function entityText(entity: JudgedEntity, fits: (text: string) => boolean
 /** Kept for the passage: windows put the match up to about 100 tokens in, and it must stay in view. */
 const PASSAGE_TOKENS = 160;
 
+interface EncodedPair {
+	inputIds: number[];
+	attentionMask: number[];
+	tokenTypeIds: number[];
+}
+
+/** `[CLS] entity [SEP] passage [SEP]`, as the model was trained, with the passage cut to fit `maxLength`. */
+export function pairEncoder(dir: string) {
+	const file = JSON.parse(readFileSync(join(dir, "tokenizer.json"), "utf8"));
+	const tokenizer = new Tokenizer(file, {});
+	const special = (token: string): number => file.post_processor.special_tokens[token].ids[0];
+	const [cls, sep] = [special("[CLS]"), special("[SEP]")];
+	const encode = (text: string) => tokenizer.encode(text, { add_special_tokens: false }).ids;
+	return {
+		encode,
+		encodePair(entity: string, passage: string, maxLength: number): EncodedPair {
+			const first = encode(entity);
+			const second = encode(passage).slice(0, Math.max(0, maxLength - first.length - 3));
+			const inputIds = [cls, ...first, sep, ...second, sep];
+			const tokenTypeIds = inputIds.map((_, i) => (i < first.length + 2 ? 0 : 1));
+			return { inputIds, attentionMask: inputIds.map(() => 1), tokenTypeIds };
+		},
+	};
+}
+
 export interface MentionJudge {
 	version: string;
 	judge(entity: JudgedEntity, passage: string): Promise<Judgment>;
@@ -82,7 +107,9 @@ export async function loadMentionJudge(dir: string, threads: number): Promise<Me
 	if (config.references.join() !== REFERENCE_LABELS.join() || config.sentiments.join() !== SENTIMENT_LABELS.join()) {
 		throw new Error(`mention judge ${config.version} has unexpected labels`);
 	}
-	const tokenizer = UnigramTokenizer.fromFile(join(dir, "tokenizer.json"));
+	const tokenizer = pairEncoder(dir);
+	// ONNX Runtime uploads usage telemetry unless this is set before the library loads.
+	process.env.ORT_DISABLE_TELEMETRY = "1";
 	const ort = await import("onnxruntime-node");
 	const session = await ort.InferenceSession.create(join(dir, "model.onnx"), { intraOpNumThreads: threads });
 	const unknownInputs = session.inputNames.filter((name) => !ENCODED_INPUTS.includes(name));

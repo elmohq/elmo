@@ -251,6 +251,8 @@ export async function processReportJob(job: ReportJobContext) {
 	}
 
 	try {
+		// Before anything is spent: the answers a report pays for can't be judged without it.
+		mentionAnalyzer();
 		await db.update(reports).set({ status: "processing", updatedAt: new Date() }).where(eq(reports.id, reportId));
 
 		job.log(`Report ${reportId} marked as processing`);

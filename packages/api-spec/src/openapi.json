@@ -753,8 +753,8 @@
 					"sentiment": {
 						"$ref": "#/components/schemas/SentimentSummary"
 					},
-					"averagePosition": {
-						"$ref": "#/components/schemas/AveragePosition"
+					"position": {
+						"$ref": "#/components/schemas/Position"
 					},
 					"citations": {
 						"type": "object",
@@ -791,7 +791,7 @@
 					"mentions",
 					"citations",
 					"sentiment",
-					"averagePosition"
+					"position"
 				]
 			},
 			"Pagination": {
@@ -1072,11 +1072,18 @@
 				},
 				"required": ["date", "visibility"]
 			},
-			"AveragePosition": {
-				"type": ["number", "null"],
-				"minimum": 1,
-				"description": "**Experimental — the shape may still change.**\n\nThe company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it. Counted over every answer in the window, unlike `visibility.current` and the share-of-voice `mentions` and `share`, which count each prompt's latest result.",
-				"x-stability": "experimental"
+			"Position": {
+				"description": "**Experimental — the shape may still change.**\n\nThe company's position among the tracked companies the answers name, 1 being named first. Companies that aren't tracked aren't ranked. Counted over every answer in the window, unlike `visibility.current` and the share-of-voice `mentions` and `share`, which count each prompt's latest result.",
+				"x-stability": "experimental",
+				"type": "object",
+				"properties": {
+					"average": {
+						"type": ["number", "null"],
+						"minimum": 1,
+						"description": "Average position to one decimal; null when no answer ranks it."
+					}
+				},
+				"required": ["average"]
 			},
 			"ShareOfVoiceEntry": {
 				"type": "object",
@@ -1105,11 +1112,11 @@
 					"sentiment": {
 						"$ref": "#/components/schemas/SentimentSummary"
 					},
-					"averagePosition": {
-						"$ref": "#/components/schemas/AveragePosition"
+					"position": {
+						"$ref": "#/components/schemas/Position"
 					}
 				},
-				"required": ["name", "isBrand", "mentions", "prompts", "share", "sentiment", "averagePosition"]
+				"required": ["name", "isBrand", "mentions", "prompts", "share", "sentiment", "position"]
 			},
 			"ShareOfVoicePoint": {
 				"type": "object",
@@ -1416,8 +1423,8 @@
 					"sentiment": {
 						"$ref": "#/components/schemas/SentimentSummary"
 					},
-					"averagePosition": {
-						"$ref": "#/components/schemas/AveragePosition"
+					"position": {
+						"$ref": "#/components/schemas/Position"
 					}
 				},
 				"required": [
@@ -1430,7 +1437,7 @@
 					"lastRunAt",
 					"firstEvaluatedAt",
 					"sentiment",
-					"averagePosition"
+					"position"
 				]
 			},
 			"PromptPerformanceList": {
@@ -1776,20 +1783,11 @@
 					"sentiment": {
 						"$ref": "#/components/schemas/SentimentSummary"
 					},
-					"averagePosition": {
-						"$ref": "#/components/schemas/AveragePosition"
+					"position": {
+						"$ref": "#/components/schemas/Position"
 					}
 				},
-				"required": [
-					"model",
-					"label",
-					"runs",
-					"brandMentions",
-					"visibility",
-					"citations",
-					"sentiment",
-					"averagePosition"
-				]
+				"required": ["model", "label", "runs", "brandMentions", "visibility", "citations", "sentiment", "position"]
 			},
 			"BrandAnalytics": {
 				"description": "Every non-paginated figure for a brand over one window. There is no parameter for selecting a subset: the computations behind this cover the same prompts and run concurrently, so a subset would save a caller a fraction of one request and cost everyone a parameter to reason about.",
@@ -1933,13 +1931,12 @@
 				"required": ["id", "label", "premiumCapable", "configured"]
 			},
 			"MentionAssessment": {
-				"description": "**Experimental — the shape may still change.**\n\nThe mention judge's verdict on one brand or competitor named in an answer.",
+				"description": "**Experimental — the shape may still change.**\n\nThe mention judge's assessment of one brand or competitor named in an answer.",
 				"type": "object",
 				"properties": {
-					"mention": {
-						"type": "string",
-						"enum": ["mentioned", "not_mentioned", "uncertain"],
-						"description": "Whether the answer is really about this company. `uncertain` counts as a mention."
+					"mentioned": {
+						"type": "boolean",
+						"description": "Whether the answer counts as mentioning this company. A name the judge can't call either way counts."
 					},
 					"probability": {
 						"type": "number",
@@ -1949,12 +1946,12 @@
 					},
 					"reason": {
 						"type": ["string", "null"],
-						"description": "For a verdict short of a confident mention, the likeliest other reading: `other_meaning` (the name used as an ordinary word), `other_company` (a different company with the same name) or `no_info` (the answer says it knows nothing about it). Informational; not a stable enum."
+						"description": "When it isn't counted as a mention, the likeliest other reading: `other_meaning` (the name used as an ordinary word), `other_company` (a different company with the same name) or `no_info` (the answer says it knows nothing about it). Informational; not a stable enum."
 					},
 					"sentiment": {
 						"type": ["string", "null"],
-						"enum": ["positive", "neutral", "negative", "mixed", "uncertain", null],
-						"description": "Tone toward this company in the passages about it. Null when the answer isn't about it, or when it only links to the company."
+						"enum": ["positive", "neutral", "negative", "mixed", null],
+						"description": "Tone toward this company in the passages about it; `neutral` when the judge can't tell. Null when the answer isn't about it, or when it only links to the company."
 					},
 					"sentimentProbabilities": {
 						"type": ["object", "null"],
@@ -1977,7 +1974,7 @@
 					}
 				},
 				"required": [
-					"mention",
+					"mentioned",
 					"probability",
 					"reason",
 					"sentiment",
@@ -1988,7 +1985,7 @@
 				"x-stability": "experimental"
 			},
 			"RunAssessments": {
-				"description": "**Experimental — the shape may still change.**\n\nThe mention judge's verdicts for one answer. Null when the run's mentions came from name matching: on deployments without the judge, and until a replay judges a run the judge couldn't.",
+				"description": "**Experimental — the shape may still change.**\n\nThe mention judge's assessments for one answer. Null when the run's mentions were matched by name, before the judge, until a replay judges it.",
 				"type": ["object", "null"],
 				"properties": {
 					"brand": {
@@ -2099,7 +2096,9 @@
 				"type": "object",
 				"properties": {
 					"average": {
-						"$ref": "#/components/schemas/AveragePosition"
+						"type": ["number", "null"],
+						"minimum": 1,
+						"description": "Average position over the window, to one decimal; null when no answer ranks it."
 					},
 					"series": {
 						"type": "array",
@@ -3970,7 +3969,7 @@
 										"positiveShare": 0.72,
 										"negativeShare": 0.03
 									},
-									"averagePosition": 1.6,
+									"position": { "average": 1.6 },
 									"citations": {
 										"citationsTotal": 1240,
 										"brandCitationsTotal": 85,
