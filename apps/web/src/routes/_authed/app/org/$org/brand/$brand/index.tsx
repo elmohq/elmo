@@ -23,6 +23,7 @@ import { describeTargetSchedule, type TrackedTarget } from "@/lib/model-filter";
 import { METRIC_META } from "@/lib/overview-metrics";
 import { setPersonProperties } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
+import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 import type { DashboardSummaryResponse } from "@/server/dashboard";
 
 function formatRelativeTime(dateString: string | null): string {
@@ -313,7 +314,7 @@ function DashboardPage() {
 	});
 	// A tag filter narrows the count, which would understate the brand's prompts.
 	useReportedPromptCount(tags.length === 0 ? summary?.totalPrompts : undefined);
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const context = useRouteContext({ from: BRAND_ROUTE_ID }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 	// The footer reports what this brand actually runs, resolved server-side.
 	const trackedTargets = brand?.trackedTargets ?? [];
