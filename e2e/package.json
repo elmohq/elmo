@@ -20,15 +20,15 @@
     "@workspace/lib": "workspace:*"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.0",
-    "@playwright/test": "^1.63.0",
-    "@types/node": "^26.6.4",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
-    "@usebruno/cli": "4.2.0",
+    "@usebruno/cli": "4.2.1",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "pg": "^8.23.1",
-    "pg-boss": "^12.36.0",
+    "pg-boss": "^12.37.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
