@@ -6,7 +6,7 @@ import { citations, citedPages } from "../db/schema";
 import type { Citation } from "../text-extraction";
 import { chunked } from "./chunk";
 import { CLASSIFIER_VERSION } from "./constants";
-import { markDirty } from "./dirty";
+import { markWritesDirty } from "./dirty";
 
 interface Sighting {
 	url: string;
@@ -139,7 +139,7 @@ export async function insertRunsCitations(
  * straight to the table by a seed) at their pages, and marks their buckets so the
  * rollups pick them up. Resumable: resolved citations leave the filter.
  */
-export async function resolveUnpagedCitations(conn: DbConnection, batchSize = 1000): Promise<number> {
+export async function resolveUnpagedCitations(conn: DbConnection, batchSize = 5000): Promise<number> {
 	let resolved = 0;
 	let after: string | null = null;
 	for (;;) {
@@ -168,13 +168,10 @@ export async function resolveUnpagedCitations(conn: DbConnection, batchSize = 10
 				FROM (VALUES ${sql.join(values, sql`, `)}) AS v(id, page_id)
 				WHERE c.id = v.id
 			`);
-			for (const brandId of new Set(batch.map((c) => c.brandId))) {
-				await markDirty(
-					tx,
-					brandId,
-					batch.filter((c) => c.brandId === brandId).map((c) => c.createdAt),
-				);
-			}
+			await markWritesDirty(
+				tx,
+				batch.map((c) => ({ brandId: c.brandId, at: c.createdAt })),
+			);
 		});
 		resolved += batch.length;
 		after = batch[batch.length - 1].id;

@@ -2,6 +2,7 @@ import { desc, type SQL, sql } from "drizzle-orm";
 import type { DbConnection } from "../db/db-connection";
 import { rollupDirty } from "../db/schema";
 import { bucketSql, bucketStart } from "./bucket";
+import { chunked } from "./chunk";
 import { BUCKET_MS } from "./constants";
 import { type RebuildStats, rebuildRange, tryLockBrandRollups } from "./rebuild";
 
@@ -17,14 +18,16 @@ export interface RebuildRange {
 	marks: DirtyMark[];
 }
 
-function uniqueBuckets(buckets: Iterable<Date>): Date[] {
-	const byTime = new Map<number, Date>();
-	for (const bucket of buckets) {
-		const start = bucketStart(bucket);
-		byTime.set(start.getTime(), start);
+/** One mark per (brand, bucket), in a fixed lock order so two writers marking overlapping buckets can't deadlock. */
+function uniqueMarks(writes: Iterable<{ brandId: string; at: Date }>): DirtyMark[] {
+	const byKey = new Map<string, DirtyMark>();
+	for (const { brandId, at } of writes) {
+		const bucket = bucketStart(at);
+		byKey.set(`${brandId}\u0000${bucket.getTime()}`, { brandId, bucket });
 	}
-	// A fixed lock order, so two writers marking overlapping buckets can't deadlock.
-	return Array.from(byTime.values()).sort((a, b) => a.getTime() - b.getTime());
+	return Array.from(byKey.values()).sort(
+		(a, b) => (a.brandId < b.brandId ? -1 : Number(a.brandId > b.brandId)) || a.bucket.getTime() - b.bucket.getTime(),
+	);
 }
 
 /**
@@ -33,17 +36,30 @@ function uniqueBuckets(buckets: Iterable<Date>): Date[] {
  * one a refresh has taken, landing a fresh mark once it commits. Either way the
  * write's bucket is rebuilt after the write is visible.
  */
-export async function markDirty(conn: DbConnection, brandId: string, buckets: Iterable<Date>): Promise<number> {
-	const values = uniqueBuckets(buckets).map((bucket) => ({ brandId, bucket }));
-	if (values.length === 0) return 0;
-	const result = await conn
-		.insert(rollupDirty)
-		.values(values)
-		.onConflictDoUpdate({
-			target: [rollupDirty.brandId, rollupDirty.bucket],
-			set: { firstMarkedAt: sql`${rollupDirty.firstMarkedAt}` },
-		});
-	return result.rowCount ?? 0;
+export function markDirty(conn: DbConnection, brandId: string, buckets: Iterable<Date>): Promise<number> {
+	return markWritesDirty(
+		conn,
+		Array.from(buckets, (at) => ({ brandId, at })),
+	);
+}
+
+/** `markDirty` for writes across brands, in one statement per chunk. */
+export async function markWritesDirty(
+	conn: DbConnection,
+	writes: Iterable<{ brandId: string; at: Date }>,
+): Promise<number> {
+	let marked = 0;
+	for (const chunk of chunked(uniqueMarks(writes))) {
+		const result = await conn
+			.insert(rollupDirty)
+			.values(chunk)
+			.onConflictDoUpdate({
+				target: [rollupDirty.brandId, rollupDirty.bucket],
+				set: { firstMarkedAt: sql`${rollupDirty.firstMarkedAt}` },
+			});
+		marked += result.rowCount ?? 0;
+	}
+	return marked;
 }
 
 // For writes that have already committed, which a rebuild is sure to see, so a
