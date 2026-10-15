@@ -15,6 +15,7 @@ import {
 	uuidList,
 } from "@/lib/analytics-sql";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
+import { NO_VERDICTS, type VerdictSums } from "@/lib/sentiment";
 
 /** The run counts every run read selects, so a new rollup column reaches them all at once. */
 export interface RunSums {
@@ -26,26 +27,7 @@ export interface RunSums {
 	competitor_mentions: number;
 }
 
-/** The mention judge's verdicts summed over runs that mention a company, as every verdict read selects them. */
-export interface VerdictSums {
-	/** Runs by the judge's confident sentiment toward the company. */
-	positive_runs: number;
-	neutral_runs: number;
-	negative_runs: number;
-	mixed_runs: number;
-	/** The company's position summed over the runs that rank it; see `averagePosition`. */
-	position_sum: number;
-	positioned_runs: number;
-}
-
-export const NO_VERDICTS: VerdictSums = {
-	positive_runs: 0,
-	neutral_runs: 0,
-	negative_runs: 0,
-	mixed_runs: 0,
-	position_sum: 0,
-	positioned_runs: 0,
-};
+export type { VerdictSums } from "@/lib/sentiment";
 
 const verdictSums = sql.join(
 	Object.keys(NO_VERDICTS).map((column) => sql.raw(`coalesce(sum(${column}), 0)::int AS ${column}`)),
