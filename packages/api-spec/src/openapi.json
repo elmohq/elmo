@@ -1951,7 +1951,7 @@
 					"sentiment": {
 						"type": ["string", "null"],
 						"enum": ["positive", "neutral", "negative", "mixed", null],
-						"description": "Tone toward this company in the passages about it; `neutral` when the judge can't tell. Null when the answer isn't about it, or when it only links to the company."
+						"description": "The likeliest sentiment toward this company in the passages about it. Null when the answer isn't about it, or when it only links to the company."
 					},
 					"sentimentProbabilities": {
 						"type": ["object", "null"],
@@ -2011,7 +2011,7 @@
 				"x-stability": "experimental"
 			},
 			"SentimentSummary": {
-				"description": "**Experimental — the shape may still change.**\n\nAnswers that mention the company, by the mention judge's confident sentiment toward it. An answer whose tone the judge couldn't call counts in none. All zero on deployments without the judge, and for history the judge hasn't re-judged yet. Counted over every answer in the window, unlike `visibility.current` and the share-of-voice `mentions` and `share`, which count each prompt's latest result.",
+				"description": "**Experimental — the shape may still change.**\n\nAnswers that mention the company, by the mention judge's sentiment toward it. An answer that only links to the company counts in none. All zero for history the judge hasn't re-judged yet. Counted over every answer in the window, unlike `visibility.current` and the share-of-voice `mentions` and `share`, which count each prompt's latest result.",
 				"type": "object",
 				"properties": {
 					"positive": {
@@ -2034,13 +2034,13 @@
 						"type": ["number", "null"],
 						"minimum": 0,
 						"maximum": 1,
-						"description": "Positive answers as a fraction of those with a clear tone (the four counts). Ratio 0–1; null when there are none."
+						"description": "Positive answers as a fraction of those with a sentiment (the four counts). Ratio 0–1; null when there are none."
 					},
 					"negativeShare": {
 						"type": ["number", "null"],
 						"minimum": 0,
 						"maximum": 1,
-						"description": "Negative answers as a fraction of those with a clear tone (the four counts). Ratio 0–1; null when there are none."
+						"description": "Negative answers as a fraction of those with a sentiment (the four counts). Ratio 0–1; null when there are none."
 					}
 				},
 				"required": ["positive", "neutral", "negative", "mixed", "positiveShare", "negativeShare"],

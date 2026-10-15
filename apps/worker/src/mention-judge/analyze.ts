@@ -111,10 +111,6 @@ export async function loadMentionAnalyzer(dir = MENTION_JUDGE_DIR): Promise<Ment
 	return current;
 }
 
-export function mentionJudgeLoaded(): boolean {
-	return current !== undefined;
-}
-
 export function mentionAnalyzer(): MentionAnalyzer {
 	if (!current) throw new Error("the mention judge isn't loaded");
 	return current;
