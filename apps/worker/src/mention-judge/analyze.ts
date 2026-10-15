@@ -1,20 +1,19 @@
-import { availableParallelism } from "node:os";
 import {
 	analyzeRunMentions,
+	judgedSubject,
 	type MentionAssessmentRecord,
 	type MentionConfig,
-	normalizeDomain,
 	type RunMentionAssessments,
 	subjectFingerprint,
 } from "@workspace/lib/mentions";
-import { assessMention, type MentionAssessment } from "./assess";
+import { assessMention } from "./assess";
 import type { JudgedEntity, MentionJudge } from "./judge";
 import { loadJudgePool } from "./pool";
 
 export interface RunMentions {
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
-	mentionAssessments: RunMentionAssessments | null;
+	assessments: RunMentionAssessments | null;
 }
 
 export interface MentionAnalyzer {
@@ -29,37 +28,16 @@ export interface MentionAnalyzer {
 	analyze(text: string | null, config: MentionConfig, previous?: RunMentionAssessments | null): Promise<RunMentions>;
 }
 
-const substringAnalyzer: MentionAnalyzer = {
+export const substringAnalyzer: MentionAnalyzer = {
 	judgeVersion: null,
 	concurrency: 1,
-	analyze: async (text, config) => ({ ...analyzeRunMentions(text, config), mentionAssessments: null }),
+	analyze: async (text, config) => ({ ...analyzeRunMentions(text, config), assessments: null }),
 };
 
 type Subject = MentionConfig["brand"];
 
-const present = (values: string[]) => values.map((value) => value.trim()).filter(Boolean);
-
 function entity(subject: Subject, rivals: string[]): JudgedEntity {
-	return {
-		name: subject.name.trim(),
-		aliases: present(subject.aliases),
-		domains: present(subject.domains).map(normalizeDomain),
-		competitors: rivals.filter((name) => name !== subject.name),
-	};
-}
-
-function toRecord(assessment: MentionAssessment): MentionAssessmentRecord {
-	const { mention, mentionProbability, reason, sentiment, sentimentProbabilities, evidence } = assessment;
-	return {
-		mention,
-		probability: mentionProbability,
-		...(reason ? { reason } : {}),
-		...(sentiment ? { sentiment, sentimentProbabilities } : {}),
-		...(evidence ? { evidence: { start: evidence.start, end: evidence.end } } : {}),
-		...(assessment.firstMention === undefined
-			? {}
-			: { firstMention: assessment.firstMention, mentionCount: assessment.mentionCount }),
-	};
+	return { ...judgedSubject(subject), competitors: rivals.filter((name) => name !== subject.name) };
 }
 
 /** Ranks the companies an answer names by where it first mentions each. */
@@ -83,54 +61,41 @@ export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnal
 		concurrency,
 		async analyze(text, config, previous) {
 			const answer = text ?? "";
-			const competitorNames = config.competitors.map((competitor) => competitor.name);
-			const rivals = [config.brand.name, ...competitorNames];
-			const judgeSubject = async (
-				subject: MentionConfig["brand"],
-				fingerprint: string,
-				before: { fingerprint?: string; record?: MentionAssessmentRecord },
-				rivalNames: string[],
-			): Promise<MentionAssessmentRecord | undefined> => {
-				if (before.fingerprint === fingerprint) return before.record && { ...before.record };
-				const assessment = await assessMention(judge, entity(subject, rivalNames), answer);
-				return assessment ? toRecord(assessment) : undefined;
+			const rivals = [config.brand.name, ...config.competitors.map((competitor) => competitor.name)];
+			/** Keeps the verdict judged under the same fingerprint, a copy since `rank` rewrites positions. */
+			const judgeSubject = async (subject: Subject, judgedAs?: string, kept?: MentionAssessmentRecord) => {
+				const fingerprint = subjectFingerprint(subject, judge.version);
+				const record =
+					judgedAs === fingerprint
+						? kept && { ...kept }
+						: ((await assessMention(judge, entity(subject, rivals), answer)) ?? undefined);
+				return { fingerprint, record };
 			};
 
-			const brandFingerprint = subjectFingerprint(config.brand, judge.version);
-			const judgedCompetitors: Record<string, string> = {};
-			const assessments: RunMentionAssessments = {
-				judged: { brand: brandFingerprint, competitors: judgedCompetitors },
-			};
-			const brand = await judgeSubject(
-				config.brand,
-				brandFingerprint,
-				{ fingerprint: previous?.judged?.brand, record: previous?.brand },
-				competitorNames,
-			);
-			if (brand) assessments.brand = brand;
-			const competitors: Record<string, MentionAssessmentRecord> = {};
+			const brand = await judgeSubject(config.brand, previous?.judged.brand, previous?.brand);
+			const competitors: { name: string; fingerprint: string; record?: MentionAssessmentRecord }[] = [];
 			for (const competitor of config.competitors) {
-				const fingerprint = subjectFingerprint(competitor, judge.version);
-				judgedCompetitors[competitor.name] = fingerprint;
-				const record = await judgeSubject(
-					competitor,
-					fingerprint,
-					{
-						fingerprint: previous?.judged?.competitors?.[competitor.name],
-						record: previous?.competitors?.[competitor.name],
-					},
-					rivals,
-				);
-				if (record) competitors[competitor.name] = record;
+				const { name } = competitor;
+				competitors.push({
+					name,
+					...(await judgeSubject(competitor, previous?.judged.competitors[name], previous?.competitors[name])),
+				});
 			}
-			if (Object.keys(competitors).length > 0) assessments.competitors = competitors;
+			const assessments: RunMentionAssessments = {
+				...(brand.record ? { brand: brand.record } : {}),
+				competitors: Object.fromEntries(competitors.flatMap((c) => (c.record ? [[c.name, c.record]] : []))),
+				judged: {
+					brand: brand.fingerprint,
+					competitors: Object.fromEntries(competitors.map((c) => [c.name, c.fingerprint])),
+				},
+			};
 			// Recomputed every time from the stored first-mention offsets, so a new competitor
 			// reorders everyone without re-judging them.
-			rank([assessments.brand, ...Object.values(competitors)]);
+			rank([assessments.brand, ...Object.values(assessments.competitors)]);
 			return {
 				brandMentioned: counts(assessments.brand),
-				competitorsMentioned: competitorNames.filter((name) => counts(assessments.competitors?.[name])),
-				mentionAssessments: assessments,
+				competitorsMentioned: competitors.filter((c) => counts(c.record)).map((c) => c.name),
+				assessments,
 			};
 		},
 	};
@@ -138,23 +103,29 @@ export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnal
 
 let current: MentionAnalyzer = substringAnalyzer;
 
-/** One session gets no faster past about four threads; more cores are used by adding sessions. */
-const SINGLE_SESSION_THREADS = 4;
+/** `MENTION_JUDGE_WORKERS`: model sessions to run side by side, one per worker thread. */
+function sessionCount(): number {
+	const raw = process.env.MENTION_JUDGE_WORKERS?.trim();
+	const sessions = raw ? Number(raw) : 1;
+	if (!Number.isInteger(sessions) || sessions < 1) {
+		throw new Error(`MENTION_JUDGE_WORKERS must be a positive whole number, got "${raw}"`);
+	}
+	return sessions;
+}
 
 /**
- * Loads the judge from `MENTION_JUDGE_DIR` once per process, as `MENTION_JUDGE_WORKERS` sessions.
- * The worker image always sets the directory; a checkout without the model falls back to
- * substring matching rather than refusing to run.
+ * Loads the judge from `MENTION_JUDGE_DIR` once per process. The worker image always sets the
+ * directory; a checkout without the model falls back to substring matching rather than refusing
+ * to run.
  */
-export async function loadMentionAnalyzer(env: NodeJS.ProcessEnv = process.env): Promise<MentionAnalyzer> {
-	const dir = env.MENTION_JUDGE_DIR;
+export async function loadMentionAnalyzer(): Promise<MentionAnalyzer> {
+	const dir = process.env.MENTION_JUDGE_DIR;
 	if (!dir) {
 		current = substringAnalyzer;
 		return current;
 	}
-	const sessions = Math.max(1, Math.floor(Number(env.MENTION_JUDGE_WORKERS) || 1));
-	const threads = sessions === 1 ? Math.min(SINGLE_SESSION_THREADS, availableParallelism()) : 1;
-	current = judgeAnalyzer(await loadJudgePool(dir, sessions, threads), sessions);
+	const sessions = sessionCount();
+	current = judgeAnalyzer(await loadJudgePool(dir, sessions), sessions);
 	return current;
 }
 

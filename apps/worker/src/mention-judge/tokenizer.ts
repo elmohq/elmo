@@ -56,8 +56,11 @@ export class UnigramTokenizer {
 		this.unkId = file.model.unk_id;
 		this.unkScore = minScore - UNK_PENALTY;
 		const special = new Map(file.added_tokens.map((t) => [t.content, t.id]));
-		this.clsId = special.get("[CLS]") ?? 1;
-		this.sepId = special.get("[SEP]") ?? 2;
+		const cls = special.get("[CLS]");
+		const sep = special.get("[SEP]");
+		if (cls === undefined || sep === undefined) throw new Error("Unsupported tokenizer.json: no [CLS] or [SEP] token");
+		this.clsId = cls;
+		this.sepId = sep;
 	}
 
 	static fromFile(path: string): UnigramTokenizer {
