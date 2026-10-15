@@ -46,7 +46,7 @@ function linkSpans(text: string): [number, number][] {
 
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 
-/** A match inside a longer word ("eo" in "people") is never the brand, so it isn't judged at all. */
+/** A match inside a longer word ("ace" in "place") is never the brand, so it isn't judged at all. */
 function isWholeWord(text: string, start: number, end: number): boolean {
 	return !WORD_CHAR.test(text[start - 1] ?? "") && !WORD_CHAR.test(text[end] ?? "");
 }
