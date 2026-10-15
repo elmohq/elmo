@@ -2,14 +2,15 @@
  * The brand and each tracked competitor on the same four measures, overall, per model and per day,
  * built from rollup sums. Shares are fractions of 1; position is an average place, 1 being named first.
  */
-import type {
-	CompetitorModelSums,
-	DailyCompetitorSums,
-	DailyRunSums,
-	ModelRunSums,
-	VerdictSums,
+import {
+	type CompetitorModelSums,
+	type DailyCompetitorSums,
+	type DailyRunSums,
+	type ModelRunSums,
+	NO_VERDICTS,
+	type VerdictSums,
 } from "@/lib/rollup-read";
-import { SENTIMENT_WINDOW_DAYS } from "@/lib/sentiment";
+import { SENTIMENT_WINDOW_DAYS, sentimentSummary } from "@/lib/sentiment";
 import { shiftDateStr } from "@/lib/timezone-utils";
 
 export const LANDSCAPE_METRICS = ["visibility", "share", "sentiment", "position"] as const;
@@ -31,7 +32,40 @@ export interface LandscapeCompany {
 export interface Landscape {
 	dates: string[];
 	models: string[];
+	/** The brand first, then each tracked competitor. */
 	companies: LandscapeCompany[];
+}
+
+/** Position is the one measure where a lower value is better. */
+export const lowerIsBetter = (metric: LandscapeMetric) => metric === "position";
+
+export const brandOf = (landscape: Landscape): LandscapeCompany => landscape.companies[0];
+
+/** Best first on `metric`; companies without a value go last. */
+export function sortByMetric(companies: LandscapeCompany[], metric: LandscapeMetric): LandscapeCompany[] {
+	const sign = lowerIsBetter(metric) ? 1 : -1;
+	return [...companies].sort((a, b) => {
+		const x = a.totals[metric];
+		const y = b.totals[metric];
+		if (x === null || y === null) return x === null ? (y === null ? 0 : 1) : -1;
+		return sign * (x - y);
+	});
+}
+
+/** The brand and its strongest few competitors on `metric`, for a chart that can't show them all. */
+export function chartedCompanies(landscape: Landscape, metric: LandscapeMetric, competitors = 4): LandscapeCompany[] {
+	return [brandOf(landscape), ...sortByMetric(landscape.companies.slice(1), metric).slice(0, competitors)];
+}
+
+/** The brand's place among every company on `metric`, 1 being best; last when it has no value. */
+export function brandRank(landscape: Landscape, metric: LandscapeMetric): number {
+	const own = brandOf(landscape).totals[metric];
+	if (own === null) return landscape.companies.length;
+	const sign = lowerIsBetter(metric) ? 1 : -1;
+	return (
+		landscape.companies.filter((c) => c.totals[metric] !== null && sign * ((c.totals[metric] ?? 0) - own) < 0).length +
+		1
+	);
 }
 
 /** What one company contributes over some span, alongside the span's totals it is measured against. */
@@ -41,41 +75,28 @@ interface Sums extends VerdictSums {
 	allMentions: number;
 }
 
-const ZERO: Sums = {
-	mentions: 0,
-	runs: 0,
-	allMentions: 0,
-	positive_runs: 0,
-	neutral_runs: 0,
-	negative_runs: 0,
-	mixed_runs: 0,
-	position_sum: 0,
-	positioned_runs: 0,
-};
+const ZERO: Sums = { ...NO_VERDICTS, mentions: 0, runs: 0, allMentions: 0 };
+const SUM_KEYS = Object.keys(ZERO) as (keyof Sums)[];
 
-const add = (a: Sums, b: Sums): Sums =>
-	Object.fromEntries(Object.keys(ZERO).map((k) => [k, a[k as keyof Sums] + b[k as keyof Sums]])) as unknown as Sums;
+function add(a: Sums, b: Sums): Sums {
+	const total = { ...a };
+	for (const key of SUM_KEYS) total[key] += b[key];
+	return total;
+}
+
+/** The runs and mentions a company's count is measured against. */
+const NO_CONTEXT = { runs: 0, allMentions: 0 };
 
 const ratio = (part: number, whole: number) => (whole > 0 ? part / whole : null);
 
-export function measure(s: Sums): MetricValues {
-	const clear = s.positive_runs + s.neutral_runs + s.negative_runs + s.mixed_runs;
+function measure(s: Sums): MetricValues {
 	return {
 		visibility: ratio(s.mentions, s.runs),
 		share: ratio(s.mentions, s.allMentions),
-		sentiment: ratio(s.positive_runs, clear),
-		position: s.positioned_runs > 0 ? s.position_sum / s.positioned_runs : null,
+		sentiment: sentimentSummary(s).positiveShare,
+		position: ratio(s.position_sum, s.positioned_runs),
 	};
 }
-
-const verdicts = (v: VerdictSums): VerdictSums => ({
-	positive_runs: v.positive_runs,
-	neutral_runs: v.neutral_runs,
-	negative_runs: v.negative_runs,
-	mixed_runs: v.mixed_runs,
-	position_sum: v.position_sum,
-	positioned_runs: v.positioned_runs,
-});
 
 export interface LandscapeInput {
 	brand: { name: string; domain: string | null };
@@ -106,9 +127,8 @@ export function buildLandscape(input: LandscapeInput): Landscape {
 		daily.set(name, days);
 	};
 	for (const d of input.brandDaily)
-		put(input.brand.name, d.date, { ...context(d.date), ...verdicts(d), mentions: d.brand_mentioned_runs });
-	for (const d of input.competitorDaily)
-		put(d.competitor, d.date, { ...context(d.date), ...verdicts(d), mentions: d.runs });
+		put(input.brand.name, d.date, { ...d, ...context(d.date), mentions: d.brand_mentioned_runs });
+	for (const d of input.competitorDaily) put(d.competitor, d.date, { ...d, ...context(d.date), mentions: d.runs });
 
 	const modelContext = new Map(
 		input.brandByModel.map((m) => [
@@ -122,13 +142,13 @@ export function buildLandscape(input: LandscapeInput): Landscape {
 		Object.fromEntries(
 			input.brandByModel.map((m) => [
 				m.model,
-				measure({ ...(modelContext.get(m.model) ?? ZERO), ...verdicts(m), mentions: m.brand_mentioned_runs }),
+				measure({ ...m, ...(modelContext.get(m.model) ?? NO_CONTEXT), mentions: m.brand_mentioned_runs }),
 			]),
 		),
 	);
 	for (const m of input.competitorsByModel) {
 		const models = byModel.get(m.competitor) ?? {};
-		models[m.model] = measure({ ...(modelContext.get(m.model) ?? ZERO), ...verdicts(m), mentions: m.runs });
+		models[m.model] = measure({ ...m, ...(modelContext.get(m.model) ?? NO_CONTEXT), mentions: m.runs });
 		byModel.set(m.competitor, models);
 	}
 

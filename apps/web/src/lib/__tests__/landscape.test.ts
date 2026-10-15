@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLandscape } from "@/lib/landscape";
+import { brandRank, buildLandscape, chartedCompanies } from "@/lib/landscape";
 
 const verdicts = {
 	positive_runs: 0,
@@ -68,5 +68,13 @@ describe("buildLandscape", () => {
 		expect(landscape.models).toEqual(["chatgpt"]);
 		expect(landscape.companies[0].byModel.chatgpt).toMatchObject({ visibility: 0.5, share: 0.5 });
 		expect(landscape.companies[1].byModel.chatgpt).toMatchObject({ visibility: 0.5, share: 0.5 });
+	});
+
+	it("charts the brand beside its strongest competitors, and ranks it among all of them", () => {
+		const landscape = buildLandscape(input);
+		expect(chartedCompanies(landscape, "visibility", 1).map((c) => c.name)).toEqual(["Acme", "Globex"]);
+		expect(brandRank(landscape, "visibility")).toBe(1);
+		// Lower is better for position, and a company never ranked has no place to take.
+		expect(brandRank(landscape, "position")).toBe(1);
 	});
 });

@@ -12,7 +12,6 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { ColHead } from "@/components/col-head";
 import { CompanyTrendChart } from "@/components/company-trend-chart";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
-import { sortByMetric } from "@/components/overview/competitive-landscape";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
 import { SiteIcon } from "@/components/site-icon";
@@ -23,7 +22,7 @@ import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useCompetitiveLandscape, useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { useCompanyColors } from "@/lib/company-colors";
-import type { Landscape } from "@/lib/landscape";
+import { chartedCompanies, type Landscape } from "@/lib/landscape";
 import { METRIC_META } from "@/lib/overview-metrics";
 import { pageHead } from "@/lib/route-head";
 import type { ShareOfVoiceEntry } from "@/server/analysis";
@@ -54,15 +53,6 @@ function ShareOfVoiceOverview({
 	colors: Map<string, string>;
 	domainFor: (name: string) => string | undefined;
 }) {
-	const brandCompany = landscape?.companies.find((c) => c.isBrand);
-	const trended = landscape
-		? [
-				...(brandCompany ? [brandCompany] : []),
-				...sortByMetric(landscape.companies, "share")
-					.filter((c) => !c.isBrand)
-					.slice(0, 4),
-			]
-		: [];
 	return (
 		<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 			<Card>
@@ -82,7 +72,7 @@ function ShareOfVoiceOverview({
 					{landscape ? (
 						<CompanyTrendChart
 							dates={landscape.dates}
-							companies={trended.map((c) => ({
+							companies={chartedCompanies(landscape, "share").map((c) => ({
 								name: c.name,
 								isBrand: c.isBrand,
 								color: colors.get(c.name) ?? "#94a3b8",
@@ -114,7 +104,7 @@ function ShareOfVoicePage() {
 
 	const { data, isLoading } = useShareOfVoice(brandId, { lookback, model: modelParam, tags });
 	const { data: landscape } = useCompetitiveLandscape(brandId, { lookback, model: modelParam, tags });
-	const colors = useCompanyColors(landscape);
+	const colors = useCompanyColors(landscape, data?.entries);
 
 	const infoContent = (
 		<>

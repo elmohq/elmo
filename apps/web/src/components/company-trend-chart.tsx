@@ -4,6 +4,7 @@
  */
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { formatShortDate } from "@/lib/chart-utils";
 
 export interface CompanyTrend {
 	name: string;
@@ -12,9 +13,6 @@ export interface CompanyTrend {
 	/** One value per entry of `dates`. */
 	values: (number | null)[];
 }
-
-const shortDate = (date: string) =>
-	new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /** Series keys are indexes rather than names, which can hold characters a CSS variable can't. */
 const keyOf = (index: number) => `c${index}`;
@@ -51,7 +49,7 @@ export function CompanyTrendChart({
 						axisLine={false}
 						tickMargin={8}
 						minTickGap={32}
-						tickFormatter={shortDate}
+						tickFormatter={formatShortDate}
 					/>
 					<YAxis
 						tickLine={false}
@@ -69,7 +67,7 @@ export function CompanyTrendChart({
 						content={
 							<ChartTooltipContent
 								indicator="dot"
-								labelFormatter={(value) => shortDate(String(value))}
+								labelFormatter={(value) => formatShortDate(String(value))}
 								formatter={(value, name) => (
 									<span className="flex w-full justify-between gap-4">
 										<span className="text-muted-foreground">{config[name as string]?.label}</span>

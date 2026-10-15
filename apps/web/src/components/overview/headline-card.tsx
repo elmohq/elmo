@@ -6,17 +6,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import { Area, AreaChart, Tooltip as ChartTooltip, ResponsiveContainer, YAxis } from "recharts";
 import { useBrandParams } from "@/hooks/use-route-params";
-import type { LandscapeMetric } from "@/lib/landscape";
+import { formatShortDate } from "@/lib/chart-utils";
+import { type LandscapeMetric, lowerIsBetter } from "@/lib/landscape";
 import { METRIC_META, TONE_STYLES, type Tone } from "@/lib/overview-metrics";
 import type { OverviewCard } from "@/server/dashboard";
-
-const shortDate = (date: string) =>
-	new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 function Change({ metric, change }: { metric: LandscapeMetric; change: number | null }) {
 	const meta = METRIC_META[metric];
 	if (change === null || Math.abs(change) < 0.005) return null;
-	const good = meta.lowerIsBetter ? change < 0 : change > 0;
+	const good = lowerIsBetter(metric) ? change < 0 : change > 0;
 	const Icon = change > 0 ? IconArrowUpRight : IconArrowDownRight;
 	return (
 		<span
@@ -42,7 +40,7 @@ function PointTooltip({
 	if (!active || !point || point.value === null) return null;
 	return (
 		<div className="whitespace-nowrap rounded-md border bg-background px-2 py-1 text-xs shadow-md">
-			<span className="text-muted-foreground">{shortDate(point.date)}</span>
+			<span className="text-muted-foreground">{formatShortDate(point.date)}</span>
 			<span className="ml-2 font-medium tabular-nums">{METRIC_META[metric].format(point.value)}</span>
 		</div>
 	);
@@ -116,9 +114,9 @@ export function HeadlineCard({
 							<AreaChart
 								data={card.series}
 								margin={{ top: 6, right: 0, bottom: 0, left: 0 }}
-								baseValue={meta.lowerIsBetter ? "dataMax" : "dataMin"}
+								baseValue={lowerIsBetter(metric) ? "dataMax" : "dataMin"}
 							>
-								<YAxis hide domain={["dataMin", "dataMax"]} reversed={meta.lowerIsBetter} />
+								<YAxis hide domain={["dataMin", "dataMax"]} reversed={lowerIsBetter(metric)} />
 								<ChartTooltip
 									cursor={{ stroke: style.stroke, strokeOpacity: 0.4 }}
 									content={<PointTooltip metric={metric} />}

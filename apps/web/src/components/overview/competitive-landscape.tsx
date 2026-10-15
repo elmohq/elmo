@@ -8,21 +8,15 @@ import { useState } from "react";
 import { CompanyTrendChart } from "@/components/company-trend-chart";
 import { SiteIcon } from "@/components/site-icon";
 import { useCompanyColors } from "@/lib/company-colors";
-import { LANDSCAPE_METRICS, type Landscape, type LandscapeCompany, type LandscapeMetric } from "@/lib/landscape";
+import {
+	chartedCompanies,
+	LANDSCAPE_METRICS,
+	type Landscape,
+	type LandscapeMetric,
+	lowerIsBetter,
+	sortByMetric,
+} from "@/lib/landscape";
 import { METRIC_META } from "@/lib/overview-metrics";
-
-/** Competitors charted beside the brand; the table lists them all. */
-const CHARTED_COMPETITORS = 4;
-
-export function sortByMetric(companies: LandscapeCompany[], metric: LandscapeMetric): LandscapeCompany[] {
-	const lowerIsBetter = METRIC_META[metric].lowerIsBetter;
-	return [...companies].sort((a, b) => {
-		const x = a.totals[metric];
-		const y = b.totals[metric];
-		if (x === null || y === null) return x === null ? (y === null ? 0 : 1) : -1;
-		return lowerIsBetter ? x - y : y - x;
-	});
-}
 
 /** One scale per measure for the grid's shading: the better the value, the deeper the blue. */
 function shade(metric: LandscapeMetric, value: number, maxShare: number): number {
@@ -127,9 +121,6 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 	const [metric, setMetric] = useState<LandscapeMetric>("visibility");
 	const colors = useCompanyColors(landscape);
 	const meta = METRIC_META[metric];
-	const ranked = landscape ? sortByMetric(landscape.companies, metric) : [];
-	const brand = landscape?.companies.find((c) => c.isBrand);
-	const charted = [...(brand ? [brand] : []), ...ranked.filter((c) => !c.isBrand).slice(0, CHARTED_COMPETITORS)];
 	return (
 		<Card className="gap-0 border-slate-200 bg-slate-50/70 py-0 shadow-none dark:border-slate-800 dark:bg-slate-900/40">
 			<CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 px-5 pt-4 pb-0">
@@ -143,14 +134,14 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 					) : (
 						<CompanyTrendChart
 							dates={landscape.dates}
-							companies={charted.map((c) => ({
+							companies={chartedCompanies(landscape, metric).map((c) => ({
 								name: c.name,
 								isBrand: c.isBrand,
 								color: colors.get(c.name) ?? "#94a3b8",
 								values: c.series[metric],
 							}))}
 							format={meta.format}
-							lowerIsBetter={meta.lowerIsBetter}
+							lowerIsBetter={lowerIsBetter(metric)}
 						/>
 					)}
 				</div>
