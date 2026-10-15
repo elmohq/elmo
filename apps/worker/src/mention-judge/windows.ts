@@ -12,7 +12,6 @@ export interface MatchWindow {
 }
 
 export interface AnswerMatches {
-	/** Passages around matches in the answer's own text, for the model to judge. */
 	windows: MatchWindow[];
 	/** Whole-word matches inside links, which count as the brand being cited. */
 	linkMatches: number;
