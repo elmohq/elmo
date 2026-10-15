@@ -285,19 +285,18 @@ export async function deriveRuns(
 	await sendDeriveRuns(boss, data.brandId, failed, DERIVE_PRIORITY.new, { reextract, chunkSize: 1 });
 }
 
-/** How far back the sweep looks for runs whose judging was lost or gave up. */
-const SWEEP_DAYS = 30;
 /** Younger runs are left to the job sent when they were recorded. */
 const SWEEP_MIN_AGE_MS = 10 * 60 * 1000;
-const SWEEP_LIMIT = 5000;
 
 /**
  * Asks again for runs still unjudged: their job was lost between recording and sending, or ran
- * out of retries. Runs every few minutes, so judging recovers on its own once it can.
+ * out of retries. Every few minutes over the last two days, which the `created_at` index keeps cheap;
+ * once at startup over the last 30, so runs left by a longer outage recover once it's fixed.
  */
 export async function requestUnjudgedRuns(
 	conn: DbConnection = db,
 	boss: Pick<PgBoss, "insert"> = getBoss(),
+	{ days = 2, limit = 5000 } = {},
 ): Promise<number> {
 	const now = Date.now();
 	const rows = await conn
@@ -307,11 +306,11 @@ export async function requestUnjudgedRuns(
 		.where(
 			and(
 				isNull(runMentions.runId),
-				gte(promptRuns.createdAt, new Date(now - SWEEP_DAYS * 24 * 60 * 60 * 1000)),
+				gte(promptRuns.createdAt, new Date(now - days * 24 * 60 * 60 * 1000)),
 				lt(promptRuns.createdAt, new Date(now - SWEEP_MIN_AGE_MS)),
 			),
 		)
-		.limit(SWEEP_LIMIT);
+		.limit(limit);
 	const byBrand = new Map<string, string[]>();
 	for (const row of rows) byBrand.set(row.brandId, [...(byBrand.get(row.brandId) ?? []), row.id]);
 	for (const [brandId, runIds] of byBrand) await sendDeriveRuns(boss, brandId, runIds, DERIVE_PRIORITY.new);
