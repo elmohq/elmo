@@ -1,6 +1,7 @@
 /** Split from onboarding.ts so a client component importing a server function
  * does not transitively pull in drizzle and pg. */
 
+import { runAfterCommit } from "@workspace/lib/after-commit";
 import { slugify } from "@workspace/lib/app-urls";
 import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
@@ -342,7 +343,7 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	// through the pool.
 	const schedule = () => createMultiplePromptJobSchedulers(promptIds);
 	if (input.afterCommit) input.afterCommit(schedule);
-	else await schedule();
+	else await runAfterCommit(schedule);
 
 	const refreshed = await (input.conn ?? db).query.brands.findFirst({ where: eq(brands.id, input.id) });
 	return buildBrandResult(refreshed!);

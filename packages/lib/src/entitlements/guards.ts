@@ -6,6 +6,7 @@
 import type { Entitlements } from "@workspace/config/entitlements";
 import { MAX_SELF_SERVE_BRANDS, premiumPairings, premiumPlanNames, premiumSlotsUsed } from "@workspace/config/plans";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { runAfterCommit } from "../after-commit";
 import { MAX_COMPETITORS, MAX_PROMPTS } from "../constants";
 import { db } from "../db/db";
 import type { DbConnection } from "../db/db-connection";
@@ -247,6 +248,10 @@ const QUOTA_LOCK_CLASS = 0x656c6d6f;
  * `run` must do all of its work on the `tx` it is handed, checks included.
  * Reaching for the pooled `db` holds this transaction open while waiting for a
  * second connection, which deadlocks the pool under enough concurrent callers.
+ *
+ * Anything handed to `afterCommit` runs once the transaction has committed, in
+ * the order it was registered, and is best-effort: it cannot fail the write it
+ * follows, and one task failing doesn't cost the rest their turn.
  */
 export async function withQuotaLock<T>(
 	organizationId: string,
@@ -257,7 +262,7 @@ export async function withQuotaLock<T>(
 		await tx.execute(sql`select pg_advisory_xact_lock(${QUOTA_LOCK_CLASS}, hashtext(${organizationId}))`);
 		return run(tx, (task) => deferred.push(task));
 	});
-	for (const task of deferred) await task();
+	for (const task of deferred) await runAfterCommit(task);
 	return value;
 }
 
