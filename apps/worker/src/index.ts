@@ -9,7 +9,7 @@ import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
 import { registerDeriveRunsHandler, registerHandlers } from "./handlers";
-import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS } from "./jobs/derive-runs";
+import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS, requestUnjudgedRuns } from "./jobs/derive-runs";
 import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE } from "./jobs/reprocess";
 import { loadMentionAnalyzer, MENTION_JUDGE_DIR } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
@@ -177,6 +177,13 @@ async function main() {
 	// Register job handlers
 	await registerHandlers(boss, { judging: analyzer !== null });
 	console.log("All handlers registered, worker is ready");
+
+	if (analyzer) {
+		await requestUnjudgedRuns(db, boss, { days: 30, limit: 50_000 }).then(
+			(unjudged) => unjudged > 0 && console.log(`Asked again to judge ${unjudged} runs`),
+			(error) => Sentry.captureException(error),
+		);
+	}
 
 	await startBackfills();
 }
