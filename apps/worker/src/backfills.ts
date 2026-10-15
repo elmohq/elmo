@@ -10,7 +10,14 @@ import type { HeapWalkOptions, HeapWalkPosition } from "@workspace/lib/db/heap-w
 import { resolveUnpagedCitations } from "@workspace/lib/rollups";
 import { fillLegacyText } from "./jobs/fill-legacy-text";
 
-const RETRY_DELAY_MS = 60_000;
+const FIRST_RETRY_MS = 60_000;
+const MAX_RETRY_MS = 30 * 60_000;
+
+/** The database's own message: a failed batch's query error carries every row of it as parameters. */
+function briefly(error: unknown): string {
+	const cause = error instanceof Error && error.cause instanceof Error ? error.cause : error;
+	return (cause instanceof Error ? cause.message : String(cause)).slice(0, 500);
+}
 
 interface Backfill {
 	name: string;
@@ -26,11 +33,11 @@ const BACKFILLS: Backfill[] = [
 /**
  * Runs one in the background until it finishes, recording where it has got to
  * after each step so a restart picks up there. An error (a statement timeout on
- * a busy database, say) is recorded and retried rather than leaving it stopped
- * until the next restart.
+ * a busy database, say) is recorded and retried, backing off, rather than leaving
+ * it stopped until the next restart.
  */
 async function runUntilDone(backfill: Backfill): Promise<void> {
-	for (;;) {
+	for (let retryMs = FIRST_RETRY_MS; ; retryMs = Math.min(retryMs * 2, MAX_RETRY_MS)) {
 		try {
 			const row = await beginBackgroundMigration(db, backfill.name);
 			const total = await backfill.run({
@@ -41,9 +48,10 @@ async function runUntilDone(backfill: Backfill): Promise<void> {
 			console.log(`[background-migration] ${backfill.name} finished (${total} rows this run)`);
 			return;
 		} catch (error) {
-			console.error(`[background-migration] ${backfill.name} failed; retrying in a minute:`, error);
-			await recordBackgroundError(db, backfill.name, String(error)).catch(() => {});
-			await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+			const message = briefly(error);
+			console.error(`[background-migration] ${backfill.name} failed, retrying in ${retryMs / 60_000} min: ${message}`);
+			await recordBackgroundError(db, backfill.name, message).catch(() => {});
+			await new Promise((resolve) => setTimeout(resolve, retryMs));
 		}
 	}
 }
