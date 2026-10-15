@@ -149,7 +149,7 @@ function QuoteRow({ quote }: { quote: SentimentQuote }) {
 					<span>·</span>
 					<BrandPromptLink
 						promptId={quote.promptId}
-						search={{ tab: "responses" }}
+						search={{ tab: "responses", sentiment: quote.tone }}
 						className="truncate hover:text-foreground hover:underline"
 					>
 						{quote.prompt || "(untitled prompt)"}
@@ -241,8 +241,8 @@ function SentimentPage() {
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
 	const filters = { lookback, model: modelParam, tags };
-	const { data, isLoading } = useBrandSentiment(brandId, filters);
-	const { data: landscape } = useCompetitiveLandscape(brandId, filters);
+	const { data, isLoading, error } = useBrandSentiment(brandId, filters);
+	const { data: landscape, error: landscapeError } = useCompetitiveLandscape(brandId, filters);
 	const colors = useCompanyColors(landscape);
 
 	const infoContent = (
@@ -254,7 +254,15 @@ function SentimentPage() {
 	);
 
 	let content: React.ReactNode;
-	if ((isLoading && !data) || !landscape) {
+	if ((error && !data) || (landscapeError && !landscape)) {
+		content = (
+			<Card>
+				<CardContent className="py-8 text-center text-muted-foreground">
+					Couldn't load sentiment right now. Reload the page to try again.
+				</CardContent>
+			</Card>
+		);
+	} else if ((isLoading && !data) || !landscape) {
 		content = <Skeleton className="h-[320px] w-full" />;
 	} else if (!data || brandOf(landscape).totals.sentiment === null) {
 		content = (

@@ -19,7 +19,11 @@ const urlTransform: UrlTransform = (url, key, node) => {
 };
 
 const components: Components = {
-	mark: ({ className, children }) => <mark className={className ?? HIGHLIGHT_CLASS}>{children}</mark>,
+	mark: ({ className, children, node }) => (
+		<mark className={className ?? HIGHLIGHT_CLASS} data-passage={node?.properties?.dataPassage ? "" : undefined}>
+			{children}
+		</mark>
+	),
 	// Answers link out to their sources, so a plain click would navigate the
 	// dashboard away to a third-party page.
 	a: ({ href, children }) => (

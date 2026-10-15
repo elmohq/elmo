@@ -13,7 +13,7 @@ import { useBrand } from "@/hooks/use-brands";
 import { useCrispChat } from "@/hooks/use-crisp-chat";
 import { joinTags, splitTags, useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
-import { useResponseSearch } from "@/hooks/use-responses";
+import { useResponseSearch, useResponseToneCounts } from "@/hooks/use-responses";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { type ToneSearch, useToneSearch, validateToneSearch } from "@/hooks/use-tone-search";
 import { pageHead } from "@/lib/route-head";
@@ -68,16 +68,14 @@ function ResponsesPage() {
 	};
 
 	// Placeholder data is the previous page or search, still on screen while the next one loads.
+	const search = { query, lookback, model: modelParam, tags, promptIds };
 	const { data, isLoading, isPlaceholderData, error } = useResponseSearch(brandId, {
-		query,
-		lookback,
-		model: modelParam,
-		tags,
-		promptIds,
+		...search,
 		sentiment,
 		sort,
 		page,
 	});
+	const { data: toneCounts } = useResponseToneCounts(brandId, search);
 
 	const infoContent = (
 		<p>
@@ -86,7 +84,7 @@ function ResponsesPage() {
 		</p>
 	);
 
-	const empty = emptyMessage(data, error);
+	const empty = emptyMessage(data, error, toneCounts?.all);
 	let content: React.ReactNode;
 	if (isLoading && !data) {
 		content = <ResponseCardSkeletons count={3} />;
@@ -148,9 +146,9 @@ function ResponsesPage() {
 					searching={isPlaceholderData}
 				/>
 			</FilterSection>
-			{data && data.totalRuns > 0 && (
+			{toneCounts && toneCounts.all > 0 && (
 				<ToneFilterCard
-					counts={data.toneCounts}
+					counts={toneCounts}
 					value={sentiment}
 					onChange={setSentiment}
 					sort={sort}
@@ -165,13 +163,15 @@ function ResponsesPage() {
 function emptyMessage(
 	data: { totalRuns: number; matches: unknown[]; query: string | null } | undefined,
 	error: unknown,
+	/** Answers the search finds before the tone filter; with some, it's the filter that left none. */
+	searchMatches: number | undefined,
 ): string | null {
 	if (error && !data) return "Couldn't load responses right now. Reload the page to try again.";
 	if (!data || data.totalRuns === 0) {
 		return "No responses for the selected filters yet. Responses appear once your prompts have been run.";
 	}
 	if (data.matches.length > 0) return null;
-	return data.query
+	return data.query && !searchMatches
 		? `No responses contain "${data.query}" in this period.`
 		: "No responses match the selected filters in this period.";
 }

@@ -91,7 +91,7 @@ function markTextNode(node: PositionedNode, range: MarkRange): HastNode[] {
 		({
 			type: "element",
 			tagName: "mark",
-			properties: { className: [range.className] },
+			properties: { className: [range.className], dataPassage: true },
 			children: [{ type: "text", value: text }],
 		}) as HastNode;
 	if (value.length !== end - start) return [mark(value)];

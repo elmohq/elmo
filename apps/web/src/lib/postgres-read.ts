@@ -243,9 +243,8 @@ export async function getSentimentQuotes(
 			JOIN run_extractions re ON re.run_id = pr.id
 			WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
 				AND ${rank} IS NOT NULL
-				-- Checked before picking each prompt's best, so a run with no passage to quote can't stand in for one that has.
+				AND re.text_content IS NOT NULL
 				AND (${evidence}->>'start')::int < (${evidence}->>'end')::int
-				AND (${evidence}->>'end')::int <= char_length(re.text_content)
 			ORDER BY pr.prompt_id, rank, confidence DESC, pr.created_at DESC
 		) best
 		ORDER BY rank, confidence DESC, created_at DESC

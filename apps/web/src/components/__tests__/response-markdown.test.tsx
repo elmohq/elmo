@@ -134,7 +134,8 @@ describe("ResponseMarkdown search highlights", () => {
 });
 
 describe("marking a passage", () => {
-	const markText = (html: string) => [...html.matchAll(/<mark class="x">(.*?)<\/mark>/g)].map((m) => m[1]).join("|");
+	const markText = (html: string) =>
+		[...html.matchAll(/<mark class="x" data-passage="">(.*?)<\/mark>/g)].map((m) => m[1]).join("|");
 
 	it("marks exactly the source span, across formatting, and nothing else", () => {
 		const text = "Intro line.\n\nAcme is **the easiest** CRM to set up. Globex is pricier.";
@@ -145,7 +146,7 @@ describe("marking a passage", () => {
 		);
 		expect(markText(html)).toBe("Acme is |the easiest| CRM to set up.");
 		expect(html).toContain("<strong><mark");
-		expect(html).not.toContain('<mark class="x">Intro');
+		expect(html).not.toContain('<mark class="x" data-passage="">Intro');
 	});
 
 	it("leaves the answer unmarked without a range", () => {

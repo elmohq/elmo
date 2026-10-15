@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { cn } from "@workspace/ui/lib/utils";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
 import { evidenceRange } from "@/lib/evidence";
@@ -48,6 +48,11 @@ export function ResponseCard({
 	const [selected, setSelected] = useState<string | null>(null);
 	const companies = mentionedCompanies(run, text, brandName);
 	const markRange = passageMark(companies.find((c) => c.name === selected));
+	const answerRef = useRef<HTMLDivElement>(null);
+	// The passage can sit below the answer box's fold, where marking it alone would show nothing.
+	useEffect(() => {
+		if (selected) answerRef.current?.querySelector("[data-passage]")?.scrollIntoView({ block: "nearest" });
+	}, [selected]);
 	return (
 		<Card>
 			<CardHeader className="pb-0 gap-y-0">
@@ -94,7 +99,7 @@ export function ResponseCard({
 
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
-					<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
+					<div ref={answerRef} className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
 						<ResponseMarkdown highlight={highlight} markRange={markRange}>
 							{text}
 						</ResponseMarkdown>
@@ -180,22 +185,8 @@ function MentionedBrands({
 				const canShow = company.passage !== null;
 				const active = selected === company.name;
 				const tip = badgeTip(company);
-				return (
-					<button
-						key={company.name}
-						type="button"
-						disabled={!canShow}
-						aria-pressed={canShow ? active : undefined}
-						title={tip || undefined}
-						onClick={() => onSelect(active ? null : company.name)}
-						className={cn(
-							"inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors",
-							company.isBrand && "border-foreground/30 font-medium",
-							canShow && "cursor-pointer hover:bg-muted/60",
-							active && tone && cn("border-transparent", TONE_STYLES[tone].soft),
-							active && !tone && "border-transparent bg-muted",
-						)}
-					>
+				const content = (
+					<>
 						<SiteIcon domain={domainFor(company.name)} size="xs" />
 						{company.name}
 						{company.record?.position !== undefined && (
@@ -207,6 +198,35 @@ function MentionedBrands({
 								<span className={cn("font-medium", TONE_STYLES[tone].text)}>{TONE_STYLES[tone].label}</span>
 							</>
 						)}
+					</>
+				);
+				const className = cn(
+					"inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors",
+					company.isBrand && "border-foreground/30 font-medium",
+				);
+				// Only a badge with a passage to mark is a control; the rest are plain labels.
+				if (!canShow) {
+					return (
+						<span key={company.name} title={tip || undefined} className={className}>
+							{content}
+						</span>
+					);
+				}
+				return (
+					<button
+						key={company.name}
+						type="button"
+						aria-pressed={active}
+						title={tip || undefined}
+						onClick={() => onSelect(active ? null : company.name)}
+						className={cn(
+							className,
+							"cursor-pointer hover:bg-muted/60",
+							active && tone && cn("border-transparent", TONE_STYLES[tone].soft),
+							active && !tone && "border-transparent bg-muted",
+						)}
+					>
+						{content}
 					</button>
 				);
 			})}

@@ -16,58 +16,69 @@ import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 const PAGE_SIZE = 15;
 
+/** What narrows a search: everything but the tone filter, sort and page. */
+const searchScopeSchema = z.object({
+	brandId: z.string(),
+	query: z.string().max(500).optional(),
+	lookback: lookbackSchema.default("1m"),
+	model: z.string().optional(),
+	tags: z.string().optional(),
+	/** Comma-joined prompt IDs; absent means every prompt. */
+	prompts: z.string().optional(),
+	timezone: z.string().default("UTC"),
+});
+
+async function resolveSearch(data: z.infer<typeof searchScopeSchema>) {
+	await requireBrandSession(data.brandId);
+	const query = data.query?.trim() || undefined;
+	const picked = data.prompts ? new Set(data.prompts.split(",")) : null;
+	const prompts = (await resolveFilteredPrompts(data.brandId, { tags: data.tags })).filter(
+		(prompt) => !picked || picked.has(prompt.id),
+	);
+	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
+	const scope: ResponseSearchScope = {
+		brandId: data.brandId,
+		from: fromDateStr,
+		to: toDateStr,
+		timezone,
+		promptIds: prompts.map((prompt) => prompt.id),
+		model: data.model,
+		query,
+	};
+	return { scope, prompts };
+}
+
 export const searchResponsesFn = createServerFn({ method: "GET" })
 	.validator(
-		z.object({
-			brandId: z.string(),
-			query: z.string().max(500).optional(),
-			lookback: lookbackSchema.default("1m"),
-			model: z.string().optional(),
-			tags: z.string().optional(),
-			/** Comma-joined prompt IDs; absent means every prompt. */
-			prompts: z.string().optional(),
+		searchScopeSchema.extend({
 			sentiment: toneFilterSchema.optional(),
 			sort: responseSortSchema.default("newest"),
 			page: z.number().int().min(0).default(0),
-			timezone: z.string().default("UTC"),
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
-
-		const query = data.query?.trim() || undefined;
-		const picked = data.prompts ? new Set(data.prompts.split(",")) : null;
-		const prompts = (await resolveFilteredPrompts(data.brandId, { tags: data.tags })).filter(
-			(prompt) => !picked || picked.has(prompt.id),
-		);
+		const { scope, prompts } = await resolveSearch(data);
 		const promptValues = new Map(prompts.map((prompt) => [prompt.id, prompt.value]));
-		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
-		const scope: ResponseSearchScope = {
-			brandId: data.brandId,
-			from: fromDateStr,
-			to: toDateStr,
-			timezone,
-			promptIds: prompts.map((prompt) => prompt.id),
-			model: data.model,
-			query,
-		};
-
-		const [totals, toneCounts, rows] = await Promise.all([
+		const [totals, rows] = await Promise.all([
 			getMentionTotals(scope),
-			getResponseToneCounts(scope),
 			getResponseMatches({ ...scope, tone: data.sentiment }, PAGE_SIZE, data.page * PAGE_SIZE, data.sort),
 		]);
-
 		return {
-			query: query ?? null,
+			query: scope.query ?? null,
 			totalRuns: totals.runs,
 			matchedRuns: rows[0]?.matched ?? 0,
-			/** The search's matches by tone, before the sentiment filter narrows them. */
-			toneCounts,
 			pageSize: PAGE_SIZE,
 			matches: rows.map((row) => ({ ...toResponse(row), promptValue: promptValues.get(row.prompt_id) ?? "" })),
 		};
 	});
+
+/**
+ * The search's matches by tone, before the tone filter narrows them. Apart from the search, so
+ * paging, sorting or picking a tone doesn't scan the window again.
+ */
+export const getResponseToneCountsFn = createServerFn({ method: "GET" })
+	.validator(searchScopeSchema)
+	.handler(async ({ data }) => getResponseToneCounts((await resolveSearch(data)).scope));
 
 /** A run as the response cards show it. */
 export function toResponse(row: ResponseMatchRow) {

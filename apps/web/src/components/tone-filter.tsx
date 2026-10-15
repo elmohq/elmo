@@ -49,10 +49,12 @@ export function ToneBar({
 				);
 				const label = `${TONE_STYLES[tone].label}: ${percent(counts[tone], total)}`;
 				return onSelect ? (
+					// A mouse shortcut: the legend below is the same control for keyboards and screen readers.
 					<button
 						key={tone}
 						type="button"
-						aria-label={label}
+						tabIndex={-1}
+						aria-hidden
 						title={label}
 						onClick={() => onSelect(tone)}
 						className={cn(segment, "cursor-pointer")}

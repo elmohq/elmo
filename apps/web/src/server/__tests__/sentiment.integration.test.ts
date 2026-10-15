@@ -34,10 +34,10 @@ beforeAll(async () => {
 	const pricing = await createPrompt(brandId, { value: "acme pricing" });
 	const setup = await createPrompt(brandId, { value: "easiest crm to set up" });
 	const reviews = await createPrompt(brandId, { value: "acme reviews" });
-	// Its passage points past the end of the stored text, so there's nothing to quote.
+	// A link-only mention has no passage, so there's nothing to quote.
 	const unquotable = judged("Acme is loved.", "Acme is loved.", "positive", 0.99);
 	const unquotableBrand = unquotable.assessments.brand;
-	if (unquotableBrand) unquotableBrand.evidence = { start: 0, end: 500 };
+	if (unquotableBrand) unquotableBrand.evidence = undefined;
 
 	const runs: [key: string, prompt: string, at: string, mentioned: boolean, verdict?: ReturnType<typeof judged>][] = [
 		[
