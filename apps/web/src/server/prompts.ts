@@ -440,7 +440,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		return {
 			runs: rows.map(toResponse),
 			total,
-			/** This prompt's runs in the window by tone, before the sentiment filter narrows them. */
+			/** Before the sentiment filter narrows them. */
 			toneCounts,
 			page: data.page,
 			limit: data.limit,

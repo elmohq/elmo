@@ -1,11 +1,9 @@
-/** The tone of an answer toward the brand, as the mention judge reads it, and how lists filter on it. */
 import type { Sentiment } from "@workspace/lib/mentions";
 import { z } from "zod";
 
 export type Tone = Sentiment;
 export const TONES = ["positive", "neutral", "mixed", "negative"] as const satisfies readonly Tone[];
 
-/** A tone, or answers that don't mention the brand at all. */
 export const toneFilterSchema = z.enum([...TONES, "unmentioned"]);
 export type ToneFilter = z.infer<typeof toneFilterSchema>;
 

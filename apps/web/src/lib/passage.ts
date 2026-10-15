@@ -1,9 +1,5 @@
 import type { MentionAssessment } from "@workspace/lib/mentions";
 
-/**
- * Where in the run's stored text the passage an assessment rests on lies, or null when there is
- * none or it runs past the text's end.
- */
 export function passageRange(
 	text: string | null,
 	assessment: MentionAssessment,

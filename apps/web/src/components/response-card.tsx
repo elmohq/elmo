@@ -128,11 +128,10 @@ interface MentionedCompany {
 	isBrand: boolean;
 	record?: MentionAssessment;
 	tone?: Tone;
-	/** Where in the answer the passage its assessment rests on lies; null when there's none to mark. */
 	passage: { start: number; end: number } | null;
 }
 
-/** Each company the answer counts as mentioning: the brand first, then competitors as the answer names them. */
+/** The brand first, then competitors in the order the answer names them. */
 function mentionedCompanies(run: ResponseCardRun, text: string, brandName?: string): MentionedCompany[] {
 	const company = (name: string, isBrand: boolean, record?: MentionAssessment): MentionedCompany => ({
 		name,

@@ -15,7 +15,6 @@ export interface RingSlice {
 	icon?: ReactNode;
 }
 
-/** A ring of slices with a figure in the hole and each slice listed beside it. */
 export function RingChart({ slices, center }: { slices: RingSlice[]; center: string }) {
 	const total = slices.reduce((s, x) => s + x.value, 0);
 	if (total === 0) return null;
@@ -56,7 +55,6 @@ export function RingChart({ slices, center }: { slices: RingSlice[]; center: str
 						/>
 					</PieChart>
 				</ChartContainer>
-				{/* The headline figure sits in the hole, so the number and the ring read as one. */}
 				<div className="pointer-events-none absolute inset-0 flex items-center justify-center">
 					<span className="text-3xl font-bold tracking-tight tabular-nums">{center}</span>
 				</div>

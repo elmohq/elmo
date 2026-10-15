@@ -188,7 +188,6 @@ export async function getResponseMatches(
 	`);
 }
 
-/** How the search's matches split by tone, before any tone filter. */
 export async function getResponseToneCounts(scope: ResponseSearchScope): Promise<ToneCounts> {
 	if (scope.promptIds.length === 0) return toToneCounts([]);
 	const rows = await queryPg<{ bucket: string | null; runs: number }>(sql`
@@ -215,10 +214,7 @@ export interface SentimentQuoteRow {
 	text_content: string;
 }
 
-/**
- * The assessments in `tones` the judge was surest of, one per prompt so a prompt that runs daily
- * doesn't fill the list with the same answer. Stronger tones in `tones` order come first.
- */
+/** One per prompt, so a daily prompt doesn't fill the list with the same answer; earlier `tones` rank first. */
 export async function getSentimentQuotes(
 	scope: PromptListScope,
 	tones: readonly Tone[],

@@ -72,15 +72,11 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * The search's matches by tone, before the tone filter narrows them. Apart from the search, so
- * paging, sorting or picking a tone doesn't scan the window again.
- */
+/** Separate from the search so paging, sorting or picking a tone doesn't scan the window again. */
 export const getResponseToneCountsFn = createServerFn({ method: "GET" })
 	.validator(searchScopeSchema)
 	.handler(async ({ data }) => getResponseToneCounts((await resolveSearch(data)).scope));
 
-/** A run as the response cards show it. */
 export function toResponse(row: ResponseMatchRow) {
 	return {
 		id: row.id,

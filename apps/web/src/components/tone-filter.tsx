@@ -22,10 +22,6 @@ import {
 
 const percent = (part: number, whole: number) => `${Math.round((part / whole) * 100)}%`;
 
-/**
- * Rounded segments with small gaps, one per tone that occurs. With `onSelect` each segment is a
- * button, and the ones not `selected` fade.
- */
 export function ToneBar({
 	counts,
 	selected,
@@ -138,10 +134,7 @@ function FilterOption({
 	);
 }
 
-/**
- * How a list of answers splits by tone toward the brand, doubling as its filter: a segment or its
- * legend entry narrows the list to that tone, and choosing it again clears the filter.
- */
+/** Choosing a segment or legend entry filters the list to that tone; choosing it again clears the filter. */
 export function ToneFilterCard({
 	counts,
 	value,

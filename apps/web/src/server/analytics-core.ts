@@ -579,7 +579,7 @@ export interface SentimentQuote {
 	model: string;
 	createdAt: string;
 	tone: Tone;
-	/** The passage of the answer the assessment rests on, as markdown. */
+	/** Markdown. */
 	passage: string;
 }
 
@@ -591,7 +591,7 @@ export interface PromptSentiment {
 }
 
 export interface BrandSentiment {
-	/** Prompts with at least one mention whose tone was called, least positive first. */
+	/** Least positive first. */
 	prompts: PromptSentiment[];
 	/** The negative and mixed assessments the judge was surest of, one per prompt. */
 	criticism: SentimentQuote[];
@@ -600,10 +600,7 @@ export interface BrandSentiment {
 
 const QUOTES_PER_SIDE = 5;
 
-/**
- * How the answers that mention the brand talk about it, per prompt over the window and in their own
- * words. The current split is the brand's in the competitive landscape, which every headline shares.
- */
+/** The overall split comes from the competitive landscape, which every headline shares. */
 export async function getBrandSentiment(
 	brandId: string,
 	window: AnalyticsWindow,

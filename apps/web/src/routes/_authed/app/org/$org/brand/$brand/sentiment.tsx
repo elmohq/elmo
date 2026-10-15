@@ -1,7 +1,3 @@
-/**
- * "How do AI answers talk about us?" The tone of the answers that mention the brand, against its
- * competitors and per engine and prompt, with the passages behind the strongest assessments.
- */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getModelMeta } from "@workspace/config/models";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";

@@ -30,7 +30,7 @@ const scopeParams = (brandId: string, filters?: ResponseSearchFilters) => ({
 	timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 });
 
-/** How the search's matches split by tone; unchanged by the tone filter, sort or page. */
+/** Independent of the tone filter, sort and page. */
 export function useResponseToneCounts(brandId?: string, filters?: ResponseSearchFilters) {
 	const resolvedBrandId = useResolvedBrandId(brandId);
 	const params = scopeParams(resolvedBrandId || "", filters);

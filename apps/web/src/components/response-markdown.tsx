@@ -66,7 +66,6 @@ export function ResponseMarkdown({
 }: {
 	children: string;
 	highlight?: string;
-	/** A span of `children` to mark, such as the passage a mention assessment rests on. */
 	markRange?: MarkRange;
 }) {
 	return (

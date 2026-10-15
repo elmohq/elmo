@@ -1,13 +1,12 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { type ResponseSort, responseSortSchema, type ToneFilter, toneFilterSchema } from "@/lib/tone";
 
-/** The sentiment filter and sort of a list of answers; newest first when `sort` is absent. */
+/** An absent `sort` means newest first. */
 export interface ToneSearch {
 	sentiment?: ToneFilter;
 	sort?: Exclude<ResponseSort, "newest">;
 }
 
-/** For a route's `validateSearch`, so a filtered list can be linked to. */
 export function validateToneSearch(search: Record<string, unknown>): ToneSearch {
 	return {
 		sentiment: toneFilterSchema.safeParse(search.sentiment).data,
@@ -15,7 +14,6 @@ export function validateToneSearch(search: Record<string, unknown>): ToneSearch 
 	};
 }
 
-/** Reads and writes the current route's `ToneSearch`; `onChange` runs after either changes. */
 export function useToneSearch(onChange?: () => void) {
 	const navigate = useNavigate();
 	// The routes that own these params may already be gone if the page is left while it hydrates.
