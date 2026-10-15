@@ -37,6 +37,12 @@ const sentimentTimeSeries = DATES.map((date, i) => ({
 	negative: clamp(9 - i * 0.1 + 2 * Math.sin(i / 4)),
 }));
 
+// Position: the brand named second or third on average, edging toward first.
+const positionTimeSeries = DATES.map((date, i) => ({
+	date,
+	average: Math.round((2.4 - i * 0.02 + 0.2 * Math.sin(i / 3)) * 10) / 10,
+}));
+
 export const mockDashboardSummary = {
 	totalPrompts: 42,
 	totalRuns: 3120,
@@ -48,6 +54,8 @@ export const mockDashboardSummary = {
 	citationTimeSeries: [],
 	sentiment: { positive: 1210, neutral: 560, negative: 140, mixed: 90 },
 	sentimentTimeSeries,
+	averagePosition: 1.8,
+	positionTimeSeries,
 };
 
 // Share of voice: brand hovering in the low-30s against three competitors.

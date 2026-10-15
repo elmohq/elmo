@@ -403,6 +403,9 @@ export const rollupPromptRuns = pgTable(
 		neutralRuns: integer("neutral_runs").notNull().default(0),
 		negativeRuns: integer("negative_runs").notNull().default(0),
 		mixedRuns: integer("mixed_runs").notNull().default(0),
+		/** The brand's position summed over the runs that rank it; divide by `positionedRuns` for the average. */
+		positionSum: integer("position_sum").notNull().default(0),
+		positionedRuns: integer("positioned_runs").notNull().default(0),
 		/** Runs with at least one genuine fan-out query (see `isFanoutQuery`). */
 		fanoutRuns: integer("fanout_runs").notNull(),
 		/** Distinct genuine fan-out queries summed over runs. */
@@ -426,6 +429,13 @@ export const rollupCompetitorMentions = pgTable(
 		/** Keyed by name, not competitor id: a bulk competitor save reinserts rows with new ids. */
 		competitorName: text("competitor_name").notNull(),
 		runs: integer("runs").notNull(),
+		/** The same sentiment and position measures as `rollup_prompt_runs` has for the brand. */
+		positiveRuns: integer("positive_runs").notNull().default(0),
+		neutralRuns: integer("neutral_runs").notNull().default(0),
+		negativeRuns: integer("negative_runs").notNull().default(0),
+		mixedRuns: integer("mixed_runs").notNull().default(0),
+		positionSum: integer("position_sum").notNull().default(0),
+		positionedRuns: integer("positioned_runs").notNull().default(0),
 	},
 	(table) => [
 		primaryKey({

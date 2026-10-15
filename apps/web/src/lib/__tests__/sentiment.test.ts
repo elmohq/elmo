@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sentimentSeries } from "@/lib/sentiment";
+import { positionSeries, sentimentSeries } from "@/lib/sentiment";
 
 const day = (date: string, positive: number, negative: number, neutral = 0) => ({
 	date,
@@ -7,6 +7,8 @@ const day = (date: string, positive: number, negative: number, neutral = 0) => (
 	neutral_runs: neutral,
 	negative_runs: negative,
 	mixed_runs: 0,
+	position_sum: 0,
+	positioned_runs: 0,
 });
 
 describe("sentimentSeries", () => {
@@ -35,5 +37,30 @@ describe("sentimentSeries", () => {
 	it("counts neutral mentions in the whole, so a mostly neutral brand isn't shown as all positive", () => {
 		const [point] = sentimentSeries([day("2026-03-01", 1, 0, 3)], dates.slice(0, 1));
 		expect(point.positive).toBe(25);
+	});
+});
+
+describe("positionSeries", () => {
+	const ranked = (date: string, sum: number, runs: number) => ({
+		date,
+		positive_runs: 0,
+		neutral_runs: 0,
+		negative_runs: 0,
+		mixed_runs: 0,
+		position_sum: sum,
+		positioned_runs: runs,
+	});
+
+	it("averages the brand's position over the trailing window", () => {
+		const series = positionSeries(
+			[ranked("2026-03-01", 3, 2), ranked("2026-03-02", 6, 2)],
+			["2026-03-01", "2026-03-02"],
+			2,
+		);
+		expect(series.map((p) => p.average)).toEqual([1.5, 2.3]);
+	});
+
+	it("has no value while the brand is never ranked", () => {
+		expect(positionSeries([], ["2026-03-01"])[0].average).toBeNull();
 	});
 });

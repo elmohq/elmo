@@ -25,11 +25,16 @@ export function TrendChart({
 	label,
 	color,
 	className = "aspect-auto h-full w-full",
+	unit = "%",
+	lowerIsBetter = false,
 }: {
 	data: TrendPoint[];
 	label: string;
 	color: string;
 	className?: string;
+	unit?: string;
+	/** Flips the axis so an improving line still rises. */
+	lowerIsBetter?: boolean;
 }) {
 	const config = { value: { label, color } } satisfies ChartConfig;
 
@@ -49,13 +54,14 @@ export function TrendChart({
 					}
 				/>
 				<YAxis
-					domain={[0, "auto"]}
+					domain={lowerIsBetter ? [1, "auto"] : [0, "auto"]}
+					reversed={lowerIsBetter}
 					tickLine={false}
 					axisLine={false}
 					tickMargin={8}
 					tickCount={4}
 					tick={{ fontSize: 11 }}
-					tickFormatter={(value: number) => `${value}%`}
+					tickFormatter={(value: number) => `${value}${unit}`}
 				/>
 				<ChartTooltip
 					isAnimationActive={false}
@@ -75,7 +81,10 @@ export function TrendChart({
 								<div className="flex items-center gap-2">
 									<div className="shrink-0 rounded-[2px] h-2.5 w-2.5" style={{ background: color }} />
 									<span className="text-muted-foreground">{label}</span>
-									<span className="ml-auto font-mono tabular-nums">{value}%</span>
+									<span className="ml-auto font-mono tabular-nums">
+										{value}
+										{unit}
+									</span>
 								</div>
 							</div>
 						);

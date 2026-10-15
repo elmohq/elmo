@@ -310,6 +310,8 @@ describe("prompt mention stats", () => {
 			neutral_runs: 0,
 			negative_runs: 0,
 			mixed_runs: 0,
+			position_sum: 0,
+			positioned_runs: 0,
 			prompts: 1,
 			brand_mentioned_prompts: 1,
 			last_run_at: "2026-03-02T11:00:00.000Z",
