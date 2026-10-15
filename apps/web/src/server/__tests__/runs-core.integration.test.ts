@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getBrandSentiment } from "@/server/analytics-core";
+import { getBrandShareOfVoice } from "@/server/analytics-core";
 import { findRunDetail, listPromptRuns } from "@/server/runs-core";
 import { createBrand, createPrompt, createRun, deleteBrand, rebuildRollups } from "@/test/integration/stats-fixtures";
 
@@ -70,8 +70,9 @@ describe("run verdicts", () => {
 	});
 });
 
-describe("getBrandSentiment", () => {
+describe("brand sentiment", () => {
 	it("counts the answers mentioning the brand by sentiment", async () => {
-		expect(await getBrandSentiment(brandId, window)).toEqual({ positive: 1, neutral: 0, negative: 0, mixed: 0 });
+		const { sentiment } = await getBrandShareOfVoice(brandId, window);
+		expect(sentiment).toEqual({ positive: 1, neutral: 0, negative: 0, mixed: 0 });
 	});
 });
