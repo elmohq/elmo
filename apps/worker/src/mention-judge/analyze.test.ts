@@ -56,9 +56,9 @@ describe("judged mentions", () => {
 		expect(result.assessments?.brand?.sentiment).toBe("negative");
 	});
 
-	it("reads a tone the judge isn't sure of as neutral", async () => {
+	it("takes the likeliest sentiment even when the judge isn't sure of it", async () => {
 		const result = await analyzer.analyze("Apple is somewhat good.", config);
-		expect(result.assessments?.brand?.sentiment).toBe("neutral");
+		expect(result.assessments?.brand?.sentiment).toBe("positive");
 	});
 
 	it("finds the brand after text whose lowercase form is a different length", async () => {
