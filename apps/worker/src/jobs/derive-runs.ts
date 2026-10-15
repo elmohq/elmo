@@ -21,11 +21,19 @@ import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } fro
 import { insertRunsCitations, markDirty } from "@workspace/lib/rollups";
 import { type Citation, extractRun } from "@workspace/lib/text-extraction";
 import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
-import type { Job, PgBoss } from "pg-boss";
+import type { Job, PgBoss, QueueOptions } from "pg-boss";
 import { getBoss } from "../boss";
 import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge/analyze";
 
 export const DERIVE_RUNS_QUEUE = "derive-runs";
+
+/** Retries on its own, apart from the provider call that recorded each run. */
+export const DERIVE_RUNS_QUEUE_OPTIONS = {
+	retryLimit: 5,
+	retryDelay: 30,
+	retryBackoff: true,
+	expireInSeconds: 60 * 15,
+} satisfies QueueOptions;
 
 export interface DeriveRunsData {
 	brandId: string;

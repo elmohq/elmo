@@ -8,8 +8,8 @@ import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rol
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
-import { registerHandlers } from "./handlers";
-import { DERIVE_RUNS_QUEUE } from "./jobs/derive-runs";
+import { registerDeriveRunsHandler, registerHandlers } from "./handlers";
+import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS } from "./jobs/derive-runs";
 import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE } from "./jobs/reprocess";
 import { loadMentionAnalyzer } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
@@ -23,24 +23,39 @@ if (process.env.SENTRY_DSN) {
 	});
 }
 
+/**
+ * `WORKER_ROLE=judge` runs only the derivation queue: extra copies of the worker, started to work
+ * through a backlog of judging alongside the one that runs everything else.
+ */
+function isJudgeOnly(): boolean {
+	const role = process.env.WORKER_ROLE?.trim() || "all";
+	if (role !== "all" && role !== "judge") throw new Error(`WORKER_ROLE must be "all" or "judge", got "${role}"`);
+	return role === "judge";
+}
+
 async function main() {
 	console.log("Starting pg-boss worker...");
 	assertRequiredEnv();
+	const judgeOnly = isJudgeOnly();
 	const boss = getBoss();
 
-	// Awaited so a stored credential counts toward the validation below.
-	await startCredentialRefresh();
+	if (!judgeOnly) {
+		// Awaited so a stored credential counts toward the validation below.
+		await startCredentialRefresh();
 
-	// Fail fast on misconfigured SCRAPE_TARGETS — surfaces unknown providers,
-	// missing API keys, and per-provider target errors before any job runs.
-	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
-	console.log("SCRAPE_TARGETS validated");
+		// Fail fast on misconfigured SCRAPE_TARGETS — surfaces unknown providers,
+		// missing API keys, and per-provider target errors before any job runs.
+		validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
+		console.log("SCRAPE_TARGETS validated");
+	}
 
 	// Before anything stamps runs or brands: the stamp names the judge, so it has to be known.
 	const { judgeVersion } = await loadMentionAnalyzer();
 	console.log(
 		judgeVersion ? `Mention judge ${judgeVersion} loaded` : "No mention judge; matching mentions by substring",
 	);
+	// Without the judge it would stamp runs as name-matched, and the brand's next replay would undo them.
+	if (judgeOnly && !judgeVersion) throw new Error("WORKER_ROLE=judge needs the mention judge (MENTION_JUDGE_DIR)");
 
 	boss.on("error", (error) => {
 		console.error("pg-boss error:", error);
@@ -53,6 +68,13 @@ async function main() {
 	// Start pg-boss (creates schema if needed)
 	await boss.start();
 	console.log("pg-boss started");
+
+	if (judgeOnly) {
+		await boss.createQueue(DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS);
+		await registerDeriveRunsHandler(boss);
+		console.log("Judge-only worker is ready");
+		return;
+	}
 
 	// Create queues if they don't exist (required in pg-boss v12)
 	await boss.createQueue("process-prompt", {
@@ -108,13 +130,7 @@ async function main() {
 		// A full mark scans all of prompt_runs once.
 		expireInSeconds: 60 * 60,
 	});
-	// Derivation retries on its own, apart from the provider call that recorded each run.
-	await boss.createQueue(DERIVE_RUNS_QUEUE, {
-		retryLimit: 5,
-		retryDelay: 30,
-		retryBackoff: true,
-		expireInSeconds: 60 * 15,
-	});
+	await boss.createQueue(DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS);
 	await boss.createQueue(REPROCESS_QUEUE, {
 		policy: "stately",
 		retryLimit: 2,
