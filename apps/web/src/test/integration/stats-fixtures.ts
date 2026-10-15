@@ -104,10 +104,13 @@ export async function createRun(
 			webSearchEnabled: opts.webSearch ?? true,
 			rawOutput: {},
 			webQueries: opts.webQueries ?? [],
-			brandMentioned: opts.brandMentioned,
-			competitorsMentioned: opts.competitors ?? [],
 			textContent: opts.text ?? null,
-			assessments: opts.assessments ?? null,
+			mentions: {
+				brandMentioned: opts.brandMentioned,
+				competitorsMentioned: opts.competitors ?? [],
+				assessments: opts.assessments ?? null,
+				stamp: null,
+			},
 			createdAt,
 		},
 	]);

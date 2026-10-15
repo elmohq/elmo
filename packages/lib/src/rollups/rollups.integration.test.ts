@@ -197,8 +197,12 @@ function insertSeedRuns(db: DbConnection, runs: SeedRun[]) {
 			version: "1",
 			webSearchEnabled: run.webSearchEnabled,
 			rawOutput: { text: "seed" },
-			brandMentioned: run.brandMentioned,
-			competitorsMentioned: run.competitorsMentioned,
+			mentions: {
+				brandMentioned: run.brandMentioned,
+				competitorsMentioned: run.competitorsMentioned,
+				assessments: null,
+				stamp: null,
+			},
 			createdAt: new Date(run.createdAt),
 		})),
 	);
