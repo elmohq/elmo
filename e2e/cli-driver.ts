@@ -184,9 +184,9 @@ async function main(): Promise<void> {
 	await waitFor("OpenAI API key");
 	await send(`sk-placeholder-not-used${ENTER}`);
 	await waitFor("OpenAI model");
-	await send(ENTER); // accept default gpt-5-mini
+	await send(ENTER); // accept default gpt-6-luna
 	await waitFor("Enable web search?");
-	await send(ENTER); // Yes — chatgpt:openai-api:gpt-5-mini:online
+	await send(ENTER); // Yes — chatgpt:openai-api:gpt-6-luna:online
 
 	// Mistral confirm (default No) → No
 	await waitFor("Configure Mistral API?");
