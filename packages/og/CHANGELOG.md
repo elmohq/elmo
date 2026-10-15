@@ -1,5 +1,12 @@
 # @workspace/og
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+
 ## 0.5.1
 
 ### Patch Changes

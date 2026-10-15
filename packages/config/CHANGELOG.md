@@ -1,5 +1,11 @@
 # @workspace/config
 
+## 0.5.2
+
+### Patch Changes
+
+- d93ea18: Name the premium ChatGPT and Claude tiers "GPT Search" and "Claude (web)" so they stay accurate across model upgrades.
+
 ## 0.5.1
 
 No changes in this release.
