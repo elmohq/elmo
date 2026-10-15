@@ -1,6 +1,6 @@
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { loadRawOutputs } from "@workspace/lib/db/runs";
+import { loadRawOutputs, updateExtractions } from "@workspace/lib/db/runs";
 import { promptRuns, runExtractions } from "@workspace/lib/db/schema";
 import { tryExtractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gt, isNull } from "drizzle-orm";
@@ -32,17 +32,15 @@ export async function fillLegacyText(conn: DbConnection = db): Promise<number> {
 			conn,
 			runs.map((run) => run.id),
 		);
-		await conn.transaction(async (tx) => {
-			for (const run of runs) {
-				await tx
-					.update(runExtractions)
-					.set({
-						textContent: tryExtractTextContent(raw.get(run.id), run.provider ?? run.model),
-						stamp: LEGACY_EXTRACTION_STAMP,
-					})
-					.where(and(eq(runExtractions.runId, run.id), isNull(runExtractions.stamp)));
-			}
-		});
+		await updateExtractions(
+			conn,
+			runs.map((run) => ({
+				runId: run.id,
+				textContent: tryExtractTextContent(raw.get(run.id), run.provider ?? run.model),
+				stamp: LEGACY_EXTRACTION_STAMP,
+			})),
+			{ onlyUnstamped: true },
+		);
 		filled += runs.length;
 		after = runs[runs.length - 1].id;
 	}
