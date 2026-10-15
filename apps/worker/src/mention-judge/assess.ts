@@ -2,8 +2,8 @@ import type { JudgedEntity, MentionJudge } from "./judge";
 import { type MatchWindow, matchWindows } from "./windows";
 
 /**
- * Reference labels that count as a mention. A brand cited only as a link still counts, as it did
- * under substring matching; the model keeps `link_only` separate so this stays a policy choice.
+ * Reference labels that count as a mention. A brand cited only through a link counts; the model
+ * keeps `link_only` separate so that stays a policy choice.
  */
 const MENTION_REFERENCES = ["brand", "link_only"];
 
@@ -13,23 +13,24 @@ const CONFIDENT = 0.7;
 export type MentionVerdict = "mentioned" | "not_mentioned" | "uncertain";
 export type SentimentVerdict = "positive" | "neutral" | "negative" | "mixed" | "uncertain";
 
+/** Offsets into the answer of the passage a verdict rests on. */
 export interface Evidence {
 	start: number;
 	end: number;
-	text: string;
 }
 
 export interface MentionAssessment {
 	mention: MentionVerdict;
 	/** Calibrated probability that the answer mentions the entity, from its most convincing passage. */
 	mentionProbability: number;
-	/** Why it isn't a mention, when it isn't: the most likely non-mention label. */
+	/** For a verdict short of a confident mention: the likeliest non-mention reading. */
 	reason?: string;
 	sentiment?: SentimentVerdict;
 	sentimentProbabilities?: Record<string, number>;
 	evidence?: Evidence;
-	windowsJudged: number;
 }
+
+const span = ({ start, end }: MatchWindow): Evidence => ({ start, end });
 
 function top(probs: Record<string, number>): [string, number] {
 	return Object.entries(probs).sort((a, b) => b[1] - a[1])[0];
@@ -48,10 +49,8 @@ export async function assessMention(
 ): Promise<MentionAssessment | null> {
 	const terms = [entity.name, ...(entity.aliases ?? []), ...(entity.domains ?? [])];
 	const { windows, linkMatches } = matchWindows(answer, terms);
-	// A brand cited only through links still counts, as it did under substring matching.
 	const linksToEntity = linkMatches > 0;
-	if (windows.length === 0)
-		return linksToEntity ? { mention: "mentioned", mentionProbability: 1, windowsJudged: 0 } : null;
+	if (windows.length === 0) return linksToEntity ? { mention: "mentioned", mentionProbability: 1 } : null;
 
 	const judged: JudgedWindow[] = [];
 	for (const window of windows) {
@@ -67,8 +66,7 @@ export async function assessMention(
 			mention: "not_mentioned",
 			mentionProbability: 1 - (disclaimer.reference.no_info ?? 0),
 			reason: "no_info",
-			evidence: { start: disclaimer.window.start, end: disclaimer.window.end, text: disclaimer.window.text },
-			windowsJudged: judged.length,
+			evidence: span(disclaimer.window),
 		};
 	}
 
@@ -102,7 +100,7 @@ function combineSentiment(
 	return {
 		sentiment: p >= CONFIDENT ? (label as SentimentVerdict) : "uncertain",
 		sentimentProbabilities: probabilities,
-		evidence: { start: strongest.window.start, end: strongest.window.end, text: strongest.window.text },
+		evidence: span(strongest.window),
 	};
 }
 
@@ -114,8 +112,7 @@ function mentionFromPassages(judged: JudgedWindow[], linksToEntity: boolean): Me
 	const assessment: MentionAssessment = {
 		mention,
 		mentionProbability: pMention,
-		evidence: { start: best.window.start, end: best.window.end, text: best.window.text },
-		windowsJudged: judged.length,
+		evidence: span(best.window),
 	};
 	if (mention !== "mentioned") {
 		const nonMention = Object.fromEntries(

@@ -20,22 +20,21 @@ export interface MentionAnalyzer {
 	analyze(text: string | null, config: MentionConfig): Promise<RunMentions>;
 }
 
-export const substringAnalyzer: MentionAnalyzer = {
+const substringAnalyzer: MentionAnalyzer = {
 	judgeVersion: null,
 	analyze: async (text, config) => ({ ...analyzeRunMentions(text, config), mentionAssessments: null }),
 };
 
-/** The model was trained with up to five rival names alongside the entity. */
-const RIVALS = 5;
-
 type Subject = MentionConfig["brand"];
+
+const present = (values: string[]) => values.map((value) => value.trim()).filter(Boolean);
 
 function entity(subject: Subject, rivals: string[]): JudgedEntity {
 	return {
-		name: subject.name,
-		aliases: subject.aliases,
-		domains: subject.domains.filter(Boolean).map(normalizeDomain),
-		competitors: rivals.filter((name) => name !== subject.name).slice(0, RIVALS),
+		name: subject.name.trim(),
+		aliases: present(subject.aliases),
+		domains: present(subject.domains).map(normalizeDomain),
+		competitors: rivals.filter((name) => name !== subject.name),
 	};
 }
 
@@ -62,12 +61,13 @@ export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
 			const assessments: RunMentionAssessments = {};
 			const brand = await assessMention(judge, entity(config.brand, competitorNames), answer);
 			if (brand) assessments.brand = toRecord(brand);
+			const rivals = [config.brand.name, ...competitorNames];
+			const competitors: Record<string, MentionAssessmentRecord> = {};
 			for (const competitor of config.competitors) {
-				const rivals = [config.brand.name, ...competitorNames];
 				const assessment = await assessMention(judge, entity(competitor, rivals), answer);
-				if (assessment)
-					assessments.competitors = { ...assessments.competitors, [competitor.name]: toRecord(assessment) };
+				if (assessment) competitors[competitor.name] = toRecord(assessment);
 			}
+			if (Object.keys(competitors).length > 0) assessments.competitors = competitors;
 			return {
 				brandMentioned: counts(assessments.brand),
 				competitorsMentioned: competitorNames.filter((name) => counts(assessments.competitors?.[name])),
