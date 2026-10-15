@@ -90,11 +90,11 @@ export const PREMIUM_MODELS: readonly string[] = ["claude", "chatgpt", "grok"];
 /**
  * What a premium model is called where it is sold, which is not what it is called
  * as a pick: the premium tier sells the grounded variant, and "ChatGPT" and
- * "GPT-5 Search" are different products to a customer comparing them.
+ * "GPT Search" are different products to a customer comparing them.
  */
 const PREMIUM_LABELS: Record<string, string> = {
-	claude: "Claude Sonnet 5 (web)",
-	chatgpt: "GPT-5 Search",
+	claude: "Claude (web)",
+	chatgpt: "GPT Search",
 	grok: "Grok (web)",
 };
 
