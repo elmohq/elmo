@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import {
 	type AnalysisVersions,
 	currentAnalysisVersions,
@@ -135,7 +136,13 @@ async function rederiveMentions(
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
 		// Verdicts can be kept only while the text they were judged on, and point into, is unchanged.
 		const previous = text === run.textContent ? run.assessments : null;
-		return analyzer.analyze(text, config, previous);
+		try {
+			return await analyzer.analyze(text, config, previous);
+		} catch (error) {
+			// One answer the judge can't read mustn't stall the brand's whole replay; it keeps what it has.
+			console.error(`[reprocess] run ${run.id}: mention judge failed, keeping its mentions:`, error);
+			Sentry.captureException(error);
+		}
 	}
 	update.kept.push("mentions");
 	const { brandMentioned, competitorsMentioned, assessments } = run;
@@ -319,7 +326,8 @@ async function reprocessPrompts(
 }
 
 /** Whether any of the brand's runs, or any created before `before`, still need the pass. */
-async function hasStaleRuns(conn: DbConnection, pass: Pass, before?: Date): Promise<boolean> {
+async function hasStaleRuns(conn: DbConnection, pass: Pass, promptIds: string[], before?: Date): Promise<boolean> {
+	if (promptIds.length === 0) return false;
 	const [row] = await conn
 		.select({ id: promptRuns.id })
 		.from(promptRuns)
@@ -327,7 +335,8 @@ async function hasStaleRuns(conn: DbConnection, pass: Pass, before?: Date): Prom
 		.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 		.where(
 			and(
-				eq(promptRuns.brandId, pass.brandId),
+				// By prompt, which the runs are indexed on; a brand-wide filter would scan every tenant's runs.
+				inArray(promptRuns.promptId, promptIds),
 				before ? lt(promptRuns.createdAt, before) : undefined,
 				or(...pass.layers.map((layer) => staleFor(layer, pass.target))),
 			),
@@ -412,7 +421,7 @@ async function walkRecentFirst(
 	const cutoff = new Date(Date.now() - RECENT_FIRST_MS);
 	if (!(await reprocessPrompts(conn, pass, promptIds, deadline, cutoff))) return "out of time";
 	// Yielding only matters when older history is left; otherwise the pass finishes here.
-	if (pass.rewrittenRuns > 0 && (await hasStaleRuns(conn, pass, cutoff))) return "yielded";
+	if (pass.rewrittenRuns > 0 && (await hasStaleRuns(conn, pass, promptIds, cutoff))) return "yielded";
 	return (await reprocessPrompts(conn, pass, promptIds, deadline, null)) ? "done" : "out of time";
 }
 
@@ -449,12 +458,8 @@ export async function runReprocess(
 		.from(prompts)
 		.where(eq(prompts.brandId, data.brandId))
 		.orderBy(asc(prompts.id));
-	const walk = await walkRecentFirst(
-		conn,
-		pass,
-		brandPrompts.map(({ id }) => id),
-		deadline,
-	);
+	const promptIds = brandPrompts.map(({ id }) => id);
+	const walk = await walkRecentFirst(conn, pass, promptIds, deadline);
 	if (pass.keptRuns > 0) {
 		console.warn(
 			`[reprocess] brand ${data.brandId}: ${pass.keptRuns} runs kept existing data their stored payload no longer yields`,
@@ -488,7 +493,7 @@ export async function runReprocess(
 	// A run whose writer read the old config can commit after the walk passed its
 	// prompt. Checking after stamping misses it only if that write stayed open
 	// through the whole pass.
-	if (await hasStaleRuns(conn, pass)) {
+	if (await hasStaleRuns(conn, pass, promptIds)) {
 		await continueReprocess(boss, data);
 		console.log(`[reprocess] brand ${data.brandId} has runs written mid-pass, going again`);
 	}
