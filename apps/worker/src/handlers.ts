@@ -39,6 +39,17 @@ function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promis
 	};
 }
 
+/** The only handler a judge-only worker runs. */
+export async function registerDeriveRunsHandler(boss: PgBoss): Promise<void> {
+	// One chunk per job, so each retries on its own; as many at once as the judge has sessions.
+	await boss.work<DeriveRunsData>(
+		DERIVE_RUNS_QUEUE,
+		{ batchSize: 1, localConcurrency: mentionAnalyzer().concurrency },
+		withSentry(DERIVE_RUNS_QUEUE, deriveRunsJob),
+	);
+	console.log(`Registered handler: ${DERIVE_RUNS_QUEUE}`);
+}
+
 /**
  * Register all job handlers with pg-boss.
  */
@@ -82,13 +93,7 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 	);
 	console.log("Registered handler: schedule-maintenance");
 
-	// One chunk per job, so each retries on its own; as many at once as the judge has sessions.
-	await boss.work<DeriveRunsData>(
-		DERIVE_RUNS_QUEUE,
-		{ batchSize: 1, localConcurrency: mentionAnalyzer().concurrency },
-		withSentry(DERIVE_RUNS_QUEUE, deriveRunsJob),
-	);
-	console.log(`Registered handler: ${DERIVE_RUNS_QUEUE}`);
+	await registerDeriveRunsHandler(boss);
 
 	await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
 	console.log(`Registered handler: ${REPROCESS_QUEUE}`);
