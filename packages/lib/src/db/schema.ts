@@ -543,6 +543,8 @@ export const pipelineState = pgTable(
 	{
 		id: smallint("id").primaryKey().default(1),
 		rollupVersion: integer("rollup_version").notNull().default(0),
+		/** One-time backfills that have finished, so later starts skip walking their tables. */
+		completedBackfills: text("completed_backfills").array().notNull().default(sql`'{}'::text[]`),
 	},
 	() => [check("pipeline_state_singleton", sql`id = 1`)],
 ).enableRLS();

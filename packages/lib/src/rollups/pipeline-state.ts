@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { DbConnection } from "../db/db-connection";
 import { type PipelineState, pipelineState } from "../db/schema";
 
@@ -23,4 +23,11 @@ export async function getPipelineState(
 export async function setPipelineState(conn: DbConnection, patch: PipelineStatePatch): Promise<void> {
 	if (Object.keys(patch).length === 0) return;
 	await conn.update(pipelineState).set(patch).where(eq(pipelineState.id, SINGLETON_ID));
+}
+
+export async function recordBackfillDone(conn: DbConnection, name: string): Promise<void> {
+	await conn
+		.update(pipelineState)
+		.set({ completedBackfills: sql`array_append(${pipelineState.completedBackfills}, ${name})` })
+		.where(sql`${pipelineState.id} = ${SINGLETON_ID} AND NOT (${name} = ANY(${pipelineState.completedBackfills}))`);
 }

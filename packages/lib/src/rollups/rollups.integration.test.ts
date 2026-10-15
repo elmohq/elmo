@@ -20,7 +20,7 @@ import {
 import { resolveUnpagedCitations } from "./citation-pages";
 import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
 import { markDirty, markPromptRunsDirty, markRunsDirty, pendingMarks, refreshRange } from "./dirty";
-import { getPipelineState, setPipelineState } from "./pipeline-state";
+import { getPipelineState, recordBackfillDone, setPipelineState } from "./pipeline-state";
 import { rebuildRange } from "./rebuild";
 import { reclassifyPages } from "./reclassify";
 
@@ -507,6 +507,45 @@ describe("rollups against postgres", () => {
 			["google", "search"],
 			["editorial", "article"],
 		]);
+	});
+
+	it("resolves unpaged citations a window of heap pages at a time", async () => {
+		const run = SEED_RUNS[0];
+		await db.insert(citations).values(
+			Array.from({ length: 600 }, (_, i) => ({
+				promptRunId: run.id,
+				promptId: run.promptId,
+				brandId: BRAND_ID,
+				model: run.model,
+				url: `https://many.example/page-${i}`,
+				domain: "many.example",
+				title: null,
+				citationIndex: i,
+				createdAt: new Date(run.createdAt),
+			})),
+		);
+		const pages = await db.execute<{ pages: number }>(
+			sql`SELECT count(DISTINCT (ctid::text::point)[0])::int AS pages FROM citations WHERE page_id IS NULL`,
+		);
+		expect(pages.rows[0].pages).toBeGreaterThan(1);
+
+		expect(await resolveUnpagedCitations(db, 1)).toBe(600);
+
+		const linked = await db.execute<{ unpaged: number; mismatched: number }>(sql`
+			SELECT count(*) FILTER (WHERE c.page_id IS NULL)::int AS unpaged,
+				count(*) FILTER (WHERE cp.url IS DISTINCT FROM c.url)::int AS mismatched
+			FROM citations c LEFT JOIN cited_pages cp ON cp.id = c.page_id
+			WHERE c.domain = 'many.example'
+		`);
+		expect(linked.rows[0]).toEqual({ unpaged: 0, mismatched: 0 });
+		expect(await db.select().from(rollupDirty)).toEqual([expect.objectContaining({ brandId: BRAND_ID, bucket: B0 })]);
+	});
+
+	it("records a finished backfill once", async () => {
+		await recordBackfillDone(db, "test-backfill");
+		await recordBackfillDone(db, "test-backfill");
+		const { completedBackfills } = await getPipelineState(db);
+		expect(completedBackfills.filter((name) => name === "test-backfill")).toEqual(["test-backfill"]);
 	});
 
 	it("refuses to guess when the pipeline state row is missing", async () => {
