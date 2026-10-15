@@ -4,12 +4,11 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeploymentFeatures } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
-import { resolveUnpagedCitations } from "@workspace/lib/rollups";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
+import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
-import { fillLegacyText } from "./jobs/fill-legacy-text";
 import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
 import { loadMentionAnalyzer } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
@@ -144,18 +143,7 @@ async function main() {
 	await registerHandlers(boss);
 	console.log("All handlers registered, worker is ready");
 
-	// Background, and a no-op once done: runs from before stored text get it from their payloads.
-	fillLegacyText()
-		.then((filled) => {
-			if (filled > 0) console.log(`Filled stored text for ${filled} runs that predate it`);
-		})
-		.catch((error) => console.error("Filling stored text for older runs failed:", error));
-	// Likewise for citations stored before their pages were resolved at write time.
-	resolveUnpagedCitations(db)
-		.then((resolved) => {
-			if (resolved > 0) console.log(`Resolved pages for ${resolved} older citations`);
-		})
-		.catch((error) => console.error("Resolving pages for older citations failed:", error));
+	await startBackfills();
 }
 
 main().catch(async (error) => {

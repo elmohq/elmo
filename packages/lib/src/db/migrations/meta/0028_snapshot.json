@@ -1,9 +1,67 @@
 {
-  "id": "be080d90-1f3a-445d-a296-c006cb4b7aeb",
-  "prevId": "02b16db2-3fc7-4b4d-bc68-22dba60ea92b",
+  "id": "66edbc5d-c90a-41ef-af01-a067929576e0",
+  "prevId": "923e3943-5751-444c-ae37-9993affe9537",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.background_migrations": {
+      "name": "background_migrations",
+      "schema": "",
+      "columns": {
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "progress": {
+          "name": "progress",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rows_done": {
+          "name": "rows_done",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "public.brand_opportunities": {
       "name": "brand_opportunities",
       "schema": "",
@@ -1568,34 +1626,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
-        },
-        "positive_runs": {
-          "name": "positive_runs",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "neutral_runs": {
-          "name": "neutral_runs",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "negative_runs": {
-          "name": "negative_runs",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "mixed_runs": {
-          "name": "mixed_runs",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
         },
         "fanout_runs": {
           "name": "fanout_runs",

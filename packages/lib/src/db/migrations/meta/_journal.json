@@ -194,15 +194,22 @@
     {
       "idx": 27,
       "version": "7",
-      "when": 1792029345646,
-      "tag": "0027_run_mention_assessments",
+      "when": 1792032816991,
+      "tag": "0027_background_migrations",
       "breakpoints": true
     },
     {
       "idx": 28,
       "version": "7",
-      "when": 1792030051502,
-      "tag": "0028_rollup_brand_sentiment",
+      "when": 1792033648714,
+      "tag": "0028_run_mention_assessments",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792033691106,
+      "tag": "0029_rollup_brand_sentiment",
       "breakpoints": true
     }
   ]
