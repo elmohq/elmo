@@ -18,8 +18,10 @@ export function validateToneSearch(search: Record<string, unknown>): ToneSearch 
 /** Reads and writes the current route's `ToneSearch`; `onChange` runs after either changes. */
 export function useToneSearch(onChange?: () => void) {
 	const navigate = useNavigate();
-	const sentiment = useSearch({ strict: false, select: (s) => validateToneSearch(s).sentiment });
-	const sort: ResponseSort = useSearch({ strict: false, select: (s) => validateToneSearch(s).sort }) ?? "newest";
+	// The routes that own these params may already be gone if the page is left while it hydrates.
+	const sentiment = useSearch({ strict: false, shouldThrow: false, select: (s) => validateToneSearch(s).sentiment });
+	const sort: ResponseSort =
+		useSearch({ strict: false, shouldThrow: false, select: (s) => validateToneSearch(s).sort }) ?? "newest";
 	const update = (patch: ToneSearch) => {
 		navigate({
 			to: ".",
