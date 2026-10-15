@@ -33,6 +33,11 @@ beforeAll(async () => {
 	brandId = await createBrand({ name: "Acme", website: "https://acme.example" });
 	const pricing = await createPrompt(brandId, { value: "acme pricing" });
 	const setup = await createPrompt(brandId, { value: "easiest crm to set up" });
+	const reviews = await createPrompt(brandId, { value: "acme reviews" });
+	// Its passage points past the end of the stored text, so there's nothing to quote.
+	const unquotable = judged("Acme is loved.", "Acme is loved.", "positive", 0.99);
+	const unquotableBrand = unquotable.assessments.brand;
+	if (unquotableBrand) unquotableBrand.evidence = { start: 0, end: 500 };
 
 	const runs: [key: string, prompt: string, at: string, mentioned: boolean, verdict?: ReturnType<typeof judged>][] = [
 		[
@@ -77,6 +82,14 @@ beforeAll(async () => {
 		],
 		// Matched without the judge, so it counts as a mention but has no tone.
 		["untoned", pricing, "2026-03-03T12:00:00Z", true],
+		["unquotable", reviews, "2026-03-02T09:00:00Z", true, unquotable],
+		[
+			"quotable",
+			reviews,
+			"2026-03-01T09:00:00Z",
+			true,
+			judged("Reviewers love Acme.", "Reviewers love Acme.", "positive", 0.8),
+		],
 	];
 	for (const [key, prompt, at, brandMentioned, verdict] of runs) {
 		const run = await createRun(brandId, prompt, { at, brandMentioned, ...verdict });
@@ -131,10 +144,11 @@ describe("responses by sentiment", () => {
 describe("brand sentiment", () => {
 	it("summarises the tone of the answers that mention the brand", async () => {
 		const sentiment = await getBrandSentiment(brandId, window);
-		expect(sentiment.summary).toMatchObject({ positive: 1, mixed: 1, negative: 2, neutral: 0, positiveShare: 0.25 });
+		expect(sentiment.summary).toMatchObject({ positive: 3, mixed: 1, negative: 2, neutral: 0, positiveShare: 0.5 });
 		expect(sentiment.prompts.map((p) => [p.value, p.sentiment.positiveShare])).toEqual([
 			["acme pricing", 0],
 			["easiest crm to set up", 0.5],
+			["acme reviews", 1],
 		]);
 	});
 
@@ -144,8 +158,10 @@ describe("brand sentiment", () => {
 			["negative", "Acme raised prices twice last year."],
 			["mixed", "Acme is easy, though pricey."],
 		]);
+		// A prompt whose surest verdict has no passage to quote falls back to its next one.
 		expect(praise.map((q) => [q.prompt, q.passage])).toEqual([
 			["easiest crm to set up", "Acme is the easiest CRM to set up."],
+			["acme reviews", "Reviewers love Acme."],
 		]);
 	});
 });
