@@ -1,5 +1,18 @@
 # @workspace/worker
 
+## 0.6.0
+
+### Minor Changes
+
+- a76b237: Decide brand and competitor mentions with a bundled local model that matches whole words and reads each mention in context, so names that are also ordinary words no longer inflate visibility; past responses are re-judged in the background after upgrading.
+
+### Patch Changes
+
+- Updated dependencies [1334ce8]
+  - @workspace/lib@0.6.0
+  - @workspace/deployment@0.6.0
+  - @workspace/config@0.6.0
+
 ## 0.5.2
 
 ### Patch Changes

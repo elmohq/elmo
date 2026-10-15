@@ -1,5 +1,22 @@
 # @workspace/web
 
+## 0.6.0
+
+### Patch Changes
+
+- caf6bfb: The API and MCP tools return each answer's mention assessments with sentiment and position, and sentiment and average position for the brand, each competitor, model and prompt, with daily series (experimental).
+- a13f07e: Show sentiment toward your brand and its average position among the companies AI answers name on the overview, and the passage behind each mention and each company's position on responses.
+- 416fa38: The overview now leads with visibility, share of voice, sentiment and position cards and compares you with competitors by model, and Share of Voice charts your top competitors over time.
+- 17b84bf: A new Sentiment page shows how AI answers describe your brand, responses can be filtered and sorted by tone, and clicking a company on a response highlights the passage its tone was read from.
+- Updated dependencies [caf6bfb]
+- Updated dependencies [1334ce8]
+  - @workspace/api-spec@0.6.0
+  - @workspace/lib@0.6.0
+  - @workspace/deployment@0.6.0
+  - @workspace/config@0.6.0
+  - @workspace/og@0.6.0
+  - @workspace/ui@0.6.0
+
 ## 0.5.2
 
 ### Patch Changes

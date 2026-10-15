@@ -1,5 +1,14 @@
 # @workspace/deployment
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [1334ce8]
+  - @workspace/lib@0.6.0
+  - @workspace/config@0.6.0
+  - @workspace/ui@0.6.0
+
 ## 0.5.2
 
 ### Patch Changes
