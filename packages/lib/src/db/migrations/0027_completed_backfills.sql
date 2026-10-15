@@ -1,1 +1,0 @@
-ALTER TABLE "pipeline_state" ADD COLUMN "completed_backfills" text[] DEFAULT '{}'::text[] NOT NULL;

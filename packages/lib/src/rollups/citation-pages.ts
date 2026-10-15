@@ -2,7 +2,7 @@ import { and, isNull, type SQL, sql } from "drizzle-orm";
 import { normalizeUrl } from "../citations/domain-categories";
 import { classifyPage } from "../citations/page-classification";
 import type { DbConnection } from "../db/db-connection";
-import { onPages, walkHeap } from "../db/heap-walk";
+import { type HeapWalkOptions, onPages, walkHeap } from "../db/heap-walk";
 import { citations, citedPages } from "../db/schema";
 import type { Citation } from "../text-extraction";
 import { chunked } from "./chunk";
@@ -142,37 +142,45 @@ export async function insertRunsCitations(
  * updates each window's rows by ctid, locked so it can't move underneath.
  * Resumable: resolved citations leave the filter.
  */
-export function resolveUnpagedCitations(conn: DbConnection, pagesPerStep = 200): Promise<number> {
-	return walkHeap(conn, citations, pagesPerStep, (from, to) =>
-		conn.transaction(async (tx) => {
-			const batch = await tx
-				.select({
-					ctid: sql<string>`${citations}.ctid::text`,
-					brandId: citations.brandId,
-					url: citations.url,
-					domain: citations.domain,
-					title: citations.title,
-					createdAt: citations.createdAt,
-				})
-				.from(citations)
-				.where(and(onPages(sql`${citations}.ctid`, from, to), isNull(citations.pageId)))
-				.for("update");
-			if (batch.length === 0) return 0;
-			const pageIds = await upsertCitedPages(
-				tx,
-				batch.map((c) => ({ url: c.url, domain: c.domain, title: c.title, seenAt: c.createdAt })),
-			);
-			const values = batch.map((c) => sql`(${c.ctid}::tid, ${pageIds.get(normalizeUrl(c.url))}::bigint)`);
-			await tx.execute(sql`
+export function resolveUnpagedCitations(
+	conn: DbConnection,
+	{ pagesPerStep = 200, ...walk }: HeapWalkOptions & { pagesPerStep?: number } = {},
+): Promise<number> {
+	return walkHeap(
+		conn,
+		citations,
+		pagesPerStep,
+		(from, to) =>
+			conn.transaction(async (tx) => {
+				const batch = await tx
+					.select({
+						ctid: sql<string>`${citations}.ctid::text`,
+						brandId: citations.brandId,
+						url: citations.url,
+						domain: citations.domain,
+						title: citations.title,
+						createdAt: citations.createdAt,
+					})
+					.from(citations)
+					.where(and(onPages(sql`${citations}.ctid`, from, to), isNull(citations.pageId)))
+					.for("update");
+				if (batch.length === 0) return 0;
+				const pageIds = await upsertCitedPages(
+					tx,
+					batch.map((c) => ({ url: c.url, domain: c.domain, title: c.title, seenAt: c.createdAt })),
+				);
+				const values = batch.map((c) => sql`(${c.ctid}::tid, ${pageIds.get(normalizeUrl(c.url))}::bigint)`);
+				await tx.execute(sql`
 				UPDATE ${citations} AS c SET page_id = v.page_id
 				FROM (VALUES ${sql.join(values, sql`, `)}) AS v(ctid, page_id)
 				WHERE c.ctid = v.ctid
 			`);
-			await markWritesDirty(
-				tx,
-				batch.map((c) => ({ brandId: c.brandId, at: c.createdAt })),
-			);
-			return batch.length;
-		}),
+				await markWritesDirty(
+					tx,
+					batch.map((c) => ({ brandId: c.brandId, at: c.createdAt })),
+				);
+				return batch.length;
+			}),
+		walk,
 	);
 }

@@ -1,9 +1,67 @@
 {
-  "id": "90fa251b-afef-43ae-aa77-d7df26770eb5",
+  "id": "923e3943-5751-444c-ae37-9993affe9537",
   "prevId": "4f532462-1641-4c28-9479-1ee12fe55b3d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.background_migrations": {
+      "name": "background_migrations",
+      "schema": "",
+      "columns": {
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "progress": {
+          "name": "progress",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rows_done": {
+          "name": "rows_done",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "public.brand_opportunities": {
       "name": "brand_opportunities",
       "schema": "",
@@ -735,13 +793,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "completed_backfills": {
-          "name": "completed_backfills",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
         }
       },
       "indexes": {},

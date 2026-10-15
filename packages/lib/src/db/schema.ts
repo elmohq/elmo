@@ -543,8 +543,6 @@ export const pipelineState = pgTable(
 	{
 		id: smallint("id").primaryKey().default(1),
 		rollupVersion: integer("rollup_version").notNull().default(0),
-		/** One-time backfills that have finished, so later starts skip walking their tables. */
-		completedBackfills: text("completed_backfills").array().notNull().default(sql`'{}'::text[]`),
 	},
 	() => [check("pipeline_state_singleton", sql`id = 1`)],
 ).enableRLS();
@@ -552,3 +550,21 @@ export const pipelineState = pgTable(
 export type CitedPage = typeof citedPages.$inferSelect;
 
 export type PipelineState = typeof pipelineState.$inferSelect;
+
+/**
+ * Data migrations that need application code, so they run in the worker rather
+ * than as SQL migrations: one row per migration, with where it has got to so a
+ * restart resumes it, and when it finished so later starts skip it.
+ */
+export const backgroundMigrations = pgTable("background_migrations", {
+	name: text("name").primaryKey(),
+	startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+	finishedAt: timestamp("finished_at", { withTimezone: true }),
+	/** The migration's own resume position. */
+	progress: jsonb("progress"),
+	rowsDone: bigint("rows_done", { mode: "number" }).notNull().default(0),
+	lastError: text("last_error"),
+}).enableRLS();
+
+export type BackgroundMigration = typeof backgroundMigrations.$inferSelect;
