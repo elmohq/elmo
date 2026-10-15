@@ -276,6 +276,13 @@ describe("requestStaleReprocesses", () => {
 		expect(sentFor(afterEdit.send, brandId).map((data) => data.layers)).toEqual([["interpretation"]]);
 	});
 
+	it("waits a minute before starting the pass, so a burst of edits costs one", async () => {
+		const { boss, send } = fakeBoss();
+		await requestStaleReprocesses(db, boss);
+		const call = send.mock.calls.find(([, data]) => (data as ReprocessData).brandId === brandId);
+		expect(call?.[2]).toMatchObject({ singletonKey: brandId, startAfter: 60 });
+	});
+
 	it("does not replay the history of a brand that predates stamping, which adopts today's stamps instead", async () => {
 		const legacyBrand = await createBrand(null);
 		try {

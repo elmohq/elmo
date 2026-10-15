@@ -9,7 +9,7 @@ import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
-import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
+import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE } from "./jobs/reprocess";
 import { loadMentionAnalyzer } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
@@ -114,6 +114,10 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 10,
 	});
+	await boss.createQueue(REQUEST_REPROCESSES_QUEUE, {
+		retryLimit: 0,
+		expireInSeconds: 60 * 2,
+	});
 	console.log("Queues created");
 
 	await boss.schedule("schedule-maintenance", "*/5 * * * *", { source: "scheduled" }, { tz: "UTC" });
@@ -128,6 +132,14 @@ async function main() {
 	// predates stamping for one whose whole history needs replaying.
 	const adopted = await adoptCurrentStamps();
 	if (adopted > 0) console.log(`Adopted current analysis stamps for ${adopted} brands`);
+
+	await boss.schedule(
+		REQUEST_REPROCESSES_QUEUE,
+		"* * * * *",
+		{},
+		{ tz: "UTC", singletonKey: REQUEST_REPROCESSES_QUEUE },
+	);
+	console.log("Scheduled request-reprocesses job (every minute)");
 
 	await boss.schedule(
 		REFRESH_ROLLUPS_QUEUE,
