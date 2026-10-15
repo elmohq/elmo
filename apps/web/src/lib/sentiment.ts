@@ -1,6 +1,4 @@
-// Imported by the browser too, so it reads nothing from the database layer but types.
-import type { DailyAssessments } from "@/lib/rollup-read";
-import { shiftDateStr } from "@/lib/timezone-utils";
+// Imported by the browser too, so it reads nothing from the database layer.
 
 /** The mention judge's assessments summed over runs that mention a company. */
 export interface AssessmentSums {
@@ -41,40 +39,13 @@ export interface MentionQuality {
 	position: { average: number | null };
 }
 
-export interface SentimentPoint {
-	date: string;
-	/** Share of the trailing window's mentions with a sentiment that were positive; null with none. */
-	positive: number | null;
-	negative: number | null;
-}
-
-export const SENTIMENT_WINDOW_DAYS = 7;
-
 /** Runs with a tone the judge could call; shares are of these. */
 const tonedRuns = (sums: AssessmentSums) =>
 	sums.positive_runs + sums.neutral_runs + sums.negative_runs + sums.mixed_runs;
 
-const share = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : null);
-
-/**
- * Positive and negative shares per day over a trailing window: a brand turns up in only some
- * answers each day, so single days swing on a handful of mentions. `rows` should start
- * `windowDays - 1` days before `dateRange` so its first days get a full window.
- */
-export function sentimentSeries(
-	rows: DailyAssessments[],
-	dateRange: string[],
-	windowDays = SENTIMENT_WINDOW_DAYS,
-): SentimentPoint[] {
-	return trailing(rows, dateRange, windowDays, (window) => {
-		const toned = tonedRuns(window);
-		return { positive: share(window.positive_runs, toned), negative: share(window.negative_runs, toned) };
-	});
-}
-
 export interface PositionPoint {
 	date: string;
-	/** 1 is named first; null when never ranked. */
+	/** The brand's average position that day, 1 being named first; null when never ranked. */
 	average: number | null;
 }
 
@@ -83,36 +54,12 @@ export function averagePosition(sum: number, runs: number): number | null {
 	return runs > 0 ? Math.round((sum / runs) * 10) / 10 : null;
 }
 
-/** Trailing window for the same reason as `sentimentSeries`. */
-export function positionSeries(
-	rows: DailyAssessments[],
-	dateRange: string[],
-	windowDays = SENTIMENT_WINDOW_DAYS,
-): PositionPoint[] {
-	return trailing(rows, dateRange, windowDays, (window) => ({
-		average: averagePosition(window.position_sum, window.positioned_runs),
-	}));
-}
-
 const ASSESSMENT_KEYS = Object.keys(NO_ASSESSMENTS) as (keyof AssessmentSums)[];
 
 export function sumAssessments(rows: AssessmentSums[]): AssessmentSums {
 	const total = { ...NO_ASSESSMENTS };
 	for (const row of rows) for (const key of ASSESSMENT_KEYS) total[key] += row[key];
 	return total;
-}
-
-function trailing<T>(
-	rows: DailyAssessments[],
-	dateRange: string[],
-	windowDays: number,
-	read: (window: AssessmentSums) => T,
-) {
-	const byDate = new Map(rows.map((row) => [row.date, row]));
-	return dateRange.map((date) => {
-		const days = Array.from({ length: windowDays }, (_, back) => byDate.get(shiftDateStr(date, { days: -back })));
-		return { date, ...read(sumAssessments(days.filter((row) => row !== undefined))) };
-	});
 }
 
 export function sentimentCounts(sums: AssessmentSums): SentimentCounts {

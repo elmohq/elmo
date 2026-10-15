@@ -5,6 +5,7 @@ import {
 	getBrandPromptPerformance,
 	getBrandShareOfVoice,
 	getBrandVisibility,
+	getCompetitiveLandscape,
 } from "@/server/analytics-core";
 import {
 	createBrand,
@@ -180,5 +181,23 @@ describe("brand analytics", () => {
 		expect(analytics.models).toEqual([
 			{ model: "chatgpt", label: "ChatGPT", runs: 4, brandMentions: 3, visibility: 0.75, citations: 5, ...UNJUDGED },
 		]);
+	});
+});
+
+describe("competitive landscape", () => {
+	it("gives the brand the same figures as the visibility and share-of-voice pages, day by day", async () => {
+		const [landscape, visibility, sov] = await Promise.all([
+			getCompetitiveLandscape(brandId, window),
+			getBrandVisibility(brandId, window),
+			getBrandShareOfVoice(brandId, window),
+		]);
+		const acme = landscape.companies[0];
+		expect(acme.series.visibility).toEqual(visibility.series.map((point) => point.visibility));
+		expect(acme.series.share).toEqual(sov.series.map((point) => point.share));
+		expect(acme.totals.visibility).toBe(visibility.currentVisibility);
+		expect(acme.totals.share).toBe(sov.brandShare);
+		expect(acme.byModel.chatgpt?.visibility).toBe(visibility.currentVisibility);
+		// Only tracked competitors are listed; a company the answers name but nobody tracks isn't.
+		expect(landscape.companies.map((c) => c.name)).toEqual(["Acme", "Globex"]);
 	});
 });

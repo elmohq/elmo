@@ -15,6 +15,7 @@ import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
+import { buildLandscape, type Landscape } from "@/lib/landscape";
 import {
 	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
@@ -29,9 +30,12 @@ import {
 	getPerPromptDailyCompetitors,
 	getPerPromptDailyRuns,
 	getPerPromptRunStats,
+	getPromptModelDailyCompetitors,
+	getPromptModelDailyRuns,
 	getPromptsFirstEvaluatedAt,
 	getRunsByModel,
 	getVisibilityDailyAggregate,
+	type PerPromptDailyRuns,
 } from "@/lib/rollup-read";
 import {
 	averagePosition,
@@ -45,6 +49,7 @@ import {
 	sentimentSummary,
 	sumAssessments,
 } from "@/lib/sentiment";
+import { shiftDateStr } from "@/lib/timezone-utils";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -168,6 +173,20 @@ export interface BrandShareOfVoice {
 
 /** Standings carry each prompt's latest counts forward, so the headline and the
  * trend's last point are the same number. */
+// Off the per-prompt rows rather than the per-competitor query, which counts mention instances
+// and would not agree with them.
+function shareSeries(perPromptDaily: PerPromptDailyRuns[], dateRange: string[]) {
+	return shareOfVoiceTimeSeriesLVCF(
+		perPromptDaily.map((row) => ({
+			promptId: row.prompt_id,
+			date: String(row.date),
+			brandMentions: row.brand_mentioned_runs,
+			competitorMentions: row.competitor_mentions,
+		})),
+		dateRange,
+	);
+}
+
 export async function getBrandShareOfVoice(
 	brandId: string,
 	window: AnalyticsWindow,
@@ -214,17 +233,7 @@ export async function getBrandShareOfVoice(
 		standings.competitors.map((c) => ({ name: c.name, mentions: c.mentions })),
 	);
 
-	// Off this row rather than the per-competitor query, which counts mention
-	// instances and would not agree with it.
-	const series = shareOfVoiceTimeSeriesLVCF(
-		perPromptDaily.map((row) => ({
-			promptId: row.prompt_id,
-			date: String(row.date),
-			brandMentions: row.brand_mentioned_runs,
-			competitorMentions: row.competitor_mentions,
-		})),
-		dateRange,
-	);
+	const series = shareSeries(perPromptDaily, dateRange);
 
 	// Exact ratios: each edge rounds once, on the way out.
 	return {
@@ -530,4 +539,32 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 			uniqueUrls: citations.totals.uniqueUrls,
 		},
 	};
+}
+
+export async function getCompetitiveLandscape(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+): Promise<Landscape> {
+	const [brandRow, competitorRows, resolved] = await Promise.all([
+		db.select({ name: brands.name, website: brands.website }).from(brands).where(eq(brands.id, brandId)).limit(1),
+		db
+			.select({ name: competitors.name, domains: competitors.domains })
+			.from(competitors)
+			.where(eq(competitors.brandId, brandId)),
+		resolveScope(brandId, filters),
+	]);
+	const bounds = windowInstants(window);
+	const dates = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
+	const brand = { name: brandRow[0]?.name ?? "Your brand", domain: extractDomain(brandRow[0]?.website ?? "") || null };
+	const tracked = competitorRows.map((c) => ({
+		name: c.name,
+		domain: c.domains[0] ? extractDomain(c.domains[0]) : null,
+	}));
+	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
+	const [runs, competitorRuns] =
+		resolved.promptIds.length === 0
+			? [[], []]
+			: await Promise.all([getPromptModelDailyRuns(scope), getPromptModelDailyCompetitors(scope)]);
+	return buildLandscape({ brand, competitors: tracked, dates, runs, competitorRuns });
 }

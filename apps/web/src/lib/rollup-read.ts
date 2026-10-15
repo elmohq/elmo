@@ -479,3 +479,47 @@ export async function getDailyAssessments(scope: AnalyticsScope): Promise<DailyA
 		ORDER BY 1
 	`);
 }
+
+export interface PromptModelDailyRuns extends RunSums, AssessmentSums {
+	prompt_id: string;
+	model: string;
+	date: string;
+}
+
+export async function getPromptModelDailyRuns(scope: AnalyticsScope): Promise<PromptModelDailyRuns[]> {
+	return queryPg<PromptModelDailyRuns>(sql`
+		SELECT
+			prompt_id,
+			model,
+			to_char(${localDate(sql`bucket`, scope.timezone)}, 'YYYY-MM-DD') AS date,
+			${runSums},
+			${assessmentSums}
+		FROM rollup_prompt_runs
+		WHERE ${rollupScope(scope)}
+		GROUP BY 1, 2, 3
+	`);
+}
+
+export interface PromptModelDailyCompetitor extends AssessmentSums {
+	prompt_id: string;
+	model: string;
+	date: string;
+	competitor: string;
+	/** Runs that mentioned the competitor. */
+	runs: number;
+}
+
+export async function getPromptModelDailyCompetitors(scope: AnalyticsScope): Promise<PromptModelDailyCompetitor[]> {
+	return queryPg<PromptModelDailyCompetitor>(sql`
+		SELECT
+			prompt_id,
+			model,
+			to_char(${localDate(sql`bucket`, scope.timezone)}, 'YYYY-MM-DD') AS date,
+			competitor_name AS competitor,
+			sum(runs)::int AS runs,
+			${assessmentSums}
+		FROM rollup_competitor_mentions
+		WHERE ${rollupScope(scope)}
+		GROUP BY 1, 2, 3, 4
+	`);
+}
