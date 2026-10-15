@@ -28,6 +28,9 @@ interface JudgeConfig {
 const REFERENCE_LABELS = ["brand", "other_meaning", "other_company", "link_only", "no_info"];
 const SENTIMENT_LABELS = ["positive", "neutral", "negative", "mixed"];
 
+/** What the tokenizer produces; exporters keep or prune token_type_ids, so a graph may declare fewer. */
+const ENCODED_INPUTS = ["input_ids", "attention_mask", "token_type_ids"];
+
 /** Temperature-scales a probability vector: softmax(log p / T). */
 function calibrate(probs: Float32Array, temperature = 1): number[] {
 	const scaled = Array.from(probs, (p) => Math.log(Math.max(p, 1e-12)) / temperature);
@@ -61,6 +64,9 @@ export async function loadMentionJudge(dir: string, threads = availableParalleli
 	process.env.ORT_DISABLE_TELEMETRY ??= "1";
 	const ort = await import("onnxruntime-node");
 	const session = await ort.InferenceSession.create(join(dir, "model.onnx"), { intraOpNumThreads: threads });
+	const unknownInputs = session.inputNames.filter((name) => !ENCODED_INPUTS.includes(name));
+	if (unknownInputs.length > 0)
+		throw new Error(`mention judge ${config.version} expects inputs ${unknownInputs.join(", ")}`);
 
 	return {
 		version: config.version,
@@ -72,7 +78,6 @@ export async function loadMentionJudge(dir: string, threads = availableParalleli
 				attention_mask: encoded.attentionMask,
 				token_type_ids: encoded.tokenTypeIds,
 			};
-			// Exporters keep or prune token_type_ids depending on the model config, so feed what the graph declares.
 			const feeds = Object.fromEntries(
 				session.inputNames.map((name) => [
 					name,
