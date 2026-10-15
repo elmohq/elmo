@@ -8,7 +8,7 @@ import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { insertRuns } from "@workspace/lib/db/runs";
 import { type Brand, brands, citations, competitors, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
-import { type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
+import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } from "@workspace/lib/mentions";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import { insertCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
@@ -27,8 +27,9 @@ import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
-import { mentionAnalyzer } from "../mention-judge/analyze";
+import { type MentionAnalyzer, mentionAnalyzer, type RunMentions, substringAnalyzer } from "../mention-judge/analyze";
 import { trackWorkerEvent } from "../telemetry";
+import { sendReprocess } from "./reprocess";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -193,6 +194,26 @@ async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): P
 }
 
 /**
+ * The answer is already paid for, so a judge that fails falls back to matching names rather than
+ * losing it; the run is left for a replay to judge.
+ */
+async function judgeOrMatch(
+	analyzer: MentionAnalyzer,
+	text: string | null,
+	config: MentionConfig,
+	previous: RunMentionAssessments | null,
+	logPrefix: string,
+): Promise<{ mentions: RunMentions; judged: boolean }> {
+	try {
+		return { mentions: await analyzer.analyze(text, config, previous), judged: true };
+	} catch (error) {
+		console.error(`${logPrefix} Mention judge failed; matching names until a replay judges this run:`, error);
+		Sentry.captureException(error);
+		return { mentions: await substringAnalyzer.analyze(text, config), judged: false };
+	}
+}
+
+/**
  * Billing-grade attribution: one row per provider call, success
  * or failure. Never fails the run — attribution must not break tracking.
  */
@@ -261,7 +282,7 @@ async function runModelIteration({
 		// made during the provider call onto this run as current.
 		const analyzer = mentionAnalyzer();
 		const judgedConfig = await loadMentionConfig(db, brand.id);
-		let mentions = await analyzer.analyze(text, judgedConfig);
+		let { mentions, judged } = await judgeOrMatch(analyzer, text, judgedConfig, null, logPrefix);
 		const judgedStamp = currentAnalysisVersions(judgedConfig, analyzer.judgeVersion)[MENTIONS_KEY];
 
 		// One transaction so a reprocess never sees a run without its citations.
@@ -270,8 +291,8 @@ async function runModelIteration({
 			const stamps = currentAnalysisVersions(mentionConfig, analyzer.judgeVersion);
 			// An edit that landed while judging would otherwise slip past the reprocess it started.
 			// Only the subjects it changed are judged again, so the transaction stays short.
-			if (stamps[MENTIONS_KEY] !== judgedStamp) {
-				mentions = await analyzer.analyze(text, mentionConfig, mentions.assessments);
+			if (judged && stamps[MENTIONS_KEY] !== judgedStamp) {
+				({ mentions, judged } = await judgeOrMatch(analyzer, text, mentionConfig, mentions.assessments, logPrefix));
 			}
 			const [run] = await insertRuns(tx, [
 				{
@@ -286,7 +307,8 @@ async function runModelIteration({
 					textContent: text,
 					extractionStamp: stamps[EXTRACTION_KEY],
 					...mentions,
-					mentionsStamp: stamps[MENTIONS_KEY],
+					// Unstamped, a run matched by name instead is stale to the replay that judges it.
+					mentionsStamp: judged ? stamps[MENTIONS_KEY] : null,
 				},
 			]);
 			await insertCitations(
@@ -298,6 +320,7 @@ async function runModelIteration({
 			return run.id;
 		});
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
+		if (!judged) await sendReprocess(getBoss(), { brandId: brand.id, layers: ["interpretation"] });
 
 		await recordUsageEvent({
 			organizationId: brand.organizationId,
