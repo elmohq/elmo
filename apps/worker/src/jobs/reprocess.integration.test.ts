@@ -34,7 +34,7 @@ const openAiPayload = (text: string, url = "https://example.com/a") => ({
 
 function fakeBoss() {
 	const send = vi.fn().mockResolvedValue("job-id");
-	return { send, boss: { send, update: vi.fn() } };
+	return { send, boss: { send, update: vi.fn(), insert: vi.fn() } };
 }
 
 const sentFor = (send: ReturnType<typeof vi.fn>, brandId: string): ReprocessData[] =>

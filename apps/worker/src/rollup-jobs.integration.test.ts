@@ -85,8 +85,7 @@ function insertRun(fixture: Fixture, overrides: Partial<NewRun> & { createdAt: D
 			version: "1",
 			webSearchEnabled: false,
 			rawOutput: { text: "seed" },
-			brandMentioned: true,
-			competitorsMentioned: [],
+			mentions: { brandMentioned: true, competitorsMentioned: [], assessments: null, stamp: null },
 			...overrides,
 		},
 	]);
@@ -113,7 +112,12 @@ async function withRollupRowsLocked<T>(brandId: string, fn: () => Promise<T>): P
 }
 
 function fakeBoss() {
-	return { send: vi.fn().mockResolvedValue("fake-job-id"), update: vi.fn(), findJobs: vi.fn().mockResolvedValue([]) };
+	return {
+		send: vi.fn().mockResolvedValue("fake-job-id"),
+		update: vi.fn(),
+		insert: vi.fn(),
+		findJobs: vi.fn().mockResolvedValue([]),
+	};
 }
 
 let fixture: Fixture;
@@ -239,7 +243,7 @@ describe("reprocess through to a refresh, after a competitor's domain changes", 
 		await insertRun(fixture, {
 			createdAt: B0,
 			provider: "openai-api",
-			brandMentioned: false,
+			mentions: { brandMentioned: false, competitorsMentioned: [], assessments: null, stamp: null },
 			rawOutput: { choices: [{ message: { content: "According to newsite.example, Acme is the best CRM." } }] },
 		});
 
