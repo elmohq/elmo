@@ -11,7 +11,7 @@
    tailwindlabs/tailwindcss#16389 and TanStack/router#4959. */
 @source "../src";
 @source "../../../packages/ui/src";
-@source "../../../packages/lib/src/citations/domain-categories.ts";
+@source "../../../packages/lib/src";
 
 @custom-variant dark (&:is(.dark *));
 
