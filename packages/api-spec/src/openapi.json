@@ -751,7 +751,20 @@
 						"$ref": "#/components/schemas/MentionsSummary"
 					},
 					"sentiment": {
-						"$ref": "#/components/schemas/SentimentCounts"
+						"$ref": "#/components/schemas/SentimentSummary"
+					},
+					"position": {
+						"type": "object",
+						"description": "**Experimental — the shape may still change.**\n\nThe brand's average position among the tracked companies the answers name, 1 being named first.",
+						"x-stability": "experimental",
+						"properties": {
+							"average": {
+								"type": ["number", "null"],
+								"minimum": 1,
+								"description": "Experimental. The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it."
+							}
+						},
+						"required": ["average"]
 					},
 					"citations": {
 						"type": "object",
@@ -779,7 +792,17 @@
 						"required": ["citationsTotal", "brandCitationsTotal", "competitorCitationsTotal", "citedUrlsTopK"]
 					}
 				},
-				"required": ["brandId", "promptId", "promptValue", "startDate", "endDate", "mentions", "citations", "sentiment"]
+				"required": [
+					"brandId",
+					"promptId",
+					"promptValue",
+					"startDate",
+					"endDate",
+					"mentions",
+					"citations",
+					"sentiment",
+					"position"
+				]
 			},
 			"Pagination": {
 				"type": "object",
@@ -1082,9 +1105,17 @@
 						"minimum": 0,
 						"maximum": 1,
 						"description": "This entity's share of all brand and competitor mentions. Ratio 0–1; multiply by 100 for a percentage."
+					},
+					"sentiment": {
+						"$ref": "#/components/schemas/SentimentSummary"
+					},
+					"averagePosition": {
+						"type": ["number", "null"],
+						"minimum": 1,
+						"description": "Experimental. The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it."
 					}
 				},
-				"required": ["name", "isBrand", "mentions", "prompts", "share"]
+				"required": ["name", "isBrand", "mentions", "prompts", "share", "sentiment", "averagePosition"]
 			},
 			"ShareOfVoicePoint": {
 				"type": "object",
@@ -1387,6 +1418,14 @@
 					"firstEvaluatedAt": {
 						"type": ["string", "null"],
 						"format": "date-time"
+					},
+					"sentiment": {
+						"$ref": "#/components/schemas/SentimentSummary"
+					},
+					"averagePosition": {
+						"type": ["number", "null"],
+						"minimum": 1,
+						"description": "Experimental. The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it."
 					}
 				},
 				"required": [
@@ -1397,7 +1436,9 @@
 					"brandMentionRate",
 					"competitorMentionRate",
 					"lastRunAt",
-					"firstEvaluatedAt"
+					"firstEvaluatedAt",
+					"sentiment",
+					"averagePosition"
 				]
 			},
 			"PromptPerformanceList": {
@@ -1739,9 +1780,26 @@
 					},
 					"citations": {
 						"type": "integer"
+					},
+					"sentiment": {
+						"$ref": "#/components/schemas/SentimentSummary"
+					},
+					"averagePosition": {
+						"type": ["number", "null"],
+						"minimum": 1,
+						"description": "Experimental. The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it."
 					}
 				},
-				"required": ["model", "label", "runs", "brandMentions", "visibility", "citations"]
+				"required": [
+					"model",
+					"label",
+					"runs",
+					"brandMentions",
+					"visibility",
+					"citations",
+					"sentiment",
+					"averagePosition"
+				]
 			},
 			"BrandAnalytics": {
 				"description": "Every non-paginated figure for a brand over one window. There is no parameter for selecting a subset: the computations behind this share one scope resolution and run concurrently, so a subset would save a caller a fraction of one request and cost everyone a parameter to reason about.",
@@ -1810,7 +1868,10 @@
 						"description": "Per-model visibility and run counts. Only models that produced a run in the window appear."
 					},
 					"sentiment": {
-						"$ref": "#/components/schemas/SentimentCounts"
+						"$ref": "#/components/schemas/BrandSentiment"
+					},
+					"position": {
+						"$ref": "#/components/schemas/BrandPosition"
 					},
 					"totals": {
 						"type": "object",
@@ -1835,7 +1896,17 @@
 						"required": ["runs", "prompts", "citations", "uniqueDomains", "uniqueUrls"]
 					}
 				},
-				"required": ["brandId", "brandName", "range", "visibility", "shareOfVoice", "models", "totals", "sentiment"]
+				"required": [
+					"brandId",
+					"brandName",
+					"range",
+					"visibility",
+					"shareOfVoice",
+					"models",
+					"totals",
+					"sentiment",
+					"position"
+				]
 			},
 			"ModelList": {
 				"type": "object",
@@ -1871,30 +1942,6 @@
 				},
 				"required": ["id", "label", "premiumCapable", "configured"]
 			},
-			"SentimentCounts": {
-				"description": "**Experimental — the shape may still change.**\n\nAnswers that mention the brand, by the mention judge's confident sentiment toward it. An answer whose tone the judge couldn't call counts in none. All zero on deployments without the judge, and for history the judge hasn't re-judged yet.",
-				"type": "object",
-				"properties": {
-					"positive": {
-						"type": "integer",
-						"minimum": 0
-					},
-					"neutral": {
-						"type": "integer",
-						"minimum": 0
-					},
-					"negative": {
-						"type": "integer",
-						"minimum": 0
-					},
-					"mixed": {
-						"type": "integer",
-						"minimum": 0
-					}
-				},
-				"required": ["positive", "neutral", "negative", "mixed"],
-				"x-stability": "experimental"
-			},
 			"MentionAssessment": {
 				"description": "**Experimental — the shape may still change.**\n\nThe mention judge's verdict on one brand or competitor named in an answer.",
 				"type": "object",
@@ -1928,12 +1975,30 @@
 						},
 						"description": "Probability of each sentiment, keyed by label."
 					},
+					"position": {
+						"type": ["integer", "null"],
+						"minimum": 1,
+						"description": "1 for the tracked company the answer names first, 2 for the next, and so on. Null when the answer isn't counted as mentioning it."
+					},
+					"mentionCount": {
+						"type": ["integer", "null"],
+						"minimum": 1,
+						"description": "How many times the answer mentions it. Null when the answer isn't counted as mentioning it."
+					},
 					"evidence": {
 						"type": ["string", "null"],
 						"description": "Only on a single run: the passage the verdict rests on — for a mention with a sentiment, the passage that most shows that sentiment. Null when there is no passage (a link-only mention) or the run's stored text no longer matches what was judged."
 					}
 				},
-				"required": ["mention", "probability", "reason", "sentiment", "sentimentProbabilities"],
+				"required": [
+					"mention",
+					"probability",
+					"reason",
+					"sentiment",
+					"sentimentProbabilities",
+					"position",
+					"mentionCount"
+				],
 				"x-stability": "experimental"
 			},
 			"RunAssessments": {
@@ -1961,6 +2026,116 @@
 				},
 				"required": ["brand", "competitors"],
 				"x-stability": "experimental"
+			},
+			"SentimentSummary": {
+				"description": "**Experimental — the shape may still change.**\n\nAnswers that mention the company, by the mention judge's confident sentiment toward it. An answer whose tone the judge couldn't call counts in none. All zero on deployments without the judge, and for history the judge hasn't re-judged yet.",
+				"type": "object",
+				"properties": {
+					"positive": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"neutral": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"negative": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"mixed": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"positiveShare": {
+						"type": ["number", "null"],
+						"minimum": 0,
+						"maximum": 1,
+						"description": "Positive answers as a fraction of those with a clear tone (the four counts). Ratio 0–1; null when there are none."
+					},
+					"negativeShare": {
+						"type": ["number", "null"],
+						"minimum": 0,
+						"maximum": 1,
+						"description": "Negative answers as a fraction of those with a clear tone (the four counts). Ratio 0–1; null when there are none."
+					}
+				},
+				"required": ["positive", "neutral", "negative", "mixed", "positiveShare", "negativeShare"],
+				"x-stability": "experimental"
+			},
+			"BrandSentiment": {
+				"description": "**Experimental — the shape may still change.**\n\nThe brand's sentiment over the window, with the counts for each day so a client can chart or smooth them.",
+				"x-stability": "experimental",
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/SentimentSummary"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"series": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"date": {
+											"type": "string",
+											"format": "date"
+										},
+										"positive": {
+											"type": "integer",
+											"minimum": 0
+										},
+										"neutral": {
+											"type": "integer",
+											"minimum": 0
+										},
+										"negative": {
+											"type": "integer",
+											"minimum": 0
+										},
+										"mixed": {
+											"type": "integer",
+											"minimum": 0
+										}
+									},
+									"required": ["date", "positive", "neutral", "negative", "mixed"]
+								}
+							}
+						},
+						"required": ["series"]
+					}
+				]
+			},
+			"BrandPosition": {
+				"description": "**Experimental — the shape may still change.**\n\nThe brand's position among the tracked companies the answers name, 1 being named first, averaged over the window and per day.",
+				"x-stability": "experimental",
+				"type": "object",
+				"properties": {
+					"average": {
+						"type": ["number", "null"],
+						"minimum": 1,
+						"description": "Experimental. The company's average position among the tracked companies the answers name, 1 being named first, to one decimal. Companies that aren't tracked aren't ranked. Null when no answer ranks it."
+					},
+					"series": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"date": {
+									"type": "string",
+									"format": "date"
+								},
+								"average": {
+									"type": ["number", "null"],
+									"minimum": 1
+								}
+							},
+							"required": ["date", "average"]
+						}
+					}
+				},
+				"required": ["average", "series"]
 			}
 		},
 		"responses": {
@@ -3807,7 +3982,12 @@
 										"positive": 96,
 										"neutral": 31,
 										"negative": 4,
-										"mixed": 2
+										"mixed": 2,
+										"positiveShare": 0.72,
+										"negativeShare": 0.03
+									},
+									"position": {
+										"average": 1.6
 									},
 									"citations": {
 										"citationsTotal": 1240,

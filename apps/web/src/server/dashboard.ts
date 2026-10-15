@@ -28,8 +28,8 @@ import {
 	SENTIMENT_WINDOW_DAYS,
 	type SentimentCounts,
 	type SentimentPoint,
-	sentimentCounts,
 	sentimentSeries,
+	sentimentSummary,
 	shiftDate,
 } from "@/lib/sentiment";
 import { resolveBrandWindow } from "@/server/brand-window";
@@ -176,7 +176,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			brandedVisibility,
 			visibilityTimeSeries,
 			citationTimeSeries,
-			sentiment: sentimentCounts(totals),
+			sentiment: sentimentSummary(totals),
 			sentimentTimeSeries: sentimentSeries(dailyVerdicts, dateRange),
 			averagePosition: averagePosition(totals.position_sum, totals.positioned_runs),
 			positionTimeSeries: positionSeries(dailyVerdicts, dateRange),

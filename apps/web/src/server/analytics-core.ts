@@ -20,6 +20,8 @@ import {
 	getCitationsCountByModel,
 	getCitationTotal,
 	getCitationUrlStats,
+	getCompetitorTotals,
+	getDailyVerdicts,
 	getFanoutBreakdown,
 	getFanoutModelTotals,
 	getFanoutPromptTotals,
@@ -30,8 +32,15 @@ import {
 	getPromptsFirstEvaluatedAt,
 	getRunsByModel,
 	getVisibilityDailyAggregate,
+	type VerdictSums,
 } from "@/lib/rollup-read";
-import { type SentimentCounts, sentimentCounts } from "@/lib/sentiment";
+import {
+	averagePosition,
+	type MentionQuality,
+	mentionQuality,
+	type SentimentSummary,
+	sentimentSummary,
+} from "@/lib/sentiment";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -137,7 +146,7 @@ export async function getBrandVisibility(
 	return { currentVisibility, totalRuns, totalPrompts: promptIds.length, totalCitations, series };
 }
 
-interface ShareOfVoiceEntry {
+interface ShareOfVoiceEntry extends MentionQuality {
 	name: string;
 	isBrand: boolean;
 	mentions: number;
@@ -151,11 +160,6 @@ export interface BrandShareOfVoice {
 	totalRuns: number;
 	entries: ShareOfVoiceEntry[];
 	series: { date: string; share: number | null }[];
-	/**
-	 * Answers mentioning the brand, by the judge's confident sentiment toward it; all zero where
-	 * no judge runs. Read here because it comes from the same totals share of voice already reads.
-	 */
-	sentiment: SentimentCounts;
 }
 
 /** Standings carry each prompt's latest counts forward, so the headline and the
@@ -177,18 +181,19 @@ export async function getBrandShareOfVoice(
 			totalRuns: 0,
 			entries: [],
 			series: [],
-			sentiment: { positive: 0, neutral: 0, negative: 0, mixed: 0 },
 		};
 	}
 
 	const bounds = windowInstants(window);
 	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
-	const [totals, perPromptDaily, perPromptCompetitorDaily] = await Promise.all([
+	const [totals, perPromptDaily, perPromptCompetitorDaily, competitorRows] = await Promise.all([
 		getMentionTotals(scope),
 		getPerPromptDailyRuns(scope),
 		getPerPromptDailyCompetitors(scope),
+		getCompetitorTotals(scope),
 	]);
+	const competitorTotals = new Map(competitorRows.map((row) => [row.competitor, row]));
 
 	const standings = shareOfVoiceLeaderboardLVCF(
 		perPromptDaily.map((row) => ({
@@ -228,19 +233,19 @@ export async function getBrandShareOfVoice(
 		brandName,
 		brandShare,
 		totalRuns: totals.runs,
-		sentiment: sentimentCounts(totals),
 		entries: entries.map((entry) => ({
 			name: entry.name,
 			isBrand: entry.isBrand,
 			mentions: entry.mentions,
 			prompts: entry.isBrand ? standings.brandPrompts : (promptsByName.get(entry.name) ?? 0),
 			share: entry.share,
+			...mentionQuality((entry.isBrand ? totals : competitorTotals.get(entry.name)) ?? NO_VERDICTS),
 		})),
 		series,
 	};
 }
 
-export interface ModelVisibility {
+export interface ModelVisibility extends MentionQuality {
 	model: string;
 	label: string;
 	runs: number;
@@ -271,6 +276,7 @@ async function getBrandModelBreakdown(
 			brandMentions: mentions,
 			visibility: runs === 0 ? null : mentions / runs,
 			citations: citationsByModel.get(row.model) ?? 0,
+			...mentionQuality(row),
 		};
 	});
 }
@@ -419,7 +425,7 @@ function emptyFanout(): FanoutAnalysis {
 	};
 }
 
-export interface PromptPerformance {
+export interface PromptPerformance extends MentionQuality {
 	promptId: string;
 	value: string;
 	tags: string[];
@@ -460,18 +466,74 @@ export async function getBrandPromptPerformance(
 			competitorMentionRate: runs > 0 ? (stats?.competitor_runs ?? 0) / runs : 0,
 			lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date).toISOString() : null,
 			firstEvaluatedAt: first ? new Date(first).toISOString() : null,
+			...mentionQuality(stats ?? NO_VERDICTS),
 		};
 	});
+}
+
+const NO_VERDICTS: VerdictSums = {
+	positive_runs: 0,
+	neutral_runs: 0,
+	negative_runs: 0,
+	mixed_runs: 0,
+	position_sum: 0,
+	positioned_runs: 0,
+};
+
+export interface BrandMentionQuality {
+	sentiment: SentimentSummary & {
+		series: { date: string; positive: number; neutral: number; negative: number; mixed: number }[];
+	};
+	position: { average: number | null; series: { date: string; average: number | null }[] };
+}
+
+/** The brand's sentiment and position over the window, with their day-by-day values. */
+export async function getBrandMentionQuality(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+): Promise<BrandMentionQuality> {
+	const { promptIds } = await resolveScope(brandId, filters);
+	const bounds = windowInstants(window);
+	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
+	const rows =
+		promptIds.length === 0 ? [] : await getDailyVerdicts(analyticsScope(brandId, window, promptIds, filters));
+	const byDate = new Map(rows.map((row) => [row.date, row]));
+	const totals = { ...NO_VERDICTS };
+	for (const row of rows) {
+		for (const key of Object.keys(totals) as (keyof VerdictSums)[]) totals[key] += row[key];
+	}
+	const day = (date: string) => byDate.get(date) ?? NO_VERDICTS;
+	return {
+		sentiment: {
+			...sentimentSummary(totals),
+			series: dateRange.map((date) => ({
+				date,
+				positive: day(date).positive_runs,
+				neutral: day(date).neutral_runs,
+				negative: day(date).negative_runs,
+				mixed: day(date).mixed_runs,
+			})),
+		},
+		position: {
+			average: averagePosition(totals.position_sum, totals.positioned_runs),
+			series: dateRange.map((date) => ({
+				date,
+				average: averagePosition(day(date).position_sum, day(date).positioned_runs),
+			})),
+		},
+	};
 }
 
 /** The long lists — cited domains and URLs, sub-queries, per-prompt results —
  * are endpoints of their own. */
 export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
-	const [visibility, shareOfVoice, models, citations] = await Promise.all([
+	const [visibility, shareOfVoice, models, citations, quality] = await Promise.all([
 		getBrandVisibility(brandId, window, filters),
 		getBrandShareOfVoice(brandId, window, filters),
 		getBrandModelBreakdown(brandId, window, filters),
 		getBrandCitations(brandId, window, filters),
+		getBrandMentionQuality(brandId, window, filters),
 	]);
 
 	return {
@@ -479,7 +541,8 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 		visibility: { current: visibility.currentVisibility, series: visibility.series },
 		shareOfVoice: { brand: shareOfVoice.brandShare, entries: shareOfVoice.entries, series: shareOfVoice.series },
 		models,
-		sentiment: shareOfVoice.sentiment,
+		sentiment: quality.sentiment,
+		position: quality.position,
 		totals: {
 			runs: visibility.totalRuns,
 			prompts: visibility.totalPrompts,

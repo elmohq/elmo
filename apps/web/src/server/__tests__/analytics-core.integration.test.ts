@@ -104,7 +104,7 @@ describe("share of voice", () => {
 		expect(sov.brandName).toBe("Acme");
 		expect(sov.totalRuns).toBe(4);
 		expect(sov.brandShare).toBe(0.5);
-		expect(sov.entries).toEqual([
+		expect(sov.entries).toMatchObject([
 			{ name: "Acme", isBrand: true, mentions: 2, prompts: 2, share: 0.5 },
 			{ name: "Globex", isBrand: false, mentions: 1, prompts: 1, share: 0.25 },
 			{ name: "Initech", isBrand: false, mentions: 1, prompts: 1, share: 0.25 },
@@ -171,7 +171,7 @@ describe("brand analytics", () => {
 		expect(analytics.totals).toEqual({ runs: 4, prompts: 3, citations: 5, uniqueDomains: 3, uniqueUrls: 3 });
 		expect(analytics.visibility.current).toBe(1);
 		expect(analytics.shareOfVoice.brand).toBe(0.5);
-		expect(analytics.models).toEqual([
+		expect(analytics.models).toMatchObject([
 			{ model: "chatgpt", label: "ChatGPT", runs: 4, brandMentions: 3, visibility: 0.75, citations: 5 },
 		]);
 	});

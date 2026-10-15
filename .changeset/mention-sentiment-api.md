@@ -3,4 +3,4 @@
 "@workspace/api-spec": patch
 ---
 
-The API and MCP tools return each answer's mention verdicts with sentiment and evidence, and brand sentiment totals on analytics and prompt snapshots (experimental).
+The API and MCP tools return each answer's mention verdicts with sentiment, position and evidence, and sentiment and average position for the brand, each competitor, model and prompt, with daily series (experimental).

@@ -34,6 +34,10 @@ export interface MentionAssessment {
 	reason: string | null;
 	sentiment: NonNullable<MentionAssessmentRecord["sentiment"]> | null;
 	sentimentProbabilities: Record<string, number> | null;
+	/** 1 for the tracked company the answer names first, and so on; null when it isn't counted as a mention. */
+	position: number | null;
+	/** How many times the answer mentions it; null when it isn't counted as a mention. */
+	mentionCount: number | null;
 	/** The passage the verdict rests on. Only on a single run, and only where the answer's text was stored. */
 	evidence?: string | null;
 }
@@ -57,6 +61,8 @@ function publicAssessments(stored: RunMentionAssessments | null, text?: string |
 		reason: record.reason ?? null,
 		sentiment: record.sentiment ?? null,
 		sentimentProbabilities: record.sentimentProbabilities ?? null,
+		position: record.position ?? null,
+		mentionCount: record.mentionCount ?? null,
 		...(text === undefined ? {} : { evidence: evidencePassage(text, record) }),
 	});
 	return {

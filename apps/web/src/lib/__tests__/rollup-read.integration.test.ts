@@ -338,7 +338,7 @@ describe("prompt mention stats", () => {
 	});
 
 	it("ranks competitors by the runs that mentioned them", async () => {
-		expect(await getCompetitorTotals(window(), 5)).toEqual([
+		expect(await getCompetitorTotals(window(), 5)).toMatchObject([
 			{ competitor: "Globex", runs: 2 },
 			{ competitor: "Initech", runs: 1 },
 		]);

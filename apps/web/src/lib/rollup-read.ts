@@ -26,17 +26,22 @@ export interface RunSums {
 	competitor_mentions: number;
 }
 
-export interface MentionTotals extends RunSums {
-	/** Runs that mentioned neither the brand nor any competitor. */
-	no_mention_runs: number;
-	/** Runs mentioning the brand, by the mention judge's confident sentiment toward it. */
+/**
+ * The mention judge's measures for one company: runs mentioning it by confident sentiment, and its
+ * position summed over the runs that rank it. All zero where no judge runs.
+ */
+export interface VerdictSums {
 	positive_runs: number;
 	neutral_runs: number;
 	negative_runs: number;
 	mixed_runs: number;
-	/** The brand's position summed over the runs that rank it; see `averagePosition`. */
 	position_sum: number;
 	positioned_runs: number;
+}
+
+export interface MentionTotals extends RunSums, VerdictSums {
+	/** Runs that mentioned neither the brand nor any competitor. */
+	no_mention_runs: number;
 	/** Distinct prompts with a run in scope. */
 	prompts: number;
 	/** Distinct prompts in which the brand was mentioned at least once. */
@@ -57,12 +62,12 @@ export interface PerPromptDailyCompetitorRow {
 	runs: number;
 }
 
-export interface CompetitorTotal {
+export interface CompetitorTotal extends VerdictSums {
 	competitor: string;
 	runs: number;
 }
 
-export interface PerPromptRunStats extends RunSums {
+export interface PerPromptRunStats extends RunSums, VerdictSums {
 	prompt_id: string;
 	/** Distinct days, in the scope's timezone, on which the prompt ran. */
 	run_days: number;
@@ -71,7 +76,7 @@ export interface PerPromptRunStats extends RunSums {
 	last_run_date: string | null;
 }
 
-export interface ModelRunSums extends RunSums {
+export interface ModelRunSums extends RunSums, VerdictSums {
 	model: string;
 }
 
@@ -135,17 +140,20 @@ const runSums = sql`
 	coalesce(sum(competitor_runs), 0)::int AS competitor_runs,
 	coalesce(sum(competitor_mentions), 0)::int AS competitor_mentions`;
 
+const verdictSums = sql`
+	coalesce(sum(positive_runs), 0)::int AS positive_runs,
+	coalesce(sum(neutral_runs), 0)::int AS neutral_runs,
+	coalesce(sum(negative_runs), 0)::int AS negative_runs,
+	coalesce(sum(mixed_runs), 0)::int AS mixed_runs,
+	coalesce(sum(position_sum), 0)::int AS position_sum,
+	coalesce(sum(positioned_runs), 0)::int AS positioned_runs`;
+
 export async function getMentionTotals(scope: AnalyticsScope): Promise<MentionTotals> {
 	const [row] = await queryPg<MentionTotals>(sql`
 		SELECT
 			${runSums},
 			coalesce(sum(no_mention_runs), 0)::int AS no_mention_runs,
-			coalesce(sum(positive_runs), 0)::int AS positive_runs,
-			coalesce(sum(neutral_runs), 0)::int AS neutral_runs,
-			coalesce(sum(negative_runs), 0)::int AS negative_runs,
-			coalesce(sum(mixed_runs), 0)::int AS mixed_runs,
-			coalesce(sum(position_sum), 0)::int AS position_sum,
-			coalesce(sum(positioned_runs), 0)::int AS positioned_runs,
+			${verdictSums},
 			count(DISTINCT prompt_id)::int AS prompts,
 			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned_runs > 0)::int AS brand_mentioned_prompts,
 			${isoInstant(sql`max(last_run_at)`)} AS last_run_at
@@ -181,7 +189,7 @@ export async function getPerPromptDailyCompetitors(scope: AnalyticsScope): Promi
 
 export async function getCompetitorTotals(scope: AnalyticsScope, limit?: number): Promise<CompetitorTotal[]> {
 	return queryPg<CompetitorTotal>(sql`
-		SELECT competitor_name AS competitor, sum(runs)::int AS runs
+		SELECT competitor_name AS competitor, sum(runs)::int AS runs, ${verdictSums}
 		FROM rollup_competitor_mentions
 		WHERE ${rollupScope(scope)}
 		GROUP BY competitor
@@ -195,6 +203,7 @@ export async function getPerPromptRunStats(scope: AnalyticsScope): Promise<PerPr
 		SELECT
 			prompt_id,
 			${runSums},
+			${verdictSums},
 			count(DISTINCT ${localDate(sql`bucket`, scope.timezone)})::int AS run_days,
 			${isoInstant(sql`max(last_run_at)`)} AS last_run_at,
 			${localDate(sql`max(last_run_at)`, scope.timezone)} AS last_run_date
@@ -206,7 +215,7 @@ export async function getPerPromptRunStats(scope: AnalyticsScope): Promise<PerPr
 
 export async function getRunsByModel(scope: AnalyticsScope): Promise<ModelRunSums[]> {
 	return queryPg<ModelRunSums>(sql`
-		SELECT model, ${runSums}
+		SELECT model, ${runSums}, ${verdictSums}
 		FROM rollup_prompt_runs
 		WHERE ${rollupScope(scope)}
 		GROUP BY model
