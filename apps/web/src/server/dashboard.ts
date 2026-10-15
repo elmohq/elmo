@@ -12,7 +12,6 @@ import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
-import { isCalendarDay } from "@/lib/analytics-sql";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
 import { lookbackSchema } from "@/lib/lookback";
@@ -111,7 +110,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			// Reaching back so the trailing window is full from the first plotted day.
 			getDailySentiment({
 				...scope,
-				from: isCalendarDay(fromDateStr) ? shiftDate(fromDateStr, 1 - SENTIMENT_WINDOW_DAYS) : fromDateStr,
+				from: shiftDate(fromDateStr, 1 - SENTIMENT_WINDOW_DAYS),
 			}),
 		]);
 
