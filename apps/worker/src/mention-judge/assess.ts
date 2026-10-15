@@ -7,7 +7,7 @@ import { type MatchWindow, matchWindows } from "./windows";
  */
 const MENTION_REFERENCES = ["brand", "link_only"];
 
-/** Below this calibrated probability either way, the verdict is "uncertain" and goes to review. */
+/** Below this calibrated probability either way, the verdict is "uncertain"; it still counts as a mention. */
 const CONFIDENT = 0.7;
 
 export type MentionVerdict = "mentioned" | "not_mentioned" | "uncertain";
