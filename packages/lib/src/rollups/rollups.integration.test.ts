@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../db/db";
 import type { DbConnection } from "../db/db-connection";
+import type { HeapWalkPosition } from "../db/heap-walk";
 import { insertRuns } from "../db/runs";
 import * as schema from "../db/schema";
 import {
@@ -507,6 +508,75 @@ describe("rollups against postgres", () => {
 			["google", "search"],
 			["editorial", "article"],
 		]);
+	});
+
+	it("resolves unpaged citations a window of heap pages at a time", async () => {
+		const run = SEED_RUNS[0];
+		await db.insert(citations).values(
+			Array.from({ length: 600 }, (_, i) => ({
+				promptRunId: run.id,
+				promptId: run.promptId,
+				brandId: BRAND_ID,
+				model: run.model,
+				url: `https://many.example/page-${i}`,
+				domain: "many.example",
+				title: null,
+				citationIndex: i,
+				createdAt: new Date(run.createdAt),
+			})),
+		);
+		const pages = await db.execute<{ pages: number }>(
+			sql`SELECT count(DISTINCT (ctid::text::point)[0])::int AS pages FROM citations WHERE page_id IS NULL`,
+		);
+		expect(pages.rows[0].pages).toBeGreaterThan(1);
+
+		expect(await resolveUnpagedCitations(db, { pagesPerStep: 1 })).toBe(600);
+
+		const linked = await db.execute<{ unpaged: number; mismatched: number }>(sql`
+			SELECT count(*) FILTER (WHERE c.page_id IS NULL)::int AS unpaged,
+				count(*) FILTER (WHERE cp.url IS DISTINCT FROM c.url)::int AS mismatched
+			FROM citations c LEFT JOIN cited_pages cp ON cp.id = c.page_id
+			WHERE c.domain = 'many.example'
+		`);
+		expect(linked.rows[0]).toEqual({ unpaged: 0, mismatched: 0 });
+		expect(await db.select().from(rollupDirty)).toEqual([expect.objectContaining({ brandId: BRAND_ID, bucket: B0 })]);
+	});
+
+	it("resumes an interrupted walk from where it got to", async () => {
+		const run = SEED_RUNS[0];
+		await db.insert(citations).values(
+			Array.from({ length: 600 }, (_, i) => ({
+				promptRunId: run.id,
+				promptId: run.promptId,
+				brandId: BRAND_ID,
+				model: run.model,
+				url: `https://resume.example/page-${i}`,
+				domain: "resume.example",
+				title: null,
+				citationIndex: i,
+				createdAt: new Date(run.createdAt),
+			})),
+		);
+		let saved: HeapWalkPosition | null = null;
+		const interrupted = resolveUnpagedCitations(db, {
+			pagesPerStep: 1,
+			onStep: async (position) => {
+				saved = position;
+				throw new Error("worker stopped");
+			},
+		});
+		await expect(interrupted).rejects.toThrow("worker stopped");
+		const firstWindow = await db.execute<{ linked: number }>(
+			sql`SELECT count(*)::int AS linked FROM citations WHERE domain = 'resume.example' AND page_id IS NOT NULL`,
+		);
+		expect(firstWindow.rows[0].linked).toBeGreaterThan(0);
+		expect(firstWindow.rows[0].linked).toBeLessThan(600);
+
+		await resolveUnpagedCitations(db, { pagesPerStep: 1, from: saved });
+		const left = await db.execute<{ unpaged: number }>(
+			sql`SELECT count(*)::int AS unpaged FROM citations WHERE domain = 'resume.example' AND page_id IS NULL`,
+		);
+		expect(left.rows[0].unpaged).toBe(0);
 	});
 
 	it("refuses to guess when the pipeline state row is missing", async () => {

@@ -17,6 +17,8 @@
 		"./db/db-connection": "./src/db/db-connection.ts",
 		"./db/schema": "./src/db/schema.ts",
 		"./db/runs": "./src/db/runs.ts",
+		"./db/heap-walk": "./src/db/heap-walk.ts",
+		"./db/background-migrations": "./src/db/background-migrations.ts",
 		"./db/auth-sync": "./src/db/auth-sync.ts",
 		"./db/provisioning": "./src/db/provisioning.ts",
 		"./db/unique-names": "./src/db/unique-names.ts",
