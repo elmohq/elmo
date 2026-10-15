@@ -28,11 +28,12 @@ import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { useSiteIcons } from "@/hooks/use-site-icons";
+import { type ToneSearch, useToneSearch, validateToneSearch } from "@/hooks/use-tone-search";
 import { promptKeywords } from "@/lib/fanout-analysis";
 import { PROMPT_DETAIL_TABS, type PromptDetailTab } from "@/lib/prompt-detail-tabs";
 import { pageHead } from "@/lib/route-head";
 import { skeletonRows } from "@/lib/skeleton-rows";
-import type { ResponseSort, ToneCounts, ToneFilter } from "@/lib/tone";
+import type { ToneCounts } from "@/lib/tone";
 import { getModelDisplayName } from "@/lib/utils";
 import { getPromptMetadataFn } from "@/server/prompts";
 
@@ -71,8 +72,9 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/prompts
 	staticData: { crumb: "Prompt History" },
 	// `tab` is part of the route's search schema so links can target a specific
 	// tab (e.g. View Details → web-queries). Absent means the default tab.
-	validateSearch: (search: Record<string, unknown>): { tab?: PromptDetailTab } => ({
+	validateSearch: (search: Record<string, unknown>): { tab?: PromptDetailTab } & ToneSearch => ({
 		tab: PROMPT_DETAIL_TABS.includes(search.tab as PromptDetailTab) ? (search.tab as PromptDetailTab) : undefined,
+		...validateToneSearch(search),
 	}),
 	head: pageHead({ title: "Prompt Details", description: "Detailed analysis of a tracked prompt's performance." }),
 	component: PromptHistoryPage,
@@ -213,11 +215,7 @@ function PromptHistoryPage() {
 	);
 	const [visitedTabs, setVisitedTabs] = useState<Set<PromptDetailTab>>(() => new Set([activeTab]));
 	const [currentPage, setCurrentPage] = useState(1);
-	const [runFilter, setRunFilter] = useState<{ sentiment?: ToneFilter; sort: ResponseSort }>({ sort: "newest" });
-	const changeRunFilter = (next: { sentiment?: ToneFilter; sort: ResponseSort }) => {
-		setRunFilter(next);
-		setCurrentPage(1);
-	};
+	const toneSearch = useToneSearch(() => setCurrentPage(1));
 	const { promptMeta, isMetaLoading } = usePromptMetadata(brandId, promptId);
 
 	const { data: brand } = useBrand(brandId);
@@ -241,7 +239,8 @@ function PromptHistoryPage() {
 		page: currentPage,
 		limit: RUNS_PER_PAGE,
 		lookback,
-		...runFilter,
+		sentiment: toneSearch.sentiment,
+		sort: toneSearch.sort,
 	});
 
 	const { runs, total: totalRunCount, totalPages } = runsPage(runsData);
@@ -367,8 +366,7 @@ function PromptHistoryPage() {
 						runs={runs}
 						totalRuns={totalRunCount}
 						toneCounts={runsData?.toneCounts}
-						filter={runFilter}
-						onFilterChange={changeRunFilter}
+						toneSearch={toneSearch}
 						isLoading={isRunsLoading}
 						currentPage={currentPage}
 						onPageChange={handlePageChange}
@@ -595,8 +593,7 @@ function ResponsesTab({
 	runs,
 	totalRuns,
 	toneCounts,
-	filter,
-	onFilterChange,
+	toneSearch,
 	isLoading,
 	currentPage,
 	onPageChange,
@@ -606,8 +603,7 @@ function ResponsesTab({
 	runs: PromptRun[];
 	totalRuns: number;
 	toneCounts?: ToneCounts;
-	filter: { sentiment?: ToneFilter; sort: ResponseSort };
-	onFilterChange: (filter: { sentiment?: ToneFilter; sort: ResponseSort }) => void;
+	toneSearch: ReturnType<typeof useToneSearch>;
 	isLoading: boolean;
 	currentPage: number;
 	onPageChange: (page: number) => void;
@@ -628,10 +624,10 @@ function ResponsesTab({
 
 			<ToneFilterCard
 				counts={toneCounts}
-				value={filter.sentiment}
-				onChange={(sentiment) => onFilterChange({ ...filter, sentiment })}
-				sort={filter.sort}
-				onSortChange={(sort) => onFilterChange({ ...filter, sort })}
+				value={toneSearch.sentiment}
+				onChange={toneSearch.setSentiment}
+				sort={toneSearch.sort}
+				onSortChange={toneSearch.setSort}
 			/>
 
 			{runs.length === 0 && (

@@ -15,26 +15,22 @@ import { joinTags, splitTags, useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useResponseSearch } from "@/hooks/use-responses";
 import { useSiteIcons } from "@/hooks/use-site-icons";
+import { type ToneSearch, useToneSearch, validateToneSearch } from "@/hooks/use-tone-search";
 import { pageHead } from "@/lib/route-head";
-import { type ResponseSort, responseSortSchema, type ToneFilter, toneFilterSchema } from "@/lib/tone";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/responses")({
 	staticData: { crumb: "Responses" },
 	// Comma-joined IDs, like `tags`, so a filtered view stays linkable.
 	validateSearch: (search: Record<string, unknown>): ResponsesSearch => ({
 		prompts: typeof search.prompts === "string" && search.prompts ? search.prompts : undefined,
-		sentiment: toneFilterSchema.safeParse(search.sentiment).data,
-		sort: responseSortSchema.exclude(["newest"]).safeParse(search.sort).data,
+		...validateToneSearch(search),
 	}),
 	head: pageHead({ description: "Read and search every AI answer to your prompts." }),
 	component: ResponsesPage,
 });
 
-interface ResponsesSearch {
+interface ResponsesSearch extends ToneSearch {
 	prompts?: string;
-	sentiment?: ToneFilter;
-	/** Absent means newest first. */
-	sort?: Exclude<ResponseSort, "newest">;
 }
 
 function ResponsesPage() {
@@ -164,21 +160,6 @@ function ResponsesPage() {
 			{content}
 		</PageHeader>
 	);
-}
-
-/** The sentiment filter and sort, kept in the URL so a filtered list can be linked to. */
-function useToneSearch() {
-	const navigate = Route.useNavigate();
-	const sentiment = Route.useSearch({ select: (s) => s.sentiment });
-	const sort: ResponseSort = Route.useSearch({ select: (s) => s.sort }) ?? "newest";
-	const update = (patch: Partial<ResponsesSearch>) =>
-		navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true, resetScroll: false });
-	return {
-		sentiment,
-		sort,
-		setSentiment: (next: ToneFilter | undefined) => update({ sentiment: next }),
-		setSort: (next: ResponseSort) => update({ sort: next === "newest" ? undefined : next }),
-	};
 }
 
 function emptyMessage(
