@@ -50,9 +50,8 @@ function formatEntity(entity: JudgedEntity): string {
 }
 
 /**
- * The entity as the model reads it: its name, then as many aliases, domains and (up to five)
- * competitors as `fits`, in that order. The passage shares the model's input, and a company with
- * dozens of aliases would otherwise leave no room for the text being judged.
+ * Only what `fits`: the passage shares the model's input, and a company with dozens of aliases
+ * would otherwise leave no room for the text being judged.
  */
 export function entityText(entity: JudgedEntity, fits: (text: string) => boolean = () => true): string {
 	const kept = { name: entity.name, aliases: [] as string[], domains: [] as string[], competitors: [] as string[] };

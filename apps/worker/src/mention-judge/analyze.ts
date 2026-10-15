@@ -31,7 +31,6 @@ function entity(subject: Subject, rivals: string[]): JudgedEntity {
 	return { ...judgedSubject(subject), competitors: rivals.filter((name) => name !== subject.name) };
 }
 
-/** Ranks the companies an answer names by where it first mentions each. */
 function rank(records: (MentionAssessment | undefined)[]): void {
 	const placed = records.filter(
 		(record): record is MentionAssessment & { firstMention: number } =>

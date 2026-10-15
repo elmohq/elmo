@@ -21,7 +21,6 @@ import { REPROCESS_QUEUE, runReprocess } from "./reprocess";
 let brandId: string;
 let promptId: string;
 
-/** Fails on any answer containing "unreadable", as a judge might on input it can't handle. */
 const flakyAnalyzer: MentionAnalyzer = {
 	...cuedAnalyzer,
 	analyze: async (text, config, previous) => {
@@ -47,7 +46,6 @@ afterEach(async () => {
 	await db.delete(organization).where(eq(organization.id, brandId));
 });
 
-/** A run as the provider job records it: its answer and extraction, no mentions yet. */
 async function recordedRun(text: string, createdAt = new Date()): Promise<string> {
 	const id = randomUUID();
 	await db.insert(promptRuns).values({

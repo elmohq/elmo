@@ -62,7 +62,6 @@ function windowAround(sentences: [number, number][], k: number, hit: number): { 
 	return { start, end };
 }
 
-/** Start offsets of whole-word matches of any term, in order. */
 function findHits(text: string, terms: string[]): number[] {
 	const needles = new Map(
 		terms

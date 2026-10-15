@@ -111,8 +111,6 @@ async function main() {
 		// A full mark scans all of prompt_runs once.
 		expireInSeconds: 60 * 60,
 	});
-	// Stately per run, so a run is queued once however often it's asked for; judging retries on
-	// its own, apart from the provider call that recorded the run.
 	await boss.createQueue(JUDGE_RUNS_QUEUE, {
 		policy: "stately",
 		retryLimit: 5,
