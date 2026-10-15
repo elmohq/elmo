@@ -116,7 +116,7 @@ export async function countPromptRuns(
 ): Promise<number> {
 	const rows = await queryPg<{ total: number }>(sql`
 		SELECT count(*)::int AS total
-		FROM prompt_runs
+		FROM prompt_runs JOIN run_mentions ON run_mentions.run_id = prompt_runs.id
 		WHERE prompt_id = ${promptId}::uuid
 			${dateFilter(fromDate, toDate, timezone)}
 			${modelFilter(model)}

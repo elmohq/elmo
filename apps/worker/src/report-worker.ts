@@ -2,12 +2,13 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, reports } from "@workspace/lib/db/schema";
+import type { MentionConfig } from "@workspace/lib/mentions";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getProvider, type ModelConfig } from "@workspace/lib/providers";
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
 import { extractRun } from "@workspace/lib/text-extraction";
 import { eq } from "drizzle-orm";
-import { analyzeOrMatch, mentionAnalyzer } from "./mention-judge/analyze";
+import { mentionAnalyzer } from "./mention-judge/analyze";
 
 interface CompetitorResult {
 	name: string;
@@ -163,6 +164,22 @@ function selectOptimalPrompts(
 	return selectedPrompts;
 }
 
+const JUDGE_ATTEMPTS = 3;
+const JUDGE_RETRY_DELAY_MS = 5_000;
+
+/** Judges a report's answer, retrying on its own: the answer is paid for and is never fetched again. */
+async function judgeWithRetries(text: string, config: MentionConfig) {
+	for (let attempt = 1; ; attempt++) {
+		try {
+			return await mentionAnalyzer().analyze(text, config);
+		} catch (error) {
+			if (attempt >= JUDGE_ATTEMPTS) throw error;
+			console.error(`Mention judge failed (attempt ${attempt} of ${JUDGE_ATTEMPTS}); retrying:`, error);
+			await new Promise((resolve) => setTimeout(resolve, JUDGE_RETRY_DELAY_MS * attempt));
+		}
+	}
+}
+
 // Whitelabel uses its fixed 2+1+1 mapping; other modes match day-to-day
 // tracking frequency.
 async function runPrompt(
@@ -174,40 +191,43 @@ async function runPrompt(
 	scrapeConfigs: ModelConfig[],
 	job: ReportJobContext,
 ): Promise<PromptRunResult> {
-	const runOne = async (config: ModelConfig) => {
-		const providerImpl = getProvider(config.provider);
-		const result = await providerImpl.run(config.model, promptValue, {
+	const mentionConfig = {
+		brand: { name: brandName, aliases: brandAliases, domains: [brandWebsite] },
+		competitors: competitors.map((competitor) => ({
+			name: competitor.name,
+			aliases: [],
+			domains: [competitor.domain],
+		})),
+	};
+	const callProvider = async (config: ModelConfig) => {
+		const result = await getProvider(config.provider).run(config.model, promptValue, {
 			webSearch: config.webSearch,
 			version: config.version,
 		});
-		const textContent = extractRun(result.rawOutput, config.provider).textContent ?? "";
-		const { mentions } = await analyzeOrMatch(mentionAnalyzer(), textContent, {
-			brand: { name: brandName, aliases: brandAliases, domains: [brandWebsite] },
-			competitors: competitors.map((competitor) => ({
-				name: competitor.name,
-				aliases: [],
-				domains: [competitor.domain],
-			})),
-		});
-		const { brandMentioned, competitorsMentioned } = mentions;
-		return {
-			model: config.model,
-			version: result.modelVersion ?? config.version ?? config.provider,
-			webSearchEnabled: config.webSearch,
-			rawOutput: result.rawOutput,
-			webQueries: result.webQueries,
-			textContent,
-			brandMentioned,
-			competitorsMentioned,
-		};
+		return { config, result, textContent: extractRun(result.rawOutput, config.provider).textContent ?? "" };
 	};
 
-	const runPromises = scrapeConfigs.flatMap((config) => {
-		const count = getReportRunsForModel(config.model);
-		return Array.from({ length: count }, () => runOne(config));
-	});
-
-	const runResults = await Promise.all(runPromises);
+	// Every provider call settles before any judging, so a judge failure retries only the judging.
+	const answers = await Promise.all(
+		scrapeConfigs.flatMap((config) =>
+			Array.from({ length: getReportRunsForModel(config.model) }, () => callProvider(config)),
+		),
+	);
+	const runResults = await Promise.all(
+		answers.map(async ({ config, result, textContent }) => {
+			const { brandMentioned, competitorsMentioned } = await judgeWithRetries(textContent, mentionConfig);
+			return {
+				model: config.model,
+				version: result.modelVersion ?? config.version ?? config.provider,
+				webSearchEnabled: config.webSearch,
+				rawOutput: result.rawOutput,
+				webQueries: result.webQueries,
+				textContent,
+				brandMentioned,
+				competitorsMentioned,
+			};
+		}),
+	);
 
 	job.log(`Completed ${runResults.length} runs for prompt: "${promptValue}"`);
 

@@ -5,6 +5,7 @@ import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rol
 import type { Job, PgBoss } from "pg-boss";
 import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
+import { JUDGE_RUNS_QUEUE, type JudgeRunData, judgeRunsJob } from "./jobs/judge-runs";
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
 import { type RefreshRollupsData, refreshRollupsJob } from "./jobs/refresh-rollups";
 import {
@@ -18,6 +19,7 @@ import { type RollupCatchUpData, rollupCatchUpJob } from "./jobs/rollup-catch-up
 import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
 import { type SuggestPromptsData, type SuggestPromptsResult, suggestPromptsJob } from "./jobs/suggest-prompts";
 import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/sync-auth0-memberships";
+import { mentionAnalyzer } from "./mention-judge/analyze";
 
 /**
  * Wraps a pg-boss handler to report errors to Sentry before re-throwing.
@@ -79,6 +81,14 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		withSentry("schedule-maintenance", scheduleMaintenanceJob),
 	);
 	console.log("Registered handler: schedule-maintenance");
+
+	// One run per job, so each run retries on its own; as many at once as the judge has sessions.
+	await boss.work<JudgeRunData>(
+		JUDGE_RUNS_QUEUE,
+		{ batchSize: 1, localConcurrency: mentionAnalyzer().concurrency },
+		withSentry(JUDGE_RUNS_QUEUE, judgeRunsJob),
+	);
+	console.log(`Registered handler: ${JUDGE_RUNS_QUEUE}`);
 
 	await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
 	console.log(`Registered handler: ${REPROCESS_QUEUE}`);
