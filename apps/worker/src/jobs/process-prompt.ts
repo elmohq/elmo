@@ -8,7 +8,7 @@ import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { insertRuns } from "@workspace/lib/db/runs";
 import { type Brand, brands, citations, competitors, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
-import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
+import { type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import { insertCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
@@ -27,6 +27,7 @@ import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
+import { mentionAnalyzer } from "../mention-judge/analyze";
 import { trackWorkerEvent } from "../telemetry";
 
 export interface ProcessPromptData {
@@ -255,12 +256,20 @@ async function runModelIteration({
 
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
+		// Judging takes too long to hold a transaction open for, so it runs first on the
+		// config as it stands now: one read at the start of the cycle would stamp an edit
+		// made during the provider call onto this run as current.
+		const analyzer = mentionAnalyzer();
+		const judgedConfig = await loadMentionConfig(db, brand.id);
+		let mentions = await analyzer.analyze(text, judgedConfig);
+		const judgedStamp = currentAnalysisVersions(judgedConfig, analyzer.judgeVersion)[MENTIONS_KEY];
+
 		// One transaction so a reprocess never sees a run without its citations.
 		const promptRunId = await db.transaction(async (tx) => {
-			// Read here rather than at the start of the cycle: a config edit made while the
-			// provider call ran would otherwise be stamped onto this run as current.
 			const mentionConfig = await loadMentionConfig(tx, brand.id);
-			const stamps = currentAnalysisVersions(mentionConfig);
+			const stamps = currentAnalysisVersions(mentionConfig, analyzer.judgeVersion);
+			// An edit that landed while judging would otherwise slip past the reprocess it started.
+			if (stamps[MENTIONS_KEY] !== judgedStamp) mentions = await analyzer.analyze(text, mentionConfig);
 			const [run] = await insertRuns(tx, [
 				{
 					promptId,
@@ -273,7 +282,7 @@ async function runModelIteration({
 					webQueries,
 					textContent: text,
 					extractionStamp: stamps[EXTRACTION_KEY],
-					...analyzeRunMentions(text, mentionConfig),
+					...mentions,
 					mentionsStamp: stamps[MENTIONS_KEY],
 				},
 			]);

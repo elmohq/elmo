@@ -18,13 +18,14 @@ import {
 	runExtractions,
 	runMentions,
 } from "@workspace/lib/db/schema";
-import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
+import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } from "@workspace/lib/mentions";
 import { insertRunsCitations, markDirty } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, extractRun } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gte, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
+import { type MentionAnalyzer, mentionAnalyzer } from "../mention-judge/analyze";
 
 export const REPROCESS_QUEUE = "reprocess";
 
@@ -59,7 +60,12 @@ export interface StaleRun {
 export interface RunUpdate {
 	/** A null `stamp` leaves the stored one alone: text filled in for matching, citations untouched. */
 	extraction?: { textContent: string | null; stamp: string | null };
-	mentions?: { brandMentioned: boolean; competitorsMentioned: string[]; stamp: string };
+	mentions?: {
+		brandMentioned: boolean;
+		competitorsMentioned: string[];
+		assessments: RunMentionAssessments | null;
+		stamp: string;
+	};
 	/** Present only when extraction ran: the run's citations are replaced wholesale. */
 	citations?: Citation[];
 	/** What the stored payload no longer yields, so the run keeps what it has (see `deriveRunUpdate`). */
@@ -80,17 +86,18 @@ const isStale = (run: StaleRun, layer: ReprocessLayer, target: AnalysisVersions)
  * the run keeps what it has and `kept` says so. The stamp still moves, so the run
  * isn't retried forever.
  */
-export function deriveRunUpdate(
+export async function deriveRunUpdate(
 	run: StaleRun,
 	layers: ReprocessLayer[],
 	target: AnalysisVersions,
 	config: MentionConfig,
-): RunUpdate {
+	analyzer: MentionAnalyzer = mentionAnalyzer(),
+): Promise<RunUpdate> {
 	const update: RunUpdate = { kept: [] };
 	const extract = layers.includes("extraction") && isStale(run, "extraction", target);
 	const text = extract || run.textContent === null ? reextract(run, extract, target, update) : run.textContent;
 	if (layers.includes("interpretation") && isStale(run, "interpretation", target)) {
-		update.mentions = { ...rederiveMentions(run, text, config, update), stamp: target[MENTIONS_KEY] };
+		update.mentions = { ...(await rederiveMentions(run, text, config, update, analyzer)), stamp: target[MENTIONS_KEY] };
 	}
 	return update;
 }
@@ -108,17 +115,19 @@ function reextract(run: StaleRun, extract: boolean, target: AnalysisVersions, up
 	return text;
 }
 
-function rederiveMentions(
+async function rederiveMentions(
 	run: StaleRun,
 	text: string | null,
 	config: MentionConfig,
 	update: RunUpdate,
-): { brandMentioned: boolean; competitorsMentioned: string[] } {
+	analyzer: MentionAnalyzer,
+): Promise<Omit<NonNullable<RunUpdate["mentions"]>, "stamp">> {
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
-		return analyzeRunMentions(text, config);
+		const { mentionAssessments, ...mentions } = await analyzer.analyze(text, config);
+		return { ...mentions, assessments: mentionAssessments };
 	}
 	update.kept.push("mentions");
-	return { brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned };
+	return { brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned, assessments: null };
 }
 
 const STAMP_COLUMN: Record<ReprocessLayer, SQL> = {
@@ -196,9 +205,22 @@ interface Pass {
 	keptRuns: number;
 }
 
+/**
+ * Derives runs in order until the deadline. Judging an answer takes real time, so a
+ * batch can outlast the pass's budget; what was derived is still written.
+ */
+async function deriveUpdates(pass: Pass, runs: StaleRun[], deadline: number) {
+	const updates: { run: StaleRun; update: RunUpdate }[] = [];
+	for (const run of runs) {
+		if (Date.now() > deadline) break;
+		updates.push({ run, update: await deriveRunUpdate(run, pass.layers, pass.target, pass.config) });
+	}
+	return updates;
+}
+
 /** Rewrites only the derived rows, a few statements per batch: `prompt_runs` itself is append-only. Returns how many runs kept something. */
-function rewriteRuns(conn: DbConnection, pass: Pass, runs: StaleRun[]): Promise<number> {
-	const updates = runs.map((run) => ({ run, update: deriveRunUpdate(run, pass.layers, pass.target, pass.config) }));
+function rewriteRuns(conn: DbConnection, pass: Pass, updates: { run: StaleRun; update: RunUpdate }[]): Promise<number> {
+	const runs = updates.map(({ run }) => run);
 	const recited = updates.filter(({ update }) => update.citations);
 	return conn.transaction(async (tx) => {
 		await updateExtractions(
@@ -239,7 +261,9 @@ async function reprocessPrompt(conn: DbConnection, pass: Pass, promptId: string,
 	for (;;) {
 		if (Date.now() > deadline) return false;
 		const runs = await loadStaleRuns(conn, pass, promptId, from);
-		if (runs.length > 0) pass.keptRuns += await rewriteRuns(conn, pass, runs);
+		const updates = await deriveUpdates(pass, runs, deadline);
+		if (updates.length > 0) pass.keptRuns += await rewriteRuns(conn, pass, updates);
+		if (updates.length < runs.length) return false;
 		if (runs.length < BATCH_SIZE) return true;
 		from = runs[runs.length - 1].createdAt;
 	}
@@ -295,7 +319,7 @@ async function loadBrand(
 	if (!brand) return null;
 	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));
 	const config = mentionConfigFrom(brand, brandCompetitors);
-	return { brand, config, current: currentAnalysisVersions(config) };
+	return { brand, config, current: currentAnalysisVersions(config, mentionAnalyzer().judgeVersion) };
 }
 
 /** Stately per brand: one job runs and at most one waits, so passes for a brand never interleave. */
@@ -397,7 +421,10 @@ export async function requestStaleReprocesses(
 	for (const brand of allBrands) {
 		// Not yet adopted at startup; its history is taken as is until then.
 		if (brand.analysisVersions === null) continue;
-		const current = currentAnalysisVersions(mentionConfigFrom(brand, competitorsByBrand.get(brand.id) ?? []));
+		const current = currentAnalysisVersions(
+			mentionConfigFrom(brand, competitorsByBrand.get(brand.id) ?? []),
+			mentionAnalyzer().judgeVersion,
+		);
 		const layers = staleLayers(brand.analysisVersions, current);
 		if (layers.length > 0 && (await sendReprocess(boss, { brandId: brand.id, layers }))) requested++;
 	}
@@ -416,7 +443,12 @@ export async function adoptCurrentStamps(conn: DbConnection = db): Promise<numbe
 		const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brand.id));
 		const updated = await conn
 			.update(brands)
-			.set({ analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors)) })
+			.set({
+				analysisVersions: currentAnalysisVersions(
+					mentionConfigFrom(brand, brandCompetitors),
+					mentionAnalyzer().judgeVersion,
+				),
+			})
 			.where(and(eq(brands.id, brand.id), isNull(brands.analysisVersions)))
 			.returning({ id: brands.id });
 		adopted += updated.length;

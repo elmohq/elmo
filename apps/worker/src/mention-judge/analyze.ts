@@ -1,0 +1,93 @@
+import {
+	analyzeRunMentions,
+	type MentionAssessmentRecord,
+	type MentionConfig,
+	normalizeDomain,
+	type RunMentionAssessments,
+} from "@workspace/lib/mentions";
+import { assessMention, type MentionAssessment } from "./assess";
+import { type JudgedEntity, loadMentionJudge, type MentionJudge } from "./judge";
+
+export interface RunMentions {
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
+	mentionAssessments: RunMentionAssessments | null;
+}
+
+export interface MentionAnalyzer {
+	/** Null when mentions come from substring matching; part of the mentions stamp otherwise. */
+	judgeVersion: string | null;
+	analyze(text: string | null, config: MentionConfig): Promise<RunMentions>;
+}
+
+export const substringAnalyzer: MentionAnalyzer = {
+	judgeVersion: null,
+	analyze: async (text, config) => ({ ...analyzeRunMentions(text, config), mentionAssessments: null }),
+};
+
+/** The model was trained with up to five rival names alongside the entity. */
+const RIVALS = 5;
+
+type Subject = MentionConfig["brand"];
+
+function entity(subject: Subject, rivals: string[]): JudgedEntity {
+	return {
+		name: subject.name,
+		aliases: subject.aliases,
+		domains: subject.domains.filter(Boolean).map(normalizeDomain),
+		competitors: rivals.filter((name) => name !== subject.name).slice(0, RIVALS),
+	};
+}
+
+function toRecord(assessment: MentionAssessment): MentionAssessmentRecord {
+	const { mention, mentionProbability, reason, sentiment, sentimentProbabilities, evidence } = assessment;
+	return {
+		mention,
+		probability: mentionProbability,
+		...(reason ? { reason } : {}),
+		...(sentiment ? { sentiment, sentimentProbabilities } : {}),
+		...(evidence ? { evidence: { start: evidence.start, end: evidence.end } } : {}),
+	};
+}
+
+/** An uncertain verdict still counts, so a judge that can't tell never hides a real mention. */
+const counts = (record: MentionAssessmentRecord | undefined) => !!record && record.mention !== "not_mentioned";
+
+export function judgeAnalyzer(judge: MentionJudge): MentionAnalyzer {
+	return {
+		judgeVersion: judge.version,
+		async analyze(text, config) {
+			const answer = text ?? "";
+			const competitorNames = config.competitors.map((competitor) => competitor.name);
+			const assessments: RunMentionAssessments = {};
+			const brand = await assessMention(judge, entity(config.brand, competitorNames), answer);
+			if (brand) assessments.brand = toRecord(brand);
+			for (const competitor of config.competitors) {
+				const rivals = [config.brand.name, ...competitorNames];
+				const assessment = await assessMention(judge, entity(competitor, rivals), answer);
+				if (assessment)
+					assessments.competitors = { ...assessments.competitors, [competitor.name]: toRecord(assessment) };
+			}
+			return {
+				brandMentioned: counts(assessments.brand),
+				competitorsMentioned: competitorNames.filter((name) => counts(assessments.competitors?.[name])),
+				mentionAssessments: assessments,
+			};
+		},
+	};
+}
+
+let current: MentionAnalyzer = substringAnalyzer;
+
+/**
+ * Loads the judge from `MENTION_JUDGE_DIR` once per process. The worker image always sets it;
+ * a checkout without the model falls back to substring matching rather than refusing to run.
+ */
+export async function loadMentionAnalyzer(dir = process.env.MENTION_JUDGE_DIR): Promise<MentionAnalyzer> {
+	current = dir ? judgeAnalyzer(await loadMentionJudge(dir)) : substringAnalyzer;
+	return current;
+}
+
+export function mentionAnalyzer(): MentionAnalyzer {
+	return current;
+}

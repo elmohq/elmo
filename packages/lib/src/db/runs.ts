@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq, getTableColumns, inArray, sql } from "drizzle-orm";
+import type { RunMentionAssessments } from "../mentions";
 import type { DbConnection } from "./db-connection";
 import { type NewPromptRun, promptRuns, runExtractions, runMentions } from "./schema";
 
@@ -28,6 +29,7 @@ export interface NewRun extends Omit<NewPromptRun, "id"> {
 	textContent?: string | null;
 	brandMentioned: boolean;
 	competitorsMentioned?: string[];
+	mentionAssessments?: RunMentionAssessments | null;
 	/** The stamps the derived values were computed with; null leaves them to the next replay. */
 	extractionStamp?: string | null;
 	mentionsStamp?: string | null;
@@ -40,7 +42,17 @@ export async function insertRuns(conn: DbConnection, runs: NewRun[]): Promise<{ 
 	const saved = await conn
 		.insert(promptRuns)
 		.values(
-			rows.map(({ textContent, brandMentioned, competitorsMentioned, extractionStamp, mentionsStamp, ...raw }) => raw),
+			rows.map(
+				({
+					textContent,
+					brandMentioned,
+					competitorsMentioned,
+					mentionAssessments,
+					extractionStamp,
+					mentionsStamp,
+					...raw
+				}) => raw,
+			),
 		)
 		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
 	await conn
@@ -53,6 +65,7 @@ export async function insertRuns(conn: DbConnection, runs: NewRun[]): Promise<{ 
 			runId: run.id,
 			brandMentioned: run.brandMentioned,
 			competitorsMentioned: run.competitorsMentioned ?? [],
+			assessments: run.mentionAssessments ?? null,
 			stamp: run.mentionsStamp ?? null,
 		})),
 	);
@@ -105,6 +118,7 @@ export interface MentionsUpdate {
 	runId: string;
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
+	assessments: RunMentionAssessments | null;
 	stamp: string;
 }
 
@@ -113,12 +127,13 @@ export async function updateMentions(conn: DbConnection, updates: MentionsUpdate
 	if (updates.length === 0) return;
 	const values = updates.map(
 		(u) =>
-			sql`(${u.runId}::uuid, ${u.brandMentioned}::boolean, ${sql.param(u.competitorsMentioned)}::text[], ${u.stamp}::text)`,
+			sql`(${u.runId}::uuid, ${u.brandMentioned}::boolean, ${sql.param(u.competitorsMentioned)}::text[], ${u.assessments === null ? null : JSON.stringify(u.assessments)}::jsonb, ${u.stamp}::text)`,
 	);
 	await conn.execute(sql`
 		UPDATE ${runMentions} AS m
-		SET brand_mentioned = v.brand_mentioned, competitors_mentioned = v.competitors_mentioned, stamp = v.stamp
-		FROM (VALUES ${sql.join(values, sql`, `)}) AS v(run_id, brand_mentioned, competitors_mentioned, stamp)
+		SET brand_mentioned = v.brand_mentioned, competitors_mentioned = v.competitors_mentioned,
+			assessments = v.assessments, stamp = v.stamp
+		FROM (VALUES ${sql.join(values, sql`, `)}) AS v(run_id, brand_mentioned, competitors_mentioned, assessments, stamp)
 		WHERE m.run_id = v.run_id
 	`);
 }

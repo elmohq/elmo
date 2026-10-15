@@ -190,6 +190,13 @@
       "when": 1792020366299,
       "tag": "0026_analytics_rollups",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792029345646,
+      "tag": "0027_run_mention_assessments",
+      "breakpoints": true
     }
   ]
 }

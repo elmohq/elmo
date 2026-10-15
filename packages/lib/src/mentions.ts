@@ -2,10 +2,10 @@ import { createHash } from "node:crypto";
 import type { Brand, Competitor } from "./db/schema";
 
 /**
- * Detection is deliberately blunt — case-insensitive substring matching over a
- * subject's names and bare domains — because an answer engine writes prose, not
- * markup, and any narrower rule (word boundaries, link parsing) misses the
- * "acme.com is the pick here" and "Acme's" shapes that are the whole signal.
+ * The fallback matcher, for workers without the bundled mention judge: case-insensitive
+ * substring matching over a subject's names and bare domains. Blunt on purpose, so it
+ * never misses the "acme.com is the pick here" and "Acme's" shapes, at the cost of
+ * counting a brand whose name is also an ordinary word every time the word appears.
  */
 
 export const MENTIONS_VERSION = 1;
@@ -74,6 +74,25 @@ export function mentionConfigFrom(brand: Brand, competitors: Competitor[]): Ment
 	};
 }
 
+/** The mention judge's verdict on one subject, for the answers that name it. */
+export interface MentionAssessmentRecord {
+	/** `uncertain` counts as a mention but wants a human to look. */
+	mention: "mentioned" | "not_mentioned" | "uncertain";
+	probability: number;
+	/** The likeliest non-mention reading, when it isn't a confident mention. */
+	reason?: string;
+	sentiment?: "positive" | "neutral" | "negative" | "mixed" | "uncertain";
+	sentimentProbabilities?: Record<string, number>;
+	/** Offsets into the run's stored text of the passage the verdict rests on. */
+	evidence?: { start: number; end: number };
+}
+
+export interface RunMentionAssessments {
+	brand?: MentionAssessmentRecord;
+	/** Keyed by competitor name, as in `competitors_mentioned`. */
+	competitors?: Record<string, MentionAssessmentRecord>;
+}
+
 export function analyzeRunMentions(
 	textContent: string | null,
 	config: MentionConfig,
@@ -96,8 +115,9 @@ function canonicalDomains(domains: readonly string[]): string[] {
  * or recasing an alias doesn't reprocess a brand's whole history. Competitor
  * names are the exception: they're stored verbatim in `competitors_mentioned`
  * and key the rollups, so a rename must restamp even when only case or whitespace changed.
+ * A judged stamp names the judge, so a new model replays every brand's history.
  */
-export function mentionsStamp(config: MentionConfig): string {
+export function mentionsStamp(config: MentionConfig, judgeVersion?: string | null): string {
 	const fingerprint = JSON.stringify({
 		names: canonicalTerms([config.brand.name, ...config.brand.aliases]),
 		domains: canonicalDomains(config.brand.domains),
@@ -112,5 +132,6 @@ export function mentionsStamp(config: MentionConfig): string {
 			.sort(),
 	});
 	const digest = createHash("sha256").update(fingerprint).digest("hex");
-	return `${MENTIONS_VERSION}:${digest.slice(0, 16)}`;
+	const stamp = `${MENTIONS_VERSION}:${digest.slice(0, 16)}`;
+	return judgeVersion ? `${stamp}:judge-${judgeVersion}` : stamp;
 }

@@ -11,6 +11,7 @@ import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
 import { fillLegacyText } from "./jobs/fill-legacy-text";
 import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
+import { loadMentionAnalyzer } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 
@@ -34,6 +35,12 @@ async function main() {
 	// missing API keys, and per-provider target errors before any job runs.
 	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
 	console.log("SCRAPE_TARGETS validated");
+
+	// Before anything stamps runs or brands: the stamp names the judge, so it has to be known.
+	const { judgeVersion } = await loadMentionAnalyzer();
+	console.log(
+		judgeVersion ? `Mention judge ${judgeVersion} loaded` : "No mention judge; matching mentions by substring",
+	);
 
 	boss.on("error", (error) => {
 		console.error("pg-boss error:", error);

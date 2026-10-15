@@ -2,12 +2,12 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, reports } from "@workspace/lib/db/schema";
-import { analyzeMentions } from "@workspace/lib/mentions";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getProvider, type ModelConfig } from "@workspace/lib/providers";
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
 import { extractRun } from "@workspace/lib/text-extraction";
 import { eq } from "drizzle-orm";
+import { mentionAnalyzer } from "./mention-judge/analyze";
 
 interface CompetitorResult {
 	name: string;
@@ -181,11 +181,14 @@ async function runPrompt(
 			version: config.version,
 		});
 		const textContent = extractRun(result.rawOutput, config.provider).textContent ?? "";
-		const { brandMentioned, competitorsMentioned } = analyzeMentions(
-			textContent,
-			{ name: brandName, aliases: brandAliases, domains: [brandWebsite] },
-			competitors.map((competitor) => ({ name: competitor.name, domains: [competitor.domain] })),
-		);
+		const { brandMentioned, competitorsMentioned } = await mentionAnalyzer().analyze(textContent, {
+			brand: { name: brandName, aliases: brandAliases, domains: [brandWebsite] },
+			competitors: competitors.map((competitor) => ({
+				name: competitor.name,
+				aliases: [],
+				domains: [competitor.domain],
+			})),
+		});
 		return {
 			model: config.model,
 			version: result.modelVersion ?? config.version ?? config.provider,
