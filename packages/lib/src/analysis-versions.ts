@@ -11,7 +11,6 @@ export type AnalysisVersions = Record<string, string>;
 export const EXTRACTION_KEY = "extraction";
 export const MENTIONS_KEY = "mentions";
 
-/** `judgeVersion` is the mention judge's, when the worker has one; see `mentionsStamp`. */
 export function currentAnalysisVersions(config: MentionConfig, judgeVersion?: string | null): AnalysisVersions {
 	return { [EXTRACTION_KEY]: String(EXTRACTOR_VERSION), [MENTIONS_KEY]: mentionsStamp(config, judgeVersion) };
 }

@@ -106,7 +106,6 @@ export class UnigramTokenizer {
 		return out.filter((id, i) => !(id === this.unkId && out[i - 1] === this.unkId));
 	}
 
-	/** Relaxes every vocabulary piece starting at `start`, or an [UNK] if no single character matches. */
 	private extend(lattice: Lattice, chars: string[], start: number): void {
 		const limit = Math.min(chars.length, start + this.maxPieceLength);
 		let piece = "";
