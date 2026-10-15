@@ -1,4 +1,3 @@
-import { availableParallelism } from "node:os";
 import {
 	analyzeRunMentions,
 	judgedSubject,
@@ -104,23 +103,29 @@ export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnal
 
 let current: MentionAnalyzer = substringAnalyzer;
 
-/** One session gets no faster past about four threads; more cores are used by adding sessions. */
-const SINGLE_SESSION_THREADS = 4;
+/** `MENTION_JUDGE_WORKERS`: model sessions to run side by side, one per worker thread. */
+function sessionCount(): number {
+	const raw = process.env.MENTION_JUDGE_WORKERS?.trim();
+	const sessions = raw ? Number(raw) : 1;
+	if (!Number.isInteger(sessions) || sessions < 1) {
+		throw new Error(`MENTION_JUDGE_WORKERS must be a positive whole number, got "${raw}"`);
+	}
+	return sessions;
+}
 
 /**
- * Loads the judge from `MENTION_JUDGE_DIR` once per process, as `MENTION_JUDGE_WORKERS` sessions.
- * The worker image always sets the directory; a checkout without the model falls back to
- * substring matching rather than refusing to run.
+ * Loads the judge from `MENTION_JUDGE_DIR` once per process. The worker image always sets the
+ * directory; a checkout without the model falls back to substring matching rather than refusing
+ * to run.
  */
-export async function loadMentionAnalyzer(env: NodeJS.ProcessEnv = process.env): Promise<MentionAnalyzer> {
-	const dir = env.MENTION_JUDGE_DIR;
+export async function loadMentionAnalyzer(): Promise<MentionAnalyzer> {
+	const dir = process.env.MENTION_JUDGE_DIR;
 	if (!dir) {
 		current = substringAnalyzer;
 		return current;
 	}
-	const sessions = Math.max(1, Math.floor(Number(env.MENTION_JUDGE_WORKERS) || 1));
-	const threads = sessions === 1 ? Math.min(SINGLE_SESSION_THREADS, availableParallelism()) : 1;
-	current = judgeAnalyzer(await loadJudgePool(dir, sessions, threads), sessions);
+	const sessions = sessionCount();
+	current = judgeAnalyzer(await loadJudgePool(dir, sessions), sessions);
 	return current;
 }
 

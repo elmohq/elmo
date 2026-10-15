@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import { UnigramTokenizer } from "./tokenizer";
 
@@ -54,14 +53,12 @@ export interface MentionJudge {
 	judge(entity: JudgedEntity, passage: string): Promise<Judgment>;
 }
 
-export async function loadMentionJudge(dir: string, threads = availableParallelism()): Promise<MentionJudge> {
+export async function loadMentionJudge(dir: string, threads: number): Promise<MentionJudge> {
 	const config: JudgeConfig = JSON.parse(readFileSync(join(dir, "config.json"), "utf8"));
 	if (config.references.join() !== REFERENCE_LABELS.join() || config.sentiments.join() !== SENTIMENT_LABELS.join()) {
 		throw new Error(`mention judge ${config.version} has unexpected labels`);
 	}
 	const tokenizer = UnigramTokenizer.fromFile(join(dir, "tokenizer.json"));
-	// ONNX Runtime uploads usage telemetry unless this is set before the library loads.
-	process.env.ORT_DISABLE_TELEMETRY ??= "1";
 	const ort = await import("onnxruntime-node");
 	const session = await ort.InferenceSession.create(join(dir, "model.onnx"), { intraOpNumThreads: threads });
 	const unknownInputs = session.inputNames.filter((name) => !ENCODED_INPUTS.includes(name));
