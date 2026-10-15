@@ -12,10 +12,10 @@ import {
 } from "@workspace/lib/db/schema";
 import { mentionConfigFrom } from "@workspace/lib/mentions";
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type MentionAnalyzer, substringAnalyzer } from "../mention-judge/analyze";
-import { JUDGE_RUNS_QUEUE, judgeRun, requestUnjudgedRuns } from "./judge-runs";
-import { REPROCESS_QUEUE, runReprocess } from "./reprocess";
+import { deriveQueue } from "./__fixtures__/derive-queue";
+import { DERIVE_PRIORITY, deriveRuns, requestUnjudgedRuns, sendDeriveRuns } from "./derive-runs";
 
 let brandId: string;
 let promptId: string;
@@ -72,17 +72,45 @@ async function currentMentionsStamp() {
 	return currentAnalysisVersions(mentionConfigFrom(brand, []), null)[MENTIONS_KEY];
 }
 
-describe("judging a recorded run", () => {
+describe("deriving a recorded run", () => {
 	it("gives it mentions under the brand's current config, and marks its rollups for a rebuild", async () => {
 		const runId = await recordedRun("Acme is the easiest CRM to set up.");
-		await judgeRun(runId, db, substringAnalyzer);
+		const queue = deriveQueue();
+		await sendDeriveRuns(queue.boss, brandId, [runId], DERIVE_PRIORITY.new);
+		expect(await queue.drain()).toEqual([]);
 		expect(await mentionsOf(runId)).toMatchObject({ brandMentioned: true, stamp: await currentMentionsStamp() });
 		expect(await db.select().from(rollupDirty).where(eq(rollupDirty.brandId, brandId))).not.toHaveLength(0);
 	});
 
 	it("leaves the run unjudged when the judge fails, for its job to retry; nothing falls back to matching names", async () => {
 		const runId = await recordedRun("An unreadable answer about Acme.");
-		await expect(judgeRun(runId, db, flakyAnalyzer)).rejects.toThrow("judge failed");
+		await expect(deriveRuns({ brandId, runIds: [runId] }, db, deriveQueue().boss, flakyAnalyzer)).rejects.toThrow(
+			"judge failed",
+		);
+		expect(await mentionsOf(runId)).toBeUndefined();
+	});
+
+	it("finishes the rest of a chunk and sends a run the judge fails on back on its own", async () => {
+		const readable = await recordedRun("Acme is great.");
+		const unreadable = await recordedRun("An unreadable answer about Acme.");
+		const queue = deriveQueue(db, flakyAnalyzer);
+		await sendDeriveRuns(queue.boss, brandId, [readable, unreadable], DERIVE_PRIORITY.history);
+
+		expect(await queue.drain()).toEqual([{ brandId, runIds: [unreadable] }]);
+		expect(await mentionsOf(readable)).toMatchObject({ brandMentioned: true });
+		expect(await mentionsOf(unreadable)).toBeUndefined();
+	});
+
+	it("writes nothing when the brand's config moves while the chunk is judged", async () => {
+		const runId = await recordedRun("Acme is great.");
+		const renaming: MentionAnalyzer = {
+			...substringAnalyzer,
+			analyze: async (text, config, previous) => {
+				await db.update(brands).set({ name: "Acme Corp" }).where(eq(brands.id, brandId));
+				return substringAnalyzer.analyze(text, config, previous);
+			},
+		};
+		await deriveRuns({ brandId, runIds: [runId] }, db, deriveQueue().boss, renaming);
 		expect(await mentionsOf(runId)).toBeUndefined();
 	});
 });
@@ -90,37 +118,15 @@ describe("judging a recorded run", () => {
 describe("the unjudged-run sweep", () => {
 	it("asks again for runs left unjudged, but not for ones just recorded or already judged", async () => {
 		const stuck = await recordedRun("Acme again.", new Date(Date.now() - 60 * 60 * 1000));
-		await recordedRun("Acme, just now.");
+		const fresh = await recordedRun("Acme, just now.");
 		const judged = await recordedRun("Acme, judged.", new Date(Date.now() - 60 * 60 * 1000));
-		await judgeRun(judged, db, substringAnalyzer);
+		await deriveRuns({ brandId, runIds: [judged] }, db, deriveQueue().boss, substringAnalyzer);
 
-		const insert = vi.fn();
-		await requestUnjudgedRuns(db, { insert });
-		const asked = insert.mock.calls.flatMap(([, jobs]) =>
-			jobs.map((job: { data: { runId: string } }) => job.data.runId),
-		);
+		const queue = deriveQueue();
+		await requestUnjudgedRuns(db, queue.boss);
+		const asked = queue.jobs.filter((job) => job.data.brandId === brandId).flatMap((job) => job.data.runIds);
 		expect(asked).toContain(stuck);
+		expect(asked).not.toContain(fresh);
 		expect(asked).not.toContain(judged);
-	});
-});
-
-describe("a replay the judge fails on", () => {
-	it("hands the run to the judging queue and finishes the rest, without asking for another pass", async () => {
-		const readable = await recordedRun("Acme is great.");
-		const unreadable = await recordedRun("An unreadable answer about Acme.");
-		await db.insert(runMentions).values([
-			{ runId: readable, brandMentioned: false, stamp: "old" },
-			{ runId: unreadable, brandMentioned: false, stamp: "old" },
-		]);
-		const boss = { send: vi.fn().mockResolvedValue("job-id"), update: vi.fn(), insert: vi.fn() };
-
-		await runReprocess({ brandId, layers: ["interpretation"] }, db, boss, flakyAnalyzer);
-
-		expect(await mentionsOf(readable)).toMatchObject({ brandMentioned: true, stamp: await currentMentionsStamp() });
-		expect(await mentionsOf(unreadable)).toMatchObject({ brandMentioned: false, stamp: "old" });
-		expect(boss.insert).toHaveBeenCalledWith(JUDGE_RUNS_QUEUE, [
-			{ data: { runId: unreadable }, singletonKey: unreadable },
-		]);
-		expect(boss.send.mock.calls.filter(([queue]) => queue === REPROCESS_QUEUE)).toEqual([]);
 	});
 });

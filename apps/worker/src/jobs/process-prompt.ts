@@ -28,7 +28,7 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
 import { trackWorkerEvent } from "../telemetry";
-import { sendJudgeRuns } from "./judge-runs";
+import { DERIVE_PRIORITY, sendDeriveRuns } from "./derive-runs";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -276,7 +276,7 @@ async function runModelIteration({
 		});
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 		// The answer is saved either way; a job that fails to queue here is picked up by the sweep.
-		await sendJudgeRuns(getBoss(), [promptRunId]).catch((error) =>
+		await sendDeriveRuns(getBoss(), brand.id, [promptRunId], DERIVE_PRIORITY.new).catch((error) =>
 			console.error(`${logPrefix} Couldn't queue judging for run ${promptRunId}; the sweep will:`, error),
 		);
 

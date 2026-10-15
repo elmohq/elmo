@@ -25,8 +25,9 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { deriveQueue } from "./jobs/__fixtures__/derive-queue";
 import { refreshRollupsJob, runRefreshTick } from "./jobs/refresh-rollups";
-import { runReprocess } from "./jobs/reprocess";
+import { type ReprocessData, runReprocess } from "./jobs/reprocess";
 import { runRollupCatchUp } from "./jobs/rollup-catch-up";
 import { initializePipeline } from "./rollups-startup";
 
@@ -118,6 +119,13 @@ function fakeBoss() {
 		insert: vi.fn(),
 		findJobs: vi.fn().mockResolvedValue([]),
 	};
+}
+
+/** A whole replay: the pass queues the brand's stale runs, and the derivation workers take them. */
+async function replay(data: ReprocessData) {
+	const queue = deriveQueue();
+	await runReprocess(data, db, queue.boss);
+	await queue.drain();
 }
 
 let fixture: Fixture;
@@ -249,7 +257,7 @@ describe("reprocess through to a refresh, after a competitor's domain changes", 
 
 		// Establishes a baseline stamp and text against the OLD domain, so the
 		// second pass below is stale for one reason only: the domain change.
-		await runReprocess({ layers: ["extraction", "interpretation"], brandId }, db, fakeBoss());
+		await replay({ layers: ["extraction", "interpretation"], brandId });
 		await runRefreshTick({ source: "test" });
 		const competitorRollup = () =>
 			db
@@ -262,7 +270,7 @@ describe("reprocess through to a refresh, after a competitor's domain changes", 
 			.update(competitors)
 			.set({ domains: ["newsite.example"] })
 			.where(eq(competitors.id, competitor.id));
-		await runReprocess({ layers: ["interpretation"], brandId }, db, fakeBoss());
+		await replay({ layers: ["interpretation"], brandId });
 
 		expect((await marksOf(brandId)).map((mark) => mark.bucket)).toEqual([B0]);
 
