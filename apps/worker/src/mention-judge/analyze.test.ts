@@ -117,6 +117,23 @@ describe("judged mentions", () => {
 		expect(at).toBeLessThan(500);
 	});
 
+	it("ranks the companies an answer names by where it first mentions each", async () => {
+		const text = "Globex is a solid pick. Apple is great value, and Apple support is quick.";
+		const result = await analyzer.analyze(text, config);
+		const brand = result.mentionAssessments?.brand;
+		const globex = result.mentionAssessments?.competitors?.Globex;
+		expect(globex).toMatchObject({ position: 1, firstMention: 0, mentionCount: 1 });
+		expect(brand).toMatchObject({ position: 2, firstMention: text.indexOf("Apple"), mentionCount: 2 });
+	});
+
+	it("gives no position to a name the answer uses in another sense", async () => {
+		const text =
+			"An apple is a fruit. It grows on trees. Many people eat it daily. Globex Corp is a solid alternative.";
+		const result = await analyzer.analyze(text, config);
+		expect(result.mentionAssessments?.brand?.position).toBeUndefined();
+		expect(result.mentionAssessments?.competitors?.Globex?.position).toBe(1);
+	});
+
 	it("judges competitors by their names and aliases", async () => {
 		const result = await analyzer.analyze("Globex Corp is a solid alternative.", config);
 		expect(result.competitorsMentioned).toEqual(["Globex"]);

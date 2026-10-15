@@ -9,12 +9,14 @@ export interface MatchWindow {
 	start: number;
 	end: number;
 	text: string;
+	/** Offsets in the answer of the matches this window was cut around. */
+	hits: number[];
 }
 
 export interface AnswerMatches {
 	windows: MatchWindow[];
-	/** Whole-word matches inside links, which count as the brand being cited. */
-	linkMatches: number;
+	/** Offsets of whole-word matches inside links, which count as the brand being cited. */
+	linkHits: number[];
 }
 
 const MAX_WINDOWS = 8;
@@ -66,37 +68,44 @@ function windowAround(sentences: [number, number][], k: number, hit: number): { 
 	return { start, end };
 }
 
-export function matchWindows(text: string, terms: string[]): AnswerMatches {
+/** Start offsets of whole-word matches of any term, in order. */
+function findHits(text: string, terms: string[]): number[] {
 	const needles = new Map(
 		terms
 			.map((t) => t.trim())
 			.filter(Boolean)
 			.map((t) => [t.toLowerCase(), t]),
 	);
-	const sentences = sentenceSpans(text);
-	const links = linkSpans(text);
-	const windows = new Map<string, MatchWindow>();
-	let linkMatches = 0;
-	const hits: [number, number][] = [];
+	const hits: number[] = [];
 	// Searched case-insensitively in the original text: lowercasing first can change its length
 	// ("İ" becomes two code units) and shift every offset after it.
 	for (const needle of needles.values()) {
 		for (const match of text.matchAll(new RegExp(escapeRegExp(needle), "giu"))) {
 			const start = match.index ?? 0;
-			const end = start + match[0].length;
-			if (isWholeWord(text, start, end)) hits.push([start, end]);
+			if (isWholeWord(text, start, start + match[0].length)) hits.push(start);
 		}
 	}
-	for (const [hit] of hits.sort((a, b) => a[0] - b[0])) {
+	return hits.sort((a, b) => a - b);
+}
+
+export function matchWindows(text: string, terms: string[]): AnswerMatches {
+	const sentences = sentenceSpans(text);
+	const links = linkSpans(text);
+	const windows = new Map<string, MatchWindow>();
+	const linkHits: number[] = [];
+	for (const hit of findHits(text, terms)) {
 		if (links.some(([a, z]) => hit >= a && hit < z)) {
-			linkMatches++;
+			linkHits.push(hit);
 			continue;
 		}
 		const k = sentences.findIndex(([a, z]) => hit >= a && hit < z);
-		if (k === -1 || windows.size === MAX_WINDOWS) continue;
+		if (k === -1) continue;
 		const { start, end } = windowAround(sentences, k, hit);
 		const key = `${start}:${end}`;
-		if (!windows.has(key)) windows.set(key, { start, end, text: text.slice(start, end).trim() });
+		const existing = windows.get(key);
+		if (existing) existing.hits.push(hit);
+		else if (windows.size < MAX_WINDOWS)
+			windows.set(key, { start, end, text: text.slice(start, end).trim(), hits: [hit] });
 	}
-	return { windows: [...windows.values()], linkMatches };
+	return { windows: [...windows.values()], linkHits };
 }
