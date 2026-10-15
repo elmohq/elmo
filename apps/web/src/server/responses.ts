@@ -20,6 +20,7 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			tags: z.string().optional(),
 			/** Comma-joined prompt IDs; absent means every prompt. */
 			prompts: z.string().optional(),
+			uncertainOnly: z.boolean().optional(),
 			page: z.number().int().min(0).default(0),
 			timezone: z.string().default("UTC"),
 		}),
@@ -42,6 +43,7 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 			promptIds: prompts.map((prompt) => prompt.id),
 			model: data.model,
 			query,
+			uncertainOnly: data.uncertainOnly,
 		};
 
 		const [totals, rows] = await Promise.all([
@@ -64,6 +66,8 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 				webQueries: row.web_queries ?? [],
 				brandMentioned: row.brand_mentioned,
 				competitorsMentioned: row.competitors_mentioned ?? [],
+				// Evidence offsets index the stored text, so they mean nothing against re-extracted text.
+				mentionAssessments: row.text_content === null ? null : row.assessments,
 				rawOutput: row.raw_output as {},
 				// Older rows carry no text and may predate the provider column; the
 				// extractor also accepts the model name.

@@ -1,3 +1,4 @@
+import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/lib/mentions";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -16,6 +17,8 @@ export interface ResponseCardRun {
 	webQueries: string[] | null;
 	brandMentioned: boolean;
 	competitorsMentioned: string[] | null;
+	/** Null when mentions came from substring matching, or when `text` isn't the stored text the offsets index. */
+	mentionAssessments?: RunMentionAssessments | null;
 	rawOutput: unknown;
 }
 
@@ -99,6 +102,8 @@ export function ResponseCard({
 					</div>
 				</div>
 
+				<MentionEvidence assessments={run.mentionAssessments} text={text} brandName={brandName} />
+
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
 					<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
@@ -120,6 +125,69 @@ export function ResponseCard({
 				</div>
 			</CardContent>
 		</Card>
+	);
+}
+
+const REASONS: Record<string, string> = {
+	other_meaning: "the name is used in another sense",
+	other_company: "a different company with the same name",
+	no_info: "the answer says it has no information about it",
+	link_only: "cited only by link",
+};
+
+const SENTIMENTS: Record<string, string> = {
+	positive: "Positive",
+	neutral: "Neutral",
+	negative: "Negative",
+	mixed: "Mixed",
+	uncertain: "Unclear sentiment",
+};
+
+function verdictLabel(record: MentionAssessmentRecord): string {
+	if (record.mention === "uncertain") return "Unsure whether this is a mention; counted";
+	if (record.mention === "not_mentioned") return `Not counted: ${REASONS[record.reason ?? ""] ?? "not about it"}`;
+	return record.sentiment ? SENTIMENTS[record.sentiment] : "Mentioned";
+}
+
+/**
+ * The passage each verdict rests on: always the brand's, and a competitor's when it wasn't a
+ * plain mention, since those are the calls worth checking.
+ */
+function MentionEvidence({
+	assessments,
+	text,
+	brandName,
+}: {
+	assessments?: RunMentionAssessments | null;
+	text: string;
+	brandName?: string;
+}) {
+	const entries: [string, MentionAssessmentRecord][] = [];
+	if (assessments?.brand) entries.push([brandName ?? "Your brand", assessments.brand]);
+	for (const [name, record] of Object.entries(assessments?.competitors ?? {})) {
+		if (record.mention !== "mentioned") entries.push([name, record]);
+	}
+	const shown = entries.filter(([, record]) => record.evidence && record.evidence.end <= text.length);
+	if (shown.length === 0) return null;
+	return (
+		<div>
+			<span className="text-xs text-muted-foreground block mb-1.5">Evidence</span>
+			<div className="space-y-2">
+				{shown.map(([name, record]) => (
+					<figure key={name} className="rounded-md border p-3 text-sm space-y-1.5">
+						<figcaption className="flex flex-wrap items-center gap-1.5 text-xs">
+							<span className="font-medium">{name}</span>
+							<Badge variant={record.mention === "uncertain" ? "secondary" : "outline"} className="text-xs font-normal">
+								{verdictLabel(record)}
+							</Badge>
+						</figcaption>
+						<blockquote className="border-l-2 pl-3 text-muted-foreground whitespace-pre-wrap">
+							{text.slice(record.evidence?.start, record.evidence?.end).trim()}
+						</blockquote>
+					</figure>
+				))}
+			</div>
+		</div>
 	);
 }
 

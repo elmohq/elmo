@@ -3,6 +3,7 @@
  * Aggregates, query fan-out included, come from the rollups in `rollup-read.ts`.
  */
 
+import type { RunMentionAssessments } from "@workspace/lib/mentions";
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type AnalyticsScope,
@@ -121,7 +122,11 @@ export async function countPromptRuns(
 // ============================================================================
 
 /** Runs a response search covers. Without a `query` every run in scope matches. */
-export type ResponseSearchScope = PromptListScope & { query?: string };
+export type ResponseSearchScope = PromptListScope & {
+	query?: string;
+	/** Only answers where the mention judge couldn't tell whether the brand or a competitor was meant. */
+	uncertainOnly?: boolean;
+};
 
 export interface ResponseMatchRow {
 	id: string;
@@ -132,6 +137,7 @@ export interface ResponseMatchRow {
 	web_queries: string[];
 	brand_mentioned: boolean;
 	competitors_mentioned: string[];
+	assessments: RunMentionAssessments | null;
 	raw_output: unknown;
 	text_content: string | null;
 	created_at: string;
@@ -144,6 +150,14 @@ function responseMatch(scope: ResponseSearchScope): SQL {
 	if (!scope.query) return sql`TRUE`;
 	const pattern = `%${scope.query.replace(/[\\%_]/g, "\\$&")}%`;
 	return sql`re.text_content ILIKE ${pattern}`;
+}
+
+function uncertainMatch(scope: ResponseSearchScope): SQL {
+	if (!scope.uncertainOnly) return sql`TRUE`;
+	return sql`(
+		rm.assessments->'brand'->>'mention' = 'uncertain'
+		OR EXISTS (SELECT 1 FROM jsonb_each(rm.assessments->'competitors') c WHERE c.value->>'mention' = 'uncertain')
+	)`;
 }
 
 export async function getResponseMatches(
@@ -162,6 +176,7 @@ export async function getResponseMatches(
 			pr.web_queries,
 			rm.brand_mentioned,
 			rm.competitors_mentioned,
+			rm.assessments,
 			pr.raw_output,
 			re.text_content,
 			pr.created_at,
@@ -169,7 +184,7 @@ export async function getResponseMatches(
 		FROM prompt_runs pr
 		JOIN run_mentions rm ON rm.run_id = pr.id
 		JOIN run_extractions re ON re.run_id = pr.id
-		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)} AND ${uncertainMatch(scope)}
 		ORDER BY pr.created_at DESC, pr.id
 		LIMIT ${limit} OFFSET ${offset}
 	`);

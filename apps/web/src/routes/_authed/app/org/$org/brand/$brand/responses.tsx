@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
@@ -19,8 +20,9 @@ import { pageHead } from "@/lib/route-head";
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/responses")({
 	staticData: { crumb: "Responses" },
 	// Comma-joined IDs, like `tags`, so a filtered view stays linkable.
-	validateSearch: (search: Record<string, unknown>): { prompts?: string } => ({
+	validateSearch: (search: Record<string, unknown>): { prompts?: string; uncertain?: boolean } => ({
 		prompts: typeof search.prompts === "string" && search.prompts ? search.prompts : undefined,
+		uncertain: search.uncertain === true || search.uncertain === "true" ? true : undefined,
 	}),
 	head: pageHead({ description: "Read and search every AI answer to your prompts." }),
 	component: ResponsesPage,
@@ -49,8 +51,10 @@ function ResponsesPage() {
 			resetScroll: false,
 		});
 
+	const [uncertainOnly, setUncertainOnly] = useUncertainFilter();
+
 	// A new search starts from its first page.
-	const filterKey = JSON.stringify([query, lookback, modelParam, tags, promptIds]);
+	const filterKey = JSON.stringify([query, lookback, modelParam, tags, promptIds, uncertainOnly]);
 	const [paging, setPaging] = useState({ filterKey, page: 0 });
 	const page = paging.filterKey === filterKey ? paging.page : 0;
 	const setPage = (next: number) => {
@@ -65,13 +69,15 @@ function ResponsesPage() {
 		model: modelParam,
 		tags,
 		promptIds,
+		uncertainOnly,
 		page,
 	});
 
 	const infoContent = (
 		<p>
 			Every answer the AI engines gave to your prompts. Search finds responses containing the exact text you type,
-			ignoring case.
+			ignoring case. "Needs review" shows the answers where Elmo couldn't tell whether your brand or a competitor was
+			really meant. They still count as mentions.
 		</p>
 	);
 
@@ -85,7 +91,7 @@ function ResponsesPage() {
 			<EmptyState message="No responses for the selected filters yet. Responses appear once your prompts have been run." />
 		);
 	} else if (data.matches.length === 0) {
-		content = <EmptyState message={`No responses contain "${data.query}" in this period.`} />;
+		content = <EmptyState message={noMatchesMessage(data.query)} />;
 	} else {
 		content = (
 			<div
@@ -131,11 +137,14 @@ function ResponsesPage() {
 					searchPlaceholder="Search responses..."
 					showModelSelector
 					extraControls={
-						<PromptsFilterDropdown
-							prompts={promptsSummary?.prompts ?? []}
-							selected={promptIds}
-							onChange={setPromptIds}
-						/>
+						<>
+							<PromptsFilterDropdown
+								prompts={promptsSummary?.prompts ?? []}
+								selected={promptIds}
+								onChange={setPromptIds}
+							/>
+							<NeedsReviewToggle pressed={uncertainOnly} onChange={setUncertainOnly} />
+						</>
 					}
 					resultCount={data?.matchedRuns}
 					resultTotal={data?.totalRuns}
@@ -146,6 +155,35 @@ function ResponsesPage() {
 		</PageHeader>
 	);
 }
+
+function NeedsReviewToggle({ pressed, onChange }: { pressed: boolean; onChange: (next: boolean) => void }) {
+	return (
+		<Button
+			variant={pressed ? "secondary" : "outline"}
+			size="sm"
+			className="h-8"
+			aria-pressed={pressed}
+			onClick={() => onChange(!pressed)}
+		>
+			Needs review
+		</Button>
+	);
+}
+
+function useUncertainFilter(): [boolean, (next: boolean) => void] {
+	const uncertainOnly = Route.useSearch({ select: (s) => s.uncertain ?? false });
+	const navigate = Route.useNavigate();
+	const setUncertainOnly = (next: boolean) =>
+		navigate({
+			search: (prev) => ({ ...prev, uncertain: next || undefined }),
+			replace: true,
+			resetScroll: false,
+		});
+	return [uncertainOnly, setUncertainOnly];
+}
+
+const noMatchesMessage = (query: string | null) =>
+	query ? `No responses contain "${query}" in this period.` : "No responses need review in this period.";
 
 function EmptyState({ message }: { message: string }) {
 	return <div className="py-12 text-center text-muted-foreground text-sm">{message}</div>;
