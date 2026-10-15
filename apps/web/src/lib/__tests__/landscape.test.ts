@@ -65,7 +65,7 @@ describe("buildLandscape", () => {
 	it("reports the last day as the current figure, for every measure", () => {
 		const [acme, globex, initech] = buildLandscape(input).companies;
 		expect(acme.totals).toEqual({ visibility: 0.5, share: 1, sentiment: 0.5, position: null });
-		expect(acme.tones).toEqual({ positive: 5, neutral: 0, mixed: 0, negative: 5 });
+		expect(acme.sentiments).toEqual({ positive: 5, neutral: 0, mixed: 0, negative: 5 });
 		// Named on the first day only; p1's latest answer no longer names it.
 		expect(globex.series.visibility).toEqual([0.2, 0.2, 0]);
 		expect(globex.totals.share).toBe(0);

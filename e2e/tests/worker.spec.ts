@@ -80,7 +80,7 @@ test.describe("Worker job processing", () => {
     }
   });
 
-  test("the mention judge reads the brand and a competitor in a recorded answer, and the tone toward each", async ({ request }) => {
+  test("the mention judge reads the brand and a competitor in a recorded answer, and the sentiment toward each", async ({ request }) => {
     // The stub provider answers with the prompt, so this is the answer the judge reads.
     const answer = [
       `${TEST_BRAND_NAME} is the best choice for small teams. It is reliable, fast and genuinely delightful to use, and support answers within minutes.`,

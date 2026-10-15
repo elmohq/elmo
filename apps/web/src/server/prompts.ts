@@ -24,7 +24,12 @@ import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
-import { getPromptWebQueryCounts } from "@/lib/postgres-read";
+import {
+	getPromptWebQueryCounts,
+	getResponseMatches,
+	getResponseSentimentCounts,
+	type ResponseSearchScope,
+} from "@/lib/postgres-read";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -35,10 +40,12 @@ import {
 	type PerPromptRunStats,
 } from "@/lib/rollup-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
+import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
+import { toResponse } from "@/server/responses";
 // Server Functions
 // ============================================================================
 
@@ -398,6 +405,8 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 			page: z.number().optional().default(1),
 			limit: z.number().optional().default(10),
 			lookback: lookbackSchema.default("1w"),
+			sentiment: sentimentFilterSchema.optional(),
+			sort: responseSortSchema.default("newest"),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -414,40 +423,28 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 			await resolveBrandLookbackDays(prompt.brandId, data.lookback),
 			customRangeEnd(data.lookback),
 		);
-		const timeCondition = and(gte(promptRuns.createdAt, fromDate), lt(promptRuns.createdAt, toDate));
-
+		// The same read as the Responses page, over this prompt and the rolling window beside it.
+		const scope: ResponseSearchScope = {
+			brandId: prompt.brandId,
+			from: fromDate.toISOString(),
+			to: toDate.toISOString(),
+			timezone: "UTC",
+			promptIds: [data.promptId],
+		};
 		const offset = (data.page - 1) * data.limit;
-
-		const [runs, totalResult] = await Promise.all([
-			selectRuns(db)
-				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition))
-				.orderBy(desc(promptRuns.createdAt))
-				.limit(data.limit)
-				.offset(offset),
-			// Joined like the list, which leaves out runs not yet judged.
-			db
-				.select({ count: count() })
-				.from(promptRuns)
-				.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id))
-				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
+		const [rows, sentimentFilterCounts] = await Promise.all([
+			getResponseMatches({ ...scope, sentiment: data.sentiment }, data.limit, offset, data.sort),
+			getResponseSentimentCounts(scope),
 		]);
-
-		const raw = await loadRawOutputs(
-			db,
-			runs.map((r) => r.id),
-		);
+		const total = data.sentiment ? sentimentFilterCounts[data.sentiment] : sentimentFilterCounts.all;
 		return {
-			// Older rows carry no text and may predate the provider column; the
-			// extractor also accepts the model name.
-			runs: runs.map((r) => ({
-				...r,
-				rawOutput: raw.get(r.id) as {},
-				textContent: r.textContent ?? extractTextContent(raw.get(r.id), r.provider ?? r.model),
-			})),
-			total: totalResult[0]?.count || 0,
+			runs: rows.map(toResponse),
+			total,
+			/** Before the sentiment filter narrows them. */
+			sentimentFilterCounts,
 			page: data.page,
 			limit: data.limit,
-			hasMore: offset + runs.length < (totalResult[0]?.count || 0),
+			hasMore: offset + rows.length < total,
 		};
 	});
 

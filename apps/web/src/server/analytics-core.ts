@@ -16,6 +16,8 @@ import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
 import { buildLandscape, type Landscape } from "@/lib/landscape";
+import { assessedPassage } from "@/lib/passage";
+import { getSentimentQuotes, type SentimentQuoteRow } from "@/lib/postgres-read";
 import {
 	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
@@ -39,10 +41,12 @@ import {
 } from "@/lib/rollup-read";
 import {
 	averagePosition,
+	isSentiment,
 	type MentionQuality,
 	mentionQuality,
 	NO_ASSESSMENTS,
 	type PositionPoint,
+	type Sentiment,
 	type SentimentCounts,
 	type SentimentSummary,
 	sentimentCounts,
@@ -567,4 +571,77 @@ export async function getCompetitiveLandscape(
 			? [[], []]
 			: await Promise.all([getPromptModelDailyRuns(scope), getPromptModelDailyCompetitors(scope)]);
 	return buildLandscape({ brand, competitors: tracked, dates, runs, competitorRuns });
+}
+
+export interface SentimentQuote {
+	runId: string;
+	promptId: string;
+	prompt: string;
+	model: string;
+	createdAt: string;
+	sentiment: Sentiment;
+	/** Markdown. */
+	passage: string;
+}
+
+export interface PromptSentiment {
+	promptId: string;
+	value: string;
+	tags: string[];
+	sentiment: SentimentSummary;
+}
+
+export interface BrandSentiment {
+	/** Least positive first. */
+	prompts: PromptSentiment[];
+	/** The negative and mixed assessments the judge was surest of, one per prompt. */
+	criticism: SentimentQuote[];
+	praise: SentimentQuote[];
+}
+
+const QUOTES_PER_SIDE = 5;
+
+/** The overall split comes from the competitive landscape, which every headline shares. */
+export async function getBrandSentiment(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+): Promise<BrandSentiment> {
+	const resolved = await resolveScope(brandId, filters);
+	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
+	const [perPrompt, criticism, praise] = await Promise.all([
+		resolved.promptIds.length > 0 ? getPerPromptRunStats(scope) : [],
+		getSentimentQuotes(scope, ["negative", "mixed"], QUOTES_PER_SIDE),
+		getSentimentQuotes(scope, ["positive"], QUOTES_PER_SIDE),
+	]);
+	const promptsById = new Map(resolved.prompts.map((prompt) => [prompt.id, prompt]));
+	const quote = (row: SentimentQuoteRow): SentimentQuote[] => {
+		const passage = assessedPassage(row.text_content, row.brand);
+		const sentiment = row.brand.sentiment;
+		if (!passage || !isSentiment(sentiment)) return [];
+		return [
+			{
+				runId: row.id,
+				promptId: row.prompt_id,
+				prompt: promptsById.get(row.prompt_id)?.value ?? "",
+				model: row.model,
+				createdAt: new Date(row.created_at).toISOString(),
+				sentiment,
+				passage,
+			},
+		];
+	};
+	const prompts = perPrompt
+		.flatMap((row): PromptSentiment[] => {
+			const prompt = promptsById.get(row.prompt_id);
+			const sentiment = sentimentSummary(row);
+			if (!prompt || sentiment.positiveShare === null) return [];
+			return [{ promptId: prompt.id, value: prompt.value, tags: prompt.tags ?? [], sentiment }];
+		})
+		.sort((a, b) => (a.sentiment.positiveShare ?? 0) - (b.sentiment.positiveShare ?? 0));
+	return {
+		prompts,
+		criticism: criticism.flatMap(quote),
+		praise: praise.flatMap(quote),
+	};
 }

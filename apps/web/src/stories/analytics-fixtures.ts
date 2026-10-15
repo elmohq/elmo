@@ -4,6 +4,8 @@
  * stable across runs.
  */
 
+import type { BrandSentiment } from "@/server/analytics-core";
+
 /** Build N consecutive YYYY-MM-DD strings ending at `end` (inclusive). */
 function buildDates(n: number, end = "2026-06-04"): string[] {
 	const [y, m, d] = end.split("-").map(Number);
@@ -78,7 +80,7 @@ const endingAt = (values: number[], target: number) => {
 };
 
 /** 600 current mentions of a company, split so the positive share is `positive`. */
-const tonesFor = (positive: number) => {
+const sentimentsFor = (positive: number) => {
 	const pos = Math.round(positive * 600);
 	const negative = Math.round((600 - pos) * 0.15);
 	const mixed = Math.round((600 - pos) * 0.2);
@@ -93,7 +95,7 @@ export const mockLandscape = {
 		isBrand: c.isBrand,
 		domain: c.domain,
 		totals: { visibility: c.visibility, share: c.share, sentiment: c.sentiment, position: c.position },
-		tones: tonesFor(c.sentiment),
+		sentiments: sentimentsFor(c.sentiment),
 		byModel: Object.fromEntries(
 			MODELS.map((model, mi) => {
 				const wobble = Math.sin((ci + 3) * (mi + 1)) * 0.12;
@@ -259,4 +261,81 @@ export const mockOpportunities = {
 			"Skip incentivized or fake reviews — assistants increasingly discount coordinated, inauthentic activity.",
 		],
 	},
+};
+
+const summary = (positive: number, neutral: number, mixed: number, negative: number) => {
+	const clear = positive + neutral + mixed + negative;
+	return { positive, neutral, mixed, negative, positiveShare: positive / clear, negativeShare: negative / clear };
+};
+
+export const mockBrandSentiment: BrandSentiment = {
+	prompts: [
+		{ promptId: "p5", value: "cheapest crm for startups", tags: ["pricing"], sentiment: summary(1, 4, 0, 2) },
+		{
+			promptId: "p4",
+			value: "enterprise crm with custom reporting",
+			tags: ["enterprise"],
+			sentiment: summary(4, 8, 2, 4),
+		},
+		{
+			promptId: "p2",
+			value: "acme vs hubspot pricing",
+			tags: ["branded", "pricing"],
+			sentiment: summary(30, 30, 12, 12),
+		},
+		{ promptId: "p3", value: "crm with best mobile app", tags: ["mobile"], sentiment: summary(30, 12, 2, 2) },
+		{ promptId: "p1", value: "best crm for small sales teams", tags: ["crm"], sentiment: summary(60, 12, 3, 1) },
+	],
+	criticism: [
+		{
+			runId: "r1",
+			promptId: "p4",
+			prompt: "enterprise crm with custom reporting",
+			model: "perplexity",
+			createdAt: "2026-06-02T10:00:00.000Z",
+			sentiment: "negative",
+			passage:
+				"**Acme**'s reporting is limited compared with Salesforce; custom dashboards need an add-on and exports are capped.",
+		},
+		{
+			runId: "r2",
+			promptId: "p5",
+			prompt: "cheapest crm for startups",
+			model: "gemini",
+			createdAt: "2026-06-01T10:00:00.000Z",
+			sentiment: "negative",
+			passage:
+				"Several reviewers note that Acme raised prices twice last year, which pushed some small teams elsewhere.",
+		},
+		{
+			runId: "r3",
+			promptId: "p2",
+			prompt: "acme vs hubspot pricing",
+			model: "claude",
+			createdAt: "2026-05-31T10:00:00.000Z",
+			sentiment: "mixed",
+			passage: "Acme is easier to learn, though its higher tiers cost more than HubSpot for the same seats.",
+		},
+	],
+	praise: [
+		{
+			runId: "r4",
+			promptId: "p1",
+			prompt: "best crm for small sales teams",
+			model: "chatgpt",
+			createdAt: "2026-06-03T10:00:00.000Z",
+			sentiment: "positive",
+			passage:
+				"For a small sales team, **Acme** is the easiest CRM to get running: setup takes an afternoon and the mobile app is genuinely good.",
+		},
+		{
+			runId: "r5",
+			promptId: "p3",
+			prompt: "crm with best mobile app",
+			model: "google-ai-overview",
+			createdAt: "2026-06-02T10:00:00.000Z",
+			sentiment: "positive",
+			passage: "Users consistently rate Acme's mobile app highest for logging calls on the go.",
+		},
+	],
 };

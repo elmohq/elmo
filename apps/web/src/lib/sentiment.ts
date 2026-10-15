@@ -1,4 +1,55 @@
 // Imported by the browser too, so it reads nothing from the database layer.
+import type { Sentiment } from "@workspace/lib/mentions";
+import { z } from "zod";
+
+export type { Sentiment };
+export const SENTIMENTS = ["positive", "neutral", "mixed", "negative"] as const satisfies readonly Sentiment[];
+
+export const sentimentFilterSchema = z.enum([...SENTIMENTS, "unmentioned"]);
+export type SentimentFilter = z.infer<typeof sentimentFilterSchema>;
+
+export const responseSortSchema = z.enum(["newest", "negative", "positive"]);
+export type ResponseSort = z.infer<typeof responseSortSchema>;
+
+/** `all` includes mentions with no sentiment, such as answers that only link to the brand. */
+export type SentimentFilterCounts = Record<SentimentFilter, number> & { all: number };
+
+/**
+ * Okabe–Ito hues, so positive and negative stay apart under the common colour-vision deficiencies.
+ * `text` is a darker shade of `color` that keeps contrast on white.
+ */
+export const SENTIMENT_STYLES: Record<Sentiment, { label: string; color: string; text: string; soft: string }> = {
+	positive: {
+		label: "Positive",
+		color: "#009E73",
+		text: "text-[#00795a] dark:text-[#3fc79f]",
+		soft: "bg-[#009E73]/15 dark:bg-[#009E73]/30",
+	},
+	neutral: {
+		label: "Neutral",
+		color: "#cbd5e1",
+		text: "text-slate-500 dark:text-slate-400",
+		soft: "bg-slate-200/70 dark:bg-slate-700/60",
+	},
+	mixed: {
+		label: "Mixed",
+		color: "#E69F00",
+		text: "text-[#a66f00] dark:text-[#f0b840]",
+		soft: "bg-[#E69F00]/20 dark:bg-[#E69F00]/30",
+	},
+	negative: {
+		label: "Negative",
+		color: "#D55E00",
+		text: "text-[#b34d00] dark:text-[#ff8a3d]",
+		soft: "bg-[#D55E00]/15 dark:bg-[#D55E00]/30",
+	},
+};
+
+/** Answers with a sentiment: the base every sentiment share is of. */
+export const sentimentTotal = (counts: Record<Sentiment, number>) =>
+	SENTIMENTS.reduce((sum, sentiment) => sum + counts[sentiment], 0);
+
+export const isSentiment = (value: unknown): value is Sentiment => SENTIMENTS.includes(value as Sentiment);
 
 /** The mention judge's assessments summed over runs that mention a company. */
 export interface AssessmentSums {
@@ -20,12 +71,7 @@ export const NO_ASSESSMENTS: AssessmentSums = {
 	positioned_runs: 0,
 };
 
-export interface SentimentCounts {
-	positive: number;
-	neutral: number;
-	negative: number;
-	mixed: number;
-}
+export type SentimentCounts = Record<Sentiment, number>;
 
 export interface SentimentSummary extends SentimentCounts {
 	/** Fractions of 1 of the mentions with a sentiment; null with none. */
@@ -39,8 +85,8 @@ export interface MentionQuality {
 	position: { average: number | null };
 }
 
-/** Runs with a tone the judge could call; shares are of these. */
-const tonedRuns = (sums: AssessmentSums) =>
+/** Runs with a sentiment; shares are of these. */
+const sentimentRuns = (sums: AssessmentSums) =>
 	sums.positive_runs + sums.neutral_runs + sums.negative_runs + sums.mixed_runs;
 
 export interface PositionPoint {
@@ -72,11 +118,11 @@ export function sentimentCounts(sums: AssessmentSums): SentimentCounts {
 }
 
 export function sentimentSummary(sums: AssessmentSums): SentimentSummary {
-	const toned = tonedRuns(sums);
+	const withSentiment = sentimentRuns(sums);
 	return {
 		...sentimentCounts(sums),
-		positiveShare: toned > 0 ? sums.positive_runs / toned : null,
-		negativeShare: toned > 0 ? sums.negative_runs / toned : null,
+		positiveShare: withSentiment > 0 ? sums.positive_runs / withSentiment : null,
+		negativeShare: withSentiment > 0 ? sums.negative_runs / withSentiment : null,
 	};
 }
 

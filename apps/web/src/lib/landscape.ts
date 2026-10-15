@@ -24,8 +24,8 @@ export interface LandscapeCompany {
 	domain: string | null;
 	/** As of the last day. */
 	totals: MetricValues;
-	/** The current answers mentioning it, by tone. */
-	tones: SentimentCounts;
+	/** The current answers mentioning it, by sentiment. */
+	sentiments: SentimentCounts;
 	/** Current figures, keyed by model id. */
 	byModel: Record<string, MetricValues>;
 	/** One value per entry of `Landscape.dates`. */
@@ -202,7 +202,7 @@ export function buildLandscape(input: LandscapeInput): Landscape {
 			isBrand,
 			domain,
 			totals: measure(name, days.get(lastDate)),
-			tones: sentimentCounts(last ?? NO_ASSESSMENTS),
+			sentiments: sentimentCounts(last ?? NO_ASSESSMENTS),
 			byModel: Object.fromEntries(models.map((model) => [model, measure(name, lastByModel.get(model))])),
 			series: Object.fromEntries(
 				LANDSCAPE_METRICS.map((metric) => [metric, daily.map((values) => values[metric])]),

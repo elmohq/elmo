@@ -3,11 +3,13 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import type { ReactNode } from "react";
+import { cn } from "@workspace/ui/lib/utils";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
-import { HIGHLIGHT_CLASS, splitHighlights } from "@/lib/highlight";
-import { assessedPassage } from "@/lib/passage";
+import { HIGHLIGHT_CLASS, type MarkRange, splitHighlights } from "@/lib/highlight";
+import { passageRange } from "@/lib/passage";
+import { isSentiment, SENTIMENT_STYLES, type Sentiment } from "@/lib/sentiment";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 
@@ -43,6 +45,14 @@ export function ResponseCard({
 	brandName?: string;
 	domainFor: (name: string) => string | undefined;
 }) {
+	const [selected, setSelected] = useState<string | null>(null);
+	const companies = mentionedCompanies(run, text, brandName);
+	const markRange = passageMark(companies.find((c) => c.name === selected));
+	const answerRef = useRef<HTMLDivElement>(null);
+	// The passage can sit below the answer box's fold, where marking it alone would show nothing.
+	useEffect(() => {
+		if (selected) answerRef.current?.querySelector("[data-passage]")?.scrollIntoView({ block: "nearest" });
+	}, [selected]);
 	return (
 		<Card>
 			<CardHeader className="pb-0 gap-y-0">
@@ -84,15 +94,15 @@ export function ResponseCard({
 
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
-					<MentionedBrands run={run} brandName={brandName} domainFor={domainFor} />
+					<MentionedBrands companies={companies} selected={selected} onSelect={setSelected} domainFor={domainFor} />
 				</div>
-
-				<MentionPassages assessments={run.mentionAssessments} text={text} brandName={brandName} />
 
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
-					<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
-						<ResponseMarkdown highlight={highlight}>{text}</ResponseMarkdown>
+					<div ref={answerRef} className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
+						<ResponseMarkdown highlight={highlight} markRange={markRange}>
+							{text}
+						</ResponseMarkdown>
 					</div>
 				</div>
 
@@ -113,47 +123,29 @@ export function ResponseCard({
 	);
 }
 
-function MentionedBrands({
-	run,
-	brandName,
-	domainFor,
-}: {
-	run: ResponseCardRun;
-	brandName?: string;
-	domainFor: (name: string) => string | undefined;
-}) {
-	const competitors = [...new Set<string>(run.competitorsMentioned ?? [])];
-	if (!run.brandMentioned && competitors.length === 0) {
-		return <span className="text-xs text-muted-foreground">None</span>;
-	}
-	const positions = run.mentionAssessments;
-	return (
-		<div className="flex flex-wrap gap-1.5">
-			{run.brandMentioned && brandName && (
-				<Badge className="text-xs font-normal">
-					<SiteIcon domain={domainFor(brandName)} size="xs" />
-					{brandName}
-					<Position value={positions?.brand?.position} />
-				</Badge>
-			)}
-			{competitors.map((competitor) => (
-				<Badge key={competitor} variant="outline" className="text-xs font-normal">
-					<SiteIcon domain={domainFor(competitor)} size="xs" />
-					{competitor}
-					<Position value={positions?.competitors?.[competitor]?.position} />
-				</Badge>
-			))}
-		</div>
-	);
+interface MentionedCompany {
+	name: string;
+	isBrand: boolean;
+	record?: MentionAssessment;
+	sentiment?: Sentiment;
+	passage: { start: number; end: number } | null;
 }
 
-function Position({ value }: { value?: number }) {
-	if (value === undefined) return null;
-	return (
-		<span className="opacity-60 tabular-nums" title={`Named ${ordinal(value)} among the tracked companies`}>
-			#{value}
-		</span>
-	);
+/** The brand first, then competitors in the order the answer names them. */
+function mentionedCompanies(run: ResponseCardRun, text: string, brandName?: string): MentionedCompany[] {
+	const company = (name: string, isBrand: boolean, record?: MentionAssessment): MentionedCompany => ({
+		name,
+		isBrand,
+		record,
+		sentiment: isSentiment(record?.sentiment) ? record.sentiment : undefined,
+		passage: record ? passageRange(text, record) : null,
+	});
+	return [
+		...(run.brandMentioned && brandName ? [company(brandName, true, run.mentionAssessments?.brand)] : []),
+		...[...new Set(run.competitorsMentioned ?? [])].map((name) =>
+			company(name, false, run.mentionAssessments?.competitors[name]),
+		),
+	];
 }
 
 const ordinal = (n: number) => {
@@ -161,68 +153,91 @@ const ordinal = (n: number) => {
 	return `${n}${suffix}`;
 };
 
-const REASONS: Record<string, string> = {
-	other_meaning: "the name is used in another sense",
-	other_company: "a different company with the same name",
-	no_info: "the answer says it has no information about it",
-};
-
-const SENTIMENTS: Record<string, string> = {
-	positive: "Positive",
-	neutral: "Neutral",
-	negative: "Negative",
-	mixed: "Mixed",
-};
-
-function assessmentLabel(record: MentionAssessment): string {
-	if (!record.mentioned) return `Not counted: ${REASONS[record.reason ?? ""] ?? "not about it"}`;
-	return record.sentiment ? SENTIMENTS[record.sentiment] : "Mentioned";
+function badgeTip(company: MentionedCompany): string {
+	const parts: string[] = [];
+	if (company.record?.position) parts.push(`Named ${ordinal(company.record.position)} among the tracked companies.`);
+	if (company.passage) parts.push("Click to mark the passage this rests on.");
+	return parts.join(" ");
 }
 
 /**
- * The passage each assessment rests on: always the brand's, and a competitor's when it wasn't
- * counted, since those are the calls worth checking.
+ * A badge per company with its position and the answer's sentiment toward it. Clicking one marks the
+ * passage its assessment rests on in the answer below; clicking it again clears the mark.
  */
-function MentionPassages({
-	assessments,
-	text,
-	brandName,
+function MentionedBrands({
+	companies,
+	selected,
+	onSelect,
+	domainFor,
 }: {
-	assessments?: RunMentionAssessments | null;
-	text: string;
-	brandName?: string;
+	companies: MentionedCompany[];
+	selected: string | null;
+	onSelect: (name: string | null) => void;
+	domainFor: (name: string) => string | undefined;
 }) {
-	const entries: { key: string; name: string; record: MentionAssessment }[] = [];
-	if (assessments?.brand) entries.push({ key: "brand", name: brandName ?? "Your brand", record: assessments.brand });
-	for (const [name, record] of Object.entries(assessments?.competitors ?? {})) {
-		if (!record.mentioned) entries.push({ key: `competitor:${name}`, name, record });
-	}
-	const shown = entries.flatMap((entry) => {
-		const passage = assessedPassage(text, entry.record);
-		return passage ? [{ ...entry, passage }] : [];
-	});
-	if (shown.length === 0) return null;
+	if (companies.length === 0) return <span className="text-xs text-muted-foreground">None</span>;
 	return (
-		<div>
-			<span className="text-xs text-muted-foreground block mb-1.5">Passages</span>
-			<div className="space-y-2">
-				{shown.map(({ key, name, record, passage }) => (
-					<figure key={key} className="rounded-md border p-3 text-sm space-y-1.5">
-						<figcaption className="flex flex-wrap items-center gap-1.5 text-xs">
-							<span className="font-medium">{name}</span>
-							<Badge variant="outline" className="text-xs font-normal">
-								{assessmentLabel(record)}
-							</Badge>
-						</figcaption>
-						<blockquote className="border-l-2 pl-3 text-muted-foreground">
-							{/* Passages are cut from the stored answer, which is markdown. */}
-							<ResponseMarkdown>{passage}</ResponseMarkdown>
-						</blockquote>
-					</figure>
-				))}
-			</div>
+		<div className="flex flex-wrap items-center gap-1.5">
+			{companies.map((company) => {
+				const { sentiment } = company;
+				const canShow = company.passage !== null;
+				const active = selected === company.name;
+				const tip = badgeTip(company);
+				const content = (
+					<>
+						<SiteIcon domain={domainFor(company.name)} size="xs" />
+						{company.name}
+						{company.record?.position !== undefined && (
+							<span className="tabular-nums text-muted-foreground">#{company.record.position}</span>
+						)}
+						{sentiment && (
+							<>
+								<span className="h-3 w-px bg-border" />
+								<span className={cn("font-medium", SENTIMENT_STYLES[sentiment].text)}>
+									{SENTIMENT_STYLES[sentiment].label}
+								</span>
+							</>
+						)}
+					</>
+				);
+				const className = cn(
+					"inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors",
+					company.isBrand && "border-foreground/30 font-medium",
+				);
+				// Only a badge with a passage to mark is a control; the rest are plain labels.
+				if (!canShow) {
+					return (
+						<span key={company.name} title={tip || undefined} className={className}>
+							{content}
+						</span>
+					);
+				}
+				return (
+					<button
+						key={company.name}
+						type="button"
+						aria-pressed={active}
+						title={tip || undefined}
+						onClick={() => onSelect(active ? null : company.name)}
+						className={cn(
+							className,
+							"cursor-pointer hover:bg-muted/60",
+							active && sentiment && cn("border-transparent", SENTIMENT_STYLES[sentiment].soft),
+							active && !sentiment && "border-transparent bg-muted",
+						)}
+					>
+						{content}
+					</button>
+				);
+			})}
 		</div>
 	);
+}
+
+function passageMark(company?: MentionedCompany): MarkRange | undefined {
+	if (!company?.passage) return undefined;
+	const tint = company.sentiment ? SENTIMENT_STYLES[company.sentiment].soft : "bg-muted";
+	return { ...company.passage, className: cn("rounded-sm px-0.5 text-inherit", tint) };
 }
 
 function Highlighted({ text, term }: { text: string; term?: string }) {

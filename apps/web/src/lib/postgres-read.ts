@@ -3,7 +3,7 @@
  * Aggregates, query fan-out included, come from the rollups in `rollup-read.ts`.
  */
 
-import type { RunMentionAssessments } from "@workspace/lib/mentions";
+import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type AnalyticsScope,
@@ -14,6 +14,15 @@ import {
 	windowFilter,
 } from "@/lib/analytics-sql";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
+import type { ResponseSort, Sentiment, SentimentFilter, SentimentFilterCounts } from "@/lib/sentiment";
+import {
+	responseOrder,
+	sentimentBucket,
+	sentimentCondition,
+	sentimentConfidence,
+	sentimentRank,
+	toSentimentFilterCounts,
+} from "@/lib/sentiment-sql";
 
 const dateFilter = (fromDate: string | null, toDate: string | null, timezone: string): SQL =>
 	windowFilter(sql`created_at`, fromDate, toDate, timezone);
@@ -127,7 +136,7 @@ export async function countPromptRuns(
 // ============================================================================
 
 /** Runs a response search covers. Without a `query` every run in scope matches. */
-export type ResponseSearchScope = PromptListScope & { query?: string };
+export type ResponseSearchScope = PromptListScope & { query?: string; sentiment?: SentimentFilter };
 
 export interface ResponseMatchRow {
 	id: string;
@@ -157,6 +166,7 @@ export async function getResponseMatches(
 	scope: ResponseSearchScope,
 	limit: number,
 	offset: number,
+	sort?: ResponseSort,
 ): Promise<ResponseMatchRow[]> {
 	if (scope.promptIds.length === 0) return [];
 	return queryPg<ResponseMatchRow>(sql`
@@ -179,7 +189,68 @@ export async function getResponseMatches(
 		JOIN run_mentions rm ON rm.run_id = pr.id
 		JOIN run_extractions re ON re.run_id = pr.id
 		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
-		ORDER BY pr.created_at DESC, pr.id
+			AND ${sentimentCondition(scope.sentiment)}
+		ORDER BY ${responseOrder(sort)}
 		LIMIT ${limit} OFFSET ${offset}
+	`);
+}
+
+export async function getResponseSentimentCounts(scope: ResponseSearchScope): Promise<SentimentFilterCounts> {
+	if (scope.promptIds.length === 0) return toSentimentFilterCounts([]);
+	const rows = await queryPg<{ bucket: string | null; runs: number }>(sql`
+		SELECT ${sentimentBucket} AS bucket, count(*)::int AS runs
+		FROM prompt_runs pr
+		JOIN run_mentions rm ON rm.run_id = pr.id
+		JOIN run_extractions re ON re.run_id = pr.id
+		WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })} AND ${responseMatch(scope)}
+		GROUP BY 1
+	`);
+	return toSentimentFilterCounts(rows);
+}
+
+// ============================================================================
+// Sentiment quotes
+// ============================================================================
+
+export interface SentimentQuoteRow {
+	id: string;
+	prompt_id: string;
+	model: string;
+	created_at: string;
+	brand: MentionAssessment;
+	text_content: string;
+}
+
+/** One per prompt, so a daily prompt doesn't fill the list with the same answer; earlier `sentiments` rank first. */
+export async function getSentimentQuotes(
+	scope: PromptListScope,
+	sentiments: readonly Sentiment[],
+	limit: number,
+): Promise<SentimentQuoteRow[]> {
+	if (scope.promptIds.length === 0 || sentiments.length === 0) return [];
+	const rank = sentimentRank(sentiments);
+	const passage = sql`rm.assessments->'brand'->'passage'`;
+	return queryPg<SentimentQuoteRow>(sql`
+		SELECT id, prompt_id, model, created_at, brand, text_content FROM (
+			SELECT DISTINCT ON (pr.prompt_id)
+				pr.id::text AS id,
+				pr.prompt_id::text AS prompt_id,
+				pr.model,
+				pr.created_at,
+				rm.assessments->'brand' AS brand,
+				re.text_content,
+				${rank} AS rank,
+				${sentimentConfidence} AS confidence
+			FROM prompt_runs pr
+			JOIN run_mentions rm ON rm.run_id = pr.id
+			JOIN run_extractions re ON re.run_id = pr.id
+			WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
+				AND ${rank} IS NOT NULL
+				AND re.text_content IS NOT NULL
+				AND (${passage}->>'start')::int < (${passage}->>'end')::int
+			ORDER BY pr.prompt_id, rank, confidence DESC, pr.created_at DESC
+		) best
+		ORDER BY rank, confidence DESC, created_at DESC
+		LIMIT ${limit}
 	`);
 }
