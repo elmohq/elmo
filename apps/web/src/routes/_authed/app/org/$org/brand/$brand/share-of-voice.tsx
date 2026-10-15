@@ -45,11 +45,13 @@ const TIPS = {
 function ShareOfVoiceOverview({
 	entries,
 	landscape,
+	landscapeFailed,
 	colors,
 	domainFor,
 }: {
 	entries: ShareOfVoiceEntry[];
 	landscape?: Landscape;
+	landscapeFailed: boolean;
 	colors: Map<string, string>;
 	domainFor: (name: string) => string | undefined;
 }) {
@@ -81,6 +83,8 @@ function ShareOfVoiceOverview({
 							format={METRIC_META.share.format}
 							height={220}
 						/>
+					) : landscapeFailed ? (
+						<p className="py-8 text-center text-sm text-muted-foreground">Couldn't load the trends right now.</p>
 					) : (
 						<Skeleton className="h-[250px] w-full" />
 					)}
@@ -103,7 +107,11 @@ function ShareOfVoicePage() {
 	const availableTags = promptsSummary?.availableTags ?? [];
 
 	const { data, isLoading } = useShareOfVoice(brandId, { lookback, model: modelParam, tags });
-	const { data: landscape } = useCompetitiveLandscape(brandId, { lookback, model: modelParam, tags });
+	const { data: landscape, error: landscapeError } = useCompetitiveLandscape(brandId, {
+		lookback,
+		model: modelParam,
+		tags,
+	});
 	const colors = useCompanyColors(landscape, data?.entries);
 
 	const infoContent = (
@@ -145,7 +153,13 @@ function ShareOfVoicePage() {
 	} else {
 		content = (
 			<TooltipProvider delay={150}>
-				<ShareOfVoiceOverview entries={data.entries} landscape={landscape} colors={colors} domainFor={domainFor} />
+				<ShareOfVoiceOverview
+					entries={data.entries}
+					landscape={landscape}
+					landscapeFailed={!!landscapeError && !landscape}
+					colors={colors}
+					domainFor={domainFor}
+				/>
 
 				<Card>
 					<CardHeader>

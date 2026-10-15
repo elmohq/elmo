@@ -53,19 +53,16 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const window = { from: fromDateStr, to: toDateStr, timezone };
 		const filters = { model: data.model, tags: data.tags };
-		const [landscape, prompts] = await Promise.all([
+		const prompts = resolveFilteredPrompts(data.brandId, { tags: data.tags });
+		const [landscape, promptCount, totals] = await Promise.all([
 			getCompetitiveLandscape(data.brandId, window, filters),
-			resolveFilteredPrompts(data.brandId, { tags: data.tags }),
+			prompts.then((p) => p.length),
+			prompts.then((p) =>
+				p.length === 0
+					? null
+					: getMentionTotals({ ...window, brandId: data.brandId, promptIds: p.map((x) => x.id), model: data.model }),
+			),
 		]);
-		const totals =
-			prompts.length === 0
-				? null
-				: await getMentionTotals({
-						...window,
-						brandId: data.brandId,
-						promptIds: prompts.map((p) => p.id),
-						model: data.model,
-					});
 		// Every card is the brand's own line in the landscape, so each matches its row and its page.
 		const brand = brandOf(landscape);
 		const cards = Object.fromEntries(
@@ -76,7 +73,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		) as DashboardSummaryResponse["cards"];
 
 		return {
-			totalPrompts: prompts.length,
+			totalPrompts: promptCount,
 			totalRuns: totals?.runs ?? 0,
 			lastUpdatedAt: totals?.last_run_at ?? null,
 			cards,

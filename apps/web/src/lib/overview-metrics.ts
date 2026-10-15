@@ -80,5 +80,3 @@ export const TONE_STYLES: Record<Tone, { card: string; text: string; stroke: str
 		fill: "#fecdd3",
 	},
 };
-
-/** 1 for the best value among `values`, honouring which direction is better; null values rank last. */
