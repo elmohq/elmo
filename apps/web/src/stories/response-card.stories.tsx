@@ -22,6 +22,9 @@ const UNCERTAIN_ANSWER = `For reporting, some teams pair their CRM with Acme Ins
 
 Globex has reporting built in.`;
 
+/** What the worker stores beside each verdict; the card reads none of it. */
+const JUDGED = { brand: "acme", competitors: {} };
+
 /** Offsets of `passage` in `text`, as the worker stores them. */
 function evidence(passage: string, text = ANSWER): MentionAssessmentRecord["evidence"] {
 	const start = text.indexOf(passage);
@@ -64,7 +67,7 @@ const meta = {
 		text: ANSWER,
 		brandName: "Acme",
 		domainFor: (name: string) => `${name.toLowerCase()}.com`,
-		run: { ...baseRun, mentionAssessments: { brand: positiveBrand } },
+		run: { ...baseRun, mentionAssessments: { brand: positiveBrand, competitors: {}, judged: JUDGED } },
 	},
 } satisfies Meta<typeof ResponseCard>;
 
@@ -93,6 +96,7 @@ const withCompetitors = {
 			position: 3,
 		},
 	},
+	judged: JUDGED,
 } satisfies ResponseCardRun["mentionAssessments"];
 
 /** Each company's badge carries its position and the answer's tone toward it; nothing is marked until one is clicked. */
@@ -131,6 +135,8 @@ export const NegativeBrand: Story = {
 						NEGATIVE_ANSWER,
 					),
 				},
+				competitors: {},
+				judged: JUDGED,
 			},
 		},
 	},
@@ -156,6 +162,8 @@ export const UncertainBrand: Story = {
 						UNCERTAIN_ANSWER,
 					),
 				},
+				competitors: {},
+				judged: JUDGED,
 			},
 		},
 	},
@@ -180,6 +188,7 @@ export const CompetitorNotCounted: Story = {
 						),
 					},
 				},
+				judged: JUDGED,
 			},
 		},
 	},
