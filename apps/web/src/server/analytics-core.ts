@@ -15,12 +15,16 @@ import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
+import { buildLandscape, type Landscape } from "@/lib/landscape";
 import {
 	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
 	getCitationTotal,
 	getCitationUrlStats,
+	getCompetitorsByModel,
 	getCompetitorTotals,
+	getDailyCompetitorSums,
+	getDailyRunSums,
 	getDailyVerdicts,
 	getFanoutBreakdown,
 	getFanoutModelTotals,
@@ -38,8 +42,10 @@ import {
 	averagePosition,
 	type MentionQuality,
 	mentionQuality,
+	SENTIMENT_WINDOW_DAYS,
 	type SentimentSummary,
 	sentimentSummary,
+	shiftDate,
 } from "@/lib/sentiment";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
@@ -551,4 +557,61 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 			uniqueUrls: citations.totals.uniqueUrls,
 		},
 	};
+}
+
+/**
+ * The brand and its tracked competitors on visibility, share of voice, sentiment and position,
+ * overall, per model and per day. Daily values cover a trailing week, so the query reaches back
+ * a week before the window when it starts on a calendar day.
+ */
+export async function getCompetitiveLandscape(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+): Promise<Landscape> {
+	const [brandRow, competitorRows, resolved] = await Promise.all([
+		db.select({ name: brands.name, website: brands.website }).from(brands).where(eq(brands.id, brandId)).limit(1),
+		db
+			.select({ name: competitors.name, domains: competitors.domains })
+			.from(competitors)
+			.where(eq(competitors.brandId, brandId)),
+		resolveScope(brandId, filters),
+	]);
+	const bounds = windowInstants(window);
+	const dates = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
+	const brand = { name: brandRow[0]?.name ?? "Your brand", domain: extractDomain(brandRow[0]?.website ?? "") || null };
+	const tracked = competitorRows.map((c) => ({
+		name: c.name,
+		domain: c.domains[0] ? extractDomain(c.domains[0]) : null,
+	}));
+	if (resolved.promptIds.length === 0) {
+		return buildLandscape({
+			brand,
+			competitors: tracked,
+			dates,
+			brandDaily: [],
+			competitorDaily: [],
+			brandByModel: [],
+			competitorsByModel: [],
+		});
+	}
+	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
+	const reachBack = isCalendarDay(window.from)
+		? { ...scope, from: shiftDate(window.from, 1 - SENTIMENT_WINDOW_DAYS) }
+		: scope;
+	const [brandDaily, competitorDaily, brandByModel, competitorsByModel] = await Promise.all([
+		getDailyRunSums(reachBack),
+		getDailyCompetitorSums(reachBack),
+		getRunsByModel(scope),
+		getCompetitorsByModel(scope),
+	]);
+	return buildLandscape({
+		brand,
+		competitors: tracked,
+		dates,
+		brandDaily,
+		competitorDaily,
+		brandByModel,
+		competitorsByModel,
+	});
 }
