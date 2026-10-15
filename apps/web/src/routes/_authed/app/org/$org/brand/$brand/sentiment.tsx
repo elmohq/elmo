@@ -27,10 +27,9 @@ import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { useCompetitiveLandscape } from "@/hooks/use-share-of-voice";
 import { useCompanyColors } from "@/lib/company-colors";
-import { chartedCompanies, type Landscape } from "@/lib/landscape";
+import { brandOf, chartedCompanies, type Landscape } from "@/lib/landscape";
 import { METRIC_META } from "@/lib/overview-metrics";
 import { pageHead } from "@/lib/route-head";
-import type { SentimentSummary } from "@/lib/sentiment";
 import { TONE_STYLES, TONES, toneTotal } from "@/lib/tone";
 import type { PromptSentiment, SentimentQuote } from "@/server/analytics-core";
 
@@ -45,15 +44,8 @@ const percent = (value: number) => `${Math.round(value * 100)}%`;
 /** Side-by-side cards share a header height, so a title beside a control lines up with one beside none. */
 const ROW_HEADER = "flex min-h-8 flex-row items-center";
 
-function SentimentOverview({
-	summary,
-	landscape,
-	colors,
-}: {
-	summary: SentimentSummary;
-	landscape?: Landscape;
-	colors: Map<string, string>;
-}) {
+function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors: Map<string, string> }) {
+	const brand = brandOf(landscape);
 	return (
 		<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 			<Card>
@@ -62,10 +54,10 @@ function SentimentOverview({
 				</CardHeader>
 				<CardContent>
 					<RingChart
-						center={summary.positiveShare === null ? "—" : percent(summary.positiveShare)}
+						center={brand.totals.sentiment === null ? "—" : percent(brand.totals.sentiment)}
 						slices={TONES.map((tone) => ({
 							name: TONE_STYLES[tone].label,
-							value: summary[tone],
+							value: brand.tones[tone],
 							color: TONE_STYLES[tone].color,
 							emphasis: tone === "positive",
 						}))}
@@ -77,21 +69,17 @@ function SentimentOverview({
 					<CardTitle>Sentiment Trends</CardTitle>
 				</CardHeader>
 				<CardContent>
-					{landscape ? (
-						<CompanyTrendChart
-							dates={landscape.dates}
-							companies={chartedCompanies(landscape, "sentiment").map((c) => ({
-								name: c.name,
-								isBrand: c.isBrand,
-								color: colors.get(c.name) ?? "#94a3b8",
-								values: c.series.sentiment,
-							}))}
-							format={METRIC_META.sentiment.format}
-							height={220}
-						/>
-					) : (
-						<Skeleton className="h-[250px] w-full" />
-					)}
+					<CompanyTrendChart
+						dates={landscape.dates}
+						companies={chartedCompanies(landscape, "sentiment").map((c) => ({
+							name: c.name,
+							isBrand: c.isBrand,
+							color: colors.get(c.name) ?? "#94a3b8",
+							values: c.series.sentiment,
+						}))}
+						format={METRIC_META.sentiment.format}
+						height={220}
+					/>
 				</CardContent>
 			</Card>
 		</div>
@@ -260,14 +248,15 @@ function SentimentPage() {
 	const infoContent = (
 		<p>
 			Each answer that mentions your brand is read for its tone toward it: positive, neutral, mixed or negative. Answers
-			that don't mention you aren't counted, and the trends cover a trailing week.
+			that don't mention you aren't counted. Like visibility, the figures count each prompt's latest answers; the prompt
+			table covers the whole period.
 		</p>
 	);
 
 	let content: React.ReactNode;
-	if (isLoading && !data) {
+	if ((isLoading && !data) || !landscape) {
 		content = <Skeleton className="h-[320px] w-full" />;
-	} else if (!data || data.summary.positiveShare === null) {
+	} else if (!data || brandOf(landscape).totals.sentiment === null) {
 		content = (
 			<Card>
 				<CardContent className="py-8 text-center text-muted-foreground">
@@ -279,14 +268,14 @@ function SentimentPage() {
 		content = (
 			<TooltipProvider delay={150}>
 				<div className="flex flex-col gap-6">
-					<SentimentOverview summary={data.summary} landscape={landscape} colors={colors} />
+					<SentimentOverview landscape={landscape} colors={colors} />
 					<div className="grid gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
 						<Card>
 							<CardHeader className={ROW_HEADER}>
 								<CardTitle>Sentiment by Model</CardTitle>
 							</CardHeader>
 							<CardContent className="overflow-x-auto">
-								{landscape ? <ModelGrid landscape={landscape} metric="sentiment" /> : <Skeleton className="h-48" />}
+								<ModelGrid landscape={landscape} metric="sentiment" />
 							</CardContent>
 						</Card>
 						<Quotes criticism={data.criticism} praise={data.praise} />

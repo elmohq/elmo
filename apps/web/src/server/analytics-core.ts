@@ -596,7 +596,6 @@ export interface PromptSentiment {
 }
 
 export interface BrandSentiment {
-	summary: SentimentSummary;
 	/** Prompts with at least one mention whose tone was called, least positive first. */
 	prompts: PromptSentiment[];
 	/** The negative and mixed verdicts the judge was surest of, one per prompt. */
@@ -606,7 +605,10 @@ export interface BrandSentiment {
 
 const QUOTES_PER_SIDE = 5;
 
-/** How the answers that mention the brand talk about it: overall, per prompt, and in their own words. */
+/**
+ * How the answers that mention the brand talk about it, per prompt over the window and in their own
+ * words. The current split is the brand's in the competitive landscape, which every headline shares.
+ */
 export async function getBrandSentiment(
 	brandId: string,
 	window: AnalyticsWindow,
@@ -614,8 +616,7 @@ export async function getBrandSentiment(
 ): Promise<BrandSentiment> {
 	const resolved = await resolveScope(brandId, filters);
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
-	const [totals, perPrompt, criticism, praise] = await Promise.all([
-		resolved.promptIds.length > 0 ? getMentionTotals(scope) : NO_VERDICTS,
+	const [perPrompt, criticism, praise] = await Promise.all([
 		resolved.promptIds.length > 0 ? getPerPromptRunStats(scope) : [],
 		getSentimentQuotes(scope, ["negative", "mixed"], QUOTES_PER_SIDE),
 		getSentimentQuotes(scope, ["positive"], QUOTES_PER_SIDE),
@@ -646,7 +647,6 @@ export async function getBrandSentiment(
 		})
 		.sort((a, b) => (a.sentiment.positiveShare ?? 0) - (b.sentiment.positiveShare ?? 0));
 	return {
-		summary: sentimentSummary(totals),
 		prompts,
 		criticism: criticism.flatMap(quote),
 		praise: praise.flatMap(quote),

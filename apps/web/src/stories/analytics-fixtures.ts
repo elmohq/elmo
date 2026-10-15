@@ -270,7 +270,6 @@ const summary = (positive: number, neutral: number, mixed: number, negative: num
 };
 
 export const mockBrandSentiment: BrandSentiment = {
-	summary: summary(412, 160, 38, 22),
 	prompts: [
 		{ promptId: "p5", value: "cheapest crm for startups", tags: ["pricing"], sentiment: summary(1, 4, 0, 2) },
 		{

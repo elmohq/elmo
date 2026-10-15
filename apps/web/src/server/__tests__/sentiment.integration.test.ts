@@ -2,7 +2,7 @@ import type { MentionAssessmentRecord, RunMentionAssessments } from "@workspace/
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getResponseMatches, getResponseToneCounts, type ResponseSearchScope } from "@/lib/postgres-read";
 import type { Tone } from "@/lib/tone";
-import { getBrandSentiment } from "@/server/analytics-core";
+import { getBrandSentiment, getCompetitiveLandscape } from "@/server/analytics-core";
 import { createBrand, createPrompt, createRun, deleteBrand, rebuildRollups } from "@/test/integration/stats-fixtures";
 
 const window = { from: "2026-03-01", to: "2026-03-03", timezone: "UTC" };
@@ -142,9 +142,15 @@ describe("responses by sentiment", () => {
 });
 
 describe("brand sentiment", () => {
-	it("summarises the tone of the answers that mention the brand", async () => {
+	it("splits the current answers by tone from each prompt's latest day, as every headline does", async () => {
+		const brand = (await getCompetitiveLandscape(brandId, window)).companies[0];
+		// Pricing's latest answer has no tone; set-up's and reviews' latest are positive.
+		expect(brand.tones).toEqual({ positive: 2, neutral: 0, mixed: 0, negative: 0 });
+		expect(brand.totals.sentiment).toBe(1);
+	});
+
+	it("totals each prompt's tone over the whole period, least positive first", async () => {
 		const sentiment = await getBrandSentiment(brandId, window);
-		expect(sentiment.summary).toMatchObject({ positive: 3, mixed: 1, negative: 2, neutral: 0, positiveShare: 0.5 });
 		expect(sentiment.prompts.map((p) => [p.value, p.sentiment.positiveShare])).toEqual([
 			["acme pricing", 0],
 			["easiest crm to set up", 0.5],
