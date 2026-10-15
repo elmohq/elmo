@@ -19,6 +19,16 @@ For each prompt, Elmo shows:
 
 A high visibility score means AI models consistently mention your brand when answering that type of question. A low score suggests an opportunity to improve your content or SEO for that topic.
 
+## How Mentions Are Decided
+
+Elmo finds every place a response uses your brand's name, an alias, or one of its domains as a whole word, then a small language model bundled with Elmo reads the sentences around each one and decides whether the response is really talking about your brand. It runs on your own server; responses aren't sent anywhere for this.
+
+- **Counted** — the response talks about your brand, or cites a link to your site.
+- **Not counted** — the name means something else ("an apple a day"), refers to a different company with the same name, or the response says it has no information about your brand.
+- **Uncertain** — the model couldn't tell either way. These still count as mentions, so a real mention is never hidden.
+
+Competitors are judged the same way. When Elmo ships a new version of the model, past responses are re-judged in the background, so your history stays comparable.
+
 ## Filtering and Sorting
 
 You can filter prompts by tags and sort by score, trend direction, or recency. This helps you focus on:

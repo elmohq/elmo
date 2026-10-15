@@ -78,6 +78,11 @@ describe("mentionsStamp", () => {
 		],
 	};
 
+	it("changes when mentions start coming from the judge, or from a new judge", () => {
+		expect(mentionsStamp(config, "0.3.0")).not.toBe(mentionsStamp(config));
+		expect(mentionsStamp(config, "0.4.0")).not.toBe(mentionsStamp(config, "0.3.0"));
+	});
+
 	it("changes when the brand gains an alias", () => {
 		const withAlias = { ...config, brand: { ...config.brand, aliases: [...config.brand.aliases, "Acme Software"] } };
 		expect(mentionsStamp(withAlias)).not.toBe(mentionsStamp(config));
