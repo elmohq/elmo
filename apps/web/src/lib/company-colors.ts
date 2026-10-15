@@ -9,7 +9,7 @@ export const OTHERS_COLOR = "#cbd5e1";
 /** The deployment's chart colours, which the visibility charts use too. */
 export function useChartColors(): readonly string[] {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	const colors = context.clientConfig?.branding.chartColors;
+	const colors = context.clientConfig?.branding?.chartColors;
 	return colors && colors.length > 0 ? colors : DEFAULT_CHART_COLORS;
 }
 

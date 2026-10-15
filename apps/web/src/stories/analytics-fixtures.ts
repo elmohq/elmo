@@ -22,62 +22,128 @@ function buildDates(n: number, end = "2026-06-04"): string[] {
 const DATES = buildDates(30);
 const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
 
-// AI visibility: a mild upward wave settling around 72%.
-const visibilityTimeSeries = DATES.map((date, i) => ({
-	date,
-	overall: clamp(58 + i * 0.5 + 7 * Math.sin(i / 3.5)),
-	nonBranded: clamp(40 + i * 0.4 + 6 * Math.sin(i / 4)),
-	branded: clamp(90 + 4 * Math.sin(i / 5)),
-}));
+const MODELS = ["chatgpt", "claude", "gemini", "perplexity", "google-ai-overview"];
 
-// Sentiment: positive share of mentions with a clear tone, drifting from the mid-50s to the mid-60s.
-const sentimentTimeSeries = DATES.map((date, i) => ({
-	date,
-	positive: clamp(55 + i * 0.35 + 5 * Math.sin(i / 3)),
-	negative: clamp(9 - i * 0.1 + 2 * Math.sin(i / 4)),
-}));
+const wave = (base: number, amp: number, phase: number, drift: number, digits = 3) =>
+	DATES.map((_, i) => Number((base + drift * i + amp * Math.sin(i / 4 + phase)).toFixed(digits)));
 
-// Position: the brand named second or third on average, edging toward first.
-const positionTimeSeries = DATES.map((date, i) => ({
-	date,
-	average: Math.round((2.4 - i * 0.02 + 0.2 * Math.sin(i / 3)) * 10) / 10,
-}));
+// Each company's overall standing; per-day and per-model values wobble around it.
+const COMPANIES = [
+	{ name: "Acme", domain: "acme.com", isBrand: true, visibility: 0.62, share: 0.31, sentiment: 0.65, position: 1.8 },
+	{
+		name: "HubSpot",
+		domain: "hubspot.com",
+		isBrand: false,
+		visibility: 0.71,
+		share: 0.27,
+		sentiment: 0.52,
+		position: 1.6,
+	},
+	{
+		name: "Salesforce",
+		domain: "salesforce.com",
+		isBrand: false,
+		visibility: 0.44,
+		share: 0.17,
+		sentiment: 0.44,
+		position: 2.4,
+	},
+	{
+		name: "Pipedrive",
+		domain: "pipedrive.com",
+		isBrand: false,
+		visibility: 0.29,
+		share: 0.11,
+		sentiment: 0.31,
+		position: 2.9,
+	},
+	{ name: "Zoho", domain: "zoho.com", isBrand: false, visibility: 0.18, share: 0.07, sentiment: 0.47, position: 3.1 },
+	{
+		name: "Freshworks",
+		domain: "freshworks.com",
+		isBrand: false,
+		visibility: 0.12,
+		share: 0.05,
+		sentiment: 0.37,
+		position: 3.4,
+	},
+];
+
+const METRICS = ["visibility", "share", "sentiment", "position"] as const;
+
+export const mockLandscape = {
+	dates: DATES,
+	models: MODELS,
+	companies: COMPANIES.map((c, ci) => ({
+		name: c.name,
+		isBrand: c.isBrand,
+		domain: c.domain,
+		totals: { visibility: c.visibility, share: c.share, sentiment: c.sentiment, position: c.position },
+		byModel: Object.fromEntries(
+			MODELS.map((model, mi) => {
+				const wobble = Math.sin((ci + 3) * (mi + 1)) * 0.12;
+				return [
+					model,
+					Object.fromEntries(
+						METRICS.map((metric) => [
+							metric,
+							metric === "position" ? Math.max(1, c.position * (1 + wobble)) : Math.min(1, c[metric] * (1 + wobble)),
+						]),
+					),
+				];
+			}),
+		),
+		series: {
+			visibility: wave(c.visibility - 0.04, 0.03, ci, 0.0015),
+			share: wave(c.share - 0.02, 0.015, ci + 1, 0.0008),
+			sentiment: wave(c.sentiment - 0.03, 0.03, ci + 2, 0.001),
+			position: wave(c.position + 0.2, 0.15, ci + 3, -0.007),
+		},
+	})),
+};
+
+const brandSeries = (metric: (typeof METRICS)[number]) =>
+	DATES.map((date, i) => ({ date, value: mockLandscape.companies[0].series[metric][i] }));
+
+const headline = (metric: (typeof METRICS)[number]) => {
+	const series = brandSeries(metric);
+	const first = series[0].value;
+	const last = series[series.length - 1].value;
+	return { value: last, change: last - first, series };
+};
 
 export const mockDashboardSummary = {
 	totalPrompts: 42,
 	totalRuns: 3120,
-	averageVisibility: 68,
-	nonBrandedVisibility: 51,
-	brandedVisibility: 92,
 	lastUpdatedAt: "2026-06-04T09:12:00.000Z",
-	visibilityTimeSeries,
-	citationTimeSeries: [],
-	sentiment: { positive: 1210, neutral: 560, negative: 140, mixed: 90 },
-	sentimentTimeSeries,
-	averagePosition: 1.8,
-	positionTimeSeries,
+	cards: {
+		visibility: headline("visibility"),
+		share: headline("share"),
+		sentiment: headline("sentiment"),
+		position: headline("position"),
+	},
+	landscape: mockLandscape,
 };
 
-// Share of voice: brand hovering in the low-30s against three competitors.
+// Share of voice: brand hovering in the low-30s against its competitors.
 const shareTimeSeries = DATES.map((date, i) => ({
 	date,
 	share: clamp(29 + i * 0.18 + 4 * Math.sin(i / 4.5)),
 }));
 
-// Headline + entries are kept consistent with the trend's last point (35%), the
-// way the server now derives them (LVCF current standings).
-const sovLastShare = shareTimeSeries[shareTimeSeries.length - 1].share ?? 0;
 export const mockShareOfVoice = {
 	brandName: "Acme",
-	brandShare: sovLastShare / 100,
+	brandShare: 0.31,
 	totalRuns: 3120,
 	model: null,
 	shareTimeSeries,
 	entries: [
-		{ name: "Acme", mentions: 1050, share: 0.35, isBrand: true, prompts: 31 },
-		{ name: "Globex", mentions: 870, share: 0.29, isBrand: false, prompts: 28 },
-		{ name: "Initech", mentions: 660, share: 0.22, isBrand: false, prompts: 24 },
-		{ name: "Umbrella", mentions: 420, share: 0.14, isBrand: false, prompts: 19 },
+		{ name: "Acme", mentions: 1050, share: 0.31, isBrand: true, prompts: 31 },
+		{ name: "HubSpot", mentions: 915, share: 0.27, isBrand: false, prompts: 28 },
+		{ name: "Salesforce", mentions: 576, share: 0.17, isBrand: false, prompts: 24 },
+		{ name: "Pipedrive", mentions: 373, share: 0.11, isBrand: false, prompts: 19 },
+		{ name: "Zoho", mentions: 237, share: 0.07, isBrand: false, prompts: 12 },
+		{ name: "Freshworks", mentions: 170, share: 0.05, isBrand: false, prompts: 9 },
 	],
 };
 
