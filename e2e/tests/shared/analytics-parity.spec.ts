@@ -25,20 +25,21 @@ function dayStart(date: Date): string {
 }
 
 test.describe("dashboard and API parity", () => {
-  test("the visibility hero and GET /analytics report the same number", async ({ page, request }) => {
+  test("the visibility card and GET /analytics report the same number", async ({ page, request }) => {
     await page.goto(brandUrl());
 
-    // The sibling card also reads "<n>%", so the trailing word disambiguates.
-    const hero = page.getByText(/\d+%\s*Visibility/).first();
-    await expect(hero).toBeVisible({ timeout: 30_000 });
-    const rendered = Number((await hero.textContent())?.match(/(\d+)%/)?.[1]);
+    // Other cards also read "<n>%", so the figure is read from inside the Visibility card.
+    const card = page.getByRole("link", { name: /^AI Visibility/ });
+    const figure = card.getByText(/^(\d+%|—)$/).first();
+    await expect(figure).toBeVisible({ timeout: 30_000 });
+    const rendered = Number((await figure.textContent())?.match(/(\d+)%/)?.[1] ?? 0);
 
     const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?${lastMonth()}`, { headers: AUTH });
     expect(response.status()).toBe(200);
     const body = await response.json();
 
     // Ratios against a rendered percentage, each rounded once at its own edge.
-    // The page shows 0 where the API says "nothing to plot".
+    // The page shows a dash where the API says "nothing to plot".
     expect(Math.round((body.visibility.current ?? 0) * 100)).toBe(rendered);
   });
 
