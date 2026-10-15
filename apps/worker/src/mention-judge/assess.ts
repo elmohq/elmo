@@ -13,7 +13,6 @@ const CONFIDENT = 0.7;
 export type MentionVerdict = "mentioned" | "not_mentioned" | "uncertain";
 export type SentimentVerdict = "positive" | "neutral" | "negative" | "mixed" | "uncertain";
 
-/** Offsets into the answer of the passage a verdict rests on. */
 export interface Evidence {
 	start: number;
 	end: number;
@@ -83,7 +82,6 @@ interface JudgedWindow {
 	sentiment: Record<string, number>;
 }
 
-/** Probability-weighted sentiment over the passages about the entity, with the passage that most supports it. */
 function combineSentiment(
 	about: JudgedWindow[],
 ): Pick<MentionAssessment, "sentiment" | "sentimentProbabilities" | "evidence"> | null {
