@@ -1,4 +1,25 @@
-import { NO_VERDICTS, type VerdictSums } from "@/lib/rollup-read";
+// Imported by the browser too, so it reads nothing from the database layer.
+
+/** The mention judge's verdicts summed over runs that mention a company, as every verdict read selects them. */
+export interface VerdictSums {
+	/** Runs by the judge's confident sentiment toward the company. */
+	positive_runs: number;
+	neutral_runs: number;
+	negative_runs: number;
+	mixed_runs: number;
+	/** The company's position summed over the runs that rank it; see `averagePosition`. */
+	position_sum: number;
+	positioned_runs: number;
+}
+
+export const NO_VERDICTS: VerdictSums = {
+	positive_runs: 0,
+	neutral_runs: 0,
+	negative_runs: 0,
+	mixed_runs: 0,
+	position_sum: 0,
+	positioned_runs: 0,
+};
 
 export interface SentimentCounts {
 	positive: number;

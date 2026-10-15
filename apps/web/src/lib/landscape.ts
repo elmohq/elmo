@@ -2,15 +2,8 @@
  * The brand and each tracked competitor on the same four measures, overall, per model and per day,
  * built from rollup sums. Shares are fractions of 1; position is an average place, 1 being named first.
  */
-import {
-	type CompetitorModelSums,
-	type DailyCompetitorSums,
-	type DailyRunSums,
-	type ModelRunSums,
-	NO_VERDICTS,
-	type VerdictSums,
-} from "@/lib/rollup-read";
-import { SENTIMENT_WINDOW_DAYS, sentimentSummary } from "@/lib/sentiment";
+import type { CompetitorModelSums, DailyCompetitorSums, DailyRunSums, ModelRunSums } from "@/lib/rollup-read";
+import { NO_VERDICTS, SENTIMENT_WINDOW_DAYS, sentimentSummary, type VerdictSums } from "@/lib/sentiment";
 import { shiftDateStr } from "@/lib/timezone-utils";
 
 export const LANDSCAPE_METRICS = ["visibility", "share", "sentiment", "position"] as const;
