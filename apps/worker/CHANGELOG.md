@@ -1,5 +1,14 @@
 # @workspace/worker
 
+## 0.5.1
+
+### Patch Changes
+
+- Improve rollup backfill speed.
+- @workspace/config@0.5.1
+  - @workspace/deployment@0.5.1
+  - @workspace/lib@0.5.1
+
 ## 0.5.0
 
 ### Minor Changes
