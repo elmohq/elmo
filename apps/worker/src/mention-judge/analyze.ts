@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import {
 	analyzeRunMentions,
 	judgedSubject,
@@ -99,6 +100,25 @@ export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnal
 			};
 		},
 	};
+}
+
+/**
+ * For an answer that's already paid for: a judge that fails falls back to matching names rather
+ * than losing it. `judged` says which happened, so the caller can leave the run for a replay.
+ */
+export async function analyzeOrMatch(
+	analyzer: MentionAnalyzer,
+	text: string | null,
+	config: MentionConfig,
+	previous?: RunMentionAssessments | null,
+): Promise<{ mentions: RunMentions; judged: boolean }> {
+	try {
+		return { mentions: await analyzer.analyze(text, config, previous), judged: true };
+	} catch (error) {
+		console.error("Mention judge failed; matching names instead:", error);
+		Sentry.captureException(error);
+		return { mentions: await substringAnalyzer.analyze(text, config), judged: false };
+	}
 }
 
 let current: MentionAnalyzer = substringAnalyzer;
