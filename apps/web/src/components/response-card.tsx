@@ -84,23 +84,7 @@ export function ResponseCard({
 
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
-					<div className="flex flex-wrap gap-1.5">
-						{run.brandMentioned && brandName && (
-							<Badge className="text-xs font-normal">
-								<SiteIcon domain={domainFor(brandName)} size="xs" />
-								{brandName}
-							</Badge>
-						)}
-						{[...new Set<string>(run.competitorsMentioned ?? [])].map((competitor) => (
-							<Badge key={competitor} variant="outline" className="text-xs font-normal">
-								<SiteIcon domain={domainFor(competitor)} size="xs" />
-								{competitor}
-							</Badge>
-						))}
-						{!run.brandMentioned && (!run.competitorsMentioned || run.competitorsMentioned.length === 0) && (
-							<span className="text-xs text-muted-foreground">None</span>
-						)}
-					</div>
+					<MentionedBrands run={run} brandName={brandName} domainFor={domainFor} />
 				</div>
 
 				<MentionEvidence assessments={run.mentionAssessments} text={text} brandName={brandName} />
@@ -128,6 +112,55 @@ export function ResponseCard({
 		</Card>
 	);
 }
+
+/** Each company the answer counts as mentioning, with its position among them when the judge ranked it. */
+function MentionedBrands({
+	run,
+	brandName,
+	domainFor,
+}: {
+	run: ResponseCardRun;
+	brandName?: string;
+	domainFor: (name: string) => string | undefined;
+}) {
+	const competitors = [...new Set<string>(run.competitorsMentioned ?? [])];
+	if (!run.brandMentioned && competitors.length === 0) {
+		return <span className="text-xs text-muted-foreground">None</span>;
+	}
+	const positions = run.mentionAssessments;
+	return (
+		<div className="flex flex-wrap gap-1.5">
+			{run.brandMentioned && brandName && (
+				<Badge className="text-xs font-normal">
+					<SiteIcon domain={domainFor(brandName)} size="xs" />
+					{brandName}
+					<Position value={positions?.brand?.position} />
+				</Badge>
+			)}
+			{competitors.map((competitor) => (
+				<Badge key={competitor} variant="outline" className="text-xs font-normal">
+					<SiteIcon domain={domainFor(competitor)} size="xs" />
+					{competitor}
+					<Position value={positions?.competitors?.[competitor]?.position} />
+				</Badge>
+			))}
+		</div>
+	);
+}
+
+function Position({ value }: { value?: number }) {
+	if (value === undefined) return null;
+	return (
+		<span className="opacity-60 tabular-nums" title={`Named ${ordinal(value)} among the tracked companies`}>
+			#{value}
+		</span>
+	);
+}
+
+const ordinal = (n: number) => {
+	const suffix = ["th", "st", "nd", "rd"][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? "th";
+	return `${n}${suffix}`;
+};
 
 const REASONS: Record<string, string> = {
 	other_meaning: "the name is used in another sense",

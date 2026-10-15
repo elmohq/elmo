@@ -1,4 +1,4 @@
-import type { DailySentiment, MentionTotals } from "@/lib/rollup-read";
+import type { DailyVerdicts, MentionTotals } from "@/lib/rollup-read";
 
 export interface SentimentCounts {
 	positive: number;
@@ -30,23 +30,57 @@ const share = (part: number, whole: number) => (whole > 0 ? Math.round((part / w
  * `windowDays - 1` days before `dateRange` so its first days get a full window.
  */
 export function sentimentSeries(
-	rows: DailySentiment[],
+	rows: DailyVerdicts[],
 	dateRange: string[],
 	windowDays = SENTIMENT_WINDOW_DAYS,
 ): SentimentPoint[] {
+	return trailing(rows, dateRange, windowDays, (window) => {
+		const clear = window.positive_runs + window.neutral_runs + window.negative_runs + window.mixed_runs;
+		return { positive: share(window.positive_runs, clear), negative: share(window.negative_runs, clear) };
+	});
+}
+
+export interface PositionPoint {
+	date: string;
+	/** The brand's average position over the trailing window, 1 being named first; null when never ranked. */
+	average: number | null;
+}
+
+/** One decimal: positions are small whole numbers, so a finer average only adds noise. */
+export function averagePosition(sum: number, runs: number): number | null {
+	return runs > 0 ? Math.round((sum / runs) * 10) / 10 : null;
+}
+
+/** The brand's average position per day over a trailing window, for the same reason as `sentimentSeries`. */
+export function positionSeries(
+	rows: DailyVerdicts[],
+	dateRange: string[],
+	windowDays = SENTIMENT_WINDOW_DAYS,
+): PositionPoint[] {
+	return trailing(rows, dateRange, windowDays, (window) => ({
+		average: averagePosition(window.position_sum, window.positioned_runs),
+	}));
+}
+
+type Sums = Omit<DailyVerdicts, "date">;
+
+function trailing<T>(rows: DailyVerdicts[], dateRange: string[], windowDays: number, read: (window: Sums) => T) {
 	const byDate = new Map(rows.map((row) => [row.date, row]));
 	return dateRange.map((date) => {
-		let positive = 0;
-		let negative = 0;
-		let clear = 0;
+		const window: Sums = {
+			positive_runs: 0,
+			neutral_runs: 0,
+			negative_runs: 0,
+			mixed_runs: 0,
+			position_sum: 0,
+			positioned_runs: 0,
+		};
 		for (let back = 0; back < windowDays; back++) {
 			const row = byDate.get(shiftDate(date, -back));
 			if (!row) continue;
-			positive += row.positive_runs;
-			negative += row.negative_runs;
-			clear += row.positive_runs + row.neutral_runs + row.negative_runs + row.mixed_runs;
+			for (const key of Object.keys(window) as (keyof Sums)[]) window[key] += row[key];
 		}
-		return { date, positive: share(positive, clear), negative: share(negative, clear) };
+		return { date, ...read(window) };
 	});
 }
 

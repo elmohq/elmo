@@ -16,12 +16,15 @@ import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
 import { lookbackSchema } from "@/lib/lookback";
 import {
-	getDailySentiment,
+	getDailyVerdicts,
 	getMentionTotals,
 	getPerPromptDailyCitationDomains,
 	getPerPromptDailyRuns,
 } from "@/lib/rollup-read";
 import {
+	averagePosition,
+	type PositionPoint,
+	positionSeries,
 	SENTIMENT_WINDOW_DAYS,
 	type SentimentCounts,
 	type SentimentPoint,
@@ -50,6 +53,9 @@ export interface DashboardSummaryResponse {
 	citationTimeSeries: CitationTimeSeriesPoint[];
 	sentiment: SentimentCounts;
 	sentimentTimeSeries: SentimentPoint[];
+	/** The brand's average position among the tracked companies an answer names; null when never ranked. */
+	averagePosition: number | null;
+	positionTimeSeries: PositionPoint[];
 	lastUpdatedAt: string | null;
 }
 
@@ -103,12 +109,12 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			.map((p) => p.id);
 
 		const scope = { brandId: data.brandId, from: fromDateStr, to: toDateStr, timezone, promptIds: enabledPromptIds };
-		const [totals, perPromptVisibility, perPromptCitations, dailySentiment] = await Promise.all([
+		const [totals, perPromptVisibility, perPromptCitations, dailyVerdicts] = await Promise.all([
 			getMentionTotals(scope),
 			getPerPromptDailyRuns(scope),
 			getPerPromptDailyCitationDomains(scope),
 			// Reaching back so the trailing window is full from the first plotted day.
-			getDailySentiment({
+			getDailyVerdicts({
 				...scope,
 				from: shiftDate(fromDateStr, 1 - SENTIMENT_WINDOW_DAYS),
 			}),
@@ -171,7 +177,9 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			visibilityTimeSeries,
 			citationTimeSeries,
 			sentiment: sentimentCounts(totals),
-			sentimentTimeSeries: sentimentSeries(dailySentiment, dateRange),
+			sentimentTimeSeries: sentimentSeries(dailyVerdicts, dateRange),
+			averagePosition: averagePosition(totals.position_sum, totals.positioned_runs),
+			positionTimeSeries: positionSeries(dailyVerdicts, dateRange),
 			lastUpdatedAt,
 		};
 	});

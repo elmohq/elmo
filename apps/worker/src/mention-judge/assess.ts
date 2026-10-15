@@ -27,6 +27,10 @@ export interface MentionAssessment {
 	sentiment?: SentimentVerdict;
 	sentimentProbabilities?: Record<string, number>;
 	evidence?: Evidence;
+	/** For a verdict that counts: the offset in the answer of its first mention of the entity. */
+	firstMention?: number;
+	/** For a verdict that counts: how many times the answer mentions the entity, among the passages judged. */
+	mentionCount?: number;
 }
 
 const span = ({ start, end }: MatchWindow): Evidence => ({ start, end });
@@ -47,9 +51,12 @@ export async function assessMention(
 	answer: string,
 ): Promise<MentionAssessment | null> {
 	const terms = [entity.name, ...(entity.aliases ?? []), ...(entity.domains ?? [])];
-	const { windows, linkMatches } = matchWindows(answer, terms);
-	const linksToEntity = linkMatches > 0;
-	if (windows.length === 0) return linksToEntity ? { mention: "mentioned", mentionProbability: 1 } : null;
+	const { windows, linkHits } = matchWindows(answer, terms);
+	const linksToEntity = linkHits.length > 0;
+	if (windows.length === 0) {
+		if (!linksToEntity) return null;
+		return { mention: "mentioned", mentionProbability: 1, firstMention: linkHits[0], mentionCount: linkHits.length };
+	}
 
 	const judged: JudgedWindow[] = [];
 	for (const window of windows) {
@@ -72,7 +79,22 @@ export async function assessMention(
 	const assessment = mentionFromPassages(judged, linksToEntity);
 	const sentiment = combineSentiment(judged.filter((j) => j.pMention >= 0.5));
 	if (sentiment) Object.assign(assessment, sentiment);
+	if (assessment.mention !== "not_mentioned") Object.assign(assessment, placement(judged, linkHits));
 	return assessment;
+}
+
+/**
+ * Where and how often the answer mentions the entity, counting only matches in passages that
+ * aren't confidently about something else, plus links: the inputs to its position among the
+ * companies the answer names.
+ */
+function placement(
+	judged: JudgedWindow[],
+	linkHits: number[],
+): Pick<MentionAssessment, "firstMention" | "mentionCount"> {
+	const hits = [...judged.filter((j) => j.pMention > 1 - CONFIDENT).flatMap((j) => j.window.hits), ...linkHits];
+	if (hits.length === 0) return {};
+	return { firstMention: Math.min(...hits), mentionCount: new Set(hits).size };
 }
 
 interface JudgedWindow {

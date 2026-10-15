@@ -34,6 +34,9 @@ export interface MentionTotals extends RunSums {
 	neutral_runs: number;
 	negative_runs: number;
 	mixed_runs: number;
+	/** The brand's position summed over the runs that rank it; see `averagePosition`. */
+	position_sum: number;
+	positioned_runs: number;
 	/** Distinct prompts with a run in scope. */
 	prompts: number;
 	/** Distinct prompts in which the brand was mentioned at least once. */
@@ -141,6 +144,8 @@ export async function getMentionTotals(scope: AnalyticsScope): Promise<MentionTo
 			coalesce(sum(neutral_runs), 0)::int AS neutral_runs,
 			coalesce(sum(negative_runs), 0)::int AS negative_runs,
 			coalesce(sum(mixed_runs), 0)::int AS mixed_runs,
+			coalesce(sum(position_sum), 0)::int AS position_sum,
+			coalesce(sum(positioned_runs), 0)::int AS positioned_runs,
 			count(DISTINCT prompt_id)::int AS prompts,
 			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned_runs > 0)::int AS brand_mentioned_prompts,
 			${isoInstant(sql`max(last_run_at)`)} AS last_run_at
@@ -460,23 +465,27 @@ export async function getFanoutPromptTotals(scope: AnalyticsScope): Promise<Fano
 	`);
 }
 
-export interface DailySentiment {
+export interface DailyVerdicts {
 	date: string;
 	positive_runs: number;
 	neutral_runs: number;
 	negative_runs: number;
 	mixed_runs: number;
+	position_sum: number;
+	positioned_runs: number;
 }
 
-/** Per local day, the runs mentioning the brand by the judge's sentiment toward it. */
-export async function getDailySentiment(scope: AnalyticsScope): Promise<DailySentiment[]> {
-	return queryPg<DailySentiment>(sql`
+/** Per local day, the runs mentioning the brand by the judge's sentiment toward it, and its position. */
+export async function getDailyVerdicts(scope: AnalyticsScope): Promise<DailyVerdicts[]> {
+	return queryPg<DailyVerdicts>(sql`
 		SELECT
 			to_char(${localDate(sql`bucket`, scope.timezone)}, 'YYYY-MM-DD') AS date,
 			sum(positive_runs)::int AS positive_runs,
 			sum(neutral_runs)::int AS neutral_runs,
 			sum(negative_runs)::int AS negative_runs,
-			sum(mixed_runs)::int AS mixed_runs
+			sum(mixed_runs)::int AS mixed_runs,
+			sum(position_sum)::int AS position_sum,
+			sum(positioned_runs)::int AS positioned_runs
 		FROM rollup_prompt_runs
 		WHERE ${rollupScope(scope)}
 		GROUP BY 1

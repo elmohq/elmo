@@ -43,6 +43,9 @@ const positiveBrand: MentionAssessmentRecord = {
 	sentiment: "positive",
 	sentimentProbabilities: { positive: 0.91, neutral: 0.06, negative: 0.01, mixed: 0.02 },
 	evidence: evidence("For a small sales team, **Acme** is the easiest CRM to get running"),
+	firstMention: ANSWER.indexOf("Acme"),
+	mentionCount: 1,
+	position: 1,
 };
 
 const meta = {
@@ -126,7 +129,7 @@ export const CompetitorNotCounted: Story = {
 			mentionAssessments: {
 				brand: positiveBrand,
 				competitors: {
-					Globex: { mention: "mentioned", probability: 0.96, sentiment: "negative" },
+					Globex: { mention: "mentioned", probability: 0.96, sentiment: "negative", position: 2 },
 					Initech: {
 						mention: "not_mentioned",
 						probability: 0.08,

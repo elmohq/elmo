@@ -1,5 +1,5 @@
 {
-  "id": "96a5acf0-c63d-4d8e-958f-fe93e7e6fb65",
+  "id": "735342ce-897b-4a87-af5e-2770865c70c8",
   "prevId": "66edbc5d-c90a-41ef-af01-a067929576e0",
   "version": "7",
   "dialect": "postgresql",
@@ -1441,6 +1441,48 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "positive_runs": {
+          "name": "positive_runs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "neutral_runs": {
+          "name": "neutral_runs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "negative_runs": {
+          "name": "negative_runs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "mixed_runs": {
+          "name": "mixed_runs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "position_sum": {
+          "name": "position_sum",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "positioned_runs": {
+          "name": "positioned_runs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         }
       },
       "indexes": {
@@ -1650,6 +1692,20 @@
         },
         "mixed_runs": {
           "name": "mixed_runs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "position_sum": {
+          "name": "position_sum",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "positioned_runs": {
+          "name": "positioned_runs",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
