@@ -29,6 +29,11 @@ export interface RunSums {
 export interface MentionTotals extends RunSums {
 	/** Runs that mentioned neither the brand nor any competitor. */
 	no_mention_runs: number;
+	/** Runs mentioning the brand, by the mention judge's confident sentiment toward it. */
+	positive_runs: number;
+	neutral_runs: number;
+	negative_runs: number;
+	mixed_runs: number;
 	/** Distinct prompts with a run in scope. */
 	prompts: number;
 	/** Distinct prompts in which the brand was mentioned at least once. */
@@ -132,6 +137,10 @@ export async function getMentionTotals(scope: AnalyticsScope): Promise<MentionTo
 		SELECT
 			${runSums},
 			coalesce(sum(no_mention_runs), 0)::int AS no_mention_runs,
+			coalesce(sum(positive_runs), 0)::int AS positive_runs,
+			coalesce(sum(neutral_runs), 0)::int AS neutral_runs,
+			coalesce(sum(negative_runs), 0)::int AS negative_runs,
+			coalesce(sum(mixed_runs), 0)::int AS mixed_runs,
 			count(DISTINCT prompt_id)::int AS prompts,
 			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned_runs > 0)::int AS brand_mentioned_prompts,
 			${isoInstant(sql`max(last_run_at)`)} AS last_run_at

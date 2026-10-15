@@ -12,6 +12,7 @@ import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
+import { isCalendarDay } from "@/lib/analytics-sql";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
 import { lookbackSchema } from "@/lib/lookback";
@@ -21,7 +22,14 @@ import {
 	getPerPromptDailyCitationDomains,
 	getPerPromptDailyRuns,
 } from "@/lib/rollup-read";
-import { type SentimentCounts, type SentimentPoint, sentimentSeries, sentimentTotals } from "@/lib/sentiment";
+import {
+	SENTIMENT_WINDOW_DAYS,
+	type SentimentCounts,
+	type SentimentPoint,
+	sentimentCounts,
+	sentimentSeries,
+	shiftDate,
+} from "@/lib/sentiment";
 import { resolveBrandWindow } from "@/server/brand-window";
 
 interface VisibilityTimeSeriesPoint {
@@ -100,7 +108,11 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			getMentionTotals(scope),
 			getPerPromptDailyRuns(scope),
 			getPerPromptDailyCitationDomains(scope),
-			getDailySentiment(scope),
+			// Reaching back so the trailing window is full from the first plotted day.
+			getDailySentiment({
+				...scope,
+				from: isCalendarDay(fromDateStr) ? shiftDate(fromDateStr, 1 - SENTIMENT_WINDOW_DAYS) : fromDateStr,
+			}),
 		]);
 
 		const totalRuns = totals.runs;
@@ -159,7 +171,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			brandedVisibility,
 			visibilityTimeSeries,
 			citationTimeSeries,
-			sentiment: sentimentTotals(dailySentiment),
+			sentiment: sentimentCounts(totals),
 			sentimentTimeSeries: sentimentSeries(dailySentiment, dateRange),
 			lastUpdatedAt,
 		};

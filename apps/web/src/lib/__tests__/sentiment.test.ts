@@ -22,6 +22,11 @@ describe("sentimentSeries", () => {
 		]);
 	});
 
+	it("fills the first days' window from mentions before the range", () => {
+		const series = sentimentSeries([day("2026-02-28", 0, 3), day("2026-03-01", 1, 0)], dates.slice(0, 1), 2);
+		expect(series[0]).toMatchObject({ positive: 25, negative: 75 });
+	});
+
 	it("has no value for a stretch without judged mentions", () => {
 		const series = sentimentSeries([day("2026-03-01", 1, 0)], dates, 2);
 		expect(series.map((p) => p.positive)).toEqual([100, 100, null, null]);

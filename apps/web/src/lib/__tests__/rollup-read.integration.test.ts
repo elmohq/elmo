@@ -305,6 +305,11 @@ describe("prompt mention stats", () => {
 			competitor_runs: 2,
 			competitor_mentions: 3,
 			no_mention_runs: 1,
+			// No judge ran on these runs, so none has a sentiment.
+			positive_runs: 0,
+			neutral_runs: 0,
+			negative_runs: 0,
+			mixed_runs: 0,
 			prompts: 1,
 			brand_mentioned_prompts: 1,
 			last_run_at: "2026-03-02T11:00:00.000Z",
