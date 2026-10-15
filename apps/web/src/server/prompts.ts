@@ -424,9 +424,11 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 				.orderBy(desc(promptRuns.createdAt))
 				.limit(data.limit)
 				.offset(offset),
+			// Joined like the list, which leaves out runs not yet judged.
 			db
 				.select({ count: count() })
 				.from(promptRuns)
+				.innerJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
 		]);
 

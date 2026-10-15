@@ -17,6 +17,8 @@ import {
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
+import { mentionJudgeLoaded } from "../mention-judge/analyze";
+import { requestUnjudgedRuns } from "./judge-runs";
 import { PROMPT_JOB_OPTIONS } from "./process-prompt";
 import { requestStaleReprocesses } from "./reprocess";
 
@@ -44,13 +46,24 @@ export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[
 
 		try {
 			await runMaintenanceCheck();
-			const reprocesses = await requestStaleReprocesses();
-			if (reprocesses > 0) console.log(`[schedule-maintenance] Requested ${reprocesses} brand reprocesses`);
 		} catch (error) {
 			console.error("[schedule-maintenance] Maintenance check failed:", error);
 			throw error; // Will trigger retry
 		}
+		// Never holds up scheduling prompts, and is retried by the next tick anyway.
+		await requestJudging().catch((error) => {
+			console.error("[schedule-maintenance] Requesting judging failed:", error);
+			Sentry.captureException(error);
+		});
 	}
+}
+
+async function requestJudging(): Promise<void> {
+	if (!mentionJudgeLoaded()) return;
+	const reprocesses = await requestStaleReprocesses();
+	if (reprocesses > 0) console.log(`[schedule-maintenance] Requested ${reprocesses} brand reprocesses`);
+	const unjudged = await requestUnjudgedRuns();
+	if (unjudged > 0) console.log(`[schedule-maintenance] Asked again to judge ${unjudged} runs`);
 }
 
 type EnabledBrand = Awaited<ReturnType<typeof db.query.brands.findMany>>[number];

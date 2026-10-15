@@ -49,6 +49,16 @@ Run Drizzle migrations to create the schema:
 pnpm --filter @workspace/lib exec drizzle-kit migrate
 ```
 
+## Mention Judge
+
+The worker decides which answers mention a brand with a model it loads from `apps/worker/mention-judge`. Copy it there from the published image (needs Docker):
+
+```bash
+pnpm --filter @workspace/worker judge:pull
+```
+
+Without it the worker still records answers, but they stay unjudged, and out of the dashboard, until it's there and the worker restarts.
+
 ## Start Development Servers
 
 Run all development servers in parallel:

@@ -1,16 +1,16 @@
 import * as Sentry from "@sentry/node";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
-import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspace/lib/analysis-versions";
+import { EXTRACTION_STAMP } from "@workspace/lib/analysis-versions";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { insertRuns } from "@workspace/lib/db/runs";
 import { type Brand, brands, citations, competitors, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
-import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
+import { type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
-import { insertCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
+import { insertCitations, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
@@ -28,6 +28,7 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
 import { trackWorkerEvent } from "../telemetry";
+import { sendJudgeRuns } from "./judge-runs";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -113,12 +114,6 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 	}
 
 	return { prompt, brand };
-}
-
-async function loadMentionConfig(conn: DbConnection, brandId: string): Promise<MentionConfig> {
-	const [brand] = await conn.select().from(brands).where(eq(brands.id, brandId));
-	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));
-	return mentionConfigFrom(brand, brandCompetitors);
 }
 
 /**
@@ -255,12 +250,9 @@ async function runModelIteration({
 
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
-		// One transaction so a reprocess never sees a run without its citations.
+		// One transaction so a reprocess never sees a run without its citations. Mentions come
+		// from the judging job, apart from this call, so judging never asks the provider again.
 		const promptRunId = await db.transaction(async (tx) => {
-			// Read here rather than at the start of the cycle: a config edit made while the
-			// provider call ran would otherwise be stamped onto this run as current.
-			const mentionConfig = await loadMentionConfig(tx, brand.id);
-			const stamps = currentAnalysisVersions(mentionConfig);
 			const [run] = await insertRuns(tx, [
 				{
 					promptId,
@@ -272,9 +264,7 @@ async function runModelIteration({
 					rawOutput,
 					webQueries,
 					textContent: text,
-					extractionStamp: stamps[EXTRACTION_KEY],
-					...analyzeRunMentions(text, mentionConfig),
-					mentionsStamp: stamps[MENTIONS_KEY],
+					extractionStamp: EXTRACTION_STAMP,
 				},
 			]);
 			await insertCitations(
@@ -282,10 +272,13 @@ async function runModelIteration({
 				{ id: run.id, promptId, brandId: brand.id, model: config.model, createdAt: run.createdAt },
 				extractedCitations,
 			);
-			await markDirty(tx, brand.id, [run.createdAt]);
 			return run.id;
 		});
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
+		// The answer is saved either way; a job that fails to queue here is picked up by the sweep.
+		await sendJudgeRuns(getBoss(), [promptRunId]).catch((error) =>
+			console.error(`${logPrefix} Couldn't queue judging for run ${promptRunId}; the sweep will:`, error),
+		);
 
 		await recordUsageEvent({
 			organizationId: brand.organizationId,

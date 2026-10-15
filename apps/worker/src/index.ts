@@ -9,7 +9,9 @@ import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
+import { JUDGE_RUNS_QUEUE } from "./jobs/judge-runs";
 import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
+import { loadMentionAnalyzer, MENTION_JUDGE_DIR } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 
@@ -33,6 +35,15 @@ async function main() {
 	// missing API keys, and per-provider target errors before any job runs.
 	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
 	console.log("SCRAPE_TARGETS validated");
+
+	// Before anything stamps runs or brands: the stamp names the judge, so it has to be known. Without
+	// it the worker still records answers; they wait unjudged until a restart loads it.
+	const analyzer = await loadMentionAnalyzer().catch((error) => {
+		console.error(`Couldn't load the mention judge from ${MENTION_JUDGE_DIR}; answers wait unjudged:`, error);
+		Sentry.captureException(error);
+		return null;
+	});
+	if (analyzer) console.log(`Mention judge ${analyzer.judgeVersion} loaded`);
 
 	boss.on("error", (error) => {
 		console.error("pg-boss error:", error);
@@ -100,6 +111,13 @@ async function main() {
 		// A full mark scans all of prompt_runs once.
 		expireInSeconds: 60 * 60,
 	});
+	await boss.createQueue(JUDGE_RUNS_QUEUE, {
+		policy: "stately",
+		retryLimit: 5,
+		retryDelay: 30,
+		retryBackoff: true,
+		expireInSeconds: 60 * 10,
+	});
 	await boss.createQueue(REPROCESS_QUEUE, {
 		policy: "stately",
 		retryLimit: 2,
@@ -133,7 +151,7 @@ async function main() {
 	await initializePipeline(boss);
 
 	// Register job handlers
-	await registerHandlers(boss);
+	await registerHandlers(boss, { judging: analyzer !== null });
 	console.log("All handlers registered, worker is ready");
 
 	await startBackfills();

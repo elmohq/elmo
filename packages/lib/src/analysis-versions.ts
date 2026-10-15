@@ -11,6 +11,12 @@ export type AnalysisVersions = Record<string, string>;
 export const EXTRACTION_KEY = "extraction";
 export const MENTIONS_KEY = "mentions";
 
-export function currentAnalysisVersions(config: MentionConfig): AnalysisVersions {
-	return { [EXTRACTION_KEY]: String(EXTRACTOR_VERSION), [MENTIONS_KEY]: mentionsStamp(config) };
+/** The extraction stamp alone: it depends on the code, not on any brand's config. */
+export const EXTRACTION_STAMP = String(EXTRACTOR_VERSION);
+
+/** What brands that predate the judge carry: their mentions were matched by name, so all are stale. */
+export const NAME_MATCHED_MENTIONS_STAMP = "name-matched";
+
+export function currentAnalysisVersions(config: MentionConfig, judgeVersion: string): AnalysisVersions {
+	return { [EXTRACTION_KEY]: EXTRACTION_STAMP, [MENTIONS_KEY]: mentionsStamp(config, judgeVersion) };
 }

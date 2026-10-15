@@ -18,6 +18,7 @@ import {
 	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
+import type { RunMentionAssessments } from "../mentions";
 // `organization` is referenced by the brands FK below; the re-export makes it
 // (and the rest of the auth schema) visible to `import * as schema` consumers.
 import { organization } from "./schema-auth";
@@ -177,6 +178,8 @@ export const runMentions = pgTable("run_mentions", {
 		.references(() => promptRuns.id, { onDelete: "cascade" }),
 	brandMentioned: boolean("brand_mentioned").notNull(),
 	competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
+	/** The mention judge's verdicts behind the columns above; null when they came from substring matching. */
+	assessments: jsonb("assessments").$type<RunMentionAssessments>(),
 	/** The `mentions` stamp it was derived with; null for runs that predate stamping. */
 	stamp: text("stamp"),
 }).enableRLS();

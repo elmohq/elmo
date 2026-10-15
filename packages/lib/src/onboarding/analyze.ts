@@ -12,6 +12,7 @@
  * to communicate context + quality guidelines, not field-by-field shape.
  */
 import { z } from "zod";
+import { wholeWordPattern } from "../mentions";
 import { getWebsiteExcerpt } from "../website-excerpt";
 import { runStructuredResearchPrompt } from "./llm";
 import {
@@ -222,15 +223,15 @@ function toKebabCase(tag: string): string {
 }
 
 /**
- * Drop aliases that contain the canonical name as a substring — mention
- * detection is case-insensitive substring matching, so any text matching
- * such an alias also matches the canonical name. Keeping them just bloats
- * the alias list. (See worker/src/jobs/process-prompt.ts: analyzeMentions.)
+ * Drop aliases that contain the canonical name as a whole word — mention
+ * matching is case-insensitive, so any text matching such an alias also
+ * matches the canonical name. Keeping them just bloats the alias list.
  */
 function filterRedundantAliases(aliases: string[], canonicalName: string): string[] {
-	const canonical = canonicalName.trim().toLowerCase();
+	const canonical = canonicalName.trim();
 	if (!canonical) return aliases;
-	return aliases.filter((a) => !a.toLowerCase().includes(canonical));
+	// A fresh pattern per alias: it's global, so a shared one would carry `lastIndex` between tests.
+	return aliases.filter((a) => !wholeWordPattern(canonical).test(a));
 }
 
 export async function safeGetExcerpt(website: string): Promise<string> {

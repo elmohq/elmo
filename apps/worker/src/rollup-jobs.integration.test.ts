@@ -28,6 +28,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 import { refreshRollupsJob, runRefreshTick } from "./jobs/refresh-rollups";
 import { runReprocess } from "./jobs/reprocess";
 import { runRollupCatchUp } from "./jobs/rollup-catch-up";
+import { cuedAnalyzer } from "./mention-judge/__fixtures__/cued-judge";
 import { initializePipeline } from "./rollups-startup";
 
 // Bucket-aligned (a whole 30-minute mark from the date_bin origin).
@@ -85,8 +86,7 @@ function insertRun(fixture: Fixture, overrides: Partial<NewRun> & { createdAt: D
 			version: "1",
 			webSearchEnabled: false,
 			rawOutput: { text: "seed" },
-			brandMentioned: true,
-			competitorsMentioned: [],
+			mentions: { brandMentioned: true, competitorsMentioned: [], assessments: null, stamp: null },
 			...overrides,
 		},
 	]);
@@ -113,7 +113,7 @@ async function withRollupRowsLocked<T>(brandId: string, fn: () => Promise<T>): P
 }
 
 function fakeBoss() {
-	return { send: vi.fn().mockResolvedValue("fake-job-id"), findJobs: vi.fn().mockResolvedValue([]) };
+	return { send: vi.fn().mockResolvedValue("fake-job-id"), insert: vi.fn(), findJobs: vi.fn().mockResolvedValue([]) };
 }
 
 let fixture: Fixture;
@@ -228,7 +228,7 @@ describe("reprocess through to a refresh, after a competitor's domain changes", 
 	it("re-marks the run's bucket so the rollup picks up the new mention", async () => {
 		const { brandId } = fixture;
 		// Domain strings deliberately share no substring with the competitor's own
-		// name or with each other: mentionsSubject also matches on the bare name,
+		// name or with each other: the judge also reads the bare name,
 		// so a domain built from it (e.g. "globex-new.example") would flag the
 		// competitor by name alone and the domain change below would test nothing.
 		const [competitor] = await db
@@ -239,13 +239,13 @@ describe("reprocess through to a refresh, after a competitor's domain changes", 
 		await insertRun(fixture, {
 			createdAt: B0,
 			provider: "openai-api",
-			brandMentioned: false,
+			mentions: { brandMentioned: false, competitorsMentioned: [], assessments: null, stamp: null },
 			rawOutput: { choices: [{ message: { content: "According to newsite.example, Acme is the best CRM." } }] },
 		});
 
 		// Establishes a baseline stamp and text against the OLD domain, so the
 		// second pass below is stale for one reason only: the domain change.
-		await runReprocess({ layers: ["extraction", "interpretation"], brandId }, db, fakeBoss());
+		await runReprocess({ layers: ["extraction", "interpretation"], brandId }, db, fakeBoss(), cuedAnalyzer);
 		await runRefreshTick({ source: "test" });
 		const competitorRollup = () =>
 			db
@@ -258,7 +258,7 @@ describe("reprocess through to a refresh, after a competitor's domain changes", 
 			.update(competitors)
 			.set({ domains: ["newsite.example"] })
 			.where(eq(competitors.id, competitor.id));
-		await runReprocess({ layers: ["interpretation"], brandId }, db, fakeBoss());
+		await runReprocess({ layers: ["interpretation"], brandId }, db, fakeBoss(), cuedAnalyzer);
 
 		expect((await marksOf(brandId)).map((mark) => mark.bucket)).toEqual([B0]);
 

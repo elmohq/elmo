@@ -5,6 +5,7 @@ import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rol
 import type { Job, PgBoss } from "pg-boss";
 import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
+import { JUDGE_RUNS_QUEUE, type JudgeRunData, judgeRunsJob } from "./jobs/judge-runs";
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
 import { type RefreshRollupsData, refreshRollupsJob } from "./jobs/refresh-rollups";
 import { REPROCESS_QUEUE, type ReprocessData, reprocessJob } from "./jobs/reprocess";
@@ -34,7 +35,7 @@ function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promis
 /**
  * Register all job handlers with pg-boss.
  */
-export async function registerHandlers(boss: PgBoss): Promise<void> {
+export async function registerHandlers(boss: PgBoss, { judging }: { judging: boolean }): Promise<void> {
 	await boss.work<ProcessPromptData>(
 		"process-prompt",
 		{ localConcurrency: 10 },
@@ -74,8 +75,18 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 	);
 	console.log("Registered handler: schedule-maintenance");
 
-	await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
-	console.log(`Registered handler: ${REPROCESS_QUEUE}`);
+	if (judging) {
+		// One run per job, so each run retries on its own.
+		await boss.work<JudgeRunData>(
+			JUDGE_RUNS_QUEUE,
+			{ batchSize: 1, localConcurrency: 4 },
+			withSentry(JUDGE_RUNS_QUEUE, judgeRunsJob),
+		);
+		console.log(`Registered handler: ${JUDGE_RUNS_QUEUE}`);
+
+		await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
+		console.log(`Registered handler: ${REPROCESS_QUEUE}`);
+	}
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.work<SyncAuth0MembershipsData>(

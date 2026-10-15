@@ -1,8 +1,11 @@
+import * as Sentry from "@sentry/node";
 import {
 	type AnalysisVersions,
 	currentAnalysisVersions,
 	EXTRACTION_KEY,
+	EXTRACTION_STAMP,
 	MENTIONS_KEY,
+	NAME_MATCHED_MENTIONS_STAMP,
 } from "@workspace/lib/analysis-versions";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
@@ -18,13 +21,15 @@ import {
 	runExtractions,
 	runMentions,
 } from "@workspace/lib/db/schema";
-import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
+import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } from "@workspace/lib/mentions";
 import { insertRunsCitations, markDirty } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, extractRun } from "@workspace/lib/text-extraction";
-import { and, asc, eq, gte, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, notInArray, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
+import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge/analyze";
+import { sendJudgeRuns } from "./judge-runs";
 
 export const REPROCESS_QUEUE = "reprocess";
 
@@ -53,17 +58,25 @@ export interface StaleRun {
 	stamps: AnalysisVersions;
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
+	assessments: RunMentionAssessments | null;
 	citationCount: number;
 }
 
 export interface RunUpdate {
 	/** A null `stamp` leaves the stored one alone: text filled in for matching, citations untouched. */
 	extraction?: { textContent: string | null; stamp: string | null };
-	mentions?: { brandMentioned: boolean; competitorsMentioned: string[]; stamp: string };
+	mentions?: {
+		brandMentioned: boolean;
+		competitorsMentioned: string[];
+		assessments: RunMentionAssessments | null;
+		stamp: string;
+	};
 	/** Present only when extraction ran: the run's citations are replaced wholesale. */
 	citations?: Citation[];
 	/** What the stored payload no longer yields, so the run keeps what it has (see `deriveRunUpdate`). */
 	kept: ("text" | "citations" | "mentions")[];
+	/** The judge failed on it: its mentions are left as they are, for the judging queue to redo. */
+	unjudged?: true;
 }
 
 const isStale = (run: StaleRun, layer: ReprocessLayer, target: AnalysisVersions) =>
@@ -80,17 +93,20 @@ const isStale = (run: StaleRun, layer: ReprocessLayer, target: AnalysisVersions)
  * the run keeps what it has and `kept` says so. The stamp still moves, so the run
  * isn't retried forever.
  */
-export function deriveRunUpdate(
+export async function deriveRunUpdate(
 	run: StaleRun,
 	layers: ReprocessLayer[],
 	target: AnalysisVersions,
 	config: MentionConfig,
-): RunUpdate {
+	analyzer: MentionAnalyzer,
+): Promise<RunUpdate> {
 	const update: RunUpdate = { kept: [] };
 	const extract = layers.includes("extraction") && isStale(run, "extraction", target);
 	const text = extract || run.textContent === null ? reextract(run, extract, target, update) : run.textContent;
 	if (layers.includes("interpretation") && isStale(run, "interpretation", target)) {
-		update.mentions = { ...rederiveMentions(run, text, config, update), stamp: target[MENTIONS_KEY] };
+		const mentions = await rederiveMentions(run, text, config, analyzer, update);
+		if (mentions) update.mentions = { ...mentions, stamp: target[MENTIONS_KEY] };
+		else update.unjudged = true;
 	}
 	return update;
 }
@@ -108,17 +124,29 @@ function reextract(run: StaleRun, extract: boolean, target: AnalysisVersions, up
 	return text;
 }
 
-function rederiveMentions(
+async function rederiveMentions(
 	run: StaleRun,
 	text: string | null,
 	config: MentionConfig,
+	analyzer: MentionAnalyzer,
 	update: RunUpdate,
-): { brandMentioned: boolean; competitorsMentioned: string[] } {
+): Promise<RunMentions | null> {
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
-		return analyzeRunMentions(text, config);
+		// Verdicts can be kept only while the text they were judged on, and point into, is unchanged.
+		const previous = text === run.textContent ? run.assessments : null;
+		try {
+			return await analyzer.analyze(text, config, previous);
+		} catch (error) {
+			// One answer the judge can't read mustn't stall the brand's whole replay; the judging
+			// queue retries it on its own, and until then it keeps what it has.
+			console.error(`[reprocess] run ${run.id}: mention judge failed, handing it to the judging queue:`, error);
+			Sentry.captureException(error);
+			return null;
+		}
 	}
 	update.kept.push("mentions");
-	return { brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned };
+	const { brandMentioned, competitorsMentioned, assessments } = run;
+	return { brandMentioned, competitorsMentioned, assessments };
 }
 
 const STAMP_COLUMN: Record<ReprocessLayer, SQL> = {
@@ -153,6 +181,7 @@ async function loadStaleRuns(
 			mentionsStamp: runMentions.stamp,
 			brandMentioned: runMentions.brandMentioned,
 			competitorsMentioned: runMentions.competitorsMentioned,
+			assessments: runMentions.assessments,
 			citationCount: sql<number>`(SELECT count(*) FROM ${citations} WHERE ${citations.promptRunId} = ${promptRuns.id})::int`,
 		})
 		.from(promptRuns)
@@ -163,6 +192,7 @@ async function loadStaleRuns(
 				eq(promptRuns.promptId, promptId),
 				eq(promptRuns.brandId, pass.brandId),
 				from ? gte(promptRuns.createdAt, from) : undefined,
+				pass.unjudged.length > 0 ? notInArray(promptRuns.id, pass.unjudged) : undefined,
 				or(...pass.layers.map((layer) => staleFor(layer, pass.target))),
 			),
 		)
@@ -192,13 +222,31 @@ interface Pass {
 	layers: ReprocessLayer[];
 	target: AnalysisVersions;
 	config: MentionConfig;
+	analyzer: MentionAnalyzer;
 	/** Runs whose stored payload yielded less than they already had; see `deriveRunUpdate`. */
 	keptRuns: number;
+	/** Runs the judge failed on, left to the judging queue and skipped for the rest of the pass. */
+	unjudged: string[];
+}
+
+/**
+ * Derives runs in order until the deadline. Judging an answer takes real time, so a
+ * batch can outlast the pass's budget; what was derived is still written.
+ */
+async function deriveUpdates(pass: Pass, runs: StaleRun[], deadline: number) {
+	const updates: { run: StaleRun; update: RunUpdate }[] = [];
+	for (const run of runs) {
+		if (Date.now() > deadline) break;
+		const update = await deriveRunUpdate(run, pass.layers, pass.target, pass.config, pass.analyzer);
+		if (update.unjudged) pass.unjudged.push(run.id);
+		updates.push({ run, update });
+	}
+	return updates;
 }
 
 /** Rewrites only the derived rows, a few statements per batch: `prompt_runs` itself is append-only. Returns how many runs kept something. */
-function rewriteRuns(conn: DbConnection, pass: Pass, runs: StaleRun[]): Promise<number> {
-	const updates = runs.map((run) => ({ run, update: deriveRunUpdate(run, pass.layers, pass.target, pass.config) }));
+function rewriteRuns(conn: DbConnection, pass: Pass, updates: { run: StaleRun; update: RunUpdate }[]): Promise<number> {
+	const runs = updates.map(({ run }) => run);
 	const recited = updates.filter(({ update }) => update.citations);
 	return conn.transaction(async (tx) => {
 		await updateExtractions(
@@ -239,7 +287,9 @@ async function reprocessPrompt(conn: DbConnection, pass: Pass, promptId: string,
 	for (;;) {
 		if (Date.now() > deadline) return false;
 		const runs = await loadStaleRuns(conn, pass, promptId, from);
-		if (runs.length > 0) pass.keptRuns += await rewriteRuns(conn, pass, runs);
+		const updates = await deriveUpdates(pass, runs, deadline);
+		if (updates.length > 0) pass.keptRuns += await rewriteRuns(conn, pass, updates);
+		if (updates.length < runs.length) return false;
 		if (runs.length < BATCH_SIZE) return true;
 		from = runs[runs.length - 1].createdAt;
 	}
@@ -290,12 +340,13 @@ function pickLayers(versions: AnalysisVersions, layers: ReprocessLayer[]): Analy
 async function loadBrand(
 	conn: DbConnection,
 	brandId: string,
+	analyzer: MentionAnalyzer,
 ): Promise<{ brand: Brand; config: MentionConfig; current: AnalysisVersions } | null> {
 	const [brand] = await conn.select().from(brands).where(eq(brands.id, brandId)).limit(1);
 	if (!brand) return null;
 	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));
 	const config = mentionConfigFrom(brand, brandCompetitors);
-	return { brand, config, current: currentAnalysisVersions(config) };
+	return { brand, config, current: currentAnalysisVersions(config, analyzer.judgeVersion) };
 }
 
 /** Stately per brand: one job runs and at most one waits, so passes for a brand never interleave. */
@@ -312,10 +363,11 @@ export function sendReprocess(boss: Pick<PgBoss, "send">, data: ReprocessData): 
 export async function runReprocess(
 	data: ReprocessData,
 	conn: DbConnection = db,
-	boss: Pick<PgBoss, "send"> = getBoss(),
+	boss: Pick<PgBoss, "send" | "insert"> = getBoss(),
+	analyzer: MentionAnalyzer = mentionAnalyzer(),
 ): Promise<void> {
 	const deadline = Date.now() + TIME_BUDGET_MS;
-	const context = await loadBrand(conn, data.brandId);
+	const context = await loadBrand(conn, data.brandId, analyzer);
 	if (!context) {
 		console.log(`[reprocess] brand ${data.brandId} no longer exists, skipping`);
 		return;
@@ -325,7 +377,9 @@ export async function runReprocess(
 		layers: data.layers,
 		target: context.current,
 		config: context.config,
+		analyzer,
 		keptRuns: 0,
+		unjudged: [],
 	};
 
 	const brandPrompts = await conn
@@ -339,6 +393,10 @@ export async function runReprocess(
 		brandPrompts.map(({ id }) => id),
 		deadline,
 	);
+	if (pass.unjudged.length > 0) {
+		await sendJudgeRuns(boss, pass.unjudged);
+		console.warn(`[reprocess] brand ${data.brandId}: ${pass.unjudged.length} runs left to the judging queue`);
+	}
 	if (pass.keptRuns > 0) {
 		console.warn(
 			`[reprocess] brand ${data.brandId}: ${pass.keptRuns} runs kept existing data their stored payload no longer yields`,
@@ -355,7 +413,7 @@ export async function runReprocess(
 	// Stamping the brand after its config moved would hide the history derived
 	// from the old one; left stale, the next maintenance pass requests a new pass.
 	const target = pickLayers(pass.target, data.layers);
-	const latest = await loadBrand(conn, data.brandId);
+	const latest = await loadBrand(conn, data.brandId, analyzer);
 	if (!latest || JSON.stringify(pickLayers(latest.current, data.layers)) !== JSON.stringify(target)) {
 		console.log(`[reprocess] brand ${data.brandId} config changed during the pass, leaving it stale`);
 		return;
@@ -387,6 +445,7 @@ export async function runReprocess(
 export async function requestStaleReprocesses(
 	conn: DbConnection = db,
 	boss: Pick<PgBoss, "send"> = getBoss(),
+	analyzer: MentionAnalyzer = mentionAnalyzer(),
 ): Promise<number> {
 	const [allBrands, allCompetitors] = await Promise.all([conn.select().from(brands), conn.select().from(competitors)]);
 	const competitorsByBrand = new Map<string, Competitor[]>();
@@ -397,7 +456,10 @@ export async function requestStaleReprocesses(
 	for (const brand of allBrands) {
 		// Not yet adopted at startup; its history is taken as is until then.
 		if (brand.analysisVersions === null) continue;
-		const current = currentAnalysisVersions(mentionConfigFrom(brand, competitorsByBrand.get(brand.id) ?? []));
+		const current = currentAnalysisVersions(
+			mentionConfigFrom(brand, competitorsByBrand.get(brand.id) ?? []),
+			analyzer.judgeVersion,
+		);
 		const layers = staleLayers(brand.analysisVersions, current);
 		if (layers.length > 0 && (await sendReprocess(boss, { brandId: brand.id, layers }))) requested++;
 	}
@@ -405,23 +467,16 @@ export async function requestStaleReprocesses(
 }
 
 /**
- * Brands that predate stamping adopt today's stamps instead of replaying their
- * whole history on deploy: what they've stored is taken as is until their
- * config or the code next changes.
+ * Brands that predate stamping adopt today's extraction stamp rather than re-extracting their
+ * whole history on deploy. Their mentions were matched by name, so they're stale for the judge.
  */
 export async function adoptCurrentStamps(conn: DbConnection = db): Promise<number> {
-	const unstamped = await conn.select().from(brands).where(isNull(brands.analysisVersions));
-	let adopted = 0;
-	for (const brand of unstamped) {
-		const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brand.id));
-		const updated = await conn
-			.update(brands)
-			.set({ analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors)) })
-			.where(and(eq(brands.id, brand.id), isNull(brands.analysisVersions)))
-			.returning({ id: brands.id });
-		adopted += updated.length;
-	}
-	return adopted;
+	const adopted = await conn
+		.update(brands)
+		.set({ analysisVersions: { [EXTRACTION_KEY]: EXTRACTION_STAMP, [MENTIONS_KEY]: NAME_MATCHED_MENTIONS_STAMP } })
+		.where(isNull(brands.analysisVersions))
+		.returning({ id: brands.id });
+	return adopted.length;
 }
 
 export async function reprocessJob(jobs: Job<ReprocessData>[]): Promise<void> {
