@@ -35,6 +35,7 @@ const legacyRun = (text: string): StaleRun => ({
 	stamps: {},
 	brandMentioned: false,
 	competitorsMentioned: [],
+	assessments: null,
 	citationCount: 0,
 });
 

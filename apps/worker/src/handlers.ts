@@ -7,7 +7,13 @@ import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
 import { type RefreshRollupsData, refreshRollupsJob } from "./jobs/refresh-rollups";
-import { REPROCESS_QUEUE, type ReprocessData, reprocessJob } from "./jobs/reprocess";
+import {
+	REPROCESS_QUEUE,
+	REQUEST_REPROCESSES_QUEUE,
+	type ReprocessData,
+	reprocessJob,
+	requestReprocessesJob,
+} from "./jobs/reprocess";
 import { type RollupCatchUpData, rollupCatchUpJob } from "./jobs/rollup-catch-up";
 import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
 import { type SuggestPromptsData, type SuggestPromptsResult, suggestPromptsJob } from "./jobs/suggest-prompts";
@@ -76,6 +82,8 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 
 	await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
 	console.log(`Registered handler: ${REPROCESS_QUEUE}`);
+	await boss.work(REQUEST_REPROCESSES_QUEUE, withSentry(REQUEST_REPROCESSES_QUEUE, requestReprocessesJob));
+	console.log(`Registered handler: ${REQUEST_REPROCESSES_QUEUE}`);
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.work<SyncAuth0MembershipsData>(

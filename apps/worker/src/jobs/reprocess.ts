@@ -41,6 +41,13 @@ const LAYER_KEY: Record<ReprocessLayer, string> = { extraction: EXTRACTION_KEY, 
 const BATCH_SIZE = 200;
 const TIME_BUDGET_MS = 4 * 60 * 1000;
 const RECENT_FIRST_MS = 30 * 24 * 60 * 60 * 1000;
+/**
+ * How long a newly stale brand waits before its pass starts. Edits tend to come in bursts (adding
+ * several competitors), and the pass reads the config when it starts, so one wait covers them all.
+ */
+const SETTLE_SECONDS = 60;
+
+export const REQUEST_REPROCESSES_QUEUE = "request-reprocesses";
 
 export interface StaleRun {
 	id: string;
@@ -55,6 +62,7 @@ export interface StaleRun {
 	stamps: AnalysisVersions;
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
+	assessments: RunMentionAssessments | null;
 	citationCount: number;
 }
 
@@ -122,7 +130,9 @@ async function rederiveMentions(
 	update: RunUpdate,
 ): Promise<Omit<NonNullable<RunUpdate["mentions"]>, "stamp">> {
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
-		const { mentionAssessments, ...mentions } = await mentionAnalyzer().analyze(text, config);
+		// Verdicts can be kept only while the text they were judged on, and point into, is unchanged.
+		const previous = text === run.textContent ? run.assessments : null;
+		const { mentionAssessments, ...mentions } = await mentionAnalyzer().analyze(text, config, previous);
 		return { ...mentions, assessments: mentionAssessments };
 	}
 	update.kept.push("mentions");
@@ -163,6 +173,7 @@ async function loadStaleRuns(
 			mentionsStamp: runMentions.stamp,
 			brandMentioned: runMentions.brandMentioned,
 			competitorsMentioned: runMentions.competitorsMentioned,
+			assessments: runMentions.assessments,
 			citationCount: sql<number>`(SELECT count(*) FROM ${citations} WHERE ${citations.promptRunId} = ${promptRuns.id})::int`,
 		})
 		.from(promptRuns)
@@ -350,8 +361,15 @@ async function loadBrand(
 }
 
 /** Stately per brand: one job runs and at most one waits, so passes for a brand never interleave. */
-export function sendReprocess(boss: Pick<PgBoss, "send">, data: ReprocessData): Promise<string | null> {
-	return boss.send(REPROCESS_QUEUE, data, { singletonKey: data.brandId });
+export function sendReprocess(
+	boss: Pick<PgBoss, "send">,
+	data: ReprocessData,
+	options: { startAfterSeconds?: number } = {},
+): Promise<string | null> {
+	return boss.send(REPROCESS_QUEUE, data, {
+		singletonKey: data.brandId,
+		...(options.startAfterSeconds ? { startAfter: options.startAfterSeconds } : {}),
+	});
 }
 
 /**
@@ -450,8 +468,8 @@ export async function runReprocess(
 
 /**
  * Requests a pass for every brand whose history no longer matches its config or
- * today's code, so a missed config change or a dropped job heals on the next
- * maintenance tick. A brand already waiting on a pass keeps that one.
+ * today's code. Runs every minute, which is how a config edit reaches a pass, and
+ * how a dropped job heals. A brand already waiting on a pass keeps that one.
  */
 export async function requestStaleReprocesses(
 	conn: DbConnection = db,
@@ -471,7 +489,10 @@ export async function requestStaleReprocesses(
 			mentionAnalyzer().judgeVersion,
 		);
 		const layers = staleLayers(brand.analysisVersions, current);
-		if (layers.length > 0 && (await sendReprocess(boss, { brandId: brand.id, layers }))) requested++;
+		const sent =
+			layers.length > 0 &&
+			(await sendReprocess(boss, { brandId: brand.id, layers }, { startAfterSeconds: SETTLE_SECONDS }));
+		if (sent) requested++;
 	}
 	return requested;
 }
@@ -495,6 +516,11 @@ export async function adoptCurrentStamps(conn: DbConnection = db): Promise<numbe
 		adopted += updated.length;
 	}
 	return adopted;
+}
+
+export async function requestReprocessesJob(): Promise<void> {
+	const requested = await requestStaleReprocesses();
+	if (requested > 0) console.log(`[reprocess] requested passes for ${requested} brands`);
 }
 
 export async function reprocessJob(jobs: Job<ReprocessData>[]): Promise<void> {
