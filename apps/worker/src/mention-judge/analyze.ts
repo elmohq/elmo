@@ -23,7 +23,7 @@ export interface MentionAnalyzer {
 	concurrency: number;
 	/**
 	 * `previous` is what the run already has; subjects judged under an unchanged fingerprint keep
-	 * their verdicts. Pass it only when the text is the one those verdicts were judged on.
+	 * their assessments. Pass it only when the text is the one those assessments were judged on.
 	 */
 	analyze(text: string | null, config: MentionConfig, previous?: RunMentionAssessments | null): Promise<RunMentions>;
 }
@@ -52,7 +52,7 @@ export function judgeAnalyzer(judge: MentionJudge, concurrency = 1): MentionAnal
 		async analyze(text, config, previous) {
 			const answer = text ?? "";
 			const rivals = [config.brand.name, ...config.competitors.map((competitor) => competitor.name)];
-			/** Keeps the verdict judged under the same fingerprint, a copy since `rank` rewrites positions. */
+			/** Keeps the assessment judged under the same fingerprint, a copy since `rank` rewrites positions. */
 			const judgeSubject = async (subject: Subject, judgedAs?: string, kept?: MentionAssessment) => {
 				const fingerprint = subjectFingerprint(subject, judge.version);
 				const record =

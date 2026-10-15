@@ -62,3 +62,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+/** A deployment without the mention judge has no sentiment or position, so those sections are left out. */
+export const WithoutSentiment: Story = {
+	decorators: [
+		(Story) => {
+			setMockDashboardSummary({ ...mockDashboardSummary, sentimentTimeSeries: [], positionTimeSeries: [] });
+			return <Story />;
+		},
+	],
+};

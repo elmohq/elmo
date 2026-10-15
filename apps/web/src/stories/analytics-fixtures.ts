@@ -30,6 +30,19 @@ const visibilityTimeSeries = DATES.map((date, i) => ({
 	branded: clamp(90 + 4 * Math.sin(i / 5)),
 }));
 
+// Sentiment: positive share of mentions with a clear tone, drifting from the mid-50s to the mid-60s.
+const sentimentTimeSeries = DATES.map((date, i) => ({
+	date,
+	positive: clamp(55 + i * 0.35 + 5 * Math.sin(i / 3)),
+	negative: clamp(9 - i * 0.1 + 2 * Math.sin(i / 4)),
+}));
+
+// Position: the brand named second or third on average, edging toward first.
+const positionTimeSeries = DATES.map((date, i) => ({
+	date,
+	average: Math.round((2.4 - i * 0.02 + 0.2 * Math.sin(i / 3)) * 10) / 10,
+}));
+
 export const mockDashboardSummary = {
 	totalPrompts: 42,
 	totalRuns: 3120,
@@ -39,6 +52,10 @@ export const mockDashboardSummary = {
 	lastUpdatedAt: "2026-06-04T09:12:00.000Z",
 	visibilityTimeSeries,
 	citationTimeSeries: [],
+	sentiment: { positive: 1210, neutral: 560, negative: 140, mixed: 90 },
+	sentimentTimeSeries,
+	averagePosition: 1.8,
+	positionTimeSeries,
 };
 
 // Share of voice: brand hovering in the low-30s against three competitors.

@@ -3,6 +3,7 @@
  * Aggregates, query fan-out included, come from the rollups in `rollup-read.ts`.
  */
 
+import type { RunMentionAssessments } from "@workspace/lib/mentions";
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type AnalyticsScope,
@@ -132,6 +133,7 @@ export interface ResponseMatchRow {
 	web_queries: string[];
 	brand_mentioned: boolean;
 	competitors_mentioned: string[];
+	assessments: RunMentionAssessments | null;
 	raw_output: unknown;
 	text_content: string | null;
 	created_at: string;
@@ -162,6 +164,8 @@ export async function getResponseMatches(
 			pr.web_queries,
 			rm.brand_mentioned,
 			rm.competitors_mentioned,
+			-- Assessments point into the stored text, so a run without it has none to show.
+			CASE WHEN re.text_content IS NULL THEN NULL ELSE rm.assessments END AS assessments,
 			pr.raw_output,
 			re.text_content,
 			pr.created_at,

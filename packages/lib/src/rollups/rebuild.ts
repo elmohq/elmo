@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { type SQL, sql } from "drizzle-orm";
 import type { DbConnection } from "../db/db-connection";
 import {
 	citations,
@@ -86,6 +86,22 @@ const brandRuns = (brandId: string) => sql`
 const inRange = (brandId: string, from: Date, toExclusive: Date) =>
 	sql`WHERE pr.brand_id = ${brandId} AND pr.created_at >= ${from} AND pr.created_at < ${toExclusive}`;
 
+const assessmentColumns = sql.raw(
+	"positive_runs, neutral_runs, negative_runs, mixed_runs, position_sum, positioned_runs",
+);
+
+/**
+ * Sentiment and position measures, in `assessmentColumns` order, over `subject`: an assessment in
+ * `run_mentions.assessments`, null for runs that don't count as mentioning it.
+ */
+const assessmentMeasures = (subject: SQL) => sql`
+	count(*) FILTER (WHERE ${subject}->>'sentiment' = 'positive')::int,
+	count(*) FILTER (WHERE ${subject}->>'sentiment' = 'neutral')::int,
+	count(*) FILTER (WHERE ${subject}->>'sentiment' = 'negative')::int,
+	count(*) FILTER (WHERE ${subject}->>'sentiment' = 'mixed')::int,
+	coalesce(sum((${subject}->>'position')::int), 0)::int,
+	count(${subject}->'position')::int`;
+
 async function insertPromptRunRollup(
 	tx: DbConnection,
 	brandId: string,
@@ -96,6 +112,7 @@ async function insertPromptRunRollup(
 		INSERT INTO ${rollupPromptRuns} (
 			brand_id, bucket, prompt_id, model, provider, web_search_enabled,
 			runs, brand_mentioned_runs, competitor_runs, competitor_mentions, no_mention_runs,
+			${assessmentColumns},
 			fanout_runs, fanout_queries, first_run_at, last_run_at
 		)
 		SELECT
@@ -105,6 +122,7 @@ async function insertPromptRunRollup(
 			count(*) FILTER (WHERE cardinality(m.competitors_mentioned) > 0)::int,
 			coalesce(sum(cardinality(m.competitors_mentioned)), 0)::int,
 			count(*) FILTER (WHERE NOT m.brand_mentioned AND coalesce(cardinality(m.competitors_mentioned), 0) = 0)::int,
+			${assessmentMeasures(sql`(CASE WHEN m.brand_mentioned THEN m.assessments->'brand' END)`)},
 			count(*) FILTER (WHERE fanout.queries > 0)::int,
 			coalesce(sum(fanout.queries), 0)::int,
 			min(pr.created_at),
@@ -129,13 +147,18 @@ async function insertCompetitorRollup(
 ): Promise<number> {
 	const result = await tx.execute(sql`
 		INSERT INTO ${rollupCompetitorMentions} (
-			brand_id, bucket, prompt_id, model, provider, web_search_enabled, competitor_name, runs
+			brand_id, bucket, prompt_id, model, provider, web_search_enabled, competitor_name, runs,
+			${assessmentColumns}
 		)
-		SELECT ${keyColumns}, competitor_name, count(DISTINCT pr.id)::int
+		SELECT
+			${keyColumns},
+			c.competitor_name,
+			count(*)::int,
+			${assessmentMeasures(sql`m.assessments->'competitors'->c.competitor_name`)}
 		${brandRuns(brandId)}
-		CROSS JOIN LATERAL unnest(m.competitors_mentioned) AS competitor_name
+		CROSS JOIN LATERAL (SELECT DISTINCT unnest(m.competitors_mentioned) AS competitor_name) c
 		${inRange(brandId, from, toExclusive)}
-		GROUP BY ${keyColumns}, competitor_name
+		GROUP BY ${keyColumns}, c.competitor_name
 	`);
 	return result.rowCount ?? 0;
 }

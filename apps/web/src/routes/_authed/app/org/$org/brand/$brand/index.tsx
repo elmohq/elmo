@@ -5,6 +5,8 @@ import {
 	IconEye,
 	IconInfoCircle,
 	IconList,
+	IconListNumbers,
+	IconMoodSmile,
 	IconRefresh,
 	IconSpeakerphone,
 } from "@tabler/icons-react";
@@ -26,6 +28,8 @@ import { useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { describeTargetSchedule, type TrackedTarget } from "@/lib/model-filter";
 import { setPersonProperties } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
+import { BRAND_ROUTE_ID } from "@/lib/route-subject";
+import type { PositionPoint, SentimentCounts, SentimentPoint } from "@/lib/sentiment";
 
 function getVisibilityBgColor(value: number): string {
 	if (value > 75) return "bg-emerald-50 dark:bg-emerald-950/30";
@@ -157,10 +161,16 @@ function TrendSection({
 	value,
 	series,
 	loading,
+	graded = true,
+	unit = "%",
+	lowerIsBetter = false,
 }: {
 	icon: typeof IconEye;
 	title: string;
-	linkTo: "/app/org/$org/brand/$brand/visibility" | "/app/org/$org/brand/$brand/share-of-voice";
+	linkTo:
+		| "/app/org/$org/brand/$brand/visibility"
+		| "/app/org/$org/brand/$brand/share-of-voice"
+		| "/app/org/$org/brand/$brand/responses";
 	linkLabel: string;
 	chartTitle: string;
 	chartLabel: string;
@@ -168,9 +178,13 @@ function TrendSection({
 	value: number | null;
 	series: TrendPoint[];
 	loading: boolean;
+	/** Whether the number reads on the visibility scale, where higher is better and low is a warning. */
+	graded?: boolean;
+	unit?: string;
+	lowerIsBetter?: boolean;
 }) {
 	const params = useBrandParams();
-	const heroTone = value === null ? "" : `${getVisibilityBgColor(value)} ${getVisibilityBorderColor(value)}`;
+	const heroTone = value === null || !graded ? "" : `${getVisibilityBgColor(value)} ${getVisibilityBorderColor(value)}`;
 	return (
 		<section className="space-y-2">
 			<div className="flex items-center justify-between">
@@ -189,7 +203,7 @@ function TrendSection({
 
 			<div className="grid gap-4 lg:grid-cols-4">
 				<Card className={`shadow-none flex flex-col gap-3 py-4 ${heroTone}`}>
-					<HeroStat value={value} loading={loading} />
+					<HeroStat value={value} loading={loading} graded={graded} unit={unit} />
 				</Card>
 				<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
 					<CardHeader className="border-b border-dotted pb-2!">
@@ -199,7 +213,7 @@ function TrendSection({
 						{loading ? (
 							<Skeleton className="h-full w-full" />
 						) : (
-							<TrendChart data={series} label={chartLabel} color="#2563eb" />
+							<TrendChart data={series} label={chartLabel} color="#2563eb" unit={unit} lowerIsBetter={lowerIsBetter} />
 						)}
 					</CardContent>
 				</Card>
@@ -375,20 +389,35 @@ function ResearchBrandData({ brandId, clientConfig }: { brandId: string; clientC
 }
 
 /** The big "current" stat that fills a card — the latest point of its trend, colour-coded by value. */
-function HeroStat({ value, loading }: { value: number | null; loading: boolean }) {
+function heroTextTone(value: number | null, graded: boolean): string {
+	if (value === null) return "text-muted-foreground";
+	return graded ? getVisibilityTextColor(value) : "";
+}
+
+function HeroStat({
+	value,
+	loading,
+	graded,
+	unit,
+}: {
+	value: number | null;
+	loading: boolean;
+	graded: boolean;
+	unit: string;
+}) {
 	return (
 		<CardContent className="flex-1 flex items-center justify-center">
 			<div
-				className={`font-bold tracking-tight tabular-nums ${value === null ? "text-muted-foreground" : getVisibilityTextColor(value)}`}
+				className={`font-bold tracking-tight tabular-nums ${heroTextTone(value, graded)}`}
 				style={{ fontSize: "clamp(2.5rem, 6vw, 5rem)" }}
 			>
-				{loading ? <Skeleton className="h-16 w-32" /> : value === null ? "—" : `${value}%`}
+				{loading ? <Skeleton className="h-16 w-32" /> : value === null ? "—" : `${value}${unit}`}
 			</div>
 		</CardContent>
 	);
 }
 
-/** Everything the two trend sections plot, plus the loading flags they key off.
+/** Everything the trend sections plot, plus the loading flags they key off.
  *  Reads only; the analytics write lives in `useReportedPromptCount`. */
 function useDashboardMetrics(brandId: string | undefined) {
 	const { data: dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brandId, "1m");
@@ -400,6 +429,9 @@ function useDashboardMetrics(brandId: string | undefined) {
 		totalRuns: dashboardSummary?.totalRuns || 0,
 		totalPrompts: dashboardSummary?.totalPrompts,
 		visibilityTimeSeries: dashboardSummary?.visibilityTimeSeries || [],
+		sentiment: dashboardSummary?.sentiment,
+		sentimentTimeSeries: dashboardSummary?.sentimentTimeSeries ?? [],
+		positionTimeSeries: dashboardSummary?.positionTimeSeries ?? [],
 		sovTimeSeries: sovData?.shareTimeSeries ?? [],
 		nonBrandedVisibility: dashboardSummary?.nonBrandedVisibility || 0,
 		lastUpdatedAt: dashboardSummary?.lastUpdatedAt || null,
@@ -416,6 +448,68 @@ function useReportedPromptCount(totalPrompts: number | undefined) {
 const visibilityTooltipText = (nonBrandedVisibility: number) =>
 	`The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${nonBrandedVisibility}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`;
 
+function sentimentTooltipText(sentiment: SentimentCounts) {
+	const clear = sentiment.positive + sentiment.neutral + sentiment.negative + sentiment.mixed;
+	const negative = clear > 0 ? Math.round((sentiment.negative / clear) * 100) : 0;
+	return `Of the AI answers mentioning your brand with a clear tone, the share that speak of it positively over the trailing week — the big number is the latest point on this line. Over the month, ${negative}% were negative and the rest neutral or mixed. Answers whose tone is unclear aren't counted.`;
+}
+
+/**
+ * Sentiment comes from the mention judge, so most deployments without it have nothing to plot.
+ * It appears only once loaded, rather than flashing a skeleton that then disappears.
+ */
+function SentimentSection({
+	sentiment,
+	series,
+	loading,
+}: {
+	sentiment?: SentimentCounts;
+	series: SentimentPoint[];
+	loading: boolean;
+}) {
+	if (loading || !series.some((p) => p.positive !== null)) return null;
+	return (
+		<TrendSection
+			icon={IconMoodSmile}
+			title="Sentiment"
+			linkTo="/app/org/$org/brand/$brand/responses"
+			linkLabel="View Responses"
+			chartTitle="Positive Mentions (30d)"
+			chartLabel="Positive (7d)"
+			tooltip={sentiment ? sentimentTooltipText(sentiment) : undefined}
+			value={lastValue(series, "positive")}
+			series={series.map((p) => ({ date: p.date, value: p.positive }))}
+			loading={false}
+			graded={false}
+		/>
+	);
+}
+
+const POSITION_TOOLTIP =
+	"Where your brand comes among the tracked companies an AI answer names: 1 means it's named first. The big number is the latest point on this line, averaged over the trailing week of answers that mention your brand. Companies you don't track aren't counted.";
+
+/** Like sentiment, position comes from the mention judge, so it appears only once there is some. */
+function PositionSection({ series, loading }: { series: PositionPoint[]; loading: boolean }) {
+	if (loading || !series.some((p) => p.average !== null)) return null;
+	return (
+		<TrendSection
+			icon={IconListNumbers}
+			title="Position"
+			linkTo="/app/org/$org/brand/$brand/visibility"
+			linkLabel="View Visibility"
+			chartTitle="Average Position (30d)"
+			chartLabel="Average position (7d)"
+			tooltip={POSITION_TOOLTIP}
+			value={lastValue(series, "average")}
+			series={series.map((p) => ({ date: p.date, value: p.average }))}
+			loading={false}
+			graded={false}
+			unit=""
+			lowerIsBetter
+		/>
+	);
+}
+
 const SOV_TOOLTIP =
 	"Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules.";
 
@@ -430,12 +524,15 @@ function DashboardPage() {
 		totalRuns,
 		totalPrompts,
 		visibilityTimeSeries,
+		sentiment,
+		sentimentTimeSeries,
+		positionTimeSeries,
 		sovTimeSeries,
 		nonBrandedVisibility,
 		lastUpdatedAt,
 	} = useDashboardMetrics(brand?.id);
 	useReportedPromptCount(totalPrompts);
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const context = useRouteContext({ from: BRAND_ROUTE_ID }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 
 	const loadingVisibility = isLoadingBrand || isLoadingSummary;
@@ -482,6 +579,10 @@ function DashboardPage() {
 					series={sovTimeSeries.map((p) => ({ date: p.date, value: p.share }))}
 					loading={loadingSov}
 				/>
+
+				<SentimentSection sentiment={sentiment} series={sentimentTimeSeries} loading={loadingVisibility} />
+
+				<PositionSection series={positionTimeSeries} loading={loadingVisibility} />
 
 				<section className="pt-2">
 					<TrackingStats

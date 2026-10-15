@@ -178,7 +178,7 @@ export const runMentions = pgTable("run_mentions", {
 		.references(() => promptRuns.id, { onDelete: "cascade" }),
 	brandMentioned: boolean("brand_mentioned").notNull(),
 	competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
-	/** The mention judge's verdicts behind the columns above; null when they came from substring matching. */
+	/** The mention judge's assessments behind the columns above; null for mentions matched by name, before the judge. */
 	assessments: jsonb("assessments").$type<RunMentionAssessments>(),
 	/** The `mentions` stamp it was derived with; null for runs that predate stamping. */
 	stamp: text("stamp"),
@@ -398,6 +398,18 @@ export const rollupPromptRuns = pgTable(
 		competitorMentions: integer("competitor_mentions").notNull(),
 		/** Runs mentioning neither the brand nor any competitor. */
 		noMentionRuns: integer("no_mention_runs").notNull(),
+		/**
+		 * Runs mentioning the brand, by the judge's sentiment toward it.
+		 * No default on these: a worker still on the previous release fails its rebuild, keeping the range marked
+		 * for the new one, rather than writing zeros over it.
+		 */
+		positiveRuns: integer("positive_runs").notNull(),
+		neutralRuns: integer("neutral_runs").notNull(),
+		negativeRuns: integer("negative_runs").notNull(),
+		mixedRuns: integer("mixed_runs").notNull(),
+		/** The brand's position summed over the runs that rank it; divide by `positionedRuns` for the average. */
+		positionSum: integer("position_sum").notNull(),
+		positionedRuns: integer("positioned_runs").notNull(),
 		/** Runs with at least one genuine fan-out query (see `isFanoutQuery`). */
 		fanoutRuns: integer("fanout_runs").notNull(),
 		/** Distinct genuine fan-out queries summed over runs. */
@@ -421,6 +433,13 @@ export const rollupCompetitorMentions = pgTable(
 		/** Keyed by name, not competitor id: a bulk competitor save reinserts rows with new ids. */
 		competitorName: text("competitor_name").notNull(),
 		runs: integer("runs").notNull(),
+		/** The same sentiment and position measures as `rollup_prompt_runs` has for the brand. */
+		positiveRuns: integer("positive_runs").notNull(),
+		neutralRuns: integer("neutral_runs").notNull(),
+		negativeRuns: integer("negative_runs").notNull(),
+		mixedRuns: integer("mixed_runs").notNull(),
+		positionSum: integer("position_sum").notNull(),
+		positionedRuns: integer("positioned_runs").notNull(),
 	},
 	(table) => [
 		primaryKey({

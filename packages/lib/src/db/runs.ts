@@ -8,7 +8,8 @@ import { type NewPromptRun, promptRuns, runExtractions, runMentions } from "./sc
  * Runs with what has been derived from them: the append-only `prompt_runs` row
  * joined to its extraction and mentions. A run not yet judged has no mentions
  * and is left out until it is. Chain `.where`, `.orderBy` and `.limit` as on any select.
- * Payloads are left out; read them with `loadRawOutputs`.
+ * Payloads are left out; read them with `loadRawOutputs`. Assessments come only with stored text:
+ * their passage offsets index it, and mean nothing against text re-extracted on read.
  */
 export function selectRuns(conn: DbConnection) {
 	const { rawOutput, ...columns } = getTableColumns(promptRuns);
@@ -18,6 +19,7 @@ export function selectRuns(conn: DbConnection) {
 			textContent: runExtractions.textContent,
 			brandMentioned: runMentions.brandMentioned,
 			competitorsMentioned: runMentions.competitorsMentioned,
+			mentionAssessments: sql<RunMentionAssessments | null>`CASE WHEN ${runExtractions.textContent} IS NULL THEN NULL ELSE ${runMentions.assessments} END`,
 		})
 		.from(promptRuns)
 		.innerJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))

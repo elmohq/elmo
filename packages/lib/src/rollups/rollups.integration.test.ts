@@ -17,7 +17,9 @@ import {
 	rollupCompetitorMentions,
 	rollupDirty,
 	rollupPromptRuns,
+	runMentions,
 } from "../db/schema";
+import type { RunMentionAssessments } from "../mentions";
 import { resolveUnpagedCitations } from "./citation-pages";
 import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
 import { markDirty, markPromptRunsDirty, markRunsDirty, pendingMarks, refreshRange } from "./dirty";
@@ -369,6 +371,53 @@ describe("rollups against postgres", () => {
 		const first = rows[0];
 		expect(first.firstRunAt.toISOString()).toBe("2026-01-15T10:02:00.000Z");
 		expect(first.lastRunAt.toISOString()).toBe("2026-01-15T10:08:00.000Z");
+	});
+
+	it("counts the judge's sentiment and position for runs that mention the brand", async () => {
+		const judged = (runId: string, brand: RunMentionAssessments["brand"]) =>
+			db
+				.update(runMentions)
+				.set({ assessments: { brand, competitors: {}, judged: { brand: "acme", competitors: {} } } })
+				.where(eq(runMentions.runId, runId));
+		await judged(RUN(1), { mentioned: true, probability: 0.95, sentiment: "positive", position: 2 });
+		// Not counted as a mention, so its sentiment isn't the brand's.
+		await judged(RUN(2), { mentioned: false, probability: 0.1, sentiment: "positive" });
+		await judged(RUN(3), { mentioned: true, probability: 0.5, sentiment: "negative", position: 1 });
+		await rebuildAll(db);
+
+		const rows = await runRollupRows(db);
+		const measures = (promptId: string) => {
+			const row = rows.find((r) => r.bucket.getTime() === B0.getTime() && r.promptId === promptId);
+			return [row?.positiveRuns, row?.negativeRuns, row?.positionSum, row?.positionedRuns];
+		};
+		expect(measures(PROMPT_1)).toEqual([1, 0, 2, 1]);
+		expect(measures(PROMPT_2)).toEqual([0, 1, 1, 1]);
+	});
+
+	it("counts each competitor's sentiment and position", async () => {
+		await db
+			.update(runMentions)
+			.set({
+				assessments: {
+					competitors: {
+						Acme: { mentioned: true, probability: 0.9, sentiment: "negative", position: 1 },
+						Globex: { mentioned: true, probability: 0.9, sentiment: "positive", position: 3 },
+					},
+					judged: { brand: "acme", competitors: { Acme: "acme", Globex: "globex" } },
+				},
+			})
+			.where(eq(runMentions.runId, RUN(1)));
+		await rebuildAll(db);
+
+		const rows = (await competitorRows(db)).filter(
+			(r) => r.bucket.getTime() === B0.getTime() && r.promptId === PROMPT_1,
+		);
+		expect(
+			rows.map((r) => [r.competitorName, r.positiveRuns, r.negativeRuns, r.positionSum, r.positionedRuns]),
+		).toEqual([
+			["Acme", 0, 1, 1, 1],
+			["Globex", 1, 0, 3, 1],
+		]);
 	});
 
 	it("counts one row per competitor mentioned", async () => {

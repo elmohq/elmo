@@ -15,7 +15,23 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
 import { lookbackSchema } from "@/lib/lookback";
-import { getMentionTotals, getPerPromptDailyCitationDomains, getPerPromptDailyRuns } from "@/lib/rollup-read";
+import {
+	getDailyAssessments,
+	getMentionTotals,
+	getPerPromptDailyCitationDomains,
+	getPerPromptDailyRuns,
+} from "@/lib/rollup-read";
+import {
+	averagePosition,
+	type PositionPoint,
+	positionSeries,
+	SENTIMENT_WINDOW_DAYS,
+	type SentimentCounts,
+	type SentimentPoint,
+	sentimentCounts,
+	sentimentSeries,
+} from "@/lib/sentiment";
+import { shiftDateStr } from "@/lib/timezone-utils";
 import { resolveBrandWindow } from "@/server/brand-window";
 
 interface VisibilityTimeSeriesPoint {
@@ -35,6 +51,11 @@ export interface DashboardSummaryResponse {
 	brandedVisibility: number;
 	visibilityTimeSeries: VisibilityTimeSeriesPoint[];
 	citationTimeSeries: CitationTimeSeriesPoint[];
+	sentiment: SentimentCounts;
+	sentimentTimeSeries: SentimentPoint[];
+	/** The brand's average position among the tracked companies an answer names; null when never ranked. */
+	averagePosition: number | null;
+	positionTimeSeries: PositionPoint[];
 	lastUpdatedAt: string | null;
 }
 
@@ -88,10 +109,15 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			.map((p) => p.id);
 
 		const scope = { brandId: data.brandId, from: fromDateStr, to: toDateStr, timezone, promptIds: enabledPromptIds };
-		const [totals, perPromptVisibility, perPromptCitations] = await Promise.all([
+		const [totals, perPromptVisibility, perPromptCitations, dailyAssessments] = await Promise.all([
 			getMentionTotals(scope),
 			getPerPromptDailyRuns(scope),
 			getPerPromptDailyCitationDomains(scope),
+			// Reaching back so the trailing window is full from the first plotted day.
+			getDailyAssessments({
+				...scope,
+				from: shiftDateStr(fromDateStr, { days: 1 - SENTIMENT_WINDOW_DAYS }),
+			}),
 		]);
 
 		const totalRuns = totals.runs;
@@ -150,6 +176,10 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			brandedVisibility,
 			visibilityTimeSeries,
 			citationTimeSeries,
+			sentiment: sentimentCounts(totals),
+			sentimentTimeSeries: sentimentSeries(dailyAssessments, dateRange),
+			averagePosition: averagePosition(totals.position_sum, totals.positioned_runs),
+			positionTimeSeries: positionSeries(dailyAssessments, dateRange),
 			lastUpdatedAt,
 		};
 	});
