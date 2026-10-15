@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
  * The subset of Hugging Face's `tokenizers` pipeline the judge model was trained with:
  * whitespace-collapsing + NFC normalisation, Metaspace pre-tokenisation and a Unigram
  * model, with `[CLS] A [SEP] B [SEP]` pairs truncated on the second segment.
- * Any other tokenizer.json is rejected rather than silently tokenised differently.
+ * A tokenizer.json with a different model or pipeline type is rejected rather than silently
+ * tokenised differently.
  */
 
 const UNK_PENALTY = 10;

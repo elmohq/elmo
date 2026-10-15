@@ -25,7 +25,7 @@ import { type Citation, extractRun } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gte, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
-import { type MentionAnalyzer, mentionAnalyzer } from "../mention-judge/analyze";
+import { mentionAnalyzer } from "../mention-judge/analyze";
 
 export const REPROCESS_QUEUE = "reprocess";
 
@@ -92,13 +92,12 @@ export async function deriveRunUpdate(
 	layers: ReprocessLayer[],
 	target: AnalysisVersions,
 	config: MentionConfig,
-	analyzer: MentionAnalyzer = mentionAnalyzer(),
 ): Promise<RunUpdate> {
 	const update: RunUpdate = { kept: [] };
 	const extract = layers.includes("extraction") && isStale(run, "extraction", target);
 	const text = extract || run.textContent === null ? reextract(run, extract, target, update) : run.textContent;
 	if (layers.includes("interpretation") && isStale(run, "interpretation", target)) {
-		update.mentions = { ...(await rederiveMentions(run, text, config, update, analyzer)), stamp: target[MENTIONS_KEY] };
+		update.mentions = { ...(await rederiveMentions(run, text, config, update)), stamp: target[MENTIONS_KEY] };
 	}
 	return update;
 }
@@ -121,10 +120,9 @@ async function rederiveMentions(
 	text: string | null,
 	config: MentionConfig,
 	update: RunUpdate,
-	analyzer: MentionAnalyzer,
 ): Promise<Omit<NonNullable<RunUpdate["mentions"]>, "stamp">> {
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
-		const { mentionAssessments, ...mentions } = await analyzer.analyze(text, config);
+		const { mentionAssessments, ...mentions } = await mentionAnalyzer().analyze(text, config);
 		return { ...mentions, assessments: mentionAssessments };
 	}
 	update.kept.push("mentions");
@@ -149,6 +147,8 @@ async function loadStaleRuns(
 	pass: Pass,
 	promptId: string,
 	from: Date | null,
+	/** Limits the walk to runs created since then; null walks the whole history. */
+	since: Date | null,
 	limit = BATCH_SIZE,
 ): Promise<StaleRun[]> {
 	const rows = await conn
@@ -173,7 +173,7 @@ async function loadStaleRuns(
 				eq(promptRuns.promptId, promptId),
 				eq(promptRuns.brandId, pass.brandId),
 				from ? gte(promptRuns.createdAt, from) : undefined,
-				pass.since ? gte(promptRuns.createdAt, pass.since) : undefined,
+				since ? gte(promptRuns.createdAt, since) : undefined,
 				or(...pass.layers.map((layer) => staleFor(layer, pass.target))),
 			),
 		)
@@ -205,26 +205,28 @@ interface Pass {
 	config: MentionConfig;
 	/** Runs whose stored payload yielded less than they already had; see `deriveRunUpdate`. */
 	keptRuns: number;
-	/** Limits the walk to runs created since then; null walks the whole history. */
-	since: Date | null;
-	/** Runs rewritten so far in this pass. */
-	rewritten: number;
 }
 
 /**
- * Derives runs in order until the deadline. Judging an answer takes real time, so a
- * batch can outlast the pass's budget; what was derived is still written.
+ * Derives runs in parallel, one lane per judge session, until the deadline. Judging an answer
+ * takes real time, so a batch can outlast the pass's budget; what was derived is still written.
  */
 async function deriveUpdates(pass: Pass, runs: StaleRun[], deadline: number) {
 	const updates: { run: StaleRun; update: RunUpdate }[] = [];
 	let started = 0;
-	// As many lanes as the judge has sessions. Runs are taken in order and every one started
-	// finishes, so what's derived is always a prefix and the walk's cursor never skips a run.
+	let failed = false;
+	// Runs are taken in order and every one started finishes, so what's derived is always a
+	// prefix and the walk's cursor never skips a run. One failure stops the other lanes, since
+	// the batch is thrown away and retried.
 	const lane = async () => {
-		while (started < runs.length && Date.now() <= deadline) {
+		while (!failed && started < runs.length && Date.now() <= deadline) {
 			const i = started++;
-			const update = await deriveRunUpdate(runs[i], pass.layers, pass.target, pass.config);
-			updates[i] = { run: runs[i], update };
+			try {
+				updates[i] = { run: runs[i], update: await deriveRunUpdate(runs[i], pass.layers, pass.target, pass.config) };
+			} catch (error) {
+				failed = true;
+				throw error;
+			}
 		}
 	};
 	await Promise.all(Array.from({ length: mentionAnalyzer().concurrency }, lane));
@@ -268,32 +270,43 @@ function rewriteRuns(conn: DbConnection, pass: Pass, updates: { run: StaleRun; u
 	});
 }
 
-/** Rewrites a prompt's stale runs; false when the deadline cut it short. */
-async function reprocessPrompt(conn: DbConnection, pass: Pass, promptId: string, deadline: number): Promise<boolean> {
+/** Rewrites a prompt's stale runs, returning how many; null when the deadline cut it short. */
+async function reprocessPrompt(
+	conn: DbConnection,
+	pass: Pass,
+	promptId: string,
+	deadline: number,
+	since: Date | null,
+): Promise<number | null> {
 	let from: Date | null = null;
+	let rewritten = 0;
 	for (;;) {
-		if (Date.now() > deadline) return false;
-		const runs = await loadStaleRuns(conn, pass, promptId, from);
+		if (Date.now() > deadline) return null;
+		const runs = await loadStaleRuns(conn, pass, promptId, from, since);
 		const updates = await deriveUpdates(pass, runs, deadline);
 		if (updates.length > 0) pass.keptRuns += await rewriteRuns(conn, pass, updates);
-		pass.rewritten += updates.length;
-		if (updates.length < runs.length) return false;
-		if (runs.length < BATCH_SIZE) return true;
+		rewritten += updates.length;
+		if (updates.length < runs.length) return null;
+		if (runs.length < BATCH_SIZE) return rewritten;
 		from = runs[runs.length - 1].createdAt;
 	}
 }
 
-/** False when the deadline cut the walk short. */
+/** How many runs were rewritten; null when the deadline cut the walk short. */
 async function reprocessPrompts(
 	conn: DbConnection,
 	pass: Pass,
 	promptIds: string[],
 	deadline: number,
-): Promise<boolean> {
+	since: Date | null,
+): Promise<number | null> {
+	let rewritten = 0;
 	for (const id of promptIds) {
-		if (!(await reprocessPrompt(conn, pass, id, deadline))) return false;
+		const count = await reprocessPrompt(conn, pass, id, deadline, since);
+		if (count === null) return null;
+		rewritten += count;
 	}
-	return true;
+	return rewritten;
 }
 
 function sameTags(a: string[], b: string[]): boolean {
@@ -352,11 +365,10 @@ async function walkRecentFirst(
 	promptIds: string[],
 	deadline: number,
 ): Promise<"done" | "yielded" | "out of time"> {
-	pass.since = new Date(Date.now() - RECENT_FIRST_MS);
-	if (!(await reprocessPrompts(conn, pass, promptIds, deadline))) return "out of time";
-	if (pass.rewritten > 0) return "yielded";
-	pass.since = null;
-	return (await reprocessPrompts(conn, pass, promptIds, deadline)) ? "done" : "out of time";
+	const recent = await reprocessPrompts(conn, pass, promptIds, deadline, new Date(Date.now() - RECENT_FIRST_MS));
+	if (recent === null) return "out of time";
+	if (recent > 0) return "yielded";
+	return (await reprocessPrompts(conn, pass, promptIds, deadline, null)) === null ? "out of time" : "done";
 }
 
 /**
@@ -382,8 +394,6 @@ export async function runReprocess(
 		target: context.current,
 		config: context.config,
 		keptRuns: 0,
-		since: null,
-		rewritten: 0,
 	};
 
 	const brandPrompts = await conn
@@ -431,7 +441,7 @@ export async function runReprocess(
 	// prompt. Checking after stamping misses it only if that write stayed open
 	// through the whole pass.
 	for (const { id } of brandPrompts) {
-		if ((await loadStaleRuns(conn, pass, id, null, 1)).length === 0) continue;
+		if ((await loadStaleRuns(conn, pass, id, null, null, 1)).length === 0) continue;
 		await sendReprocess(boss, data);
 		console.log(`[reprocess] brand ${data.brandId} has runs written mid-pass, going again`);
 		return;
@@ -467,10 +477,10 @@ export async function requestStaleReprocesses(
 }
 
 /**
- * Brands that predate stamping adopt today's stamps instead of replaying their
- * whole history on deploy: what they've stored is taken as is until their
- * config or the code next changes. Their mentions were substring-matched, so
- * they adopt that stamp, and a worker with the judge goes on to re-judge them.
+ * Brands that predate stamping adopt today's extraction stamp rather than
+ * re-extracting their whole history on deploy. Their mentions were
+ * substring-matched, so they adopt that stamp too, and a worker with the judge
+ * goes on to re-judge them.
  */
 export async function adoptCurrentStamps(conn: DbConnection = db): Promise<number> {
 	const unstamped = await conn.select().from(brands).where(isNull(brands.analysisVersions));
@@ -479,9 +489,7 @@ export async function adoptCurrentStamps(conn: DbConnection = db): Promise<numbe
 		const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brand.id));
 		const updated = await conn
 			.update(brands)
-			.set({
-				analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors)),
-			})
+			.set({ analysisVersions: currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors)) })
 			.where(and(eq(brands.id, brand.id), isNull(brands.analysisVersions)))
 			.returning({ id: brands.id });
 		adopted += updated.length;

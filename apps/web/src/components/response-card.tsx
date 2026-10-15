@@ -6,6 +6,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import type { ReactNode } from "react";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
+import { evidencePassage } from "@/lib/evidence";
 import { HIGHLIGHT_CLASS, splitHighlights } from "@/lib/highlight";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
@@ -132,7 +133,6 @@ const REASONS: Record<string, string> = {
 	other_meaning: "the name is used in another sense",
 	other_company: "a different company with the same name",
 	no_info: "the answer says it has no information about it",
-	link_only: "cited only by link",
 };
 
 const SENTIMENTS: Record<string, string> = {
@@ -162,28 +162,29 @@ function MentionEvidence({
 	text: string;
 	brandName?: string;
 }) {
-	const entries: [string, MentionAssessmentRecord][] = [];
-	if (assessments?.brand) entries.push([brandName ?? "Your brand", assessments.brand]);
+	const entries: { key: string; name: string; record: MentionAssessmentRecord }[] = [];
+	if (assessments?.brand) entries.push({ key: "brand", name: brandName ?? "Your brand", record: assessments.brand });
 	for (const [name, record] of Object.entries(assessments?.competitors ?? {})) {
-		if (record.mention !== "mentioned") entries.push([name, record]);
+		if (record.mention !== "mentioned") entries.push({ key: `competitor:${name}`, name, record });
 	}
-	const shown = entries.filter(([, record]) => record.evidence && record.evidence.end <= text.length);
+	const shown = entries.flatMap((entry) => {
+		const passage = evidencePassage(text, entry.record);
+		return passage ? [{ ...entry, passage }] : [];
+	});
 	if (shown.length === 0) return null;
 	return (
 		<div>
 			<span className="text-xs text-muted-foreground block mb-1.5">Evidence</span>
 			<div className="space-y-2">
-				{shown.map(([name, record]) => (
-					<figure key={name} className="rounded-md border p-3 text-sm space-y-1.5">
+				{shown.map(({ key, name, record, passage }) => (
+					<figure key={key} className="rounded-md border p-3 text-sm space-y-1.5">
 						<figcaption className="flex flex-wrap items-center gap-1.5 text-xs">
 							<span className="font-medium">{name}</span>
 							<Badge variant={record.mention === "uncertain" ? "secondary" : "outline"} className="text-xs font-normal">
 								{verdictLabel(record)}
 							</Badge>
 						</figcaption>
-						<blockquote className="border-l-2 pl-3 text-muted-foreground whitespace-pre-wrap">
-							{text.slice(record.evidence?.start, record.evidence?.end).trim()}
-						</blockquote>
+						<blockquote className="border-l-2 pl-3 text-muted-foreground whitespace-pre-wrap">{passage}</blockquote>
 					</figure>
 				))}
 			</div>

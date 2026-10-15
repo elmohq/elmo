@@ -76,6 +76,23 @@ describe("judged mentions", () => {
 		expect(result.mentionAssessments?.brand?.sentiment).toBe("negative");
 	});
 
+	it("finds the brand after text whose lowercase form is a different length", async () => {
+		const text = "İstanbul has many shops. Apple is great value there.";
+		const result = await analyzer.analyze(text, config);
+		expect(result.brandMentioned).toBe(true);
+		const evidence = result.mentionAssessments?.brand?.evidence;
+		expect(text.slice(evidence?.start, evidence?.end)).toContain("Apple is great value there.");
+	});
+
+	it("ignores blank aliases and domains", async () => {
+		const padded = {
+			...config,
+			brand: { ...config.brand, aliases: ["", "  "], domains: [" ", "https://www.apple.com"] },
+		};
+		const result = await analyzer.analyze("Nothing relevant here.", padded);
+		expect(result.brandMentioned).toBe(false);
+	});
+
 	it("judges competitors by their names and aliases", async () => {
 		const result = await analyzer.analyze("Globex Corp is a solid alternative.", config);
 		expect(result.competitorsMentioned).toEqual(["Globex"]);

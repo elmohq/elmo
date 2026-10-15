@@ -1,4 +1,4 @@
-import type { DailySentiment } from "@/lib/rollup-read";
+import type { DailySentiment, MentionTotals } from "@/lib/rollup-read";
 
 export interface SentimentCounts {
 	positive: number;
@@ -9,42 +9,53 @@ export interface SentimentCounts {
 
 export interface SentimentPoint {
 	date: string;
-	/** Share of the trailing window's sentiment-judged mentions that were positive; null with none. */
+	/** Share of the trailing window's mentions with a clear tone that were positive; null with none. */
 	positive: number | null;
 	negative: number | null;
 }
 
-const judged = (c: SentimentCounts) => c.positive + c.neutral + c.negative + c.mixed;
+export const SENTIMENT_WINDOW_DAYS = 7;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** `date` (YYYY-MM-DD) moved by `days`. */
+export function shiftDate(date: string, days: number): string {
+	return new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+}
+
 const share = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : null);
 
 /**
  * Positive and negative shares per day over a trailing window: a brand turns up in only some
- * answers each day, so single days swing on a handful of mentions.
+ * answers each day, so single days swing on a handful of mentions. `rows` should start
+ * `windowDays - 1` days before `dateRange` so its first days get a full window.
  */
-export function sentimentSeries(rows: DailySentiment[], dateRange: string[], windowDays = 7): SentimentPoint[] {
+export function sentimentSeries(
+	rows: DailySentiment[],
+	dateRange: string[],
+	windowDays = SENTIMENT_WINDOW_DAYS,
+): SentimentPoint[] {
 	const byDate = new Map(rows.map((row) => [row.date, row]));
-	return dateRange.map((date, i) => {
-		const window = { positive: 0, neutral: 0, negative: 0, mixed: 0 };
-		for (const day of dateRange.slice(Math.max(0, i - windowDays + 1), i + 1)) {
-			const row = byDate.get(day);
+	return dateRange.map((date) => {
+		let positive = 0;
+		let negative = 0;
+		let clear = 0;
+		for (let back = 0; back < windowDays; back++) {
+			const row = byDate.get(shiftDate(date, -back));
 			if (!row) continue;
-			window.positive += row.positive_runs;
-			window.neutral += row.neutral_runs;
-			window.negative += row.negative_runs;
-			window.mixed += row.mixed_runs;
+			positive += row.positive_runs;
+			negative += row.negative_runs;
+			clear += row.positive_runs + row.neutral_runs + row.negative_runs + row.mixed_runs;
 		}
-		return { date, positive: share(window.positive, judged(window)), negative: share(window.negative, judged(window)) };
+		return { date, positive: share(positive, clear), negative: share(negative, clear) };
 	});
 }
 
-export function sentimentTotals(rows: DailySentiment[]): SentimentCounts {
-	return rows.reduce(
-		(sum, row) => ({
-			positive: sum.positive + row.positive_runs,
-			neutral: sum.neutral + row.neutral_runs,
-			negative: sum.negative + row.negative_runs,
-			mixed: sum.mixed + row.mixed_runs,
-		}),
-		{ positive: 0, neutral: 0, negative: 0, mixed: 0 },
-	);
+export function sentimentCounts(totals: MentionTotals): SentimentCounts {
+	return {
+		positive: totals.positive_runs,
+		neutral: totals.neutral_runs,
+		negative: totals.negative_runs,
+		mixed: totals.mixed_runs,
+	};
 }

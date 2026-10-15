@@ -116,16 +116,16 @@ describe("deriveRunUpdate on a payload that yields less than the run has", () =>
 });
 
 describe("staleLayers", () => {
-	it("asks for nothing when history matches today's code and config", async () => {
+	it("asks for nothing when history matches today's code and config", () => {
 		expect(staleLayers(target, target)).toEqual([]);
 	});
 
-	it("re-derives mentions alone after a config change", async () => {
+	it("re-derives mentions alone after a config change", () => {
 		const moved = currentAnalysisVersions({ ...config, brand: { ...config.brand, aliases: ["Acme Corp"] } });
 		expect(staleLayers(target, moved)).toEqual(["interpretation"]);
 	});
 
-	it("brings interpretation along with extraction, since new text changes what is found", async () => {
+	it("brings interpretation along with extraction, since new text changes what is found", () => {
 		expect(staleLayers({ ...target, [EXTRACTION_KEY]: "0" }, target)).toEqual(["extraction", "interpretation"]);
 	});
 });
