@@ -47,7 +47,7 @@ export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 	sentiment: {
 		label: "Sentiment",
 		short: "Sentiment",
-		info: "How AI answers that mention your brand speak of it, from 0 to 100: positive answers count 100, neutral and mixed 50, negative 0. Above 50, praise outweighs criticism. Like visibility, it counts each prompt's latest answers.",
+		info: "How favorably AI talks about your brand when it mentions you, from 0 to 100. 50 is neutral; higher means more praise than criticism, lower means more criticism than praise.",
 		format: score,
 		formatChange: (change) => `${Math.abs(Math.round(change * 100))}`,
 		// Neutral answers alone score 50: fair, since only criticism outweighing praise is poor.
