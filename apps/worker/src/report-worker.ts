@@ -168,10 +168,10 @@ const JUDGE_ATTEMPTS = 3;
 const JUDGE_RETRY_DELAY_MS = 5_000;
 
 /** Judges a report's answer, retrying on its own: the answer is paid for and is never fetched again. */
-async function judgeWithRetries(text: string, config: MentionConfig) {
+async function judgeWithRetries(text: string, config: MentionConfig, question: string) {
 	for (let attempt = 1; ; attempt++) {
 		try {
-			return await mentionAnalyzer().analyze(text, config);
+			return await mentionAnalyzer().analyze(text, config, null, question);
 		} catch (error) {
 			if (attempt >= JUDGE_ATTEMPTS) throw error;
 			console.error(`Mention judge failed (attempt ${attempt} of ${JUDGE_ATTEMPTS}); retrying:`, error);
@@ -215,7 +215,7 @@ async function runPrompt(
 	);
 	const runResults = await Promise.all(
 		answers.map(async ({ config, result, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = await judgeWithRetries(textContent, mentionConfig);
+			const { brandMentioned, competitorsMentioned } = await judgeWithRetries(textContent, mentionConfig, promptValue);
 			return {
 				model: config.model,
 				version: result.modelVersion ?? config.version ?? config.provider,

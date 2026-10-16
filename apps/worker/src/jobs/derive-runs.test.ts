@@ -31,6 +31,7 @@ const openAiPayload = (text: string) => ({
 const legacyRun = (text: string): StaleRun => ({
 	id: "run-1",
 	promptId: "prompt-1",
+	question: "best crm",
 	createdAt: new Date("2026-01-15T10:05:00.000Z"),
 	model: "gpt-5",
 	provider: "openai-api",

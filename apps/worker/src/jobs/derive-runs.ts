@@ -13,7 +13,15 @@ import {
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { loadRawOutputs, updateExtractions, updateMentions } from "@workspace/lib/db/runs";
-import { brands, citations, competitors, promptRuns, runExtractions, runMentions } from "@workspace/lib/db/schema";
+import {
+	brands,
+	citations,
+	competitors,
+	promptRuns,
+	prompts,
+	runExtractions,
+	runMentions,
+} from "@workspace/lib/db/schema";
 import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } from "@workspace/lib/mentions";
 import { insertRunsCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { type Citation, extractRun } from "@workspace/lib/text-extraction";
@@ -62,6 +70,8 @@ export async function sendDeriveRuns(
 export interface StaleRun {
 	id: string;
 	promptId: string;
+	/** The prompt the answer replies to, which the judge reads as context. */
+	question: string;
 	createdAt: Date;
 	model: string;
 	provider: string | null;
@@ -140,7 +150,7 @@ async function rederiveMentions(
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
 		// Assessments can be kept only while the text they were judged on, and point into, is unchanged.
 		const previous = text === run.textContent ? run.assessments : null;
-		return analyzer.analyze(text, config, previous);
+		return analyzer.analyze(text, config, previous, run.question);
 	}
 	update.kept.push("mentions");
 	const { brandMentioned, competitorsMentioned, assessments } = run;
@@ -157,6 +167,7 @@ async function loadRuns(
 		.select({
 			id: promptRuns.id,
 			promptId: promptRuns.promptId,
+			question: prompts.value,
 			createdAt: promptRuns.createdAt,
 			model: promptRuns.model,
 			provider: promptRuns.provider,
@@ -170,6 +181,7 @@ async function loadRuns(
 			citationCount: sql<number>`(SELECT count(*) FROM ${citations} WHERE ${citations.promptRunId} = ${promptRuns.id})::int`,
 		})
 		.from(promptRuns)
+		.innerJoin(prompts, eq(prompts.id, promptRuns.promptId))
 		.leftJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
 		.leftJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 		.where(inArray(promptRuns.id, runIds));

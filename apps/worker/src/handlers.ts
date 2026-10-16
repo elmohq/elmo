@@ -39,21 +39,10 @@ function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promis
 	};
 }
 
-/** The only handler a judge-only worker runs. */
-export async function registerDeriveRunsHandler(boss: PgBoss): Promise<void> {
-	// One chunk per job, so each retries on its own; as many at once as the judge has sessions.
-	await boss.work<DeriveRunsData>(
-		DERIVE_RUNS_QUEUE,
-		{ batchSize: 1, localConcurrency: mentionAnalyzer().concurrency },
-		withSentry(DERIVE_RUNS_QUEUE, deriveRunsJob),
-	);
-	console.log(`Registered handler: ${DERIVE_RUNS_QUEUE}`);
-}
-
 /**
  * Register all job handlers with pg-boss.
  */
-export async function registerHandlers(boss: PgBoss, { judging }: { judging: boolean }): Promise<void> {
+export async function registerHandlers(boss: PgBoss): Promise<void> {
 	await boss.work<ProcessPromptData>(
 		"process-prompt",
 		{ localConcurrency: 10 },
@@ -93,14 +82,18 @@ export async function registerHandlers(boss: PgBoss, { judging }: { judging: boo
 	);
 	console.log("Registered handler: schedule-maintenance");
 
-	if (judging) {
-		await registerDeriveRunsHandler(boss);
+	// One chunk per job, so each retries on its own.
+	await boss.work<DeriveRunsData>(
+		DERIVE_RUNS_QUEUE,
+		{ batchSize: 1, localConcurrency: mentionAnalyzer().concurrency },
+		withSentry(DERIVE_RUNS_QUEUE, deriveRunsJob),
+	);
+	console.log(`Registered handler: ${DERIVE_RUNS_QUEUE}`);
 
-		await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
-		console.log(`Registered handler: ${REPROCESS_QUEUE}`);
-		await boss.work(REQUEST_REPROCESSES_QUEUE, withSentry(REQUEST_REPROCESSES_QUEUE, requestReprocessesJob));
-		console.log(`Registered handler: ${REQUEST_REPROCESSES_QUEUE}`);
-	}
+	await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
+	console.log(`Registered handler: ${REPROCESS_QUEUE}`);
+	await boss.work(REQUEST_REPROCESSES_QUEUE, withSentry(REQUEST_REPROCESSES_QUEUE, requestReprocessesJob));
+	console.log(`Registered handler: ${REQUEST_REPROCESSES_QUEUE}`);
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.work<SyncAuth0MembershipsData>(

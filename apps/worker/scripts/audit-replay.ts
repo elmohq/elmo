@@ -10,12 +10,13 @@ import { normalizeUrl } from "@workspace/lib/citations/domain-categories";
  * Reprocess already refuses to replace something with nothing; this shows how
  * often that will happen and where replay would change history instead.
  *
- * Mentions are re-judged the way the worker would, so the model has to be in place
- * (`pnpm judge:pull`).
+ * Mentions are re-judged the way the worker would, with Jev: that's a paid call per run (very
+ * roughly $0.0002), so set TYPESAFE_API_KEY, keep --limit small, or pass --skip-mentions to audit
+ * extraction only.
  *
  * Usage (never loads .env; point it at a database you mean to read):
  *   cd apps/worker
- *   DATABASE_URL=postgres://... pnpm exec tsx scripts/audit-replay.ts [--brand=<id>] [--since=2026-01-01] [--limit=50000]
+ *   DATABASE_URL=postgres://... TYPESAFE_API_KEY=... pnpm exec tsx scripts/audit-replay.ts [--brand=<id>] [--since=2026-01-01] [--limit=50000] [--skip-mentions]
  */
 import { db } from "@workspace/lib/db/db";
 import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
@@ -23,7 +24,7 @@ import { brands, citations, competitors, promptRuns } from "@workspace/lib/db/sc
 import { type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { extractRun } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gt, gte, inArray } from "drizzle-orm";
-import { loadMentionAnalyzer, mentionAnalyzer } from "../src/mention-judge/analyze";
+import { mentionAnalyzer } from "../src/mention-judge/analyze";
 
 if (!process.env.DATABASE_URL) {
 	console.error("Set DATABASE_URL explicitly; this script never reads .env.");
@@ -39,6 +40,7 @@ const args = new Map(
 const brandFilter = args.get("brand");
 const since = args.get("since");
 const limit = Number(args.get("limit") ?? 50_000);
+const skipMentions = args.has("skip-mentions");
 const BATCH = 500;
 
 type Finding =
@@ -113,6 +115,7 @@ function compareCitations(stored: Set<string>, replayed: Set<string>): Finding |
 async function compareMentions(run: AuditedRun, text: string | null): Promise<Finding | null> {
 	const hasMentions = run.brandMentioned || run.competitorsMentioned.length > 0;
 	if (text === null && hasMentions) return "mentions lost (no text)";
+	if (skipMentions) return null;
 	const replayed = await mentionAnalyzer().analyze(text, await configFor(run.brandId));
 	const same =
 		replayed.brandMentioned === run.brandMentioned &&
@@ -158,7 +161,6 @@ async function auditBatch(after: string | null): Promise<string | null> {
 }
 
 async function main(): Promise<void> {
-	await loadMentionAnalyzer();
 	let audited = 0;
 	let cursor: string | null = null;
 	while (audited < limit) {

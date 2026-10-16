@@ -8,10 +8,10 @@ import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rol
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
-import { registerDeriveRunsHandler, registerHandlers } from "./handlers";
+import { registerHandlers } from "./handlers";
 import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS, requestUnjudgedRuns } from "./jobs/derive-runs";
 import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE, rejudgeDays } from "./jobs/reprocess";
-import { loadMentionAnalyzer, MENTION_JUDGE_DIR } from "./mention-judge/analyze";
+import { configureMentionAnalyzer } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 
@@ -23,39 +23,23 @@ if (process.env.SENTRY_DSN) {
 	});
 }
 
-/** `WORKER_ROLE=judge` runs only the derivation queue, for extra workers that clear a judging backlog. */
-function isJudgeOnly(): boolean {
-	const role = process.env.WORKER_ROLE?.trim() || "all";
-	if (role !== "all" && role !== "judge") throw new Error(`WORKER_ROLE must be "all" or "judge", got "${role}"`);
-	return role === "judge";
-}
-
 async function main() {
 	console.log("Starting pg-boss worker...");
 	assertRequiredEnv();
-	const judgeOnly = isJudgeOnly();
 	const boss = getBoss();
 
-	if (!judgeOnly) {
-		// Awaited so a stored credential counts toward the validation below.
-		await startCredentialRefresh();
+	// Awaited so a stored credential counts toward the validation below.
+	await startCredentialRefresh();
 
-		// Fail fast on misconfigured SCRAPE_TARGETS — surfaces unknown providers,
-		// missing API keys, and per-provider target errors before any job runs.
-		validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
-		console.log("SCRAPE_TARGETS validated");
-		rejudgeDays();
-	}
+	// Fail fast on misconfigured SCRAPE_TARGETS — surfaces unknown providers,
+	// missing API keys, and per-provider target errors before any job runs.
+	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
+	console.log("SCRAPE_TARGETS validated");
+	rejudgeDays();
 
-	// Before anything stamps runs or brands: the stamp names the judge, so it has to be known. Without
-	// it the worker still records answers; they wait unjudged until a restart loads it.
-	const analyzer = await loadMentionAnalyzer().catch((error) => {
-		console.error(`Couldn't load the mention judge from ${MENTION_JUDGE_DIR}; answers wait unjudged:`, error);
-		Sentry.captureException(error);
-		return null;
-	});
-	if (analyzer) console.log(`Mention judge ${analyzer.judgeVersion} loaded`);
-	if (judgeOnly && !analyzer) throw new Error(`WORKER_ROLE=judge needs the mention judge at ${MENTION_JUDGE_DIR}`);
+	// Before anything stamps runs or brands: the stamp names the judge.
+	const { judgeVersion } = configureMentionAnalyzer();
+	console.log(`Judging mentions with ${judgeVersion}`);
 
 	boss.on("error", (error) => {
 		console.error("pg-boss error:", error);
@@ -68,13 +52,6 @@ async function main() {
 	// Start pg-boss (creates schema if needed)
 	await boss.start();
 	console.log("pg-boss started");
-
-	if (judgeOnly) {
-		await boss.createQueue(DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS);
-		await registerDeriveRunsHandler(boss);
-		console.log("Judge-only worker is ready");
-		return;
-	}
 
 	// Create queues if they don't exist (required in pg-boss v12)
 	await boss.createQueue("process-prompt", {
@@ -176,15 +153,13 @@ async function main() {
 	await initializePipeline(boss);
 
 	// Register job handlers
-	await registerHandlers(boss, { judging: analyzer !== null });
+	await registerHandlers(boss);
 	console.log("All handlers registered, worker is ready");
 
-	if (analyzer) {
-		await requestUnjudgedRuns(db, boss, { days: 30, limit: 50_000 }).then(
-			(unjudged) => unjudged > 0 && console.log(`Asked again to judge ${unjudged} runs`),
-			(error) => Sentry.captureException(error),
-		);
-	}
+	await requestUnjudgedRuns(db, boss, { days: 30, limit: 50_000 }).then(
+		(unjudged) => unjudged > 0 && console.log(`Asked again to judge ${unjudged} runs`),
+		(error) => Sentry.captureException(error),
+	);
 
 	await startBackfills();
 }
