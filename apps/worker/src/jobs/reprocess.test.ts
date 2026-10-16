@@ -36,7 +36,7 @@ describe("reprocessDays", () => {
 	});
 
 	it("rejects anything else rather than guessing", () => {
-		for (const value of ["0", "-5", "1.5", "forever"]) {
+		for (const value of ["0", "-5", "1.5", "1e2", "forever"]) {
 			expect(() => reprocessDays({ REPROCESS_DAYS: value })).toThrow("REPROCESS_DAYS");
 		}
 	});
