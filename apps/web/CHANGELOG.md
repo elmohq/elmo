@@ -1,5 +1,21 @@
 # @workspace/web
 
+## 0.7.0
+
+### Patch Changes
+
+- 723f6fd: Center company names and icons in their rows and number each company in the company-by-model tables on the overview and sentiment pages.
+- 0ac774b: Read the text of older ChatGPT and Claude responses recorded before Elmo stored which provider fetched them.
+- 723f6fd: Scroll the company-by-model tables to your brand when it ranks below the visible rows.
+- Updated dependencies [0ac774b]
+- Updated dependencies [f5b579c]
+  - @workspace/lib@0.7.0
+  - @workspace/deployment@0.7.0
+  - @workspace/api-spec@0.7.0
+  - @workspace/config@0.7.0
+  - @workspace/og@0.7.0
+  - @workspace/ui@0.7.0
+
 ## 0.6.2
 
 ### Patch Changes
