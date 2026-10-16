@@ -15,12 +15,18 @@ export interface RingSlice {
 	icon?: ReactNode;
 }
 
-export function RingChart({ slices, center }: { slices: RingSlice[]; center: string }) {
+/** What the ring shows, read out in the listed order and rounding, for anyone who can't see it. */
+export function ringSummary(label: string, slices: RingSlice[]): string {
+	const total = slices.reduce((s, x) => s + x.value, 0);
+	return `${label}: ${slices.map((s) => `${s.name} ${percent(s.value, total)}`).join(", ")}`;
+}
+
+export function RingChart({ slices, center, label }: { slices: RingSlice[]; center: string; label: string }) {
 	const total = slices.reduce((s, x) => s + x.value, 0);
 	if (total === 0) return null;
 	return (
 		<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-			<div className="relative size-40 shrink-0 self-center sm:size-44">
+			<div role="img" aria-label={ringSummary(label, slices)} className="relative size-40 shrink-0 self-center sm:size-44">
 				<ChartContainer config={{}} className="aspect-square size-full">
 					<PieChart>
 						<Pie
