@@ -11,6 +11,7 @@ const ENV_KEYS = [
 	"OXYLABS_USERNAME",
 	"OXYLABS_PASSWORD",
 	"MISTRAL_API_KEY",
+	"GEMINI_API_KEY",
 ];
 
 const savedEnv: Record<string, string | undefined> = {};
@@ -89,6 +90,17 @@ describe("resolveResearchProvider", () => {
 		process.env.MISTRAL_API_KEY = "x";
 		const provider = resolveResearchProvider();
 		expect(provider.id).toBe("mistral-api");
+	});
+
+	it("prefers Mistral over Gemini when both are set", () => {
+		process.env.MISTRAL_API_KEY = "x";
+		process.env.GEMINI_API_KEY = "y";
+		expect(resolveResearchProvider().id).toBe("mistral-api");
+	});
+
+	it("falls back to Gemini when only Gemini is set", () => {
+		process.env.GEMINI_API_KEY = "x";
+		expect(resolveResearchProvider().id).toBe("gemini-api");
 	});
 
 	it("ignores scraper providers entirely", () => {
