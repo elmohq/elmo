@@ -379,6 +379,20 @@ describe("reprocessing over time", () => {
 		expect((await runsInWalkOrder()).map((run) => run.competitorsMentioned)).toEqual([["Globex"], ["Globex"]]);
 	});
 
+	it("asks again at startup for runs a pass left stale, and only those", async () => {
+		const missed = legacyRun("Acme was missed.", daysAgo(1));
+		await insertLegacyRuns([legacyRun("Acme leads.", daysAgo(1)), missed]);
+		await settle();
+		// As if its job ran out of retries while the judge was down.
+		await db.update(runMentions).set({ stamp: "old" }).where(eq(runMentions.runId, missed.id));
+		expect(await settle()).toEqual([]);
+
+		const asked = fakeBoss();
+		await requestStaleReprocesses(db, asked.boss, cuedAnalyzer, { everyBrand: true });
+		const judged = await Promise.all(sentFor(asked.send, brandId).map((data) => replay(data, 90)));
+		expect(judged.flat().flatMap((job) => job.data.runIds)).toEqual([missed.id]);
+	});
+
 	it("never reaches past a short window, through config changes and toggles", async () => {
 		await insertLegacyRuns([legacyRun("Acme recent.", daysAgo(2)), legacyRun("Acme older.", daysAgo(20))]);
 		expect(await settle(7)).toEqual(["Acme recent."]);

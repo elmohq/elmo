@@ -10,8 +10,13 @@ import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
 import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS, reprocessDays, requestUnjudgedRuns } from "./jobs/derive-runs";
-import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE } from "./jobs/reprocess";
-import { configureMentionAnalyzer } from "./mention-judge/analyze";
+import {
+	adoptCurrentStamps,
+	REPROCESS_QUEUE,
+	REQUEST_REPROCESSES_QUEUE,
+	requestStaleReprocesses,
+} from "./jobs/reprocess";
+import { configureMentionAnalyzer, mentionAnalyzer } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 
@@ -159,6 +164,9 @@ async function main() {
 	await requestUnjudgedRuns(db, boss, { days: 30, limit: 50_000 }).then(
 		(unjudged) => unjudged > 0 && console.log(`Asked again to judge ${unjudged} runs`),
 		(error) => Sentry.captureException(error),
+	);
+	await requestStaleReprocesses(db, boss, mentionAnalyzer(), { everyBrand: true }).catch((error) =>
+		Sentry.captureException(error),
 	);
 
 	await startBackfills();
