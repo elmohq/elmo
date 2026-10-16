@@ -83,7 +83,8 @@ export const SortByModel: Story = {
 		const model = mockLandscape.models[0];
 		const header = await within(canvasElement).findByRole("button", { name: `Sort by ${getModelMeta(model).label}` });
 		const table = header.closest("table") as HTMLTableElement;
-		const companies = () => Array.from(table.tBodies[0].rows, (row) => row.cells[0].textContent?.trim());
+		const column = Array.from(table.tHead?.rows[0].cells ?? [], (cell) => cell.textContent?.trim()).indexOf("Company");
+		const companies = () => Array.from(table.tBodies[0].rows, (row) => row.cells[column].textContent?.trim());
 		const bestFirst = [...mockLandscape.companies]
 			.sort((a, b) => b.byModel[model].sentiment - a.byModel[model].sentiment)
 			.map((c) => c.name);
