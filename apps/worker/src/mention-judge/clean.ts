@@ -101,7 +101,7 @@ export function cleanAnswer(answer: string): Cleaned {
 		[/<\/?([a-z][a-z0-9]*)(?:\s[^<>]*)?\/?>/gi, (_, tag) => (BLOCK_TAGS.has(tag.toLowerCase()) ? " " : "")],
 		// Citation tokens some answers carry: "【4†source】" (other 【】 is ordinary CJK punctuation),
 		// ChatGPT's private-use citation markers with what they wrap, and "[^1^]".
-		[/【[^】\n]*†[^】\n]*】|\ue200[^\ue201\n]*\ue201|[\ue000-\uf8ff]|\[\^\d+\^?\]/g, () => ""],
+		[/【[^】\n]{0,200}†[^】\n]{0,200}】|\ue200[^\ue201\n]{0,200}\ue201|[\ue000-\uf8ff]|\[\^\d+\^?\]/g, () => ""],
 		[
 			IMAGE,
 			(_, caption, url) => {
