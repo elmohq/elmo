@@ -1,4 +1,4 @@
-import { IconInfoCircle } from "@tabler/icons-react";
+import { IconArrowDown, IconArrowUp, IconInfoCircle } from "@tabler/icons-react";
 import { getModelMeta } from "@workspace/config/models";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -14,6 +14,7 @@ import {
 	chartedCompanies,
 	LANDSCAPE_METRICS,
 	type Landscape,
+	type LandscapeCompany,
 	type LandscapeMetric,
 	lowerIsBetter,
 	sortByMetric,
@@ -91,10 +92,40 @@ function MetricSwitch({ value, onChange }: { value: LandscapeMetric; onChange: (
 	);
 }
 
-/** Every company on one measure, overall and per model, best first. */
+const ALL_COLUMN = "all";
+
+interface GridSort {
+	/** `ALL_COLUMN` or a model id. */
+	column: string;
+	bestFirst: boolean;
+}
+
+function SortArrow({ active, descending }: { active: boolean; descending: boolean }) {
+	const Arrow = descending ? IconArrowDown : IconArrowUp;
+	// Hung off the label's left edge so the label stays centred over its column.
+	return <Arrow className={cn("absolute top-1/2 right-full mr-0.5 size-3 -translate-y-1/2", !active && "invisible")} />;
+}
+
+/** Every company on one measure, overall and per model, best first unless a column header picks another order. */
 export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric: LandscapeMetric }) {
 	const meta = METRIC_META[metric];
-	const rows = sortByMetric(landscape.companies, metric);
+	const [sort, setSort] = useState<GridSort>({ column: ALL_COLUMN, bestFirst: true });
+	// A model can drop out of the landscape when the filters change; its sort falls back to the overall figure.
+	const column = sort.column === ALL_COLUMN || landscape.models.includes(sort.column) ? sort.column : ALL_COLUMN;
+	const sortValue = (company: LandscapeCompany) =>
+		column === ALL_COLUMN ? company.totals[metric] : (company.byModel[column]?.[metric] ?? null);
+	const sign = (lowerIsBetter(metric) ? 1 : -1) * (sort.bestFirst ? 1 : -1);
+	// Ties keep the overall order. Companies without a value go last either way.
+	const rows = sortByMetric(landscape.companies, metric).sort((a, b) => {
+		const x = sortValue(a);
+		const y = sortValue(b);
+		if (x === null || y === null) return x === null ? (y === null ? 0 : 1) : -1;
+		return sign * (x - y);
+	});
+	const descending = sort.bestFirst !== lowerIsBetter(metric);
+	const onSort = (next: string) =>
+		setSort(column === next ? { column, bestFirst: !sort.bestFirst } : { column: next, bestFirst: true });
+	const ariaSort = (key: string) => (column === key ? (descending ? "descending" : "ascending") : "none");
 	const maxShare = Math.max(
 		0,
 		...landscape.companies.flatMap((c) => Object.values(c.byModel).map((v) => v.share ?? 0)),
@@ -106,14 +137,33 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 				<tr className="text-xs text-muted-foreground">
 					{/* Takes whatever width the panel has to spare, keeping the figures together on the right. */}
 					<th className="w-full px-4 py-2.5 text-left font-medium">Company</th>
-					<th className="px-2 py-2.5 font-medium">All</th>
+					<th className="px-2 py-2.5 font-medium" aria-sort={ariaSort(ALL_COLUMN)}>
+						<button
+							type="button"
+							onClick={() => onSort(ALL_COLUMN)}
+							className={cn(
+								"relative cursor-pointer hover:text-foreground",
+								column === ALL_COLUMN && "text-foreground",
+							)}
+						>
+							<SortArrow active={column === ALL_COLUMN} descending={descending} />
+							All
+						</button>
+					</th>
 					{landscape.models.map((model) => {
 						const { label, iconId } = getModelMeta(model);
 						return (
-							<th key={model} className="px-1 py-2.5 font-medium">
+							<th key={model} className="px-1 py-2.5 font-medium" aria-sort={ariaSort(model)}>
 								<Tooltip>
-									<TooltipTrigger className="flex w-full justify-center" aria-label={label}>
-										<ModelIcon iconId={iconId} className="size-4" />
+									<TooltipTrigger
+										onClick={() => onSort(model)}
+										className="flex w-full cursor-pointer justify-center hover:text-foreground"
+										aria-label={`Sort by ${label}`}
+									>
+										<span className="relative">
+											<SortArrow active={column === model} descending={descending} />
+											<ModelIcon iconId={iconId} className="size-4" />
+										</span>
 									</TooltipTrigger>
 									<TooltipContent>{label}</TooltipContent>
 								</Tooltip>
@@ -123,14 +173,13 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 				</tr>
 			</thead>
 			<tbody>
-				{rows.map((company, i) => (
+				{rows.map((company) => (
 					<tr
 						key={company.name}
 						className={cn("border-b last:border-0", company.isBrand && "bg-blue-50/70 dark:bg-blue-950/30")}
 					>
 						<td className="whitespace-nowrap px-4 py-1.5">
 							<span className="inline-flex items-center gap-2">
-								<span className="w-4 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
 								<SiteIcon domain={company.domain ?? undefined} size="xs" />
 								{/* Capped on phones so a long name doesn't push every figure out of view. */}
 								<span className={cn("max-w-28 truncate sm:max-w-none", company.isBrand && "font-semibold")}>
