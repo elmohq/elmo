@@ -1,4 +1,4 @@
-import { IconArrowDown, IconArrowUp } from "@tabler/icons-react";
+import { IconArrowDown, IconArrowUp, IconInfoCircle } from "@tabler/icons-react";
 import { getModelMeta } from "@workspace/config/models";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -10,6 +10,7 @@ import { CompanyTrendChart } from "@/components/company-trend-chart";
 import { SiteIcon } from "@/components/site-icon";
 import { useCompanyColors } from "@/lib/company-colors";
 import {
+	CHARTED_COMPETITORS,
 	chartedCompanies,
 	LANDSCAPE_METRICS,
 	type Landscape,
@@ -19,6 +20,35 @@ import {
 	sortByMetric,
 } from "@/lib/landscape";
 import { METRIC_META } from "@/lib/overview-metrics";
+
+/** The headline cards define each measure for the brand alone; here it applies to every company. */
+const MEASURE_INFO: Record<LandscapeMetric, string> = {
+	visibility: "Visibility is the share of AI answers to your prompts that mention each company.",
+	share: "Share of voice is each company's share of every mention of you and your tracked competitors.",
+	sentiment: "Sentiment is how AI answers that mention each company speak of it, from 0 (negative) to 100 (positive).",
+	position:
+		"Position is where each company comes among the tracked companies an answer names, on average. 1 means named first, so lower is better.",
+};
+
+function LandscapeInfo({ metric }: { metric: LandscapeMetric }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				aria-label="About the competitive landscape"
+				className="text-muted-foreground opacity-60 hover:opacity-100"
+			>
+				<IconInfoCircle className="size-3.5" />
+			</TooltipTrigger>
+			<TooltipContent className="max-w-72 space-y-1.5">
+				<p>{MEASURE_INFO[metric]}</p>
+				<p>
+					The chart shows how {METRIC_META[metric].short.toLowerCase()} has changed over time for your brand and the top{" "}
+					{CHARTED_COMPETITORS} competitors on it.
+				</p>
+			</TooltipContent>
+		</Tooltip>
+	);
+}
 
 /** One scale per measure for the grid's shading: the better the value, the deeper the blue. */
 function shade(metric: LandscapeMetric, value: number, maxShare: number): number {
@@ -193,7 +223,10 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 		// On wide screens the page fits the viewport, so the card takes what's left and the grid scrolls within it.
 		<Card className="gap-0 xl:min-h-0 xl:flex-1 border-slate-200 bg-slate-50/70 py-0 shadow-none dark:border-slate-800 dark:bg-slate-900/40">
 			<CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 px-5 pt-4 pb-0">
-				<CardTitle className="text-base">Competitive Landscape</CardTitle>
+				<div className="flex items-center gap-2">
+					<CardTitle className="text-base">Competitive Landscape</CardTitle>
+					<LandscapeInfo metric={metric} />
+				</div>
 				<MetricSwitch value={metric} onChange={setMetric} />
 			</CardHeader>
 			<CardContent className="grid gap-4 p-4 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:grid-rows-[minmax(0,1fr)]">
