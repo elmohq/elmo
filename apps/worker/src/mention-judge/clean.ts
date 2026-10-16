@@ -83,7 +83,7 @@ export function locatePassage(answer: string, passage: string): { start: number;
 		return match ? { at: match.index, end: match.index + match[0].length } : null;
 	};
 	// Gaps are measured in visible characters, so link targets and image data don't count.
-	const visible = haystack.replace(/\]\([^)\s]*\)|https?:\/\/[^\s)\]]+/g, (markup) => " ".repeat(markup.length));
+	const visible = haystack.replace(/\]\([^)\s]{0,2000}\)|https?:\/\/[^\s)\]]+/g, (markup) => " ".repeat(markup.length));
 	const dense = new Uint32Array(visible.length + 1);
 	for (let i = 0; i < visible.length; i++) dense[i + 1] = dense[i] + (visible.charCodeAt(i) > 32 ? 1 : 0);
 	const near = (end: number, next: { at: number }) => dense[next.at] - dense[end] <= MAX_GAP;

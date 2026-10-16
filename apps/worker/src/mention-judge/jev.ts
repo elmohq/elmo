@@ -45,6 +45,8 @@ export function typesafeTransport(apiKey: string, fetchImpl: typeof fetch = fetc
 		});
 		if (!response.ok) {
 			const detail = (await response.text().catch(() => "")).slice(0, 300);
+			if (response.status === 401 || response.status === 403)
+				throw new Error(`TYPESAFE_API_KEY was rejected (HTTP ${response.status}); check it, or its credit: ${detail}`);
 			throw new Error(`Jev returned HTTP ${response.status}: ${detail}`);
 		}
 		const body = (await response.json()) as JevResponse;

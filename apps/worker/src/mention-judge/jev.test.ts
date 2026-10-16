@@ -24,6 +24,12 @@ describe("typesafeTransport", () => {
 		expect(JSON.parse(init.body).model).toBe(JEV_MODEL);
 	});
 
+	it("says so when the key is rejected", async () => {
+		await expect(typesafeTransport("secret", respond(401, "bad key"))(request)).rejects.toThrow(
+			"TYPESAFE_API_KEY was rejected",
+		);
+	});
+
 	it("throws on an error status, so the job retries", async () => {
 		await expect(typesafeTransport("secret", respond(429, "slow down"))(request)).rejects.toThrow("HTTP 429");
 	});
