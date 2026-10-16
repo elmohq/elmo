@@ -51,9 +51,9 @@ const REQUEST_VERSION = 1;
 const MENTION_THRESHOLD = 0.3;
 
 const RULES =
-	"Answer about the one company named in each question, using state.answer (an AI assistant's answer to state.question). " +
-	"Distinguish it from other companies, products or ordinary words with the same name; its products count as the company. " +
-	"Judge how the answer portrays that company specifically, not the overall tone and not other companies. " +
+	"Answer about the one brand named in each question (a company, product, person, organisation or place), using state.answer (an AI assistant's answer to state.question). " +
+	"Distinguish it from anything else with the same name, including ordinary words; its products count as the brand. " +
+	"Judge how the answer portrays that brand specifically, not the overall tone and not other brands. " +
 	"Being included in a list of recommended or best options counts as favourable; minor caveats on a recommended option stay favourable.";
 
 const SENTIMENTS: Sentiment[] = ["positive", "neutral", "negative", "mixed"];
@@ -65,14 +65,14 @@ function verdictQuestion(subject: Subject): JevChoiceQuestion {
 	const { name, domains } = subject;
 	return {
 		type: "choice",
-		instructions: `How does the answer portray the company ${name}${domains.length ? ` (website ${domains.join(", ")})` : ""}? A link to its website counts as a mention.`,
+		instructions: `How does the answer portray ${name}${domains.length ? ` (website ${domains.join(", ")})` : ""}? A link to its website counts as a mention.`,
 		criteria: {
 			positive: `${name} or its product is recommended, praised, listed as a good or best option, or described favourably.`,
 			neutral: `${name} or its product is mentioned factually without evaluation, or only cited as a source.`,
 			negative: `${name} or its product is criticised, warned against, or compared unfavourably.`,
 			mixed: `${name} gets clear praise and clear criticism of similar weight.`,
-			other_meaning: "The name is used as an ordinary word or for something that isn't a company.",
-			other_company: "The name refers to a different company or product with the same name.",
+			other_meaning: "The name is used as an ordinary word, not for any brand.",
+			other_company: "The name refers to a different brand, company, product or person with the same name.",
 			no_info: `The answer says it has no information about ${name}.`,
 		},
 	};
