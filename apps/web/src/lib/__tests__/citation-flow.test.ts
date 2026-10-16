@@ -47,7 +47,7 @@ describe("buildCitationFlow", () => {
 		expect(names(flow, "section")).toEqual([
 			["/blog", 5],
 			["docs.acme.com", 5],
-			["acme.com", 4],
+			["Top-level pages", 4],
 		]);
 		expect(names(flow, "page").map(([name]) => name)).toEqual(["/a", "/b", "/api/auth", "/pricing"]);
 	});
@@ -96,6 +96,18 @@ describe("buildCitationFlow", () => {
 		]);
 	});
 
+	it("spells out the full path when two sections cite pages with the same name", () => {
+		const flow = buildCitationFlow({
+			rows: [
+				row("chatgpt", "https://hubspot.com/products/crm", 5),
+				row("chatgpt", "https://hubspot.com/pricing/crm", 3),
+				row("chatgpt", "https://hubspot.com/blog/what-is-crm", 2),
+			],
+			domain: "hubspot.com",
+		});
+		expect(names(flow, "page").map(([name]) => name)).toEqual(["/products/crm", "/pricing/crm", "/what-is-crm"]);
+	});
+
 	it("drops the section column when every page sits in one section", () => {
 		const flow = buildCitationFlow({
 			rows: [row("chatgpt", "https://acme.com/", 6), row("perplexity", "https://acme.com/pricing", 4)],
@@ -104,9 +116,9 @@ describe("buildCitationFlow", () => {
 		expect(flow.showSections).toBe(false);
 		expect(names(flow, "section")).toEqual([]);
 		const { inflow } = throughput(flow);
-		expect(flow.nodes.filter((node) => node.kind === "page").map((node) => inflow.get(flow.nodes.indexOf(node)))).toEqual([
-			6, 4,
-		]);
+		expect(
+			flow.nodes.filter((node) => node.kind === "page").map((node) => inflow.get(flow.nodes.indexOf(node))),
+		).toEqual([6, 4]);
 	});
 
 	it("folds the long tail of sections and pages into one node each without losing citations", () => {

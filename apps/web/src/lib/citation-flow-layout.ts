@@ -18,6 +18,8 @@ export interface FlowLayoutOptions {
 	/** Pixels per citation never exceed this, so a ten-citation domain isn't drawn as slabs. */
 	maxScale: number;
 	minHeight: number;
+	/** Height budgeted per page row, so bands get some thickness rather than shrinking to the labels. */
+	rowHeight: number;
 }
 
 export interface PositionedNode {
@@ -58,105 +60,111 @@ function columnHeight(values: number[], scale: number, slot: number, gap: number
 	return values.reduce((sum, value) => sum + Math.max(value * scale, slot), 0) + gap * Math.max(values.length - 1, 0);
 }
 
+interface Column {
+	nodes: number[];
+	values: number[];
+	slot: number;
+	gap: number;
+}
+
+/** The largest scale, up to `max`, at which every column fits in `budget`. */
+function fitScale(columns: Column[], budget: number, max: number): number {
+	const fits = (scale: number) => columns.every((c) => columnHeight(c.values, scale, c.slot, c.gap) <= budget);
+	if (fits(max)) return max;
+	let lo = 0;
+	let hi = max;
+	for (let step = 0; step < 30; step++) {
+		const mid = (lo + hi) / 2;
+		if (fits(mid)) lo = mid;
+		else hi = mid;
+	}
+	return lo;
+}
+
+/**
+ * Where each band meets each node: bands leave and enter a node stacked in the
+ * order of the node at their other end, then by engine, so they cross as little
+ * as possible. Returns each link's centre at the given end.
+ */
+function bandCentres(flow: CitationFlow, positioned: PositionedNode[], scale: number, end: "source" | "target") {
+	const other = end === "source" ? "target" : "source";
+	const engineRank = new Map(flow.engines.map((engine, i) => [engine.model, i]));
+	const order = flow.links
+		.map((_, i) => i)
+		.sort((a, b) => {
+			const la = flow.links[a];
+			const lb = flow.links[b];
+			return (
+				positioned[la[other]].y - positioned[lb[other]].y ||
+				(engineRank.get(la.model) ?? 0) - (engineRank.get(lb.model) ?? 0)
+			);
+		});
+	const offsets = new Map<number, number>();
+	const centres: number[] = [];
+	for (const i of order) {
+		const link = flow.links[i];
+		const node = link[end];
+		const offset = offsets.get(node) ?? 0;
+		centres[i] = positioned[node].y + offset + (link.value * scale) / 2;
+		offsets.set(node, offset + link.value * scale);
+	}
+	return centres;
+}
+
 export function layoutCitationFlow(flow: CitationFlow, options: FlowLayoutOptions): FlowLayout {
 	const keys: ColumnKey[] = flow.showSections ? ["engine", "section", "page"] : ["engine", "page"];
-	const columns = keys.map((key) => flow.nodes.flatMap((node, index) => (columnKey(node) === key ? [index] : [])));
-	const total = flow.totalCitations;
+	const columns: Column[] = keys.map((key) => {
+		const nodes = flow.nodes.flatMap((node, index) => (columnKey(node) === key ? [index] : []));
+		return {
+			nodes,
+			values: nodes.map((index) => flow.nodes[index].value),
+			slot: options.minSlot[key],
+			gap: options.gap[key],
+		};
+	});
 
-	// The page column is the longest; size the chart to it at its slot height, then
-	// find the largest scale at which every column still fits.
-	const height = Math.max(
+	// Budget the height from the page rows, then find the largest scale at which every column fits.
+	const budget = Math.max(
 		options.minHeight,
-		...columns.map((col, i) => col.length * (options.minSlot[keys[i]] + options.gap[keys[i]])),
+		columns[columns.length - 1].nodes.length * options.rowHeight,
+		...columns.map((c) => c.nodes.length * (c.slot + c.gap)),
 	);
-	let lo = 0;
-	let hi = Math.min(options.maxScale, total > 0 ? height / total : 0);
-	const fits = (scale: number) =>
-		columns.every(
-			(col, i) =>
-				columnHeight(
-					col.map((index) => flow.nodes[index].value),
-					scale,
-					options.minSlot[keys[i]],
-					options.gap[keys[i]],
-				) <= height,
-		);
-	if (fits(hi)) lo = hi;
-	else for (let step = 0; step < 30; step++) (fits((lo + hi) / 2) ? (lo = (lo + hi) / 2) : (hi = (lo + hi) / 2));
-	const scale = lo;
+	const scale = fitScale(columns, budget, Math.min(options.maxScale, budget / Math.max(flow.totalCitations, 1)));
+	const heights = columns.map((c) => columnHeight(c.values, scale, c.slot, c.gap));
+	// A small domain capped by maxScale shouldn't sit in a tall empty box.
+	const height = Math.max(options.minHeight, ...heights);
 
 	const plotLeft = options.leftGutter;
 	const plotRight = options.width - options.rightGutter - options.nodeWidth;
 	const columnX = keys.map((_, i) => plotLeft + ((plotRight - plotLeft) * i) / Math.max(keys.length - 1, 1));
 
 	const positioned: PositionedNode[] = [];
-	for (const [i, col] of columns.entries()) {
-		const key = keys[i];
-		const slot = options.minSlot[key];
-		const gap = options.gap[key];
-		const values = col.map((index) => flow.nodes[index].value);
-		let y = (height - columnHeight(values, scale, slot, gap)) / 2;
-		for (const index of col) {
+	for (const [i, column] of columns.entries()) {
+		let y = (height - heights[i]) / 2;
+		for (const index of column.nodes) {
 			const node = flow.nodes[index];
 			const nodeHeight = node.value * scale;
-			const room = Math.max(nodeHeight, slot);
-			positioned[index] = {
-				index,
-				node,
-				column: i,
-				x: columnX[i],
-				y: y + (room - nodeHeight) / 2,
-				height: nodeHeight,
-			};
-			y += room + gap;
+			const room = Math.max(nodeHeight, column.slot);
+			positioned[index] = { index, node, column: i, x: columnX[i], y: y + (room - nodeHeight) / 2, height: nodeHeight };
+			y += room + column.gap;
 		}
 	}
 
-	// Bands leave and enter each node stacked in the order of the node at their
-	// other end, then by engine, so they cross as little as possible.
-	const outOffset = new Map<number, number>();
-	const inOffset = new Map<number, number>();
-	const engineRank = new Map(flow.engines.map((engine, i) => [engine.model, i]));
-	const byOtherEnd = (end: "source" | "target") => (a: number, b: number) => {
-		const la = flow.links[a];
-		const lb = flow.links[b];
-		return (
-			positioned[la[end]].y - positioned[lb[end]].y ||
-			(engineRank.get(la.model) ?? 0) - (engineRank.get(lb.model) ?? 0)
-		);
-	};
-	const indices = flow.links.map((_, i) => i);
-	const y0 = new Map<number, number>();
-	const y1 = new Map<number, number>();
-	for (const i of [...indices].sort(byOtherEnd("target"))) {
-		const link = flow.links[i];
-		const offset = outOffset.get(link.source) ?? 0;
-		y0.set(i, positioned[link.source].y + offset + (link.value * scale) / 2);
-		outOffset.set(link.source, offset + link.value * scale);
-	}
-	for (const i of [...indices].sort(byOtherEnd("source"))) {
-		const link = flow.links[i];
-		const offset = inOffset.get(link.target) ?? 0;
-		y1.set(i, positioned[link.target].y + offset + (link.value * scale) / 2);
-		inOffset.set(link.target, offset + link.value * scale);
-	}
-
+	const y0 = bandCentres(flow, positioned, scale, "source");
+	const y1 = bandCentres(flow, positioned, scale, "target");
 	return {
 		width: options.width,
 		height,
 		columnX,
 		nodes: positioned,
-		links: indices.map((i) => {
-			const link = flow.links[i];
-			return {
-				index: i,
-				link,
-				width: link.value * scale,
-				x0: positioned[link.source].x + options.nodeWidth,
-				y0: y0.get(i) as number,
-				x1: positioned[link.target].x,
-				y1: y1.get(i) as number,
-			};
-		}),
+		links: flow.links.map((link, i) => ({
+			index: i,
+			link,
+			width: link.value * scale,
+			x0: positioned[link.source].x + options.nodeWidth,
+			y0: y0[i],
+			x1: positioned[link.target].x,
+			y1: y1[i],
+		})),
 	};
 }
