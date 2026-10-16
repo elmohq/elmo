@@ -88,6 +88,46 @@ describe("adaptivePool", () => {
 		expect(gaps[10]).toBeGreaterThan(gaps[8]);
 	});
 
+	it("keeps close to the account's limit, and follows it down without dropping calls", async () => {
+		let time = 0;
+		const timers: { at: number; resolve: () => void }[] = [];
+		const wait = (ms: number) => new Promise<void>((resolve) => timers.push({ at: time + ms, resolve }));
+		let limit = 20;
+		const sent: number[] = [];
+		const done: number[] = [];
+		const pool = adaptivePool(
+			async () => {
+				const recent = sent.filter((at) => at > time - 1000);
+				if (recent.length >= limit) throw new RateLimited(1000, "slow down");
+				sent.push(time);
+				await wait(1000 + (sent.length % 7) * 100);
+				done.push(time);
+				return ok;
+			},
+			{ now: () => time, wait },
+		);
+		let failed = 0;
+		const end = 6 * 60_000;
+		for (let i = 0; i < 64; i++)
+			void (async () => {
+				while (time < end) await pool(request).catch(() => failed++);
+			})();
+		while (time < end) {
+			for (let i = 0; i < 4; i++) await new Promise((resolve) => setImmediate(resolve));
+			timers.sort((a, b) => a.at - b.at);
+			const next = timers.shift();
+			if (!next) break;
+			time = next.at;
+			if (time > 3 * 60_000) limit = 10;
+			next.resolve();
+		}
+		const rate = (from: number, to: number) => done.filter((at) => at >= from && at < to).length / ((to - from) / 1000);
+		expect(failed).toBe(0);
+		expect(rate(2 * 60_000, 3 * 60_000)).toBeGreaterThan(16);
+		expect(rate(5 * 60_000, 6 * 60_000)).toBeGreaterThan(8);
+		expect(rate(5 * 60_000, 6 * 60_000)).toBeLessThanOrEqual(10);
+	});
+
 	it("gives up after repeated rate limits, so the job retries later, and passes other failures straight on", async () => {
 		const limited = adaptivePool(
 			async () => {

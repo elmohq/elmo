@@ -64,7 +64,7 @@ export function typesafeTransport(apiKey: string, fetchImpl: typeof fetch = fetc
 async function failure(response: Response): Promise<Error> {
 	const detail = (await response.text().catch(() => "")).slice(0, 300);
 	if (response.status === 429)
-		return new RateLimited(Number(response.headers.get("retry-after")) * 1000 || 1000, detail);
+		return new RateLimited(Math.min(Number(response.headers.get("retry-after")) * 1000 || 1000, 60_000), detail);
 	if (response.status === 401 || response.status === 403)
 		return new Error(`TYPESAFE_API_KEY was rejected (HTTP ${response.status}); check it, or its credit: ${detail}`);
 	return new Error(`Jev returned HTTP ${response.status}: ${detail}`);
@@ -86,6 +86,7 @@ export function adaptivePool(
 	let perSecond = start;
 	let nextStart = 0;
 	let cutAt = Number.NEGATIVE_INFINITY;
+	let roundTripMs = 1000;
 	let active = 0;
 	const waiting: (() => void)[] = [];
 	const admit = () => {
@@ -94,17 +95,37 @@ export function adaptivePool(
 			waiting.shift()?.();
 		}
 	};
-	/** When the next call may start, keeping starts evenly spaced at the current rate. */
-	const slot = () => {
-		const at = Math.max(now(), nextStart);
-		nextStart = at + 1000 / perSecond;
-		return at;
+	/**
+	 * Waits for an evenly spaced start at the current rate. A start reserved before the rate was
+	 * cut is reserved again, so calls queued at the old spacing don't overshoot. Returns whether
+	 * the pace held the call back, which is the only time a faster pace would help.
+	 */
+	const paced = async () => {
+		let held = false;
+		for (;;) {
+			const reservedAt = now();
+			const at = Math.max(reservedAt, nextStart);
+			nextStart = at + 1000 / perSecond;
+			if (at > reservedAt) {
+				held = true;
+				await wait(at - reservedAt);
+			}
+			if (reservedAt >= cutAt) return { held, reservedAt };
+		}
 	};
-	/** One cut per burst: calls sent before the last cut don't cut it again. */
-	const slowDown = (sentAt: number) => {
-		if (sentAt < cutAt) return;
+	const succeeded = (sentAt: number, held: boolean) => {
+		roundTripMs = 0.9 * roundTripMs + 0.1 * Math.max(1, now() - sentAt);
+		// About one more call a second per round trip, while the pace is what limits.
+		if (held) perSecond += 1000 / (perSecond * roundTripMs);
+	};
+	const limited = (reservedAt: number) => {
+		// One cut per burst: not for calls reserved before the last cut, and not again within a
+		// second of it, since the limit may still count calls from before it.
+		if (reservedAt < cutAt || now() - cutAt < 1000) return;
 		perSecond = Math.max(0.5, perSecond * 0.8);
 		cutAt = now();
+		// Starts reserved at the old pace are dropped; their calls reserve again from now.
+		nextStart = cutAt;
 	};
 	return async (request) => {
 		await new Promise<void>((resolve) => {
@@ -113,16 +134,15 @@ export function adaptivePool(
 		});
 		try {
 			for (let attempt = 0; ; attempt++) {
-				const sentAt = slot();
-				if (sentAt > now()) await wait(sentAt - now());
+				const { held, reservedAt } = await paced();
+				const sentAt = now();
 				try {
 					const response = await transport(request);
-					// About one more call a second for every second of calls that succeed.
-					perSecond += 1 / perSecond;
+					succeeded(sentAt, held);
 					return response;
 				} catch (error) {
 					if (!(error instanceof RateLimited) || attempt >= retries) throw error;
-					slowDown(sentAt);
+					limited(reservedAt);
 					await wait(error.retryAfterMs);
 				}
 			}
