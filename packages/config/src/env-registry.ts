@@ -231,11 +231,11 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Set to 'judge' for extra worker copies that only judge answers, started to work through a backlog; the default 'all' runs everything.",
 	},
 	{
-		name: "REJUDGE_DAYS",
+		name: "REPROCESS_DAYS",
 		scope: "server",
 		requiredBy: "optional",
 		description:
-			"How far back the worker re-judges history after a brand's names, competitors or the judge change, in days (default 90), or 'all'. Only enabled prompts are re-judged.",
+			"How far back the worker reprocesses history (re-extracting and re-judging answers) after the extractor, the judge, or a brand's names or competitors change, in days (default 90), or 'all'. Only enabled prompts of enabled brands are reprocessed.",
 	},
 	{
 		name: "JINA_API_KEY",
