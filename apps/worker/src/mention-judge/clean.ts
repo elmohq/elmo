@@ -42,7 +42,7 @@ export function cleanAnswer(answer: string): string {
 				return text.trim() ? `${text} (${host(url)})` : `(${host(url)})`;
 			})
 			// Links the answer itself broke (a URL with spaces, text over several lines) keep their text.
-			.replace(/\[([^\]]{0,200}?)\]\([^)\n]*\)/g, (_, text: string) => text.split(/\s+/).join(" ").trim())
+			.replace(/\[([^\]]{0,200}?)\]\([^)\n[]{0,2000}\)/g, (_, text: string) => text.split(/\s+/).join(" ").trim())
 			.replace(/https?:\/\/[^\s)\]]+/g, (url) => host(url))
 			.replace(/[ \t]{2,}/g, " ")
 			.replace(/\n{3,}/g, "\n\n")
@@ -66,12 +66,12 @@ export function locatePassage(answer: string, passage: string): { start: number;
 		.match(WORD);
 	if (!words?.length) return undefined;
 	// Searched case-insensitively in the original: lowercasing it first can change its length ("İ")
-	// and shift every offset after.
-	// Markup may sit inside a word cleaning glued together: "TheAdidas" from "The[Adidas](…)".
+	// and shift every offset after. Markup may sit inside a word cleaning glued together: "TheAdidas"
+	// from "The[Adidas](…)".
 	const patterns = words.map(
 		(word) =>
 			new RegExp(
-				[...word].map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(String.raw`[\[\]*_]*`),
+				`(?<![\\p{L}\\p{N}])${[...word].map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(String.raw`[\[\]*_]*`)}(?![\\p{L}\\p{N}])`,
 				"giu",
 			),
 	);
@@ -82,34 +82,30 @@ export function locatePassage(answer: string, passage: string): { start: number;
 		const match = patterns[i].exec(haystack);
 		return match ? { at: match.index, end: match.index + match[0].length } : null;
 	};
-	// Markup cleaning removed, like a long link target, doesn't count toward the gap.
-	const near = (end: number, next: { at: number } | null) =>
-		!!next && (next.at - end <= MAX_GAP || cleanAnswer(answer.slice(end, next.at)).length <= MAX_GAP);
+	// Gaps are measured in visible characters, so link targets and image data don't count.
+	const visible = haystack.replace(/\]\([^)\s]*\)|https?:\/\/[^\s)\]]+/g, (markup) => " ".repeat(markup.length));
+	const dense = new Uint32Array(visible.length + 1);
+	for (let i = 0; i < visible.length; i++) dense[i + 1] = dense[i] + (visible.charCodeAt(i) > 32 ? 1 : 0);
+	const near = (end: number, next: { at: number }) => dense[next.at] - dense[end] <= MAX_GAP;
 	const allowed = Math.max(1, Math.floor(patterns.length / 10));
-	/** Where the words after `from` lead, nearest first, skipping at most `budget` that can't be found. */
-	const follow = (from: number, end: number, budget: number) => {
-		let skipped = 0;
+	let best: { start: number; end: number; skipped: number } | undefined;
+	const beats = (start: number, end: number, skipped: number) =>
+		!best || skipped < best.skipped || (skipped === best.skipped && end - start < best.end - best.start);
+	/** Follows the words after `from`, nearest first, skipping at most `budget`; gives up once it can't win. */
+	const follow = (from: number, start: number, end: number, skipped: number) => {
 		for (let i = from + 1; i < patterns.length; i++) {
 			const next = find(i, end);
 			if (next && near(end, next)) end = next.end;
-			else if (++skipped > budget) return null;
+			else if (++skipped > allowed) return null;
+			if (!beats(start, end, skipped)) return null;
 		}
-		return { end, skipped };
+		return { start, end, skipped };
 	};
 	// The same words can chain loosely from an earlier occurrence, so the closest fit wins: fewest
 	// words skipped, then the shortest span.
-	let best: { start: number; end: number; skipped: number } | undefined;
 	for (let anchor = 0; anchor <= Math.min(allowed, patterns.length - 1); anchor++) {
 		for (let first = find(anchor, 0); first; first = find(anchor, first.at + 1)) {
-			const fit = follow(anchor, first.end, allowed - anchor);
-			if (!fit) continue;
-			const candidate = { start: first.at, end: fit.end, skipped: fit.skipped + anchor };
-			if (
-				!best ||
-				candidate.skipped < best.skipped ||
-				(candidate.skipped === best.skipped && candidate.end - candidate.start < best.end - best.start)
-			)
-				best = candidate;
+			best = follow(anchor, first.at, first.end, anchor) ?? best;
 		}
 	}
 	return best && { start: best.start, end: best.end };

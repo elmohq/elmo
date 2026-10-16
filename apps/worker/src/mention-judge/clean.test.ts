@@ -78,6 +78,12 @@ describe("locatePassage", () => {
 		);
 	});
 
+	it("doesn't start a passage inside a longer word", () => {
+		const text = "Is it there? Yes, the Acme rocks.";
+		const passage = locatePassage(text, "the Acme rocks.");
+		expect(passage && text.slice(passage.start, passage.end)).toBe("the Acme rocks");
+	});
+
 	it("finds nothing for a passage that isn't in the answer", () => {
 		expect(locatePassage(answer, "Something else entirely")).toBeUndefined();
 	});
