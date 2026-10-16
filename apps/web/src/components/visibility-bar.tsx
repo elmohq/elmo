@@ -115,8 +115,6 @@ export function VisibilityBar({
 								<ChartTooltip
 									cursor={{ stroke: colors.stroke, strokeOpacity: 0.4 }}
 									content={<PointTooltip />}
-									// The sparkline is too short to hold the tooltip, so it hangs below it.
-									position={{ y: 28 }}
 									allowEscapeViewBox={{ x: true, y: true }}
 									wrapperStyle={{ zIndex: 50 }}
 									isAnimationActive={false}
