@@ -22,7 +22,7 @@ import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useCompetitiveLandscape, useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { useCompanyColors } from "@/lib/company-colors";
-import { chartedCompanies, type Landscape } from "@/lib/landscape";
+import { chartedCompanies, type Landscape, othersShareSeries } from "@/lib/landscape";
 import { METRIC_META } from "@/lib/overview-metrics";
 import { pageHead } from "@/lib/route-head";
 import type { ShareOfVoiceEntry } from "@/server/analysis";
@@ -40,6 +40,24 @@ const TIPS = {
 	share: "This brand's share of all brand + competitor mentions.",
 	prompts: "Number of distinct prompts this brand appeared in.",
 };
+
+function ShareTrend({ landscape, colors }: { landscape: Landscape; colors: Map<string, string> }) {
+	const charted = chartedCompanies(landscape, "share");
+	return (
+		<CompanyTrendChart
+			dates={landscape.dates}
+			companies={charted.map((c) => ({
+				name: c.name,
+				isBrand: c.isBrand,
+				color: colors.get(c.name) ?? "#94a3b8",
+				values: c.series.share,
+			}))}
+			others={othersShareSeries(charted)}
+			format={METRIC_META.share.format}
+			height={220}
+		/>
+	);
+}
 
 function ShareOfVoiceOverview({
 	entries,
@@ -71,17 +89,7 @@ function ShareOfVoiceOverview({
 				</CardHeader>
 				<CardContent>
 					{landscape ? (
-						<CompanyTrendChart
-							dates={landscape.dates}
-							companies={chartedCompanies(landscape, "share").map((c) => ({
-								name: c.name,
-								isBrand: c.isBrand,
-								color: colors.get(c.name) ?? "#94a3b8",
-								values: c.series.share,
-							}))}
-							format={METRIC_META.share.format}
-							height={220}
-						/>
+						<ShareTrend landscape={landscape} colors={colors} />
 					) : landscapeFailed ? (
 						<p className="py-8 text-center text-sm text-muted-foreground">Couldn't load the trends right now.</p>
 					) : (

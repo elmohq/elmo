@@ -66,6 +66,30 @@ export function chartedCompanies(
 	return [brandOf(landscape), ...sortByMetric(landscape.companies.slice(1), metric).slice(0, competitors)];
 }
 
+/** Under this on every day, the companies past the charted few don't earn a line of their own. */
+const NEGLIGIBLE_SHARE = 0.005;
+
+/**
+ * Per day, the share of voice held by everyone not in `charted`, so the charted lines and this one add
+ * up to the whole. Null on days nobody was mentioned, since a share of nothing isn't 100%; null
+ * throughout when that remainder never reaches a visible percent.
+ */
+export function othersShareSeries(charted: LandscapeCompany[]): (number | null)[] | null {
+	const days = charted[0]?.series.share.length ?? 0;
+	const series = Array.from({ length: days }, (_, d) => {
+		let sum = 0;
+		for (const company of charted) {
+			const share = company.series.share[d];
+			// Every share has the same base, so one missing means the day had no mentions at all.
+			if (share === null || share === undefined) return null;
+			sum += share;
+		}
+		// Clamped so floating-point noise can't push it a hair outside 0–100%.
+		return Math.min(1, Math.max(0, 1 - sum));
+	});
+	return series.some((share) => share !== null && share >= NEGLIGIBLE_SHARE) ? series : null;
+}
+
 /** The brand's place among every company on `metric`, 1 being best; last when it has no value. */
 export function brandRank(landscape: Landscape, metric: LandscapeMetric): number {
 	const own = brandOf(landscape).totals[metric];

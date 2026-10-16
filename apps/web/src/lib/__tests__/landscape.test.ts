@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { brandRank, buildLandscape, chartedCompanies } from "@/lib/landscape";
+import { brandRank, buildLandscape, chartedCompanies, othersShareSeries } from "@/lib/landscape";
 import { NO_ASSESSMENTS } from "@/lib/sentiment";
 
 const run = (
@@ -96,5 +96,48 @@ describe("buildLandscape", () => {
 		const landscape = buildLandscape(input);
 		expect(chartedCompanies(landscape, "visibility", 1).map((c) => c.name)).toEqual(["Acme", "Globex"]);
 		expect(brandRank(landscape, "visibility")).toBe(1);
+	});
+});
+
+describe("othersShareSeries", () => {
+	const named = (competitor: string, date: string, runs: number) => ({
+		...competitorRun("p1", "chatgpt", date, runs),
+		competitor,
+	});
+	// The first day's answers name nobody; on the last, p1 runs again and names others.
+	const crowded = buildLandscape({
+		...input,
+		competitors: [...input.competitors, { name: "Hooli", domain: null }],
+		runs: [
+			run("p1", "chatgpt", "2026-03-01", 10, 0, 0),
+			run("p1", "chatgpt", "2026-03-02", 10, 2, 6),
+			run("p1", "chatgpt", "2026-03-03", 10, 1, 3),
+		],
+		competitorRuns: [
+			named("Globex", "2026-03-02", 3),
+			named("Initech", "2026-03-02", 2),
+			named("Hooli", "2026-03-02", 1),
+			named("Globex", "2026-03-03", 1),
+			named("Initech", "2026-03-03", 2),
+		],
+	});
+
+	it("gives everyone past the charted companies the rest of each day's voice", () => {
+		const charted = chartedCompanies(crowded, "share", 1);
+		expect(charted.map((c) => c.name)).toEqual(["Acme", "Initech"]);
+		const others = othersShareSeries(charted);
+		expect(others).toEqual([null, 0.5, 0.25]);
+		for (let d = 1; d < crowded.dates.length; d++) {
+			const total = charted.reduce((sum, c) => sum + (c.series.share[d] ?? 0), others?.[d] ?? 0);
+			expect(total).toBeCloseTo(1);
+		}
+	});
+
+	it("leaves a gap rather than claiming 100% on a day nobody was mentioned", () => {
+		expect(othersShareSeries(chartedCompanies(crowded, "share", 1))?.[0]).toBeNull();
+	});
+
+	it("has no line when every company is already charted", () => {
+		expect(othersShareSeries(chartedCompanies(crowded, "share"))).toBeNull();
 	});
 });
