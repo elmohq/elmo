@@ -294,8 +294,9 @@ export const mockBrandSentiment: BrandSentiment = {
 			model: "perplexity",
 			createdAt: "2026-06-02T10:00:00.000Z",
 			sentiment: "negative",
+			// Passages start wherever they did in the answer, structure and all.
 			passage:
-				"**Acme**'s reporting is limited compared with Salesforce; custom dashboards need an add-on and exports are capped.",
+				"1. **Acme** — reporting is limited compared with Salesforce; custom dashboards need an add-on and exports are capped.",
 		},
 		{
 			runId: "r2",
@@ -314,7 +315,8 @@ export const mockBrandSentiment: BrandSentiment = {
 			model: "claude",
 			createdAt: "2026-05-31T10:00:00.000Z",
 			sentiment: "mixed",
-			passage: "Acme is easier to learn, though its higher tiers cost more than HubSpot for the same seats.",
+			passage:
+				"### Acme vs HubSpot\n\n- Acme is easier to learn, though its higher tiers cost more than HubSpot for the same seats.\n- Both offer a free plan.",
 		},
 	],
 	praise: [

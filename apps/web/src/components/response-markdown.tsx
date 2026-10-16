@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import ReactMarkdown, { type Components, defaultUrlTransform, type UrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { HIGHLIGHT_CLASS, type MarkRange, rehypeHighlight, rehypeMarkRange } from "@/lib/highlight";
@@ -82,5 +83,42 @@ export function ResponseMarkdown({
 				{children}
 			</ReactMarkdown>
 		</div>
+	);
+}
+
+const HEADINGS = ["h1", "h2", "h3", "h4", "h5", "h6"] as const;
+
+/** Inline marks and headings survive; everything else (lists, paragraphs, tables) gives up its text. */
+const INLINE_ELEMENTS = ["strong", "em", "del", "code", "a", ...HEADINGS];
+
+/** A heading set into running text would read as the start of its first sentence. */
+const runInHeading = ({ children }: { children?: ReactNode }) => (
+	<>
+		<strong>{children}</strong> —{" "}
+	</>
+);
+
+const inlineComponents: Components = {
+	a: components.a,
+	...Object.fromEntries(HEADINGS.map((tag) => [tag, runInHeading])),
+};
+
+/**
+ * Renders an excerpt of an answer as a single run of text. A passage lifted
+ * from mid-answer starts wherever the passage did — inside a list item, under
+ * a heading — and rendering that structure makes excerpts shown side by side
+ * look inconsistently spaced, so only the inline emphasis is kept.
+ */
+export function InlineMarkdown({ children }: { children: string }) {
+	return (
+		<ReactMarkdown
+			remarkPlugins={[remarkGfm]}
+			allowedElements={INLINE_ELEMENTS}
+			unwrapDisallowed
+			components={inlineComponents}
+			urlTransform={urlTransform}
+		>
+			{children}
+		</ReactMarkdown>
 	);
 }

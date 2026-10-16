@@ -12,7 +12,7 @@ import { CompanyTrendChart } from "@/components/company-trend-chart";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { ModelGrid } from "@/components/overview/competitive-landscape";
 import { FilterSection, PageHeader } from "@/components/page-header";
-import { ResponseMarkdown } from "@/components/response-markdown";
+import { InlineMarkdown } from "@/components/response-markdown";
 import { RingChart } from "@/components/ring-chart";
 import { SentimentBar } from "@/components/sentiment-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
@@ -135,8 +135,8 @@ function QuoteRow({ quote }: { quote: SentimentQuote }) {
 				<ModelIcon iconId={iconId} className="size-3.5" />
 			</span>
 			<div className="min-w-0 space-y-1">
-				<blockquote className="line-clamp-4 [&_.prose]:text-sm [&_p]:my-0">
-					<ResponseMarkdown>{quote.passage}</ResponseMarkdown>
+				<blockquote className="line-clamp-3 text-sm leading-relaxed [&_a]:underline [&_a]:underline-offset-2 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_strong]:font-semibold">
+					<InlineMarkdown>{quote.passage}</InlineMarkdown>
 				</blockquote>
 				<figcaption className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
 					<span className={cn("shrink-0 font-medium", SENTIMENT_STYLES[quote.sentiment].text)}>
