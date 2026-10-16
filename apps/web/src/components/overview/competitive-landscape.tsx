@@ -136,7 +136,10 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 			<thead className="sticky top-0 z-10 bg-card shadow-[inset_0_-1px_0_var(--border)]">
 				<tr className="text-xs text-muted-foreground">
 					{/* Takes whatever width the panel has to spare, keeping the figures together on the right. */}
-					<th className="w-full px-4 py-2.5 text-left font-medium">Company</th>
+					<th className="py-2.5 pl-4">
+						<span className="sr-only">Rank</span>
+					</th>
+					<th className="w-full py-2.5 pr-4 pl-3 text-left font-medium">Company</th>
 					<th className="px-2 py-2.5 font-medium" aria-sort={ariaSort(ALL_COLUMN)}>
 						<button
 							type="button"
@@ -173,21 +176,28 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 				</tr>
 			</thead>
 			<tbody>
-				{rows.map((company) => (
+				{rows.map((company, i) => (
 					<tr
 						key={company.name}
 						className={cn("border-b last:border-0", company.isBrand && "bg-blue-50/70 dark:bg-blue-950/30")}
 					>
-						<td className="whitespace-nowrap px-4 py-1.5">
+						{/* Counts the rows in whatever order the grid is sorted, so it always reads top to bottom. */}
+						<td className="py-1.5 pl-4 text-right text-xs tabular-nums text-muted-foreground">{i + 1}</td>
+						<td className="whitespace-nowrap py-1.5 pr-4 pl-3">
 							<span className="flex items-center gap-2">
 								<SiteIcon domain={company.domain ?? undefined} size="xs" />
 								{/* Capped on phones so a long name doesn't push every figure out of view. */}
-								<span className={cn("max-w-28 truncate sm:max-w-none", company.isBrand && "font-semibold")}>
+								<span
+									className={cn(
+										"max-w-28 truncate sm:max-w-none supports-[text-box:trim-both_cap_alphabetic]:py-1 [text-box:trim-both_cap_alphabetic]",
+										company.isBrand && "font-semibold",
+									)}
+								>
 									{company.name}
 								</span>
 							</span>
 						</td>
-						<td className="px-2 py-1.5 text-center font-semibold tabular-nums">
+						<td className="px-2 py-1.5 text-center font-semibold tabular-nums [text-box:trim-both_cap_alphabetic]">
 							{company.totals[metric] === null ? "—" : meta.format(company.totals[metric])}
 						</td>
 						{landscape.models.map((model) => {
