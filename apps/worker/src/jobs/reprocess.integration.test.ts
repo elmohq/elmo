@@ -325,6 +325,110 @@ describe("what a replay covers", () => {
 	});
 });
 
+describe("reprocessing over time", () => {
+	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+	/**
+	 * Runs the worker's loop until history is current, as its per-minute tick would: ask which
+	 * brands are stale, run each pass, and derive what it queues. Returns the texts the judge read.
+	 */
+	async function settle(days: number | null = 90) {
+		const judged: string[] = [];
+		const analyzer = {
+			...cuedAnalyzer,
+			analyze: (...args: Parameters<typeof cuedAnalyzer.analyze>) => {
+				judged.push(args[0] ?? "");
+				return cuedAnalyzer.analyze(...args);
+			},
+		};
+		for (let tick = 0; tick < 5; tick++) {
+			const asked = fakeBoss();
+			await requestStaleReprocesses(db, asked.boss, analyzer);
+			const passes = sentFor(asked.send, brandId);
+			if (passes.length === 0) return judged;
+			for (const data of passes) {
+				const queue = deriveQueue(db, analyzer);
+				await runReprocess(data, db, queue.boss, analyzer, days);
+				expect(await queue.drain()).toEqual([]);
+			}
+		}
+		throw new Error("history never settled");
+	}
+
+	async function addPrompt(enabled: boolean) {
+		const [prompt] = await db.insert(prompts).values({ brandId, value: "other question", enabled }).returning();
+		return prompt.id;
+	}
+
+	const setPrompt = async (id: string, enabled: boolean) => {
+		await db.update(prompts).set({ enabled }).where(eq(prompts.id, id));
+		if (enabled) await requestReplay(db, brandId);
+	};
+
+	it("judges each answer in the window once, and nothing more on later ticks", async () => {
+		await insertLegacyRuns([
+			legacyRun("Acme leads.", daysAgo(1)),
+			legacyRun("Acme again.", daysAgo(40)),
+			legacyRun("Acme long ago.", daysAgo(200)),
+		]);
+
+		expect((await settle()).sort()).toEqual(["Acme again.", "Acme leads."]);
+		expect(await settle()).toEqual([]);
+		expect(await settle()).toEqual([]);
+	});
+
+	it("re-judges nothing when a prompt is switched off and on again, however often", async () => {
+		await insertLegacyRuns([legacyRun("Acme leads.", daysAgo(1))]);
+		await settle();
+
+		for (let i = 0; i < 3; i++) {
+			await setPrompt(promptId, false);
+			expect(await settle()).toEqual([]);
+			await setPrompt(promptId, true);
+			expect(await settle()).toEqual([]);
+		}
+	});
+
+	it("re-judges nothing when a brand is switched off and on again", async () => {
+		await insertLegacyRuns([legacyRun("Acme leads.", daysAgo(1))]);
+		await settle();
+
+		for (let i = 0; i < 3; i++) {
+			await db.update(brands).set({ enabled: false }).where(eq(brands.id, brandId));
+			expect(await settle()).toEqual([]);
+			await db.update(brands).set({ enabled: true }).where(eq(brands.id, brandId));
+			expect(await settle()).toEqual([]);
+		}
+	});
+
+	it("catches up a prompt that was off through a config change once it's on, and only once", async () => {
+		const paused = await addPrompt(false);
+		await insertLegacyRuns([
+			legacyRun("Acme beats Globex.", daysAgo(1)),
+			{ ...legacyRun("Acme or Globex?", daysAgo(1)), promptId: paused },
+		]);
+		expect(await settle()).toEqual(["Acme beats Globex."]);
+
+		await db.insert(competitors).values({ brandId, name: "Globex", domains: [] });
+		expect(await settle()).toEqual(["Acme beats Globex."]);
+
+		await setPrompt(paused, true);
+		expect(await settle()).toEqual(["Acme or Globex?"]);
+		expect(await settle()).toEqual([]);
+		expect((await runsInWalkOrder()).map((run) => run.competitorsMentioned)).toEqual([["Globex"], ["Globex"]]);
+	});
+
+	it("never reaches past a short window, through config changes and toggles", async () => {
+		await insertLegacyRuns([legacyRun("Acme recent.", daysAgo(2)), legacyRun("Acme older.", daysAgo(20))]);
+		expect(await settle(7)).toEqual(["Acme recent."]);
+
+		await db.insert(competitors).values({ brandId, name: "Globex", domains: [] });
+		await setPrompt(promptId, false);
+		await setPrompt(promptId, true);
+		expect(await settle(7)).toEqual(["Acme recent."]);
+	});
+});
+
 describe("fillLegacyText", () => {
 	it("stores a legacy run's text from its payload and leaves its citations and mentions as recorded", async () => {
 		const run = legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"));
