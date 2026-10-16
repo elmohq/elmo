@@ -16,6 +16,8 @@ import { mentionConfigFrom } from "@workspace/lib/mentions";
 import { asc, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
+import { jevAnalyzer } from "../mention-judge/analyze";
+import { stubTransport } from "../mention-judge/jev";
 import { deriveQueue } from "./__fixtures__/derive-queue";
 import { fillLegacyText, LEGACY_EXTRACTION_STAMP } from "./fill-legacy-text";
 import {
@@ -330,17 +332,15 @@ describe("reprocessing over time", () => {
 
 	/**
 	 * Runs the worker's loop until history is current, as its per-minute tick would: ask which
-	 * brands are stale, run each pass, and derive what it queues. Returns the texts the judge read.
+	 * brands are stale, run each pass, and derive what it queues. Returns the answers sent to Jev,
+	 * one per paid call.
 	 */
 	async function settle(days: number | null = 90) {
 		const judged: string[] = [];
-		const analyzer = {
-			...cuedAnalyzer,
-			analyze: (...args: Parameters<typeof cuedAnalyzer.analyze>) => {
-				judged.push(args[0] ?? "");
-				return cuedAnalyzer.analyze(...args);
-			},
-		};
+		const analyzer = jevAnalyzer(async (request) => {
+			judged.push(String(request.state.answer));
+			return stubTransport(request);
+		});
 		for (let tick = 0; tick < 5; tick++) {
 			const asked = fakeBoss();
 			await requestStaleReprocesses(db, asked.boss, analyzer);
@@ -425,7 +425,8 @@ describe("reprocessing over time", () => {
 		await db.insert(competitors).values({ brandId, name: "Globex", domains: [] });
 		await setPrompt(promptId, false);
 		await setPrompt(promptId, true);
-		expect(await settle(7)).toEqual(["Acme recent."]);
+		// Neither answer names Globex, so the new competitor costs no call at all.
+		expect(await settle(7)).toEqual([]);
 	});
 });
 
