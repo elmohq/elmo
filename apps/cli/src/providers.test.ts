@@ -61,6 +61,17 @@ describe("collectProvider", () => {
 		expect(targets).toEqual(["claude:anthropic-api:claude-haiku-5-5:online"]);
 	});
 
+	it("tracks GLM through Z.ai with the default model and web search", async () => {
+		answers.push(true, "zai-123", "", true);
+		const env: Record<string, string> = {};
+		const targets: string[] = [];
+
+		await collectProvider(providerSpec("zai"), env, targets);
+
+		expect(env).toEqual({ ZAI_API_KEY: "zai-123" });
+		expect(targets).toEqual(["glm:zai-api:glm-5.2:online"]);
+	});
+
 	it("collects both scraper credentials and the picked surfaces", async () => {
 		answers.push(true, "user@example.com", "hunter2", ["chatgpt:oxylabs:online", "perplexity:oxylabs:online"]);
 		const env: Record<string, string> = {};
