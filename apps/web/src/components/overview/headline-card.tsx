@@ -11,14 +11,14 @@ import { type LandscapeMetric, lowerIsBetter } from "@/lib/landscape";
 import { GRADE_STYLES, type Grade, METRIC_META } from "@/lib/overview-metrics";
 import type { OverviewCard } from "@/server/dashboard";
 
-function Change({ metric, change }: { metric: LandscapeMetric; change: number | null }) {
+/** Drawn in the card's own color: the grade already says good or bad, and a second verdict would clash with it. */
+function Change({ metric, change, className }: { metric: LandscapeMetric; change: number | null; className?: string }) {
 	const meta = METRIC_META[metric];
 	if (change === null || Math.abs(change) < 0.005) return null;
-	const good = lowerIsBetter(metric) ? change < 0 : change > 0;
 	const Icon = change > 0 ? IconArrowUpRight : IconArrowDownRight;
 	return (
 		<span
-			className={cn("inline-flex items-center text-sm font-medium", good ? "text-emerald-700" : "text-rose-700")}
+			className={cn("inline-flex items-center text-sm font-medium", className)}
 			title="Change over the selected period"
 		>
 			<Icon className="size-4" />
@@ -102,7 +102,7 @@ export function HeadlineCard({
 								>
 									{card?.value == null ? "—" : meta.format(card.value)}
 								</span>
-								<Change metric={metric} change={card?.change ?? null} />
+								<Change metric={metric} change={card?.change ?? null} className={style?.text} />
 							</>
 						)}
 					</div>
