@@ -1,5 +1,17 @@
 # @workspace/web
 
+## 0.7.1
+
+### Patch Changes
+
+- 345c66d: The sentiment page's quotes now open on praise, with mixed and criticism in their own tabs, and each card explains what its numbers mean.
+- @workspace/api-spec@0.7.1
+  - @workspace/config@0.7.1
+  - @workspace/deployment@0.7.1
+  - @workspace/lib@0.7.1
+  - @workspace/og@0.7.1
+  - @workspace/ui@0.7.1
+
 ## 0.7.0
 
 ### Patch Changes

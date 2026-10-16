@@ -1,5 +1,13 @@
 # @workspace/deployment
 
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/config@0.7.1
+  - @workspace/lib@0.7.1
+  - @workspace/ui@0.7.1
+
 ## 0.7.0
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # e2e
 
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/lib@0.7.1
+
 ## 0.7.0
 
 ### Patch Changes

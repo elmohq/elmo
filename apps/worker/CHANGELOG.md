@@ -1,5 +1,14 @@
 # @workspace/worker
 
+## 0.7.1
+
+### Patch Changes
+
+- f06d0c1: Split rare cases where many tracked companies result in too large Jev calls.
+- @workspace/config@0.7.1
+  - @workspace/deployment@0.7.1
+  - @workspace/lib@0.7.1
+
 ## 0.7.0
 
 ### Minor Changes
