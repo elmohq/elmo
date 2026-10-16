@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspace/lib/analysis-versions";
+import {
+	currentAnalysisVersions,
+	EXTRACTION_KEY,
+	LEGACY_EXTRACTION_STAMP,
+	MENTIONS_KEY,
+} from "@workspace/lib/analysis-versions";
 import { db } from "@workspace/lib/db/db";
 import {
 	brands,
@@ -18,7 +23,7 @@ import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
 import { jevAnalyzer } from "../mention-judge/analyze";
 import { stubTransport } from "../mention-judge/jev";
 import { deriveQueue } from "./__fixtures__/derive-queue";
-import { fillLegacyText, LEGACY_EXTRACTION_STAMP } from "./fill-legacy-text";
+import { fillLegacyText } from "./fill-legacy-text";
 import {
 	adoptCurrentStamps,
 	REPROCESS_QUEUE,
@@ -450,6 +455,23 @@ describe("fillLegacyText", () => {
 			mentionsStamp: null,
 		});
 		expect(await db.select().from(citations).where(eq(citations.promptRunId, run.id))).toEqual([]);
+	});
+
+	it("reads a run recorded as `direct` with its engine's extractor, even one an earlier fill couldn't read", async () => {
+		const run = {
+			...legacyRun("Acme is the best CRM.", new Date("2025-09-01T10:00:00Z")),
+			provider: "direct",
+			model: "chatgpt",
+		};
+		await insertLegacyRuns([run]);
+		await db.update(runExtractions).set({ stamp: LEGACY_EXTRACTION_STAMP }).where(eq(runExtractions.runId, run.id));
+
+		await fillLegacyText(db);
+
+		expect((await runsInWalkOrder())[0]).toMatchObject({
+			textContent: "Acme is the best CRM.",
+			extractionStamp: LEGACY_EXTRACTION_STAMP,
+		});
 	});
 });
 

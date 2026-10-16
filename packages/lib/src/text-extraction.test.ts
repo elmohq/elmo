@@ -7,6 +7,7 @@ import {
 	extractCitationsFromGoogle,
 	extractCitationsFromOpenAI,
 	extractCitationsFromOxylabs,
+	extractorFor,
 	extractRun,
 	extractTextContent,
 	extractTextFromAnthropic,
@@ -906,5 +907,23 @@ describe("text-extraction", () => {
 			expect(citations).toHaveLength(1);
 			expect(citations[0].title).toHaveLength(CITATION_TITLE_MAX_LENGTH);
 		});
+	});
+});
+
+describe("extractorFor", () => {
+	const openAiPayload = { output: [{ type: "message", content: [{ type: "output_text", text: "Acme is great." }] }] };
+
+	it("reads a run with its provider's extractor", () => {
+		expect(tryExtractTextContent(openAiPayload, extractorFor({ provider: "openai-api", model: "chatgpt" }))).toBe(
+			"Acme is great.",
+		);
+	});
+
+	it("falls back to the engine's extractor when the provider names none, as runs recorded as `direct` do", () => {
+		expect(tryExtractTextContent(openAiPayload, extractorFor({ provider: "direct", model: "chatgpt" }))).toBe(
+			"Acme is great.",
+		);
+		expect(extractorFor({ provider: null, model: "claude" })).toBe("claude");
+		expect(extractorFor({ provider: "constructor", model: "claude" })).toBe("claude");
 	});
 });

@@ -24,7 +24,7 @@ import {
 } from "@workspace/lib/db/schema";
 import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } from "@workspace/lib/mentions";
 import { insertRunsCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
-import { type Citation, extractRun } from "@workspace/lib/text-extraction";
+import { type Citation, extractorFor, extractRun } from "@workspace/lib/text-extraction";
 import { and, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type { Job, PgBoss, QueueOptions } from "pg-boss";
 import { getBoss } from "../boss";
@@ -152,7 +152,7 @@ export async function deriveRunUpdate(
 
 /** Fills `update.extraction` (and citations when `extract`), returning the text mentions should read. */
 function extractAgain(run: StaleRun, extract: boolean, target: AnalysisVersions, update: RunUpdate): string | null {
-	const extracted = extractRun(run.rawOutput, run.provider ?? run.model);
+	const extracted = extractRun(run.rawOutput, extractorFor(run));
 	const lostText = extracted.textContent === null && run.textContent !== null;
 	if (lostText) update.kept.push("text");
 	const text = lostText ? run.textContent : extracted.textContent;

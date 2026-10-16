@@ -14,6 +14,9 @@ export const MENTIONS_KEY = "mentions";
 /** The extraction stamp alone: it depends on the code, not on any brand's config. */
 export const EXTRACTION_STAMP = String(EXTRACTOR_VERSION);
 
+/** The extraction stamp of a run whose text was filled in from its payload but whose citations are as recorded. */
+export const LEGACY_EXTRACTION_STAMP = "legacy";
+
 /** What brands that predate the judge carry: their mentions were matched by name, so all are stale. */
 export const NAME_MATCHED_MENTIONS_STAMP = "name-matched";
 

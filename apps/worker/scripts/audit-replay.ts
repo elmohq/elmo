@@ -22,7 +22,7 @@ import { db } from "@workspace/lib/db/db";
 import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
 import { brands, citations, competitors, promptRuns } from "@workspace/lib/db/schema";
 import { type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
-import { extractRun } from "@workspace/lib/text-extraction";
+import { extractorFor, extractRun } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gt, gte, inArray } from "drizzle-orm";
 import { mentionAnalyzer } from "../src/mention-judge/analyze";
 
@@ -124,7 +124,7 @@ async function compareMentions(run: AuditedRun, text: string | null): Promise<Fi
 }
 
 async function auditRun(run: AuditedRun, raw: unknown, storedUrls: Set<string>): Promise<void> {
-	const provider = run.provider ?? run.model;
+	const provider = extractorFor(run);
 	record(provider, null, run.id);
 	const extracted = extractRun(raw, provider);
 	const replayedUrls = new Set(extracted.citations.map((c) => normalizeUrl(c.url)));
