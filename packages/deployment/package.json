@@ -27,7 +27,7 @@
 		"disposable-email-domains": "^1.0.62",
 		"drizzle-orm": "^0.45.4",
 		"resend": "^6.32.1",
-		"stripe": "^22.6.1",
+		"stripe": "^23.0.0",
 		"zod": "^4.6.6"
 	},
 	"peerDependencies": {
