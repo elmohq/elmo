@@ -594,9 +594,10 @@ export interface PromptSentiment {
 export interface BrandSentiment {
 	/** Least positive first. */
 	prompts: PromptSentiment[];
-	/** The negative and mixed assessments the judge was surest of, one per prompt. */
-	criticism: SentimentQuote[];
+	/** The assessments the judge was surest of on each side, one per prompt. */
 	praise: SentimentQuote[];
+	mixed: SentimentQuote[];
+	criticism: SentimentQuote[];
 }
 
 const QUOTES_PER_SIDE = 5;
@@ -609,10 +610,11 @@ export async function getBrandSentiment(
 ): Promise<BrandSentiment> {
 	const resolved = await resolveScope(brandId, filters);
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
-	const [perPrompt, criticism, praise] = await Promise.all([
+	const [perPrompt, praise, mixed, criticism] = await Promise.all([
 		resolved.promptIds.length > 0 ? getPerPromptRunStats(scope) : [],
-		getSentimentQuotes(scope, ["negative", "mixed"], QUOTES_PER_SIDE),
 		getSentimentQuotes(scope, ["positive"], QUOTES_PER_SIDE),
+		getSentimentQuotes(scope, ["mixed"], QUOTES_PER_SIDE),
+		getSentimentQuotes(scope, ["negative"], QUOTES_PER_SIDE),
 	]);
 	const promptsById = new Map(resolved.prompts.map((prompt) => [prompt.id, prompt]));
 	const quote = (row: SentimentQuoteRow): SentimentQuote[] => {
@@ -641,7 +643,8 @@ export async function getBrandSentiment(
 		.sort((a, b) => (a.sentiment.score ?? 0) - (b.sentiment.score ?? 0));
 	return {
 		prompts,
-		criticism: criticism.flatMap(quote),
 		praise: praise.flatMap(quote),
+		mixed: mixed.flatMap(quote),
+		criticism: criticism.flatMap(quote),
 	};
 }

@@ -82,15 +82,23 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 	);
 }
 
-function Quotes({ criticism, praise }: { criticism: SentimentQuote[]; praise: SentimentQuote[] }) {
-	const [side, setSide] = useState<"criticism" | "praise">(criticism.length > 0 ? "criticism" : "praise");
-	const quotes = side === "criticism" ? criticism : praise;
+const QUOTE_SIDES = {
+	praise: "No positive answers in this period.",
+	mixed: "No mixed answers in this period.",
+	criticism: "No negative answers in this period.",
+} as const;
+
+type QuoteSide = keyof typeof QUOTE_SIDES;
+
+function Quotes({ quotesBySide }: { quotesBySide: Record<QuoteSide, SentimentQuote[]> }) {
+	const [side, setSide] = useState<QuoteSide>("praise");
+	const quotes = quotesBySide[side];
 	return (
 		<Card>
 			<CardHeader className={`${ROW_HEADER} flex-wrap justify-between gap-4`}>
 				<CardTitle>What AI Says About You</CardTitle>
 				<div role="tablist" aria-label="Sentiment" className="inline-flex rounded-lg bg-muted p-0.5 text-sm">
-					{(["criticism", "praise"] as const).map((value) => (
+					{(Object.keys(QUOTE_SIDES) as QuoteSide[]).map((value) => (
 						<button
 							key={value}
 							type="button"
@@ -109,9 +117,7 @@ function Quotes({ criticism, praise }: { criticism: SentimentQuote[]; praise: Se
 			</CardHeader>
 			<CardContent>
 				{quotes.length === 0 ? (
-					<p className="py-8 text-center text-sm text-muted-foreground">
-						{side === "criticism" ? "No negative or mixed answers in this period." : "No positive answers yet."}
-					</p>
+					<p className="py-8 text-center text-sm text-muted-foreground">{QUOTE_SIDES[side]}</p>
 				) : (
 					<div className="divide-y">
 						{quotes.map((quote) => (
@@ -367,7 +373,7 @@ function SentimentPage() {
 								<ModelGrid landscape={landscape} metric="sentiment" />
 							</CardContent>
 						</Card>
-						<Quotes criticism={data.criticism} praise={data.praise} />
+						<Quotes quotesBySide={data} />
 					</div>
 					<PromptTable prompts={data.prompts} />
 				</div>
