@@ -9,8 +9,8 @@ import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
 import { registerDeriveRunsHandler, registerHandlers } from "./handlers";
-import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS, requestUnjudgedRuns } from "./jobs/derive-runs";
-import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE, reprocessDays } from "./jobs/reprocess";
+import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS, reprocessDays, requestUnjudgedRuns } from "./jobs/derive-runs";
+import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE } from "./jobs/reprocess";
 import { loadMentionAnalyzer, MENTION_JUDGE_DIR } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
@@ -44,8 +44,9 @@ async function main() {
 		// missing API keys, and per-provider target errors before any job runs.
 		validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
 		console.log("SCRAPE_TARGETS validated");
-		reprocessDays();
 	}
+	// Every role reads it: passes when they queue history, and derivation when it judges it.
+	reprocessDays();
 
 	// Before anything stamps runs or brands: the stamp names the judge, so it has to be known. Without
 	// it the worker still records answers; they wait unjudged until a restart loads it.

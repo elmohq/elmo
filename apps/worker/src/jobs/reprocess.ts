@@ -24,7 +24,7 @@ import { and, asc, eq, gt, gte, inArray, isNull, lt, or, type SQL, sql } from "d
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
 import { type MentionAnalyzer, mentionAnalyzer } from "../mention-judge/analyze";
-import { DERIVE_PRIORITY, sendDeriveRuns } from "./derive-runs";
+import { DERIVE_PRIORITY, reprocessDays, sendDeriveRuns } from "./derive-runs";
 
 export const REPROCESS_QUEUE = "reprocess";
 
@@ -37,7 +37,8 @@ export interface ReprocessData {
 
 const LAYER_KEY: Record<ReprocessLayer, string> = { extraction: EXTRACTION_KEY, interpretation: MENTIONS_KEY };
 
-const RECENT_FIRST_MS = 30 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const RECENT_FIRST_MS = 30 * DAY_MS;
 /**
  * How long a newly stale brand waits before its pass starts. Edits tend to come in bursts (adding
  * several competitors), and the pass reads the config when it starts, so one wait covers them all.
@@ -56,22 +57,6 @@ const staleFor = (layer: ReprocessLayer, target: AnalysisVersions): SQL =>
 	sql`${STAMP_COLUMN[layer]} IS DISTINCT FROM ${target[LAYER_KEY[layer]]}`;
 
 const PAGE_SIZE = 5000;
-
-const DEFAULT_REPROCESS_DAYS = 90;
-
-/**
- * `REPROCESS_DAYS`: how far back a replay re-derives history, in days (default 90), or `all`. Null
- * means all. Answers older than this keep what they were judged with when they were recorded.
- */
-export function reprocessDays(env: Record<string, string | undefined> = process.env): number | null {
-	const raw = env.REPROCESS_DAYS?.trim();
-	if (!raw) return DEFAULT_REPROCESS_DAYS;
-	if (raw.toLowerCase() === "all") return null;
-	const days = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
-	if (!Number.isInteger(days) || days < 1)
-		throw new Error(`REPROCESS_DAYS must be a whole number of days or "all", got "${raw}"`);
-	return days;
-}
 
 /**
  * Queues the runs of the brand's enabled prompts that are stale for `layers` and inside the
@@ -93,7 +78,7 @@ async function queueStaleRuns(
 	if (brandPrompts.length === 0) return 0;
 	const now = Date.now();
 	const cutoff = new Date(now - RECENT_FIRST_MS);
-	const oldest = days === null ? undefined : gte(promptRuns.createdAt, new Date(now - days * 24 * 60 * 60 * 1000));
+	const oldest = days === null ? undefined : gte(promptRuns.createdAt, new Date(now - days * DAY_MS));
 	let queued = 0;
 	for (const [age, priority] of [
 		[and(gte(promptRuns.createdAt, cutoff), oldest), DERIVE_PRIORITY.recent],
@@ -217,7 +202,7 @@ export async function runReprocess(
 	// Only if the stamps are still the ones this pass started from: a replay requested meanwhile,
 	// by a prompt enabled after its prompts were read, must survive for the next pass.
 	const loaded = context.brand.analysisVersions;
-	await conn
+	const stamped = await conn
 		.update(brands)
 		.set({
 			analysisVersions: sql`coalesce(${brands.analysisVersions}, '{}'::jsonb) || ${JSON.stringify(target)}::jsonb`,
@@ -227,8 +212,11 @@ export async function runReprocess(
 				eq(brands.id, data.brandId),
 				loaded ? sql`${brands.analysisVersions} = ${JSON.stringify(loaded)}::jsonb` : isNull(brands.analysisVersions),
 			),
-		);
-	console.log(`[reprocess] brand ${data.brandId}: queued ${queued} runs toward ${JSON.stringify(target)}`);
+		)
+		.returning({ id: brands.id });
+	console.log(
+		`[reprocess] brand ${data.brandId}: queued ${queued} runs toward ${JSON.stringify(target)}${stamped.length ? "" : "; stamps moved meanwhile, so it stays stale for another pass"}`,
+	);
 }
 
 /**

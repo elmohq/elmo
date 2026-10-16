@@ -2,7 +2,8 @@ import { currentAnalysisVersions, EXTRACTION_KEY } from "@workspace/lib/analysis
 import type { MentionConfig } from "@workspace/lib/mentions";
 import { describe, expect, it } from "vitest";
 import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
-import { reprocessDays, staleLayers } from "./reprocess";
+import { reprocessDays } from "./derive-runs";
+import { staleLayers } from "./reprocess";
 
 const config: MentionConfig = {
 	brand: { name: "Acme", aliases: [], domains: ["https://acme.com"] },
@@ -36,7 +37,7 @@ describe("reprocessDays", () => {
 	});
 
 	it("rejects anything else rather than guessing", () => {
-		for (const value of ["0", "-5", "1.5", "1e2", "forever"]) {
+		for (const value of ["0", "-5", "1.5", "1e2", "999999", "forever"]) {
 			expect(() => reprocessDays({ REPROCESS_DAYS: value })).toThrow("REPROCESS_DAYS");
 		}
 	});
