@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { getModelMeta } from "@workspace/config/models";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/sentiment";
 
 // The route file exports only `Route` (route files must, for code-splitting).
@@ -73,4 +75,26 @@ export const ManyCompetitors: Story = {
 			return <Story />;
 		},
 	],
+};
+
+/** A model's column header re-sorts the companies by that model's figure; a second click flips the order. */
+export const SortByModel: Story = {
+	play: async ({ canvasElement }) => {
+		const model = mockLandscape.models[0];
+		const header = await within(canvasElement).findByRole("button", { name: `Sort by ${getModelMeta(model).label}` });
+		const table = header.closest("table") as HTMLTableElement;
+		const companies = () => Array.from(table.tBodies[0].rows, (row) => row.cells[0].textContent?.trim());
+		const bestFirst = [...mockLandscape.companies]
+			.sort((a, b) => b.byModel[model].sentiment - a.byModel[model].sentiment)
+			.map((c) => c.name);
+
+		await expect(companies()).not.toEqual(bestFirst);
+		await userEvent.click(header);
+		await waitFor(() => expect(companies()).toEqual(bestFirst));
+		await expect(header.closest("th")).toHaveAttribute("aria-sort", "descending");
+
+		await userEvent.click(header);
+		await waitFor(() => expect(companies()).toEqual([...bestFirst].reverse()));
+		await expect(header.closest("th")).toHaveAttribute("aria-sort", "ascending");
+	},
 };
