@@ -71,13 +71,9 @@ async function queueStaleRuns(
 	layers: ReprocessLayer[],
 	target: AnalysisVersions,
 	days: number | null,
-): Promise<{ queued: number; enabledPrompts: string }> {
-	const brandPrompts = await conn
-		.select({ id: prompts.id })
-		.from(prompts)
-		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
-	const enabledPrompts = promptsStamp(brandPrompts.map(({ id }) => id));
-	if (brandPrompts.length === 0) return { queued: 0, enabledPrompts };
+	brandPrompts: { id: string }[],
+): Promise<number> {
+	if (brandPrompts.length === 0) return 0;
 	const now = Date.now();
 	const cutoff = new Date(now - RECENT_FIRST_MS);
 	const oldest = days === null ? undefined : gte(promptRuns.createdAt, new Date(now - days * DAY_MS));
@@ -119,7 +115,7 @@ async function queueStaleRuns(
 			after = rows[rows.length - 1].id;
 		}
 	}
-	return { queued, enabledPrompts };
+	return queued;
 }
 
 function sameTags(a: string[], b: string[]): boolean {
@@ -186,8 +182,8 @@ export function sendReprocess(
 }
 
 /**
- * Brings a brand's history up to its current config and today's code by queueing its stale runs
- * for the derivation workers, then stamping the brand. Stamping before they're done is safe: each
+ * Brings a brand's history up to its current config and today's code by stamping the brand, then
+ * queueing its stale runs for the derivation workers. Stamping before they're done is safe: each
  * chunk derives under the config current when it runs and writes only if that's still current,
  * and a config that moves again leaves the brand stale for the next pass.
  */
@@ -208,18 +204,26 @@ export async function runReprocess(
 		console.log(`[reprocess] brand ${data.brandId} is disabled, skipping`);
 		return;
 	}
-	const target = pickLayers(context.current, data.layers);
-	const { queued, enabledPrompts } = await queueStaleRuns(conn, boss, data.brandId, data.layers, context.current, days);
-	if (data.layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
-	// The prompts this pass covered, read before it queued: a prompt enabled meanwhile leaves the
-	// stamp behind, so the next tick sends another pass.
-	target[PROMPTS_KEY] = enabledPrompts;
+	const brandPrompts = await conn
+		.select({ id: prompts.id })
+		.from(prompts)
+		.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)));
+	// Stamped before queueing, so the per-minute check doesn't send a second pass that queues the
+	// same runs again while this one is still at it. The stamp names the config and prompts read
+	// here: an edit or a prompt enabled meanwhile leaves the brand stale for another pass, and a
+	// pass that fails partway is retried, queueing only what's still stale.
+	const target = {
+		...pickLayers(context.current, data.layers),
+		[PROMPTS_KEY]: promptsStamp(brandPrompts.map(({ id }) => id)),
+	};
 	await conn
 		.update(brands)
 		.set({
 			analysisVersions: sql`coalesce(${brands.analysisVersions}, '{}'::jsonb) || ${JSON.stringify(target)}::jsonb`,
 		})
 		.where(eq(brands.id, data.brandId));
+	const queued = await queueStaleRuns(conn, boss, data.brandId, data.layers, context.current, days, brandPrompts);
+	if (data.layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
 	console.log(`[reprocess] brand ${data.brandId}: queued ${queued} runs toward ${JSON.stringify(target)}`);
 }
 

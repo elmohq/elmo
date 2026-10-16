@@ -390,6 +390,27 @@ describe("reprocessing over time", () => {
 		expect(judged.flat().flatMap((job) => job.data.runIds)).toEqual([missed.id]);
 	});
 
+	it("doesn't send a second pass for a brand while its first is still queueing runs", async () => {
+		await insertLegacyRuns([legacyRun("Acme leads.", daysAgo(1))]);
+		const asked = fakeBoss();
+		await requestStaleReprocesses(db, asked.boss, cuedAnalyzer);
+		const [first] = sentFor(asked.send, brandId);
+
+		// The per-minute check runs while the pass queues its runs.
+		const during = fakeBoss();
+		const queue = deriveQueue();
+		const insert = queue.boss.insert.bind(queue.boss);
+		queue.boss.insert = async (...args) => {
+			await requestStaleReprocesses(db, during.boss, cuedAnalyzer);
+			return insert(...args);
+		};
+		await runReprocess(first, db, queue.boss, cuedAnalyzer, 90);
+
+		expect(sentFor(during.send, brandId)).toEqual([]);
+		expect(await queue.drain()).toEqual([]);
+		expect(await settle()).toEqual([]);
+	});
+
 	it("never reaches past a short window, through config changes and toggles", async () => {
 		await insertLegacyRuns([legacyRun("Acme recent.", daysAgo(2)), legacyRun("Acme older.", daysAgo(20))]);
 		expect(await settle(7)).toEqual(["Acme recent."]);
