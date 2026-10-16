@@ -26,7 +26,11 @@ export function RingChart({ slices, center, label }: { slices: RingSlice[]; cent
 	if (total === 0) return null;
 	return (
 		<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-			<div role="img" aria-label={ringSummary(label, slices)} className="relative size-40 shrink-0 self-center sm:size-44">
+			<div
+				role="img"
+				aria-label={ringSummary(label, slices)}
+				className="relative size-40 shrink-0 self-center sm:size-44"
+			>
 				<ChartContainer config={{}} className="aspect-square size-full">
 					<PieChart>
 						<Pie
