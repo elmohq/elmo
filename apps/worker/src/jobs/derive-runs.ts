@@ -29,14 +29,20 @@ import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { Job, PgBoss, QueueOptions } from "pg-boss";
 import { getBoss } from "../boss";
 import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge/analyze";
+import { TIMEOUT_MS } from "../mention-judge/jev";
 
 export const DERIVE_RUNS_QUEUE = "derive-runs";
+
+/** Small enough that a failed chunk costs little to redo, large enough to keep the queue short. */
+const CHUNK_SIZE = 50;
 
 export const DERIVE_RUNS_QUEUE_OPTIONS = {
 	retryLimit: 5,
 	retryDelay: 30,
 	retryBackoff: true,
-	expireInSeconds: 60 * 15,
+	// Long enough for every run in a chunk to wait out the judge's timeout, so a slow API doesn't
+	// expire a chunk and pay for it twice.
+	expireInSeconds: (CHUNK_SIZE * TIMEOUT_MS) / 1000 + 5 * 60,
 } satisfies QueueOptions;
 
 export interface DeriveRunsData {
@@ -49,20 +55,20 @@ export interface DeriveRunsData {
 /** New answers first, then the last 30 days of history, which the dashboards show, then the rest. */
 export const DERIVE_PRIORITY = { new: 2, recent: 1, history: 0 } as const;
 
-/** Small enough that a failed chunk costs little to redo, large enough to keep the queue short. */
-const CHUNK_SIZE = 50;
-
 export async function sendDeriveRuns(
 	boss: Pick<PgBoss, "insert">,
 	brandId: string,
 	runIds: string[],
 	priority: number,
-	{ reextract = false, chunkSize = CHUNK_SIZE } = {},
+	{ reextract = false, chunkSize = CHUNK_SIZE, singletonSeconds = 0 } = {},
 ): Promise<void> {
 	const jobs = [];
 	for (let i = 0; i < runIds.length; i += chunkSize) {
-		const data: DeriveRunsData = { brandId, runIds: runIds.slice(i, i + chunkSize), ...(reextract && { reextract }) };
-		jobs.push({ data, priority });
+		const chunk = runIds.slice(i, i + chunkSize);
+		const data: DeriveRunsData = { brandId, runIds: chunk, ...(reextract && { reextract }) };
+		// One job per run per window: a run that keeps failing is asked about only so often.
+		const singleton = singletonSeconds && chunk.length === 1 ? { singletonKey: chunk[0], singletonSeconds } : {};
+		jobs.push({ data, priority, ...singleton });
 	}
 	for (let i = 0; i < jobs.length; i += 1000) await boss.insert(DERIVE_RUNS_QUEUE, jobs.slice(i, i + 1000));
 }
@@ -299,6 +305,7 @@ export async function deriveRuns(
 
 /** Younger runs are left to the job sent when they were recorded. */
 const SWEEP_MIN_AGE_MS = 10 * 60 * 1000;
+const SWEEP_EVERY_S = 6 * 60 * 60;
 
 /**
  * Asks again for runs still unjudged: their job was lost between recording and sending, or ran
@@ -325,7 +332,10 @@ export async function requestUnjudgedRuns(
 		.limit(limit);
 	const byBrand = new Map<string, string[]>();
 	for (const row of rows) byBrand.set(row.brandId, [...(byBrand.get(row.brandId) ?? []), row.id]);
-	for (const [brandId, runIds] of byBrand) await sendDeriveRuns(boss, brandId, runIds, DERIVE_PRIORITY.new);
+	// Run by run, at most once every few hours each, so an answer the judge always fails on is retried
+	// a handful of times over the sweep's window, not every few minutes.
+	for (const [brandId, runIds] of byBrand)
+		await sendDeriveRuns(boss, brandId, runIds, DERIVE_PRIORITY.new, { chunkSize: 1, singletonSeconds: SWEEP_EVERY_S });
 	return rows.length;
 }
 
