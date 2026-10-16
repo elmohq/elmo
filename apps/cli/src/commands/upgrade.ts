@@ -205,7 +205,9 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 async function ensureJudgeKey(configDir: string, context: MigrationContext, nonInteractive: boolean | undefined) {
 	// Without this, an unreadable .env would be replaced by one holding only the key.
 	if (!(await fs.stat(path.join(configDir, ".env")).catch(() => null))) {
-		log.error(`Couldn't find ${path.join(configDir, ".env")}; run \`elmo init\` or restore it, then rerun the upgrade.`);
+		log.error(
+			`Couldn't find ${path.join(configDir, ".env")}; run \`elmo init\` or restore it, then rerun the upgrade.`,
+		);
 		process.exit(1);
 	}
 	const env = await context.readEnv();
