@@ -14,6 +14,7 @@ import {
 	scopeFilter,
 	uuidList,
 } from "@/lib/analytics-sql";
+import type { OwnedCitationRow } from "@/lib/citation-structure";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
 import type { AssessmentSums } from "@/lib/sentiment";
 
@@ -348,6 +349,29 @@ export async function getCitationUrlStats(scope: AnalyticsScope): Promise<Citati
 		JOIN cited_pages cp ON cp.id = rcu.page_id
 		WHERE ${rollupScope(scope, "rcu")}
 		GROUP BY rcu.page_id, cp.url, cp.domain, cp.title, cp.static_category, cp.page_type
+		ORDER BY count DESC
+	`);
+}
+
+/**
+ * The brand's own pages, per engine, for the citation structure view. `domain`
+ * is the normalized host, so a subdomain matches by suffix as `inDomainSet` does.
+ */
+export async function getOwnedCitationPagesByModel(
+	scope: AnalyticsScope,
+	ownedDomains: string[],
+): Promise<OwnedCitationRow[]> {
+	if (ownedDomains.length === 0) return [];
+	const domainMatch = sql.join(
+		ownedDomains.map((domain) => sql`(rcu.domain = ${domain} OR rcu.domain LIKE ${`%.${domain}`})`),
+		sql` OR `,
+	);
+	return queryPg<OwnedCitationRow>(sql`
+		SELECT rcu.model, cp.url, cp.title, sum(rcu.citations)::int AS count
+		FROM rollup_citation_urls rcu
+		JOIN cited_pages cp ON cp.id = rcu.page_id
+		WHERE ${rollupScope(scope, "rcu")} AND (${domainMatch})
+		GROUP BY rcu.model, rcu.page_id, cp.url, cp.title
 		ORDER BY count DESC
 	`);
 }
