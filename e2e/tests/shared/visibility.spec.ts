@@ -27,7 +27,8 @@ test.describe("Visibility Page", () => {
   });
 
   test("page is accessible via sidebar navigation", async ({ page }) => {
-    await page.goto(`${BRAND_URL}`);
+    // Same hydration race as the overview's sidebar test.
+    await page.goto(`${BRAND_URL}`, { waitUntil: "networkidle" });
     const visLink = page.locator(`a[href="${BRAND_URL}/visibility"][data-sidebar="menu-button"]`);
     await expect(visLink).toBeVisible({ timeout: 15_000 });
     await visLink.click();
