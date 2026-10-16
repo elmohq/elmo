@@ -335,7 +335,7 @@ function DashboardPage() {
 			{/* Wide screens fit the page to the viewport below the 4rem site header, the inset's margins and
 			    borders, and the page content's padding, so a long list of competitors scrolls inside the
 			    landscape instead of the page. */}
-			<div className="m-auto flex w-full max-w-[1600px] flex-col gap-4 md:p-4 xl:h-[max(40rem,calc(100svh-8rem-2px))]">
+			<div className="flex w-full max-w-[1600px] flex-col gap-4 xl:h-[max(40rem,calc(100svh-8rem-2px))]">
 				<PageHeader
 					title="Overview"
 					subtitle="How AI answers talk about your brand and your competitors."
