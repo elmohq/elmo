@@ -75,6 +75,64 @@ describe("judged mentions", () => {
 	});
 });
 
+describe("companies the answer only cites", () => {
+	it("counts one it only links to as a mention, with its position, but gives it no sentiment", async () => {
+		const result = await analyzer.analyze(
+			"Great laptops all round ([apple.com](https://www.apple.com/mac)). Globex is the best alternative.",
+			config,
+		);
+		expect(result.brandMentioned).toBe(true);
+		expect(result.assessments?.brand).toMatchObject({ mentioned: true, citedOnly: true, position: 1 });
+		expect(result.assessments?.brand?.sentiment).toBeUndefined();
+		expect(result.assessments?.brand?.sentimentProbabilities).toBeUndefined();
+		expect(result.assessments?.competitors.Globex).toMatchObject({ sentiment: "positive", position: 2 });
+	});
+
+	it("gives no sentiment to one cited by a favicon chip and its label", async () => {
+		const result = await analyzer.analyze(
+			"Great laptops. ![](https://www.google.com/s2/favicons?domain=https://www.apple.com&sz=32) Apple +2",
+			config,
+		);
+		expect(result.assessments?.brand).toMatchObject({ mentioned: true, citedOnly: true });
+		expect(result.assessments?.brand?.sentiment).toBeUndefined();
+	});
+
+	it("keeps the sentiment of one it names as well as links to, or names by its domain", async () => {
+		for (const text of [
+			"[Apple](https://www.apple.com) is great value ([apple.com](https://www.apple.com/mac)).",
+			"Buy at apple.com, great value.",
+		]) {
+			const brand = (await analyzer.analyze(text, config)).assessments?.brand;
+			expect(brand).toMatchObject({ mentioned: true, sentiment: "positive" });
+			expect(brand?.citedOnly).toBeUndefined();
+		}
+	});
+
+	it("drops the sentiment of one judged before, calling no one", async () => {
+		const text = "Great laptops all round ([apple.com](https://www.apple.com/mac)).";
+		const first = await analyzer.analyze(text, config);
+		const { citedOnly: _, ...brand } = first.assessments!.brand!;
+		const judgedBefore = { ...first.assessments!, brand: { ...brand, sentiment: "neutral" as const } };
+		const { requests, analyze } = recording();
+		const replayed = await analyze.analyze(text, config, judgedBefore);
+		expect(requests).toEqual([]);
+		expect(replayed.brandMentioned).toBe(true);
+		expect(replayed.assessments?.brand).toMatchObject({ citedOnly: true, position: 1 });
+		expect(replayed.assessments?.brand?.sentiment).toBeUndefined();
+	});
+
+	it("asks again about one kept as only cited once the answer reads as naming it", async () => {
+		const text = "Apple is great value.";
+		const first = await analyzer.analyze(text, config);
+		const { sentiment: _, sentimentProbabilities: __, ...brand } = first.assessments!.brand!;
+		const citedBefore = { ...first.assessments!, brand: { ...brand, citedOnly: true as const } };
+		const { requests, analyze } = recording();
+		const replayed = await analyze.analyze(text, config, citedBefore);
+		expect(Object.keys(requests[0].questions)).toEqual(["brand__verdict", "brand__evidence"]);
+		expect(replayed.assessments?.brand).toMatchObject({ sentiment: "positive" });
+	});
+});
+
 describe("re-judging after a config change", () => {
 	const text = "Initech leads the pack. Apple is great value. Globex is a solid alternative.";
 
