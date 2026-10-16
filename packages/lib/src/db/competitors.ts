@@ -27,23 +27,27 @@ export interface CompetitorSavePlan {
 }
 
 /** Oldest first, so a saved list comes back in the order it was built up. */
-export const competitorOrder = [asc(competitors.createdAt), asc(competitors.id)];
+export const competitorOrder = [asc(competitors.createdAt), asc(competitors.name), asc(competitors.id)];
 
 const nameKey = (name: string) => name.trim().toLowerCase();
 
 const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((value, i) => value === b[i]);
 
-/**
- * Matches a submitted roster to the stored one, so a competitor keeps its row (and its id) across
- * saves. An entry without an id, from a caller that predates ids, takes the stored competitor with
- * its name, else the one stored competitor it shares a domain with: either way a save that changes
- * one field of a competitor updates it rather than replacing it.
- */
-export function planCompetitorSave(stored: StoredCompetitor[], submitted: SubmittedCompetitor[]): CompetitorSavePlan {
-	const byId = new Map(stored.map((row) => [row.id, row]));
-	const matched = new Map<SubmittedCompetitor, StoredCompetitor>();
-	const claimed = new Set<string>();
+type Matches = Map<SubmittedCompetitor, StoredCompetitor>;
 
+function assertDistinctNames(submitted: SubmittedCompetitor[]): void {
+	const seen = new Set<string>();
+	for (const entry of submitted) {
+		if (seen.has(nameKey(entry.name))) {
+			throw new Error(`Two competitors are named "${entry.name}"; give each its own name`);
+		}
+		seen.add(nameKey(entry.name));
+	}
+}
+
+function matchByIds(stored: StoredCompetitor[], submitted: SubmittedCompetitor[], matched: Matches): void {
+	const byId = new Map(stored.map((row) => [row.id, row]));
+	const claimed = new Set<string>();
 	for (const entry of submitted) {
 		if (entry.id === undefined) continue;
 		const row = byId.get(entry.id);
@@ -52,39 +56,41 @@ export function planCompetitorSave(stored: StoredCompetitor[], submitted: Submit
 		claimed.add(row.id);
 		matched.set(entry, row);
 	}
+}
 
-	const unmatched = () => submitted.filter((entry) => !matched.has(entry));
-	const unclaimed = () => stored.filter((row) => !claimed.has(row.id));
-
-	for (const entry of unmatched()) {
-		const row = unclaimed().find((candidate) => nameKey(candidate.name) === nameKey(entry.name));
-		if (!row) continue;
-		claimed.add(row.id);
-		matched.set(entry, row);
-	}
-
-	// A domain match is taken only when it's unambiguous both ways; otherwise the entry is new.
-	const byDomain = new Map<SubmittedCompetitor, StoredCompetitor>();
-	const wanted = new Map<string, number>();
-	const rows = unclaimed();
-	for (const entry of unmatched()) {
-		const candidates = rows.filter((row) => row.domains.some((domain) => entry.domains.includes(domain)));
+/** Gives each entry still unmatched the one row `pick` finds for it, unless another entry wants that row too. */
+function matchUnambiguously(
+	stored: StoredCompetitor[],
+	submitted: SubmittedCompetitor[],
+	matched: Matches,
+	pick: (entry: SubmittedCompetitor, row: StoredCompetitor) => boolean,
+): void {
+	const claimed = new Set(matched.values());
+	const rows = stored.filter((row) => !claimed.has(row));
+	const picks = new Map<SubmittedCompetitor, StoredCompetitor>();
+	const wanted = new Map<StoredCompetitor, number>();
+	for (const entry of submitted.filter((entry) => !matched.has(entry))) {
+		const candidates = rows.filter((row) => pick(entry, row));
 		if (candidates.length !== 1) continue;
-		byDomain.set(entry, candidates[0]);
-		wanted.set(candidates[0].id, (wanted.get(candidates[0].id) ?? 0) + 1);
+		picks.set(entry, candidates[0]);
+		wanted.set(candidates[0], (wanted.get(candidates[0]) ?? 0) + 1);
 	}
-	for (const [entry, row] of byDomain) {
-		if (wanted.get(row.id) !== 1) continue;
-		claimed.add(row.id);
-		matched.set(entry, row);
-	}
+	for (const [entry, row] of picks) if (wanted.get(row) === 1) matched.set(entry, row);
+}
 
-	const names = new Map<string, string>();
-	for (const entry of submitted) {
-		const other = names.get(nameKey(entry.name));
-		if (other !== undefined) throw new Error(`Two competitors are named "${entry.name}"; give each its own name`);
-		names.set(nameKey(entry.name), entry.name);
-	}
+/**
+ * Matches a submitted roster to the stored one, so a competitor keeps its row (and its id) across
+ * saves. An entry without an id, from a caller that predates ids, takes the stored competitor with
+ * its name, else the one stored competitor it shares a domain with: either way a save that changes
+ * one field of a competitor updates it rather than replacing it. A match that's ambiguous isn't
+ * guessed at; the entry is added as new.
+ */
+export function planCompetitorSave(stored: StoredCompetitor[], submitted: SubmittedCompetitor[]): CompetitorSavePlan {
+	assertDistinctNames(submitted);
+	const matched: Matches = new Map();
+	matchByIds(stored, submitted, matched);
+	matchUnambiguously(stored, submitted, matched, (entry, row) => nameKey(row.name) === nameKey(entry.name));
+	matchUnambiguously(stored, submitted, matched, (entry, row) => row.domains.some((d) => entry.domains.includes(d)));
 
 	const plan: CompetitorSavePlan = { inserts: [], updates: [], deletes: [], renames: new Map() };
 	for (const entry of submitted) {
@@ -99,7 +105,8 @@ export function planCompetitorSave(stored: StoredCompetitor[], submitted: Submit
 			plan.updates.push({ id: row.id, ...fields });
 		}
 	}
-	plan.deletes = stored.filter((row) => !claimed.has(row.id)).map((row) => row.id);
+	const kept = new Set(matched.values());
+	plan.deletes = stored.filter((row) => !kept.has(row)).map((row) => row.id);
 	return plan;
 }
 
@@ -191,7 +198,11 @@ export async function saveCompetitors(
 			.where(eq(competitors.id, id));
 	}
 	if (plan.inserts.length > 0) {
-		await conn.insert(competitors).values(plan.inserts.map((fields) => ({ brandId, ...fields })));
+		// A millisecond apart, so competitors added together keep the order they were listed in.
+		const now = Date.now();
+		await conn
+			.insert(competitors)
+			.values(plan.inserts.map((fields, i) => ({ brandId, ...fields, createdAt: new Date(now + i) })));
 	}
 	await moveCompetitorHistory(conn, brandId, plan.renames);
 
