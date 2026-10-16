@@ -26,4 +26,10 @@ describe("InlineMarkdown", () => {
 	it("drops images rather than showing broken icons inline", () => {
 		expect(render("![logo](https://example.com/a.png) Ahrefs")).not.toContain("<img");
 	});
+
+	it("reads an indented passage as text, not code", () => {
+		const html = render("    **▫ Elmo** — closest complete replacement\n    **▫ GetCito** — most ambitious");
+		expect(html).not.toContain("<code>");
+		expect(html).toContain("<strong>▫ Elmo</strong>");
+	});
 });

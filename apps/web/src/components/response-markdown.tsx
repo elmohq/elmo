@@ -110,6 +110,8 @@ const inlineComponents: Components = {
  * look inconsistently spaced, so only the inline emphasis is kept.
  */
 export function InlineMarkdown({ children }: { children: string }) {
+	// A passage cut from a nested list keeps its indentation, which markdown would read as a code block.
+	const dedented = children.replace(/^[ \t]+/gm, "");
 	return (
 		<ReactMarkdown
 			remarkPlugins={[remarkGfm]}
@@ -118,7 +120,7 @@ export function InlineMarkdown({ children }: { children: string }) {
 			components={inlineComponents}
 			urlTransform={urlTransform}
 		>
-			{children}
+			{dedented}
 		</ReactMarkdown>
 	);
 }
