@@ -50,7 +50,6 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 				<CardContent>
 					<RingChart
 						center={brand.totals.sentiment === null ? "—" : METRIC_META.sentiment.format(brand.totals.sentiment)}
-						caption="out of 100"
 						slices={SENTIMENTS.map((sentiment) => ({
 							name: SENTIMENT_STYLES[sentiment].label,
 							value: brand.sentiments[sentiment],
