@@ -41,12 +41,8 @@ function LandscapeInfo({ metric }: { metric: LandscapeMetric }) {
 			<TooltipContent className="max-w-72 space-y-1.5">
 				<p>{MEASURE_INFO[metric]}</p>
 				<p>
-					<span className="font-semibold">Chart:</span> how {METRIC_META[metric].short.toLowerCase()} has changed over
-					time for your brand and the top {CHARTED_COMPETITORS} competitors on it.
-				</p>
-				<p>
-					<span className="font-semibold">Table:</span> every tracked company ranked by its current{" "}
-					{METRIC_META[metric].short.toLowerCase()}, overall and per model. The deeper the blue, the better.
+					The chart shows how {METRIC_META[metric].short.toLowerCase()} has changed over time for your brand and the top{" "}
+					{CHARTED_COMPETITORS} competitors on it.
 				</p>
 			</TooltipContent>
 		</Tooltip>
