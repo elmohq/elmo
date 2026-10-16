@@ -6,6 +6,7 @@ import type { AnalyticsScope } from "@/lib/analytics-sql";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
 import {
 	getCitationDomainPromptCounts,
+	getCitationFlowRows,
 	getCitationsCountByModel,
 	getCitationTotal,
 	getCitationUrlStats,
@@ -400,6 +401,57 @@ describe("citation stats", () => {
 			scope(brandId, "2026-03-01", "2026-03-02", "UTC", { promptIds: [p1] }),
 		);
 		expect(Object.fromEntries(onlyP1)).toEqual({ "docs.example.com": 1, "news.example.org": 1 });
+	});
+});
+
+describe("citation flow rows", () => {
+	let brandId: string;
+	let p1: string;
+	const window = (rest: Partial<AnalyticsScope> = {}) => scope(brandId, "2026-03-01", "2026-03-02", "UTC", rest);
+
+	beforeAll(async () => {
+		brandId = await brand();
+		p1 = await createPrompt(brandId);
+		const p2 = await createPrompt(brandId);
+		const chatgpt = await createRun(brandId, p1, { at: "2026-03-01T10:00:00Z", brandMentioned: false });
+		const perplexity = await createRun(brandId, p2, {
+			at: "2026-03-02T10:00:00Z",
+			brandMentioned: false,
+			model: "perplexity",
+		});
+		const outside = await createRun(brandId, p1, { at: "2026-03-05T10:00:00Z", brandMentioned: false });
+		await createCitation(chatgpt, "https://g2.com/categories/crm");
+		await createCitation(chatgpt, "https://www.g2.com/products/acme", { index: 2 });
+		await createCitation(perplexity, "https://g2.com/categories/crm");
+		await createCitation(perplexity, "https://learn.g2.com/crm-guide", { index: 2 });
+		await createCitation(perplexity, "https://notg2.com/", { index: 3 });
+		await createCitation(perplexity, "https://www.google.com/search?q=g2+crm", { index: 4 });
+		await createCitation(outside, "https://g2.com/categories/crm");
+		await rebuildRollups(brandId);
+	});
+
+	it("returns the domain's and its subdomains' pages per engine, within the window", async () => {
+		const rows = await getCitationFlowRows(window(), "g2.com");
+		expect(rows.map(({ model, url, count }) => [model, url, count]).sort()).toEqual([
+			["chatgpt", "https://g2.com/categories/crm", 1],
+			["chatgpt", "https://g2.com/products/acme", 1],
+			["perplexity", "https://g2.com/categories/crm", 1],
+			["perplexity", "https://learn.g2.com/crm-guide", 1],
+		]);
+	});
+
+	it("narrows to the page's prompt and model filters", async () => {
+		const onlyP1 = await getCitationFlowRows(window({ promptIds: [p1] }), "g2.com");
+		expect(new Set(onlyP1.map((row) => row.model))).toEqual(new Set(["chatgpt"]));
+		const onlyPerplexity = await getCitationFlowRows(window({ model: "perplexity" }), "g2.com");
+		expect(onlyPerplexity.map((row) => row.url).sort()).toEqual([
+			"https://g2.com/categories/crm",
+			"https://learn.g2.com/crm-guide",
+		]);
+	});
+
+	it("leaves out Google surfaces, as the rest of the Citations page does", async () => {
+		expect(await getCitationFlowRows(window(), "google.com")).toEqual([]);
 	});
 });
 

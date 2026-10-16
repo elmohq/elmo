@@ -3,6 +3,7 @@
  * (quarter-hour buckets, refreshed about a minute behind the raw rows).
  */
 
+import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/citations/page-classification";
 import type { CitationUrlRow } from "@workspace/lib/citations/rollup";
 import { sql } from "drizzle-orm";
 import {
@@ -14,7 +15,7 @@ import {
 	scopeFilter,
 	uuidList,
 } from "@/lib/analytics-sql";
-import type { OwnedCitationRow } from "@/lib/citation-structure";
+import type { CitationFlowRow } from "@/lib/citation-flow";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
 import type { AssessmentSums } from "@/lib/sentiment";
 
@@ -354,23 +355,18 @@ export async function getCitationUrlStats(scope: AnalyticsScope): Promise<Citati
 }
 
 /**
- * The brand's own pages, per engine, for the citation structure view. `domain`
- * is the normalized host, so a subdomain matches by suffix as `inDomainSet` does.
+ * One domain's pages, per engine, for the Citation Flow. `domain` is the
+ * normalized host, so its subdomains match by suffix as `inDomainSet` does.
+ * Google surfaces are left out, as everywhere else on the Citations page.
  */
-export async function getOwnedCitationPagesByModel(
-	scope: AnalyticsScope,
-	ownedDomains: string[],
-): Promise<OwnedCitationRow[]> {
-	if (ownedDomains.length === 0) return [];
-	const domainMatch = sql.join(
-		ownedDomains.map((domain) => sql`(rcu.domain = ${domain} OR rcu.domain LIKE ${`%.${domain}`})`),
-		sql` OR `,
-	);
-	return queryPg<OwnedCitationRow>(sql`
+export async function getCitationFlowRows(scope: AnalyticsScope, domain: string): Promise<CitationFlowRow[]> {
+	return queryPg<CitationFlowRow>(sql`
 		SELECT rcu.model, cp.url, cp.title, sum(rcu.citations)::int AS count
 		FROM rollup_citation_urls rcu
 		JOIN cited_pages cp ON cp.id = rcu.page_id
-		WHERE ${rollupScope(scope, "rcu")} AND (${domainMatch})
+		WHERE ${rollupScope(scope, "rcu")}
+			AND (rcu.domain = ${domain} OR right(rcu.domain, ${domain.length + 1}) = ${`.${domain}`})
+			AND cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
 		GROUP BY rcu.model, rcu.page_id, cp.url, cp.title
 		ORDER BY count DESC
 	`);

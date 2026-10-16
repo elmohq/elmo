@@ -28,7 +28,9 @@ import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
+import type { CitationFlowRow } from "@/lib/citation-flow";
 import {
+	getCitationFlowRows,
 	getCitationUrlStats,
 	getPerPromptCitationPages,
 	getPerPromptDailyCitationClasses,
@@ -287,38 +289,59 @@ function emptyCitationsResult(
 	};
 }
 
+const citationFiltersSchema = z.object({
+	brandId: z.string(),
+	lookback: lookbackSchema.default("1w"),
+	tags: z.string().optional(),
+	model: z.string().optional(),
+});
+
+/**
+ * The brand, its prompts and the window every Citations read shares, so the
+ * Citation Flow answers for exactly the filters the rest of the page does.
+ * `scope` is null when no prompt matches the tag filter.
+ */
+async function resolveCitationScope(data: z.infer<typeof citationFiltersSchema>) {
+	const days = await resolveBrandLookbackDays(data.brandId, data.lookback);
+	const endDate = customRangeEnd(data.lookback);
+	// Window: `days` calendar days ending today or on a custom range's end (inclusive),
+	// plus the contiguous equal-length previous window — all UTC (server-TZ independent).
+	// `dateRange` is reused for the trend charts so totals + charts span identically.
+	const window = citationDateWindow(endDate ? new Date(`${endDate}T00:00:00Z`) : new Date(), days);
+
+	const [brandResult, competitorsList, allPrompts] = await Promise.all([
+		db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
+		db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
+		db
+			.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
+			.from(prompts)
+			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+	]);
+
+	const tagFilter = parseTagFilter(data.tags);
+	const enabledPromptIds =
+		tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
+	const scope =
+		enabledPromptIds.length === 0
+			? null
+			: {
+					brandId: data.brandId,
+					from: window.fromDateStr,
+					to: window.toDateStr,
+					timezone: "UTC",
+					promptIds: enabledPromptIds,
+					model: data.model,
+				};
+	return { days, window, brand: brandResult[0], competitorsList, allPrompts, scope };
+}
+
 export const getCitationsFn = createServerFn({ method: "GET" })
-	.validator(
-		z.object({
-			brandId: z.string(),
-			lookback: lookbackSchema.default("1w"),
-			tags: z.string().optional(),
-			model: z.string().optional(),
-		}),
-	)
+	.validator(citationFiltersSchema)
 	.handler(async ({ data }): Promise<CitationsResult> => {
 		await requireBrandSession(data.brandId);
 
-		const days = await resolveBrandLookbackDays(data.brandId, data.lookback);
-		const endDate = customRangeEnd(data.lookback);
-		// Window: `days` calendar days ending today or on a custom range's end (inclusive),
-		// plus the contiguous equal-length previous window — all UTC (server-TZ independent).
-		// `dateRange` is reused for the trend charts so totals + charts span identically.
-		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(
-			endDate ? new Date(`${endDate}T00:00:00Z`) : new Date(),
-			days,
-		);
-		const timezone = "UTC";
-
-		const [brandResult, competitorsList, allPrompts] = await Promise.all([
-			db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
-			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
-			db
-				.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
-				.from(prompts)
-				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
-		]);
-		const brand = brandResult[0];
+		const { days, window, brand, competitorsList, allPrompts, scope } = await resolveCitationScope(data);
+		const { prevFromDateStr, prevToDateStr, dateRange } = window;
 
 		const brandDomains = new Set(
 			[extractDomain(brand?.website || ""), ...(brand?.additionalDomains || []).map(extractDomain)].filter(Boolean),
@@ -335,19 +358,8 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 				.sort(),
 		];
 
-		const tagFilter = parseTagFilter(data.tags);
-		const enabledPromptIds =
-			tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
-		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, days);
+		if (!scope) return emptyCitationsResult(availableTags, competitorSummary, days);
 
-		const scope = {
-			brandId: data.brandId,
-			from: fromDateStr,
-			to: toDateStr,
-			timezone,
-			promptIds: enabledPromptIds,
-			model: data.model,
-		};
 		const [urlStats, perPromptDailyClasses, perPromptPages, prevUrlStats] = await Promise.all([
 			getCitationUrlStats(scope),
 			getPerPromptDailyCitationClasses(scope),
@@ -436,4 +448,15 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 				categorizeDomain,
 			}),
 		};
+	});
+
+/** One domain's citations per engine and page, for the Citation Flow. */
+export const getCitationFlowFn = createServerFn({ method: "GET" })
+	.validator(citationFiltersSchema.extend({ domain: z.string().min(1).max(253) }))
+	.handler(async ({ data }): Promise<CitationFlowRow[]> => {
+		await requireBrandSession(data.brandId);
+		const domain = extractDomain(data.domain);
+		const { scope } = await resolveCitationScope(data);
+		if (!scope || !domain) return [];
+		return getCitationFlowRows(scope, domain);
 	});
