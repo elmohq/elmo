@@ -102,8 +102,6 @@ describe("mention quality", () => {
 			neutral: 0,
 			negative: 0,
 			mixed: 0,
-			positiveShare: 1,
-			negativeShare: 0,
 			score: 1,
 		});
 		expect(sentiment.series.find((day) => day.date === "2026-03-01")).toMatchObject({ positive: 1 });
@@ -117,6 +115,6 @@ describe("mention quality", () => {
 		const globex = entries.find((entry) => entry.name === "Globex");
 		expect(brand).toMatchObject({ position: { average: 1 }, sentiment: { positive: 1 } });
 		// It has no sentiment, so it counts in no sentiment, but it was still named second.
-		expect(globex).toMatchObject({ position: { average: 2 }, sentiment: { positiveShare: null } });
+		expect(globex).toMatchObject({ position: { average: 2 }, sentiment: { score: null } });
 	});
 });

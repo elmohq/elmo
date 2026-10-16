@@ -270,8 +270,6 @@ const summary = (positive: number, neutral: number, mixed: number, negative: num
 		neutral,
 		mixed,
 		negative,
-		positiveShare: positive / clear,
-		negativeShare: negative / clear,
 		score: (positive + (neutral + mixed) / 2) / clear,
 	};
 };
