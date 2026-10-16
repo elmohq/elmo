@@ -1,8 +1,8 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
-import { getDaysFromLookback } from "@/lib/chart-utils";
+import { Area, AreaChart, Tooltip as ChartTooltip, ResponsiveContainer, YAxis } from "recharts";
+import { formatShortDate, getDaysFromLookback } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 interface VisibilityTimeSeriesPoint {
@@ -51,6 +51,23 @@ function getVisibilityColors(value: number) {
 	};
 }
 
+function PointTooltip({
+	active,
+	payload,
+}: {
+	active?: boolean;
+	payload?: { payload: { date: string; visibility: number | null } }[];
+}) {
+	const point = payload?.[0]?.payload;
+	if (!active || !point || point.visibility === null) return null;
+	return (
+		<div className="whitespace-nowrap rounded-md border bg-background px-2 py-1 text-xs shadow-md">
+			<span className="text-muted-foreground">{formatShortDate(point.date)}</span>
+			<span className="ml-2 font-medium tabular-nums">{Math.round(point.visibility)}%</span>
+		</div>
+	);
+}
+
 export function VisibilityBar({
 	currentVisibility,
 	totalRuns,
@@ -77,6 +94,7 @@ export function VisibilityBar({
 	const chartData = visibilityTimeSeries.map((point) => ({
 		date: point.date,
 		value: point.visibility ?? 0,
+		visibility: point.visibility,
 	}));
 
 	return (
@@ -94,6 +112,13 @@ export function VisibilityBar({
 						<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
 							<AreaChart data={chartData} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
 								<YAxis domain={[0, "auto"]} hide />
+								<ChartTooltip
+									cursor={{ stroke: colors.stroke, strokeOpacity: 0.4 }}
+									content={<PointTooltip />}
+									allowEscapeViewBox={{ x: true, y: true }}
+									wrapperStyle={{ zIndex: 50 }}
+									isAnimationActive={false}
+								/>
 								<Area
 									type="monotone"
 									dataKey="value"
@@ -102,6 +127,7 @@ export function VisibilityBar({
 									fillOpacity={0.2}
 									strokeWidth={1.5}
 									dot={false}
+									activeDot={{ r: 2.5, fill: colors.stroke, strokeWidth: 0 }}
 									isAnimationActive={false}
 									connectNulls
 								/>
