@@ -1,5 +1,11 @@
 # @workspace/api-spec
 
+## 0.6.2
+
+### Patch Changes
+
+- 54cdb8d: Sentiment is now a 0–100 score where neutral answers count as 50 rather than against your brand, and the API returns it as `score` in place of `positiveShare` and `negativeShare`.
+
 ## 0.6.1
 
 No changes in this release.

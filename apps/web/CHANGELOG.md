@@ -1,5 +1,26 @@
 # @workspace/web
 
+## 0.6.2
+
+### Patch Changes
+
+- a0b6c62: Explain what the competitive landscape's chart shows in an info tooltip that follows the selected measure.
+- 54cdb8d: Sentiment is now a 0–100 score where neutral answers count as 50 rather than against your brand, and the API returns it as `score` in place of `positiveShare` and `negativeShare`.
+- 2d5ecba: The overview fits the screen without a sliver of page scroll on laptop-sized displays.
+- 8d0a743: The overview page now lines up with the other brand pages, so the title no longer shifts when you switch between them.
+- aefe208: The brand dashboard pages fit phone screens better.
+- f25517e: The overview's Position card now shows an up arrow when your position improves.
+- 4d9975a: Sort the company-by-model tables on the overview and sentiment pages by any model, or by the overall figure, by clicking its column header.
+- ccf05e0: The Sentiment by Prompt table now lists the highest scores first, adds a Positive column, and sorts by Mentions, Score, Positive or Negative when you click a header.
+- 3320670: Hover the visibility sparkline on the Visibility page to see each day's value.
+- Updated dependencies [54cdb8d]
+  - @workspace/api-spec@0.6.2
+  - @workspace/config@0.6.2
+  - @workspace/deployment@0.6.2
+  - @workspace/lib@0.6.2
+  - @workspace/og@0.6.2
+  - @workspace/ui@0.6.2
+
 ## 0.6.1
 
 ### Patch Changes
