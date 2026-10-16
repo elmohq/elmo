@@ -58,7 +58,7 @@ export function CompanyTrendChart({
 						tickLine={false}
 						axisLine={false}
 						tickMargin={8}
-						width={40}
+						width={44}
 						reversed={lowerIsBetter}
 						domain={lowerIsBetter ? [1, "auto"] : [0, "auto"]}
 						allowDecimals={!lowerIsBetter}

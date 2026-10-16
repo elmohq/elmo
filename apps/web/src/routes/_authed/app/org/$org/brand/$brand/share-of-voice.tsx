@@ -55,7 +55,7 @@ function ShareOfVoiceOverview({
 	domainFor: (name: string) => string | undefined;
 }) {
 	return (
-		<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+		<div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 			<Card>
 				<CardHeader>
 					<CardTitle>Share of Voice</CardTitle>
@@ -168,15 +168,15 @@ function ShareOfVoicePage() {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead className="w-10">#</TableHead>
+									<TableHead className="w-10 max-sm:w-8">#</TableHead>
 									<TableHead>Brand</TableHead>
-									<TableHead className="text-right">
+									<TableHead className="text-right max-sm:hidden">
 										<ColHead label="Mentions" tip={TIPS.mentions} right />
 									</TableHead>
-									<TableHead className="w-[34%]">
+									<TableHead className="w-[34%] max-sm:w-24">
 										<ColHead label="Share" tip={TIPS.share} />
 									</TableHead>
-									<TableHead className="text-right">
+									<TableHead className="text-right max-sm:hidden">
 										<ColHead label="Prompts" tip={TIPS.prompts} right />
 									</TableHead>
 								</TableRow>
@@ -188,7 +188,8 @@ function ShareOfVoicePage() {
 										<TableCell className="font-medium">
 											<span className="inline-flex items-center gap-2">
 												<SiteIcon domain={domainFor(e.name)} size="md" />
-												{e.name}
+												{/* Capped on phones so the share bars keep their room. */}
+												<span className="truncate max-sm:max-w-24">{e.name}</span>
 												{e.isBrand && (
 													<Badge variant="secondary" className="text-xs">
 														You
@@ -196,10 +197,12 @@ function ShareOfVoicePage() {
 												)}
 											</span>
 										</TableCell>
-										<TableCell className="text-right tabular-nums">{e.mentions.toLocaleString()}</TableCell>
+										<TableCell className="text-right tabular-nums max-sm:hidden">
+											{e.mentions.toLocaleString()}
+										</TableCell>
 										<TableCell>
 											<div className="flex items-center gap-2">
-												<div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+												<div className="bg-muted h-2 w-full overflow-hidden rounded-full max-[380px]:hidden">
 													<div
 														className="h-full rounded-full"
 														style={{
@@ -213,7 +216,9 @@ function ShareOfVoicePage() {
 												</span>
 											</div>
 										</TableCell>
-										<TableCell className="text-right tabular-nums text-muted-foreground">{e.prompts}</TableCell>
+										<TableCell className="text-right tabular-nums text-muted-foreground max-sm:hidden">
+											{e.prompts}
+										</TableCell>
 									</TableRow>
 								))}
 							</TableBody>

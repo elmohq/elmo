@@ -153,7 +153,7 @@ export function SentimentFilterCard({
 	return (
 		<Card className="gap-0 py-4">
 			<CardContent className="space-y-3">
-				<div className="flex items-center justify-between gap-4">
+				<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
 					<div className="text-sm">
 						{clear > 0 ? (
 							<span className="font-semibold tabular-nums">{percent(counts.positive, clear)} positive</span>

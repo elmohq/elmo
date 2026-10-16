@@ -173,11 +173,13 @@ const PROMPT_SORT_VALUE: Record<PromptSortKey, (p: PromptSentiment) => number> =
 };
 
 function SortableHead({
+	className,
 	sortKey,
 	label,
 	sort,
 	onSort,
 }: {
+	className?: string;
 	sortKey: PromptSortKey;
 	label: string;
 	sort: PromptSort;
@@ -186,7 +188,10 @@ function SortableHead({
 	const active = sort.key === sortKey;
 	const Arrow = sort.desc ? IconArrowDown : IconArrowUp;
 	return (
-		<TableHead className="text-right" aria-sort={active ? (sort.desc ? "descending" : "ascending") : "none"}>
+		<TableHead
+			className={cn("text-right", className)}
+			aria-sort={active ? (sort.desc ? "descending" : "ascending") : "none"}
+		>
 			<button
 				type="button"
 				onClick={() => onSort(sortKey)}
@@ -245,11 +250,29 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 						<TableHeader>
 							<TableRow>
 								<TableHead className="w-[40%]">Prompt</TableHead>
-								<TableHead className="w-[24%]">Sentiment</TableHead>
-								<SortableHead sortKey="mentions" label="Mentions" sort={sort} onSort={onSort} />
+								<TableHead className="w-[24%] max-sm:min-w-16">Sentiment</TableHead>
+								<SortableHead
+									className="max-sm:hidden"
+									sortKey="mentions"
+									label="Mentions"
+									sort={sort}
+									onSort={onSort}
+								/>
 								<SortableHead sortKey="score" label="Score" sort={sort} onSort={onSort} />
-								<SortableHead sortKey="positive" label="Positive" sort={sort} onSort={onSort} />
-								<SortableHead sortKey="negative" label="Negative" sort={sort} onSort={onSort} />
+								<SortableHead
+									className="max-sm:hidden"
+									sortKey="positive"
+									label="Positive"
+									sort={sort}
+									onSort={onSort}
+								/>
+								<SortableHead
+									className="max-sm:hidden"
+									sortKey="negative"
+									label="Negative"
+									sort={sort}
+									onSort={onSort}
+								/>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -268,16 +291,16 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 									<TableCell>
 										<SentimentBar counts={p.sentiment} className="h-1.5" />
 									</TableCell>
-									<TableCell className="text-right tabular-nums text-muted-foreground">
+									<TableCell className="text-right tabular-nums text-muted-foreground max-sm:hidden">
 										{sentimentTotal(p.sentiment).toLocaleString()}
 									</TableCell>
 									<TableCell className="text-right font-medium tabular-nums">
 										{p.sentiment.score === null ? "—" : METRIC_META.sentiment.format(p.sentiment.score)}
 									</TableCell>
-									<TableCell className="text-right tabular-nums">
+									<TableCell className="text-right tabular-nums max-sm:hidden">
 										<SentimentAnswersLink prompt={p} sentiment="positive" />
 									</TableCell>
-									<TableCell className="text-right tabular-nums">
+									<TableCell className="text-right tabular-nums max-sm:hidden">
 										<SentimentAnswersLink prompt={p} sentiment="negative" />
 									</TableCell>
 								</TableRow>
@@ -333,7 +356,7 @@ function SentimentPage() {
 		content = (
 			<TooltipProvider delay={150}>
 				<div className="flex flex-col gap-6">
-					<div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[auto_minmax(0,1fr)]">
+					<div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-[auto_minmax(0,1fr)]">
 						<SentimentOverview landscape={landscape} colors={colors} />
 						<Card>
 							<CardHeader className={ROW_HEADER}>
