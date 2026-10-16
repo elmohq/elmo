@@ -15,7 +15,8 @@ export interface RingSlice {
 	icon?: ReactNode;
 }
 
-export function RingChart({ slices, center }: { slices: RingSlice[]; center: string }) {
+/** `caption` is a line of small print under `center`, such as its scale. */
+export function RingChart({ slices, center, caption }: { slices: RingSlice[]; center: string; caption?: string }) {
 	const total = slices.reduce((s, x) => s + x.value, 0);
 	if (total === 0) return null;
 	return (
@@ -55,8 +56,9 @@ export function RingChart({ slices, center }: { slices: RingSlice[]; center: str
 						/>
 					</PieChart>
 				</ChartContainer>
-				<div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+				<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
 					<span className="text-3xl font-bold tracking-tight tabular-nums">{center}</span>
+					{caption && <span className="text-xs text-muted-foreground">{caption}</span>}
 				</div>
 			</div>
 			<div className="min-w-0 flex-1 divide-y text-sm">

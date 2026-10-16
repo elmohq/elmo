@@ -104,6 +104,7 @@ describe("mention quality", () => {
 			mixed: 0,
 			positiveShare: 1,
 			negativeShare: 0,
+			score: 1,
 		});
 		expect(sentiment.series.find((day) => day.date === "2026-03-01")).toMatchObject({ positive: 1 });
 		expect(position.average).toBe(1);

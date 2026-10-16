@@ -35,8 +35,6 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/sentime
 	component: SentimentPage,
 });
 
-const percent = (value: number) => `${Math.round(value * 100)}%`;
-
 /** Side-by-side cards share a header height, so a title beside a control lines up with one beside none. */
 const ROW_HEADER = "flex min-h-8 flex-row items-center";
 
@@ -51,12 +49,13 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 				</CardHeader>
 				<CardContent>
 					<RingChart
-						center={brand.totals.sentiment === null ? "—" : percent(brand.totals.sentiment)}
+						center={brand.totals.sentiment === null ? "—" : METRIC_META.sentiment.format(brand.totals.sentiment)}
+						caption="out of 100"
 						slices={SENTIMENTS.map((sentiment) => ({
 							name: SENTIMENT_STYLES[sentiment].label,
 							value: brand.sentiments[sentiment],
 							color: SENTIMENT_STYLES[sentiment].color,
-							emphasis: sentiment === "positive",
+							emphasis: false,
 						}))}
 					/>
 				</CardContent>
@@ -176,7 +175,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 								<TableHead className="w-[40%]">Prompt</TableHead>
 								<TableHead className="text-right">Mentions</TableHead>
 								<TableHead className="w-[28%]">Sentiment</TableHead>
-								<TableHead className="text-right">Positive</TableHead>
+								<TableHead className="text-right">Score</TableHead>
 								<TableHead className="text-right">Negative</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -202,7 +201,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 											<SentimentBar counts={p.sentiment} className="h-1.5" />
 										</TableCell>
 										<TableCell className="text-right font-medium tabular-nums">
-											{p.sentiment.positiveShare === null ? "—" : percent(p.sentiment.positiveShare)}
+											{p.sentiment.score === null ? "—" : METRIC_META.sentiment.format(p.sentiment.score)}
 										</TableCell>
 										<TableCell className="text-right tabular-nums">
 											{p.sentiment.negative > 0 ? (
@@ -243,8 +242,9 @@ function SentimentPage() {
 	const infoContent = (
 		<p>
 			Each answer that mentions your brand is read for its sentiment toward it: positive, neutral, mixed or negative.
-			Answers that don't mention you aren't counted. Like visibility, the figures count each prompt's latest answers;
-			the prompt table covers the whole period.
+			Answers that don't mention you aren't counted. The score runs from 0 to 100: positive answers count 100, neutral
+			and mixed 50, and negative 0, so 50 means AI is neutral about you on balance. Like visibility, the figures count
+			each prompt's latest answers; the prompt table covers the whole period.
 		</p>
 	);
 

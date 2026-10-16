@@ -77,6 +77,11 @@ export interface SentimentSummary extends SentimentCounts {
 	/** Fractions of 1 of the mentions with a sentiment; null with none. */
 	positiveShare: number | null;
 	negativeShare: number | null;
+	/**
+	 * Net sentiment on a 0–1 scale: positive counts 1, neutral and mixed ½, negative 0. So ½ means AI is
+	 * neutral about the company on balance, rather than counting a factual mention against it.
+	 */
+	score: number | null;
 }
 
 export interface MentionQuality {
@@ -123,6 +128,7 @@ export function sentimentSummary(sums: AssessmentSums): SentimentSummary {
 		...sentimentCounts(sums),
 		positiveShare: withSentiment > 0 ? sums.positive_runs / withSentiment : null,
 		negativeShare: withSentiment > 0 ? sums.negative_runs / withSentiment : null,
+		score: withSentiment > 0 ? (sums.positive_runs + (sums.neutral_runs + sums.mixed_runs) / 2) / withSentiment : null,
 	};
 }
 
