@@ -67,7 +67,7 @@ export function reprocessDays(env: Record<string, string | undefined> = process.
 	const raw = env.REPROCESS_DAYS?.trim();
 	if (!raw) return DEFAULT_REPROCESS_DAYS;
 	if (raw.toLowerCase() === "all") return null;
-	const days = Number(raw);
+	const days = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
 	if (!Number.isInteger(days) || days < 1)
 		throw new Error(`REPROCESS_DAYS must be a whole number of days or "all", got "${raw}"`);
 	return days;
@@ -96,7 +96,7 @@ async function queueStaleRuns(
 	const oldest = days === null ? undefined : gte(promptRuns.createdAt, new Date(now - days * 24 * 60 * 60 * 1000));
 	let queued = 0;
 	for (const [age, priority] of [
-		[gte(promptRuns.createdAt, cutoff), DERIVE_PRIORITY.recent],
+		[and(gte(promptRuns.createdAt, cutoff), oldest), DERIVE_PRIORITY.recent],
 		[and(lt(promptRuns.createdAt, cutoff), oldest), DERIVE_PRIORITY.history],
 	] as const) {
 		let after: string | null = null;
@@ -214,12 +214,20 @@ export async function runReprocess(
 	const target = pickLayers(context.current, data.layers);
 	const queued = await queueStaleRuns(conn, boss, data.brandId, data.layers, context.current, days);
 	if (data.layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
+	// Only if the stamps are still the ones this pass started from: a replay requested meanwhile,
+	// by a prompt enabled after its prompts were read, must survive for the next pass.
+	const loaded = context.brand.analysisVersions;
 	await conn
 		.update(brands)
 		.set({
 			analysisVersions: sql`coalesce(${brands.analysisVersions}, '{}'::jsonb) || ${JSON.stringify(target)}::jsonb`,
 		})
-		.where(eq(brands.id, data.brandId));
+		.where(
+			and(
+				eq(brands.id, data.brandId),
+				loaded ? sql`${brands.analysisVersions} = ${JSON.stringify(loaded)}::jsonb` : isNull(brands.analysisVersions),
+			),
+		);
 	console.log(`[reprocess] brand ${data.brandId}: queued ${queued} runs toward ${JSON.stringify(target)}`);
 }
 

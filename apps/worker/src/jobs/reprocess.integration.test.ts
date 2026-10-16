@@ -253,6 +253,40 @@ describe("what a replay covers", () => {
 		expect(queued.flatMap((job) => job.data.runIds)).toEqual([recent.id]);
 	});
 
+	it("goes back no further than a window shorter than the recent tier", async () => {
+		const inside = legacyRun("Acme is the best CRM.", daysAgo(3));
+		await insertLegacyRuns([inside, legacyRun("Acme is the best CRM.", daysAgo(10))]);
+
+		const queued = await replay({ brandId, layers: BOTH_LAYERS }, 7);
+
+		expect(queued.flatMap((job) => job.data.runIds)).toEqual([inside.id]);
+	});
+
+	it("catches up a prompt enabled while a pass is running, on the next pass", async () => {
+		const [paused] = await db
+			.insert(prompts)
+			.values({ brandId, value: "paused question", enabled: false })
+			.returning({ id: prompts.id });
+		const waiting = { ...legacyRun("Acme is the best CRM.", daysAgo(5)), promptId: paused.id };
+		await insertLegacyRuns([legacyRun("Acme is the best CRM.", daysAgo(5)), waiting]);
+
+		// Enabled after the pass has read the brand's prompts, while it queues their runs.
+		const queue = deriveQueue();
+		const insert = queue.boss.insert.bind(queue.boss);
+		queue.boss.insert = async (...args) => {
+			await db.update(prompts).set({ enabled: true }).where(eq(prompts.id, paused.id));
+			await requestReplay(db, brandId);
+			return insert(...args);
+		};
+		await runReprocess({ brandId, layers: BOTH_LAYERS }, db, queue.boss, cuedAnalyzer, 90);
+		await queue.drain();
+
+		const asked = fakeBoss();
+		await requestStaleReprocesses(db, asked.boss, cuedAnalyzer);
+		expect(sentFor(asked.send, brandId)).toHaveLength(1);
+		expect((await replay(sentFor(asked.send, brandId)[0], 90)).flatMap((job) => job.data.runIds)).toEqual([waiting.id]);
+	});
+
 	it("skips a disabled prompt's answers until it's enabled again", async () => {
 		const [paused] = await db
 			.insert(prompts)
