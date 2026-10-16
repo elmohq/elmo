@@ -124,7 +124,7 @@ function fakeBoss() {
 
 /** A whole replay: the pass queues the brand's stale runs, and the derivation workers take them. */
 async function replay(data: ReprocessData) {
-	const queue = deriveQueue();
+	const queue = deriveQueue(db, cuedAnalyzer, null);
 	await runReprocess(data, db, queue.boss, cuedAnalyzer, null);
 	await queue.drain();
 }
