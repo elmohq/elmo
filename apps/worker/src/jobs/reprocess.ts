@@ -57,9 +57,26 @@ const staleFor = (layer: ReprocessLayer, target: AnalysisVersions): SQL =>
 
 const PAGE_SIZE = 5000;
 
+const DEFAULT_REJUDGE_DAYS = 90;
+
 /**
- * Queues every run of the brand that's stale for `layers`, recent runs ahead of older history.
- * Pages by id, which is unique where creation times can tie.
+ * `REJUDGE_DAYS`: how far back a replay re-derives history, in days (default 90), or `all`. Null
+ * means all. Answers older than this keep what they were judged with when they were recorded.
+ */
+export function rejudgeDays(env: Record<string, string | undefined> = process.env): number | null {
+	const raw = env.REJUDGE_DAYS?.trim();
+	if (!raw) return DEFAULT_REJUDGE_DAYS;
+	if (raw.toLowerCase() === "all") return null;
+	const days = Number(raw);
+	if (!Number.isInteger(days) || days < 1)
+		throw new Error(`REJUDGE_DAYS must be a whole number of days or "all", got "${raw}"`);
+	return days;
+}
+
+/**
+ * Queues the runs of the brand's enabled prompts that are stale for `layers` and inside the
+ * window, recent runs ahead of older history. A disabled prompt's runs wait until it's enabled
+ * again, which requests a replay. Pages by id, which is unique where creation times can tie.
  */
 async function queueStaleRuns(
 	conn: DbConnection,
@@ -67,14 +84,20 @@ async function queueStaleRuns(
 	brandId: string,
 	layers: ReprocessLayer[],
 	target: AnalysisVersions,
+	days: number | null,
 ): Promise<number> {
-	const brandPrompts = await conn.select({ id: prompts.id }).from(prompts).where(eq(prompts.brandId, brandId));
+	const brandPrompts = await conn
+		.select({ id: prompts.id })
+		.from(prompts)
+		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
 	if (brandPrompts.length === 0) return 0;
-	const cutoff = new Date(Date.now() - RECENT_FIRST_MS);
+	const now = Date.now();
+	const cutoff = new Date(now - RECENT_FIRST_MS);
+	const oldest = days === null ? undefined : gte(promptRuns.createdAt, new Date(now - days * 24 * 60 * 60 * 1000));
 	let queued = 0;
 	for (const [age, priority] of [
 		[gte(promptRuns.createdAt, cutoff), DERIVE_PRIORITY.recent],
-		[lt(promptRuns.createdAt, cutoff), DERIVE_PRIORITY.history],
+		[and(lt(promptRuns.createdAt, cutoff), oldest), DERIVE_PRIORITY.history],
 	] as const) {
 		let after: string | null = null;
 		for (;;) {
@@ -176,14 +199,20 @@ export async function runReprocess(
 	conn: DbConnection = db,
 	boss: Pick<PgBoss, "insert"> = getBoss(),
 	analyzer: MentionAnalyzer = mentionAnalyzer(),
+	days: number | null = rejudgeDays(),
 ): Promise<void> {
 	const context = await loadBrand(conn, data.brandId, analyzer);
 	if (!context) {
 		console.log(`[reprocess] brand ${data.brandId} no longer exists, skipping`);
 		return;
 	}
+	// Left stale, so enabling it again brings its history up to date then.
+	if (!context.brand.enabled) {
+		console.log(`[reprocess] brand ${data.brandId} is disabled, skipping`);
+		return;
+	}
 	const target = pickLayers(context.current, data.layers);
-	const queued = await queueStaleRuns(conn, boss, data.brandId, data.layers, context.current);
+	const queued = await queueStaleRuns(conn, boss, data.brandId, data.layers, context.current, days);
 	if (data.layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
 	await conn
 		.update(brands)
@@ -212,7 +241,7 @@ export async function requestStaleReprocesses(
 	let requested = 0;
 	for (const brand of allBrands) {
 		// Not yet adopted at startup; its history is taken as is until then.
-		if (brand.analysisVersions === null) continue;
+		if (brand.analysisVersions === null || !brand.enabled) continue;
 		const current = currentAnalysisVersions(
 			mentionConfigFrom(brand, competitorsByBrand.get(brand.id) ?? []),
 			analyzer.judgeVersion,

@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
+import { requestReplay } from "@workspace/lib/db/replay";
 import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
 import { brands, competitors, promptRuns, prompts, runMentions, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
@@ -503,6 +504,9 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						premiumModels: after.premiumModels,
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
+			}
+			if (updates.some(({ id, prompt }) => prompt.enabled && existingById.get(id)?.enabled === false)) {
+				await requestReplay(tx, data.brandId);
 			}
 			const retexted = updates.filter(({ id, prompt }) => existingById.get(id)?.value !== prompt.value);
 			await markPromptRunsDirty(

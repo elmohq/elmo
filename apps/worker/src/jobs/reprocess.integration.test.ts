@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspace/lib/analysis-versions";
 import { db } from "@workspace/lib/db/db";
+import { requestReplay } from "@workspace/lib/db/replay";
 import {
 	brands,
 	citations,
@@ -130,9 +131,9 @@ afterAll(async () => {
 });
 
 /** A whole pass: the replay queues the brand's stale runs, and the derivation workers take them. */
-async function replay(data: ReprocessData) {
+async function replay(data: ReprocessData, days: number | null = null) {
 	const queue = deriveQueue();
-	await runReprocess(data, db, queue.boss, cuedAnalyzer);
+	await runReprocess(data, db, queue.boss, cuedAnalyzer, days);
 	const queued = [...queue.jobs];
 	expect(await queue.drain()).toEqual([]);
 	return queued;
@@ -235,6 +236,58 @@ describe("runReprocess", () => {
 
 	it("skips a brand that no longer exists", async () => {
 		await expect(replay({ brandId: "no-such-brand", layers: ["extraction"] })).resolves.toEqual([]);
+	});
+});
+
+describe("what a replay covers", () => {
+	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+	const stampsOf = async () => (await db.select().from(brands).where(eq(brands.id, brandId)))[0].analysisVersions;
+
+	it("re-judges only answers inside the window", async () => {
+		const recent = legacyRun("Acme is the best CRM.", daysAgo(10));
+		const old = legacyRun("Acme is the best CRM.", daysAgo(200));
+		await insertLegacyRuns([recent, old]);
+
+		const queued = await replay({ brandId, layers: BOTH_LAYERS }, 90);
+
+		expect(queued.flatMap((job) => job.data.runIds)).toEqual([recent.id]);
+	});
+
+	it("skips a disabled prompt's answers until it's enabled again", async () => {
+		const [paused] = await db
+			.insert(prompts)
+			.values({ brandId, value: "paused question", enabled: false })
+			.returning({ id: prompts.id });
+		const live = legacyRun("Acme is the best CRM.", daysAgo(5));
+		const waiting = { ...legacyRun("Acme is the best CRM.", daysAgo(5)), promptId: paused.id };
+		await insertLegacyRuns([live, waiting]);
+
+		expect((await replay({ brandId, layers: BOTH_LAYERS }, 90)).flatMap((job) => job.data.runIds)).toEqual([live.id]);
+		expect(await stampsOf()).toEqual(await currentVersions(brandId));
+
+		await db.update(prompts).set({ enabled: true }).where(eq(prompts.id, paused.id));
+		await requestReplay(db, brandId);
+		const asked = fakeBoss();
+		await requestStaleReprocesses(db, asked.boss, cuedAnalyzer);
+		expect(sentFor(asked.send, brandId)).toHaveLength(1);
+		expect((await replay(sentFor(asked.send, brandId)[0], 90)).flatMap((job) => job.data.runIds)).toEqual([waiting.id]);
+	});
+
+	it("leaves a disabled brand stale, so enabling it again brings its history up to date", async () => {
+		await insertLegacyRuns([legacyRun("Acme is the best CRM.", daysAgo(5))]);
+		await db.update(brands).set({ enabled: false }).where(eq(brands.id, brandId));
+		const before = await stampsOf();
+
+		expect(await replay({ brandId, layers: BOTH_LAYERS }, 90)).toEqual([]);
+		expect(await stampsOf()).toEqual(before);
+		const asked = fakeBoss();
+		await requestStaleReprocesses(db, asked.boss, cuedAnalyzer);
+		expect(sentFor(asked.send, brandId)).toEqual([]);
+
+		await db.update(brands).set({ enabled: true }).where(eq(brands.id, brandId));
+		const again = fakeBoss();
+		await requestStaleReprocesses(db, again.boss, cuedAnalyzer);
+		expect(sentFor(again.send, brandId)).toHaveLength(1);
 	});
 });
 
