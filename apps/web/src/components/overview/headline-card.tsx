@@ -15,7 +15,6 @@ import type { OverviewCard } from "@/server/dashboard";
 function Change({ metric, change, className }: { metric: LandscapeMetric; change: number | null; className?: string }) {
 	const meta = METRIC_META[metric];
 	if (change === null || Math.abs(change) < 0.005) return null;
-	// Follows the sparkline, which is flipped for lower-is-better metrics, rather than the raw sign.
 	const improved = lowerIsBetter(metric) ? change < 0 : change > 0;
 	const Icon = improved ? IconArrowUpRight : IconArrowDownRight;
 	return (
