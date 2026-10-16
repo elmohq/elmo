@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/worker",
-	"version": "0.5.0",
+	"version": "0.6.1",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
@@ -9,15 +9,18 @@
 		"build": "tsc -p tsconfig.json",
 		"check-types": "tsc --noEmit",
 		"test": "vitest run --project=unit",
-		"test:integration": "vitest run --project=integration"
+		"test:integration": "vitest run --project=integration",
+		"judge:pull": "sh scripts/pull-mention-judge.sh"
 	},
 	"dependencies": {
+		"@huggingface/tokenizers": "0.2.0",
 		"@sentry/node": "^11.4.0",
 		"@workspace/config": "workspace:*",
 		"@workspace/deployment": "workspace:*",
 		"@workspace/lib": "workspace:*",
 		"auth0": "^7.3.0",
 		"drizzle-orm": "^0.45.3",
+		"onnxruntime-node": "1.30.0",
 		"pg": "^8.23.1",
 		"pg-boss": "^12.36.0",
 		"posthog-node": "^5.55.0"

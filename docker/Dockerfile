@@ -1,6 +1,11 @@
 # Elmo 
 # Supports: web app (Nitro server) and worker
 
+# Mention-judge weights (MIT): a weights-only image published from elmohq/elmo-models.
+# Pinned by digest so a worker build always gets exactly the model it was tested with.
+ARG MENTION_JUDGE_IMAGE=ghcr.io/elmohq/mention-judge:0.3.0@sha256:b5b32f15dbaca3cdfdf028a6c87023e5e03bf891ba14608b496f58b3260cbedb
+FROM ${MENTION_JUDGE_IMAGE} AS mention-judge
+
 # Base stage with Node.js
 FROM node:24-alpine AS base
 RUN corepack enable pnpm
@@ -93,19 +98,28 @@ COPY --from=lib-deploy /deploy/lib ./
 
 CMD ["npx", "drizzle-kit", "migrate"]
 
-# Worker stage
-FROM base AS worker
+# Worker stage. Debian rather than Alpine: ONNX Runtime's Linux binaries need glibc.
+FROM node:24-slim AS worker
+ARG TARGETARCH
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 worker
+RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs worker
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 COPY --from=worker-deploy --chown=worker:nodejs /deploy/worker ./
+COPY --from=mention-judge --chown=worker:nodejs /mention-judge ./mention-judge
+
+# onnxruntime-node ships binaries for every OS and architecture; keep only this image's.
+RUN set -e; arch=x64; [ "$TARGETARCH" = "arm64" ] && arch=arm64; \
+	for dir in $(find /app/node_modules -type d -path '*/onnxruntime-node/bin/napi-v*' -prune); do \
+		find "$dir" -mindepth 1 -maxdepth 1 ! -name linux -exec rm -rf {} +; \
+		find "$dir/linux" -mindepth 1 -maxdepth 1 ! -name "$arch" -exec rm -rf {} +; \
+	done; \
+	test -f /app/mention-judge/model.onnx
 
 USER worker
 

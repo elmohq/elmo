@@ -1,12 +1,13 @@
-import { and, asc, gt, isNull, type SQL, sql } from "drizzle-orm";
+import { and, isNull, type SQL, sql } from "drizzle-orm";
 import { normalizeUrl } from "../citations/domain-categories";
 import { classifyPage } from "../citations/page-classification";
 import type { DbConnection } from "../db/db-connection";
+import { type HeapWalkOptions, onPages, walkHeap } from "../db/heap-walk";
 import { citations, citedPages } from "../db/schema";
 import type { Citation } from "../text-extraction";
 import { chunked } from "./chunk";
 import { CLASSIFIER_VERSION } from "./constants";
-import { markDirty } from "./dirty";
+import { markWritesDirty } from "./dirty";
 
 interface Sighting {
 	url: string;
@@ -95,15 +96,30 @@ export interface CitingRun {
 	createdAt: Date;
 }
 
-/** Stores a run's citations, each pointing at its page. The one way citations are written. */
-export async function insertCitations(conn: DbConnection, run: CitingRun, extracted: Citation[]): Promise<void> {
-	if (extracted.length === 0) return;
+/** Stores a run's citations, each pointing at its page. */
+export function insertCitations(conn: DbConnection, run: CitingRun, extracted: Citation[]): Promise<void> {
+	return insertRunsCitations(conn, [{ run, citations: extracted }]);
+}
+
+/**
+ * Stores many runs' citations with one page upsert and one insert, so a replay
+ * batch costs a few statements rather than a few per run. The one way citations
+ * are written.
+ */
+export async function insertRunsCitations(
+	conn: DbConnection,
+	runs: { run: CitingRun; citations: Citation[] }[],
+): Promise<void> {
+	const withCitations = runs.filter(({ citations: cited }) => cited.length > 0);
+	if (withCitations.length === 0) return;
 	const pageIds = await upsertCitedPages(
 		conn,
-		extracted.map((c) => ({ url: c.url, domain: c.domain, title: c.title ?? null, seenAt: run.createdAt })),
+		withCitations.flatMap(({ run, citations: cited }) =>
+			cited.map((c) => ({ url: c.url, domain: c.domain, title: c.title ?? null, seenAt: run.createdAt })),
+		),
 	);
-	await conn.insert(citations).values(
-		extracted.map((c) => ({
+	const rows = withCitations.flatMap(({ run, citations: cited }) =>
+		cited.map((c) => ({
 			promptRunId: run.id,
 			promptId: run.promptId,
 			brandId: run.brandId,
@@ -116,51 +132,55 @@ export async function insertCitations(conn: DbConnection, run: CitingRun, extrac
 			pageId: pageIds.get(normalizeUrl(c.url)),
 		})),
 	);
+	for (const chunk of chunked(rows)) await conn.insert(citations).values(chunk);
 }
 
 /**
  * Points citations stored before pages were resolved at write time (or written
  * straight to the table by a seed) at their pages, and marks their buckets so the
- * rollups pick them up. Resumable: resolved citations leave the filter.
+ * rollups pick them up. Walks the heap newest pages first (see `walkHeap`) and
+ * updates each window's rows by ctid, locked so it can't move underneath.
+ * Resumable: resolved citations leave the filter.
  */
-export async function resolveUnpagedCitations(conn: DbConnection, batchSize = 1000): Promise<number> {
-	let resolved = 0;
-	let after: string | null = null;
-	for (;;) {
-		const batch = await conn
-			.select({
-				id: citations.id,
-				brandId: citations.brandId,
-				url: citations.url,
-				domain: citations.domain,
-				title: citations.title,
-				createdAt: citations.createdAt,
-			})
-			.from(citations)
-			.where(and(isNull(citations.pageId), after ? gt(citations.id, after) : undefined))
-			.orderBy(asc(citations.id))
-			.limit(batchSize);
-		if (batch.length === 0) return resolved;
-		await conn.transaction(async (tx) => {
-			const pageIds = await upsertCitedPages(
-				tx,
-				batch.map((c) => ({ url: c.url, domain: c.domain, title: c.title, seenAt: c.createdAt })),
-			);
-			const values = batch.map((c) => sql`(${c.id}::uuid, ${pageIds.get(normalizeUrl(c.url))}::bigint)`);
-			await tx.execute(sql`
-				UPDATE ${citations} AS c SET page_id = v.page_id
-				FROM (VALUES ${sql.join(values, sql`, `)}) AS v(id, page_id)
-				WHERE c.id = v.id
-			`);
-			for (const brandId of new Set(batch.map((c) => c.brandId))) {
-				await markDirty(
+export function resolveUnpagedCitations(
+	conn: DbConnection,
+	{ pagesPerStep = 200, ...walk }: HeapWalkOptions & { pagesPerStep?: number } = {},
+): Promise<number> {
+	return walkHeap(
+		conn,
+		citations,
+		pagesPerStep,
+		(from, to) =>
+			conn.transaction(async (tx) => {
+				const batch = await tx
+					.select({
+						ctid: sql<string>`${citations}.ctid::text`,
+						brandId: citations.brandId,
+						url: citations.url,
+						domain: citations.domain,
+						title: citations.title,
+						createdAt: citations.createdAt,
+					})
+					.from(citations)
+					.where(and(onPages(sql`${citations}.ctid`, from, to), isNull(citations.pageId)))
+					.for("update");
+				if (batch.length === 0) return 0;
+				const pageIds = await upsertCitedPages(
 					tx,
-					brandId,
-					batch.filter((c) => c.brandId === brandId).map((c) => c.createdAt),
+					batch.map((c) => ({ url: c.url, domain: c.domain, title: c.title, seenAt: c.createdAt })),
 				);
-			}
-		});
-		resolved += batch.length;
-		after = batch[batch.length - 1].id;
-	}
+				const values = batch.map((c) => sql`(${c.ctid}::tid, ${pageIds.get(normalizeUrl(c.url))}::bigint)`);
+				await tx.execute(sql`
+				UPDATE ${citations} AS c SET page_id = v.page_id
+				FROM (VALUES ${sql.join(values, sql`, `)}) AS v(ctid, page_id)
+				WHERE c.ctid = v.ctid
+			`);
+				await markWritesDirty(
+					tx,
+					batch.map((c) => ({ brandId: c.brandId, at: c.createdAt })),
+				);
+				return batch.length;
+			}),
+		walk,
+	);
 }

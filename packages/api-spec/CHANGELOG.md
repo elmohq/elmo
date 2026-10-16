@@ -1,5 +1,23 @@
 # @workspace/api-spec
 
+## 0.6.1
+
+No changes in this release.
+
+## 0.6.0
+
+### Patch Changes
+
+- caf6bfb: The API and MCP tools return each answer's mention assessments with sentiment and position, and sentiment and average position for the brand, each competitor, model and prompt, with daily series (experimental).
+
+## 0.5.2
+
+No changes in this release.
+
+## 0.5.1
+
+No changes in this release.
+
 ## 0.5.0
 
 ### Minor Changes

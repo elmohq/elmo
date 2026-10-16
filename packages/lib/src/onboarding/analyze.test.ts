@@ -107,6 +107,21 @@ describe("analyzeBrand", () => {
 		expect(result.aliases).toEqual([]);
 	});
 
+	it("keeps aliases that only contain the brand name inside a longer word", async () => {
+		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
+			brandName: "Acme",
+			additionalDomains: [],
+			aliases: ["Acme Corp", "AcmeCloud"],
+			competitors: [],
+			suggestedPrompts: [],
+		});
+
+		const result = await analyzeBrand({ website: "acme.com", brandName: "Acme" });
+
+		// Mentions match whole words, so "Acme" never finds "AcmeCloud" on its own.
+		expect(result.aliases).toEqual(["AcmeCloud"]);
+	});
+
 	it("takes the model's brand name when the caller supplied none", async () => {
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
 			brandName: "Acme",

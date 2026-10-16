@@ -1,5 +1,45 @@
 # @workspace/worker
 
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/config@0.6.1
+  - @workspace/deployment@0.6.1
+  - @workspace/lib@0.6.1
+
+## 0.6.0
+
+### Minor Changes
+
+- a76b237: Decide brand and competitor mentions with a bundled local model that matches whole words and reads each mention in context, so names that are also ordinary words no longer inflate visibility; past responses are re-judged in the background after upgrading.
+
+### Patch Changes
+
+- Updated dependencies [1334ce8]
+  - @workspace/lib@0.6.0
+  - @workspace/deployment@0.6.0
+  - @workspace/config@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Additional backfill speedups and crash prevention.
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+  - @workspace/deployment@0.5.2
+  - @workspace/lib@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- Improve rollup backfill speed.
+- @workspace/config@0.5.1
+  - @workspace/deployment@0.5.1
+  - @workspace/lib@0.5.1
+
 ## 0.5.0
 
 ### Minor Changes

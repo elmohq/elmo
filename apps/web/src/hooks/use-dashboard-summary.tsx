@@ -3,21 +3,29 @@ import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
 import { getDashboardSummaryFn } from "@/server/dashboard";
 
+export interface DashboardFilters {
+	lookback: LookbackPeriod;
+	model?: string;
+	tags?: string[];
+}
+
 export const dashboardKeys = {
 	all: ["dashboard"] as const,
-	summary: (brandId: string, lookback: LookbackPeriod) => [...dashboardKeys.all, "summary", brandId, lookback] as const,
+	summary: (brandId: string, filters: DashboardFilters) => [...dashboardKeys.all, "summary", brandId, filters] as const,
 };
 
-export function useDashboardSummary(brandId?: string, lookback: LookbackPeriod = "1m") {
+export function useDashboardSummary(brandId?: string, filters: DashboardFilters = { lookback: "1m" }) {
 	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
-		queryKey: dashboardKeys.summary(resolvedBrandId || "", lookback),
+		queryKey: dashboardKeys.summary(resolvedBrandId || "", filters),
 		queryFn: () =>
 			getDashboardSummaryFn({
 				data: {
 					brandId: resolvedBrandId!,
-					lookback,
+					lookback: filters.lookback,
+					model: filters.model,
+					tags: filters.tags?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

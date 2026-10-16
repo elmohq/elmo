@@ -13,6 +13,7 @@ import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requirePromptInScope } from "@/lib/api/scope";
 import { getCitationUrlStats, getCompetitorTotals, getMentionTotals } from "@/lib/rollup-read";
+import { mentionQuality } from "@/lib/sentiment";
 
 function isValidDate(dateStr: string): boolean {
 	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -126,6 +127,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 							competitorMentionsTotal: mentionData.competitor_mentions,
 							mentionsTopK,
 						},
+						...mentionQuality(mentionData),
 						citations: {
 							citationsTotal,
 							brandCitationsTotal,

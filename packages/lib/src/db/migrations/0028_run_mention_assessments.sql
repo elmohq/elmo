@@ -1,0 +1,1 @@
+ALTER TABLE "run_mentions" ADD COLUMN "assessments" jsonb;

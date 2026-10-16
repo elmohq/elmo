@@ -4,13 +4,14 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeploymentFeatures } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
-import { resolveUnpagedCitations } from "@workspace/lib/rollups";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
+import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
-import { registerHandlers } from "./handlers";
-import { fillLegacyText } from "./jobs/fill-legacy-text";
-import { adoptCurrentStamps, REPROCESS_QUEUE } from "./jobs/reprocess";
+import { registerDeriveRunsHandler, registerHandlers } from "./handlers";
+import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS, requestUnjudgedRuns } from "./jobs/derive-runs";
+import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE } from "./jobs/reprocess";
+import { loadMentionAnalyzer, MENTION_JUDGE_DIR } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 
@@ -22,18 +23,38 @@ if (process.env.SENTRY_DSN) {
 	});
 }
 
+/** `WORKER_ROLE=judge` runs only the derivation queue, for extra workers that clear a judging backlog. */
+function isJudgeOnly(): boolean {
+	const role = process.env.WORKER_ROLE?.trim() || "all";
+	if (role !== "all" && role !== "judge") throw new Error(`WORKER_ROLE must be "all" or "judge", got "${role}"`);
+	return role === "judge";
+}
+
 async function main() {
 	console.log("Starting pg-boss worker...");
 	assertRequiredEnv();
+	const judgeOnly = isJudgeOnly();
 	const boss = getBoss();
 
-	// Awaited so a stored credential counts toward the validation below.
-	await startCredentialRefresh();
+	if (!judgeOnly) {
+		// Awaited so a stored credential counts toward the validation below.
+		await startCredentialRefresh();
 
-	// Fail fast on misconfigured SCRAPE_TARGETS — surfaces unknown providers,
-	// missing API keys, and per-provider target errors before any job runs.
-	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
-	console.log("SCRAPE_TARGETS validated");
+		// Fail fast on misconfigured SCRAPE_TARGETS — surfaces unknown providers,
+		// missing API keys, and per-provider target errors before any job runs.
+		validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
+		console.log("SCRAPE_TARGETS validated");
+	}
+
+	// Before anything stamps runs or brands: the stamp names the judge, so it has to be known. Without
+	// it the worker still records answers; they wait unjudged until a restart loads it.
+	const analyzer = await loadMentionAnalyzer().catch((error) => {
+		console.error(`Couldn't load the mention judge from ${MENTION_JUDGE_DIR}; answers wait unjudged:`, error);
+		Sentry.captureException(error);
+		return null;
+	});
+	if (analyzer) console.log(`Mention judge ${analyzer.judgeVersion} loaded`);
+	if (judgeOnly && !analyzer) throw new Error(`WORKER_ROLE=judge needs the mention judge at ${MENTION_JUDGE_DIR}`);
 
 	boss.on("error", (error) => {
 		console.error("pg-boss error:", error);
@@ -46,6 +67,13 @@ async function main() {
 	// Start pg-boss (creates schema if needed)
 	await boss.start();
 	console.log("pg-boss started");
+
+	if (judgeOnly) {
+		await boss.createQueue(DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS);
+		await registerDeriveRunsHandler(boss);
+		console.log("Judge-only worker is ready");
+		return;
+	}
 
 	// Create queues if they don't exist (required in pg-boss v12)
 	await boss.createQueue("process-prompt", {
@@ -101,12 +129,17 @@ async function main() {
 		// A full mark scans all of prompt_runs once.
 		expireInSeconds: 60 * 60,
 	});
+	await boss.createQueue(DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS);
 	await boss.createQueue(REPROCESS_QUEUE, {
 		policy: "stately",
 		retryLimit: 2,
 		retryDelay: 60,
 		retryBackoff: true,
 		expireInSeconds: 60 * 10,
+	});
+	await boss.createQueue(REQUEST_REPROCESSES_QUEUE, {
+		retryLimit: 0,
+		expireInSeconds: 60 * 2,
 	});
 	console.log("Queues created");
 
@@ -124,6 +157,14 @@ async function main() {
 	if (adopted > 0) console.log(`Adopted current analysis stamps for ${adopted} brands`);
 
 	await boss.schedule(
+		REQUEST_REPROCESSES_QUEUE,
+		"* * * * *",
+		{},
+		{ tz: "UTC", singletonKey: REQUEST_REPROCESSES_QUEUE },
+	);
+	console.log("Scheduled request-reprocesses job (every minute)");
+
+	await boss.schedule(
 		REFRESH_ROLLUPS_QUEUE,
 		"* * * * *",
 		{ source: "scheduled" },
@@ -134,21 +175,17 @@ async function main() {
 	await initializePipeline(boss);
 
 	// Register job handlers
-	await registerHandlers(boss);
+	await registerHandlers(boss, { judging: analyzer !== null });
 	console.log("All handlers registered, worker is ready");
 
-	// Background, and a no-op once done: runs from before stored text get it from their payloads.
-	fillLegacyText()
-		.then((filled) => {
-			if (filled > 0) console.log(`Filled stored text for ${filled} runs that predate it`);
-		})
-		.catch((error) => console.error("Filling stored text for older runs failed:", error));
-	// Likewise for citations stored before their pages were resolved at write time.
-	resolveUnpagedCitations(db)
-		.then((resolved) => {
-			if (resolved > 0) console.log(`Resolved pages for ${resolved} older citations`);
-		})
-		.catch((error) => console.error("Resolving pages for older citations failed:", error));
+	if (analyzer) {
+		await requestUnjudgedRuns(db, boss, { days: 30, limit: 50_000 }).then(
+			(unjudged) => unjudged > 0 && console.log(`Asked again to judge ${unjudged} runs`),
+			(error) => Sentry.captureException(error),
+		);
+	}
+
+	await startBackfills();
 }
 
 main().catch(async (error) => {

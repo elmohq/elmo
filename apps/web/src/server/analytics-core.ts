@@ -15,11 +15,16 @@ import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
+import { buildLandscape, type Landscape } from "@/lib/landscape";
+import { assessedPassage } from "@/lib/passage";
+import { getSentimentQuotes, type SentimentQuoteRow } from "@/lib/postgres-read";
 import {
 	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
 	getCitationTotal,
 	getCitationUrlStats,
+	getCompetitorTotals,
+	getDailyAssessments,
 	getFanoutBreakdown,
 	getFanoutModelTotals,
 	getFanoutPromptTotals,
@@ -27,10 +32,28 @@ import {
 	getPerPromptDailyCompetitors,
 	getPerPromptDailyRuns,
 	getPerPromptRunStats,
+	getPromptModelDailyCompetitors,
+	getPromptModelDailyRuns,
 	getPromptsFirstEvaluatedAt,
 	getRunsByModel,
 	getVisibilityDailyAggregate,
+	type PerPromptDailyRuns,
 } from "@/lib/rollup-read";
+import {
+	averagePosition,
+	isSentiment,
+	type MentionQuality,
+	mentionQuality,
+	NO_ASSESSMENTS,
+	type PositionPoint,
+	type Sentiment,
+	type SentimentCounts,
+	type SentimentSummary,
+	sentimentCounts,
+	sentimentSummary,
+	sumAssessments,
+} from "@/lib/sentiment";
+import { shiftDateStr } from "@/lib/timezone-utils";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -136,7 +159,7 @@ export async function getBrandVisibility(
 	return { currentVisibility, totalRuns, totalPrompts: promptIds.length, totalCitations, series };
 }
 
-interface ShareOfVoiceEntry {
+interface ShareOfVoiceEntry extends MentionQuality {
 	name: string;
 	isBrand: boolean;
 	mentions: number;
@@ -154,6 +177,20 @@ export interface BrandShareOfVoice {
 
 /** Standings carry each prompt's latest counts forward, so the headline and the
  * trend's last point are the same number. */
+// Off the per-prompt rows rather than the per-competitor query, which counts mention instances
+// and would not agree with them.
+function shareSeries(perPromptDaily: PerPromptDailyRuns[], dateRange: string[]) {
+	return shareOfVoiceTimeSeriesLVCF(
+		perPromptDaily.map((row) => ({
+			promptId: row.prompt_id,
+			date: String(row.date),
+			brandMentions: row.brand_mentioned_runs,
+			competitorMentions: row.competitor_mentions,
+		})),
+		dateRange,
+	);
+}
+
 export async function getBrandShareOfVoice(
 	brandId: string,
 	window: AnalyticsWindow,
@@ -171,11 +208,13 @@ export async function getBrandShareOfVoice(
 	const bounds = windowInstants(window);
 	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
-	const [totals, perPromptDaily, perPromptCompetitorDaily] = await Promise.all([
+	const [totals, perPromptDaily, perPromptCompetitorDaily, competitorRows] = await Promise.all([
 		getMentionTotals(scope),
 		getPerPromptDailyRuns(scope),
 		getPerPromptDailyCompetitors(scope),
+		getCompetitorTotals(scope),
 	]);
+	const competitorTotals = new Map(competitorRows.map((row) => [row.competitor, row]));
 
 	const standings = shareOfVoiceLeaderboardLVCF(
 		perPromptDaily.map((row) => ({
@@ -198,17 +237,7 @@ export async function getBrandShareOfVoice(
 		standings.competitors.map((c) => ({ name: c.name, mentions: c.mentions })),
 	);
 
-	// Off this row rather than the per-competitor query, which counts mention
-	// instances and would not agree with it.
-	const series = shareOfVoiceTimeSeriesLVCF(
-		perPromptDaily.map((row) => ({
-			promptId: row.prompt_id,
-			date: String(row.date),
-			brandMentions: row.brand_mentioned_runs,
-			competitorMentions: row.competitor_mentions,
-		})),
-		dateRange,
-	);
+	const series = shareSeries(perPromptDaily, dateRange);
 
 	// Exact ratios: each edge rounds once, on the way out.
 	return {
@@ -221,12 +250,13 @@ export async function getBrandShareOfVoice(
 			mentions: entry.mentions,
 			prompts: entry.isBrand ? standings.brandPrompts : (promptsByName.get(entry.name) ?? 0),
 			share: entry.share,
+			...mentionQuality((entry.isBrand ? totals : competitorTotals.get(entry.name)) ?? NO_ASSESSMENTS),
 		})),
 		series,
 	};
 }
 
-export interface ModelVisibility {
+export interface ModelVisibility extends MentionQuality {
 	model: string;
 	label: string;
 	runs: number;
@@ -257,6 +287,7 @@ async function getBrandModelBreakdown(
 			brandMentions: mentions,
 			visibility: runs === 0 ? null : mentions / runs,
 			citations: citationsByModel.get(row.model) ?? 0,
+			...mentionQuality(row),
 		};
 	});
 }
@@ -405,7 +436,7 @@ function emptyFanout(): FanoutAnalysis {
 	};
 }
 
-export interface PromptPerformance {
+export interface PromptPerformance extends MentionQuality {
 	promptId: string;
 	value: string;
 	tags: string[];
@@ -446,18 +477,55 @@ export async function getBrandPromptPerformance(
 			competitorMentionRate: runs > 0 ? (stats?.competitor_runs ?? 0) / runs : 0,
 			lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date).toISOString() : null,
 			firstEvaluatedAt: first ? new Date(first).toISOString() : null,
+			...mentionQuality(stats ?? NO_ASSESSMENTS),
 		};
 	});
+}
+
+export interface BrandMentionQuality {
+	sentiment: SentimentSummary & { series: (SentimentCounts & { date: string })[] };
+	position: { average: number | null; series: PositionPoint[] };
+}
+
+export async function getBrandMentionQuality(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+): Promise<BrandMentionQuality> {
+	const { promptIds } = await resolveScope(brandId, filters);
+	if (promptIds.length === 0) {
+		return { sentiment: { ...sentimentSummary(NO_ASSESSMENTS), series: [] }, position: { average: null, series: [] } };
+	}
+	const bounds = windowInstants(window);
+	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
+	const rows = await getDailyAssessments(analyticsScope(brandId, window, promptIds, filters));
+	const byDate = new Map(rows.map((row) => [row.date, row]));
+	const day = (date: string) => byDate.get(date) ?? NO_ASSESSMENTS;
+	const totals = sumAssessments(rows);
+	return {
+		sentiment: {
+			...sentimentSummary(totals),
+			series: dateRange.map((date) => ({ date, ...sentimentCounts(day(date)) })),
+		},
+		position: {
+			average: averagePosition(totals.position_sum, totals.positioned_runs),
+			series: dateRange.map((date) => ({
+				date,
+				average: averagePosition(day(date).position_sum, day(date).positioned_runs),
+			})),
+		},
+	};
 }
 
 /** The long lists — cited domains and URLs, sub-queries, per-prompt results —
  * are endpoints of their own. */
 export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
-	const [visibility, shareOfVoice, models, citations] = await Promise.all([
+	const [visibility, shareOfVoice, models, citations, quality] = await Promise.all([
 		getBrandVisibility(brandId, window, filters),
 		getBrandShareOfVoice(brandId, window, filters),
 		getBrandModelBreakdown(brandId, window, filters),
 		getBrandCitations(brandId, window, filters),
+		getBrandMentionQuality(brandId, window, filters),
 	]);
 
 	return {
@@ -465,6 +533,8 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 		visibility: { current: visibility.currentVisibility, series: visibility.series },
 		shareOfVoice: { brand: shareOfVoice.brandShare, entries: shareOfVoice.entries, series: shareOfVoice.series },
 		models,
+		sentiment: quality.sentiment,
+		position: quality.position,
 		totals: {
 			runs: visibility.totalRuns,
 			prompts: visibility.totalPrompts,
@@ -472,5 +542,106 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 			uniqueDomains: citations.totals.uniqueDomains,
 			uniqueUrls: citations.totals.uniqueUrls,
 		},
+	};
+}
+
+export async function getCompetitiveLandscape(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+): Promise<Landscape> {
+	const [brandRow, competitorRows, resolved] = await Promise.all([
+		db.select({ name: brands.name, website: brands.website }).from(brands).where(eq(brands.id, brandId)).limit(1),
+		db
+			.select({ name: competitors.name, domains: competitors.domains })
+			.from(competitors)
+			.where(eq(competitors.brandId, brandId)),
+		resolveScope(brandId, filters),
+	]);
+	const bounds = windowInstants(window);
+	const dates = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
+	const brand = { name: brandRow[0]?.name ?? "Your brand", domain: extractDomain(brandRow[0]?.website ?? "") || null };
+	const tracked = competitorRows.map((c) => ({
+		name: c.name,
+		domain: c.domains[0] ? extractDomain(c.domains[0]) : null,
+	}));
+	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
+	const [runs, competitorRuns] =
+		resolved.promptIds.length === 0
+			? [[], []]
+			: await Promise.all([getPromptModelDailyRuns(scope), getPromptModelDailyCompetitors(scope)]);
+	return buildLandscape({ brand, competitors: tracked, dates, runs, competitorRuns });
+}
+
+export interface SentimentQuote {
+	runId: string;
+	promptId: string;
+	prompt: string;
+	model: string;
+	createdAt: string;
+	sentiment: Sentiment;
+	/** Markdown. */
+	passage: string;
+}
+
+export interface PromptSentiment {
+	promptId: string;
+	value: string;
+	tags: string[];
+	sentiment: SentimentSummary;
+}
+
+export interface BrandSentiment {
+	/** Least positive first. */
+	prompts: PromptSentiment[];
+	/** The negative and mixed assessments the judge was surest of, one per prompt. */
+	criticism: SentimentQuote[];
+	praise: SentimentQuote[];
+}
+
+const QUOTES_PER_SIDE = 5;
+
+/** The overall split comes from the competitive landscape, which every headline shares. */
+export async function getBrandSentiment(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+): Promise<BrandSentiment> {
+	const resolved = await resolveScope(brandId, filters);
+	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
+	const [perPrompt, criticism, praise] = await Promise.all([
+		resolved.promptIds.length > 0 ? getPerPromptRunStats(scope) : [],
+		getSentimentQuotes(scope, ["negative", "mixed"], QUOTES_PER_SIDE),
+		getSentimentQuotes(scope, ["positive"], QUOTES_PER_SIDE),
+	]);
+	const promptsById = new Map(resolved.prompts.map((prompt) => [prompt.id, prompt]));
+	const quote = (row: SentimentQuoteRow): SentimentQuote[] => {
+		const passage = assessedPassage(row.text_content, row.brand);
+		const sentiment = row.brand.sentiment;
+		if (!passage || !isSentiment(sentiment)) return [];
+		return [
+			{
+				runId: row.id,
+				promptId: row.prompt_id,
+				prompt: promptsById.get(row.prompt_id)?.value ?? "",
+				model: row.model,
+				createdAt: new Date(row.created_at).toISOString(),
+				sentiment,
+				passage,
+			},
+		];
+	};
+	const prompts = perPrompt
+		.flatMap((row): PromptSentiment[] => {
+			const prompt = promptsById.get(row.prompt_id);
+			const sentiment = sentimentSummary(row);
+			if (!prompt || sentiment.positiveShare === null) return [];
+			return [{ promptId: prompt.id, value: prompt.value, tags: prompt.tags ?? [], sentiment }];
+		})
+		.sort((a, b) => (a.sentiment.positiveShare ?? 0) - (b.sentiment.positiveShare ?? 0));
+	return {
+		prompts,
+		criticism: criticism.flatMap(quote),
+		praise: praise.flatMap(quote),
 	};
 }

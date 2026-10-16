@@ -21,7 +21,7 @@ import type {
 import { structuredResearch } from "./ai-sdk";
 import { nonEmptyStrings } from "./scrape-shared";
 
-const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
+const DEFAULT_RESEARCH_MODEL = "gpt-6-luna";
 
 function getOpenAIResponsesModel(model: string) {
 	const apiKey = getCredential("OPENAI_API_KEY");

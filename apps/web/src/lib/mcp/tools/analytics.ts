@@ -44,7 +44,7 @@ export const getAnalytics = analyticsTool({
 	name: "get_analytics",
 	title: "Get a brand's analytics",
 	description:
-		"Everything a brand's window says in one call: visibility and its daily trend, share of voice against tracked competitors, the per-model breakdown, and citation totals. The first thing to read when asked how a brand is doing. Rates are fractions of 1, not percentages.",
+		"Everything a brand's window says in one call: visibility and its daily trend, share of voice against tracked competitors, the per-model breakdown, and citation totals. Also, experimentally: the sentiment of answers toward the brand and each competitor (positive, neutral, negative, mixed) and where each comes among the tracked companies an answer names (position 1 = named first), overall and per model, and per day for the brand. These count every answer in the window, while visibility and share of voice count each prompt's latest answers. The first thing to read when asked how a brand is doing. Rates are fractions of 1, not percentages.",
 	run: async ({ brand, range, filters }) => getBrandAnalytics(brand.id, range, filters),
 });
 
@@ -52,7 +52,7 @@ export const getPromptPerformance = analyticsTool({
 	name: "get_prompt_performance",
 	title: "Get per-prompt performance",
 	description:
-		"How each prompt performed over the window — which questions surface the brand and which don't. Enabled prompts only; a disabled one isn't sampled, so it has nothing to report.",
+		"How each prompt performed over the window — which questions surface the brand and which don't, and (experimentally) how its answers describe the brand and where they place it among the tracked companies they name. Enabled prompts only; a disabled one isn't sampled, so it has nothing to report.",
 	run: async ({ brand, range, filters }) => ({ data: await getBrandPromptPerformance(brand.id, range, filters) }),
 });
 

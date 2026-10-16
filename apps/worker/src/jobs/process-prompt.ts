@@ -1,16 +1,11 @@
 import * as Sentry from "@sentry/node";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
-import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspace/lib/analysis-versions";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { insertRuns } from "@workspace/lib/db/runs";
-import { type Brand, brands, citations, competitors, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
+import { type Brand, brands, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
-import { analyzeRunMentions, type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
-import { insertCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
@@ -20,14 +15,13 @@ import {
 	resolveBrandPromptRunPlans,
 	selectDueTargets,
 	slowestIntervalHours,
-	targetKey,
 } from "@workspace/lib/run-policy";
-import { type Citation, extractRun } from "@workspace/lib/text-extraction";
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
 import { trackWorkerEvent } from "../telemetry";
+import { DERIVE_PRIORITY, sendDeriveRuns } from "./derive-runs";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -113,12 +107,6 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 	}
 
 	return { prompt, brand };
-}
-
-async function loadMentionConfig(conn: DbConnection, brandId: string): Promise<MentionConfig> {
-	const [brand] = await conn.select().from(brands).where(eq(brands.id, brandId));
-	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));
-	return mentionConfigFrom(brand, brandCompetitors);
 }
 
 /**
@@ -249,43 +237,28 @@ async function runModelIteration({
 		// providers whose query field is fabricated (DataForSEO) write the
 		// `unavailable` sentinel in their own extractor instead.
 		const { rawOutput, webQueries, modelVersion } = result;
-		// The same extraction a replay runs, so a run stores only what its payload yields.
-		const { textContent: text, citations: extractedCitations } = extractRun(rawOutput, config.provider);
-		console.log(`${logPrefix} AI call completed, text length: ${text?.length ?? "null"}`);
-
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
-		// One transaction so a reprocess never sees a run without its citations.
-		const promptRunId = await db.transaction(async (tx) => {
-			// Read here rather than at the start of the cycle: a config edit made while the
-			// provider call ran would otherwise be stamped onto this run as current.
-			const mentionConfig = await loadMentionConfig(tx, brand.id);
-			const stamps = currentAnalysisVersions(mentionConfig);
-			const [run] = await insertRuns(tx, [
-				{
-					promptId,
-					brandId: brand.id,
-					model: config.model,
-					provider: config.provider,
-					version: recordedVersion,
-					webSearchEnabled: config.webSearch,
-					rawOutput,
-					webQueries,
-					textContent: text,
-					extractionStamp: stamps[EXTRACTION_KEY],
-					...analyzeRunMentions(text, mentionConfig),
-					mentionsStamp: stamps[MENTIONS_KEY],
-				},
-			]);
-			await insertCitations(
-				tx,
-				{ id: run.id, promptId, brandId: brand.id, model: config.model, createdAt: run.createdAt },
-				extractedCitations,
-			);
-			await markDirty(tx, brand.id, [run.createdAt]);
-			return run.id;
-		});
+		// Only the answer is saved here. Its text, citations and mentions are derived in their own
+		// job, so a bug there can neither lose an answer that's been paid for nor ask for it again.
+		const [{ id: promptRunId }] = await db
+			.insert(promptRuns)
+			.values({
+				promptId,
+				brandId: brand.id,
+				model: config.model,
+				provider: config.provider,
+				version: recordedVersion,
+				webSearchEnabled: config.webSearch,
+				rawOutput,
+				webQueries,
+			})
+			.returning({ id: promptRuns.id });
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
+		// The answer is saved either way; a job that fails to queue here is picked up by the sweep.
+		await sendDeriveRuns(getBoss(), brand.id, [promptRunId], DERIVE_PRIORITY.new).catch((error) =>
+			console.error(`${logPrefix} Couldn't queue judging for run ${promptRunId}; the sweep will:`, error),
+		);
 
 		await recordUsageEvent({
 			organizationId: brand.organizationId,
@@ -418,20 +391,6 @@ async function processPrompt(
 		successful_runs: successCount,
 		failed_runs: failures.length,
 	});
-
-	if (successCount > 0) {
-		try {
-			// Seconds-fresh dashboards instead of waiting for the once-a-minute
-			// schedule; a queue hiccup here must not fail an otherwise-successful cycle.
-			await getBoss().send(
-				REFRESH_ROLLUPS_QUEUE,
-				{ source: "run" },
-				{ singletonKey: REFRESH_ROLLUPS_QUEUE, singletonSeconds: 10 },
-			);
-		} catch (error) {
-			console.error(`Failed to send refresh-rollups trigger for prompt ${promptId}:`, error);
-		}
-	}
 
 	// A cycle where nothing came back means the targets themselves are failing,
 	// so the next attempt backs off instead of running on cadence. Anything that

@@ -17,8 +17,8 @@ import {
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
+import { requestUnjudgedRuns } from "./derive-runs";
 import { PROMPT_JOB_OPTIONS } from "./process-prompt";
-import { requestStaleReprocesses } from "./reprocess";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -44,13 +44,36 @@ export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[
 
 		try {
 			await runMaintenanceCheck();
-			const reprocesses = await requestStaleReprocesses();
-			if (reprocesses > 0) console.log(`[schedule-maintenance] Requested ${reprocesses} brand reprocesses`);
 		} catch (error) {
 			console.error("[schedule-maintenance] Maintenance check failed:", error);
 			throw error; // Will trigger retry
 		}
+		// Never holds up scheduling prompts, and is retried by the next tick anyway.
+		await requestJudging().catch((error) => {
+			console.error("[schedule-maintenance] Requesting judging failed:", error);
+			Sentry.captureException(error);
+		});
 	}
+}
+
+/** Past this many, answers are piling up unjudged: the judge is down or failing, not just behind. */
+const UNJUDGED_ALERT_THRESHOLD = 100;
+let lastUnjudgedAlertMs = 0;
+
+/** Asks for whatever any worker with the judge can take, and pages when answers stop being judged. */
+async function requestJudging(): Promise<void> {
+	const unjudged = await requestUnjudgedRuns();
+	if (unjudged === 0) return;
+	console.log(`[schedule-maintenance] Asked again to judge ${unjudged} runs`);
+	const now = Date.now();
+	if (unjudged < UNJUDGED_ALERT_THRESHOLD || now - lastUnjudgedAlertMs < OVERDUE_ALERT_THROTTLE_MS) return;
+	lastUnjudgedAlertMs = now;
+	Sentry.withScope((scope) => {
+		scope.setLevel("error");
+		scope.setTag("scheduler", "unjudged-runs");
+		scope.setFingerprint(["scheduler-unjudged-runs"]);
+		Sentry.captureMessage(`Judging: ${unjudged} answers still unjudged after 10 minutes`, "error");
+	});
 }
 
 type EnabledBrand = Awaited<ReturnType<typeof db.query.brands.findMany>>[number];

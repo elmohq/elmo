@@ -77,7 +77,7 @@ standard platform** (the run policy uses the first match per model), plus a grou
 model sold in the premium tier:
 
 ```
-chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-sonnet-5,chatgpt:openai-api:gpt-5-mini:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-sonnet-5:online
+chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online
 ```
 
 Platforms are offered to customers only when they appear in both the plan menu
@@ -101,7 +101,7 @@ not discount its premium slot — `resolvePromptRunPlan` builds the two sets fro
 (`brand.enabledModels` and `prompt.premiumModels`) and simply concatenates them.
 
 Which models are sellable that way is a `premium` flag in `CLOUD_PLATFORMS`, not a model id threaded
-through the code: today Claude, Grok and ChatGPT (GPT-5 Search). Adding another means adding the flag
+through the code: today Claude, Grok and ChatGPT (GPT Search). Adding another means adding the flag
 and a grounded target — nothing in the schema, the guards or the run policy names a model.
 
 "Grounded" means **a direct API call with the model's own web search on**, which is what

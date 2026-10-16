@@ -14,6 +14,8 @@ import {
 import { mentionConfigFrom } from "@workspace/lib/mentions";
 import { asc, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
+import { deriveQueue } from "./__fixtures__/derive-queue";
 import { fillLegacyText, LEGACY_EXTRACTION_STAMP } from "./fill-legacy-text";
 import {
 	adoptCurrentStamps,
@@ -93,7 +95,7 @@ async function insertLegacyRuns(runs: ReturnType<typeof legacyRun>[]): Promise<v
 async function currentVersions(id: string) {
 	const [brand] = await db.select().from(brands).where(eq(brands.id, id));
 	const brandCompetitors = await db.select().from(competitors).where(eq(competitors.brandId, id));
-	return currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors));
+	return currentAnalysisVersions(mentionConfigFrom(brand, brandCompetitors), cuedAnalyzer.judgeVersion);
 }
 
 async function runsInWalkOrder() {
@@ -127,12 +129,22 @@ afterAll(async () => {
 	await db.$client.end();
 });
 
+/** A whole pass: the replay queues the brand's stale runs, and the derivation workers take them. */
+async function replay(data: ReprocessData) {
+	const queue = deriveQueue();
+	await runReprocess(data, db, queue.boss, cuedAnalyzer);
+	const queued = [...queue.jobs];
+	expect(await queue.drain()).toEqual([]);
+	return queued;
+}
+
+const BOTH_LAYERS: ReprocessData["layers"] = ["extraction", "interpretation"];
+
 describe("runReprocess", () => {
 	it("extracts a stored run's text and citations, derives its mentions, and stamps the brand", async () => {
 		await insertLegacyRuns([legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"))]);
 
-		const { boss, send } = fakeBoss();
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, boss);
+		await replay({ brandId, layers: BOTH_LAYERS });
 
 		const [run] = await runsInWalkOrder();
 		expect(run.textContent).toBe("Acme is the best CRM.");
@@ -143,55 +155,72 @@ describe("runReprocess", () => {
 		expect(cited.map((citation) => citation.url)).toEqual(["https://example.com/a"]);
 
 		const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
-		expect(brand.analysisVersions).toEqual(await currentVersions(brandId));
-		expect(sentFor(send, brandId)).toEqual([]);
+		expect(brand.analysisVersions).toEqual(current);
 	});
 
 	it("leaves runs that are already current untouched", async () => {
-		await insertLegacyRuns([legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"))]);
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
-		await db.update(runMentions).set({ brandMentioned: false });
+		const run = legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"));
+		await insertLegacyRuns([run]);
+		await replay({ brandId, layers: BOTH_LAYERS });
+		await db.update(runMentions).set({ brandMentioned: false }).where(eq(runMentions.runId, run.id));
 
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
+		expect(await replay({ brandId, layers: BOTH_LAYERS })).toEqual([]);
 
-		const [run] = await runsInWalkOrder();
-		expect(run.brandMentioned).toBe(false);
+		expect((await runsInWalkOrder())[0].brandMentioned).toBe(false);
 	});
 
-	it("walks every run when more than a batch of them share one microsecond", async () => {
+	it("derives a history spread over many chunks, even where creation times tie", async () => {
 		const sharedInstant = sql`'2026-02-01 10:00:00.123456+00'::timestamptz`;
 		await insertLegacyRuns(Array.from({ length: 450 }, () => legacyRun("Acme is the best CRM.", sharedInstant)));
 
-		const { boss, send } = fakeBoss();
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, boss);
+		await replay({ brandId, layers: BOTH_LAYERS });
 
 		const runs = await runsInWalkOrder();
 		expect(runs).toHaveLength(450);
 		const extracted = (await currentVersions(brandId))[EXTRACTION_KEY];
 		expect(runs.every((run) => run.brandMentioned && run.extractionStamp === extracted)).toBe(true);
-		expect(sentFor(send, brandId)).toEqual([]);
 	});
 
-	it("re-derives runs a pass already handled when the brand's config changes before it finishes", async () => {
+	it("queues runs never judged, which have no mentions row", async () => {
+		const run = legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"));
+		await insertLegacyRuns([run]);
+		await db.delete(runMentions).where(eq(runMentions.runId, run.id));
+
+		await replay({ brandId, layers: ["interpretation"] });
+
+		expect((await runsInWalkOrder())[0].brandMentioned).toBe(true);
+	});
+
+	it("re-derives runs a pass already handled once the brand's config changes", async () => {
 		const [competitor] = await db
 			.insert(competitors)
 			.values({ brandId, name: "Globex", domains: ["oldsite.example"] })
 			.returning({ id: competitors.id });
 		const answer = "According to newsite.example, Acme is the best CRM.";
 		await insertLegacyRuns([legacyRun(answer, new Date("2026-02-01T10:00:00Z"))]);
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
+		await replay({ brandId, layers: BOTH_LAYERS });
 		expect((await runsInWalkOrder())[0].competitorsMentioned).toEqual([]);
 
-		// The same pass's continuation, after the config moved.
 		await db
 			.update(competitors)
 			.set({ domains: ["newsite.example"] })
 			.where(eq(competitors.id, competitor.id));
-		await runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss);
+		await replay({ brandId, layers: ["interpretation"] });
 
 		expect((await runsInWalkOrder())[0].competitorsMentioned).toEqual(["Globex"]);
 		const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
 		expect(brand.analysisVersions).toEqual(await currentVersions(brandId));
+	});
+
+	it("queues the last 30 days ahead of older history", async () => {
+		const old = legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"));
+		const recent = legacyRun("Acme is the best CRM.", new Date(Date.now() - 24 * 60 * 60 * 1000));
+		await insertLegacyRuns([old, recent]);
+
+		const queued = await replay({ brandId, layers: BOTH_LAYERS });
+
+		expect(queued.map((job) => job.data.runIds)).toEqual([[recent.id], [old.id]]);
+		expect(queued[0].priority).toBeGreaterThan(queued[1].priority);
 	});
 
 	it("rewrites only derived rows, since prompt_runs rejects updates", async () => {
@@ -201,15 +230,11 @@ describe("runReprocess", () => {
 		).rejects.toMatchObject({
 			cause: { message: expect.stringContaining("append-only") },
 		});
-		await expect(
-			runReprocess({ brandId, layers: ["extraction", "interpretation"] }, db, fakeBoss().boss),
-		).resolves.toBeUndefined();
+		await expect(replay({ brandId, layers: BOTH_LAYERS })).resolves.toHaveLength(1);
 	});
 
 	it("skips a brand that no longer exists", async () => {
-		await expect(
-			runReprocess({ brandId: "no-such-brand", layers: ["extraction"] }, db, fakeBoss().boss),
-		).resolves.toBeUndefined();
+		await expect(replay({ brandId: "no-such-brand", layers: ["extraction"] })).resolves.toEqual([]);
 	});
 });
 
@@ -217,7 +242,10 @@ describe("fillLegacyText", () => {
 	it("stores a legacy run's text from its payload and leaves its citations and mentions as recorded", async () => {
 		const run = legacyRun("Acme is the best CRM.", new Date("2026-02-01T10:00:00Z"));
 		await insertLegacyRuns([run]);
-		await db.update(runMentions).set({ brandMentioned: true, competitorsMentioned: ["Globex"] });
+		await db
+			.update(runMentions)
+			.set({ brandMentioned: true, competitorsMentioned: ["Globex"] })
+			.where(eq(runMentions.runId, run.id));
 
 		expect(await fillLegacyText(db)).toBeGreaterThanOrEqual(1);
 		await db.update(runExtractions).set({ textContent: "Filled once." }).where(eq(runExtractions.runId, run.id));
@@ -243,34 +271,31 @@ describe("fillLegacyText", () => {
 describe("requestStaleReprocesses", () => {
 	it("requests a pass toward today's stamps, and none once history matches", async () => {
 		const first = fakeBoss();
-		await requestStaleReprocesses(db, first.boss);
+		await requestStaleReprocesses(db, first.boss, cuedAnalyzer);
 		expect(sentFor(first.send, brandId)).toEqual([{ brandId, layers: ["extraction", "interpretation"] }]);
 
-		await runReprocess(sentFor(first.send, brandId)[0], db, fakeBoss().boss);
+		await replay(sentFor(first.send, brandId)[0]);
 		const second = fakeBoss();
-		await requestStaleReprocesses(db, second.boss);
+		await requestStaleReprocesses(db, second.boss, cuedAnalyzer);
 		expect(sentFor(second.send, brandId)).toEqual([]);
 
 		await db.insert(competitors).values({ brandId, name: "Globex", domains: ["globex.example"] });
 		const afterEdit = fakeBoss();
-		await requestStaleReprocesses(db, afterEdit.boss);
+		await requestStaleReprocesses(db, afterEdit.boss, cuedAnalyzer);
 		expect(sentFor(afterEdit.send, brandId).map((data) => data.layers)).toEqual([["interpretation"]]);
 	});
 
-	it("does not replay the history of a brand that predates stamping, which adopts today's stamps instead", async () => {
+	it("keeps the extracted history of a brand that predates stamping, and re-judges its mentions", async () => {
 		const legacyBrand = await createBrand(null);
 		try {
 			const before = fakeBoss();
-			await requestStaleReprocesses(db, before.boss);
+			await requestStaleReprocesses(db, before.boss, cuedAnalyzer);
 			expect(sentFor(before.send, legacyBrand)).toEqual([]);
 
 			await adoptCurrentStamps(db);
-			const [brand] = await db.select().from(brands).where(eq(brands.id, legacyBrand));
-			expect(brand.analysisVersions).toEqual(await currentVersions(legacyBrand));
-
 			const after = fakeBoss();
-			await requestStaleReprocesses(db, after.boss);
-			expect(sentFor(after.send, legacyBrand)).toEqual([]);
+			await requestStaleReprocesses(db, after.boss, cuedAnalyzer);
+			expect(sentFor(after.send, legacyBrand).map((data) => data.layers)).toEqual([["interpretation"]]);
 		} finally {
 			await deleteBrand(legacyBrand);
 		}

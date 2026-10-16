@@ -77,6 +77,14 @@ Brand onboarding and the Opportunities report also need one direct LLM API key â
 | `DATAFORSEO_PASSWORD` | DataForSEO password |
 | `SCRAPE_TARGETS` | Comma-separated `model:provider[:version][:online]` entries. See [Providers](/docs/user-guide/providers#scrape_targets-format). |
 
+### Mention Judging
+
+The worker decides which answers really mention a brand, and how they describe it, with a model bundled in its image. It runs on the worker's CPU and needs no key. One copy of the model uses about 1 GB of memory and up to four CPU cores.
+
+When the model or a brand's names change, the worker re-judges that brand's history in the background, the last 30 days first. A large history goes faster with more copies of the model, set with `MENTION_JUDGE_WORKERS`. One copy uses up to four cores; with several, each uses one, so it only pays off from about 5 copies, on a worker with 8 or more vCPUs. Leave a few vCPUs for the rest of the worker, and allow about 0.5 GB of memory for each copy beyond the first. For example, on 32 vCPU and 32 GB, `MENTION_JUDGE_WORKERS=28` uses about 15 GB.
+
+To get through a large backlog faster, start extra copies of the worker with `WORKER_ROLE=judge`. They run only the judging, so they need nothing but the database and the model; start as many as you like, on any machines, from the same worker image, and stop them when the backlog is done. New answers are always judged first. Each copy holds a few database connections, so keep the total within your database's connection limit.
+
 ## Updating Configuration
 
 To change environment variables after initial setup:

@@ -1,5 +1,47 @@
 # @workspace/www
 
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.6.1
+  - @workspace/config@0.6.1
+  - @workspace/docs@0.6.1
+  - @workspace/og@0.6.1
+  - @workspace/ui@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [caf6bfb]
+  - @workspace/api-spec@0.6.0
+  - @workspace/config@0.6.0
+  - @workspace/docs@0.6.0
+  - @workspace/og@0.6.0
+  - @workspace/ui@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+  - @workspace/og@0.5.2
+  - @workspace/api-spec@0.5.2
+  - @workspace/docs@0.5.2
+  - @workspace/ui@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.5.1
+  - @workspace/config@0.5.1
+  - @workspace/docs@0.5.1
+  - @workspace/og@0.5.1
+  - @workspace/ui@0.5.1
+
 ## 0.5.0
 
 ### Patch Changes

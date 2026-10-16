@@ -1,5 +1,31 @@
 # @workspace/lib
 
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/config@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- 1334ce8: Brand onboarding and the opportunities report now use `gpt-6-luna` (OpenAI) and `claude-sonnet-5-5` (Anthropic and OpenRouter).
+- @workspace/config@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/config@0.5.1
+
 ## 0.5.0
 
 ### Minor Changes

@@ -92,3 +92,4 @@ apps/web/storybook-static/
 
 # Built from skills/ by apps/www/scripts/build-agent-skills.mjs.
 apps/www/public/.well-known/agent-skills/
+apps/worker/mention-judge
