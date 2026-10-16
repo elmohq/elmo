@@ -82,7 +82,6 @@ export function HeadlineCard({
 							<TooltipTrigger
 								aria-label={`About ${meta.label}`}
 								className={cn("opacity-60 hover:opacity-100", style?.text ?? "text-muted-foreground")}
-								onClick={(event) => event.preventDefault()}
 							>
 								<IconInfoCircle className="size-3.5" />
 							</TooltipTrigger>
@@ -107,7 +106,8 @@ export function HeadlineCard({
 						)}
 					</div>
 				</CardContent>
-				<div className="mt-2 h-16">
+				{/* Recharts forces an arrow cursor, which would make this part of the card look unclickable. */}
+				<div className="mt-2 h-16 [&_*]:cursor-pointer!">
 					{card && style && (
 						<ResponsiveContainer width="100%" height="100%">
 							<AreaChart
