@@ -56,11 +56,12 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 		...landscape.companies.flatMap((c) => Object.values(c.byModel).map((v) => v.share ?? 0)),
 	);
 	return (
-		<table className="text-sm">
+		<table className="w-full text-sm">
 			{/* Sticky so the measure's columns stay labelled while a long field of competitors scrolls. */}
 			<thead className="sticky top-0 z-10 bg-card shadow-[inset_0_-1px_0_var(--border)]">
 				<tr className="text-xs text-muted-foreground">
-					<th className="px-4 py-2.5 text-left font-medium">Company</th>
+					{/* Takes whatever width the panel has to spare, keeping the figures together on the right. */}
+					<th className="w-full px-4 py-2.5 text-left font-medium">Company</th>
 					<th className="px-2 py-2.5 font-medium">All</th>
 					{landscape.models.map((model) => {
 						const { label, iconId } = getModelMeta(model);
@@ -129,7 +130,7 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 				<CardTitle className="text-base">Competitive Landscape</CardTitle>
 				<MetricSwitch value={metric} onChange={setMetric} />
 			</CardHeader>
-			<CardContent className="grid gap-4 p-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1fr)_auto] xl:grid-rows-[minmax(0,1fr)]">
+			<CardContent className="grid gap-4 p-4 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:grid-rows-[minmax(0,1fr)]">
 				<div className="h-[340px] min-w-0 rounded-lg border bg-card p-4 xl:h-auto">
 					{loading || !landscape ? (
 						<Skeleton className="h-full w-full" />
