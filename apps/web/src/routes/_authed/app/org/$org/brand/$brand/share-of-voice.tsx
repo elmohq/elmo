@@ -55,7 +55,7 @@ function ShareOfVoiceOverview({
 	domainFor: (name: string) => string | undefined;
 }) {
 	return (
-		<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+		<div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 			<Card>
 				<CardHeader>
 					<CardTitle>Share of Voice</CardTitle>
@@ -170,13 +170,13 @@ function ShareOfVoicePage() {
 								<TableRow>
 									<TableHead className="w-10">#</TableHead>
 									<TableHead>Brand</TableHead>
-									<TableHead className="text-right">
+									<TableHead className="text-right max-sm:hidden">
 										<ColHead label="Mentions" tip={TIPS.mentions} right />
 									</TableHead>
 									<TableHead className="w-[34%]">
 										<ColHead label="Share" tip={TIPS.share} />
 									</TableHead>
-									<TableHead className="text-right">
+									<TableHead className="text-right max-sm:hidden">
 										<ColHead label="Prompts" tip={TIPS.prompts} right />
 									</TableHead>
 								</TableRow>
@@ -196,7 +196,9 @@ function ShareOfVoicePage() {
 												)}
 											</span>
 										</TableCell>
-										<TableCell className="text-right tabular-nums">{e.mentions.toLocaleString()}</TableCell>
+										<TableCell className="text-right tabular-nums max-sm:hidden">
+											{e.mentions.toLocaleString()}
+										</TableCell>
 										<TableCell>
 											<div className="flex items-center gap-2">
 												<div className="bg-muted h-2 w-full overflow-hidden rounded-full">
@@ -213,7 +215,9 @@ function ShareOfVoicePage() {
 												</span>
 											</div>
 										</TableCell>
-										<TableCell className="text-right tabular-nums text-muted-foreground">{e.prompts}</TableCell>
+										<TableCell className="text-right tabular-nums text-muted-foreground max-sm:hidden">
+											{e.prompts}
+										</TableCell>
 									</TableRow>
 								))}
 							</TableBody>

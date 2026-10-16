@@ -19,8 +19,8 @@ export function RingChart({ slices, center }: { slices: RingSlice[]; center: str
 	const total = slices.reduce((s, x) => s + x.value, 0);
 	if (total === 0) return null;
 	return (
-		<div className="flex items-center gap-6">
-			<div className="relative size-44 shrink-0">
+		<div className="flex items-center gap-4 sm:gap-6">
+			<div className="relative size-32 shrink-0 sm:size-44">
 				<ChartContainer config={{}} className="aspect-square size-full">
 					<PieChart>
 						<Pie
@@ -56,7 +56,7 @@ export function RingChart({ slices, center }: { slices: RingSlice[]; center: str
 					</PieChart>
 				</ChartContainer>
 				<div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-					<span className="text-3xl font-bold tracking-tight tabular-nums">{center}</span>
+					<span className="text-2xl font-bold tracking-tight tabular-nums sm:text-3xl">{center}</span>
 				</div>
 			</div>
 			<div className="min-w-0 flex-1 divide-y text-sm">

@@ -173,7 +173,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 					<Table>
 						<TableHeader>
 							<TableRow>
-								<TableHead className="w-[40%]">Prompt</TableHead>
+								<TableHead className="w-[40%] min-w-48">Prompt</TableHead>
 								<TableHead className="text-right">Mentions</TableHead>
 								<TableHead className="w-[28%]">Sentiment</TableHead>
 								<TableHead className="text-right">Positive</TableHead>
@@ -271,7 +271,7 @@ function SentimentPage() {
 		content = (
 			<TooltipProvider delay={150}>
 				<div className="flex flex-col gap-6">
-					<div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[auto_minmax(0,1fr)]">
+					<div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-[auto_minmax(0,1fr)]">
 						<SentimentOverview landscape={landscape} colors={colors} />
 						<Card>
 							<CardHeader className={ROW_HEADER}>

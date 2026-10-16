@@ -27,7 +27,11 @@ function shade(metric: LandscapeMetric, value: number, maxShare: number): number
 
 function MetricSwitch({ value, onChange }: { value: LandscapeMetric; onChange: (metric: LandscapeMetric) => void }) {
 	return (
-		<div role="tablist" aria-label="Measure" className="inline-flex rounded-lg bg-muted p-0.5 text-sm">
+		<div
+			role="tablist"
+			aria-label="Measure"
+			className="flex w-full rounded-lg bg-muted p-0.5 text-sm sm:inline-flex sm:w-auto"
+		>
 			{LANDSCAPE_METRICS.map((metric) => (
 				<button
 					key={metric}
@@ -36,11 +40,20 @@ function MetricSwitch({ value, onChange }: { value: LandscapeMetric; onChange: (
 					aria-selected={metric === value}
 					onClick={() => onChange(metric)}
 					className={cn(
-						"rounded-md px-3 py-1 transition-colors",
+						"flex-1 whitespace-nowrap rounded-md px-2 py-1 transition-colors sm:flex-none sm:px-3",
 						metric === value ? "bg-background font-medium shadow-sm" : "text-muted-foreground hover:text-foreground",
 					)}
 				>
-					{METRIC_META[metric].short}
+					{METRIC_META[metric].abbr ? (
+						<>
+							<span className="sm:hidden" title={METRIC_META[metric].short}>
+								{METRIC_META[metric].abbr}
+							</span>
+							<span className="max-sm:hidden">{METRIC_META[metric].short}</span>
+						</>
+					) : (
+						METRIC_META[metric].short
+					)}
 				</button>
 			))}
 		</div>

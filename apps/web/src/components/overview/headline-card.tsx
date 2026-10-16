@@ -75,7 +75,7 @@ export function HeadlineCard({
 					style?.card,
 				)}
 			>
-				<CardContent className="px-5 pt-4">
+				<CardContent className="px-4 pt-4 sm:px-5">
 					<div className="flex items-center justify-between gap-2">
 						<span className={cn("text-sm font-semibold", style?.text ?? "text-muted-foreground")}>{meta.label}</span>
 						<Tooltip>
@@ -95,7 +95,7 @@ export function HeadlineCard({
 							<>
 								<span
 									className={cn(
-										"text-4xl font-bold tracking-tight tabular-nums",
+										"text-3xl font-bold tracking-tight tabular-nums sm:text-4xl",
 										style?.text ?? "text-muted-foreground",
 									)}
 								>
