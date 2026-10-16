@@ -186,7 +186,7 @@ function ShareOfVoicePage() {
 									<TableRow key={e.name} className={e.isBrand ? "bg-muted/40" : undefined}>
 										<TableCell className="text-muted-foreground tabular-nums">{i + 1}</TableCell>
 										<TableCell className="font-medium">
-											<span className="inline-flex items-center gap-2">
+											<span className="flex items-center gap-2">
 												<SiteIcon domain={domainFor(e.name)} size="md" />
 												{/* Capped on phones so the share bars keep their room. */}
 												<span className="truncate max-sm:max-w-24">{e.name}</span>
