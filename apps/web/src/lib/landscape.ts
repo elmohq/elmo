@@ -179,7 +179,7 @@ function measure(name: string, day: Observation | undefined): MetricValues {
 	return {
 		visibility: ratio(counts.mentions, day?.runs ?? 0),
 		share: ratio(counts.mentions, day?.allMentions ?? 0),
-		sentiment: sentimentSummary(counts).positiveShare,
+		sentiment: sentimentSummary(counts).score,
 		position: ratio(counts.position_sum, counts.positioned_runs),
 	};
 }

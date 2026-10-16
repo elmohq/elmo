@@ -150,11 +150,12 @@ describe("brand sentiment", () => {
 		expect(brand.totals.sentiment).toBe(1);
 	});
 
-	it("totals each prompt's sentiment over the whole period, least positive first", async () => {
+	it("scores each prompt's sentiment over the whole period, lowest first", async () => {
 		const sentiment = await getBrandSentiment(brandId, window);
-		expect(sentiment.prompts.map((p) => [p.value, p.sentiment.positiveShare])).toEqual([
+		// A mixed answer scores halfway, as a neutral one does.
+		expect(sentiment.prompts.map((p) => [p.value, p.sentiment.score])).toEqual([
 			["acme pricing", 0],
-			["easiest crm to set up", 0.5],
+			["easiest crm to set up", 0.75],
 			["acme reviews", 1],
 		]);
 	});

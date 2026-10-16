@@ -265,7 +265,13 @@ export const mockOpportunities = {
 
 const summary = (positive: number, neutral: number, mixed: number, negative: number) => {
 	const clear = positive + neutral + mixed + negative;
-	return { positive, neutral, mixed, negative, positiveShare: positive / clear, negativeShare: negative / clear };
+	return {
+		positive,
+		neutral,
+		mixed,
+		negative,
+		score: (positive + (neutral + mixed) / 2) / clear,
+	};
 };
 
 export const mockBrandSentiment: BrandSentiment = {

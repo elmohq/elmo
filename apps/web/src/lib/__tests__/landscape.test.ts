@@ -79,6 +79,19 @@ describe("buildLandscape", () => {
 		expect(landscape.companies[0].byModel).toMatchObject({ chatgpt: { visibility: 0 }, claude: { visibility: 1 } });
 	});
 
+	it("scores neutral answers as neutral rather than against the brand", () => {
+		const scored = (sums: object) =>
+			buildLandscape({
+				...input,
+				runs: [run("p1", "chatgpt", "2026-03-03", 20, 20, 0, sums)],
+				competitorRuns: [],
+			}).companies[0].totals.sentiment;
+		expect(scored({ neutral_runs: 20 })).toBe(0.5);
+		expect(scored({ positive_runs: 2, neutral_runs: 17, negative_runs: 1 })).toBeCloseTo(0.525);
+		expect(scored({ positive_runs: 1, mixed_runs: 19 })).toBeCloseTo(0.525);
+		expect(scored({ neutral_runs: 18, negative_runs: 2 })).toBeCloseTo(0.45);
+	});
+
 	it("charts the brand beside its strongest competitors, and ranks it among all of them", () => {
 		const landscape = buildLandscape(input);
 		expect(chartedCompanies(landscape, "visibility", 1).map((c) => c.name)).toEqual(["Acme", "Globex"]);

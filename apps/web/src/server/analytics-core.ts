@@ -635,10 +635,10 @@ export async function getBrandSentiment(
 		.flatMap((row): PromptSentiment[] => {
 			const prompt = promptsById.get(row.prompt_id);
 			const sentiment = sentimentSummary(row);
-			if (!prompt || sentiment.positiveShare === null) return [];
+			if (!prompt || sentiment.score === null) return [];
 			return [{ promptId: prompt.id, value: prompt.value, tags: prompt.tags ?? [], sentiment }];
 		})
-		.sort((a, b) => (a.sentiment.positiveShare ?? 0) - (b.sentiment.positiveShare ?? 0));
+		.sort((a, b) => (a.sentiment.score ?? 0) - (b.sentiment.score ?? 0));
 	return {
 		prompts,
 		criticism: criticism.flatMap(quote),
