@@ -58,10 +58,6 @@ export const DERIVE_PRIORITY = { new: 2, recent: 1, history: 0 } as const;
 const DEFAULT_REPROCESS_DAYS = 90;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/**
- * `REPROCESS_DAYS`: how far back a replay re-derives history, in days (default 90), or `all`. Null
- * means all. Answers older than this keep what they were judged with when they were recorded.
- */
 export function reprocessDays(env: Record<string, string | undefined> = process.env): number | null {
 	const raw = env.REPROCESS_DAYS?.trim();
 	if (!raw) return DEFAULT_REPROCESS_DAYS;
@@ -93,7 +89,6 @@ export async function sendDeriveRuns(
 export interface StaleRun {
 	id: string;
 	promptId: string;
-	/** The prompt the answer replies to, which the judge reads as context. */
 	question: string;
 	createdAt: Date;
 	model: string;
@@ -211,8 +206,7 @@ async function loadRuns(
 		.where(
 			and(
 				inArray(promptRuns.id, runIds),
-				// A judged run older than the window keeps its judgement, even if it was queued before
-				// the window shrank or by an older worker; a run never judged is always judged.
+				// Also checked here, for runs queued before the window shrank or by an older worker.
 				days === null
 					? undefined
 					: or(isNull(runMentions.runId), gte(promptRuns.createdAt, new Date(Date.now() - days * DAY_MS))),

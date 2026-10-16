@@ -5,7 +5,6 @@ import { assertNotCancelled, link } from "./util.js";
 
 const SIGNUP_URL = "https://console.typesafe.ai";
 
-/** Elmo judges every answer with Jev, so it can't run without a key. */
 export async function collectJudgeKey(env: EnvMap): Promise<void> {
 	p.note(
 		[

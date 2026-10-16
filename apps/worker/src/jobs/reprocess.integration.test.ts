@@ -294,11 +294,7 @@ describe("what a replay covers", () => {
 describe("reprocessing over time", () => {
 	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-	/**
-	 * Runs the worker's loop until history is current, as its per-minute tick would: ask which
-	 * brands are stale, run each pass, and derive what it queues. Returns the answers sent to Jev,
-	 * one per paid call.
-	 */
+	/** Runs the worker's per-minute loop until history is current; returns the answers sent to Jev, one per call. */
 	async function settle(days: number | null = 90) {
 		const judged: string[] = [];
 		const analyzer = jevAnalyzer(async (request) => {

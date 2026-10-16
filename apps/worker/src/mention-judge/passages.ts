@@ -9,7 +9,6 @@ type Subject = MentionConfig["brand"];
 
 export type SentenceKind = "heading" | "table" | "text";
 
-/** A sentence of the cleaned answer, and where it sits in it. */
 export interface Sentence {
 	text: string;
 	kind: SentenceKind;

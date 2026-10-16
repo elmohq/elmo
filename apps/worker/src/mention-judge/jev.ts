@@ -1,8 +1,4 @@
-/**
- * The Jev decision model from TypeSafe (https://typesafe.ai), which judges every answer: one request
- * per answer, with a choice question per company for its mention and sentiment and another for the
- * passage that shows it. Questions are answered independently against the same state.
- */
+/** Jev, from TypeSafe (https://typesafe.ai). Each question is answered independently against the same state. */
 
 /** Pinned: a new Jev version changes judgements, so moving to one is a deliberate re-judge. */
 export const JEV_MODEL = "jev-1.13.0";
@@ -34,7 +30,7 @@ export interface JevResponse {
 
 export type JevTransport = (request: JevRequest) => Promise<JevResponse>;
 
-/** Calls the API; a failure throws, so the derivation job retries it. */
+/** A failure throws, so the derivation job retries it. */
 export function typesafeTransport(apiKey: string, fetchImpl: typeof fetch = fetch): JevTransport {
 	return async (request) => {
 		const response = await fetchImpl(ENDPOINT, {

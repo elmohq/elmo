@@ -12,7 +12,6 @@ const config: MentionConfig = {
 	],
 };
 
-/** The stub, recording each request it's sent. */
 function recording() {
 	const requests: JevRequest[] = [];
 	const analyze = jevAnalyzer(async (request) => {

@@ -26,12 +26,10 @@ export interface RunMentions {
 export interface MentionAnalyzer {
 	/** Part of the mentions stamp. */
 	judgeVersion: string;
-	/** How many answers to judge at once. */
 	concurrency: number;
 	/**
 	 * `previous` is what the run already has; subjects judged under an unchanged fingerprint keep
 	 * their assessments. Pass it only when the text is the one those assessments were judged on.
-	 * `question` is the prompt the answer replies to, which the judge reads as context.
 	 */
 	analyze(
 		text: string | null,
@@ -100,7 +98,6 @@ function rank(records: (MentionAssessment | undefined)[]): void {
 	});
 }
 
-/** One company's assessment from Jev's verdict and the passage it quoted. */
 function assessment(
 	answer: string,
 	cleaned: Cleaned,
@@ -146,7 +143,6 @@ function subjectsOf(config: MentionConfig, previous: RunMentionAssessments | nul
 	}));
 }
 
-/** The verdict and evidence questions for each company to ask about, and the quotes each may choose from. */
 function questionsFor(ask: Entry[], named: Entry[], split: Sentence[]) {
 	const questions: Record<string, JevChoiceQuestion> = {};
 	const options = new Map<string, Sentence[]>();
@@ -160,7 +156,6 @@ function questionsFor(ask: Entry[], named: Entry[], split: Sentence[]) {
 	return { questions, options };
 }
 
-/** The run's assessments and mention columns, every company ranked by where it's first named. */
 function collect(subjects: Entry[], records: Map<string, MentionAssessment>): RunMentions {
 	const brand = records.get("brand");
 	const competitors = subjects.slice(1).flatMap((entry) => {
@@ -233,7 +228,6 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 
 let current: MentionAnalyzer | undefined;
 
-/** `TYPESAFE_API_KEY` set to `stub` judges locally from cue words, for tests and keyless development. */
 export function configureMentionAnalyzer(apiKey = process.env.TYPESAFE_API_KEY): MentionAnalyzer {
 	if (!apiKey?.trim()) throw new Error("TYPESAFE_API_KEY is required: Elmo judges mentions and sentiment with Jev");
 	if (apiKey.trim() === "stub") {
