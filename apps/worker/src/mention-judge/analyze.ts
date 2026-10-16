@@ -52,9 +52,9 @@ const MENTION_THRESHOLD = 0.3;
 
 const RULES =
 	"Answer about the one entity named in each question (a company, product, person, organisation or place), using state.answer (an AI assistant's answer to state.question). " +
-	"Distinguish it from anything else with the same name, including ordinary words; its products count as the entity. " +
-	"Judge how the answer portrays that entity specifically, not the overall tone and not other entities. " +
-	"Minor caveats on an option the answer recommends stay favourable.";
+	"Distinguish it from anything else with the same name, including ordinary words. " +
+	"The entity's own products and services count as the entity. " +
+	"Judge how the answer portrays that entity specifically, not the overall tone and not other entities.";
 
 const SENTIMENTS: Sentiment[] = ["positive", "neutral", "negative", "mixed"];
 const REASONS: NonMentionReason[] = ["other_meaning", "other_company", "no_info"];
