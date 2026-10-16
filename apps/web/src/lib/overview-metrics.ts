@@ -5,6 +5,8 @@ export type Grade = "good" | "fair" | "poor";
 export interface MetricMeta {
 	label: string;
 	short: string;
+	/** For tight spots, like the landscape's measure switch on a phone. */
+	abbr?: string;
 	info: string;
 	format: (value: number) => string;
 	formatChange: (change: number) => string;
@@ -34,6 +36,7 @@ export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 	share: {
 		label: "Share of Voice",
 		short: "Share of Voice",
+		abbr: "SoV",
 		info: "Your brand's share of every mention of you and your tracked competitors.",
 		format: percent,
 		formatChange: points,
