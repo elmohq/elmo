@@ -66,6 +66,8 @@ const LINK = new RegExp(String.raw`\[${TEXT}\]\(${URL_PART}\)`, "g");
 export const INLINE_DATA = /data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi;
 const DOMAIN = /^(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}$/i;
 const CITATION_NUMBER = /^\[?\^?\d+\^?\]?$/;
+/** Tags that separate words; any other tag is dropped without leaving a space. */
+const BLOCK_TAGS = new Set(["br", "p", "div", "li", "tr", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6", "hr"]);
 const ENTITIES: Record<string, string> = {
 	amp: "&",
 	quot: '"',
@@ -84,14 +86,22 @@ const ENTITIES: Record<string, string> = {
  */
 export function cleanAnswer(answer: string): Cleaned {
 	const steps: [RegExp, (...groups: string[]) => string][] = [
+		// First, since it can be most of a large answer and every later step would copy it.
+		[INLINE_DATA, () => ""],
 		[/\\([!-/:-@[-`{-~])/g, (_, char) => char],
 		[
-			/&(?:(amp|quot|apos|lt|gt|nbsp|ndash|mdash)|#(\d+));/g,
-			(_, name, code) => ENTITIES[name] ?? (Number(code) <= 0x10ffff ? String.fromCodePoint(Number(code)) : ""),
+			/&(?:(amp|quot|apos|lt|gt|nbsp|ndash|mdash)|#(\d{1,7}|[xX][0-9a-fA-F]{1,6}));/g,
+			(_, name, code) => {
+				if (name) return ENTITIES[name];
+				const point = /^[xX]/.test(code) ? Number.parseInt(code.slice(1), 16) : Number(code);
+				return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : "";
+			},
 		],
-		[/<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?\/?>/gi, () => ""],
-		// Citation tokens some answers carry: "【4†source】", private-use markers, "[^1^]".
-		[/【[^】\n]*】|[-]|\[\^\d+\^?\]/g, () => ""],
+		[/<(https?:\/\/[^\s<>]+)>/g, (_, url) => host(url)],
+		[/<\/?([a-z][a-z0-9]*)(?:\s[^<>]*)?\/?>/gi, (_, tag) => (BLOCK_TAGS.has(tag.toLowerCase()) ? " " : "")],
+		// Citation tokens some answers carry: "【4†source】" (other 【】 is ordinary CJK punctuation),
+		// ChatGPT's private-use citation markers with what they wrap, and "[^1^]".
+		[/【[^】\n]*†[^】\n]*】|\ue200[^\ue201\n]*\ue201|[\ue000-\uf8ff]|\[\^\d+\^?\]/g, () => ""],
 		[
 			IMAGE,
 			(_, caption, url) => {
@@ -100,28 +110,28 @@ export function cleanAnswer(answer: string): Cleaned {
 				return caption.trim() ? `(image: ${caption.trim()})` : "";
 			},
 		],
-		[INLINE_DATA, () => ""],
 		[
 			LINK,
 			(_, text, url) => {
 				// A relative link (shopping carousels) points at no site.
 				if (!url || url.startsWith("/")) return text;
 				// A citation chip: its text is the site, or a footnote number.
-				if (DOMAIN.test(text.trim())) return host(text.trim());
+				if (DOMAIN.test(text.trim()) || /^https?:\/\/\S+$/.test(text.trim())) return host(text.trim());
 				if (!text.trim() || CITATION_NUMBER.test(text.trim())) return `(${host(url)})`;
 				return `${text} (${host(url)})`;
 			},
 		],
 		// Links the answer itself broke (a URL with spaces, text over several lines) keep their text.
 		[/\[([^\]]{0,200}?)\]\([^)\n[]{0,2000}\)/g, (_, text) => text.split(/\s+/).join(" ").trim()],
-		[/https?:\/\/[^\s)\]]+/g, (url) => host(url)],
+		[/https?:\/\/[^\s)\]`'"<>]+/g, (url) => host(url)],
 		// A line can't start a sentence with a comma or a full stop, so it continues the one before (some
 		// sources split a sentence into blocks around each citation); nor can a soft-wrapped line.
-		[/[ \t]*\n(?:[ \t]*\n)*[ \t]*(?=[,;:)]|\.(?:\s|$))|(?<=\S)[ \t]*\n[ \t]*(?=\p{Ll})/gu, () => " "],
-		[/^[ \t]+|[ \t]+$/gm, () => ""],
+		// Each match starts at the beginning of a whitespace run, so long runs stay linear.
+		[/(?<![ \t\n])[ \t]*\n(?:[ \t]*\n)*[ \t]*(?=[,;:)]|\.(?:\s|$))|(?<=\S)[ \t]*\n[ \t]*(?=\p{Ll})/gu, () => " "],
+		[/^[ \t]+|(?<![ \t])[ \t]+$/gm, () => ""],
 		[/[ \t]{2,}/g, () => " "],
 		[/\n{3,}/g, () => "\n\n"],
-		[/^\s+|\s+$/g, () => ""],
+		[/^\s+|(?<!\s)\s+$/g, () => ""],
 	];
 	const start: Cleaned = { text: answer, from: [], to: [] };
 	for (let i = 0; i < answer.length; i++) {

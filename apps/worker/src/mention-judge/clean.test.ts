@@ -42,6 +42,27 @@ describe("cleanAnswer", () => {
 		);
 	});
 
+	it("keeps CJK brackets that aren't citations, and drops ChatGPT's private-use citation markers", () => {
+		expect(clean("【公式】ユニクロ and ![【asics 亞瑟士】THE MUSEUM](https://img.example/a.png)")).toBe(
+			"【公式】ユニクロ and (image: 【asics 亞瑟士】THE MUSEUM)",
+		);
+		expect(clean("Nike leads.\ue200cite\ue202turn0search1\ue201 Then Adidas.")).toBe("Nike leads. Then Adidas.");
+	});
+
+	it("keeps words apart across HTML cells and paragraphs, and reads hex entities and autolinks", () => {
+		expect(clean("<td>Date</td><td>AI</td> pick.</p><p>Brooks &#x27;s")).toBe("Date AI pick. Brooks 's");
+		expect(clean("See <https://nike.com/x> or [https://ahrefs.com/x](https://ahrefs.com/x).")).toBe(
+			"See nike.com or ahrefs.com.",
+		);
+		expect(clean("Open `http://localhost:3000` in a browser.")).toBe("Open `localhost` in a browser.");
+	});
+
+	it("stays fast on long runs of whitespace", () => {
+		const started = performance.now();
+		clean(`a${"\n".repeat(100_000)}b${" ".repeat(100_000)}c${"\u00a0".repeat(100_000)}`);
+		expect(performance.now() - started).toBeLessThan(2_000);
+	});
+
 	it("rejoins a sentence the source broke over lines, but not separate lines", () => {
 		expect(clean("Try the\n\n[Brooks Ghost 16](/search?q=x)\n\n, and the Hoka.")).toBe(
 			"Try the\n\nBrooks Ghost 16 , and the Hoka.",
