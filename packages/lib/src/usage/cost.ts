@@ -23,6 +23,7 @@ const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {
 	"openai-api": 0.01,
 	"anthropic-api": 0.01,
 	"mistral-api": 0.005,
+	"zai-api": 0.005,
 	openrouter: 0.005,
 	stub: 0,
 };
@@ -31,6 +32,8 @@ const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {
 
 /** Anthropic bills native web search per use (plus tokens); max_uses is 1. */
 const ANTHROPIC_WEB_SEARCH_SURCHARGE_USD = 0.01;
+/** Z.ai bills its web_search tool per use on top of tokens. */
+const ZAI_WEB_SEARCH_SURCHARGE_USD = 0.01;
 
 export function estimateRunCostUsd(provider: string | null, webSearchEnabled: boolean): number | null {
 	if (!provider) return null;
@@ -38,6 +41,9 @@ export function estimateRunCostUsd(provider: string | null, webSearchEnabled: bo
 	if (base === undefined) return null;
 	if (provider === "anthropic-api" && webSearchEnabled) {
 		return base + ANTHROPIC_WEB_SEARCH_SURCHARGE_USD;
+	}
+	if (provider === "zai-api" && webSearchEnabled) {
+		return base + ZAI_WEB_SEARCH_SURCHARGE_USD;
 	}
 	return base;
 }

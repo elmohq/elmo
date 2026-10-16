@@ -15,6 +15,7 @@ import { join, resolve } from "node:path";
  *   - openrouter:    OpenRouter chat/completions + plugins:[{web,native}]
  *   - anthropic-api: Anthropic Messages API + web_search_20250305 tool
  *   - mistral-api:   Mistral Conversations API + web_search tool
+ *   - zai-api:       Z.ai chat completions (JSON mode) + web_search tool
  *
  * Usage:
  *   pnpm --filter @workspace/lib compare:onboarding nike.com

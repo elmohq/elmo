@@ -322,6 +322,7 @@ describe("text-extraction", () => {
 			["anthropic", "anthropic-api", {}],
 			["anthropic by legacy engine", "claude", null],
 			["mistral", "mistral-api", {}],
+			["z.ai", "zai-api", {}],
 			["dataforseo serp", "dataforseo", {}],
 			["dataforseo by legacy engine", "google-ai-overview", {}],
 			["dataforseo llm responses", "dataforseo", { tasks: [{ result: [{ items: [{ sections: [] }] }] }] }],
@@ -805,6 +806,36 @@ describe("text-extraction", () => {
 				],
 			};
 			expect(extractTextContent(rawOutput, "searchapi")).toBe("Blockchain\n\nA distributed ledger.");
+		});
+	});
+
+	describe("z.ai", () => {
+		const searchResults = [
+			{ refer: "ref_1", link: "https://www.runnersworld.com/beginner-shoes", title: "Best beginner shoes" },
+			{ refer: "ref_2", link: "https://www.reddit.com/r/running", title: "r/running" },
+			{ refer: "ref_10", link: "https://www.brooksrunning.com/ghost", title: "Ghost" },
+		];
+		const answer = (content: string) => ({ choices: [{ message: { content } }], web_search: searchResults });
+
+		it("reads the answer and only the search results it cites by ref id", () => {
+			const rawOutput = answer("The **Brooks Ghost** is a well-reviewed beginner shoe [ref_1].");
+			expect(extractTextContent(rawOutput, "zai-api")).toBe(
+				"The **Brooks Ghost** is a well-reviewed beginner shoe [ref_1].",
+			);
+			expect(extractCitations(rawOutput, "zai-api").map((c) => c.domain)).toEqual(["runnersworld.com"]);
+		});
+
+		it("counts every search result when the answer marks none of them", () => {
+			const rawOutput = answer("The Brooks Ghost is a well-reviewed beginner shoe.");
+			expect(extractCitations(rawOutput, "zai-api").map((c) => c.domain)).toEqual([
+				"runnersworld.com",
+				"reddit.com",
+				"brooksrunning.com",
+			]);
+		});
+
+		it("has no citations for an answer that did not search", () => {
+			expect(extractCitations({ choices: [{ message: { content: "An answer." } }] }, "zai-api")).toEqual([]);
 		});
 	});
 

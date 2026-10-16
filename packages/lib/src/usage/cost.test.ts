@@ -7,9 +7,9 @@ describe("estimateRunCostUsd", () => {
 		expect(estimateRunCostUsd("dataforseo", false)).toBe(0.005);
 	});
 
-	it("adds Anthropic's per-use web search charge only when grounded", () => {
-		const base = estimateRunCostUsd("anthropic-api", false);
-		const grounded = estimateRunCostUsd("anthropic-api", true);
+	it.each(["anthropic-api", "zai-api"])("adds %s's per-use web search charge only when grounded", (provider) => {
+		const base = estimateRunCostUsd(provider, false);
+		const grounded = estimateRunCostUsd(provider, true);
 		expect(base).not.toBeNull();
 		expect(grounded).toBeGreaterThan(base as number);
 	});

@@ -153,7 +153,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 			pc.bold("2. A direct LLM API") + " — for low-latency tasks (onboarding analysis, sentiment scoring,",
 			"   ad-hoc LLM calls). Required:",
 			`     • ${pc.cyan("OpenRouter")} — one key, all major models (recommended)`,
-			`     • ${pc.cyan("Anthropic / OpenAI / Mistral")} — direct provider keys`,
+			`     • ${pc.cyan("Anthropic / OpenAI / Mistral / Z.ai")} — direct provider keys`,
 			"",
 			"Pricing assumes Elmo's default cadence (5 runs/day × 2 surfaces).",
 		].join("\n"),
@@ -214,6 +214,7 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 			{ value: "anthropic" as const, label: "Anthropic — direct Claude" },
 			{ value: "openai" as const, label: "OpenAI — direct GPT-* models" },
 			{ value: "mistral" as const, label: "Mistral — direct Mistral models" },
+			{ value: "zai" as const, label: "Z.ai — direct GLM models" },
 		],
 		initialValue: "openrouter" as const,
 	});

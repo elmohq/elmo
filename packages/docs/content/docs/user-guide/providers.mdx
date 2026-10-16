@@ -192,6 +192,7 @@ These hit the provider API directly — cheaper per token than scrapers, but the
 | **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$4–5 per tracked model |
 | **OpenAI API** (`OPENAI_API_KEY`) | `gpt-6-luna` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
 | **Mistral API** (`MISTRAL_API_KEY`) | Mistral Small / Medium / Large, optional web search via the beta Conversations API | pass-through |
+| **Z.ai API** (`ZAI_API_KEY`) | GLM models (`glm-5.2`, `glm-5.3`, ...), optional web search via Z.ai's `web_search` tool | pass-through |
 | **OpenRouter** (`OPENROUTER_API_KEY`) | Any OpenRouter-hosted model (Claude, Llama, Mistral, etc.) | pass-through |
 | **DataForSEO** (`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`) | ChatGPT, Gemini, or Perplexity through its LLM Responses API — see [Pinning a model](#pinning-a-model) | pass-through |
 
@@ -203,13 +204,16 @@ Example scrape targets:
 claude:anthropic-api:claude-haiku-5-5
 chatgpt:openai-api:gpt-6-luna:online
 mistral:mistral-api:mistral-medium-latest:online
+glm:zai-api:glm-5.2:online
 claude:openrouter:anthropic/claude-haiku-5.5
 grok:openrouter:x-ai/grok-4.5:online
 kimi:openrouter:moonshotai/kimi-k3
 perplexity:openrouter:perplexity/sonar:online
 ```
 
-OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
+OpenAI/Anthropic/Mistral/Z.ai/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
+
+For Z.ai, `:online` turns on its `web_search` tool, which Z.ai bills per search on top of tokens. Citations are the search results the answer marks by reference, or every result it was given when it marks none. Z.ai doesn't report the search query itself, so web queries show as unavailable for these runs. The default endpoint is the international one; a mainland China (BigModel) account or a GLM Coding Plan key needs `ZAI_BASE_URL` set to its endpoint — see [Configuration](/docs/developer-guide/configuration#ai-provider-keys). GLM is also reachable through OpenRouter, e.g. `glm:openrouter:z-ai/glm-5.2`.
 
 DataForSEO straddles both halves of this page. Left alone it scrapes, but pinning a `model_name` switches ChatGPT or Gemini to a model API instead, and Perplexity always goes that way because no Perplexity scraper exists. See [DataForSEO](#dataforseo) above.
 
@@ -254,9 +258,9 @@ SCRAPE_TARGETS=chatgpt:dataforseo:online,google-ai-mode:dataforseo:online
 model:provider[:version][:online]
 ```
 
-- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`).
-- `provider` — how to reach it (`cloro`, `brightdata`, `oxylabs`, `searchapi`, `olostep`, `dataforseo`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`).
-- `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here, or a DataForSEO `model_name` to switch that target to the LLM Responses API).
+- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`, `glm`).
+- `provider` — how to reach it (`cloro`, `brightdata`, `oxylabs`, `searchapi`, `olostep`, `dataforseo`, `openai-api`, `anthropic-api`, `mistral-api`, `zai-api`, `openrouter`).
+- `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `zai-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here, or a DataForSEO `model_name` to switch that target to the LLM Responses API).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
 
 Entries are comma-separated.

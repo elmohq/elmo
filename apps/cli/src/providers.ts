@@ -15,7 +15,7 @@ const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
 const DATAFORSEO_AFFILIATE = "https://try.dataforseo.com/elmo";
 
 export type RecommendedScraper = "cloro" | "brightdata" | "oxylabs" | "searchapi" | "olostep" | "dataforseo";
-export type DirectApiProvider = "openrouter" | "anthropic" | "openai" | "mistral";
+export type DirectApiProvider = "openrouter" | "anthropic" | "openai" | "mistral" | "zai";
 
 // Surfaces each scraper can track — the first two are the "recommended starter" set.
 const BRIGHTDATA_MODELS = [
@@ -58,6 +58,7 @@ const DEFAULT_OPENAI_MODEL = "gpt-6-luna";
 const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-5-5";
 const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-haiku-5.5";
 const DEFAULT_MISTRAL_MODEL = "mistral-medium-latest";
+const DEFAULT_ZAI_MODEL = "glm-5.2";
 
 type Credential = {
 	envKey: string;
@@ -154,6 +155,17 @@ export const PROVIDER_PROMPTS: ProviderSpec[] = [
 		model: { message: "Mistral model", default: DEFAULT_MISTRAL_MODEL },
 		webSearch: true,
 		target: { model: "mistral", provider: "mistral-api" },
+	},
+	{
+		id: "zai",
+		kind: "direct",
+		label: "Z.ai API",
+		costHint: "direct GLM models",
+		confirmDefault: false,
+		credentials: [{ envKey: "ZAI_API_KEY", message: "Z.ai API key", secret: true, validate: required }],
+		model: { message: "GLM model", default: DEFAULT_ZAI_MODEL },
+		webSearch: true,
+		target: { model: "glm", provider: "zai-api" },
 	},
 	{
 		id: "cloro",
@@ -304,7 +316,9 @@ export async function collectProvider(spec: ProviderSpec, env: EnvMap, targets: 
 }
 
 export function hasDirectApiConfigured(env: EnvMap): boolean {
-	return Boolean(env.ANTHROPIC_API_KEY || env.OPENAI_API_KEY || env.MISTRAL_API_KEY || env.OPENROUTER_API_KEY);
+	return Boolean(
+		env.ANTHROPIC_API_KEY || env.OPENAI_API_KEY || env.MISTRAL_API_KEY || env.ZAI_API_KEY || env.OPENROUTER_API_KEY,
+	);
 }
 
 export async function finalizeScrapeTargets(

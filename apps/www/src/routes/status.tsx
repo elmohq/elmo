@@ -643,7 +643,7 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 						<span className="text-zinc-500">
 							{" "}
 							(
-							{["openrouter", "openai-api", "anthropic-api", "mistral-api"].includes(provider)
+							{["openrouter", "openai-api", "anthropic-api", "mistral-api", "zai-api"].includes(provider)
 								? rest
 								: rest.replace(/online/g, "web search")}
 							)
