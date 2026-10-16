@@ -41,6 +41,9 @@ export interface MentionAnalyzer {
 	): Promise<RunMentions>;
 }
 
+/** About 12k tokens, several times a long answer. */
+const MAX_ANSWER_CHARS = 50_000;
+
 /** Bump when the request changes in a way that changes judgements: history is re-judged under it. */
 const REQUEST_VERSION = 1;
 
@@ -181,19 +184,25 @@ function collect(subjects: Entry[], records: Map<string, MentionAssessment>): Ru
 	};
 }
 
-export function jevAnalyzer(transport: JevTransport, concurrency = 8): MentionAnalyzer {
-	const judgeVersion = `${JEV_MODEL}+request-${REQUEST_VERSION}`;
+/**
+ * `model` is part of the stamp, so judgements from the stub are never taken for Jev's: switching
+ * to a real key re-judges them.
+ */
+export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JEV_MODEL): MentionAnalyzer {
+	const judgeVersion = `${model}+request-${REQUEST_VERSION}`;
 	return {
 		judgeVersion,
 		concurrency,
 		async analyze(text, config, previous, question) {
 			const answer = text ?? "";
-			const readable = cleanAnswer(answer);
+			// Bounds the cost of a runaway answer; the companies it names first are the ones asked about.
+			const readable = cleanAnswer(answer).slice(0, MAX_ANSWER_CHARS);
 			const subjects = subjectsOf(config, previous, judgeVersion);
 			// Only companies the answer names are asked about; a company judged under an unchanged
 			// fingerprint keeps its assessment, a copy since `rank` rewrites positions.
 			const named = subjects.filter((entry) => entry.names(readable));
-			const ask = named.filter((entry) => entry.judgedAs !== entry.fingerprint);
+			// A company named now but not when judged (cleaning or matching changed) is asked about too.
+			const ask = named.filter((entry) => entry.judgedAs !== entry.fingerprint || !entry.kept);
 			const { questions, options } = questionsFor(ask, named, sentences(readable));
 			const request: JevRequest = {
 				model: JEV_MODEL,
@@ -204,7 +213,7 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8): MentionAn
 
 			const records = new Map<string, MentionAssessment>();
 			for (const entry of named) {
-				if (entry.judgedAs === entry.fingerprint) {
+				if (!ask.includes(entry)) {
 					if (entry.kept) records.set(entry.key, { ...entry.kept });
 					continue;
 				}
@@ -225,7 +234,12 @@ let current: MentionAnalyzer | undefined;
 /** `TYPESAFE_API_KEY` set to `stub` judges locally from cue words, for tests and keyless development. */
 export function configureMentionAnalyzer(apiKey = process.env.TYPESAFE_API_KEY): MentionAnalyzer {
 	if (!apiKey?.trim()) throw new Error("TYPESAFE_API_KEY is required: Elmo judges mentions and sentiment with Jev");
-	current = jevAnalyzer(apiKey.trim() === "stub" ? stubTransport : typesafeTransport(apiKey.trim()));
+	if (apiKey.trim() === "stub") {
+		console.warn(
+			"[mention-judge] TYPESAFE_API_KEY=stub: judging from cue words, not Jev. For tests and development only.",
+		);
+		current = jevAnalyzer(stubTransport, 8, "stub");
+	} else current = jevAnalyzer(typesafeTransport(apiKey.trim()));
 	return current;
 }
 

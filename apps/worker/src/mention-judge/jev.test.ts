@@ -30,5 +30,7 @@ describe("typesafeTransport", () => {
 
 	it("throws when a question goes unanswered rather than judging on half an answer", async () => {
 		await expect(typesafeTransport("secret", respond(200, { answers: {} }))(request)).rejects.toThrow("brand__verdict");
+		const empty = { answers: { brand__verdict: { choice: "positive", probabilities: {} } } };
+		await expect(typesafeTransport("secret", respond(200, empty))(request)).rejects.toThrow("brand__verdict");
 	});
 });

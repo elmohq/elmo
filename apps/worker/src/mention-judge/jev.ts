@@ -7,7 +7,8 @@
 /** Pinned: a new Jev version changes judgements, so moving to one is a deliberate re-judge. */
 export const JEV_MODEL = "jev-1.13.0";
 const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
-const TIMEOUT_MS = 60_000;
+/** Jev answers in a second or two; a chunk's job expiry allows this for every run in it. */
+export const TIMEOUT_MS = 30_000;
 
 export interface JevChoiceQuestion {
 	type: "choice";
@@ -48,7 +49,9 @@ export function typesafeTransport(apiKey: string, fetchImpl: typeof fetch = fetc
 		}
 		const body = (await response.json()) as JevResponse;
 		for (const key of Object.keys(request.questions)) {
-			if (!body.answers?.[key]?.probabilities) throw new Error(`Jev returned no answer to "${key}"`);
+			const answer = body.answers?.[key];
+			if (typeof answer?.choice !== "string" || !Object.keys(answer.probabilities ?? {}).length)
+				throw new Error(`Jev returned no answer to "${key}"`);
 		}
 		return body;
 	};

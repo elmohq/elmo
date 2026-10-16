@@ -5,11 +5,12 @@ const elmo = { name: "Elmo", aliases: [], domains: ["https://www.elmohq.com"] };
 const peec = { name: "Peec", aliases: ["Peec AI"], domains: ["peec.ai"] };
 
 describe("matcher", () => {
-	it("matches whole-word names and aliases, and domains anywhere", () => {
+	it("matches names, aliases and domains as whole words", () => {
 		const names = matcher(peec);
 		expect(names("Try Peec AI today")).toBe(true);
 		expect(names("see peec.ai/pricing")).toBe(true);
 		expect(names("Peeking at dashboards")).toBe(false);
+		expect(matcher({ name: "Zorb", aliases: [], domains: ["acme.co"] })("see acme.com")).toBe(false);
 	});
 });
 

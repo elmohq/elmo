@@ -111,6 +111,15 @@ describe("re-judging after a config change", () => {
 		expect(Object.keys(requests[0].questions)).toEqual(["brand__verdict", "brand__evidence"]);
 	});
 
+	it("asks about a company it has no judgement for, even under an unchanged fingerprint", async () => {
+		const first = await analyzer.analyze(text, config);
+		const { brand: _, ...withoutBrand } = first.assessments!;
+		const { requests, analyze } = recording();
+		const second = await analyze.analyze(text, config, withoutBrand);
+		expect(Object.keys(requests[0].questions)).toEqual(["brand__verdict", "brand__evidence"]);
+		expect(second.brandMentioned).toBe(true);
+	});
+
 	it("re-judges everything when the request or model changes", async () => {
 		const first = await analyzer.analyze(text, config);
 		const stale = { ...first.assessments!, judged: { brand: "old", competitors: { Globex: "old", Initech: "old" } } };
@@ -123,6 +132,10 @@ describe("re-judging after a config change", () => {
 describe("configureMentionAnalyzer", () => {
 	it("refuses to run without a key", () => {
 		expect(() => configureMentionAnalyzer("")).toThrow("TYPESAFE_API_KEY");
+	});
+
+	it("stamps the stub's judgements apart from Jev's, so a real key re-judges them", () => {
+		expect(configureMentionAnalyzer("stub").judgeVersion).not.toBe(configureMentionAnalyzer("key").judgeVersion);
 	});
 
 	it("judges locally with the stub key, calling no one", async () => {

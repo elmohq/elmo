@@ -44,15 +44,15 @@ export function sentences(text: string): Sentence[] {
 	return out;
 }
 
-/** Whether text names the subject: a whole-word name or alias, or one of its domains. */
+/** Whether text names the subject: a name, alias or domain, as a whole word, as `mentionOffsets` counts them. */
 export function matcher(subject: Subject): (text: string) => boolean {
 	const { name, aliases, domains } = judgedSubject(subject);
-	const names = [name, ...aliases].filter(Boolean).map((term) => wholeWordPattern(term));
+	const terms = [name, ...aliases, ...domains].filter(Boolean).map((term) => wholeWordPattern(term));
 	return (text) =>
-		names.some((pattern) => {
+		terms.some((pattern) => {
 			pattern.lastIndex = 0;
 			return pattern.test(text);
-		}) || domains.some((domain) => text.toLowerCase().includes(domain));
+		});
 }
 
 /** Sentences after a mention that may still be about it: a heading's description, a tagline's detail. */
