@@ -179,7 +179,7 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 						className={cn("border-b last:border-0", company.isBrand && "bg-blue-50/70 dark:bg-blue-950/30")}
 					>
 						<td className="whitespace-nowrap px-4 py-1.5">
-							<span className="inline-flex items-center gap-2">
+							<span className="flex items-center gap-2">
 								<SiteIcon domain={company.domain ?? undefined} size="xs" />
 								{/* Capped on phones so a long name doesn't push every figure out of view. */}
 								<span className={cn("max-w-28 truncate sm:max-w-none", company.isBrand && "font-semibold")}>
