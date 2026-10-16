@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/componen
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CompanyTrendChart } from "@/components/company-trend-chart";
 import { SiteIcon } from "@/components/site-icon";
 import { useCompanyColors } from "@/lib/company-colors";
@@ -106,10 +106,34 @@ function SortArrow({ active, descending }: { active: boolean; descending: boolea
 	return <Arrow className={cn("absolute top-1/2 right-full mr-0.5 size-3 -translate-y-1/2", !active && "invisible")} />;
 }
 
+/**
+ * Scrolls the grid's own scroller, never the page, so the brand's row shows between the sticky header and the bottom
+ * edge. A brand already in view stays put.
+ */
+function revealRow(row: HTMLTableRowElement) {
+	const table = row.closest("table");
+	const scroller = table?.parentElement;
+	if (!table || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+	const header = table.tHead?.offsetHeight ?? 0;
+	const top = row.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+	const bottom = top + row.offsetHeight;
+	if (top >= scroller.scrollTop + header && bottom <= scroller.scrollTop + scroller.clientHeight) return;
+	const visible = scroller.clientHeight - header;
+	scroller.scrollTop = top - header - (visible - row.offsetHeight) / 2;
+}
+
 /** Every company on one measure, overall and per model, best first unless a column header picks another order. */
 export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric: LandscapeMetric }) {
 	const meta = METRIC_META[metric];
 	const [sort, setSort] = useState<GridSort>({ column: ALL_COLUMN, bestFirst: true });
+	const brandRow = useRef<HTMLTableRowElement>(null);
+	// Only on a new measure or new data: a column the user sorts by is theirs to scroll through.
+	const revealedFor = useRef<{ landscape: Landscape; metric: LandscapeMetric } | null>(null);
+	useEffect(() => {
+		if (revealedFor.current?.landscape === landscape && revealedFor.current.metric === metric) return;
+		revealedFor.current = { landscape, metric };
+		if (brandRow.current) revealRow(brandRow.current);
+	});
 	// A model can drop out of the landscape when the filters change; its sort falls back to the overall figure.
 	const column = sort.column === ALL_COLUMN || landscape.models.includes(sort.column) ? sort.column : ALL_COLUMN;
 	const sortValue = (company: LandscapeCompany) =>
@@ -179,6 +203,7 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 				{rows.map((company, i) => (
 					<tr
 						key={company.name}
+						ref={company.isBrand ? brandRow : undefined}
 						className={cn("border-b last:border-0", company.isBrand && "bg-blue-50/70 dark:bg-blue-950/30")}
 					>
 						{/* Counts the rows in whatever order the grid is sorted, so it always reads top to bottom. */}
