@@ -83,7 +83,7 @@ Elmo uses [Jev](https://typesafe.ai) from TypeSafe to read each answer. Jev deci
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `TYPESAFE_API_KEY` | TypeSafe API key for Jev. `stub` judges locally from cue words, with no calls and no cost, for development and tests only. | — |
+| `TYPESAFE_API_KEY` | TypeSafe API key for Jev | — |
 | `REPROCESS_DAYS` | How far back reprocessing (re-extracting and re-judging history) goes, in days, or `all` | `90` |
 
 Elmo makes one Jev call for each answer that names a tracked company. Answers that name none are never sent. Its cost grows with the answer's length and with how many tracked companies it names.

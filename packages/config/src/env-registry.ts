@@ -222,7 +222,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		// The worker refuses to start without it; the web app never uses it.
 		requiredBy: "optional",
 		description:
-			"API key for Jev (typesafe.ai), which judges which answers mention a brand or competitor, and the sentiment toward each. Required by the worker. 'stub' judges from cue words instead, for tests and development without a key.",
+			"API key for Jev (typesafe.ai), which judges which answers mention a brand or competitor, and the sentiment toward each. Required by the worker.",
 	},
 	{
 		name: "REPROCESS_DAYS",
