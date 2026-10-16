@@ -58,6 +58,26 @@ describe("locatePassage", () => {
 		expect(passage && text.slice(passage.start, passage.end)).toBe("Elmo is great value there");
 	});
 
+	it("finds a passage that spans inline image data", () => {
+		const text = `**Elmo is the best tracker** . [r](https://reddit.com/x) ![](data:image/png;base64,${"A".repeat(2000)}) Reddit +1 It is free.`;
+		const passage = locatePassage(text, cleanAnswer(text));
+		expect(passage && text.slice(passage.start, passage.end)).toMatch(/^Elmo.*It is free$/s);
+	});
+
+	it("picks the passage itself, not a looser run of the same words starting earlier", () => {
+		const text = "Best pick overall here. Value matters. Best value shoe is great.";
+		const passage = locatePassage(text, "Best value shoe is great.");
+		expect(passage && text.slice(passage.start, passage.end)).toBe("Best value shoe is great");
+	});
+
+	it("finds a passage whose source glued two words together", () => {
+		const text = "Carbon fuel. The[Adidas Adios Pro 4](/search?q=x) is a durable rival to Nike's marathon tier.";
+		const passage = locatePassage(text, "TheAdidas Adios Pro 4 is a durable rival to Nike's marathon tier.");
+		expect(passage && text.slice(passage.start, passage.end)).toBe(
+			"The[Adidas Adios Pro 4](/search?q=x) is a durable rival to Nike's marathon tier",
+		);
+	});
+
 	it("finds nothing for a passage that isn't in the answer", () => {
 		expect(locatePassage(answer, "Something else entirely")).toBeUndefined();
 	});

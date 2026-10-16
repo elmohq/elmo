@@ -48,6 +48,15 @@ describe("quoteOptions", () => {
 	});
 });
 
+describe("quoteOptions on citation chips", () => {
+	it("doesn't offer a chip that only names a site", () => {
+		const answer = sentences("Peec AI is a solid pick. It is fast. It is cheap.\n\n(techradar.com)");
+		expect(quoteOptions(answer, matcher(peec), () => false)).toEqual([
+			"Peec AI is a solid pick. It is fast. It is cheap.",
+		]);
+	});
+});
+
 describe("mentionOffsets", () => {
 	it("finds every mention by name, alias or domain, in order", () => {
 		const text = "Peec AI first. Then peec.ai again, and Peec.";

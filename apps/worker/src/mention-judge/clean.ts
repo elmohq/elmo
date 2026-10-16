@@ -18,6 +18,8 @@ const URL_PART = String.raw`((?:[^()\s]|\([^()\s]*\))*)`;
 const IMAGE = new RegExp(String.raw`!\[${TEXT}\]\(${URL_PART}\)`, "g");
 const LINK = new RegExp(String.raw`\[${TEXT}\]\(${URL_PART}\)`, "g");
 
+const INLINE_DATA = /data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi;
+
 /**
  * Images become text first, so a link wrapping one has no nested brackets left. A favicon chip
  * keeps the site it cites, so a brand cited only that way still reads as mentioned; other images
@@ -33,7 +35,7 @@ export function cleanAnswer(answer: string): string {
 				if (cited) return `(${host(decodeURIComponent(cited))})`;
 				return caption.trim() ? `(image: ${caption.trim()})` : "";
 			})
-			.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, "")
+			.replace(INLINE_DATA, "")
 			// A relative link (shopping carousels) points at no site.
 			.replace(LINK, (_, text: string, url: string) => {
 				if (!url || url.startsWith("/")) return text;
@@ -54,34 +56,61 @@ const MAX_GAP = 400;
 
 /**
  * Where a passage of the cleaned answer lies in the original: its words in order, with any markup
- * between them. Cleaning only removes and rewrites markup, so the words are all still there.
+ * between them. Cleaning can glue words the source wrote without a space ("The[Adidas](…)"), so a
+ * few that can't be found are skipped.
  */
 export function locatePassage(answer: string, passage: string): { start: number; end: number } | undefined {
 	const words = passage
-		.replace(/\(image: ([^)]*)\)/g, "$1")
+		.replace(/\(image: /g, " ")
 		.replace(/\((?:[a-z0-9-]+\.)+[a-z]{2,}\)/g, "")
 		.match(WORD);
 	if (!words?.length) return undefined;
 	// Searched case-insensitively in the original: lowercasing it first can change its length ("İ")
 	// and shift every offset after.
-	const patterns = words.map((word) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "giu"));
+	// Markup may sit inside a word cleaning glued together: "TheAdidas" from "The[Adidas](…)".
+	const patterns = words.map(
+		(word) =>
+			new RegExp(
+				[...word].map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(String.raw`[\[\]*_]*`),
+				"giu",
+			),
+	);
+	// Inline image data is blanked, keeping offsets, so no word is found among its letters.
+	const haystack = answer.replace(INLINE_DATA, (data) => " ".repeat(data.length));
 	const find = (i: number, from: number) => {
 		patterns[i].lastIndex = from;
-		const match = patterns[i].exec(answer);
+		const match = patterns[i].exec(haystack);
 		return match ? { at: match.index, end: match.index + match[0].length } : null;
 	};
-	for (let first = find(0, 0); first; first = find(0, first.at + 1)) {
-		let end = first.end;
-		let found = true;
-		for (let i = 1; i < patterns.length; i++) {
+	// Markup cleaning removed, like a long link target, doesn't count toward the gap.
+	const near = (end: number, next: { at: number } | null) =>
+		!!next && (next.at - end <= MAX_GAP || cleanAnswer(answer.slice(end, next.at)).length <= MAX_GAP);
+	const allowed = Math.max(1, Math.floor(patterns.length / 10));
+	/** Where the words after `from` lead, nearest first, skipping at most `budget` that can't be found. */
+	const follow = (from: number, end: number, budget: number) => {
+		let skipped = 0;
+		for (let i = from + 1; i < patterns.length; i++) {
 			const next = find(i, end);
-			if (!next || next.at - end > MAX_GAP) {
-				found = false;
-				break;
-			}
-			end = next.end;
+			if (next && near(end, next)) end = next.end;
+			else if (++skipped > budget) return null;
 		}
-		if (found) return { start: first.at, end };
+		return { end, skipped };
+	};
+	// The same words can chain loosely from an earlier occurrence, so the closest fit wins: fewest
+	// words skipped, then the shortest span.
+	let best: { start: number; end: number; skipped: number } | undefined;
+	for (let anchor = 0; anchor <= Math.min(allowed, patterns.length - 1); anchor++) {
+		for (let first = find(anchor, 0); first; first = find(anchor, first.at + 1)) {
+			const fit = follow(anchor, first.end, allowed - anchor);
+			if (!fit) continue;
+			const candidate = { start: first.at, end: fit.end, skipped: fit.skipped + anchor };
+			if (
+				!best ||
+				candidate.skipped < best.skipped ||
+				(candidate.skipped === best.skipped && candidate.end - candidate.start < best.end - best.start)
+			)
+				best = candidate;
+		}
 	}
-	return undefined;
+	return best && { start: best.start, end: best.end };
 }

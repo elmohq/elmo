@@ -87,7 +87,10 @@ export function quoteOptions(
 			last.push(i);
 		else passages.push([i]);
 	}
-	return passages.map((run) => run.map((i) => all[i].text).join(" "));
+	// A citation chip on its own line, "(techradar.com)", says nothing about the company.
+	return passages
+		.map((run) => run.map((i) => all[i].text).join(" "))
+		.filter((passage) => /\p{L}{2}/u.test(passage.replace(/\((?:[a-z0-9-]+\.)+[a-z]{2,}\)/g, "")));
 }
 
 /** Offsets of every mention of the subject in the original answer, for its position and count. */
