@@ -88,13 +88,13 @@ Elmo uses [Jev](https://typesafe.ai) from TypeSafe to read each answer. Jev deci
 
 Elmo makes one Jev call for each answer that names a tracked company. Answers that name none are never sent. Its cost grows with the answer's length and with how many tracked companies it names.
 
-Very roughly, that's **$0.15–0.30 per 1,000 answers**. A month of answers is about prompts × platforms × `RUNS_PER_PROMPT` × 30 when prompts run daily:
+Very roughly, that's **$0.15–0.35 per 1,000 answers**. A month of answers is about prompts × platforms × `RUNS_PER_PROMPT` × 30 when prompts run daily:
 
 | What you track (daily, 5 samples) | Answers a month | Jev, per month |
 |---|---|---|
-| 25 prompts × 3 platforms | ~11,000 | ~$2–3 |
-| 100 prompts × 5 platforms | ~75,000 | ~$11–23 |
-| 500 prompts × 5 platforms | ~375,000 | ~$55–115 |
+| 25 prompts × 3 platforms | ~11,000 | ~$2–4 |
+| 100 prompts × 5 platforms | ~75,000 | ~$11–26 |
+| 500 prompts × 5 platforms | ~375,000 | ~$55–130 |
 
 These are estimates, not quotes; see TypeSafe's pricing for current rates.
 
