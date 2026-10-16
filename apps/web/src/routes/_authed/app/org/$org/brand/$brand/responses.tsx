@@ -146,16 +146,18 @@ function ResponsesPage() {
 					searching={isPlaceholderData}
 				/>
 			</FilterSection>
-			{sentimentFilterCounts && sentimentFilterCounts.all > 0 && (
-				<SentimentFilterCard
-					counts={sentimentFilterCounts}
-					value={sentiment}
-					onChange={setSentiment}
-					sort={sort}
-					onSortChange={setSort}
-				/>
-			)}
-			{content}
+			<div className="space-y-4">
+				{sentimentFilterCounts && sentimentFilterCounts.all > 0 && (
+					<SentimentFilterCard
+						counts={sentimentFilterCounts}
+						value={sentiment}
+						onChange={setSentiment}
+						sort={sort}
+						onSortChange={setSort}
+					/>
+				)}
+				{content}
+			</div>
 		</PageHeader>
 	);
 }

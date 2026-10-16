@@ -1,4 +1,5 @@
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
+import { cn } from "@workspace/ui/lib/utils";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { formatShortDate } from "@/lib/chart-utils";
 
@@ -25,8 +26,10 @@ export function CompanyTrendChart({
 	format: (value: number) => string;
 	/** Flips the axis so an improving line still rises. */
 	lowerIsBetter?: boolean;
-	height?: number;
+	/** "fill" stretches to the parent's height, which must be bounded. */
+	height?: number | "fill";
 }) {
+	const fill = height === "fill";
 	const config: ChartConfig = Object.fromEntries(
 		companies.map((c, i) => [keyOf(i), { label: c.name, color: c.color }]),
 	);
@@ -35,8 +38,12 @@ export function CompanyTrendChart({
 		...Object.fromEntries(companies.map((c, i) => [keyOf(i), c.values[d]])),
 	}));
 	return (
-		<div>
-			<ChartContainer config={config} className="aspect-auto w-full" style={{ height }}>
+		<div className={cn(fill && "flex h-full flex-col")}>
+			<ChartContainer
+				config={config}
+				className={cn("aspect-auto w-full", fill && "min-h-0 flex-1")}
+				style={fill ? undefined : { height }}
+			>
 				<LineChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: 0 }}>
 					<CartesianGrid vertical={false} />
 					<XAxis
@@ -64,11 +71,18 @@ export function CompanyTrendChart({
 							<ChartTooltipContent
 								indicator="dot"
 								labelFormatter={(value) => formatShortDate(String(value))}
+								// A custom formatter replaces the stock row, swatch included, so it draws its own.
 								formatter={(value, name) => (
-									<span className="flex w-full justify-between gap-4">
-										<span className="text-muted-foreground">{config[name as string]?.label}</span>
-										<span className="font-mono tabular-nums">{format(Number(value))}</span>
-									</span>
+									<>
+										<span
+											className="size-2.5 shrink-0 rounded-[2px]"
+											style={{ backgroundColor: config[name as string]?.color }}
+										/>
+										<span className="flex flex-1 justify-between gap-4">
+											<span className="text-muted-foreground">{config[name as string]?.label}</span>
+											<span className="font-mono tabular-nums">{format(Number(value))}</span>
+										</span>
+									</>
 								)}
 							/>
 						}

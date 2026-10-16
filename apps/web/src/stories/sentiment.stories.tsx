@@ -59,3 +59,18 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+/** A long field of competitors scrolls within its card rather than stretching the page. */
+export const ManyCompetitors: Story = {
+	decorators: [
+		(Story) => {
+			const [brand, ...competitors] = mockLandscape.companies;
+			const filler = Array.from({ length: 60 }, (_, i) => {
+				const template = competitors[i % competitors.length];
+				return { ...template, name: `${template.name} ${Math.floor(i / competitors.length) + 2}` };
+			});
+			setMockLandscape({ ...mockLandscape, companies: [brand, ...competitors, ...filler] });
+			return <Story />;
+		},
+	],
+};

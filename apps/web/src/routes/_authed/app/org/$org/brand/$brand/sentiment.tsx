@@ -12,7 +12,7 @@ import { CompanyTrendChart } from "@/components/company-trend-chart";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { ModelGrid } from "@/components/overview/competitive-landscape";
 import { FilterSection, PageHeader } from "@/components/page-header";
-import { ResponseMarkdown } from "@/components/response-markdown";
+import { InlineMarkdown } from "@/components/response-markdown";
 import { RingChart } from "@/components/ring-chart";
 import { SentimentBar } from "@/components/sentiment-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
@@ -40,10 +40,11 @@ const percent = (value: number) => `${Math.round(value * 100)}%`;
 /** Side-by-side cards share a header height, so a title beside a control lines up with one beside none. */
 const ROW_HEADER = "flex min-h-8 flex-row items-center";
 
+/** The top row's two cards; they sit in the page's grid so their columns line up with the row below. */
 function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors: Map<string, string> }) {
 	const brand = brandOf(landscape);
 	return (
-		<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+		<>
 			<Card>
 				<CardHeader>
 					<CardTitle>Sentiment</CardTitle>
@@ -78,7 +79,7 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 					/>
 				</CardContent>
 			</Card>
-		</div>
+		</>
 	);
 }
 
@@ -135,8 +136,8 @@ function QuoteRow({ quote }: { quote: SentimentQuote }) {
 				<ModelIcon iconId={iconId} className="size-3.5" />
 			</span>
 			<div className="min-w-0 space-y-1">
-				<blockquote className="line-clamp-4 [&_.prose]:text-sm [&_p]:my-0">
-					<ResponseMarkdown>{quote.passage}</ResponseMarkdown>
+				<blockquote className="line-clamp-3 text-sm leading-relaxed [&_a]:underline [&_a]:underline-offset-2 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_strong]:font-semibold">
+					<InlineMarkdown>{quote.passage}</InlineMarkdown>
 				</blockquote>
 				<figcaption className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
 					<span className={cn("shrink-0 font-medium", SENTIMENT_STYLES[quote.sentiment].text)}>
@@ -270,13 +271,14 @@ function SentimentPage() {
 		content = (
 			<TooltipProvider delay={150}>
 				<div className="flex flex-col gap-6">
-					<SentimentOverview landscape={landscape} colors={colors} />
-					<div className="grid gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
+					<div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[auto_minmax(0,1fr)]">
+						<SentimentOverview landscape={landscape} colors={colors} />
 						<Card>
 							<CardHeader className={ROW_HEADER}>
 								<CardTitle>Sentiment by Model</CardTitle>
 							</CardHeader>
-							<CardContent className="overflow-x-auto">
+							{/* A long field of competitors scrolls in place rather than stretching the page. */}
+							<CardContent className="max-h-[560px] overflow-auto">
 								<ModelGrid landscape={landscape} metric="sentiment" />
 							</CardContent>
 						</Card>
