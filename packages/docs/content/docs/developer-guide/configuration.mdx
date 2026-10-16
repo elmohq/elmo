@@ -98,7 +98,7 @@ Very roughly, that's **$0.15–0.30 per 1,000 answers**. A month of answers is a
 
 These are estimates, not quotes; see TypeSafe's pricing for current rates.
 
-When the judge's version, or a brand's or competitor's names, change, the worker re-judges that brand's history in the background, starting with the last 30 days. A re-judge only goes back `REPROCESS_DAYS`, and only through enabled prompts of enabled brands. Older answers keep how they were judged when they were recorded. A prompt or brand that's enabled again is caught up at that point. Each re-judged answer costs the same as a new one, so a full re-judge costs about `REPROCESS_DAYS` worth of answers. At the default, that's roughly three months of the figures above.
+When the judge's version, or a brand's or competitor's names, change, the worker re-judges that brand's history in the background, starting with the last 30 days. A re-judge only goes back `REPROCESS_DAYS`, and only through enabled prompts of enabled brands. Older answers keep how they were judged when they were recorded. A prompt or brand that's enabled again is caught up at that point. Re-judging only asks about what changed. Adding a competitor, or editing one's names, aliases or domains, asks Jev about that company alone, and only in answers that name it. That costs a fraction of judging those answers from scratch. Removing a competitor asks nothing. Edits made within a minute of each other are handled in one pass. A new judge version re-judges everything in the window, so it costs about `REPROCESS_DAYS` worth of answers: at the default, roughly three months of the figures above.
 
 ## Updating Configuration
 

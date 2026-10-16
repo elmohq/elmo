@@ -2,6 +2,8 @@ import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspac
 import type { MentionConfig } from "@workspace/lib/mentions";
 import { describe, expect, it } from "vitest";
 import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
+import { jevAnalyzer } from "../mention-judge/analyze";
+import { type JevRequest, stubTransport } from "../mention-judge/jev";
 import { deriveRunUpdate, type StaleRun } from "./derive-runs";
 
 const config: MentionConfig = {
@@ -101,6 +103,39 @@ describe("deriveRunUpdate", () => {
 		expect(update.extraction).toBeUndefined();
 		expect(update.citations).toBeUndefined();
 		expect(update.mentions?.stamp).toBe(target[MENTIONS_KEY]);
+	});
+});
+
+describe("deriveRunUpdate after a competitor is added", () => {
+	const text = "Acme is great. Globex is fine.";
+	const withGlobex = { ...config, competitors: [{ name: "Globex", aliases: [], domains: [] }] };
+
+	it("asks the judge only about the new competitor, keeping what it knew about the brand", async () => {
+		const judged = await deriveRunUpdate(
+			{ ...legacyRun(text), textContent: text, stamps: extractionCurrent },
+			target,
+			config,
+			cuedAnalyzer,
+		);
+		const run: StaleRun = {
+			...legacyRun(text),
+			textContent: text,
+			stamps: { ...extractionCurrent, [MENTIONS_KEY]: target[MENTIONS_KEY] },
+			assessments: judged.mentions?.assessments ?? null,
+		};
+		const requests: JevRequest[] = [];
+		const analyzer = jevAnalyzer(async (request) => {
+			requests.push(request);
+			return stubTransport(request);
+		});
+		const update = await deriveRunUpdate(
+			run,
+			currentAnalysisVersions(withGlobex, analyzer.judgeVersion),
+			withGlobex,
+			analyzer,
+		);
+		expect(requests.map((request) => Object.keys(request.questions))).toEqual([["c0__verdict", "c0__evidence"]]);
+		expect(update.mentions).toMatchObject({ brandMentioned: true, competitorsMentioned: ["Globex"] });
 	});
 });
 

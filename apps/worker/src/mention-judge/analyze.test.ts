@@ -89,6 +89,20 @@ describe("re-judging after a config change", () => {
 		expect(second.assessments?.brand?.position).toBe(2);
 	});
 
+	it("calls no one when a competitor is removed, or when an added one isn't named", async () => {
+		const first = await analyzer.analyze(text, config);
+		const { requests, analyze } = recording();
+		const removed = await analyze.analyze(
+			text,
+			{ ...config, competitors: config.competitors.slice(1) },
+			first.assessments,
+		);
+		const unnamed = { ...config, competitors: [...config.competitors, { name: "Hooli", aliases: [], domains: [] }] };
+		await analyze.analyze(text, unnamed, first.assessments);
+		expect(requests).toEqual([]);
+		expect(removed.competitorsMentioned).toEqual(["Initech"]);
+	});
+
 	it("re-judges a company whose names changed, and only that one", async () => {
 		const first = await analyzer.analyze(text, config);
 		const { requests, analyze } = recording();
