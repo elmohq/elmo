@@ -30,7 +30,7 @@ function MetricSwitch({ value, onChange }: { value: LandscapeMetric; onChange: (
 		<div
 			role="tablist"
 			aria-label="Measure"
-			className="flex w-full rounded-lg bg-muted p-0.5 text-sm sm:inline-flex sm:w-auto"
+			className="flex w-full rounded-lg bg-muted p-0.5 text-sm max-[380px]:text-xs sm:inline-flex sm:w-auto"
 		>
 			{LANDSCAPE_METRICS.map((metric) => (
 				<button
@@ -40,7 +40,7 @@ function MetricSwitch({ value, onChange }: { value: LandscapeMetric; onChange: (
 					aria-selected={metric === value}
 					onClick={() => onChange(metric)}
 					className={cn(
-						"flex-1 whitespace-nowrap rounded-md px-2 py-1 transition-colors sm:flex-none sm:px-3",
+						"flex-1 whitespace-nowrap rounded-md px-2 py-1 transition-colors max-[380px]:px-1.5 sm:flex-none sm:px-3",
 						metric === value ? "bg-background font-medium shadow-sm" : "text-muted-foreground hover:text-foreground",
 					)}
 				>
@@ -101,7 +101,10 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 							<span className="inline-flex items-center gap-2">
 								<span className="w-4 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
 								<SiteIcon domain={company.domain ?? undefined} size="xs" />
-								<span className={cn(company.isBrand && "font-semibold")}>{company.name}</span>
+								{/* Capped on phones so a long name doesn't push every figure out of view. */}
+								<span className={cn("max-w-28 truncate sm:max-w-none", company.isBrand && "font-semibold")}>
+									{company.name}
+								</span>
 							</span>
 						</td>
 						<td className="px-2 py-1.5 text-center font-semibold tabular-nums">
@@ -162,7 +165,7 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 						/>
 					)}
 				</div>
-				<div className="max-h-[480px] overflow-auto rounded-lg border bg-card xl:max-h-none">
+				<div className="overflow-auto rounded-lg border bg-card sm:max-h-[480px] xl:max-h-none">
 					{loading || !landscape ? (
 						<Skeleton className="m-4 h-[260px] w-[420px]" />
 					) : (

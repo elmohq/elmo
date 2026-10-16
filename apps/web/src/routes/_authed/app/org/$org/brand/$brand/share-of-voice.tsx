@@ -168,12 +168,12 @@ function ShareOfVoicePage() {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead className="w-10">#</TableHead>
+									<TableHead className="w-10 max-sm:w-8">#</TableHead>
 									<TableHead>Brand</TableHead>
 									<TableHead className="text-right max-sm:hidden">
 										<ColHead label="Mentions" tip={TIPS.mentions} right />
 									</TableHead>
-									<TableHead className="w-[34%]">
+									<TableHead className="w-[34%] max-sm:w-24">
 										<ColHead label="Share" tip={TIPS.share} />
 									</TableHead>
 									<TableHead className="text-right max-sm:hidden">
@@ -188,7 +188,8 @@ function ShareOfVoicePage() {
 										<TableCell className="font-medium">
 											<span className="inline-flex items-center gap-2">
 												<SiteIcon domain={domainFor(e.name)} size="md" />
-												{e.name}
+												{/* Capped on phones so the share bars keep their room. */}
+												<span className="truncate max-sm:max-w-24">{e.name}</span>
 												{e.isBrand && (
 													<Badge variant="secondary" className="text-xs">
 														You
@@ -201,7 +202,7 @@ function ShareOfVoicePage() {
 										</TableCell>
 										<TableCell>
 											<div className="flex items-center gap-2">
-												<div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+												<div className="bg-muted h-2 w-full overflow-hidden rounded-full max-[380px]:hidden">
 													<div
 														className="h-full rounded-full"
 														style={{

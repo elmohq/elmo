@@ -173,11 +173,11 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 					<Table>
 						<TableHeader>
 							<TableRow>
-								<TableHead className="w-[40%] min-w-48">Prompt</TableHead>
-								<TableHead className="text-right">Mentions</TableHead>
-								<TableHead className="w-[28%]">Sentiment</TableHead>
+								<TableHead className="w-[40%]">Prompt</TableHead>
+								<TableHead className="text-right max-sm:hidden">Mentions</TableHead>
+								<TableHead className="w-[28%] max-sm:min-w-16">Sentiment</TableHead>
 								<TableHead className="text-right">Positive</TableHead>
-								<TableHead className="text-right">Negative</TableHead>
+								<TableHead className="text-right max-sm:hidden">Negative</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -195,7 +195,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 											</BrandPromptLink>
 											{p.tags.length > 0 && <div className="text-xs text-muted-foreground">{p.tags.join(" · ")}</div>}
 										</TableCell>
-										<TableCell className="text-right tabular-nums text-muted-foreground">
+										<TableCell className="text-right tabular-nums text-muted-foreground max-sm:hidden">
 											{clear.toLocaleString()}
 										</TableCell>
 										<TableCell>
@@ -204,7 +204,7 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 										<TableCell className="text-right font-medium tabular-nums">
 											{p.sentiment.positiveShare === null ? "—" : percent(p.sentiment.positiveShare)}
 										</TableCell>
-										<TableCell className="text-right tabular-nums">
+										<TableCell className="text-right tabular-nums max-sm:hidden">
 											{p.sentiment.negative > 0 ? (
 												<Link
 													to="/app/org/$org/brand/$brand/responses"

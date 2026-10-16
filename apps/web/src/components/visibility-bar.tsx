@@ -81,7 +81,7 @@ export function VisibilityBar({
 
 	return (
 		<div
-			className={`flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 min-h-10 px-3 py-2 rounded-lg border ${colors.bg} ${colors.border}`}
+			className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 min-h-10 px-3 py-2 rounded-lg border ${colors.bg} ${colors.border}`}
 		>
 			{/* Left side: visibility + chart + info */}
 			<div className="flex items-center gap-2 min-w-0 shrink-0">
@@ -121,7 +121,7 @@ export function VisibilityBar({
 			</div>
 
 			{/* Right side: stats */}
-			<div className={`flex items-center gap-x-3 text-xs sm:text-sm ${colors.muted}`}>
+			<div className={`flex items-center gap-x-3 whitespace-nowrap text-xs sm:text-sm ${colors.muted}`}>
 				<span>
 					<span className="font-medium">{totalPrompts.toLocaleString()}</span> prompts
 				</span>
@@ -138,7 +138,7 @@ export function VisibilityBar({
 
 export function VisibilityBarSkeleton() {
 	return (
-		<div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 min-h-10 px-3 py-2 rounded-lg border bg-muted/30">
+		<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 min-h-10 px-3 py-2 rounded-lg border bg-muted/30">
 			<div className="flex items-center gap-3">
 				<Skeleton className="h-6 sm:h-7 w-36" />
 				<Skeleton className="h-6 w-24 hidden sm:block" />

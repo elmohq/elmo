@@ -62,7 +62,7 @@ export function ResponseCard({
 						{prompt}
 					</div>
 				)}
-				<div className="grid grid-cols-3 gap-x-4 text-sm">
+				<div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
 					<div>
 						<span className="text-muted-foreground block text-xs mb-0.5">Model</span>
 						<span>{getModelDisplayName(run.model)}</span>
@@ -71,7 +71,7 @@ export function ResponseCard({
 						<span className="text-muted-foreground block text-xs mb-0.5">Version</span>
 						<span>{run.version}</span>
 					</div>
-					<div>
+					<div className="col-span-2 sm:col-span-1">
 						<span className="text-muted-foreground block text-xs mb-0.5">Evaluated</span>
 						<span>{formatDate(run.createdAt)}</span>
 					</div>
@@ -84,7 +84,11 @@ export function ResponseCard({
 						<span className="text-xs text-muted-foreground block mb-1.5">Web Queries</span>
 						<div className="flex flex-wrap gap-1.5">
 							{[...new Set<string>(run.webQueries)].map((query) => (
-								<Badge key={query} variant="outline" className="text-xs font-normal">
+								<Badge
+									key={query}
+									variant="outline"
+									className="h-auto max-w-full whitespace-normal text-left text-xs font-normal"
+								>
 									{query}
 								</Badge>
 							))}

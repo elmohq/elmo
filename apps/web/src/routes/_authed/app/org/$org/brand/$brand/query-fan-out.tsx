@@ -97,10 +97,16 @@ function QueryFanoutPage() {
 				<div className="space-y-6">
 					<StatRow data={data} />
 					<Tabs value={tab} onValueChange={(v) => setTab(v as FanoutTab)} className="gap-4">
-						<TabsList>
-							<TabsTrigger value="fanout">Prompt Fan-Out</TabsTrigger>
-							<TabsTrigger value="top-queries">Top Queries</TabsTrigger>
-							<TabsTrigger value="words">Query Words</TabsTrigger>
+						<TabsList className="max-w-full">
+							<TabsTrigger value="fanout" className="max-[380px]:text-xs">
+								Prompt Fan-Out
+							</TabsTrigger>
+							<TabsTrigger value="top-queries" className="max-[380px]:text-xs">
+								Top Queries
+							</TabsTrigger>
+							<TabsTrigger value="words" className="max-[380px]:text-xs">
+								Query Words
+							</TabsTrigger>
 						</TabsList>
 						<TabsContent value="fanout">
 							<Prompts prompts={data.byPrompt} />
@@ -140,8 +146,8 @@ type FanoutData = NonNullable<ReturnType<typeof useQueryFanout>["data"]>;
 function StatCard({ label, value, tip }: { label: string; value: React.ReactNode; tip: React.ReactNode }) {
 	return (
 		<Card className="py-4">
-			<CardContent>
-				<div className="text-muted-foreground flex items-center gap-1 text-sm">
+			<CardContent className="max-sm:px-4">
+				<div className="text-muted-foreground flex items-center gap-1 text-xs sm:text-sm">
 					{label}
 					<InfoTip>{tip}</InfoTip>
 				</div>
@@ -296,8 +302,8 @@ function SortHead<K extends string>({
 	);
 }
 
-const GRID =
-	"grid grid-cols-[1.25rem_1fr_3.5rem_4.5rem] items-center gap-2 sm:grid-cols-[1.25rem_1fr_4.5rem_7rem] sm:gap-3";
+// Phones drop the per-run average so the prompt itself stays readable.
+const GRID = "grid grid-cols-[1.25rem_1fr_3.5rem] items-center gap-2 sm:grid-cols-[1.25rem_1fr_4.5rem_7rem] sm:gap-3";
 
 function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 	const [expanded, setExpanded] = useState<Set<string>>(
@@ -356,7 +362,7 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 					<span className="text-right">
 						<SortHead k="queries" label="Queries" sort={sort} setSort={setSort} />
 					</span>
-					<span className="text-right">
+					<span className="text-right max-sm:hidden">
 						<SortHead k="avg" label="Avg/Prompt Run" sort={sort} setSort={setSort} />
 					</span>
 				</div>
@@ -382,7 +388,9 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 										<span className="text-muted-foreground text-xs">{p.uniqueQueries.toLocaleString()} variations</span>
 									</span>
 									<span className="text-right text-sm tabular-nums">{p.totalQueries.toLocaleString()}</span>
-									<span className="text-right text-sm tabular-nums">{p.avgPerExecution.toLocaleString()}</span>
+									<span className="text-right text-sm tabular-nums max-sm:hidden">
+										{p.avgPerExecution.toLocaleString()}
+									</span>
 								</button>
 								{isOpen && keywords && (
 									<div className="border-border mb-3 ml-8 mr-2 space-y-2 border-l pl-4">
