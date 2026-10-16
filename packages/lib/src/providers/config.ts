@@ -33,6 +33,7 @@ export const API_PROVIDER_MAX_OUTPUT_TOKENS: Record<string, number> = {
 	"openai-api": 8000,
 	openrouter: 8000,
 	"mistral-api": 8000,
+	"zai-api": 8000,
 };
 
 /**
@@ -88,6 +89,7 @@ export function validateScrapeTargets(
 			(config.provider === "openai-api" ||
 				config.provider === "anthropic-api" ||
 				config.provider === "mistral-api" ||
+				config.provider === "zai-api" ||
 				config.provider === "openrouter") &&
 			!config.version
 		)
