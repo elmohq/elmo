@@ -133,6 +133,12 @@ describe("configureMentionAnalyzer", () => {
 		expect(() => configureMentionAnalyzer("")).toThrow("TYPESAFE_API_KEY");
 	});
 
+	it("judges as many answers at once as JEV_CONCURRENCY allows, and refuses a nonsense value", () => {
+		expect(configureMentionAnalyzer("key", {}).concurrency).toBe(8);
+		expect(configureMentionAnalyzer("key", { JEV_CONCURRENCY: "32" }).concurrency).toBe(32);
+		expect(() => configureMentionAnalyzer("key", { JEV_TOKENS_PER_SECOND: "lots" })).toThrow("JEV_TOKENS_PER_SECOND");
+	});
+
 	it("stamps the stub's judgements apart from Jev's, so a real key re-judges them", () => {
 		expect(configureMentionAnalyzer("stub").judgeVersion).not.toBe(configureMentionAnalyzer("key").judgeVersion);
 	});

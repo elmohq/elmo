@@ -225,6 +225,19 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"API key for Jev (typesafe.ai), which judges which answers mention a brand or competitor, and the sentiment toward each. Required by the worker. 'stub' judges from cue words instead, for tests and development without a key.",
 	},
 	{
+		name: "JEV_CONCURRENCY",
+		scope: "server",
+		requiredBy: "optional",
+		description: "How many Jev calls a worker makes at once (default 8). Raise it to judge a backlog faster.",
+	},
+	{
+		name: "JEV_TOKENS_PER_SECOND",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Input tokens per second a worker may send Jev, to stay under your TypeSafe rate limit. Split your limit across workers.",
+	},
+	{
 		name: "REPROCESS_DAYS",
 		scope: "server",
 		requiredBy: "optional",

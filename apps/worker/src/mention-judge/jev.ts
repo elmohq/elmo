@@ -30,28 +30,87 @@ export interface JevResponse {
 
 export type JevTransport = (request: JevRequest) => Promise<JevResponse>;
 
-/** A failure throws, so the derivation job retries it. */
-export function typesafeTransport(apiKey: string, fetchImpl: typeof fetch = fetch): JevTransport {
-	return async (request) => {
-		const response = await fetchImpl(ENDPOINT, {
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const RATE_LIMIT_RETRIES = 4;
+const MAX_RETRY_WAIT_MS = 30_000;
+
+/** A failure throws, so the derivation job retries it; a rate limit is waited out here first. */
+export function typesafeTransport(apiKey: string, fetchImpl: typeof fetch = fetch, wait = sleep): JevTransport {
+	const post = (request: JevRequest) =>
+		fetchImpl(ENDPOINT, {
 			method: "POST",
 			headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
 			body: JSON.stringify(request),
 			signal: AbortSignal.timeout(TIMEOUT_MS),
 		});
-		if (!response.ok) {
-			const detail = (await response.text().catch(() => "")).slice(0, 300);
-			if (response.status === 401 || response.status === 403)
-				throw new Error(`TYPESAFE_API_KEY was rejected (HTTP ${response.status}); check it, or its credit: ${detail}`);
-			throw new Error(`Jev returned HTTP ${response.status}: ${detail}`);
+	return async (request) => {
+		let response = await post(request);
+		for (let attempt = 0; response.status === 429 && attempt < RATE_LIMIT_RETRIES; attempt++) {
+			const retryAfter = Number(response.headers.get("retry-after"));
+			await wait(Math.min(retryAfter > 0 ? retryAfter * 1000 : 1000 * 2 ** attempt, MAX_RETRY_WAIT_MS));
+			response = await post(request);
 		}
-		const body = (await response.json()) as JevResponse;
-		for (const key of Object.keys(request.questions)) {
-			const answer = body.answers?.[key];
-			if (typeof answer?.choice !== "string" || !Object.keys(answer.probabilities ?? {}).length)
-				throw new Error(`Jev returned no answer to "${key}"`);
-		}
-		return body;
+		return answered(request, response);
+	};
+}
+
+async function answered(request: JevRequest, response: Response): Promise<JevResponse> {
+	if (!response.ok) {
+		const detail = (await response.text().catch(() => "")).slice(0, 300);
+		if (response.status === 401 || response.status === 403)
+			throw new Error(`TYPESAFE_API_KEY was rejected (HTTP ${response.status}); check it, or its credit: ${detail}`);
+		throw new Error(`Jev returned HTTP ${response.status}: ${detail}`);
+	}
+	const body = (await response.json()) as JevResponse;
+	for (const key of Object.keys(request.questions)) {
+		const answer = body.answers?.[key];
+		if (typeof answer?.choice !== "string" || !Object.keys(answer.probabilities ?? {}).length)
+			throw new Error(`Jev returned no answer to "${key}"`);
+	}
+	return body;
+}
+
+/** Measured against Jev's reported usage. */
+const CHARS_PER_TOKEN = 3.3;
+
+/** Roughly the input tokens a request is billed for: the state is billed once per question. */
+export function estimatedTokens(request: JevRequest): number {
+	const state = JSON.stringify(request.state).length;
+	const chars = Object.values(request.questions).reduce(
+		(sum, question) => sum + state + JSON.stringify(question).length,
+		0,
+	);
+	return Math.ceil(chars / CHARS_PER_TOKEN);
+}
+
+/**
+ * Keeps a worker under an input-token rate limit whatever Jev's latency: each request waits until
+ * the last second's budget has room for it.
+ */
+export function tokenBudget(
+	transport: JevTransport,
+	tokensPerSecond: number,
+	{ now = Date.now, wait = sleep } = {},
+): JevTransport {
+	let available = tokensPerSecond;
+	let updated = now();
+	let turn = Promise.resolve();
+	return (request) => {
+		const cost = Math.min(estimatedTokens(request), tokensPerSecond);
+		const ready = turn.then(async () => {
+			for (;;) {
+				const at = now();
+				available = Math.min(tokensPerSecond, available + ((at - updated) / 1000) * tokensPerSecond);
+				updated = at;
+				if (available >= cost) {
+					available -= cost;
+					return;
+				}
+				await wait(Math.ceil(((cost - available) / tokensPerSecond) * 1000));
+			}
+		});
+		turn = ready;
+		return ready.then(() => transport(request));
 	};
 }
 
