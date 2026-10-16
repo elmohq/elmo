@@ -12,7 +12,6 @@ import type { DbConnection } from "@workspace/lib/db/db-connection";
 import {
 	type Brand,
 	brands,
-	type Competitor,
 	competitors,
 	promptRuns,
 	prompts,
@@ -239,7 +238,7 @@ function byBrand<T extends { brandId: string }>(rows: T[]): Map<string, T[]> {
  * how a dropped job heals. A brand already waiting on a pass keeps that one.
  *
  * `everyBrand`, at startup, also sends a pass to brands already stamped current: a pass stamps the
- * brand when it queues its runs, so runs whose jobs ran out of retries (the judge was down) would
+ * brand before its runs are judged, so runs whose jobs ran out of retries (the judge was down) would
  * otherwise stay stale. The pass queues only those.
  */
 export async function requestStaleReprocesses(
