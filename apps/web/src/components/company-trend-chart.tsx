@@ -71,11 +71,18 @@ export function CompanyTrendChart({
 							<ChartTooltipContent
 								indicator="dot"
 								labelFormatter={(value) => formatShortDate(String(value))}
+								// A custom formatter replaces the stock row, swatch included, so it draws its own.
 								formatter={(value, name) => (
-									<span className="flex w-full justify-between gap-4">
-										<span className="text-muted-foreground">{config[name as string]?.label}</span>
-										<span className="font-mono tabular-nums">{format(Number(value))}</span>
-									</span>
+									<>
+										<span
+											className="size-2.5 shrink-0 rounded-[2px]"
+											style={{ backgroundColor: config[name as string]?.color }}
+										/>
+										<span className="flex flex-1 justify-between gap-4">
+											<span className="text-muted-foreground">{config[name as string]?.label}</span>
+											<span className="font-mono tabular-nums">{format(Number(value))}</span>
+										</span>
+									</>
 								)}
 							/>
 						}
