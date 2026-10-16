@@ -214,6 +214,7 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 			{ value: "anthropic" as const, label: "Anthropic — direct Claude" },
 			{ value: "openai" as const, label: "OpenAI — direct GPT-* models" },
 			{ value: "mistral" as const, label: "Mistral — direct Mistral models" },
+			{ value: "gemini" as const, label: "Gemini — direct Gemini models" },
 		],
 		initialValue: "openrouter" as const,
 	});
