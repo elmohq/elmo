@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
 import type { Brand, Competitor } from "./db/schema";
-import { type MentionConfig, mentionConfigFrom, mentionsStamp, normalizeDomain } from "./mentions";
+import { type MentionConfig, mentionConfigFrom, mentionsStamp, normalizeDomain, wholeWordPattern } from "./mentions";
+
+describe("wholeWordPattern", () => {
+	const names = (term: string, text: string) => wholeWordPattern(term).test(text);
+
+	it("matches a term only as a whole word", () => {
+		expect(names("ace", "place")).toBe(false);
+		expect(names("Elmo", "Elmos")).toBe(false);
+		expect(names("Nike", "Nike's best")).toBe(true);
+	});
+
+	it("matches in text written without spaces between words, or with particles attached", () => {
+		expect(names("Elmo", "Elmo是开源的")).toBe(true);
+		expect(names("Elmo", "Elmoは無料です")).toBe(true);
+		expect(names("Elmo", "Elmo는 무료입니다")).toBe(true);
+	});
+});
 
 describe("normalizeDomain", () => {
 	it("reduces a URL to a bare comparable host", () => {
