@@ -185,6 +185,19 @@ export function extractTextFromMistral(rawOutput: any): string {
 	]);
 }
 
+/** Gemini generateContent: the first candidate's text parts, minus any thought summaries. */
+export function extractTextFromGemini(rawOutput: any): string {
+	return firstText("No text content found in Gemini output.", [
+		() =>
+			textOrNull(
+				asArray(rawOutput?.candidates?.[0]?.content?.parts)
+					.filter((part: any) => !part?.thought && typeof part?.text === "string")
+					.map((part: any) => part.text)
+					.join(""),
+			),
+	]);
+}
+
 export function extractTextFromOpenRouter(rawOutput: any): string {
 	return firstText("No text content found in OpenRouter output.", [
 		() => textOrNull(rawOutput?.choices?.[0]?.message?.content),
@@ -411,6 +424,7 @@ const EXTRACTION_FAILURE_SENTINELS: ReadonlySet<string> = new Set([
 	"No text content found in Cloro output.",
 	"No text content found in DataForSEO LLM output.",
 	"No text content found in DataForSEO Scraper output.",
+	"No text content found in Gemini output.",
 	"No text content found in Mistral output.",
 	"No text content found in Olostep output.",
 	"No text content found in OpenAI output.",
@@ -551,6 +565,15 @@ export function extractCitationsFromMistral(rawOutput: any): Citation[] {
 	return collectCitations((add) => {
 		for (const chunk of pluck(asArray(rawOutput?.outputs), "content")) {
 			if (chunk?.type === "tool_reference") add(chunk.url, chunk.title);
+		}
+	});
+}
+
+/** Google Search grounding lists every source it drew on as a web chunk. */
+export function extractCitationsFromGemini(rawOutput: any): Citation[] {
+	return collectCitations((add) => {
+		for (const chunk of asArray(rawOutput?.candidates?.[0]?.groundingMetadata?.groundingChunks)) {
+			add(chunk?.web?.uri, chunk?.web?.title);
 		}
 	});
 }
@@ -706,6 +729,7 @@ const EXTRACTORS: Record<string, Extractor> = {
 	anthropic: ANTHROPIC,
 	claude: ANTHROPIC,
 	"mistral-api": { text: extractTextFromMistral, citations: extractCitationsFromMistral },
+	"gemini-api": { text: extractTextFromGemini, citations: extractCitationsFromGemini },
 	dataforseo: DATAFORSEO,
 	google: DATAFORSEO,
 	"google-ai-mode": DATAFORSEO,
