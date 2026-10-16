@@ -10,6 +10,7 @@ import { type Cleaned, cleanAnswer, originalSpan } from "./clean";
 import {
 	adaptivePool,
 	JEV_MODEL,
+	type JevChoice,
 	type JevChoiceQuestion,
 	type JevRequest,
 	type JevTransport,
@@ -155,6 +156,36 @@ function subjectsOf(config: MentionConfig, previous: RunMentionAssessments | nul
 	}));
 }
 
+type Named = Entry & { inProse: boolean };
+
+/**
+ * A company judged under an unchanged fingerprint keeps its assessment. One named now but not when
+ * judged (cleaning or matching changed) is asked about, as is one kept without a sentiment because
+ * it was only cited then but is named in prose now.
+ */
+function needsJudging(entry: Named): boolean {
+	return entry.judgedAs !== entry.fingerprint || !entry.kept || (!!entry.kept.citedOnly && entry.inProse);
+}
+
+function recordsFor(
+	answer: string,
+	cleaned: Cleaned,
+	named: Named[],
+	ask: Named[],
+	answers: Record<string, JevChoice>,
+	options: Map<string, Sentence[]>,
+): Map<string, MentionAssessment> {
+	const records = new Map<string, MentionAssessment>();
+	for (const entry of named) {
+		const quote = options.get(entry.key)?.[Number(answers[`${entry.key}__evidence`]?.choice.slice(1)) - 1];
+		const record = ask.includes(entry)
+			? assessment(answer, cleaned, entry.subject, answers[`${entry.key}__verdict`].probabilities, quote)
+			: entry.kept && { ...entry.kept };
+		if (record) records.set(entry.key, record.mentioned && !entry.inProse ? citedOnly(record) : record);
+	}
+	return records;
+}
+
 function questionsFor(ask: Entry[], named: Entry[], split: Sentence[]) {
 	const questions: Record<string, JevChoiceQuestion> = {};
 	const options = new Map<string, Sentence[]>();
@@ -207,16 +238,12 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 			const cleaned = cleanAnswer(answer);
 			const readable = cleaned.text.slice(0, MAX_ANSWER_CHARS);
 			const subjects = subjectsOf(config, previous, judgeVersion);
-			// Only companies the answer names are asked about; a company judged under an unchanged
-			// fingerprint keeps its assessment, a copy since `rank` rewrites positions.
-			const named = subjects.filter((entry) => entry.names(readable));
-			const inProse = new Set(named.filter((entry) => namedInProse(answer, entry.subject)));
-			// A company named now but not when judged (cleaning or matching changed) is asked about too, as
-			// is one kept without a sentiment because it was only cited then but is named in prose now.
-			const ask = named.filter(
-				(entry) =>
-					entry.judgedAs !== entry.fingerprint || !entry.kept || (!!entry.kept.citedOnly && inProse.has(entry)),
-			);
+			// Only companies the answer names are asked about (see `needsJudging`). A kept assessment is
+			// copied, since `rank` rewrites positions.
+			const named = subjects
+				.filter((entry) => entry.names(readable))
+				.map((entry) => ({ ...entry, inProse: namedInProse(answer, entry.subject) }));
+			const ask = named.filter(needsJudging);
 			const { questions, options } = questionsFor(ask, named, sentences(readable));
 			const request: JevRequest = {
 				model: JEV_MODEL,
@@ -225,18 +252,7 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 			};
 			const answers = ask.length ? (await transport(request)).answers : {};
 
-			const records = new Map<string, MentionAssessment>();
-			for (const entry of named) {
-				let record: MentionAssessment | undefined;
-				if (!ask.includes(entry)) record = entry.kept && { ...entry.kept };
-				else {
-					const quote = options.get(entry.key)?.[Number(answers[`${entry.key}__evidence`]?.choice.slice(1)) - 1];
-					record = assessment(answer, cleaned, entry.subject, answers[`${entry.key}__verdict`].probabilities, quote);
-				}
-				if (record) records.set(entry.key, record.mentioned && !inProse.has(entry) ? citedOnly(record) : record);
-			}
-
-			return collect(subjects, records);
+			return collect(subjects, recordsFor(answer, cleaned, named, ask, answers, options));
 		},
 	};
 }
