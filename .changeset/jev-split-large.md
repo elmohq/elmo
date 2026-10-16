@@ -2,4 +2,4 @@
 "@workspace/worker": patch
 ---
 
-Judge long answers that name many tracked companies, which Jev previously rejected as too large.
+Split rare cases where many tracked companies result in too large Jev calls.
