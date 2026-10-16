@@ -317,6 +317,7 @@ export async function processReportJob(job: ReportJobContext) {
 
 		const totalCandidates = candidatePrompts.length;
 		let completedCandidates = 0;
+		let failedCandidates = 0;
 
 		const batchSize = 20;
 		for (let i = 0; i < candidatePrompts.length; i += batchSize) {
@@ -344,6 +345,7 @@ export async function processReportJob(job: ReportJobContext) {
 					job.log(
 						`Error testing candidate "${candidate.prompt}": ${error instanceof Error ? error.message : "Unknown error"}`,
 					);
+					failedCandidates++;
 					completedCandidates++;
 					const progress = 40 + (completedCandidates / totalCandidates) * 30;
 					job.updateProgress(progress);
@@ -363,6 +365,10 @@ export async function processReportJob(job: ReportJobContext) {
 				await new Promise((resolve) => setTimeout(resolve, 1000));
 			}
 		}
+
+		// A report built from no answers would read as "never mentioned"; fail it instead.
+		if (failedCandidates === candidatePrompts.length)
+			throw new Error("Every candidate prompt failed: are the providers or the judge (Jev) down?");
 
 		job.updateProgress(70);
 
