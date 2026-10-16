@@ -481,7 +481,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
  * Lives here, not with the onboarding code, so startup validation can require
  * one of them.
  */
-export const RESEARCH_PROVIDER_PREFERENCE = ["openai-api", "openrouter", "anthropic-api", "mistral-api", "zai-api"] as const;
+export const RESEARCH_PROVIDER_PREFERENCE = [
+	"openai-api",
+	"openrouter",
+	"anthropic-api",
+	"mistral-api",
+	"zai-api",
+] as const;
 
 export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set(
 	ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider).map((spec) => spec.name),

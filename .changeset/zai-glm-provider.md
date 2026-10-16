@@ -1,7 +1,6 @@
 ---
 "@workspace/lib": patch
 "@workspace/config": patch
-"@workspace/web": patch
 "@elmohq/cli": patch
 "@workspace/docs": patch
 ---
