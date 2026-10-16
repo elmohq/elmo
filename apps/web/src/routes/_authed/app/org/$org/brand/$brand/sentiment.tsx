@@ -40,10 +40,11 @@ const percent = (value: number) => `${Math.round(value * 100)}%`;
 /** Side-by-side cards share a header height, so a title beside a control lines up with one beside none. */
 const ROW_HEADER = "flex min-h-8 flex-row items-center";
 
+/** The top row's two cards; they sit in the page's grid so their columns line up with the row below. */
 function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors: Map<string, string> }) {
 	const brand = brandOf(landscape);
 	return (
-		<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+		<>
 			<Card>
 				<CardHeader>
 					<CardTitle>Sentiment</CardTitle>
@@ -78,7 +79,7 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 					/>
 				</CardContent>
 			</Card>
-		</div>
+		</>
 	);
 }
 
@@ -270,8 +271,8 @@ function SentimentPage() {
 		content = (
 			<TooltipProvider delay={150}>
 				<div className="flex flex-col gap-6">
-					<SentimentOverview landscape={landscape} colors={colors} />
-					<div className="grid gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
+					<div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[auto_minmax(0,1fr)]">
+						<SentimentOverview landscape={landscape} colors={colors} />
 						<Card>
 							<CardHeader className={ROW_HEADER}>
 								<CardTitle>Sentiment by Model</CardTitle>
