@@ -20,6 +20,8 @@ export interface MetricMeta {
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
 const points = (change: number) => `${Math.abs(Math.round(change * 100))}pt`;
+/** Out of 100 rather than a percent: it isn't a share of answers. */
+const score = (value: number) => `${Math.round(value * 100)}`;
 
 export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 	visibility: {
@@ -45,10 +47,11 @@ export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 	sentiment: {
 		label: "Sentiment",
 		short: "Sentiment",
-		info: "Of the answers that mention your brand, the share that speak of it positively. Like visibility, it counts each prompt's latest answers.",
-		format: percent,
-		formatChange: points,
-		grade: (value) => (value > 0.7 ? "good" : value > 0.5 ? "fair" : "poor"),
+		info: "How AI answers that mention your brand speak of it, from 0 to 100: positive answers count 100, neutral and mixed 50, negative 0. Above 50, praise outweighs criticism. Like visibility, it counts each prompt's latest answers.",
+		format: score,
+		formatChange: (change) => `${Math.abs(Math.round(change * 100))}`,
+		// Neutral answers alone score 50: fair, since only criticism outweighing praise is poor.
+		grade: (value) => (value >= 0.65 ? "good" : value >= 0.5 ? "fair" : "poor"),
 		page: "/app/org/$org/brand/$brand/sentiment",
 	},
 	position: {

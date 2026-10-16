@@ -2030,20 +2030,14 @@
 						"type": "integer",
 						"minimum": 0
 					},
-					"positiveShare": {
+					"score": {
 						"type": ["number", "null"],
 						"minimum": 0,
 						"maximum": 1,
-						"description": "Positive answers as a fraction of those with a sentiment (the four counts). Ratio 0–1; null when there are none."
-					},
-					"negativeShare": {
-						"type": ["number", "null"],
-						"minimum": 0,
-						"maximum": 1,
-						"description": "Negative answers as a fraction of those with a sentiment (the four counts). Ratio 0–1; null when there are none."
+						"description": "Net sentiment of the answers with a sentiment: positive counts 1, neutral and mixed 0.5, negative 0, averaged. 0.5 means neutral on balance. Ratio 0–1; null when there are none."
 					}
 				},
-				"required": ["positive", "neutral", "negative", "mixed", "positiveShare", "negativeShare"],
+				"required": ["positive", "neutral", "negative", "mixed", "score"],
 				"x-stability": "experimental"
 			},
 			"BrandSentiment": {
@@ -3966,8 +3960,7 @@
 										"neutral": 31,
 										"negative": 4,
 										"mixed": 2,
-										"positiveShare": 0.72,
-										"negativeShare": 0.03
+										"score": 0.85
 									},
 									"position": { "average": 1.6 },
 									"citations": {

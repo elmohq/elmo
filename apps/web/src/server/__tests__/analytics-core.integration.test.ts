@@ -21,7 +21,7 @@ const window = { from: "2026-03-01", to: "2026-03-03", timezone: "UTC" };
 
 /** These runs were matched by name, before the judge, so they carry no sentiment or position. */
 const UNJUDGED = {
-	sentiment: { positive: 0, neutral: 0, negative: 0, mixed: 0, positiveShare: null, negativeShare: null },
+	sentiment: { positive: 0, neutral: 0, negative: 0, mixed: 0, score: null },
 	position: { average: null },
 };
 
