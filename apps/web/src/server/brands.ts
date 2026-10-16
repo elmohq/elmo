@@ -6,6 +6,7 @@ import { getDeployment } from "@workspace/deployment";
 import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
 import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { competitorOrder, saveCompetitors } from "@workspace/lib/db/competitors";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import {
@@ -400,11 +401,13 @@ export const getCompetitors = createServerFn({ method: "GET" })
 
 		return db.query.competitors.findMany({
 			where: eq(competitors.brandId, data.brandId),
+			orderBy: competitorOrder,
 		});
 	});
 
 /**
- * Update competitors for a brand (bulk replace)
+ * Save a brand's competitors: the list submitted is the list the brand ends up with. Entries carry
+ * the ids of competitors already tracked, which keep their row; see `saveCompetitors`.
  */
 export const updateCompetitors = createServerFn({ method: "POST" })
 	.validator(
@@ -412,7 +415,9 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 			brandId: z.string(),
 			competitors: z.array(
 				z.object({
-					name: z.string(),
+					// z.guid(), not z.uuid(): existing ids predate the RFC version check.
+					id: z.guid().optional(),
+					name: z.string().trim().min(1),
 					domains: z.array(z.string()).min(1),
 					aliases: z.array(z.string()).optional().default([]),
 				}),
@@ -422,7 +427,6 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		await requireBrandSession(data.brandId);
 
-		// A bulk replace, so the list submitted is the list the brand ends up with.
 		assertAllowed(decideCompetitorCap(data.competitors.length));
 
 		const cleanedCompetitors = data.competitors.map((c) => {
@@ -432,30 +436,14 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 				throw new Error(`Invalid domain(s) for "${c.name}": ${invalid.join(", ")}`);
 			}
 			return {
+				id: c.id,
 				name: c.name,
 				domains: cleanedDomains.filter(Boolean) as string[],
 				aliases: c.aliases,
 			};
 		});
 
-		return db.transaction(async (tx) => {
-			await tx.delete(competitors).where(eq(competitors.brandId, data.brandId));
-
-			if (cleanedCompetitors.length > 0) {
-				await tx.insert(competitors).values(
-					cleanedCompetitors.map((c) => ({
-						brandId: data.brandId,
-						name: c.name,
-						domains: c.domains,
-						aliases: c.aliases,
-					})),
-				);
-			}
-
-			return tx.query.competitors.findMany({
-				where: eq(competitors.brandId, data.brandId),
-			});
-		});
+		return db.transaction((tx) => saveCompetitors(tx, data.brandId, cleanedCompetitors));
 	});
 
 /**
