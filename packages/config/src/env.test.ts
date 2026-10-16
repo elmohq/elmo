@@ -153,7 +153,6 @@ describe("assertRequiredEnv", () => {
 				DATABASE_URL: "postgres://localhost/elmo",
 				BETTER_AUTH_SECRET: "secret",
 				ELMO_ENCRYPTION_KEY: "key",
-				TYPESAFE_API_KEY: "key",
 				SCRAPE_TARGETS: "chatgpt:olostep:online",
 			}),
 		).not.toThrow();
