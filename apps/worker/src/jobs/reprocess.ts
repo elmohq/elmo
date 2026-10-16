@@ -12,7 +12,6 @@ import type { DbConnection } from "@workspace/lib/db/db-connection";
 import {
 	type Brand,
 	brands,
-	type Competitor,
 	competitors,
 	promptRuns,
 	prompts,
@@ -227,6 +226,12 @@ export async function runReprocess(
 	console.log(`[reprocess] brand ${data.brandId}: queued ${queued} runs toward ${JSON.stringify(target)}`);
 }
 
+function byBrand<T extends { brandId: string }>(rows: T[]): Map<string, T[]> {
+	const grouped = new Map<string, T[]>();
+	for (const row of rows) grouped.set(row.brandId, [...(grouped.get(row.brandId) ?? []), row]);
+	return grouped;
+}
+
 /**
  * Requests a pass for every brand whose history no longer matches its config or
  * today's code. Runs every minute, which is how a config edit reaches a pass, and
@@ -242,14 +247,8 @@ export async function requestStaleReprocesses(
 		conn.select().from(competitors),
 		conn.select({ id: prompts.id, brandId: prompts.brandId }).from(prompts).where(eq(prompts.enabled, true)),
 	]);
-	const competitorsByBrand = new Map<string, Competitor[]>();
-	for (const competitor of allCompetitors) {
-		competitorsByBrand.set(competitor.brandId, [...(competitorsByBrand.get(competitor.brandId) ?? []), competitor]);
-	}
-	const promptsByBrand = new Map<string, string[]>();
-	for (const prompt of enabledPrompts) {
-		promptsByBrand.set(prompt.brandId, [...(promptsByBrand.get(prompt.brandId) ?? []), prompt.id]);
-	}
+	const competitorsByBrand = byBrand(allCompetitors);
+	const promptsByBrand = byBrand(enabledPrompts);
 	let requested = 0;
 	for (const brand of allBrands) {
 		// Not yet adopted at startup; its history is taken as is until then.
@@ -260,7 +259,8 @@ export async function requestStaleReprocesses(
 		);
 		const stale = staleLayers(brand.analysisVersions, current);
 		// A prompt enabled since the last pass has runs that pass skipped, to judge now.
-		const promptsMoved = brand.analysisVersions[PROMPTS_KEY] !== promptsStamp(promptsByBrand.get(brand.id) ?? []);
+		const promptsMoved =
+			brand.analysisVersions[PROMPTS_KEY] !== promptsStamp((promptsByBrand.get(brand.id) ?? []).map(({ id }) => id));
 		const layers: ReprocessLayer[] = stale.length === 0 && promptsMoved ? ["interpretation"] : stale;
 		const sent =
 			layers.length > 0 &&
