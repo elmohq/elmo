@@ -42,7 +42,7 @@ const SMOKE_MODES: SmokeMode[] = ["local", "demo", "whitelabel", "cloud"];
  * createAuth(); the AUTH0_* vars are read by getWhitelabelAuthOptions() and the
  * whitelabel env requirements. SCRAPE_TARGETS=chatgpt:olostep:online pulls in
  * the OLOSTEP_API_KEY provider-key requirement; OPENAI_API_KEY is the direct
- * LLM key onboarding needs.
+ * LLM key onboarding needs; TYPESAFE_API_KEY is the judge's key.
  */
 const SHARED_ENV: Record<string, string> = {
 	DATABASE_URL: "postgres://smoke:smoke@127.0.0.1:5432/smoke",
@@ -50,6 +50,7 @@ const SHARED_ENV: Record<string, string> = {
 	SCRAPE_TARGETS: "chatgpt:olostep:online",
 	OLOSTEP_API_KEY: "smoke-olostep-key",
 	OPENAI_API_KEY: "smoke-openai-key",
+	TYPESAFE_API_KEY: "stub",
 };
 
 const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
