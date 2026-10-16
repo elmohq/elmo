@@ -276,7 +276,8 @@ function SentimentPage() {
 							<CardHeader className={ROW_HEADER}>
 								<CardTitle>Sentiment by Model</CardTitle>
 							</CardHeader>
-							<CardContent className="overflow-x-auto">
+							{/* A long field of competitors scrolls in place rather than stretching the page. */}
+							<CardContent className="max-h-[560px] overflow-auto">
 								<ModelGrid landscape={landscape} metric="sentiment" />
 							</CardContent>
 						</Card>
