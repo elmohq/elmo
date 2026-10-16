@@ -1,7 +1,7 @@
 ---
 title: Subprocessors
 description: The third parties that process data on Elmo Cloud's behalf, what each one does, and where it operates.
-updated: 2026-10-07
+updated: 2026-10-16
 order: 4
 ---
 
@@ -55,7 +55,7 @@ We may load advertising and conversion-measurement tags from these platforms on 
 
 ## AI and search data providers
 
-This is the part that makes Elmo work: to measure how answer engines describe a brand, Elmo has to ask them. Prompts you configure are sent to these providers, either directly through their APIs or through a scraping provider that queries the consumer product on our behalf. The answers come back to us and are stored in your account.
+This is the part that makes Elmo work: to measure how answer engines describe a brand, Elmo has to ask them. Prompts you configure are sent to these providers, either directly through their APIs or through a scraping provider that queries the consumer product on our behalf. The answers come back to us and are stored in your account, and those that name a tracked brand are analyzed.
 
 **What they receive is what you've configured in Elmo** — your prompts, which are market-research queries like "best project management software for agencies", and for some features your brands, competitors, tracked domains, and text from your website — rather than your name, email address, or billing details. Do not put personal data into a prompt.
 
@@ -66,6 +66,7 @@ Which of these is used depends on the platforms your plan tracks and how Elmo Cl
 | [OpenAI](https://openai.com/policies/privacy-policy/) | Model API, and analysis of collected answers | United States |
 | [Anthropic](https://www.anthropic.com/legal/privacy) | Model API, and analysis of collected answers | United States |
 | [Mistral](https://mistral.ai/terms#privacy-policy) | Model API | France |
+| [TypeSafe](https://typesafe.ai/legal/privacy-policy) | Analysis of collected answers: which brands they mention, and the sentiment toward each | United States |
 | [OpenRouter](https://openrouter.ai/privacy) | Model API gateway | United States |
 | [Bright Data](https://brightdata.com/privacy) | Answer-engine and search result collection | Israel |
 | [Olostep](https://www.olostep.com/privacy) | Answer-engine and search result collection | United States |
