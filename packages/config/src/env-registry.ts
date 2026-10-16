@@ -224,11 +224,11 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"API key for Jev (typesafe.ai), which judges which answers mention a brand or competitor, and the sentiment toward each. 'stub' judges from cue words instead, for tests and development without a key.",
 	},
 	{
-		name: "REJUDGE_DAYS",
+		name: "REPROCESS_DAYS",
 		scope: "server",
 		requiredBy: "optional",
 		description:
-			"How far back the worker re-judges history after a brand's names, competitors or the judge change, in days (default 90), or 'all'. Only enabled prompts are re-judged.",
+			"How far back the worker reprocesses history (re-extracting and re-judging answers) after the extractor, the judge, or a brand's names or competitors change, in days (default 90), or 'all'. Only enabled prompts of enabled brands are reprocessed.",
 	},
 	{
 		name: "JINA_API_KEY",

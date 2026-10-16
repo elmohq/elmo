@@ -57,19 +57,19 @@ const staleFor = (layer: ReprocessLayer, target: AnalysisVersions): SQL =>
 
 const PAGE_SIZE = 5000;
 
-const DEFAULT_REJUDGE_DAYS = 90;
+const DEFAULT_REPROCESS_DAYS = 90;
 
 /**
- * `REJUDGE_DAYS`: how far back a replay re-derives history, in days (default 90), or `all`. Null
+ * `REPROCESS_DAYS`: how far back a replay re-derives history, in days (default 90), or `all`. Null
  * means all. Answers older than this keep what they were judged with when they were recorded.
  */
-export function rejudgeDays(env: Record<string, string | undefined> = process.env): number | null {
-	const raw = env.REJUDGE_DAYS?.trim();
-	if (!raw) return DEFAULT_REJUDGE_DAYS;
+export function reprocessDays(env: Record<string, string | undefined> = process.env): number | null {
+	const raw = env.REPROCESS_DAYS?.trim();
+	if (!raw) return DEFAULT_REPROCESS_DAYS;
 	if (raw.toLowerCase() === "all") return null;
 	const days = Number(raw);
 	if (!Number.isInteger(days) || days < 1)
-		throw new Error(`REJUDGE_DAYS must be a whole number of days or "all", got "${raw}"`);
+		throw new Error(`REPROCESS_DAYS must be a whole number of days or "all", got "${raw}"`);
 	return days;
 }
 
@@ -199,7 +199,7 @@ export async function runReprocess(
 	conn: DbConnection = db,
 	boss: Pick<PgBoss, "insert"> = getBoss(),
 	analyzer: MentionAnalyzer = mentionAnalyzer(),
-	days: number | null = rejudgeDays(),
+	days: number | null = reprocessDays(),
 ): Promise<void> {
 	const context = await loadBrand(conn, data.brandId, analyzer);
 	if (!context) {

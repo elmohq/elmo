@@ -10,7 +10,7 @@ import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
 import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS, requestUnjudgedRuns } from "./jobs/derive-runs";
-import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE, rejudgeDays } from "./jobs/reprocess";
+import { adoptCurrentStamps, REPROCESS_QUEUE, REQUEST_REPROCESSES_QUEUE, reprocessDays } from "./jobs/reprocess";
 import { configureMentionAnalyzer } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
@@ -35,7 +35,7 @@ async function main() {
 	// missing API keys, and per-provider target errors before any job runs.
 	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
 	console.log("SCRAPE_TARGETS validated");
-	rejudgeDays();
+	reprocessDays();
 
 	// Before anything stamps runs or brands: the stamp names the judge.
 	const { judgeVersion } = configureMentionAnalyzer();
