@@ -99,7 +99,7 @@ describe("research provider requirement", () => {
 	});
 
 	it("is satisfied by any one direct LLM key", () => {
-		for (const key of ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "MISTRAL_API_KEY"]) {
+		for (const key of ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "MISTRAL_API_KEY", "ZAI_API_KEY"]) {
 			expect(missingIds("local", { [key]: "x" }).has("RESEARCH_PROVIDER"), key).toBe(false);
 		}
 	});
