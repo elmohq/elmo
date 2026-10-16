@@ -57,8 +57,9 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 	);
 	return (
 		<table className="text-sm">
-			<thead>
-				<tr className="border-b text-xs text-muted-foreground">
+			{/* Sticky so the measure's columns stay labelled while a long field of competitors scrolls. */}
+			<thead className="sticky top-0 z-10 bg-card shadow-[inset_0_-1px_0_var(--border)]">
+				<tr className="text-xs text-muted-foreground">
 					<th className="px-4 py-2.5 text-left font-medium">Company</th>
 					<th className="px-2 py-2.5 font-medium">All</th>
 					{landscape.models.map((model) => {
@@ -122,15 +123,16 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 	const colors = useCompanyColors(landscape);
 	const meta = METRIC_META[metric];
 	return (
-		<Card className="gap-0 border-slate-200 bg-slate-50/70 py-0 shadow-none dark:border-slate-800 dark:bg-slate-900/40">
+		// On wide screens the page fits the viewport, so the card takes what's left and the grid scrolls within it.
+		<Card className="gap-0 xl:min-h-0 xl:flex-1 border-slate-200 bg-slate-50/70 py-0 shadow-none dark:border-slate-800 dark:bg-slate-900/40">
 			<CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 px-5 pt-4 pb-0">
 				<CardTitle className="text-base">Competitive Landscape</CardTitle>
 				<MetricSwitch value={metric} onChange={setMetric} />
 			</CardHeader>
-			<CardContent className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_auto]">
-				<div className="min-w-0 rounded-lg border bg-card p-4">
+			<CardContent className="grid gap-4 p-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1fr)_auto] xl:grid-rows-[minmax(0,1fr)]">
+				<div className="h-[340px] min-w-0 rounded-lg border bg-card p-4 xl:h-auto">
 					{loading || !landscape ? (
-						<Skeleton className="h-[290px] w-full" />
+						<Skeleton className="h-full w-full" />
 					) : (
 						<CompanyTrendChart
 							dates={landscape.dates}
@@ -142,10 +144,11 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 							}))}
 							format={meta.format}
 							lowerIsBetter={lowerIsBetter(metric)}
+							height="fill"
 						/>
 					)}
 				</div>
-				<div className="overflow-x-auto rounded-lg border bg-card">
+				<div className="max-h-[480px] overflow-auto rounded-lg border bg-card xl:max-h-none">
 					{loading || !landscape ? (
 						<Skeleton className="m-4 h-[260px] w-[420px]" />
 					) : (

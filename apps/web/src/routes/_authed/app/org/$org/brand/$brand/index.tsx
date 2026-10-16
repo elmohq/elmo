@@ -332,7 +332,9 @@ function DashboardPage() {
 
 	return (
 		<div className="flex flex-1 flex-col">
-			<div className="m-auto flex w-full max-w-[1600px] flex-col gap-4 p-4">
+			{/* Wide screens fit the page to the viewport below the 4rem site header and the inset's
+			    margins, so a long list of competitors scrolls inside the landscape instead of the page. */}
+			<div className="m-auto flex w-full max-w-[1600px] flex-col gap-4 p-4 xl:h-[max(40rem,calc(100svh-5rem-2px))]">
 				<PageHeader
 					title="Overview"
 					subtitle="How AI answers talk about your brand and your competitors."
@@ -355,7 +357,7 @@ function DashboardPage() {
 
 				<OverviewFigures summary={summary} loading={loading} failed={!!summaryError && !summary} />
 
-				<section className="pt-2">
+				<section className="shrink-0 pt-2">
 					<TrackingStats
 						loading={loading}
 						totalPrompts={summary?.totalPrompts ?? 0}

@@ -81,3 +81,21 @@ export const WithoutMentionJudge: Story = {
 		},
 	],
 };
+
+/** A long field of competitors scrolls within the landscape rather than stretching the page. */
+export const ManyCompetitors: Story = {
+	decorators: [
+		(Story) => {
+			const [brand, ...competitors] = mockDashboardSummary.landscape.companies;
+			const filler = Array.from({ length: 60 }, (_, i) => {
+				const template = competitors[i % competitors.length];
+				return { ...template, name: `${template.name} ${Math.floor(i / competitors.length) + 2}` };
+			});
+			setMockDashboardSummary({
+				...mockDashboardSummary,
+				landscape: { ...mockDashboardSummary.landscape, companies: [brand, ...competitors, ...filler] },
+			});
+			return <Story />;
+		},
+	],
+};
