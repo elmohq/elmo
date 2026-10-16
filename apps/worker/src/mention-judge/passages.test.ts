@@ -63,4 +63,10 @@ describe("mentionOffsets", () => {
 		const text = "Peec AI first. Then peec.ai again, and Peec.";
 		expect(mentionOffsets(text, peec)).toEqual([0, 20, 39]);
 	});
+
+	it("doesn't count a link's target as naming a company, unless that's the only place it appears", () => {
+		const text = "Sources: [review](https://example.com/peec-vs-elmo). Elmo leads.";
+		expect(mentionOffsets(text, elmo)).toEqual([text.indexOf("Elmo leads")]);
+		expect(mentionOffsets(text, peec)).toEqual([text.indexOf("peec-vs")]);
+	});
 });

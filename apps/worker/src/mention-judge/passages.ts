@@ -46,13 +46,7 @@ export function sentences(text: string): Sentence[] {
 
 /** Whether text names the subject: a name, alias or domain, as a whole word, as `mentionOffsets` counts them. */
 export function matcher(subject: Subject): (text: string) => boolean {
-	const { name, aliases, domains } = judgedSubject(subject);
-	const terms = [name, ...aliases, ...domains].filter(Boolean).map((term) => wholeWordPattern(term));
-	return (text) =>
-		terms.some((pattern) => {
-			pattern.lastIndex = 0;
-			return pattern.test(text);
-		});
+	return (text) => mentionOffsets(text, subject).length > 0;
 }
 
 /** Sentences after a mention that may still be about it: a heading's description, a tagline's detail. */
@@ -93,12 +87,22 @@ export function quoteOptions(
 		.filter((passage) => /\p{L}{2}/u.test(passage.replace(/\((?:[a-z0-9-]+\.)+[a-z]{2,}\)/g, "")));
 }
 
-/** Offsets of every mention of the subject in the original answer, for its position and count. */
+/**
+ * Offsets of every mention of the subject in the original answer, for its position and count. A
+ * link's target (a URL slug like ".../nike-vs-hoka") isn't the answer naming anyone, so it counts
+ * only for a company the answer cites and never names.
+ */
 export function mentionOffsets(answer: string, subject: Subject): number[] {
+	const visible = answer.replace(/\]\([^)\s]{0,2000}\)|https?:\/\/[^\s)\]]+/g, (target) => " ".repeat(target.length));
+	const named = offsetsIn(visible, subject);
+	return named.length ? named : offsetsIn(answer, subject);
+}
+
+function offsetsIn(text: string, subject: Subject): number[] {
 	const { name, aliases, domains } = judgedSubject(subject);
 	const offsets = new Set<number>();
 	for (const term of [name, ...aliases, ...domains].filter(Boolean)) {
-		for (const match of answer.matchAll(wholeWordPattern(term))) offsets.add(match.index ?? 0);
+		for (const match of text.matchAll(wholeWordPattern(term))) offsets.add(match.index ?? 0);
 	}
 	return [...offsets].sort((a, b) => a - b);
 }
