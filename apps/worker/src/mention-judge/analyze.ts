@@ -184,14 +184,9 @@ function collect(subjects: Entry[], records: Map<string, MentionAssessment>): Ru
 	};
 }
 
-/** Below this, a shorter answer would leave too little to judge. */
 const MIN_ANSWER_CHARS = 2_000;
 
-/**
- * Asks Jev, splitting a request it finds too large. Each question is answered independently against
- * the same state, so asking about half the companies at a time changes no answer. A single company
- * that still doesn't fit is asked about the first half of the answer.
- */
+/** Each question is answered independently against the same state, so splitting changes no answer. */
 async function askFitting(transport: JevTransport, request: JevRequest): Promise<JevResponse["answers"]> {
 	try {
 		return (await transport(request)).answers;

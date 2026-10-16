@@ -41,7 +41,6 @@ export class RateLimited extends Error {
 	}
 }
 
-/** Jev refused the request as more than it reads at once; a smaller one may fit. */
 export class TooLarge extends Error {}
 
 /** A failure throws, so the derivation job retries it. */
