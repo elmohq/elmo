@@ -12,9 +12,11 @@ import {
 	JEV_MODEL,
 	type JevChoiceQuestion,
 	type JevRequest,
+	type JevResponse,
 	type JevTransport,
 	MAX_IN_FLIGHT,
 	stubTransport,
+	TooLarge,
 	typesafeTransport,
 } from "./jev";
 import { matcher, mentionOffsets, quoteOptions, type Sentence, sentences } from "./passages";
@@ -182,6 +184,39 @@ function collect(subjects: Entry[], records: Map<string, MentionAssessment>): Ru
 	};
 }
 
+/** Below this, a shorter answer would leave too little to judge. */
+const MIN_ANSWER_CHARS = 2_000;
+
+/**
+ * Asks Jev, splitting a request it finds too large. Each question is answered independently against
+ * the same state, so asking about half the companies at a time changes no answer. A single company
+ * that still doesn't fit is asked about the first half of the answer.
+ */
+async function askFitting(transport: JevTransport, request: JevRequest): Promise<JevResponse["answers"]> {
+	try {
+		return (await transport(request)).answers;
+	} catch (error) {
+		if (!(error instanceof TooLarge)) throw error;
+		const companyOf = (key: string) => key.split("__")[0];
+		const companies = [...new Set(Object.keys(request.questions).map(companyOf))];
+		if (companies.length > 1) {
+			const first = new Set(companies.slice(0, Math.ceil(companies.length / 2)));
+			const part = (inFirst: boolean): JevRequest => ({
+				...request,
+				questions: Object.fromEntries(
+					Object.entries(request.questions).filter(([key]) => first.has(companyOf(key)) === inFirst),
+				),
+			});
+			const [a, b] = await Promise.all([askFitting(transport, part(true)), askFitting(transport, part(false))]);
+			return { ...a, ...b };
+		}
+		const answer = String(request.state.answer ?? "");
+		if (answer.length < MIN_ANSWER_CHARS) throw error;
+		const shorter = { ...request.state, answer: answer.slice(0, Math.floor(answer.length / 2)) };
+		return askFitting(transport, { ...request, state: shorter });
+	}
+}
+
 /**
  * `model` is part of the stamp, so judgements from the stub are never taken for Jev's: switching
  * to a real key re-judges them.
@@ -208,7 +243,7 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 				state: { rules: RULES, question: question ?? "", answer: readable },
 				questions,
 			};
-			const answers = ask.length ? (await transport(request)).answers : {};
+			const answers = ask.length ? await askFitting(transport, request) : {};
 
 			const records = new Map<string, MentionAssessment>();
 			for (const entry of named) {

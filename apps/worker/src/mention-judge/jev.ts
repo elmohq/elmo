@@ -41,6 +41,9 @@ export class RateLimited extends Error {
 	}
 }
 
+/** Jev refused the request as more than it reads at once; a smaller one may fit. */
+export class TooLarge extends Error {}
+
 /** A failure throws, so the derivation job retries it. */
 export function typesafeTransport(apiKey: string, fetchImpl: typeof fetch = fetch): JevTransport {
 	return async (request) => {
@@ -65,6 +68,8 @@ async function failure(response: Response): Promise<Error> {
 	const detail = (await response.text().catch(() => "")).slice(0, 300);
 	if (response.status === 429)
 		return new RateLimited(Math.min(Number(response.headers.get("retry-after")) * 1000 || 1000, 60_000), detail);
+	if (response.status === 400 && detail.includes("max_tokens_exceeded"))
+		return new TooLarge(`Jev found the request too large (HTTP 400): ${detail}`);
 	if (response.status === 401 || response.status === 403)
 		return new Error(`TYPESAFE_API_KEY was rejected (HTTP ${response.status}); check it, or its credit: ${detail}`);
 	return new Error(`Jev returned HTTP ${response.status}: ${detail}`);

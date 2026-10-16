@@ -2,7 +2,7 @@ import type { MentionConfig } from "@workspace/lib/mentions";
 import { describe, expect, it, vi } from "vitest";
 import { cuedAnalyzer as analyzer } from "./__fixtures__/cued-judge";
 import { configureMentionAnalyzer, jevAnalyzer } from "./analyze";
-import { type JevRequest, stubTransport } from "./jev";
+import { type JevRequest, stubTransport, TooLarge } from "./jev";
 
 const config: MentionConfig = {
 	brand: { name: "Apple", aliases: [], domains: ["https://www.apple.com"] },
@@ -72,6 +72,33 @@ describe("judged mentions", () => {
 		await analyze.analyze("![logo](https://img.example/a.png) Apple is great.", config, null, "best laptops?");
 		expect(requests[0].state).toMatchObject({ question: "best laptops?", answer: "(image: logo) Apple is great." });
 		expect(Object.keys(requests[0].questions)).toEqual(["brand__verdict", "brand__evidence"]);
+	});
+});
+
+describe("answers too large for Jev", () => {
+	it("asks about fewer companies at a time, and gets the same judgements", async () => {
+		const text = "Apple is great value. Globex is a solid alternative. Initech is the one to avoid.";
+		const sizes: number[] = [];
+		const small = jevAnalyzer(async (request) => {
+			if (Object.keys(request.questions).length > 2) throw new TooLarge("too large");
+			sizes.push(Object.keys(request.questions).length);
+			return stubTransport(request);
+		});
+		expect(await small.analyze(text, config)).toEqual(await analyzer.analyze(text, config));
+		expect(sizes).toEqual([2, 2, 2]);
+	});
+
+	it("reads less of the answer when one company alone doesn't fit", async () => {
+		const text = `Apple is great value. ${"Filler words about laptops. ".repeat(400)}`;
+		const answers: number[] = [];
+		const result = await jevAnalyzer(async (request) => {
+			const answer = String(request.state.answer);
+			answers.push(answer.length);
+			if (answer.length > 5_000) throw new TooLarge("too large");
+			return stubTransport(request);
+		}).analyze(text, config);
+		expect(result.brandMentioned).toBe(true);
+		expect(answers.at(-1)).toBeLessThanOrEqual(5_000);
 	});
 });
 
