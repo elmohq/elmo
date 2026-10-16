@@ -17,7 +17,7 @@ import {
 	stubTransport,
 	typesafeTransport,
 } from "./jev";
-import { matcher, mentionOffsets, quoteOptions, type Sentence, sentences } from "./passages";
+import { matcher, mentionOffsets, namedInProse, quoteOptions, type Sentence, sentences } from "./passages";
 
 export interface RunMentions {
 	brandMentioned: boolean;
@@ -127,6 +127,16 @@ function assessment(
 	};
 }
 
+/**
+ * A company the answer only cites still counts as mentioned, but its sentiment is left out: the judge
+ * reads being cited as neutral, which would pull the company's score toward the middle for answers
+ * that say nothing about it. Decided from the answer each time, so it needs no judge to recompute.
+ */
+function citedOnly(record: MentionAssessment): MentionAssessment {
+	const { sentiment: _, sentimentProbabilities: __, ...rest } = record;
+	return { ...rest, citedOnly: true };
+}
+
 type Entry = ReturnType<typeof subjectsOf>[number];
 
 function subjectsOf(config: MentionConfig, previous: RunMentionAssessments | null | undefined, judgeVersion: string) {
@@ -200,8 +210,13 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 			// Only companies the answer names are asked about; a company judged under an unchanged
 			// fingerprint keeps its assessment, a copy since `rank` rewrites positions.
 			const named = subjects.filter((entry) => entry.names(readable));
-			// A company named now but not when judged (cleaning or matching changed) is asked about too.
-			const ask = named.filter((entry) => entry.judgedAs !== entry.fingerprint || !entry.kept);
+			const inProse = new Set(named.filter((entry) => namedInProse(answer, entry.subject)));
+			// A company named now but not when judged (cleaning or matching changed) is asked about too, as
+			// is one kept without a sentiment because it was only cited then but is named in prose now.
+			const ask = named.filter(
+				(entry) =>
+					entry.judgedAs !== entry.fingerprint || !entry.kept || (!!entry.kept.citedOnly && inProse.has(entry)),
+			);
 			const { questions, options } = questionsFor(ask, named, sentences(readable));
 			const request: JevRequest = {
 				model: JEV_MODEL,
@@ -212,15 +227,13 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 
 			const records = new Map<string, MentionAssessment>();
 			for (const entry of named) {
-				if (!ask.includes(entry)) {
-					if (entry.kept) records.set(entry.key, { ...entry.kept });
-					continue;
+				let record: MentionAssessment | undefined;
+				if (!ask.includes(entry)) record = entry.kept && { ...entry.kept };
+				else {
+					const quote = options.get(entry.key)?.[Number(answers[`${entry.key}__evidence`]?.choice.slice(1)) - 1];
+					record = assessment(answer, cleaned, entry.subject, answers[`${entry.key}__verdict`].probabilities, quote);
 				}
-				const quote = options.get(entry.key)?.[Number(answers[`${entry.key}__evidence`]?.choice.slice(1)) - 1];
-				records.set(
-					entry.key,
-					assessment(answer, cleaned, entry.subject, answers[`${entry.key}__verdict`].probabilities, quote),
-				);
+				if (record) records.set(entry.key, record.mentioned && !inProse.has(entry) ? citedOnly(record) : record);
 			}
 
 			return collect(subjects, records);
