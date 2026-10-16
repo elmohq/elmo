@@ -58,11 +58,7 @@ const staleFor = (layer: ReprocessLayer, target: AnalysisVersions): SQL =>
 
 const PAGE_SIZE = 5000;
 
-/**
- * Queues the runs of the brand's enabled prompts that are stale for `layers` and inside the
- * window, recent runs ahead of older history. A disabled prompt's runs wait until it's enabled
- * again, which requests a replay. Pages by id, which is unique where creation times can tie.
- */
+/** Pages by id, which is unique where creation times can tie. */
 async function queueStaleRuns(
 	conn: DbConnection,
 	boss: Pick<PgBoss, "insert">,
@@ -181,10 +177,8 @@ export function sendReprocess(
 }
 
 /**
- * Brings a brand's history up to its current config and today's code by stamping the brand, then
- * queueing its stale runs for the derivation workers. Stamping before they're done is safe: each
- * chunk derives under the config current when it runs and writes only if that's still current,
- * and a config that moves again leaves the brand stale for the next pass.
+ * Stamping the brand before its runs are derived is safe: each chunk derives under the config
+ * current when it runs and writes only if that's still current.
  */
 export async function runReprocess(
 	data: ReprocessData,
@@ -207,10 +201,8 @@ export async function runReprocess(
 		.select({ id: prompts.id })
 		.from(prompts)
 		.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)));
-	// Stamped before queueing, so the per-minute check doesn't send a second pass that queues the
-	// same runs again while this one is still at it. The stamp names the config and prompts read
-	// here: an edit or a prompt enabled meanwhile leaves the brand stale for another pass, and a
-	// pass that fails partway is retried, queueing only what's still stale.
+	// Stamped before queueing, so the per-minute check doesn't send a second pass for the same runs.
+	// An edit or a prompt enabled meanwhile leaves the brand stale for another pass.
 	const target = {
 		...pickLayers(context.current, data.layers),
 		[PROMPTS_KEY]: promptsStamp(brandPrompts.map(({ id }) => id)),

@@ -45,7 +45,6 @@ async function main() {
 		validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
 		console.log("SCRAPE_TARGETS validated");
 	}
-	// Every role reads it: passes when they queue history, and derivation when it judges it.
 	reprocessDays();
 
 	// Before anything stamps runs or brands: the stamp names the judge, so it has to be known. Without
