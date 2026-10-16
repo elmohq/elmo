@@ -1,5 +1,15 @@
 # @workspace/www
 
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.6.1
+  - @workspace/config@0.6.1
+  - @workspace/docs@0.6.1
+  - @workspace/og@0.6.1
+  - @workspace/ui@0.6.1
+
 ## 0.6.0
 
 ### Patch Changes

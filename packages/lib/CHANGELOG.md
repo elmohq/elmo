@@ -1,5 +1,11 @@
 # @workspace/lib
 
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/config@0.6.1
+
 ## 0.6.0
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @workspace/worker
 
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/config@0.6.1
+  - @workspace/deployment@0.6.1
+  - @workspace/lib@0.6.1
+
 ## 0.6.0
 
 ### Minor Changes

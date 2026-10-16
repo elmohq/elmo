@@ -1,5 +1,17 @@
 # @workspace/web
 
+## 0.6.1
+
+### Patch Changes
+
+- 1a39665: The overview fits on one screen, and long competitor lists scroll in place on the overview and sentiment pages.
+- @workspace/api-spec@0.6.1
+  - @workspace/config@0.6.1
+  - @workspace/deployment@0.6.1
+  - @workspace/lib@0.6.1
+  - @workspace/og@0.6.1
+  - @workspace/ui@0.6.1
+
 ## 0.6.0
 
 ### Patch Changes
