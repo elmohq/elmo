@@ -8,12 +8,13 @@ import {
 } from "@workspace/lib/mentions";
 import { type Cleaned, cleanAnswer, originalSpan } from "./clean";
 import {
+	adaptivePool,
 	JEV_MODEL,
 	type JevChoiceQuestion,
 	type JevRequest,
 	type JevTransport,
+	MAX_IN_FLIGHT,
 	stubTransport,
-	tokenBudget,
 	typesafeTransport,
 } from "./jev";
 import { matcher, mentionOffsets, quoteOptions, type Sentence, sentences } from "./passages";
@@ -229,30 +230,15 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 
 let current: MentionAnalyzer | undefined;
 
-export function configureMentionAnalyzer(
-	apiKey = process.env.TYPESAFE_API_KEY,
-	env: Record<string, string | undefined> = process.env,
-): MentionAnalyzer {
+export function configureMentionAnalyzer(apiKey = process.env.TYPESAFE_API_KEY): MentionAnalyzer {
 	if (!apiKey?.trim()) throw new Error("TYPESAFE_API_KEY is required: Elmo judges mentions and sentiment with Jev");
-	const concurrency = positiveInteger(env, "JEV_CONCURRENCY") ?? 8;
 	if (apiKey.trim() === "stub") {
 		console.warn(
 			"[mention-judge] TYPESAFE_API_KEY=stub: judging from cue words, not Jev. For tests and development only.",
 		);
-		current = jevAnalyzer(stubTransport, concurrency, "stub");
-		return current;
-	}
-	const tokensPerSecond = positiveInteger(env, "JEV_TOKENS_PER_SECOND");
-	const transport = typesafeTransport(apiKey.trim());
-	current = jevAnalyzer(tokensPerSecond ? tokenBudget(transport, tokensPerSecond) : transport, concurrency);
+		current = jevAnalyzer(stubTransport, 8, "stub");
+	} else current = jevAnalyzer(adaptivePool(typesafeTransport(apiKey.trim())), MAX_IN_FLIGHT);
 	return current;
-}
-
-function positiveInteger(env: Record<string, string | undefined>, name: string): number | undefined {
-	const raw = env[name]?.trim();
-	if (!raw) return undefined;
-	if (!/^[1-9]\d{0,6}$/.test(raw)) throw new Error(`${name} must be a whole number above 0, got "${raw}"`);
-	return Number(raw);
 }
 
 export function mentionAnalyzer(): MentionAnalyzer {

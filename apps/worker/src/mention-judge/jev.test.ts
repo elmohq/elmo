@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { estimatedTokens, JEV_MODEL, type JevRequest, tokenBudget, typesafeTransport } from "./jev";
+import { adaptivePool, JEV_MODEL, type JevRequest, RateLimited, typesafeTransport } from "./jev";
 
 const request: JevRequest = {
 	model: JEV_MODEL,
@@ -41,45 +41,64 @@ describe("typesafeTransport", () => {
 	});
 });
 
-describe("rate limits", () => {
+describe("adaptivePool", () => {
 	const ok = { answers: { brand__verdict: { choice: "positive", probabilities: { positive: 1 } } } };
+	const clock = () => {
+		let at = 0;
+		return {
+			now: () => at,
+			wait: async (ms: number) => {
+				at += ms;
+			},
+		};
+	};
 
-	it("waits out a rate limit, as long as the API asks, and then succeeds", async () => {
-		const fetchImpl = vi
-			.fn()
-			.mockResolvedValueOnce(new Response("slow down", { status: 429, headers: { "retry-after": "2" } }))
-			.mockResolvedValueOnce(new Response(JSON.stringify(ok), { status: 200 }));
-		const waits: number[] = [];
-		const transport = typesafeTransport("secret", fetchImpl as unknown as typeof fetch, async (ms) => {
-			waits.push(ms);
+	it("reports a rate limit with how long Jev asks to wait", async () => {
+		const fetchImpl = vi.fn(async () => new Response("slow down", { status: 429, headers: { "retry-after": "2" } }));
+		await expect(typesafeTransport("secret", fetchImpl as unknown as typeof fetch)(request)).rejects.toMatchObject({
+			retryAfterMs: 2000,
 		});
-		expect((await transport(request)).answers.brand__verdict.choice).toBe("positive");
-		expect(waits).toEqual([2000]);
 	});
 
-	it("gives up after repeated rate limits, so the job retries later", async () => {
-		const fetchImpl = vi.fn(async () => new Response("slow down", { status: 429 }));
-		const transport = typesafeTransport("secret", fetchImpl as unknown as typeof fetch, async () => {});
-		await expect(transport(request)).rejects.toThrow("HTTP 429");
-	});
-
-	it("holds requests back to stay within a tokens-per-second budget", async () => {
-		let clock = 0;
-		const sent: number[] = [];
-		const budget = tokenBudget(
+	/** Start times of each call, for a pool whose API rate-limits the calls listed in `refuse`. */
+	async function starts(calls: number, refuse: number[] = []) {
+		const time = clock();
+		const at: number[] = [];
+		const pool = adaptivePool(
 			async () => {
-				sent.push(clock);
+				at.push(time.now());
+				if (refuse.includes(at.length)) throw new RateLimited(1000, "slow down");
 				return ok;
 			},
-			estimatedTokens(request) * 2,
-			{
-				now: () => clock,
-				wait: async (ms) => {
-					clock += ms;
-				},
-			},
+			{ ...time, start: 2 },
 		);
-		await Promise.all([budget(request), budget(request), budget(request), budget(request)]);
-		expect(sent).toEqual([0, 0, 500, 1000]);
+		for (let i = 0; i < calls; i++) await pool(request);
+		return at.slice(1).map((t, i) => t - at[i]);
+	}
+
+	it("spaces calls out, closer together while they succeed", async () => {
+		const gaps = await starts(20);
+		expect(gaps[0]).toBe(500);
+		expect(gaps.at(-1)).toBeLessThan(250);
+	});
+
+	it("waits out a rate limit, sends the call again, and slows down after", async () => {
+		const gaps = await starts(12, [10]);
+		expect(gaps[9]).toBeGreaterThanOrEqual(1000);
+		expect(gaps[10]).toBeGreaterThan(gaps[8]);
+	});
+
+	it("gives up after repeated rate limits, so the job retries later, and passes other failures straight on", async () => {
+		const limited = adaptivePool(
+			async () => {
+				throw new RateLimited(10, "slow down");
+			},
+			{ ...clock(), retries: 2 },
+		);
+		await expect(limited(request)).rejects.toThrow("HTTP 429");
+		const broken = adaptivePool(async () => {
+			throw new Error("HTTP 500");
+		});
+		await expect(broken(request)).rejects.toThrow("HTTP 500");
 	});
 });

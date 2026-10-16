@@ -84,8 +84,6 @@ Elmo uses [Jev](https://typesafe.ai) from TypeSafe to read each answer. Jev deci
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `TYPESAFE_API_KEY` | TypeSafe API key for Jev. `stub` judges locally from cue words, with no calls and no cost, for development and tests only. | — |
-| `JEV_CONCURRENCY` | How many Jev calls a worker makes at once | `8` |
-| `JEV_TOKENS_PER_SECOND` | Input tokens per second a worker may send Jev; set it under your TypeSafe rate limit, split across workers | — |
 | `REPROCESS_DAYS` | How far back reprocessing (re-extracting and re-judging history) goes, in days, or `all` | `90` |
 
 Elmo makes one Jev call for each answer that names a tracked company. Answers that name none are never sent. Its cost grows with the answer's length and with how many tracked companies it names.
@@ -100,7 +98,7 @@ Very roughly, that's **$0.15–0.35 per 1,000 answers**. A month of answers is a
 
 These are estimates, not quotes; see TypeSafe's pricing for current rates.
 
-A large re-judge goes as fast as your TypeSafe rate limit allows. The input-token limit is usually the one that binds: an answer averages a few thousand tokens. To use more of it, raise `JEV_CONCURRENCY` and set `JEV_TOKENS_PER_SECOND` a little under your limit. For example, with a 100,000 tokens per second limit and one worker, `JEV_CONCURRENCY=32` and `JEV_TOKENS_PER_SECOND=85000` judge about a million answers in roughly 16 hours. A rate-limited call waits and retries rather than failing.
+A large re-judge goes as fast as your TypeSafe rate limit allows, with nothing to configure. Each worker finds the limit itself: it speeds up while calls succeed, slows down when Jev rate-limits it, and retries those calls after the wait Jev asks for. For example, with a 100,000 input tokens per second limit, one worker judges about a million answers in roughly 16 hours.
 
 When the judge's version, or a brand's or competitor's names, change, the worker re-judges that brand's history in the background, starting with the last 30 days. A re-judge only goes back `REPROCESS_DAYS`, and only through enabled prompts of enabled brands. Older answers keep how they were judged when they were recorded. A prompt or brand that's enabled again has its answers within the window caught up at that point. Re-judging only asks about what changed. Adding a competitor, or editing one's names, aliases or domains, asks Jev about that company alone, and only in answers that name it. That costs a fraction of judging those answers from scratch. Removing a competitor asks nothing. Edits made within a minute of each other are handled in one pass. A new judge version re-judges everything in the window, so it costs about `REPROCESS_DAYS` worth of answers: at the default, roughly three months of the figures above.
 

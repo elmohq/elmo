@@ -29,7 +29,6 @@ import { and, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type { Job, PgBoss, QueueOptions } from "pg-boss";
 import { getBoss } from "../boss";
 import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge/analyze";
-import { TIMEOUT_MS } from "../mention-judge/jev";
 
 export const DERIVE_RUNS_QUEUE = "derive-runs";
 
@@ -40,10 +39,14 @@ export const DERIVE_RUNS_QUEUE_OPTIONS = {
 	retryLimit: 5,
 	retryDelay: 30,
 	retryBackoff: true,
-	// Long enough for every run in a chunk to wait out the judge's timeout, so a slow API doesn't
-	// expire a chunk and pay for it twice.
-	expireInSeconds: (CHUNK_SIZE * TIMEOUT_MS) / 1000 + 5 * 60,
+	expireInSeconds: 60 * 15,
 } satisfies QueueOptions;
+
+/**
+ * A chunk can wait a long time on a throttled judge, so it's kept alive by heartbeat instead of
+ * expiring and being paid for twice; a worker that dies stops the heartbeat and the chunk is retried.
+ */
+const CHUNK_LIFETIME = { heartbeatSeconds: 60, expireInSeconds: 60 * 60 * 4 };
 
 export interface DeriveRunsData {
 	brandId: string;
@@ -81,7 +84,7 @@ export async function sendDeriveRuns(
 		const data: DeriveRunsData = { brandId, runIds: chunk, ...(reextract && { reextract }) };
 		// One job per run per window: a run that keeps failing is asked about only so often.
 		const singleton = singletonSeconds && chunk.length === 1 ? { singletonKey: chunk[0], singletonSeconds } : {};
-		jobs.push({ data, priority, ...singleton });
+		jobs.push({ data, priority, ...CHUNK_LIFETIME, ...singleton });
 	}
 	for (let i = 0; i < jobs.length; i += 1000) await boss.insert(DERIVE_RUNS_QUEUE, jobs.slice(i, i + 1000));
 }
