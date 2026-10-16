@@ -180,55 +180,6 @@ async function attemptGoogleAiOverview(
 	}
 }
 
-/**
- * Gemini (via DataForSEO) returns each citation `url` as a Google Vertex AI
- * "grounding-api-redirect" link; the real source only appears as a bare domain
- * in the annotation `title`. There is no DataForSEO setting or field that
- * exposes the underlying URL (confirmed against their docs), so we resolve the
- * redirect to its destination. These links are short-lived, so we do it at
- * fetch time and rewrite the raw output in place — both the stored output and
- * the extracted citations then carry the real source URL/domain. ChatGPT and
- * Perplexity already return real URLs and are left untouched; resolution
- * failures fall back to the original redirect URL.
- */
-const GROUNDING_REDIRECT_PREFIX = "https://vertexaisearch.cloud.google.com/grounding-api-redirect/";
-
-async function resolveGroundingRedirect(url: string): Promise<string> {
-	try {
-		const res = await fetch(url, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(8000) });
-		const location = res.headers.get("location");
-		return location?.startsWith("http") ? location : url;
-	} catch {
-		return url;
-	}
-}
-
-type RawAnnotation = { url?: string };
-type RawLlmResponse = {
-	tasks?: { result?: { items?: { sections?: { annotations?: RawAnnotation[] }[] }[] }[] }[];
-};
-
-function collectGroundingAnnotations(raw: unknown): RawAnnotation[] {
-	const items = (raw as RawLlmResponse)?.tasks?.[0]?.result?.[0]?.items ?? [];
-	const annotations = items.flatMap((item) => (item?.sections ?? []).flatMap((section) => section?.annotations ?? []));
-	return annotations.filter((ann) => typeof ann?.url === "string" && ann.url.startsWith(GROUNDING_REDIRECT_PREFIX));
-}
-
-async function resolveGroundingRedirects(raw: unknown): Promise<void> {
-	const redirected = collectGroundingAnnotations(raw);
-	if (redirected.length === 0) return;
-
-	const resolved = new Map<string, string>();
-	await Promise.all(
-		[...new Set(redirected.map((a) => a.url as string))].map(async (u) =>
-			resolved.set(u, await resolveGroundingRedirect(u)),
-		),
-	);
-	for (const ann of redirected) {
-		ann.url = resolved.get(ann.url as string) ?? ann.url;
-	}
-}
-
 async function runLlmResponse(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 	const spec = LLM_MODELS[model];
 	const api = createDfsAiApi();
@@ -247,9 +198,6 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	const response = await LLM_CALLS[spec.call](api, [body]);
 	const result = dfsFirstResult<{ model_name?: string; fan_out_queries?: unknown }>(response);
 	const raw = sanitizeForJson(response);
-	// Replace Gemini's Vertex grounding-redirect citation URLs with the real
-	// source URLs before extraction (no-op for ChatGPT/Perplexity).
-	await resolveGroundingRedirects(raw);
 	const citations = extractCitationsFromDataforseoLlm(raw);
 
 	return {

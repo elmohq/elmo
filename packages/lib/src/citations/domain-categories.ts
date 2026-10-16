@@ -154,7 +154,7 @@ export function normalizeUrl(url: string): string {
 
 const GOOGLE_HOST_RE = /(^|\.)google\.[a-z.]+$/;
 
-function googleHost(url: string): string | null {
+export function googleHost(url: string): string | null {
 	try {
 		const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
 		return GOOGLE_HOST_RE.test(host) ? host : null;
@@ -196,9 +196,9 @@ export function isGoogleSearchUrl(url: string): boolean {
 
 /**
  * Google link wrappers: AI Mode's `/goto?url=`, ad clicks (`/aclk`), and the
- * `/url` and `/imgres` redirectors. The destination is an encoded Google payload
- * rather than the publisher's address, so the citation names no resolvable
- * source and can't be attributed to a domain.
+ * `/url` and `/imgres` redirectors. Cited ones are resolved when a run is
+ * fetched; any still here are ads, lookups that failed, or runs from before
+ * that, and name no source that can be attributed to a domain.
  */
 export function isGoogleRedirectUrl(url: string): boolean {
 	if (!googleHost(url)) return false;
