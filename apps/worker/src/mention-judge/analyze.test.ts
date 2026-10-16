@@ -30,7 +30,7 @@ describe("judged mentions", () => {
 		expect(result.competitorsMentioned).toEqual(["Globex"]);
 		const brand = result.assessments?.brand;
 		expect(brand).toMatchObject({ mentioned: true, sentiment: "positive", position: 1, mentionCount: 1 });
-		expect(text.slice(brand?.passage?.start, brand?.passage?.end)).toBe("Apple is great value");
+		expect(text.slice(brand?.passage?.start, brand?.passage?.end)).toBe("Apple is great value.");
 		expect(result.assessments?.competitors.Globex).toMatchObject({
 			mentioned: true,
 			sentiment: "neutral",

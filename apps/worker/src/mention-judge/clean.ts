@@ -1,7 +1,52 @@
 /**
- * Turns a stored answer (markdown full of images, link targets and inline data) into the text the
- * judge reads, and finds a quoted passage of that text again in the original answer.
+ * Turns a stored answer (markdown full of images, link targets, citation markers and inline data)
+ * into the text the judge reads, remembering where each character came from, so a passage the
+ * judge picks maps straight back to the original.
  */
+
+/** Cleaned text, with the span of the original that each of its characters was cleaned from. */
+export interface Cleaned {
+	text: string;
+	from: number[];
+	to: number[];
+}
+
+/** The span of the original a stretch of the cleaned text came from, whole markup and all. */
+export function originalSpan(cleaned: Cleaned, start: number, end: number): { start: number; end: number } {
+	return { start: cleaned.from[start], end: cleaned.to[end - 1] };
+}
+
+/**
+ * One cleaning step: every match of `pattern` is replaced, and each character of a replacement
+ * maps to the whole span the match came from, so a passage never starts or ends inside markup.
+ */
+function rewrite(cleaned: Cleaned, pattern: RegExp, replace: (...groups: string[]) => string): Cleaned {
+	const out: Cleaned = { text: "", from: [], to: [] };
+	let copied = 0;
+	const copy = (start: number, end: number) => {
+		out.text += cleaned.text.slice(start, end);
+		for (let i = start; i < end; i++) {
+			out.from.push(cleaned.from[i]);
+			out.to.push(cleaned.to[i]);
+		}
+	};
+	for (const match of cleaned.text.matchAll(pattern)) {
+		const start = match.index ?? 0;
+		const end = start + match[0].length;
+		if (end === start) continue;
+		copy(copied, start);
+		const replacement = replace(...match);
+		for (let i = 0; i < replacement.length; i++) {
+			out.from.push(cleaned.from[start]);
+			out.to.push(cleaned.to[end - 1]);
+		}
+		out.text += replacement;
+		copied = end;
+	}
+	if (copied === 0) return cleaned;
+	copy(copied, cleaned.text.length);
+	return out;
+}
 
 function host(url: string): string {
 	try {
@@ -18,95 +63,70 @@ const URL_PART = String.raw`((?:[^()\s]|\([^()\s]*\))*)`;
 const IMAGE = new RegExp(String.raw`!\[${TEXT}\]\(${URL_PART}\)`, "g");
 const LINK = new RegExp(String.raw`\[${TEXT}\]\(${URL_PART}\)`, "g");
 
-const INLINE_DATA = /data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi;
+export const INLINE_DATA = /data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi;
+const DOMAIN = /^(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}$/i;
+const CITATION_NUMBER = /^\[?\^?\d+\^?\]?$/;
+const ENTITIES: Record<string, string> = {
+	amp: "&",
+	quot: '"',
+	apos: "'",
+	lt: "<",
+	gt: ">",
+	nbsp: " ",
+	ndash: "–",
+	mdash: "—",
+};
 
 /**
  * Images become text first, so a link wrapping one has no nested brackets left. A favicon chip
  * keeps the site it cites, so a brand cited only that way still reads as mentioned; other images
  * keep their caption, which can name a product.
  */
-export function cleanAnswer(answer: string): string {
-	return (
-		answer
-			.replaceAll("\\[", "[")
-			.replaceAll("\\]", "]")
-			.replace(IMAGE, (_, caption: string, url: string) => {
+export function cleanAnswer(answer: string): Cleaned {
+	const steps: [RegExp, (...groups: string[]) => string][] = [
+		[/\\([!-/:-@[-`{-~])/g, (_, char) => char],
+		[
+			/&(?:(amp|quot|apos|lt|gt|nbsp|ndash|mdash)|#(\d+));/g,
+			(_, name, code) => ENTITIES[name] ?? (Number(code) <= 0x10ffff ? String.fromCodePoint(Number(code)) : ""),
+		],
+		[/<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?\/?>/gi, () => ""],
+		// Citation tokens some answers carry: "【4†source】", private-use markers, "[^1^]".
+		[/【[^】\n]*】|[-]|\[\^\d+\^?\]/g, () => ""],
+		[
+			IMAGE,
+			(_, caption, url) => {
 				const cited = /favicons\?domain=([^&]+)/.exec(url)?.[1];
 				if (cited) return `(${host(decodeURIComponent(cited))})`;
 				return caption.trim() ? `(image: ${caption.trim()})` : "";
-			})
-			.replace(INLINE_DATA, "")
-			// A relative link (shopping carousels) points at no site.
-			.replace(LINK, (_, text: string, url: string) => {
+			},
+		],
+		[INLINE_DATA, () => ""],
+		[
+			LINK,
+			(_, text, url) => {
+				// A relative link (shopping carousels) points at no site.
 				if (!url || url.startsWith("/")) return text;
-				return text.trim() ? `${text} (${host(url)})` : `(${host(url)})`;
-			})
-			// Links the answer itself broke (a URL with spaces, text over several lines) keep their text.
-			.replace(/\[([^\]]{0,200}?)\]\([^)\n[]{0,2000}\)/g, (_, text: string) => text.split(/\s+/).join(" ").trim())
-			.replace(/https?:\/\/[^\s)\]]+/g, (url) => host(url))
-			.replace(/[ \t]{2,}/g, " ")
-			.replace(/\n{3,}/g, "\n\n")
-			.trim()
-	);
-}
-
-const WORD = /[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu;
-/** How far apart two consecutive words of a quote may sit in the original, markup between them. */
-const MAX_GAP = 400;
-
-/**
- * Where a passage of the cleaned answer lies in the original: its words in order, with any markup
- * between them. Cleaning can glue words the source wrote without a space ("The[Adidas](…)"), so a
- * few that can't be found are skipped.
- */
-export function locatePassage(answer: string, passage: string): { start: number; end: number } | undefined {
-	const words = passage
-		.replace(/\(image: /g, " ")
-		.replace(/\((?:[a-z0-9-]+\.)+[a-z]{2,}\)/g, "")
-		.match(WORD);
-	if (!words?.length) return undefined;
-	// Searched case-insensitively in the original: lowercasing it first can change its length ("İ")
-	// and shift every offset after. Markup may sit inside a word cleaning glued together: "TheAdidas"
-	// from "The[Adidas](…)".
-	const patterns = words.map(
-		(word) =>
-			new RegExp(
-				`(?<![\\p{L}\\p{N}])${[...word].map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(String.raw`[\[\]*_]*`)}(?![\\p{L}\\p{N}])`,
-				"giu",
-			),
-	);
-	// Inline image data is blanked, keeping offsets, so no word is found among its letters.
-	const haystack = answer.replace(INLINE_DATA, (data) => " ".repeat(data.length));
-	const find = (i: number, from: number) => {
-		patterns[i].lastIndex = from;
-		const match = patterns[i].exec(haystack);
-		return match ? { at: match.index, end: match.index + match[0].length } : null;
-	};
-	// Gaps are measured in visible characters, so link targets and image data don't count.
-	const visible = haystack.replace(/\]\([^)\s]{0,2000}\)|https?:\/\/[^\s)\]]+/g, (markup) => " ".repeat(markup.length));
-	const dense = new Uint32Array(visible.length + 1);
-	for (let i = 0; i < visible.length; i++) dense[i + 1] = dense[i] + (visible.charCodeAt(i) > 32 ? 1 : 0);
-	const near = (end: number, next: { at: number }) => dense[next.at] - dense[end] <= MAX_GAP;
-	const allowed = Math.max(1, Math.floor(patterns.length / 10));
-	let best: { start: number; end: number; skipped: number } | undefined;
-	const beats = (start: number, end: number, skipped: number) =>
-		!best || skipped < best.skipped || (skipped === best.skipped && end - start < best.end - best.start);
-	/** Follows the words after `from`, nearest first, skipping at most `budget`; gives up once it can't win. */
-	const follow = (from: number, start: number, end: number, skipped: number) => {
-		for (let i = from + 1; i < patterns.length; i++) {
-			const next = find(i, end);
-			if (next && near(end, next)) end = next.end;
-			else if (++skipped > allowed) return null;
-			if (!beats(start, end, skipped)) return null;
-		}
-		return { start, end, skipped };
-	};
-	// The same words can chain loosely from an earlier occurrence, so the closest fit wins: fewest
-	// words skipped, then the shortest span.
-	for (let anchor = 0; anchor <= Math.min(allowed, patterns.length - 1); anchor++) {
-		for (let first = find(anchor, 0); first; first = find(anchor, first.at + 1)) {
-			best = follow(anchor, first.at, first.end, anchor) ?? best;
-		}
+				// A citation chip: its text is the site, or a footnote number.
+				if (DOMAIN.test(text.trim())) return host(text.trim());
+				if (!text.trim() || CITATION_NUMBER.test(text.trim())) return `(${host(url)})`;
+				return `${text} (${host(url)})`;
+			},
+		],
+		// Links the answer itself broke (a URL with spaces, text over several lines) keep their text.
+		[/\[([^\]]{0,200}?)\]\([^)\n[]{0,2000}\)/g, (_, text) => text.split(/\s+/).join(" ").trim()],
+		[/https?:\/\/[^\s)\]]+/g, (url) => host(url)],
+		// A line can't start a sentence with a comma or a full stop, so it continues the one before (some
+		// sources split a sentence into blocks around each citation); nor can a soft-wrapped line.
+		[/[ \t]*\n(?:[ \t]*\n)*[ \t]*(?=[,;:)]|\.(?:\s|$))|(?<=\S)[ \t]*\n[ \t]*(?=\p{Ll})/gu, () => " "],
+		[/^[ \t]+|[ \t]+$/gm, () => ""],
+		[/[ \t]{2,}/g, () => " "],
+		[/\n{3,}/g, () => "\n\n"],
+		[/^\s+|\s+$/g, () => ""],
+	];
+	const start: Cleaned = { text: answer, from: [], to: [] };
+	for (let i = 0; i < answer.length; i++) {
+		start.from.push(i);
+		start.to.push(i + 1);
 	}
-	return best && { start: best.start, end: best.end };
+	return steps.reduce((cleaned, [pattern, replace]) => rewrite(cleaned, pattern, replace), start);
 }

@@ -6,7 +6,7 @@ import {
 	type Sentiment,
 	subjectFingerprint,
 } from "@workspace/lib/mentions";
-import { cleanAnswer, locatePassage } from "./clean";
+import { type Cleaned, cleanAnswer, originalSpan } from "./clean";
 import {
 	JEV_MODEL,
 	type JevChoiceQuestion,
@@ -78,11 +78,11 @@ function verdictQuestion(subject: Subject): JevChoiceQuestion {
 	};
 }
 
-function evidenceQuestion(name: string, passages: string[]): JevChoiceQuestion {
+function evidenceQuestion(name: string, passages: Sentence[]): JevChoiceQuestion {
 	return {
 		type: "choice",
 		instructions: `Which passage best represents the answer's sentiment toward ${name}: the one a reader would quote to show how the answer judges ${name}, ideally naming it and giving a reason?`,
-		criteria: Object.fromEntries(passages.map((passage, i) => [`p${i + 1}`, passage])),
+		criteria: Object.fromEntries(passages.map((passage, i) => [`p${i + 1}`, passage.text])),
 	};
 }
 
@@ -103,13 +103,14 @@ function rank(records: (MentionAssessment | undefined)[]): void {
 /** One company's assessment from Jev's verdict and the passage it quoted. */
 function assessment(
 	answer: string,
+	cleaned: Cleaned,
 	subject: Subject,
 	verdict: Record<string, number>,
-	quote: string | undefined,
+	quote: Sentence | undefined,
 ): MentionAssessment {
 	const probability = SENTIMENTS.reduce((sum, label) => sum + (verdict[label] ?? 0), 0);
 	const mentioned = probability > MENTION_THRESHOLD;
-	const passage = quote ? locatePassage(answer, quote) : undefined;
+	const passage = quote ? originalSpan(cleaned, quote.start, quote.end) : undefined;
 	const offsets = mentionOffsets(answer, subject);
 	return {
 		mentioned,
@@ -148,7 +149,7 @@ function subjectsOf(config: MentionConfig, previous: RunMentionAssessments | nul
 /** The verdict and evidence questions for each company to ask about, and the quotes each may choose from. */
 function questionsFor(ask: Entry[], named: Entry[], split: Sentence[]) {
 	const questions: Record<string, JevChoiceQuestion> = {};
-	const options = new Map<string, string[]>();
+	const options = new Map<string, Sentence[]>();
 	for (const entry of ask) {
 		const others = named.filter((other) => other !== entry);
 		const passages = quoteOptions(split, entry.names, (t) => others.some((other) => other.names(t)));
@@ -196,7 +197,8 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 		async analyze(text, config, previous, question) {
 			const answer = text ?? "";
 			// Bounds the cost of a runaway answer; the companies it names first are the ones asked about.
-			const readable = cleanAnswer(answer).slice(0, MAX_ANSWER_CHARS);
+			const cleaned = cleanAnswer(answer);
+			const readable = cleaned.text.slice(0, MAX_ANSWER_CHARS);
 			const subjects = subjectsOf(config, previous, judgeVersion);
 			// Only companies the answer names are asked about; a company judged under an unchanged
 			// fingerprint keeps its assessment, a copy since `rank` rewrites positions.
@@ -220,7 +222,7 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 				const quote = options.get(entry.key)?.[Number(answers[`${entry.key}__evidence`]?.choice.slice(1)) - 1];
 				records.set(
 					entry.key,
-					assessment(answer, entry.subject, answers[`${entry.key}__verdict`].probabilities, quote),
+					assessment(answer, cleaned, entry.subject, answers[`${entry.key}__verdict`].probabilities, quote),
 				);
 			}
 

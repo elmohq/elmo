@@ -1,90 +1,92 @@
 import { describe, expect, it } from "vitest";
-import { cleanAnswer, locatePassage } from "./clean";
+import { cleanAnswer, originalSpan } from "./clean";
+
+const clean = (answer: string) => cleanAnswer(answer).text;
 
 describe("cleanAnswer", () => {
 	it("keeps the site a citation chip cites, so a brand cited only that way still reads as named", () => {
-		expect(cleanAnswer("![](https://www.google.com/s2/favicons?domain=https://www.elmohq.com&sz=32) Elmo +2")).toBe(
+		expect(clean("![](https://www.google.com/s2/favicons?domain=https://www.elmohq.com&sz=32) Elmo +2")).toBe(
 			"(elmohq.com) Elmo +2",
 		);
+		expect(clean("Great boots ([rei.com](https://www.rei.com/p/1?utm_source=chatgpt.com)).")).toBe(
+			"Great boots (rei.com).",
+		);
+		expect(clean("A solid pick.[[1]](https://a.example/x)")).toBe("A solid pick.(a.example)");
 	});
 
 	it("keeps an image's caption, which can name a product, and drops inline image data", () => {
 		expect(
-			cleanAnswer(
-				"* [![Nike Kids' Flex Runner 4](data:image/jpeg;base64,/9j/4AAQ)](/search?ibp=oshop&prds=pvt:a) - great.",
-			),
+			clean("* [![Nike Kids' Flex Runner 4](data:image/jpeg;base64,/9j/4AAQ)](/search?ibp=oshop&prds=pvt:a) - great."),
 		).toBe("* (image: Nike Kids' Flex Runner 4) - great.");
 	});
 
 	it("keeps a link's text and the site it points to, but not a relative link's target", () => {
-		expect(cleanAnswer("See [Elmo](https://www.elmohq.com/docs) or [the shop](/search?q=x).")).toBe(
+		expect(clean("See [Elmo](https://www.elmohq.com/docs) or [the shop](/search?q=x).")).toBe(
 			"See Elmo (elmohq.com) or the shop.",
 		);
 	});
 
 	it("copes with brackets in captions, parentheses in URLs, and links the answer broke", () => {
-		expect(cleanAnswer("![Top Tools [With Use Cases]](https://img.example/x.png)")).toBe(
+		expect(clean("![Top Tools [With Use Cases]](https://img.example/x.png)")).toBe(
 			"(image: Top Tools [With Use Cases])",
 		);
-		expect(cleanAnswer("[Nike](https://en.wikipedia.org/wiki/Nike_(mythology)) myth")).toBe(
-			"Nike (en.wikipedia.org) myth",
-		);
-		expect(cleanAnswer("\\[ Saucony Ride 18 \\](https://www.dickssporting goods.com/x) – reliable")).toBe(
+		expect(clean("[Nike](https://en.wikipedia.org/wiki/Nike_(mythology)) myth")).toBe("Nike (en.wikipedia.org) myth");
+		expect(clean("\\[ Saucony Ride 18 \\](https://www.dickssporting goods.com/x) – reliable")).toBe(
 			"Saucony Ride 18 – reliable",
 		);
 	});
 
-	it("leaves no link or image markup behind", () => {
-		const cleaned = cleanAnswer(
-			"Read [docs](https://a.example/b) ![](https://c.example/d.png) https://e.example/f [![x](data:image/png;base64,AAAA)](https://g.example)",
+	it("reads escapes, entities, tags and citation tokens as the text they stand for", () => {
+		expect(clean("1\\. Nike\\'s \\_best\\_ shoe &amp; Hoka&#39;s <b>pick</b>【4†source】")).toBe(
+			"1. Nike's _best_ shoe & Hoka's pick",
 		);
-		expect(cleaned).not.toMatch(/\]\(|https?:\/\/|base64/);
+	});
+
+	it("rejoins a sentence the source broke over lines, but not separate lines", () => {
+		expect(clean("Try the\n\n[Brooks Ghost 16](/search?q=x)\n\n, and the Hoka.")).toBe(
+			"Try the\n\nBrooks Ghost 16 , and the Hoka.",
+		);
+		expect(clean("It eases symptoms\n. However, \nvalerian works too.")).toBe(
+			"It eases symptoms . However, valerian works too.",
+		);
+		expect(clean("Shop online\n\nadidas Originals Forum, 4.8 stars")).toBe(
+			"Shop online\n\nadidas Originals Forum, 4.8 stars",
+		);
+	});
+
+	it("leaves no link or image markup behind", () => {
+		expect(
+			clean(
+				"Read [docs](https://a.example/b) ![](https://c.example/d.png) https://e.example/f [![x](data:image/png;base64,AAAA)](https://g.example)",
+			),
+		).not.toMatch(/\]\(|https?:\/\/|base64/);
 	});
 });
 
-describe("locatePassage", () => {
-	const answer = "Intro.\n\n1. **Elmo**\n-------\n\nBest overall · [MIT](https://github.com/elmohq/elmo) license.\n";
+describe("originalSpan", () => {
+	const span = (answer: string, quote: string) => {
+		const cleaned = cleanAnswer(answer);
+		const start = cleaned.text.indexOf(quote);
+		const { start: from, end } = originalSpan(cleaned, start, start + quote.length);
+		return answer.slice(from, end);
+	};
 
-	it("finds a passage of the cleaned answer in the original, across the markup cleaning removed", () => {
-		const passage = locatePassage(answer, "1. Elmo Best overall · MIT (github.com) license.");
-		expect(passage && answer.slice(passage.start, passage.end)).toBe(
-			"1. **Elmo**\n-------\n\nBest overall · [MIT](https://github.com/elmohq/elmo) license",
+	it("maps a passage of the cleaned answer back to the original, markup and all", () => {
+		const answer = "Intro.\n\n1. **Elmo** is best · [MIT](https://github.com/elmohq/elmo) licensed.\n";
+		expect(span(answer, "Elmo** is best · MIT (github.com) licensed.")).toBe(
+			"Elmo** is best · [MIT](https://github.com/elmohq/elmo) licensed.",
 		);
+	});
+
+	it("never starts or ends inside a link or image", () => {
+		const answer =
+			"The [Adidas Adios Pro 4](/search?q=x) is fast. ![Nike Pegasus](data:image/png;base64,AAAA) Nike rocks.";
+		expect(span(answer, "Adidas Adios")).toBe("[Adidas Adios Pro 4](/search?q=x)");
+		expect(span(answer, "Pegasus) Nike rocks.")).toBe("![Nike Pegasus](data:image/png;base64,AAAA) Nike rocks.");
 	});
 
 	it("keeps offsets right after text whose lowercase form is a different length", () => {
-		const text = "İstanbul has shops. Elmo is great value there.";
-		const passage = locatePassage(text, "Elmo is great value there.");
-		expect(passage && text.slice(passage.start, passage.end)).toBe("Elmo is great value there");
-	});
-
-	it("finds a passage that spans inline image data", () => {
-		const text = `**Elmo is the best tracker** . [r](https://reddit.com/x) ![](data:image/png;base64,${"A".repeat(2000)}) Reddit +1 It is free.`;
-		const passage = locatePassage(text, cleanAnswer(text));
-		expect(passage && text.slice(passage.start, passage.end)).toMatch(/^Elmo.*It is free$/s);
-	});
-
-	it("picks the passage itself, not a looser run of the same words starting earlier", () => {
-		const text = "Best pick overall here. Value matters. Best value shoe is great.";
-		const passage = locatePassage(text, "Best value shoe is great.");
-		expect(passage && text.slice(passage.start, passage.end)).toBe("Best value shoe is great");
-	});
-
-	it("finds a passage whose source glued two words together", () => {
-		const text = "Carbon fuel. The[Adidas Adios Pro 4](/search?q=x) is a durable rival to Nike's marathon tier.";
-		const passage = locatePassage(text, "TheAdidas Adios Pro 4 is a durable rival to Nike's marathon tier.");
-		expect(passage && text.slice(passage.start, passage.end)).toBe(
-			"The[Adidas Adios Pro 4](/search?q=x) is a durable rival to Nike's marathon tier",
-		);
-	});
-
-	it("doesn't start a passage inside a longer word", () => {
-		const text = "Is it there? Yes, the Acme rocks.";
-		const passage = locatePassage(text, "the Acme rocks.");
-		expect(passage && text.slice(passage.start, passage.end)).toBe("the Acme rocks");
-	});
-
-	it("finds nothing for a passage that isn't in the answer", () => {
-		expect(locatePassage(answer, "Something else entirely")).toBeUndefined();
+		const answer = "İstanbul has shops. Elmo is great value there.";
+		expect(span(answer, "Elmo is great value there.")).toBe("Elmo is great value there.");
 	});
 });
