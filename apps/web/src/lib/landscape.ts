@@ -55,7 +55,14 @@ export function sortByMetric(companies: LandscapeCompany[], metric: LandscapeMet
 	});
 }
 
-export function chartedCompanies(landscape: Landscape, metric: LandscapeMetric, competitors = 4): LandscapeCompany[] {
+/** How many competitors a landscape chart follows alongside the brand. */
+export const CHARTED_COMPETITORS = 4;
+
+export function chartedCompanies(
+	landscape: Landscape,
+	metric: LandscapeMetric,
+	competitors = CHARTED_COMPETITORS,
+): LandscapeCompany[] {
 	return [brandOf(landscape), ...sortByMetric(landscape.companies.slice(1), metric).slice(0, competitors)];
 }
 
