@@ -17,7 +17,7 @@ import { brands, citations, competitors, promptRuns, runExtractions, runMentions
 import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } from "@workspace/lib/mentions";
 import { insertRunsCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { type Citation, extractorFor, extractRun } from "@workspace/lib/text-extraction";
-import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type { Job, PgBoss, QueueOptions } from "pg-boss";
 import { getBoss } from "../boss";
 import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge/analyze";
@@ -43,6 +43,19 @@ export const DERIVE_PRIORITY = { new: 2, recent: 1, history: 0 } as const;
 
 /** Small enough that a failed chunk costs little to redo, large enough to keep the queue short. */
 const CHUNK_SIZE = 50;
+
+const DEFAULT_REPROCESS_DAYS = 90;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function reprocessDays(env: Record<string, string | undefined> = process.env): number | null {
+	const raw = env.REPROCESS_DAYS?.trim();
+	if (!raw) return DEFAULT_REPROCESS_DAYS;
+	if (raw.toLowerCase() === "all") return null;
+	// Up to about 270 years, so the window's start is always a valid date.
+	if (!/^[1-9]\d{0,4}$/.test(raw))
+		throw new Error(`REPROCESS_DAYS must be a whole number of days or "all", got "${raw}"`);
+	return Number(raw);
+}
 
 export async function sendDeriveRuns(
 	boss: Pick<PgBoss, "insert">,
@@ -152,6 +165,7 @@ async function loadRuns(
 	runIds: string[],
 	target: AnalysisVersions,
 	reextract: boolean,
+	days: number | null,
 ): Promise<StaleRun[]> {
 	const rows = await conn
 		.select({
@@ -172,7 +186,15 @@ async function loadRuns(
 		.from(promptRuns)
 		.leftJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
 		.leftJoin(runMentions, eq(runMentions.runId, promptRuns.id))
-		.where(inArray(promptRuns.id, runIds));
+		.where(
+			and(
+				inArray(promptRuns.id, runIds),
+				// Also checked here, for runs queued before the window shrank or by an older worker.
+				days === null
+					? undefined
+					: or(isNull(runMentions.runId), gte(promptRuns.createdAt, new Date(Date.now() - days * DAY_MS))),
+			),
+		);
 	const needsRaw = rows.filter(
 		(row) => row.textContent === null || (reextract && row.extractionStamp !== target[EXTRACTION_KEY]),
 	);
@@ -254,11 +276,12 @@ export async function deriveRuns(
 	conn: DbConnection = db,
 	boss: Pick<PgBoss, "insert" | "send"> = getBoss(),
 	analyzer: MentionAnalyzer = mentionAnalyzer(),
+	days: number | null = reprocessDays(),
 ): Promise<void> {
 	const context = await loadTarget(conn, data.brandId, analyzer);
 	if (!context) return;
 	const reextract = data.reextract ?? false;
-	const runs = await loadRuns(conn, data.runIds, context.target, reextract);
+	const runs = await loadRuns(conn, data.runIds, context.target, reextract, days);
 	const updates: { run: StaleRun; update: RunUpdate }[] = [];
 	const failed: string[] = [];
 	for (const run of runs) {

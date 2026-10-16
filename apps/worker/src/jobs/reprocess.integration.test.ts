@@ -135,9 +135,9 @@ afterAll(async () => {
 });
 
 /** A whole pass: the replay queues the brand's stale runs, and the derivation workers take them. */
-async function replay(data: ReprocessData) {
-	const queue = deriveQueue();
-	await runReprocess(data, db, queue.boss, cuedAnalyzer);
+async function replay(data: ReprocessData, days: number | null = null) {
+	const queue = deriveQueue(db, cuedAnalyzer, days);
+	await runReprocess(data, db, queue.boss, cuedAnalyzer, days);
 	const queued = [...queue.jobs];
 	expect(await queue.drain()).toEqual([]);
 	return queued;
@@ -160,7 +160,7 @@ describe("runReprocess", () => {
 		expect(cited.map((citation) => citation.url)).toEqual(["https://example.com/a"]);
 
 		const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
-		expect(brand.analysisVersions).toEqual(current);
+		expect(brand.analysisVersions).toMatchObject(current);
 	});
 
 	it("leaves runs that are already current untouched", async () => {
@@ -214,7 +214,7 @@ describe("runReprocess", () => {
 
 		expect((await runsInWalkOrder())[0].competitorsMentioned).toEqual(["Globex"]);
 		const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
-		expect(brand.analysisVersions).toEqual(await currentVersions(brandId));
+		expect(brand.analysisVersions).toMatchObject(await currentVersions(brandId));
 	});
 
 	it("queues the last 30 days ahead of older history", async () => {
@@ -240,6 +240,173 @@ describe("runReprocess", () => {
 
 	it("skips a brand that no longer exists", async () => {
 		await expect(replay({ brandId: "no-such-brand", layers: ["extraction"] })).resolves.toEqual([]);
+	});
+});
+
+describe("what a replay covers", () => {
+	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+	const stampsOf = async () => (await db.select().from(brands).where(eq(brands.id, brandId)))[0].analysisVersions;
+
+	it("catches up a prompt enabled while a pass is running, on the next pass", async () => {
+		const [paused] = await db
+			.insert(prompts)
+			.values({ brandId, value: "paused question", enabled: false })
+			.returning({ id: prompts.id });
+		const waiting = { ...legacyRun("Acme is the best CRM.", daysAgo(5)), promptId: paused.id };
+		await insertLegacyRuns([legacyRun("Acme is the best CRM.", daysAgo(5)), waiting]);
+
+		// Enabled after the pass has read the brand's prompts, while it queues their runs.
+		const queue = deriveQueue();
+		const insert = queue.boss.insert.bind(queue.boss);
+		queue.boss.insert = async (...args) => {
+			await db.update(prompts).set({ enabled: true }).where(eq(prompts.id, paused.id));
+			return insert(...args);
+		};
+		await runReprocess({ brandId, layers: BOTH_LAYERS }, db, queue.boss, cuedAnalyzer, 90);
+		await queue.drain();
+
+		const asked = fakeBoss();
+		await requestStaleReprocesses(db, asked.boss, cuedAnalyzer);
+		expect(sentFor(asked.send, brandId)).toHaveLength(1);
+		expect((await replay(sentFor(asked.send, brandId)[0], 90)).flatMap((job) => job.data.runIds)).toEqual([waiting.id]);
+	});
+
+	it("leaves a disabled brand stale, so enabling it again brings its history up to date", async () => {
+		await insertLegacyRuns([legacyRun("Acme is the best CRM.", daysAgo(5))]);
+		await db.update(brands).set({ enabled: false }).where(eq(brands.id, brandId));
+		const before = await stampsOf();
+
+		expect(await replay({ brandId, layers: BOTH_LAYERS }, 90)).toEqual([]);
+		expect(await stampsOf()).toEqual(before);
+		const asked = fakeBoss();
+		await requestStaleReprocesses(db, asked.boss, cuedAnalyzer);
+		expect(sentFor(asked.send, brandId)).toEqual([]);
+
+		await db.update(brands).set({ enabled: true }).where(eq(brands.id, brandId));
+		const again = fakeBoss();
+		await requestStaleReprocesses(db, again.boss, cuedAnalyzer);
+		expect(sentFor(again.send, brandId)).toHaveLength(1);
+	});
+});
+
+describe("reprocessing over time", () => {
+	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+	/** Runs the worker's per-minute loop until history is current; returns the texts the judge read. */
+	async function settle(days: number | null = 90) {
+		const judged: string[] = [];
+		const analyzer = {
+			...cuedAnalyzer,
+			analyze: (...args: Parameters<typeof cuedAnalyzer.analyze>) => {
+				judged.push(args[0] ?? "");
+				return cuedAnalyzer.analyze(...args);
+			},
+		};
+		for (let tick = 0; tick < 5; tick++) {
+			const asked = fakeBoss();
+			await requestStaleReprocesses(db, asked.boss, analyzer);
+			const passes = sentFor(asked.send, brandId);
+			if (passes.length === 0) return judged;
+			for (const data of passes) {
+				const queue = deriveQueue(db, analyzer, days);
+				await runReprocess(data, db, queue.boss, analyzer, days);
+				expect(await queue.drain()).toEqual([]);
+			}
+		}
+		throw new Error("history never settled");
+	}
+
+	async function addPrompt(enabled: boolean) {
+		const [prompt] = await db.insert(prompts).values({ brandId, value: "other question", enabled }).returning();
+		return prompt.id;
+	}
+
+	const setPrompt = async (id: string, enabled: boolean) => {
+		await db.update(prompts).set({ enabled }).where(eq(prompts.id, id));
+	};
+
+	it("judges each answer in the window once, and nothing more on later ticks", async () => {
+		await insertLegacyRuns([
+			legacyRun("Acme leads.", daysAgo(1)),
+			legacyRun("Acme again.", daysAgo(40)),
+			legacyRun("Acme long ago.", daysAgo(200)),
+		]);
+
+		expect((await settle()).sort()).toEqual(["Acme again.", "Acme leads."]);
+		expect(await settle()).toEqual([]);
+		expect(await settle()).toEqual([]);
+	});
+
+	it("re-judges nothing when a prompt is switched off and on again, however often", async () => {
+		await insertLegacyRuns([legacyRun("Acme leads.", daysAgo(1))]);
+		await settle();
+
+		for (let i = 0; i < 3; i++) {
+			await setPrompt(promptId, false);
+			expect(await settle()).toEqual([]);
+			await setPrompt(promptId, true);
+			expect(await settle()).toEqual([]);
+		}
+	});
+
+	it("re-judges nothing when a brand is switched off and on again", async () => {
+		await insertLegacyRuns([legacyRun("Acme leads.", daysAgo(1))]);
+		await settle();
+
+		for (let i = 0; i < 3; i++) {
+			await db.update(brands).set({ enabled: false }).where(eq(brands.id, brandId));
+			expect(await settle()).toEqual([]);
+			await db.update(brands).set({ enabled: true }).where(eq(brands.id, brandId));
+			expect(await settle()).toEqual([]);
+		}
+	});
+
+	it("catches up a prompt that was off through a config change once it's on, and only once", async () => {
+		const paused = await addPrompt(false);
+		await insertLegacyRuns([
+			legacyRun("Acme beats Globex.", daysAgo(1)),
+			{ ...legacyRun("Acme or Globex?", daysAgo(1)), promptId: paused },
+		]);
+		expect(await settle()).toEqual(["Acme beats Globex."]);
+
+		await db.insert(competitors).values({ brandId, name: "Globex", domains: [] });
+		expect(await settle()).toEqual(["Acme beats Globex."]);
+
+		await setPrompt(paused, true);
+		expect(await settle()).toEqual(["Acme or Globex?"]);
+		expect(await settle()).toEqual([]);
+		expect((await runsInWalkOrder()).map((run) => run.competitorsMentioned)).toEqual([["Globex"], ["Globex"]]);
+	});
+
+	it("doesn't send a second pass for a brand while its first is still queueing runs", async () => {
+		await insertLegacyRuns([legacyRun("Acme leads.", daysAgo(1))]);
+		const asked = fakeBoss();
+		await requestStaleReprocesses(db, asked.boss, cuedAnalyzer);
+		const [first] = sentFor(asked.send, brandId);
+
+		// The per-minute check runs while the pass queues its runs.
+		const during = fakeBoss();
+		const queue = deriveQueue();
+		const insert = queue.boss.insert.bind(queue.boss);
+		queue.boss.insert = async (...args) => {
+			await requestStaleReprocesses(db, during.boss, cuedAnalyzer);
+			return insert(...args);
+		};
+		await runReprocess(first, db, queue.boss, cuedAnalyzer, 90);
+
+		expect(sentFor(during.send, brandId)).toEqual([]);
+		expect(await queue.drain()).toEqual([]);
+		expect(await settle()).toEqual([]);
+	});
+
+	it("never reaches past a short window, through config changes and toggles", async () => {
+		await insertLegacyRuns([legacyRun("Acme recent.", daysAgo(2)), legacyRun("Acme older.", daysAgo(20))]);
+		expect(await settle(7)).toEqual(["Acme recent."]);
+
+		await db.insert(competitors).values({ brandId, name: "Globex", domains: [] });
+		await setPrompt(promptId, false);
+		await setPrompt(promptId, true);
+		expect(await settle(7)).toEqual(["Acme recent."]);
 	});
 });
 

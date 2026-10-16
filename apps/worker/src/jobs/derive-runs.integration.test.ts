@@ -86,6 +86,20 @@ async function currentMentionsStamp() {
 }
 
 describe("deriving a recorded run", () => {
+	it("leaves a judged run older than the window as it is, even when queued, but judges one never judged", async () => {
+		const longAgo = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000);
+		const judged = await recordedRun("Acme long ago.", longAgo);
+		const unjudged = await recordedRun("Acme, never judged.", longAgo);
+		await db.insert(runMentions).values({ runId: judged, brandMentioned: false });
+		const queue = deriveQueue(db, cuedAnalyzer, 90);
+
+		await sendDeriveRuns(queue.boss, brandId, [judged, unjudged], DERIVE_PRIORITY.history);
+		expect(await queue.drain()).toEqual([]);
+
+		expect(await mentionsOf(judged)).toMatchObject({ brandMentioned: false, stamp: null });
+		expect(await mentionsOf(unjudged)).toMatchObject({ brandMentioned: true });
+	});
+
 	it("extracts its text and citations, judges its mentions under the brand's current config, and marks its rollups", async () => {
 		const runId = await recordedRun("Acme is the easiest CRM to set up.");
 		const queue = deriveQueue();

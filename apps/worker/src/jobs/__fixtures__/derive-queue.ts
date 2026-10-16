@@ -11,7 +11,11 @@ interface QueuedJob {
 }
 
 /** Stands in for the derive-runs queue: keeps what's sent, and works it the way pg-boss would. */
-export function deriveQueue(conn: DbConnection = db, analyzer: MentionAnalyzer = cuedAnalyzer) {
+export function deriveQueue(
+	conn: DbConnection = db,
+	analyzer: MentionAnalyzer = cuedAnalyzer,
+	days: number | null = 90,
+) {
 	const jobs: QueuedJob[] = [];
 	const boss: Pick<PgBoss, "insert" | "send"> = {
 		insert: async (queue: string, batch: JobInsert[]) => {
@@ -30,7 +34,7 @@ export function deriveQueue(conn: DbConnection = db, analyzer: MentionAnalyzer =
 				jobs.sort((a, b) => b.priority - a.priority);
 				const job = jobs.shift();
 				if (!job) return failed;
-				await deriveRuns(job.data, conn, boss, analyzer).catch(() => failed.push(job.data));
+				await deriveRuns(job.data, conn, boss, analyzer, days).catch(() => failed.push(job.data));
 			}
 		},
 	};

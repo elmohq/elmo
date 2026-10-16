@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
 	type AnalysisVersions,
 	currentAnalysisVersions,
@@ -11,7 +12,6 @@ import type { DbConnection } from "@workspace/lib/db/db-connection";
 import {
 	type Brand,
 	brands,
-	type Competitor,
 	competitors,
 	promptRuns,
 	prompts,
@@ -24,7 +24,7 @@ import { and, asc, eq, gt, gte, inArray, isNull, lt, or, type SQL, sql } from "d
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
 import { type MentionAnalyzer, mentionAnalyzer } from "../mention-judge/analyze";
-import { DERIVE_PRIORITY, sendDeriveRuns } from "./derive-runs";
+import { DERIVE_PRIORITY, reprocessDays, sendDeriveRuns } from "./derive-runs";
 
 export const REPROCESS_QUEUE = "reprocess";
 
@@ -37,7 +37,8 @@ export interface ReprocessData {
 
 const LAYER_KEY: Record<ReprocessLayer, string> = { extraction: EXTRACTION_KEY, interpretation: MENTIONS_KEY };
 
-const RECENT_FIRST_MS = 30 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const RECENT_FIRST_MS = 30 * DAY_MS;
 /**
  * How long a newly stale brand waits before its pass starts. Edits tend to come in bursts (adding
  * several competitors), and the pass reads the config when it starts, so one wait covers them all.
@@ -57,24 +58,24 @@ const staleFor = (layer: ReprocessLayer, target: AnalysisVersions): SQL =>
 
 const PAGE_SIZE = 5000;
 
-/**
- * Queues every run of the brand that's stale for `layers`, recent runs ahead of older history.
- * Pages by id, which is unique where creation times can tie.
- */
+/** Pages by id, which is unique where creation times can tie. */
 async function queueStaleRuns(
 	conn: DbConnection,
 	boss: Pick<PgBoss, "insert">,
 	brandId: string,
 	layers: ReprocessLayer[],
 	target: AnalysisVersions,
+	days: number | null,
+	brandPrompts: { id: string }[],
 ): Promise<number> {
-	const brandPrompts = await conn.select({ id: prompts.id }).from(prompts).where(eq(prompts.brandId, brandId));
 	if (brandPrompts.length === 0) return 0;
-	const cutoff = new Date(Date.now() - RECENT_FIRST_MS);
+	const now = Date.now();
+	const cutoff = new Date(now - RECENT_FIRST_MS);
+	const oldest = days === null ? undefined : gte(promptRuns.createdAt, new Date(now - days * DAY_MS));
 	let queued = 0;
 	for (const [age, priority] of [
-		[gte(promptRuns.createdAt, cutoff), DERIVE_PRIORITY.recent],
-		[lt(promptRuns.createdAt, cutoff), DERIVE_PRIORITY.history],
+		[and(gte(promptRuns.createdAt, cutoff), oldest), DERIVE_PRIORITY.recent],
+		[and(lt(promptRuns.createdAt, cutoff), oldest), DERIVE_PRIORITY.history],
 	] as const) {
 		let after: string | null = null;
 		for (;;) {
@@ -130,6 +131,16 @@ async function recomputeSystemTags(conn: DbConnection, brand: Brand): Promise<vo
 	}
 }
 
+/** Which prompts a brand's last full pass covered: passes skip disabled prompts' runs. */
+const PROMPTS_KEY = "prompts";
+
+function promptsStamp(promptIds: string[]): string {
+	return createHash("sha256")
+		.update([...promptIds].sort().join(","))
+		.digest("hex")
+		.slice(0, 16);
+}
+
 /** Re-deriving text changes what mentions are found, so extraction always brings interpretation along. */
 export function staleLayers(stored: AnalysisVersions, current: AnalysisVersions): ReprocessLayer[] {
 	if (stored[EXTRACTION_KEY] !== current[EXTRACTION_KEY]) return ["extraction", "interpretation"];
@@ -166,32 +177,51 @@ export function sendReprocess(
 }
 
 /**
- * Brings a brand's history up to its current config and today's code by queueing its stale runs
- * for the derivation workers, then stamping the brand. Stamping before they're done is safe: each
- * chunk derives under the config current when it runs and writes only if that's still current,
- * and a config that moves again leaves the brand stale for the next pass.
+ * Stamping the brand before its runs are derived is safe: each chunk derives under the config
+ * current when it runs and writes only if that's still current.
  */
 export async function runReprocess(
 	data: ReprocessData,
 	conn: DbConnection = db,
 	boss: Pick<PgBoss, "insert"> = getBoss(),
 	analyzer: MentionAnalyzer = mentionAnalyzer(),
+	days: number | null = reprocessDays(),
 ): Promise<void> {
 	const context = await loadBrand(conn, data.brandId, analyzer);
 	if (!context) {
 		console.log(`[reprocess] brand ${data.brandId} no longer exists, skipping`);
 		return;
 	}
-	const target = pickLayers(context.current, data.layers);
-	const queued = await queueStaleRuns(conn, boss, data.brandId, data.layers, context.current);
-	if (data.layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
+	// Left stale, so enabling it again brings its history up to date then.
+	if (!context.brand.enabled) {
+		console.log(`[reprocess] brand ${data.brandId} is disabled, skipping`);
+		return;
+	}
+	const brandPrompts = await conn
+		.select({ id: prompts.id })
+		.from(prompts)
+		.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)));
+	// Stamped before queueing, so the per-minute check doesn't send a second pass for the same runs.
+	// An edit or a prompt enabled meanwhile leaves the brand stale for another pass.
+	const target = {
+		...pickLayers(context.current, data.layers),
+		[PROMPTS_KEY]: promptsStamp(brandPrompts.map(({ id }) => id)),
+	};
 	await conn
 		.update(brands)
 		.set({
 			analysisVersions: sql`coalesce(${brands.analysisVersions}, '{}'::jsonb) || ${JSON.stringify(target)}::jsonb`,
 		})
 		.where(eq(brands.id, data.brandId));
+	const queued = await queueStaleRuns(conn, boss, data.brandId, data.layers, context.current, days, brandPrompts);
+	if (data.layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
 	console.log(`[reprocess] brand ${data.brandId}: queued ${queued} runs toward ${JSON.stringify(target)}`);
+}
+
+function byBrand<T extends { brandId: string }>(rows: T[]): Map<string, T[]> {
+	const grouped = new Map<string, T[]>();
+	for (const row of rows) grouped.set(row.brandId, [...(grouped.get(row.brandId) ?? []), row]);
+	return grouped;
 }
 
 /**
@@ -204,20 +234,26 @@ export async function requestStaleReprocesses(
 	boss: Pick<PgBoss, "send"> = getBoss(),
 	analyzer: MentionAnalyzer = mentionAnalyzer(),
 ): Promise<number> {
-	const [allBrands, allCompetitors] = await Promise.all([conn.select().from(brands), conn.select().from(competitors)]);
-	const competitorsByBrand = new Map<string, Competitor[]>();
-	for (const competitor of allCompetitors) {
-		competitorsByBrand.set(competitor.brandId, [...(competitorsByBrand.get(competitor.brandId) ?? []), competitor]);
-	}
+	const [allBrands, allCompetitors, enabledPrompts] = await Promise.all([
+		conn.select().from(brands),
+		conn.select().from(competitors),
+		conn.select({ id: prompts.id, brandId: prompts.brandId }).from(prompts).where(eq(prompts.enabled, true)),
+	]);
+	const competitorsByBrand = byBrand(allCompetitors);
+	const promptsByBrand = byBrand(enabledPrompts);
 	let requested = 0;
 	for (const brand of allBrands) {
 		// Not yet adopted at startup; its history is taken as is until then.
-		if (brand.analysisVersions === null) continue;
+		if (brand.analysisVersions === null || !brand.enabled) continue;
 		const current = currentAnalysisVersions(
 			mentionConfigFrom(brand, competitorsByBrand.get(brand.id) ?? []),
 			analyzer.judgeVersion,
 		);
-		const layers = staleLayers(brand.analysisVersions, current);
+		const stale = staleLayers(brand.analysisVersions, current);
+		// A prompt enabled since the last pass has runs that pass skipped, to judge now.
+		const promptsMoved =
+			brand.analysisVersions[PROMPTS_KEY] !== promptsStamp((promptsByBrand.get(brand.id) ?? []).map(({ id }) => id));
+		const layers: ReprocessLayer[] = stale.length === 0 && promptsMoved ? ["interpretation"] : stale;
 		const sent =
 			layers.length > 0 &&
 			(await sendReprocess(boss, { brandId: brand.id, layers }, { startAfterSeconds: SETTLE_SECONDS }));
