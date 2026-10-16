@@ -16,7 +16,7 @@ import { normalizeUrl } from "@workspace/lib/citations/domain-categories";
  *
  * Usage (never loads .env; point it at a database you mean to read):
  *   cd apps/worker
- *   DATABASE_URL=postgres://... TYPESAFE_API_KEY=... pnpm exec tsx scripts/audit-replay.ts [--brand=<id>] [--since=2026-01-01] [--limit=50000] [--skip-mentions]
+ *   DATABASE_URL=postgres://... TYPESAFE_API_KEY=... pnpm exec tsx scripts/audit-replay.ts [--brand=<id>] [--since=2026-01-01] [--limit=500] [--skip-mentions]
  */
 import { db } from "@workspace/lib/db/db";
 import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
@@ -39,7 +39,7 @@ const args = new Map(
 );
 const brandFilter = args.get("brand");
 const since = args.get("since");
-const limit = Number(args.get("limit") ?? 50_000);
+const limit = Number(args.get("limit") ?? 500);
 const skipMentions = args.has("skip-mentions");
 const BATCH = 500;
 
