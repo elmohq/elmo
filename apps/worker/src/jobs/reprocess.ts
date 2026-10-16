@@ -228,11 +228,16 @@ function byBrand<T extends { brandId: string }>(rows: T[]): Map<string, T[]> {
  * Requests a pass for every brand whose history no longer matches its config or
  * today's code. Runs every minute, which is how a config edit reaches a pass, and
  * how a dropped job heals. A brand already waiting on a pass keeps that one.
+ *
+ * `everyBrand`, at startup, also sends a pass to brands already stamped current: a pass stamps the
+ * brand before its runs are judged, so runs whose jobs ran out of retries (the judge was down) would
+ * otherwise stay stale. The pass queues only those.
  */
 export async function requestStaleReprocesses(
 	conn: DbConnection = db,
 	boss: Pick<PgBoss, "send"> = getBoss(),
 	analyzer: MentionAnalyzer = mentionAnalyzer(),
+	{ everyBrand = false } = {},
 ): Promise<number> {
 	const [allBrands, allCompetitors, enabledPrompts] = await Promise.all([
 		conn.select().from(brands),
@@ -253,7 +258,7 @@ export async function requestStaleReprocesses(
 		// A prompt enabled since the last pass has runs that pass skipped, to judge now.
 		const promptsMoved =
 			brand.analysisVersions[PROMPTS_KEY] !== promptsStamp((promptsByBrand.get(brand.id) ?? []).map(({ id }) => id));
-		const layers: ReprocessLayer[] = stale.length === 0 && promptsMoved ? ["interpretation"] : stale;
+		const layers: ReprocessLayer[] = stale.length === 0 && (everyBrand || promptsMoved) ? ["interpretation"] : stale;
 		const sent =
 			layers.length > 0 &&
 			(await sendReprocess(boss, { brandId: brand.id, layers }, { startAfterSeconds: SETTLE_SECONDS }));

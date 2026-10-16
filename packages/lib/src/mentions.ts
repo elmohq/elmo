@@ -95,10 +95,17 @@ export function subjectFingerprint(subject: Subject, judgeVersion: string): stri
 
 const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
 
+/**
+ * A letter or digit that continues a word. Not one from a script written without spaces between
+ * words (Chinese, Japanese, Thai…) or from Korean, whose particles attach to the word before them:
+ * "Elmo是…" and "Elmo는…" both name Elmo.
+ */
+const WORD_CHAR = String.raw`[[\p{L}\p{N}]--[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]]`;
+
 /** A term inside a longer word ("ace" in "place") is never the subject, so only whole words match. */
 export function wholeWordPattern(term: string): RegExp {
 	const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-	return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "giu");
+	return new RegExp(`(?<!${WORD_CHAR})${escaped}(?!${WORD_CHAR})`, "giv");
 }
 
 /**

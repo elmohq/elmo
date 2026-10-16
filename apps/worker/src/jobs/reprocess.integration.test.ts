@@ -20,6 +20,8 @@ import { mentionConfigFrom } from "@workspace/lib/mentions";
 import { asc, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
+import { jevAnalyzer } from "../mention-judge/analyze";
+import { stubTransport } from "../mention-judge/jev";
 import { deriveQueue } from "./__fixtures__/derive-queue";
 import { fillLegacyText } from "./fill-legacy-text";
 import {
@@ -292,16 +294,13 @@ describe("what a replay covers", () => {
 describe("reprocessing over time", () => {
 	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-	/** Runs the worker's per-minute loop until history is current; returns the texts the judge read. */
+	/** Runs the worker's per-minute loop until history is current; returns the answers sent to Jev, one per call. */
 	async function settle(days: number | null = 90) {
 		const judged: string[] = [];
-		const analyzer = {
-			...cuedAnalyzer,
-			analyze: (...args: Parameters<typeof cuedAnalyzer.analyze>) => {
-				judged.push(args[0] ?? "");
-				return cuedAnalyzer.analyze(...args);
-			},
-		};
+		const analyzer = jevAnalyzer(async (request) => {
+			judged.push(String(request.state.answer));
+			return stubTransport(request);
+		});
 		for (let tick = 0; tick < 5; tick++) {
 			const asked = fakeBoss();
 			await requestStaleReprocesses(db, asked.boss, analyzer);
@@ -378,6 +377,20 @@ describe("reprocessing over time", () => {
 		expect((await runsInWalkOrder()).map((run) => run.competitorsMentioned)).toEqual([["Globex"], ["Globex"]]);
 	});
 
+	it("asks again at startup for runs a pass left stale, and only those", async () => {
+		const missed = legacyRun("Acme was missed.", daysAgo(1));
+		await insertLegacyRuns([legacyRun("Acme leads.", daysAgo(1)), missed]);
+		await settle();
+		// As if its job ran out of retries while the judge was down.
+		await db.update(runMentions).set({ stamp: "old" }).where(eq(runMentions.runId, missed.id));
+		expect(await settle()).toEqual([]);
+
+		const asked = fakeBoss();
+		await requestStaleReprocesses(db, asked.boss, cuedAnalyzer, { everyBrand: true });
+		const judged = await Promise.all(sentFor(asked.send, brandId).map((data) => replay(data, 90)));
+		expect(judged.flat().flatMap((job) => job.data.runIds)).toEqual([missed.id]);
+	});
+
 	it("doesn't send a second pass for a brand while its first is still queueing runs", async () => {
 		await insertLegacyRuns([legacyRun("Acme leads.", daysAgo(1))]);
 		const asked = fakeBoss();
@@ -406,7 +419,8 @@ describe("reprocessing over time", () => {
 		await db.insert(competitors).values({ brandId, name: "Globex", domains: [] });
 		await setPrompt(promptId, false);
 		await setPrompt(promptId, true);
-		expect(await settle(7)).toEqual(["Acme recent."]);
+		// Neither answer names Globex, so the new competitor costs no call at all.
+		expect(await settle(7)).toEqual([]);
 	});
 });
 

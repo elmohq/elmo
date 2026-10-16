@@ -13,7 +13,15 @@ import {
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { loadRawOutputs, updateExtractions, updateMentions } from "@workspace/lib/db/runs";
-import { brands, citations, competitors, promptRuns, runExtractions, runMentions } from "@workspace/lib/db/schema";
+import {
+	brands,
+	citations,
+	competitors,
+	promptRuns,
+	prompts,
+	runExtractions,
+	runMentions,
+} from "@workspace/lib/db/schema";
 import { type MentionConfig, mentionConfigFrom, type RunMentionAssessments } from "@workspace/lib/mentions";
 import { insertRunsCitations, markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { type Citation, extractorFor, extractRun } from "@workspace/lib/text-extraction";
@@ -24,12 +32,21 @@ import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../ment
 
 export const DERIVE_RUNS_QUEUE = "derive-runs";
 
+/** Small enough that a failed chunk costs little to redo, large enough to keep the queue short. */
+const CHUNK_SIZE = 50;
+
 export const DERIVE_RUNS_QUEUE_OPTIONS = {
 	retryLimit: 5,
 	retryDelay: 30,
 	retryBackoff: true,
 	expireInSeconds: 60 * 15,
 } satisfies QueueOptions;
+
+/**
+ * A chunk can wait a long time on a throttled judge, so it's kept alive by heartbeat instead of
+ * expiring and being paid for twice; a worker that dies stops the heartbeat and the chunk is retried.
+ */
+const CHUNK_LIFETIME = { heartbeatSeconds: 60, expireInSeconds: 60 * 60 * 4 };
 
 export interface DeriveRunsData {
 	brandId: string;
@@ -40,9 +57,6 @@ export interface DeriveRunsData {
 
 /** New answers first, then the last 30 days of history, which the dashboards show, then the rest. */
 export const DERIVE_PRIORITY = { new: 2, recent: 1, history: 0 } as const;
-
-/** Small enough that a failed chunk costs little to redo, large enough to keep the queue short. */
-const CHUNK_SIZE = 50;
 
 const DEFAULT_REPROCESS_DAYS = 90;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -62,12 +76,15 @@ export async function sendDeriveRuns(
 	brandId: string,
 	runIds: string[],
 	priority: number,
-	{ reextract = false, chunkSize = CHUNK_SIZE } = {},
+	{ reextract = false, chunkSize = CHUNK_SIZE, singletonSeconds = 0 } = {},
 ): Promise<void> {
 	const jobs = [];
 	for (let i = 0; i < runIds.length; i += chunkSize) {
-		const data: DeriveRunsData = { brandId, runIds: runIds.slice(i, i + chunkSize), ...(reextract && { reextract }) };
-		jobs.push({ data, priority });
+		const chunk = runIds.slice(i, i + chunkSize);
+		const data: DeriveRunsData = { brandId, runIds: chunk, ...(reextract && { reextract }) };
+		// One job per run per window: a run that keeps failing is asked about only so often.
+		const singleton = singletonSeconds && chunk.length === 1 ? { singletonKey: chunk[0], singletonSeconds } : {};
+		jobs.push({ data, priority, ...CHUNK_LIFETIME, ...singleton });
 	}
 	for (let i = 0; i < jobs.length; i += 1000) await boss.insert(DERIVE_RUNS_QUEUE, jobs.slice(i, i + 1000));
 }
@@ -75,6 +92,7 @@ export async function sendDeriveRuns(
 export interface StaleRun {
 	id: string;
 	promptId: string;
+	question: string;
 	createdAt: Date;
 	model: string;
 	provider: string | null;
@@ -153,7 +171,7 @@ async function rederiveMentions(
 	if (text !== null || (!run.brandMentioned && run.competitorsMentioned.length === 0)) {
 		// Assessments can be kept only while the text they were judged on, and point into, is unchanged.
 		const previous = text === run.textContent ? run.assessments : null;
-		return analyzer.analyze(text, config, previous);
+		return analyzer.analyze(text, config, previous, run.question);
 	}
 	update.kept.push("mentions");
 	const { brandMentioned, competitorsMentioned, assessments } = run;
@@ -171,6 +189,7 @@ async function loadRuns(
 		.select({
 			id: promptRuns.id,
 			promptId: promptRuns.promptId,
+			question: prompts.value,
 			createdAt: promptRuns.createdAt,
 			model: promptRuns.model,
 			provider: promptRuns.provider,
@@ -184,6 +203,7 @@ async function loadRuns(
 			citationCount: sql<number>`(SELECT count(*) FROM ${citations} WHERE ${citations.promptRunId} = ${promptRuns.id})::int`,
 		})
 		.from(promptRuns)
+		.innerJoin(prompts, eq(prompts.id, promptRuns.promptId))
 		.leftJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
 		.leftJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 		.where(
@@ -310,6 +330,7 @@ export async function deriveRuns(
 
 /** Younger runs are left to the job sent when they were recorded. */
 const SWEEP_MIN_AGE_MS = 10 * 60 * 1000;
+const SWEEP_EVERY_S = 6 * 60 * 60;
 
 /**
  * Asks again for runs still unjudged: their job was lost between recording and sending, or ran
@@ -336,7 +357,10 @@ export async function requestUnjudgedRuns(
 		.limit(limit);
 	const byBrand = new Map<string, string[]>();
 	for (const row of rows) byBrand.set(row.brandId, [...(byBrand.get(row.brandId) ?? []), row.id]);
-	for (const [brandId, runIds] of byBrand) await sendDeriveRuns(boss, brandId, runIds, DERIVE_PRIORITY.new);
+	// Run by run, at most once every few hours each, so an answer the judge always fails on is retried
+	// a handful of times over the sweep's window, not every few minutes.
+	for (const [brandId, runIds] of byBrand)
+		await sendDeriveRuns(boss, brandId, runIds, DERIVE_PRIORITY.new, { chunkSize: 1, singletonSeconds: SWEEP_EVERY_S });
 	return rows.length;
 }
 

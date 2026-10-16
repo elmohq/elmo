@@ -233,6 +233,10 @@ async function main(): Promise<void> {
 	await waitFor("Edit SCRAPE_TARGETS before saving?");
 	await send(ENTER);
 
+	// Jev key: the stub judges locally, so the e2e stack calls no one.
+	await waitFor("TypeSafe API key");
+	await send(`stub${ENTER}`);
+
 	// Telemetry opt-in (default Yes) → No
 	await waitFor("Share telemetry?");
 	await send(ARROW_LEFT);

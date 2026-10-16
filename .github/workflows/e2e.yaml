@@ -317,6 +317,7 @@ jobs:
         env:
           DEPLOYMENT_MODE: local
           SCRAPE_TARGETS: stub:stub
+          TYPESAFE_API_KEY: stub
         run: |
           ELMO_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
             nohup pnpm -C apps/worker exec tsx src/index.ts > /tmp/worker-local.log 2>&1 &
@@ -329,6 +330,7 @@ jobs:
         env:
           DEPLOYMENT_MODE: cloud
           SCRAPE_TARGETS: chatgpt:stub,perplexity:stub,gemini:stub,copilot:stub,claude:stub,claude:stub:online
+          TYPESAFE_API_KEY: stub
           STRIPE_SECRET_KEY: sk_test_ci
           STRIPE_WEBHOOK_SECRET: whsec_ci
           RESEND_API_KEY: re_ci
