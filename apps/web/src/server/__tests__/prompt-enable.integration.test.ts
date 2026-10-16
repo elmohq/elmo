@@ -15,6 +15,8 @@ let brandId: string;
 let promptId: string;
 
 beforeAll(async () => {
+	// Saving a prompt checks entitlements, which depend on the deployment mode.
+	vi.stubEnv("DEPLOYMENT_MODE", "local");
 	brandId = await createBrand();
 	promptId = await createPrompt(brandId);
 	await db.update(brands).set({ analysisVersions: current }).where(eq(brands.id, brandId));
@@ -22,6 +24,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+	vi.unstubAllEnvs();
 	await deleteBrand(brandId);
 });
 
