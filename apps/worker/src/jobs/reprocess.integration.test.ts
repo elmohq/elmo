@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspace/lib/analysis-versions";
 import { db } from "@workspace/lib/db/db";
-import { requestReplay } from "@workspace/lib/db/replay";
 import {
 	brands,
 	citations,
@@ -158,7 +157,7 @@ describe("runReprocess", () => {
 		expect(cited.map((citation) => citation.url)).toEqual(["https://example.com/a"]);
 
 		const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
-		expect(brand.analysisVersions).toEqual(current);
+		expect(brand.analysisVersions).toMatchObject(current);
 	});
 
 	it("leaves runs that are already current untouched", async () => {
@@ -212,7 +211,7 @@ describe("runReprocess", () => {
 
 		expect((await runsInWalkOrder())[0].competitorsMentioned).toEqual(["Globex"]);
 		const [brand] = await db.select().from(brands).where(eq(brands.id, brandId));
-		expect(brand.analysisVersions).toEqual(await currentVersions(brandId));
+		expect(brand.analysisVersions).toMatchObject(await currentVersions(brandId));
 	});
 
 	it("queues the last 30 days ahead of older history", async () => {
@@ -258,7 +257,6 @@ describe("what a replay covers", () => {
 		const insert = queue.boss.insert.bind(queue.boss);
 		queue.boss.insert = async (...args) => {
 			await db.update(prompts).set({ enabled: true }).where(eq(prompts.id, paused.id));
-			await requestReplay(db, brandId);
 			return insert(...args);
 		};
 		await runReprocess({ brandId, layers: BOTH_LAYERS }, db, queue.boss, cuedAnalyzer, 90);
@@ -323,7 +321,6 @@ describe("reprocessing over time", () => {
 
 	const setPrompt = async (id: string, enabled: boolean) => {
 		await db.update(prompts).set({ enabled }).where(eq(prompts.id, id));
-		if (enabled) await requestReplay(db, brandId);
 	};
 
 	it("judges each answer in the window once, and nothing more on later ticks", async () => {

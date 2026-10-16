@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
 	type AnalysisVersions,
 	currentAnalysisVersions,
@@ -70,12 +71,13 @@ async function queueStaleRuns(
 	layers: ReprocessLayer[],
 	target: AnalysisVersions,
 	days: number | null,
-): Promise<number> {
+): Promise<{ queued: number; enabledPrompts: string }> {
 	const brandPrompts = await conn
 		.select({ id: prompts.id })
 		.from(prompts)
 		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
-	if (brandPrompts.length === 0) return 0;
+	const enabledPrompts = promptsStamp(brandPrompts.map(({ id }) => id));
+	if (brandPrompts.length === 0) return { queued: 0, enabledPrompts };
 	const now = Date.now();
 	const cutoff = new Date(now - RECENT_FIRST_MS);
 	const oldest = days === null ? undefined : gte(promptRuns.createdAt, new Date(now - days * DAY_MS));
@@ -117,7 +119,7 @@ async function queueStaleRuns(
 			after = rows[rows.length - 1].id;
 		}
 	}
-	return queued;
+	return { queued, enabledPrompts };
 }
 
 function sameTags(a: string[], b: string[]): boolean {
@@ -136,6 +138,16 @@ async function recomputeSystemTags(conn: DbConnection, brand: Brand): Promise<vo
 		if (sameTags(nextTags, prompt.systemTags)) continue;
 		await conn.update(prompts).set({ systemTags: nextTags }).where(eq(prompts.id, prompt.id));
 	}
+}
+
+/** Which prompts a brand's last full pass covered: passes skip disabled prompts' runs. */
+const PROMPTS_KEY = "prompts";
+
+function promptsStamp(promptIds: string[]): string {
+	return createHash("sha256")
+		.update([...promptIds].sort().join(","))
+		.digest("hex")
+		.slice(0, 16);
 }
 
 /** Re-deriving text changes what mentions are found, so extraction always brings interpretation along. */
@@ -197,26 +209,18 @@ export async function runReprocess(
 		return;
 	}
 	const target = pickLayers(context.current, data.layers);
-	const queued = await queueStaleRuns(conn, boss, data.brandId, data.layers, context.current, days);
+	const { queued, enabledPrompts } = await queueStaleRuns(conn, boss, data.brandId, data.layers, context.current, days);
 	if (data.layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
-	// Only if the stamps are still the ones this pass started from: a replay requested meanwhile,
-	// by a prompt enabled after its prompts were read, must survive for the next pass.
-	const loaded = context.brand.analysisVersions;
-	const stamped = await conn
+	// The prompts this pass covered, read before it queued: a prompt enabled meanwhile leaves the
+	// stamp behind, so the next tick sends another pass.
+	target[PROMPTS_KEY] = enabledPrompts;
+	await conn
 		.update(brands)
 		.set({
 			analysisVersions: sql`coalesce(${brands.analysisVersions}, '{}'::jsonb) || ${JSON.stringify(target)}::jsonb`,
 		})
-		.where(
-			and(
-				eq(brands.id, data.brandId),
-				loaded ? sql`${brands.analysisVersions} = ${JSON.stringify(loaded)}::jsonb` : isNull(brands.analysisVersions),
-			),
-		)
-		.returning({ id: brands.id });
-	console.log(
-		`[reprocess] brand ${data.brandId}: queued ${queued} runs toward ${JSON.stringify(target)}${stamped.length ? "" : "; stamps moved meanwhile, so it stays stale for another pass"}`,
-	);
+		.where(eq(brands.id, data.brandId));
+	console.log(`[reprocess] brand ${data.brandId}: queued ${queued} runs toward ${JSON.stringify(target)}`);
 }
 
 /**
@@ -234,10 +238,18 @@ export async function requestStaleReprocesses(
 	analyzer: MentionAnalyzer = mentionAnalyzer(),
 	{ everyBrand = false } = {},
 ): Promise<number> {
-	const [allBrands, allCompetitors] = await Promise.all([conn.select().from(brands), conn.select().from(competitors)]);
+	const [allBrands, allCompetitors, enabledPrompts] = await Promise.all([
+		conn.select().from(brands),
+		conn.select().from(competitors),
+		conn.select({ id: prompts.id, brandId: prompts.brandId }).from(prompts).where(eq(prompts.enabled, true)),
+	]);
 	const competitorsByBrand = new Map<string, Competitor[]>();
 	for (const competitor of allCompetitors) {
 		competitorsByBrand.set(competitor.brandId, [...(competitorsByBrand.get(competitor.brandId) ?? []), competitor]);
+	}
+	const promptsByBrand = new Map<string, string[]>();
+	for (const prompt of enabledPrompts) {
+		promptsByBrand.set(prompt.brandId, [...(promptsByBrand.get(prompt.brandId) ?? []), prompt.id]);
 	}
 	let requested = 0;
 	for (const brand of allBrands) {
@@ -248,7 +260,9 @@ export async function requestStaleReprocesses(
 			analyzer.judgeVersion,
 		);
 		const stale = staleLayers(brand.analysisVersions, current);
-		const layers: ReprocessLayer[] = everyBrand ? ["extraction", "interpretation"] : stale;
+		// A prompt enabled since the last pass has runs that pass skipped, to judge now.
+		const promptsMoved = brand.analysisVersions[PROMPTS_KEY] !== promptsStamp(promptsByBrand.get(brand.id) ?? []);
+		const layers: ReprocessLayer[] = stale.length === 0 && (everyBrand || promptsMoved) ? ["interpretation"] : stale;
 		const sent =
 			layers.length > 0 &&
 			(await sendReprocess(boss, { brandId: brand.id, layers }, { startAfterSeconds: SETTLE_SECONDS }));

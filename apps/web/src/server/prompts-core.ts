@@ -6,7 +6,6 @@
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { requestReplay } from "@workspace/lib/db/replay";
 import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { lockBrandRollups, markPromptRunsDirty } from "@workspace/lib/rollups";
@@ -240,7 +239,6 @@ async function applyPromptUpdate(
 		await markPromptRunsDirty(tx, brand.id, [promptId]);
 	}
 	if (input.enabled !== undefined && wasEnabled !== input.enabled) {
-		if (input.enabled) await requestReplay(tx, brand.id);
 		afterCommit(() => (input.enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
 	}
 	return row;
