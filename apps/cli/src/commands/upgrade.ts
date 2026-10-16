@@ -5,7 +5,7 @@ import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
 import semver from "semver";
 import { refreshRenderedVersion, repinComposeImages } from "../compose.js";
-import { buildEnvFile, readRenderedVersion, resolveConfigDir } from "../config.js";
+import { buildEnvFile, type EnvMap, readRenderedVersion, resolveConfigDir } from "../config.js";
 import {
 	assertDockerRunning,
 	composeUsesBuild,
@@ -160,7 +160,7 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 		process.exit(0);
 	}
 
-	await ensureJudgeKey(buildMigrationContext(configDir, cliVersion), options.yes);
+	await ensureJudgeKey(configDir, options.yes);
 
 	// ── Stop the stack so migrations + image swap run on a quiet deployment ─
 	assertDockerRunning();
@@ -201,10 +201,18 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 	p.outro(pc.green(`Upgraded to ${cliVersion}.`));
 }
 
-/** Elmo can't judge answers without a Jev key, so an upgrade that lacks one asks for it before stopping anything. */
-async function ensureJudgeKey(context: MigrationContext, nonInteractive: boolean | undefined): Promise<void> {
-	const env = await context.readEnv();
-	if (env.TYPESAFE_API_KEY?.trim()) return;
+/**
+ * Elmo can't judge answers without a Jev key, so an upgrade that lacks one asks for it before
+ * stopping anything. Appended, so the rest of `.env` stays exactly as the user left it.
+ */
+async function ensureJudgeKey(configDir: string, nonInteractive: boolean | undefined): Promise<void> {
+	const envPath = path.join(configDir, ".env");
+	const raw = await fs.readFile(envPath, "utf8").catch(() => null);
+	if (raw === null) {
+		log.error(`Couldn't read ${envPath}; run \`elmo init\` or restore it, then rerun the upgrade.`);
+		process.exit(1);
+	}
+	if (parseDotenv(raw).TYPESAFE_API_KEY?.trim()) return;
 	if (nonInteractive) {
 		log.error(
 			"This version needs TYPESAFE_API_KEY (Jev, https://console.typesafe.ai) to judge mentions and sentiment.",
@@ -212,8 +220,11 @@ async function ensureJudgeKey(context: MigrationContext, nonInteractive: boolean
 		log.info("Add it to .env with `elmo edit env`, then rerun the upgrade.");
 		process.exit(1);
 	}
+	const env: EnvMap = {};
 	await collectJudgeKey(env);
-	await context.writeEnv(env);
+	const key = env.TYPESAFE_API_KEY;
+	const value = /^[\w.-]+$/.test(key) ? key : JSON.stringify(key);
+	await fs.appendFile(envPath, `${raw.endsWith("\n") ? "" : "\n"}TYPESAFE_API_KEY=${value}\n`, "utf8");
 	log.success("Saved TYPESAFE_API_KEY to .env.");
 }
 
