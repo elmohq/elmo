@@ -26,7 +26,8 @@ interface Backfill {
 
 /** Data migrations that need application code; see `background_migrations`. */
 const BACKFILLS: Backfill[] = [
-	{ name: "legacy-run-text", run: (walk) => fillLegacyText(db, walk) },
+	// Renamed when runs recorded as `direct` became readable, so databases that finished it run it again.
+	{ name: "legacy-run-text-by-engine", run: (walk) => fillLegacyText(db, walk) },
 	{ name: "legacy-citation-pages", run: (walk) => resolveUnpagedCitations(db, walk) },
 ];
 

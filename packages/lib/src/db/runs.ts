@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq, getTableColumns, inArray, sql } from "drizzle-orm";
+import { LEGACY_EXTRACTION_STAMP } from "../analysis-versions";
 import type { RunMentionAssessments } from "../mentions";
 import type { DbConnection } from "./db-connection";
 import { type NewPromptRun, promptRuns, runExtractions, runMentions } from "./schema";
@@ -86,12 +87,12 @@ export interface ExtractionUpdate {
 /**
  * Writes many runs' extractions in one statement, extracted for the first time or again:
  * derivation and backfills write in batches, and a statement per run is a round trip per run.
- * `onlyUnstamped` skips runs something else has stamped since they were read.
+ * `onlyLegacyWithoutText` skips runs something else has extracted since they were read.
  */
 export async function updateExtractions(
 	conn: DbConnection,
 	updates: ExtractionUpdate[],
-	options: { onlyUnstamped?: boolean } = {},
+	options: { onlyLegacyWithoutText?: boolean } = {},
 ): Promise<void> {
 	if (updates.length === 0) return;
 	const values = updates.map((u) => sql`(${u.runId}::uuid, ${u.textContent}::text, ${u.stamp}::text)`);
@@ -100,7 +101,7 @@ export async function updateExtractions(
 		SELECT * FROM (VALUES ${sql.join(values, sql`, `)}) AS v(run_id, text_content, stamp)
 		ON CONFLICT (run_id) DO UPDATE
 		SET text_content = excluded.text_content, stamp = coalesce(excluded.stamp, e.stamp)
-		${options.onlyUnstamped ? sql`WHERE e.stamp IS NULL` : sql``}
+		${options.onlyLegacyWithoutText ? sql`WHERE e.text_content IS NULL AND (e.stamp IS NULL OR e.stamp = ${LEGACY_EXTRACTION_STAMP})` : sql``}
 	`);
 }
 
