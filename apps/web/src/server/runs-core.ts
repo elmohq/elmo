@@ -6,7 +6,7 @@ import { db } from "@workspace/lib/db/db";
 import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
 import type { RunMentionAssessments, MentionAssessment as StoredAssessment } from "@workspace/lib/mentions";
-import { extractTextContent } from "@workspace/lib/text-extraction";
+import { extractorFor, extractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq } from "drizzle-orm";
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
 import type { AnalyticsWindow } from "@/server/analytics-core";
@@ -132,10 +132,8 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 		.where(eq(citations.promptRunId, run.id))
 		.orderBy(asc(citations.citationIndex));
 
-	// Older rows carry no text and may predate the provider column; the
-	// extractor also accepts the model name.
 	const text =
-		run.textContent ?? extractTextContent((await loadRawOutputs(db, [run.id])).get(run.id), run.provider ?? run.model);
+		run.textContent ?? extractTextContent((await loadRawOutputs(db, [run.id])).get(run.id), extractorFor(run));
 
 	return {
 		id: run.id,
