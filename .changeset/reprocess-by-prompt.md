@@ -2,4 +2,4 @@
 "@workspace/worker": patch
 ---
 
-Re-judge the history of brands with many prompts, which could time out before.
+Fix reprocessing timing out for brands with many prompts.
