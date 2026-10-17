@@ -115,7 +115,7 @@ export function OffSiteValue() {
 				</div>
 
 				<div className="mt-8 rounded-lg border border-zinc-200 bg-zinc-50 p-6 lg:p-8">
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ WHO RUNS THIS</p>
+					<h3 className="text-lg font-semibold tracking-tight text-zinc-950">Who runs this</h3>
 					<p className="mt-3 max-w-[68ch] text-pretty text-zinc-700 md:text-lg">
 						Elmo is run by{" "}
 						<a
