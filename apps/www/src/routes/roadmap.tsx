@@ -20,7 +20,10 @@ interface UpcomingHighlight {
 	url: string;
 }
 
-const upcomingHighlights = (upcomingData as { highlights: UpcomingHighlight[] }).highlights;
+const { shipped: shippedHighlights, highlights: upcomingHighlights } = upcomingData as {
+	shipped: UpcomingHighlight[];
+	highlights: UpcomingHighlight[];
+};
 
 export const Route = createFileRoute("/roadmap")({
 	head: () => ({
@@ -51,6 +54,7 @@ export const Route = createFileRoute("/roadmap")({
 		return {
 			popularIssues: sorted.slice(0, 7),
 			upcoming: upcomingHighlights,
+			shipped: shippedHighlights,
 		};
 	},
 	component: RoadmapPage,
@@ -64,7 +68,7 @@ function GitHubGlyph({ className = "" }: { className?: string }) {
 	);
 }
 
-function HighlightCard({ highlight }: { highlight: UpcomingHighlight }) {
+function HighlightCard({ highlight, meta }: { highlight: UpcomingHighlight; meta?: string }) {
 	return (
 		<a
 			href={highlight.url}
@@ -77,8 +81,8 @@ function HighlightCard({ highlight }: { highlight: UpcomingHighlight }) {
 			</h3>
 			<p className="text-sm text-pretty text-zinc-600">{highlight.description}</p>
 			<div className="mt-auto flex items-center justify-between pt-1">
-				{highlight.issue ? (
-					<span className="font-mono text-[11px] tabular-nums text-zinc-500">#{highlight.issue}</span>
+				{meta || highlight.issue ? (
+					<span className="font-mono text-[11px] tabular-nums text-zinc-500">{meta ?? `#${highlight.issue}`}</span>
 				) : (
 					<span />
 				)}
@@ -144,7 +148,7 @@ function IssueRow({ issue }: { issue: GitHubRoadmapIssue }) {
 }
 
 function RoadmapPage() {
-	const { popularIssues, upcoming } = Route.useLoaderData();
+	const { popularIssues, upcoming, shipped } = Route.useLoaderData();
 
 	return (
 		<div className="min-h-screen">
@@ -196,6 +200,24 @@ function RoadmapPage() {
 								{upcoming.map((h) => (
 									<li key={h.title} className="flex">
 										<HighlightCard highlight={h} />
+									</li>
+								))}
+							</ul>
+						</div>
+					</section>
+				)}
+
+				{shipped.length > 0 && (
+					<section className="border-b border-zinc-200 bg-white">
+						<div className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-16">
+							<div className="mb-8">
+								<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-600">/ SHIPPED</p>
+								<h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Recently Shipped</h2>
+							</div>
+							<ul className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
+								{shipped.map((h) => (
+									<li key={h.title} className="flex">
+										<HighlightCard highlight={h} meta={h.tag} />
 									</li>
 								))}
 							</ul>
