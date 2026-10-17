@@ -2,7 +2,7 @@
 	"openapi": "3.1.1",
 	"info": {
 		"title": "Elmo API",
-		"description": "Track how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brands. Manage the brands, prompts, and competitors Elmo tracks, and pull the visibility and citation analytics behind the dashboard.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, is issued either read or read-write access, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nA key holds one of two scopes. `read` reaches every read operation; `write` adds every create, update, and delete one, and is issued alongside `read` rather than instead of it. Each operation lists what it requires in `x-elmo-scopes` — an operation listing none is reachable by any valid key. Admin keys hold both implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `read` | Read brands, prompts, competitors, runs, citations, analytics, and the organization's plan and usage |\n| `write` | Everything `read` grants, plus creating, updating, and deleting brands, prompts, and competitors |\n\nNothing finer is offered, because the operations actually worth withholding are not ones a scope can withhold. Deleting a *prompt* has no scope at all: it takes every run and citation with it, the dashboard offers no such action, and `PATCH /prompts/{promptId}` with `enabled: false` stops the tracking without losing the history. It is reachable with an instance admin key only.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` are reachable with an instance admin key only; no scope grants them. Report generation and brand analysis spend provider budget with no organization to bill it to; deleting a prompt destroys tracked history the dashboard itself will not. For the same reason a single *field* can be admin-only: `enabled` on `PATCH /brands/{brandId}` stops a brand being sampled at all, so setting it with an organization key is a `403`.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Collections take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take `start` + `end` as ISO 8601 timestamps, half-open, and answer with the whole window in one response; daily series are labelled in UTC. `/prompts/{promptId}/snapshot` keeps the `startDate`/`endDate` calendar days it shipped with.\n\n## Stability\n\nAn operation whose response shape may still change carries `x-stability: experimental`, and says so in the first line of its description. A schema can carry the same marker when only part of a stable operation's response is experimental. Everything else is stable: its shape will only ever gain fields. The absence of the marker is the promise.",
+		"description": "Track how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brands. Manage the brands, prompts, and competitors Elmo tracks, and pull the visibility and citation analytics behind the dashboard.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, is issued either read or read-write access, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nA key holds one of two scopes. `read` reaches every read operation; `write` adds every create, update, and delete one, and is issued alongside `read` rather than instead of it. Each operation lists what it requires as the role names of its `BearerAuth` security requirement (OpenAPI's provision for non-OAuth schemes), mirrored in `x-elmo-scopes` — an operation listing none is reachable by any valid key. Admin keys hold both implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `read` | Read brands, prompts, competitors, runs, citations, analytics, and the organization's plan and usage |\n| `write` | Everything `read` grants, plus creating, updating, and deleting brands, prompts, and competitors |\n\nNothing finer is offered, because the operations actually worth withholding are not ones a scope can withhold. Deleting a *prompt* has no scope at all: it takes every run and citation with it, the dashboard offers no such action, and `PATCH /prompts/{promptId}` with `enabled: false` stops the tracking without losing the history. It is reachable with an instance admin key only.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` are reachable with an instance admin key only; no scope grants them. Report generation and brand analysis spend provider budget with no organization to bill it to; deleting a prompt destroys tracked history the dashboard itself will not. For the same reason a single *field* can be admin-only: `enabled` on `PATCH /brands/{brandId}` stops a brand being sampled at all, so setting it with an organization key is a `403`.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Collections take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take `start` + `end` as ISO 8601 timestamps, half-open, and answer with the whole window in one response; daily series are labelled in UTC. `/prompts/{promptId}/snapshot` keeps the `startDate`/`endDate` calendar days it shipped with.\n\n## Stability\n\nAn operation whose response shape may still change carries `x-stability: experimental`, and says so in the first line of its description. A schema can carry the same marker when only part of a stable operation's response is experimental. Everything else is stable: its shape will only ever gain fields. The absence of the marker is the promise.",
 		"version": "1.1.0",
 		"contact": {
 			"name": "Elmo",
@@ -164,7 +164,7 @@
 						"description": "Stable machine-readable code. Deliberately not an enum: new values are added without a version bump, so treat an unrecognized one as its HTTP status implies. Currently: `unauthorized`, `insufficient_scope`, `forbidden`, `not_found`, `validation_error`, `conflict`, `rate_limited`, `method_not_allowed`, `read_only`, `no_active_plan`, `brand_limit`, `prompt_limit`, `model_not_in_plan`, `model_picks_exceeded`, `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`, `internal_error`."
 					}
 				},
-				"required": ["error"]
+				"required": ["error", "message", "code"]
 			},
 			"CreateReportRequest": {
 				"type": "object",
@@ -2417,6 +2417,11 @@
 					}
 				},
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"description": ""
 			},
 			"post": {
@@ -2463,6 +2468,11 @@
 					}
 				},
 				"x-elmo-scopes": ["write"],
+				"security": [
+					{
+						"BearerAuth": ["write"]
+					}
+				],
 				"description": ""
 			}
 		},
@@ -2511,6 +2521,11 @@
 					}
 				},
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"description": ""
 			},
 			"patch": {
@@ -2569,6 +2584,11 @@
 					}
 				},
 				"x-elmo-scopes": ["write"],
+				"security": [
+					{
+						"BearerAuth": ["write"]
+					}
+				],
 				"description": ""
 			}
 		},
@@ -2579,6 +2599,11 @@
 				"operationId": "getBrandAnalytics",
 				"tags": ["Analytics"],
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2635,6 +2660,11 @@
 				"operationId": "listBrandCitationDomains",
 				"tags": ["Analytics"],
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2691,6 +2721,11 @@
 				"operationId": "listBrandCitationUrls",
 				"tags": ["Analytics"],
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2747,6 +2782,11 @@
 				"operationId": "getBrandOpportunities",
 				"tags": ["Opportunities"],
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2789,6 +2829,11 @@
 				"operationId": "listBrandPromptPerformance",
 				"tags": ["Analytics"],
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2845,6 +2890,11 @@
 				"operationId": "getBrandQueryFanout",
 				"tags": ["Analytics"],
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2901,6 +2951,11 @@
 				"operationId": "listBrandTags",
 				"tags": ["Tags"],
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2981,6 +3036,11 @@
 					}
 				},
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"description": ""
 			},
 			"post": {
@@ -3024,6 +3084,11 @@
 					}
 				},
 				"x-elmo-scopes": ["write"],
+				"security": [
+					{
+						"BearerAuth": ["write"]
+					}
+				],
 				"description": ""
 			}
 		},
@@ -3075,6 +3140,11 @@
 					}
 				},
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"description": ""
 			},
 			"patch": {
@@ -3133,6 +3203,11 @@
 					}
 				},
 				"x-elmo-scopes": ["write"],
+				"security": [
+					{
+						"BearerAuth": ["write"]
+					}
+				],
 				"description": ""
 			},
 			"delete": {
@@ -3188,6 +3263,11 @@
 					}
 				},
 				"x-elmo-scopes": ["write"],
+				"security": [
+					{
+						"BearerAuth": ["write"]
+					}
+				],
 				"description": ""
 			}
 		},
@@ -3351,6 +3431,11 @@
 				"operationId": "getOrganizationBilling",
 				"tags": ["Organizations"],
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"parameters": [
 					{
 						"name": "organizationId",
@@ -3509,7 +3594,12 @@
 						"$ref": "#/components/responses/InternalServerError"
 					}
 				},
-				"x-elmo-scopes": ["read"]
+				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				]
 			},
 			"post": {
 				"summary": "Create a new prompt",
@@ -3552,7 +3642,12 @@
 						"$ref": "#/components/responses/InternalServerError"
 					}
 				},
-				"x-elmo-scopes": ["write"]
+				"x-elmo-scopes": ["write"],
+				"security": [
+					{
+						"BearerAuth": ["write"]
+					}
+				]
 			}
 		},
 		"/prompts/{promptId}": {
@@ -3603,7 +3698,12 @@
 						"$ref": "#/components/responses/InternalServerError"
 					}
 				},
-				"x-elmo-scopes": ["read"]
+				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				]
 			},
 			"patch": {
 				"summary": "Update a prompt",
@@ -3661,7 +3761,12 @@
 						"$ref": "#/components/responses/InternalServerError"
 					}
 				},
-				"x-elmo-scopes": ["write"]
+				"x-elmo-scopes": ["write"],
+				"security": [
+					{
+						"BearerAuth": ["write"]
+					}
+				]
 			},
 			"delete": {
 				"summary": "Delete a prompt",
@@ -3741,6 +3846,11 @@
 				"operationId": "listPromptRuns",
 				"tags": ["Runs"],
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"parameters": [
 					{
 						"name": "promptId",
@@ -3806,6 +3916,11 @@
 				"operationId": "getRun",
 				"tags": ["Runs"],
 				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				],
 				"parameters": [
 					{
 						"name": "promptId",
@@ -3962,7 +4077,9 @@
 										"mixed": 2,
 										"score": 0.85
 									},
-									"position": { "average": 1.6 },
+									"position": {
+										"average": 1.6
+									},
 									"citations": {
 										"citationsTotal": 1240,
 										"brandCitationsTotal": 85,
@@ -4003,7 +4120,12 @@
 						"$ref": "#/components/responses/InternalServerError"
 					}
 				},
-				"x-elmo-scopes": ["read"]
+				"x-elmo-scopes": ["read"],
+				"security": [
+					{
+						"BearerAuth": ["read"]
+					}
+				]
 			}
 		},
 		"/reports": {
