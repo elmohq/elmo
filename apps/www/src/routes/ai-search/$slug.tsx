@@ -82,7 +82,8 @@ function EnginePage() {
 						<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">
 							How to appear in {engine.name}
 						</h1>
-						<div className="mt-6 space-y-5 text-lg leading-relaxed text-zinc-700">
+						<p className="mt-4 text-xl leading-snug text-balance text-zinc-600">{engine.short}</p>
+						<div className="mt-8 space-y-5 text-lg leading-relaxed text-zinc-700">
 							{engine.intro.map((p) => (
 								<p key={p.slice(0, 32)}>{p}</p>
 							))}
