@@ -90,13 +90,6 @@ const AT_A_GLANCE: { tool: string; license: string; selfHost: string; tracks: st
 		bestFor: "A complete platform you own and audit",
 	},
 	{
-		tool: "NiubiGEO",
-		license: "Apache-2.0",
-		selfHost: "Yes, with your own model keys",
-		tracks: "ChatGPT, Claude, Gemini, Perplexity, and any OpenRouter model",
-		bestFor: "One-off and scheduled research into how models describe a product",
-	},
-	{
 		tool: "Ansvisor",
 		license: "MIT, with a paid cloud",
 		selfHost: "Yes, free",
@@ -386,8 +379,8 @@ function OpenSourcePage() {
 							hundreds of commits in the last 90 days.
 						</li>
 						<li>
-							Licenses differ more than features. Elmo, Ansvisor, Canonry, OneGlanse, and GeoLook are MIT; NiubiGEO and
-							Limelit are Apache-2.0; Cited is AGPL-3.0 and Gego is GPL-3.0, which add conditions on modified versions.
+							Licenses differ more than features. Elmo, Ansvisor, Canonry, OneGlanse, and GeoLook are MIT; Limelit is
+							Apache-2.0; Cited is AGPL-3.0 and Gego is GPL-3.0, which add conditions on modified versions.
 						</li>
 						<li>
 							Open source protects you from shutdowns, but not from a project going closed: Notra took its AGPL
@@ -587,22 +580,6 @@ function OpenSourcePage() {
 									GetCito vs Elmo
 								</a>
 								.
-							</p>
-						</div>
-
-						<div>
-							<h3 className="font-heading mb-3 text-lg text-zinc-950">NiubiGEO</h3>
-							<p>
-								NiubiGEO is an Apache-2.0 tool for testing how AI models describe a product. You enter a domain or
-								keywords, compare answers across ChatGPT, Claude, Gemini, Perplexity, or any OpenRouter model, and
-								inspect mentions, competitors, and cited sources, with repeatable and scheduled runs. You self-host it
-								with your own model keys.
-							</p>
-							<p className="mt-4">
-								We leave it out of the GitHub numbers above. Its stars and forks arrived in a few short bursts, mostly
-								from accounts created weeks earlier that forked without changes, so they don't say much about adoption.
-								The company behind it sells paid diagnosis reports and human-run GEO services, and the open tool works
-								as the front door to those. It calls model APIs rather than the consumer apps.
 							</p>
 						</div>
 

@@ -7849,41 +7849,6 @@ export const competitors: Competitor[] = [
 		],
 	},
 	{
-		slug: "niubigeo",
-		name: "NiubiGEO",
-		domain: "niubigeo.ai",
-		url: "https://niubigeo.ai/",
-		tagline: "Self-hosted GEO research tool that compares how AI models describe a product",
-		description:
-			"NiubiGEO tests how AI models describe a product: enter a domain or keywords, compare answers across models, and inspect mentions, competitors and cited sources, with repeatable and scheduled runs. It is self-hosted with your own OpenRouter or provider keys; the company behind it sells diagnosis reports and human-executed GEO/content services.",
-		category: "open-source",
-		ahrefsDR: 0,
-		status: "active",
-		license: "Apache-2.0",
-		features: {
-			multiLlmTracking: true,
-			chatgpt: true,
-			gemini: true,
-			perplexity: true,
-			claude: true,
-			anyModel: true,
-			byoKeys: true,
-			citationAnalytics: true,
-			competitorBenchmarking: true,
-			brandMentionTracking: true,
-			multiLanguage: true,
-			actionRecommendations: true,
-			openSource: true,
-			contentGeneration: true,
-		},
-		pricing: { hasFree: true, hasEnterprise: false },
-		highlights: [
-			"Apache-2.0, self-hosted with your own OpenRouter or provider keys",
-			"Scheduled runs compare answers across models and record cited sources",
-			"Parent company sells paid diagnosis reports and done-for-you GEO work",
-		],
-	},
-	{
 		slug: "limelit",
 		name: "Limelit",
 		domain: "limelit.co",
@@ -8240,7 +8205,6 @@ const aeoPopularityRanking: string[] = [
 	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, ~106 stars
 	"opensight", // MIT self-hosted tracker (36 stars) with a free hosted tier and API on every plan
 	"cited", // AGPL-3.0 citation monitor, first public release, ~126 stars
-	"niubigeo", // Apache-2.0 research tool fronting a services company; GitHub stars and forks look inorganic
 	"geolook", // MIT self-host-only workbench, ~770 stars, dormant since Aug 2026
 	"local-glyph", // Local SEO platform first; AI visibility is one module. Beta, 70+ agencies
 	"flip-aeo", // AEO tracking + optimization
