@@ -190,14 +190,13 @@ function GraveyardPage() {
 				<DirectorySection title="Open source is the safety net">
 					<div className="max-w-3xl space-y-4 text-zinc-600">
 						<p>
-							A hosted tracker is a bet on the company behind it. If it runs out of money, gets acquired, or decides
-							AI visibility isn't its business anymore, your history goes with it, usually with a few weeks' notice.
+							A hosted tracker is a bet on the company behind it. If it runs out of money, gets acquired, or decides AI
+							visibility isn't its business anymore, your history goes with it, usually with a few weeks' notice.
 						</p>
 						<p>
-							Open-source software changes the odds. When Genwolf's hosted app went offline, its MIT-licensed core
-							was still on GitHub. When Notra took its repository private, every copy already released under the AGPL
-							stayed usable. The code outlives the company, and a self-hosted install keeps your data in your own
-							database.
+							Open-source software changes the odds. When Genwolf's hosted app went offline, its MIT-licensed core was
+							still on GitHub. When Notra took its repository private, every copy already released under the AGPL stayed
+							usable. The code outlives the company, and a self-hosted install keeps your data in your own database.
 						</p>
 						<p>
 							Elmo is MIT-licensed, so you can self-host it, modify it, and keep running it no matter what happens to

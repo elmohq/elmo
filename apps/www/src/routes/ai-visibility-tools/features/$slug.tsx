@@ -69,7 +69,10 @@ function FeaturePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero title={`AI visibility tools with ${featurePhrase(featureKey)}`} lead={getFeatureVerdict(featureKey, tools)} />
+				<DirectoryHero
+					title={`AI visibility tools with ${featurePhrase(featureKey)}`}
+					lead={getFeatureVerdict(featureKey, tools)}
+				/>
 				<DirectorySection title="Tools that offer this feature">
 					<ToolGrid competitors={tools} />
 				</DirectorySection>
