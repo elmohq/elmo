@@ -1,5 +1,14 @@
 # @workspace/worker
 
+## 0.7.2
+
+### Patch Changes
+
+- 09bea7c: Fix reprocessing timing out for brands with many prompts.
+- @workspace/config@0.7.2
+  - @workspace/deployment@0.7.2
+  - @workspace/lib@0.7.2
+
 ## 0.7.1
 
 ### Patch Changes
