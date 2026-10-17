@@ -78,6 +78,9 @@ function suffixedMarkdownRoute(path: string): string | undefined {
 }
 
 function negotiableMarkdownRoute(path: string): string | undefined {
+	// A file-like path is a server route (the RSS feed, an image), not a page
+	// with a markdown twin.
+	if (/\.[^/]+$/.test(path)) return undefined;
 	for (const { base, indexIsPage, toMarkdown } of MARKDOWN_SOURCES) {
 		if (path === base && !indexIsPage) continue;
 		if (path !== base && !path.startsWith(`${base}/`)) continue;
@@ -109,9 +112,34 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
 	"/acceptable-use": "/legal/acceptable-use",
 };
 
-/** What a negotiated page can be served as, `text/plain` included because
- * `isMarkdownPreferred` treats it as a request for the markdown. */
-const NEGOTIABLE_TYPES = ["text/html", "text/markdown", "text/plain"];
+const MARKDOWN_MEDIA_TYPES = ["text/markdown", "text/x-markdown", "text/plain"];
+const NEGOTIABLE_TYPES = ["text/html", ...MARKDOWN_MEDIA_TYPES];
+
+interface AcceptRange {
+	mediaType: string;
+	quality: number;
+	/** Media-type parameters other than `q` and `charset`, which narrow the range
+	 * to representations carrying them — and ours carry none. */
+	narrowed: boolean;
+}
+
+function parseAccept(accept: string): AcceptRange[] {
+	return accept.split(",").flatMap((section) => {
+		const [range, ...params] = section.split(";").map((part) => part.replace(/\s/g, "").toLowerCase());
+		if (!range) return [];
+		const qIndex = params.findIndex((param) => param.startsWith("q="));
+		const quality = qIndex === -1 ? 1 : Number.parseFloat(params[qIndex].slice(2));
+		// Anything after `q` is an accept-extension, not a media-type parameter.
+		const mediaParams = qIndex === -1 ? params : params.slice(0, qIndex);
+		return [
+			{
+				mediaType: range,
+				quality: Number.isNaN(quality) ? 1 : quality,
+				narrowed: mediaParams.some((param) => param !== "" && !param.startsWith("charset=")),
+			},
+		];
+	});
+}
 
 /**
  * RFC 9110 §12.5.1: each type is scored by the most specific Accept range that
@@ -120,14 +148,7 @@ const NEGOTIABLE_TYPES = ["text/html", "text/markdown", "text/plain"];
  */
 function acceptsAnyOf(accept: string | null, types: string[]): boolean {
 	if (!accept?.trim()) return true;
-	const ranges = accept.split(",").flatMap((section) => {
-		const [range, ...params] = section.split(";");
-		const mediaType = range.trim().toLowerCase();
-		if (!mediaType) return [];
-		const q = params.map((param) => param.replace(/\s/g, "").toLowerCase()).find((param) => param.startsWith("q="));
-		const quality = q ? Number.parseFloat(q.slice(2)) : 1;
-		return [{ mediaType, quality: Number.isNaN(quality) ? 1 : quality }];
-	});
+	const ranges = parseAccept(accept).filter((range) => !range.narrowed);
 	return types.some((type) => {
 		const [major] = type.split("/");
 		const match =
@@ -184,7 +205,8 @@ function planFor(request: Request, path: string) {
 	const suffixed = suffixedMarkdownRoute(path);
 	const negotiable = suffixed ? undefined : negotiableMarkdownRoute(path);
 	const isHome = path === "/";
-	const wantsMarkdown = !suffixed && readable && isMarkdownPreferred(request);
+	const wantsMarkdown =
+		!suffixed && readable && isMarkdownPreferred(request, { markdownMediaTypes: MARKDOWN_MEDIA_TYPES });
 	return {
 		readable,
 		negotiable,

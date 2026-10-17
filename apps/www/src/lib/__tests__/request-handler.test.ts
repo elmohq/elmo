@@ -16,6 +16,9 @@ function fakeApp() {
 			return new Response("# Quick Start", { headers: { "Content-Type": "text/markdown; charset=utf-8" } });
 		}
 		if (pathname.startsWith("/llms.mdx/")) return markdownNotFound();
+		if (pathname === "/blog/rss.xml") {
+			return new Response("<rss/>", { headers: { "Content-Type": "application/rss+xml; charset=utf-8" } });
+		}
 		const known = ["/", "/pricing", "/docs/getting-started"].includes(pathname);
 		return new Response(HTML, {
 			status: known ? 200 : 404,
@@ -62,6 +65,8 @@ describe("homepage content negotiation", () => {
 		["text/html", "html"],
 		["text/markdown;q=0, text/html", "html"],
 		["text/html;q=0.5, text/markdown;q=0.9", "markdown"],
+		["text/x-markdown", "markdown"],
+		["text/html;level=1;q=0, text/html", "html"],
 		["*/*", "html"],
 		[undefined, "html"],
 	])("Accept %s gets %s", async (accept, expected) => {
@@ -112,6 +117,24 @@ describe("docs content negotiation", () => {
 		expect(response.headers.get("Vary")).toBe("Accept");
 		expect(new URL(seen[0].url).pathname).toBe("/llms.mdx/docs/getting-started");
 	});
+
+	it("accepts the legacy text/x-markdown type", async () => {
+		const { handle } = fakeApp();
+		const response = await handle(get("/docs/getting-started", "text/x-markdown"));
+		expect(response.status).toBe(200);
+		expect(await response.text()).toBe("# Quick Start");
+	});
+
+	it.each(["application/rss+xml, application/atom+xml", "text/markdown"])(
+		"serves the RSS feed to Accept %s untouched",
+		async (accept) => {
+			const { handle } = fakeApp();
+			const response = await handle(get("/blog/rss.xml", accept));
+			expect(response.status).toBe(200);
+			expect(response.headers.get("Content-Type")).toBe("application/rss+xml; charset=utf-8");
+			expect(await response.text()).toBe("<rss/>");
+		},
+	);
 
 	it("leaves pages without a markdown variant as HTML", async () => {
 		const { handle } = fakeApp();
