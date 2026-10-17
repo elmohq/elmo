@@ -11,6 +11,7 @@
 		"build": "node scripts/build-agent-skills.mjs && vite build && node ../../scripts/check-server-bundle.mjs .",
 		"start": "node .output/server/index.mjs",
 		"check-types": "tsc --noEmit",
+		"test": "vitest run",
 		"generate-icons": "tsx scripts/generate-brand-icons.tsx"
 	},
 	"dependencies": {
@@ -58,6 +59,7 @@
 		"png-to-ico": "^3.0.2",
 		"tar-stream": "3.2.2",
 		"typescript": "^7.0.2",
-		"vite": "^8.3.4"
+		"vite": "^8.3.4",
+		"vitest": "^5.0.3"
 	}
 }

@@ -107,10 +107,28 @@ export function organizationJsonLd() {
 		},
 		address: {
 			"@type": "PostalAddress",
-			addressLocality: "San Francisco",
+			streetAddress: "2108 N St Ste 4414",
+			addressLocality: "Sacramento",
 			addressRegion: "CA",
+			postalCode: "95816",
 			addressCountry: "US",
 		},
+		contactPoint: [
+			{
+				"@type": "ContactPoint",
+				contactType: "customer support",
+				email: "contact@elmohq.com",
+				url: canonicalUrl("/support"),
+				availableLanguage: "English",
+			},
+			{
+				"@type": "ContactPoint",
+				contactType: "security",
+				email: "security@elmohq.com",
+				url: canonicalUrl("/support"),
+				availableLanguage: "English",
+			},
+		],
 		parentOrganization: {
 			"@type": "Organization",
 			name: "Blue Whale Software, LLC",
