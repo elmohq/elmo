@@ -59,3 +59,23 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+/** Every competitor fits on the trend, so nobody is left over for an Others line or slice. */
+export const FewCompetitors: Story = {
+	decorators: [
+		(Story) => {
+			const companies = mockLandscape.companies.slice(0, 3);
+			// Rescaled so each day the three hold the whole conversation, as they would with nobody else tracked.
+			const dayTotal = (d: number) => companies.reduce((sum, c) => sum + c.series.share[d], 0);
+			setMockLandscape({
+				...mockLandscape,
+				companies: companies.map((c) => ({
+					...c,
+					series: { ...c.series, share: c.series.share.map((v, d) => v / dayTotal(d)) },
+				})),
+			});
+			setMockShareOfVoice({ ...mockShareOfVoice, entries: mockShareOfVoice.entries.slice(0, 3) });
+			return <Story />;
+		},
+	],
+};

@@ -17,6 +17,7 @@ import {
 	type LandscapeCompany,
 	type LandscapeMetric,
 	lowerIsBetter,
+	othersShareSeries,
 	sortByMetric,
 } from "@/lib/landscape";
 import { METRIC_META } from "@/lib/overview-metrics";
@@ -254,6 +255,7 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 	const [metric, setMetric] = useState<LandscapeMetric>("visibility");
 	const colors = useCompanyColors(landscape);
 	const meta = METRIC_META[metric];
+	const charted = landscape ? chartedCompanies(landscape, metric) : [];
 	return (
 		// On wide screens the page fits the viewport, so the card takes what's left and the grid scrolls within it.
 		<Card className="gap-0 xl:min-h-0 xl:flex-1 border-slate-200 bg-slate-50/70 py-0 shadow-none dark:border-slate-800 dark:bg-slate-900/40">
@@ -271,12 +273,14 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 					) : (
 						<CompanyTrendChart
 							dates={landscape.dates}
-							companies={chartedCompanies(landscape, metric).map((c) => ({
+							companies={charted.map((c) => ({
 								name: c.name,
 								isBrand: c.isBrand,
 								color: colors.get(c.name) ?? "#94a3b8",
 								values: c.series[metric],
 							}))}
+							// Only shares add up to a whole, so only they have a remainder to draw.
+							others={metric === "share" ? othersShareSeries(charted) : null}
 							format={meta.format}
 							lowerIsBetter={lowerIsBetter(metric)}
 							height="fill"

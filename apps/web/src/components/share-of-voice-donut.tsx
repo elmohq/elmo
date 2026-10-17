@@ -44,5 +44,5 @@ export function ShareOfVoiceDonut({
 
 	const total = slices.reduce((s, x) => s + x.value, 0);
 	const brand = slices.find((s) => s.emphasis);
-	return <RingChart slices={slices} center={brand ? percent(brand.value, total) : "—"} />;
+	return <RingChart label="Share of voice" slices={slices} center={brand ? percent(brand.value, total) : "—"} />;
 }

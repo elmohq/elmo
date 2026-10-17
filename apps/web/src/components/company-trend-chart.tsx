@@ -14,15 +14,34 @@ export interface CompanyTrend {
 /** Series keys are indexes rather than names, which can hold characters a CSS variable can't. */
 const keyOf = (index: number) => `c${index}`;
 
+const OTHERS_KEY = "others";
+/** Neutral and theme-aware, so it reads as "the rest" beside any palette, white-label ones included. */
+const OTHERS_STROKE = "var(--muted-foreground)";
+
+/** A short dashed stroke, so the legend and tooltip show the Others line as it's drawn. */
+function DashedSwatch() {
+	return (
+		<svg aria-hidden="true" width="12" height="4" className="shrink-0">
+			<line x1="0" y1="2" x2="12" y2="2" stroke={OTHERS_STROKE} strokeWidth="2" strokeDasharray="3 2" />
+		</svg>
+	);
+}
+
 export function CompanyTrendChart({
 	dates,
 	companies,
+	others,
 	format,
 	lowerIsBetter = false,
 	height = 260,
 }: {
 	dates: string[];
 	companies: CompanyTrend[];
+	/**
+	 * For shares of a whole: what everyone not charted holds, one value per entry of `dates`, drawn as
+	 * a dashed "Others" line after the companies. Leave out where the values don't add up to a whole.
+	 */
+	others?: (number | null)[] | null;
 	format: (value: number) => string;
 	/** Flips the axis so an improving line still rises. */
 	lowerIsBetter?: boolean;
@@ -30,12 +49,14 @@ export function CompanyTrendChart({
 	height?: number | "fill";
 }) {
 	const fill = height === "fill";
-	const config: ChartConfig = Object.fromEntries(
-		companies.map((c, i) => [keyOf(i), { label: c.name, color: c.color }]),
-	);
+	const config: ChartConfig = {
+		...Object.fromEntries(companies.map((c, i) => [keyOf(i), { label: c.name, color: c.color }])),
+		...(others ? { [OTHERS_KEY]: { label: "Others", color: OTHERS_STROKE } } : {}),
+	};
 	const data = dates.map((date, d) => ({
 		date,
 		...Object.fromEntries(companies.map((c, i) => [keyOf(i), c.values[d]])),
+		...(others ? { [OTHERS_KEY]: others[d] ?? null } : {}),
 	}));
 	return (
 		<div className={cn(fill && "flex h-full flex-col")}>
@@ -74,10 +95,14 @@ export function CompanyTrendChart({
 								// A custom formatter replaces the stock row, swatch included, so it draws its own.
 								formatter={(value, name) => (
 									<>
-										<span
-											className="size-2.5 shrink-0 rounded-[2px]"
-											style={{ backgroundColor: config[name as string]?.color }}
-										/>
+										{name === OTHERS_KEY ? (
+											<DashedSwatch />
+										) : (
+											<span
+												className="size-2.5 shrink-0 rounded-[2px]"
+												style={{ backgroundColor: config[name as string]?.color }}
+											/>
+										)}
 										<span className="flex flex-1 justify-between gap-4">
 											<span className="text-muted-foreground">{config[name as string]?.label}</span>
 											<span className="font-mono tabular-nums">{format(Number(value))}</span>
@@ -103,6 +128,20 @@ export function CompanyTrendChart({
 							isAnimationActive={false}
 						/>
 					))}
+					{/* Drawn last so it closes the tooltip, after every named company. */}
+					{others && (
+						<Line
+							dataKey={OTHERS_KEY}
+							type="bump"
+							stroke={OTHERS_STROKE}
+							strokeWidth={1.5}
+							strokeDasharray="5 4"
+							dot={false}
+							activeDot={{ r: 3, fill: OTHERS_STROKE, strokeWidth: 0 }}
+							connectNulls
+							isAnimationActive={false}
+						/>
+					)}
 				</LineChart>
 			</ChartContainer>
 			<div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2">
@@ -112,6 +151,12 @@ export function CompanyTrendChart({
 						{c.name}
 					</span>
 				))}
+				{others && (
+					<span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+						<DashedSwatch />
+						Others
+					</span>
+				)}
 			</div>
 		</div>
 	);
