@@ -723,7 +723,7 @@ export const competitors: Competitor[] = [
 		category: "content",
 		ahrefsDR: 72,
 		ahrefsTraffic: 1513,
-		status: "active",
+		status: "acquired",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -758,6 +758,7 @@ export const competitors: Competitor[] = [
 			"Reformats content for AI consumption",
 			"AI crawler analytics and site audits",
 		],
+		notes: "Acquired by Sitecore on 2026-06-03 (Bloomberg reported about $225M); still sold under its own name.",
 	},
 	{
 		slug: "athenahq",
@@ -8014,6 +8015,454 @@ export const competitors: Competitor[] = [
 		notes:
 			"Repo github.com/usenotra/notra returned 404 from about 2026-10-17; forks hold upstream commits through 2026-10-15.",
 	},
+	{
+		slug: "vizby",
+		name: "Vizby",
+		domain: "vizby.ai",
+		url: "https://www.vizby.ai/",
+		tagline: "Shopify-native app that audits a store's visibility in ChatGPT, Gemini, Perplexity, Claude and Copilot",
+		description:
+			"Shopify-native app that audits a store's visibility in ChatGPT, Gemini, Perplexity, Claude and Copilot. Acquired by Swap Commerce, its first acquisition; the product now runs as Swap Discovery and vizby.ai redirects there.",
+		category: "tracking",
+		ahrefsDR: 42,
+		status: "acquired",
+		fate: {
+			date: "2026-10-01",
+			summary:
+				"Acquired by Swap Commerce, its first acquisition; the product now runs as Swap Discovery and vizby.ai redirects there.",
+			source: "https://www.mofo.com/resources/news/261007-mofo-advises-swap-commerce",
+		},
+		features: {},
+	},
+	{
+		slug: "trajaan",
+		name: "Trajaan",
+		domain: "trajaan.io",
+		url: "https://trajaan.io/",
+		tagline:
+			"Paris search intelligence platform tracking brands across search engines, marketplaces, social and GenAI assistants",
+		description:
+			"Paris search intelligence platform tracking brands across search engines, marketplaces, social and GenAI assistants. Acquired by Cision; its search and GenAI-assistant tracking is being folded into Brandwatch, CisionOne and PR Newswire, which now sells an AEO & GEO report built on it.",
+		category: "tracking",
+		ahrefsDR: 26,
+		status: "acquired",
+		fate: {
+			date: "2025-12-11",
+			summary:
+				"Acquired by Cision; its search and GenAI-assistant tracking is being folded into Brandwatch, CisionOne and PR Newswire, which now sells an AEO & GEO report built on it.",
+			source: "https://www.aap.com.au/aapreleases/cision20251211ae40356",
+		},
+		features: {},
+	},
+	{
+		slug: "rankly",
+		name: "Rankly",
+		domain: "rankly.ai",
+		url: "https://rankly.ai/",
+		tagline:
+			"Answer engine analytics that tracked brand visibility in ChatGPT, Perplexity, Claude and Gemini and tied it to conversions",
+		description:
+			"Answer engine analytics that tracked brand visibility in ChatGPT, Perplexity, Claude and Gemini and tied it to conversions. Launched as an AEO analytics platform in November 2025 but now sells itself as an 'Agentic Commerce Experience' platform at tryrankly.com, and the rankly.ai domain is listed for sale.",
+		category: "tracking",
+		ahrefsDR: 0.7,
+		status: "pivoted",
+		fate: {
+			date: "2026",
+			summary:
+				"Launched as an AEO analytics platform in November 2025 but now sells itself as an 'Agentic Commerce Experience' platform at tryrankly.com, and the rankly.ai domain is listed for sale.",
+			source: "https://news.ycombinator.com/item?id=45852176",
+		},
+		features: {},
+	},
+	{
+		slug: "winglytics",
+		name: "Winglytics",
+		domain: "winglytics.com",
+		url: "https://www.winglytics.com/",
+		tagline: "AI visibility tool for tracking prompt rankings and brand discovery in AI search",
+		description:
+			"AI visibility tool for tracking prompt rankings and brand discovery in AI search. Went offline after mid-2025 (last archived live in August 2025), and the domain now redirects to a for-sale listing.",
+		category: "tracking",
+		ahrefsDR: 0.6,
+		status: "defunct",
+		fate: {
+			date: "2025",
+			summary:
+				"Went offline after mid-2025 (last archived live in August 2025), and the domain now redirects to a for-sale listing.",
+			source: "https://news.ycombinator.com/item?id=44285171",
+		},
+		features: {},
+	},
+	{
+		slug: "genrankengine",
+		name: "GenRankEngine",
+		domain: "genrankengine.com",
+		url: "https://www.genrankengine.com/",
+		tagline: "GEO platform that tracked B2B SaaS visibility in ChatGPT, Gemini and Claude",
+		description:
+			"GEO platform that tracked B2B SaaS visibility in ChatGPT, Gemini and Claude. Went offline after February 2026; the domain no longer resolves.",
+		category: "tracking",
+		ahrefsDR: 1.8,
+		status: "defunct",
+		fate: {
+			date: "2026",
+			summary: "Went offline after February 2026; the domain no longer resolves.",
+			source: "https://news.ycombinator.com/item?id=46541028",
+		},
+		features: {},
+	},
+	{
+		slug: "mudra",
+		name: "Mudra",
+		domain: "trymudra.com",
+		url: "https://www.trymudra.com/",
+		tagline: "'AI research lab' that measured and improved how often LLMs mention, cite and recommend a company",
+		description:
+			"'AI research lab' that measured and improved how often LLMs mention, cite and recommend a company. Went offline after April 2026; the site now returns a 404 page.",
+		category: "tracking",
+		ahrefsDR: 2.7,
+		status: "defunct",
+		fate: {
+			date: "2026",
+			summary: "Went offline after April 2026; the site now returns a 404 page.",
+			source: "https://news.ycombinator.com/item?id=45093708",
+		},
+		features: {},
+	},
+	{
+		slug: "monitorllm",
+		name: "MonitorLLM",
+		domain: "monitorllm.live",
+		url: "https://www.monitorllm.live/",
+		tagline: "Budget 'LLM SEO Monitor' that tracked product mentions and citations across AI platforms",
+		description:
+			"Budget 'LLM SEO Monitor' that tracked product mentions and citations across AI platforms. Went offline after May 2026, and the domain registration has lapsed.",
+		category: "tracking",
+		ahrefsDR: 0.3,
+		status: "defunct",
+		fate: {
+			date: "2026",
+			summary: "Went offline after May 2026, and the domain registration has lapsed.",
+			source: "https://news.ycombinator.com/item?id=44344320",
+		},
+		features: {},
+	},
+	{
+		slug: "propensia",
+		name: "Propensia",
+		domain: "propensia.ai",
+		url: "https://propensia.ai/",
+		tagline: "Free GEO audit tool that checked how discoverable a site was on ChatGPT, Claude and Perplexity",
+		description:
+			"Free GEO audit tool that checked how discoverable a site was on ChatGPT, Claude and Perplexity. Went offline after July 2025, and the domain registration has lapsed.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "defunct",
+		fate: {
+			date: "2025",
+			summary: "Went offline after July 2025, and the domain registration has lapsed.",
+			source: "https://news.ycombinator.com/item?id=44384297",
+		},
+		features: {},
+	},
+	{
+		slug: "linrush",
+		name: "LinRush",
+		domain: "linrush.com",
+		url: "https://linrush.com/",
+		tagline: "Early-access analytics platform for tracking when ChatGPT and other AI systems recommend your products",
+		description:
+			"Early-access analytics platform for tracking when ChatGPT and other AI systems recommend your products. Pitched on Hacker News in June 2025 as 'Ahrefs for AI search results'; the site was last archived live in July 2025 and the domain no longer resolves.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "defunct",
+		fate: {
+			date: "2025",
+			summary:
+				"Pitched on Hacker News in June 2025 as 'Ahrefs for AI search results'; the site was last archived live in July 2025 and the domain no longer resolves.",
+			source: "https://news.ycombinator.com/item?id=44173058",
+		},
+		features: {},
+	},
+	{
+		slug: "visibleinai",
+		name: "VisibleInAI",
+		domain: "visibleinai.ai",
+		url: "https://visibleinai.ai/",
+		tagline:
+			"Done-for-you AI visibility service that monitored and pushed ChatGPT, Perplexity and Google AI to recommend a brand",
+		description:
+			"Done-for-you AI visibility service that monitored and pushed ChatGPT, Perplexity and Google AI to recommend a brand. Launched in February 2026 and went offline after May 2026; the app now returns an 'Application not found' page.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "defunct",
+		fate: {
+			date: "2026",
+			summary:
+				"Launched in February 2026 and went offline after May 2026; the app now returns an 'Application not found' page.",
+			source: "https://news.ycombinator.com/item?id=47054773",
+		},
+		features: {},
+	},
+	{
+		slug: "searchattention",
+		name: "SearchAttention",
+		domain: "searchattention.com",
+		url: "https://www.searchattention.com/",
+		tagline:
+			"Content optimization for AI search, with relevancy scores and attention heatmaps showing what models focus on in a page",
+		description:
+			"Content optimization for AI search, with relevancy scores and attention heatmaps showing what models focus on in a page. Its founders shut the product down, citing expensive GPU capacity, a crowded GEO tool market, and no product-market fit, and moved on to a new venture called Betalyra.",
+		category: "tracking",
+		ahrefsDR: 15,
+		status: "defunct",
+		fate: {
+			date: "2026-09-01",
+			summary:
+				"Its founders shut the product down, citing expensive GPU capacity, a crowded GEO tool market, and no product-market fit, and moved on to a new venture called Betalyra.",
+			source: "https://searchattention.com/",
+		},
+		features: {},
+	},
+	{
+		slug: "deepserp",
+		name: "Deepserp",
+		domain: "deepserp.com",
+		url: "https://www.deepserp.com/",
+		tagline:
+			"GEO and AI visibility platform with modules for AI-readiness audits, AI crawler monitoring, prompt discovery, and citation measurement",
+		description:
+			"GEO and AI visibility platform with modules for AI-readiness audits, AI crawler monitoring, prompt discovery, and citation measurement. The GEO platform's domain now redirects to Deepsona, a synthetic-audience market research product.",
+		category: "tracking",
+		ahrefsDR: 17,
+		status: "pivoted",
+		fate: {
+			date: "2025-11",
+			summary: "The GEO platform's domain now redirects to Deepsona, a synthetic-audience market research product.",
+		},
+		features: {},
+	},
+	{
+		slug: "eldil-ai",
+		name: "Eldil AI",
+		domain: "eldil.ai",
+		url: "https://www.eldil.ai/",
+		tagline: "GEO suite for SEO agencies that monitored and improved brand mentions on ChatGPT, Perplexity, and Claude",
+		description:
+			"GEO suite for SEO agencies that monitored and improved brand mentions on ChatGPT, Perplexity, and Claude. The agency-focused GEO suite was taken down in spring 2026, and the domain now advertises a service that sources rare print media as training data for frontier models.",
+		category: "tracking",
+		ahrefsDR: 18,
+		status: "pivoted",
+		fate: {
+			date: "2026-05",
+			summary:
+				"The agency-focused GEO suite was taken down in spring 2026, and the domain now advertises a service that sources rare print media as training data for frontier models.",
+		},
+		features: {},
+	},
+	{
+		slug: "visalytica",
+		name: "Visalytica",
+		domain: "visalytica.com",
+		url: "https://www.visalytica.com/",
+		tagline: "AI visibility monitor that scored how ChatGPT, Claude, Gemini, and Perplexity described a brand",
+		description:
+			"AI visibility monitor that scored how ChatGPT, Claude, Gemini, and Perplexity described a brand. By April 2026 the AI visibility monitor had been replaced by a general directory of SaaS and AI tools on the same domain.",
+		category: "tracking",
+		ahrefsDR: 33,
+		status: "pivoted",
+		fate: {
+			date: "2026-04",
+			summary:
+				"By April 2026 the AI visibility monitor had been replaced by a general directory of SaaS and AI tools on the same domain.",
+		},
+		features: {},
+	},
+	{
+		slug: "modelmonitor",
+		name: "ModelMonitor.ai",
+		domain: "modelmonitor.ai",
+		url: "https://www.modelmonitor.ai/",
+		tagline: "Brand monitoring across AI models such as ChatGPT, Gemini, Grok, and Perplexity",
+		description:
+			"Brand monitoring across AI models such as ChatGPT, Gemini, Grok, and Perplexity. The site has been unreachable since early 2026, and it returns a server error.",
+		category: "tracking",
+		ahrefsDR: 13,
+		status: "defunct",
+		fate: {
+			date: "2026-10",
+			summary: "The site has been unreachable since early 2026, and it returns a server error.",
+		},
+		features: {},
+	},
+	{
+		slug: "exanimo",
+		name: "Exanimo.ai",
+		domain: "exanimo.ai",
+		url: "https://exanimo.ai",
+		tagline:
+			"AI engine optimization and brand-visibility tracking across ChatGPT, Claude, and Gemini, with white-label dashboards for agencies",
+		description:
+			"AI engine optimization and brand-visibility tracking across ChatGPT, Claude, and Gemini, with white-label dashboards for agencies. The white-label GEO platform had been in open beta since mid-2025, and its hosted app has since been taken offline.",
+		category: "tracking",
+		ahrefsDR: 1.4,
+		status: "defunct",
+		fate: {
+			date: "2026-10",
+			summary:
+				"The white-label GEO platform had been in open beta since mid-2025, and its hosted app has since been taken offline.",
+		},
+		features: {},
+	},
+	{
+		slug: "citeanalytics",
+		name: "CiteAnalytics",
+		domain: "citeanalytics.com",
+		url: "https://www.citeanalytics.com",
+		tagline: "Tracks when AI systems cite or reference a website's content",
+		description:
+			"Tracks when AI systems cite or reference a website's content. The tool launched on Show HN in April 2025 after winning a Supabase hackathon, and its domain now serves a 'deployment not found' page.",
+		category: "tracking",
+		ahrefsDR: 8,
+		status: "defunct",
+		fate: {
+			date: "2025-09",
+			summary:
+				"The tool launched on Show HN in April 2025 after winning a Supabase hackathon, and its domain now serves a 'deployment not found' page.",
+			source: "https://news.ycombinator.com/item?id=43743166",
+		},
+		features: {},
+	},
+	{
+		slug: "gptscore",
+		name: "GPTScore",
+		domain: "getgptscore.com",
+		url: "https://getgptscore.com",
+		tagline: "Free 30-second test of whether ChatGPT and other assistants know and recommend a business",
+		description:
+			"Free 30-second test of whether ChatGPT and other assistants know and recommend a business. The quick AI-visibility test launched on Show HN in August 2025, and its domain now serves a 'deployment not found' page.",
+		category: "tracking",
+		ahrefsDR: 0.2,
+		status: "defunct",
+		fate: {
+			date: "2025-11",
+			summary:
+				"The quick AI-visibility test launched on Show HN in August 2025, and its domain now serves a 'deployment not found' page.",
+			source: "https://news.ycombinator.com/item?id=44890930",
+		},
+		features: {},
+	},
+	{
+		slug: "llmcontentready",
+		name: "LLMContentReady",
+		domain: "llmcontentready.com",
+		url: "https://llmcontentready.com",
+		tagline: "Scores and optimizes website content so ChatGPT, Perplexity, and Claude cite it",
+		description:
+			"Scores and optimizes website content so ChatGPT, Perplexity, and Claude cite it. The tool launched on Show HN in May 2025, and its site now no longer loads.",
+		category: "tracking",
+		ahrefsDR: 0.1,
+		status: "defunct",
+		fate: {
+			date: "2025-08",
+			summary: "The tool launched on Show HN in May 2025, and its site now no longer loads.",
+			source: "https://news.ycombinator.com/item?id=44042904",
+		},
+		features: {},
+	},
+	{
+		slug: "oparse",
+		name: "oParse",
+		domain: "oparse.com",
+		url: "https://oparse.com",
+		tagline: "Tracked what ChatGPT, Gemini, Llama, Claude, and other models said about a brand",
+		description:
+			"Tracked what ChatGPT, Gemini, Llama, Claude, and other models said about a brand. The brand-perception tracker launched on Show HN in February 2025, and its domain is now listed for sale.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "defunct",
+		fate: {
+			date: "2025-12",
+			summary:
+				"The brand-perception tracker launched on Show HN in February 2025, and its domain is now listed for sale.",
+			source: "https://news.ycombinator.com/item?id=43078273",
+		},
+		features: {},
+	},
+	{
+		slug: "surchee",
+		name: "Surchee",
+		domain: "surchee.com",
+		url: "https://www.surchee.com",
+		tagline: "Showed how ChatGPT, Perplexity, and Claude summarize a site and tracked AI bot visits",
+		description:
+			"Showed how ChatGPT, Perplexity, and Claude summarize a site and tracked AI bot visits. The AI search optimization platform launched on Show HN in September 2025, and its domain no longer resolves.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "defunct",
+		fate: {
+			date: "2025-12",
+			summary:
+				"The AI search optimization platform launched on Show HN in September 2025, and its domain no longer resolves.",
+			source: "https://news.ycombinator.com/item?id=45346047",
+		},
+		features: {},
+	},
+	{
+		slug: "cothou",
+		name: "CoThou",
+		domain: "cothou.com",
+		url: "https://cothou.com",
+		tagline: "Company profiles designed to become the cited source of truth for AI answer engines",
+		description:
+			"Company profiles designed to become the cited source of truth for AI answer engines. It launched in December 2025 as a way to control what answer engines say about a business, was relaunched a week later as a personal AI agent, and its domain no longer resolves.",
+		category: "tracking",
+		ahrefsDR: 1.6,
+		status: "pivoted",
+		fate: {
+			date: "2025-12",
+			summary:
+				"It launched in December 2025 as a way to control what answer engines say about a business, was relaunched a week later as a personal AI agent, and its domain no longer resolves.",
+			source: "https://news.ycombinator.com/item?id=46191764",
+		},
+		features: {},
+	},
+	{
+		slug: "gpt-rank-ai",
+		name: "GPT Rank AI",
+		domain: "gptrank.ai",
+		url: "https://gptrank.ai",
+		tagline: "Tracked keyword and brand rankings across AI search engines",
+		description:
+			"Tracked keyword and brand rankings across AI search engines. The rank tracker for AI search engines was live in early 2025, and its Framer site now returns 'Site Not Found'.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "defunct",
+		fate: {
+			date: "2025-04",
+			summary:
+				"The rank tracker for AI search engines was live in early 2025, and its Framer site now returns 'Site Not Found'.",
+		},
+		features: {},
+	},
+	{
+		slug: "growthos",
+		name: "GrowthOS",
+		domain: "growth-os.co",
+		url: "https://growth-os.co",
+		tagline: "Helped brands become visible in AI answers",
+		description:
+			"Helped brands become visible in AI answers. The AI-search visibility platform's domain now redirects to Agentrail, a product for analyzing how AI agents use websites and APIs.",
+		category: "tracking",
+		ahrefsDR: 4.2,
+		status: "pivoted",
+		fate: {
+			date: "2026-10",
+			summary:
+				"The AI-search visibility platform's domain now redirects to Agentrail, a product for analyzing how AI agents use websites and APIs.",
+		},
+		features: {},
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -8265,12 +8714,22 @@ export const graveyardRanking: string[] = [
 	"xfunnel", // Acquired by HubSpot for a reported ~$30M
 	"hall", // Strong product with DR 47; acquired by Tracksuit
 	"meridian", // Seven-figure acquisition by Searchable
+	"trajaan", // Acquired by Cision and folded into Brandwatch and PR Newswire
+	"vizby", // Shopify app acquired by Swap Commerce
 	"scope", // YC-backed, pivoted to coding-agent analytics
 	"lorelight", // Widely shared founder postmortem
 	"ai-rank-checker", // Claimed 700+ companies; absorbed into Cognizo
 	"jarts", // Acquired, then shut down
 	"bear-ai", // Blog Agent product, pivoted to AI training data
 	"genwolf", // Open-source core with a hosted app
+	"searchattention", // Shutdown post citing GPU costs and a crowded market
+	"deepserp", // Top Profound alternative on AlternativeTo in 2025
+	"eldil-ai", // Agency GEO suite, pivoted to AI training data
+	"visalytica",
+	"rankly",
+	"modelmonitor",
+	"exanimo",
+	"citeanalytics",
 	"aeospy",
 	"visble",
 	"thirdeye",
@@ -8279,6 +8738,20 @@ export const graveyardRanking: string[] = [
 	"anvil",
 	"chatgeo",
 	"searchone",
+	"genrankengine",
+	"growthos",
+	"mudra",
+	"monitorllm",
+	"visibleinai",
+	"cothou",
+	"surchee",
+	"oparse",
+	"linrush",
+	"gptscore",
+	"llmcontentready",
+	"gpt-rank-ai",
+	"propensia",
+	"winglytics",
 ];
 
 /**
