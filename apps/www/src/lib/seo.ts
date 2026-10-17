@@ -111,6 +111,22 @@ export function organizationJsonLd() {
 			addressRegion: "CA",
 			addressCountry: "US",
 		},
+		contactPoint: [
+			{
+				"@type": "ContactPoint",
+				contactType: "customer support",
+				email: "contact@elmohq.com",
+				url: canonicalUrl("/support"),
+				availableLanguage: "English",
+			},
+			{
+				"@type": "ContactPoint",
+				contactType: "security",
+				email: "security@elmohq.com",
+				url: canonicalUrl("/support"),
+				availableLanguage: "English",
+			},
+		],
 		parentOrganization: {
 			"@type": "Organization",
 			name: "Blue Whale Software, LLC",
