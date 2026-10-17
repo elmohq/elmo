@@ -10,6 +10,7 @@ import {
 	type FeatureKey,
 	getFeatureDescription,
 	getFeatureLabel,
+	getFeaturePhrase,
 	isLowDR,
 } from "./types";
 
@@ -98,6 +99,19 @@ function getComparePair(slug: string): [Competitor, Competitor] | undefined {
 /** Clean URL slugs for each feature key. */
 export const FEATURE_SLUGS: Record<FeatureKey, string> = {
 	multiLlmTracking: "multi-llm-tracking",
+	chatgpt: "chatgpt",
+	googleAiOverviews: "google-ai-overviews",
+	googleAiMode: "google-ai-mode",
+	gemini: "gemini",
+	perplexity: "perplexity",
+	copilot: "microsoft-copilot",
+	claude: "claude",
+	grok: "grok",
+	deepseek: "deepseek",
+	metaAi: "meta-ai",
+	anyModel: "any-model",
+	uiCapture: "real-ui-answers",
+	byoKeys: "bring-your-own-keys",
 	visibilityScore: "visibility-score",
 	citationAnalytics: "citation-analytics",
 	competitorBenchmarking: "competitor-benchmarking",
@@ -404,6 +418,8 @@ export function getCompareFaqs(tools: Competitor[]): FaqItem[] {
 
 /** A feature label for mid-sentence use: lowercased, but acronyms like AI and MCP keep their case. */
 export function featurePhrase(key: FeatureKey): string {
+	const phrase = getFeaturePhrase(key);
+	if (phrase) return phrase;
 	return getFeatureLabel(key).replace(/\b[A-Z][a-z]+\b/g, (word) => word.toLowerCase());
 }
 
