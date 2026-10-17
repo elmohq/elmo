@@ -2,8 +2,8 @@
  * /auth/login - Login page
  *
  * Local/cloud modes: email/password form beside the sales panel.
- * Demo mode: the shared credentials on a plain card — a demo visitor is
- * already looking, and has nothing to buy.
+ * Demo mode: signs in to the shared account automatically — a demo visitor
+ * is already looking, and has nothing to buy.
  * Whitelabel mode: auto-redirects to Auth0 SSO (no form shown).
  */
 
@@ -141,42 +141,48 @@ export function SSOLogin({ destination = "/app" }: { destination?: string }) {
 
 export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState(false);
 
-	async function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
-		setError(null);
-		setLoading(true);
+	// The credentials are public, so making the visitor click through them is
+	// friction with nothing behind it.
+	useEffect(() => {
+		let cancelled = false;
 
-		try {
-			const result = await authClient.signIn.email({ email: "demo@elmohq.com", password: "demo" });
-			if (result.error) {
-				setError(result.error.message ?? "Invalid email or password");
-				setLoading(false);
-				return;
-			}
-			window.location.href = destination;
-		} catch {
-			setError("Something went wrong. Please try again.");
-			setLoading(false);
-		}
-	}
+		authClient.signIn
+			.email({ email: "demo@elmohq.com", password: "demo" })
+			.then((result) => {
+				if (cancelled) return;
+				if (result.error) {
+					setError(result.error.message ?? "Invalid email or password");
+					return;
+				}
+				window.location.href = destination;
+			})
+			.catch(() => {
+				if (!cancelled) setError("Something went wrong. Please try again.");
+			});
 
-	return (
-		<FullPageCard title="Sign in">
-			<form onSubmit={handleSubmit} className="space-y-4 w-full">
-				<DemoCredentialsCallout />
-				{error && (
+		return () => {
+			cancelled = true;
+		};
+	}, [destination]);
+
+	if (error) {
+		return (
+			<FullPageCard title="Sign in">
+				<div className="w-full space-y-4">
+					<DemoCredentialsCallout />
 					<Alert variant="destructive">
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
-				)}
-				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Signing in..." : "Sign in"}
-				</Button>
-			</form>
-		</FullPageCard>
-	);
+					<Button className="w-full" onClick={() => window.location.reload()}>
+						Try Again
+					</Button>
+				</div>
+			</FullPageCard>
+		);
+	}
+
+	return <FullPageCard title="Signing in..." subtitle="Opening the demo account" />;
 }
 
 export function EmailPasswordLogin({
