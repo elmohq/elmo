@@ -30,7 +30,7 @@ const counts = graveyardTools.reduce(
 	{ "shut-down": 0, pivoted: 0, acquired: 0 } as Record<GraveyardFate, number>,
 );
 
-const lead = `The AI visibility market is young and crowded, and not every tool makes it. ${counts["shut-down"]} AI visibility tools we know of have shut down, ${counts.pivoted} have pivoted to something else, and ${counts.acquired} have been bought. When a tracker goes, its prompt history and baselines usually go with it. Here is who is gone, and how to make sure it doesn't happen to you.`;
+const lead = `The AI visibility market is young and crowded, and not every tool makes it. ${counts["shut-down"]} AI visibility tools we know of have shut down, ${counts.pivoted} have pivoted to something else, and ${counts.acquired} were bought and folded into another product. When a tracker goes, its prompt history and baselines usually go with it. Here is who is gone, and how to make sure it doesn't happen to you.`;
 
 const FATE_LABEL: Record<GraveyardFate, string> = {
 	"shut-down": "Shut down",
