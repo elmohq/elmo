@@ -8057,41 +8057,49 @@ export function getComparisonSlug(competitor: Competitor): string {
  *      visibility scores, citation analytics, competitor benchmarking).
  *   4. General web authority (DR/traffic) is a minor tiebreaker only.
  *
- * Grade thresholds (by position in this list):
- *   A = top ~8%   B = next ~13%   C = next ~22%   D = next ~27%   F = rest
+ * Grade thresholds (by position in this list) are deliberately steep, so an A
+ * means a genuine category leader:
+ *   A = top 3%   B = next 7%   C = next 15%   D = next 25%   F = rest
+ *
+ * Shut-down and pivoted tools are left out; they live in the AEO Graveyard.
  *
  * When adding a new tool, insert its slug at the appropriate position
  * based on the criteria above. Do NOT append to the end.
  */
 const aeoPopularityRanking: string[] = [
 	// --- Tier A: Category leaders with major funding, customers, and recognition ---
-	"profound", // Category leader: G2 AEO Leader, enterprise (MongoDB, Figma, Zapier, Ramp), Fortune/WSJ/NYT
-	"peec-ai", // $21M Series A (Singular), 1,300+ brands onboarded, fastest-growing pure-play
+	"profound", // Category leader: $96M Series C at a $1B valuation (Feb 2026), enterprise roster, G2 AEO Leader
+	"peec-ai", // $21M Series A (Singular), 3,500+ brands, ten engines scraped from the real UIs
 	"airops", // $40M Series B / $225M val (Greylock), Ramp/Chime/Wiz/Carta, repositioned as AI-search platform
 	"scrunch", // $19M (Mayfield/Decibel), G2 category leader, broadest engine coverage, SOC2+HIPAA
-	"otterly-ai", // Gartner Cool Vendor 2025, 20k+ users, dedicated GEO tracker
-	"evertune", // $4M seed, NYT/WSJ/Forbes/Adweek, EverPanel consumer panel data
-	"brandlight", // Named #1 AEO platform by an analyst ranking, Fortune 500 customers, SOC 2 Type 2, AI-ads module
-	"xfunnel", // Being acquired by HubSpot; monday.com/LastPass/Getty/Betterment/Check Point roster, DR 61
-	"writesonic", // 120M AI conversation dataset, major brand, combined tracking + content
-	"athenahq", // Repeatedly named in best-AEO-tools-2026 lists, prompt-level insights
-	"rankscale", // 17+ engines in one plan, 240+ countries, 94 technical checks, DR 63 with case studies + partners
-	"waikay", // InLinks team, entity map + fact tracker, 40 countries/13 languages, DR 59
-	"se-ranking", // Large established platform with dedicated AI Overviews + ChatGPT trackers
+	"athenahq", // Broad engine coverage incl. all ten tracked engines, API + MCP, widely listed in best-AEO roundups
+	"otterly-ai", // Gartner Cool Vendor 2025, 30k+ users, 2026 European Search Award
 
-	// --- Tier B: Known / growing AEO tools ---
-	"nightwatch", // Established rank tracker (190K locations) with AI search tracking
+	// --- Tier B: Well-funded or widely adopted AEO tools ---
+	"brandlight", // $30M Series A (Feb 2026, Pelion); Kimberly-Clark, LG, Estée Lauder
+	"bluefish-ai", // $43M Series B (Apr 2026), ~$68M raised, claims ~10% of the Fortune 500
+	"evertune", // $15M Series A, 700+ advertisers and agencies, EverPanel consumer data, self-serve plans
+	"promptwatch", // €6M seed (Jul 2026), ~€2M ARR, 1,780+ brands, UI scraping
+	"writesonic", // 120M AI conversation dataset, major brand, combined tracking + content
+	"rankscale", // 17+ engines in one plan, 240+ countries, 94 technical checks, DR 63 with case studies + partners
+	"se-ranking", // Large established platform with dedicated AI Overviews + ChatGPT trackers
+	"searchable", // Acquired Meridian (Sep 2026); broad suite incl. API, MCP, crawler analytics, white-label
+	"goodie", // Funded; Amazon Rufus tracking + AEO thought leadership
+	"xfunnel", // Acquired by HubSpot (Oct 2025); monday.com/LastPass/Getty roster
+	"llmrefs", // Citation specialist; lists eBay/HubSpot/NVIDIA users
+	"limy", // $10M seed (Jan 2026, Flybridge + a16z speedrun), MCP + crawler analytics
 	"frase", // Agentic SEO/GEO platform, 80+ AI tools
+	"waikay", // InLinks team, entity map + fact tracker, 40 countries/13 languages, DR 59
+
+	// --- Tier C: Known / growing AEO tools ---
+	"nightwatch", // Established rank tracker (190K locations) with AI search tracking
 	"amplitude", // Product analytics giant adding AEO features
 	"generative-pulse", // Muck Rack's GEO product — own site and 25M-prompt research program, distinct journalist-level citation data
 	"local-falcon", // Early entrant (SAIV metric); local-SEO-primary with AEO
-	"promptwatch", // UI-scraping prompt monitor, 630M citations, WSJ/Axios
-	"goodie", // Funded; Amazon Rufus tracking + AEO thought leadership
 	"knowatoa", // Multi-LLM tracking, BISCUIT framework, BI connectors
 	"promptrush", // 5.0 on G2 with named SaaS customers, 100+ brands
 	"xofu", // Bottom-of-funnel prompt scope with publisher target lists
-	"llmrefs", // Citation specialist; lists eBay/HubSpot/NVIDIA users
-	"hall", // Acquired by Tracksuit Jul 2026; strong product and DR 47 but no longer independently sold
+	"hall", // Acquired by Tracksuit Jul 2026; no longer independently sold
 	"aiseotracker", // Dedicated AEO tracker, claims 249K brands, Page Inspector
 	"gracker", // Cybersecurity/B2B-SaaS vertical with documented customer case studies
 	"aiso", // Clients incl. H&M, Uber, Wise, Dentsu, IHG; official Claude connector; publishes own conversation research
@@ -8114,9 +8122,9 @@ const aeoPopularityRanking: string[] = [
 	"azoma", // Enterprise agentic commerce — Rufus/Sparky/Alexa coverage and SKU-level revenue metrics
 	"passionfruit", // Stanford/CMU founders, unified SEO+GEO+AEO + managed service
 	"daydream", // 12% of Forbes AI 50 as clients, a16z citation, Shorty Award; managed service not software
-	"atomic-agi", // Named enterprise logos (MIT, Samsung, Salesforce, Publicis), unified AI-search + SEO analytics, MCP
 
-	// --- Tier C: Niche / emerging AEO tools with some traction ---
+	// --- Tier D: Niche / emerging AEO tools with some traction ---
+	"atomic-agi", // Named enterprise logos (MIT, Samsung, Salesforce, Publicis), unified AI-search + SEO analytics, MCP
 	"wellows", // DR 62 / 6K traffic, published citation research; no disclosed funding/customers
 	"ranklens", // Public sector leaderboards and Fortune 500 reports; agency-built research play
 	"geoptie", // Broad tool suite in 11 languages, DR 39; no disclosed customers
@@ -8124,7 +8132,6 @@ const aeoPopularityRanking: string[] = [
 	"superlines", // 9-platform GEO tracker, customers incl. Supabase/Publicis, Google for AI Startups
 	"rocketblue", // Samsung/monday.com/Lloyds/Publicis logos despite DR 11; autopilot publishing + MCP
 	"emberos", // Five-module agentic platform, Share-of-Prompt/TAVI metrics; no disclosed customers
-	"bluefish-ai", // Enterprise AI-commerce (Fortune 500 focus), named in best-AEO-2026 lists
 	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
 	"genrank", // Ad-spend visibility per prompt plus social sentiment; no disclosed traction
 	"mentions", // Eight models incl. Llama, crawler analytics, DR 34
@@ -8145,7 +8152,6 @@ const aeoPopularityRanking: string[] = [
 	"indexly", // Unified Google + AI tracker, broad feature set
 	"llm-seo-monitor", // Keyword-ranking model, part of the Findable toolkit, 5.0 on Product Hunt
 	"highlighted", // Narrow AI Overviews + ChatGPT tracker sold white-label to SEO agencies
-	"ai-rank-checker", // Seven engines incl. Meta AI, pay-as-you-go credits, claims 700+ companies
 	"rankshift", // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
 	"opttab", // Very broad suite (bot pages, commerce, ads) but DR 11 and no disclosed customers
 	"socialchamps-govisible", // Published seven-pillar framework + ecommerce edition, agency-built
@@ -8168,6 +8174,8 @@ const aeoPopularityRanking: string[] = [
 	"maxeo", // Claims 200+ brands and an investor, but thin public detail
 	"ziptie", // Three-signal AI Success Score; also runs ziptie.dev (DR 71)
 	"essio", // Agency-delivered, link-building emphasis; DR 8
+
+	// --- Tier F: Early, small, or minimal-traction tools ---
 	"algomizer", // Service engagement rather than software; DR 33 but no product access
 	"rank-ai", // AI content creation + rank tracking
 	"rank-plus-plus", // Nine tools for solo founders; free tier, narrow scope
@@ -8182,12 +8190,12 @@ const aeoPopularityRanking: string[] = [
 	"aiclicks", // Done-for-you action plans with AI agents
 	"semantica", // Rare Yandex/Alice/GigaChat coverage, MCP in Anthropic directory, named case studies
 	"fixaeo", // Deepest feature set of its cohort (9 engines, agent analytics, API + MCP) but DR 7, no external validation
-	"searchable", // AI search visibility monitoring
 	"llm-pulse", // LLM monitoring with prompt suggestions + Looker Studio
 	"ai-peekaboo", // White-label GEO competitive intelligence for agencies
-
-	// --- Tier D: Early / small AEO tools ---
 	"checkthat", // No-cold-start tracking, lead gen for GrowthX
+	"niubigeo", // Apache-2.0, ~8k GitHub stars in six weeks (unusually fast); services-led parent company
+	"ansvisor", // MIT, 141 stars, managed cloud from $49/mo with API + MCP
+	"limelit", // Apache-2.0 single-binary tracker with MCP, ~190 stars, credit-based cloud
 	"parse", // 219K brands database, peer visibility
 	"llmconsole", // Single $29 plan, minimal feature set, monitoring still coming soon
 	"amionai", // Weekly action plans + The Index leaderboards
@@ -8198,14 +8206,13 @@ const aeoPopularityRanking: string[] = [
 	"llmtel", // 13+ chatbot checks with before/after scoring; DR 6
 	"vaylis", // Done-for-you with one concrete named case study; DR 5
 	"vercite", // Rebrand of AI Brand Tracking; Nordic clients, no disclosed scale
-	"limy", // B2A revenue tracking
-	"bear-ai", // Blog Agent for AI-optimized content
 	"brantial", // Managed GEO service more than a product; DR 10, no disclosed customers
 	"justblank", // Claims 24M-prompt corpus; DR 5, no named customers
 	"getmint", // 150K+ partner media distribution network
 	"wildcard", // YC-backed e-commerce AI visibility
-	"showupinai", // IndexNow integration for faster AI indexing
+	"showupinai", // IndexNow submission + AI crawler view; does not track AI answers
 	"omnia", // AI visibility tracking, multi-language/region
+	"notra", // Content engine that added tracking Aug 2026; went closed source Oct 2026
 	"mentionrank", // Public prompt database + free-forever tier; DR 4.7
 	"appear-on-ai", // Claims 2,500+ companies but DR 0.2 on the live domain
 	"asky", // MCP server + bundled GEO specialist, but DR 0.8 on a freshly moved domain
@@ -8213,16 +8220,14 @@ const aeoPopularityRanking: string[] = [
 	"seen-by-ai", // Pay-per-report UK checker from £4.99; narrow scope, DR 1
 	"sorn", // Sales-led audit into a managed engagement; DR 5
 	"llmwatcher", // Polish-language tracker with full response history; DR 2.4
-	"lorelight", // Shutting down — public postmortem
-	"jarts", // Acquired and shut down May 2026 — persona-based tracking, entity in liquidation
 	"getcito", // Fork of Elmo's codebase since Jul 2026
-	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, 80 GitHub stars
-	"canonry", // Open-source self-hosted AEO platform, server-log ingestion + MCP, 52 stars
-	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, Ollama support
+	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, ~295 GitHub stars
+	"canonry", // MIT self-hosted AEO platform, server-log ingestion + MCP, ~186 stars
+	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, ~106 stars
 	"opensight", // MIT self-hosted tracker (36 stars) with a free hosted tier and API on every plan
-	"meridian", // AI search tracking with geographic targeting
+	"cited", // AGPL-3.0 citation monitor, first public release, ~126 stars
+	"geolook", // MIT self-host-only workbench, ~770 stars, dormant since Aug 2026
 	"local-glyph", // Local SEO platform first; AI visibility is one module. Beta, 70+ agencies
-	"peasy", // Server-side, cookie-free AI traffic analytics
 	"flip-aeo", // AEO tracking + optimization
 	"llmeo", // Four models, unlimited competitors, 30-day trial; DR 1.4
 	"leverage", // Five engines with free report; DR 0.1, minimal public detail
@@ -8232,7 +8237,7 @@ const aeoPopularityRanking: string[] = [
 	"meikai", // Enterprise AEO with luxury/finance clients (Chanel, Hennessy, AXA)
 	"citatra", // Multi-platform tracker with one-click content publishing + GA4
 	"lumen", // AEO tracker with ChatGPT Shopping + crawler analytics
-	"oneglanse", // MIT-licensed self-hosted tracker capturing AI web UIs
+	"oneglanse", // MIT-licensed self-hosted tracker capturing AI web UIs, ~220 stars
 	"estran", // Ecommerce AEO with ACP/UCP protocol support
 	"workduo", // Product-level commerce recommendation tracking, bilingual, agency portal; no disclosed customers
 	"sitesignal", // Hallucination detection niche, Looker Studio + white-label
@@ -8245,40 +8250,31 @@ const aeoPopularityRanking: string[] = [
 	"mentiondesk", // Mistral coverage is the only differentiator; DR 0.4, minimal public detail
 	"auq-llmrankings", // Agency side project, retro-web novelty; DR 0.7
 	"aisearchiq", // One-off $15 reports plus bot-traffic dashboard; narrow vs a full tracker, DR 0.1
-
-	// --- Tier F: Very new or minimal traction ---
+	"ai-rank-checker", // Acquired by Cognizo; plans now follow Cognizo's
+	"meridian", // Acquired by Searchable Sep 2026; customers migrating
 	"orchly", // Unified SEO+AEO with autonomous agents
 	"temso", // AEO tracker + content-execution agent, G2 4.8, small case studies
 	"kime", // AEO tracker with citation source percentages + Action Centre
 	"radarkit",
-	"seozast",
+	"seozast", // Pivoted to AI SEO content generation; no longer tracks AI answers
 	"brandscan", // Romania-only GEO tracker, complete product but DR 0 / minimal traction
 	"lettertrace", // MIT self-hosted BYO-key tracker; DR 0 and brand new, no traction yet
-	"genwolf", // Live 3-engine tracker with MIT core engine, but 13 stars and DR under 1
 	"lanesra", // Full feature set and sovereign-model coverage, but pre-launch (signup "coming soon"), DR 0, no disclosed customers
-	"anvil",
 	"searchify",
 	"datagum",
 	"ecom-ai",
 	"lantern",
-	"thirdeye",
 	"heeb",
 	"espygo",
 	"bourd",
-	"visble",
 	"ai-serp-tracker",
 	"sixthshop",
-	"chatgeo",
-	"allsearch",
 	"mentionstack",
-	"searchone",
 	"rankgpt",
-	"aeospy", // Cross-engine prompt query tool, narrow scope vs full tracker
 	"elelem", // Primarily an on-site Ask AI widget; AEO scoring is secondary
 	"ferventers", // AI SEO agency + tracking platform hybrid
 	"xseek", // Six-engine AEO tracker
 	"vismore", // AEO tracker with content distribution actions
-	"scope", // Agent experience platform — adjacent to AEO, not pure citation tracking
 ];
 
 /**
@@ -8300,10 +8296,10 @@ export function getPopularityGrade(competitor: Competitor): string {
 	const rank = rankingIndex.get(competitor.slug);
 	if (rank == null) return "F";
 	const total = aeoPopularityRanking.length;
-	if (rank < total * 0.08) return "A";
-	if (rank < total * 0.21) return "B";
-	if (rank < total * 0.43) return "C";
-	if (rank < total * 0.7) return "D";
+	if (rank < total * 0.03) return "A";
+	if (rank < total * 0.1) return "B";
+	if (rank < total * 0.25) return "C";
+	if (rank < total * 0.5) return "D";
 	return "F";
 }
 
