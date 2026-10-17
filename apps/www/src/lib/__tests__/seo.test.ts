@@ -19,6 +19,12 @@ describe("organization schema", () => {
 	});
 
 	it("carries a postal address", () => {
-		expect(organization.address).toMatchObject({ "@type": "PostalAddress", addressCountry: "US" });
+		expect(organization.address).toMatchObject({
+			"@type": "PostalAddress",
+			streetAddress: expect.any(String),
+			addressLocality: expect.any(String),
+			postalCode: expect.any(String),
+			addressCountry: "US",
+		});
 	});
 });

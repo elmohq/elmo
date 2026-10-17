@@ -107,8 +107,10 @@ export function organizationJsonLd() {
 		},
 		address: {
 			"@type": "PostalAddress",
-			addressLocality: "San Francisco",
+			streetAddress: "2108 N St Ste 4414",
+			addressLocality: "Sacramento",
 			addressRegion: "CA",
+			postalCode: "95816",
 			addressCountry: "US",
 		},
 		contactPoint: [
