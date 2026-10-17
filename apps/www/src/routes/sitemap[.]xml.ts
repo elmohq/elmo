@@ -16,6 +16,7 @@ import {
 	indexableFeatureKeys,
 	indexedCompetitors,
 	isLowDR,
+	isRetired,
 } from "@/lib/competitors";
 import { listLegalPages } from "@/lib/legal";
 import { source } from "@/lib/source";
@@ -82,7 +83,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 				}));
 
 				const comparisonPages: SitemapEntry[] = competitors
-					.filter((c) => c.status !== "shutting-down" && c.category !== "other" && !isLowDR(c))
+					.filter((c) => !isRetired(c) && c.category !== "other" && !isLowDR(c))
 					.map((c) => ({
 						path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
 						changefreq: "monthly",

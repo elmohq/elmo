@@ -12,6 +12,7 @@ import {
 	getFeatureLabel,
 	getFeaturePhrase,
 	isLowDR,
+	isRetired,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -24,7 +25,7 @@ import {
  * decided not to index (shutting down, off-topic, or no real market presence).
  */
 export function isIndexed(c: Competitor): boolean {
-	return c.status !== "shutting-down" && c.category !== "other" && !isLowDR(c);
+	return !isRetired(c) && c.category !== "other" && !isLowDR(c);
 }
 
 export const indexedCompetitors: Competitor[] = competitors.filter(isIndexed);
@@ -210,7 +211,7 @@ export const indexableCategories = (Object.keys(CATEGORY_SLUGS) as CompetitorCat
  * still excluded.
  */
 export function openSourceTools(): Competitor[] {
-	return competitors.filter((c) => c.status !== "shutting-down" && isOpenSource(c)).sort(byPopularity);
+	return competitors.filter((c) => !isRetired(c) && isOpenSource(c)).sort(byPopularity);
 }
 
 // ---------------------------------------------------------------------------

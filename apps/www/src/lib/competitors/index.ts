@@ -48,5 +48,7 @@ export {
 	getFeatureLabel,
 	getFeatureSearchTerm,
 	getScreenshotUrl,
+	getFeaturePhrase,
 	isLowDR,
+	isRetired,
 } from "./types";

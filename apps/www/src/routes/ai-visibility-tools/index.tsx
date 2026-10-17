@@ -4,7 +4,7 @@ import { CompetitorDirectory } from "@/components/competitor-directory";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
-import { competitors, getComparisonSlug, isLowDR } from "@/lib/competitors";
+import { competitors, getComparisonSlug, isLowDR, isRetired } from "@/lib/competitors";
 import { DIRECTORY_FAQS } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
@@ -15,7 +15,7 @@ const description =
 // Indexed comparison pages (mirrors the sitemap filter), surfaced as ItemList
 // structured data so AI engines can extract the full directory of tools.
 const directoryItems = competitors
-	.filter((c) => c.status !== "shutting-down" && c.category !== "other" && !isLowDR(c))
+	.filter((c) => !isRetired(c) && c.category !== "other" && !isLowDR(c))
 	.map((c) => ({
 		name: c.name,
 		path: `/ai-visibility-tools/${getComparisonSlug(c)}`,

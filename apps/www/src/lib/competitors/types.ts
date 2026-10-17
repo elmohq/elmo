@@ -71,7 +71,17 @@ export interface Competitor {
 	category: CompetitorCategory;
 	ahrefsDR: number;
 	ahrefsTraffic?: number;
-	status: "active" | "shutting-down" | "acquired" | "beta";
+	status: "active" | "beta" | "acquired" | "shutting-down" | "defunct" | "pivoted";
+	/** What happened to a tool that shut down, pivoted, or was acquired. Shown in the AEO Graveyard. */
+	fate?: { date: string; summary: string; source?: string };
+	/** SPDX identifier of the open-source license, for tools whose code is public. */
+	license?: string;
+	/**
+	 * The one-line reason to pick Elmo over this tool, shown up top on the
+	 * comparison page. Hand-written for tools where the generated one would miss
+	 * the real difference; keep it fair and checkable.
+	 */
+	soundbite?: string;
 	features: Partial<Record<FeatureKey, boolean>>;
 	pricing?: {
 		hasFree: boolean;
@@ -397,6 +407,11 @@ export const CATEGORY_LABELS: Record<CompetitorCategory, string> = {
 };
 
 const LOW_DR_THRESHOLD = 25;
+
+/** Tools that no longer exist as AI visibility products. */
+export function isRetired(competitor: Competitor): boolean {
+	return competitor.status === "shutting-down" || competitor.status === "defunct" || competitor.status === "pivoted";
+}
 
 export function isLowDR(competitor: Competitor): boolean {
 	return competitor.ahrefsDR < LOW_DR_THRESHOLD;

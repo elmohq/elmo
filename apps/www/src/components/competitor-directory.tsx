@@ -11,11 +11,12 @@ import {
 	getComparisonSlug,
 	getFeatureLabel,
 	getPopularityGrade,
+	isRetired,
 	sortedCompetitors,
 } from "@/lib/competitors";
 import { FeatureMark } from "./feature-mark";
 
-const visibleCompetitors = sortedCompetitors.filter((c) => c.status !== "shutting-down" && c.category !== "other");
+const visibleCompetitors = sortedCompetitors.filter((c) => !isRetired(c) && c.category !== "other");
 
 export function CompetitorDirectory() {
 	const [selectedCategory, setSelectedCategory] = useState<CompetitorCategory | "all">("all");
