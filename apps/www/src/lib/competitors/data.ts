@@ -8471,6 +8471,149 @@ export const competitors: Competitor[] = [
 		},
 		features: {},
 	},
+	{
+		slug: "llmmm",
+		name: "LLMMM",
+		domain: "llmmm.us",
+		url: "https://www.llmmm.us/",
+		tagline: "LLM Marketing Monitor that tracked how ChatGPT, Gemini, Meta AI and Perplexity perceive and rank a brand",
+		description:
+			"LLM Marketing Monitor that tracked how ChatGPT, Gemini, Meta AI and Perplexity perceive and rank a brand. The domain no longer resolves; the site was last archived live in April 2025.",
+		category: "tracking",
+		ahrefsDR: 0.1,
+		status: "defunct",
+		fate: {
+			date: "2025",
+			summary: "The domain no longer resolves; the site was last archived live in April 2025.",
+		},
+		features: {},
+	},
+	{
+		slug: "overveo",
+		name: "OverVeo",
+		domain: "overveo.com",
+		url: "https://overveo.com/",
+		tagline: "Data-driven tools for winning placement in Google AI Overviews",
+		description:
+			"Data-driven tools for winning placement in Google AI Overviews. The site no longer loads; it was last archived live in December 2025.",
+		category: "tracking",
+		ahrefsDR: 0.2,
+		status: "defunct",
+		fate: {
+			date: "2026",
+			summary: "The site no longer loads; it was last archived live in December 2025.",
+		},
+		features: {},
+	},
+	{
+		slug: "project-40",
+		name: "Project 40",
+		domain: "itsproject40.com",
+		url: "https://itsproject40.com/",
+		tagline: "AI visibility score tracker across GPT, Gemini and Claude",
+		description:
+			"AI visibility score tracker across GPT, Gemini and Claude. The domain no longer resolves; the site was last archived live in January 2026.",
+		category: "tracking",
+		ahrefsDR: 0.4,
+		status: "defunct",
+		noScreenshot: true,
+		fate: {
+			date: "2026",
+			summary: "The domain no longer resolves; the site was last archived live in January 2026.",
+		},
+		features: {},
+	},
+	{
+		slug: "radix-ai",
+		name: "Radix AI",
+		domain: "tryradix.com",
+		url: "https://tryradix.com/",
+		tagline:
+			"Visibility software tracking brand mentions, citations and competitors across ChatGPT, Gemini and Perplexity",
+		description:
+			"Visibility software tracking brand mentions, citations and competitors across ChatGPT, Gemini and Perplexity. The site now returns Framer's 'Site Not Found' page; it was last archived live in January 2026.",
+		category: "tracking",
+		ahrefsDR: 7,
+		status: "defunct",
+		fate: {
+			date: "2026",
+			summary: "The site now returns Framer's 'Site Not Found' page; it was last archived live in January 2026.",
+		},
+		features: {},
+	},
+	{
+		slug: "prompttracker",
+		name: "Prompttracker",
+		domain: "prompttracker.io",
+		url: "https://prompttracker.io/",
+		tagline: "Tracked and improved a website's visibility in ChatGPT, Perplexity and other AI search engines",
+		description:
+			"Tracked and improved a website's visibility in ChatGPT, Perplexity and other AI search engines. The domain now redirects to an unrelated gambling site; the product was last archived live in November 2025.",
+		category: "tracking",
+		ahrefsDR: 0.7,
+		status: "defunct",
+		noScreenshot: true,
+		fate: {
+			date: "2026",
+			summary:
+				"The domain now redirects to an unrelated gambling site; the product was last archived live in November 2025.",
+		},
+		features: {},
+	},
+	{
+		slug: "looptic",
+		name: "Looptic",
+		domain: "looptic.ai",
+		url: "https://looptic.ai/",
+		tagline: "Generative engine optimization platform for visibility in ChatGPT, Claude and Gemini",
+		description:
+			"Generative engine optimization platform for visibility in ChatGPT, Claude and Gemini. The domain no longer resolves; the only archived live snapshot is from March 2026.",
+		category: "tracking",
+		ahrefsDR: 6,
+		status: "defunct",
+		noScreenshot: true,
+		fate: {
+			date: "2026",
+			summary: "The domain no longer resolves; the only archived live snapshot is from March 2026.",
+		},
+		features: {},
+	},
+	{
+		slug: "lagrank",
+		name: "LagRank",
+		domain: "lagrank.com",
+		url: "https://lagrank.com/",
+		tagline: "Tracked and optimized business visibility across ChatGPT, Claude, Gemini and other AI search engines",
+		description:
+			"Tracked and optimized business visibility across ChatGPT, Claude, Gemini and other AI search engines. The domain now hosts a remote-work talent network for AI and technology roles rather than an AI search tool.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "pivoted",
+		fate: {
+			date: "2026",
+			summary:
+				"The domain now hosts a remote-work talent network for AI and technology roles rather than an AI search tool.",
+		},
+		features: {},
+	},
+	{
+		slug: "brandjet-ai",
+		name: "BrandJet AI",
+		domain: "brandjet.ai",
+		url: "https://www.brandjet.ai/",
+		tagline: "Brand monitoring platform combining social listening with AI search intelligence",
+		description:
+			"Brand monitoring platform combining social listening with AI search intelligence. It moved from brand monitoring with AI search intelligence to a multi-channel cold outreach platform for B2B sales.",
+		category: "tracking",
+		ahrefsDR: 32,
+		status: "pivoted",
+		fate: {
+			date: "2026-02",
+			summary:
+				"It moved from brand monitoring with AI search intelligence to a multi-channel cold outreach platform for B2B sales.",
+		},
+		features: {},
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -8738,6 +8881,10 @@ export const graveyardRanking: string[] = [
 	"modelmonitor",
 	"exanimo",
 	"citeanalytics",
+	"brandjet-ai", // Brand monitoring with AI search intelligence, pivoted to cold outreach
+	"radix-ai",
+	"overveo",
+	"lagrank",
 	"aeospy",
 	"visble",
 	"thirdeye",
@@ -8760,6 +8907,10 @@ export const graveyardRanking: string[] = [
 	"gpt-rank-ai",
 	"propensia",
 	"winglytics",
+	"looptic",
+	"prompttracker",
+	"project-40",
+	"llmmm",
 ];
 
 /**
