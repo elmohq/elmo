@@ -64,13 +64,15 @@ function FeaturePage() {
 		featureKey: FeatureKey;
 		tools: Competitor[];
 	};
-	const label = getFeatureLabel(featureKey);
 	return (
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero title={`AI visibility tools with ${label}`} lead={getFeatureVerdict(featureKey, tools)} />
+				<DirectoryHero
+					title={`AI visibility tools with ${featurePhrase(featureKey)}`}
+					lead={getFeatureVerdict(featureKey, tools)}
+				/>
 				<DirectorySection title="Tools that offer this feature">
 					<ToolGrid competitors={tools} />
 				</DirectorySection>

@@ -11,23 +11,23 @@ import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } fro
 
 const title = "Best Free & Open-Source AI Visibility & AEO Tools (2026) · Elmo";
 const description =
-	"The best free and open-source AI visibility and answer engine optimization (AEO) tools you can self-host and audit, ranked on public GitHub data. Elmo, OneGlanse, GEO/AEO Tracker, Canonry, and Gego compared.";
+	"The best free and open-source AI visibility and answer engine optimization (AEO) tools you can self-host and audit, compared on license, coverage, and public GitHub data. Elmo, Ansvisor, Canonry, OneGlanse, Limelit, and more.";
 const path = "/ai-visibility-tools/category/open-source";
 
 const lead =
-	"The most complete open-source AI visibility and answer engine optimization tool is Elmo: MIT-licensed, free to self-host, and auditable down to how each metric is computed. Smaller projects like OneGlanse, GEO/AEO Tracker, and Gego exist alongside it. This is a thin, early space: one mature platform, a handful of small projects, and the option to script your own checks.";
+	"Elmo is the longest-running open-source AI visibility and answer engine optimization platform: MIT-licensed, free to self-host, and auditable down to how each metric is computed, with 36 releases since July 2025. The field grew fast in 2026: Ansvisor has drawn the most contributors, and Canonry, Limelit, and OneGlanse each take a different approach. Licenses differ more than features do, so check them first.";
 
-// Public GitHub data, captured 11 August 2026. Kept as a dated snapshot rather
+// Public GitHub data, captured 17 October 2026. Kept as a dated snapshot rather
 // than fetched live: the point is a like-for-like comparison across projects at
 // one moment, and a table that silently changes under the surrounding prose is
 // worse than one with a visible as-of date.
-const STATS_AS_OF = "11 August 2026";
+const STATS_AS_OF = "17 October 2026";
 
 const FAQS: FaqItem[] = [
 	{
 		question: "What are the best open-source AEO tools?",
 		answer:
-			"Elmo is the most complete open-source answer engine optimization tool: MIT-licensed, free to self-host, and covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. Public GitHub data as of 11 August 2026 backs this up — Elmo leads the field on stars, contributors, and releases, and is the only project with a meaningful number of contributors beyond one person. Smaller projects fill out the rest of the space, including OneGlanse, GEO/AEO Tracker, and Gego, most of them single-developer efforts. Canonry is actively developed but source-available rather than fully open source. GetCito replaced its codebase with Elmo's in July 2026, so running it means running a lagging fork of Elmo.",
+			"Elmo is the longest-running open-source answer engine optimization tool: MIT-licensed, free to self-host, and covering ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, and any OpenRouter model. Public GitHub data as of 17 October 2026 shows a field that grew fast this year. Ansvisor has the most contributors and a hosted cloud. Canonry is a capable agent-first platform, now MIT-licensed. OneGlanse and Limelit capture answers from the real AI apps, Cited focuses on citations under the AGPL, and Gego is GPL-3.0. GetCito replaced its codebase with Elmo's in July 2026, so running it means running a lagging fork of Elmo.",
 	},
 	{
 		question: "What are the best free tools to track brand mentions in ChatGPT?",
@@ -37,12 +37,12 @@ const FAQS: FaqItem[] = [
 	{
 		question: "Is there a free AI visibility tool?",
 		answer:
-			"Yes. Open-source trackers are free to use and free to self-host — Elmo, GEO/AEO Tracker, OneGlanse, and Gego all fall into this category. The cost you cannot avoid is model API usage, because measuring visibility means actually running prompts through the engines. A useful rule of thumb: free software plus your own API keys is cheaper than any subscription at small prompt counts, and the crossover point arrives when you would rather not maintain the infrastructure.",
+			"Yes. Open-source trackers are free to use and free to self-host — Elmo, Ansvisor, Canonry, OneGlanse, Limelit, and Gego all fall into this category. The cost you cannot avoid is model API usage, because measuring visibility means actually running prompts through the engines. A useful rule of thumb: free software plus your own API keys is cheaper than any subscription at small prompt counts, and the crossover point arrives when you would rather not maintain the infrastructure.",
 	},
 	{
 		question: "Which open-source AEO tool is the most actively maintained?",
 		answer:
-			"By GitHub activity on 11 August 2026, Elmo has the strongest sustained record: 862 commits over 13 months, 206 in the last 90 days, 19 releases, and 10 contributors. Canonry logged more raw commits in that window (500), but 451 came from one developer and it is source-available rather than open source. OneGlanse has not had a commit since 10 May 2026, and GEO/AEO Tracker and GetCito have 28 and 35 total commits respectively.",
+			"Several are busy. By GitHub activity on 17 October 2026, Ansvisor (503 commits in the last 90 days, 65 contributors), Canonry (472), and Elmo (374) are the most active, and Lettertrace (323) is close behind. Elmo has the longest continuous history, starting in July 2025, the most releases at 36, and more stars than any other actively developed independent project. GEO/AEO Tracker, Gego, and GetCito each logged 15 or fewer commits in the same window.",
 	},
 	{
 		question: "Is there an open-source AI visibility tracker?",
@@ -62,7 +62,7 @@ const FAQS: FaqItem[] = [
 	{
 		question: "Can I self-host an AEO tool?",
 		answer:
-			"Yes. Several open-source answer engine optimization tools are built to self-host. Elmo runs on Docker and PostgreSQL on your own infrastructure, so your prompts and visibility history never leave your environment. OneGlanse, GEO/AEO Tracker, and Canonry are self-hostable too. You bring your own LLM API keys, which carry usage costs, but there is no license fee or per-seat charge.",
+			"Yes. Several open-source answer engine optimization tools are built to self-host. Elmo runs on Docker and PostgreSQL on your own infrastructure, so your prompts and visibility history never leave your environment. Ansvisor, Canonry, OneGlanse, Limelit, and GEO/AEO Tracker are self-hostable too. You bring your own LLM API keys, which carry usage costs, but there is no license fee or per-seat charge.",
 	},
 	{
 		question: "Can I build my own AI visibility tool?",
@@ -90,6 +90,27 @@ const AT_A_GLANCE: { tool: string; license: string; selfHost: string; tracks: st
 		bestFor: "A complete platform you own and audit",
 	},
 	{
+		tool: "Ansvisor",
+		license: "MIT, with a paid cloud",
+		selfHost: "Yes, free",
+		tracks: "ChatGPT, Copilot, Perplexity, Gemini, AI Overviews, AI Mode, Claude, Grok",
+		bestFor: "A broad feature set with a hosted option",
+	},
+	{
+		tool: "Limelit",
+		license: "Apache-2.0, open core",
+		selfHost: "Yes, single binary",
+		tracks: "ChatGPT, Claude, Perplexity, Gemini, AI Overviews, AI Mode, Copilot",
+		bestFor: "The lightest self-hosted footprint",
+	},
+	{
+		tool: "Cited",
+		license: "AGPL-3.0",
+		selfHost: "Yes, via Docker Compose",
+		tracks: "Citations of your domain across ChatGPT, Claude, Gemini, Perplexity, Google AI",
+		bestFor: "Citation monitoring only",
+	},
+	{
 		tool: "OneGlanse",
 		license: "MIT, fully open source",
 		selfHost: "Yes",
@@ -105,7 +126,7 @@ const AT_A_GLANCE: { tool: string; license: string; selfHost: string; tracks: st
 	},
 	{
 		tool: "Canonry",
-		license: "Source-available (FSL, Apache 2.0 later)",
+		license: "MIT, fully open source",
 		selfHost: "Yes",
 		tracks: "Gemini, ChatGPT, Claude, Perplexity, local LLMs; server-log AI traffic",
 		bestFor: "Agent-first workflows and log-level attribution",
@@ -140,68 +161,123 @@ const GITHUB_STATS: {
 	{
 		project: "Elmo",
 		url: "https://github.com/elmohq/elmo",
-		stars: "233",
-		commits: "862",
-		contributors: "10",
-		beyondLead: "9",
-		releases: "19",
+		stars: "462",
+		commits: "1,158",
+		contributors: "14",
+		beyondLead: "13",
+		releases: "36",
 		firstCommit: "Jul 2025",
-		last90: "206",
+		last90: "374",
 	},
 	{
-		project: "GEO/AEO Tracker",
-		url: "https://github.com/danishashko/geo-aeo-tracker",
-		stars: "229",
-		commits: "28",
-		contributors: "1",
-		beyondLead: "0",
-		releases: "8",
-		firstCommit: "Feb 2026",
-		last90: "19",
+		project: "GeoLook",
+		url: "https://github.com/aigclink/geolook",
+		stars: "774",
+		commits: "47",
+		contributors: "2",
+		beyondLead: "1",
+		releases: "1",
+		firstCommit: "Jul 2026",
+		last90: "47",
 	},
 	{
 		project: "GetCito",
 		url: "https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool",
-		stars: "161",
-		commits: "35",
+		stars: "491",
+		commits: "41",
 		contributors: "2",
 		beyondLead: "1",
-		releases: "1",
+		releases: "2",
 		firstCommit: "Nov 2025",
-		last90: "24",
+		last90: "15",
+	},
+	{
+		project: "GEO/AEO Tracker",
+		url: "https://github.com/danishashko/geo-aeo-tracker",
+		stars: "295",
+		commits: "32",
+		contributors: "1",
+		beyondLead: "0",
+		releases: "9",
+		firstCommit: "Feb 2026",
+		last90: "10",
 	},
 	{
 		project: "OneGlanse",
-		url: "https://github.com/aryamantodkar/oneglanse",
-		stars: "146",
-		commits: "496",
-		contributors: "1",
-		beyondLead: "0",
+		url: "https://github.com/oneglanse/oneglanse",
+		stars: "220",
+		commits: "523",
+		contributors: "2",
+		beyondLead: "1",
 		releases: "0",
 		firstCommit: "Apr 2026",
-		last90: "0",
+		last90: "27",
+	},
+	{
+		project: "Limelit",
+		url: "https://github.com/limelit-co/open",
+		stars: "192",
+		commits: "79",
+		contributors: "2",
+		beyondLead: "1",
+		releases: "13",
+		firstCommit: "Sep 2026",
+		last90: "79",
 	},
 	{
 		project: "Canonry",
-		url: "https://github.com/AINYC/canonry",
-		stars: "109",
-		commits: "832",
-		contributors: "3",
-		beyondLead: "2",
-		releases: "7",
+		url: "https://github.com/Canonry/canonry",
+		stars: "186",
+		commits: "1,135",
+		contributors: "8",
+		beyondLead: "7",
+		releases: "12",
 		firstCommit: "Mar 2026",
-		last90: "500",
+		last90: "472",
+	},
+	{
+		project: "Ansvisor",
+		url: "https://github.com/ansvisor/ansvisor",
+		stars: "141",
+		commits: "787",
+		contributors: "65",
+		beyondLead: "64",
+		releases: "10",
+		firstCommit: "Mar 2026",
+		last90: "503",
+	},
+	{
+		project: "Cited",
+		url: "https://github.com/cited-cc/cited",
+		stars: "126",
+		commits: "21",
+		contributors: "1",
+		beyondLead: "0",
+		releases: "1",
+		firstCommit: "Sep 2026",
+		last90: "21",
 	},
 	{
 		project: "Gego",
 		url: "https://github.com/AI2HU/gego",
-		stars: "84",
+		stars: "106",
 		commits: "118",
 		contributors: "2",
 		beyondLead: "1",
 		releases: "12",
 		firstCommit: "Oct 2025",
-		last90: "64",
+		last90: "9",
+	},
+	{
+		project: "Lettertrace",
+		url: "https://github.com/letterstory/lettertrace",
+		stars: "75",
+		commits: "323",
+		contributors: "5",
+		beyondLead: "4",
+		releases: "1",
+		firstCommit: "Jul 2026",
+		last90: "323",
 	},
 ];
 
@@ -294,27 +370,25 @@ function OpenSourcePage() {
 				<DirectorySection title="Key takeaways">
 					<ul className="max-w-3xl list-disc space-y-3 pl-5 leading-relaxed text-zinc-600">
 						<li>
-							Elmo is the most complete open-source answer engine optimization tool, MIT-licensed and free to self-host
-							across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews.
+							Elmo is the longest-running open-source answer engine optimization platform, MIT-licensed and free to
+							self-host, with 36 releases since July 2025 and coverage of ChatGPT, Google AI Mode, Google AI Overviews,
+							Gemini, Perplexity, Copilot, Claude, and any OpenRouter model.
 						</li>
 						<li>
-							That is not just our claim. On public GitHub data as of {STATS_AS_OF}, Elmo leads this field on stars,
-							contributors, releases, and length of continuous history. Nine people have contributed besides the lead
-							developer; across every other project below combined, that number is four.
+							On public GitHub data as of {STATS_AS_OF}, Elmo leads the field on releases and length of continuous
+							history, and the only projects with more stars are GeoLook, which hasn't had a commit since August, and
+							GetCito, a fork of Elmo. Ansvisor has the most contributors, and Canonry, Ansvisor, and Elmo each logged
+							hundreds of commits in the last 90 days.
 						</li>
 						<li>
-							The rest of the field is small. OneGlanse, GEO/AEO Tracker, and Gego are real but early, mostly
-							single-developer projects.
+							Licenses differ more than features. Elmo, Ansvisor, Canonry, OneGlanse, and GeoLook are MIT; Limelit is
+							Apache-2.0; Cited is AGPL-3.0 and Gego is GPL-3.0, which add conditions on modified versions.
+						</li>
+						<li>
+							Open source protects you from shutdowns, but not from a project going closed: Notra took its AGPL
+							repository private in October 2026. Prefer permissive licenses and more than one active contributor.
 						</li>
 						<li>GetCito is a fork of Elmo since July 2026, so it is a lagging fork of another tool on this list.</li>
-						<li>
-							Canonry is capable but source-available under the FSL, not fully open source until it converts to Apache
-							2.0.
-						</li>
-						<li>
-							Open source gives you what a hosted tool cannot: auditable metrics, data you keep on your own
-							infrastructure, and no vendor lock-in.
-						</li>
 						<li>"Free to self-host" is not free to run. You supply the LLM API keys and the infrastructure.</li>
 					</ul>
 				</DirectorySection>
@@ -391,22 +465,21 @@ function OpenSourcePage() {
 					</DataTable>
 					<div className="mt-6 max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
-							OneGlanse's 496 commits landed almost entirely in one burst, between 15 April and 10 May 2026. It has not
-							had a commit since, and it has never cut a release.
+							Stars and activity tell different stories. GeoLook and GetCito have more stars than most of the field on a
+							few dozen commits each, while Ansvisor, Canonry, and Elmo ship code every week. GeoLook hasn't had a
+							commit since August 2026.
 						</p>
 						<p>
-							GetCito's repository contains 35 commits, 27 of them from humans, across its entire lifetime, for a
-							codebase of well over 100,000 lines. That is because 131,716 of those lines arrived in a single import of
-							Elmo's code in July 2026.
+							GetCito's repository contains 41 commits across its entire lifetime, for a codebase of well over 100,000
+							lines. That is because 131,716 of those lines arrived in a single import of Elmo's code in July 2026.
 						</p>
 					</div>
 				</DirectorySection>
 
 				<DirectorySection title="The open-source options, tool by tool">
 					<p className="mb-6 max-w-3xl leading-relaxed text-zinc-600">
-						This is a thin, early space. Elmo is the most complete open-source option, released under the MIT license
-						with broad engine coverage. The other open-source projects we track are below. They are smaller and earlier,
-						but they are real and worth knowing about.
+						Elmo is the longest-running open-source option, released under the MIT license with broad engine coverage.
+						The other open-source projects we track are below. Most started in 2026, and several are moving quickly.
 					</p>
 					{tools.length > 0 ? (
 						<ToolGrid competitors={tools} />
@@ -418,9 +491,9 @@ function OpenSourcePage() {
 						<div>
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">Elmo</h3>
 							<p>
-								Elmo is the most complete open-source AI visibility platform on this list. It is released under the MIT
-								license, free to self-host, and every metric is computed by code you can read. It tracks how AI answer
-								engines mention and cite your brand across ChatGPT, Claude, Perplexity, Gemini, and Google's AI
+								Elmo is the longest-running open-source AI visibility platform on this list. It is released under the
+								MIT license, free to self-host, and every metric is computed by code you can read. It tracks how AI
+								answer engines mention and cite your brand across ChatGPT, Claude, Perplexity, Gemini, and Google's AI
 								Overviews, among other engines, then turns that into visibility, share of voice, sentiment, and position
 								scores, citation and query fan-out analytics, and ranked recommendations for what to fix. A REST API,
 								TypeScript and Python SDKs, and an MCP server expose the same data to your own code and AI assistants,
@@ -448,9 +521,9 @@ function OpenSourcePage() {
 							<p className="mt-4">
 								It suits developers who care that the answers being scored come from the actual chat products, not the
 								API surface, and who are comfortable standing up ClickHouse. The idea is good and the approach is
-								genuinely different from everything else here. Check the activity before you build on it, though. Its
-								496 commits landed in a single burst between 15 April and 10 May 2026, and the repository has not had a
-								commit since. It has one contributor and no tagged releases.
+								genuinely different from everything else here. Check the activity before you build on it, though. Most
+								of its 523 commits landed in one burst in April and May 2026, it has picked up only slowly since, and it
+								has never cut a tagged release.
 							</p>
 						</div>
 
@@ -480,10 +553,10 @@ function OpenSourcePage() {
 								configured declaratively in YAML.
 							</p>
 							<p className="mt-4">
-								One caveat on the "open source" label. Canonry ships under the FSL-1.1-ALv2, a source-available license
-								that converts to Apache 2.0 after two years. You can read and self-host the code today, but it is not
-								OSI open source in the strict sense until that conversion. If server-log attribution and agent workflows
-								matter to you, it is worth a look, with that license nuance understood.
+								Canonry has since moved from the source-available FSL to the MIT license, so it is now open source in
+								the full sense. It calls model APIs with your own keys rather than capturing the consumer apps, and it
+								is one of the most active projects here, with 472 commits in the last 90 days. If server-log attribution
+								and agent workflows matter to you, it is worth a look.
 							</p>
 						</div>
 
@@ -509,6 +582,43 @@ function OpenSourcePage() {
 									GetCito vs Elmo
 								</a>
 								.
+							</p>
+						</div>
+
+						<div>
+							<h3 className="font-heading mb-3 text-lg text-zinc-950">Ansvisor</h3>
+							<p>
+								Ansvisor is an MIT-licensed AI search intelligence platform with a managed cloud alongside the open
+								code. It tracks prompts, mentions, citations, competitors, and AI traffic, and turns them into tasks in
+								an Action Center, with an API and MCP server. On the cloud, engines unlock by plan, starting at $49 a
+								month.
+							</p>
+							<p className="mt-4">
+								It has the broadest contributor base of any project here, 65 people as of October 2026, and ships
+								frequently. It is a young project, started in March 2026, so expect the surface to keep changing.
+							</p>
+						</div>
+
+						<div>
+							<h3 className="font-heading mb-3 text-lg text-zinc-950">Limelit</h3>
+							<p>
+								Limelit Open is an Apache-2.0 tracker shipped as a single Go binary with SQLite, the lightest deployment
+								of anything here. It covers seven engines through vendor APIs or scrapers of the consumer apps and has a
+								built-in MCP server and JSON or CSV export.
+							</p>
+							<p className="mt-4">
+								It is open core: sentiment, prompt generation, white-label, and other features live in the paid,
+								credit-based Limelit Cloud.
+							</p>
+						</div>
+
+						<div>
+							<h3 className="font-heading mb-3 text-lg text-zinc-950">Cited</h3>
+							<p>
+								Cited does one thing: it runs the prompts you choose and records when your verified domain is cited,
+								mentioned, or missed, in an evidence inbox. You self-host it with Docker Compose and DataForSEO
+								credentials, or use the hosted plans from $19 a month. It is AGPL-3.0, so offering a modified version as
+								a service means publishing your changes.
 							</p>
 						</div>
 
@@ -569,11 +679,11 @@ function OpenSourcePage() {
 					<div className="max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
 							Start with how you will use it rather than with a feature grid. If you want full control, auditable
-							numbers, and no per-seat fees, a self-hosted open-source tool fits, and Elmo is the most complete one on
-							offer, and the one the public GitHub numbers favor on stars, contributors, releases, and sustained
-							history. If you want the same open code with the smallest footprint, GEO/AEO Tracker's local-first design
-							is worth a look, bearing in mind it is one developer and 28 commits. If your priority is server-log
-							attribution, Canonry goes furthest, with its license caveat and single-maintainer concentration in mind.
+							numbers, and no per-seat fees, a self-hosted open-source tool fits, and Elmo is the longest-running one on
+							offer, with the most releases and a permissive license. If you want the smallest footprint, Limelit's
+							single binary or GEO/AEO Tracker's local-first design are worth a look. If your priority is server-log
+							attribution, Canonry goes furthest. If you want a hosted option alongside the open code, Ansvisor and
+							Limelit both sell one.
 						</p>
 						<p>
 							Weigh maintenance above features. Whether anyone will still be working on the project in a year is what
