@@ -20,7 +20,7 @@ export interface FeatureLink {
 	title: string;
 	href: string;
 	/** Shown above the title, e.g. "Docs" or "Blog". */
-	kind: "Docs" | "Blog" | "Glossary" | "Guide";
+	kind: "Docs" | "Blog" | "Glossary" | "Guide" | "Tool directory";
 }
 
 export interface ProductFeature {
@@ -36,6 +36,8 @@ export interface ProductFeature {
 	/** One or two sentences for the index card. */
 	summary: string;
 	graphic: FeatureGraphicKey;
+	/** A second visual shown beside "What you can do". */
+	secondaryGraphic?: FeatureGraphicKey;
 	/** "What you can do": three numbered steps. */
 	steps: { name: string; text: string }[];
 	/** "Data you can act on": the measures the feature reports. */
@@ -63,6 +65,7 @@ export const productFeatures: ProductFeature[] = [
 		summary:
 			"How often AI answers mention your brand, per prompt and per model, with trends over time against every competitor.",
 		graphic: "visibility",
+		secondaryGraphic: "trend",
 		steps: [
 			{
 				name: "Track the prompts that matter",
@@ -167,8 +170,7 @@ export const productFeatures: ProductFeature[] = [
 		metaDescription:
 			"See how often AI engines mention you versus your competitors. Elmo ranks every tracked company by share of voice, per model and over time.",
 		lede: "Share of voice is your brand's share of every mention of you and your tracked competitors in AI answers. Elmo ranks every company on a live leaderboard, charts your top competitors over time, and compares you with each of them on every AI engine you track.",
-		summary:
-			"Your share of AI mentions against every tracked competitor, on a leaderboard, per model, and over time.",
+		summary: "Your share of AI mentions against every tracked competitor, on a leaderboard, per model, and over time.",
 		graphic: "share-of-voice",
 		steps: [
 			{
@@ -227,9 +229,17 @@ export const productFeatures: ProductFeature[] = [
 		],
 		docs: { title: "Competitor settings docs", href: "/docs/user-guide/settings" },
 		guides: [
-			{ kind: "Blog", title: "AI share of voice: measuring brand presence in AI search", href: "/blog/ai-share-of-voice" },
+			{
+				kind: "Blog",
+				title: "AI share of voice: measuring brand presence in AI search",
+				href: "/blog/ai-share-of-voice",
+			},
 			{ kind: "Blog", title: "Competitor analysis for AI search", href: "/blog/ai-competitor-analysis" },
-			{ kind: "Blog", title: "Do AI engines favor big brands over smaller ones?", href: "/blog/do-ai-engines-favor-big-brands" },
+			{
+				kind: "Blog",
+				title: "Do AI engines favor big brands over smaller ones?",
+				href: "/blog/do-ai-engines-favor-big-brands",
+			},
 			{ kind: "Glossary", title: "Share of voice", href: "/glossary/share-of-voice" },
 		],
 		directoryFeatures: ["competitorBenchmarking"],
@@ -263,6 +273,7 @@ export const productFeatures: ProductFeature[] = [
 		summary:
 			"Every answer that names you, read for praise or criticism and scored 0 to 100, with the passages behind it.",
 		graphic: "sentiment",
+		secondaryGraphic: "responses",
 		steps: [
 			{
 				name: "Catch every real mention",
@@ -400,7 +411,8 @@ export const productFeatures: ProductFeature[] = [
 			},
 			{
 				term: "Page types",
-				definition: "Whether cited pages are articles, listicles, comparisons, reviews, how-tos, docs, forums, videos, and more.",
+				definition:
+					"Whether cited pages are articles, listicles, comparisons, reviews, how-tos, docs, forums, videos, and more.",
 			},
 			{
 				term: "Recent changes",
@@ -443,7 +455,11 @@ export const productFeatures: ProductFeature[] = [
 				title: "Citation volatility: how much do the sources AI cites change?",
 				href: "/blog/citation-volatility",
 			},
-			{ kind: "Blog", title: "Do AI engines cite the same sources?", href: "/blog/do-ai-engines-cite-the-same-sources" },
+			{
+				kind: "Blog",
+				title: "Do AI engines cite the same sources?",
+				href: "/blog/do-ai-engines-cite-the-same-sources",
+			},
 		],
 		directoryFeatures: ["citationAnalytics", "contentGapAnalysis"],
 		related: ["query-fan-out", "aeo-recommendations", "share-of-voice"],
@@ -501,7 +517,8 @@ export const productFeatures: ProductFeature[] = [
 			},
 			{
 				term: "Runs with known and unknown queries",
-				definition: "Search runs that exposed their queries, and those where the engine didn't search or didn't reveal what it searched.",
+				definition:
+					"Search runs that exposed their queries, and those where the engine didn't search or didn't reveal what it searched.",
 			},
 			{
 				term: "Added, preserved, and dropped words",
@@ -572,6 +589,7 @@ export const productFeatures: ProductFeature[] = [
 		summary:
 			"Suggested from your website, tagged and organized, with every AI answer kept for you to search and inspect.",
 		graphic: "prompts",
+		secondaryGraphic: "responses",
 		steps: [
 			{
 				name: "Start from your website",
@@ -601,7 +619,8 @@ export const productFeatures: ProductFeature[] = [
 			},
 			{
 				term: "Responses",
-				definition: "Every AI answer to your prompts, searchable by its text and filterable by prompt, model, and sentiment.",
+				definition:
+					"Every AI answer to your prompts, searchable by its text and filterable by prompt, model, and sentiment.",
 			},
 			{
 				term: "Prompt history",
@@ -687,7 +706,8 @@ export const productFeatures: ProductFeature[] = [
 		metrics: [
 			{
 				term: "Creation",
-				definition: "Net-new content to publish or earn, like comparisons, guides, and 'best of' angles for topics you're absent on.",
+				definition:
+					"Net-new content to publish or earn, like comparisons, guides, and 'best of' angles for topics you're absent on.",
 			},
 			{
 				term: "Existing content",
@@ -734,7 +754,11 @@ export const productFeatures: ProductFeature[] = [
 				title: "Do self-promotional 'best of' listicles help AI visibility?",
 				href: "/blog/self-promotional-listicles-ai-visibility",
 			},
-			{ kind: "Blog", title: "Do press releases get your brand into AI answers?", href: "/blog/press-releases-ai-visibility" },
+			{
+				kind: "Blog",
+				title: "Do press releases get your brand into AI answers?",
+				href: "/blog/press-releases-ai-visibility",
+			},
 		],
 		directoryFeatures: ["actionRecommendations", "contentGapAnalysis"],
 		related: ["citation-tracking", "query-fan-out", "ai-visibility-reporting"],
@@ -877,10 +901,14 @@ export const productFeatures: ProductFeature[] = [
 		metrics: [
 			{
 				term: "Analytics",
-				definition: "Visibility, share of voice, sentiment, position, citations, per-model, prompt, and query fan-out metrics.",
+				definition:
+					"Visibility, share of voice, sentiment, position, citations, per-model, prompt, and query fan-out metrics.",
 			},
 			{ term: "Runs", definition: "Every prompt evaluation, with the full response and its mention assessments." },
-			{ term: "Prompts, competitors, and brands", definition: "Create, read, update, and delete." },
+			{
+				term: "Prompts, competitors, and brands",
+				definition: "Manage the setup behind your tracking programmatically.",
+			},
 			{ term: "Opportunities", definition: "The latest generated recommendations for a brand." },
 			{
 				term: "MCP tools",
@@ -891,7 +919,7 @@ export const productFeatures: ProductFeature[] = [
 		useCases: [
 			"Pipe AI visibility into a warehouse or BI tool alongside SEO and revenue data.",
 			"Let a coding agent audit why a prompt lost visibility and draft the fix, using your real data.",
-			"Provision brands, competitors, and prompts for many clients from a script.",
+			"Keep prompts and competitors in sync across many brands from a script.",
 		],
 		why: [
 			{
@@ -976,7 +1004,8 @@ export const productFeatures: ProductFeature[] = [
 			},
 			{
 				term: "Scraping providers",
-				definition: "Cloro, BrightData, Oxylabs, SearchApi, Olostep, and DataForSEO, with your own keys when self-hosting.",
+				definition:
+					"Cloro, BrightData, Oxylabs, SearchApi, Olostep, and DataForSEO, with your own keys when self-hosting.",
 			},
 			{
 				term: "Provider status",
@@ -1007,7 +1036,11 @@ export const productFeatures: ProductFeature[] = [
 			{ kind: "Guide", title: "Provider status", href: "/status" },
 			{ kind: "Guide", title: "How to show up in each AI search engine", href: "/ai-search" },
 			{ kind: "Blog", title: "The best LLM scraping APIs, compared", href: "/blog/best-llm-scraping-apis" },
-			{ kind: "Blog", title: "Do AI engines cite the same sources?", href: "/blog/do-ai-engines-cite-the-same-sources" },
+			{
+				kind: "Blog",
+				title: "Do AI engines cite the same sources?",
+				href: "/blog/do-ai-engines-cite-the-same-sources",
+			},
 		],
 		directoryFeatures: ["multiLlmTracking"],
 		related: ["ai-visibility-tracking", "query-fan-out", "citation-tracking"],
