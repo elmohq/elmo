@@ -142,7 +142,7 @@ test.describe("Demo auth is sign-in only", () => {
   test("the login page signs you in to the shared demo account", async ({ page }) => {
     await page.goto("/auth/login");
 
-    await page.waitForURL(/\/app/, { timeout: 30_000 });
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
     const session = await (await page.request.get("/api/auth/get-session")).json();
     expect(session?.user?.email).toBe(DEMO_CREDENTIALS.email);
   });
@@ -163,7 +163,7 @@ test.describe("Demo auth is sign-in only", () => {
   test("the bare app URL opens on the demo account", async ({ page }) => {
     await page.goto("/");
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
-    await page.waitForURL(/\/app/, { timeout: 30_000 });
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
   });
 });
 
