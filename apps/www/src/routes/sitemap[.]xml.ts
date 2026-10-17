@@ -96,6 +96,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 					{ path: "/ai-visibility-tools/alternatives", changefreq: "monthly", priority: 0.5 },
 					{ path: "/ai-visibility-tools/features", changefreq: "monthly", priority: 0.5 },
 					{ path: "/ai-visibility-tools/category", changefreq: "monthly", priority: 0.5 },
+					{ path: "/ai-visibility-tools/graveyard", changefreq: "monthly", priority: 0.5 },
 					...comparePairs.map(([a, b]) => ({
 						path: `/ai-visibility-tools/compare/${comparePairSlug(a, b)}`,
 						changefreq: "monthly",

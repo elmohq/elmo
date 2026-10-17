@@ -67,6 +67,11 @@ const browseLinks = [
 		description: "Trackers, content platforms, APIs, SEO suites, and open source.",
 		href: "/ai-visibility-tools/category",
 	},
+	{
+		title: "AEO Graveyard",
+		description: "Tools that shut down, pivoted, or were acquired, and what to do next.",
+		href: "/ai-visibility-tools/graveyard",
+	},
 ];
 
 function AiVisibilitySoftwarePage() {
@@ -81,9 +86,9 @@ function AiVisibilitySoftwarePage() {
 						<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">Browse the directory</h2>
 						<p className="mt-3 max-w-3xl text-zinc-600">
 							Compare tools head-to-head, find alternatives to one you're evaluating, or filter the field by feature and
-							category.
+							category. Tools that didn't make it are in the AEO Graveyard.
 						</p>
-						<div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+						<div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
 							{browseLinks.map((link) => (
 								<a
 									key={link.href}

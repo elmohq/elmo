@@ -46,6 +46,8 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 92,
 		ahrefsTraffic: 8834233,
 		status: "active",
+		soundbite:
+			"Semrush's AI tracking is one toolkit inside a large SEO suite. Elmo is built only for AI visibility, and it's free to self-host.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -92,6 +94,8 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 91,
 		ahrefsTraffic: 4382530,
 		status: "active",
+		soundbite:
+			"Brand Radar is one tool inside Ahrefs' SEO suite, starting at $129/mo. Elmo is built only for AI visibility, and it's free to self-host.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -338,6 +342,8 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 79,
 		ahrefsTraffic: 23237,
 		status: "active",
+		soundbite:
+			"Profound has grown into a sprawling enterprise suite — agents, content, shopping, ads — with enterprise pricing to match. If what you need is AI visibility tracking you can trust, Elmo does that one job well and is free to self-host.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -415,6 +421,8 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 75,
 		ahrefsTraffic: 39908,
 		status: "active",
+		soundbite:
+			"DataForSEO is a raw data API you build on, not a tracker. Elmo can use DataForSEO as its data source and turns it into tracking, reporting, and recommendations.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -497,6 +505,8 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 76,
 		ahrefsTraffic: 10127,
 		status: "active",
+		soundbite:
+			"AirOps is a content-operations platform first, and visibility tracking is one piece of it. Elmo is built only for AI visibility, and it's free to self-host.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -538,6 +548,8 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 74,
 		ahrefsTraffic: 1055,
 		status: "active",
+		soundbite:
+			"Peec AI is a capable hosted tracker, but it's closed: your prompts and history live in its cloud, and you can't check how a number was produced. Elmo gives you the code, the data, and the method, free to self-host.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1839,6 +1851,7 @@ export const competitors: Competitor[] = [
 		ahrefsTraffic: 34,
 		status: "active",
 		license: "MIT",
+		soundbite: "GetCito is a fork of Elmo. Elmo is the original, and it's shipping faster.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -8003,6 +8016,8 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "active",
+		soundbite:
+			"Notra was open source until October 2026, then took its code private. Elmo is MIT-licensed, so that can't happen to you.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,

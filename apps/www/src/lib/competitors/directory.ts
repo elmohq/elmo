@@ -165,6 +165,32 @@ export function indexableFeatureKeys(): FeatureKey[] {
 	);
 }
 
+// --- Graveyard ---------------------------------------------------------------
+
+export type GraveyardFate = "shut-down" | "pivoted" | "acquired";
+
+export function graveyardFate(c: Competitor): GraveyardFate | undefined {
+	if (c.status === "defunct" || c.status === "shutting-down") return "shut-down";
+	if (c.status === "pivoted") return "pivoted";
+	if (c.status === "acquired" && c.fate) return "acquired";
+	return undefined;
+}
+
+/** Tools that shut down, pivoted, or were bought, most recent first. */
+export const graveyardTools: Competitor[] = competitors
+	.filter((c) => graveyardFate(c) && c.category !== "other")
+	.sort((a, b) => (b.fate?.date ?? "").localeCompare(a.fate?.date ?? ""));
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Fate dates are as precise as the evidence: a year, a month, or a day. */
+export function formatFateDate(date: string): string {
+	const [year, month, day] = date.split("-");
+	if (!month) return year;
+	const name = MONTHS[Number(month) - 1];
+	return day ? `${name} ${Number(day)}, ${year}` : `${name} ${year}`;
+}
+
 // --- Category slices ---------------------------------------------------------
 
 export const CATEGORY_SLUGS: Partial<Record<CompetitorCategory, string>> = {

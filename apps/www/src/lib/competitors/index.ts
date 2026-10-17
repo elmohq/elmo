@@ -1,4 +1,4 @@
-export { getComparisonFaqs, getComparisonVerdict } from "./content";
+export { getComparisonFaqs, getComparisonVerdict, getSoundbite } from "./content";
 
 export {
 	competitors,
@@ -15,6 +15,10 @@ export {
 	compareSetSlug,
 	compareSets,
 	FEATURE_SLUGS,
+	formatFateDate,
+	type GraveyardFate,
+	graveyardFate,
+	graveyardTools,
 	featurePhrase,
 	getAlternatives,
 	getAlternativesFaqs,
