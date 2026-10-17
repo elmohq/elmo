@@ -19,7 +19,6 @@ function OffSiteAeoBookPage() {
 	const { plan } = Route.useSearch();
 	return (
 		<BookingPage
-			eyebrow="/ OFF-SITE AEO"
 			heading="Book a call"
 			intro="We'll map where you're invisible in AI answers today and plan the placements that fix it."
 			calLink="jrhizor/elmo-aeo"

@@ -289,11 +289,7 @@ function OpenSourcePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero
-					eyebrow="Open source"
-					title="Best free and open-source AI visibility and AEO tools (2026)"
-					lead={lead}
-				/>
+				<DirectoryHero title="Best free and open-source AI visibility and AEO tools (2026)" lead={lead} />
 
 				<DirectorySection title="Key takeaways">
 					<ul className="max-w-3xl list-disc space-y-3 pl-5 leading-relaxed text-zinc-600">
@@ -600,7 +596,7 @@ function OpenSourcePage() {
 					</div>
 				</DirectorySection>
 
-				<Faq items={FAQS} eyebrow="/ FAQ" />
+				<Faq items={FAQS} />
 				<ElmoCta />
 			</main>
 			<Footer />

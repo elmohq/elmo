@@ -153,8 +153,7 @@ function RoadmapPage() {
 				{/* Header */}
 				<section className="border-b border-zinc-200 bg-white">
 					<div className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-20">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ ROADMAP</p>
-						<h1 className="mt-4 max-w-[16ch] text-4xl font-semibold tracking-tight text-zinc-950 lg:text-5xl">
+						<h1 className="max-w-[16ch] text-4xl font-semibold tracking-tight text-zinc-950 lg:text-5xl">
 							What's coming next.
 						</h1>
 						<p className="mt-5 max-w-[58ch] text-pretty text-lg text-zinc-600">
@@ -196,8 +195,7 @@ function RoadmapPage() {
 					<section className="border-b border-zinc-200 bg-zinc-50/40">
 						<div className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-16">
 							<div className="mb-8">
-								<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600">/ ON DECK</p>
-								<h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Upcoming Features</h2>
+								<h2 className="text-2xl font-semibold tracking-tight text-zinc-950">Upcoming Features</h2>
 							</div>
 							<ul className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
 								{upcoming.map((h) => (
@@ -214,8 +212,7 @@ function RoadmapPage() {
 				<section className="bg-white">
 					<div className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-16">
 						<div className="mb-6">
-							<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ ISSUES</p>
-							<h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Trending and Recent Issues</h2>
+							<h2 className="text-2xl font-semibold tracking-tight text-zinc-950">Trending and Recent Issues</h2>
 						</div>
 						<ul className="space-y-2">
 							{popularIssues.map((issue) => (

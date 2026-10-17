@@ -15,8 +15,7 @@ export function CTA() {
 			<div className="relative mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<div className="grid items-center gap-10 lg:grid-cols-12">
 					<div className="lg:col-span-7">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ GET STARTED</p>
-						<h2 className="mt-4 max-w-[18ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+						<h2 className="max-w-[18ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 							Start tracking AI answers today.
 						</h2>
 						<p className="mt-5 max-w-[52ch] text-pretty text-zinc-600 md:text-lg">

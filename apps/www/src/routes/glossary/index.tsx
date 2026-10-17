@@ -42,10 +42,7 @@ function GlossaryIndex() {
 			<main>
 				<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ Glossary</p>
-						<h1 className="font-heading mt-2 text-4xl text-balance text-zinc-950 md:text-5xl">
-							The AI search glossary
-						</h1>
+						<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">The AI search glossary</h1>
 						<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">
 							The vocabulary of AI search and answer engine optimization, defined in plain English and cross-linked.
 							Start anywhere.

@@ -77,9 +77,6 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			{/* Hero */}
 			<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
-					<Badge variant="outline" className="mb-4">
-						{CATEGORY_LABELS[competitor.category]}
-					</Badge>
 					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">Elmo vs {competitor.name}</h1>
 					<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">{getComparisonVerdict(competitor)}</p>
 					{competitor.status === "shutting-down" && (
@@ -310,7 +307,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			</section>
 
 			{/* FAQ */}
-			<Faq items={getComparisonFaqs(competitor)} eyebrow="/ FAQ" />
+			<Faq items={getComparisonFaqs(competitor)} />
 
 			{/* CTA */}
 			<section className="border-b border-zinc-200 bg-white py-16 lg:py-24">

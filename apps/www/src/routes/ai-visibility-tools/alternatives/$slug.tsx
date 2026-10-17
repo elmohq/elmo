@@ -60,11 +60,7 @@ function AlternativesPage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero
-					eyebrow="Alternatives"
-					title={`${competitor.name} alternatives`}
-					lead={getAlternativesVerdict(competitor)}
-				/>
+				<DirectoryHero title={`${competitor.name} alternatives`} lead={getAlternativesVerdict(competitor)} />
 
 				<DirectoryElmoBanner
 					pitch="Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
@@ -97,7 +93,7 @@ function AlternativesPage() {
 					<ToolGrid competitors={alternatives} />
 				</DirectorySection>
 
-				<Faq items={getAlternativesFaqs(competitor, alternatives)} eyebrow="/ FAQ" />
+				<Faq items={getAlternativesFaqs(competitor, alternatives)} />
 				<ElmoCta />
 			</main>
 			<Footer />

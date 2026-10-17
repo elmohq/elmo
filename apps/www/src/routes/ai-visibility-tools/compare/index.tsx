@@ -49,7 +49,6 @@ function CompareHub() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					eyebrow="Compare"
 					title="AI visibility tools, head-to-head"
 					lead="Weighing the AI visibility tools against each other? These side-by-side breakdowns compare tracking, analytics, and pricing across the funded AEO platforms and the SEO suites that added AI search monitoring, and show where an open-source tool like Elmo fits in."
 				/>

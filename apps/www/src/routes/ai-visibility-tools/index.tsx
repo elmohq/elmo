@@ -97,7 +97,7 @@ function AiVisibilitySoftwarePage() {
 						</div>
 					</div>
 				</section>
-				<Faq items={DIRECTORY_FAQS} eyebrow="/ FAQ" />
+				<Faq items={DIRECTORY_FAQS} />
 			</main>
 			<Footer />
 		</div>
