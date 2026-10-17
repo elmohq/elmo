@@ -9,7 +9,6 @@ import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
 const title = "Roadmap · Elmo";
 const description = "See what's coming next for Elmo. React or comment on GitHub issues to help prioritize.";
 
-const PROJECT_BOARD_URL = "https://github.com/orgs/elmohq/projects/3/views/1";
 const ISSUES_URL = "https://github.com/elmohq/elmo/issues";
 
 interface UpcomingHighlight {
@@ -162,21 +161,12 @@ function RoadmapPage() {
 						</p>
 						<div className="mt-7 flex flex-wrap items-center gap-2">
 							<a
-								href={PROJECT_BOARD_URL}
+								href="https://github.com/elmohq/elmo/issues/new"
 								target="_blank"
 								rel="noopener noreferrer"
 								className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
 							>
 								<GitHubGlyph className="size-3.5" />
-								View Roadmap on GitHub
-								<ArrowUpRight className="size-3.5" />
-							</a>
-							<a
-								href="https://github.com/elmohq/elmo/issues/new"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-medium leading-none text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300"
-							>
 								Request a feature
 								<ArrowUpRight className="size-3.5" />
 							</a>
