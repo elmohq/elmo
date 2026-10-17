@@ -42,7 +42,7 @@ const FAQS: FaqItem[] = [
 	{
 		question: "Which open-source AEO tool is the most actively maintained?",
 		answer:
-			"Several are busy. By GitHub activity on 17 October 2026, Ansvisor (503 commits in the last 90 days, 65 contributors), Canonry (472), and Elmo (374) are the most active, and Lettertrace (323) is close behind. Elmo has the longest continuous history, starting in July 2025, and the most releases at 36. GEO/AEO Tracker, Gego, and GetCito each logged 15 or fewer commits in the same window.",
+			"Several are busy. By GitHub activity on 17 October 2026, Ansvisor (503 commits in the last 90 days, 65 contributors), Canonry (472), and Elmo (374) are the most active, and Lettertrace (323) is close behind. Elmo has the longest continuous history, starting in July 2025, the most releases at 36, and more stars than any other actively developed independent project. GEO/AEO Tracker, Gego, and GetCito each logged 15 or fewer commits in the same window.",
 	},
 	{
 		question: "Is there an open-source AI visibility tracker?",
@@ -375,7 +375,9 @@ function OpenSourcePage() {
 							Gemini, Perplexity, Copilot, Claude, and any OpenRouter model.
 						</li>
 						<li>
-							The field grew fast in 2026. Ansvisor has 65 contributors, and Canonry, Ansvisor, and Elmo each logged
+							On public GitHub data as of {STATS_AS_OF}, Elmo leads the field on releases and length of continuous
+							history, and the only projects with more stars are GeoLook, which hasn't had a commit since August, and
+							GetCito, a fork of Elmo. Ansvisor has the most contributors, and Canonry, Ansvisor, and Elmo each logged
 							hundreds of commits in the last 90 days.
 						</li>
 						<li>
