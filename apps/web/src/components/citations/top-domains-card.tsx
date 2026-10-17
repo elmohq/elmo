@@ -19,6 +19,7 @@ export function TopDomainsCard({
 	brandName,
 	competitors,
 	onCompetitorAdded,
+	onDomainSelect,
 }: {
 	domains: CitationData["domainDistribution"];
 	sourceTabs: { key: string; label: string }[];
@@ -27,6 +28,8 @@ export function TopDomainsCard({
 	brandName?: string;
 	competitors?: CitationData["competitors"];
 	onCompetitorAdded?: () => void;
+	/** Opens the domain in the Citation Flow. */
+	onDomainSelect?: (domain: string) => void;
 }) {
 	const [domainSearch, setDomainSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -103,6 +106,8 @@ export function TopDomainsCard({
 								count: domain.count,
 								icon: <SiteIcon domain={domain.domain} size="md" />,
 								category: domain.category || "other",
+								onClick: onDomainSelect ? () => onDomainSelect(domain.domain) : undefined,
+								tooltip: onDomainSelect ? "See which of its pages engines cite, in Citation Flow" : undefined,
 								action:
 									domain.category === "other" && brandId && competitors ? (
 										<TrackDomainPopover

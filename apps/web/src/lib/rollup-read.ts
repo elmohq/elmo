@@ -3,6 +3,7 @@
  * (quarter-hour buckets, refreshed about a minute behind the raw rows).
  */
 
+import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/citations/page-classification";
 import type { CitationUrlRow } from "@workspace/lib/citations/rollup";
 import { sql } from "drizzle-orm";
 import {
@@ -14,6 +15,7 @@ import {
 	scopeFilter,
 	uuidList,
 } from "@/lib/analytics-sql";
+import type { CitationFlowRow } from "@/lib/citation-flow";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
 import type { AssessmentSums } from "@/lib/sentiment";
 
@@ -348,6 +350,24 @@ export async function getCitationUrlStats(scope: AnalyticsScope): Promise<Citati
 		JOIN cited_pages cp ON cp.id = rcu.page_id
 		WHERE ${rollupScope(scope, "rcu")}
 		GROUP BY rcu.page_id, cp.url, cp.domain, cp.title, cp.static_category, cp.page_type
+		ORDER BY count DESC
+	`);
+}
+
+/**
+ * One domain's pages, per engine, for the Citation Flow. `domain` is the
+ * normalized host, so its subdomains match by suffix as `inDomainSet` does.
+ * Google surfaces are left out, as everywhere else on the Citations page.
+ */
+export async function getCitationFlowRows(scope: AnalyticsScope, domain: string): Promise<CitationFlowRow[]> {
+	return queryPg<CitationFlowRow>(sql`
+		SELECT rcu.model, cp.url, cp.title, sum(rcu.citations)::int AS count
+		FROM rollup_citation_urls rcu
+		JOIN cited_pages cp ON cp.id = rcu.page_id
+		WHERE ${rollupScope(scope, "rcu")}
+			AND (rcu.domain = ${domain} OR right(rcu.domain, ${domain.length + 1}) = ${`.${domain}`})
+			AND cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
+		GROUP BY rcu.model, rcu.page_id, cp.url, cp.title
 		ORDER BY count DESC
 	`);
 }
