@@ -64,6 +64,13 @@ describe("validateScrapeTargets", () => {
 		);
 	});
 
+	it("throws when gemini-api provider has no version", () => {
+		const configs = [{ model: "gemini", provider: "gemini-api", webSearch: true }];
+		expect(() => validateScrapeTargets(configs, makeGetProvider({ "gemini-api": configuredProvider }))).toThrow(
+			"requires a version slug",
+		);
+	});
+
 	it("reports every misconfigured target at once", () => {
 		const configs = [
 			{ model: "chatgpt", provider: "nonexistent", webSearch: true },

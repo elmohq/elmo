@@ -47,6 +47,7 @@ declare global {
 			readonly OPENAI_API_KEY: string;
 			readonly ANTHROPIC_API_KEY: string;
 			readonly MISTRAL_API_KEY?: string;
+			readonly GEMINI_API_KEY?: string;
 			readonly OPENROUTER_API_KEY?: string;
 			readonly SEARCHAPI_API_KEY?: string;
 			readonly OLOSTEP_API_KEY?: string;

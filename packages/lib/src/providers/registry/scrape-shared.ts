@@ -65,3 +65,50 @@ export async function retryTransient<T>(
 	}
 	throw new Error(describeExhausted(lastError));
 }
+
+const GROUNDING_REDIRECT_PREFIX = "https://vertexaisearch.cloud.google.com/grounding-api-redirect/";
+const GROUNDING_REDIRECT_TIMEOUT_MS = 8000;
+
+async function resolveGroundingRedirect(url: string): Promise<string> {
+	try {
+		const res = await fetch(url, {
+			method: "GET",
+			redirect: "manual",
+			signal: AbortSignal.timeout(GROUNDING_REDIRECT_TIMEOUT_MS),
+		});
+		const location = res.headers.get("location");
+		return location?.startsWith("http") ? location : url;
+	} catch {
+		return url;
+	}
+}
+
+/**
+ * Gemini grounds its answers through Google Search and cites each source as a
+ * Vertex AI "grounding-api-redirect" link rather than the page itself, whoever
+ * makes the call (Google's own API, or a reseller like DataForSEO). The links
+ * are short-lived, so they're followed at fetch time and `entry[field]` is
+ * rewritten in place — the stored payload, and every later re-extraction of it,
+ * then carries the real source URL. A link that won't resolve keeps its
+ * redirect URL rather than failing the run.
+ */
+export async function resolveGroundingRedirects<K extends string>(
+	entries: Partial<Record<K, unknown>>[],
+	field: K,
+): Promise<void> {
+	const redirected = entries.filter(
+		(entry): entry is Record<K, string> =>
+			typeof entry?.[field] === "string" && (entry[field] as string).startsWith(GROUNDING_REDIRECT_PREFIX),
+	);
+	if (redirected.length === 0) return;
+
+	const resolved = new Map<string, string>();
+	await Promise.all(
+		[...new Set(redirected.map((entry) => entry[field]))].map(async (url) =>
+			resolved.set(url, await resolveGroundingRedirect(url)),
+		),
+	);
+	for (const entry of redirected) {
+		entry[field] = resolved.get(entry[field]) ?? entry[field];
+	}
+}

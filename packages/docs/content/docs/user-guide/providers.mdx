@@ -3,7 +3,7 @@ title: Providers
 description: Choose how Elmo tracks each AI answer engine — scrapers, direct APIs, or both.
 ---
 
-Elmo tracks which AI answer engines mention your brand. Most AI search traffic comes from **ChatGPT** and **Google AI Mode**, and neither exposes a public API. You can approximate their responses by calling the underlying model APIs (OpenAI, Anthropic, Mistral, OpenRouter) with web search enabled, but that's not the real consumer UI — scraping the actual surface is usually closer to what your customers see.
+Elmo tracks which AI answer engines mention your brand. Most AI search traffic comes from **ChatGPT** and **Google AI Mode**, and neither exposes a public API. You can approximate their responses by calling the underlying model APIs (OpenAI, Anthropic, Mistral, Gemini, OpenRouter) with web search enabled, but that's not the real consumer UI — scraping the actual surface is usually closer to what your customers see.
 
 ## Recommended scrapers
 
@@ -192,6 +192,7 @@ These hit the provider API directly — cheaper per token than scrapers, but the
 | **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$4–5 per tracked model |
 | **OpenAI API** (`OPENAI_API_KEY`) | `gpt-6-luna` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
 | **Mistral API** (`MISTRAL_API_KEY`) | Mistral Small / Medium / Large, optional web search via the beta Conversations API | pass-through |
+| **Gemini API** (`GEMINI_API_KEY`) | Gemini models, optional Google Search grounding (Gemini-like, but not the real Gemini app) | pass-through |
 | **OpenRouter** (`OPENROUTER_API_KEY`) | Any OpenRouter-hosted model (Claude, Llama, Mistral, etc.) | pass-through |
 | **DataForSEO** (`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`) | ChatGPT, Gemini, or Perplexity through its LLM Responses API — see [Pinning a model](#pinning-a-model) | pass-through |
 
@@ -203,13 +204,14 @@ Example scrape targets:
 claude:anthropic-api:claude-haiku-5-5
 chatgpt:openai-api:gpt-6-luna:online
 mistral:mistral-api:mistral-medium-latest:online
+gemini:gemini-api:gemini-3.8-flash:online
 claude:openrouter:anthropic/claude-haiku-5.5
 grok:openrouter:x-ai/grok-4.5:online
 kimi:openrouter:moonshotai/kimi-k3
 perplexity:openrouter:perplexity/sonar:online
 ```
 
-OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
+OpenAI/Anthropic/Mistral/Gemini/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned. For Gemini, `:online` turns on grounding with Google Search, which Google bills per search query on top of tokens. Get a key from [Google AI Studio](https://aistudio.google.com/apikey).
 
 DataForSEO straddles both halves of this page. Left alone it scrapes, but pinning a `model_name` switches ChatGPT or Gemini to a model API instead, and Perplexity always goes that way because no Perplexity scraper exists. See [DataForSEO](#dataforseo) above.
 
@@ -255,8 +257,8 @@ model:provider[:version][:online]
 ```
 
 - `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`).
-- `provider` — how to reach it (`cloro`, `brightdata`, `oxylabs`, `searchapi`, `olostep`, `dataforseo`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`).
-- `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here, or a DataForSEO `model_name` to switch that target to the LLM Responses API).
+- `provider` — how to reach it (`cloro`, `brightdata`, `oxylabs`, `searchapi`, `olostep`, `dataforseo`, `openai-api`, `anthropic-api`, `mistral-api`, `gemini-api`, `openrouter`).
+- `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `gemini-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here, or a DataForSEO `model_name` to switch that target to the LLM Responses API).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
 
 Entries are comma-separated.
