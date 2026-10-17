@@ -35,8 +35,7 @@ export function OffSiteHero() {
 				className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgb(0_0_0/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(0_0_0/0.04)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
 			/>
 			<div className="relative mx-auto max-w-6xl px-4 pb-16 pt-16 md:px-6 lg:pb-24 lg:pt-24">
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ OFF-SITE AEO</p>
-				<h1 className="mt-6 max-w-[20ch] text-5xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 sm:text-6xl">
+				<h1 className="max-w-[20ch] text-5xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 sm:text-6xl">
 					Get cited by AI on the sites it already trusts.
 				</h1>
 				<p className="mt-6 max-w-[60ch] text-pretty text-base text-zinc-600 md:text-lg">
@@ -95,8 +94,7 @@ export function OffSiteValue() {
 	return (
 		<section className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ WHY IT WORKS</p>
-				<h2 className="mt-4 max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+				<h2 className="max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 					More mentions on sites AI already trusts.
 				</h2>
 				<p className="mt-5 max-w-[60ch] text-pretty text-zinc-600 md:text-lg">
@@ -117,7 +115,7 @@ export function OffSiteValue() {
 				</div>
 
 				<div className="mt-8 rounded-lg border border-zinc-200 bg-zinc-50 p-6 lg:p-8">
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ WHO RUNS THIS</p>
+					<h3 className="text-lg font-semibold tracking-tight text-zinc-950">Who runs this</h3>
 					<p className="mt-3 max-w-[68ch] text-pretty text-zinc-700 md:text-lg">
 						Elmo is run by{" "}
 						<a
@@ -141,17 +139,14 @@ export function OffSiteValue() {
 
 const steps = [
 	{
-		num: "01",
 		title: "Free Consultation",
 		body: "We review how AI talks about you today, find the prompts and competitors you're losing, and agree on what to target.",
 	},
 	{
-		num: "02",
 		title: "Live within 30 days",
 		body: "We plan, write, humanize, and place that month's posts on high-authority sites, showing you which post maps to which prompt.",
 	},
 	{
-		num: "03",
 		title: "Autopilot",
 		body: "We keep publishing monthly and adjust targets as your visibility shifts.",
 	},
@@ -161,18 +156,14 @@ export function OffSiteProcess() {
 	return (
 		<section className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ HOW IT WORKS</p>
-				<h2 className="mt-4 max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+				<h2 className="max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 					One call, then live posts within 30 days.
 				</h2>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
 					{steps.map((s) => (
-						<div key={s.num} className="bg-white p-6 lg:p-8">
-							<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
-								{s.num}
-							</span>
-							<h3 className="mt-4 text-xl font-semibold tracking-tight text-zinc-950">{s.title}</h3>
+						<div key={s.title} className="bg-white p-6 lg:p-8">
+							<h3 className="text-xl font-semibold tracking-tight text-zinc-950">{s.title}</h3>
 							<p className="mt-2 max-w-[40ch] text-pretty text-sm leading-relaxed text-zinc-600">{s.body}</p>
 						</div>
 					))}
@@ -191,7 +182,6 @@ interface PlanBucket {
 
 interface OffSitePlan {
 	id: string;
-	tag: string;
 	name: string;
 	desc: string;
 	price: string;
@@ -204,7 +194,6 @@ interface OffSitePlan {
 const plans: OffSitePlan[] = [
 	{
 		id: "starter",
-		tag: "01",
 		name: "Starter",
 		desc: "Four placements a month to get started.",
 		price: "$1,950",
@@ -218,7 +207,6 @@ const plans: OffSitePlan[] = [
 	},
 	{
 		id: "growth",
-		tag: "02",
 		name: "Growth",
 		desc: "More reach across higher-authority sites.",
 		price: "$4,950",
@@ -234,7 +222,6 @@ const plans: OffSitePlan[] = [
 	},
 	{
 		id: "authority",
-		tag: "03",
 		name: "Authority",
 		desc: "The most placements, including one DR60+ site.",
 		price: "$9,950",
@@ -265,8 +252,7 @@ function PlanCard({ plan }: { plan: OffSitePlan }) {
 				</span>
 			)}
 			<div>
-				<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">{plan.tag}</span>
-				<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">{plan.name}</h3>
+				<h3 className="text-2xl font-semibold tracking-tight text-zinc-950">{plan.name}</h3>
 				<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">{plan.desc}</p>
 				<div className="mt-6 flex items-baseline gap-2 border-y border-zinc-200 py-4">
 					<span className="text-4xl font-semibold tracking-tight text-zinc-950 tabular-nums">{plan.price}</span>
@@ -309,8 +295,7 @@ export function OffSitePricing() {
 	return (
 		<section id="plans" className="border-b border-zinc-200 bg-white scroll-mt-16">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ PLANS</p>
-				<h2 className="mt-4 max-w-[26ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+				<h2 className="max-w-[26ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 					Pick your level. We handle the rest.
 				</h2>
 				<p className="mt-5 max-w-[56ch] text-pretty text-zinc-600">

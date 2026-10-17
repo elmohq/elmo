@@ -70,15 +70,11 @@ function FeaturePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero
-					eyebrow="Feature"
-					title={`AI visibility tools with ${label}`}
-					lead={getFeatureVerdict(featureKey, tools)}
-				/>
+				<DirectoryHero title={`AI visibility tools with ${label}`} lead={getFeatureVerdict(featureKey, tools)} />
 				<DirectorySection title="Tools that offer this feature">
 					<ToolGrid competitors={tools} />
 				</DirectorySection>
-				<Faq items={getFeatureFaqs(featureKey, tools)} eyebrow="/ FAQ" />
+				<Faq items={getFeatureFaqs(featureKey, tools)} />
 				<ElmoCta />
 			</main>
 			<Footer />
