@@ -123,7 +123,8 @@ function Tombstone({ competitor }: { competitor: Competitor }) {
 			<p className="mt-1 text-center text-xs text-zinc-500">
 				{FATE_LABEL[fate]} · {formatFateDate(competitor.fate.date)}
 			</p>
-			<div className="mt-4 overflow-hidden rounded-md border border-zinc-300">
+			<TombstoneDivider />
+			<div className="overflow-hidden rounded-md border border-zinc-300">
 				<img
 					src={getScreenshotUrl(competitor.slug)}
 					alt={`${competitor.name}'s homepage while it was live`}
@@ -133,13 +134,16 @@ function Tombstone({ competitor }: { competitor: Competitor }) {
 					loading="lazy"
 				/>
 			</div>
-			<p className="mt-4 text-sm text-zinc-600">{competitor.tagline}</p>
-			<p className="mt-2 flex-1 text-sm text-zinc-800">{competitor.fate.summary}</p>
-			<div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+			<TombstoneDivider />
+			<p className="text-sm text-zinc-600">{competitor.tagline}</p>
+			<TombstoneDivider />
+			<p className="flex-1 text-sm text-zinc-800">{competitor.fate.summary}</p>
+			<TombstoneDivider />
+			<div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
 				<Link
 					to="/ai-visibility-tools/$slug"
 					params={{ slug: getComparisonSlug(competitor) }}
-					className="text-blue-700 hover:underline"
+					className="text-zinc-950 underline decoration-zinc-400 underline-offset-4 hover:decoration-zinc-950"
 				>
 					Elmo vs {competitor.name}
 				</Link>
@@ -148,7 +152,7 @@ function Tombstone({ competitor }: { competitor: Competitor }) {
 						href={competitor.fate.source}
 						target="_blank"
 						rel="noopener noreferrer nofollow"
-						className="text-zinc-500 hover:text-zinc-950 hover:underline"
+						className="text-zinc-950 underline decoration-zinc-400 underline-offset-4 hover:decoration-zinc-950"
 					>
 						Source
 					</a>
@@ -156,6 +160,10 @@ function Tombstone({ competitor }: { competitor: Competitor }) {
 			</div>
 		</li>
 	);
+}
+
+function TombstoneDivider() {
+	return <hr className="my-4 border-zinc-300" />;
 }
 
 function GraveyardPage() {
