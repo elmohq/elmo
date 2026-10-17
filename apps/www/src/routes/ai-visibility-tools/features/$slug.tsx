@@ -7,6 +7,7 @@ import { ToolGrid } from "@/components/tool-list";
 import {
 	type Competitor,
 	type FeatureKey,
+	featurePhrase,
 	getFeatureFaqs,
 	getFeatureKeyBySlug,
 	getFeatureLabel,
@@ -27,19 +28,20 @@ export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
 			featureKey: key,
 			tools,
 			label: getFeatureLabel(key),
+			phrase: featurePhrase(key),
 			term: getFeatureSearchTerm(key),
 			faqs: getFeatureFaqs(key, tools),
 		};
 	},
 	head: ({ params, loaderData }) => {
 		if (!loaderData) return {};
-		const { tools, label, term, faqs } = loaderData;
+		const { tools, label, phrase, term, faqs } = loaderData;
 		const title = !term
 			? `AI Visibility Tools with ${label} · Elmo`
 			: tools.length <= 25
 				? `${tools.length} Best ${term} (2026) · Elmo`
 				: `${term} Compared: ${tools.length} Tools (2026) · Elmo`;
-		const description = `${tools.length} AI visibility tools with ${label.toLowerCase()}, compared on engine coverage, pricing, and export — including Elmo, the open-source option.`;
+		const description = `${tools.length} AI visibility tools with ${phrase}, compared on engine coverage, pricing, and export — including Elmo, the open-source option.`;
 		const path = `/ai-visibility-tools/features/${params.slug}`;
 		return {
 			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],

@@ -14,8 +14,8 @@ const SLIDES = [
 	{
 		src: "/screenshots/overview.png",
 		label: "Overview",
-		caption: "Your AI visibility and share of voice at a glance",
-		y: 0.142,
+		caption: "Visibility, share of voice, sentiment, and position at a glance",
+		y: 0.141,
 	},
 	{
 		src: "/screenshots/visibility.png",
@@ -30,22 +30,34 @@ const SLIDES = [
 		y: 0.221,
 	},
 	{
+		src: "/screenshots/sentiment.png",
+		label: "Sentiment",
+		caption: "How AI describes you when it mentions you",
+		y: 0.261,
+	},
+	{
+		src: "/screenshots/responses.png",
+		label: "Responses",
+		caption: "Every AI answer, with each brand's rank and tone",
+		y: 0.301,
+	},
+	{
 		src: "/screenshots/query-fan-out.png",
 		label: "Query Fan-Out",
 		caption: "The searches AI runs behind each answer",
-		y: 0.261,
+		y: 0.341,
 	},
 	{
 		src: "/screenshots/citations.png",
 		label: "Citations",
 		caption: "The sources AI trusts in your category",
-		y: 0.301,
+		y: 0.381,
 	},
 	{
 		src: "/screenshots/opportunities.png",
 		label: "Opportunities",
 		caption: "What to do next, ranked by impact",
-		y: 0.341,
+		y: 0.421,
 	},
 ] as const;
 

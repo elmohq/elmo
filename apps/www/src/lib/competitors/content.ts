@@ -22,6 +22,24 @@ export function isOpenSource(competitor: Competitor): boolean {
 	return (competitor.features.openSource ?? false) || competitor.category === "open-source";
 }
 
+const INTEGRATION_FEATURES = [
+	["sentimentAnalysis", "sentiment analysis"],
+	["dataExportApi", "API access"],
+	["mcpServer", "an MCP server"],
+] as const;
+
+function integrationSummary(competitor: Competitor): string {
+	const has = INTEGRATION_FEATURES.filter(([key]) => competitor.features[key]).map(([, label]) => label);
+	const lacks = INTEGRATION_FEATURES.filter(([key]) => !competitor.features[key]).map(([, label]) => label);
+	const list = (items: string[], conjunction: string) =>
+		items.length <= 2
+			? items.join(` ${conjunction} `)
+			: `${items.slice(0, -1).join(", ")}, ${conjunction} ${items[items.length - 1]}`;
+	if (lacks.length === 0) return `${competitor.name} offers all three as well.`;
+	if (has.length === 0) return `We have not found ${competitor.name} offering ${list(lacks, "or")}.`;
+	return `${competitor.name} offers ${list(has, "and")}, but we have not found it offering ${list(lacks, "or")}.`;
+}
+
 const GETCITO_FORK_DATE = "July 10, 2026";
 
 /**
@@ -98,6 +116,11 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 		answer: openSource
 			? `Yes, ${name} is open source. Elmo is open source as well and is built specifically for self-hosted, independently verifiable AI visibility tracking, so you can audit exactly how each metric is calculated.`
 			: `No, ${name} is a closed-source, hosted product, so you cannot inspect how its metrics are calculated. Elmo is fully open source — you can audit the code, self-host it on your own infrastructure, and avoid vendor lock-in.`,
+	});
+
+	faqs.push({
+		question: `How do Elmo and ${name} compare on sentiment analysis, API access, and MCP?`,
+		answer: `Elmo includes all three: a 0 to 100 sentiment score for every AI answer that mentions you, a REST API with TypeScript and Python SDKs, and an MCP server so assistants like Claude Code and Cursor can query your data. ${integrationSummary(competitor)}`,
 	});
 
 	faqs.push({

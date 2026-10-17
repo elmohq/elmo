@@ -94,7 +94,7 @@ export function OverviewPageGraphic({ wide = false }: { wide?: boolean } = {}) {
 	return (
 		<Screenshot
 			src="/screenshots/overview.png"
-			alt="Elmo dashboard overview showing AI visibility and share of voice scores with 30-day trend charts"
+			alt="Elmo dashboard overview with visibility, share of voice, sentiment, and position cards above a competitive landscape chart"
 			aspect={wide ? "aspect-[12/5]" : "aspect-[5/3]"}
 		/>
 	);
@@ -127,7 +127,20 @@ export function ShareOfVoicePageGraphic() {
 }
 
 // ---------------------------------------------------------------------------
-// 04 — Query Fan-Out
+// 04 — Sentiment
+// ---------------------------------------------------------------------------
+
+export function SentimentPageGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/sentiment.png"
+			alt="Sentiment score donut, sentiment trends against competitors, sentiment by model, and the passages where AI praises the brand"
+		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// 05 — Query Fan-Out
 // ---------------------------------------------------------------------------
 
 export function QueryFanOutPageGraphic() {
@@ -140,7 +153,7 @@ export function QueryFanOutPageGraphic() {
 }
 
 // ---------------------------------------------------------------------------
-// 05 — Citations
+// 06 — Citations
 // ---------------------------------------------------------------------------
 
 export function CitationsPageGraphic() {
@@ -153,7 +166,7 @@ export function CitationsPageGraphic() {
 }
 
 // ---------------------------------------------------------------------------
-// 06 — Opportunities
+// 07 — Opportunities
 // ---------------------------------------------------------------------------
 
 export function OpportunitiesPageGraphic() {
@@ -166,7 +179,7 @@ export function OpportunitiesPageGraphic() {
 }
 
 // ---------------------------------------------------------------------------
-// 07 — Prompts
+// 08 — Prompts
 // ---------------------------------------------------------------------------
 
 export function PromptSearchGraphic() {
@@ -179,7 +192,7 @@ export function PromptSearchGraphic() {
 }
 
 // ---------------------------------------------------------------------------
-// 08 — Deep Dive
+// 09 — Deep Dive
 // ---------------------------------------------------------------------------
 
 export function PromptDetailGraphic() {
@@ -192,7 +205,7 @@ export function PromptDetailGraphic() {
 }
 
 // ---------------------------------------------------------------------------
-// 09 — Trends: 12-month area chart
+// 10 — Trends: 12-month area chart
 // ---------------------------------------------------------------------------
 
 export function VisibilityTrendGraphic() {

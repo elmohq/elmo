@@ -15,6 +15,7 @@ export {
 	compareSetSlug,
 	compareSets,
 	FEATURE_SLUGS,
+	featurePhrase,
 	getAlternatives,
 	getAlternativesFaqs,
 	getAlternativesVerdict,

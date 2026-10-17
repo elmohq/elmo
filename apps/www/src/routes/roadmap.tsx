@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpRight, MessageCircle, ThumbsUp } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight, ArrowUpRight, MessageCircle, ThumbsUp } from "lucide-react";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import upcomingData from "@/data/upcoming-features.json";
@@ -180,6 +180,13 @@ function RoadmapPage() {
 								Request a feature
 								<ArrowUpRight className="size-3.5" />
 							</a>
+							<Link
+								to="/changelog"
+								className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-medium leading-none text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300"
+							>
+								See what shipped
+								<ArrowRight className="size-3.5" />
+							</Link>
 						</div>
 					</div>
 				</section>
