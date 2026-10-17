@@ -5,6 +5,7 @@ import {
 	PromptDetailGraphic,
 	PromptSearchGraphic,
 	QueryFanOutPageGraphic,
+	SentimentPageGraphic,
 	ShareOfVoicePageGraphic,
 	VisibilityPageGraphic,
 	VisibilityTrendGraphic,
@@ -45,6 +46,14 @@ const features: Feature[] = [
 	},
 	{
 		num: "04",
+		eyebrow: "SENTIMENT",
+		title: "Know how AI talks about you.",
+		description:
+			"Every answer that names you is read for praise or criticism and scored 0 to 100, beside each competitor and per model. See the exact passages behind the score and filter responses down to the negative ones.",
+		graphic: <SentimentPageGraphic />,
+	},
+	{
+		num: "05",
 		eyebrow: "QUERY FAN-OUT",
 		title: "See the searches behind every AI answer.",
 		description:
@@ -52,7 +61,7 @@ const features: Feature[] = [
 		graphic: <QueryFanOutPageGraphic />,
 	},
 	{
-		num: "05",
+		num: "06",
 		eyebrow: "CITATIONS",
 		title: "Understand where AI gets its information.",
 		description:
@@ -60,7 +69,7 @@ const features: Feature[] = [
 		graphic: <CitationsPageGraphic />,
 	},
 	{
-		num: "06",
+		num: "07",
 		eyebrow: "OPPORTUNITIES",
 		title: "Know exactly what to do next.",
 		description:
@@ -68,7 +77,7 @@ const features: Feature[] = [
 		graphic: <OpportunitiesPageGraphic />,
 	},
 	{
-		num: "07",
+		num: "08",
 		eyebrow: "PROMPTS",
 		title: "Search, tag, and organize your prompts.",
 		description:
@@ -76,15 +85,15 @@ const features: Feature[] = [
 		graphic: <PromptSearchGraphic />,
 	},
 	{
-		num: "08",
+		num: "09",
 		eyebrow: "DEEP DIVE",
 		title: "Inspect every individual AI response.",
 		description:
-			"Drill into any prompt to see exactly what each AI model said, which brands were mentioned, and what sources were cited.",
+			"Drill into any prompt to see exactly what each AI model said, where each brand ranked in the answer and how it was described, and what sources were cited.",
 		graphic: <PromptDetailGraphic />,
 	},
 	{
-		num: "09",
+		num: "10",
 		eyebrow: "TRENDS",
 		title: "Track visibility trends over months.",
 		description:
