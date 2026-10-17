@@ -8293,6 +8293,31 @@ const aeoPopularityRanking: string[] = [
 ];
 
 /**
+ * Display order for the AEO Graveyard: how well known each tool was while it
+ * was alive, judged by funding, the size of the deal that ended it, and how
+ * often it showed up in roundups. Tools missing from this list sort last.
+ */
+export const graveyardRanking: string[] = [
+	"xfunnel", // Acquired by HubSpot for a reported ~$30M
+	"hall", // Strong product with DR 47; acquired by Tracksuit
+	"meridian", // Seven-figure acquisition by Searchable
+	"scope", // YC-backed, pivoted to coding-agent analytics
+	"lorelight", // Widely shared founder postmortem
+	"ai-rank-checker", // Claimed 700+ companies; absorbed into Cognizo
+	"jarts", // Acquired, then shut down
+	"bear-ai", // Blog Agent product, pivoted to AI training data
+	"genwolf", // Open-source core with a hosted app
+	"aeospy",
+	"visble",
+	"thirdeye",
+	"peasy",
+	"allsearch",
+	"anvil",
+	"chatgeo",
+	"searchone",
+];
+
+/**
  * Tools where AI visibility is NOT the primary product — large platforms
  * that added AEO features. Graded "N/A" and sorted after all ranked tools.
  */

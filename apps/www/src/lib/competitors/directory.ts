@@ -1,6 +1,6 @@
 import type { FaqItem } from "@/lib/faqs";
 import { CATEGORY_NOUN, indefiniteArticle, isOpenSource } from "./content";
-import { competitors, getComparisonSlug, getPopularityRank } from "./data";
+import { competitors, getComparisonSlug, getPopularityRank, graveyardRanking } from "./data";
 import {
 	CATEGORY_LABELS,
 	type Competitor,
@@ -176,10 +176,15 @@ export function graveyardFate(c: Competitor): GraveyardFate | undefined {
 	return undefined;
 }
 
-/** Tools that shut down, pivoted, or were bought, most recent first. */
+/** Tools that shut down, pivoted, or were bought, best known first. */
 export const graveyardTools: Competitor[] = competitors
 	.filter((c) => graveyardFate(c) && c.category !== "other")
-	.sort((a, b) => (b.fate?.date ?? "").localeCompare(a.fate?.date ?? ""));
+	.sort((a, b) => graveyardRank(a) - graveyardRank(b));
+
+function graveyardRank(c: Competitor): number {
+	const rank = graveyardRanking.indexOf(c.slug);
+	return rank === -1 ? graveyardRanking.length : rank;
+}
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
