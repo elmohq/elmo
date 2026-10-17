@@ -7879,7 +7879,7 @@ export const competitors: Competitor[] = [
 		pricing: { hasFree: true, hasEnterprise: false },
 		highlights: [
 			"Apache-2.0, self-hosted with your own OpenRouter or provider keys",
-			"One of the most-starred open-source GEO projects on GitHub",
+			"Scheduled runs compare answers across models and record cited sources",
 			"Parent company sells paid diagnosis reports and done-for-you GEO work",
 		],
 	},
@@ -8208,7 +8208,6 @@ const aeoPopularityRanking: string[] = [
 	"llm-pulse", // LLM monitoring with prompt suggestions + Looker Studio
 	"ai-peekaboo", // White-label GEO competitive intelligence for agencies
 	"checkthat", // No-cold-start tracking, lead gen for GrowthX
-	"niubigeo", // Apache-2.0, ~8k GitHub stars in six weeks (unusually fast); services-led parent company
 	"ansvisor", // MIT, 141 stars, managed cloud from $49/mo with API + MCP
 	"limelit", // Apache-2.0 single-binary tracker with MCP, ~190 stars, credit-based cloud
 	"parse", // 219K brands database, peer visibility
@@ -8241,6 +8240,7 @@ const aeoPopularityRanking: string[] = [
 	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, ~106 stars
 	"opensight", // MIT self-hosted tracker (36 stars) with a free hosted tier and API on every plan
 	"cited", // AGPL-3.0 citation monitor, first public release, ~126 stars
+	"niubigeo", // Apache-2.0 research tool fronting a services company; GitHub stars and forks look inorganic
 	"geolook", // MIT self-host-only workbench, ~770 stars, dormant since Aug 2026
 	"local-glyph", // Local SEO platform first; AI visibility is one module. Beta, 70+ agencies
 	"flip-aeo", // AEO tracking + optimization

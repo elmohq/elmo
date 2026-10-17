@@ -11,11 +11,11 @@ import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } fro
 
 const title = "Best Free & Open-Source AI Visibility & AEO Tools (2026) · Elmo";
 const description =
-	"The best free and open-source AI visibility and answer engine optimization (AEO) tools you can self-host and audit, compared on license, coverage, and public GitHub data. Elmo, NiubiGEO, Ansvisor, Canonry, OneGlanse, and more.";
+	"The best free and open-source AI visibility and answer engine optimization (AEO) tools you can self-host and audit, compared on license, coverage, and public GitHub data. Elmo, Ansvisor, Canonry, OneGlanse, Limelit, and more.";
 const path = "/ai-visibility-tools/category/open-source";
 
 const lead =
-	"Elmo is the longest-running open-source AI visibility and answer engine optimization platform: MIT-licensed, free to self-host, and auditable down to how each metric is computed, with 36 releases since July 2025. The field grew fast in 2026. NiubiGEO has drawn the most GitHub stars, Ansvisor the most contributors, and Canonry, Limelit, and OneGlanse each take a different approach. Licenses differ more than features do, so check them first.";
+	"Elmo is the longest-running open-source AI visibility and answer engine optimization platform: MIT-licensed, free to self-host, and auditable down to how each metric is computed, with 36 releases since July 2025. The field grew fast in 2026: Ansvisor has drawn the most contributors, and Canonry, Limelit, and OneGlanse each take a different approach. Licenses differ more than features do, so check them first.";
 
 // Public GitHub data, captured 11 August 2026. Kept as a dated snapshot rather
 // than fetched live: the point is a like-for-like comparison across projects at
@@ -27,7 +27,7 @@ const FAQS: FaqItem[] = [
 	{
 		question: "What are the best open-source AEO tools?",
 		answer:
-			"Elmo is the longest-running open-source answer engine optimization tool: MIT-licensed, free to self-host, and covering ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, and any OpenRouter model. Public GitHub data as of 17 October 2026 shows a field that grew fast this year. NiubiGEO has the most stars by far and is a research-style tool backed by a services company. Ansvisor has the most contributors and a hosted cloud. Canonry is a capable agent-first platform, now MIT-licensed. OneGlanse and Limelit capture answers from the real AI apps, Cited focuses on citations under the AGPL, and Gego is GPL-3.0. GetCito replaced its codebase with Elmo's in July 2026, so running it means running a lagging fork of Elmo.",
+			"Elmo is the longest-running open-source answer engine optimization tool: MIT-licensed, free to self-host, and covering ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, and any OpenRouter model. Public GitHub data as of 17 October 2026 shows a field that grew fast this year. Ansvisor has the most contributors and a hosted cloud. Canonry is a capable agent-first platform, now MIT-licensed. OneGlanse and Limelit capture answers from the real AI apps, Cited focuses on citations under the AGPL, and Gego is GPL-3.0. GetCito replaced its codebase with Elmo's in July 2026, so running it means running a lagging fork of Elmo.",
 	},
 	{
 		question: "What are the best free tools to track brand mentions in ChatGPT?",
@@ -175,17 +175,6 @@ const GITHUB_STATS: {
 		releases: "36",
 		firstCommit: "Jul 2025",
 		last90: "374",
-	},
-	{
-		project: "NiubiGEO",
-		url: "https://github.com/Albert-Weasker/niubigeo",
-		stars: "8,068",
-		commits: "42",
-		contributors: "4",
-		beyondLead: "3",
-		releases: "4",
-		firstCommit: "Sep 2026",
-		last90: "42",
 	},
 	{
 		project: "GeoLook",
@@ -393,8 +382,8 @@ function OpenSourcePage() {
 							Gemini, Perplexity, Copilot, Claude, and any OpenRouter model.
 						</li>
 						<li>
-							The field grew fast in 2026. NiubiGEO passed 8,000 GitHub stars within six weeks, Ansvisor has 65
-							contributors, and Canonry, Ansvisor, and Elmo each logged hundreds of commits in the last 90 days.
+							The field grew fast in 2026. Ansvisor has 65 contributors, and Canonry, Ansvisor, and Elmo each logged
+							hundreds of commits in the last 90 days.
 						</li>
 						<li>
 							Licenses differ more than features. Elmo, Ansvisor, Canonry, OneGlanse, and GeoLook are MIT; NiubiGEO and
@@ -481,9 +470,9 @@ function OpenSourcePage() {
 					</DataTable>
 					<div className="mt-6 max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
-							Stars and activity tell different stories. NiubiGEO's stars arrived in a few weeks on 42 commits, while
-							Ansvisor, Canonry, and Elmo have far fewer stars but ship code every week. GeoLook hasn't had a commit
-							since August 2026.
+							Stars and activity tell different stories. GeoLook and GetCito have more stars than most of the field on a
+							few dozen commits each, while Ansvisor, Canonry, and Elmo ship code every week. GeoLook hasn't had a
+							commit since August 2026.
 						</p>
 						<p>
 							GetCito's repository contains 41 commits across its entire lifetime, for a codebase of well over 100,000
@@ -610,9 +599,10 @@ function OpenSourcePage() {
 								with your own model keys.
 							</p>
 							<p className="mt-4">
-								It has more GitHub stars than any other project here, gathered within weeks of launch, on a codebase of
-								42 commits. The company behind it sells paid diagnosis reports and human-run GEO services, and the open
-								tool works as the front door to those. It calls model APIs rather than the consumer apps.
+								We leave it out of the GitHub numbers above. Its stars and forks arrived in a few short bursts, mostly
+								from accounts created weeks earlier that forked without changes, so they don't say much about adoption.
+								The company behind it sells paid diagnosis reports and human-run GEO services, and the open tool works
+								as the front door to those. It calls model APIs rather than the consumer apps.
 							</p>
 						</div>
 
