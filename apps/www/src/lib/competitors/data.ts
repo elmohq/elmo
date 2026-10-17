@@ -1043,7 +1043,7 @@ export const competitors: Competitor[] = [
 		description:
 			"Distribb, formerly Rebel Growth, is an SEO content autopilot that publishes articles and runs a backlink exchange, with an AI visibility module that tracks five AI engines. AI visibility is one part of a broader content-automation product.",
 		category: "tracking",
-		ahrefsDR: 48,
+		ahrefsDR: 55,
 		ahrefsTraffic: 254,
 		status: "active",
 		features: {
@@ -1960,7 +1960,7 @@ export const competitors: Competitor[] = [
 		description:
 			"FlipAEO tracks the AI answers where a founder-led B2B SaaS brand is missing and turns those gaps into content drafts. It currently covers ChatGPT and Google AI Mode and is in a founding beta.",
 		category: "tracking",
-		ahrefsDR: 16,
+		ahrefsDR: 17,
 		ahrefsTraffic: 0,
 		status: "active",
 		features: {
@@ -4019,7 +4019,7 @@ export const competitors: Competitor[] = [
 		description:
 			"Scope started as an agent-experience monitor adjacent to AEO and has since pivoted to analytics for how AI coding agents such as Cursor, Codex, and Claude Code move through a company's docs, API, and checkout. It no longer tracks AI answers.",
 		category: "tracking",
-		ahrefsDR: 11,
+		ahrefsDR: 0.6,
 		ahrefsTraffic: 0,
 		status: "pivoted",
 		fate: {
@@ -4168,7 +4168,7 @@ export const competitors: Competitor[] = [
 		description:
 			"Canonry is an open-source, self-hosted AEO platform (MIT license) that tracks how AI answer engines — Gemini, ChatGPT, Claude, Perplexity, and any OpenAI-compatible local model — cite websites, calling provider APIs with your own keys. It ingests server logs to measure AI-driven traffic, integrates with Google Search Console, GA4, Bing Webmaster, and Google Business Profile, and executes fixes via WordPress and JSON-LD schema. A built-in agent (Aero) exposes an MCP adapter.",
 		category: "open-source",
-		ahrefsDR: 97,
+		ahrefsDR: 34,
 		ahrefsTraffic: 47619730,
 		status: "active",
 		license: "MIT",
@@ -7808,7 +7808,7 @@ export const competitors: Competitor[] = [
 		description:
 			"Ansvisor tracks prompts, brand mentions, citations, competitors, and AI traffic across answer engines, and turns the signals into prioritized actions in an Action Center. It can be self-hosted for free under the MIT license or used as Ansvisor Cloud, where engines unlock by plan: ChatGPT and Copilot on Starter, Perplexity, Gemini, AI Overviews, and AI Mode on Growth, and Claude on Enterprise.",
 		category: "open-source",
-		ahrefsDR: 0,
+		ahrefsDR: 14,
 		status: "active",
 		license: "MIT",
 		features: {
@@ -7857,7 +7857,7 @@ export const competitors: Competitor[] = [
 		description:
 			"Limelit Open is a Go/SQLite binary that tracks mentions, share of voice and citations across ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews, AI Mode and Bing Copilot via vendor APIs or consumer-surface scrapers, with a built-in MCP server and JSON/CSV export. Limelit Cloud adds sentiment, prompt generation, GSC/GA4, agents and white-label on prepaid credits.",
 		category: "open-source",
-		ahrefsDR: 0,
+		ahrefsDR: 1.6,
 		status: "active",
 		license: "Apache-2.0",
 		features: {
@@ -7903,7 +7903,7 @@ export const competitors: Competitor[] = [
 		description:
 			"Cited runs the prompts you choose on supported AI surfaces and records when your verified domain is cited, mentioned or missed, plus competitor appearances, in an evidence inbox and ledger. Self-hosted with Docker Compose using DataForSEO credentials, or hosted as Cited Cloud.",
 		category: "open-source",
-		ahrefsDR: 0,
+		ahrefsDR: 1.5,
 		status: "active",
 		license: "AGPL-3.0",
 		features: {
@@ -7939,7 +7939,7 @@ export const competitors: Competitor[] = [
 		description:
 			"GeoLook samples answers across up to 17 engines (10 via API, 7 via a manual/Chrome-extension sampling flow) to measure mention rate, rank and citation share, then runs site audits and generates implementation tickets whose results are re-verified in later sampling rounds. It is aimed at both Chinese and global engines and at agencies delivering GEO work.",
 		category: "open-source",
-		ahrefsDR: 0,
+		ahrefsDR: 2.8,
 		status: "active",
 		license: "MIT",
 		features: {
@@ -7979,7 +7979,7 @@ export const competitors: Competitor[] = [
 		description:
 			"Notra started in January 2026 as an AI content engine that drafts changelogs and launch posts from GitHub, Linear, and Slack, and added AI visibility tracking in August 2026. It tracks ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews with web search, and queries Grok, DeepSeek, and Meta's models without it. Its code was public under the AGPL-3.0 license until mid-October 2026, when the repository was taken private.",
 		category: "tracking",
-		ahrefsDR: 0,
+		ahrefsDR: 51,
 		status: "active",
 		soundbite:
 			"Notra was open source until October 2026, then took its code private. Elmo is MIT-licensed, so that can't happen to you.",
