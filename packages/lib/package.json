@@ -22,6 +22,7 @@
 		"./db/auth-sync": "./src/db/auth-sync.ts",
 		"./db/provisioning": "./src/db/provisioning.ts",
 		"./db/unique-names": "./src/db/unique-names.ts",
+		"./db/competitors": "./src/db/competitors.ts",
 		"./auth/server": "./src/auth/server.ts",
 		"./auth/client": "./src/auth/client.ts",
 		"./auth/permissions": "./src/auth/permissions.ts",
