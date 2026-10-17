@@ -148,6 +148,21 @@ export async function deriveRunUpdate(
 	return update;
 }
 
+/** Names what a run kept instead of losing it, and why, so a stored payload worth a look can be found. */
+export function keptMessage(runId: string, kept: RunUpdate["kept"]): string {
+	const missing = [
+		kept.includes("text") || kept.includes("mentions") ? "answer text" : null,
+		kept.includes("citations") ? "citations" : null,
+	].filter(Boolean);
+	return `[derive-runs] run ${runId} kept its existing ${kept.join(" and ")}: its stored payload has no ${missing.join(" or ")}`;
+}
+
+function warnKept(updates: { run: StaleRun; update: RunUpdate }[]): void {
+	for (const { run, update } of updates) {
+		if (update.kept.length > 0) console.warn(keptMessage(run.id, update.kept));
+	}
+}
+
 /** Fills `update.extraction` (and citations when `extract`), returning the text mentions should read. */
 function extractAgain(run: StaleRun, extract: boolean, target: AnalysisVersions, update: RunUpdate): string | null {
 	const extracted = extractRun(run.rawOutput, extractorFor(run));
@@ -323,8 +338,7 @@ export async function deriveRuns(
 			.send(REFRESH_ROLLUPS_QUEUE, { source: "derive" }, { singletonKey: REFRESH_ROLLUPS_QUEUE, singletonSeconds: 10 })
 			.catch((error) => console.error("[derive-runs] Couldn't trigger a rollup refresh:", error));
 	}
-	const kept = updates.filter(({ update }) => update.kept.length > 0).length;
-	if (kept > 0) console.warn(`[derive-runs] ${kept} runs kept data their stored payload no longer yields`);
+	warnKept(updates);
 	await sendDeriveRuns(boss, data.brandId, failed, DERIVE_PRIORITY.new, { reextract, chunkSize: 1 });
 }
 

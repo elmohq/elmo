@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
 import { jevAnalyzer } from "../mention-judge/analyze";
 import { type JevRequest, stubTransport } from "../mention-judge/jev";
-import { deriveRunUpdate, type StaleRun } from "./derive-runs";
+import { deriveRunUpdate, keptMessage, type StaleRun } from "./derive-runs";
 
 const config: MentionConfig = {
 	brand: { name: "Acme", aliases: [], domains: ["https://acme.com"] },
@@ -168,5 +168,16 @@ describe("deriveRunUpdate on a payload that yields less than the run has", () =>
 		expect(update.kept).toEqual([]);
 		expect(update.citations).toEqual([]);
 		expect(update.mentions?.brandMentioned).toBe(false);
+	});
+});
+
+describe("keptMessage", () => {
+	it("says which run kept what, and what its payload lacks", () => {
+		expect(keptMessage("run-1", ["mentions"])).toBe(
+			"[derive-runs] run run-1 kept its existing mentions: its stored payload has no answer text",
+		);
+		expect(keptMessage("run-2", ["text", "citations"])).toBe(
+			"[derive-runs] run run-2 kept its existing text and citations: its stored payload has no answer text or citations",
+		);
 	});
 });
