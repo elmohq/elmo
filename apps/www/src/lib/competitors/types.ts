@@ -18,6 +18,8 @@ export type FeatureKey =
 	| "keywordResearch"
 	| "emailAlerts"
 	| "dataExportApi"
+	| "typescriptSdk"
+	| "pythonSdk"
 	| "mcpServer"
 	| "biConnectors"
 	| "whiteLabelAgency"
@@ -194,9 +196,17 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 				description: "Automated alerts and summary emails",
 			},
 			dataExportApi: {
-				label: "Data Export / API",
+				label: "API Access",
 				description: "Export data to CSV or access via API",
 				searchTerm: "AI Visibility APIs",
+			},
+			typescriptSdk: {
+				label: "TypeScript SDK",
+				description: "Official TypeScript/JavaScript client for the API",
+			},
+			pythonSdk: {
+				label: "Python SDK",
+				description: "Official Python client for the API",
 			},
 			mcpServer: {
 				label: "MCP Access",
@@ -252,6 +262,8 @@ export const ELMO_FEATURES: Record<FeatureKey, boolean> = {
 	keywordResearch: true,
 	emailAlerts: false,
 	dataExportApi: true,
+	typescriptSdk: true,
+	pythonSdk: true,
 	mcpServer: true,
 	biConnectors: false,
 	whiteLabelAgency: true,

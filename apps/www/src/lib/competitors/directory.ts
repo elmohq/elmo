@@ -116,6 +116,8 @@ export const FEATURE_SLUGS: Record<FeatureKey, string> = {
 	keywordResearch: "ai-keyword-research",
 	emailAlerts: "email-alerts",
 	dataExportApi: "data-export-api",
+	typescriptSdk: "typescript-sdk",
+	pythonSdk: "python-sdk",
 	mcpServer: "mcp-server",
 	biConnectors: "bi-connectors",
 	whiteLabelAgency: "white-label",
