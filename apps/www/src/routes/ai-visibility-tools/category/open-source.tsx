@@ -17,7 +17,7 @@ const path = "/ai-visibility-tools/category/open-source";
 const lead =
 	"Elmo is the longest-running open-source AI visibility and answer engine optimization platform: MIT-licensed, free to self-host, and auditable down to how each metric is computed, with 36 releases since July 2025. The field grew fast in 2026: Ansvisor has drawn the most contributors, and Canonry, Limelit, and OneGlanse each take a different approach. Licenses differ more than features do, so check them first.";
 
-// Public GitHub data, captured 11 August 2026. Kept as a dated snapshot rather
+// Public GitHub data, captured 17 October 2026. Kept as a dated snapshot rather
 // than fetched live: the point is a like-for-like comparison across projects at
 // one moment, and a table that silently changes under the surrounding prose is
 // worse than one with a visible as-of date.
