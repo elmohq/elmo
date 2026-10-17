@@ -74,6 +74,8 @@ export interface Competitor {
 	status: "active" | "beta" | "acquired" | "shutting-down" | "defunct" | "pivoted";
 	/** What happened to a tool that shut down, pivoted, or was acquired. Shown in the AEO Graveyard. */
 	fate?: { date: string; summary: string; source?: string };
+	/** Set when no usable capture of the tool's site exists, so pages skip the screenshot. */
+	noScreenshot?: true;
 	/** SPDX identifier of the open-source license, for tools whose code is public. */
 	license?: string;
 	/**

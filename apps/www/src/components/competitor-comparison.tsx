@@ -157,32 +157,34 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			</section>
 
 			{/* Screenshot */}
-			<section className="border-b border-zinc-200 bg-white py-12">
-				<div className="mx-auto max-w-6xl px-4 md:px-6">
-					<h2 className="font-heading mb-6 text-2xl text-zinc-950">{competitor.name} at a glance</h2>
-					<div className="overflow-hidden rounded-md border border-zinc-200 shadow-sm">
-						<img
-							src={getScreenshotUrl(competitor.slug)}
-							alt={`Screenshot of ${competitor.name} homepage`}
-							width={1920}
-							height={1080}
-							className="aspect-video w-full object-cover object-top"
-							loading="lazy"
-						/>
+			{!competitor.noScreenshot && (
+				<section className="border-b border-zinc-200 bg-white py-12">
+					<div className="mx-auto max-w-6xl px-4 md:px-6">
+						<h2 className="font-heading mb-6 text-2xl text-zinc-950">{competitor.name} at a glance</h2>
+						<div className="overflow-hidden rounded-md border border-zinc-200 shadow-sm">
+							<img
+								src={getScreenshotUrl(competitor.slug)}
+								alt={`Screenshot of ${competitor.name} homepage`}
+								width={1920}
+								height={1080}
+								className="aspect-video w-full object-cover object-top"
+								loading="lazy"
+							/>
+						</div>
+						<div className="mt-3 flex items-center gap-2">
+							<a
+								href={competitor.url}
+								target="_blank"
+								rel="noopener noreferrer nofollow"
+								className="inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-950"
+							>
+								Visit {competitor.domain}
+								<ExternalLink className="h-3 w-3" />
+							</a>
+						</div>
 					</div>
-					<div className="mt-3 flex items-center gap-2">
-						<a
-							href={competitor.url}
-							target="_blank"
-							rel="noopener noreferrer nofollow"
-							className="inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-950"
-						>
-							Visit {competitor.domain}
-							<ExternalLink className="h-3 w-3" />
-						</a>
-					</div>
-				</div>
-			</section>
+				</section>
+			)}
 
 			{/* About the competitor */}
 			<section className="border-b border-zinc-200 bg-white py-12">

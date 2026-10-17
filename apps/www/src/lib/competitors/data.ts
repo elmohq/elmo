@@ -8085,6 +8085,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.6,
 		status: "defunct",
+		noScreenshot: true,
 		fate: {
 			date: "2025",
 			summary:
@@ -8140,6 +8141,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.3,
 		status: "defunct",
+		noScreenshot: true,
 		fate: {
 			date: "2026",
 			summary: "Went offline after May 2026, and the domain registration has lapsed.",
@@ -8176,6 +8178,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		noScreenshot: true,
 		fate: {
 			date: "2025",
 			summary:
@@ -8196,6 +8199,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		noScreenshot: true,
 		fate: {
 			date: "2026",
 			summary:
@@ -8236,6 +8240,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 17,
 		status: "pivoted",
+		noScreenshot: true,
 		fate: {
 			date: "2025-11",
 			summary: "The GEO platform's domain now redirects to Deepsona, a synthetic-audience market research product.",
@@ -8289,6 +8294,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 13,
 		status: "defunct",
+		noScreenshot: true,
 		fate: {
 			date: "2026-10",
 			summary: "The site has been unreachable since early 2026, and it returns a server error.",
@@ -8325,6 +8331,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 8,
 		status: "defunct",
+		noScreenshot: true,
 		fate: {
 			date: "2025-09",
 			summary:
@@ -8400,6 +8407,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		noScreenshot: true,
 		fate: {
 			date: "2025-12",
 			summary:

@@ -124,16 +124,22 @@ function Tombstone({ competitor }: { competitor: Competitor }) {
 				{FATE_LABEL[fate]} · {formatFateDate(competitor.fate.date)}
 			</p>
 			<TombstoneDivider />
-			<div className="overflow-hidden rounded-md border border-zinc-300">
-				<img
-					src={getScreenshotUrl(competitor.slug)}
-					alt={`${competitor.name}'s homepage while it was live`}
-					width={1280}
-					height={800}
-					className="aspect-[16/10] w-full object-cover object-top grayscale"
-					loading="lazy"
-				/>
-			</div>
+			{competitor.noScreenshot ? (
+				<div className="flex aspect-[16/10] items-center justify-center rounded-md border border-dashed border-zinc-300 text-xs text-zinc-400">
+					No snapshot survived
+				</div>
+			) : (
+				<div className="overflow-hidden rounded-md border border-zinc-300">
+					<img
+						src={getScreenshotUrl(competitor.slug)}
+						alt={`${competitor.name}'s homepage while it was live`}
+						width={1280}
+						height={800}
+						className="aspect-[16/10] w-full object-cover object-top grayscale"
+						loading="lazy"
+					/>
+				</div>
+			)}
 			<TombstoneDivider />
 			<p className="text-sm text-zinc-600">{competitor.tagline}</p>
 			<TombstoneDivider />
