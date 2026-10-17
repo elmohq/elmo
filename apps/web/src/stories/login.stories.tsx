@@ -73,7 +73,7 @@ export const Cloud = () => <EmailPasswordLogin isCloud canRegister />;
  */
 export const SelfHosted = () => <EmailPasswordLogin />;
 
-/** Demo — the shared credentials on a plain card, with nothing to sell. */
+/** Demo — signs in to the shared account on its own; the card is what shows meanwhile. */
 export const Demo = () => <DemoLogin />;
 
 /**
