@@ -33,6 +33,8 @@ export type ReferralSource =
 	| "marketing-aeo-for-closing"
 	| "marketing-profound-users-hero"
 	| "marketing-profound-users-closing"
+	| "marketing-features-hero"
+	| "marketing-features-closing"
 	| "marketing-page-cta"
 	| "marketing-vision"
 	| "marketing-about"
