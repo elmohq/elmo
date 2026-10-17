@@ -30,6 +30,16 @@ export function isIndexed(c: Competitor): boolean {
 
 export const indexedCompetitors: Competitor[] = competitors.filter(isIndexed);
 
+/**
+ * Retired tools stay out of listings and recommendations, but their own pages
+ * stay up: "{tool} alternatives" is exactly what a stranded customer searches.
+ */
+export function hasOwnPages(c: Competitor): boolean {
+	return c.category !== "other" && !isLowDR(c);
+}
+
+export const competitorsWithOwnPages: Competitor[] = competitors.filter(hasOwnPages);
+
 const byPopularity = (a: Competitor, b: Competitor) => getPopularityRank(a) - getPopularityRank(b);
 
 /**
@@ -293,6 +303,12 @@ const CATEGORY_BLURB: Record<CompetitorCategory, string> = {
 
 export function getAlternativesVerdict(c: Competitor): string {
 	const noun = CATEGORY_NOUN[c.category];
+	const fate = graveyardFate(c);
+	if (fate && c.fate) {
+		const gone =
+			fate === "acquired" ? "is no longer sold on its own" : "is no longer available as an AI visibility tool";
+		return `${c.name} ${gone}. ${c.fate.summary} If you are moving off it, Elmo is the open-source alternative: a free, self-hostable AI visibility platform that can't be shut down or sold out from under you, because the code is yours to keep running.`;
+	}
 	const open = isOpenSource(c);
 	if (open) {
 		return `The best open-source alternative to ${c.name} is Elmo: a free, self-hostable AI visibility platform you can read, run, and audit. Like ${c.name} it is open source, and it focuses on transparent, independently verifiable tracking of how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand, with white-label support for agencies.`;

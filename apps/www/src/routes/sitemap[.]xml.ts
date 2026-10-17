@@ -10,13 +10,12 @@ import {
 	compareSetSlug,
 	compareSets,
 	competitors,
+	competitorsWithOwnPages,
 	FEATURE_SLUGS,
 	getComparisonSlug,
+	hasOwnPages,
 	indexableCategories,
 	indexableFeatureKeys,
-	indexedCompetitors,
-	isLowDR,
-	isRetired,
 } from "@/lib/competitors";
 import { listLegalPages } from "@/lib/legal";
 import { source } from "@/lib/source";
@@ -82,13 +81,11 @@ export const Route = createFileRoute("/sitemap.xml")({
 					lastmod: page.data.updated ?? page.data.date,
 				}));
 
-				const comparisonPages: SitemapEntry[] = competitors
-					.filter((c) => !isRetired(c) && c.category !== "other" && !isLowDR(c))
-					.map((c) => ({
-						path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
-						changefreq: "monthly",
-						priority: 0.6,
-					}));
+				const comparisonPages: SitemapEntry[] = competitors.filter(hasOwnPages).map((c) => ({
+					path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
+					changefreq: "monthly",
+					priority: 0.6,
+				}));
 
 				// Programmatic directory sub-pages (hubs + generated pages).
 				const directorySubPages: SitemapEntry[] = [
@@ -107,7 +104,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 						changefreq: "monthly",
 						priority: 0.6,
 					})),
-					...indexedCompetitors.map((c) => ({
+					...competitorsWithOwnPages.map((c) => ({
 						path: `/ai-visibility-tools/alternatives/${c.slug}`,
 						changefreq: "monthly",
 						priority: 0.6,
