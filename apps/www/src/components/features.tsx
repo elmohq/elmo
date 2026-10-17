@@ -23,7 +23,7 @@ const features: Feature[] = [
 		num: "01",
 		eyebrow: "DASHBOARD",
 		title: "Your AI visibility command center.",
-		description: "Current visibility, share of voice, and 30-day trends on one dashboard.",
+		description: "Visibility, share of voice, sentiment, and position on one dashboard, with every competitor ranked beside you.",
 		graphic: <OverviewPageGraphic />,
 	},
 	{
