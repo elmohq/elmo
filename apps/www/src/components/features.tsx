@@ -105,8 +105,12 @@ export function Features({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 					{features.map((f) => (
 						<div key={f.name} className="grid gap-6 lg:grid-cols-12 lg:gap-12">
 							<div className="lg:col-span-5">
-								<h3 className="text-2xl font-semibold leading-[1.15] tracking-tight text-zinc-950 md:text-3xl">{f.name}</h3>
-								<p className="mt-3 max-w-[44ch] text-lg font-medium leading-snug text-balance text-zinc-800">{f.tagline}</p>
+								<h3 className="text-2xl font-semibold leading-[1.15] tracking-tight text-zinc-950 md:text-3xl">
+									{f.name}
+								</h3>
+								<p className="mt-3 max-w-[44ch] text-lg font-medium leading-snug text-balance text-zinc-800">
+									{f.tagline}
+								</p>
 								<p className="mt-3 max-w-[52ch] text-pretty text-zinc-600 md:text-base/7">{f.description}</p>
 							</div>
 							<div className="lg:col-span-7">{f.graphic}</div>
