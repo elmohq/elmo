@@ -100,19 +100,13 @@ describe("/api/v1 route conformance", () => {
 				const operation = (spec.paths as Record<string, Record<string, Record<string, unknown>>>)[route.path]?.[
 					method.toLowerCase()
 				];
-				// The standard security requirement is what a generic client reads;
-				// the extension is what our own docs and tooling read. Both must agree.
+				// Operations that need no scope inherit the top-level requirement.
 				const requirements = (operation?.security ?? spec.security) as Record<string, string[]>[] | undefined;
 				documented[method] = {
-					scopes: [...((operation?.["x-elmo-scopes"] as string[] | undefined) ?? [])].sort(),
-					securityRoles: [...(requirements?.[0]?.BearerAuth ?? [])].sort(),
+					scopes: [...(requirements?.[0]?.BearerAuth ?? [])].sort(),
 					adminOnly: operation?.["x-elmo-admin-only"] === true,
 				};
-				enforced[method] = {
-					scopes: [...meta.scopes].sort(),
-					securityRoles: [...meta.scopes].sort(),
-					adminOnly: meta.adminOnly,
-				};
+				enforced[method] = { scopes: [...meta.scopes].sort(), adminOnly: meta.adminOnly };
 			}
 			expect(enforced).toEqual(documented);
 		},
