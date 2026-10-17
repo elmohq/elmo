@@ -1,35 +1,6 @@
 {
 	"lastUpdated": "2026-10-17",
 	"note": "Curated list of upcoming highlights surfaced from the project board. Refresh via the `update-changelog` Claude skill.",
-	"shipped": [
-		{
-			"title": "Sentiment analysis",
-			"description": "See whether the AI answers that mention you praise or criticize you, scored 0 to 100 against your competitors, with the passages behind it.",
-			"tag": "October 2026",
-			"issue": 929,
-			"url": "https://github.com/elmohq/elmo/pull/929"
-		},
-		{
-			"title": "Position and competitive landscape",
-			"description": "A new overview with visibility, share of voice, sentiment, and position cards, plus every competitor ranked by model.",
-			"tag": "October 2026",
-			"issue": 928,
-			"url": "https://github.com/elmohq/elmo/pull/928"
-		},
-		{
-			"title": "Responses",
-			"description": "Search every AI answer for your brand, filter by sentiment, and see where each company ranks in the answer.",
-			"tag": "September 2026",
-			"issue": 820,
-			"url": "https://github.com/elmohq/elmo/pull/820"
-		},
-		{
-			"title": "MCP server and SDKs",
-			"description": "Query and manage your visibility data from Claude Code, Cursor, Codex, or VS Code, or call the API from TypeScript and Python.",
-			"tag": "September 2026",
-			"url": "https://www.elmohq.com/docs/api/mcp"
-		}
-	],
 	"highlights": [
 		{
 			"title": "Site audits",

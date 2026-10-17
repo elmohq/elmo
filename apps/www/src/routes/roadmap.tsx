@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpRight, MessageCircle, ThumbsUp } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight, ArrowUpRight, MessageCircle, ThumbsUp } from "lucide-react";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import upcomingData from "@/data/upcoming-features.json";
@@ -20,10 +20,7 @@ interface UpcomingHighlight {
 	url: string;
 }
 
-const { shipped: shippedHighlights, highlights: upcomingHighlights } = upcomingData as {
-	shipped: UpcomingHighlight[];
-	highlights: UpcomingHighlight[];
-};
+const upcomingHighlights = (upcomingData as { highlights: UpcomingHighlight[] }).highlights;
 
 export const Route = createFileRoute("/roadmap")({
 	head: () => ({
@@ -54,7 +51,6 @@ export const Route = createFileRoute("/roadmap")({
 		return {
 			popularIssues: sorted.slice(0, 7),
 			upcoming: upcomingHighlights,
-			shipped: shippedHighlights,
 		};
 	},
 	component: RoadmapPage,
@@ -68,7 +64,7 @@ function GitHubGlyph({ className = "" }: { className?: string }) {
 	);
 }
 
-function HighlightCard({ highlight, meta }: { highlight: UpcomingHighlight; meta?: string }) {
+function HighlightCard({ highlight }: { highlight: UpcomingHighlight }) {
 	return (
 		<a
 			href={highlight.url}
@@ -81,8 +77,8 @@ function HighlightCard({ highlight, meta }: { highlight: UpcomingHighlight; meta
 			</h3>
 			<p className="text-sm text-pretty text-zinc-600">{highlight.description}</p>
 			<div className="mt-auto flex items-center justify-between pt-1">
-				{meta || highlight.issue ? (
-					<span className="font-mono text-[11px] tabular-nums text-zinc-500">{meta ?? `#${highlight.issue}`}</span>
+				{highlight.issue ? (
+					<span className="font-mono text-[11px] tabular-nums text-zinc-500">#{highlight.issue}</span>
 				) : (
 					<span />
 				)}
@@ -148,7 +144,7 @@ function IssueRow({ issue }: { issue: GitHubRoadmapIssue }) {
 }
 
 function RoadmapPage() {
-	const { popularIssues, upcoming, shipped } = Route.useLoaderData();
+	const { popularIssues, upcoming } = Route.useLoaderData();
 
 	return (
 		<div className="min-h-screen">
@@ -184,6 +180,13 @@ function RoadmapPage() {
 								Request a feature
 								<ArrowUpRight className="size-3.5" />
 							</a>
+							<Link
+								to="/changelog"
+								className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-medium leading-none text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300"
+							>
+								See what shipped
+								<ArrowRight className="size-3.5" />
+							</Link>
 						</div>
 					</div>
 				</section>
@@ -200,24 +203,6 @@ function RoadmapPage() {
 								{upcoming.map((h) => (
 									<li key={h.title} className="flex">
 										<HighlightCard highlight={h} />
-									</li>
-								))}
-							</ul>
-						</div>
-					</section>
-				)}
-
-				{shipped.length > 0 && (
-					<section className="border-b border-zinc-200 bg-white">
-						<div className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-16">
-							<div className="mb-8">
-								<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-600">/ SHIPPED</p>
-								<h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Recently Shipped</h2>
-							</div>
-							<ul className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
-								{shipped.map((h) => (
-									<li key={h.title} className="flex">
-										<HighlightCard highlight={h} meta={h.tag} />
 									</li>
 								))}
 							</ul>
