@@ -19,6 +19,7 @@ export const competitors: Competitor[] = [
 			brandMentionTracking: true,
 			actionRecommendations: true,
 			siteAudits: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -59,6 +60,7 @@ export const competitors: Competitor[] = [
 			biConnectors: true,
 			whiteLabelAgency: true,
 			contentGeneration: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$139.95/mo", hasEnterprise: true },
 		highlights: [
@@ -93,6 +95,8 @@ export const competitors: Competitor[] = [
 			keywordResearch: true,
 			emailAlerts: true,
 			dataExportApi: true,
+			mcpServer: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$129/mo", hasEnterprise: true },
 		highlights: [
@@ -119,6 +123,8 @@ export const competitors: Competitor[] = [
 			emailAlerts: true,
 			dataExportApi: true,
 			biConnectors: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -151,6 +157,8 @@ export const competitors: Competitor[] = [
 			emailAlerts: true,
 			dataExportApi: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$65/mo", hasEnterprise: true },
 		highlights: [
@@ -182,6 +190,8 @@ export const competitors: Competitor[] = [
 			keywordResearch: true,
 			dataExportApi: true,
 			contentGeneration: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: true, startingPrice: "$49/mo", hasEnterprise: true },
 		highlights: [
@@ -212,6 +222,8 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			dataExportApi: true,
 			contentGeneration: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$15/mo", hasEnterprise: true },
 		highlights: [
@@ -272,6 +284,9 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 			contentGeneration: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
+			queryFanOut: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -357,6 +372,9 @@ export const competitors: Competitor[] = [
 			keywordResearch: true,
 			contentGeneration: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -385,6 +403,9 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			dataExportApi: true,
 			contentGeneration: true,
+			mcpServer: true,
+			queryFanOut: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -418,6 +439,8 @@ export const competitors: Competitor[] = [
 			emailAlerts: true,
 			dataExportApi: true,
 			biConnectors: true,
+			mcpServer: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -450,6 +473,9 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 			biConnectors: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
+			queryFanOut: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$39/mo", hasEnterprise: true },
 		highlights: [
@@ -480,6 +506,8 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 			biConnectors: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$24/mo", hasEnterprise: true },
 		highlights: [
@@ -514,6 +542,9 @@ export const competitors: Competitor[] = [
 			keywordResearch: true,
 			emailAlerts: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: ["Gartner Cool Vendor 2025", "20,000+ users", "GEO Audit evaluating 25+ on-page factors"],
@@ -539,6 +570,9 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 			siteAudits: true,
 			contentGeneration: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -570,6 +604,8 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			contentGeneration: true,
+			mcpServer: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -604,6 +640,8 @@ export const competitors: Competitor[] = [
 			shoppingTracking: true,
 			emailAlerts: true,
 			dataExportApi: true,
+			mcpServer: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -636,6 +674,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 			dataExportApi: true,
 			biConnectors: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$79/mo", hasEnterprise: true },
 		highlights: [
@@ -708,6 +747,8 @@ export const competitors: Competitor[] = [
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			shoppingTracking: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
 		highlights: [
@@ -783,6 +824,8 @@ export const competitors: Competitor[] = [
 			geographicTracking: true,
 			multiLanguage: true,
 			biConnectors: true,
+			mcpServer: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$59/mo", hasEnterprise: true },
 		highlights: [
@@ -810,6 +853,7 @@ export const competitors: Competitor[] = [
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			siteAudits: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: false },
 		highlights: [
@@ -993,6 +1037,8 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 			biConnectors: true,
 			contentGeneration: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
 		},
 		pricing: {
 			hasFree: true,
@@ -1976,6 +2022,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 			emailAlerts: true,
 			dataExportApi: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, startingPrice: "$29/mo", hasEnterprise: true },
 		highlights: [
@@ -2035,6 +2082,7 @@ export const competitors: Competitor[] = [
 			multiLanguage: true,
 			siteAudits: true,
 			dataExportApi: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: false },
 		highlights: [
@@ -2063,6 +2111,7 @@ export const competitors: Competitor[] = [
 			geographicTracking: true,
 			actionRecommendations: true,
 			emailAlerts: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, startingPrice: "$39.99/mo", hasEnterprise: false },
 		highlights: [
@@ -2145,6 +2194,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 			emailAlerts: true,
 			dataExportApi: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -2210,6 +2260,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 			actionRecommendations: true,
 			contentGeneration: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -2242,6 +2293,8 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 			biConnectors: true,
 			emailAlerts: true,
+			mcpServer: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: false, startingPrice: "€69/mo", hasEnterprise: true },
 		highlights: [
@@ -2302,6 +2355,9 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 			whiteLabelAgency: true,
 			emailAlerts: true,
+			mcpServer: true,
+			sentimentAnalysis: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -2363,6 +2419,7 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 			emailAlerts: true,
 			dataExportApi: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -2753,6 +2810,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 			dataExportApi: true,
 			biConnectors: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, startingPrice: "$39/mo", hasEnterprise: true },
 		highlights: [
@@ -3084,6 +3142,7 @@ export const competitors: Competitor[] = [
 			multiLanguage: true,
 			dataExportApi: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -3177,6 +3236,7 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 			openSource: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: false },
 		highlights: [
@@ -3213,6 +3273,7 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 			biConnectors: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: false, startingPrice: "€50/mo", hasEnterprise: true },
 		highlights: [
@@ -3244,6 +3305,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 			keywordResearch: true,
 			dataExportApi: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, startingPrice: "$49/mo", hasEnterprise: true },
 		highlights: [
@@ -3337,6 +3399,7 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 			whiteLabelAgency: true,
 			contentGeneration: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, startingPrice: "$40/mo", hasEnterprise: true },
 		highlights: [
@@ -3558,6 +3621,8 @@ export const competitors: Competitor[] = [
 			keywordResearch: true,
 			dataExportApi: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -3589,6 +3654,8 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			keywordResearch: true,
 			contentGeneration: true,
+			mcpServer: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -3619,6 +3686,7 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -3771,6 +3839,7 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			keywordResearch: true,
 			dataExportApi: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -3895,6 +3964,8 @@ export const competitors: Competitor[] = [
 			keywordResearch: true,
 			whiteLabelAgency: true,
 			contentGeneration: true,
+			mcpServer: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -3926,6 +3997,8 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 			keywordResearch: true,
 			contentGeneration: true,
+			sentimentAnalysis: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -4165,6 +4238,8 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 			whiteLabelAgency: true,
 			contentGeneration: true,
+			mcpServer: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -4197,6 +4272,9 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 			keywordResearch: true,
 			contentGeneration: true,
+			mcpServer: true,
+			queryFanOut: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -4478,6 +4556,7 @@ export const competitors: Competitor[] = [
 			keywordResearch: true,
 			dataExportApi: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -4856,6 +4935,7 @@ export const competitors: Competitor[] = [
 			keywordResearch: true,
 			whiteLabelAgency: true,
 			contentGeneration: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -5132,6 +5212,8 @@ export const competitors: Competitor[] = [
 			keywordResearch: true,
 			dataExportApi: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -5162,6 +5244,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 			keywordResearch: true,
 			contentGeneration: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -5196,6 +5279,8 @@ export const competitors: Competitor[] = [
 			keywordResearch: true,
 			dataExportApi: true,
 			whiteLabelAgency: true,
+			mcpServer: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -5499,13 +5584,13 @@ export const competitors: Competitor[] = [
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
-			sentimentAnalysis: true,
 			geographicTracking: true,
 			multiLanguage: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			keywordResearch: true,
 			dataExportApi: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -5536,6 +5621,7 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			keywordResearch: true,
 			contentGeneration: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -5595,6 +5681,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 			keywordResearch: true,
 			whiteLabelAgency: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -5624,6 +5711,7 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
+			sentimentAnalysis: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -5803,6 +5891,8 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 			whiteLabelAgency: true,
 			contentGeneration: true,
+			mcpServer: true,
+			queryFanOut: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [

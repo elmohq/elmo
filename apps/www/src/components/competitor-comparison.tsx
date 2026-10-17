@@ -287,15 +287,15 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						<div className="rounded-md border border-zinc-200 bg-white p-5">
 							<h3 className="font-semibold text-zinc-950">Self-host for free, forever</h3>
 							<p className="mt-2 text-sm text-zinc-600">
-								Run Elmo on your own infrastructure. The core platform is free and always will be, even when we release
-								a cloud version of Elmo.
+								Run Elmo on your own infrastructure. The core platform is free and always will be, and Elmo Cloud is
+								there if you would rather not run it yourself.
 							</p>
 						</div>
 						<div className="rounded-md border border-zinc-200 bg-white p-5">
-							<h3 className="font-semibold text-zinc-950">No vendor lock-in</h3>
+							<h3 className="font-semibold text-zinc-950">Your data, in your stack</h3>
 							<p className="mt-2 text-sm text-zinc-600">
-								Export everything, fork the code, or migrate at any time. You own all of your data and have the right to
-								use it wherever you want.
+								Pull every metric, sentiment included, into your own code with the REST API and TypeScript and Python
+								SDKs, or ask Claude Code and Cursor about it over MCP. Export, fork, or migrate at any time.
 							</p>
 						</div>
 						<div className="rounded-md border border-zinc-200 bg-white p-5">

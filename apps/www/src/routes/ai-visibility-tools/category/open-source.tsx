@@ -86,7 +86,7 @@ const AT_A_GLANCE: { tool: string; license: string; selfHost: string; tracks: st
 		tool: "Elmo",
 		license: "MIT, fully open source",
 		selfHost: "Yes, free",
-		tracks: "Mentions and citations across ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews",
+		tracks: "Mentions, sentiment, and citations across ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews",
 		bestFor: "A complete platform you own and audit",
 	},
 	{
@@ -425,17 +425,18 @@ function OpenSourcePage() {
 								Elmo is the most complete open-source AI visibility platform on this list. It is released under the MIT
 								license, free to self-host, and every metric is computed by code you can read. It tracks how AI answer
 								engines mention and cite your brand across ChatGPT, Claude, Perplexity, Gemini, and Google's AI
-								Overviews, among other engines, then turns that into a visibility score, citation analytics,
-								brand-mention tracking, and competitor benchmarking. You can export everything through the API, and
-								agencies can white-label it.
+								Overviews, among other engines, then turns that into visibility, share of voice, sentiment, and position
+								scores, citation and query fan-out analytics, and ranked recommendations for what to fix. A REST API,
+								TypeScript and Python SDKs, and an MCP server expose the same data to your own code and AI assistants,
+								and agencies can white-label it.
 							</p>
 							<p className="mt-4">
 								It fits teams that want to own their AEO data outright. The self-hosted core runs on Docker and
 								PostgreSQL. You supply your own model API keys, which carry usage costs, and there is no license fee or
-								per-seat charge. Elmo does not do sentiment analysis, prompt-volume estimates, content generation,
-								shopping-result tracking, or geographic breakdowns. It measures visibility and citations well, and
-								leaves the content work to you. Managed cloud hosting is available for teams that would rather not run
-								the infrastructure.
+								per-seat charge. Elmo does not do prompt-volume estimates, content generation, shopping-result tracking,
+								or geographic breakdowns. It measures what AI says about you and tells you what to change, and leaves
+								the writing to you. Managed cloud hosting is available for teams that would rather not run the
+								infrastructure.
 							</p>
 						</div>
 
