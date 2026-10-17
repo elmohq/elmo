@@ -11,6 +11,7 @@ import {
 	getScreenshotUrl,
 	graveyardFate,
 	graveyardTools,
+	hasComparisonPage,
 } from "@/lib/competitors";
 import type { FaqItem } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
@@ -101,7 +102,7 @@ export const Route = createFileRoute("/ai-visibility-tools/graveyard")({
 			itemListJsonLd(
 				graveyardTools.map((c) => ({
 					name: c.name,
-					path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
+					path: hasComparisonPage(c) ? `/ai-visibility-tools/${getComparisonSlug(c)}` : undefined,
 					description: c.fate?.summary,
 				})),
 			),
@@ -146,13 +147,15 @@ function Tombstone({ competitor }: { competitor: Competitor }) {
 			<p className="flex-1 text-sm text-zinc-800">{competitor.fate.summary}</p>
 			<TombstoneDivider />
 			<div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
-				<Link
-					to="/ai-visibility-tools/$slug"
-					params={{ slug: getComparisonSlug(competitor) }}
-					className="text-zinc-950 underline decoration-zinc-400 underline-offset-4 hover:decoration-zinc-950"
-				>
-					Elmo vs {competitor.name}
-				</Link>
+				{hasComparisonPage(competitor) && (
+					<Link
+						to="/ai-visibility-tools/$slug"
+						params={{ slug: getComparisonSlug(competitor) }}
+						className="text-zinc-950 underline decoration-zinc-400 underline-offset-4 hover:decoration-zinc-950"
+					>
+						Elmo vs {competitor.name}
+					</Link>
+				)}
 				{competitor.fate.source && (
 					<a
 						href={competitor.fate.source}

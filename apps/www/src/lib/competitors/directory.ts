@@ -30,12 +30,28 @@ export function isIndexed(c: Competitor): boolean {
 
 export const indexedCompetitors: Competitor[] = competitors.filter(isIndexed);
 
-/**
- * Retired tools stay out of listings and recommendations, but their own pages
- * stay up: "{tool} alternatives" is exactly what a stranded customer searches.
- */
+// Retired tools whose comparison or alternatives pages were earning Search
+// Console impressions (October 2026). "{tool} alternatives" is exactly what a
+// stranded customer searches, so these keep their pages; the rest only live on
+// in the graveyard.
+const RETIRED_WITH_SEARCH_DEMAND = new Set([
+	"meridian",
+	"ai-rank-checker",
+	"xfunnel",
+	"bear-ai",
+	"anvil",
+	"hall",
+	"peasy",
+]);
+
+/** Whether a tool has its own comparison page. */
+export function hasComparisonPage(c: Competitor): boolean {
+	return !graveyardFate(c) || RETIRED_WITH_SEARCH_DEMAND.has(c.slug);
+}
+
+/** Whether a tool's pages are indexed: comparison, plus alternatives. */
 export function hasOwnPages(c: Competitor): boolean {
-	return c.category !== "other" && !isLowDR(c);
+	return c.category !== "other" && !isLowDR(c) && hasComparisonPage(c);
 }
 
 export const competitorsWithOwnPages: Competitor[] = competitors.filter(hasOwnPages);

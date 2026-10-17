@@ -34,6 +34,7 @@ export {
 	getFeatureVerdict,
 	graveyardFate,
 	graveyardTools,
+	hasComparisonPage,
 	hasOwnPages,
 	indexableCategories,
 	indexableFeatureKeys,
