@@ -41,7 +41,6 @@
 		"./secrets": "./src/secrets/index.ts",
 		"./providers": "./src/providers/index.ts",
 		"./providers/types": "./src/providers/types.ts",
-		"./providers/fanout-support": "./src/providers/fanout-support.ts",
 		"./entitlements": "./src/entitlements/index.ts",
 		"./run-policy": "./src/run-policy/index.ts",
 		"./usage": "./src/usage/cost.ts",

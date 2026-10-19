@@ -15,7 +15,6 @@ import {
 	uuidList,
 } from "@/lib/analytics-sql";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
-import type { FanoutEngineHistoryRow } from "@/lib/fanout-engine-status";
 import type { AssessmentSums } from "@/lib/sentiment";
 
 /** The run counts every run read selects, so a new rollup column reaches them all at once. */
@@ -462,42 +461,6 @@ export async function getFanoutPromptTotals(scope: AnalyticsScope): Promise<Fano
 		FROM rollup_prompt_runs
 		WHERE ${rollupScope(scope)}
 		GROUP BY prompt_id
-	`);
-}
-
-export async function getFanoutEngineHistory(brandId: string | null): Promise<FanoutEngineHistoryRow[]> {
-	const brandFilter = (alias?: string) =>
-		brandId === null ? sql`TRUE` : alias ? sql`${sql.raw(alias)}.brand_id = ${brandId}` : sql`brand_id = ${brandId}`;
-	return queryPg<FanoutEngineHistoryRow>(sql`
-		WITH engines AS (
-			SELECT
-				model,
-				provider,
-				sum(runs)::int AS search_runs,
-				coalesce(sum(fanout_runs), 0)::int AS fanout_runs,
-				min(bucket) FILTER (WHERE fanout_runs > 0) AS first_fanout_at,
-				max(bucket) FILTER (WHERE fanout_runs > 0) AS last_fanout_at,
-				max(bucket) AS last_run_at
-			FROM rollup_prompt_runs
-			WHERE ${brandFilter()} AND web_search_enabled
-			GROUP BY model, provider
-		)
-		SELECT
-			e.model,
-			e.provider,
-			e.search_runs,
-			e.fanout_runs,
-			${isoInstant(sql`e.first_fanout_at`)} AS first_fanout_at,
-			${isoInstant(sql`e.last_fanout_at`)} AS last_fanout_at,
-			coalesce((
-				SELECT sum(r.runs)::int FROM rollup_prompt_runs r
-				WHERE ${brandFilter("r")} AND r.web_search_enabled
-					AND r.model = e.model AND r.provider = e.provider
-					AND r.bucket > coalesce(e.last_fanout_at, '-infinity')
-			), 0) AS search_runs_since_last_fanout,
-			${isoInstant(sql`e.last_run_at`)} AS last_run_at
-		FROM engines e
-		ORDER BY e.search_runs DESC
 	`);
 }
 

@@ -7,6 +7,7 @@
  * filter-bar module graph (which touches Better Auth server init via the brand
  * hook).
  */
+import type { FanoutSupport } from "@workspace/config/fanout-support";
 import { ALL_MODELS_VALUE, labelForModelFilter } from "@workspace/config/model-filter";
 import { PLATFORM_TIER_LABELS, type PlanPlatformGroupId } from "@workspace/config/plans";
 
@@ -23,6 +24,8 @@ export interface TrackedTarget {
 	intervalHours: number;
 	/** Provider calls per sample. */
 	replication: number;
+	/** Set only for targets that run with web search. */
+	fanout?: FanoutSupport;
 }
 
 /** How often a target runs, as a rate: "4×/day", or "every 3 days" once past one. */
