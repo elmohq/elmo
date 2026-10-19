@@ -1,5 +1,18 @@
 # @workspace/web
 
+## 0.7.3
+
+### Patch Changes
+
+- 5cdd077: Show which engines reveal their web searches on the Query Fan-Out page, and flag any that stopped.
+- Updated dependencies [cacc8f9]
+  - @workspace/lib@0.7.3
+  - @workspace/deployment@0.7.3
+  - @workspace/api-spec@0.7.3
+  - @workspace/config@0.7.3
+  - @workspace/og@0.7.3
+  - @workspace/ui@0.7.3
+
 ## 0.7.2
 
 ### Patch Changes

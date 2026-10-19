@@ -1,5 +1,12 @@
 # @workspace/lib
 
+## 0.7.3
+
+### Patch Changes
+
+- cacc8f9: Show ChatGPT's web search queries again for ChatGPT tracked through Cloro.
+- @workspace/config@0.7.3
+
 ## 0.7.2
 
 ### Patch Changes
