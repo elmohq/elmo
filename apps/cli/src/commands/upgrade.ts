@@ -211,10 +211,10 @@ async function ensureJudgeKey(configDir: string, context: MigrationContext, nonI
 		process.exit(1);
 	}
 	const env = await context.readEnv();
-	if (env.TYPESAFE_API_KEY?.trim()) return;
+	if (env.TYPESAFE_API_KEY?.trim() || env.OPENROUTER_API_KEY?.trim()) return;
 	if (nonInteractive) {
 		log.error(
-			"This version needs TYPESAFE_API_KEY (Jev, https://console.typesafe.ai) to judge mentions and sentiment.",
+			"This version needs TYPESAFE_API_KEY (Jev, https://console.typesafe.ai), or OPENROUTER_API_KEY to call Jev through OpenRouter, to judge mentions and sentiment.",
 		);
 		log.info("Add it to .env with `elmo edit env`, then rerun the upgrade.");
 		process.exit(1);
