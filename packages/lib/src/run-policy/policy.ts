@@ -21,7 +21,7 @@ import type { Entitlements } from "@workspace/config/entitlements";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { DeploymentMode } from "@workspace/config/types";
 import { getRunsPerPrompt } from "../constants";
-import { isGroundedApiTarget } from "../providers";
+import { describeTargetRun, isGroundedApiTarget } from "../providers";
 import { selectTargetsForBrand } from "../providers/runner";
 
 export interface TargetPlan {
@@ -50,10 +50,12 @@ export interface ResolveRunPlanInput {
 	scrapeTargets: ModelConfig[];
 	brand: { enabledModels: string[] | null; delayOverrideHours: number | null };
 	/**
-	 * Premium models this prompt is tracked on, grounded — one pool slot each,
-	 * already trimmed by the caller to what the org's pool covers.
+	 * `premiumModels`: premium models this prompt is tracked on, grounded — one
+	 * pool slot each, already trimmed by the caller to what the org's pool covers.
+	 * `country`: where the prompt is asked from; targets that can't answer for
+	 * it drop out of the plan.
 	 */
-	prompt: { premiumModels: string[] };
+	prompt: { premiumModels: string[]; country: string };
 	entitlements: Entitlements;
 	defaultDelayHours: number;
 	/**
@@ -105,6 +107,21 @@ function premiumTargets(input: ResolveRunPlanInput, intervalHours: number): Targ
 }
 
 export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
+	const plan = resolveRunPlanIgnoringCountry(input);
+	// Dropped here rather than skipped at run time, so maintenance doesn't see a
+	// target that can never run as overdue and the dashboard doesn't list it.
+	const targets = plan.targets.filter((target) => describeTargetRun(target.config, input.prompt).runs);
+	if (targets.length === plan.targets.length) return plan;
+	if (targets.length === 0) return { targets, rescheduleHours: null };
+	return { targets, rescheduleHours: Math.min(...targets.map((t) => t.intervalHours)) };
+}
+
+/**
+ * The plan before the prompt's country rules any target out — what the prompt
+ * page lists, so a target the country excludes shows up as excluded rather
+ * than missing.
+ */
+export function resolveRunPlanIgnoringCountry(input: ResolveRunPlanInput): PromptRunPlan {
 	const { entitlements } = input;
 
 	// Read "unmetered" off the entitlements rather than a separately-passed

@@ -121,3 +121,45 @@ export function describeSkipped(skipped: SkippedLines): string | null {
 	if (parts.length === 0) return null;
 	return `Skipped ${parts.join(" and ")}.`;
 }
+
+export interface MarketBulkPromptParse {
+	/** One entry per pasted line per market, lines in paste order. */
+	added: { value: string; country: string; language: string }[];
+	skipped: SkippedLines;
+}
+
+/**
+ * `parseBulkPrompts` for a paste added in several markets at once. Each line
+ * becomes one prompt per market, and a line only duplicates a prompt already
+ * in the same market — the same text elsewhere is a different prompt.
+ */
+export function parseBulkPromptsInMarkets(
+	text: string,
+	options: {
+		existing?: readonly { value: string; country: string; language: string }[];
+		markets: readonly { country: string; language: string }[];
+		limit?: number;
+	},
+): MarketBulkPromptParse {
+	const { existing = [], markets, limit = MAX_PROMPTS } = options;
+	const lines = parseBulkPrompts(text, { limit: Number.POSITIVE_INFINITY });
+	const marketKey = (value: string, market: { country: string; language: string }) =>
+		`${market.country}:${market.language}:${dedupeKey(value)}`;
+	const seen = new Set(existing.map((prompt) => marketKey(prompt.value, prompt)));
+	const room = Math.max(0, limit - existing.length);
+
+	const added: MarketBulkPromptParse["added"] = [];
+	const skipped: SkippedLines = { ...lines.skipped, duplicateOfExisting: [], overCapacity: [] };
+	for (const value of lines.added) {
+		for (const market of markets) {
+			if (seen.has(marketKey(value, market))) {
+				skipped.duplicateOfExisting.push(value);
+			} else if (added.length >= room) {
+				skipped.overCapacity.push(value);
+			} else {
+				added.push({ value, ...market });
+			}
+		}
+	}
+	return { added, skipped };
+}

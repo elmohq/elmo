@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
+import { type PromptScopeFilters, promptScopeParams } from "@/lib/prompt-scope";
 import type { ResponseSort, SentimentFilter } from "@/lib/sentiment";
 import { getResponseSentimentCountsFn, searchResponsesFn } from "@/server/responses";
 
-export interface ResponseSearchFilters {
+export interface ResponseSearchFilters extends PromptScopeFilters {
 	query?: string;
 	lookback?: LookbackPeriod;
 	model?: string;
-	tags?: string[];
 	promptIds?: string[];
 	sentiment?: SentimentFilter;
 	sort?: ResponseSort;
@@ -25,7 +25,7 @@ const scopeParams = (brandId: string, filters?: ResponseSearchFilters) => ({
 	query: filters?.query || undefined,
 	lookback: filters?.lookback ?? "1m",
 	model: filters?.model,
-	tags: filters?.tags?.join(","),
+	...promptScopeParams(filters),
 	prompts: filters?.promptIds?.length ? filters.promptIds.join(",") : undefined,
 	timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 });

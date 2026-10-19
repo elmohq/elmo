@@ -22,6 +22,7 @@ export {
 	type ResolveRunPlanInput,
 	resolveBrandPicks,
 	resolvePromptRunPlan,
+	resolveRunPlanIgnoringCountry,
 	selectDueTargets,
 	slowestIntervalHours,
 	type TargetOverdueStatus,

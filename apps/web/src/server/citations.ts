@@ -28,6 +28,7 @@ import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
+import { promptScopeFields } from "@/lib/prompt-scope";
 import {
 	getCitationUrlStats,
 	getPerPromptCitationPages,
@@ -36,7 +37,7 @@ import {
 	type PerPromptDailyCitationClassRow,
 } from "@/lib/rollup-read";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { parseTagFilter } from "@/server/prompt-resolution";
+import { matchesMarketFilter, parseMarketFilter, parseTagFilter } from "@/server/prompt-resolution";
 
 type BrandCitationUrl = CitationUrl & { promptCount: number; isNew: boolean };
 
@@ -292,7 +293,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		z.object({
 			brandId: z.string(),
 			lookback: lookbackSchema.default("1w"),
-			tags: z.string().optional(),
+			...promptScopeFields,
 			model: z.string().optional(),
 		}),
 	)
@@ -314,7 +315,14 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
 			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
 			db
-				.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
+				.select({
+					id: prompts.id,
+					value: prompts.value,
+					country: prompts.country,
+					language: prompts.language,
+					tags: prompts.tags,
+					systemTags: prompts.systemTags,
+				})
 				.from(prompts)
 				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
 		]);
@@ -336,8 +344,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		];
 
 		const tagFilter = parseTagFilter(data.tags);
+		const market = parseMarketFilter(data);
+		const inMarket = allPrompts.filter((prompt) => matchesMarketFilter(prompt, market));
 		const enabledPromptIds =
-			tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
+			tagFilter.length > 0 ? promptIdsMatchingTags(inMarket, tagFilter) : inMarket.map((p) => p.id);
 		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, days);
 
 		const scope = {

@@ -53,7 +53,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 	const { data: brand } = useBrand(brandId);
 	const brandParams = useBrandParams();
 	const filters = useListFilters();
-	const { model, lookback, tags, search } = filters;
+	const { model, lookback, tags, countries, languages, search } = filters;
 	// `order` is this route's own search key (not a narrowing filter), so it
 	// rides outside `useListFilters` / `isFiltered`.
 	const order = useSearch({
@@ -76,6 +76,8 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 		lookback,
 		model: modelParam,
 		tags: tags.length > 0 ? tags : undefined,
+		countries,
+		languages,
 	});
 
 	const availableTags = promptsSummary?.availableTags ?? [];
@@ -144,6 +146,8 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 				modelParam={modelParam}
 				searchQuery={search}
 				selectedTags={tags}
+				selectedCountries={countries}
+				selectedLanguages={languages}
 				sortedPrompts={sortedPrompts}
 				availableIndividualModels={availableIndividualModels}
 			/>
@@ -162,6 +166,8 @@ function ChartSection({
 	modelParam,
 	searchQuery,
 	selectedTags,
+	selectedCountries,
+	selectedLanguages,
 	sortedPrompts,
 	availableIndividualModels,
 }: {
@@ -171,13 +177,33 @@ function ChartSection({
 	modelParam: string | undefined;
 	searchQuery: string;
 	selectedTags: string[];
-	sortedPrompts: { id: string; value: string; firstEvaluatedAt?: Date | string | null }[];
+	selectedCountries: string[];
+	selectedLanguages: string[];
+	sortedPrompts: {
+		id: string;
+		value: string;
+		country?: string;
+		language?: string;
+		groupId?: string;
+		firstEvaluatedAt?: Date | string | null;
+	}[];
 	availableIndividualModels: string[];
 }) {
+	const { data: brand } = useBrand(brandId);
+	const groupSizes = useMemo(() => {
+		const sizes = new Map<string, number>();
+		for (const prompt of brand?.prompts ?? []) {
+			if (prompt.enabled) sizes.set(prompt.groupId, (sizes.get(prompt.groupId) ?? 0) + 1);
+		}
+		return sizes;
+	}, [brand?.prompts]);
+
 	const { data: batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {
 		lookback,
 		model: modelParam,
 		tags: selectedTags.length > 0 ? selectedTags : undefined,
+		countries: selectedCountries,
+		languages: selectedLanguages,
 		search: searchQuery || undefined,
 	});
 
@@ -223,6 +249,7 @@ function ChartSection({
 				selectedModel={selectedModel}
 				availableModels={availableIndividualModels}
 				searchHighlight={searchQuery}
+				groupSizes={groupSizes}
 			/>
 		</ChartDataProvider>
 	);

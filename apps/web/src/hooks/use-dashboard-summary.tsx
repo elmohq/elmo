@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
+import { type PromptScopeFilters, promptScopeParams } from "@/lib/prompt-scope";
 import { getDashboardSummaryFn } from "@/server/dashboard";
 
-export interface DashboardFilters {
+export interface DashboardFilters extends PromptScopeFilters {
 	lookback: LookbackPeriod;
 	model?: string;
-	tags?: string[];
 }
 
 export const dashboardKeys = {
@@ -25,7 +25,7 @@ export function useDashboardSummary(brandId?: string, filters: DashboardFilters 
 					brandId: resolvedBrandId!,
 					lookback: filters.lookback,
 					model: filters.model,
-					tags: filters.tags?.join(","),
+					...promptScopeParams(filters),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

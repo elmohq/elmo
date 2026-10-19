@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
+import { type PromptScopeFilters, promptScopeParams } from "@/lib/prompt-scope";
 import { getCompetitiveLandscapeFn, getShareOfVoiceFn } from "@/server/analysis";
 
-export interface ShareOfVoiceFilters {
+export interface ShareOfVoiceFilters extends PromptScopeFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
 	/** Tag filter (resolved to prompt IDs server-side, like the visibility page). */
-	tags?: string[];
 }
 
 const shareOfVoiceKeys = {
@@ -26,7 +26,7 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
-					tags: filters?.tags?.join(","),
+					...promptScopeParams(filters),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
@@ -53,7 +53,7 @@ export function useCompetitiveLandscape(brandId?: string, filters?: ShareOfVoice
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
-					tags: filters?.tags?.join(","),
+					...promptScopeParams(filters),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

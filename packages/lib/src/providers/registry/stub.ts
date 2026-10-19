@@ -34,6 +34,14 @@ export const stub: Provider = {
 		return true;
 	},
 
+	localizes() {
+		return true;
+	},
+
+	sendsLanguage() {
+		return true;
+	},
+
 	// Answers with the prompt itself, so a test chooses the answer the rest of the pipeline reads.
 	async run(_model: string, prompt: string): Promise<ScrapeResult> {
 		return { rawOutput: { answer_markdown: prompt }, webQueries: [], modelVersion: "stub" };

@@ -53,6 +53,10 @@ const config: StorybookConfig = {
 					},
 					{ find: /^@\/server\/prompts(\.ts)?$/, replacement: path.resolve(mocksDir, "server-prompts.ts") },
 					{
+						find: /^@\/server\/prompt-groups(\.ts)?$/,
+						replacement: path.resolve(mocksDir, "server-prompt-groups.ts"),
+					},
+					{
 						find: /^@\/server\/prompt-suggestions(\.ts)?$/,
 						replacement: path.resolve(mocksDir, "server-prompt-suggestions.ts"),
 					},

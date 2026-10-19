@@ -13,6 +13,7 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import type { FanoutAnalysis } from "@/lib/fanout-analysis";
 import { lookbackSchema } from "@/lib/lookback";
+import { pickPromptScope, promptScopeFields } from "@/lib/prompt-scope";
 import { getBrandQueryFanout } from "@/server/analytics-core";
 import { resolveBrandWindow } from "@/server/brand-window";
 
@@ -49,7 +50,7 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
-			tags: z.string().optional(),
+			...promptScopeFields,
 			search: z.string().optional(),
 			/** Scope to a single prompt (prompt-details Web Queries tab) — lists come back uncapped. */
 			promptId: z.string().optional(),
@@ -63,7 +64,7 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 		const analysis = await getBrandQueryFanout(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags, search: data.search },
+			{ model: data.model, ...pickPromptScope(data), search: data.search },
 			{ promptId: data.promptId },
 		);
 

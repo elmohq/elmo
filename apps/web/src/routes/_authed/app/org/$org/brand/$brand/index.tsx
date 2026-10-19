@@ -299,7 +299,7 @@ function OverviewFigures({
 function DashboardPage() {
 	const brandId = useBrandId();
 	const { data: brand, isLoading: isLoadingBrand } = useBrand();
-	const { model, lookback, tags } = useListFilters();
+	const { model, lookback, scope, isFiltered } = useListFilters();
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
 	const {
@@ -309,10 +309,12 @@ function DashboardPage() {
 	} = useDashboardSummary(brand?.id, {
 		lookback,
 		model: modelParam,
-		tags,
+		...scope,
 	});
-	// A tag filter narrows the count, which would understate the brand's prompts.
-	useReportedPromptCount(tags.length === 0 ? summary?.totalPrompts : undefined);
+	// A tag or market filter narrows the count, which would understate the brand's prompts.
+	useReportedPromptCount(
+		scope.tags.length + scope.countries.length + scope.languages.length === 0 ? summary?.totalPrompts : undefined,
+	);
 	const context = useRouteContext({ from: BRAND_ROUTE_ID }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 	// The footer reports what this brand actually runs, resolved server-side.
@@ -324,7 +326,7 @@ function DashboardPage() {
 	}
 
 	// No runs yet (and no filter narrowing them away): nothing to plot, so point at what to do next.
-	if (!loading && summary?.totalRuns === 0 && !modelParam && tags.length === 0) {
+	if (!loading && summary?.totalRuns === 0 && !isFiltered) {
 		return (
 			<AwaitingFirstEvaluation totalPrompts={summary.totalPrompts} hasPrompts={(brand?.prompts?.length ?? 0) > 0} />
 		);

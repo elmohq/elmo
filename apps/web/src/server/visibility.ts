@@ -7,6 +7,7 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { type ProcessedBatchChartDataPoint, toBatchChartData } from "@/lib/chart-utils";
 import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
+import { pickPromptScope, promptScopeFields } from "@/lib/prompt-scope";
 import { getPerPromptDailyCompetitors, getPerPromptDailyRuns } from "@/lib/rollup-read";
 import { getBrandVisibility } from "@/server/analytics-core";
 import { resolveBrandWindow } from "@/server/brand-window";
@@ -49,7 +50,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
-			tags: z.string().optional(),
+			...promptScopeFields,
 			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
@@ -62,7 +63,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		// Resolve the in-scope prompts server-side from the filter criteria so
 		// the client never ships the full prompt-id list (issue #68).
 		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
-			tags: data.tags,
+			...pickPromptScope(data),
 			search: data.search,
 		});
 		const promptIds = resolvedPrompts.map((p) => p.id);
@@ -115,7 +116,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
-			tags: z.string().optional(),
+			...promptScopeFields,
 			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
@@ -130,7 +131,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		const result = await getBrandVisibility(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags, search: data.search },
+			{ model: data.model, ...pickPromptScope(data), search: data.search },
 		);
 
 		// The single place the dashboard converts the shared ratios to percentages.

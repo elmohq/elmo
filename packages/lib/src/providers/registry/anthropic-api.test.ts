@@ -37,6 +37,12 @@ describe("anthropic-api run", () => {
 		]);
 	});
 
+	it("searches from the prompt's country", async () => {
+		await anthropicApi.run("claude", "prompt", { webSearch: true, version: "claude-sonnet-5", country: "FR" });
+
+		expect(sentArgs().tools[0].user_location).toEqual({ type: "approximate", country: "FR" });
+	});
+
 	it("caps output tokens and sends no web_search tool when webSearch is off", async () => {
 		await anthropicApi.run("claude", "prompt", { webSearch: false, version: "claude-sonnet-5" });
 

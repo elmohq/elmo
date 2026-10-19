@@ -18,6 +18,7 @@ import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides }
 import { buildLandscape, type Landscape } from "@/lib/landscape";
 import { assessedPassage } from "@/lib/passage";
 import { getSentimentQuotes, type SentimentQuoteRow } from "@/lib/postgres-read";
+import { type PromptScope, pickPromptScope } from "@/lib/prompt-scope";
 import {
 	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
@@ -81,9 +82,8 @@ function windowInstants(window: AnalyticsWindow): { start: Date; end: Date } {
 	return { start, end };
 }
 
-export interface AnalyticsFilters {
+export interface AnalyticsFilters extends PromptScope {
 	model?: string;
-	tags?: string;
 	search?: string;
 }
 
@@ -110,7 +110,7 @@ function analyticsScope(
 }
 
 async function resolveScope(brandId: string, filters: AnalyticsFilters) {
-	const resolved = await resolveFilteredPrompts(brandId, { tags: filters.tags, search: filters.search });
+	const resolved = await resolveFilteredPrompts(brandId, { ...pickPromptScope(filters), search: filters.search });
 	return {
 		promptIds: resolved.map((prompt) => prompt.id),
 		brandedPromptIds: resolved

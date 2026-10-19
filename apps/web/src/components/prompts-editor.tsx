@@ -12,6 +12,7 @@ import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import { trackEvent } from "@/lib/posthog";
+import { defaultMarketForNewPrompts } from "@/lib/prompt-markets";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updatePromptsFn } from "@/server/prompts";
 
@@ -19,6 +20,9 @@ interface PromptRow {
 	id: string;
 	value: string;
 	enabled: boolean;
+	country: string;
+	language: string;
+	groupId: string;
 	tags?: string[] | null;
 	systemTags?: string[] | null;
 	premiumModels?: string[] | null;
@@ -38,14 +42,18 @@ function sameModels(a: string[], b: string[]): boolean {
 }
 
 /** Same ordering the route loader asks Postgres for, so the list a save leaves
- *  behind matches what a reload would show. */
+ *  behind matches what a reload would show — then each group's members pulled
+ *  together at the place of its first one, so variants read as one block. */
 function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
-	return rows
+	const sorted = rows
 		.map((p) => ({
 			id: p.id,
 			_key: p.id,
 			value: p.value,
 			enabled: p.enabled,
+			country: p.country,
+			language: p.language,
+			groupId: p.groupId,
 			tags: p.tags || [],
 			systemTags: p.systemTags || [],
 			premiumModels: p.premiumModels ?? [],
@@ -53,6 +61,16 @@ function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
 		.sort(
 			(a, b) => a.value.localeCompare(b.value) || Number(b.enabled) - Number(a.enabled) || a.id.localeCompare(b.id),
 		);
+	const firstPosition = new Map<string, number>();
+	sorted.forEach((prompt, i) => {
+		if (!firstPosition.has(prompt.groupId)) firstPosition.set(prompt.groupId, i);
+	});
+	return sorted
+		.map((prompt, i) => ({ prompt, i }))
+		.sort(
+			(a, b) => (firstPosition.get(a.prompt.groupId) ?? 0) - (firstPosition.get(b.prompt.groupId) ?? 0) || a.i - b.i,
+		)
+		.map(({ prompt }) => prompt);
 }
 
 function sameTags(a: string[], b: string[]) {
@@ -73,6 +91,7 @@ function classifyPrompt(
 	const edited =
 		prompt.value.trim() !== prev.value.trim() ||
 		prompt.enabled !== prev.enabled ||
+		prompt.groupId !== prev.groupId ||
 		!sameModels(prompt.premiumModels, prev.premiumModels) ||
 		!sameTags(prompt.tags, prev.tags);
 	return edited ? "edited" : null;
@@ -146,6 +165,9 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 					...(p.id ? { id: p.id } : {}),
 					value: p.value.trim(),
 					enabled: p.enabled,
+					country: p.country,
+					language: p.language,
+					groupId: p.groupId,
 					tags: p.tags,
 					premiumModels: p.premiumModels,
 				})),
@@ -199,6 +221,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				onChange={setPrompts}
 				changedKeys={changedKeys}
 				premium={premium}
+				newPromptMarket={defaultMarketForNewPrompts(baseline)}
 				leading={<SuggestionsStatus suggestions={suggestions} ref={suggestionsRef} />}
 				pendingRows={suggestions.running ? SUGGESTION_PLACEHOLDER_ROWS : 0}
 			/>

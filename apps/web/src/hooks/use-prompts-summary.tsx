@@ -1,13 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
+import { type PromptScopeFilters, promptScopeParams } from "@/lib/prompt-scope";
 import { getPromptsSummaryFn } from "@/server/prompts";
 
-export interface PromptsSummaryFilters {
+export interface PromptsSummaryFilters extends PromptScopeFilters {
 	lookback?: LookbackPeriod;
 	webSearchEnabled?: boolean;
 	model?: string;
-	tags?: string[];
 }
 
 export const promptsSummaryKeys = {
@@ -27,7 +27,7 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 					lookback: filters?.lookback || "1m",
 					webSearchEnabled: filters?.webSearchEnabled?.toString(),
 					model: filters?.model,
-					tags: filters?.tags?.join(","),
+					...promptScopeParams(filters),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

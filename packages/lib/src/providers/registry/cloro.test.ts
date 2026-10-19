@@ -161,7 +161,7 @@ describe("cloro provider", () => {
 			);
 		vi.stubGlobal("fetch", fetchMock);
 
-		const promise = cloro.run("google-ai-overview", "best running shoes for beginners");
+		const promise = cloro.run("google-ai-overview", "best running shoes for beginners", { country: "DE" });
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
@@ -169,7 +169,7 @@ describe("cloro provider", () => {
 			taskType: "GOOGLE",
 			payload: {
 				query: "best running shoes for beginners",
-				country: "US",
+				country: "DE",
 				include: { aioverview: { markdown: true } },
 			},
 		});

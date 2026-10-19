@@ -69,6 +69,8 @@ export interface PromptRunRow {
 	model: string;
 	provider: string | null;
 	web_search_enabled: boolean;
+	country: string | null;
+	language: string | null;
 	brand_mentioned: boolean;
 	competitors_mentioned: string[];
 	assessments: RunMentionAssessments | null;
@@ -96,6 +98,8 @@ export async function getPromptRuns(
 			prompt_runs.model,
 			prompt_runs.provider,
 			prompt_runs.web_search_enabled,
+			prompt_runs.country,
+			prompt_runs.language,
 			run_mentions.brand_mentioned,
 			run_mentions.competitors_mentioned,
 			-- The same gate as selectRuns, so a run's list entry and its detail agree.
