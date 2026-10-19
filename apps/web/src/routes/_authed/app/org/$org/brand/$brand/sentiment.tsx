@@ -348,11 +348,11 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 
 function SentimentPage() {
 	const brandId = useBrandId();
-	const { model, lookback, tags } = useListFilters();
+	const { model, lookback, scope } = useListFilters();
 	const { data: brand } = useBrand(brandId);
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
-	const filters = { lookback, model: modelParam, tags };
+	const filters = { lookback, model: modelParam, ...scope };
 	const { data, isLoading, error } = useBrandSentiment(brandId, filters);
 	const { data: landscape, error: landscapeError } = useCompetitiveLandscape(brandId, filters);
 	const colors = useCompanyColors(landscape);

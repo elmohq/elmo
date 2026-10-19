@@ -28,6 +28,7 @@ import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
+import { promptScopeFields } from "@/lib/prompt-scope";
 import {
 	getCitationUrlStats,
 	getPerPromptCitationPages,
@@ -292,11 +293,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		z.object({
 			brandId: z.string(),
 			lookback: lookbackSchema.default("1w"),
-			tags: z.string().optional(),
-			/** Comma-joined country codes; a prompt in any of them matches. */
-			countries: z.string().optional(),
-			/** Comma-joined language codes, matched the same way. */
-			languages: z.string().optional(),
+			...promptScopeFields,
 			model: z.string().optional(),
 		}),
 	)

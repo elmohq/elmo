@@ -28,7 +28,6 @@ import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
-
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
@@ -41,6 +40,7 @@ import {
 	getResponseSentimentCounts,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
+import { promptScopeFields } from "@/lib/prompt-scope";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -178,11 +178,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
-			tags: z.string().optional(),
-			/** Comma-joined country codes; a prompt in any of them matches. */
-			countries: z.string().optional(),
-			/** Comma-joined language codes, matched the same way. */
-			languages: z.string().optional(),
+			...promptScopeFields,
 			timezone: z.string().optional(),
 		}),
 	)

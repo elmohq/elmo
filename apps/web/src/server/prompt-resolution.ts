@@ -17,6 +17,7 @@ import { db } from "@workspace/lib/db/db";
 import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, eq } from "drizzle-orm";
+import type { PromptScope } from "@/lib/prompt-scope";
 
 export interface ResolvedPrompt {
 	id: string;
@@ -42,7 +43,7 @@ export interface ResolvedPrompt {
  */
 export async function resolveFilteredPrompts(
 	brandId: string,
-	opts: { tags?: string; countries?: string; languages?: string; search?: string },
+	opts: PromptScope & { search?: string },
 ): Promise<ResolvedPrompt[]> {
 	const allPrompts = await db
 		.select({

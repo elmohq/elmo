@@ -92,6 +92,7 @@ export function useListFilters() {
 	const tags = useMemo(() => splitTags(urlFilters.tags), [urlFilters.tags]);
 	const countries = useMemo(() => splitTags(urlFilters.countries), [urlFilters.countries]);
 	const languages = useMemo(() => splitTags(urlFilters.languages), [urlFilters.languages]);
+	const scope = useMemo(() => ({ tags, countries, languages }), [tags, countries, languages]);
 	const search = urlFilters.q ?? "";
 
 	return {
@@ -100,6 +101,8 @@ export function useListFilters() {
 		tags,
 		countries,
 		languages,
+		/** Tags and markets together, to spread into a data hook's filters. */
+		scope,
 		search,
 		/** True when any narrowing filter is active (lookback never narrows to
 		 *  zero on its own, so it doesn't count). Gates which empty state a

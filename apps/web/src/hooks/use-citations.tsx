@@ -1,13 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
+import { type PromptScopeFilters, promptScopeParams } from "@/lib/prompt-scope";
 import { getCitationsFn } from "@/server/citations";
 
-export interface CitationFilters {
+export interface CitationFilters extends PromptScopeFilters {
 	lookback?: LookbackPeriod;
-	tags?: string[];
-	countries?: string[];
-	languages?: string[];
 	model?: string;
 }
 
@@ -26,9 +24,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 				data: {
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback ?? "1w",
-					tags: filters?.tags?.join(","),
-					countries: filters?.countries?.join(","),
-					languages: filters?.languages?.join(","),
+					...promptScopeParams(filters),
 					model: filters?.model,
 				},
 			}),

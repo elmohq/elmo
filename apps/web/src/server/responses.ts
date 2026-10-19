@@ -9,6 +9,7 @@ import {
 	type ResponseMatchRow,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
+import { promptScopeFields } from "@/lib/prompt-scope";
 import { getMentionTotals } from "@/lib/rollup-read";
 import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { resolveBrandWindow } from "@/server/brand-window";
@@ -22,11 +23,7 @@ const searchScopeSchema = z.object({
 	query: z.string().max(500).optional(),
 	lookback: lookbackSchema.default("1m"),
 	model: z.string().optional(),
-	tags: z.string().optional(),
-	/** Comma-joined country codes; a prompt in any of them matches. */
-	countries: z.string().optional(),
-	/** Comma-joined language codes, matched the same way. */
-	languages: z.string().optional(),
+	...promptScopeFields,
 	/** Comma-joined prompt IDs; absent means every prompt. */
 	prompts: z.string().optional(),
 	timezone: z.string().default("UTC"),

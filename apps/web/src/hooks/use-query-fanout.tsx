@@ -1,15 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
+import { type PromptScopeFilters, promptScopeParams } from "@/lib/prompt-scope";
 import { getQueryFanoutFn } from "@/server/query-fanout";
 
-export interface QueryFanoutFilters {
+export interface QueryFanoutFilters extends PromptScopeFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
 	/** Tag filter (resolved to prompt IDs server-side, like Share of Voice). */
-	tags?: string[];
-	countries?: string[];
-	languages?: string[];
 	/** Scope to one prompt (prompt-details Web Queries tab) — lists come back uncapped. */
 	promptId?: string;
 }
@@ -30,9 +28,7 @@ export function useQueryFanout(brandId?: string, filters?: QueryFanoutFilters) {
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
-					tags: filters?.tags?.join(","),
-					countries: filters?.countries?.join(","),
-					languages: filters?.languages?.join(","),
+					...promptScopeParams(filters),
 					promptId: filters?.promptId,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
