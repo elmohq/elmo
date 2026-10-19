@@ -12,8 +12,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import type { FanoutAnalysis } from "@/lib/fanout-analysis";
+import type { FanoutEngineStatus } from "@/lib/fanout-engine-status";
 import { lookbackSchema } from "@/lib/lookback";
-import { getBrandQueryFanout } from "@/server/analytics-core";
+import { getBrandQueryFanout, getFanoutEngineStatuses } from "@/server/analytics-core";
 import { resolveBrandWindow } from "@/server/brand-window";
 
 export interface QueryFanoutResponse extends FanoutAnalysis {
@@ -21,6 +22,8 @@ export interface QueryFanoutResponse extends FanoutAnalysis {
 	model: string | null;
 	/** Whole-number percentage 0-100, unlike the ratio `FanoutAnalysis` carries. */
 	coverageRate: number;
+	/** Every web-search engine the brand has run, regardless of the page's window or filters. */
+	engines: FanoutEngineStatus[];
 }
 
 function _emptyResponse(brandName: string, model: string | null): QueryFanoutResponse {
@@ -40,6 +43,7 @@ function _emptyResponse(brandName: string, model: string | null): QueryFanoutRes
 		byPrompt: [],
 		topByPrompts: [],
 		topByRuns: [],
+		engines: [],
 	};
 }
 
@@ -60,14 +64,22 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 		await requireBrandSession(data.brandId);
 
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
-		const analysis = await getBrandQueryFanout(
-			data.brandId,
-			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags, search: data.search },
-			{ promptId: data.promptId },
-		);
+		const [analysis, engines] = await Promise.all([
+			getBrandQueryFanout(
+				data.brandId,
+				{ from: fromDateStr, to: toDateStr, timezone },
+				{ model: data.model, tags: data.tags, search: data.search },
+				{ promptId: data.promptId },
+			),
+			getFanoutEngineStatuses(data.brandId),
+		]);
 
 		// coverageRate is a ratio in the shared analysis so the API can publish it
 		// unrounded; the dashboard reads a percentage.
-		return { ...analysis, coverageRate: Math.round(analysis.coverageRate * 100), model: data.model ?? null };
+		return {
+			...analysis,
+			coverageRate: Math.round(analysis.coverageRate * 100),
+			model: data.model ?? null,
+			engines,
+		};
 	});

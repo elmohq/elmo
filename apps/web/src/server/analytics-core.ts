@@ -9,12 +9,14 @@ import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
+import { getFanoutSupport } from "@workspace/lib/providers/fanout-support";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
+import { type FanoutEngineStatus, fanoutEngineStatus, statusPerModel } from "@/lib/fanout-engine-status";
 import { buildLandscape, type Landscape } from "@/lib/landscape";
 import { assessedPassage } from "@/lib/passage";
 import { getSentimentQuotes, type SentimentQuoteRow } from "@/lib/postgres-read";
@@ -26,6 +28,7 @@ import {
 	getCompetitorTotals,
 	getDailyAssessments,
 	getFanoutBreakdown,
+	getFanoutEngineHistory,
 	getFanoutModelTotals,
 	getFanoutPromptTotals,
 	getMentionTotals,
@@ -404,6 +407,29 @@ export async function getBrandQueryFanout(
 			limits: fanoutLimits(options),
 		}),
 	};
+}
+
+const RETIRED_AFTER_MS = 14 * 86_400_000;
+
+/** Whether each web-search engine the brand still runs returns its queries, and since when. */
+export async function getFanoutEngineStatuses(brandId: string, now = new Date()): Promise<FanoutEngineStatus[]> {
+	const [brandRows, deploymentRows] = await Promise.all([
+		getFanoutEngineHistory(brandId),
+		getFanoutEngineHistory(null),
+	]);
+	const deployment = new Map(deploymentRows.map((row) => [`${row.model}:${row.provider}`, row]));
+	// A target the brand moved off of stays in history forever; only list what still runs.
+	const current = brandRows.filter((row) => now.getTime() - new Date(row.last_run_at).getTime() < RETIRED_AFTER_MS);
+	return statusPerModel(
+		current.map((brand) =>
+			fanoutEngineStatus({
+				brand,
+				deployment: deployment.get(`${brand.model}:${brand.provider}`),
+				support: getFanoutSupport(brand.provider, brand.model),
+				now,
+			}),
+		),
+	);
 }
 
 /** Display caps, so a caller that pages one of these lists is not paging a
