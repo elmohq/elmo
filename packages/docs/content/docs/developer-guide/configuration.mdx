@@ -79,11 +79,12 @@ Brand onboarding and the Opportunities report also need one direct LLM API key �
 
 ### Mention Judging
 
-Elmo uses [Jev](https://typesafe.ai) from TypeSafe to read each answer. Jev decides which tracked companies the answer really mentions, its sentiment toward each one, and the passage that shows it. **`TYPESAFE_API_KEY` is required**: the worker won't start without it. Get a key at [console.typesafe.ai](https://console.typesafe.ai).
+Elmo uses [Jev](https://typesafe.ai) from TypeSafe to read each answer. Jev decides which tracked companies the answer really mentions, its sentiment toward each one, and the passage that shows it. **The worker won't start without a key for Jev**: either a TypeSafe key from [console.typesafe.ai](https://console.typesafe.ai), or the `OPENROUTER_API_KEY` you may already use for scraping, which calls Jev through [OpenRouter](https://openrouter.ai/typesafe/jev-1.13) and bills your OpenRouter account.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `TYPESAFE_API_KEY` | TypeSafe API key for Jev | — |
+| `TYPESAFE_API_KEY` | TypeSafe API key for Jev. When set, Elmo calls TypeSafe directly, even if `OPENROUTER_API_KEY` is set too. | — |
+| `OPENROUTER_API_KEY` | Without `TYPESAFE_API_KEY`, Elmo calls Jev through OpenRouter with this key. | — |
 | `REPROCESS_DAYS` | How far back reprocessing (re-extracting and re-judging history) goes, in days, or `all` | `90` |
 
 Elmo makes one Jev call for each answer that names a tracked company. Answers that name none are never sent. Its cost grows with the answer's length and with how many tracked companies it names.
@@ -96,9 +97,11 @@ Very roughly, that's **$0.15–0.35 per 1,000 answers**. A month of answers is a
 | 100 prompts × 5 platforms | ~75,000 | ~$11–26 |
 | 500 prompts × 5 platforms | ~375,000 | ~$55–130 |
 
-These are estimates, not quotes; see TypeSafe's pricing for current rates.
+These are estimates, not quotes; see TypeSafe's pricing, or OpenRouter's for Jev, for current rates.
 
-A large re-judge goes as fast as your TypeSafe rate limit allows, with nothing to configure. Each worker finds the limit itself: it speeds up while calls succeed, slows down when Jev rate-limits it, and retries those calls after the wait Jev asks for. For example, with a 100,000 input tokens per second limit, one worker judges about a million answers in roughly 16 hours.
+The worker picks TypeSafe or OpenRouter when it starts, and never falls back from one to the other. Judgements from each are stamped apart, so switching re-judges history like a new judge version does. The two aren't interchangeable: OpenRouter judges requests over about 32 KB in Jev's long-context mode, which TypeSafe describes as slower and less accurate, and it serves Jev 1.13 from a dated snapshot it may update.
+
+A large re-judge goes as fast as your TypeSafe or OpenRouter rate limit allows, with nothing to configure. Each worker finds the limit itself: it speeds up while calls succeed, slows down when Jev rate-limits it, and retries those calls after the wait Jev asks for. For example, with a 100,000 input tokens per second limit, one worker judges about a million answers in roughly 16 hours.
 
 When the judge's version, or a brand's or competitor's names, change, the worker re-judges that brand's history in the background, starting with the last 30 days. A re-judge only goes back `REPROCESS_DAYS`, and only through enabled prompts of enabled brands. Older answers keep how they were judged when they were recorded. A prompt or brand that's enabled again has its answers within the window caught up at that point. Re-judging only asks about what changed. Adding a competitor, or editing one's names, aliases or domains, asks Jev about that company alone, and only in answers that name it. That costs a fraction of judging those answers from scratch. Removing a competitor asks nothing. Edits made within a minute of each other are handled in one pass. A new judge version re-judges everything in the window, so it costs about `REPROCESS_DAYS` worth of answers: at the default, roughly three months of the figures above.
 
