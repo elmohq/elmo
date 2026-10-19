@@ -8,6 +8,7 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
+import { FanoutEngineStatusCard, fanoutByModel } from "@/components/fanout-engine-status";
 import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-sections";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { HistoryButton } from "@/components/history-button";
@@ -87,6 +88,7 @@ function QueryFanoutPage() {
 			<TooltipProvider delay={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
+					<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
 					<EmptyState message="No web queries in this period — the engines you track didn't expose any searches for these prompts and filters." />
 				</div>
 			</TooltipProvider>
@@ -96,6 +98,9 @@ function QueryFanoutPage() {
 			<TooltipProvider delay={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
+					{fanoutByModel(trackedTargets).some((e) => e.support.status !== "supported") && (
+						<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
+					)}
 					<Tabs value={tab} onValueChange={(v) => setTab(v as FanoutTab)} className="gap-4">
 						<TabsList className="max-w-full">
 							<TabsTrigger value="fanout" className="max-[380px]:text-xs">
