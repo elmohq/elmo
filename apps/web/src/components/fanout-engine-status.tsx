@@ -1,80 +1,90 @@
+import type { FanoutSupport } from "@workspace/config/fanout-support";
 import { getModelMeta } from "@workspace/config/models";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { InfoTip } from "@/components/fanout-sections";
-import type { FanoutEngineState, FanoutEngineStatus } from "@/lib/fanout-engine-status";
+import type { TrackedTarget } from "@/lib/model-filter";
 
-const formatDay = (iso: string, year = true) =>
-	new Date(iso).toLocaleDateString("en-US", {
+type Status = FanoutSupport["status"];
+
+const RANK: Record<Status, number> = { supported: 0, discontinued: 1, unknown: 2, never: 3 };
+
+const PILL: Record<Status, { pill: string; status: string }> = {
+	supported: {
+		pill: "bg-emerald-500/15 text-emerald-900 dark:text-emerald-200",
+		status: "text-emerald-700 dark:text-emerald-400",
+	},
+	discontinued: {
+		pill: "bg-amber-500/15 text-amber-900 dark:text-amber-200",
+		status: "text-amber-700 dark:text-amber-400",
+	},
+	unknown: { pill: "bg-muted", status: "text-muted-foreground" },
+	never: { pill: "bg-muted", status: "text-muted-foreground" },
+};
+
+const formatDay = (day: string, year = true) =>
+	new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
 		month: "short",
 		day: "numeric",
 		...(year ? { year: "numeric" } : {}),
 		timeZone: "UTC",
 	});
 
-const PILL: Record<FanoutEngineState, { pill: string; status: string }> = {
-	available: {
-		pill: "bg-emerald-500/15 text-emerald-900 dark:text-emerald-200",
-		status: "text-emerald-700 dark:text-emerald-400",
-	},
-	stopped: { pill: "bg-amber-500/15 text-amber-900 dark:text-amber-200", status: "text-amber-700 dark:text-amber-400" },
-	"none-yet": { pill: "bg-muted", status: "text-muted-foreground" },
-	unsupported: { pill: "bg-muted", status: "text-muted-foreground" },
-};
-
-function status(engine: FanoutEngineStatus): string {
-	switch (engine.state) {
-		case "available":
+function label(support: FanoutSupport): string {
+	switch (support.status) {
+		case "supported":
 			return "Available";
-		case "stopped":
-			return `Stopped ${formatDay(engine.lastFanoutAt!, false)}`;
-		case "none-yet":
-			return "None yet";
-		case "unsupported":
+		case "discontinued":
+			return `Stopped ${formatDay(support.since, false)}`;
+		case "never":
 			return "Not exposed";
+		case "unknown":
+			return "Unknown";
 	}
 }
 
-function detail(engine: FanoutEngineStatus): string {
-	const name = getModelMeta(engine.model).label;
-	switch (engine.state) {
-		case "available": {
-			const share = engine.searchRuns > 0 ? Math.round((engine.fanoutRuns / engine.searchRuns) * 100) : 0;
-			return `${name} revealed its queries on ${share}% of search runs since ${formatDay(engine.firstFanoutAt!)}.`;
-		}
-		case "stopped":
-			return engine.basis === "deployment"
-				? `${name} hasn't revealed its searches for any brand since ${formatDay(engine.lastFanoutAt!)}, so none are expected here.`
-				: `${name} last revealed a query on ${formatDay(engine.lastFanoutAt!)}. None of the ${engine.searchRunsSinceLastFanout.toLocaleString()} search runs since included them; earlier periods still show theirs.`;
-		case "none-yet":
-			return `${name} hasn't revealed any queries yet across ${engine.searchRuns.toLocaleString()} search runs.`;
-		case "unsupported":
-			return `${name} doesn't reveal the searches behind its answers.`;
+function detail(name: string, support: FanoutSupport): string {
+	switch (support.status) {
+		case "supported":
+			return `${name} reveals the web searches behind its answers.`;
+		case "discontinued":
+			return `${name} stopped revealing its web searches on ${formatDay(support.since)}. Earlier periods still show theirs.`;
+		case "never":
+			return `${name} doesn't reveal the web searches behind its answers.`;
+		case "unknown":
+			return `We haven't confirmed whether ${name} reveals its web searches.`;
 	}
 }
 
-export function FanoutEngineStatusCard({ engines, model }: { engines: FanoutEngineStatus[]; model?: string }) {
-	const shown = model ? engines.filter((e) => e.model === model) : engines;
-	if (shown.length === 0) return null;
+export function fanoutByModel(targets: TrackedTarget[]): { model: string; support: FanoutSupport }[] {
+	const best = new Map<string, FanoutSupport>();
+	for (const { model, fanout } of targets) {
+		if (!fanout) continue;
+		const current = best.get(model);
+		if (!current || RANK[fanout.status] < RANK[current.status]) best.set(model, fanout);
+	}
+	return [...best].map(([model, support]) => ({ model, support }));
+}
+
+export function FanoutEngineStatusCard({ targets, model }: { targets: TrackedTarget[]; model?: string }) {
+	const engines = fanoutByModel(targets).filter((e) => !model || e.model === model);
+	if (engines.length === 0) return null;
 	return (
 		<Card className="gap-3 py-4">
 			<CardHeader className="max-sm:px-4">
 				<CardTitle className="flex items-center gap-1 text-base">
 					Query Availability
-					<InfoTip>
-						Not every engine reveals the web searches it runs. Based on all of this brand's runs, not just the selected
-						period. Hover an engine for details.
-					</InfoTip>
+					<InfoTip>Not every engine reveals the web searches it runs. Hover an engine for details.</InfoTip>
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="flex flex-wrap gap-2 text-sm max-sm:px-4">
-				{shown.map((engine) => {
-					const meta = getModelMeta(engine.model);
-					const style = PILL[engine.state];
+				{engines.map(({ model, support }) => {
+					const meta = getModelMeta(model);
+					const style = PILL[support.status];
 					return (
-						<Tooltip key={engine.model}>
+						<Tooltip key={model}>
 							<TooltipTrigger
 								render={
 									<span
@@ -84,9 +94,9 @@ export function FanoutEngineStatusCard({ engines, model }: { engines: FanoutEngi
 							>
 								<ModelIcon iconId={meta.iconId} className="size-3.5" />
 								<span className="font-medium">{meta.label}</span>
-								<span className={style.status}>{status(engine)}</span>
+								<span className={style.status}>{label(support)}</span>
 							</TooltipTrigger>
-							<TooltipContent className="max-w-xs text-sm font-normal">{detail(engine)}</TooltipContent>
+							<TooltipContent className="max-w-xs text-sm font-normal">{detail(meta.label, support)}</TooltipContent>
 						</Tooltip>
 					);
 				})}
