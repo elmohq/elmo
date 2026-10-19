@@ -55,11 +55,6 @@ function detail(engine: FanoutEngineStatus): string {
 	}
 }
 
-/**
- * Which engines can contribute to this page at all. Answers "why is this empty?"
- * before anyone has to ask, and flags an engine that quietly stopped exposing
- * queries, which otherwise reads as the brand's prompts just not fanning out.
- */
 export function FanoutEngineStatusCard({ engines, model }: { engines: FanoutEngineStatus[]; model?: string }) {
 	const shown = model ? engines.filter((e) => e.model === model) : engines;
 	if (shown.length === 0) return null;

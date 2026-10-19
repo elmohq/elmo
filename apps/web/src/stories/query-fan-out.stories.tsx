@@ -111,7 +111,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** A brand created after ChatGPT on BrightData went quiet — what Findymail sees. */
 export const NewBrandNothingExposed: Story = {
 	decorators: [
 		(Story) => {
@@ -152,7 +151,6 @@ export const NewBrandNothingExposed: Story = {
 	],
 };
 
-/** A long-running brand: ChatGPT returned queries, then stopped on Sep 28. */
 export const ChatGptStopped: Story = {
 	decorators: [
 		(Story) => {
@@ -206,7 +204,6 @@ export const ChatGptStopped: Story = {
 	],
 };
 
-/** After moving ChatGPT to Cloro: queries flow again; Gemini still can't expose them. */
 export const SwitchedToCloro: Story = {
 	decorators: [
 		(Story) => {

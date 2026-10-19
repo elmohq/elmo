@@ -465,13 +465,6 @@ export async function getFanoutPromptTotals(scope: AnalyticsScope): Promise<Fano
 	`);
 }
 
-/**
- * Every web-search engine's fan-out history, ignoring the page's window and
- * filters: whether an engine exposes queries at all, and when it last did, is a
- * property of the engine rather than of the period being viewed. Pass `null`
- * for the whole deployment — only aggregate dates and counts leave this query,
- * so a new brand can learn an engine went quiet before it ever ran there.
- */
 export async function getFanoutEngineHistory(brandId: string | null): Promise<FanoutEngineHistoryRow[]> {
 	const brandFilter = (alias?: string) =>
 		brandId === null ? sql`TRUE` : alias ? sql`${sql.raw(alias)}.brand_id = ${brandId}` : sql`brand_id = ${brandId}`;

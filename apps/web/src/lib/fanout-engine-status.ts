@@ -1,6 +1,5 @@
 import type { FanoutSupport } from "@workspace/lib/providers/fanout-support";
 
-/** One model/provider pair's search history for a brand, across all time. */
 export interface FanoutEngineHistoryRow {
 	model: string;
 	provider: string;
@@ -8,7 +7,6 @@ export interface FanoutEngineHistoryRow {
 	fanout_runs: number;
 	first_fanout_at: string | null;
 	last_fanout_at: string | null;
-	/** Search runs bucketed after `last_fanout_at` — how long the silence has lasted. */
 	search_runs_since_last_fanout: number;
 	last_run_at: string;
 }
@@ -19,10 +17,6 @@ export interface FanoutEngineStatus {
 	model: string;
 	state: FanoutEngineState;
 	support: FanoutSupport;
-	/**
-	 * Whose history the state was read from. "deployment" means this brand never
-	 * got queries from the engine, but other brands did until `lastFanoutAt`.
-	 */
 	basis: "brand" | "deployment";
 	searchRuns: number;
 	fanoutRuns: number;
@@ -31,11 +25,6 @@ export interface FanoutEngineStatus {
 	searchRunsSinceLastFanout: number;
 }
 
-/**
- * A single quiet day is normal — engines choose not to search, or search with
- * the prompt verbatim. Calling an engine "stopped" needs both a run of silence
- * and enough runs inside it that the silence isn't chance.
- */
 const STOPPED_MIN_DAYS = 7;
 const STOPPED_MIN_RUNS = 50;
 
@@ -72,10 +61,8 @@ export function fanoutEngineStatus(input: {
 	return from(brand, support === "unsupported" ? "unsupported" : "none-yet", "brand");
 }
 
-/** Most useful first, so a model tracked through two providers reports the one that works. */
 const STATE_RANK: Record<FanoutEngineState, number> = { available: 0, stopped: 1, "none-yet": 2, unsupported: 3 };
 
-/** One status per model — the page names engines, not the providers behind them. */
 export function statusPerModel(statuses: FanoutEngineStatus[]): FanoutEngineStatus[] {
 	const best = new Map<string, FanoutEngineStatus>();
 	for (const status of statuses) {

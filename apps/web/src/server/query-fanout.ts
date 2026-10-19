@@ -22,7 +22,6 @@ export interface QueryFanoutResponse extends FanoutAnalysis {
 	model: string | null;
 	/** Whole-number percentage 0-100, unlike the ratio `FanoutAnalysis` carries. */
 	coverageRate: number;
-	/** Every web-search engine the brand has run, regardless of the page's window or filters. */
 	engines: FanoutEngineStatus[];
 }
 

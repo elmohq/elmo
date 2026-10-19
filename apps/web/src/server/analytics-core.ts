@@ -411,14 +411,12 @@ export async function getBrandQueryFanout(
 
 const RETIRED_AFTER_MS = 14 * 86_400_000;
 
-/** Whether each web-search engine the brand still runs returns its queries, and since when. */
 export async function getFanoutEngineStatuses(brandId: string, now = new Date()): Promise<FanoutEngineStatus[]> {
 	const [brandRows, deploymentRows] = await Promise.all([
 		getFanoutEngineHistory(brandId),
 		getFanoutEngineHistory(null),
 	]);
 	const deployment = new Map(deploymentRows.map((row) => [`${row.model}:${row.provider}`, row]));
-	// A target the brand moved off of stays in history forever; only list what still runs.
 	const current = brandRows.filter((row) => now.getTime() - new Date(row.last_run_at).getTime() < RETIRED_AFTER_MS);
 	return statusPerModel(
 		current.map((brand) =>
