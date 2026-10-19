@@ -21,6 +21,7 @@ import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picke
 import { useBrand } from "@/hooks/use-brands";
 import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import { type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
+import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
 export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 
@@ -99,7 +100,7 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 	const defaultModel = availableModels.includes(ALL_MODELS_VALUE)
 		? ALL_MODELS_VALUE
 		: (availableModels[0] ?? ALL_MODELS_VALUE);
-	const urlModel = useSearch({ strict: false, select: (s) => s.model });
+	const urlModel = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.model });
 	const setFilters = useFilterNavigate();
 	// If the URL has a model that isn't valid for this brand (e.g. stale deep
 	// link after a deployment change), fall back to the default rather than
@@ -157,7 +158,7 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 function LookbackDropdown() {
 	const { data: brand } = useBrand();
 	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
-	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
+	const urlLookback = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.lookback });
 	const setFilters = useFilterNavigate();
 	const selected = coerceLookback(urlLookback, defaultLookback);
 
@@ -188,7 +189,7 @@ function LookbackDropdown() {
 // ------------------------------------------------------------------
 
 function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
-	const urlTags = useSearch({ strict: false, select: (s) => s.tags });
+	const urlTags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
 	const setFilters = useFilterNavigate();
 	const selected = useMemo(() => splitTags(urlTags), [urlTags]);
 
@@ -269,8 +270,8 @@ function MarketsDropdown() {
 	const prompts = brand?.prompts ?? [];
 	const countries = useMemo(() => countriesInUse(prompts), [prompts]);
 	const languages = useMemo(() => languagesInUse(prompts), [prompts]);
-	const urlCountries = useSearch({ strict: false, select: (s) => s.countries });
-	const urlLanguages = useSearch({ strict: false, select: (s) => s.languages });
+	const urlCountries = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.countries });
+	const urlLanguages = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.languages });
 	const setFilters = useFilterNavigate();
 	const selected = {
 		countries: splitTags(urlCountries),
@@ -376,7 +377,7 @@ function SearchInput({
 	placeholder?: string;
 	searching?: boolean;
 }) {
-	const urlValue = useSearch({ strict: false, select: (s) => s.q });
+	const urlValue = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
 	const setFilters = useFilterNavigate();
 	const value = urlValue ?? "";
 
@@ -449,10 +450,10 @@ function SearchInput({
 // ------------------------------------------------------------------
 
 function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
-	const tags = useSearch({ strict: false, select: (s) => s.tags });
-	const countries = useSearch({ strict: false, select: (s) => s.countries });
-	const languages = useSearch({ strict: false, select: (s) => s.languages });
-	const q = useSearch({ strict: false, select: (s) => s.q });
+	const tags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
+	const countries = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.countries });
+	const languages = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.languages });
+	const q = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
 	const active = Boolean(tags) || Boolean(countries) || Boolean(languages) || Boolean(q);
 	if (!active || count === undefined) return null;
 	const showTotal = total !== undefined && total !== count;

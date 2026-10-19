@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { analyzeMentions, normalizeDomain } from "./mentions";
+import type { Brand, Competitor } from "./db/schema";
+import { type MentionConfig, mentionConfigFrom, mentionsStamp, normalizeDomain, wholeWordPattern } from "./mentions";
+
+describe("wholeWordPattern", () => {
+	const names = (term: string, text: string) => wholeWordPattern(term).test(text);
+
+	it("matches a term only as a whole word", () => {
+		expect(names("ace", "place")).toBe(false);
+		expect(names("Elmo", "Elmos")).toBe(false);
+		expect(names("Nike", "Nike's best")).toBe(true);
+	});
+
+	it("matches in text written without spaces between words, or with particles attached", () => {
+		expect(names("Elmo", "Elmo是开源的")).toBe(true);
+		expect(names("Elmo", "Elmoは無料です")).toBe(true);
+		expect(names("Elmo", "Elmo는 무료입니다")).toBe(true);
+	});
+});
 
 describe("normalizeDomain", () => {
 	it("reduces a URL to a bare comparable host", () => {
@@ -15,55 +32,69 @@ describe("normalizeDomain", () => {
 	});
 });
 
-describe("analyzeMentions", () => {
-	const brand = { name: "Acme", aliases: ["Acme Corp"], domains: ["https://acme.com", "acme.io"] };
+describe("mentionsStamp", () => {
+	const config: MentionConfig = {
+		brand: { name: "Acme", aliases: ["Acme Corp"], domains: ["https://acme.com", "acme.io", "acme.dev"] },
+		competitors: [
+			{ name: "Globex", aliases: ["Globex Inc"], domains: ["globex.com"] },
+			{ name: "Initech", aliases: [], domains: ["initech.com"] },
+		],
+	};
 
-	it("finds the brand by name, case-insensitively", () => {
-		expect(analyzeMentions("I would pick ACME for this.", brand, []).brandMentioned).toBe(true);
+	const J = "0.3.0";
+
+	it("changes with the judge", () => {
+		expect(mentionsStamp(config, "0.4.0")).not.toBe(mentionsStamp(config, J));
 	});
 
-	it("finds the brand by alias", () => {
-		expect(analyzeMentions("Acme Corp is the incumbent.", { ...brand, name: "Zzz" }, []).brandMentioned).toBe(true);
+	it("changes when the brand gains an alias", () => {
+		const withAlias = { ...config, brand: { ...config.brand, aliases: [...config.brand.aliases, "Acme Software"] } };
+		expect(mentionsStamp(withAlias, J)).not.toBe(mentionsStamp(config, J));
 	});
 
-	it("finds the brand by any of its domains", () => {
-		expect(analyzeMentions("See acme.io for details.", brand, []).brandMentioned).toBe(true);
+	it("changes when a competitor's domain changes", () => {
+		const moved = {
+			...config,
+			competitors: [{ ...config.competitors[0], domains: ["globex.io"] }, config.competitors[1]],
+		};
+		expect(mentionsStamp(moved, J)).not.toBe(mentionsStamp(config, J));
 	});
 
-	it("reports no mention when nothing names the brand", () => {
-		expect(analyzeMentions("Try something else entirely.", brand, []).brandMentioned).toBe(false);
+	it("changes when a term is only recased, since the model reads names as written", () => {
+		const recased = {
+			...config,
+			brand: { ...config.brand, aliases: config.brand.aliases.map((a) => a.toLowerCase()) },
+		};
+		expect(mentionsStamp(recased, J)).not.toBe(mentionsStamp(config, J));
 	});
 
-	it("names only the competitors the answer mentions", () => {
-		const competitors = [
-			{ name: "Globex", domains: ["globex.com"] },
-			{ name: "Initech", domains: ["initech.com"] },
-			{ name: "Hooli", domains: ["hooli.com"] },
-		];
-		const result = analyzeMentions("Globex and initech.com both compete here.", brand, competitors);
-		expect(result.competitorsMentioned).toEqual(["Globex", "Initech"]);
+	it("survives reordering competitors, so a bulk save does not restamp history", () => {
+		const reordered = { ...config, competitors: [...config.competitors].reverse() };
+		expect(mentionsStamp(reordered, J)).toBe(mentionsStamp(config, J));
 	});
 
-	it("still matches on name when a subject's domain is unparseable", () => {
-		const result = analyzeMentions("Globex leads.", brand, [{ name: "Globex", domains: ["://broken"] }]);
-		expect(result.competitorsMentioned).toEqual(["Globex"]);
-	});
+	it.each(["GLOBEX", "Globex "])(
+		"changes when a competitor is renamed to %j, since runs and rollups store the name verbatim",
+		(name) => {
+			const renamed = { ...config, competitors: [{ ...config.competitors[0], name }, config.competitors[1]] };
+			expect(mentionsStamp(renamed, J)).not.toBe(mentionsStamp(config, J));
+		},
+	);
+});
 
-	it("does not treat a blank or whitespace alias as a mention in every answer", () => {
-		const blank = { name: "Zzz", aliases: ["", " ", "\t"] };
-		expect(analyzeMentions("Any answer at all.", blank, []).brandMentioned).toBe(false);
-		expect(analyzeMentions("Any answer at all.", brand, [blank]).competitorsMentioned).toEqual([]);
-	});
+describe("mentionConfigFrom", () => {
+	it("reads a brand and its competitors, tolerating absent arrays", () => {
+		const brand = {
+			name: "Acme",
+			website: "https://acme.com",
+			aliases: null,
+			additionalDomains: null,
+		} as unknown as Brand;
+		const competitors = [{ name: "Globex", aliases: null, domains: null }] as unknown as Competitor[];
 
-	it("does not treat a blank domain or null domain entry as a mention in every answer", () => {
-		const blank = { name: "Zzz", domains: ["", " ", null, undefined] };
-		expect(analyzeMentions("Any answer at all.", blank, []).brandMentioned).toBe(false);
-		expect(analyzeMentions("Any answer at all.", brand, [blank]).competitorsMentioned).toEqual([]);
-	});
-
-	it("still matches real terms alongside blank ones, ignoring surrounding whitespace", () => {
-		const padded = { name: "Zzz", aliases: ["", " Acme Corp "], domains: [null, " acme.io "] };
-		expect(analyzeMentions("Acme Corp is the incumbent.", padded, []).brandMentioned).toBe(true);
-		expect(analyzeMentions("See acme.io for details.", { ...padded, aliases: [] }, []).brandMentioned).toBe(true);
+		expect(mentionConfigFrom(brand, competitors)).toEqual({
+			brand: { name: "Acme", aliases: [], domains: ["https://acme.com"] },
+			competitors: [{ name: "Globex", aliases: [], domains: [] }],
+		});
 	});
 });

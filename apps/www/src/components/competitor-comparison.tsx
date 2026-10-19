@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { AlertTriangle, ArrowLeft, Check, ExternalLink, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ExternalLink } from "lucide-react";
 import {
 	CATEGORY_LABELS,
 	type Competitor,
@@ -16,6 +16,7 @@ import {
 } from "@/lib/competitors";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { Faq } from "./faq";
+import { FeatureMark } from "./feature-mark";
 
 function FeatureRow({ label, elmo, competitor }: { label: string; elmo: boolean; competitor: boolean }) {
 	const elmoWins = elmo && !competitor;
@@ -24,14 +25,10 @@ function FeatureRow({ label, elmo, competitor }: { label: string; elmo: boolean;
 		<tr className="border-b border-dashed border-zinc-200 last:border-solid">
 			<td className="py-3 pr-4 text-sm text-zinc-600">{label}</td>
 			<td className={`px-4 py-3 text-center ${elmoWins ? "bg-blue-50" : ""}`}>
-				{elmo ? <Check className="mx-auto h-4 w-4 text-blue-600" /> : <X className="mx-auto h-4 w-4 text-zinc-300" />}
+				<FeatureMark has={elmo} />
 			</td>
 			<td className={`px-4 py-3 text-center ${competitorWins ? "bg-blue-50" : ""}`}>
-				{competitor ? (
-					<Check className="mx-auto h-4 w-4 text-blue-600" />
-				) : (
-					<X className="mx-auto h-4 w-4 text-zinc-300" />
-				)}
+				<FeatureMark has={competitor} />
 			</td>
 		</tr>
 	);
@@ -80,9 +77,6 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			{/* Hero */}
 			<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
-					<Badge variant="outline" className="mb-4">
-						{CATEGORY_LABELS[competitor.category]}
-					</Badge>
 					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">Elmo vs {competitor.name}</h1>
 					<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">{getComparisonVerdict(competitor)}</p>
 					{competitor.status === "shutting-down" && (
@@ -290,15 +284,15 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						<div className="rounded-md border border-zinc-200 bg-white p-5">
 							<h3 className="font-semibold text-zinc-950">Self-host for free, forever</h3>
 							<p className="mt-2 text-sm text-zinc-600">
-								Run Elmo on your own infrastructure. The core platform is free and always will be, even when we release
-								a cloud version of Elmo.
+								Run Elmo on your own infrastructure. The core platform is free and always will be, and Elmo Cloud is
+								there if you would rather not run it yourself.
 							</p>
 						</div>
 						<div className="rounded-md border border-zinc-200 bg-white p-5">
-							<h3 className="font-semibold text-zinc-950">No vendor lock-in</h3>
+							<h3 className="font-semibold text-zinc-950">Your data, in your stack</h3>
 							<p className="mt-2 text-sm text-zinc-600">
-								Export everything, fork the code, or migrate at any time. You own all of your data and have the right to
-								use it wherever you want.
+								Pull every metric, sentiment included, into your own code with the REST API and TypeScript and Python
+								SDKs, or ask Claude Code and Cursor about it over MCP. Export, fork, or migrate at any time.
 							</p>
 						</div>
 						<div className="rounded-md border border-zinc-200 bg-white p-5">
@@ -313,7 +307,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			</section>
 
 			{/* FAQ */}
-			<Faq items={getComparisonFaqs(competitor)} eyebrow="/ FAQ" />
+			<Faq items={getComparisonFaqs(competitor)} />
 
 			{/* CTA */}
 			<section className="border-b border-zinc-200 bg-white py-16 lg:py-24">

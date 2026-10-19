@@ -5,6 +5,7 @@ import {
 	getBrandPromptPerformance,
 	getBrandShareOfVoice,
 	getBrandVisibility,
+	getCompetitiveLandscape,
 } from "@/server/analytics-core";
 import {
 	createBrand,
@@ -13,9 +14,16 @@ import {
 	createPrompt,
 	createRun,
 	deleteBrand,
+	rebuildRollups,
 } from "@/test/integration/stats-fixtures";
 
 const window = { from: "2026-03-01", to: "2026-03-03", timezone: "UTC" };
+
+/** These runs were matched by name, before the judge, so they carry no sentiment or position. */
+const UNJUDGED = {
+	sentiment: { positive: 0, neutral: 0, negative: 0, mixed: 0, score: null },
+	position: { average: null },
+};
 
 let brandId: string;
 let pricing: string;
@@ -58,6 +66,7 @@ beforeAll(async () => {
 
 	const hidden = await createRun(brandId, disabled, { at: "2026-03-02T10:00:00Z", brandMentioned: true });
 	await createCitation(hidden, "https://hidden.example/");
+	await rebuildRollups(brandId);
 });
 
 afterAll(async () => {
@@ -124,9 +133,9 @@ describe("share of voice", () => {
 		expect(sov.totalRuns).toBe(4);
 		expect(sov.brandShare).toBe(0.5);
 		expect(sov.entries).toEqual([
-			{ name: "Acme", isBrand: true, mentions: 2, prompts: 2, share: 0.5 },
-			{ name: "Globex", isBrand: false, mentions: 1, prompts: 1, share: 0.25 },
-			{ name: "Initech", isBrand: false, mentions: 1, prompts: 1, share: 0.25 },
+			{ name: "Acme", isBrand: true, mentions: 2, prompts: 2, share: 0.5, ...UNJUDGED },
+			{ name: "Globex", isBrand: false, mentions: 1, prompts: 1, share: 0.25, ...UNJUDGED },
+			{ name: "Initech", isBrand: false, mentions: 1, prompts: 1, share: 0.25, ...UNJUDGED },
 		]);
 	});
 
@@ -191,7 +200,25 @@ describe("brand analytics", () => {
 		expect(analytics.visibility.current).toBe(1);
 		expect(analytics.shareOfVoice.brand).toBe(0.5);
 		expect(analytics.models).toEqual([
-			{ model: "chatgpt", label: "ChatGPT", runs: 4, brandMentions: 3, visibility: 0.75, citations: 5 },
+			{ model: "chatgpt", label: "ChatGPT", runs: 4, brandMentions: 3, visibility: 0.75, citations: 5, ...UNJUDGED },
 		]);
+	});
+});
+
+describe("competitive landscape", () => {
+	it("gives the brand the same figures as the visibility and share-of-voice pages, day by day", async () => {
+		const [landscape, visibility, sov] = await Promise.all([
+			getCompetitiveLandscape(brandId, window),
+			getBrandVisibility(brandId, window),
+			getBrandShareOfVoice(brandId, window),
+		]);
+		const acme = landscape.companies[0];
+		expect(acme.series.visibility).toEqual(visibility.series.map((point) => point.visibility));
+		expect(acme.series.share).toEqual(sov.series.map((point) => point.share));
+		expect(acme.totals.visibility).toBe(visibility.currentVisibility);
+		expect(acme.totals.share).toBe(sov.brandShare);
+		expect(acme.byModel.chatgpt?.visibility).toBe(visibility.currentVisibility);
+		// Only tracked competitors are listed; a company the answers name but nobody tracks isn't.
+		expect(landscape.companies.map((c) => c.name)).toEqual(["Acme", "Globex"]);
 	});
 });

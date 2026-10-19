@@ -1,6 +1,8 @@
 export interface FaqItem {
 	question: string;
 	answer: string;
+	/** Phrases in `answer` to render as links. The FAQPage JSON-LD keeps the plain text. */
+	links?: { text: string; href: string }[];
 }
 
 // Homepage FAQ. Rendered visibly on "/" and emitted as FAQPage JSON-LD from the
@@ -10,7 +12,7 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "What is Elmo?",
 		answer:
-			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO) — an alternative to tools like Profound, Peec, and Otterly that you can self-host for free or run on Elmo Cloud. It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Claude, and Copilot — mention your brand, which competitors appear alongside you, and which sources each model cites.",
+			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO) — an alternative to tools like Profound, Peec, and Otterly that you can self-host for free or run on Elmo Cloud. It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Claude, and Copilot — mention and describe your brand, which competitors appear alongside you, and which sources each model cites.",
 	},
 	{
 		question: "What is Answer Engine Optimization (AEO)?",
@@ -30,7 +32,7 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "How is AI visibility measured?",
 		answer:
-			"Elmo runs a fixed set of prompts across AI engines on a schedule and scores each prompt by how often your brand appears in the answers, from 0 to 100%. It also calculates share of voice — your share of brand mentions versus your competitors — and breaks down which domains and URLs the models cite. Because AI answers vary from run to run, Elmo samples repeatedly and reports trends, not single results.",
+			"Elmo runs a fixed set of prompts across AI engines on a schedule and scores each prompt by how often your brand appears in the answers, from 0 to 100%. It also calculates share of voice (your share of brand mentions versus your competitors), sentiment (whether the answers that mention you praise or criticize you, scored 0 to 100), and position (where you rank among the brands an answer names), and breaks down which domains and URLs the models cite. Because AI answers vary from run to run, Elmo samples repeatedly and reports trends, not single results.",
 	},
 	{
 		question: "How do I track my brand in ChatGPT?",
@@ -40,7 +42,7 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "How much does Elmo cost compared to Profound?",
 		answer:
-			"Elmo Cloud starts at $29/mo for the Starter plan, which is 1/3 the price of Profound's equivalent plan. The $99/mo Basic plan gives you 4× the data of Profound's equivalent plan. Pro ($299/mo) and Business ($649/mo) add more brands, more prompts, and premium grounded models, and self-hosting Elmo is free.",
+			"Elmo is much cheaper and simpler to buy. Profound's pricing page lists a free trial and an Enterprise plan quoted by sales, while Elmo Cloud is self-serve with public prices, starting at $29/mo for the Starter plan. From the $99/mo Basic plan, every prompt is checked 4× a day, where Profound checks daily. Pro ($299/mo) and Business ($649/mo) add more brands, more prompts, and premium grounded models, and self-hosting Elmo is free.",
 	},
 	{
 		question: "Is Elmo free?",
@@ -89,12 +91,53 @@ export const PRICING_FAQS: FaqItem[] = [
 	{
 		question: "Does Elmo have an API or MCP server?",
 		answer:
-			"Yes. Elmo has a REST API for brands, prompts, competitors, analytics, citations, runs, and reports, and an MCP server so AI assistants like Claude Code, Codex, Cursor, and VS Code can query your visibility data and manage prompts directly. Both are included on every Elmo Cloud plan and in every self-hosted instance. API keys can be read-only or read-write and limited to specific brands.",
+			"Yes. Elmo has a REST API for brands, prompts, competitors, analytics, sentiment, citations, runs, opportunities, and reports, with TypeScript and Python SDKs, and an MCP server so AI assistants like Claude Code, Codex, Cursor, and VS Code can query your visibility data and manage prompts directly. Both are included on every Elmo Cloud plan and in every self-hosted instance. API keys can be read-only or read-write and limited to specific brands.",
 	},
 	{
 		question: "Is my data private if I self-host Elmo?",
 		answer:
 			"Yes. A self-hosted Elmo instance stores your brands, prompts, and AI responses in your own PostgreSQL database, and prompts are only sent to the scraping and AI providers you configure. Elmo's optional telemetry sends anonymous usage counts and never includes brand names, prompt text, responses, or API keys, and you can turn it off completely with DISABLE_TELEMETRY=1.",
+	},
+];
+
+// About page FAQ. Company facts answer engines get wrong when a brand leaves
+// them unstated: who runs it, where it is, and how it is paid for.
+export const ABOUT_FAQS: FaqItem[] = [
+	{
+		question: "Who founded Elmo?",
+		answer:
+			"Elmo was founded in July 2025 by Jared Rhizor, previously a founding engineer at the open-source data integration platform Airbyte and a tech lead at LiveRamp. He leads Elmo's product and engineering.",
+	},
+	{
+		question: "Who owns Elmo?",
+		answer:
+			"Elmo is built and operated by Blue Whale Software, LLC, a software company headquartered in San Francisco. It provides Elmo Cloud, white-label deployments, and the Off-Site AEO service.",
+	},
+	{
+		question: "Where is Elmo based?",
+		answer:
+			"Elmo is headquartered in San Francisco, California. The product is used by teams worldwide, either on Elmo Cloud or self-hosted on their own infrastructure.",
+	},
+	{
+		question: "Is Elmo open source?",
+		answer:
+			"Yes. The full Elmo platform is open source on GitHub at github.com/elmohq/elmo, and you can self-host it for free. Elmo Cloud runs the same code as a managed service.",
+		links: [{ text: "github.com/elmohq/elmo", href: "https://github.com/elmohq/elmo" }],
+	},
+	{
+		question: "Does Elmo require an annual contract?",
+		answer:
+			"No. Elmo Cloud is billed month to month and you can cancel any time; annual billing is optional and gets you two months free. Self-hosting needs no contract at all.",
+	},
+	{
+		question: "Is Elmo an AEO, GEO, or AI SEO tool?",
+		answer:
+			"All three. Answer engine optimization (AEO), generative engine optimization (GEO), and AI SEO are different names for the same work: getting your brand mentioned and cited in AI search results from ChatGPT, Perplexity, Google AI Overviews, and other answer engines. Elmo measures that visibility so you can track and improve it.",
+	},
+	{
+		question: "Where does the name Elmo come from?",
+		answer:
+			"Elmo comes from LLMO, short for LLM optimization: the practice of improving how large language models like ChatGPT, Claude, and Gemini mention and cite your brand. Say LLMO out loud and you get Elmo.",
 	},
 ];
 

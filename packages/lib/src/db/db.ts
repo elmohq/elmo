@@ -1,4 +1,8 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema";
 
-export const db = drizzle(process.env.DATABASE_URL!, { schema });
+export function createDb(url: string) {
+	return drizzle(url, { schema });
+}
+
+export const db = createDb(process.env.DATABASE_URL!);

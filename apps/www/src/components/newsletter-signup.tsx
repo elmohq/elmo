@@ -52,6 +52,9 @@ export function NewsletterSignup({
 					id={id}
 					type="email"
 					autoComplete="email"
+					data-lpignore="true"
+					data-1p-ignore
+					data-bwignore
 					value={email}
 					onChange={(e) => setEmail(e.target.value)}
 					placeholder="you@company.com"

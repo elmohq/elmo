@@ -1,5 +1,174 @@
 # @workspace/web
 
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.2
+  - @workspace/config@0.7.2
+  - @workspace/deployment@0.7.2
+  - @workspace/lib@0.7.2
+  - @workspace/og@0.7.2
+  - @workspace/ui@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- 345c66d: The sentiment page's quotes now open on praise, with mixed and criticism in their own tabs, and each card explains what its numbers mean.
+- @workspace/api-spec@0.7.1
+  - @workspace/config@0.7.1
+  - @workspace/deployment@0.7.1
+  - @workspace/lib@0.7.1
+  - @workspace/og@0.7.1
+  - @workspace/ui@0.7.1
+
+## 0.7.0
+
+### Patch Changes
+
+- 723f6fd: Center company names and icons in their rows and number each company in the company-by-model tables on the overview and sentiment pages.
+- 0ac774b: Read the text of older ChatGPT and Claude responses recorded before Elmo stored which provider fetched them.
+- 723f6fd: Scroll the company-by-model tables to your brand when it ranks below the visible rows.
+- Updated dependencies [0ac774b]
+- Updated dependencies [f5b579c]
+  - @workspace/lib@0.7.0
+  - @workspace/deployment@0.7.0
+  - @workspace/api-spec@0.7.0
+  - @workspace/config@0.7.0
+  - @workspace/og@0.7.0
+  - @workspace/ui@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- a0b6c62: Explain what the competitive landscape's chart shows in an info tooltip that follows the selected measure.
+- 54cdb8d: Sentiment is now a 0–100 score where neutral answers count as 50 rather than against your brand, and the API returns it as `score` in place of `positiveShare` and `negativeShare`.
+- 2d5ecba: The overview fits the screen without a sliver of page scroll on laptop-sized displays.
+- 8d0a743: The overview page now lines up with the other brand pages, so the title no longer shifts when you switch between them.
+- aefe208: The brand dashboard pages fit phone screens better.
+- f25517e: The overview's Position card now shows an up arrow when your position improves.
+- 4d9975a: Sort the company-by-model tables on the overview and sentiment pages by any model, or by the overall figure, by clicking its column header.
+- ccf05e0: The Sentiment by Prompt table now lists the highest scores first, adds a Positive column, and sorts by Mentions, Score, Positive or Negative when you click a header.
+- 3320670: Hover the visibility sparkline on the Visibility page to see each day's value.
+- Updated dependencies [54cdb8d]
+  - @workspace/api-spec@0.6.2
+  - @workspace/config@0.6.2
+  - @workspace/deployment@0.6.2
+  - @workspace/lib@0.6.2
+  - @workspace/og@0.6.2
+  - @workspace/ui@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- 1a39665: The overview fits on one screen, and long competitor lists scroll in place on the overview and sentiment pages.
+- @workspace/api-spec@0.6.1
+  - @workspace/config@0.6.1
+  - @workspace/deployment@0.6.1
+  - @workspace/lib@0.6.1
+  - @workspace/og@0.6.1
+  - @workspace/ui@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- caf6bfb: The API and MCP tools return each answer's mention assessments with sentiment and position, and sentiment and average position for the brand, each competitor, model and prompt, with daily series (experimental).
+- a13f07e: Show sentiment toward your brand and its average position among the companies AI answers name on the overview, and the passage behind each mention and each company's position on responses.
+- 416fa38: The overview now leads with visibility, share of voice, sentiment and position cards and compares you with competitors by model, and Share of Voice charts your top competitors over time.
+- 17b84bf: A new Sentiment page shows how AI answers describe your brand, responses can be filtered and sorted by tone, and clicking a company on a response highlights the passage its tone was read from.
+- Updated dependencies [caf6bfb]
+- Updated dependencies [1334ce8]
+  - @workspace/api-spec@0.6.0
+  - @workspace/lib@0.6.0
+  - @workspace/deployment@0.6.0
+  - @workspace/config@0.6.0
+  - @workspace/og@0.6.0
+  - @workspace/ui@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+  - @workspace/deployment@0.5.2
+  - @workspace/lib@0.5.2
+  - @workspace/og@0.5.2
+  - @workspace/api-spec@0.5.2
+  - @workspace/ui@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- 57653b2: Restore the category colors on citation badges.
+- @workspace/api-spec@0.5.1
+  - @workspace/config@0.5.1
+  - @workspace/deployment@0.5.1
+  - @workspace/lib@0.5.1
+  - @workspace/og@0.5.1
+  - @workspace/ui@0.5.1
+
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+### Patch Changes
+
+- f1daf53: Citation lists now show one title and page type per page whatever the date range, count each prompt citing a page once, and report exact average positions.
+- f1daf53: Fixed the overview counting runs from disabled prompts when a brand had no enabled prompts.
+- f1daf53: Fixed competitors that share a name being counted twice per response in share of voice and listed twice in prompt stats.
+- f1daf53: Fixed the per-model citation counts in the analytics API which would leave out citations from some runs with web search.
+- a55f182: Response search now matches only the answer text, not the provider's raw response data.
+- Analytics window boundaries are rounded to the quarter hour.
+- Updated dependencies [f1daf53]
+- Updated dependencies [a55f182]
+  - @workspace/lib@0.5.0
+  - @workspace/api-spec@0.5.0
+  - @workspace/deployment@0.5.0
+  - @workspace/config@0.5.0
+  - @workspace/og@0.5.0
+  - @workspace/ui@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- ee6d260: Add a Skill page under Docs that shows how to install the `aeo` skill for Claude Code, Cursor, Codex, and other agents.
+- 76efbc6: Support chat on Elmo Cloud now opens from a button in the header instead of a floating bubble that covered page controls.
+- 7b1f35c: Fixed alignment issue for the team invite email for users with a password manager.
+- @workspace/api-spec@0.4.6
+  - @workspace/config@0.4.6
+  - @workspace/deployment@0.4.6
+  - @workspace/lib@0.4.6
+  - @workspace/og@0.4.6
+  - @workspace/ui@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- dab250c: The "All time" range now covers a brand's whole history on every page, instead of stopping at the last 12 months or two years on some of them.
+- 4367820: The API Docs settings page now shows how to install and call the TypeScript and Python SDKs.
+- 8fffca1: Added start and end date pickers to the dashboard lookback filter, usable alone or together and kept in the shareable URL.
+- 365e583: Fixed date ranges outside UTC starting at the wrong hour, which pulled in or dropped runs from the edge of the first day.
+- 772574c: The prompts page can now suggest new prompts your brand doesn't track yet, added to your list for you to review before saving.
+- 1b027e3: Responses page paging now returns to the top, stays clear of the chat button, and shows when a search is still loading.
+- Updated dependencies [4ec5ac9]
+- Updated dependencies [9957eef]
+  - @workspace/lib@0.4.5
+  - @workspace/deployment@0.4.5
+  - @workspace/api-spec@0.4.5
+  - @workspace/config@0.4.5
+  - @workspace/og@0.4.5
+  - @workspace/ui@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

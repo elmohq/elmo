@@ -9,13 +9,13 @@ import { openSourceTools } from "@/lib/competitors";
 import type { FaqItem } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
-const title = "Best Free & Open-Source AEO Tools (2026) · Elmo";
+const title = "Best Free & Open-Source AI Visibility & AEO Tools (2026) · Elmo";
 const description =
-	"The best free and open-source answer engine optimization (AEO) tools you can self-host and audit, ranked on public GitHub data. Elmo, OneGlanse, GEO/AEO Tracker, Canonry, and Gego compared.";
+	"The best free and open-source AI visibility and answer engine optimization (AEO) tools you can self-host and audit, ranked on public GitHub data. Elmo, OneGlanse, GEO/AEO Tracker, Canonry, and Gego compared.";
 const path = "/ai-visibility-tools/category/open-source";
 
 const lead =
-	"The most complete open-source answer engine optimization tool is Elmo: MIT-licensed, free to self-host, and auditable down to how each metric is computed. Smaller projects like OneGlanse, GEO/AEO Tracker, and Gego exist alongside it. This is a thin, early space: one mature platform, a handful of small projects, and the option to script your own checks.";
+	"The most complete open-source AI visibility and answer engine optimization tool is Elmo: MIT-licensed, free to self-host, and auditable down to how each metric is computed. Smaller projects like OneGlanse, GEO/AEO Tracker, and Gego exist alongside it. This is a thin, early space: one mature platform, a handful of small projects, and the option to script your own checks.";
 
 // Public GitHub data, captured 11 August 2026. Kept as a dated snapshot rather
 // than fetched live: the point is a like-for-like comparison across projects at
@@ -86,7 +86,7 @@ const AT_A_GLANCE: { tool: string; license: string; selfHost: string; tracks: st
 		tool: "Elmo",
 		license: "MIT, fully open source",
 		selfHost: "Yes, free",
-		tracks: "Mentions and citations across ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews",
+		tracks: "Mentions, sentiment, and citations across ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews",
 		bestFor: "A complete platform you own and audit",
 	},
 	{
@@ -289,7 +289,7 @@ function OpenSourcePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero eyebrow="Open source" title="Best free and open-source AEO tools (2026)" lead={lead} />
+				<DirectoryHero title="Best free and open-source AI visibility and AEO tools (2026)" lead={lead} />
 
 				<DirectorySection title="Key takeaways">
 					<ul className="max-w-3xl list-disc space-y-3 pl-5 leading-relaxed text-zinc-600">
@@ -421,17 +421,18 @@ function OpenSourcePage() {
 								Elmo is the most complete open-source AI visibility platform on this list. It is released under the MIT
 								license, free to self-host, and every metric is computed by code you can read. It tracks how AI answer
 								engines mention and cite your brand across ChatGPT, Claude, Perplexity, Gemini, and Google's AI
-								Overviews, among other engines, then turns that into a visibility score, citation analytics,
-								brand-mention tracking, and competitor benchmarking. You can export everything through the API, and
-								agencies can white-label it.
+								Overviews, among other engines, then turns that into visibility, share of voice, sentiment, and position
+								scores, citation and query fan-out analytics, and ranked recommendations for what to fix. A REST API,
+								TypeScript and Python SDKs, and an MCP server expose the same data to your own code and AI assistants,
+								and agencies can white-label it.
 							</p>
 							<p className="mt-4">
 								It fits teams that want to own their AEO data outright. The self-hosted core runs on Docker and
 								PostgreSQL. You supply your own model API keys, which carry usage costs, and there is no license fee or
-								per-seat charge. Elmo does not do sentiment analysis, prompt-volume estimates, content generation,
-								shopping-result tracking, or geographic breakdowns. It measures visibility and citations well, and
-								leaves the content work to you. Managed cloud hosting is available for teams that would rather not run
-								the infrastructure.
+								per-seat charge. Elmo does not do prompt-volume estimates, content generation, shopping-result tracking,
+								or geographic breakdowns. It measures what AI says about you and tells you what to change, and leaves
+								the writing to you. Managed cloud hosting is available for teams that would rather not run the
+								infrastructure.
 							</p>
 						</div>
 
@@ -595,7 +596,7 @@ function OpenSourcePage() {
 					</div>
 				</DirectorySection>
 
-				<Faq items={FAQS} eyebrow="/ FAQ" />
+				<Faq items={FAQS} />
 				<ElmoCta />
 			</main>
 			<Footer />

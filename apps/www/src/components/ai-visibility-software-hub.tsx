@@ -4,14 +4,6 @@ import { ArrowRight } from "lucide-react";
 
 const LINK = "font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900";
 
-function Eyebrow({ num, label }: { num: string; label: string }) {
-	return (
-		<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
-			{num} <span className="text-zinc-500">— {label}</span>
-		</p>
-	);
-}
-
 const FEATURES = [
 	{
 		title: "Cross-platform tracking",
@@ -39,7 +31,7 @@ const FEATURES = [
 	},
 ];
 
-// Rendered below the comparison directory on /ai-visibility-tools as numbered
+// Rendered below the comparison directory on /ai-visibility-tools as long-form
 // sections — the directory provides the page hero and H1.
 export function AiVisibilitySoftwareHub() {
 	return (
@@ -48,8 +40,7 @@ export function AiVisibilitySoftwareHub() {
 			<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<div className="max-w-3xl">
-						<Eyebrow num="01" label="WHAT IT DOES" />
-						<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">What AI visibility software does</h2>
+						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">What AI visibility software does</h2>
 						<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							<p>
 								AI visibility software tracks how your brand appears in AI search — how often it's mentioned, cited, and
@@ -76,8 +67,7 @@ export function AiVisibilitySoftwareHub() {
 			<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<div className="max-w-3xl">
-						<Eyebrow num="02" label="WHY NOW" />
-						<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">Why AI visibility matters now</h2>
+						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Why AI visibility matters now</h2>
 						<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							<p>
 								Search is shifting from a list of blue links to a synthesized answer. Google now shows{" "}
@@ -104,8 +94,7 @@ export function AiVisibilitySoftwareHub() {
 			<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<div className="max-w-3xl">
-						<Eyebrow num="03" label="WHAT TO LOOK FOR" />
-						<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">Key features to look for</h2>
+						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Key features to look for</h2>
 						<p className="mt-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							The category is young and tools vary widely. These are the capabilities that separate a genuine AI
 							visibility platform from a basic prompt checker.
@@ -126,8 +115,7 @@ export function AiVisibilitySoftwareHub() {
 			<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<div className="max-w-3xl">
-						<Eyebrow num="04" label="ELMO'S APPROACH" />
-						<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">Elmo's approach</h2>
+						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Elmo's approach</h2>
 						<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							<p>
 								Elmo is open-source AI visibility software you can self-host. It tracks mentions, citations, and

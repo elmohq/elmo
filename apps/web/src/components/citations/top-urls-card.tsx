@@ -160,18 +160,18 @@ export function TopUrlsCard({
 							>
 								<SiteIcon domain={citation.domain} size="lg" className="mt-0.5" />
 								<div className="min-w-0 flex-1">
-									<div className="flex items-center gap-2 mb-0.5">
+									<div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-0.5 sm:flex-nowrap">
 										<Badge
-											className={`text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none ${getCategoryColorClass(citation.category)}`}
+											className={`shrink-0 text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none ${getCategoryColorClass(citation.category)}`}
 										>
 											{getCategoryLabel(citation.category)}
 										</Badge>
 										{citation.isNew && (
-											<Badge className="text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none bg-green-100 text-green-700">
+											<Badge className="shrink-0 text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none bg-green-100 text-green-700">
 												NEW
 											</Badge>
 										)}
-										<span className="text-sm font-medium truncate group-hover:underline">
+										<span className="min-w-0 basis-full text-sm font-medium truncate group-hover:underline sm:basis-auto">
 											{citation.title || extractFilenameFromUrl(citation.url)}
 										</span>
 									</div>
@@ -183,7 +183,9 @@ export function TopUrlsCard({
 								<div className="flex items-center gap-3 shrink-0 pt-0.5">
 									{citation.avgPosition != null && (
 										<Tooltip>
-											<TooltipTrigger render={<span className="text-[11px] text-muted-foreground tabular-nums" />}>
+											<TooltipTrigger
+												render={<span className="text-[11px] text-muted-foreground tabular-nums max-sm:hidden" />}
+											>
 												avg {citation.avgPosition.toFixed(1)}
 											</TooltipTrigger>
 											<TooltipContent className="text-xs">
@@ -201,7 +203,7 @@ export function TopUrlsCard({
 											Total times this URL was cited across all prompt evaluations
 										</TooltipContent>
 									</Tooltip>
-									<IconExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+									<IconExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity max-sm:hidden" />
 								</div>
 							</a>
 						);

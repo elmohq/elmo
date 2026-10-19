@@ -2,7 +2,7 @@ import { bdclient } from "@brightdata/sdk";
 import { DEFAULT_COUNTRY } from "@workspace/config/countries";
 import { DEFAULT_LANGUAGE } from "@workspace/config/languages";
 import { getCredential } from "../../secrets";
-import { extractCitationsFromBrightdata, extractTextFromBrightdata } from "../../text-extraction";
+import { extractCitationsFromBrightdata } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { type Attempt, nonEmptyStrings, pollDelay, retryTransient, sleep } from "./scrape-shared";
@@ -91,11 +91,9 @@ async function attemptGoogleAiOverview(zone: string, url: string): Promise<Attem
 	return {
 		result: {
 			rawOutput: parsed,
-			textContent: extractTextFromBrightdata(parsed),
 			// The SERP API doesn't expose the query expansion behind the overview;
 			// mark it unavailable when sources prove a live result, else empty.
 			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
-			citations,
 			modelVersion: "brightdata-serp",
 		},
 	};
@@ -106,6 +104,17 @@ function findAnswer(record: Record<string, any>): string | null {
 		if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
 	}
 	return null;
+}
+
+/**
+ * The record minus its bulky HTML. `response_raw` stays when it is the only answer
+ * the record has: extraction reads the stored record, so dropping it would leave
+ * the run with no text the first time it is replayed.
+ */
+export function storedRecord(record: Record<string, any>): Record<string, any> {
+	const { answer_html, response_raw, answer_section_html, ...trimmed } = record;
+	const answeredElsewhere = findAnswer(trimmed) !== null;
+	return answeredElsewhere || response_raw === undefined ? trimmed : { ...trimmed, response_raw };
 }
 
 function rowError(record: Record<string, any>): string | null {
@@ -210,24 +219,21 @@ export const brightdata: Provider = {
 			consumed = true;
 
 			const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
-			const answer = readAnswer(record, `${model} snapshot ${snapshotId}`);
+			// Refuses a snapshot with no answer, which extraction would store as empty.
+			readAnswer(record, `${model} snapshot ${snapshotId}`);
 
 			const webQueries = extractWebQueries(record);
 			const citations = extractCitationsFromBrightdata(record);
 
-			// Drop large HTML fields that aren't used for extraction.
-			// Keeps all structured data (shopping, recommendations, citations, etc.)
-			const { answer_html, response_raw, answer_section_html, ...trimmed } = record;
+			const trimmed = storedRecord(record);
 			const rawOutput = Array.isArray(payload) ? [trimmed] : trimmed;
 
 			return {
 				rawOutput,
-				textContent: answer,
 				webQueries: reportedWebQueries(webQueries, {
 					webSearch: options?.webSearch ?? false,
 					searchProven: citations.length > 0,
 				}),
-				citations,
 				modelVersion: record?.model ?? undefined,
 			};
 		} finally {

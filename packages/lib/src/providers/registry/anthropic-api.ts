@@ -1,7 +1,6 @@
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import Anthropic from "@anthropic-ai/sdk";
 import { getCredential } from "../../secrets";
-import { extractCitationsFromAnthropic, extractTextFromAnthropic } from "../../text-extraction";
 import {
 	ANTHROPIC_WEB_SEARCH_MAX_USES,
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
@@ -19,7 +18,7 @@ import type {
 import { structuredResearch } from "./ai-sdk";
 import { nonEmptyStrings, sanitizeForJson, sleep } from "./scrape-shared";
 
-const DEFAULT_RESEARCH_MODEL = "claude-sonnet-5";
+const DEFAULT_RESEARCH_MODEL = "claude-sonnet-5-5";
 
 function getAnthropicLanguageModel(model: string) {
 	const apiKey = getCredential("ANTHROPIC_API_KEY");
@@ -65,8 +64,6 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 
 	warnIfOutputCapped("anthropic-api", model, response.stop_reason);
 
-	const textContent = extractTextFromAnthropic(response);
-
 	const webQueries = nonEmptyStrings(
 		response.content.flatMap((block) =>
 			// A tool's input is typed `unknown` because its shape is tool-specific.
@@ -75,8 +72,6 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 				: [],
 		),
 	);
-
-	const citations = extractCitationsFromAnthropic(response);
 
 	// Strip full page text from web search results to reduce storage.
 	// Only url/title are used for citation extraction.
@@ -95,8 +90,6 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 	return {
 		rawOutput: sanitizeForJson({ ...response, content: trimmedContent }),
 		webQueries,
-		textContent,
-		citations,
 		modelVersion: model,
 	};
 }

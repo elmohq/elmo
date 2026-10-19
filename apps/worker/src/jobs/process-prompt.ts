@@ -3,18 +3,8 @@ import type { Entitlements } from "@workspace/config/entitlements";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import {
-	type Brand,
-	brands,
-	type Competitor,
-	citations,
-	competitors,
-	promptRuns,
-	prompts,
-	usageEvents,
-} from "@workspace/lib/db/schema";
+import { type Brand, brands, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
-import { analyzeMentions } from "@workspace/lib/mentions";
 import { describeTargetRun, getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
@@ -25,14 +15,13 @@ import {
 	resolveBrandPromptRunPlans,
 	selectDueTargets,
 	slowestIntervalHours,
-	targetKey,
 } from "@workspace/lib/run-policy";
-import type { Citation } from "@workspace/lib/text-extraction";
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
 import { trackWorkerEvent } from "../telemetry";
+import { DERIVE_PRIORITY, sendDeriveRuns } from "./derive-runs";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -66,7 +55,6 @@ export const PROMPT_JOB_OPTIONS = {
 interface PromptContext {
 	prompt: typeof prompts.$inferSelect;
 	brand: Brand;
-	competitors: Competitor[];
 }
 
 /**
@@ -118,15 +106,7 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 		return null;
 	}
 
-	const brandCompetitors = await db.query.competitors.findMany({
-		where: eq(competitors.brandId, prompt.brandId),
-	});
-
-	return {
-		prompt,
-		brand,
-		competitors: brandCompetitors,
-	};
+	return { prompt, brand };
 }
 
 /**
@@ -199,66 +179,6 @@ async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): P
 	return Number(row?.value ?? 0) >= ceiling;
 }
 
-async function savePromptRun(
-	promptId: string,
-	brandId: string,
-	model: string,
-	provider: string | null,
-	version: string,
-	webSearchEnabled: boolean,
-	country: string | null,
-	language: string | null,
-	rawOutput: unknown,
-	webQueries: string[],
-	brandMentioned: boolean,
-	competitorsMentioned: string[],
-): Promise<{ id: string; createdAt: Date }> {
-	const [result] = await db
-		.insert(promptRuns)
-		.values({
-			promptId,
-			brandId,
-			model,
-			provider,
-			version,
-			webSearchEnabled,
-			country,
-			language,
-			rawOutput,
-			webQueries,
-			brandMentioned,
-			competitorsMentioned,
-		})
-		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
-
-	return result;
-}
-
-async function saveCitations(
-	promptRunId: string,
-	promptId: string,
-	brandId: string,
-	model: string,
-	extracted: Citation[],
-	createdAt: Date,
-): Promise<void> {
-	if (extracted.length === 0) return;
-
-	await db.insert(citations).values(
-		extracted.map((c) => ({
-			promptRunId,
-			promptId,
-			brandId,
-			model,
-			url: c.url,
-			domain: c.domain,
-			title: c.title || null,
-			citationIndex: c.citationIndex,
-			createdAt,
-		})),
-	);
-}
-
 /**
  * Billing-grade attribution: one row per provider call, success
  * or failure. Never fails the run — attribution must not break tracking.
@@ -293,7 +213,6 @@ async function runModelIteration({
 	promptValue,
 	promptLocale,
 	brand,
-	competitorsList,
 	config,
 	providerImpl,
 	runIndex,
@@ -302,7 +221,6 @@ async function runModelIteration({
 	promptValue: string;
 	promptLocale: { country: string; language: string };
 	brand: Brand;
-	competitorsList: Competitor[];
 	config: ModelConfig;
 	providerImpl: Provider;
 	runIndex: number;
@@ -325,36 +243,32 @@ async function runModelIteration({
 		// fan-out page excludes verbatim repeats at read time as a display rule;
 		// providers whose query field is fabricated (DataForSEO) write the
 		// `unavailable` sentinel in their own extractor instead.
-		const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
-		console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
-
-		const safeTextContent = typeof textContent === "string" ? textContent : "";
-
-		const { brandMentioned, competitorsMentioned } = analyzeMentions(
-			safeTextContent,
-			{ name: brand.name, aliases: brand.aliases, domains: [brand.website, ...(brand.additionalDomains ?? [])] },
-			competitorsList,
-		);
-
+		const { rawOutput, webQueries, modelVersion } = result;
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
-		const { id: promptRunId, createdAt } = await savePromptRun(
-			promptId,
-			brand.id,
-			config.model,
-			config.provider,
-			recordedVersion,
-			config.webSearch,
-			country,
-			language,
-			rawOutput,
-			webQueries,
-			brandMentioned,
-			competitorsMentioned,
-		);
+		// Only the answer is saved here. Its text, citations and mentions are derived in their own
+		// job, so a bug there can neither lose an answer that's been paid for nor ask for it again.
+		const [{ id: promptRunId }] = await db
+			.insert(promptRuns)
+			.values({
+				promptId,
+				brandId: brand.id,
+				model: config.model,
+				provider: config.provider,
+				version: recordedVersion,
+				webSearchEnabled: config.webSearch,
+				country,
+				language,
+				rawOutput,
+				webQueries,
+			})
+			.returning({ id: promptRuns.id });
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
+		// The answer is saved either way; a job that fails to queue here is picked up by the sweep.
+		await sendDeriveRuns(getBoss(), brand.id, [promptRunId], DERIVE_PRIORITY.new).catch((error) =>
+			console.error(`${logPrefix} Couldn't queue judging for run ${promptRunId}; the sweep will:`, error),
+		);
 
-		await saveCitations(promptRunId, promptId, brand.id, config.model, extractedCitations, createdAt);
 		await recordUsageEvent({
 			organizationId: brand.organizationId,
 			brandId: brand.id,
@@ -402,7 +316,7 @@ async function processPrompt(
 		return;
 	}
 
-	const { prompt, brand, competitors: competitorsList } = context;
+	const { prompt, brand } = context;
 
 	if (!prompt.enabled || !brand.enabled) {
 		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
@@ -457,7 +371,6 @@ async function processPrompt(
 				promptValue: prompt.value,
 				promptLocale: { country: prompt.country, language: prompt.language },
 				brand,
-				competitorsList,
 				config: target.config,
 				providerImpl,
 				runIndex: i + 1,

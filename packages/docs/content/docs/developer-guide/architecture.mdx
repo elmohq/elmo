@@ -56,7 +56,12 @@ For the runtime topology (web, worker, Postgres, LLM providers), see the
 What matters for development:
 
 - The **Web App** serves the dashboard UI and the REST API (`/api/v1`).
-- The **Worker** processes background jobs — querying AI models, running evaluations.
+- The **Worker** processes background jobs. An answer goes through separate stages, each retrying on its own:
+  1. **Query** (`process-prompt`): calls the AI model and stores its answer, nothing more. Only this stage calls a paid provider, and nothing after it can make it call again.
+  2. **Derive** (`derive-runs`): extracts each answer's text and citations, and asks Jev (TypeSafe) which companies it mentions and their sentiment; positions come from where each is first named. A failure retries this stage alone and never falls back to name matching. A sweep every few minutes asks again for answers still unjudged.
+  3. **Roll up** (`refresh-rollups`): rebuilds the aggregates the dashboard reads. An answer counts once it's judged.
+
+  A config change or a new judge replays history (`reprocess`) by queueing the brand's stale answers for the derive stage, most recent first, so any number of workers share a backfill.
 - Both import shared code from `packages/lib` (database schema, AI provider config) and `packages/config` (deployment types).
 - The **CLI** generates Docker Compose configurations and manages the deployment lifecycle.
 

@@ -6,16 +6,17 @@ import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
 // annotated links. The full text of the documentation lives at /llms-full.txt.
 const llmsTxt = `# Elmo
 
-> Elmo is an open source, self-hosted AI visibility platform. Track how AI answer engines like ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot, and Grok talk about your brand — monitor mentions, analyze citations, and benchmark competitors. Because Elmo is open source and runs on your own infrastructure, your data stays yours and you're never locked in.
+> Elmo is an open source, self-hosted AI visibility platform. Track how AI answer engines like ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot, and Grok talk about your brand — monitor mentions and sentiment, analyze citations, and benchmark competitors. Because Elmo is open source and runs on your own infrastructure, your data stays yours and you're never locked in.
 
-Elmo is Answer Engine Optimization (AEO), also called generative engine optimization (GEO), without the black box. On a schedule, it runs your prompts across every major AI answer engine, then measures how often your brand appears, which competitors show up alongside it, and which sources the models cite. The methodology is documented and every line of code is open, so each number is something you can independently verify. Elmo is built by Blue Whale Software, LLC — bootstrapped, transparent, and priced so AI visibility data is a commodity rather than a luxury. Self-host it for free, explore the live demo, sign up for managed cloud hosting from $${CLOUD_ENTRY_PRICE_USD}/month, or get in touch about white-label deployments.
+Elmo is Answer Engine Optimization (AEO), also called generative engine optimization (GEO), without the black box. On a schedule, it runs your prompts across every major AI answer engine, then measures how often your brand appears, how the answers describe it, which competitors show up alongside it, and which sources the models cite. The methodology is documented and every line of code is open, so each number is something you can independently verify. Elmo is built by Blue Whale Software, LLC — bootstrapped, transparent, and priced so AI visibility data is a commodity rather than a luxury. Self-host it for free, explore the live demo, sign up for managed cloud hosting from $${CLOUD_ENTRY_PRICE_USD}/month, or get in touch about white-label deployments.
 
 ## Product
 
 - [Elmo](https://www.elmohq.com/): Know how AI talks about your brand — track visibility across any AI model, monitor mentions, analyze citations, and benchmark competitors.
-- [Features](https://www.elmohq.com/features): Visibility dashboard, per-prompt and per-model tracking, citation analysis, competitor intelligence, prompt management, response deep-dives, and long-term trends.
+- [Features](https://www.elmohq.com/features): Visibility dashboard, per-prompt and per-model tracking, share of voice, sentiment analysis, query fan-out, citation analysis, ranked opportunities, prompt management, response deep-dives, and long-term trends.
 - [Pricing](https://www.elmohq.com/pricing): Free and open source to self-host, managed cloud from $${CLOUD_ENTRY_PRICE_USD}/month, and white-label available for agencies.
 - [Live Demo](https://demo.elmohq.com): Explore a fully populated Elmo instance — no installation required.
+- [About](https://www.elmohq.com/about): Company facts, founder, pricing, contract terms, and how the team works.
 - [Vision](https://www.elmohq.com/vision): Why we believe AI visibility monitoring should be affordable, transparent, and built to last.
 
 ## Documentation

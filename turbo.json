@@ -27,6 +27,8 @@
     "OXYLABS_PASSWORD",
     "CLORO_API_KEY",
     "OPENROUTER_API_KEY",
+    "TYPESAFE_API_KEY",
+    "REPROCESS_DAYS",
     "JINA_API_KEY",
     "ONBOARDING_LLM_TARGET",
     "ELMO_ENCRYPTION_KEY",
@@ -74,6 +76,11 @@
     },
     "build": {
       "dependsOn": ["^build", "check-types"],
+      "outputs": [".output/**", ".vercel/output/**", "dist/**"]
+    },
+    "@workspace/www#build": {
+      "dependsOn": ["^build", "check-types"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/skills/**"],
       "outputs": [".output/**", ".vercel/output/**", "dist/**"]
     },
     "@workspace/worker#build": {

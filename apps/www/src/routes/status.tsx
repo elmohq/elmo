@@ -1051,7 +1051,6 @@ function StatusPage() {
 			<Navbar />
 			<main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
 				<div className="mb-8">
-					<p className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ STATUS</p>
 					<h1 className="font-heading text-3xl text-zinc-950 md:text-4xl">Provider Status</h1>
 					<p className="mt-2 text-zinc-600">
 						Status of the third-party AI providers and scraping services Elmo uses to track your brand's visibility and

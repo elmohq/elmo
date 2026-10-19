@@ -47,7 +47,7 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 
 ## Environment
 
-`.env` must exist at **both** the repo root and `apps/web/.env` (Vite reads its project root; the worker reads `apps/web/.env` via `--env-file`). Minimum for local mode: `DATABASE_URL`, `DEPLOYMENT_MODE=local`, `BETTER_AUTH_SECRET`, `ELMO_ENCRYPTION_KEY` (`openssl rand -base64 32`), `APP_URL`/`VITE_APP_URL`, `DISABLE_TELEMETRY=1`, and `SCRAPE_TARGETS` plus the keys of the providers it names. Env validation also requires one direct LLM key (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, or `MISTRAL_API_KEY`) for onboarding and the Opportunities report. For UI-only work, `SCRAPE_TARGETS=stub:stub` and `ONBOARDING_LLM_TARGET=stub:stub` need no keys at all.
+`.env` must exist at **both** the repo root and `apps/web/.env` (Vite reads its project root; the worker reads `apps/web/.env` via `--env-file`). Minimum for local mode: `DATABASE_URL`, `DEPLOYMENT_MODE=local`, `BETTER_AUTH_SECRET`, `ELMO_ENCRYPTION_KEY` (`openssl rand -base64 32`), `APP_URL`/`VITE_APP_URL`, `DISABLE_TELEMETRY=1`, and `SCRAPE_TARGETS` plus the keys of the providers it names. Env validation also requires one direct LLM key (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, or `MISTRAL_API_KEY`) for onboarding and the Opportunities report, and the worker needs `TYPESAFE_API_KEY` (Jev, which judges mentions and sentiment). For UI-only work, `SCRAPE_TARGETS=stub:stub`, `ONBOARDING_LLM_TARGET=stub:stub` and `TYPESAFE_API_KEY=stub` need no keys at all.
 
 ## Git workflow
 
@@ -55,6 +55,7 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 - Commit as you go: small, atomic commits that show real progress. Don't rewrite history (amend, rebase, force-push) to make it look tidy afterward.
 - Commit subjects are plain imperative sentences — no conventional-commit prefixes. Write `paginate top cited domains`, not `feat(web): paginate top cited domains`.
 - Don't bump package versions; releases go through Changesets.
+- Don't add coding-agent attribution (such as "Generated with …" lines or `Co-Authored-By` trailers) to commit messages or PR descriptions.
 
 ## Comments and docs
 

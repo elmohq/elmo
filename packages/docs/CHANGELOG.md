@@ -1,5 +1,72 @@
 # @workspace/docs
 
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/ui@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/ui@0.7.1
+
+## 0.7.0
+
+### Patch Changes
+
+- @workspace/ui@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- ccf05e0: The Sentiment by Prompt table now lists the highest scores first, adds a Positive column, and sorts by Mentions, Score, Positive or Negative when you click a header.
+- @workspace/ui@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/ui@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- @workspace/ui@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- @workspace/ui@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/ui@0.5.1
+
+## 0.5.0
+
+### Patch Changes
+
+- @workspace/ui@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/ui@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- @workspace/ui@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

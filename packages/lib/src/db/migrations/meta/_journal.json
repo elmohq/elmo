@@ -173,8 +173,57 @@
     {
       "idx": 24,
       "version": "7",
-      "when": 1791509575541,
-      "tag": "0024_prompt_markets",
+      "when": 1792006821148,
+      "tag": "0024_replayable_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792020336029,
+      "tag": "0025_citations_run_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792020366299,
+      "tag": "0026_analytics_rollups",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792032816991,
+      "tag": "0027_background_migrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792033648714,
+      "tag": "0028_run_mention_assessments",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792036661244,
+      "tag": "0029_rollup_sentiment_position",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792045939783,
+      "tag": "0030_rollup_verdicts_without_defaults",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792389758502,
+      "tag": "0031_prompt_markets",
       "breakpoints": true
     }
   ]

@@ -1,5 +1,5 @@
 {
-  "id": "ec3aba83-789f-4062-ae4c-aa4f56928262",
+  "id": "8700a627-2fd1-4e3e-b53b-d8c457160d8d",
   "prevId": "d6ac89b3-c93f-4527-9432-e34eaf19bb0c",
   "version": "7",
   "dialect": "postgresql",
@@ -152,6 +152,13 @@
           "type": "text[]",
           "primaryKey": false,
           "notNull": false
+        },
+        "analysis_versions": {
+          "name": "analysis_versions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'::jsonb"
         },
         "organization_id": {
           "name": "organization_id",
@@ -622,18 +629,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "country": {
-          "name": "country",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "language": {
-          "name": "language",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "raw_output": {
           "name": "raw_output",
           "type": "json",
@@ -642,19 +637,6 @@
         },
         "web_queries": {
           "name": "web_queries",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'"
-        },
-        "brand_mentioned": {
-          "name": "brand_mentioned",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "competitors_mentioned": {
-          "name": "competitors_mentioned",
           "type": "text[]",
           "primaryKey": false,
           "notNull": true,
@@ -861,27 +843,6 @@
           "notNull": true,
           "default": "'{}'"
         },
-        "country": {
-          "name": "country",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'US'"
-        },
-        "language": {
-          "name": "language",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'en'"
-        },
-        "group_id": {
-          "name": "group_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
         "tags": {
           "name": "tags",
           "type": "text[]",
@@ -944,34 +905,6 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "prompts_group_market_idx": {
-          "name": "prompts_group_market_idx",
-          "columns": [
-            {
-              "expression": "group_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "country",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "language",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"prompts\".\"enabled\"",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1088,6 +1021,103 @@
         }
       },
       "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.run_extractions": {
+      "name": "run_extractions",
+      "schema": "",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "text_content": {
+          "name": "text_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stamp": {
+          "name": "stamp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "run_extractions_run_id_prompt_runs_id_fk": {
+          "name": "run_extractions_run_id_prompt_runs_id_fk",
+          "tableFrom": "run_extractions",
+          "tableTo": "prompt_runs",
+          "columnsFrom": [
+            "run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.run_mentions": {
+      "name": "run_mentions",
+      "schema": "",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "brand_mentioned": {
+          "name": "brand_mentioned",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competitors_mentioned": {
+          "name": "competitors_mentioned",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "stamp": {
+          "name": "stamp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "run_mentions_run_id_prompt_runs_id_fk": {
+          "name": "run_mentions_run_id_prompt_runs_id_fk",
+          "tableFrom": "run_mentions",
+          "tableTo": "prompt_runs",
+          "columnsFrom": [
+            "run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},

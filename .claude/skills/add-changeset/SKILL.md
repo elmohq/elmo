@@ -1,6 +1,8 @@
 ---
 name: add-changeset
 description: Create a changeset file in .changeset/ that describes a user-facing change for the release notes
+metadata:
+  internal: true
 ---
 
 Create a markdown file in `.changeset/` documenting a user-facing change.

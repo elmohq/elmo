@@ -1,5 +1,85 @@
 # @workspace/lib
 
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/config@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/config@0.7.1
+
+## 0.7.0
+
+### Minor Changes
+
+- f5b579c: **Jev (TypeSafe) is now a required dependency of Elmo: the worker won't start without `TYPESAFE_API_KEY`.** Jev judges mentions and sentiment, which is far more accurate toward your brand and each competitor. It costs very roughly $0.15–0.35 per 1,000 answers that name a tracked company, more for long answers that name many. Upgrading re-judges the last 90 days of answers once, about three months' worth of that cost; set `REPROCESS_DAYS=all` before upgrading to re-judge your whole history instead.
+
+### Patch Changes
+
+- 0ac774b: Read the text of older ChatGPT and Claude responses recorded before Elmo stored which provider fetched them.
+- @workspace/config@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- @workspace/config@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/config@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- 1334ce8: Brand onboarding and the opportunities report now use `gpt-6-luna` (OpenAI) and `claude-sonnet-5-5` (Anthropic and OpenRouter).
+- @workspace/config@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/config@0.5.1
+
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+### Patch Changes
+
+- a55f182: Editing a brand's name, aliases or competitors now updates mentions in past responses too, not only in new ones.
+- @workspace/config@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/config@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- 4ec5ac9: Prevent some types of deployments from failing while generating the auth schema.
+- 9957eef: Fixed brands and competitors with a blank alias or domain being counted as mentioned in every answer.
+- @workspace/config@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

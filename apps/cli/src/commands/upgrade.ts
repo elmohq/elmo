@@ -13,6 +13,7 @@ import {
 	stackHasRunningServices,
 	waitForHealthy,
 } from "../docker.js";
+import { collectJudgeKey } from "../judge.js";
 import { MIGRATIONS, type MigrationContext, planMigrations, runMigrations } from "../migrations/index.js";
 import { trackCliEvent } from "../telemetry.js";
 import { assertNotCancelled, log, printBanner } from "../util.js";
@@ -159,6 +160,8 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 		process.exit(0);
 	}
 
+	await ensureJudgeKey(configDir, buildMigrationContext(configDir, cliVersion), options.yes);
+
 	// ── Stop the stack so migrations + image swap run on a quiet deployment ─
 	assertDockerRunning();
 	const wasRunning = await stackHasRunningServices(configDir);
@@ -196,6 +199,29 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 	});
 
 	p.outro(pc.green(`Upgraded to ${cliVersion}.`));
+}
+
+/** Elmo can't judge answers without a Jev key, so an upgrade that lacks one asks for it before stopping anything. */
+async function ensureJudgeKey(configDir: string, context: MigrationContext, nonInteractive: boolean | undefined) {
+	// Without this, an unreadable .env would be replaced by one holding only the key.
+	if (!(await fs.stat(path.join(configDir, ".env")).catch(() => null))) {
+		log.error(
+			`Couldn't find ${path.join(configDir, ".env")}; run \`elmo init\` or restore it, then rerun the upgrade.`,
+		);
+		process.exit(1);
+	}
+	const env = await context.readEnv();
+	if (env.TYPESAFE_API_KEY?.trim()) return;
+	if (nonInteractive) {
+		log.error(
+			"This version needs TYPESAFE_API_KEY (Jev, https://console.typesafe.ai) to judge mentions and sentiment.",
+		);
+		log.info("Add it to .env with `elmo edit env`, then rerun the upgrade.");
+		process.exit(1);
+	}
+	await collectJudgeKey(env);
+	await context.writeEnv(env);
+	log.success("Saved TYPESAFE_API_KEY to .env.");
 }
 
 function buildMigrationContext(configDir: string, version: string): MigrationContext {

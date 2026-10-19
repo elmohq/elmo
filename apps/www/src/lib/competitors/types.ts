@@ -6,6 +6,7 @@ export type FeatureKey =
 	| "brandMentionTracking"
 	| "promptVolumeEstimates"
 	| "sentimentAnalysis"
+	| "queryFanOut"
 	| "crawlerAnalytics"
 	| "geographicTracking"
 	| "socialMediaTracking"
@@ -17,6 +18,9 @@ export type FeatureKey =
 	| "keywordResearch"
 	| "emailAlerts"
 	| "dataExportApi"
+	| "typescriptSdk"
+	| "pythonSdk"
+	| "mcpServer"
 	| "biConnectors"
 	| "whiteLabelAgency"
 	| "openSource"
@@ -134,6 +138,11 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 				description: "Track brand perception across AI platforms",
 				searchTerm: "AI Brand Sentiment Tools",
 			},
+			queryFanOut: {
+				label: "Query Fan-Out",
+				description: "See the web searches AI engines run behind each answer",
+				searchTerm: "Query Fan-Out Tools",
+			},
 			crawlerAnalytics: {
 				label: "AI Crawler Analytics",
 				description: "Track AI bot visits to your website",
@@ -187,9 +196,22 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 				description: "Automated alerts and summary emails",
 			},
 			dataExportApi: {
-				label: "Data Export / API",
+				label: "API Access",
 				description: "Export data to CSV or access via API",
 				searchTerm: "AI Visibility APIs",
+			},
+			typescriptSdk: {
+				label: "TypeScript SDK",
+				description: "Official TypeScript/JavaScript client for the API",
+			},
+			pythonSdk: {
+				label: "Python SDK",
+				description: "Official Python client for the API",
+			},
+			mcpServer: {
+				label: "MCP Access",
+				description: "Query visibility data from AI assistants like Claude, ChatGPT, and Cursor",
+				searchTerm: "AI Visibility MCP Servers",
 			},
 			biConnectors: {
 				label: "BI Connectors",
@@ -227,18 +249,22 @@ export const ELMO_FEATURES: Record<FeatureKey, boolean> = {
 	competitorBenchmarking: true,
 	brandMentionTracking: true,
 	promptVolumeEstimates: false,
-	sentimentAnalysis: false,
+	sentimentAnalysis: true,
+	queryFanOut: true,
 	crawlerAnalytics: false,
 	geographicTracking: false,
 	socialMediaTracking: false,
 	shoppingTracking: false,
 	multiLanguage: false,
-	actionRecommendations: false,
-	contentGapAnalysis: false,
+	actionRecommendations: true,
+	contentGapAnalysis: true,
 	siteAudits: false,
-	keywordResearch: false,
+	keywordResearch: true,
 	emailAlerts: false,
 	dataExportApi: true,
+	typescriptSdk: true,
+	pythonSdk: true,
+	mcpServer: true,
 	biConnectors: false,
 	whiteLabelAgency: true,
 	openSource: true,

@@ -104,6 +104,7 @@ export const FEATURE_SLUGS: Record<FeatureKey, string> = {
 	brandMentionTracking: "brand-mention-tracking",
 	promptVolumeEstimates: "prompt-volume-estimates",
 	sentimentAnalysis: "sentiment-analysis",
+	queryFanOut: "query-fan-out",
 	crawlerAnalytics: "ai-crawler-analytics",
 	geographicTracking: "geographic-tracking",
 	socialMediaTracking: "social-media-tracking",
@@ -115,6 +116,9 @@ export const FEATURE_SLUGS: Record<FeatureKey, string> = {
 	keywordResearch: "ai-keyword-research",
 	emailAlerts: "email-alerts",
 	dataExportApi: "data-export-api",
+	typescriptSdk: "typescript-sdk",
+	pythonSdk: "python-sdk",
+	mcpServer: "mcp-server",
 	biConnectors: "bi-connectors",
 	whiteLabelAgency: "white-label",
 	openSource: "open-source",
@@ -398,8 +402,13 @@ export function getCompareFaqs(tools: Competitor[]): FaqItem[] {
 
 // --- Feature slices ----------------------------------------------------------
 
+/** A feature label for mid-sentence use: lowercased, but acronyms like AI and MCP keep their case. */
+export function featurePhrase(key: FeatureKey): string {
+	return getFeatureLabel(key).replace(/\b[A-Z][a-z]+\b/g, (word) => word.toLowerCase());
+}
+
 export function getFeatureVerdict(key: FeatureKey, tools: Competitor[]): string {
-	const label = getFeatureLabel(key).toLowerCase();
+	const label = featurePhrase(key);
 	const desc = getFeatureDescription(key);
 	const names = tools.map((t) => t.name);
 	const elmoHas = ELMO_FEATURES[key] === true;
@@ -410,23 +419,23 @@ export function getFeatureVerdict(key: FeatureKey, tools: Competitor[]): string 
 }
 
 export function getFeatureFaqs(key: FeatureKey, tools: Competitor[]): FaqItem[] {
-	const label = getFeatureLabel(key);
+	const label = featurePhrase(key);
 	const names = tools.map((t) => t.name);
 	const elmoHas = ELMO_FEATURES[key] === true;
 	return [
 		{
-			question: `Which AI visibility tools offer ${label.toLowerCase()}?`,
-			answer: `${formatList(names, 5)} all offer ${label.toLowerCase()}. The full feature matrix on this page shows how each one compares.`,
+			question: `Which AI visibility tools offer ${label}?`,
+			answer: `${formatList(names, 5)} all offer ${label}. The full feature matrix on this page shows how each one compares.`,
 		},
 		{
-			question: `What is ${label.toLowerCase()} in AI visibility tools?`,
+			question: `What is ${label} in AI visibility tools?`,
 			answer: `${getFeatureDescription(key)}. It is one of the capabilities buyers weigh when choosing an AI visibility or answer engine optimization tool.`,
 		},
 		{
-			question: `Does Elmo support ${label.toLowerCase()}?`,
+			question: `Does Elmo support ${label}?`,
 			answer: elmoHas
-				? `Yes. Elmo supports ${label.toLowerCase()}, and because it is open source you can verify exactly how it works and self-host it for free.`
-				: `Not currently. Elmo focuses on transparent, independently verifiable tracking of mentions, citations, and competitor share. If ${label.toLowerCase()} is a hard requirement, the tools listed here cover it.`,
+				? `Yes. Elmo supports ${label}, and because it is open source you can verify exactly how it works and self-host it for free.`
+				: `Not currently. Elmo focuses on transparent, independently verifiable tracking of mentions, citations, and competitor share. If ${label} is a hard requirement, the tools listed here cover it.`,
 		},
 	];
 }

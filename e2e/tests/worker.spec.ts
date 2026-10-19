@@ -15,7 +15,7 @@
  */
 import { expect, test } from "../test";
 import pg from "pg";
-import { DATABASE_URL, TEST_API_KEY, TEST_BRAND_ID } from "../fixtures";
+import { DATABASE_URL, TEST_API_KEY, TEST_BRAND_ID, TEST_BRAND_NAME } from "../fixtures";
 
 test.describe("Worker job processing", () => {
   test("a submitted prompt is dequeued and processed by the worker", async ({ request }) => {
@@ -79,4 +79,57 @@ test.describe("Worker job processing", () => {
       await client.end();
     }
   });
+
+  test("the mention judge reads the brand and a competitor in a recorded answer, and the sentiment toward each", async ({ request }) => {
+    // The stub provider answers with the prompt, so this is the answer the judge reads.
+    const answer = [
+      `${TEST_BRAND_NAME} is the best choice for small teams. It is reliable, fast and genuinely delightful to use, and support answers within minutes.`,
+      "Setup takes an afternoon either way, and pricing is similar across vendors.",
+      "Competitor Alpha is the one to avoid. It is slow, crashes often, and its support never replies.",
+    ].join("\n\n");
+    const createRes = await request.post("/api/v1/prompts", {
+      headers: { Authorization: `Bearer ${TEST_API_KEY}` },
+      data: { brandId: TEST_BRAND_ID, value: answer },
+    });
+    expect(createRes.status(), await createRes.text()).toBe(201);
+    const prompt = (await createRes.json()) as { id: string };
+
+    const client = new pg.Client({ connectionString: DATABASE_URL });
+    await client.connect();
+    try {
+      const judged = async () =>
+        (
+          await client.query<{ brand_mentioned: boolean; competitors_mentioned: string[]; assessments: Assessments }>(
+            `SELECT rm.brand_mentioned, rm.competitors_mentioned, rm.assessments
+             FROM prompt_runs pr JOIN run_mentions rm ON rm.run_id = pr.id
+             WHERE pr.prompt_id = $1`,
+            [prompt.id],
+          )
+        ).rows;
+      await expect
+        .poll(async () => (await judged()).length, {
+          message: `the worker did not judge the runs for ${prompt.id}`,
+          timeout: 180_000,
+        })
+        .toBe(5);
+
+      for (const run of await judged()) {
+        expect(run.brand_mentioned).toBe(true);
+        expect(run.competitors_mentioned).toEqual(["Competitor Alpha"]);
+        expect(run.assessments.brand).toMatchObject({ mentioned: true, sentiment: "positive", position: 1 });
+        expect(run.assessments.competitors["Competitor Alpha"]).toMatchObject({
+          mentioned: true,
+          sentiment: "negative",
+          position: 2,
+        });
+      }
+    } finally {
+      await client.end();
+    }
+  });
 });
+
+interface Assessments {
+  brand?: { mentioned: boolean; sentiment?: string; position?: number };
+  competitors: Record<string, { mentioned: boolean; sentiment?: string; position?: number }>;
+}

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Create a payment | Quillpay API v1 Reference</title>
+  <meta name="description" content="Create a payment with the Quillpay API. POST /v1/charges with your secret key.">
+  <link rel="canonical" href="https://docs.quillpay.dev/v1/payments/create">
+  <meta name="robots" content="index, follow">
+</head>
+<body>
+  <nav><a href="/v1/">v1</a> | <a href="/v2/">v2</a></nav>
+  <main>
+    <h1>Create a payment</h1>
+    <p>To create a payment, send a POST request to <code>/v1/charges</code> with an <code>amount</code> in cents and a <code>card_token</code>.</p>
+    <pre><code>curl https://api.quillpay.dev/v1/charges \
+  -u sk_live_xxx: \
+  -d amount=2000 \
+  -d currency=usd \
+  -d card_token=tok_visa</code></pre>
+    <h2>Parameters</h2>
+    <table>
+      <tr><th>Name</th><th>Type</th><th>Description</th></tr>
+      <tr><td>amount</td><td>integer</td><td>Amount in the smallest currency unit.</td></tr>
+      <tr><td>currency</td><td>string</td><td>Three-letter ISO code.</td></tr>
+      <tr><td>card_token</td><td>string</td><td>Token from Quillpay.js v1.</td></tr>
+    </table>
+  </main>
+  <footer>&copy; 2026 Quillpay, Inc.</footer>
+</body>
+</html>

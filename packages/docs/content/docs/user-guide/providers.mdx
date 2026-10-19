@@ -190,7 +190,7 @@ These hit the provider API directly — cheaper per token than scrapers, but the
 | Provider | Tracks | Cost per prompt/month* |
 |---|---|---|
 | **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$4–5 per tracked model |
-| **OpenAI API** (`OPENAI_API_KEY`) | `gpt-5-mini` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
+| **OpenAI API** (`OPENAI_API_KEY`) | `gpt-6-luna` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
 | **Mistral API** (`MISTRAL_API_KEY`) | Mistral Small / Medium / Large, optional web search via the beta Conversations API | pass-through |
 | **OpenRouter** (`OPENROUTER_API_KEY`) | Any OpenRouter-hosted model (Claude, Llama, Mistral, etc.) | pass-through |
 | **DataForSEO** (`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`) | ChatGPT, Gemini, or Perplexity through its LLM Responses API — see [Pinning a model](#pinning-a-model) | pass-through |
@@ -200,10 +200,10 @@ These hit the provider API directly — cheaper per token than scrapers, but the
 Example scrape targets:
 
 ```
-claude:anthropic-api:claude-sonnet-5
-chatgpt:openai-api:gpt-5-mini:online
+claude:anthropic-api:claude-haiku-5-5
+chatgpt:openai-api:gpt-6-luna:online
 mistral:mistral-api:mistral-medium-latest:online
-claude:openrouter:anthropic/claude-sonnet-5
+claude:openrouter:anthropic/claude-haiku-5.5
 grok:openrouter:x-ai/grok-4.5:online
 kimi:openrouter:moonshotai/kimi-k3
 perplexity:openrouter:perplexity/sonar:online
@@ -221,12 +221,13 @@ Prompts can be asked from countries other than the US and in other languages. Pr
 
 ## Recommended setups
 
-**Starter (scrape the two that matter).** Pick one scraper, add one direct API key for onboarding analysis and sentiment scoring, and you're done:
+**Starter (scrape the two that matter).** Pick one scraper, add one direct API key for onboarding analysis and a [TypeSafe key](/docs/developer-guide/configuration#mention-judging) for mention and sentiment judging, and you're done:
 
 ```bash
 CLORO_API_KEY=...
 OPENROUTER_API_KEY=...
 # or ANTHROPIC_API_KEY=... or OPENAI_API_KEY=...
+TYPESAFE_API_KEY=...
 SCRAPE_TARGETS=chatgpt:cloro:online,google-ai-mode:cloro:online
 ```
 
@@ -236,6 +237,7 @@ or
 BRIGHTDATA_API_TOKEN=...
 OPENROUTER_API_KEY=...
 # or ANTHROPIC_API_KEY=... or OPENAI_API_KEY=...
+TYPESAFE_API_KEY=...
 SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online
 ```
 
@@ -246,6 +248,7 @@ DATAFORSEO_LOGIN=...
 DATAFORSEO_PASSWORD=...
 OPENROUTER_API_KEY=...
 # or ANTHROPIC_API_KEY=... or OPENAI_API_KEY=...
+TYPESAFE_API_KEY=...
 SCRAPE_TARGETS=chatgpt:dataforseo:online,google-ai-mode:dataforseo:online
 ```
 

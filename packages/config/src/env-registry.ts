@@ -217,6 +217,21 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"model:provider override for the LLM behind brand onboarding and the Opportunities report (e.g., 'claude:anthropic-api'). Defaults to the first configured provider in RESEARCH_PROVIDER_PREFERENCE.",
 	},
 	{
+		name: "TYPESAFE_API_KEY",
+		scope: "server",
+		// The worker refuses to start without it; the web app never uses it.
+		requiredBy: "optional",
+		description:
+			"API key for Jev (typesafe.ai), which judges which answers mention a brand or competitor, and the sentiment toward each. Required by the worker.",
+	},
+	{
+		name: "REPROCESS_DAYS",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"How far back the worker reprocesses history (re-extracting and re-judging answers) after the extractor, the judge, or a brand's names or competitors change, in days (default 90), or 'all'. Only enabled prompts of enabled brands are reprocessed.",
+	},
+	{
 		name: "JINA_API_KEY",
 		scope: "server",
 		requiredBy: "optional",

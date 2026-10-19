@@ -3,9 +3,6 @@ import {
 	extractCitationsFromDataforseoLlm,
 	extractCitationsFromDataforseoScraper,
 	extractCitationsFromGoogle,
-	extractTextFromDataforseoLlm,
-	extractTextFromDataforseoScraper,
-	extractTextFromGoogle,
 } from "../../text-extraction";
 import { reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderAccess, ProviderOptions, ScrapeResult } from "../types";
@@ -134,8 +131,6 @@ async function runGoogleAiMode(prompt: string, locale: DfsLocale): Promise<Scrap
 	return {
 		rawOutput: sanitizeForJson(response),
 		webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
-		textContent: extractTextFromGoogle(response),
-		citations,
 		modelVersion: "dataforseo",
 	};
 }
@@ -178,8 +173,6 @@ async function attemptGoogleAiOverview(
 			result: {
 				rawOutput: sanitizeForJson(response),
 				webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
-				textContent: extractTextFromGoogle(response),
-				citations,
 				modelVersion: "dataforseo",
 			},
 		};
@@ -264,8 +257,6 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	return {
 		rawOutput: raw,
 		webQueries: reportedWebQueries(fanOutQueries(result), { webSearch, searchProven: citations.length > 0 }),
-		textContent: extractTextFromDataforseoLlm(raw),
-		citations,
 		modelVersion: result.model_name ?? modelName,
 	};
 }
@@ -284,8 +275,6 @@ async function runLlmScraper(
 		rawOutput: raw,
 		// Gemini's scraper response carries no fan_out_queries field.
 		webQueries: reportedWebQueries(fanOutQueries(result), { searchProven: citations.length > 0 }),
-		textContent: extractTextFromDataforseoScraper(raw),
-		citations,
 		modelVersion: result.model ?? model,
 	};
 }

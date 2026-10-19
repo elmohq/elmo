@@ -1,5 +1,78 @@
 # e2e
 
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/lib@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/lib@0.7.1
+
+## 0.7.0
+
+### Patch Changes
+
+- Updated dependencies [0ac774b]
+- Updated dependencies [f5b579c]
+  - @workspace/lib@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- @workspace/lib@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/lib@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [1334ce8]
+  - @workspace/lib@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- @workspace/lib@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/lib@0.5.1
+
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [f1daf53]
+- Updated dependencies [a55f182]
+  - @workspace/lib@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/lib@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- Updated dependencies [4ec5ac9]
+- Updated dependencies [9957eef]
+  - @workspace/lib@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

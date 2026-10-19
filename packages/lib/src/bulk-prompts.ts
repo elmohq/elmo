@@ -38,7 +38,7 @@ export interface ParseBulkPromptsOptions {
  * collapse to one space, so a line re-pasted from a wrapped document does not
  * arrive as a second distinct prompt.
  */
-function dedupeKey(value: string): string {
+export function dedupeKey(value: string): string {
 	return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 

@@ -29,12 +29,13 @@ import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Input } from "@workspace/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Switch } from "@workspace/ui/components/switch";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { Inbox, ListPlus, Plus } from "lucide-react";
+import { Inbox, ListPlus, Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { MarketsPicker } from "@/components/market-picker";
@@ -54,6 +55,7 @@ export interface EditablePrompt {
 	tags: string[];
 	systemTags: string[];
 	premiumModels: string[];
+	suggested?: boolean;
 }
 
 export interface PremiumAllowance {
@@ -73,6 +75,7 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		systemTags: partial?.systemTags ?? [],
 		premiumModels: partial?.premiumModels ?? [],
 		...(partial?.id ? { id: partial.id } : {}),
+		...(partial?.suggested ? { suggested: true } : {}),
 	};
 }
 
@@ -190,6 +193,8 @@ interface PromptsListEditorProps {
 	/** The market new prompts start in. Omit to hide markets and add every
 	 *  prompt in the default one (the onboarding wizard). */
 	newPromptMarket?: Market;
+	leading?: ReactNode;
+	pendingRows?: number;
 }
 
 /**
@@ -351,11 +356,73 @@ function ColumnHeader({
 	);
 }
 
+function PromptTextField({
+	prompt,
+	onValueChange,
+	onRemove,
+	className,
+}: {
+	prompt: EditablePrompt;
+	onValueChange: (value: string) => void;
+	onRemove: () => void;
+	className?: string;
+}) {
+	const removable = !prompt.id;
+	return (
+		<div className={cn("relative", className)}>
+			{prompt.suggested && (
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
+								<Sparkles className="size-3.5" aria-label="Suggested" />
+							</span>
+						}
+					/>
+					<TooltipContent>Suggested. Save to start tracking it, or remove it.</TooltipContent>
+				</Tooltip>
+			)}
+			<Input
+				value={prompt.value}
+				onChange={(e) => onValueChange(e.target.value)}
+				placeholder="Enter prompt text..."
+				className={cn("min-w-0", prompt.suggested && "pl-8", removable && "pr-8")}
+			/>
+			{removable && (
+				<button
+					type="button"
+					onClick={onRemove}
+					aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
+					className="absolute inset-y-0 right-1.5 my-auto flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+				>
+					<X className="size-3.5" />
+				</button>
+			)}
+		</div>
+	);
+}
+
+const PENDING_WIDTHS = ["70%", "52%", "63%", "46%", "58%"];
+
+function PendingRows({ count, gridCols }: { count: number; gridCols: string }) {
+	return (
+		<>
+			{PENDING_WIDTHS.slice(0, count).map((width) => (
+				<div key={width} aria-hidden className={`grid grid-cols-1 ${gridCols} gap-2 items-center py-2`}>
+					<Skeleton className="hidden md:block mx-auto size-4 rounded-[4px]" />
+					<Skeleton className="h-4" style={{ width }} />
+				</div>
+			))}
+		</>
+	);
+}
+
 function PromptRow({
 	prompt,
 	index,
 	total,
 	update,
+	remove,
 	allTagOptions,
 	showSystemTags,
 	markets,
@@ -370,6 +437,7 @@ function PromptRow({
 	index: number;
 	total: number;
 	update: (index: number, patch: Partial<EditablePrompt>) => void;
+	remove: (index: number) => void;
 	allTagOptions: { value: string }[];
 	showSystemTags: boolean;
 	/** The prompt's market chips, shown under its text. */
@@ -394,10 +462,10 @@ function PromptRow({
 			<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < total - 1 ? "border-b" : ""}`}>
 				{markets}
 				<div className="flex items-start gap-2">
-					<Input
-						value={prompt.value}
-						onChange={(e) => update(index, { value: e.target.value })}
-						placeholder="Enter prompt text..."
+					<PromptTextField
+						prompt={prompt}
+						onValueChange={(value) => update(index, { value })}
+						onRemove={() => remove(index)}
 						className="min-w-0 flex-1"
 					/>
 					<div className="pt-2">
@@ -433,11 +501,10 @@ function PromptRow({
 					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
 				</div>
 				<div className="min-w-0 space-y-1.5">
-					<Input
-						value={prompt.value}
-						onChange={(e) => update(index, { value: e.target.value })}
-						placeholder="Enter prompt text..."
-						className="min-w-0"
+					<PromptTextField
+						prompt={prompt}
+						onValueChange={(value) => update(index, { value })}
+						onRemove={() => remove(index)}
 					/>
 					{markets}
 				</div>
@@ -545,6 +612,8 @@ export function PromptsListEditor({
 	changedKeys,
 	premium,
 	newPromptMarket,
+	leading,
+	pendingRows = 0,
 }: PromptsListEditorProps) {
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
@@ -555,6 +624,7 @@ export function PromptsListEditor({
 	const update = (index: number, patch: Partial<EditablePrompt>) => {
 		onChange(prompts.map((p, i) => (i === index ? { ...p, ...patch } : p)));
 	};
+	const remove = (index: number) => onChange(prompts.filter((_, i) => i !== index));
 	const add = () => {
 		if (prompts.length >= MAX_PROMPTS) return;
 		onChange([...prompts, newPromptEntry(defaultMarket)]);
@@ -682,7 +752,11 @@ export function PromptsListEditor({
 				disabled={prompts.length === 0}
 			/>
 
-			{prompts.length === 0 ? (
+			{leading}
+
+			{pendingRows > 0 && <PendingRows count={pendingRows} gridCols={gridCols} />}
+
+			{prompts.length === 0 && pendingRows === 0 ? (
 				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -712,6 +786,7 @@ export function PromptsListEditor({
 								index={index}
 								total={prompts.length}
 								update={updateRow}
+								remove={remove}
 								allTagOptions={allTagOptions}
 								showSystemTags={showSystemTags}
 								markets={showMarket ? marketChips(block) : undefined}

@@ -53,3 +53,53 @@ export function rehypeHighlight(term: string) {
 	};
 	return () => visit;
 }
+
+interface PositionedNode extends HastNode {
+	position?: { start: { offset?: number }; end: { offset?: number } };
+}
+
+export interface MarkRange {
+	/** Offsets into the markdown source, as the mention judge's assessments record them. */
+	start: number;
+	end: number;
+	className: string;
+}
+
+/**
+ * Rehype plugin marking the rendered text that came from `range` of the markdown source. Text
+ * nodes carry their source offsets; one whose text differs in length from its source (an escape
+ * or entity) is marked whole rather than sliced at a guess.
+ */
+export function rehypeMarkRange(range: MarkRange) {
+	const visit = (node: PositionedNode) => {
+		if (!node.children) return;
+		node.children = node.children.flatMap((child: PositionedNode): HastNode[] => {
+			if (child.type === "text" && child.value) return markTextNode(child, range);
+			visit(child);
+			return [child];
+		});
+	};
+	return () => visit;
+}
+
+function markTextNode(node: PositionedNode, range: MarkRange): HastNode[] {
+	const value = node.value ?? "";
+	const start = node.position?.start.offset;
+	const end = node.position?.end.offset;
+	if (start === undefined || end === undefined || end <= range.start || start >= range.end) return [node];
+	const mark = (text: string): HastNode =>
+		({
+			type: "element",
+			tagName: "mark",
+			properties: { className: [range.className], dataPassage: true },
+			children: [{ type: "text", value: text }],
+		}) as HastNode;
+	if (value.length !== end - start) return [mark(value)];
+	const from = Math.max(range.start, start) - start;
+	const to = Math.min(range.end, end) - start;
+	return [
+		...(from > 0 ? [{ type: "text", value: value.slice(0, from) }] : []),
+		mark(value.slice(from, to)),
+		...(to < value.length ? [{ type: "text", value: value.slice(to) }] : []),
+	];
+}

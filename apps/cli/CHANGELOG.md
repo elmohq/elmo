@@ -1,5 +1,53 @@
 # @elmohq/cli
 
+## 0.7.2
+
+No changes in this release.
+
+## 0.7.1
+
+No changes in this release.
+
+## 0.7.0
+
+### Minor Changes
+
+- f5b579c: **Jev (TypeSafe) is now a required dependency of Elmo: the worker won't start without `TYPESAFE_API_KEY`.** Jev judges mentions and sentiment, which is far more accurate toward your brand and each competitor. It costs very roughly $0.15–0.35 per 1,000 answers that name a tracked company, more for long answers that name many. Upgrading re-judges the last 90 days of answers once, about three months' worth of that cost; set `REPROCESS_DAYS=all` before upgrading to re-judge your whole history instead.
+
+## 0.6.2
+
+No changes in this release.
+
+## 0.6.1
+
+No changes in this release.
+
+## 0.6.0
+
+### Patch Changes
+
+- 1334ce8: Default the OpenAI and Anthropic model targets to `gpt-6-luna` and `claude-haiku-5-5` (`openai/gpt-6-luna` and `anthropic/claude-haiku-5.5` on OpenRouter); existing installs keep their configured models, so consider updating `SCRAPE_TARGETS` to switch from `gpt-5-mini` and `claude-sonnet-5`.
+
+## 0.5.2
+
+No changes in this release.
+
+## 0.5.1
+
+No changes in this release.
+
+## 0.5.0
+
+No changes in this release.
+
+## 0.4.6
+
+No changes in this release.
+
+## 0.4.5
+
+No changes in this release.
+
 ## 0.4.4
 
 No changes in this release.

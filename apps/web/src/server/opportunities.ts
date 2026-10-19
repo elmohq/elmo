@@ -24,16 +24,16 @@ import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schem
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { isBrandedPrompt } from "@/lib/prompt-tags";
 import {
-	getBrandMentionRateByModel,
 	getPerPromptCitationPages,
-	getPerPromptDailyCitationStats,
-	getPerPromptDailyCompetitorMentions,
+	getPerPromptDailyCitationDomains,
+	getPerPromptDailyCompetitors,
 	getPerPromptRunStats,
+	getRunsByModel,
 	type PerPromptDailyCompetitorRow,
 	type PerPromptRunStats,
-} from "@/lib/postgres-read";
-import { isBrandedPrompt } from "@/lib/prompt-tags";
+} from "@/lib/rollup-read";
 import { resolveLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
@@ -208,7 +208,7 @@ function topCompetitorByPrompt(
 			m = new Map();
 			byPrompt.set(r.prompt_id, m);
 		}
-		m.set(r.competitor, (m.get(r.competitor) ?? 0) + Number(r.mentions));
+		m.set(r.competitor, (m.get(r.competitor) ?? 0) + Number(r.runs));
 	}
 	const out = new Map<string, { name: string; rate: number }>();
 	for (const [pid, m] of byPrompt) {
@@ -218,6 +218,16 @@ function topCompetitorByPrompt(
 		out.set(pid, { name: best.name, rate: runs > 0 ? Math.min(1, best.count / runs) : 0 });
 	}
 	return out;
+}
+
+// Four places is the precision the digest ranks prompts and prints rates at.
+function brandMentionRates(stats: PerPromptRunStats[]): Map<string, number> {
+	return new Map(
+		stats.map((row) => [
+			row.prompt_id,
+			row.runs > 0 ? Math.round((row.brand_mentioned_runs * 10_000) / row.runs) / 10_000 : 0,
+		]),
+	);
 }
 
 type CitationOwner = "brand" | "competitor" | "other";
@@ -240,7 +250,15 @@ async function loadDigestData(
 	promptIds: string[],
 	windows: { r30: { fromDateStr: string; toDateStr: string }; r7: { fromDateStr: string; toDateStr: string } },
 ) {
-	const { r30, r7 } = windows;
+	const scopeOf = (window: { fromDateStr: string; toDateStr: string }) => ({
+		brandId,
+		from: window.fromDateStr,
+		to: window.toDateStr,
+		timezone,
+		promptIds,
+	});
+	const s30 = scopeOf(windows.r30);
+	const s7 = scopeOf(windows.r7);
 	const [brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel] = await Promise.all([
 		db
 			.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })
@@ -251,13 +269,13 @@ async function loadDigestData(
 			.select({ name: competitors.name, domains: competitors.domains })
 			.from(competitors)
 			.where(eq(competitors.brandId, brandId)),
-		getPerPromptRunStats(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
-		getPerPromptDailyCompetitorMentions(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
-		getPerPromptDailyCitationStats(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
-		getPerPromptCitationPages(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
-		getPerPromptRunStats(brandId, r7.fromDateStr, r7.toDateStr, timezone, promptIds),
-		getPerPromptDailyCompetitorMentions(brandId, r7.fromDateStr, r7.toDateStr, timezone, promptIds),
-		getBrandMentionRateByModel(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
+		getPerPromptRunStats(s30),
+		getPerPromptDailyCompetitors(s30),
+		getPerPromptDailyCitationDomains(s30),
+		getPerPromptCitationPages(s30),
+		getPerPromptRunStats(s7),
+		getPerPromptDailyCompetitors(s7),
+		getRunsByModel(s30),
 	]);
 	return { brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel };
 }
@@ -354,18 +372,18 @@ function summarizeCitationLandscape(
 	};
 }
 
-function summarizePlatformVisibility(byModel: { model: string; runs: number; brand_mentioned_count: number }[]) {
+function summarizePlatformVisibility(byModel: { model: string; runs: number; brand_mentioned_runs: number }[]) {
 	const byPlatform = new Map<string, { runs: number; mentioned: number }>();
 	let allRuns = 0;
 	let allMentioned = 0;
 	for (const row of byModel) {
 		if (row.runs <= 0) continue;
 		allRuns += row.runs;
-		allMentioned += row.brand_mentioned_count;
+		allMentioned += row.brand_mentioned_runs;
 		const platform = modelToPlatform(row.model);
 		const current = byPlatform.get(platform) ?? { runs: 0, mentioned: 0 };
 		current.runs += row.runs;
-		current.mentioned += row.brand_mentioned_count;
+		current.mentioned += row.brand_mentioned_runs;
 		byPlatform.set(platform, current);
 	}
 	return {
@@ -403,6 +421,8 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 
 	const run30By = new Map(run30.map((r) => [r.prompt_id, r]));
 	const run7By = new Map(run7.map((r) => [r.prompt_id, r]));
+	const brand30By = brandMentionRates(run30);
+	const brand7By = brandMentionRates(run7);
 	const leader30 = topCompetitorByPrompt(comp30, run30By);
 	const leader7 = topCompetitorByPrompt(comp7, run7By);
 
@@ -428,7 +448,7 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 	// Rank prompts by the gap to the leading competitor (30d); branded flagged.
 	const ranked = promptIds
 		.map((pid) => {
-			const brand30 = run30By.get(pid)?.brand_mention_rate ?? 0;
+			const brand30 = brand30By.get(pid) ?? 0;
 			const l30 = leader30.get(pid) ?? { name: "", rate: 0 };
 			return { pid, gap: l30.rate - brand30 };
 		})
@@ -441,8 +461,8 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 			text: promptText.get(pid) ?? "",
 			branded: isBranded.get(pid) ?? false,
 			tags: tagsByPrompt.get(pid) ?? [],
-			brand30: run30By.get(pid)?.brand_mention_rate ?? 0,
-			brand7: run7By.get(pid)?.brand_mention_rate ?? 0,
+			brand30: brand30By.get(pid) ?? 0,
+			brand7: brand7By.get(pid) ?? 0,
 			leader30: leader30.get(pid) ?? { name: "", rate: 0 },
 			leader7: leader7.get(pid) ?? { name: "", rate: 0 },
 			difficulty: difficultyLabel(stabilityScore(computeVolatility(dailyByPrompt.get(pid) ?? []).weightedVolatility)),
