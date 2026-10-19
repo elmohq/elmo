@@ -85,6 +85,8 @@ Elmo uses [Jev](https://typesafe.ai) from TypeSafe to read each answer. Jev deci
 |----------|-------------|---------|
 | `TYPESAFE_API_KEY` | TypeSafe API key for Jev. When set, Elmo calls TypeSafe directly, even if `OPENROUTER_API_KEY` is set too. | — |
 | `OPENROUTER_API_KEY` | Without `TYPESAFE_API_KEY`, Elmo calls Jev through OpenRouter with this key. | — |
+
+`elmo upgrade` checks `.env` for one of these keys before it stops anything. To judge through OpenRouter, keep `OPENROUTER_API_KEY` in `.env`, even if it's also saved in Elmo's settings.
 | `REPROCESS_DAYS` | How far back reprocessing (re-extracting and re-judging history) goes, in days, or `all` | `90` |
 
 Elmo makes one Jev call for each answer that names a tracked company. Answers that name none are never sent. Its cost grows with the answer's length and with how many tracked companies it names.
