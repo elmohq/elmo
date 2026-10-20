@@ -113,16 +113,10 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 					</div>
 					<FateNotice competitor={competitor} />
 					{isLowDR(competitor) && !graveyardFate(competitor) && (
-						<div className="mt-4 flex items-start gap-3 rounded-md border border-amber-500/20 bg-amber-50/50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
-							<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-							<div>
-								<p className="font-medium">Limited market presence</p>
-								<p className="mt-0.5 text-amber-800/80 dark:text-amber-300/70">
-									{competitor.name} appears to be a very early-stage product with limited adoption. Information on this
-									page may be incomplete.
-								</p>
-							</div>
-						</div>
+						<p className="mt-8 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-50 px-3 py-1 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+							<AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+							{competitor.name} appears to be a very early-stage product with limited adoption.
+						</p>
 					)}
 				</div>
 			</section>
