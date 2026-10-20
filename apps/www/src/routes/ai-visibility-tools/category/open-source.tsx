@@ -81,78 +81,21 @@ const FAQS: FaqItem[] = [
 	},
 ];
 
-const AT_A_GLANCE: {
-	tool: string;
-	license: string;
-	selfHost: string;
-	cloud: string;
-	tracks: string;
-	bestFor: string;
-}[] = [
+const AT_A_GLANCE: { tool: string; license: string; cloud: string; bestFor: string }[] = [
 	{
 		tool: "Elmo",
 		license: "MIT",
-		selfHost: "Yes, free",
 		cloud: "Yes, from $29/mo",
-		tracks: "Mentions, sentiment, and citations across ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews",
-		bestFor: "The essential AEO features, with the best UX and agent experience",
-	},
-	{
-		tool: "Ansvisor",
-		license: "MIT",
-		selfHost: "Yes, free",
-		cloud: "Yes, from $49/mo",
-		tracks: "ChatGPT, Copilot, Perplexity, Gemini, AI Overviews, AI Mode, Claude, Grok",
-		bestFor: "A hosted plan alongside the open code",
-	},
-	{
-		tool: "Limelit",
-		license: "Apache-2.0 (open core)",
-		selfHost: "Yes, single binary",
-		cloud: "Yes, credit packs from $19.99",
-		tracks: "ChatGPT, Claude, Perplexity, Gemini, AI Overviews, AI Mode, Copilot",
-		bestFor: "A single user who wants a local install and doesn't need the paywalled features",
-	},
-	{
-		tool: "Cited",
-		license: "AGPL-3.0",
-		selfHost: "Yes, via Docker Compose",
-		cloud: "Yes, from $19/mo",
-		tracks: "Citations of your domain across ChatGPT, Claude, Gemini, Perplexity, Google AI",
-		bestFor: "Citation alerts only: no sentiment, visibility scores, or recommendations",
+		bestFor: "Most teams: every essential AEO feature, the best UX and agent experience",
 	},
 	{
 		tool: "OneGlanse",
 		license: "MIT",
-		selfHost: "Yes",
 		cloud: "No",
-		tracks: "ChatGPT, Gemini, Perplexity, Claude, Google AI Overview",
-		bestFor: "A fully free setup scraping from your own machine, if you can keep it running",
+		bestFor: "A fully free setup, if you can keep its scrapers running",
 	},
-	{
-		tool: "GEO/AEO Tracker",
-		license: "MIT",
-		selfHost: "Yes, local-first",
-		cloud: "No",
-		tracks: "ChatGPT, Perplexity, Gemini, Copilot, Google AI Overview, Grok",
-		bestFor: "A quick check from one browser with your own keys",
-	},
-	{
-		tool: "Canonry",
-		license: "MIT",
-		selfHost: "Yes",
-		cloud: "No",
-		tracks: "Gemini, ChatGPT, Claude, Perplexity, local LLMs; server-log AI traffic",
-		bestFor: "Workflows run by AI agents rather than people",
-	},
-	{
-		tool: "Gego",
-		license: "GPL-3.0",
-		selfHost: "Yes, via Docker",
-		cloud: "Early-access waitlist",
-		tracks: "Citations, brand mentions, and keywords across OpenAI, Anthropic, Google, Perplexity, Ollama",
-		bestFor: "Bare-bones scheduled checks from the command line",
-	},
+	{ tool: "GEO/AEO Tracker", license: "MIT", cloud: "No", bestFor: "A quick check from a single browser" },
+	{ tool: "Gego", license: "GPL-3.0", cloud: "Waitlist", bestFor: "Bare-bones scheduled checks from a CLI" },
 ];
 
 const GITHUB_STATS: {
@@ -407,14 +350,12 @@ function OpenSourcePage() {
 				</DirectorySection>
 
 				<DirectorySection title="The best open-source AEO tools at a glance">
-					<DataTable headers={["Tool", "License", "Self-host", "Managed cloud", "What it tracks", "Best for"]}>
+					<DataTable headers={["Tool", "License", "Managed cloud", "Best for"]}>
 						{AT_A_GLANCE.map((row) => (
 							<Row key={row.tool}>
 								<Cell strong>{row.tool}</Cell>
 								<Cell>{row.license}</Cell>
-								<Cell>{row.selfHost}</Cell>
 								<Cell>{row.cloud}</Cell>
-								<Cell>{row.tracks}</Cell>
 								<Cell>{row.bestFor}</Cell>
 							</Row>
 						))}
