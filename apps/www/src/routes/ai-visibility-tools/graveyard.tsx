@@ -183,14 +183,13 @@ function GraveyardPage() {
 					<div className="max-w-3xl border-l-2 border-blue-600 pl-4 text-sm text-zinc-600">
 						<p className="font-medium text-zinc-950">Open source is the safety net</p>
 						<p className="mt-1">
-							A hosted tracker is a bet on the company behind it, and when the company goes, your history goes with it.
-							Open-source code outlives the company: Genwolf's core stayed on GitHub after its app went offline. Elmo is
-							MIT-licensed, so you can always keep running it yourself.{" "}
+							When a hosted tracker goes under, your history goes with it. Elmo is MIT-licensed, so you can always keep
+							running it yourself.{" "}
 							<Link
-								to="/ai-visibility-tools/category/open-source"
+								to="/"
 								className="text-zinc-950 underline decoration-zinc-400 underline-offset-4 hover:decoration-zinc-950"
 							>
-								Compare open-source tools
+								See how Elmo works
 							</Link>
 						</p>
 					</div>
