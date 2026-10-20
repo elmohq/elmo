@@ -73,7 +73,7 @@ function BillingSettingsPage() {
 			annual: state.subscription?.billingInterval === "year",
 			referenceId: state.organization.id,
 			customerType: "organization",
-			...(state.subscription && { subscriptionId: state.subscription.id }),
+			...(state.subscription?.stripeSubscriptionId && { subscriptionId: state.subscription.stripeSubscriptionId }),
 			successUrl: window.location.href,
 			cancelUrl: window.location.href,
 			disableRedirect: false,
