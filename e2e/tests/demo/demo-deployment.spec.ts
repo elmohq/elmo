@@ -2,8 +2,8 @@
  * What makes a demo deployment different.
  *
  * Demo is local mode with READ_ONLY forced on: a public, shared instance that
- * anyone can look around but nobody can change. It advertises one set of
- * credentials on the login page, wears a "Demo" pill, and refuses every write.
+ * anyone can look around but nobody can change. It signs every visitor in to
+ * one shared account, wears a "Demo" pill, and refuses every write.
  *
  * The read-only policy itself is unit-tested as a pure function
  * (apps/web/src/lib/auth/__tests__/policies.test.ts). What these specs add is
@@ -139,15 +139,19 @@ test.describe("Demo auth is sign-in only", () => {
     expect(response.status()).toBe(200);
   });
 
-  test("the login page advertises the shared demo account", async ({ page }) => {
+  test("the login page signs you in to the shared demo account", async ({ page }) => {
     await page.goto("/auth/login");
 
-    await expect(page.getByText("Demo Account")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(DEMO_CREDENTIALS.email)).toBeVisible();
-    await expect(page.getByText(DEMO_CREDENTIALS.password, { exact: true }).first()).toBeVisible();
-    // Credentials are pre-filled, so there is nothing to type in.
-    await expect(page.getByLabel("Email")).toHaveCount(0);
-    await expect(page.getByLabel("Password")).toHaveCount(0);
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
+    const session = await (await page.request.get("/api/auth/get-session")).json();
+    expect(session?.user?.email).toBe(DEMO_CREDENTIALS.email);
+  });
+
+  test("signing in lands on the page you were sent from", async ({ page }) => {
+    await page.goto(brandUrl());
+
+    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+    await page.waitForURL((url) => url.pathname === brandUrl(), { timeout: 30_000 });
   });
 
   test("the register page sends you to sign in", async ({ page, consoleErrors }) => {
@@ -156,10 +160,10 @@ test.describe("Demo auth is sign-in only", () => {
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
   });
 
-  test("the bare app URL opens on sign-in", async ({ page }) => {
+  test("the bare app URL opens on the demo account", async ({ page }) => {
     await page.goto("/");
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
-    await expect(page.getByText("Demo Account")).toBeVisible({ timeout: 30_000 });
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
   });
 });
 
