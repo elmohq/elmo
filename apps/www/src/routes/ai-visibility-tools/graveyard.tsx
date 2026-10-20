@@ -181,6 +181,20 @@ function GraveyardPage() {
 				<DirectoryBackLink />
 				<DirectoryHero title="The AEO Graveyard" lead={lead} />
 				<DirectorySection>
+					<div className="mb-10 max-w-3xl border-l-2 border-blue-600 pl-4 text-sm text-zinc-600">
+						<p className="font-medium text-zinc-950">Open source is the safety net</p>
+						<p className="mt-1">
+							A hosted tracker is a bet on the company behind it, and when the company goes, your history goes with it.
+							Open-source code outlives the company: Genwolf's core stayed on GitHub after its app went offline. Elmo is
+							MIT-licensed, so you can always keep running it yourself.{" "}
+							<Link
+								to="/ai-visibility-tools/category/open-source"
+								className="text-zinc-950 underline decoration-zinc-400 underline-offset-4 hover:decoration-zinc-950"
+							>
+								Compare open-source tools
+							</Link>
+						</p>
+					</div>
 					<ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						{graveyardTools.map((c) => (
 							<Tombstone key={c.slug} competitor={c} />
@@ -201,27 +215,6 @@ function GraveyardPage() {
 							</li>
 						))}
 					</ol>
-				</DirectorySection>
-				<DirectorySection title="Open source is the safety net">
-					<div className="max-w-3xl space-y-4 text-zinc-600">
-						<p>
-							A hosted tracker is a bet on the company behind it. If it runs out of money, gets acquired, or decides AI
-							visibility isn't its business anymore, your history goes with it, usually with a few weeks' notice.
-						</p>
-						<p>
-							Open-source software changes the odds. When Genwolf's hosted app went offline, its MIT-licensed core was
-							still on GitHub. When Notra took its repository private, every copy already released under the AGPL stayed
-							usable. The code outlives the company, and a self-hosted install keeps your data in your own database.
-						</p>
-						<p>
-							Elmo is MIT-licensed, so you can self-host it, modify it, and keep running it no matter what happens to
-							us. Browse the{" "}
-							<Link to="/ai-visibility-tools/category/open-source" className="text-blue-700 hover:underline">
-								open-source AI visibility tools
-							</Link>{" "}
-							to compare the options.
-						</p>
-					</div>
 				</DirectorySection>
 				<Faq items={FAQS} />
 				<ElmoCta />
