@@ -186,7 +186,7 @@ export const DIRECTORY_FAQS: FaqItem[] = [
 	{
 		question: "How do I choose the best AI visibility tool?",
 		answer:
-			"The right tool depends on which AI engines you need to track, whether you want self-hosting and data ownership, your budget, and any agency or white-label needs. This directory compares 100+ tools feature-by-feature so you can match a tool to your requirements.",
+			"The right tool depends on which AI engines you need to track, whether you want self-hosting and data ownership, your budget, and any agency or white-label needs. This directory compares 100+ tools feature-by-feature. If you want every major engine, auditable metrics, and no lock-in, Elmo is open source: self-host it for free or use Elmo Cloud.",
 	},
 	{
 		question: "Is there an open-source AI visibility tool?",
@@ -201,6 +201,6 @@ export const DIRECTORY_FAQS: FaqItem[] = [
 	{
 		question: "Can you track brand mentions in ChatGPT?",
 		answer:
-			"Yes. AI visibility software queries ChatGPT with your prompts and records whether it mentions or cites your brand. Because answers vary between runs, tracking a consistent prompt set on a schedule gives a far more reliable read than a single manual check.",
+			"Yes. AI visibility software queries ChatGPT with your prompts and records whether it mentions or cites your brand. Because answers vary between runs, tracking a consistent prompt set on a schedule gives a far more reliable read than a single manual check. Elmo does this for ChatGPT on every plan, capturing answers from the real ChatGPT app rather than only the API.",
 	},
 ];

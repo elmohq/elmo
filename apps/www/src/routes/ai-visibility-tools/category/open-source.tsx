@@ -27,32 +27,32 @@ const FAQS: FaqItem[] = [
 	{
 		question: "What are the best open-source AEO tools?",
 		answer:
-			"Elmo is the longest-running open-source answer engine optimization tool: MIT-licensed, free to self-host, and covering ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, and any OpenRouter model. Public GitHub data as of 17 October 2026 shows a field that grew fast this year. Ansvisor has the most contributors and a hosted cloud. Canonry is a capable agent-first platform, now MIT-licensed. OneGlanse and Limelit capture answers from the real AI apps, Cited focuses on citations under the AGPL, and Gego is GPL-3.0. GetCito replaced its codebase with Elmo's in July 2026, so running it means running a lagging fork of Elmo.",
+			"Elmo is the best open-source answer engine optimization tool for most teams. It is MIT-licensed, has the essential AEO features, the best UX, and the best agent experience, and covers ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, and any OpenRouter model. You can self-host it for free or use Elmo Cloud. Other open-source projects exist, but each makes a significant tradeoff: browser-only storage, scrapers you maintain yourself, workflows built for agents rather than people, features paywalled behind a cloud, or citation-only tracking. GetCito is a lagging fork of Elmo.",
 	},
 	{
 		question: "What are the best free tools to track brand mentions in ChatGPT?",
 		answer:
-			"For free tracking that keeps running, self-host an open-source tool: Elmo is MIT-licensed and covers ChatGPT alongside Claude, Perplexity, Gemini, and Google AI Overviews, with no license fee or per-seat charge. Smaller free options include GEO/AEO Tracker, which is local-first and runs entirely in your browser, and Gego, which runs from Docker on a schedule. Free trials from hosted tools work for a one-off check but stop when the trial does. In every case you supply your own model API keys, which carry usage costs, so free means no software licence rather than no spend.",
+			"Self-host Elmo. It is MIT-licensed and free, tracks ChatGPT alongside Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, and Claude, and has no license fee or per-seat charge. Free trials of hosted tools work for a one-off check but stop when the trial does. You supply your own scraper or model API keys, which carry usage costs, so free means no software license rather than no spend.",
 	},
 	{
 		question: "Is there a free AI visibility tool?",
 		answer:
-			"Yes. Open-source trackers are free to use and free to self-host — Elmo, Ansvisor, Canonry, OneGlanse, Limelit, and Gego all fall into this category. The cost you cannot avoid is model API usage, because measuring visibility means actually running prompts through the engines. A useful rule of thumb: free software plus your own API keys is cheaper than any subscription at small prompt counts, and the crossover point arrives when you would rather not maintain the infrastructure.",
+			"Yes. Elmo is free to use and free to self-host under the MIT license. The cost you cannot avoid is model and scraper API usage, because measuring visibility means actually running prompts through the engines. If you would rather not run the infrastructure, Elmo Cloud runs the same software for you, and you can move to self-hosting at any time.",
 	},
 	{
 		question: "Which open-source AEO tool is the most actively maintained?",
 		answer:
-			"Several are busy. By GitHub activity on 17 October 2026, Ansvisor (503 commits in the last 90 days, 65 contributors), Canonry (472), and Elmo (374) are the most active, and Lettertrace (323) is close behind. Elmo has the longest continuous history, starting in July 2025, the most releases at 36, and more stars than any other actively developed independent project. GEO/AEO Tracker, Gego, and GetCito each logged 15 or fewer commits in the same window.",
+			"Elmo. As of 17 October 2026 it has the longest continuous history of the open-source AEO tools, starting in July 2025, the most releases at 36, the most stars among actively developed independent projects, and 374 commits in the last 90 days. Many of the other projects started in 2026, and some have already gone quiet: GEO/AEO Tracker and Gego each logged 10 or fewer commits in the same window.",
 	},
 	{
 		question: "Is there an open-source AI visibility tracker?",
 		answer:
-			"Yes. Elmo is an open-source AI visibility platform released under the MIT license, and you can self-host it for free. A few smaller open-source projects exist too, though the space is still early. For anything they don't cover, you can script your own checks against the AI model APIs.",
+			"Yes. Elmo is an open-source AI visibility platform released under the MIT license. You can self-host it for free or use Elmo Cloud, and because the code is open you can read exactly how every metric is built and extend it yourself.",
 	},
 	{
 		question: "Is there an open-source alternative to Profound or enterprise AEO tools?",
 		answer:
-			"Yes. Elmo is an open-source, self-hostable alternative to enterprise platforms like Profound. It tracks how AI answer engines mention and cite your brand, benchmarks competitors, and exports your data, all under the MIT license with every metric computed by code you can read. You run the infrastructure and supply your own model API keys instead of paying a subscription.",
+			"Yes. Elmo is an open-source alternative to enterprise platforms like Profound. It tracks how AI answer engines mention and cite your brand, benchmarks competitors, and exports your data, all under the MIT license with every metric computed by code you can read. Self-host it for free with your own API keys, or use Elmo Cloud for a hosted version without the enterprise price.",
 	},
 	{
 		question: "Should I use GetCito or Elmo?",
@@ -62,12 +62,12 @@ const FAQS: FaqItem[] = [
 	{
 		question: "Can I self-host an AEO tool?",
 		answer:
-			"Yes. Several open-source answer engine optimization tools are built to self-host. Elmo runs on Docker and PostgreSQL on your own infrastructure, so your prompts and visibility history never leave your environment. Ansvisor, Canonry, OneGlanse, Limelit, and GEO/AEO Tracker are self-hostable too. You bring your own LLM API keys, which carry usage costs, but there is no license fee or per-seat charge.",
+			"Yes. Elmo is built to self-host: deploy it with the CLI on Docker and PostgreSQL, and your prompts and visibility history never leave your environment. You bring your own scraper and model API keys, which carry usage costs, but there is no license fee or per-seat charge. If you would rather not run it, Elmo Cloud runs the same software, and you can move between the two.",
 	},
 	{
 		question: "Can I build my own AI visibility tool?",
 		answer:
-			"You can. The core loop is straightforward: send your prompts to the model APIs, directly or through a router like OpenRouter, parse each answer for brand mentions and citations, and log the results over time. The work is in maintaining it, covering enough engines, and running it at scale, which is what a finished tool handles for you.",
+			"You can. The core loop is straightforward: send your prompts to the engines, parse each answer for brand mentions and citations, and log the results over time. The work is in covering enough engines, keeping scrapers working as the apps change, and running it at scale. Elmo already does all of that, and because it is open source you can extend it instead of starting from scratch.",
 	},
 	{
 		question: "Why use an open-source AI visibility tool?",
