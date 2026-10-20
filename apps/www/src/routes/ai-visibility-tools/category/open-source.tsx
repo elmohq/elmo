@@ -57,7 +57,7 @@ const FAQS: FaqItem[] = [
 	{
 		question: "Should I use GetCito or Elmo?",
 		answer:
-			"Use Elmo. If you are considering GetCito, Elmo is what you actually want, because GetCito is a fork of it — on 10 July 2026 it replaced its codebase with Elmo's. Everything it offers came from Elmo, and it has shipped less since — 17 commits to Elmo's 98 in the month after the fork — so it is drifting further behind rather than building past it.",
+			"Use Elmo. GetCito is a fork of Elmo: on 10 July 2026 it replaced its own codebase with Elmo's, so everything it offers came from Elmo. It has shipped less since, with 17 commits to Elmo's 98 in the month after the fork, so it is falling further behind rather than building past it.",
 	},
 	{
 		question: "Can I self-host an AEO tool?",
