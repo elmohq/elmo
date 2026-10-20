@@ -1935,6 +1935,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 24,
 		ahrefsTraffic: 1,
+		darkScreenshot: true,
 		status: "defunct",
 		fate: {
 			date: "2026-10",
@@ -2226,6 +2227,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 5,
 		ahrefsTraffic: 0,
+		darkScreenshot: true,
 		status: "defunct",
 		fate: {
 			date: "2026-10",
@@ -2518,6 +2520,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		ahrefsTraffic: 6,
+		darkScreenshot: true,
 		status: "defunct",
 		fate: {
 			date: "2026-10",
@@ -4299,6 +4302,7 @@ export const competitors: Competitor[] = [
 			"Genwolf runs a prompt set daily against ChatGPT, Gemini, and Perplexity and reports mentions, citations, sentiment, and the source domains behind each answer, keeping full answer history so runs can be compared over time. Its core evaluation engine is MIT licensed and self-hostable, while the hosted app is the paid product. Pricing is per prompt — $30/month covers ten, with per-prompt rates that drop as the count grows — and prompts can be added or removed at any time.",
 		category: "tracking",
 		ahrefsDR: 0.9,
+		darkScreenshot: true,
 		status: "defunct",
 		fate: {
 			date: "2026-10",
@@ -6099,6 +6103,7 @@ export const competitors: Competitor[] = [
 			"Jarts tracked brand visibility across ChatGPT, Gemini, and Perplexity with an unusual persona model — the same category measured through distinct buyer personas such as a beginner athlete or trend-seeking athleisure buyer — alongside source insights that classified each cited domain by type. It was acquired and the service ended on 4 May 2026; the German operating entity is in liquidation.",
 		category: "tracking",
 		ahrefsDR: 5,
+		darkScreenshot: true,
 		status: "defunct",
 		fate: {
 			date: "2026-05-04",
@@ -7055,6 +7060,7 @@ export const competitors: Competitor[] = [
 			"XFunnel treats answer engines as a sales channel, pairing measurement with tailored playbooks, content briefs writers can execute immediately, an affiliate activation kit, and an experimentation platform for iterating on what moves visibility. Every account gets a dedicated analyst rather than a self-serve dashboard. Its customer roster is one of the strongest in the category — monday.com, LastPass, MyFitnessPal, Lemonade, Getty Images, Cox Enterprises, Betterment, Check Point, Fireblocks, Docebo, Cato Networks, HiBob, and MyHeritage. In August 2026 it announced an agreement to be acquired by HubSpot.",
 		category: "tracking",
 		ahrefsDR: 61,
+		darkScreenshot: true,
 		status: "acquired",
 		fate: {
 			date: "2025-10-30",
@@ -8276,6 +8282,7 @@ export const competitors: Competitor[] = [
 			"AI visibility monitor that scored how ChatGPT, Claude, Gemini, and Perplexity described a brand. By April 2026 the AI visibility monitor had been replaced by a general directory of SaaS and AI tools on the same domain.",
 		category: "tracking",
 		ahrefsDR: 33,
+		darkScreenshot: true,
 		status: "pivoted",
 		fate: {
 			date: "2026-04",
@@ -8313,6 +8320,7 @@ export const competitors: Competitor[] = [
 			"AI engine optimization and brand-visibility tracking across ChatGPT, Claude, and Gemini, with white-label dashboards for agencies. The white-label GEO platform had been in open beta since mid-2025, and its hosted app has since been taken offline.",
 		category: "tracking",
 		ahrefsDR: 1.4,
+		darkScreenshot: true,
 		status: "defunct",
 		fate: {
 			date: "2026-10",
@@ -8427,6 +8435,7 @@ export const competitors: Competitor[] = [
 			"Company profiles designed to become the cited source of truth for AI answer engines. It launched in December 2025 as a way to control what answer engines say about a business, was relaunched a week later as a personal AI agent, and its domain no longer resolves.",
 		category: "tracking",
 		ahrefsDR: 1.6,
+		darkScreenshot: true,
 		status: "pivoted",
 		fate: {
 			date: "2025-12",
@@ -8464,6 +8473,7 @@ export const competitors: Competitor[] = [
 			"Helped brands become visible in AI answers. The AI-search visibility platform's domain now redirects to Agentrail, a product for analyzing how AI agents use websites and APIs.",
 		category: "tracking",
 		ahrefsDR: 4.2,
+		darkScreenshot: true,
 		status: "pivoted",
 		fate: {
 			date: "2026-10",
@@ -8482,6 +8492,7 @@ export const competitors: Competitor[] = [
 			"LLM Marketing Monitor that tracked how ChatGPT, Gemini, Meta AI and Perplexity perceive and rank a brand. The domain no longer resolves; the site was last archived live in April 2025.",
 		category: "tracking",
 		ahrefsDR: 0.1,
+		darkScreenshot: true,
 		status: "defunct",
 		fate: {
 			date: "2025",
@@ -8499,6 +8510,7 @@ export const competitors: Competitor[] = [
 			"Data-driven tools for winning placement in Google AI Overviews. The site no longer loads; it was last archived live in December 2025.",
 		category: "tracking",
 		ahrefsDR: 0.2,
+		darkScreenshot: true,
 		status: "defunct",
 		fate: {
 			date: "2026",
@@ -8589,6 +8601,7 @@ export const competitors: Competitor[] = [
 			"Tracked and optimized business visibility across ChatGPT, Claude, Gemini and other AI search engines. The domain now hosts a remote-work talent network for AI and technology roles rather than an AI search tool.",
 		category: "tracking",
 		ahrefsDR: 0,
+		darkScreenshot: true,
 		status: "pivoted",
 		fate: {
 			date: "2026",

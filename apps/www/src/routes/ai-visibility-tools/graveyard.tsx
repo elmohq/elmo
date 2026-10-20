@@ -112,44 +112,60 @@ export const Route = createFileRoute("/ai-visibility-tools/graveyard")({
 	component: GraveyardPage,
 });
 
+// Fine grain so the stone doesn't read as a flat gradient.
+const STONE_GRAIN =
+	"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
+
+const stoneStyle = {
+	backgroundImage: `${STONE_GRAIN}, radial-gradient(ellipse at 30% 0%, #f5f5f4 0%, #d6d3d1 45%, #a8a29e 100%)`,
+	boxShadow:
+		"inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -18px 30px rgba(68,64,60,0.18), 0 1px 0 #78716c, 0 14px 24px -12px rgba(41,37,36,0.45)",
+};
+
+// Light from above: a dark edge on top and a light one below reads as cut into the stone.
+const ENGRAVED = "[text-shadow:0_1px_0_rgba(255,255,255,0.55),0_-1px_0_rgba(41,37,36,0.25)]";
+
 function Tombstone({ competitor }: { competitor: Competitor }) {
 	const fate = graveyardFate(competitor);
 	if (!fate || !competitor.fate) return null;
 	return (
-		<li className="flex flex-col rounded-t-[999px] border border-zinc-300 bg-gradient-to-b from-zinc-100 to-zinc-50 px-5 pt-10 pb-5 shadow-[inset_0_-6px_0_0_rgba(0,0,0,0.04)]">
-			<p className="text-center font-mono text-[11px] uppercase tracking-[0.3em] text-zinc-400">
-				{fate === "acquired" ? "Absorbed" : "RIP"}
+		<li
+			className="flex flex-col rounded-t-[999px] rounded-b-sm border border-stone-400/70 px-6 pt-12 pb-6"
+			style={stoneStyle}
+		>
+			<p className={`text-center font-mono text-[11px] uppercase tracking-[0.35em] text-stone-500 ${ENGRAVED}`}>
+				{fate === "acquired" ? "Absorbed" : "R.I.P."}
 			</p>
-			<h3 className="font-heading mt-2 text-center text-2xl text-zinc-900">{competitor.name}</h3>
-			<p className="mt-1 text-center text-xs text-zinc-500">
+			<h3 className={`font-heading mt-2 text-center text-3xl text-stone-700 ${ENGRAVED}`}>{competitor.name}</h3>
+			<p className={`mt-1 text-center text-xs text-stone-600 ${ENGRAVED}`}>
 				{FATE_LABEL[fate]} · {formatFateDate(competitor.fate.date)}
 			</p>
 			<TombstoneDivider />
 			{!competitor.noScreenshot && (
 				<>
-					<div className="overflow-hidden rounded-md border border-zinc-300">
+					<div className="overflow-hidden rounded-sm shadow-[inset_0_2px_6px_rgba(41,37,36,0.45),0_1px_0_rgba(255,255,255,0.5)]">
 						<img
 							src={getScreenshotUrl(competitor.slug)}
 							alt={`${competitor.name}'s homepage while it was live`}
 							width={1280}
 							height={800}
-							className="aspect-[16/10] w-full object-cover object-top grayscale"
+							className={`aspect-[16/10] w-full object-cover object-top opacity-60 mix-blend-multiply contrast-125 grayscale ${competitor.darkScreenshot ? "invert" : ""}`}
 							loading="lazy"
 						/>
 					</div>
 					<TombstoneDivider />
 				</>
 			)}
-			<p className="text-sm text-zinc-600">{competitor.tagline}</p>
+			<p className={`text-sm text-stone-600 ${ENGRAVED}`}>{competitor.tagline}</p>
 			<TombstoneDivider />
-			<p className="flex-1 text-sm text-zinc-800">{competitor.fate.summary}</p>
+			<p className={`flex-1 text-sm text-stone-800 ${ENGRAVED}`}>{competitor.fate.summary}</p>
 			<TombstoneDivider />
-			<div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
+			<div className={`flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs ${ENGRAVED}`}>
 				{hasComparisonPage(competitor) && (
 					<Link
 						to="/ai-visibility-tools/$slug"
 						params={{ slug: getComparisonSlug(competitor) }}
-						className="text-zinc-950 underline decoration-zinc-400 underline-offset-4 hover:decoration-zinc-950"
+						className="text-stone-900 underline decoration-stone-500 underline-offset-4 hover:decoration-stone-900"
 					>
 						Elmo vs {competitor.name}
 					</Link>
@@ -159,7 +175,7 @@ function Tombstone({ competitor }: { competitor: Competitor }) {
 						href={competitor.fate.source}
 						target="_blank"
 						rel="noopener noreferrer nofollow"
-						className="text-zinc-950 underline decoration-zinc-400 underline-offset-4 hover:decoration-zinc-950"
+						className="text-stone-900 underline decoration-stone-500 underline-offset-4 hover:decoration-stone-900"
 					>
 						Source
 					</a>
@@ -170,7 +186,7 @@ function Tombstone({ competitor }: { competitor: Competitor }) {
 }
 
 function TombstoneDivider() {
-	return <hr className="my-4 border-zinc-300" />;
+	return <hr className="my-4 border-t border-b border-t-stone-500/40 border-b-white/50" />;
 }
 
 function GraveyardPage() {
