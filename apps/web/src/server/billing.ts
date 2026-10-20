@@ -11,6 +11,8 @@ import { isPremiumAddonAvailable, premiumPlanNames } from "@workspace/config/pla
 import { isOrgAdminRole } from "@workspace/config/roles";
 import { getDeployment } from "@workspace/deployment";
 import { setPremiumAddonQuantity } from "@workspace/deployment/billing";
+import { db } from "@workspace/lib/db/db";
+import { organization } from "@workspace/lib/db/schema";
 import {
 	countOrgAssignedPremiumSlots,
 	countOrgBrands,
@@ -18,6 +20,7 @@ import {
 	getOrgBillingState,
 	getOrgEntitlementsMap,
 } from "@workspace/lib/entitlements";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { listUserOrganizations, requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 
@@ -35,6 +38,11 @@ export type BillingState = {
 		billingInterval: string | null;
 		seats: number | null;
 	} | null;
+	/**
+	 * Whether the org has a Stripe customer, so the portal can open. Outlives the
+	 * subscription: an unpaid one is settled there, and past invoices stay there.
+	 */
+	hasBillingAccount: boolean;
 	premiumAddonQuantity: number;
 	premiumAddonAvailable: boolean;
 	usage: { brands: number; enabledPrompts: number; premiumAssigned: number };
@@ -69,7 +77,14 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 		const org = await requireOrganization(session.user.id, data.organizationId);
 		const deployment = getDeployment();
 
-		const state = await getOrgBillingState(org.id);
+		const [state, [billingAccount]] = await Promise.all([
+			getOrgBillingState(org.id),
+			db
+				.select({ stripeCustomerId: organization.stripeCustomerId })
+				.from(organization)
+				.where(eq(organization.id, org.id))
+				.limit(1),
+		]);
 		const subscription = liveSubscription(state.subscription);
 		const [brandsUsed, promptsUsed, premiumAssigned] = state.entitlements.unlimited
 			? [0, 0, 0]
@@ -95,6 +110,7 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 						seats: subscription.seats ?? null,
 					}
 				: null,
+			hasBillingAccount: subscription !== null || Boolean(billingAccount?.stripeCustomerId),
 			premiumAddonQuantity: state.settings?.premiumAddonQuantity ?? 0,
 			premiumAddonAvailable: isPremiumAddonAvailable(state.entitlements.planKey),
 			usage: { brands: brandsUsed, enabledPrompts: promptsUsed, premiumAssigned },

@@ -207,31 +207,36 @@ function billingCadenceLine(state: BillingState, annual: boolean): string {
 
 function BillingAction({
 	hasSubscription,
+	hasBillingAccount,
 	isCustomPlan,
 	busy,
 	onOpenPortal,
 	onChoosePlan,
 }: {
 	hasSubscription: boolean;
+	hasBillingAccount: boolean;
 	isCustomPlan: boolean;
 	busy: string | null;
 	onOpenPortal: () => void;
 	onChoosePlan: () => void;
 }) {
-	if (hasSubscription) {
-		return (
-			<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
-				{busy === "portal" ? <Spinner /> : <IconExternalLink className="h-4 w-4" />}
-				Manage billing
-			</Button>
-		);
-	}
 	// A custom agreement is billed outside self-serve, so there is nothing to buy.
-	if (isCustomPlan) return null;
+	const canChoosePlan = !hasSubscription && !isCustomPlan;
+	if (!hasBillingAccount && !canChoosePlan) return null;
 	return (
-		<Button size="sm" onClick={onChoosePlan}>
-			Choose a plan
-		</Button>
+		<div className="flex flex-wrap gap-2">
+			{canChoosePlan && (
+				<Button size="sm" onClick={onChoosePlan}>
+					Choose a plan
+				</Button>
+			)}
+			{hasBillingAccount && (
+				<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
+					{busy === "portal" ? <Spinner /> : <IconExternalLink className="h-4 w-4" />}
+					Manage billing
+				</Button>
+			)}
+		</div>
 	);
 }
 
@@ -287,6 +292,7 @@ function SubscriptionSummary({
 				<div>
 					<BillingAction
 						hasSubscription={Boolean(subscription)}
+						hasBillingAccount={state.hasBillingAccount}
 						isCustomPlan={entitlements.planKey === "custom"}
 						busy={busy}
 						onOpenPortal={onOpenPortal}
