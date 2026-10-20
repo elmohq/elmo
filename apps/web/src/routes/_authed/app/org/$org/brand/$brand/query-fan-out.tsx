@@ -79,7 +79,12 @@ function QueryFanoutPage() {
 		// totalRuns counts only web-search-enabled runs — a brand whose models all
 		// run without web search lands here even with plenty of runs.
 		content = (
-			<EmptyState message="No runs with web search enabled for the selected filters. Fan-out appears once your prompts have been run by an engine with web search." />
+			<TooltipProvider delay={150}>
+				<div className="space-y-6">
+					<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
+					<EmptyState message="No runs with web search enabled for the selected filters. Fan-out appears once your prompts have been run by an engine with web search." />
+				</div>
+			</TooltipProvider>
 		);
 	} else if (data.totalQueries === 0) {
 		// Runs happened but none exposed fan-out — still show the KPIs (run counts)
