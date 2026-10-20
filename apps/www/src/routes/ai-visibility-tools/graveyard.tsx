@@ -30,7 +30,7 @@ const roundedCount = (() => {
 	return `${n}`;
 })();
 
-const lead = `${roundedCount} AI visibility tools have disappeared in the last two years. Most shut down, and the rest pivoted to something else or were bought and folded into another product. When a tracker disappears, its customers usually lose their prompt history and baselines with it.`;
+const lead = `${roundedCount} AI visibility tools have disappeared in the last two years. Most shut down, and the rest pivoted to something else or were bought and folded into another product. When a tracker disappears, its customers have to adjust to a new system or start from scratch.`;
 
 const FATE_LABEL: Record<GraveyardFate, string> = {
 	"shut-down": "Shut down",
