@@ -7058,7 +7058,8 @@ export const competitors: Competitor[] = [
 		status: "acquired",
 		fate: {
 			date: "2025-10-30",
-			summary: "Acquired by HubSpot.",
+			summary:
+				"Acquired by HubSpot, which now sells its own AEO product; XFunnel's site only takes sign-ups for updates.",
 			source: "https://www.hubspot.com/company-news/hubspot-to-acquire-xfunnel",
 		},
 		features: {

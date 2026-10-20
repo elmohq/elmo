@@ -70,9 +70,37 @@ const RESTRICTIVE_LICENSES: Record<string, string> = {
 	"BUSL-1.1": "source-available under the BSL, which restricts production use",
 };
 
+// Acquired trackers that were absorbed into the buyer's product, the evidence
+// behind the acquisition soundbite.
+const ABSORBED_EXAMPLES = ["XFunnel", "Hall", "Meridian"];
+
+function joinAnd(items: string[]): string {
+	if (items.length <= 2) return items.join(" and ");
+	return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
 function joinOr(items: string[]): string {
 	if (items.length <= 2) return items.join(" or ");
 	return `${items.slice(0, -1).join(", ")}, or ${items[items.length - 1]}`;
+}
+
+/** The soundbite for a tool that shut down, pivoted, or was bought, if it did. */
+function fateSoundbite(competitor: Competitor): string | undefined {
+	const name = competitor.name;
+	if (competitor.status === "defunct" || competitor.status === "shutting-down") {
+		return `${name} has shut down. Elmo is open source, so the tool you build your reporting on can't disappear the same way.`;
+	}
+	if (competitor.status === "pivoted") {
+		return `${name} has pivoted away from AI visibility. Elmo is open source and built for this one job, so it can't be pivoted out from under you.`;
+	}
+	if (competitor.status === "acquired") {
+		if (competitor.fate) {
+			return `${name} is gone as a standalone product. ${competitor.fate.summary} Elmo is open source, so no acquisition can take it away from you.`;
+		}
+		const absorbed = ABSORBED_EXAMPLES.filter((example) => example !== name);
+		return `${name} has been acquired, and acquired AI visibility tools rarely stay put: ${joinAnd(absorbed)} were all folded into their buyers' products. Elmo is open source, so no acquisition can take it away from you.`;
+	}
+	return undefined;
 }
 
 /**
@@ -85,15 +113,8 @@ export function getSoundbite(competitor: Competitor): string {
 	if (competitor.soundbite) return competitor.soundbite;
 	const name = competitor.name;
 
-	if (competitor.status === "defunct" || competitor.status === "shutting-down") {
-		return `${name} has shut down. Elmo is open source, so the tool you build your reporting on can't disappear the same way.`;
-	}
-	if (competitor.status === "pivoted") {
-		return `${name} has pivoted away from AI visibility. Elmo is open source and built for this one job, so it can't be pivoted out from under you.`;
-	}
-	if (competitor.status === "acquired") {
-		return `${name} has been acquired, so its roadmap now answers to a new owner. Elmo is open source and yours to keep, whoever owns what.`;
-	}
+	const fate = fateSoundbite(competitor);
+	if (fate) return fate;
 
 	const license = competitor.license ? RESTRICTIVE_LICENSES[competitor.license] : undefined;
 	if (license) {
