@@ -21,16 +21,16 @@ const description =
 	"AI visibility and AEO tools that shut down, pivoted, or were acquired, with what happened to each and what to do if your tracker disappears.";
 const path = "/ai-visibility-tools/graveyard";
 
-const counts = graveyardTools.reduce(
-	(acc, c) => {
-		const fate = graveyardFate(c);
-		if (fate) acc[fate] += 1;
-		return acc;
-	},
-	{ "shut-down": 0, pivoted: 0, acquired: 0 } as Record<GraveyardFate, number>,
-);
+// A rounded count reads as prose; the exact number changes every time we add a tool.
+const roundedCount = (() => {
+	const n = graveyardTools.length;
+	const rounded = Math.round(n / 10) * 10;
+	if (rounded > n) return `Nearly ${rounded}`;
+	if (rounded < n) return `More than ${rounded}`;
+	return `${n}`;
+})();
 
-const lead = `${graveyardTools.length} AI visibility tools have disappeared in the last two years: ${counts["shut-down"]} shut down, ${counts.pivoted} pivoted to something else, and ${counts.acquired} were bought and folded into another product. When a tracker disappears, its customers usually lose their prompt history and baselines with it.`;
+const lead = `${roundedCount} AI visibility tools have disappeared in the last two years. Most shut down, and the rest pivoted to something else or were bought and folded into another product. When a tracker disappears, its customers usually lose their prompt history and baselines with it.`;
 
 const FATE_LABEL: Record<GraveyardFate, string> = {
 	"shut-down": "Shut down",
