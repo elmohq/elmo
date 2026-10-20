@@ -189,7 +189,7 @@ function GraveyardPage() {
 								to="/"
 								className="text-zinc-950 underline decoration-zinc-400 underline-offset-4 hover:decoration-zinc-950"
 							>
-								See how Elmo works
+								Learn more about Elmo →
 							</Link>
 						</p>
 					</div>
