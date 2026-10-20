@@ -38,10 +38,6 @@ export type BillingState = {
 		billingInterval: string | null;
 		seats: number | null;
 	} | null;
-	/**
-	 * Whether the org has a Stripe customer, so the portal can open. Outlives the
-	 * subscription: an unpaid one is settled there, and past invoices stay there.
-	 */
 	hasBillingAccount: boolean;
 	premiumAddonQuantity: number;
 	premiumAddonAvailable: boolean;
@@ -58,12 +54,6 @@ export type PaywallRequired = {
 
 export type PaywallState = { needsPlan: false } | PaywallRequired;
 
-/**
- * Statuses under which a Stripe subscription can still be billed and changed.
- * A canceled or never-completed row lingers after the fact, but treating it as
- * the org's subscription would offer a portal and add-on for something that no
- * longer exists, and hide the way to buy a new plan.
- */
 const LIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "past_due"]);
 
 function liveSubscription<T extends { status: string | null }>(row: T | null): T | null {

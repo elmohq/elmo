@@ -76,7 +76,6 @@ function BillingSettingsPage() {
 			...(state.subscription?.stripeSubscriptionId && { subscriptionId: state.subscription.stripeSubscriptionId }),
 			successUrl: window.location.href,
 			cancelUrl: window.location.href,
-			// A live subscription switches through Stripe's portal, which comes back here.
 			returnUrl: window.location.href,
 			disableRedirect: false,
 		});
@@ -87,9 +86,7 @@ function BillingSettingsPage() {
 		router.invalidate();
 	};
 
-	// Only an admin with a subscription in good standing can switch, so only
-	// they see the plans. A past-due one has no plan Stripe will swap in place —
-	// switching would open a second checkout beside it.
+	// A past-due subscription can't be switched in place; the plugin would open a second checkout beside it.
 	const showPlans = isAdmin && (state.subscription?.status === "active" || state.subscription?.status === "trialing");
 	const meters = showMeters(entitlements);
 
