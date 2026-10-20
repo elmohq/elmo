@@ -175,9 +175,8 @@ A web app serves the dashboard and REST API, a worker schedules and executes pro
 ## Sponsors
 
 <p align="left">
-  <a href="https://www.llumohq.com/">
-    <img src="https://nynjceth7hnajxhe.public.blob.vercel-storage.com/sponsors/llumo.png" alt="Llumo" width="78">
-  </a>
+  <a href="https://www.llumohq.com/"><img src=".github/sponsors/llumo.png" alt="Llumo" width="140"></a>
+  <a href="https://www.searchapi.io/?ref=elmo"><img src=".github/sponsors/searchapi.png" alt="SearchApi" width="140"></a>
 </p>
 
 <a href="https://github.com/sponsors/elmohq"><strong>Become a sponsor →</strong></a>
