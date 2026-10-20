@@ -183,7 +183,7 @@ function GraveyardPage() {
 					<div className="max-w-3xl border-l-2 border-blue-600 pl-4 text-sm text-zinc-600">
 						<p className="font-medium text-zinc-950">Open source is the safety net</p>
 						<p className="mt-1">
-							When a hosted tracker goes under, your history goes with it. Elmo is MIT-licensed, so you can always keep
+							When a hosted tracker goes under, your history goes with it. Elmo is open source, so you can always keep
 							running it yourself.{" "}
 							<Link
 								to="/"
