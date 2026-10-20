@@ -141,3 +141,13 @@ export const SomeExposed: Story = {
 		},
 	],
 };
+
+export const NoSearchRunsYet: Story = {
+	decorators: [
+		(Story) => {
+			setMockBrand(brand("chatgpt:cloro:online,gemini:cloro:online,google-ai-mode:cloro:online"));
+			setMockQueryFanout(response([]));
+			return <Story />;
+		},
+	],
+};
