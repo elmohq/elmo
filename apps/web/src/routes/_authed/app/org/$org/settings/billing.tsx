@@ -90,8 +90,7 @@ function BillingSettingsPage() {
 	// Only an admin with a subscription in good standing can switch, so only
 	// they see the plans. A past-due one has no plan Stripe will swap in place —
 	// switching would open a second checkout beside it.
-	const showPlans =
-		isAdmin && (state.subscription?.status === "active" || state.subscription?.status === "trialing");
+	const showPlans = isAdmin && (state.subscription?.status === "active" || state.subscription?.status === "trialing");
 	const meters = showMeters(entitlements);
 
 	return (
