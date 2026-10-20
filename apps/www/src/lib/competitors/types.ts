@@ -367,7 +367,7 @@ export const ELMO_FEATURES: Record<FeatureKey, boolean> = {
 	claude: true,
 	grok: true,
 	deepseek: true,
-	metaAi: false,
+	metaAi: true,
 	anyModel: true,
 	uiCapture: true,
 	byoKeys: true,
