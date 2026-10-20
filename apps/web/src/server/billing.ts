@@ -50,6 +50,18 @@ export type PaywallRequired = {
 
 export type PaywallState = { needsPlan: false } | PaywallRequired;
 
+/**
+ * Statuses under which a Stripe subscription can still be billed and changed.
+ * A canceled or never-completed row lingers after the fact, but treating it as
+ * the org's subscription would offer a portal and add-on for something that no
+ * longer exists, and hide the way to buy a new plan.
+ */
+const LIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "past_due"]);
+
+function liveSubscription<T extends { status: string | null }>(row: T | null): T | null {
+	return row && LIVE_SUBSCRIPTION_STATUSES.has(row.status ?? "") ? row : null;
+}
+
 export const getBillingStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string() }))
 	.handler(async ({ data }): Promise<BillingState> => {
@@ -58,6 +70,7 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 		const deployment = getDeployment();
 
 		const state = await getOrgBillingState(org.id);
+		const subscription = liveSubscription(state.subscription);
 		const [brandsUsed, promptsUsed, premiumAssigned] = state.entitlements.unlimited
 			? [0, 0, 0]
 			: await Promise.all([
@@ -70,16 +83,16 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 			billingEnabled: deployment.features.billing,
 			organization: org,
 			entitlements: state.entitlements,
-			subscription: state.subscription
+			subscription: subscription
 				? {
-						id: state.subscription.id,
-						stripeSubscriptionId: state.subscription.stripeSubscriptionId ?? null,
-						plan: state.subscription.plan,
-						status: state.subscription.status ?? "incomplete",
-						periodEnd: state.subscription.periodEnd?.toISOString() ?? null,
-						cancelAtPeriodEnd: state.subscription.cancelAtPeriodEnd ?? false,
-						billingInterval: state.subscription.billingInterval ?? null,
-						seats: state.subscription.seats ?? null,
+						id: subscription.id,
+						stripeSubscriptionId: subscription.stripeSubscriptionId ?? null,
+						plan: subscription.plan,
+						status: subscription.status ?? "incomplete",
+						periodEnd: subscription.periodEnd?.toISOString() ?? null,
+						cancelAtPeriodEnd: subscription.cancelAtPeriodEnd ?? false,
+						billingInterval: subscription.billingInterval ?? null,
+						seats: subscription.seats ?? null,
 					}
 				: null,
 			premiumAddonQuantity: state.settings?.premiumAddonQuantity ?? 0,
@@ -136,7 +149,8 @@ export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
 		if (!isPremiumAddonAvailable(state.entitlements.planKey)) {
 			throw new Error(`Extra premium pairings are available on the ${premiumPlanNames()} plans`);
 		}
-		if (!state.subscription?.stripeSubscriptionId) {
+		const subscription = liveSubscription(state.subscription);
+		if (!subscription?.stripeSubscriptionId) {
 			throw new Error("No active subscription to attach the add-on to");
 		}
 
@@ -151,7 +165,7 @@ export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
 		}
 
 		const quantity = await setPremiumAddonQuantity({
-			stripeSubscriptionId: state.subscription.stripeSubscriptionId,
+			stripeSubscriptionId: subscription.stripeSubscriptionId,
 			organizationId: org.id,
 			quantity: data.quantity,
 		});

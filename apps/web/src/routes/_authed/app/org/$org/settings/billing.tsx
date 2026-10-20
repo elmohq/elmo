@@ -76,6 +76,8 @@ function BillingSettingsPage() {
 			...(state.subscription?.stripeSubscriptionId && { subscriptionId: state.subscription.stripeSubscriptionId }),
 			successUrl: window.location.href,
 			cancelUrl: window.location.href,
+			// A live subscription switches through Stripe's portal, which comes back here.
+			returnUrl: window.location.href,
 			disableRedirect: false,
 		});
 		if (upgradeError) {
@@ -85,8 +87,11 @@ function BillingSettingsPage() {
 		router.invalidate();
 	};
 
-	// Only an admin with a live subscription can switch, so only they see the plans.
-	const showPlans = isAdmin && state.subscription !== null;
+	// Only an admin with a subscription in good standing can switch, so only
+	// they see the plans. A past-due one has no plan Stripe will swap in place —
+	// switching would open a second checkout beside it.
+	const showPlans =
+		isAdmin && (state.subscription?.status === "active" || state.subscription?.status === "trialing");
 	const meters = showMeters(entitlements);
 
 	return (
@@ -105,7 +110,7 @@ function BillingSettingsPage() {
 						isAdmin={isAdmin}
 						busy={busy}
 						onOpenPortal={openPortal}
-						onChoosePlan={() => router.navigate({ to: "/choose-plan" })}
+						onChoosePlan={() => router.navigate({ to: "/choose-plan", search: { org: state.organization.id } })}
 					/>
 					{meters && <UsagePanel state={state} />}
 				</div>
