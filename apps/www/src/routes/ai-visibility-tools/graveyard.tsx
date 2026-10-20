@@ -196,9 +196,18 @@ function GraveyardPage() {
 				</DirectoryHero>
 				<DirectorySection>
 					<ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-						{graveyardTools.map((c) => (
-							<Tombstone key={c.slug} competitor={c} />
-						))}
+						{graveyardTools
+							.filter((c) => !c.noScreenshot)
+							.map((c) => (
+								<Tombstone key={c.slug} competitor={c} />
+							))}
+					</ul>
+					<ul className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+						{graveyardTools
+							.filter((c) => c.noScreenshot)
+							.map((c) => (
+								<Tombstone key={c.slug} competitor={c} />
+							))}
 					</ul>
 					<p className="mt-6 text-xs text-zinc-500">
 						Screenshots were taken while each tool was live. Dates are when the shutdown, pivot, or acquisition was
