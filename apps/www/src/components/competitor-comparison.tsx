@@ -119,7 +119,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 								<p className="font-medium">Limited market presence</p>
 								<p className="mt-0.5 text-amber-800/80 dark:text-amber-300/70">
 									{competitor.name} appears to be a very early-stage product with limited adoption. Information on this
-									page may be incomplete, and the tool's availability or feature set could change.
+									page may be incomplete.
 								</p>
 							</div>
 						</div>
