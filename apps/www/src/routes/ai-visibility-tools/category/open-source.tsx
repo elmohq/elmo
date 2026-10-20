@@ -267,31 +267,36 @@ const GITHUB_STATS: {
 	},
 ];
 
-const TRADEOFFS: { dimension: string; oss: string; managed: string }[] = [
+const TRADEOFFS: { dimension: string; selfHosted: string; openCloud: string; closedCloud: string }[] = [
 	{
 		dimension: "Cost",
-		oss: "No license fee. You pay for infrastructure and AI provider API usage.",
-		managed: "A subscription, often metered by prompt or seat.",
+		selfHosted: "No license fee. You pay for infrastructure, AI provider APIs, and engineering time.",
+		openCloud: "A subscription, usually cheaper than closed tools, with no infrastructure to run.",
+		closedCloud: "A subscription, often metered by prompt, seat, or engine.",
 	},
 	{
-		dimension: "Setup",
-		oss: "You deploy and maintain it yourself.",
-		managed: "Sign up and start tracking.",
+		dimension: "Setup and upkeep",
+		selfHosted: "You deploy it and keep it running as engines and APIs change.",
+		openCloud: "Sign up and start tracking. The vendor runs it and keeps engine coverage current.",
+		closedCloud: "Sign up and start tracking. The vendor runs it.",
 	},
 	{
 		dimension: "Transparency",
-		oss: "Read the code and verify how every metric is built.",
-		managed: "The scoring is usually a black box.",
+		selfHosted: "Read the code and verify how every metric is built.",
+		openCloud: "The same code as the self-hosted version, so every metric is still auditable.",
+		closedCloud: "The scoring is usually a black box.",
 	},
 	{
-		dimension: "Data ownership",
-		oss: "Prompts and history stay on your infrastructure.",
-		managed: "Your data lives in the vendor's dashboard.",
+		dimension: "Shaping the product",
+		selfHosted: "Change anything, though you maintain your changes.",
+		openCloud: "Contribute features upstream and they ship for you and everyone else.",
+		closedCloud: "File a feature request and wait.",
 	},
 	{
-		dimension: "Coverage and upkeep",
-		oss: "On you, or the project's maintainers.",
-		managed: "The vendor handles engine coverage and updates.",
+		dimension: "Lock-in",
+		selfHosted: "None. Your data is in your own database.",
+		openCloud: "None. Move to self-hosting whenever you want, on the same software.",
+		closedCloud: "Your history lives with the vendor, and leaving means starting over.",
 	},
 ];
 
@@ -601,34 +606,54 @@ function OpenSourcePage() {
 					</div>
 				</DirectorySection>
 
-				<DirectorySection title="Open source vs enterprise AEO software: the real tradeoffs">
+				<DirectorySection title="Self-hosted, open-source cloud, or closed-source cloud: the real tradeoffs">
 					<p className="mb-6 max-w-3xl leading-relaxed text-zinc-600">
-						The choice is really about who does the work and who holds the data. Enterprise AEO software gives you a
-						hosted dashboard your team can open tomorrow, managed engine coverage, and a vendor who keeps it running, in
-						exchange for a subscription and a scoring model you cannot inspect. Self-hosting an open-source tool trades
-						that for no license fee, auditable metrics, and your data on your own machines, with the cost moving from a
-						subscription line to engineering time.
+						There are three ways to run AI visibility tracking, and the open-source cloud is the best of all worlds.
+						Self-hosting gives you full control, but the upkeep is yours. A closed-source cloud takes the work off your
+						hands, but you can't see how its numbers are made and you can't take your history with you. An open-source
+						cloud does both: no maintenance burden, usually a lower price than closed tools, features you can contribute
+						yourself, and the option to switch to self-hosting at any time.
 					</p>
-					<DataTable headers={["", "Open source, self-hosted", "Managed, paid"]}>
-						{TRADEOFFS.map((row) => (
-							<Row key={row.dimension}>
-								<Cell strong>{row.dimension}</Cell>
-								<Cell>{row.oss}</Cell>
-								<Cell>{row.managed}</Cell>
-							</Row>
-						))}
-					</DataTable>
+					<div className="overflow-x-auto">
+						<table className="w-full text-sm">
+							<thead>
+								<tr className="border-b border-zinc-200">
+									<th className="py-3 pr-4 text-left font-semibold text-zinc-950" />
+									<th className="px-4 py-3 text-left font-semibold text-zinc-950">Open source, self-hosted</th>
+									<th className="bg-blue-50 px-4 py-3 text-left font-semibold text-zinc-950">Open source, cloud</th>
+									<th className="px-4 py-3 text-left font-semibold text-zinc-950">Closed source, cloud</th>
+								</tr>
+							</thead>
+							<tbody>
+								{TRADEOFFS.map((row) => (
+									<tr
+										key={row.dimension}
+										className="border-b border-dashed border-zinc-200 align-top last:border-solid"
+									>
+										<td className="py-3 pr-4 font-medium text-zinc-700">{row.dimension}</td>
+										<td className="px-4 py-3 text-zinc-600">{row.selfHosted}</td>
+										<td className="bg-blue-50 px-4 py-3 text-zinc-700">{row.openCloud}</td>
+										<td className="px-4 py-3 text-zinc-600">{row.closedCloud}</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+					<p className="mt-6 max-w-3xl leading-relaxed text-zinc-600">
+						Elmo offers both open-source options: self-host it for free, or use Elmo Cloud and move to your own
+						infrastructure whenever you want.
+					</p>
 				</DirectorySection>
 
 				<DirectorySection title="How to choose">
 					<div className="max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
-							Start with how you will use it rather than with a feature grid. If you want full control, auditable
-							numbers, and no per-seat fees, a self-hosted open-source tool fits, and Elmo is the longest-running one on
-							offer, with the most releases and a permissive license. If you want the smallest footprint, Limelit's
-							single binary or GEO/AEO Tracker's local-first design are worth a look. If your priority is server-log
-							attribution, Canonry goes furthest. If you want a hosted option alongside the open code, Ansvisor and
-							Limelit both sell one.
+							Start with how you will use it rather than with a feature grid. For most teams the answer is an
+							open-source cloud: you get a hosted product with no upkeep, auditable numbers, and a way out to
+							self-hosting if you ever need it. Elmo offers that, along with free self-hosting for teams that want full
+							control, and it has the essential AEO features, the best UX, and the best agent experience of the projects
+							here. If you want a fully free setup and can maintain scrapers yourself, OneGlanse is an option. If your
+							priority is server-log attribution and your workflow is run by AI agents, Canonry goes furthest.
 						</p>
 						<p>
 							Weigh maintenance above features. Whether anyone will still be working on the project in a year is what
