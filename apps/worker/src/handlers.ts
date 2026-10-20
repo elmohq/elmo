@@ -26,17 +26,32 @@ import { mentionAnalyzer } from "./mention-judge/analyze";
  * Preserves the handler's return value (stored by pg-boss as the job output).
  */
 function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promise<R>): (jobs: Job<T>[]) => Promise<R> {
-	return async (jobs) => {
-		try {
-			return await handler(jobs);
-		} catch (error) {
-			Sentry.withScope((scope) => {
-				scope.setTag("queue", queueName);
-				Sentry.captureException(error);
-			});
-			throw error;
-		}
-	};
+	return (jobs) =>
+		// One transaction per batch, so the queries a job runs have a parent to attach to.
+		Sentry.startSpan(
+			{
+				name: queueName,
+				op: "queue.process",
+				forceTransaction: true,
+				attributes: {
+					"messaging.system": "pg-boss",
+					"messaging.destination.name": queueName,
+					"messaging.batch.message_count": jobs.length,
+					...(jobs.length === 1 && { "messaging.message.id": jobs[0].id }),
+				},
+			},
+			async () => {
+				try {
+					return await handler(jobs);
+				} catch (error) {
+					Sentry.withScope((scope) => {
+						scope.setTag("queue", queueName);
+						Sentry.captureException(error);
+					});
+					throw error;
+				}
+			},
+		);
 }
 
 /**

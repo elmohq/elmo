@@ -1,3 +1,4 @@
+import "./instrument";
 import * as Sentry from "@sentry/node";
 import { assertRequiredEnv } from "@workspace/config/env";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
@@ -19,14 +20,6 @@ import {
 import { configureMentionAnalyzer, mentionAnalyzer } from "./mention-judge/analyze";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
-
-if (process.env.SENTRY_DSN) {
-	Sentry.init({
-		dsn: process.env.SENTRY_DSN,
-		environment: process.env.ENVIRONMENT || "development",
-		tracesSampleRate: 1.0,
-	});
-}
 
 async function main() {
 	console.log("Starting pg-boss worker...");
