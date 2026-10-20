@@ -205,7 +205,10 @@ export function graveyardFate(c: Competitor): GraveyardFate | undefined {
 /** Tools that shut down, pivoted, or were bought, best known first. */
 export const graveyardTools: Competitor[] = competitors
 	.filter((c) => graveyardFate(c) && c.category !== "other")
-	.sort((a, b) => graveyardRank(a) - graveyardRank(b));
+	// Tools with no surviving screenshot go last, since their tombstones are bare.
+	.sort(
+		(a, b) => Number(a.noScreenshot ?? false) - Number(b.noScreenshot ?? false) || graveyardRank(a) - graveyardRank(b),
+	);
 
 function graveyardRank(c: Competitor): number {
 	const rank = graveyardRanking.indexOf(c.slug);
