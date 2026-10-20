@@ -95,7 +95,7 @@ const AT_A_GLANCE: {
 		selfHost: "Yes, free",
 		cloud: "Yes, from $29/mo",
 		tracks: "Mentions, sentiment, and citations across ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews",
-		bestFor: "A complete platform you own and audit",
+		bestFor: "The essential AEO features, with the best UX and agent experience",
 	},
 	{
 		tool: "Ansvisor",
@@ -103,7 +103,7 @@ const AT_A_GLANCE: {
 		selfHost: "Yes, free",
 		cloud: "Yes, from $49/mo",
 		tracks: "ChatGPT, Copilot, Perplexity, Gemini, AI Overviews, AI Mode, Claude, Grok",
-		bestFor: "A broad feature set with a hosted option",
+		bestFor: "A hosted plan alongside the open code",
 	},
 	{
 		tool: "Limelit",
@@ -111,7 +111,7 @@ const AT_A_GLANCE: {
 		selfHost: "Yes, single binary",
 		cloud: "Yes, credit packs from $19.99",
 		tracks: "ChatGPT, Claude, Perplexity, Gemini, AI Overviews, AI Mode, Copilot",
-		bestFor: "The lightest self-hosted footprint",
+		bestFor: "A single user who wants a local install and doesn't need the paywalled features",
 	},
 	{
 		tool: "Cited",
@@ -119,7 +119,7 @@ const AT_A_GLANCE: {
 		selfHost: "Yes, via Docker Compose",
 		cloud: "Yes, from $19/mo",
 		tracks: "Citations of your domain across ChatGPT, Claude, Gemini, Perplexity, Google AI",
-		bestFor: "Citation monitoring only",
+		bestFor: "Citation alerts only: no sentiment, visibility scores, or recommendations",
 	},
 	{
 		tool: "OneGlanse",
@@ -127,7 +127,7 @@ const AT_A_GLANCE: {
 		selfHost: "Yes",
 		cloud: "No",
 		tracks: "ChatGPT, Gemini, Perplexity, Claude, Google AI Overview",
-		bestFor: "Capturing answers from AI web UIs, not just APIs",
+		bestFor: "A fully free setup scraping from your own machine, if you can keep it running",
 	},
 	{
 		tool: "GEO/AEO Tracker",
@@ -135,7 +135,7 @@ const AT_A_GLANCE: {
 		selfHost: "Yes, local-first",
 		cloud: "No",
 		tracks: "ChatGPT, Perplexity, Gemini, Copilot, Google AI Overview, Grok",
-		bestFor: "A single-user local dashboard with your own keys",
+		bestFor: "A quick check from one browser with your own keys",
 	},
 	{
 		tool: "Canonry",
@@ -143,15 +143,7 @@ const AT_A_GLANCE: {
 		selfHost: "Yes",
 		cloud: "No",
 		tracks: "Gemini, ChatGPT, Claude, Perplexity, local LLMs; server-log AI traffic",
-		bestFor: "Agent-first workflows and log-level attribution",
-	},
-	{
-		tool: "GetCito",
-		license: "MIT",
-		selfHost: "Yes",
-		cloud: "Yes, from $599/mo",
-		tracks: "Elmo's engine set as of July 2026",
-		bestFor: "Nothing — it is a fork of Elmo, run Elmo instead",
+		bestFor: "Workflows run by AI agents rather than people",
 	},
 	{
 		tool: "Gego",
@@ -159,7 +151,7 @@ const AT_A_GLANCE: {
 		selfHost: "Yes, via Docker",
 		cloud: "Early-access waitlist",
 		tracks: "Citations, brand mentions, and keywords across OpenAI, Anthropic, Google, Perplexity, Ollama",
-		bestFor: "Scheduled tracking driven from a CLI or REST API",
+		bestFor: "Bare-bones scheduled checks from the command line",
 	},
 ];
 
@@ -184,28 +176,6 @@ const GITHUB_STATS: {
 		releases: "36",
 		firstCommit: "Jul 2025",
 		last90: "374",
-	},
-	{
-		project: "GeoLook",
-		url: "https://github.com/aigclink/geolook",
-		stars: "774",
-		commits: "47",
-		contributors: "2",
-		beyondLead: "1",
-		releases: "1",
-		firstCommit: "Jul 2026",
-		last90: "47",
-	},
-	{
-		project: "GetCito",
-		url: "https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool",
-		stars: "491",
-		commits: "41",
-		contributors: "2",
-		beyondLead: "1",
-		releases: "2",
-		firstCommit: "Nov 2025",
-		last90: "15",
 	},
 	{
 		project: "GEO/AEO Tracker",
@@ -325,6 +295,13 @@ const TRADEOFFS: { dimension: string; oss: string; managed: string }[] = [
 	},
 ];
 
+// Left out of this page; the "By the numbers" section explains why.
+const EXCLUDED = new Set(["getcito", "geolook"]);
+
+function listedTools() {
+	return openSourceTools().filter((c) => !EXCLUDED.has(c.slug));
+}
+
 function DataTable({ headers, children }: { headers: string[]; children: ReactNode }) {
 	return (
 		<div className="overflow-x-auto">
@@ -356,7 +333,7 @@ function Cell({ children, strong }: { children: ReactNode; strong?: boolean }) {
 
 export const Route = createFileRoute("/ai-visibility-tools/category/open-source")({
 	loader: () => ({
-		tools: openSourceTools().map((c) => ({ name: c.name, url: c.url, description: c.tagline })),
+		tools: listedTools().map((c) => ({ name: c.name, url: c.url, description: c.tagline })),
 	}),
 	head: ({ loaderData }) => ({
 		meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
@@ -375,7 +352,7 @@ export const Route = createFileRoute("/ai-visibility-tools/category/open-source"
 });
 
 function OpenSourcePage() {
-	const tools = openSourceTools();
+	const tools = listedTools();
 	return (
 		<div className="min-h-screen">
 			<Navbar />
@@ -391,20 +368,19 @@ function OpenSourcePage() {
 							Gemini, Perplexity, Copilot, Claude, and any OpenRouter model.
 						</li>
 						<li>
-							On public GitHub data as of {STATS_AS_OF}, Elmo leads the field on releases and length of continuous
-							history, and the only projects with more stars are GeoLook, which hasn't had a commit since August, and
-							GetCito, a fork of Elmo. Ansvisor has the most contributors, and Canonry, Ansvisor, and Elmo each logged
+							On public GitHub data as of {STATS_AS_OF}, Elmo leads this list on stars, releases, and length of
+							continuous history. Ansvisor has the most contributors, and Canonry, Ansvisor, and Elmo each logged
 							hundreds of commits in the last 90 days.
 						</li>
 						<li>
-							Licenses differ more than features. Elmo, Ansvisor, Canonry, OneGlanse, and GeoLook are MIT; Limelit is
-							Apache-2.0; Cited is AGPL-3.0 and Gego is GPL-3.0, which add conditions on modified versions.
+							Licenses differ more than features. Elmo, Ansvisor, Canonry, and OneGlanse are MIT; Limelit is Apache-2.0;
+							Cited is AGPL-3.0 and Gego is GPL-3.0, which add conditions on modified versions.
 						</li>
 						<li>
 							Open source protects you from shutdowns, but not from a project going closed: Notra took its AGPL
 							repository private in October 2026. Prefer permissive licenses and more than one active contributor.
 						</li>
-						<li>GetCito is a fork of Elmo since July 2026, so it is a lagging fork of another tool on this list.</li>
+						<li>GetCito is a fork of Elmo since July 2026 that has fallen behind it, so we leave it off this list.</li>
 						<li>"Free to self-host" is not free to run. You supply the LLM API keys and the infrastructure.</li>
 					</ul>
 				</DirectorySection>
@@ -441,11 +417,6 @@ function OpenSourcePage() {
 				</DirectorySection>
 
 				<DirectorySection title="By the numbers">
-					<p className="mb-6 max-w-3xl leading-relaxed text-zinc-600">
-						Feature grids are easy to write and hard to verify. Public repository activity can be checked directly.
-						These are the numbers as of {STATS_AS_OF}. The column that matters most is contributors beyond the lead
-						developer, since a project with a single committer depends entirely on one person continuing to work on it.
-					</p>
 					<DataTable
 						headers={[
 							"Project",
@@ -482,13 +453,17 @@ function OpenSourcePage() {
 					</DataTable>
 					<div className="mt-6 max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
-							Stars and activity tell different stories. GeoLook and GetCito have more stars than most of the field on a
-							few dozen commits each, while Ansvisor, Canonry, and Elmo ship code every week. GeoLook hasn't had a
-							commit since August 2026.
-						</p>
-						<p>
-							GetCito's repository contains 41 commits across its entire lifetime, for a codebase of well over 100,000
-							lines. That is because 131,716 of those lines arrived in a single import of Elmo's code in July 2026.
+							We left two projects out. GetCito is a fork of Elmo that has fallen behind it, and its fork count jumped
+							in a few days in September 2026, mostly from recently created accounts with no other activity.{" "}
+							<a
+								href="https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/forks"
+								target="_blank"
+								rel="noopener noreferrer nofollow"
+								className="underline underline-offset-2 hover:text-zinc-950"
+							>
+								Look through its forks
+							</a>{" "}
+							and judge for yourself. GeoLook is self-host only and hasn't had a commit since August 2026.
 						</p>
 					</div>
 				</DirectorySection>
@@ -496,7 +471,7 @@ function OpenSourcePage() {
 				<DirectorySection title="The open-source options, tool by tool">
 					<p className="mb-6 max-w-3xl leading-relaxed text-zinc-600">
 						Elmo is the longest-running open-source option, released under the MIT license with broad engine coverage.
-						The other open-source projects we track are below. Most started in 2026, and several are moving quickly.
+						The other open-source projects we track are below. Most started in 2026, and each makes real tradeoffs.
 					</p>
 					{tools.length > 0 ? (
 						<ToolGrid competitors={tools} />
@@ -508,13 +483,13 @@ function OpenSourcePage() {
 						<div>
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">Elmo</h3>
 							<p>
-								Elmo is the longest-running open-source AI visibility platform on this list. It is released under the
-								MIT license, free to self-host, and every metric is computed by code you can read. It tracks how AI
-								answer engines mention and cite your brand across ChatGPT, Claude, Perplexity, Gemini, and Google's AI
-								Overviews, among other engines, then turns that into visibility, share of voice, sentiment, and position
-								scores, citation and query fan-out analytics, and ranked recommendations for what to fix. A REST API,
-								TypeScript and Python SDKs, and an MCP server expose the same data to your own code and AI assistants,
-								and agencies can white-label it.
+								Elmo covers the essential AEO workflow end to end. It tracks how ChatGPT, Google AI Mode, Google AI
+								Overviews, Gemini, Perplexity, Copilot, Claude, and any OpenRouter model mention and cite your brand,
+								and turns that into visibility, share of voice, sentiment, and position scores, citation and query
+								fan-out analytics, and ranked recommendations for what to fix. It has the most polished interface of the
+								projects here and the best agent experience: a REST API with TypeScript and Python SDKs, an MCP server,
+								and an agent skill let Claude Code, Cursor, and Codex query your data and manage prompts directly.
+								Agencies can white-label it, and it is MIT-licensed.
 							</p>
 							<p className="mt-4">
 								It fits teams that want to own their AEO data outright. The self-hosted core runs on Docker and
@@ -529,129 +504,82 @@ function OpenSourcePage() {
 						<div>
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">OneGlanse</h3>
 							<p>
-								OneGlanse is an MIT-licensed, self-hosted tracker covering ChatGPT, Gemini, Perplexity, Claude, and
-								Google AI Overview. Its distinguishing choice is how it collects answers. Instead of hitting the model
-								APIs, it captures responses through authenticated accounts on the AI web interfaces, which is closer to
-								what a real user sees. Data lands in a ClickHouse backend on your own infrastructure, and you bring your
-								own API keys.
+								OneGlanse is the pick if you want a completely free setup. It drives the ChatGPT, Gemini, Perplexity,
+								Claude, and Google AI Overview web interfaces with real accounts from your own machine or a VPN, so
+								there are no scraper or API bills, and data lands in ClickHouse on your own infrastructure.
 							</p>
 							<p className="mt-4">
-								It suits developers who care that the answers being scored come from the actual chat products, not the
-								API surface, and who are comfortable standing up ClickHouse. The idea is good and the approach is
-								genuinely different from everything else here. Check the activity before you build on it, though. Most
-								of its 523 commits landed in one burst in April and May 2026, it has picked up only slowly since, and it
-								has never cut a tagged release.
+								The catch is upkeep. When those sites change their interfaces, the scrapers break until someone patches
+								them, so it reacts slowly to changes and is harder to scale and maintain than a tool built on maintained
+								scraping providers, like Elmo. Most of its commits landed in one burst in April and May 2026, and it has
+								never cut a tagged release.
 							</p>
 						</div>
 
 						<div>
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">GEO/AEO Tracker</h3>
 							<p>
-								GEO/AEO Tracker is an MIT-licensed, local-first dashboard for watching brand visibility across six
-								platforms: ChatGPT, Perplexity, Gemini, Copilot, Google AI Overview, and Grok. It stores everything
-								client-side in IndexedDB, with no external database to run, and you provide your own keys for data
-								fetching and model inference.
+								GEO/AEO Tracker runs entirely in the browser and stores its data there, so there is nothing to deploy.
+								It covers ChatGPT, Perplexity, Gemini, Copilot, and Google AI Mode with your own keys.
 							</p>
 							<p className="mt-4">
-								The local-first design is the appeal: nothing leaves your browser, setup is light, and the platform
-								coverage is broad for a solo project. Scope is the limit. It is a single-user tool built around one
-								person's dashboard rather than a team platform, so treat it as a personal monitor rather than shared
-								infrastructure.
+								That also limits it. Your history lives in one browser on one computer, so sharing it across machines or
+								teammates means wiring up your own Supabase project. It is a one-developer project, and the interface
+								feels quickly assembled rather than designed.
 							</p>
 						</div>
 
 						<div>
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">Canonry</h3>
 							<p>
-								Canonry is the most ambitious of the independent projects. It is a self-hosted, agent-first AEO platform
-								that tracks how Gemini, ChatGPT, Claude, Perplexity, and local models cite your site, ingests server
-								logs to measure AI-driven traffic, and integrates with Google Search Console, GA4, Bing Webmaster, and
-								Google Business Profile. A built-in agent named Aero exposes a 67-tool MCP adapter, and clients are
-								configured declaratively in YAML.
-							</p>
-							<p className="mt-4">
-								Canonry has since moved from the source-available FSL to the MIT license, so it is now open source in
-								the full sense. It calls model APIs with your own keys rather than capturing the consumer apps, and it
-								is one of the most active projects here, with 472 commits in the last 90 days. If server-log attribution
-								and agent workflows matter to you, it is worth a look.
-							</p>
-						</div>
-
-						<div>
-							<h3 className="font-heading mb-3 text-lg text-zinc-950">GetCito</h3>
-							<p>
-								<strong className="font-medium text-zinc-900">If you are considering GetCito, use Elmo instead.</strong>{" "}
-								GetCito is a fork of Elmo. On 10 July 2026, it replaced its codebase with Elmo's in{" "}
-								<a
-									href="https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19"
-									target="_blank"
-									rel="noopener noreferrer nofollow"
-									className="underline underline-offset-2 hover:text-zinc-950"
-								>
-									one pull request
-								</a>{" "}
-								of 847 files.
-							</p>
-							<p className="mt-4">
-								Everything GetCito offers today it inherited from Elmo. There is little reason to run a fork when the
-								upstream project is free and moving faster — 17 commits to Elmo's 98 in the month after the fork.{" "}
-								<a className="underline underline-offset-2 hover:text-zinc-950" href="/blog/getcito-vs-elmo">
-									GetCito vs Elmo
-								</a>
-								.
+								Canonry is built for AI agents first. Clients are configured in YAML and the work runs through a
+								built-in agent and an MCP adapter, which suits a bot doing the work far better than a person who wants
+								to open a dashboard and explore. It calls model APIs with your own keys rather than capturing the
+								consumer apps. Its server-log ingestion for measuring AI-driven traffic is a genuine strength, and it is
+								now MIT-licensed.
 							</p>
 						</div>
 
 						<div>
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">Ansvisor</h3>
 							<p>
-								Ansvisor is an MIT-licensed AI search intelligence platform with a managed cloud alongside the open
-								code. It tracks prompts, mentions, citations, competitors, and AI traffic, and turns them into tasks in
-								an Action Center, with an API and MCP server. On the cloud, engines unlock by plan, starting at $49 a
-								month.
-							</p>
-							<p className="mt-4">
-								It has the broadest contributor base of any project here, 65 people as of October 2026, and ships
-								frequently. It is a young project, started in March 2026, so expect the surface to keep changing.
+								Ansvisor lists a lot of features, from prompt tracking and citations to an Action Center, an API, and an
+								MCP server, with a paid cloud alongside the MIT code. It is young, though: it started in March 2026, the
+								surface changes quickly, and on its cloud the engines unlock by plan, with Claude reserved for
+								Enterprise.
 							</p>
 						</div>
 
 						<div>
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">Limelit</h3>
 							<p>
-								Limelit Open is an Apache-2.0 tracker shipped as a single Go binary with SQLite, the lightest deployment
-								of anything here. It covers seven engines through vendor APIs or scrapers of the consumer apps and has a
-								built-in MCP server and JSON or CSV export.
+								Limelit Open covers seven engines through vendor APIs or consumer-app scrapers and has a built-in MCP
+								server. It is open core: sentiment, prompt generation, Search Console and GA4 integration, agents, and
+								white-label are paywalled behind the credit-based Limelit Cloud.
 							</p>
 							<p className="mt-4">
-								It is open core: sentiment, prompt generation, white-label, and other features live in the paid,
-								credit-based Limelit Cloud.
+								Self-hosting means running its Go binary or Docker, and data lives in SQLite, which is simple for one
+								person but harder to back up, scale, and share across a team than a server database.
 							</p>
 						</div>
 
 						<div>
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">Cited</h3>
 							<p>
-								Cited does one thing: it runs the prompts you choose and records when your verified domain is cited,
-								mentioned, or missed, in an evidence inbox. You self-host it with Docker Compose and DataForSEO
-								credentials, or use the hosted plans from $19 a month. It is AGPL-3.0, so offering a modified version as
-								a service means publishing your changes.
+								Cited tracks one thing: whether your verified domain is cited, mentioned, or missed for the prompts you
+								choose. There is no sentiment, visibility scoring, share of voice, or recommendations, and it doesn't
+								cover Copilot or Grok. Self-hosting needs DataForSEO credentials, and it is AGPL-3.0, so offering a
+								modified version as a service means publishing your changes.
 							</p>
 						</div>
 
 						<div>
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">Gego</h3>
 							<p>
-								Gego is a GPL-3.0 GEO tracker you self-host from Docker Hub. It schedules prompts across generative
-								engines on a cron, then captures citations, brand mentions, and extracted keywords, with competitor and
-								alias tracking alongside them. It queries OpenAI, Anthropic, Google, and Perplexity, and it will also
-								point at Ollama or a custom provider, so you can run the whole loop against local models. There is a
-								dashboard, a CLI, and a REST API.
-							</p>
-							<p className="mt-4">
-								Two caveats. A full deployment expects PostgreSQL, MongoDB, and etcd, which is a heavier footprint than
-								a single-container deploy. And GPL-3.0 is copyleft rather than permissive, so unlike the MIT projects
-								here it constrains what you can build on top of it and redistribute.
+								Gego is an extremely simple tracker driven from a CLI. It schedules prompts against OpenAI, Anthropic,
+								Google, Perplexity, or local models via Ollama and records mentions and citations, with little analysis
+								on top. A full deployment still expects PostgreSQL, MongoDB, and etcd, and it is GPL-3.0, so modified
+								versions you distribute must stay under the GPL.
 							</p>
 						</div>
 					</div>
