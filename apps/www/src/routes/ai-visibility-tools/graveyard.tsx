@@ -179,9 +179,8 @@ function GraveyardPage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero title="The AEO Graveyard" lead={lead} />
-				<DirectorySection>
-					<div className="mb-10 max-w-3xl border-l-2 border-blue-600 pl-4 text-sm text-zinc-600">
+				<DirectoryHero title="The AEO Graveyard" lead={lead}>
+					<div className="max-w-3xl border-l-2 border-blue-600 pl-4 text-sm text-zinc-600">
 						<p className="font-medium text-zinc-950">Open source is the safety net</p>
 						<p className="mt-1">
 							A hosted tracker is a bet on the company behind it, and when the company goes, your history goes with it.
@@ -195,6 +194,8 @@ function GraveyardPage() {
 							</Link>
 						</p>
 					</div>
+				</DirectoryHero>
+				<DirectorySection>
 					<ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						{graveyardTools.map((c) => (
 							<Tombstone key={c.slug} competitor={c} />
