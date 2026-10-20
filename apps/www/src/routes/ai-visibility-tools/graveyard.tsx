@@ -180,7 +180,7 @@ function GraveyardPage() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero title="The AEO Graveyard" lead={lead} />
-				<DirectorySection title="Here lie">
+				<DirectorySection>
 					<ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						{graveyardTools.map((c) => (
 							<Tombstone key={c.slug} competitor={c} />
