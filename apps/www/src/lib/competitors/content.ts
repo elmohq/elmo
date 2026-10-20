@@ -1,5 +1,5 @@
 import type { FaqItem } from "@/lib/faqs";
-import type { Competitor, CompetitorCategory } from "./types";
+import { type Competitor, type CompetitorCategory, ELMO_FEATURES, type FeatureKey, getFeatureLabel } from "./types";
 
 // Prose-friendly category nouns (acronyms kept uppercase, descriptive words
 // lowercased) so they read naturally mid-sentence — e.g. "an AI visibility
@@ -41,6 +41,110 @@ function integrationSummary(competitor: Competitor): string {
 }
 
 const GETCITO_FORK_DATE = "July 10, 2026";
+
+// Engines in rough order of how much AI search traffic they carry, so the
+// soundbite names the gaps a buyer is most likely to care about first.
+const SOUNDBITE_ENGINES: FeatureKey[] = [
+	"chatgpt",
+	"googleAiMode",
+	"googleAiOverviews",
+	"gemini",
+	"perplexity",
+	"claude",
+	"copilot",
+	"grok",
+];
+
+const SOUNDBITE_FEATURES: [FeatureKey, string][] = [
+	["dataExportApi", "API"],
+	["mcpServer", "MCP server"],
+	["sentimentAnalysis", "sentiment analysis"],
+	["citationAnalytics", "citation tracking"],
+];
+
+// Copyleft and source-available licenses carry obligations that MIT doesn't.
+const RESTRICTIVE_LICENSES: Record<string, string> = {
+	"AGPL-3.0": "AGPL-3.0, so running a modified version as a service means publishing your changes",
+	"GPL-3.0": "GPL-3.0, so any modified version you distribute has to be released under the GPL too",
+	"FSL-1.1-ALv2": "source-available under the FSL, which bars competing commercial use for two years",
+	"BUSL-1.1": "source-available under the BSL, which restricts production use",
+};
+
+// Acquired trackers that were absorbed into the buyer's product, the evidence
+// behind the acquisition soundbite.
+const ABSORBED_EXAMPLES = ["XFunnel", "Hall", "Meridian"];
+
+function joinAnd(items: string[]): string {
+	if (items.length <= 2) return items.join(" and ");
+	return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
+function joinOr(items: string[]): string {
+	if (items.length <= 2) return items.join(" or ");
+	return `${items.slice(0, -1).join(", ")}, or ${items[items.length - 1]}`;
+}
+
+/** The soundbite for a tool that shut down, pivoted, or was bought, if it did. */
+function fateSoundbite(competitor: Competitor): string | undefined {
+	const name = competitor.name;
+	if (competitor.status === "defunct" || competitor.status === "shutting-down") {
+		return `${name} has shut down. Elmo is open source, so the tool you build your reporting on can't disappear the same way.`;
+	}
+	if (competitor.status === "pivoted") {
+		return `${name} has pivoted away from AI visibility. Elmo is open source and built for this one job, so it can't be pivoted out from under you.`;
+	}
+	if (competitor.status === "acquired") {
+		if (competitor.fate) {
+			return `${name} is gone as a standalone product. ${competitor.fate.summary} Elmo is open source, so no acquisition can take it away from you.`;
+		}
+		const absorbed = ABSORBED_EXAMPLES.filter((example) => example !== name);
+		return `${name} has been acquired, and acquired AI visibility tools rarely stay put: ${joinAnd(absorbed)} were all folded into their buyers' products. Elmo is open source, so no acquisition can take it away from you.`;
+	}
+	return undefined;
+}
+
+/**
+ * The one-line case for Elmo over a tool, shown at the top of its comparison
+ * page. Hand-written soundbites win; otherwise it leads with the most decisive
+ * fact we hold: the tool is gone, was bought, carries a restrictive license, or
+ * is missing engines and features Elmo has.
+ */
+export function getSoundbite(competitor: Competitor): string {
+	if (competitor.soundbite) return competitor.soundbite;
+	const name = competitor.name;
+
+	const fate = fateSoundbite(competitor);
+	if (fate) return fate;
+
+	const license = competitor.license ? RESTRICTIVE_LICENSES[competitor.license] : undefined;
+	if (license) {
+		return `${name} is ${license}. Elmo is MIT-licensed, so you can run, modify, and embed it with no strings attached.`;
+	}
+
+	const tracksAnyEngine = SOUNDBITE_ENGINES.some((key) => competitor.features[key]);
+	const missingEngines = tracksAnyEngine
+		? SOUNDBITE_ENGINES.filter((key) => ELMO_FEATURES[key] && !competitor.features[key]).map(getFeatureLabel)
+		: [];
+	const missingFeatures = SOUNDBITE_FEATURES.filter(([key]) => ELMO_FEATURES[key] && !competitor.features[key]).map(
+		([, label]) => label,
+	);
+
+	const gaps: string[] = [];
+	if (missingEngines.length > 0) gaps.push(`doesn't list ${joinOr(missingEngines.slice(0, 3))} among its engines`);
+	if (missingFeatures.length > 0) gaps.push(`has no ${joinOr(missingFeatures.slice(0, 2))}`);
+	if (gaps.length > 0) {
+		return `${name} ${gaps.join(" and ")}. Elmo has all of that, and it's free to self-host.`;
+	}
+
+	const price = competitor.pricing?.startingPrice;
+	if (price && !isOpenSource(competitor)) {
+		return `${name} starts at ${price} and is closed source. Elmo covers the same engines, and it's free to self-host.`;
+	}
+	if (isOpenSource(competitor)) {
+		return `${name} and Elmo are both open source, so it comes down to fit: compare the engines and features below.`;
+	}
+	return `${name} is closed source, so you can't check how its numbers are made. Elmo is open source and free to self-host.`;
+}
 
 /**
  * A 40–60 word lead "answer block" for a comparison page, written to be lifted
