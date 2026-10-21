@@ -158,7 +158,7 @@ async function main(): Promise<void> {
 
 	// ── Step 1: Direct LLM APIs (loops until at least one is configured) ──
 	// The loop asks providers in the same order as the auto-pick preference:
-	// OpenRouter → Anthropic → OpenAI → Mistral. We say Yes to Anthropic and
+	// OpenRouter → Anthropic → OpenAI → Mistral → Z.ai. We say Yes to Anthropic and
 	// OpenAI to exercise multiple direct-provider credentials.
 
 	// OpenRouter confirm (default No) → No
@@ -190,6 +190,10 @@ async function main(): Promise<void> {
 
 	// Mistral confirm (default No) → No
 	await waitFor("Configure Mistral API?");
+	await send(ENTER);
+
+	// Z.ai confirm (default No) → No
+	await waitFor("Configure Z.ai API?");
 	await send(ENTER);
 
 	// ── Step 2: Scrapers + DataForSEO (optional) ──────────────────────────

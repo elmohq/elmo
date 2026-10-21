@@ -2,7 +2,7 @@
  * Provider-agnostic onboarding research.
  *
  * Onboarding always runs against a direct API provider (Anthropic / OpenAI /
- * OpenRouter / Mistral) — the deployment guarantees one is configured, and
+ * OpenRouter / Mistral / Z.ai) — the deployment guarantees one is configured, and
  * the CLI's setup wizard enforces it. Each provider implements
  * `runStructuredResearch<T>(prompt, schema)` itself, picking the most
  * idiomatic combo for its API:
@@ -12,6 +12,8 @@
  *     (web search baked into the route).
  *   • Mistral — OpenAI-compat `generateObject` (no web search; users who
  *     want it should target a different provider via ONBOARDING_LLM_TARGET).
+ *   • Z.ai — chat completions in JSON mode + its web_search tool; GLM has
+ *     no server-side json_schema, so the reply is validated client-side.
  *
  * This module's job is just to pick the right provider and forward the call.
  * No prompt wrappers, no JSON parsing, no two-pass anything.
@@ -30,7 +32,7 @@ export type ResearchProviderId = (typeof RESEARCH_PROVIDER_PREFERENCE)[number];
 
 const ONBOARDING_LLM_TARGET_HELP =
 	"Set ONBOARDING_LLM_TARGET (e.g. claude:anthropic-api) " +
-	"or configure ANTHROPIC_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY / MISTRAL_API_KEY.";
+	"or configure ANTHROPIC_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY / MISTRAL_API_KEY / ZAI_API_KEY.";
 
 /**
  * Pick which direct-API provider the onboarding flow should use.

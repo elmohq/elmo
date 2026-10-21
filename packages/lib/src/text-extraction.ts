@@ -192,6 +192,12 @@ export function extractTextFromOpenRouter(rawOutput: any): string {
 	]);
 }
 
+export function extractTextFromZai(rawOutput: any): string {
+	return firstText("No text content found in Z.ai output.", [
+		() => textOrNull(rawOutput?.choices?.[0]?.message?.content),
+	]);
+}
+
 export function extractTextFromOlostep(rawOutput: any): string {
 	return firstText("No text content found in Olostep output.", [
 		() => {
@@ -417,6 +423,7 @@ const EXTRACTION_FAILURE_SENTINELS: ReadonlySet<string> = new Set([
 	"No text content found in OpenRouter output.",
 	"No text content found in Oxylabs output.",
 	"No text content found in SearchApi output.",
+	"No text content found in Z.ai output.",
 	"Unknown provider format - cannot extract text content.",
 ]);
 
@@ -565,6 +572,26 @@ export function extractCitationsFromOpenRouter(rawOutput: any): Citation[] {
 	});
 }
 
+function mentionsRefer(text: string, refer: unknown): boolean {
+	if (typeof refer !== "string" || !refer) return false;
+	return new RegExp(`\\b${refer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(text);
+}
+
+/**
+ * Z.ai returns every page its web_search tool fed the model as a top-level
+ * `web_search` array. When the answer marks sources inline by their `refer` id
+ * (`ref_1`), only those count as cited; otherwise the whole grounding set does.
+ */
+export function extractCitationsFromZai(rawOutput: any): Citation[] {
+	return collectCitations((add) => {
+		const results = asArray(rawOutput?.web_search);
+		const text = rawOutput?.choices?.[0]?.message?.content;
+		const referenced =
+			typeof text === "string" ? results.filter((result: any) => mentionsRefer(text, result?.refer)) : [];
+		for (const result of referenced.length > 0 ? referenced : results) add(result?.link, result?.title);
+	});
+}
+
 export function extractCitationsFromOlostep(rawOutput: any): Citation[] {
 	return collectCitations((add) => {
 		const jsonStr = rawOutput?.json_content ?? rawOutput?.result?.json_content;
@@ -706,6 +733,7 @@ const EXTRACTORS: Record<string, Extractor> = {
 	anthropic: ANTHROPIC,
 	claude: ANTHROPIC,
 	"mistral-api": { text: extractTextFromMistral, citations: extractCitationsFromMistral },
+	"zai-api": { text: extractTextFromZai, citations: extractCitationsFromZai },
 	dataforseo: DATAFORSEO,
 	google: DATAFORSEO,
 	"google-ai-mode": DATAFORSEO,

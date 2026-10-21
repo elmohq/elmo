@@ -125,6 +125,9 @@ export const STATUS_TARGETS = [
 	"perplexity:openrouter:perplexity/sonar:online",
 	"mistral:mistral-api:mistral-medium-latest",
 	"mistral:mistral-api:mistral-medium-latest:online",
+	"glm:openrouter:z-ai/glm-5.2",
+	"glm:zai-api:glm-5.2",
+	"glm:zai-api:glm-5.2:online",
 ];
 
 /**

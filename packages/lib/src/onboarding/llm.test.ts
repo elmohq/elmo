@@ -11,6 +11,7 @@ const ENV_KEYS = [
 	"OXYLABS_USERNAME",
 	"OXYLABS_PASSWORD",
 	"MISTRAL_API_KEY",
+	"ZAI_API_KEY",
 ];
 
 const savedEnv: Record<string, string | undefined> = {};
@@ -89,6 +90,12 @@ describe("resolveResearchProvider", () => {
 		process.env.MISTRAL_API_KEY = "x";
 		const provider = resolveResearchProvider();
 		expect(provider.id).toBe("mistral-api");
+	});
+
+	it("falls back to Z.ai when only Z.ai is set", () => {
+		process.env.ZAI_API_KEY = "x";
+		const provider = resolveResearchProvider();
+		expect(provider.id).toBe("zai-api");
 	});
 
 	it("ignores scraper providers entirely", () => {

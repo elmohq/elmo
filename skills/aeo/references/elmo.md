@@ -26,7 +26,7 @@ To look before committing, the read-only demo instance is at <https://demo.elmoh
 ## Self-hosting
 
 Prerequisites: Docker Engine 24+ with Compose v2, Node.js 18+ for the CLI, one scraping provider,
-and one direct LLM key (OpenAI, Anthropic, OpenRouter, or Mistral). Elmo uses the LLM key for brand
+and one direct LLM key (OpenAI, Anthropic, OpenRouter, Mistral, or Z.ai). Elmo uses the LLM key for brand
 onboarding and its Opportunities report, even when every tracked engine is scraped.
 
 ```bash
