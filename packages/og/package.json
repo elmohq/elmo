@@ -15,10 +15,10 @@
 		"./virtual": "./src/virtual.d.ts"
 	},
 	"dependencies": {
-		"@takumi-rs/core": "^2.14.0",
+		"@takumi-rs/core": "^2.16.3",
 		"@takumi-rs/helpers": "^2.13.5",
 		"@workspace/config": "workspace:*",
-		"react": "^19.3.0"
+		"react": "^19.3.1"
 	},
 	"devDependencies": {
 		"@types/node": "^26.6.5",
