@@ -55,35 +55,35 @@
 		"./rollups/fanout": "./src/rollups/fanout.ts"
 	},
 	"dependencies": {
-		"@ai-sdk/anthropic": "^4.0.78",
-		"@ai-sdk/openai": "^4.0.91",
-		"@anthropic-ai/sdk": "^0.133.0",
-		"@better-auth/api-key": "1.7.7",
-		"@better-auth/cimd": "1.7.7",
-		"@better-auth/core": "1.7.7",
-		"@better-auth/mcp": "1.7.7",
-		"@better-auth/oauth-provider": "1.7.7",
-		"@better-auth/sso": "^1.7.7",
-		"@better-auth/stripe": "^1.7.7",
+		"@ai-sdk/anthropic": "^4.0.82",
+		"@ai-sdk/openai": "^4.0.96",
+		"@anthropic-ai/sdk": "^0.135.0",
+		"@better-auth/api-key": "1.7.10",
+		"@better-auth/cimd": "1.7.10",
+		"@better-auth/core": "1.7.10",
+		"@better-auth/mcp": "1.7.10",
+		"@better-auth/oauth-provider": "1.7.10",
+		"@better-auth/sso": "^1.7.10",
+		"@better-auth/stripe": "^1.7.10",
 		"@brightdata/sdk": "^1.2.0",
 		"@mozilla/readability": "^0.6.0",
 		"@workspace/config": "workspace:*",
-		"ai": "^7.0.137",
-		"better-auth": "^1.7.7",
-		"dataforseo-client": "^2.1.8",
+		"ai": "^7.0.143",
+		"better-auth": "^1.7.10",
+		"dataforseo-client": "^2.1.9",
 		"drizzle-orm": "^0.45.4",
 		"jose": "6.2.12",
 		"linkedom": "^0.18.13",
 		"olostep": "^1.2.2",
 		"pg": "^8.23.1",
-		"zod": "^4.6.6"
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
 		"@types/pg": "^8.23.1",
-		"auth": "1.7.7",
+		"auth": "1.7.10",
 		"drizzle-kit": "^0.31.11",
 		"stripe": "^22.6.1",
 		"typescript": "^7.0.2",
-		"vitest": "^5.0.3"
+		"vitest": "^5.0.5"
 	}
 }
