@@ -2,7 +2,7 @@
 # Supports: web app (Nitro server) and worker
 
 # Base stage with Node.js
-FROM node:24-alpine AS base
+FROM node:24.22.1-alpine AS base
 RUN corepack enable pnpm
 RUN apk add --no-cache curl
 
