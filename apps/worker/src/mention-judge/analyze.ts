@@ -6,6 +6,7 @@ import {
 	type Sentiment,
 	subjectFingerprint,
 } from "@workspace/lib/mentions";
+import { getCredential } from "@workspace/lib/secrets";
 import { type Cleaned, cleanAnswer, originalSpan } from "./clean";
 import {
 	adaptivePool,
@@ -15,6 +16,8 @@ import {
 	type JevResponse,
 	type JevTransport,
 	MAX_IN_FLIGHT,
+	OPENROUTER_JEV_MODEL,
+	openRouterTransport,
 	stubTransport,
 	TooLarge,
 	typesafeTransport,
@@ -213,8 +216,8 @@ async function askFitting(transport: JevTransport, request: JevRequest): Promise
 }
 
 /**
- * `model` is part of the stamp, so judgements from the stub are never taken for Jev's: switching
- * to a real key re-judges them.
+ * `model` is sent with each request and is part of the stamp, so judgements from the stub, or from
+ * Jev through another gateway, are never taken for these: switching re-judges them.
  */
 export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JEV_MODEL): MentionAnalyzer {
 	const judgeVersion = `${model}+request-${REQUEST_VERSION}`;
@@ -234,7 +237,7 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 			const ask = named.filter((entry) => entry.judgedAs !== entry.fingerprint || !entry.kept);
 			const { questions, options } = questionsFor(ask, named, sentences(readable));
 			const request: JevRequest = {
-				model: JEV_MODEL,
+				model,
 				state: { rules: RULES, question: question ?? "", answer: readable },
 				questions,
 			};
@@ -260,14 +263,31 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 
 let current: MentionAnalyzer | undefined;
 
-export function configureMentionAnalyzer(apiKey = process.env.TYPESAFE_API_KEY): MentionAnalyzer {
-	if (!apiKey?.trim()) throw new Error("TYPESAFE_API_KEY is required: Elmo judges mentions and sentiment with Jev");
-	if (apiKey.trim() === "stub") {
+/**
+ * A TypeSafe key wins over an OpenRouter one, so setting OPENROUTER_API_KEY for scraping never
+ * moves an existing deployment's judge. The choice is made once: a failing gateway never falls
+ * back to the other, which would mix two judges in one history.
+ */
+export function configureMentionAnalyzer(
+	apiKey = process.env.TYPESAFE_API_KEY,
+	openRouterKey: () => string | undefined = () => getCredential("OPENROUTER_API_KEY"),
+): MentionAnalyzer {
+	if (apiKey?.trim() === "stub") {
 		console.warn(
 			"[mention-judge] TYPESAFE_API_KEY=stub: judging from cue words, not Jev. For tests and development only.",
 		);
 		current = jevAnalyzer(stubTransport, 8, "stub");
-	} else current = jevAnalyzer(adaptivePool(typesafeTransport(apiKey.trim())), MAX_IN_FLIGHT);
+	} else if (apiKey?.trim()) current = jevAnalyzer(adaptivePool(typesafeTransport(apiKey.trim())), MAX_IN_FLIGHT);
+	else if (openRouterKey()?.trim())
+		current = jevAnalyzer(
+			adaptivePool(openRouterTransport(() => openRouterKey()?.trim())),
+			MAX_IN_FLIGHT,
+			OPENROUTER_JEV_MODEL,
+		);
+	else
+		throw new Error(
+			"Elmo judges mentions and sentiment with Jev: set TYPESAFE_API_KEY, or OPENROUTER_API_KEY to call Jev through OpenRouter",
+		);
 	return current;
 }
 

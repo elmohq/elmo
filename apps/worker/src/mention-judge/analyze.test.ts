@@ -2,7 +2,7 @@ import type { MentionConfig } from "@workspace/lib/mentions";
 import { describe, expect, it, vi } from "vitest";
 import { cuedAnalyzer as analyzer } from "./__fixtures__/cued-judge";
 import { configureMentionAnalyzer, jevAnalyzer } from "./analyze";
-import { type JevRequest, stubTransport, TooLarge } from "./jev";
+import { JEV_MODEL, type JevRequest, OPENROUTER_JEV_MODEL, stubTransport, TooLarge } from "./jev";
 
 const config: MentionConfig = {
 	brand: { name: "Apple", aliases: [], domains: ["https://www.apple.com"] },
@@ -156,17 +156,54 @@ describe("re-judging after a config change", () => {
 });
 
 describe("configureMentionAnalyzer", () => {
-	it("refuses to run without a key", () => {
-		expect(() => configureMentionAnalyzer("")).toThrow("TYPESAFE_API_KEY");
+	const noOpenRouter = () => undefined;
+	const openRouter = () => "or-key";
+
+	it("refuses to run without a key, naming both that would do", () => {
+		expect(() => configureMentionAnalyzer("", noOpenRouter)).toThrow(/TYPESAFE_API_KEY.*OPENROUTER_API_KEY/);
+		expect(() => configureMentionAnalyzer(undefined, () => "  ")).toThrow("OPENROUTER_API_KEY");
 	});
 
 	it("stamps the stub's judgements apart from Jev's, so a real key re-judges them", () => {
-		expect(configureMentionAnalyzer("stub").judgeVersion).not.toBe(configureMentionAnalyzer("key").judgeVersion);
+		expect(configureMentionAnalyzer("stub", noOpenRouter).judgeVersion).not.toBe(
+			configureMentionAnalyzer("key", noOpenRouter).judgeVersion,
+		);
+	});
+
+	it("calls Jev through OpenRouter when that's the only key, stamped apart so switching re-judges", () => {
+		const viaOpenRouter = configureMentionAnalyzer(undefined, openRouter).judgeVersion;
+		expect(viaOpenRouter).toContain(OPENROUTER_JEV_MODEL);
+		expect(viaOpenRouter).not.toBe(configureMentionAnalyzer("key", noOpenRouter).judgeVersion);
+	});
+
+	it("reads the OpenRouter key as a provider credential", () => {
+		vi.stubEnv("OPENROUTER_API_KEY", "or-key");
+		expect(configureMentionAnalyzer(undefined).judgeVersion).toContain(OPENROUTER_JEV_MODEL);
+		vi.unstubAllEnvs();
+	});
+
+	it("keeps TypeSafe, or the stub, when an OpenRouter key is set too", () => {
+		expect(configureMentionAnalyzer("key", openRouter).judgeVersion).toContain(JEV_MODEL);
+		expect(configureMentionAnalyzer("stub", openRouter).judgeVersion).toContain("stub");
+	});
+
+	it("sends OpenRouter's model name with its key, and stops at a rejected key without trying TypeSafe", async () => {
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockResolvedValue(new Response(JSON.stringify({ error: { message: "bad key", code: 401 } }), { status: 401 }));
+		const judge = configureMentionAnalyzer(undefined, openRouter);
+		await expect(judge.analyze("Apple is great.", config)).rejects.toThrow("OPENROUTER_API_KEY was rejected");
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		const [url, init] = fetchSpy.mock.calls[0];
+		expect(url).toBe("https://openrouter.ai/api/v1/systemone");
+		expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer or-key");
+		expect(JSON.parse(String(init?.body)).model).toBe(OPENROUTER_JEV_MODEL);
+		fetchSpy.mockRestore();
 	});
 
 	it("judges locally with the stub key, calling no one", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
-		const stub = configureMentionAnalyzer("stub");
+		const stub = configureMentionAnalyzer("stub", noOpenRouter);
 		expect((await stub.analyze("Apple is great.", config)).brandMentioned).toBe(true);
 		expect(fetchSpy).not.toHaveBeenCalled();
 		fetchSpy.mockRestore();

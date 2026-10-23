@@ -211,14 +211,18 @@ async function ensureJudgeKey(configDir: string, context: MigrationContext, nonI
 		process.exit(1);
 	}
 	const env = await context.readEnv();
-	if (env.TYPESAFE_API_KEY?.trim()) return;
+	// An OpenRouter key saved only in Elmo's settings lives in the database, which the CLI can't read.
+	if (env.TYPESAFE_API_KEY?.trim() || env.OPENROUTER_API_KEY?.trim()) return;
+	const viaOpenRouter =
+		"To call Jev through OpenRouter, add OPENROUTER_API_KEY to .env with `elmo edit env`, even if it's saved in Elmo's settings, then rerun the upgrade.";
 	if (nonInteractive) {
 		log.error(
-			"This version needs TYPESAFE_API_KEY (Jev, https://console.typesafe.ai) to judge mentions and sentiment.",
+			"This version needs TYPESAFE_API_KEY (Jev, https://console.typesafe.ai) in .env to judge mentions and sentiment.",
 		);
-		log.info("Add it to .env with `elmo edit env`, then rerun the upgrade.");
+		log.info(`Add it with \`elmo edit env\`, then rerun the upgrade. ${viaOpenRouter}`);
 		process.exit(1);
 	}
+	log.info(viaOpenRouter);
 	await collectJudgeKey(env);
 	await context.writeEnv(env);
 	log.success("Saved TYPESAFE_API_KEY to .env.");

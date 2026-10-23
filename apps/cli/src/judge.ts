@@ -6,6 +6,7 @@ import { assertNotCancelled, link } from "./util.js";
 const SIGNUP_URL = "https://console.typesafe.ai";
 
 export async function collectJudgeKey(env: EnvMap): Promise<void> {
+	const viaOpenRouter = Boolean(env.OPENROUTER_API_KEY?.trim());
 	p.note(
 		[
 			"Elmo reads every answer with Jev (TypeSafe) to decide which ones really",
@@ -21,14 +22,21 @@ export async function collectJudgeKey(env: EnvMap): Promise<void> {
 			"On first start Elmo also re-judges the last 90 days of history once",
 			"(REPROCESS_DAYS), about three months of the above.",
 			"",
+			...(viaOpenRouter
+				? [
+						"Your OpenRouter key can call Jev instead, billed to your OpenRouter",
+						"account: leave the TypeSafe key empty to use it.",
+						"",
+					]
+				: []),
 			`Get a key: ${link(pc.cyan(SIGNUP_URL), SIGNUP_URL)}`,
 		].join("\n"),
 		"Mention and sentiment judging",
 	);
 	const key = await p.password({
-		message: "TypeSafe API key (for Jev)",
-		validate: (value) => (value?.trim() ? undefined : "Required"),
+		message: viaOpenRouter ? "TypeSafe API key (for Jev; leave empty to use OpenRouter)" : "TypeSafe API key (for Jev)",
+		validate: (value) => (value?.trim() || viaOpenRouter ? undefined : "Required"),
 	});
 	assertNotCancelled(key);
-	env.TYPESAFE_API_KEY = key.trim();
+	if (key?.trim()) env.TYPESAFE_API_KEY = key.trim();
 }

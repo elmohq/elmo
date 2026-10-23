@@ -2,7 +2,13 @@
 
 /** Pinned: a new Jev version changes judgements, so moving to one is a deliberate re-judge. */
 export const JEV_MODEL = "jev-1.13.0";
-const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
+/**
+ * The same Jev release, through OpenRouter, which serves it from a dated TypeSafe snapshot. It's
+ * stamped apart from JEV_MODEL: OpenRouter judges large requests in Jev's long-context mode.
+ */
+export const OPENROUTER_JEV_MODEL = "typesafe/jev-1.13";
+const TYPESAFE_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
+const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/systemone";
 const TIMEOUT_MS = 30_000;
 
 export interface JevChoiceQuestion {
@@ -43,16 +49,30 @@ export class RateLimited extends Error {
 
 export class TooLarge extends Error {}
 
-/** A failure throws, so the derivation job retries it. */
 export function typesafeTransport(apiKey: string, fetchImpl: typeof fetch = fetch): JevTransport {
+	return systemOneTransport(TYPESAFE_ENDPOINT, () => apiKey, "TYPESAFE_API_KEY", fetchImpl);
+}
+
+/** Reads the key on every call, so a key rotated in settings takes effect without a restart. */
+export function openRouterTransport(apiKey: () => string | undefined, fetchImpl: typeof fetch = fetch): JevTransport {
+	return systemOneTransport(OPENROUTER_ENDPOINT, () => apiKey() ?? "", "OPENROUTER_API_KEY", fetchImpl);
+}
+
+/** A failure throws, so the derivation job retries it. */
+function systemOneTransport(
+	endpoint: string,
+	apiKey: () => string,
+	keyName: string,
+	fetchImpl: typeof fetch,
+): JevTransport {
 	return async (request) => {
-		const response = await fetchImpl(ENDPOINT, {
+		const response = await fetchImpl(endpoint, {
 			method: "POST",
-			headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey()}` },
 			body: JSON.stringify(request),
 			signal: AbortSignal.timeout(TIMEOUT_MS),
 		});
-		if (!response.ok) throw await failure(response);
+		if (!response.ok) throw await failure(response, keyName);
 		const body = (await response.json()) as JevResponse;
 		for (const key of Object.keys(request.questions)) {
 			const answer = body.answers?.[key];
@@ -63,14 +83,15 @@ export function typesafeTransport(apiKey: string, fetchImpl: typeof fetch = fetc
 	};
 }
 
-async function failure(response: Response): Promise<Error> {
+async function failure(response: Response, keyName: string): Promise<Error> {
 	const detail = (await response.text().catch(() => "")).slice(0, 300);
 	if (response.status === 429)
 		return new RateLimited(Math.min(Number(response.headers.get("retry-after")) * 1000 || 1000, 60_000), detail);
 	if (response.status === 400 && detail.includes("max_tokens_exceeded"))
 		return new TooLarge(`Jev found the request too large (HTTP 400): ${detail}`);
-	if (response.status === 401 || response.status === 403)
-		return new Error(`TYPESAFE_API_KEY was rejected (HTTP ${response.status}); check it, or its credit: ${detail}`);
+	// OpenRouter answers 402 when the account is out of credit.
+	if (response.status === 401 || response.status === 402 || response.status === 403)
+		return new Error(`${keyName} was rejected (HTTP ${response.status}); check it, or its credit: ${detail}`);
 	return new Error(`Jev returned HTTP ${response.status}: ${detail}`);
 }
 
