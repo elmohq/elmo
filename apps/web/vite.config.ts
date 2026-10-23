@@ -31,13 +31,15 @@ export default defineConfig({
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			traceDeps: ["@takumi-rs/core"],
+			traceDeps: ["@takumi-rs/core", "@sentry/server-runtime-injection"],
 			exportConditions: ["import"],
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
 			},
-			noExternals: ["@opentelemetry", "@sentry", "@prisma/instrumentation"],
+			// Sentry's runtime instrumentation loads its hook from disk, so it has to ship
+			// as a package rather than inside the bundle.
+			noExternals: ["@opentelemetry", /^@sentry\/(?!server-runtime-injection)/, "@prisma/instrumentation"],
 			rollupConfig: {
 				external: ["fsevents"],
 			},
