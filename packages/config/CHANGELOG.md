@@ -1,5 +1,9 @@
 # @workspace/config
 
+## 0.7.4
+
+No changes in this release.
+
 ## 0.7.3
 
 No changes in this release.
