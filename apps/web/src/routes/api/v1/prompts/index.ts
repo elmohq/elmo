@@ -5,7 +5,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
-import { clampedPaging } from "@/lib/api/analytics-range";
+import { parsePaging } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { createPrompts, listPrompts } from "@/server/prompts-core";
@@ -22,8 +22,9 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 			GET: createApiHandler({
 				scopes: ["read"],
 				handle: async ({ request, auth }) => {
-					const { searchParams } = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(searchParams, 1000);
+					const url = new URL(request.url);
+					const { searchParams } = url;
+					const { page, limit, offset } = parsePaging(url, { maxLimit: 1000 });
 
 					const enabled = searchParams.get("enabled");
 					const { data, total } = await listPrompts({

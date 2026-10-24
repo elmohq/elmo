@@ -8,7 +8,7 @@ import { db } from "@workspace/lib/db/db";
 import { organization } from "@workspace/lib/db/schema";
 import { countBrandsByOrg } from "@workspace/lib/entitlements";
 import { count } from "drizzle-orm";
-import { clampedPaging } from "@/lib/api/analytics-range";
+import { parsePaging } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { organizationScopeCondition } from "@/lib/api/scope";
 
@@ -17,8 +17,7 @@ export const Route = createFileRoute("/api/v1/organizations/")({
 		handlers: withMethodGuard({
 			GET: createApiHandler({
 				handle: async ({ request, auth }) => {
-					const { searchParams } = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(searchParams);
+					const { page, limit, offset } = parsePaging(new URL(request.url));
 
 					const where = organizationScopeCondition(auth, organization.id);
 

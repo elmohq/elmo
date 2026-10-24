@@ -11,7 +11,7 @@ import { reports } from "@workspace/lib/db/schema";
 import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { count, desc } from "drizzle-orm";
 import { z } from "zod";
-import { clampedPaging } from "@/lib/api/analytics-range";
+import { parsePaging } from "@/lib/api/analytics-range";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { createReport, ReportCreateError, ReportQueueError } from "@/server/reports-core";
 
@@ -64,8 +64,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 			GET: createApiHandler({
 				adminOnly: true,
 				handle: async ({ request }) => {
-					const { searchParams } = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(searchParams);
+					const { page, limit, offset } = parsePaging(new URL(request.url));
 
 					const [totalCountResult] = await db.select({ count: count() }).from(reports);
 					const totalCount = totalCountResult?.count || 0;

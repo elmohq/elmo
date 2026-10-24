@@ -2247,7 +2247,7 @@
 			"Limit": {
 				"name": "limit",
 				"in": "query",
-				"description": "Items per page. Values above the maximum are clamped, not rejected.",
+				"description": "Items per page.",
 				"required": false,
 				"schema": {
 					"type": "integer",
@@ -2402,6 +2402,9 @@
 								}
 							}
 						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
 					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
@@ -2967,6 +2970,9 @@
 							}
 						}
 					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
@@ -3283,6 +3289,9 @@
 							}
 						}
 					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
@@ -3412,7 +3421,7 @@
 					{
 						"name": "limit",
 						"in": "query",
-						"description": "Items per page. Values above the maximum are clamped, not rejected. This list had no ceiling before, so the maximum is set to bound a runaway query rather than to change what an existing caller gets back.",
+						"description": "Items per page.",
 						"required": false,
 						"schema": {
 							"type": "integer",
@@ -3495,6 +3504,9 @@
 								}
 							}
 						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
 					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
@@ -4139,6 +4151,9 @@
 								}
 							}
 						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
 					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
