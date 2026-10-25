@@ -1,5 +1,11 @@
 # @workspace/docs
 
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/ui@0.7.5
+
 ## 0.7.4
 
 ### Patch Changes

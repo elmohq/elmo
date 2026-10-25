@@ -1,5 +1,16 @@
 # @workspace/web
 
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.5
+  - @workspace/config@0.7.5
+  - @workspace/deployment@0.7.5
+  - @workspace/lib@0.7.5
+  - @workspace/og@0.7.5
+  - @workspace/ui@0.7.5
+
 ## 0.7.4
 
 ### Patch Changes
