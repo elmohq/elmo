@@ -116,29 +116,6 @@ describe("research provider requirement", () => {
 	});
 });
 
-describe("mention judge requirement", () => {
-	it("is missing in local mode without a key for Jev", () => {
-		expect(missingIds("local", {}).has("MENTION_JUDGE")).toBe(true);
-	});
-
-	it("is satisfied by a TypeSafe key, the stub, or an OpenRouter key", () => {
-		const envs: Record<string, string>[] = [
-			{ TYPESAFE_API_KEY: "x" },
-			{ TYPESAFE_API_KEY: "stub" },
-			{ OPENROUTER_API_KEY: "x" },
-		];
-		for (const env of envs) {
-			expect(missingIds("local", env).has("MENTION_JUDGE"), JSON.stringify(env)).toBe(false);
-		}
-	});
-
-	it("isn't asked of the modes whose web app may be provisioned without the worker's keys", () => {
-		for (const mode of ["demo", "whitelabel", "cloud"] as const) {
-			expect(missingIds(mode, {}).has("MENTION_JUDGE"), mode).toBe(false);
-		}
-	});
-});
-
 describe("requireEnvVars", () => {
 	it("reports every missing required env var at once", () => {
 		expect(() =>

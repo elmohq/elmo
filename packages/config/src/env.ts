@@ -112,26 +112,8 @@ function buildResearchProviderRequirement(): EnvRequirement {
 	};
 }
 
-/**
- * The worker refuses to start without a key for Jev, but the web app is where a missing one can be
- * shown. Local only: there the CLI's compose stack and the dev setup give both processes the same
- * .env, while the other modes may provision the web app without the worker's keys.
- */
-const MENTION_JUDGE_REQUIREMENT: EnvRequirement = {
-	id: "MENTION_JUDGE",
-	label: "TYPESAFE_API_KEY or OPENROUTER_API_KEY",
-	description:
-		"Needed by the worker to judge mentions and sentiment with Jev, from TypeSafe directly or through OpenRouter.",
-	isSatisfied: requireAny(["TYPESAFE_API_KEY", "OPENROUTER_API_KEY"]),
-};
-
 function buildRequirements(mode: DeploymentMode): EnvRequirement[] {
-	return [
-		...buildStaticRequirements(mode),
-		...buildProviderKeyRequirements(),
-		buildResearchProviderRequirement(),
-		...(mode === "local" ? [MENTION_JUDGE_REQUIREMENT] : []),
-	];
+	return [...buildStaticRequirements(mode), ...buildProviderKeyRequirements(), buildResearchProviderRequirement()];
 }
 
 export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
