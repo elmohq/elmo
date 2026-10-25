@@ -234,6 +234,8 @@ async function main(): Promise<void> {
 	await send(ENTER);
 
 	// Jev key: the stub judges locally, so the e2e stack calls no one.
+	await waitFor("How should Elmo call Jev?");
+	await send(ENTER); // TypeSafe directly, the default without an OpenRouter key
 	await waitFor("TypeSafe API key");
 	await send(`stub${ENTER}`);
 
