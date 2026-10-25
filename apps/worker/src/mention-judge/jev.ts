@@ -3,8 +3,9 @@
 /** Pinned: a new Jev version changes judgements, so moving to one is a deliberate re-judge. */
 export const JEV_MODEL = "jev-1.13.0";
 /**
- * The same Jev release, through OpenRouter, which serves it from a dated TypeSafe snapshot. It's
- * stamped apart from JEV_MODEL: OpenRouter judges large requests in Jev's long-context mode.
+ * The same Jev release through OpenRouter, stamped as JEV_MODEL so switching gateway doesn't
+ * re-judge history. It's the finest ID OpenRouter offers: it serves a dated 1.13 snapshot that it
+ * may move to a newer 1.13 one.
  */
 export const OPENROUTER_JEV_MODEL = "typesafe/jev-1.13";
 const TYPESAFE_ENDPOINT = "https://api.typesafe.ai/v1/systemone";

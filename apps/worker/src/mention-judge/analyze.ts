@@ -216,11 +216,16 @@ async function askFitting(transport: JevTransport, request: JevRequest): Promise
 }
 
 /**
- * `model` is sent with each request and is part of the stamp, so judgements from the stub, or from
- * Jev through another gateway, are never taken for these: switching re-judges them.
+ * `judge` is the stamp, kept apart from the `model` ID a gateway is sent: the same Jev release
+ * through another gateway keeps history, while the stub's judgements are re-judged by a real key.
  */
-export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JEV_MODEL): MentionAnalyzer {
-	const judgeVersion = `${model}+request-${REQUEST_VERSION}`;
+export function jevAnalyzer(
+	transport: JevTransport,
+	concurrency = 8,
+	model = JEV_MODEL,
+	judge = model,
+): MentionAnalyzer {
+	const judgeVersion = `${judge}+request-${REQUEST_VERSION}`;
 	return {
 		judgeVersion,
 		concurrency,
@@ -265,8 +270,8 @@ let current: MentionAnalyzer | undefined;
 
 /**
  * A TypeSafe key wins over an OpenRouter one, so setting OPENROUTER_API_KEY for scraping never
- * moves an existing deployment's judge. The choice is made once: a failing gateway never falls
- * back to the other, which would mix two judges in one history.
+ * moves an existing deployment's judge or its bill. The choice is made once: a failing gateway
+ * never falls back to the other, which would bill an account the operator didn't pick.
  */
 export function configureMentionAnalyzer(
 	apiKey = process.env.TYPESAFE_API_KEY,
@@ -283,6 +288,7 @@ export function configureMentionAnalyzer(
 			adaptivePool(openRouterTransport(() => openRouterKey()?.trim())),
 			MAX_IN_FLIGHT,
 			OPENROUTER_JEV_MODEL,
+			JEV_MODEL,
 		);
 	else
 		throw new Error(

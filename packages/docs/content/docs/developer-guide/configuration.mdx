@@ -101,7 +101,7 @@ Very roughly, that's **$0.15–0.35 per 1,000 answers**. A month of answers is a
 
 These are estimates, not quotes; see TypeSafe's pricing, or OpenRouter's for Jev, for current rates.
 
-The worker picks TypeSafe or OpenRouter when it starts, and never falls back from one to the other. Judgements from each are stamped apart, so switching re-judges history like a new judge version does. The two aren't interchangeable: OpenRouter judges requests over about 32 KB in Jev's long-context mode, which TypeSafe describes as slower and less accurate, and it serves Jev 1.13 from a dated snapshot it may update.
+The worker picks TypeSafe or OpenRouter when it starts, and never falls back from one to the other. Both serve the same Jev release, so switching keeps the judgements you already have; only a new Jev version in an Elmo release re-judges history. OpenRouter serves Jev 1.13 from a dated snapshot that it may update to a newer 1.13 one, and runs requests over about 32 KB in Jev's long-context mode, so long answers may be judged slightly differently there.
 
 A large re-judge goes as fast as your TypeSafe or OpenRouter rate limit allows, with nothing to configure. Each worker finds the limit itself: it speeds up while calls succeed, slows down when Jev rate-limits it, and retries those calls after the wait Jev asks for. For example, with a 100,000 input tokens per second limit, one worker judges about a million answers in roughly 16 hours.
 

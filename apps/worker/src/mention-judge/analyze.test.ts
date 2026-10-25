@@ -170,34 +170,67 @@ describe("configureMentionAnalyzer", () => {
 		);
 	});
 
-	it("calls Jev through OpenRouter when that's the only key, stamped apart so switching re-judges", () => {
-		const viaOpenRouter = configureMentionAnalyzer("", openRouter).judgeVersion;
-		expect(viaOpenRouter).toContain(OPENROUTER_JEV_MODEL);
-		expect(viaOpenRouter).not.toBe(configureMentionAnalyzer("key", noOpenRouter).judgeVersion);
-	});
-
-	it("reads the OpenRouter key as a provider credential", () => {
-		vi.stubEnv("OPENROUTER_API_KEY", "or-key");
-		expect(configureMentionAnalyzer("").judgeVersion).toContain(OPENROUTER_JEV_MODEL);
-		vi.unstubAllEnvs();
-	});
-
-	it("keeps TypeSafe, or the stub, when an OpenRouter key is set too", () => {
-		expect(configureMentionAnalyzer("key", openRouter).judgeVersion).toContain(JEV_MODEL);
-		expect(configureMentionAnalyzer("stub", openRouter).judgeVersion).toContain("stub");
-	});
-
-	it("sends OpenRouter's model name with its key, and stops at a rejected key without trying TypeSafe", async () => {
+	/** Where the judge sends its first request, and with which model and key; the request is rejected. */
+	async function firstCall(configure: () => ReturnType<typeof configureMentionAnalyzer>) {
+		// Before configuring: the transport takes `fetch` when it's made.
 		const fetchSpy = vi
 			.spyOn(globalThis, "fetch")
 			.mockResolvedValue(new Response(JSON.stringify({ error: { message: "bad key", code: 401 } }), { status: 401 }));
-		const judge = configureMentionAnalyzer("", openRouter);
-		await expect(judge.analyze("Apple is great.", config)).rejects.toThrow("OPENROUTER_API_KEY was rejected");
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		const error = await configure()
+			.analyze("Apple is great.", config)
+			.catch((e: Error) => e);
+		const calls = fetchSpy.mock.calls.length;
 		const [url, init] = fetchSpy.mock.calls[0];
-		expect(url).toBe("https://openrouter.ai/api/v1/systemone");
-		expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer or-key");
-		expect(JSON.parse(String(init?.body)).model).toBe(OPENROUTER_JEV_MODEL);
+		fetchSpy.mockRestore();
+		return {
+			url,
+			calls,
+			error,
+			model: JSON.parse(String(init?.body)).model,
+			authorization: new Headers(init?.headers).get("Authorization"),
+		};
+	}
+
+	it("calls Jev through OpenRouter, with OpenRouter's model name, when that's the only key", async () => {
+		expect(await firstCall(() => configureMentionAnalyzer("", openRouter))).toMatchObject({
+			url: "https://openrouter.ai/api/v1/systemone",
+			model: OPENROUTER_JEV_MODEL,
+			authorization: "Bearer or-key",
+		});
+	});
+
+	it("reads the OpenRouter key as a provider credential", async () => {
+		vi.stubEnv("OPENROUTER_API_KEY", "or-key");
+		expect((await firstCall(() => configureMentionAnalyzer(""))).url).toBe("https://openrouter.ai/api/v1/systemone");
+		vi.unstubAllEnvs();
+	});
+
+	it("keeps TypeSafe when an OpenRouter key is set too", async () => {
+		expect(await firstCall(() => configureMentionAnalyzer("ts-key", openRouter))).toMatchObject({
+			url: "https://api.typesafe.ai/v1/systemone",
+			model: JEV_MODEL,
+			authorization: "Bearer ts-key",
+		});
+	});
+
+	it("stops at a rejected OpenRouter key without trying TypeSafe", async () => {
+		const call = await firstCall(() => configureMentionAnalyzer("", openRouter));
+		expect(call.calls).toBe(1);
+		expect(String(call.error)).toContain("OPENROUTER_API_KEY was rejected");
+	});
+
+	it("keeps judgements made through TypeSafe after switching to OpenRouter", async () => {
+		const text = "Apple is great value. Globex is a solid alternative.";
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(
+				async (_url, init) => new Response(JSON.stringify(await stubTransport(JSON.parse(String(init?.body))))),
+			);
+		const viaTypeSafe = await configureMentionAnalyzer("ts-key", noOpenRouter).analyze(text, config);
+		fetchSpy.mockClear();
+		const viaOpenRouter = await configureMentionAnalyzer("", openRouter).analyze(text, config, viaTypeSafe.assessments);
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(viaOpenRouter.brandMentioned).toBe(viaTypeSafe.brandMentioned);
 		fetchSpy.mockRestore();
 	});
 
