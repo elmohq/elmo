@@ -283,14 +283,15 @@ export function configureMentionAnalyzer(
 		);
 		current = jevAnalyzer(stubTransport, 8, "stub");
 	} else if (apiKey?.trim()) current = jevAnalyzer(adaptivePool(typesafeTransport(apiKey.trim())), MAX_IN_FLIGHT);
-	else if (openRouterKey()?.trim())
+	else if (openRouterKey()?.trim()) {
+		console.log("[mention-judge] No TYPESAFE_API_KEY: calling Jev through OpenRouter, billed to OPENROUTER_API_KEY.");
 		current = jevAnalyzer(
 			adaptivePool(openRouterTransport(() => openRouterKey()?.trim())),
 			MAX_IN_FLIGHT,
 			OPENROUTER_JEV_MODEL,
 			JEV_MODEL,
 		);
-	else
+	} else
 		throw new Error(
 			"Elmo judges mentions and sentiment with Jev: set TYPESAFE_API_KEY, or OPENROUTER_API_KEY to call Jev through OpenRouter",
 		);

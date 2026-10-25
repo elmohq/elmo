@@ -56,7 +56,17 @@ export function typesafeTransport(apiKey: string, fetchImpl: typeof fetch = fetc
 
 /** Reads the key on every call, so a key rotated in settings takes effect without a restart. */
 export function openRouterTransport(apiKey: () => string | undefined, fetchImpl: typeof fetch = fetch): JevTransport {
-	return systemOneTransport(OPENROUTER_ENDPOINT, () => apiKey() ?? "", "OPENROUTER_API_KEY", fetchImpl);
+	return systemOneTransport(
+		OPENROUTER_ENDPOINT,
+		() => {
+			const key = apiKey();
+			// Removed from settings since startup: say so, rather than send no key and report it rejected.
+			if (!key) throw new Error("OPENROUTER_API_KEY is no longer set; Elmo calls Jev through OpenRouter with it");
+			return key;
+		},
+		"OPENROUTER_API_KEY",
+		fetchImpl,
+	);
 }
 
 /** A failure throws, so the derivation job retries it. */
@@ -85,10 +95,11 @@ function systemOneTransport(
 }
 
 async function failure(response: Response, keyName: string): Promise<Error> {
-	const detail = (await response.text().catch(() => "")).slice(0, 300);
+	const body = await response.text().catch(() => "");
+	const detail = body.slice(0, 300);
 	if (response.status === 429)
 		return new RateLimited(Math.min(Number(response.headers.get("retry-after")) * 1000 || 1000, 60_000), detail);
-	if (response.status === 400 && detail.includes("max_tokens_exceeded"))
+	if (response.status === 400 && body.includes("max_tokens_exceeded"))
 		return new TooLarge(`Jev found the request too large (HTTP 400): ${detail}`);
 	// OpenRouter answers 402 when the account is out of credit.
 	if (response.status === 401 || response.status === 402 || response.status === 403)

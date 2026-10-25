@@ -1,5 +1,5 @@
 import type { MentionConfig } from "@workspace/lib/mentions";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cuedAnalyzer as analyzer } from "./__fixtures__/cued-judge";
 import { configureMentionAnalyzer, jevAnalyzer } from "./analyze";
 import { JEV_MODEL, type JevRequest, OPENROUTER_JEV_MODEL, stubTransport, TooLarge } from "./jev";
@@ -156,6 +156,10 @@ describe("re-judging after a config change", () => {
 });
 
 describe("configureMentionAnalyzer", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		vi.restoreAllMocks();
+	});
 	const noOpenRouter = () => undefined;
 	const openRouter = () => "or-key";
 
@@ -202,7 +206,6 @@ describe("configureMentionAnalyzer", () => {
 	it("reads the OpenRouter key as a provider credential", async () => {
 		vi.stubEnv("OPENROUTER_API_KEY", "or-key");
 		expect((await firstCall(() => configureMentionAnalyzer(""))).url).toBe("https://openrouter.ai/api/v1/systemone");
-		vi.unstubAllEnvs();
 	});
 
 	it("keeps TypeSafe when an OpenRouter key is set too", async () => {
@@ -231,7 +234,6 @@ describe("configureMentionAnalyzer", () => {
 		const viaOpenRouter = await configureMentionAnalyzer("", openRouter).analyze(text, config, viaTypeSafe.assessments);
 		expect(fetchSpy).not.toHaveBeenCalled();
 		expect(viaOpenRouter.brandMentioned).toBe(viaTypeSafe.brandMentioned);
-		fetchSpy.mockRestore();
 	});
 
 	it("judges locally with the stub key, calling no one", async () => {

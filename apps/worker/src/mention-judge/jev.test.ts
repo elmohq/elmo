@@ -6,6 +6,7 @@ import {
 	OPENROUTER_JEV_MODEL,
 	openRouterTransport,
 	RateLimited,
+	TooLarge,
 	typesafeTransport,
 } from "./jev";
 
@@ -89,6 +90,27 @@ describe("openRouterTransport", () => {
 		const noCredit = { error: { message: "Insufficient credits", code: 402 } };
 		await expect(openRouterTransport(() => "or-secret", respond(402, noCredit))(viaOpenRouter)).rejects.toThrow(
 			"OPENROUTER_API_KEY was rejected (HTTP 402)",
+		);
+	});
+
+	it("says the key is gone, without calling OpenRouter, once it's removed from settings", async () => {
+		const fetchImpl = respond(200, answered);
+		await expect(openRouterTransport(() => undefined, fetchImpl)(viaOpenRouter)).rejects.toThrow(
+			"OPENROUTER_API_KEY is no longer set",
+		);
+		expect(fetchImpl).not.toHaveBeenCalled();
+	});
+
+	it("recognises a too-large request deep in an error OpenRouter wraps", async () => {
+		const wrapped = {
+			error: {
+				message: "Provider returned error",
+				code: 400,
+				metadata: { provider_name: "TypeSafe", raw: `${"x".repeat(400)} max_tokens_exceeded` },
+			},
+		};
+		await expect(openRouterTransport(() => "or-secret", respond(400, wrapped))(viaOpenRouter)).rejects.toBeInstanceOf(
+			TooLarge,
 		);
 	});
 
