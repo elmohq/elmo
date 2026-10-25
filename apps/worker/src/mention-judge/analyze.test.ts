@@ -161,7 +161,7 @@ describe("configureMentionAnalyzer", () => {
 
 	it("refuses to run without a key, naming both that would do", () => {
 		expect(() => configureMentionAnalyzer("", noOpenRouter)).toThrow(/TYPESAFE_API_KEY.*OPENROUTER_API_KEY/);
-		expect(() => configureMentionAnalyzer(undefined, () => "  ")).toThrow("OPENROUTER_API_KEY");
+		expect(() => configureMentionAnalyzer("", () => "  ")).toThrow("OPENROUTER_API_KEY");
 	});
 
 	it("stamps the stub's judgements apart from Jev's, so a real key re-judges them", () => {
@@ -171,14 +171,14 @@ describe("configureMentionAnalyzer", () => {
 	});
 
 	it("calls Jev through OpenRouter when that's the only key, stamped apart so switching re-judges", () => {
-		const viaOpenRouter = configureMentionAnalyzer(undefined, openRouter).judgeVersion;
+		const viaOpenRouter = configureMentionAnalyzer("", openRouter).judgeVersion;
 		expect(viaOpenRouter).toContain(OPENROUTER_JEV_MODEL);
 		expect(viaOpenRouter).not.toBe(configureMentionAnalyzer("key", noOpenRouter).judgeVersion);
 	});
 
 	it("reads the OpenRouter key as a provider credential", () => {
 		vi.stubEnv("OPENROUTER_API_KEY", "or-key");
-		expect(configureMentionAnalyzer(undefined).judgeVersion).toContain(OPENROUTER_JEV_MODEL);
+		expect(configureMentionAnalyzer("").judgeVersion).toContain(OPENROUTER_JEV_MODEL);
 		vi.unstubAllEnvs();
 	});
 
@@ -191,7 +191,7 @@ describe("configureMentionAnalyzer", () => {
 		const fetchSpy = vi
 			.spyOn(globalThis, "fetch")
 			.mockResolvedValue(new Response(JSON.stringify({ error: { message: "bad key", code: 401 } }), { status: 401 }));
-		const judge = configureMentionAnalyzer(undefined, openRouter);
+		const judge = configureMentionAnalyzer("", openRouter);
 		await expect(judge.analyze("Apple is great.", config)).rejects.toThrow("OPENROUTER_API_KEY was rejected");
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		const [url, init] = fetchSpy.mock.calls[0];
