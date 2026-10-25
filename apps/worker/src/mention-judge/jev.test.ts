@@ -101,14 +101,8 @@ describe("openRouterTransport", () => {
 		expect(fetchImpl).not.toHaveBeenCalled();
 	});
 
-	it("recognises a too-large request deep in an error OpenRouter wraps", async () => {
-		const wrapped = {
-			error: {
-				message: "Provider returned error",
-				code: 400,
-				metadata: { provider_name: "TypeSafe", raw: `${"x".repeat(400)} max_tokens_exceeded` },
-			},
-		};
+	it("recognises a too-large request in the error OpenRouter wraps TypeSafe's in", async () => {
+		const wrapped = { error: { message: 'HTTP 400: {"detail":{"error_type":"max_tokens_exceeded"}}', code: 400 } };
 		await expect(openRouterTransport(() => "or-secret", respond(400, wrapped))(viaOpenRouter)).rejects.toBeInstanceOf(
 			TooLarge,
 		);
