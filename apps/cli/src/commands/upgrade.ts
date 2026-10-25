@@ -211,21 +211,24 @@ async function ensureJudgeKey(configDir: string, context: MigrationContext, nonI
 		process.exit(1);
 	}
 	const env = await context.readEnv();
-	// An OpenRouter key saved only in Elmo's settings lives in the database, which the CLI can't read.
-	if (env.TYPESAFE_API_KEY?.trim() || env.OPENROUTER_API_KEY?.trim()) return;
-	const viaOpenRouter =
-		"To call Jev through OpenRouter, add OPENROUTER_API_KEY to .env with `elmo edit env`, even if it's saved in Elmo's settings, then rerun the upgrade.";
-	if (nonInteractive) {
-		log.error(
-			"This version needs TYPESAFE_API_KEY (Jev, https://console.typesafe.ai) in .env to judge mentions and sentiment.",
+	if (env.TYPESAFE_API_KEY?.trim()) return;
+	if (env.OPENROUTER_API_KEY?.trim()) {
+		log.info(
+			"Judging mentions and sentiment with Jev through OpenRouter (OPENROUTER_API_KEY). To call TypeSafe directly instead, add TYPESAFE_API_KEY with `elmo edit env`.",
 		);
-		log.info(`Add it with \`elmo edit env\`, then rerun the upgrade. ${viaOpenRouter}`);
+		return;
+	}
+	if (nonInteractive) {
+		// A key saved only in Elmo's settings lives in the database, which the CLI can't read.
+		log.error(
+			"This version judges mentions and sentiment with Jev, and needs TYPESAFE_API_KEY (https://console.typesafe.ai) or OPENROUTER_API_KEY in .env to call it.",
+		);
+		log.info("Add one with `elmo edit env`, then rerun the upgrade.");
 		process.exit(1);
 	}
-	log.info(viaOpenRouter);
 	await collectJudgeKey(env);
 	await context.writeEnv(env);
-	log.success("Saved TYPESAFE_API_KEY to .env.");
+	log.success("Saved the Jev key to .env.");
 }
 
 function buildMigrationContext(configDir: string, version: string): MigrationContext {

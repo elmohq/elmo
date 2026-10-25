@@ -1,46 +1,74 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-let answer: string | undefined;
-let validate: ((value: string | undefined) => string | undefined) | undefined;
+const answers: unknown[] = [];
+const offered: string[][] = [];
 
 vi.mock("@clack/prompts", () => ({
 	note: () => undefined,
-	password: async (options: { validate: typeof validate }) => {
-		validate = options.validate;
-		return answer;
+	select: async (options: { options: { value: string }[] }) => {
+		offered.push(options.options.map((option) => option.value));
+		return answers.shift();
 	},
+	password: async () => answers.shift(),
 	isCancel: () => false,
 	cancel: () => undefined,
+	log: { info: () => undefined },
 }));
 
 const { collectJudgeKey } = await import("./judge.js");
 
 describe("collectJudgeKey", () => {
 	beforeEach(() => {
-		answer = undefined;
-		validate = undefined;
+		answers.length = 0;
+		offered.length = 0;
 	});
 
-	it("requires a TypeSafe key when there's no OpenRouter key to call Jev with", async () => {
-		answer = " ts-key ";
-		const env: Record<string, string> = {};
-		await collectJudgeKey(env);
-		expect(env.TYPESAFE_API_KEY).toBe("ts-key");
-		expect(validate?.("")).toBe("Required");
-	});
-
-	it("lets an OpenRouter user leave the TypeSafe key empty", async () => {
-		answer = "";
+	it("offers the OpenRouter key already entered, and asks for nothing more when it's chosen", async () => {
+		answers.push("openrouter");
 		const env: Record<string, string> = { OPENROUTER_API_KEY: "or-key" };
 		await collectJudgeKey(env);
-		expect(validate?.("")).toBeUndefined();
+		expect(offered[0][0]).toBe("openrouter");
+		expect(answers).toEqual([]);
 		expect(env).toEqual({ OPENROUTER_API_KEY: "or-key" });
 	});
 
-	it("still takes a TypeSafe key from an OpenRouter user", async () => {
-		answer = "ts-key";
+	it("takes a TypeSafe key from someone who has OpenRouter but wants TypeSafe directly", async () => {
+		answers.push("typesafe", " ts-key ");
 		const env: Record<string, string> = { OPENROUTER_API_KEY: "or-key" };
 		await collectJudgeKey(env);
-		expect(env.TYPESAFE_API_KEY).toBe("ts-key");
+		expect(env).toEqual({ OPENROUTER_API_KEY: "or-key", TYPESAFE_API_KEY: "ts-key" });
+	});
+
+	it("defaults to TypeSafe without an OpenRouter key", async () => {
+		answers.push("typesafe", "ts-key");
+		const env: Record<string, string> = { ANTHROPIC_API_KEY: "sk-ant" };
+		await collectJudgeKey(env);
+		expect(offered[0][0]).toBe("typesafe");
+		expect(env).toEqual({ ANTHROPIC_API_KEY: "sk-ant", TYPESAFE_API_KEY: "ts-key" });
+	});
+
+	it("adds an OpenRouter key for Jev without moving onboarding off the provider chosen for it", async () => {
+		answers.push("openrouter", "or-key");
+		const env: Record<string, string> = { ANTHROPIC_API_KEY: "sk-ant" };
+		await collectJudgeKey(env);
+		expect(env).toEqual({
+			ANTHROPIC_API_KEY: "sk-ant",
+			OPENROUTER_API_KEY: "or-key",
+			ONBOARDING_LLM_TARGET: "claude:anthropic-api",
+		});
+	});
+
+	it("leaves onboarding alone when OpenAI already outranks OpenRouter for it", async () => {
+		answers.push("openrouter", "or-key");
+		const env: Record<string, string> = { OPENAI_API_KEY: "sk-oai", MISTRAL_API_KEY: "mi" };
+		await collectJudgeKey(env);
+		expect(env.ONBOARDING_LLM_TARGET).toBeUndefined();
+	});
+
+	it("drops a TypeSafe key when OpenRouter is chosen, since the worker would prefer it", async () => {
+		answers.push("openrouter");
+		const env: Record<string, string> = { OPENROUTER_API_KEY: "or-key", TYPESAFE_API_KEY: "old" };
+		await collectJudgeKey(env);
+		expect(env.TYPESAFE_API_KEY).toBeUndefined();
 	});
 });

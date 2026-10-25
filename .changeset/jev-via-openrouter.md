@@ -3,4 +3,4 @@
 "@elmohq/cli": patch
 ---
 
-Judge mentions and sentiment with an OpenRouter key when no TypeSafe key is set: Elmo then calls Jev through OpenRouter.
+Judge mentions and sentiment through OpenRouter instead of TypeSafe: `elmo init` asks which to use, and can reuse your OpenRouter key.
