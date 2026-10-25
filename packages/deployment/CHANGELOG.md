@@ -1,5 +1,22 @@
 # @workspace/deployment
 
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/config@0.7.4
+  - @workspace/lib@0.7.4
+  - @workspace/ui@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- Updated dependencies [cacc8f9]
+  - @workspace/lib@0.7.3
+  - @workspace/config@0.7.3
+  - @workspace/ui@0.7.3
+
 ## 0.7.2
 
 ### Patch Changes

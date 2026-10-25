@@ -1,17 +1,19 @@
 {
 	"name": "@workspace/config",
-	"version": "0.7.2",
+	"version": "0.7.4",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
 		"check-types": "tsc --noEmit",
-		"test": "vitest run"
+		"test": "vitest run",
+		"docs:fanout": "tsx scripts/write-fanout-docs.ts"
 	},
 	"exports": {
 		"./constants": "./src/constants.ts",
 		"./entitlements": "./src/entitlements.ts",
 		"./env": "./src/env.ts",
 		"./env-registry": "./src/env-registry.ts",
+		"./fanout-support": "./src/fanout-support.ts",
 		"./legal": "./src/legal.ts",
 		"./model-filter": "./src/model-filter.ts",
 		"./models": "./src/models.ts",

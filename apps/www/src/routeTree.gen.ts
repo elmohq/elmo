@@ -40,6 +40,7 @@ import { Route as AiSearchIndexRouteImport } from './routes/ai-search/index'
 import { Route as AiSearchSlugRouteImport } from './routes/ai-search/$slug'
 import { Route as AiVisibilityToolsIndexRouteImport } from './routes/ai-visibility-tools/index'
 import { Route as AiVisibilityToolsSlugRouteImport } from './routes/ai-visibility-tools/$slug'
+import { Route as AiVisibilityToolsGraveyardRouteImport } from './routes/ai-visibility-tools/graveyard'
 import { Route as ApiOpenapiDotjsonRouteImport } from './routes/api/openapi[.]json'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
@@ -227,6 +228,12 @@ const AiVisibilityToolsSlugRoute = AiVisibilityToolsSlugRouteImport.update({
   path: '/ai-visibility-tools/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AiVisibilityToolsGraveyardRoute =
+  AiVisibilityToolsGraveyardRouteImport.update({
+    id: '/ai-visibility-tools/graveyard',
+    path: '/ai-visibility-tools/graveyard',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiOpenapiDotjsonRoute = ApiOpenapiDotjsonRouteImport.update({
   id: '/api/openapi.json',
   path: '/api/openapi.json',
@@ -407,6 +414,7 @@ export interface FileRoutesByFullPath {
   '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
+  '/ai-visibility-tools/graveyard': typeof AiVisibilityToolsGraveyardRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -468,6 +476,7 @@ export interface FileRoutesByTo {
   '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
+  '/ai-visibility-tools/graveyard': typeof AiVisibilityToolsGraveyardRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -530,6 +539,7 @@ export interface FileRoutesById {
   '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
+  '/ai-visibility-tools/graveyard': typeof AiVisibilityToolsGraveyardRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -593,6 +603,7 @@ export interface FileRouteTypes {
     | '/aeo-for/profound-users'
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
+    | '/ai-visibility-tools/graveyard'
     | '/api/openapi.json'
     | '/api/search'
     | '/blog/$'
@@ -654,6 +665,7 @@ export interface FileRouteTypes {
     | '/aeo-for/profound-users'
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
+    | '/ai-visibility-tools/graveyard'
     | '/api/openapi.json'
     | '/api/search'
     | '/blog/$'
@@ -715,6 +727,7 @@ export interface FileRouteTypes {
     | '/aeo-for/profound-users'
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
+    | '/ai-visibility-tools/graveyard'
     | '/api/openapi.json'
     | '/api/search'
     | '/blog/$'
@@ -777,6 +790,7 @@ export interface RootRouteChildren {
   AeoForProfoundUsersRoute: typeof AeoForProfoundUsersRoute
   AiSearchSlugRoute: typeof AiSearchSlugRoute
   AiVisibilityToolsSlugRoute: typeof AiVisibilityToolsSlugRoute
+  AiVisibilityToolsGraveyardRoute: typeof AiVisibilityToolsGraveyardRoute
   ApiOpenapiDotjsonRoute: typeof ApiOpenapiDotjsonRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
@@ -1029,6 +1043,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiVisibilityToolsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ai-visibility-tools/graveyard': {
+      id: '/ai-visibility-tools/graveyard'
+      path: '/ai-visibility-tools/graveyard'
+      fullPath: '/ai-visibility-tools/graveyard'
+      preLoaderRoute: typeof AiVisibilityToolsGraveyardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/openapi.json': {
       id: '/api/openapi.json'
       path: '/api/openapi.json'
@@ -1257,6 +1278,7 @@ const rootRouteChildren: RootRouteChildren = {
   AeoForProfoundUsersRoute: AeoForProfoundUsersRoute,
   AiSearchSlugRoute: AiSearchSlugRoute,
   AiVisibilityToolsSlugRoute: AiVisibilityToolsSlugRoute,
+  AiVisibilityToolsGraveyardRoute: AiVisibilityToolsGraveyardRoute,
   ApiOpenapiDotjsonRoute: ApiOpenapiDotjsonRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,

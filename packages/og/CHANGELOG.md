@@ -1,5 +1,17 @@
 # @workspace/og
 
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/config@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- @workspace/config@0.7.3
+
 ## 0.7.2
 
 ### Patch Changes
