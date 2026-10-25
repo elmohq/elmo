@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const answers: unknown[] = [];
-const offered: string[][] = [];
+const defaults: unknown[] = [];
 
 vi.mock("@clack/prompts", () => ({
 	note: () => undefined,
-	select: async (options: { options: { value: string }[] }) => {
-		offered.push(options.options.map((option) => option.value));
+	select: async (options: { initialValue: unknown }) => {
+		defaults.push(options.initialValue);
 		return answers.shift();
 	},
 	password: async () => answers.shift(),
@@ -20,14 +20,14 @@ const { collectJudgeKey } = await import("./judge.js");
 describe("collectJudgeKey", () => {
 	beforeEach(() => {
 		answers.length = 0;
-		offered.length = 0;
+		defaults.length = 0;
 	});
 
 	it("offers the OpenRouter key already entered, and asks for nothing more when it's chosen", async () => {
 		answers.push("openrouter");
 		const env: Record<string, string> = { OPENROUTER_API_KEY: "or-key" };
 		await collectJudgeKey(env);
-		expect(offered[0][0]).toBe("openrouter");
+		expect(defaults[0]).toBe("openrouter");
 		expect(answers).toEqual([]);
 		expect(env).toEqual({ OPENROUTER_API_KEY: "or-key" });
 	});
@@ -43,7 +43,7 @@ describe("collectJudgeKey", () => {
 		answers.push("typesafe", "ts-key");
 		const env: Record<string, string> = { ANTHROPIC_API_KEY: "sk-ant" };
 		await collectJudgeKey(env);
-		expect(offered[0][0]).toBe("typesafe");
+		expect(defaults[0]).toBe("typesafe");
 		expect(env).toEqual({ ANTHROPIC_API_KEY: "sk-ant", TYPESAFE_API_KEY: "ts-key" });
 	});
 
@@ -63,12 +63,5 @@ describe("collectJudgeKey", () => {
 		const env: Record<string, string> = { OPENAI_API_KEY: "sk-oai", MISTRAL_API_KEY: "mi" };
 		await collectJudgeKey(env);
 		expect(env.ONBOARDING_LLM_TARGET).toBeUndefined();
-	});
-
-	it("drops a TypeSafe key when OpenRouter is chosen, since the worker would prefer it", async () => {
-		answers.push("openrouter");
-		const env: Record<string, string> = { OPENROUTER_API_KEY: "or-key", TYPESAFE_API_KEY: "old" };
-		await collectJudgeKey(env);
-		expect(env.TYPESAFE_API_KEY).toBeUndefined();
 	});
 });

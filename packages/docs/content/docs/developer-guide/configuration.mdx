@@ -87,7 +87,7 @@ Elmo uses [Jev](https://typesafe.ai) from TypeSafe to read each answer. Jev deci
 | `OPENROUTER_API_KEY` | Without `TYPESAFE_API_KEY`, Elmo calls Jev through OpenRouter with this key. | — |
 | `REPROCESS_DAYS` | How far back reprocessing (re-extracting and re-judging history) goes, in days, or `all` | `90` |
 
-`elmo init` asks which one to use, offering the OpenRouter key you entered for onboarding if there is one. If you add an OpenRouter key just for Jev, it also pins `ONBOARDING_LLM_TARGET` to the provider you chose for onboarding, which OpenRouter would otherwise take over from Anthropic or Mistral. `elmo upgrade` asks the same before it stops anything when `.env` has neither key; it can't see a key saved only in Elmo's settings.
+`elmo init` asks which one to use, offering the OpenRouter key you entered for onboarding if there is one. If you add an OpenRouter key just for Jev, it also pins `ONBOARDING_LLM_TARGET` to the provider you chose for onboarding, which OpenRouter would otherwise take over from Anthropic or Mistral. `elmo upgrade` asks the same before it stops anything when `.env` has neither key, or only an OpenRouter key on a deployment from before Jev; it can't see a key saved only in Elmo's settings.
 
 Elmo makes one Jev call for each answer that names a tracked company. Answers that name none are never sent. Its cost grows with the answer's length and with how many tracked companies it names.
 

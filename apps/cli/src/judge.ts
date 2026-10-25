@@ -27,8 +27,8 @@ export async function collectJudgeKey(env: EnvMap): Promise<void> {
 			"On first start Elmo also re-judges the last 90 days of history once",
 			"(REPROCESS_DAYS), about three months of the above.",
 			"",
-			"Jev costs the same per token from TypeSafe directly or through OpenRouter,",
-			"billed to whichever account's key you use.",
+			"Jev is priced per token the same from TypeSafe directly or through",
+			"OpenRouter, billed to whichever account's key you use.",
 		].join("\n"),
 		"Mention and sentiment judging",
 	);
@@ -53,8 +53,6 @@ export async function collectJudgeKey(env: EnvMap): Promise<void> {
 		return;
 	}
 
-	// The worker prefers TypeSafe whenever its key is set, so one left behind would override this choice.
-	delete env.TYPESAFE_API_KEY;
 	if (hasOpenRouter) return;
 	keepOnboardingProvider(env);
 	p.log.info(`Get a key: ${link(pc.cyan(OPENROUTER_SIGNUP_URL), OPENROUTER_SIGNUP_URL)}`);
