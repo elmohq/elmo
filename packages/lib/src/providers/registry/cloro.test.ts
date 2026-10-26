@@ -288,11 +288,18 @@ describe("cloro provider", () => {
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-3", status: "QUEUED" } }))
-			.mockResolvedValueOnce(jsonResponse({ task: { id: "task-3", status: "FAILED", error: "upstream blocked" } }));
+			.mockResolvedValueOnce(
+				jsonResponse({
+					task: { id: "task-3", status: "FAILED" },
+					response: { error: { code: "BLOCKED", message: "upstream blocked" } },
+				}),
+			);
 		vi.stubGlobal("fetch", fetchMock);
 
 		const promise = cloro.run("gemini", "What is a well-reviewed speaker?");
-		const assertion = expect(promise).rejects.toThrow("Cloro task task-3 failed (upstream blocked)");
+		const assertion = expect(promise).rejects.toThrow(
+			'Cloro task task-3 failed ({"code":"BLOCKED","message":"upstream blocked"})',
+		);
 		await vi.runAllTimersAsync();
 		await assertion;
 	});
@@ -309,7 +316,7 @@ describe("cloro provider", () => {
 	// A submitted task is billed once it completes, so waiting out a queue is
 	// cheaper than abandoning it — and abandoning it would only add a
 	// replacement submission to the queue that caused the wait.
-	it("waits out a queue longer than the generation budget instead of abandoning a paid task", async () => {
+	it("waits out a long queue instead of abandoning a paid task", async () => {
 		vi.useFakeTimers();
 		let polls = 0;
 		const fetchMock = vi.fn().mockImplementation((url: string) => {
@@ -334,17 +341,45 @@ describe("cloro provider", () => {
 		expect(stored(result).textContent).toContain("Sonos Era 300");
 	});
 
-	it("gives up on a running task at the generation budget rather than the ceiling", async () => {
+	// Cloro retries a failing attempt by moving the task back to the queue, and
+	// bills it if a later attempt completes, so a task that has started running
+	// is still worth waiting for.
+	it("keeps waiting on a task Cloro is still running or retrying", async () => {
 		vi.useFakeTimers();
-		const running = () => Promise.resolve(jsonResponse({ task: { id: "task-r", status: "PROCESSING" } }));
+		const startedAt = Date.now();
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockImplementation((url: string) => {
+				if (!url.includes("/task/")) {
+					return Promise.resolve(jsonResponse({ success: true, task: { id: "task-r", status: "PROCESSING" } }));
+				}
+				const elapsed = Date.now() - startedAt;
+				if (elapsed < 30 * 60 * 1000) {
+					return Promise.resolve(
+						jsonResponse({ task: { id: "task-r", status: elapsed < 15 * 60 * 1000 ? "PROCESSING" : "QUEUED" } }),
+					);
+				}
+				return Promise.resolve(
+					jsonResponse({ task: { id: "task-r", status: "COMPLETED" }, response: CHATGPT_RESPONSE }),
+				);
+			}),
+		);
+
+		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
+		await vi.runAllTimersAsync();
+
+		expect(stored(await promise).textContent).toContain("Sonos Era 300");
+	});
+
+	it("bounds a running task at the ceiling", async () => {
+		vi.useFakeTimers();
 		vi.stubGlobal(
 			"fetch",
 			vi
 				.fn()
-				.mockImplementationOnce(() =>
-					Promise.resolve(jsonResponse({ success: true, task: { id: "task-r", status: "PROCESSING" } })),
-				)
-				.mockImplementation(running),
+				.mockImplementation(() =>
+					Promise.resolve(jsonResponse({ success: true, task: { id: "task-p", status: "PROCESSING" } })),
+				),
 		);
 
 		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
@@ -358,9 +393,7 @@ describe("cloro provider", () => {
 		const error = await settled;
 
 		expect(error.message).toMatch(/in status PROCESSING/);
-		const seconds = Number(error.message.match(/timed out after (\d+)s/)?.[1]);
-		expect(seconds).toBeGreaterThanOrEqual(600);
-		expect(seconds).toBeLessThan(60 * 60);
+		expect(Number(error.message.match(/timed out after (\d+)s/)?.[1])).toBeGreaterThanOrEqual(60 * 60);
 	});
 
 	it("bounds a task that never leaves the queue at the ceiling", async () => {
@@ -402,7 +435,7 @@ describe("cloro provider", () => {
 					return Promise.resolve(jsonResponse({ success: true, task: { id: "task-late", status: "PROCESSING" } }));
 				}
 				return Promise.resolve(
-					Date.now() - startedAt < 10 * 60 * 1000
+					Date.now() - startedAt < 60 * 60 * 1000
 						? jsonResponse({ task: { id: "task-late", status: "PROCESSING" } })
 						: jsonResponse({ task: { id: "task-late", status: "COMPLETED" }, response: CHATGPT_RESPONSE }),
 				);
