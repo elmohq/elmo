@@ -15,6 +15,10 @@ export interface ScrapeResult {
 	rawOutput: unknown;
 	webQueries: string[];
 	modelVersion?: string;
+	/** What the provider says it charged for this call, in dollars, when its response reports it. */
+	billedUsd?: number;
+	/** What the provider says it charged, in its own credits, for providers that bill in credits. */
+	billedCredits?: number;
 }
 
 export interface ProviderOptions {

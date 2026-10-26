@@ -61,6 +61,7 @@ interface CloroTask {
 	id?: string;
 	status?: string;
 	error?: unknown;
+	creditsCharged?: number | null;
 }
 
 interface CloroTaskResponse {
@@ -105,7 +106,7 @@ async function getTask(taskId: string): Promise<CloroTaskResponse | null> {
 	}
 }
 
-async function runAsyncTask(taskType: string, payload: Record<string, any>): Promise<Record<string, any>> {
+async function runAsyncTask(taskType: string, payload: Record<string, any>): Promise<CloroTaskResponse> {
 	const submitted = await submitTask(taskType, payload);
 	const taskId = submitted.id!;
 	const startedAt = Date.now();
@@ -117,7 +118,7 @@ async function runAsyncTask(taskType: string, payload: Record<string, any>): Pro
 		// Settled states are checked before the deadlines, so an answer that
 		// arrives on the last poll is returned rather than thrown away.
 		const status = latest.task?.status?.toUpperCase();
-		if (status === "COMPLETED") return latest.response ?? {};
+		if (status === "COMPLETED") return latest;
 		if (status === "FAILED") {
 			// A failed task carries its error in `response`.
 			throw new Error(`Cloro task ${taskId} failed${failureDetails(latest.response?.error ?? latest.task?.error)}`);
@@ -177,7 +178,8 @@ export const cloro: Provider = {
 			...task.params,
 		};
 
-		const response = await runAsyncTask(task.taskType, payload);
+		const settled = await runAsyncTask(task.taskType, payload);
+		const response = settled.response ?? {};
 		const answer = cloroAnswer(response) ?? {};
 
 		const citations: Citation[] = extractCitationsFromCloro(response);
@@ -190,6 +192,7 @@ export const cloro: Provider = {
 			// happened but no query strings came back.
 			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
 			modelVersion: typeof answer.model === "string" ? answer.model : undefined,
+			billedCredits: typeof settled.task?.creditsCharged === "number" ? settled.task.creditsCharged : undefined,
 		};
 	},
 };

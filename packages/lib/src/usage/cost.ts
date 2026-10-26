@@ -42,6 +42,44 @@ export function estimateRunCostUsd(provider: string | null, webSearchEnabled: bo
 	return base;
 }
 
+/**
+ * Dollars per provider credit, for providers that report what they charged in
+ * credits. Cloro's is the Growth plan rate ($500 for 1.35M credits); the raw
+ * credits are stored in usage_events.units, so the dollars can be recomputed
+ * if the plan changes.
+ */
+const PROVIDER_USD_PER_CREDIT: Record<string, number> = {
+	cloro: 500 / 1_350_000,
+};
+
+/**
+ * Providers that only bill calls that return a result: Cloro never charges a
+ * FAILED task, and OpenRouter doesn't charge a request that errors.
+ */
+const BILLS_ONLY_RESULTS = new Set(["cloro", "openrouter"]);
+
+/**
+ * What a successful run cost: the provider's own figure when it reported one,
+ * converted from credits where it bills in credits, else the flat estimate.
+ */
+export function runCostUsd(input: {
+	provider: string | null;
+	webSearchEnabled: boolean;
+	billedUsd?: number;
+	billedCredits?: number;
+}): number | null {
+	if (input.billedUsd !== undefined) return input.billedUsd;
+	const usdPerCredit = input.provider ? PROVIDER_USD_PER_CREDIT[input.provider] : undefined;
+	if (input.billedCredits !== undefined && usdPerCredit !== undefined) return input.billedCredits * usdPerCredit;
+	return estimateRunCostUsd(input.provider, input.webSearchEnabled);
+}
+
+/** What a failed run cost: nothing for providers that only bill results, else the flat estimate. */
+export function failedRunCostUsd(provider: string | null, webSearchEnabled: boolean): number | null {
+	if (provider && BILLS_ONLY_RESULTS.has(provider)) return 0;
+	return estimateRunCostUsd(provider, webSearchEnabled);
+}
+
 /** Days per month used for cost projections — a flat 30, not a calendar month. */
 export const PROJECTION_DAYS_PER_MONTH = 30;
 
