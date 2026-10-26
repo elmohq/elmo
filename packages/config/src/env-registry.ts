@@ -154,6 +154,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Mistral API key.",
 	},
 	{
+		name: "GEMINI_API_KEY",
+		scope: "server",
+		requiredBy: "dynamic-scrape-targets",
+		provider: "gemini-api",
+		description: "Google Gemini API key (from Google AI Studio).",
+	},
+	{
 		name: "SCRAPE_TARGETS",
 		scope: "server",
 		requiredBy: VALIDATED_MODES,
@@ -463,12 +470,18 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
  * Direct-API providers in the order onboarding prefers them. GPT-5 Mini was
  * the cheapest + best-recall in compare-onboarding runs, so we go OpenAI
  * direct first, then OpenAI via OpenRouter as a fallback (same model, just
- * different key), then Anthropic, then Mistral.
+ * different key), then Anthropic, then Mistral, then Gemini.
  *
  * Lives here, not with the onboarding code, so startup validation can require
  * one of them.
  */
-export const RESEARCH_PROVIDER_PREFERENCE = ["openai-api", "openrouter", "anthropic-api", "mistral-api"] as const;
+export const RESEARCH_PROVIDER_PREFERENCE = [
+	"openai-api",
+	"openrouter",
+	"anthropic-api",
+	"mistral-api",
+	"gemini-api",
+] as const;
 
 export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set(
 	ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider).map((spec) => spec.name),

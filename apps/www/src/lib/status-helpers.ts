@@ -57,6 +57,7 @@ export function formatProvider(provider: string) {
 		"openai-api": "OpenAI API",
 		"anthropic-api": "Anthropic API",
 		"mistral-api": "Mistral API",
+		"gemini-api": "Gemini API",
 		openrouter: "OpenRouter",
 	};
 	return names[provider] || provider;
@@ -85,9 +86,15 @@ export function providerAffiliateUrl(provider: string): string | undefined {
 // itself decides the same thing in `dataforseoAccess`.
 const DATAFORSEO_SCRAPED_MODELS = new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini"]);
 
-// The three first-party API providers collapse into one "Direct API" filter.
+// The first-party API providers collapse into one "Direct API" filter.
 export function providerCategory(provider: string, model: string, version?: string) {
-	if (provider === "openai-api" || provider === "anthropic-api" || provider === "mistral-api") return "direct-api";
+	if (
+		provider === "openai-api" ||
+		provider === "anthropic-api" ||
+		provider === "mistral-api" ||
+		provider === "gemini-api"
+	)
+		return "direct-api";
 	// DataForSEO is one provider spanning two kinds of route, and the target
 	// picks between them the same way the provider does: pinning a model_name
 	// forces the LLM Responses API, otherwise it scrapes wherever it can.

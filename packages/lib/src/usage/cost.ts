@@ -23,6 +23,7 @@ const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {
 	"openai-api": 0.01,
 	"anthropic-api": 0.01,
 	"mistral-api": 0.005,
+	"gemini-api": 0.005,
 	openrouter: 0.005,
 	stub: 0,
 };
@@ -32,12 +33,21 @@ const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {
 /** Anthropic bills native web search per use (plus tokens); max_uses is 1. */
 const ANTHROPIC_WEB_SEARCH_SURCHARGE_USD = 0.01;
 
+/**
+ * Gemini bills Google Search grounding per search query it issues (plus tokens),
+ * with no per-call cap; this assumes one query per run.
+ */
+const GEMINI_GROUNDING_SURCHARGE_USD = 0.014;
+
 export function estimateRunCostUsd(provider: string | null, webSearchEnabled: boolean): number | null {
 	if (!provider) return null;
 	const base = PROVIDER_COST_ESTIMATES_USD[provider];
 	if (base === undefined) return null;
 	if (provider === "anthropic-api" && webSearchEnabled) {
 		return base + ANTHROPIC_WEB_SEARCH_SURCHARGE_USD;
+	}
+	if (provider === "gemini-api" && webSearchEnabled) {
+		return base + GEMINI_GROUNDING_SURCHARGE_USD;
 	}
 	return base;
 }
