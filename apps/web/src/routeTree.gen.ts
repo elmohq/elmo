@@ -33,6 +33,7 @@ import { Route as AuthedAppIndexRouteImport } from './routes/_authed/app/index'
 import { Route as AuthedAppNewRouteImport } from './routes/_authed/app/new'
 import { Route as AuthedReportsIndexRouteImport } from './routes/_authed/reports/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiHealthIndexRouteImport } from './routes/api/health/index'
 import { Route as ApiManifestIndexRouteImport } from './routes/api/manifest/index'
 import { Route as ApiMcpSplatRouteImport } from './routes/api/mcp/$'
 import { Route as ApiOgIndexRouteImport } from './routes/api/og/index'
@@ -219,6 +220,11 @@ const AuthedReportsIndexRoute = AuthedReportsIndexRouteImport.update({
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthIndexRoute = ApiHealthIndexRouteImport.update({
+  id: '/api/health/',
+  path: '/api/health/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiManifestIndexRoute = ApiManifestIndexRouteImport.update({
@@ -606,6 +612,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthedAdminIndexRoute
   '/app/': typeof AuthedAppIndexRoute
   '/reports/': typeof AuthedReportsIndexRoute
+  '/api/health/': typeof ApiHealthIndexRoute
   '/api/manifest/': typeof ApiManifestIndexRoute
   '/api/og/': typeof ApiOgIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
@@ -691,6 +698,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthedAdminIndexRoute
   '/app': typeof AuthedAppIndexRoute
   '/reports': typeof AuthedReportsIndexRoute
+  '/api/health': typeof ApiHealthIndexRoute
   '/api/manifest': typeof ApiManifestIndexRoute
   '/api/og': typeof ApiOgIndexRoute
   '/api/setup-status': typeof ApiSetupStatusIndexRoute
@@ -778,6 +786,7 @@ export interface FileRoutesById {
   '/_authed/admin/': typeof AuthedAdminIndexRoute
   '/_authed/app/': typeof AuthedAppIndexRoute
   '/_authed/reports/': typeof AuthedReportsIndexRoute
+  '/api/health/': typeof ApiHealthIndexRoute
   '/api/manifest/': typeof ApiManifestIndexRoute
   '/api/og/': typeof ApiOgIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
@@ -868,6 +877,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/app/'
     | '/reports/'
+    | '/api/health/'
     | '/api/manifest/'
     | '/api/og/'
     | '/api/setup-status/'
@@ -953,6 +963,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/reports'
+    | '/api/health'
     | '/api/manifest'
     | '/api/og'
     | '/api/setup-status'
@@ -1039,6 +1050,7 @@ export interface FileRouteTypes {
     | '/_authed/admin/'
     | '/_authed/app/'
     | '/_authed/reports/'
+    | '/api/health/'
     | '/api/manifest/'
     | '/api/og/'
     | '/api/setup-status/'
@@ -1118,6 +1130,7 @@ export interface RootRouteChildren {
   ApiV1ModelsRoute: typeof ApiV1ModelsRoute
   DotwellKnownOauthAuthorizationServerIndexRoute: typeof DotwellKnownOauthAuthorizationServerIndexRoute
   DotwellKnownOauthProtectedResourceIndexRoute: typeof DotwellKnownOauthProtectedResourceIndexRoute
+  ApiHealthIndexRoute: typeof ApiHealthIndexRoute
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
@@ -1305,6 +1318,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health/': {
+      id: '/api/health/'
+      path: '/api/health'
+      fullPath: '/api/health/'
+      preLoaderRoute: typeof ApiHealthIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/manifest/': {
@@ -2001,6 +2021,7 @@ const rootRouteChildren: RootRouteChildren = {
     DotwellKnownOauthAuthorizationServerIndexRoute,
   DotwellKnownOauthProtectedResourceIndexRoute:
     DotwellKnownOauthProtectedResourceIndexRoute,
+  ApiHealthIndexRoute: ApiHealthIndexRoute,
   ApiManifestIndexRoute: ApiManifestIndexRoute,
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
