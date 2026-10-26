@@ -46,26 +46,26 @@ Then run `/mcp` and choose **Authenticate**.
 
 ### Claude.ai and Claude Desktop
 
-Custom connectors are available on Claude's Pro, Max, Team, and Enterprise plans.
+Custom connectors are available on every Claude plan; the Free plan is limited to one.
 
-1. Open **Settings → Connectors** and choose **Add custom connector**.
-2. Name it `Elmo` and set the URL to `https://app.elmohq.com/api/mcp`.
-3. Choose **Connect** and sign in to Elmo.
+1. Open **Customize → Connectors**, choose **+ Add**, then **Add custom connector**.
+2. Name it `Elmo`, set the URL to `https://app.elmohq.com/api/mcp`, and choose **Continue**.
+3. Review the detected authentication settings, choose **Continue**, and choose **Add**.
+4. Sign in to Elmo when Claude asks.
 
-On Team and Enterprise plans, an owner adds the connector for the organization first.
+On Team and Enterprise plans, an owner adds the connector first under **Organization settings →
+Connectors**, choosing **Add**, then **Custom → Web**. Members then find it under **Customize →
+Connectors** and choose **Connect**.
 
 ### ChatGPT
 
-Custom connectors need [developer mode](https://platform.openai.com/docs/guides/developer-mode), which
-is available on Plus and Pro plans on the web.
+Custom MCP servers are added from ChatGPT on the web, and workspace admins can restrict them.
 
-1. Turn on developer mode in **Settings → Apps & Connectors → Advanced settings**.
-2. In **Settings → Apps & Connectors**, choose **Create**.
-3. Name it `Elmo`, set the MCP server URL to `https://app.elmohq.com/api/mcp`, and choose **OAuth**
-   for authentication.
-4. Choose **Create** and sign in to Elmo.
-
-Elmo then appears among the developer-mode tools in the composer.
+1. Open [Plugins](https://chatgpt.com/plugins), choose **+**, then **Add custom MCP server**.
+2. Name it `Elmo`, set the server URL to `https://app.elmohq.com/api/mcp`, and choose **OAuth** for
+   authentication.
+3. Confirm the warning with **I understand and want to continue**, then choose **Create as a plugin**.
+4. Install the plugin and sign in to Elmo.
 
 ### Codex
 
@@ -114,9 +114,28 @@ under `servers` in `mcp.json`:
 
 VS Code asks you to sign in the first time it starts the server.
 
-### Windsurf
+### Devin Desktop
 
-In `~/.codeium/windsurf/mcp_config.json`:
+Devin Desktop, formerly Windsurf, shares its MCP servers with Devin CLI:
+
+```bash
+devin mcp add -s user elmo https://app.elmohq.com/api/mcp
+devin mcp login elmo
+```
+
+Or put it in `~/.config/devin/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "elmo": { "url": "https://app.elmohq.com/api/mcp" }
+  }
+}
+```
+
+### Antigravity
+
+Antigravity's IDE and CLI, which replaced Gemini CLI, read `~/.gemini/config/mcp_config.json`:
 
 ```json
 {
@@ -126,15 +145,9 @@ In `~/.codeium/windsurf/mcp_config.json`:
 }
 ```
 
-Refresh the MCP servers in Cascade and sign in when prompted.
-
-### Gemini CLI
-
-```bash
-gemini mcp add --transport http elmo https://app.elmohq.com/api/mcp
-```
-
-Then run `/mcp auth elmo` inside Gemini CLI.
+To sign in, open **Agent settings → Customizations** and choose **Authenticate** next to Elmo. After
+signing in, Antigravity shows a code in the browser; paste it back into the settings panel and choose
+**Submit**.
 
 ### OpenCode
 
@@ -185,7 +198,9 @@ Issue one from **Settings → API Keys** in the organization's settings sidebar 
 organization, so they are not found under a brand. Issue it read-only and optionally narrow it to
 selected brands.
 
-Claude.ai, Claude Desktop, and ChatGPT only connect by signing in. Every other client sends the key as a bearer token. `add-mcp` takes it as a header for every client it configures:
+Send it as a bearer token. ChatGPT only connects by signing in; Claude.ai and Claude Desktop take the
+key when you add the connector: choose **No sign in** under **Authentication** and add an
+`Authorization: Bearer elmo_...` request header. `add-mcp` takes it as a header for every client it configures:
 
 ```bash
 npx add-mcp https://app.elmohq.com/api/mcp --name elmo \
@@ -233,7 +248,20 @@ VS Code, in `mcp.json`:
 }
 ```
 
-Windsurf, in `~/.codeium/windsurf/mcp_config.json`:
+Devin Desktop and Devin CLI, in `~/.config/devin/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "elmo": {
+      "url": "https://app.elmohq.com/api/mcp",
+      "headers": { "Authorization": "Bearer elmo_..." }
+    }
+  }
+}
+```
+
+Antigravity, in `~/.gemini/config/mcp_config.json`:
 
 ```json
 {
@@ -244,13 +272,6 @@ Windsurf, in `~/.codeium/windsurf/mcp_config.json`:
     }
   }
 }
-```
-
-Gemini CLI:
-
-```bash
-gemini mcp add --transport http elmo https://app.elmohq.com/api/mcp \
-  --header "Authorization: Bearer elmo_..."
 ```
 
 OpenCode, in `opencode.json`:
