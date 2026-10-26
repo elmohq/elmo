@@ -5,6 +5,7 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { AlertCircle, ArrowUp, RefreshCw, Sparkles, X } from "lucide-react";
 import { type Ref, type RefObject, useEffect, useRef, useState } from "react";
 import { type EditablePrompt, newPromptEntry } from "@/components/prompts-list-editor";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { usePolledBrandJob } from "@/hooks/use-polled-brand-job";
 import { trackEvent } from "@/lib/posthog";
 import {
@@ -108,7 +109,9 @@ function StatusMessage({ suggestions }: { suggestions: Suggestions }) {
 		return (
 			<span role="alert" className="flex items-start gap-2 text-red-700 dark:text-red-300">
 				<AlertCircle className="mt-0.5 size-4 shrink-0" />
-				{error}
+				<span>
+					<WriteErrorMessage message={error} />
+				</span>
 			</span>
 		);
 	}
