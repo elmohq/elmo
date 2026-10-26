@@ -25,6 +25,9 @@ interface ImportMetaEnv {
 	readonly VITE_CLARITY_PROJECT_ID?: string;
 	readonly VITE_POSTHOG_KEY?: string;
 
+	// Cloudflare Turnstile (cloud)
+	readonly VITE_TURNSTILE_SITE_KEY?: string;
+
 	// Sentry
 	readonly VITE_SENTRY_DSN?: string;
 }
@@ -85,6 +88,7 @@ declare global {
 			readonly GOOGLE_CLIENT_ID?: string;
 			readonly GOOGLE_CLIENT_SECRET?: string;
 			readonly RESEND_FROM_EMAIL?: string;
+			readonly TURNSTILE_SECRET_KEY?: string;
 		}
 	}
 }

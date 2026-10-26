@@ -64,7 +64,9 @@
     "RESEND_API_KEY",
     "GOOGLE_CLIENT_ID",
     "GOOGLE_CLIENT_SECRET",
-    "RESEND_FROM_EMAIL"
+    "RESEND_FROM_EMAIL",
+    "TURNSTILE_SECRET_KEY",
+    "VITE_TURNSTILE_SITE_KEY"
   ],
   "tasks": {
     "//#format": {

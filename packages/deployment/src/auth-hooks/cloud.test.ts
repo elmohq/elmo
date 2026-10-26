@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getCloudAuthOptions } from "./cloud";
 
 function makeUser(email: string) {
@@ -22,6 +22,15 @@ beforeEach(() => {
 	vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
 	vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_x");
 	vi.stubEnv("CLOUD_SIGNUP_ALLOWLIST", "*");
+	vi.stubEnv("TURNSTILE_SECRET_KEY", "");
+	vi.stubEnv("VITE_TURNSTILE_SITE_KEY", "");
+	vi.spyOn(console, "warn").mockImplementation(() => {});
+});
+
+afterEach(() => {
+	vi.unstubAllEnvs();
+	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
 });
 
 describe("getCloudAuthOptions", () => {
@@ -106,5 +115,74 @@ describe("signup allowlist", () => {
 	it("admits an address with no domain only when listed exactly", async () => {
 		await expect(signUp("not-an-email", "@elmohq.com")).rejects.toThrow();
 		await expect(signUp("not-an-email", "not-an-email")).resolves.toBeUndefined();
+	});
+});
+
+/**
+ * Bots used the email endpoints to send verification and reset emails to
+ * third parties. Each request below runs through the plugins' request hooks
+ * exactly as better-auth does, before any endpoint code.
+ */
+describe("Turnstile bot protection", () => {
+	const silentLogger = { error: () => {}, warn: () => {}, info: () => {}, debug: () => {} };
+
+	function enableTurnstile() {
+		vi.stubEnv("TURNSTILE_SECRET_KEY", "turnstile-secret");
+		vi.stubEnv("VITE_TURNSTILE_SITE_KEY", "turnstile-site-key");
+	}
+
+	/** The response better-auth would send instead of running the endpoint, or undefined to let it run. */
+	async function send(path: string, captchaToken?: string): Promise<Response | undefined> {
+		const request = new Request(`https://app.example.com/api/auth${path}`, {
+			method: "POST",
+			headers: captchaToken ? { "x-captcha-response": captchaToken } : {},
+		});
+		for (const plugin of getCloudAuthOptions().extraPlugins ?? []) {
+			if (!plugin.onRequest) continue;
+			const ctx = { options: { basePath: "/api/auth" }, logger: silentLogger };
+			const result = await plugin.onRequest(request, ctx as unknown as Parameters<typeof plugin.onRequest>[1]);
+			if (result && "response" in result) return result.response;
+		}
+		return undefined;
+	}
+
+	function stubSiteverify(success: boolean) {
+		const fetchMock = vi.fn(async () =>
+			Response.json({ success, "error-codes": success ? [] : ["invalid-input-response"] }),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		return fetchMock;
+	}
+
+	it("rejects email sign-up, sign-in, password reset, and verification resend without a token", async () => {
+		enableTurnstile();
+		for (const path of ["/sign-up/email", "/sign-in/email", "/request-password-reset", "/send-verification-email"]) {
+			const response = await send(path);
+			expect(response?.status, path).toBe(400);
+		}
+	});
+
+	it("rejects a token Cloudflare does not accept", async () => {
+		enableTurnstile();
+		stubSiteverify(false);
+		const response = await send("/sign-up/email", "forged-token");
+		expect(response?.status).toBe(403);
+	});
+
+	it("lets a request with a token Cloudflare accepts through", async () => {
+		enableTurnstile();
+		const fetchMock = stubSiteverify(true);
+		expect(await send("/sign-up/email", "good-token")).toBeUndefined();
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it("leaves Google sign-in and session reads unchallenged", async () => {
+		enableTurnstile();
+		expect(await send("/sign-in/social")).toBeUndefined();
+		expect(await send("/get-session")).toBeUndefined();
+	});
+
+	it("is off until the secret key is configured", async () => {
+		expect(await send("/sign-up/email")).toBeUndefined();
 	});
 });

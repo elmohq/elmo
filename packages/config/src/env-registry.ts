@@ -457,6 +457,21 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description:
 			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
 	},
+	// Optional so the bot check can ship before the keys exist; cloud logs a
+	// warning at startup while it is off.
+	{
+		name: "TURNSTILE_SECRET_KEY",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Cloud only: Cloudflare Turnstile secret key. When set, email sign-up, sign-in, password reset, and verification resend require a Turnstile token.",
+	},
+	{
+		name: "VITE_TURNSTILE_SITE_KEY",
+		scope: "client",
+		requiredBy: "optional",
+		description: "Cloud only: Cloudflare Turnstile site key for the widget on the email auth forms.",
+	},
 ];
 
 /**

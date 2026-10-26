@@ -3,12 +3,15 @@
  *
  * Public self-serve signup: email/password with required verification,
  * Google OAuth, Resend transactional email, disposable-domain blocking,
- * invite-only signup allowlist, and umbrella org provisioning on signup.
+ * invite-only signup allowlist, Cloudflare Turnstile bot protection on the
+ * email endpoints, and umbrella org provisioning on signup.
  */
 
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
 import { provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
+import type { BetterAuthPlugin } from "better-auth";
 import { APIError } from "better-auth/api";
+import { captcha } from "better-auth/plugins";
 import { createStripeBillingPlugin } from "../billing/plugin";
 import { isDisposableEmail } from "../disposable-domains";
 import { sendEmail } from "../email";
@@ -48,10 +51,50 @@ function getSignupAllowlist(): string[] {
 		.filter(Boolean);
 }
 
+// ── Bot protection ────────────────────────────────────────────────────
+
+/**
+ * Every email/password endpoint that creates an account or sends mail to an
+ * address the caller supplies. Bots used these to send verification emails to
+ * third parties, which costs us sender reputation. Sign-in is included because
+ * an unverified sign-in resends the verification email (`sendOnSignIn`).
+ */
+const TURNSTILE_PROTECTED_ENDPOINTS = [
+	"/sign-up/email",
+	"/sign-in/email",
+	"/request-password-reset",
+	"/send-verification-email",
+];
+
+/**
+ * Turnstile is enforced only once its secret is configured, so the code can
+ * ship ahead of the keys without locking everyone out of email sign-in.
+ */
+function createTurnstilePlugin(): BetterAuthPlugin | undefined {
+	const secretKey = process.env.TURNSTILE_SECRET_KEY?.trim();
+	if (!secretKey) {
+		console.warn(
+			"[auth] TURNSTILE_SECRET_KEY is not set: email sign-up, sign-in, and password reset have no bot protection.",
+		);
+		return undefined;
+	}
+	if (!process.env.VITE_TURNSTILE_SITE_KEY?.trim()) {
+		console.warn(
+			"[auth] TURNSTILE_SECRET_KEY is set without VITE_TURNSTILE_SITE_KEY: the browser cannot solve the challenge, so every email sign-up, sign-in, and password reset will be rejected.",
+		);
+	}
+	return captcha({
+		provider: "cloudflare-turnstile",
+		secretKey,
+		endpoints: TURNSTILE_PROTECTED_ENDPOINTS,
+	});
+}
+
 // ── Auth options ──────────────────────────────────────────────────────
 
 export function getCloudAuthOptions(): CreateAuthOptions {
 	const appUrl = process.env.APP_URL!;
+	const turnstile = createTurnstilePlugin();
 	return {
 		requireEmailVerification: true,
 		emailVerification: {
@@ -98,7 +141,7 @@ export function getCloudAuthOptions(): CreateAuthOptions {
 				},
 			},
 		},
-		extraPlugins: [createStripeBillingPlugin()],
+		extraPlugins: [createStripeBillingPlugin(), ...(turnstile ? [turnstile] : [])],
 		organizationOptions: {
 			sendInvitationEmail: async (data) => {
 				await sendEmail(
