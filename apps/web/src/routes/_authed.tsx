@@ -14,6 +14,7 @@ import type { ClientConfig } from "@workspace/config/types";
 import { useEffect, useRef } from "react";
 import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
+import { DemoSignupBanner } from "@/components/demo-signup-banner";
 import { SiteHeader } from "@/components/site-header";
 import { useShellScope } from "@/hooks/use-shell-scope";
 import { identifyCrispUser } from "@/lib/crisp";
@@ -69,7 +70,15 @@ function Shell() {
 	if (!scope) return <Outlet />;
 
 	return (
-		<AppShell sidebar={<AppSidebar {...scope} />} header={<SiteHeader />}>
+		<AppShell
+			sidebar={<AppSidebar {...scope} />}
+			header={
+				<>
+					<DemoSignupBanner />
+					<SiteHeader />
+				</>
+			}
+		>
 			{scope.section === "account" ? (
 				<div className="flex flex-1 flex-col">
 					<Outlet />
