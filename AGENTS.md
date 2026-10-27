@@ -71,8 +71,8 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 
 ## Copy and UI text
 
-- Use Title Case for all non-prose text: titles, headings, buttons, links used as actions, nav items, tabs, form labels, table headers, and chart titles. Lowercase articles, coordinating conjunctions, and prepositions of three letters or fewer (and "vs") unless first or last.
-- Sentences and prose stay in sentence case. Many existing strings are sentence case; that's legacy, so don't copy it.
+- Use APA Style title case for all non-prose text: titles, headings, buttons, links used as actions, nav items, tabs, form labels, table headers, and chart titles.
+- Sentences and prose stay in sentence case.
 
 ## Changesets
 
