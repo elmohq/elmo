@@ -12,17 +12,11 @@ export interface Source {
 	url: string;
 }
 
-/**
- * A competitor's published pricing, as read off its own pages on `verified`.
- * Every figure here must trace to one of `sources`; when a vendor's own pages
- * disagree, say so in `extraCosts` rather than picking a number.
- */
 export interface CompetitorPricing {
 	verified: string;
 	summary: string;
 	plans: PricingPlan[];
 	extraCosts?: string[];
-	/** Only when the plan limits make it derivable without guessing. */
 	costPerAnswer?: string;
 	sources: Source[];
 }
@@ -34,7 +28,6 @@ export interface ProfileSection {
 	links?: { text: string; href: string }[];
 }
 
-/** Hand-written additions to a tool's alternatives page, for the few with real search demand. */
 export interface AlternativesContent {
 	title?: string;
 	description?: string;

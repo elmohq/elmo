@@ -5,7 +5,6 @@ import { formatPostDate } from "@/lib/format";
 
 const LINK = "font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900";
 
-/** AI answers a plan can collect in a 30-day month at full usage. */
 function monthlyAnswers(plan: PlanDefinition): number {
 	return plan.maxPrompts * plan.platformPicks * plan.standardRunsPerDay * 30;
 }
@@ -91,7 +90,6 @@ export function PlanTable({
 	);
 }
 
-/** A competitor's plans, extra costs, and sources, as a page section body. */
 export function CompetitorPricingDetails({ pricing }: { pricing: CompetitorPricing }) {
 	return (
 		<>
@@ -114,7 +112,6 @@ export function CompetitorPricingDetails({ pricing }: { pricing: CompetitorPrici
 	);
 }
 
-/** Side-by-side pricing for a compare page, Elmo included as the reference point. */
 export function ComparePricing({ tools }: { tools: { competitor: Competitor; pricing: CompetitorPricing }[] }) {
 	const basic = PLANS.basic;
 	return (

@@ -362,8 +362,6 @@ export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[
 
 // --- Competitor-vs-competitor pairs ------------------------------------------
 
-// Hand-written verdicts and FAQs for the pairs people actually search for,
-// checked against each vendor's pricing and product pages in October 2026.
 const PAIR_CONTENT: Record<string, { verdict: string; faqs: FaqItem[] }> = {
 	"profound-vs-athenahq": {
 		verdict:

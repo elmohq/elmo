@@ -26,7 +26,6 @@ function startingPrice(c: Competitor): string {
 
 const LINK = "text-blue-700 hover:text-blue-900";
 
-/** The leading tools in one scannable table, Elmo first, for readers who don't want the full matrix. */
 export function TopToolsTable({ limit = 10 }: { limit?: number }) {
 	const tools = sortedCompetitors.filter((c) => isIndexed(c) && hasOwnPages(c)).slice(0, limit);
 	return (
