@@ -26,8 +26,6 @@ import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/register")({
-	// Attribution is declared so the router keeps it in the URL long enough for
-	// analytics to record the pageview it arrived on.
 	validateSearch: (search: Record<string, unknown>): { returnTo?: string } & AttributionParams => ({
 		...(typeof search.returnTo === "string" ? { returnTo: search.returnTo } : {}),
 		...attributionParams(search),
@@ -42,7 +40,8 @@ export const Route = createFileRoute("/auth/register")({
 });
 
 function RegisterPage() {
-	const { returnTo, ...attribution } = Route.useSearch();
+	const search = Route.useSearch();
+	const { returnTo } = search;
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const canRegister = context.clientConfig?.canRegister ?? false;
 
@@ -54,7 +53,7 @@ function RegisterPage() {
 	return (
 		<RegisterForm
 			returnTo={returnTo}
-			attribution={attribution}
+			attribution={attributionParams(search)}
 			isCloud={context.clientConfig?.mode === "cloud"}
 			hasUsers={context.clientConfig?.hasUsers ?? false}
 		/>

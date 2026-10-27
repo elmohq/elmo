@@ -18,7 +18,7 @@ describe("attributionParams", () => {
 	});
 
 	it("keeps values the router parsed as numbers", () => {
-		expect(attributionParams({ utm_term: 2026 })).toEqual({ utm_term: "2026" });
+		expect(attributionParams({ utm_term: 2026 })).toEqual({ utm_term: 2026 });
 	});
 
 	it("ignores values that aren't plain text", () => {
