@@ -20,23 +20,7 @@ const ALWAYS_ALLOWED: ConsoleErrorPattern[] = [
 	/Failed to load resource: net::ERR_FAILED.*crisp\.chat/,
 ];
 
-/**
- * Finishes every CSS animation and transition the moment it starts.
- *
- * Dialogs and popups zoom and slide in, so the option a test clicks is still
- * moving. Playwright's stability check can pass on two matching frames
- * mid-animation, and the press and release then land on different elements.
- * Base UI only commits a select option that the press started on, so the click
- * is dropped without an error. Durations are zeroed rather than removed so the
- * animationend events that unmount closing popups still fire.
- */
-const INSTANT_MOTION = `{
-	const sheet = new CSSStyleSheet();
-	sheet.replaceSync("*, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; transition-delay: 0s !important; }");
-	document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
-}`;
-
-export const failedResource =(status: number, from: string): RegExp =>
+export const failedResource = (status: number, from: string): RegExp =>
 	new RegExp(`Failed to load resource: the server responded with a status of ${status}\\D.*${escapeRegExp(from)}`);
 
 function escapeRegExp(value: string): string {
@@ -129,7 +113,6 @@ export const test = base.extend<
 		// A page route still wins over this one, so a spec can watch the requests
 		// it aborts (see support-chat.spec.ts).
 		await context.route(CRISP_HOSTS, (route) => route.abort());
-		await context.addInitScript(INSTANT_MOTION);
 
 		const watch = (page: Page) => {
 			page.on("console", (message) => {
