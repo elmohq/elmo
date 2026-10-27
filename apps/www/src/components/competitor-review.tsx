@@ -67,7 +67,6 @@ export function ElmoComparisonTable({ competitor, review }: { competitor: Compet
 
 export type CompetitorPage = "pricing" | "review" | "alternatives" | "comparison";
 
-/** Links between a reviewed tool's pages, minus the one you're on. */
 export function CompetitorPageLinks({ competitor, current }: { competitor: Competitor; current?: CompetitorPage }) {
 	const name = competitor.name;
 	return (

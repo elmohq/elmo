@@ -36,10 +36,6 @@ export interface AlternativesContent {
 	faqs?: FaqItem[];
 }
 
-/**
- * A factual review of a competitor, drawn only from its own pages and docs.
- * No ratings and no user quotes: we don't have a fair basis for either.
- */
 export interface CompetitorReview {
 	verified: string;
 	verdict: string;
@@ -52,7 +48,6 @@ export interface CompetitorReview {
 	pickIf: string[];
 	lookElsewhereIf: string[];
 	migration: string[];
-	/** Same-row facts for the two products, competitor first. */
 	elmoComparison: { label: string; competitor: string; elmo: string }[];
 	reviewFaqs: FaqItem[];
 	pricingFaqs: FaqItem[];
@@ -593,7 +588,6 @@ export function getCompetitorProfile(slug: string): CompetitorProfile | undefine
 	return { ...profile, review };
 }
 
-/** Tools with their own pricing and review pages: both need verified pricing and a written review. */
 export const reviewedSlugs: string[] = Object.keys(competitorReviews).filter(
 	(slug) => competitorProfiles[slug]?.pricing,
 );
