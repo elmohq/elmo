@@ -44,7 +44,7 @@ test.describe("Cloud self-serve signup", () => {
   });
 
   test("the bare app URL opens on sign-up, keeping the referral tag and campaign params", async ({ page }) => {
-    const attribution = { ref: "marketing-cta", utm_source: "newsletter", li_fat_id: "abc123" };
+    const attribution = { ref: "marketing-cta", utm_source: "newsletter", utm_term: "2026", li_fat_id: "abc123" };
     await page.goto(`/?${new URLSearchParams(attribution)}`);
     await page.waitForURL(/\/auth\/register\?/, { timeout: 30_000 });
     await expect(page.getByRole("button", { name: "Create account" })).toBeVisible({ timeout: 30_000 });

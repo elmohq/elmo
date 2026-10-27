@@ -34,7 +34,6 @@ export function attributionParams(search: Record<string, unknown>): AttributionP
 	return Object.fromEntries(
 		ATTRIBUTION_PARAMS.flatMap((key) => {
 			const value = search[key];
-			// The router parses `?utm_term=2026` as a number; a stringified "2026" would round-trip as `%222026%22`.
 			return typeof value === "string" || typeof value === "number" ? [[key, value]] : [];
 		}),
 	);
