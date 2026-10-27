@@ -2,14 +2,14 @@
  * /auth/login - Login page
  *
  * Local/cloud modes: email/password form beside the sales panel.
- * Demo mode: the shared credentials on a plain card — a demo visitor is
- * already looking, and has nothing to buy.
+ * Demo mode: the shared credentials on a plain card.
  * Whitelabel mode: auto-redirects to Auth0 SSO (no form shown).
  */
 
 import { IconBrandGoogle, IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { MCP_AUTHORIZE_ENDPOINT } from "@workspace/config/constants";
+import { cloudSignupUrl } from "@workspace/config/referrals";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -175,6 +175,17 @@ export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 					{loading ? "Signing in..." : "Sign in"}
 				</Button>
 			</form>
+			<p className="pt-4 text-center text-sm text-muted-foreground">
+				Ready to track your own brand?{" "}
+				<a
+					href={cloudSignupUrl("demo-signin")}
+					target="_blank"
+					rel="noopener"
+					className="font-medium text-primary hover:underline"
+				>
+					Start with Elmo Cloud
+				</a>
+			</p>
 		</FullPageCard>
 	);
 }

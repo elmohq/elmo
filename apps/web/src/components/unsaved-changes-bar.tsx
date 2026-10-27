@@ -20,6 +20,7 @@ import {
 import { Spinner } from "@workspace/ui/components/spinner";
 import { Save } from "lucide-react";
 import { useState } from "react";
+import { WriteErrorMessage } from "@/components/write-error-message";
 
 interface UnsavedChangesBarProps {
 	isDirty: boolean;
@@ -92,7 +93,7 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 
 							{error && (
 								<p className="w-full text-sm text-destructive" role="alert">
-									{error}
+									<WriteErrorMessage message={error} />
 								</p>
 							)}
 						</div>
