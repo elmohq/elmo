@@ -24,7 +24,6 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
-import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
 import {
 	type CitationClassTotalRow,
 	type CitationDomainStatsRow,
@@ -35,6 +34,7 @@ import {
 	getCitationUrlPage,
 	type OwnedDomains,
 } from "@/lib/citation-read";
+import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
 import {
 	getPerPromptCitationDomains,

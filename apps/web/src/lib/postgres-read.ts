@@ -15,14 +15,7 @@ import {
 } from "@/lib/analytics-sql";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
 import type { ResponseSort, Sentiment, SentimentFilter, SentimentFilterCounts } from "@/lib/sentiment";
-import {
-	responseOrder,
-	sentimentBucket,
-	sentimentCondition,
-	sentimentConfidence,
-	sentimentRank,
-	toSentimentFilterCounts,
-} from "@/lib/sentiment-sql";
+import { responseOrder, sentimentBucket, sentimentCondition, toSentimentFilterCounts } from "@/lib/sentiment-sql";
 
 const dateFilter = (fromDate: string | null, toDate: string | null, timezone: string): SQL =>
 	windowFilter(sql`created_at`, fromDate, toDate, timezone);
@@ -222,41 +215,44 @@ export interface SentimentQuoteRow {
 	text_content: string;
 }
 
-/** Up to `limit` per sentiment, one per prompt, so a daily prompt doesn't fill the list with the same answer. */
+/**
+ * Up to `limit` per sentiment, one per prompt, so a daily prompt doesn't fill the
+ * list with the same answer. Candidates come from the quote rollup, so only the
+ * runs quoted are read whole.
+ */
 export async function getSentimentQuotes(
 	scope: PromptListScope,
 	sentiments: readonly Sentiment[],
 	limit: number,
 ): Promise<SentimentQuoteRow[]> {
 	if (scope.promptIds.length === 0 || sentiments.length === 0) return [];
-	const passage = sql`rm.assessments->'brand'->'passage'`;
 	return queryPg<SentimentQuoteRow>(sql`
 		WITH
 			best AS (
-				SELECT DISTINCT ON (sentiment, pr.prompt_id)
-					pr.id,
-					pr.prompt_id,
-					pr.model,
-					pr.created_at,
-					rm.assessments->'brand' AS brand,
-					${sentimentBucket} AS sentiment,
-					${sentimentConfidence} AS confidence
-				FROM prompt_runs pr
-				JOIN run_mentions rm ON rm.run_id = pr.id
-				JOIN run_extractions re ON re.run_id = pr.id
-				WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
-					AND ${sentimentRank(sentiments)} IS NOT NULL
-					AND re.text_content IS NOT NULL
-					AND (${passage}->>'start')::int < (${passage}->>'end')::int
-				ORDER BY sentiment, pr.prompt_id, confidence DESC, pr.created_at DESC, pr.id
+				SELECT DISTINCT ON (sentiment, prompt_id) run_id, prompt_id, model, created_at, sentiment, confidence
+				FROM rollup_sentiment_quotes
+				WHERE ${scopeFilter(scope, { time: "bucket" })}
+					AND sentiment IN (${sql.join(
+						sentiments.map((sentiment) => sql`${sentiment}`),
+						sql`, `,
+					)})
+				ORDER BY sentiment, prompt_id, confidence DESC, created_at DESC, run_id
 			),
 			ranked AS (
-				SELECT *, row_number() OVER (PARTITION BY sentiment ORDER BY confidence DESC, created_at DESC, id) AS place
+				SELECT *, row_number() OVER (PARTITION BY sentiment ORDER BY confidence DESC, created_at DESC, run_id) AS place
 				FROM best
 			)
-		SELECT r.id::text AS id, r.prompt_id::text AS prompt_id, r.model, r.created_at, r.sentiment, r.brand, re.text_content
+		SELECT
+			r.run_id::text AS id,
+			r.prompt_id::text AS prompt_id,
+			r.model,
+			r.created_at,
+			r.sentiment,
+			rm.assessments->'brand' AS brand,
+			re.text_content
 		FROM ranked r
-		JOIN run_extractions re ON re.run_id = r.id
+		JOIN run_mentions rm ON rm.run_id = r.run_id
+		JOIN run_extractions re ON re.run_id = r.run_id
 		WHERE r.place <= ${limit}
 		ORDER BY r.sentiment, r.place
 	`);

@@ -103,15 +103,6 @@ export interface PerPromptCitationPageRow {
 	count: number;
 }
 
-export interface CitationPageStats extends CitationUrlStats {
-	is_new: boolean;
-}
-
-export interface DroppedCitationPageRow extends Omit<CitationUrlRow, "avg_position" | "title"> {
-	previous_count: number;
-	current_count: number;
-}
-
 export interface PerPromptCitationDomainRow {
 	prompt_id: string;
 	domain: string;
@@ -417,83 +408,6 @@ export async function getPerPromptCitationDomains(scope: AnalyticsScope): Promis
 		WHERE ${rollupScope(scope)}
 		GROUP BY prompt_id, domain
 		ORDER BY prompt_id
-	`);
-}
-
-export async function getCitationPageStats(
-	scope: AnalyticsScope,
-	previous: AnalyticsScope,
-): Promise<CitationPageStats[]> {
-	return queryPg<CitationPageStats>(sql`
-		WITH
-			pages AS (
-				SELECT
-					page_id,
-					sum(citations)::int AS count,
-					round(sum(position_sum)::numeric / NULLIF(sum(citations), 0), 1)::float AS avg_position,
-					count(DISTINCT prompt_id)::int AS prompt_count
-				FROM rollup_citation_urls
-				WHERE ${rollupScope(scope)}
-				GROUP BY page_id
-			),
-			earlier AS (SELECT DISTINCT page_id FROM rollup_citation_urls WHERE ${rollupScope(previous)})
-		SELECT
-			cp.url,
-			cp.domain,
-			cp.title,
-			cp.static_category,
-			cp.page_type,
-			p.count,
-			p.avg_position,
-			p.prompt_count,
-			e.page_id IS NULL AS is_new
-		FROM pages p
-		JOIN rollup_citation_pages cp ON cp.brand_id = ${scope.brandId} AND cp.page_id = p.page_id
-		LEFT JOIN earlier e ON e.page_id = p.page_id
-		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
-		ORDER BY p.count DESC, cp.url
-	`);
-}
-
-export async function getCitationDomainCounts(scope: AnalyticsScope): Promise<{ domain: string; count: number }[]> {
-	return queryPg<{ domain: string; count: number }>(sql`
-		SELECT cp.domain, sum(p.count)::int AS count
-		FROM (
-			SELECT page_id, sum(citations) AS count
-			FROM rollup_citation_urls
-			WHERE ${rollupScope(scope)}
-			GROUP BY page_id
-		) p
-		JOIN rollup_citation_pages cp ON cp.brand_id = ${scope.brandId} AND cp.page_id = p.page_id
-		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
-		GROUP BY cp.domain
-		ORDER BY max(p.count) DESC
-	`);
-}
-
-export async function getDroppedCitationPages(
-	scope: AnalyticsScope,
-	previous: AnalyticsScope,
-	minCount: number,
-	limit: number,
-): Promise<DroppedCitationPageRow[]> {
-	return queryPg<DroppedCitationPageRow>(sql`
-		WITH counts AS (
-			SELECT page_id, sum(earlier)::int AS previous_count, sum(later)::int AS current_count
-			FROM (
-				SELECT page_id, citations AS earlier, 0 AS later FROM rollup_citation_urls WHERE ${rollupScope(previous)}
-				UNION ALL
-				SELECT page_id, 0, citations FROM rollup_citation_urls WHERE ${rollupScope(scope)}
-			) cited
-			GROUP BY page_id
-			HAVING sum(earlier) >= ${minCount} AND sum(later) * 2 <= sum(earlier)
-		)
-		SELECT cp.url, cp.domain, cp.static_category, cp.page_type, c.previous_count, c.current_count
-		FROM counts c
-		JOIN rollup_citation_pages cp ON cp.brand_id = ${scope.brandId} AND cp.page_id = c.page_id
-		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
-		ORDER BY c.previous_count DESC, cp.url
-		LIMIT ${limit}
 	`);
 }
 

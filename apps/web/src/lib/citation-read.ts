@@ -153,9 +153,7 @@ function classifiedPages(scope: AnalyticsScope, owned: OwnedDomains, where: SQL 
 
 function urlFilter(filter: CitationUrlFilter): { pages: SQL; classes: SQL } {
 	const search = filter.search?.trim();
-	const pages = search
-		? sql`(j.url ILIKE ${containing(search)} OR j.title ILIKE ${containing(search)})`
-		: sql`TRUE`;
+	const pages = search ? sql`(j.url ILIKE ${containing(search)} OR j.title ILIKE ${containing(search)})` : sql`TRUE`;
 	const category = filter.category ? sql`AND category = ${filter.category}` : sql``;
 	const pageType = filter.pageType ? sql`AND page_type = ${filter.pageType}` : sql``;
 	return { pages, classes: sql`TRUE ${category} ${pageType}` };
@@ -188,9 +186,7 @@ async function pageDetails(
 		FROM current c
 		LEFT JOIN earlier e ON e.page_id = c.page_id
 	`);
-	return new Map(
-		rows.map((row) => [Number(row.page_id), { promptCount: row.prompt_count, isNew: !row.cited_before }]),
-	);
+	return new Map(rows.map((row) => [Number(row.page_id), { promptCount: row.prompt_count, isNew: !row.cited_before }]));
 }
 
 async function withPageDetails(

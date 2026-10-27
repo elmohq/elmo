@@ -61,11 +61,7 @@ export function TopDomainsCard({
 			<CardContent>
 				{sourceTabs.length > 2 && (
 					<div className="mb-3">
-						<UnderlineTabs
-							tabs={sourceTabs}
-							activeKey={list.category}
-							onSelect={list.setCategory}
-						/>
+						<UnderlineTabs tabs={sourceTabs} activeKey={list.category} onSelect={list.setCategory} />
 					</div>
 				)}
 				{/* The card itself is gated on the UNFILTERED list by the parent;

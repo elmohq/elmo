@@ -90,11 +90,7 @@ export function TopUrlsCard({
 			<Separator />
 			<CardContent>
 				{sourceTabs.length > 2 && (
-					<UnderlineTabs
-						tabs={sourceTabs}
-						activeKey={list.category}
-						onSelect={list.setCategory}
-					/>
+					<UnderlineTabs tabs={sourceTabs} activeKey={list.category} onSelect={list.setCategory} />
 				)}
 				{pageTypeTabs.length > 2 && (
 					<div className="flex items-center flex-wrap gap-1.5 mt-3">

@@ -221,19 +221,17 @@ export function CitationsDisplay({
 
 			<ChangesAndGapsRow whatsChanged={whatsChanged} contentGaps={contentGaps} days={days} />
 
-			{citationData.domainDistribution ? (
-				citationData.domainDistribution.length > 0 && (
-					<LocalTopDomainsCard domains={citationData.domainDistribution} {...domainCardProps} />
-				)
-			) : (
-				listSource && <RemoteTopDomainsCard source={listSource} {...domainCardProps} />
-			)}
+			{citationData.domainDistribution
+				? citationData.domainDistribution.length > 0 && (
+						<LocalTopDomainsCard domains={citationData.domainDistribution} {...domainCardProps} />
+					)
+				: listSource && <RemoteTopDomainsCard source={listSource} {...domainCardProps} />}
 
-			{citationData.specificUrls ? (
-				citationData.specificUrls.length > 0 && <LocalTopUrlsCard urls={citationData.specificUrls} {...urlCardProps} />
-			) : (
-				listSource && <RemoteTopUrlsCard source={listSource} {...urlCardProps} />
-			)}
+			{citationData.specificUrls
+				? citationData.specificUrls.length > 0 && (
+						<LocalTopUrlsCard urls={citationData.specificUrls} {...urlCardProps} />
+					)
+				: listSource && <RemoteTopUrlsCard source={listSource} {...urlCardProps} />}
 
 			{/* Google Shopping */}
 			{googleModule && googleModule.shopping.products.length > 0 && <GoogleShoppingCard googleModule={googleModule} />}
