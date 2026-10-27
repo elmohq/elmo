@@ -14,8 +14,6 @@ const ICON_TYPES = new Set([
 	"image/vnd.microsoft.icon",
 ]);
 
-// A site's icon rarely changes, so the CDN can answer for a week. A missing
-// icon is cached for less in case the site adds one.
 const FOUND_CACHE = "public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400";
 const MISSING_CACHE = "public, max-age=86400, s-maxage=86400";
 

@@ -18,7 +18,6 @@ function snapSize(size: number): number {
 	return RENDERED_SIZES.find((s) => s >= size) ?? RENDERED_SIZES[RENDERED_SIZES.length - 1];
 }
 
-/** The icon service's URL for a domain that has already been cleaned. */
 export function upstreamFaviconUrl(domain: string, size: number): string {
 	const params = new URLSearchParams({
 		client: "SOCIAL",
@@ -49,13 +48,8 @@ const MIN_MARK_ALPHA = 128;
 const MAX_MARK_COVERAGE = 0.6;
 const LIGHT_MARK_LUMINANCE = 0.8;
 
-/**
- * Whether an icon is a lone light mark that would vanish on our light pages.
- *
- * Some sites ship a white mark on transparency, meant for dark browser tabs.
- * Icons that fill most of their square carry their own background and are
- * left alone.
- */
+// Some sites ship a white mark on transparency, meant for dark browser tabs,
+// which vanishes on our light pages.
 export function isLightMark(rgba: ArrayLike<number>): boolean {
 	let opaque = 0;
 	let luminance = 0;

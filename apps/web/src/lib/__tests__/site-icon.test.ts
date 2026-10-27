@@ -42,7 +42,6 @@ describe("upstreamFaviconUrl", () => {
 
 type Pixel = [number, number, number, number];
 
-/** A square icon whose first `markShare` of pixels are `mark` and the rest `rest`. */
 function icon(mark: Pixel, markShare: number, rest: Pixel = [0, 0, 0, 0]): number[] {
 	const pixels = 100;
 	return Array.from({ length: pixels }, (_, i) => (i < pixels * markShare ? mark : rest)).flat();
