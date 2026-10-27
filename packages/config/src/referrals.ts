@@ -81,6 +81,6 @@ export function bookDemoUrl(ref: ReferralSource): string {
 }
 
 /** The live demo instance, tagged with where the click came from. */
-export function demoSiteUrl(ref: ReferralSource): string {
-	return tagged(DEMO_SITE_URL, ref);
+export function demoSiteUrl(ref: ReferralSource, path = "/"): string {
+	return tagged(new URL(path, DEMO_SITE_URL).toString(), ref);
 }

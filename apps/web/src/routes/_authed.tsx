@@ -26,9 +26,14 @@ export const Route = createFileRoute("/_authed")({
 
 		if (!viewer) {
 			context.queryClient.removeQueries({ queryKey: viewerQuery.queryKey });
+			const { ref } = location.search as { ref?: unknown };
 			throw redirect({
 				to: "/auth/login",
-				search: { returnTo: location.href },
+				search: {
+					returnTo: location.href,
+					// Kept at the top level too, so analytics attributes the landing to the link that brought them.
+					...(typeof ref === "string" ? { ref } : {}),
+				},
 			});
 		}
 
