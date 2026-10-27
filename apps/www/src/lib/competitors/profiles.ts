@@ -1,4 +1,5 @@
 import type { FaqItem } from "@/lib/faqs";
+import { competitorReviews } from "./reviews";
 
 export interface PricingPlan {
 	name: string;
@@ -35,9 +36,33 @@ export interface AlternativesContent {
 	faqs?: FaqItem[];
 }
 
+/**
+ * A factual review of a competitor, drawn only from its own pages and docs.
+ * No ratings and no user quotes: we don't have a fair basis for either.
+ */
+export interface CompetitorReview {
+	verified: string;
+	verdict: string;
+	bestFor: string;
+	engines: string;
+	collection: string;
+	features: { name: string; detail: string }[];
+	pros: string[];
+	cons: string[];
+	pickIf: string[];
+	lookElsewhereIf: string[];
+	migration: string[];
+	/** Same-row facts for the two products, competitor first. */
+	elmoComparison: { label: string; competitor: string; elmo: string }[];
+	reviewFaqs: FaqItem[];
+	pricingFaqs: FaqItem[];
+	sources: Source[];
+}
+
 export interface CompetitorProfile {
 	pricing?: CompetitorPricing;
 	alternatives?: AlternativesContent;
+	review?: CompetitorReview;
 }
 
 const VERIFIED = "2026-10-27";
@@ -61,16 +86,53 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 					includes:
 						"Custom prompt volume, up to 9 answer engines, daily runs, all-time history, CSV and JSON exports, API, SSO/SAML, and custom languages and regions.",
 				},
+				{
+					name: "Agency Growth",
+					price: "$399/mo per client workspace",
+					includes:
+						"For agencies: 100 prompts per client on ChatGPT, Perplexity, and Google AI Overviews, 6 AEO-optimized articles a month, 400 credits, 5 seats. Price from Profound's November 2025 agency launch.",
+				},
 			],
 			extraCosts: [
 				"Prompts, engines, regions, and languages are set by your contract and changed through Profound.",
 				"AI work such as agent runs and the AI Marketer draws on a separate credit allotment, and usage past it runs as overage or pauses.",
 				"API access and data exports are Enterprise-only.",
+				"Extra agency pitch workspaces are $199/mo for five more.",
 			],
+			costPerAnswer:
+				"Not derivable for brand plans, since Enterprise prices and prompt volumes are private. An agency client workspace works out to about $0.044 per answer if its prompts run daily on all three engines.",
 			sources: [
 				{ label: "Profound pricing", url: "https://www.tryprofound.com/pricing" },
+				{
+					label: "Profound agency plan announcement",
+					url: "https://www.tryprofound.com/blog/agencies-launch-your-aeo-practice-with-profound",
+				},
 				{ label: "Profound docs: credits", url: "https://docs.tryprofound.com/getting-started/credits" },
 				{ label: "Profound docs: REST API", url: "https://docs.tryprofound.com/rest-api/introduction" },
+			],
+		},
+		alternatives: {
+			title: "Profound Alternatives: Self-Serve & Open-Source Options (2026) · Elmo",
+			description:
+				"The best Profound alternatives for AI visibility tracking, with Profound's current pricing, strengths and limits, a migration guide, and Elmo: open source, self-serve from $29/mo.",
+			faqs: [
+				{
+					question: "What is the best open-source alternative to Profound?",
+					answer:
+						"Elmo. It is MIT-licensed, tracks ChatGPT, Google AI Mode and AI Overviews, Perplexity, Gemini, Copilot, Claude, and more, and you can self-host it for free or use Elmo Cloud from $29/mo with no sales call.",
+				},
+			],
+			sections: [
+				{
+					title: "Moving off Profound",
+					paragraphs: [
+						"Most teams that look for a Profound alternative want the same core numbers (visibility, share of voice, citations) without an enterprise contract. The sections below cover Profound's current pricing, where it is strong, and how to bring your prompts across to Elmo.",
+					],
+					links: [
+						{ text: "Elmo for Profound users", href: "/aeo-for/profound-users" },
+						{ text: "Elmo pricing", href: "/pricing" },
+					],
+				},
 			],
 		},
 	},
@@ -118,6 +180,11 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				{ label: "Peec AI agency pricing", url: "https://peec.ai/pricing-agencies" },
 			],
 		},
+		alternatives: {
+			title: "Peec AI Alternatives: Cheaper & Open-Source Options (2026) · Elmo",
+			description:
+				"The best Peec AI alternatives for AI search tracking, with Peec's current pricing and model add-ons, its strengths and limits, a migration guide, and Elmo, the open-source option.",
+		},
 	},
 	"otterly-ai": {
 		pricing: {
@@ -158,6 +225,11 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 					url: "https://help.otterly.ai/which-ai-searches-does-otterlyai-support",
 				},
 			],
+		},
+		alternatives: {
+			title: "OtterlyAI Alternatives: More Engines, Same Budget (2026) · Elmo",
+			description:
+				"The best OtterlyAI alternatives for AI search monitoring, with Otterly's current pricing and engine add-ons, its strengths and limits, a migration guide, and Elmo, the open-source option from $29/mo.",
 		},
 	},
 	athenahq: {
@@ -515,5 +587,13 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 };
 
 export function getCompetitorProfile(slug: string): CompetitorProfile | undefined {
-	return competitorProfiles[slug];
+	const profile = competitorProfiles[slug];
+	const review = competitorReviews[slug];
+	if (!profile && !review) return undefined;
+	return { ...profile, review };
 }
+
+/** Tools with their own pricing and review pages: both need verified pricing and a written review. */
+export const reviewedSlugs: string[] = Object.keys(competitorReviews).filter(
+	(slug) => competitorProfiles[slug]?.pricing,
+);

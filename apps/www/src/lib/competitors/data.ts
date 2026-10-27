@@ -337,7 +337,7 @@ export const competitors: Competitor[] = [
 		url: "https://www.tryprofound.com/",
 		tagline: "G2 AEO Leader with prompt volumes and Agent Analytics",
 		description:
-			"Profound was named the G2 AEO Leader in the inaugural G2 Grid report. They offer prompt volume estimates, Agent Analytics for tracking AI crawler behavior, and count enterprise customers including MongoDB, Figma, Zapier, and Ramp among their users. Featured in Fortune, WSJ, NYT, TechCrunch, and Financial Times.",
+			"Profound was named the G2 AEO Leader in the inaugural G2 Grid report and raised a $180M Series D at a $1.8B valuation in September 2026. They offer prompt volume estimates, Agent Analytics for tracking AI crawler behavior, and count enterprise customers including MongoDB, Figma, Zapier, and Ramp among their users. Featured in Fortune, WSJ, NYT, TechCrunch, and Financial Times.",
 		category: "tracking",
 		ahrefsDR: 79,
 		ahrefsTraffic: 23237,
@@ -8662,7 +8662,7 @@ export function getComparisonSlug(competitor: Competitor): string {
  */
 const aeoPopularityRanking: string[] = [
 	// --- Tier A: Category leaders with major funding, customers, and recognition ---
-	"profound", // Category leader: $96M Series C at a $1B valuation (Feb 2026), enterprise roster, G2 AEO Leader
+	"profound", // Category leader: $180M Series D at a $1.8B valuation (Sep 2026), enterprise roster, G2 AEO Leader
 	"peec-ai", // $21M Series A (Singular), 3,500+ brands, ten engines scraped from the real UIs
 	"airops", // $40M Series B / $225M val (Greylock), Ramp/Chime/Wiz/Carta, repositioned as AI-search platform
 	"scrunch", // $19M (Mayfield/Decibel), G2 category leader, broadest engine coverage, SOC2+HIPAA
