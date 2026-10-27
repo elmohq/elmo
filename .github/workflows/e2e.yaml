@@ -157,23 +157,16 @@ jobs:
       - name: Seed test data
         run: cd e2e && npx tsx seed.ts
 
-      # Phase 1 — worker still down. Local runs everything that reads the seeded
-      # fixtures, so no background job can mutate them mid-suite, and bootstraps
-      # the account demo signs in with later. Cloud and whitelabel own their
-      # databases, so they share this run's worker pool instead of each waiting
-      # their turn.
-      - name: Run Playwright E2E tests (local, cloud, and whitelabel modes)
-        run: pnpm -C e2e exec playwright test --project=local --project=cloud --project=whitelabel
+      # Phase 1 — local mode, worker still down. Run everything that reads the
+      # seeded fixtures, so no background job can mutate them mid-suite. This
+      # phase also bootstraps the account the later modes sign in with.
+      - name: Run Playwright E2E tests (local mode)
+        run: pnpm -C e2e exec playwright test --project=local
         env:
-          PLAYWRIGHT_HTML_REPORT: playwright-report-modes
+          PLAYWRIGHT_HTML_REPORT: playwright-report-local
 
       - name: Run Bruno API tests
         run: pnpm test:api
-
-      # Plan enforcement only exists in cloud mode, so these cases are tagged
-      # `cloud` and excluded from the local run above.
-      - name: Run Bruno API tests (cloud mode)
-        run: pnpm test:api:cloud
 
       # Phase 2 — bring the worker up and prove it processes a submitted job.
       # No readiness wait: the job the spec submits is durable in pg-boss, so
@@ -190,10 +183,29 @@ jobs:
         if: failure()
         run: docker compose logs worker
 
-      # The worker goes back down so its scheduler can't touch the fixtures
-      # demo reads.
+      # Phase 3+ — the remaining deployment modes, each already up and warm on
+      # its own port. The worker goes back down so its scheduler can't touch the
+      # fixtures the suites below read.
+      #
+      # Cloud and whitelabel own their databases, still holding the seed from
+      # before phase 1 and nothing else, so neither needs one here.
       - name: Stop worker
         run: docker compose stop worker
+
+      - name: Run Playwright E2E tests (cloud mode)
+        run: pnpm -C e2e exec playwright test --project=cloud
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report-cloud
+
+      # Plan enforcement only exists in cloud mode, so these cases are tagged
+      # `cloud` and excluded from the local run above.
+      - name: Run Bruno API tests (cloud mode)
+        run: pnpm test:api:cloud
+
+      - name: Run Playwright E2E tests (whitelabel mode)
+        run: pnpm -C e2e exec playwright test --project=whitelabel
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report-whitelabel
 
       # Demo has no signup, so it reuses the account the local phase
       # bootstrapped — the same way the public demo reuses a local install's
