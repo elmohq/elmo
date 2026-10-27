@@ -3,4 +3,4 @@
 "@workspace/lib": patch
 ---
 
-The Citations page loads faster for longer date ranges.
+The citations page loads faster for longer date ranges.
