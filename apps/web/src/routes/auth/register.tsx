@@ -88,8 +88,6 @@ export function RegisterForm({
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [pendingVerification, setPendingVerification] = useState(false);
-	const [resending, setResending] = useState(false);
-	const [resendError, setResendError] = useState<string | null>(null);
 	const turnstile = useTurnstile(turnstileSiteKey);
 	const source = isCloud ? "cloud-signup" : "self-hosted-signup";
 
@@ -126,42 +124,8 @@ export function RegisterForm({
 		}
 	}
 
-	async function handleResend() {
-		setResending(true);
-		setResendError(null);
-		try {
-			const result = await authClient.sendVerificationEmail({
-				email,
-				callbackURL: safeReturnTo(returnTo),
-				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
-			});
-			if (result.error) setResendError(result.error.message ?? "Couldn't resend the email. Please try again.");
-		} catch (err) {
-			setResendError(err instanceof TurnstileError ? err.message : "Something went wrong. Please try again.");
-		} finally {
-			setResending(false);
-		}
-	}
-
 	if (pendingVerification) {
-		return (
-			<FullPageCard title="Check your email" subtitle={`We sent a verification link to ${email}`}>
-				<div className="space-y-4 w-full">
-					<p className="text-sm text-muted-foreground text-center">
-						Click the link in the email to verify your address and get started. The link expires, so verify soon.
-					</p>
-					{resendError && (
-						<Alert variant="destructive">
-							<AlertDescription>{resendError}</AlertDescription>
-						</Alert>
-					)}
-					{turnstile.enabled && <div ref={turnstile.ref} />}
-					<Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resending}>
-						{resending ? "Sending..." : "Resend verification email"}
-					</Button>
-				</div>
-			</FullPageCard>
-		);
+		return <CheckYourEmail email={email} returnTo={returnTo} turnstileSiteKey={turnstileSiteKey} />;
 	}
 
 	return (
@@ -257,5 +221,55 @@ export function RegisterForm({
 				</p>
 			)}
 		</AuthSplitLayout>
+	);
+}
+
+function CheckYourEmail({
+	email,
+	returnTo,
+	turnstileSiteKey,
+}: {
+	email: string;
+	returnTo?: string;
+	turnstileSiteKey?: string;
+}) {
+	const [resending, setResending] = useState(false);
+	const [resendError, setResendError] = useState<string | null>(null);
+	const turnstile = useTurnstile(turnstileSiteKey);
+
+	async function handleResend() {
+		setResending(true);
+		setResendError(null);
+		try {
+			const result = await authClient.sendVerificationEmail({
+				email,
+				callbackURL: safeReturnTo(returnTo),
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
+			});
+			if (result.error) setResendError(result.error.message ?? "Couldn't resend the email. Please try again.");
+		} catch (err) {
+			setResendError(err instanceof TurnstileError ? err.message : "Something went wrong. Please try again.");
+		} finally {
+			setResending(false);
+		}
+	}
+
+	return (
+		<FullPageCard title="Check your email" subtitle={`We sent a verification link to ${email}`}>
+			<div className="space-y-4 w-full">
+				<p className="text-sm text-muted-foreground text-center">
+					Click the link in the email to verify your address and get started. The link expires, so verify soon.
+				</p>
+				{resendError && (
+					<Alert variant="destructive">
+						<AlertDescription>{resendError}</AlertDescription>
+					</Alert>
+				)}
+				{turnstile.enabled && <div ref={turnstile.ref} />}
+				<Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resending}>
+					{resending ? "Sending..." : "Resend verification email"}
+				</Button>
+			</div>
+		</FullPageCard>
 	);
 }
