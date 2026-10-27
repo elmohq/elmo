@@ -16,6 +16,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import { type APIRequestContext, test } from "@playwright/test";
+import { hashPassword } from "@workspace/lib/auth/password";
 import pg from "pg";
 import {
   DATABASE_URL,
@@ -128,26 +129,18 @@ export async function ensureUser(client: pg.Client, user: { email: string; name:
 
 /**
  * The shared account a real demo deployment is provisioned with. Demo has no
- * signup, so it is written directly, with the password hashed the way
- * better-auth's node implementation does (scrypt, `<salt>:<key>` in hex).
+ * signup, so it is written directly.
  */
 export async function ensureDemoAccount(
   client: pg.Client,
   credentials: { email: string; password: string },
 ): Promise<string> {
   const userId = await ensureUser(client, { email: credentials.email, name: "Demo User" });
-  const salt = crypto.randomBytes(16).toString("hex");
-  const key = crypto.scryptSync(credentials.password.normalize("NFKC"), salt, 64, {
-    N: 16384,
-    r: 16,
-    p: 1,
-    maxmem: 128 * 16384 * 16 * 2,
-  });
   await client.query(`DELETE FROM account WHERE user_id = $1 AND provider_id = 'credential'`, [userId]);
   await client.query(
     `INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
      VALUES (gen_random_uuid(), $1, 'credential', $1, $2, NOW(), NOW())`,
-    [userId, `${salt}:${key.toString("hex")}`],
+    [userId, await hashPassword(credentials.password)],
   );
   await ensureOrgMembership(client, userId);
   return userId;
