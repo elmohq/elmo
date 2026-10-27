@@ -71,9 +71,8 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 
 ## Copy and UI text
 
-- Use Title Case for every title and heading: page `<title>`s, H1–H3s, section and card titles, hero headlines, nav labels, and table or chart titles, in `apps/www`, `apps/web`, and `packages/docs` (including MDX headings and frontmatter titles). Lowercase only articles, coordinating conjunctions, and prepositions of three letters or fewer (plus "vs") unless they start or end the title or follow a colon: "Profound Alternatives", "Who Profound Is For", "Cost per AI Answer", "Elmo vs Profound: Pricing and Features".
-- Many existing headings are still in sentence case. That is legacy, not the convention — don't copy it, and fix it in the files you touch.
-- Body copy, buttons, FAQ questions, and form labels stay in sentence case.
+- Use Title Case for all non-prose text: titles, headings, buttons, links used as actions, nav items, tabs, form labels, table headers, and chart titles. Lowercase articles, coordinating conjunctions, and prepositions of three letters or fewer (and "vs") unless first or last.
+- Sentences and prose stay in sentence case. Many existing strings are sentence case; that's legacy, so don't copy it.
 
 ## Changesets
 
