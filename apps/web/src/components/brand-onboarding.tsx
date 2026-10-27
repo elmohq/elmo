@@ -3,11 +3,12 @@ import { brandSegment } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { validateWebsiteUrl } from "@/lib/brand-website";
+import { forgetPendingWebsite, pendingWebsite } from "@/lib/pending-website";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createBrandFn } from "@/server/brands";
@@ -32,6 +33,11 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 	const organizationsChanged = useOrganizationsChanged();
 	const navigate = useNavigate();
 
+	useEffect(() => {
+		const pending = pendingWebsite();
+		if (pending) setWebsite((current) => current || pending);
+	}, []);
+
 	const createBrand = async (enabledModels: string[] | null) => {
 		setIsLoading(true);
 		setError("");
@@ -46,6 +52,7 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 				},
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
+			forgetPendingWebsite();
 
 			await organizationsChanged(() =>
 				navigate({

@@ -16,12 +16,13 @@ import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Separator } from "@workspace/ui/components/separator";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
+import { rememberPendingWebsite } from "@/lib/pending-website";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
@@ -34,6 +35,8 @@ export const Route = createFileRoute("/auth/register")({
 		 * long enough for analytics to record the pageview it arrived on.
 		 */
 		ref: z.string().optional(),
+		/** A website to prefill as the new account's first brand, e.g. from the marketing-site checker. */
+		website: z.string().optional(),
 	}),
 	head: ({ match }) => {
 		const appName = getAppName(match);
@@ -45,9 +48,13 @@ export const Route = createFileRoute("/auth/register")({
 });
 
 function RegisterPage() {
-	const { returnTo, ref: incomingRef } = Route.useSearch();
+	const { returnTo, ref: incomingRef, website } = Route.useSearch();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const canRegister = context.clientConfig?.canRegister ?? false;
+
+	useEffect(() => {
+		rememberPendingWebsite(website);
+	}, [website]);
 
 	if (!canRegister) {
 		window.location.href = "/auth/login";
