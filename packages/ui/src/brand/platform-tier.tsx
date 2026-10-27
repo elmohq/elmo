@@ -11,11 +11,14 @@
  * plan catalog. The catalog resolves them (`PlanPlatformMember`), which is why
  * neither caller needs an adapter.
  */
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { ModelIcon } from "./model-icon";
 
 export interface PlatformTierRow {
 	iconId: string;
 	label: string;
+	/** The exact model version behind this row, shown on hover. */
+	version?: string;
 }
 
 export function PlatformTier({
@@ -41,7 +44,20 @@ export function PlatformTier({
 						{/* Logos alone were ambiguous — Google AI Mode, AI Overviews and
 						    Gemini all carry the same mark — and a name a reader has to
 						    hover for is not on the page. */}
-						<span className="min-w-0 flex-1 truncate">{model.label}</span>
+						{model.version ? (
+							<Tooltip>
+								<TooltipTrigger
+									render={
+										<span className="min-w-0 truncate cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2" />
+									}
+								>
+									{model.label}
+								</TooltipTrigger>
+								<TooltipContent>Runs {model.version}</TooltipContent>
+							</Tooltip>
+						) : (
+							<span className="min-w-0 flex-1 truncate">{model.label}</span>
+						)}
 					</li>
 				))}
 			</ul>
