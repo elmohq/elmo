@@ -53,7 +53,11 @@ export function PlatformTier({
 								>
 									{model.label}
 								</TooltipTrigger>
-								<TooltipContent>Runs {model.version}</TooltipContent>
+								{/* The marketing site's primary is brand blue; pin the neutral
+								    tooltip colors so the arrow follows the popup. */}
+								<TooltipContent className="[--primary-foreground:var(--background)] [--primary:var(--foreground)]">
+									Runs {model.version}
+								</TooltipContent>
 							</Tooltip>
 						) : (
 							<span className="min-w-0 flex-1 truncate">{model.label}</span>
