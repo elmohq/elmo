@@ -6,8 +6,6 @@ import {
 	FEATURE_CATEGORIES,
 	type FeatureKey,
 	getComparisonSlug,
-	hasOwnPages,
-	isIndexed,
 	reviewedSlugs,
 	sortedCompetitors,
 } from "@/lib/competitors";
@@ -27,17 +25,15 @@ function startingPrice(c: Competitor): string {
 
 const LINK = "text-blue-700 hover:text-blue-900";
 
-export function TopToolsTable({ limit = 10 }: { limit?: number }) {
-	const tools = sortedCompetitors.filter((c) => isIndexed(c) && hasOwnPages(c)).slice(0, limit);
+export function TopToolsTable() {
+	const tools = reviewedSlugs.flatMap((slug) => sortedCompetitors.find((c) => c.slug === slug) ?? []);
 	return (
 		<section className="border-b border-zinc-200 bg-white py-12 lg:py-16">
 			<div className="mx-auto max-w-6xl px-4 md:px-6">
-				<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">
-					The Leading AI Visibility Tracking Tools at a Glance
-				</h2>
+				<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">Top AI Visibility Tools at a Glance</h2>
 				<p className="mt-3 max-w-3xl leading-relaxed text-zinc-600">
-					The {limit} most established LLM visibility trackers in the directory, with the AI engines each one covers and
-					where pricing starts. Every tool links to a head-to-head comparison and a list of its alternatives.
+					Elmo and the three trackers we review in depth, with the AI engines each one covers and where pricing starts.
+					Each links to a head-to-head comparison, its alternatives, pricing, and our review.
 				</p>
 				<div className="mt-8 overflow-x-auto">
 					<table className="w-full min-w-[720px] text-sm">
@@ -103,11 +99,11 @@ export function TopToolsTable({ limit = 10 }: { limit?: number }) {
 					</table>
 				</div>
 				<p className="mt-4 text-sm text-zinc-500">
-					Want a shortlist with a verdict on each tool instead? Read our pick of the{" "}
+					Choosing for a specific use case? See{" "}
 					<a href="/blog/best-ai-visibility-tools" className="font-medium text-blue-700 underline underline-offset-2">
-						best AI visibility tools by use case
+						the best AI visibility tools by use case
 					</a>
-					.
+					, with a verdict on each.
 				</p>
 			</div>
 		</section>
