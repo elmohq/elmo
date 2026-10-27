@@ -20,7 +20,7 @@ import {
 	targetOverdueStatus,
 } from "@workspace/lib/run-policy";
 import { desc, eq, inArray, type SQL, sql } from "drizzle-orm";
-import { Client } from "pg";
+import type { PoolClient } from "pg";
 import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
@@ -125,17 +125,12 @@ async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime
 // Postgres client helper for pg-boss queries
 // ============================================================================
 
-async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-	const connectionString = process.env.DATABASE_URL;
-	if (!connectionString) {
-		throw new Error("DATABASE_URL is required");
-	}
-	const client = new Client({ connectionString });
-	await client.connect();
+async function withPgClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+	const client = await db.$client.connect();
 	try {
 		return await fn(client);
 	} finally {
-		await client.end();
+		client.release();
 	}
 }
 
@@ -776,8 +771,10 @@ function brandWorkflowSummary(
 export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
 
-	const allBrands = await db.query.brands.findMany({ orderBy: desc(brands.createdAt) });
-	const allPrompts = await db.query.prompts.findMany();
+	const [allBrands, allPrompts] = await Promise.all([
+		db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
+		db.query.prompts.findMany(),
+	]);
 
 	const promptsByBrand: Record<string, typeof allPrompts> = {};
 	for (const prompt of allPrompts) {
@@ -787,7 +784,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		promptsByBrand[prompt.brandId].push(prompt);
 	}
 
-	const lastRunsQuery = await db
+	const lastRunsQuery = db
 		.select({
 			promptId: rollupPromptRuns.promptId,
 			model: rollupPromptRuns.model,
@@ -803,8 +800,21 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 			rollupPromptRuns.webSearchEnabled,
 		);
 
+	const [lastRuns, [orgSlugs, recentJobs, scheduleMap, activeJobMap, queueStats], entitlementsByOrg] =
+		await Promise.all([
+			lastRunsQuery,
+			Promise.all([
+				organizationSlugs(allBrands.map((brand) => brand.organizationId)),
+				getRecentJobs(5000),
+				getScheduleMap(),
+				getActiveJobMap(),
+				getQueueStats(),
+			]),
+			getOrgEntitlementsMap([...new Set(allBrands.map((b) => b.organizationId))]),
+		]);
+
 	const lastRunsByPrompt = new Map<string, Map<string, Date>>();
-	for (const run of lastRunsQuery) {
+	for (const run of lastRuns) {
 		let byKey = lastRunsByPrompt.get(run.promptId);
 		if (!byKey) {
 			byKey = new Map();
@@ -819,19 +829,10 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		);
 	}
 
-	const [orgSlugs, recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
-		organizationSlugs(allBrands.map((brand) => brand.organizationId)),
-		getRecentJobs(5000),
-		getScheduleMap(),
-		getActiveJobMap(),
-		getQueueStats(),
-	]);
-
 	// The dashboard reports against what each prompt is actually supposed to run,
 	// so it resolves the same plans the worker does. Reading every configured
 	// SCRAPE_TARGETS model at the brand cadence instead would mark every platform
 	// a plan doesn't sell as permanently overdue.
-	const entitlementsByOrg = await getOrgEntitlementsMap([...new Set(allBrands.map((b) => b.organizationId))]);
 	const runPlans = resolveRunPlansForBrands({
 		brands: allBrands,
 		promptsByBrand,
