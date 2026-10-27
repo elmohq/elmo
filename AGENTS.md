@@ -69,6 +69,12 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 - The same applies to docs and this file: never write down what's already derivable from the repo (what a file imports, what a script runs, how code is structured).
 - Don't describe prior behavior ("previously this did X") and don't reference GitHub issues or tickets in code — that context belongs in the commit message or PR.
 
+## Copy and UI text
+
+- Use Title Case for every title and heading: page `<title>`s, H1–H3s, section and card titles, hero headlines, nav labels, and table or chart titles, in `apps/www`, `apps/web`, and `packages/docs` (including MDX headings and frontmatter titles). Lowercase only articles, coordinating conjunctions, and prepositions of three letters or fewer (plus "vs") unless they start or end the title or follow a colon: "Profound Alternatives", "Who Profound Is For", "Cost per AI Answer", "Elmo vs Profound: Pricing and Features".
+- Many existing headings are still in sentence case. That is legacy, not the convention — don't copy it, and fix it in the files you touch.
+- Body copy, buttons, FAQ questions, and form labels stay in sentence case.
+
 ## Changesets
 
 - Add one only for **user-facing** changes (something an end user of the product would notice). Internal refactors, dependency bumps, and CI tweaks don't get one.
