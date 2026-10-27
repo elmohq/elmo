@@ -57,6 +57,11 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 - Don't bump package versions; releases go through Changesets.
 - Don't add coding-agent attribution (such as "Generated with …" lines or `Co-Authored-By` trailers) to commit messages or PR descriptions.
 
+## Private data
+
+- Unless explicitly authorized, never put identifying information or non-public stats into a PR description, commit message, or any committed text (code, comments, tests, fixtures, docs, changesets). This covers anything you get from MCP servers, databases, or APIs you've been given access to.
+- That includes conversion rates, customer or user names, emails, and domains, revenue and billing figures, cloud usage amounts, traffic numbers, and any other non-public information. Describe the change in general terms or use made-up placeholder data instead.
+
 ## Comments and docs
 
 - Comment only to explain **why** or to add context the code can't show. Never restate what the code already says.
