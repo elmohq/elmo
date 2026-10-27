@@ -23,6 +23,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
+import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
@@ -43,9 +44,8 @@ function postSignInDestination(search: LoginSearch): string {
 
 /** A passthrough: the plugin signs the whole query, so a dropped parameter is a
  * signature that no longer verifies. */
-interface LoginSearch {
+interface LoginSearch extends AttributionParams {
 	returnTo?: string;
-	ref?: string;
 	sig?: string;
 }
 
@@ -65,7 +65,7 @@ export const Route = createFileRoute("/auth/login")({
 
 function LoginPage() {
 	const search = Route.useSearch();
-	const { returnTo, ref: incomingRef } = search;
+	const { returnTo } = search;
 	const destination = postSignInDestination(search);
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const mode = context.clientConfig?.mode;
@@ -89,7 +89,7 @@ function LoginPage() {
 		<EmailPasswordLogin
 			destination={destination}
 			returnTo={returnTo}
-			incomingRef={incomingRef}
+			attribution={attributionParams(search)}
 			isCloud={mode === "cloud"}
 			canRegister={canRegister}
 		/>
@@ -174,13 +174,13 @@ function SignInFailed({ error }: { error: string }) {
 export function EmailPasswordLogin({
 	destination = "/app",
 	returnTo,
-	incomingRef,
+	attribution,
 	isCloud,
 	canRegister,
 }: {
 	destination?: string;
 	returnTo?: string;
-	incomingRef?: string;
+	attribution?: AttributionParams;
 	isCloud?: boolean;
 	canRegister?: boolean;
 }) {
@@ -301,7 +301,7 @@ export function EmailPasswordLogin({
 					Don't have an account?{" "}
 					<Link
 						to="/auth/register"
-						search={{ ...(returnTo ? { returnTo } : {}), ...(incomingRef ? { ref: incomingRef } : {}) }}
+						search={{ ...(returnTo ? { returnTo } : {}), ...attribution }}
 						className="text-primary hover:underline font-medium"
 					>
 						Create one
