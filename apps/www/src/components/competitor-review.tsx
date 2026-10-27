@@ -5,7 +5,6 @@ import { ArrowRight, Check, Minus } from "lucide-react";
 import { OverviewPageGraphic } from "@/components/feature-graphics";
 import { CARD } from "@/components/home/ui";
 import { type Competitor, type CompetitorReview, getComparisonSlug } from "@/lib/competitors";
-import { SELF_HOST_LINK } from "@/lib/self-host-link";
 
 const LINK =
 	"inline-flex items-center rounded-full bg-white px-3 py-1 font-medium text-blue-700 ring-1 ring-zinc-200 transition hover:text-blue-900 hover:ring-zinc-300";
@@ -44,7 +43,7 @@ export function ProsCons({ review }: { review: CompetitorReview }) {
 
 /** Stacks each row into label-over-two-cells on phones, where a three-column table would scroll. */
 export function ElmoComparisonTable({ competitor, review }: { competitor: Competitor; review: CompetitorReview }) {
-	const head = "px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.18em]";
+	const head = "px-4 py-3 text-left text-sm font-semibold";
 	return (
 		<div className={`overflow-hidden ${CARD}`}>
 			<table className="w-full text-sm">
@@ -129,13 +128,12 @@ export function CompetitorSignupCta({
 	return (
 		<section className="border-b border-zinc-200 bg-zinc-50/70 py-12 lg:py-16">
 			<div className="mx-auto max-w-6xl px-4 md:px-6">
-				<div className="grid gap-8 overflow-hidden rounded-2xl bg-zinc-950 p-6 md:p-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
+				<div className="grid gap-8 rounded-2xl bg-white p-6 ring-1 ring-zinc-200 md:p-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
 					<div>
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-300">Elmo Cloud</p>
-						<h2 className="mt-3 text-2xl font-semibold tracking-[-0.025em] text-balance text-white md:text-3xl">
+						<h2 className="text-2xl font-semibold tracking-[-0.025em] text-balance text-zinc-950 md:text-3xl">
 							{title}
 						</h2>
-						<p className="mt-4 text-pretty text-sm/6 text-zinc-300">
+						<p className="mt-4 text-pretty text-zinc-600">
 							Elmo tracks how ChatGPT, Google AI Mode, AI Overviews, Perplexity, Gemini, and Claude mention and cite
 							your brand, with public prices from ${CLOUD_ENTRY_PRICE_USD}/mo, API and MCP access on every plan, and no
 							sales call. It is open source, so you can also self-host it for free and read how every number is made.
@@ -144,22 +142,16 @@ export function CompetitorSignupCta({
 						<div className="mt-6 flex flex-wrap gap-3">
 							<a
 								href={cloudSignupUrl(from)}
-								className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+								className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-700"
 							>
 								Start With Elmo Cloud
 								<ArrowRight className="size-4" aria-hidden="true" />
 							</a>
 							<Link
 								to="/pricing"
-								className="inline-flex h-10 items-center rounded-lg px-4 text-sm font-medium text-white ring-1 ring-inset ring-white/20 transition hover:bg-white/10"
+								className="inline-flex h-10 items-center rounded-lg px-4 text-sm font-medium text-zinc-950 ring-1 ring-inset ring-zinc-200 transition hover:bg-zinc-50"
 							>
 								Elmo Pricing
-							</Link>
-							<Link
-								{...SELF_HOST_LINK}
-								className="inline-flex h-10 items-center rounded-lg px-4 text-sm font-medium text-white ring-1 ring-inset ring-white/20 transition hover:bg-white/10"
-							>
-								Self-Host for Free
 							</Link>
 						</div>
 					</div>
