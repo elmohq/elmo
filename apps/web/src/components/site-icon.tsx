@@ -8,7 +8,7 @@ import { IconWorld } from "@tabler/icons-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
-import { faviconUrl } from "@/lib/site-icon";
+import { faviconUrl, type MarkTone, markTone } from "@/lib/site-icon";
 
 export type SiteIconSize = "xs" | "sm" | "md" | "lg";
 
@@ -37,6 +37,26 @@ const GLYPH_SCALE = "size-[75%]";
 // get that the icon is missing.
 const PLACEHOLDER_SIZE = 16;
 
+// A bare mark gets a backdrop only in the theme it would vanish in.
+const TONE_BACKDROP: Record<MarkTone, string> = {
+	light: "bg-foreground dark:bg-transparent",
+	dark: "dark:bg-foreground",
+};
+
+function readMarkTone(image: HTMLImageElement): MarkTone | null {
+	const canvas = document.createElement("canvas");
+	canvas.width = image.naturalWidth;
+	canvas.height = image.naturalHeight;
+	const context = canvas.getContext("2d", { willReadFrequently: true });
+	if (!context) return null;
+	context.drawImage(image, 0, 0);
+	try {
+		return markTone(context.getImageData(0, 0, canvas.width, canvas.height).data);
+	} catch {
+		return null;
+	}
+}
+
 export function SiteIcon({
 	domain,
 	size = "sm",
@@ -52,9 +72,11 @@ export function SiteIcon({
 
 	const [checkedSrc, setCheckedSrc] = useState<string | null>(null);
 	const [isPlaceholder, setIsPlaceholder] = useState(false);
+	const [tone, setTone] = useState<MarkTone | null>(null);
 	if (checkedSrc !== src) {
 		setCheckedSrc(src);
 		setIsPlaceholder(false);
+		setTone(null);
 	}
 
 	const iconSrc = isPlaceholder ? null : src;
@@ -67,13 +89,12 @@ export function SiteIcon({
 					src={iconSrc}
 					alt=""
 					loading="lazy"
-					// Site icons are a third-party lookup; there's no reason to tell
-					// them which page of the app the user is on.
-					referrerPolicy="no-referrer"
 					onLoad={(event) => {
-						if (event.currentTarget.naturalWidth <= PLACEHOLDER_SIZE) setIsPlaceholder(true);
+						const image = event.currentTarget;
+						if (image.naturalWidth <= PLACEHOLDER_SIZE) setIsPlaceholder(true);
+						else setTone(readMarkTone(image));
 					}}
-					className="object-contain"
+					className={cn("rounded-[inherit] object-contain", tone && TONE_BACKDROP[tone])}
 				/>
 			)}
 			{/* Waiting out a request in flight beats flashing the glyph on every

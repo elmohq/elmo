@@ -1,31 +1,77 @@
 import { describe, expect, it } from "vitest";
-import { buildBrandDomainIndex, domainForName, faviconUrl } from "@/lib/site-icon";
+import { buildBrandDomainIndex, domainForName, faviconUrl, markTone, upstreamFaviconUrl } from "@/lib/site-icon";
+
+const iconParams = (url: string | null) => new URL(url!, "https://app.test").searchParams;
 
 describe("faviconUrl", () => {
-	it("asks the icon service for the site behind a bare domain", () => {
-		const url = new URL(faviconUrl("example.com")!);
-		expect(url.origin + url.pathname).toBe("https://t1.gstatic.com/faviconV2");
-		expect(url.searchParams.get("url")).toBe("https://example.com");
+	it("loads the icon through our own origin so its pixels can be read", () => {
+		const url = new URL(faviconUrl("example.com")!, "https://app.test");
+		expect(url.origin).toBe("https://app.test");
+		expect(url.searchParams.get("domain")).toBe("example.com");
 	});
 
 	it("reduces a full website URL to its site", () => {
-		expect(new URL(faviconUrl("https://www.nike.com/golf?x=1")!).searchParams.get("url")).toBe("https://nike.com");
+		expect(iconParams(faviconUrl("https://www.nike.com/golf?x=1")).get("domain")).toBe("nike.com");
 	});
 
 	it("asks for one size unless told otherwise", () => {
-		expect(new URL(faviconUrl("example.com")!).searchParams.get("size")).toBe("64");
+		expect(iconParams(faviconUrl("example.com")).get("size")).toBe("64");
 	});
 
 	it("rounds the requested size up to one the service renders", () => {
-		expect(new URL(faviconUrl("example.com", 20)!).searchParams.get("size")).toBe("32");
-		expect(new URL(faviconUrl("example.com", 64)!).searchParams.get("size")).toBe("64");
-		expect(new URL(faviconUrl("example.com", 9999)!).searchParams.get("size")).toBe("256");
+		expect(iconParams(faviconUrl("example.com", 20)).get("size")).toBe("32");
+		expect(iconParams(faviconUrl("example.com", 64)).get("size")).toBe("64");
+		expect(iconParams(faviconUrl("example.com", 9999)).get("size")).toBe("256");
 	});
 
 	it("has no URL for input that isn't a domain", () => {
 		expect(faviconUrl("")).toBeNull();
 		expect(faviconUrl(null)).toBeNull();
 		expect(faviconUrl("not a domain")).toBeNull();
+	});
+});
+
+describe("upstreamFaviconUrl", () => {
+	it("asks the icon service for the site behind a domain", () => {
+		const url = new URL(upstreamFaviconUrl("example.com", 64));
+		expect(url.origin + url.pathname).toBe("https://t1.gstatic.com/faviconV2");
+		expect(url.searchParams.get("url")).toBe("https://example.com");
+		expect(url.searchParams.get("size")).toBe("64");
+	});
+});
+
+type Pixel = [number, number, number, number];
+
+/** A square icon whose first `markShare` of pixels are `mark` and the rest `rest`. */
+function icon(mark: Pixel, markShare: number, rest: Pixel = [0, 0, 0, 0]): number[] {
+	const pixels = 100;
+	return Array.from({ length: pixels }, (_, i) => (i < pixels * markShare ? mark : rest)).flat();
+}
+
+const WHITE: Pixel = [255, 255, 255, 255];
+const BLACK: Pixel = [0, 0, 0, 255];
+const BLUE: Pixel = [37, 99, 235, 255];
+
+describe("markTone", () => {
+	it("flags a white mark on transparency, which vanishes on a light page", () => {
+		expect(markTone(icon(WHITE, 0.4))).toBe("light");
+	});
+
+	it("flags a black mark on transparency, which vanishes on a dark page", () => {
+		expect(markTone(icon(BLACK, 0.3))).toBe("dark");
+	});
+
+	it("leaves icons that bring their own background alone", () => {
+		expect(markTone(icon(WHITE, 1))).toBeNull();
+		expect(markTone(icon(BLACK, 0.7, WHITE))).toBeNull();
+	});
+
+	it("leaves colored marks alone, since they read on either theme", () => {
+		expect(markTone(icon(BLUE, 0.4))).toBeNull();
+	});
+
+	it("has nothing to say about a fully transparent image", () => {
+		expect(markTone(icon(WHITE, 0))).toBeNull();
 	});
 });
 

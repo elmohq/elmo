@@ -2,8 +2,10 @@
  * Resolving a brand, competitor, or bare domain to a site icon.
  *
  * Icons come from Google's favicon service, which takes a site URL and returns
- * that site's icon. Nothing is stored on our side: the browser requests the
- * icon directly, so a brand's icon appears the moment its domain is set.
+ * that site's icon. Nothing is stored on our side, so a brand's icon appears
+ * the moment its domain is set. Browsers fetch it through our own origin
+ * because the service sends no CORS headers, and `SiteIcon` needs to read the
+ * pixels to tell whether a mark would vanish against the page.
  */
 import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 
@@ -14,6 +16,18 @@ const RENDERED_SIZES = [16, 32, 64, 128, 256] as const;
 
 function snapSize(size: number): number {
 	return RENDERED_SIZES.find((s) => s >= size) ?? RENDERED_SIZES[RENDERED_SIZES.length - 1];
+}
+
+/** The icon service's URL for a domain that has already been cleaned. */
+export function upstreamFaviconUrl(domain: string, size: number): string {
+	const params = new URLSearchParams({
+		client: "SOCIAL",
+		type: "FAVICON",
+		fallback_opts: "TYPE,SIZE,URL",
+		url: `https://${domain}`,
+		size: String(snapSize(size)),
+	});
+	return `${FAVICON_ENDPOINT}?${params.toString()}`;
 }
 
 /**
@@ -28,14 +42,39 @@ export function faviconUrl(source: string | null | undefined, size = 64): string
 	const domain = source ? cleanAndValidateDomain(source) : null;
 	if (!domain) return null;
 
-	const params = new URLSearchParams({
-		client: "SOCIAL",
-		type: "FAVICON",
-		fallback_opts: "TYPE,SIZE,URL",
-		url: `https://${domain}`,
-		size: String(snapSize(size)),
-	});
-	return `${FAVICON_ENDPOINT}?${params.toString()}`;
+	return `/api/site-icon?${new URLSearchParams({ domain, size: String(snapSize(size)) }).toString()}`;
+}
+
+export type MarkTone = "light" | "dark";
+
+const MIN_MARK_ALPHA = 128;
+const MAX_MARK_COVERAGE = 0.6;
+const LIGHT_MARK_LUMINANCE = 0.8;
+const DARK_MARK_LUMINANCE = 0.25;
+
+/**
+ * Whether an icon is a lone mark that only reads on one kind of background.
+ *
+ * Some sites ship a white mark on transparency (meant for dark tabs) and many
+ * ship a black one; either disappears on a page of the same tone. Icons that
+ * fill most of their square carry their own background and are left alone.
+ */
+export function markTone(rgba: ArrayLike<number>): MarkTone | null {
+	let opaque = 0;
+	let luminance = 0;
+	for (let i = 0; i < rgba.length; i += 4) {
+		if (rgba[i + 3] < MIN_MARK_ALPHA) continue;
+		opaque++;
+		luminance += (0.2126 * rgba[i] + 0.7152 * rgba[i + 1] + 0.0722 * rgba[i + 2]) / 255;
+	}
+
+	const pixels = rgba.length / 4;
+	if (opaque === 0 || opaque / pixels > MAX_MARK_COVERAGE) return null;
+
+	const mean = luminance / opaque;
+	if (mean > LIGHT_MARK_LUMINANCE) return "light";
+	if (mean < DARK_MARK_LUMINANCE) return "dark";
+	return null;
 }
 
 export interface SiteIconSubject {
