@@ -1,4 +1,5 @@
 import { detectAiAssistant } from "@workspace/config/ai-referral";
+import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "elmo:ai-referral";
 
@@ -27,4 +28,19 @@ export function loadAiReferral(): AiReferral | null {
 	const referral = { assistant, dismissed: false };
 	saveAiReferral(referral);
 	return referral;
+}
+
+export function useAiReferral(): [AiReferral | null, (referral: AiReferral) => void] {
+	const [referral, setReferral] = useState<AiReferral | null>(null);
+
+	useEffect(() => {
+		setReferral(loadAiReferral());
+	}, []);
+
+	const update = (next: AiReferral) => {
+		saveAiReferral(next);
+		setReferral(next);
+	};
+
+	return [referral, update];
 }

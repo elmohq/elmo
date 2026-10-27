@@ -1,34 +1,24 @@
+import { useLocation } from "@tanstack/react-router";
 import { cloudAppUrl } from "@workspace/config/referrals";
 import { ArrowRight, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { type AiReferral, loadAiReferral, saveAiReferral } from "@/lib/ai-referral";
+import { useAiReferral } from "@/lib/ai-referral";
 
 const CLOUD_URL = cloudAppUrl("marketing-ai-referral");
 
 export function AiReferralBanner() {
-	const [referral, setReferral] = useState<AiReferral | null>(null);
+	const pathname = useLocation({ select: (location) => location.pathname });
+	const [referral, setReferral] = useAiReferral();
 
-	useEffect(() => {
-		setReferral(loadAiReferral());
-	}, []);
-
-	if (!referral || referral.dismissed) return null;
-
-	const dismiss = () => {
-		const next = { ...referral, dismissed: true };
-		saveAiReferral(next);
-		setReferral(next);
-	};
+	if (!referral || referral.dismissed || pathname === "/") return null;
 
 	return (
-		<div className="relative bg-zinc-950 text-sm text-zinc-300">
-			<div className="mx-auto flex max-w-6xl items-center justify-center gap-x-2 px-10 py-2 text-center">
+		<div className="relative border-b border-zinc-200 bg-zinc-50 text-sm text-zinc-900">
+			<div className="mx-auto flex max-w-6xl items-center justify-center px-10 py-2 text-center">
 				<p>
-					<span className="font-medium text-white">{referral.assistant} sent you here.</span> Want it to recommend you
-					too?{" "}
+					{referral.assistant} sent you here. Want it to recommend you too?{" "}
 					<a
 						href={CLOUD_URL}
-						className="inline-flex items-center gap-1 whitespace-nowrap font-medium text-white underline decoration-zinc-500 underline-offset-4 hover:decoration-white"
+						className="inline-flex items-center gap-1 whitespace-nowrap font-medium underline underline-offset-4"
 					>
 						Get started
 						<ArrowRight className="size-3.5" aria-hidden="true" />
@@ -37,9 +27,9 @@ export function AiReferralBanner() {
 			</div>
 			<button
 				type="button"
-				onClick={dismiss}
+				onClick={() => setReferral({ ...referral, dismissed: true })}
 				aria-label="Dismiss"
-				className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-zinc-400 hover:text-white focus-visible:outline-2 focus-visible:outline-blue-500"
+				className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-zinc-500 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-blue-600"
 			>
 				<X className="size-4" aria-hidden="true" />
 			</button>
