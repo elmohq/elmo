@@ -2,8 +2,7 @@
  * /auth/login - Login page
  *
  * Local/cloud modes: email/password form beside the sales panel.
- * Demo mode: the shared credentials on a plain card — a demo visitor is
- * already looking, so the way to their own workspace stays secondary.
+ * Demo mode: the shared credentials on a plain card.
  * Whitelabel mode: auto-redirects to Auth0 SSO (no form shown).
  */
 

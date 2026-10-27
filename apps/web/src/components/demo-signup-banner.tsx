@@ -5,11 +5,6 @@ import { useDeploymentMode } from "@/hooks/use-deployment-features";
 
 const SIGNUP_URL = cloudSignupUrl("demo-banner");
 
-/**
- * Demo visitors who go on to sign up do it minutes after looking around, so the
- * way out sits on every page. It opens in a new tab so the demo they were
- * comparing against stays where they left it.
- */
 export function DemoSignupBanner() {
 	const mode = useDeploymentMode();
 	if (mode !== "demo") return null;

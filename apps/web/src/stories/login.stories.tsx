@@ -74,7 +74,6 @@ export const Cloud = () => <EmailPasswordLogin isCloud canRegister />;
  */
 export const SelfHosted = () => <EmailPasswordLogin />;
 
-/** Demo — the shared credentials on a plain card, with Elmo Cloud as the quiet alternative. */
 export const Demo: StoryObj = {
 	render: () => <DemoLogin />,
 	play: async ({ canvasElement }) => {

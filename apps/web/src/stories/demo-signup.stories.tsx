@@ -1,7 +1,3 @@
-/**
- * The ways out of the public demo into Elmo Cloud. Each link carries its own
- * `ref`, so a signup can be traced back to the surface that sent it.
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { expect, within } from "storybook/test";
@@ -43,12 +39,10 @@ export const Banner: StoryObj = {
 	play: async ({ canvasElement }) => {
 		const link = await within(canvasElement).findByRole("link", { name: /Start with Elmo Cloud/ });
 		await expect(link).toHaveAttribute("href", "https://app.elmohq.com/auth/register?ref=demo-banner");
-		// A new tab, so the demo the visitor was comparing against stays open.
 		await expect(link).toHaveAttribute("target", "_blank");
 	},
 };
 
-/** Only the demo pitches Elmo Cloud; a paying customer never sees it. */
 export const NoBannerOutsideDemo: StoryObj = {
 	render: () => {
 		applyConfig(cloudConfig);
@@ -59,7 +53,6 @@ export const NoBannerOutsideDemo: StoryObj = {
 	},
 };
 
-/** A save refused by the read-only demo points at a workspace where it would work. */
 export const ReadOnlyRefusal: StoryObj = {
 	render: () => {
 		applyConfig(demoConfig);
@@ -75,7 +68,6 @@ export const ReadOnlyRefusal: StoryObj = {
 	},
 };
 
-/** Any other failure keeps its own message. */
 export const OtherSaveError: StoryObj = {
 	render: () => {
 		applyConfig(demoConfig);
