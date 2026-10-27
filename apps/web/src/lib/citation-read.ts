@@ -400,7 +400,6 @@ export async function getCitationDomainPage(
 	}));
 }
 
-/** Citations, domains and pages in the window, Google surfaces aside. */
 export async function getCitationTotals(
 	scope: AnalyticsScope,
 ): Promise<{ citations: number; uniqueDomains: number; uniqueUrls: number }> {
@@ -426,7 +425,6 @@ export async function getCitationTotals(
 	};
 }
 
-/** Prompts citing each of `domains` in the window. */
 export async function getDomainPromptCounts(scope: AnalyticsScope, domains: string[]): Promise<Map<string, number>> {
 	if (domains.length === 0) return new Map();
 	const rows = await queryPg<{ domain: string; prompt_count: number }>(sql`

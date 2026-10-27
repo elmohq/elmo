@@ -339,7 +339,6 @@ async function getBrandCitationTotals(brandId: string, window: AnalyticsWindow, 
 	return getCitationTotals(analyticsScope(brandId, window, promptIds, filters));
 }
 
-/** One page of the window's cited URLs, most cited first; the totals cover them all. */
 export async function getBrandCitationUrls(
 	brandId: string,
 	window: AnalyticsWindow,
@@ -375,7 +374,6 @@ export async function getBrandCitationUrls(
 	};
 }
 
-/** One page of the window's cited domains, most cited first; the totals cover them all. */
 export async function getBrandCitationDomains(
 	brandId: string,
 	window: AnalyticsWindow,
@@ -414,7 +412,6 @@ export async function getBrandCitationDomains(
 	};
 }
 
-/** One page of the searches the models ran, most run first, with totals over all of them. */
 export async function getBrandFanoutQueries(
 	brandId: string,
 	window: AnalyticsWindow,

@@ -490,7 +490,6 @@ export interface FanoutQueryRow {
 	prompt_count: number;
 }
 
-/** One page of the window's fan-out queries, most searched first, with how many match in all. */
 export async function getFanoutQueryPage(
 	scope: AnalyticsScope,
 	search: string | undefined,
@@ -509,7 +508,6 @@ export async function getFanoutQueryPage(
 	return { rows: rows.map(({ total: _, ...row }) => row), total: Number(rows[0]?.total ?? 0) };
 }
 
-/** Searches summed over runs, distinct searches, and runs whose answer mentioned the brand. */
 export async function getFanoutQueryTotals(
 	scope: AnalyticsScope,
 ): Promise<{ total_queries: number; unique_queries: number; brand_mentions: number }> {
