@@ -217,40 +217,47 @@ export interface SentimentQuoteRow {
 	prompt_id: string;
 	model: string;
 	created_at: string;
+	sentiment: Sentiment;
 	brand: MentionAssessment;
 	text_content: string;
 }
 
-/** One per prompt, so a daily prompt doesn't fill the list with the same answer; earlier `sentiments` rank first. */
+/** Up to `limit` per sentiment, one per prompt, so a daily prompt doesn't fill the list with the same answer. */
 export async function getSentimentQuotes(
 	scope: PromptListScope,
 	sentiments: readonly Sentiment[],
 	limit: number,
 ): Promise<SentimentQuoteRow[]> {
 	if (scope.promptIds.length === 0 || sentiments.length === 0) return [];
-	const rank = sentimentRank(sentiments);
 	const passage = sql`rm.assessments->'brand'->'passage'`;
 	return queryPg<SentimentQuoteRow>(sql`
-		SELECT id, prompt_id, model, created_at, brand, text_content FROM (
-			SELECT DISTINCT ON (pr.prompt_id)
-				pr.id::text AS id,
-				pr.prompt_id::text AS prompt_id,
-				pr.model,
-				pr.created_at,
-				rm.assessments->'brand' AS brand,
-				re.text_content,
-				${rank} AS rank,
-				${sentimentConfidence} AS confidence
-			FROM prompt_runs pr
-			JOIN run_mentions rm ON rm.run_id = pr.id
-			JOIN run_extractions re ON re.run_id = pr.id
-			WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
-				AND ${rank} IS NOT NULL
-				AND re.text_content IS NOT NULL
-				AND (${passage}->>'start')::int < (${passage}->>'end')::int
-			ORDER BY pr.prompt_id, rank, confidence DESC, pr.created_at DESC
-		) best
-		ORDER BY rank, confidence DESC, created_at DESC
-		LIMIT ${limit}
+		WITH
+			best AS (
+				SELECT DISTINCT ON (sentiment, pr.prompt_id)
+					pr.id,
+					pr.prompt_id,
+					pr.model,
+					pr.created_at,
+					rm.assessments->'brand' AS brand,
+					${sentimentBucket} AS sentiment,
+					${sentimentConfidence} AS confidence
+				FROM prompt_runs pr
+				JOIN run_mentions rm ON rm.run_id = pr.id
+				JOIN run_extractions re ON re.run_id = pr.id
+				WHERE ${scopeFilter(scope, { time: "created_at", alias: "pr" })}
+					AND ${sentimentRank(sentiments)} IS NOT NULL
+					AND re.text_content IS NOT NULL
+					AND (${passage}->>'start')::int < (${passage}->>'end')::int
+				ORDER BY sentiment, pr.prompt_id, confidence DESC, pr.created_at DESC, pr.id
+			),
+			ranked AS (
+				SELECT *, row_number() OVER (PARTITION BY sentiment ORDER BY confidence DESC, created_at DESC, id) AS place
+				FROM best
+			)
+		SELECT r.id::text AS id, r.prompt_id::text AS prompt_id, r.model, r.created_at, r.sentiment, r.brand, re.text_content
+		FROM ranked r
+		JOIN run_extractions re ON re.run_id = r.id
+		WHERE r.place <= ${limit}
+		ORDER BY r.sentiment, r.place
 	`);
 }
