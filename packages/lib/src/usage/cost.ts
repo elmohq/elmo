@@ -44,9 +44,8 @@ export function estimateRunCostUsd(provider: string | null, webSearchEnabled: bo
 
 /**
  * Dollars per provider credit, for providers that report what they charged in
- * credits. Cloro's is the Growth plan rate ($500 for 1.35M credits); the raw
- * credits are stored in usage_events.units, so the dollars can be recomputed
- * if the plan changes.
+ * credits. The raw credits are stored in usage_events.units, so the dollars can
+ * be recomputed if the rate changes.
  */
 const PROVIDER_USD_PER_CREDIT: Record<string, number> = {
 	cloro: 500 / 1_350_000,
@@ -58,10 +57,6 @@ const PROVIDER_USD_PER_CREDIT: Record<string, number> = {
  */
 const BILLS_ONLY_RESULTS = new Set(["cloro", "openrouter"]);
 
-/**
- * What a successful run cost: the provider's own figure when it reported one,
- * converted from credits where it bills in credits, else the flat estimate.
- */
 export function runCostUsd(input: {
 	provider: string | null;
 	webSearchEnabled: boolean;
@@ -74,7 +69,6 @@ export function runCostUsd(input: {
 	return estimateRunCostUsd(input.provider, input.webSearchEnabled);
 }
 
-/** What a failed run cost: nothing for providers that only bill results, else the flat estimate. */
 export function failedRunCostUsd(provider: string | null, webSearchEnabled: boolean): number | null {
 	if (provider && BILLS_ONLY_RESULTS.has(provider)) return 0;
 	return estimateRunCostUsd(provider, webSearchEnabled);
