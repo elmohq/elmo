@@ -362,7 +362,68 @@ export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[
 
 // --- Competitor-vs-competitor pairs ------------------------------------------
 
+// Hand-written verdicts and FAQs for the pairs people actually search for,
+// checked against each vendor's pricing and product pages in October 2026.
+const PAIR_CONTENT: Record<string, { verdict: string; faqs: FaqItem[] }> = {
+	"profound-vs-athenahq": {
+		verdict:
+			"Pick AthenaHQ if you want to start without a sales call: it has a free tier and a $295/mo Starter plan with 3,600 AI responses a month across 11 engines. Pick Profound if you are buying for an enterprise: after a 7-day trial it is sold on custom contracts, with daily tracking on up to 9 engines, Agent Analytics for AI crawler traffic, and API access and SSO on Enterprise. Both are closed and hosted. Elmo is the open-source option, free to self-host or from $29/mo on Elmo Cloud.",
+		faqs: [
+			{
+				question: "Which has better citation tracking, Profound or AthenaHQ?",
+				answer:
+					"Both track which sources AI answers cite, so the difference is mostly access. Profound reports citation share and citation rank per prompt, and its Enterprise API returns the citations behind every run. AthenaHQ meters everything in credits, one per AI response, so how much citation data you collect depends on how many credits you buy. Elmo records every cited domain and URL for each answer on every plan, and the data is yours to query.",
+			},
+			{
+				question: "Is Profound or AthenaHQ better for agencies?",
+				answer:
+					"Profound sells a dedicated agency plan priced per client workspace, alongside its enterprise contracts. AthenaHQ's published plans are per account with unlimited seats, so agencies should confirm how it handles multiple clients. Elmo tracks several brands per account on its Pro and Business plans and can be white-labeled for agencies.",
+			},
+		],
+	},
+	"profound-vs-ahrefs-brand-radar": {
+		verdict:
+			"Ahrefs Brand Radar suits teams already paying for Ahrefs: it estimates AI visibility from an index of more than 500 million prompts modeled on Ahrefs' keyword data, so you get a market-wide view without writing prompts, and you can add custom-prompt checks in packs from $50/mo. Profound tracks your own prompt set daily from the engines' real interfaces and is sold on enterprise contracts after a 7-day trial. Choose Brand Radar for breadth and SEO context, Profound for depth on prompts you define, or Elmo to track your own prompts with open-source code from $29/mo.",
+		faqs: [
+			{
+				question: "Who has better prompt volume data, Ahrefs or Profound?",
+				answer:
+					"They are built differently. Profound's Prompt Volumes come from licensed consumer panels covering ChatGPT, Gemini, and Perplexity, refreshed weekly. Ahrefs models its AI prompt index from its own keyword database. Neither publishes an accuracy measure you can check, so treat both as directional estimates rather than counts.",
+			},
+			{
+				question: "Is Ahrefs Brand Radar cheaper than Profound?",
+				answer:
+					"Usually, if you already pay for Ahrefs. Paid Ahrefs plans from Lite up include a small number of custom-prompt checks, and add-on packs start at $50/mo. Profound publishes no paid price for brands: after its free trial, Enterprise is quoted by sales.",
+			},
+		],
+	},
+	"peec-ai-vs-otterly-ai": {
+		verdict:
+			"OtterlyAI is the cheaper way in: $29/mo for 15 prompts on ChatGPT, Google AI Overviews, Perplexity, and Copilot, with Gemini, AI Mode, and Claude sold as add-ons. Peec AI starts at $95/mo for 50 prompts on three models you choose, about 4,500 answers a month. Per answer they land close together. Pick Otterly for a small prompt set plus its GEO audits, Peec for larger prompt sets tracked across several countries and projects. Elmo is the open-source alternative to both, free to self-host or from $29/mo.",
+		faqs: [
+			{
+				question: "Is Peec AI or OtterlyAI better for a small team?",
+				answer:
+					"OtterlyAI has the lower entry price, at $29/mo for 15 prompts on four engines. Peec AI starts at $95/mo but includes 50 prompts. If you need more than 15 prompts, Otterly's next plan is $189/mo, so Peec's Starter plan is often the better value for a team tracking a few dozen questions.",
+			},
+		],
+	},
+	"airops-vs-scrunch": {
+		verdict:
+			"AirOps and Scrunch solve different halves of the problem. AirOps is a content workflow platform for creating and refreshing pages, with an Insights module that tracks AI visibility: free for ChatGPT on its Solo plan, and across 7+ engines on paid tiers it prices through sales. Scrunch is a monitoring platform with published prices, from $250/mo billed annually for 350 custom prompts on seven engines, plus an Agent Experience Platform that serves AI-readable versions of your pages. Sitecore acquired Scrunch in June 2026. Elmo is the open-source tracker if you only need the measurement.",
+		faqs: [
+			{
+				question: "How does Scrunch AI compare to AirOps?",
+				answer:
+					"Scrunch is built around monitoring how AI engines describe your brand, with personas, page audits, and an Agent Experience Platform that serves AI-readable versions of your pages. AirOps is built around producing content, with workflows and brand kits, and treats visibility tracking as one module. Scrunch publishes self-serve prices; AirOps publishes a free Solo plan and prices the rest through sales.",
+			},
+		],
+	},
+};
+
 function getPairVerdict(a: Competitor, b: Competitor): string {
+	const content = PAIR_CONTENT[comparePairSlug(a, b)];
+	if (content) return content.verdict;
 	const sameCat = a.category === b.category;
 	const clause = sameCat ? `${CATEGORY_NOUN[a.category]} tools` : "AI visibility tools";
 	return `${a.name} and ${b.name} are both ${clause} that measure how AI answer engines describe your brand. ${a.name} is pitched as "${a.tagline}". ${b.name} leans on "${b.tagline}". Both are closed and hosted, so neither lets you see how its scores are built. Elmo tracks the same engines as an open-source tool you run yourself, which makes it the third option worth weighing here.`;
@@ -385,6 +446,7 @@ function getPairFaqs(a: Competitor, b: Competitor): FaqItem[] {
 	const featureSentence = featureBits.length ? ` On features, ${featureBits.join(", while ")}.` : "";
 
 	return [
+		...(PAIR_CONTENT[comparePairSlug(a, b)]?.faqs ?? []),
 		{
 			question: `What is the difference between ${a.name} and ${b.name}?`,
 			answer: `${overlap}${featureSentence} Both are closed-source and hosted.`,
