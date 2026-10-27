@@ -64,7 +64,8 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 
 ## Comments and docs
 
-- Comment only to explain **why** or to add context the code can't show. Never restate what the code already says.
+- Adding code comments should be rare. Default to writing none; good names and clear code are the documentation.
+- Add a comment only when it explains a non-obvious **why** or context the code can't show (a workaround, a surprising constraint, an external quirk). Never restate what the code already says, and don't add section labels, docstrings that echo the signature, or narration of your change.
 - The same applies to docs and this file: never write down what's already derivable from the repo (what a file imports, what a script runs, how code is structured).
 - Don't describe prior behavior ("previously this did X") and don't reference GitHub issues or tickets in code — that context belongs in the commit message or PR.
 
