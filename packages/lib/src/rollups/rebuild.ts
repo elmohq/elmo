@@ -5,10 +5,13 @@ import {
 	citedPages,
 	promptRuns,
 	prompts,
+	rollupCitationPages,
 	rollupCitationUrls,
 	rollupCompetitorMentions,
 	rollupPromptRuns,
+	rollupSentimentQuotes,
 	rollupWebQueries,
+	runExtractions,
 	runMentions,
 } from "../db/schema";
 import { assertBucketAligned, bucketSql } from "./bucket";
@@ -20,6 +23,7 @@ export interface RebuildStats {
 	competitorRows: number;
 	webQueryRows: number;
 	urlRows: number;
+	quoteRows: number;
 }
 
 /**
@@ -59,12 +63,20 @@ export async function rebuildRange(
 		const competitorRows = await insertCompetitorRollup(tx, brandId, from, toExclusive);
 		const webQueryRows = await insertWebQueryRollup(tx, brandId, from, toExclusive);
 		const urlRows = await insertCitationRollup(tx, brandId, from, toExclusive);
-		return { runs, competitorRows, webQueryRows, urlRows };
+		await upsertBrandPages(tx, brandId, from, toExclusive);
+		const quoteRows = await insertSentimentQuoteRollup(tx, brandId, from, toExclusive);
+		return { runs, competitorRows, webQueryRows, urlRows, quoteRows };
 	});
 }
 
 async function clearRange(tx: DbConnection, brandId: string, from: Date, toExclusive: Date): Promise<void> {
-	for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupWebQueries, rollupCitationUrls]) {
+	for (const table of [
+		rollupPromptRuns,
+		rollupCompetitorMentions,
+		rollupWebQueries,
+		rollupCitationUrls,
+		rollupSentimentQuotes,
+	]) {
 		await tx.execute(sql`
 			DELETE FROM ${table}
 			WHERE brand_id = ${brandId} AND bucket >= ${from} AND bucket < ${toExclusive}
@@ -192,6 +204,89 @@ async function insertCitationRollup(tx: DbConnection, brandId: string, from: Dat
 		JOIN ${citedPages} cp ON cp.id = c.page_id
 		${inRange(brandId, from, toExclusive)}
 		GROUP BY ${keyColumns}, c.page_id, cp.domain
+	`);
+	return result.rowCount ?? 0;
+}
+
+/**
+ * Pages only ever gain brands here; one the brand stops citing keeps its row,
+ * which reads never reach without a citation to join through. Rows go in page
+ * order, the order `syncBrandPages` locks them in.
+ */
+async function upsertBrandPages(tx: DbConnection, brandId: string, from: Date, toExclusive: Date): Promise<void> {
+	await tx.execute(sql`
+		INSERT INTO ${rollupCitationPages} (brand_id, page_id, url, domain, title, page_type, static_category)
+		SELECT ${brandId}, cp.id, cp.url, cp.domain, cp.title, cp.page_type, cp.static_category
+		FROM (
+			SELECT DISTINCT page_id FROM ${rollupCitationUrls}
+			WHERE brand_id = ${brandId} AND bucket >= ${from} AND bucket < ${toExclusive}
+		) cited
+		JOIN ${citedPages} cp ON cp.id = cited.page_id
+		ORDER BY cp.id
+		ON CONFLICT (brand_id, page_id) DO UPDATE SET
+			url = excluded.url,
+			domain = excluded.domain,
+			title = excluded.title,
+			page_type = excluded.page_type,
+			static_category = excluded.static_category
+		WHERE ${pageColumns(sql`${rollupCitationPages}`)} IS DISTINCT FROM ${pageColumns(sql`excluded`)}
+	`);
+}
+
+const pageColumns = (table: SQL) =>
+	sql`(${table}.url, ${table}.domain, ${table}.title, ${table}.page_type, ${table}.static_category)`;
+
+/**
+ * Carries page changes to every brand's copy. Rows are locked in page order
+ * first, as the rebuild writes them, so this and a rebuild can't deadlock.
+ */
+export async function syncBrandPages(tx: DbConnection, pageIds: number[]): Promise<void> {
+	if (pageIds.length === 0) return;
+	const ids = sql`ARRAY[${sql.join(
+		pageIds.map((id) => sql`${id}::bigint`),
+		sql`, `,
+	)}]`;
+	await tx.execute(sql`
+		WITH stale AS (
+			SELECT b.brand_id, b.page_id
+			FROM ${rollupCitationPages} b
+			JOIN ${citedPages} cp ON cp.id = b.page_id
+			WHERE b.page_id = ANY(${ids}) AND ${pageColumns(sql`b`)} IS DISTINCT FROM ${pageColumns(sql`cp`)}
+			ORDER BY b.page_id, b.brand_id
+			FOR UPDATE OF b
+		)
+		UPDATE ${rollupCitationPages} b
+		SET url = cp.url, domain = cp.domain, title = cp.title, page_type = cp.page_type, static_category = cp.static_category
+		FROM stale, ${citedPages} cp
+		WHERE b.brand_id = stale.brand_id AND b.page_id = stale.page_id AND cp.id = b.page_id
+	`);
+}
+
+const brandSentiment = sql`m.assessments->'brand'`;
+
+async function insertSentimentQuoteRollup(
+	tx: DbConnection,
+	brandId: string,
+	from: Date,
+	toExclusive: Date,
+): Promise<number> {
+	const sentiment = sql`(${brandSentiment}->>'sentiment')`;
+	const passage = sql`${brandSentiment}->'passage'`;
+	const confidence = sql`coalesce((${brandSentiment}->'sentimentProbabilities'->>${sentiment})::float8, 0)`;
+	const result = await tx.execute(sql`
+		INSERT INTO ${rollupSentimentQuotes} (
+			brand_id, bucket, prompt_id, model, provider, web_search_enabled, sentiment, run_id, confidence, created_at
+		)
+		SELECT DISTINCT ON (${keyColumns}, ${sentiment})
+			${keyColumns}, ${sentiment}, pr.id, ${confidence}, pr.created_at
+		${brandRuns(brandId)}
+		JOIN ${runExtractions} re ON re.run_id = pr.id
+		${inRange(brandId, from, toExclusive)}
+			AND m.brand_mentioned
+			AND ${sentiment} IS NOT NULL
+			AND (${passage}->>'start')::int < (${passage}->>'end')::int
+			AND re.text_content IS NOT NULL
+		ORDER BY ${keyColumns}, ${sentiment}, ${confidence} DESC, pr.created_at DESC, pr.id
 	`);
 	return result.rowCount ?? 0;
 }

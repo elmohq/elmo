@@ -4,6 +4,7 @@ import {
 	bigint,
 	boolean,
 	check,
+	doublePrecision,
 	index,
 	integer,
 	json,
@@ -490,6 +491,32 @@ export const rollupCitationUrls = pgTable(
 	],
 ).enableRLS();
 
+/**
+ * The pages a brand has cited, copied from `cited_pages` so a brand's reads find
+ * them together instead of one lookup apiece across every tenant's pages. Kept in
+ * step with `cited_pages` wherever a page changes (see `syncBrandPages`).
+ */
+export const rollupCitationPages = pgTable(
+	"rollup_citation_pages",
+	{
+		brandId: text("brand_id")
+			.notNull()
+			.references(() => brands.id, { onDelete: "cascade" }),
+		pageId: bigint("page_id", { mode: "number" })
+			.notNull()
+			.references(() => citedPages.id),
+		url: text("url").notNull(),
+		domain: text("domain").notNull(),
+		title: text("title"),
+		pageType: text("page_type").notNull(),
+		staticCategory: text("static_category").notNull(),
+	},
+	(table) => [
+		primaryKey({ name: "rollup_citation_pages_pk", columns: [table.brandId, table.pageId] }),
+		index("rollup_citation_pages_page_id_idx").on(table.pageId),
+	],
+).enableRLS();
+
 /** Genuine fan-out queries, each counted once per run that searched it. */
 export const rollupWebQueries = pgTable(
 	"rollup_web_queries",
@@ -514,6 +541,36 @@ export const rollupWebQueries = pgTable(
 			],
 		}),
 		index("rollup_web_queries_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/**
+ * For each sentiment, the run that best shows it: the one the judge is most
+ * confident about, with a passage and answer text to quote from.
+ */
+export const rollupSentimentQuotes = pgTable(
+	"rollup_sentiment_quotes",
+	{
+		...rollupKeyColumns(),
+		sentiment: text("sentiment").notNull(),
+		runId: uuid("run_id").notNull(),
+		confidence: doublePrecision("confidence").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_sentiment_quotes_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.sentiment,
+			],
+		}),
+		index("rollup_sentiment_quotes_prompt_id_bucket_idx").on(table.promptId, table.bucket),
 	],
 ).enableRLS();
 
