@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { GoogleShoppingCard, PRODUCTS_PAGE_SIZE, QUERIES_PAGE_SIZE } from "@/components/citations/google-shopping-card";
 import { TopDomainsCard } from "@/components/citations/top-domains-card";
 import { TopUrlsCard } from "@/components/citations/top-urls-card";
 import type {
@@ -6,9 +7,10 @@ import type {
 	CitationDomainItem,
 	CitationListControls,
 	CitationUrlItem,
+	GoogleModuleData,
 } from "@/components/citations/types";
 import { usePagedList } from "@/components/list-pagination";
-import { type CitationFilters, useCitationDomains, useCitationUrls } from "@/hooks/use-citations";
+import { type CitationFilters, useCitationDomains, useCitationUrls, useGoogleShopping } from "@/hooks/use-citations";
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -163,4 +165,92 @@ export function RemoteTopDomainsCard({ source, ...props }: DomainCardProps & { s
 		isFetching: query.isFetching,
 	};
 	return <TopDomainsCard list={list} {...props} />;
+}
+
+type ProductFilter = "all" | "brand" | "competitor";
+
+export function LocalGoogleShoppingCard({ googleModule }: { googleModule: GoogleModuleData }) {
+	const [productFilter, setProductFilter] = useState<ProductFilter>("all");
+	const filtered = useMemo(
+		() =>
+			googleModule.shopping.products.filter(
+				(product) => productFilter === "all" || product.attribution === productFilter,
+			),
+		[googleModule, productFilter],
+	);
+	const products = usePagedList(filtered, PRODUCTS_PAGE_SIZE);
+	const queries = usePagedList(googleModule.search.queries, QUERIES_PAGE_SIZE);
+	return (
+		<GoogleShoppingCard
+			totals={googleModule}
+			products={{ ...products, items: products.pageItems, total: products.totalItems }}
+			productFilter={productFilter}
+			setProductFilter={(filter) => {
+				setProductFilter(filter);
+				products.setPage(0);
+			}}
+			queries={{ ...queries, items: queries.pageItems, total: queries.totalItems }}
+			promptValues={googleModule.promptValues}
+		/>
+	);
+}
+
+export function RemoteGoogleShoppingCard({ totals, source }: { totals: GoogleModuleData; source: RemoteListSource }) {
+	const [productFilter, setProductFilter] = useState<ProductFilter>("all");
+	const productFilters = useListFilters();
+	const queryFilters = useListFilters();
+	const productPage = useRemotePage(
+		productFilters,
+		source,
+		totals.shopping.productCounts[productFilter],
+		PRODUCTS_PAGE_SIZE,
+	);
+	const queryPage = useRemotePage(queryFilters, source, totals.search.queryCount, QUERIES_PAGE_SIZE);
+	const products = useGoogleShopping(
+		source.brandId,
+		source.filters,
+		{
+			list: "products",
+			attribution: productFilter,
+			page: productPage,
+			pageSize: PRODUCTS_PAGE_SIZE,
+		},
+		totals.shopping.productCounts.all > 0,
+	);
+	const queries = useGoogleShopping(
+		source.brandId,
+		source.filters,
+		{
+			list: "queries",
+			attribution: "all",
+			page: queryPage,
+			pageSize: QUERIES_PAGE_SIZE,
+		},
+		totals.search.queryCount > 0,
+	);
+	return (
+		<GoogleShoppingCard
+			totals={totals}
+			products={{
+				items: (products.data?.items ?? []) as GoogleModuleData["shopping"]["products"],
+				total: totals.shopping.productCounts[productFilter],
+				page: productPage,
+				setPage: productFilters.setPage,
+				isFetching: products.isFetching,
+			}}
+			productFilter={productFilter}
+			setProductFilter={(filter) => {
+				setProductFilter(filter);
+				productFilters.setPage(0);
+			}}
+			queries={{
+				items: (queries.data?.items ?? []) as GoogleModuleData["search"]["queries"],
+				total: totals.search.queryCount,
+				page: queryPage,
+				setPage: queryFilters.setPage,
+				isFetching: queries.isFetching,
+			}}
+			promptValues={{ ...products.data?.promptValues, ...queries.data?.promptValues }}
+		/>
+	);
 }

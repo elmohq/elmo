@@ -8,14 +8,15 @@ import {
 } from "@workspace/lib/citations/domain-categories";
 import { useMemo } from "react";
 import {
+	LocalGoogleShoppingCard,
 	LocalTopDomainsCard,
 	LocalTopUrlsCard,
+	RemoteGoogleShoppingCard,
 	type RemoteListSource,
 	RemoteTopDomainsCard,
 	RemoteTopUrlsCard,
 } from "@/components/citations/citation-lists";
 import { ContentGapsCard } from "@/components/citations/content-gaps-card";
-import { GoogleShoppingCard } from "@/components/citations/google-shopping-card";
 import { RecentChangesCard } from "@/components/citations/recent-changes-card";
 import { RedditCard } from "@/components/citations/reddit-card";
 import { CATEGORY_META, PAGE_TYPE_META } from "@/components/citations/shared";
@@ -233,7 +234,13 @@ export function CitationsDisplay({
 				: listSource && <RemoteTopUrlsCard source={listSource} {...urlCardProps} />}
 
 			{/* Google Shopping */}
-			{googleModule && googleModule.shopping.products.length > 0 && <GoogleShoppingCard googleModule={googleModule} />}
+			{googleModule &&
+				googleModule.shopping.productCounts.all > 0 &&
+				(citationData.specificUrls ? (
+					<LocalGoogleShoppingCard googleModule={googleModule} />
+				) : (
+					listSource && <RemoteGoogleShoppingCard totals={googleModule} source={listSource} />
+				))}
 
 			{/* Top Cited Subreddits */}
 			{citationData.subreddits.length > 0 && <RedditCard subreddits={citationData.subreddits} />}

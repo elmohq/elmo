@@ -34,7 +34,13 @@ import {
 	getCitationUrlPage,
 	type OwnedDomains,
 } from "@/lib/citation-read";
-import { buildGoogleModule, emptyGoogleModule, type GoogleModule } from "@/lib/google-module";
+import {
+	buildGoogleModule,
+	emptyGoogleModule,
+	type GoogleModule,
+	googleModuleTotals,
+	pageGoogleList,
+} from "@/lib/google-module";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
 import {
 	getPerPromptCitationDomains,
@@ -363,11 +369,13 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		// queries, each tied to the prompts that triggered them.
 		const promptsById = new Map(allPrompts.map((prompt) => [prompt.id, prompt]));
 		const promptValue = (id: string) => promptsById.get(id)?.value;
-		const googleModule = buildGoogleModule(
-			googlePages,
-			brand?.name ?? "",
-			competitorsList.map((c) => ({ id: c.id, name: c.name })),
-			promptValue,
+		const googleModule = googleModuleTotals(
+			buildGoogleModule(
+				googlePages,
+				brand?.name ?? "",
+				competitorsList.map((c) => ({ id: c.id, name: c.name })),
+				promptValue,
+			),
 		);
 
 		const timeSeriesArgs = {
@@ -497,3 +505,27 @@ function toDomainListItem(row: CitationDomainStatsRow): CitationDomainListItem {
 			row.previous_count > 0 ? Math.round(((row.count - row.previous_count) / row.previous_count) * 100) : null,
 	};
 }
+
+export const getGoogleShoppingFn = createServerFn({ method: "GET" })
+	.validator(
+		citationFiltersSchema.extend({
+			list: z.enum(["products", "queries"]),
+			attribution: z.enum(["all", "brand", "competitor", "other"]).default("all"),
+			page: listPageSchema.page,
+			pageSize: listPageSchema.pageSize,
+		}),
+	)
+	.handler(async ({ data }) => {
+		await requireBrandSession(data.brandId);
+		const { scope, brand, competitorsList, allPrompts } = await resolveCitationScope(data);
+		const promptsById = new Map(allPrompts.map((prompt) => [prompt.id, prompt.value]));
+		const googleModule = buildGoogleModule(
+			scope.promptIds.length > 0 ? await getPerPromptGooglePages(scope) : [],
+			brand?.name ?? "",
+			competitorsList.map((c) => ({ id: c.id, name: c.name })),
+			(id) => promptsById.get(id),
+		);
+		const list =
+			data.list === "products" ? { kind: "products" as const, filter: data.attribution } : { kind: "queries" as const };
+		return pageGoogleList(googleModule, list, data.page * data.pageSize, data.pageSize);
+	});

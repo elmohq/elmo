@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
-import { getCitationDomainsFn, getCitationsFn, getCitationUrlsFn } from "@/server/citations";
+import { getCitationDomainsFn, getCitationsFn, getCitationUrlsFn, getGoogleShoppingFn } from "@/server/citations";
 
 export interface CitationFilters {
 	lookback?: LookbackPeriod;
@@ -24,7 +24,42 @@ export const citationKeys = {
 		[...citationKeys.all, brandId, filters, "urls", query] as const,
 	domains: (brandId: string, filters: CitationFilters | undefined, query: CitationListQuery) =>
 		[...citationKeys.all, brandId, filters, "domains", query] as const,
+	google: (brandId: string, filters: CitationFilters | undefined, query: GoogleListQuery) =>
+		[...citationKeys.all, brandId, filters, "google", query] as const,
 };
+
+export interface GoogleListQuery {
+	list: "products" | "queries";
+	attribution: "all" | "brand" | "competitor";
+	page: number;
+	pageSize: number;
+}
+
+export function useGoogleShopping(
+	brandId: string,
+	filters: CitationFilters | undefined,
+	query: GoogleListQuery,
+	enabled: boolean,
+) {
+	return useQuery({
+		enabled,
+		queryKey: citationKeys.google(brandId, filters, query),
+		queryFn: () =>
+			getGoogleShoppingFn({
+				data: {
+					brandId,
+					lookback: filters?.lookback ?? "1w",
+					tags: filters?.tags?.join(","),
+					model: filters?.model,
+					...query,
+				},
+			}),
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		refetchInterval: 60_000,
+		placeholderData: keepPreviousData,
+	});
+}
 
 function filterParams(brandId: string, filters: CitationFilters | undefined, query: CitationListQuery) {
 	return {
