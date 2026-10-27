@@ -45,21 +45,18 @@ export function faviconUrl(source: string | null | undefined, size = 64): string
 	return `/api/site-icon?${new URLSearchParams({ domain, size: String(snapSize(size)) }).toString()}`;
 }
 
-export type MarkTone = "light" | "dark";
-
 const MIN_MARK_ALPHA = 128;
 const MAX_MARK_COVERAGE = 0.6;
 const LIGHT_MARK_LUMINANCE = 0.8;
-const DARK_MARK_LUMINANCE = 0.25;
 
 /**
- * Whether an icon is a lone mark that only reads on one kind of background.
+ * Whether an icon is a lone light mark that would vanish on our light pages.
  *
- * Some sites ship a white mark on transparency (meant for dark tabs) and many
- * ship a black one; either disappears on a page of the same tone. Icons that
- * fill most of their square carry their own background and are left alone.
+ * Some sites ship a white mark on transparency, meant for dark browser tabs.
+ * Icons that fill most of their square carry their own background and are
+ * left alone.
  */
-export function markTone(rgba: ArrayLike<number>): MarkTone | null {
+export function isLightMark(rgba: ArrayLike<number>): boolean {
 	let opaque = 0;
 	let luminance = 0;
 	for (let i = 0; i < rgba.length; i += 4) {
@@ -69,12 +66,9 @@ export function markTone(rgba: ArrayLike<number>): MarkTone | null {
 	}
 
 	const pixels = rgba.length / 4;
-	if (opaque === 0 || opaque / pixels > MAX_MARK_COVERAGE) return null;
+	if (opaque === 0 || opaque / pixels > MAX_MARK_COVERAGE) return false;
 
-	const mean = luminance / opaque;
-	if (mean > LIGHT_MARK_LUMINANCE) return "light";
-	if (mean < DARK_MARK_LUMINANCE) return "dark";
-	return null;
+	return luminance / opaque > LIGHT_MARK_LUMINANCE;
 }
 
 export interface SiteIconSubject {

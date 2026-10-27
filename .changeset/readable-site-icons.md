@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Keep white and black site icons visible in both light and dark mode.
+Keep light-colored brand icons with transparent backgrounds visible on the site.

@@ -8,7 +8,7 @@ import { IconWorld } from "@tabler/icons-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
-import { faviconUrl, type MarkTone, markTone } from "@/lib/site-icon";
+import { faviconUrl, isLightMark } from "@/lib/site-icon";
 
 export type SiteIconSize = "xs" | "sm" | "md" | "lg";
 
@@ -37,23 +37,17 @@ const GLYPH_SCALE = "size-[75%]";
 // get that the icon is missing.
 const PLACEHOLDER_SIZE = 16;
 
-// A bare mark gets a backdrop only in the theme it would vanish in.
-const TONE_BACKDROP: Record<MarkTone, string> = {
-	light: "bg-foreground dark:bg-transparent",
-	dark: "dark:bg-foreground",
-};
-
-function readMarkTone(image: HTMLImageElement): MarkTone | null {
+function readIsLightMark(image: HTMLImageElement): boolean {
 	const canvas = document.createElement("canvas");
 	canvas.width = image.naturalWidth;
 	canvas.height = image.naturalHeight;
 	const context = canvas.getContext("2d", { willReadFrequently: true });
-	if (!context) return null;
+	if (!context) return false;
 	context.drawImage(image, 0, 0);
 	try {
-		return markTone(context.getImageData(0, 0, canvas.width, canvas.height).data);
+		return isLightMark(context.getImageData(0, 0, canvas.width, canvas.height).data);
 	} catch {
-		return null;
+		return false;
 	}
 }
 
@@ -72,11 +66,11 @@ export function SiteIcon({
 
 	const [checkedSrc, setCheckedSrc] = useState<string | null>(null);
 	const [isPlaceholder, setIsPlaceholder] = useState(false);
-	const [tone, setTone] = useState<MarkTone | null>(null);
+	const [needsBackdrop, setNeedsBackdrop] = useState(false);
 	if (checkedSrc !== src) {
 		setCheckedSrc(src);
 		setIsPlaceholder(false);
-		setTone(null);
+		setNeedsBackdrop(false);
 	}
 
 	const iconSrc = isPlaceholder ? null : src;
@@ -92,9 +86,9 @@ export function SiteIcon({
 					onLoad={(event) => {
 						const image = event.currentTarget;
 						if (image.naturalWidth <= PLACEHOLDER_SIZE) setIsPlaceholder(true);
-						else setTone(readMarkTone(image));
+						else setNeedsBackdrop(readIsLightMark(image));
 					}}
-					className={cn("rounded-[inherit] object-contain", tone && TONE_BACKDROP[tone])}
+					className={cn("rounded-[inherit] object-contain", needsBackdrop && "bg-foreground")}
 				/>
 			)}
 			{/* Waiting out a request in flight beats flashing the glyph on every

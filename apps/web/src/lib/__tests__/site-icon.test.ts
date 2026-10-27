@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBrandDomainIndex, domainForName, faviconUrl, markTone, upstreamFaviconUrl } from "@/lib/site-icon";
+import { buildBrandDomainIndex, domainForName, faviconUrl, isLightMark, upstreamFaviconUrl } from "@/lib/site-icon";
 
 const iconParams = (url: string | null) => new URL(url!, "https://app.test").searchParams;
 
@@ -52,26 +52,23 @@ const WHITE: Pixel = [255, 255, 255, 255];
 const BLACK: Pixel = [0, 0, 0, 255];
 const BLUE: Pixel = [37, 99, 235, 255];
 
-describe("markTone", () => {
-	it("flags a white mark on transparency, which vanishes on a light page", () => {
-		expect(markTone(icon(WHITE, 0.4))).toBe("light");
+describe("isLightMark", () => {
+	it("flags a white mark on transparency, which vanishes on our light pages", () => {
+		expect(isLightMark(icon(WHITE, 0.4))).toBe(true);
 	});
 
-	it("flags a black mark on transparency, which vanishes on a dark page", () => {
-		expect(markTone(icon(BLACK, 0.3))).toBe("dark");
+	it("leaves dark and colored marks alone, since they read on a light page", () => {
+		expect(isLightMark(icon(BLACK, 0.3))).toBe(false);
+		expect(isLightMark(icon(BLUE, 0.4))).toBe(false);
 	});
 
 	it("leaves icons that bring their own background alone", () => {
-		expect(markTone(icon(WHITE, 1))).toBeNull();
-		expect(markTone(icon(BLACK, 0.7, WHITE))).toBeNull();
+		expect(isLightMark(icon(WHITE, 1))).toBe(false);
+		expect(isLightMark(icon(BLACK, 0.7, WHITE))).toBe(false);
 	});
 
-	it("leaves colored marks alone, since they read on either theme", () => {
-		expect(markTone(icon(BLUE, 0.4))).toBeNull();
-	});
-
-	it("has nothing to say about a fully transparent image", () => {
-		expect(markTone(icon(WHITE, 0))).toBeNull();
+	it("has nothing to flag in a fully transparent image", () => {
+		expect(isLightMark(icon(WHITE, 0))).toBe(false);
 	});
 });
 
