@@ -215,11 +215,7 @@ export interface SentimentQuoteRow {
 	text_content: string;
 }
 
-/**
- * Up to `limit` per sentiment, one per prompt, so a daily prompt doesn't fill the
- * list with the same answer. Candidates come from the quote rollup, so only the
- * runs quoted are read whole.
- */
+/** Up to `limit` per sentiment, one per prompt, so a daily prompt doesn't fill the list with the same answer. */
 export async function getSentimentQuotes(
 	scope: PromptListScope,
 	sentiments: readonly Sentiment[],

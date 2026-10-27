@@ -1,9 +1,3 @@
-/**
- * Brand-wide citation reads over `rollup_citation_pages`, the brand's own copy of
- * the pages it cites. Every list here is filtered, sorted and paged in SQL, so a
- * response holds the rows on screen whatever the window.
- */
-
 import { CONTENT_PUBLISHER_CATEGORIES } from "@workspace/lib/citations/domain-categories";
 import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/citations/page-classification";
 import { type SQL, sql } from "drizzle-orm";
@@ -159,10 +153,6 @@ function urlFilter(filter: CitationUrlFilter): { pages: SQL; classes: SQL } {
 	return { pages, classes: sql`TRUE ${category} ${pageType}` };
 }
 
-/**
- * Prompts citing each page in the window, and whether the previous window cited
- * it at all, for the few pages a list shows.
- */
 async function pageDetails(
 	scope: AnalyticsScope,
 	previous: AnalyticsScope,
@@ -206,7 +196,6 @@ async function withPageDetails(
 	}));
 }
 
-/** One page of the window's URLs, most cited first, with how many match in all. */
 export async function getCitationUrlPage(
 	scope: AnalyticsScope,
 	previous: AnalyticsScope,
@@ -275,10 +264,6 @@ function domainStats(previous: AnalyticsScope): SQL {
 
 const isReddit = (domain: SQL) => sql`(${domain} = 'reddit.com' OR ${domain} LIKE '%.reddit.com')`;
 
-/**
- * Everything the citations page summarizes, from one pass over each window:
- * totals by class, what changed since the previous window, and the Reddit pages.
- */
 export async function getCitationSummary(
 	scope: AnalyticsScope,
 	previous: AnalyticsScope,
@@ -373,7 +358,6 @@ export async function getCitationSummary(
 	};
 }
 
-/** One page of the window's domains, most cited first, with how many match in all. */
 export async function getCitationDomainPage(
 	scope: AnalyticsScope,
 	previous: AnalyticsScope,

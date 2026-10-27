@@ -46,7 +46,6 @@ export interface CitationUrlItem {
 	isNew?: boolean;
 }
 
-/** A searchable, filterable, paged list, whether it is filtered in memory or on the server. */
 export interface CitationListControls<T> {
 	items: T[];
 	totalItems: number;

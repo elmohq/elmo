@@ -21,7 +21,6 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 	return debounced;
 }
 
-/** Search and tab state that sends the list back to its first page whenever it changes. */
 function useListFilters() {
 	const [page, setPage] = useState(0);
 	const [search, setSearch] = useState("");

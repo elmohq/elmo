@@ -34,7 +34,6 @@ interface CitationsDisplayProps {
 	maxUrls?: number;
 	days?: number;
 	onCompetitorAdded?: () => void;
-	/** Where to page through URLs and domains when `citationData` doesn't carry them all. */
 	listSource?: RemoteListSource;
 }
 

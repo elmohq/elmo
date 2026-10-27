@@ -253,10 +253,7 @@ const citationFiltersSchema = z.object({
 
 type CitationFilters = z.infer<typeof citationFiltersSchema>;
 
-/**
- * Who the brand is, which of its prompts the filters keep, and the window with
- * the equal-length one before it, all UTC so the server's zone doesn't matter.
- */
+/** All UTC, so the server's zone doesn't matter. */
 async function resolveCitationScope(data: CitationFilters) {
 	const days = await resolveBrandLookbackDays(data.brandId, data.lookback);
 	const endDate = customRangeEnd(data.lookback);
@@ -328,10 +325,6 @@ function emptyCitationsResult(
 	};
 }
 
-/**
- * Everything on the citations page except its URL and domain lists, which
- * `getCitationUrlsFn` and `getCitationDomainsFn` page through on their own.
- */
 export const getCitationsFn = createServerFn({ method: "GET" })
 	.validator(citationFiltersSchema)
 	.handler(async ({ data }): Promise<CitationsResult> => {
@@ -434,7 +427,6 @@ const listPageSchema = {
 
 export type CitationUrlListItem = CitationUrl & { promptCount: number; isNew: boolean };
 
-/** One page of the window's cited URLs, searched and filtered across all of them. */
 export const getCitationUrlsFn = createServerFn({ method: "GET" })
 	.validator(citationFiltersSchema.extend({ ...listPageSchema, pageType: z.string().optional() }))
 	.handler(async ({ data }): Promise<{ items: CitationUrlListItem[]; total: number }> => {
@@ -476,7 +468,6 @@ export interface CitationDomainListItem {
 	changePercent: number | null;
 }
 
-/** One page of the window's cited domains, searched and filtered across all of them. */
 export const getCitationDomainsFn = createServerFn({ method: "GET" })
 	.validator(citationFiltersSchema.extend(listPageSchema))
 	.handler(async ({ data }): Promise<{ items: CitationDomainListItem[]; total: number }> => {
