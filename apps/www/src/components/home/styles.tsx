@@ -10,6 +10,10 @@ import geist600 from "@fontsource/geist-sans/files/geist-sans-latin-600-normal.w
  */
 export const HOME_FONT_CLASS = "home-font";
 
+// The data-headline rules paint the headline test's "Win AI Search" arm before
+// hydration, at the hero's short-title size, so the server HTML can keep the
+// default H1 without that arm ever flashing it.
+//
 // Entrance motion only: the static end state is the design, which is what a
 // screenshot, a crawler, or a reduced-motion visitor gets.
 const css = `
@@ -22,6 +26,11 @@ const css = `
 .home-rise { animation: home-rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
 .home-grow { transform-origin: left; animation: home-grow 900ms cubic-bezier(0.3, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
 @media (prefers-reduced-motion: reduce) { .home-rise, .home-grow { animation: none; } }
+html[data-headline="win-ai-search"] h1[data-headline-pending] > span { display: none; }
+html[data-headline="win-ai-search"] h1[data-headline-pending]::before { content: attr(data-headline-pending); }
+html[data-headline="win-ai-search"] h1[data-headline-pending] { font-size: 3.5rem; line-height: 0.95; letter-spacing: -0.045em; }
+@media (min-width: 40rem) { html[data-headline="win-ai-search"] h1[data-headline-pending] { font-size: 4.5rem; } }
+@media (min-width: 64rem) { html[data-headline="win-ai-search"] h1[data-headline-pending] { font-size: 6.5rem; } }
 `;
 
 export function HomeStyles() {
