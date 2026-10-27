@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
 	CLOUD_PLATFORMS,
+	costPer1kAnswersUsd,
+	formatCostPer1k,
+	monthlyAnswers,
 	PLAN_KEYS,
 	PLANS,
 	type PlanPlatformGroupId,
@@ -249,5 +252,22 @@ describe("plan copy the surfaces share", () => {
 	it("names one pairing in the singular", () => {
 		expect(premiumPairings(1)).toBe("1 prompt/model pairing");
 		expect(premiumPairings(2)).toBe("2 prompt/model pairings");
+	});
+});
+
+describe("cost per 1,000 answers", () => {
+	it("matches the published value comparison for every plan", () => {
+		const published = PLAN_KEYS.map((key) => formatCostPer1k(costPer1kAnswersUsd(PLANS[key])));
+		expect(published).toEqual(["$19.3", "$4.13", "$4.12", "$3.84"]);
+	});
+
+	it("counts included premium pairings, which are answered daily", () => {
+		const withoutPremium = { ...PLANS.pro, premiumIncluded: 0 };
+		expect(monthlyAnswers(PLANS.pro) - monthlyAnswers(withoutPremium)).toBe(PLANS.pro.premiumIncluded * 30);
+	});
+
+	it("gets cheaper per answer as the plans go up", () => {
+		const paid = PLAN_KEYS.map((key) => costPer1kAnswersUsd(PLANS[key]));
+		expect([...paid].sort((a, b) => b - a)).toEqual(paid);
 	});
 });
