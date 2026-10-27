@@ -20,6 +20,13 @@ import { join, relative } from "node:path";
 
 const BUILTINS = new Set([...builtinModules, ...builtinModules.map((m) => `node:${m}`)]);
 
+/**
+ * Packages that are only ever required inside a try/catch as an optional
+ * enhancement, so a missing copy at runtime falls back instead of crashing.
+ * `@acemir/cssom` (via linkedom) probes for `cssstyle` this way.
+ */
+const OPTIONAL = new Set(["cssstyle"]);
+
 /** Rolldown emits this for a `require()` it could not link at build time. */
 const RUNTIME_REQUIRE = /__require\("([^"]+)"\)/g;
 
@@ -94,7 +101,7 @@ function unresolved(bundleDir) {
       const pkg = specifier.startsWith("@")
         ? specifier.split("/").slice(0, 2).join("/")
         : specifier.split("/")[0];
-      if (traced.has(pkg)) continue;
+      if (traced.has(pkg) || OPTIONAL.has(pkg)) continue;
       problems.push({ file: relative(bundleDir, file), specifier });
     }
   }
