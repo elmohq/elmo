@@ -85,7 +85,6 @@ export function demoSiteUrl(ref: ReferralSource): string {
 	return tagged(DEMO_SITE_URL, ref);
 }
 
-/** The Plausible goals a click through to one of our own destinations counts toward. */
 export type LinkClickGoal = "Cloud CTA Click" | "Live Demo Click" | "Book Demo Click";
 
 export interface LinkClick {
@@ -93,11 +92,6 @@ export interface LinkClick {
 	props: { ref?: string; page: string; destination: string };
 }
 
-/**
- * Which goal, if any, a click on `href` counts toward, seen from the page at
- * `pageUrl`. A link within the site the visitor is already on is navigation,
- * not a conversion — except the booking page, which www also links to relatively.
- */
 export function classifyLinkClick(href: string, pageUrl: string): LinkClick | null {
 	let page: URL;
 	let link: URL;

@@ -10,8 +10,7 @@ declare global {
 	}
 }
 
-// The script loads deferred, so a click can beat it; its own snippet queues
-// calls on `plausible.q` and replays them once it arrives.
+// Queue like the official snippet: a click can land before the deferred script loads.
 function plausible(event: string, props: Record<string, string>): void {
 	if (!window.plausible) {
 		const queue: PlausibleCommand = (...args) => {
@@ -31,7 +30,6 @@ function onClick(event: MouseEvent): void {
 	if (click) plausible(click.goal, click.props);
 }
 
-/** Sends a Plausible goal for every click through to the cloud app, the live demo, or demo booking. */
 export function trackLinkClickGoals(): () => void {
 	document.addEventListener("click", onClick, { capture: true });
 	document.addEventListener("auxclick", onClick, { capture: true });
