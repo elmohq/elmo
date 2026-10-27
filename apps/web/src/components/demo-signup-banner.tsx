@@ -18,7 +18,7 @@ export function DemoSignupBanner() {
 		<div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-900 dark:text-amber-100">
 			<span>
 				<span className="hidden sm:inline">You're viewing a live demo tracking Elmo's own brand. </span>
-				<span className="sm:hidden">Live demo of Elmo's own brand. </span>
+				<span className="sm:hidden">This is a live demo. </span>
 				Track yours from ${CLOUD_ENTRY_PRICE_USD}/mo.
 			</span>
 			<a
