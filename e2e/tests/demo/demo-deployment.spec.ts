@@ -11,6 +11,7 @@
  * write leaves the database untouched — a 403 that still wrote would pass the
  * unit tests.
  */
+import type { Page } from "@playwright/test";
 import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
 import {
   COMPETITOR_IDS,
@@ -24,9 +25,14 @@ import {
   organizationUrl,
 } from "../../fixtures";
 import { withDb } from "../../session";
-import { fillUntilSaveable } from "../../interactions";
+import { fillUntilSaveable, openAccountMenu } from "../../interactions";
 
 const authed = { Authorization: `Bearer ${TEST_API_KEY}` };
+
+async function expectSignedInAsDemo(page: Page): Promise<void> {
+  const session = await (await page.request.get("/api/auth/get-session")).json();
+  expect(session?.user?.email).toBe(DEMO_CREDENTIALS.email);
+}
 
 async function countRows(table: string, where: string, params: unknown[]): Promise<number> {
   return withDb(async (client) => {
@@ -143,15 +149,16 @@ test.describe("Demo auth is sign-in only", () => {
     await page.goto("/auth/login");
 
     await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
-    const session = await (await page.request.get("/api/auth/get-session")).json();
-    expect(session?.user?.email).toBe(DEMO_CREDENTIALS.email);
+    await expectSignedInAsDemo(page);
   });
 
   test("signing in lands on the page you were sent from", async ({ page }) => {
     await page.goto(brandUrl());
 
-    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+    // The stop at /auth/login can be over before a wait for it would start, so
+    // only where the visitor ends up, and as whom, is asserted.
     await page.waitForURL((url) => url.pathname === brandUrl(), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
   });
 
   test("the register page sends you to sign in", async ({ page, consoleErrors }) => {
@@ -162,12 +169,20 @@ test.describe("Demo auth is sign-in only", () => {
 
   test("the bare app URL opens on the demo account", async ({ page }) => {
     await page.goto("/");
-    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
     await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
   });
 });
 
 test.describe("Demo features", () => {
+  test("log out is not offered, since the login page would sign you straight back in", async ({ page }) => {
+    await page.goto(brandUrl());
+
+    const menu = await openAccountMenu(page);
+    await expect(menu.getByRole("menuitem").first()).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Log out" })).toHaveCount(0);
+  });
+
   test("the demo pill is shown", async ({ page }) => {
     await page.goto(`${brandUrl()}`);
     await expect(page.getByText("Demo", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
