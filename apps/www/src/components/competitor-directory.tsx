@@ -80,7 +80,7 @@ export function CompetitorDirectory({ afterHero }: { afterHero?: ReactNode }) {
 			{/* Feature Matrix */}
 			<section className="border-b border-zinc-200 bg-white py-12 lg:py-16">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
-					<h2 className="mb-8 text-lg font-semibold text-zinc-950">{filteredCompetitors.length} tools</h2>
+					<h2 className="mb-8 text-lg font-semibold text-zinc-950">{filteredCompetitors.length} Tools</h2>
 					<FeatureMatrix competitors={filteredCompetitors} />
 				</div>
 			</section>
@@ -88,7 +88,7 @@ export function CompetitorDirectory({ afterHero }: { afterHero?: ReactNode }) {
 			{/* Elmo CTA */}
 			<section className="border-b border-zinc-200 bg-white py-16 lg:py-24">
 				<div className="mx-auto max-w-3xl px-4 text-center md:px-6">
-					<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Why teams choose Elmo</h2>
+					<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Why Teams Choose Elmo</h2>
 					<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
 						Open source, self-hosted, and transparent. Track AI visibility without vendor lock-in or inflated pricing.
 					</p>

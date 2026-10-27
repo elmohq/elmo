@@ -399,7 +399,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				"The best DataForSEO alternatives for AI search data: LLM scraping APIs compared on coverage, cost, and reliability, plus Elmo, the free open-source tracker that can run on DataForSEO or replace it.",
 			sections: [
 				{
-					title: "DataForSEO competitors for AI search data",
+					title: "DataForSEO Competitors for AI Search Data",
 					paragraphs: [
 						"If you use DataForSEO to pull ChatGPT, Google AI Mode, or AI Overview answers, the direct competitors are the other LLM scraping APIs. We run all five below in production behind Elmo, so the coverage and cost figures come from our own usage. The full breakdown, including reliability by engine, is in our guide to the best LLM scraping APIs.",
 					],
@@ -422,7 +422,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 					links: [{ text: "The best LLM scraping APIs, compared", href: "/blog/best-llm-scraping-apis" }],
 				},
 				{
-					title: "When you want a tracker, not an API",
+					title: "When You Want a Tracker, Not an API",
 					paragraphs: [
 						"DataForSEO sells raw responses. To turn them into AI visibility tracking you still have to schedule prompts, parse brand mentions and citations, store the history, and build reporting. Elmo is that layer, open source. Self-host it for free and point it at DataForSEO, or at any of the providers above, and you get mention rates, share of voice, citations, and sentiment without writing the pipeline yourself.",
 						"If you would rather not run anything, Elmo Cloud includes the scraping, starting at $29/mo.",
@@ -476,7 +476,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				"The best Promptwatch alternatives for AI visibility tracking, with current pricing, what you get per plan, and Elmo, the open-source option from free to $29/mo.",
 			sections: [
 				{
-					title: "Promptwatch vs the alternatives",
+					title: "Promptwatch vs the Alternatives",
 					paragraphs: [
 						"Promptwatch collects answers from the real AI interfaces rather than model APIs, tracks a long list of engines on every paid plan, and adds content writing from its Professional plan and shopping insights on Business. If you want tracking and content production in one subscription, that bundle is its strength.",
 						"The usual reasons to compare alternatives are price and scope. The entry plan is $95/mo for 50 prompts and one project, and much of the higher tiers' value is in content and commerce features that a team focused on measurement may not use. Elmo also scrapes the real ChatGPT, Google AI Mode, AI Overviews, Copilot, Perplexity, and Gemini interfaces, starts at $29/mo, and is free to self-host.",
@@ -532,7 +532,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				"Nightwatch alternatives for tracking your brand in ChatGPT, Gemini, Perplexity, and Google AI Overviews, with Nightwatch's current pricing and Elmo, the open-source option.",
 			sections: [
 				{
-					title: "What Nightwatch is, and when to look elsewhere",
+					title: "What Nightwatch Is, and When to Look Elsewhere",
 					paragraphs: [
 						"Nightwatch is an SEO rank tracker that added AI visibility tracking: you get keyword rankings and AI answers from ChatGPT, Claude, Gemini, Perplexity, and Google AI Mode and AI Overviews in one tool. If you need both and like having one bill, it is a reasonable fit.",
 						"Teams look for alternatives when AI answers become the main thing they report on. Nightwatch's AI allowance is sized next to its keyword plans (1,500 AI answers a month on Starter), so tracking more prompts more often means moving up a rank-tracking tier. A dedicated AI visibility tool puts the budget into answers instead.",
@@ -580,7 +580,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				"Local Falcon alternatives for AI visibility tracking, with Local Falcon's credit pricing explained and Elmo, the free open-source option for brands that don't need geo-grids.",
 			sections: [
 				{
-					title: "Local Falcon alternatives depend on what you track",
+					title: "Local Falcon Alternatives Depend on What You Track",
 					paragraphs: [
 						"Local Falcon is built for local SEO. It runs geo-grid scans that show how a business ranks point by point across a map, and it applies the same grid to AI answers from ChatGPT, Gemini, Google AI Overviews, AI Mode, and Grok, reported as Share of AI Visibility (SAIV).",
 						"If you run a multi-location business and need that map view, the closest alternatives are other local rank trackers. If what you need is how AI engines describe your brand and its competitors for the questions buyers ask, a dedicated AI visibility tracker fits better, and the alternatives below are the ones to compare. Elmo does not run geo-grids; it tracks prompts across engines, and it is free to self-host.",

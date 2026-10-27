@@ -94,7 +94,7 @@ export function PreviousPlans({ pricing }: { pricing: CompetitorPricing }) {
 	if (!pricing.previous) return null;
 	return (
 		<div className="mt-8">
-			<h3 className="font-heading mb-2 text-lg text-zinc-950">Previous plans (no longer offered)</h3>
+			<h3 className="font-heading mb-2 text-lg text-zinc-950">Previous Plans (No Longer Offered)</h3>
 			<p className="mb-4 max-w-3xl text-sm leading-relaxed text-zinc-600">{pricing.previous.note}</p>
 			<PlanTable rows={pricing.previous.plans} />
 		</div>
@@ -130,7 +130,7 @@ export function ComparePricing({ tools }: { tools: { competitor: Competitor; pri
 		<section className="border-b border-zinc-200 bg-white py-12">
 			<div className="mx-auto max-w-6xl px-4 md:px-6">
 				<h2 className="font-heading mb-8 text-2xl text-zinc-950">
-					{tools.map((t) => t.competitor.name).join(" vs ")} pricing
+					{tools.map((t) => t.competitor.name).join(" vs ")} Pricing
 				</h2>
 				<div className="space-y-10">
 					{tools.map(({ competitor, pricing }) => (

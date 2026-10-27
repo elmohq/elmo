@@ -83,7 +83,7 @@ function ReviewPage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero title={`${name} review`} lead={review.verdict}>
+				<DirectoryHero title={`${name} Review`} lead={review.verdict}>
 					<p className="mb-4 text-sm text-zinc-500">
 						Based on {name}'s own pricing, product pages, and docs, checked {formatPostDate(review.verified)}. Elmo is a
 						competitor, so we stick to what can be verified and link every source.
@@ -91,7 +91,7 @@ function ReviewPage() {
 					<CompetitorPageLinks competitor={competitor} current="review" />
 				</DirectoryHero>
 
-				<DirectorySection title={`${name} at a glance`}>
+				<DirectorySection title={`${name} at a Glance`}>
 					<dl className="max-w-3xl divide-y divide-zinc-200 border-y border-zinc-200">
 						<Fact label="Best for">{review.bestFor}</Fact>
 						<Fact label="Pricing">{pricing.summary}</Fact>
@@ -112,7 +112,7 @@ function ReviewPage() {
 					)}
 				</DirectorySection>
 
-				<DirectorySection title={`${name} features`}>
+				<DirectorySection title={`${name} Features`}>
 					<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
 						{review.features.map((feature) => (
 							<div key={feature.name} className="rounded-md border border-zinc-200 bg-white p-5">
@@ -123,18 +123,18 @@ function ReviewPage() {
 					</div>
 				</DirectorySection>
 
-				<DirectorySection title={`${name} pros and cons`}>
+				<DirectorySection title={`${name} Pros and Cons`}>
 					<ProsCons review={review} />
 				</DirectorySection>
 
-				<DirectorySection title={`Who should use ${name}`}>
+				<DirectorySection title={`Who Should Use ${name}`}>
 					<div className="grid gap-8 md:grid-cols-2">
 						<div>
-							<h3 className="font-heading mb-4 text-lg text-zinc-950">Pick {name} if</h3>
+							<h3 className="font-heading mb-4 text-lg text-zinc-950">Pick {name} If</h3>
 							<BulletList items={review.pickIf} kind="pro" />
 						</div>
 						<div>
-							<h3 className="font-heading mb-4 text-lg text-zinc-950">Look elsewhere if</h3>
+							<h3 className="font-heading mb-4 text-lg text-zinc-950">Look Elsewhere If</h3>
 							<BulletList items={review.lookElsewhereIf} kind="con" />
 						</div>
 					</div>
@@ -147,10 +147,10 @@ function ReviewPage() {
 				<CompetitorSignupCta
 					competitor={competitor}
 					from="marketing-competitor-review"
-					title={`Considering ${name}? Try Elmo too`}
+					title={`Considering ${name}? Try Elmo Too`}
 				/>
 
-				<DirectorySection title={`${name} alternatives`}>
+				<DirectorySection title={`${name} Alternatives`}>
 					<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">
 						Elmo is the open-source option. These are the other tools most often compared with {name}.
 					</p>

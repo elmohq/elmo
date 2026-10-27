@@ -306,9 +306,9 @@ function OpenSourcePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero title="Best free and open-source AI visibility and AEO tools (2026)" lead={lead} />
+				<DirectoryHero title="Best Free and Open-Source AI Visibility and AEO Tools (2026)" lead={lead} />
 
-				<DirectorySection title="Key takeaways">
+				<DirectorySection title="Key Takeaways">
 					<ul className="max-w-3xl list-disc space-y-3 pl-5 leading-relaxed text-zinc-600">
 						<li>
 							Elmo is the longest-running open-source answer engine optimization platform, MIT-licensed and free to
@@ -333,7 +333,7 @@ function OpenSourcePage() {
 					</ul>
 				</DirectorySection>
 
-				<DirectorySection title="Why open source matters for answer engine optimization">
+				<DirectorySection title="Why Open Source Matters for Answer Engine Optimization">
 					<div className="max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
 							Most AI visibility tools are closed and hosted: you send them your prompts and trust the score they hand
@@ -349,7 +349,7 @@ function OpenSourcePage() {
 					</div>
 				</DirectorySection>
 
-				<DirectorySection title="The best open-source AEO tools at a glance">
+				<DirectorySection title="The Best Open-Source AEO Tools at a Glance">
 					<DataTable headers={["Tool", "License", "Managed cloud", "Best for"]}>
 						{AT_A_GLANCE.map((row) => (
 							<Row key={row.tool}>
@@ -362,7 +362,7 @@ function OpenSourcePage() {
 					</DataTable>
 				</DirectorySection>
 
-				<DirectorySection title="By the numbers">
+				<DirectorySection title="By the Numbers">
 					<DataTable
 						headers={[
 							"Project",
@@ -414,7 +414,7 @@ function OpenSourcePage() {
 					</div>
 				</DirectorySection>
 
-				<DirectorySection title="The open-source options, tool by tool">
+				<DirectorySection title="The Open-Source Options, Tool by Tool">
 					<p className="mb-6 max-w-3xl leading-relaxed text-zinc-600">
 						Elmo is the longest-running open-source option, released under the MIT license with broad engine coverage.
 						The other open-source projects we track are below. Most started in 2026, and each makes real tradeoffs.
@@ -531,7 +531,7 @@ function OpenSourcePage() {
 					</div>
 				</DirectorySection>
 
-				<DirectorySection title="Build it yourself: scripting AI visibility checks">
+				<DirectorySection title="Build It Yourself: Scripting AI Visibility Checks">
 					<div className="max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
 							If no existing tool fits, the underlying job is not complicated to script. Send your prompts to the model
@@ -547,7 +547,7 @@ function OpenSourcePage() {
 					</div>
 				</DirectorySection>
 
-				<DirectorySection title="Self-hosted, open-source cloud, or closed-source cloud: the real tradeoffs">
+				<DirectorySection title="Self-Hosted, Open-Source Cloud, or Closed-Source Cloud: The Real Tradeoffs">
 					<p className="mb-6 max-w-3xl leading-relaxed text-zinc-600">
 						There are three ways to run AI visibility tracking, and the open-source cloud is the best of all worlds.
 						Self-hosting gives you full control, but the upkeep is yours. A closed-source cloud takes the work off your
@@ -586,7 +586,7 @@ function OpenSourcePage() {
 					</p>
 				</DirectorySection>
 
-				<DirectorySection title="How to choose">
+				<DirectorySection title="How to Choose">
 					<div className="max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
 							Start with how you will use it rather than with a feature grid. For most teams the answer is an

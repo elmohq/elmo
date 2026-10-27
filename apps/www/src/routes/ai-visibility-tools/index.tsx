@@ -84,7 +84,7 @@ function AiVisibilitySoftwarePage() {
 				<AiVisibilitySoftwareHub />
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">Browse the directory</h2>
+						<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">Browse the Directory</h2>
 						<p className="mt-3 max-w-3xl text-zinc-600">
 							Compare tools head-to-head, find alternatives to one you're evaluating, or filter the field by feature and
 							category. Tools that didn't make it are in the AEO Graveyard.

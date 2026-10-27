@@ -33,7 +33,7 @@ export function TopToolsTable({ limit = 10 }: { limit?: number }) {
 		<section className="border-b border-zinc-200 bg-white py-12 lg:py-16">
 			<div className="mx-auto max-w-6xl px-4 md:px-6">
 				<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">
-					The leading AI visibility tracking tools at a glance
+					The Leading AI Visibility Tracking Tools at a Glance
 				</h2>
 				<p className="mt-3 max-w-3xl leading-relaxed text-zinc-600">
 					The {limit} most established LLM visibility trackers in the directory, with the AI engines each one covers and

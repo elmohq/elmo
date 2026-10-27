@@ -81,7 +81,7 @@ function PricingPage() {
 				</DirectorySection>
 
 				{pricing.extraCosts?.length ? (
-					<DirectorySection title="Add-ons and hidden costs">
+					<DirectorySection title="Add-Ons and Hidden Costs">
 						<ul className="max-w-3xl list-disc space-y-3 pl-5 leading-relaxed text-zinc-600">
 							{pricing.extraCosts.map((cost) => (
 								<li key={cost}>{cost}</li>
@@ -90,7 +90,7 @@ function PricingPage() {
 					</DirectorySection>
 				) : null}
 
-				<DirectorySection title="Cost per AI answer">
+				<DirectorySection title="Cost per AI Answer">
 					<div className="max-w-3xl space-y-4 leading-relaxed text-zinc-600">
 						<p>
 							Plan prices are hard to compare because tools meter different things: prompts, models, credits, or runs
@@ -108,18 +108,18 @@ function PricingPage() {
 					</div>
 				</DirectorySection>
 
-				<DirectorySection title={`${name} vs Elmo pricing`}>
+				<DirectorySection title={`${name} vs Elmo Pricing`}>
 					<div className="mb-10">
 						<ElmoComparisonTable competitor={competitor} review={review} />
 					</div>
-					<h3 className="font-heading mb-4 text-lg text-zinc-950">Elmo plans</h3>
+					<h3 className="font-heading mb-4 text-lg text-zinc-950">Elmo Plans</h3>
 					<PlanTable rows={ELMO_PLAN_ROWS} highlight />
 				</DirectorySection>
 
 				<CompetitorSignupCta
 					competitor={competitor}
 					from="marketing-competitor-pricing"
-					title={`A self-serve alternative to ${name}`}
+					title={`A Self-Serve Alternative to ${name}`}
 				/>
 
 				<Faq items={review.pricingFaqs} />

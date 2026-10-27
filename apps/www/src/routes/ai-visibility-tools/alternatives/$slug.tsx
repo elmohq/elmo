@@ -133,7 +133,7 @@ function AlternativesPage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero title={`${competitor.name} alternatives`} lead={getAlternativesVerdict(competitor)} />
+				<DirectoryHero title={`${competitor.name} Alternatives`} lead={getAlternativesVerdict(competitor)} />
 
 				<DirectoryElmoBanner
 					pitch="Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
@@ -148,15 +148,15 @@ function AlternativesPage() {
 				))}
 
 				{review ? (
-					<DirectorySection title={`Who ${competitor.name} is for`}>
+					<DirectorySection title={`Who ${competitor.name} Is For`}>
 						<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">{review.bestFor}</p>
 						<div className="grid gap-8 md:grid-cols-2">
 							<div>
-								<h3 className="font-heading mb-4 text-lg text-zinc-950">Stay with {competitor.name} if</h3>
+								<h3 className="font-heading mb-4 text-lg text-zinc-950">Stay with {competitor.name} If</h3>
 								<BulletList items={review.pickIf} kind="pro" />
 							</div>
 							<div>
-								<h3 className="font-heading mb-4 text-lg text-zinc-950">Consider an alternative if</h3>
+								<h3 className="font-heading mb-4 text-lg text-zinc-950">Consider an Alternative If</h3>
 								<BulletList items={review.lookElsewhereIf} kind="con" />
 							</div>
 						</div>
@@ -164,17 +164,17 @@ function AlternativesPage() {
 				) : null}
 
 				{profile?.pricing ? (
-					<DirectorySection title={`${competitor.name} pricing`}>
+					<DirectorySection title={`${competitor.name} Pricing`}>
 						<CompetitorPricingDetails pricing={profile.pricing} />
 					</DirectorySection>
 				) : null}
 
 				{review ? (
 					<>
-						<DirectorySection title={`${competitor.name} strengths and limitations`}>
+						<DirectorySection title={`${competitor.name} Strengths and Limitations`}>
 							<ProsCons review={review} />
 						</DirectorySection>
-						<DirectorySection title={`How Elmo compares with ${competitor.name}`}>
+						<DirectorySection title={`How Elmo Compares with ${competitor.name}`}>
 							<ElmoComparisonTable competitor={competitor} review={review} />
 						</DirectorySection>
 						<DirectorySection title={`Switching from ${competitor.name} to Elmo`}>
@@ -190,13 +190,13 @@ function AlternativesPage() {
 						<CompetitorSignupCta
 							competitor={competitor}
 							from="marketing-competitor-alternatives"
-							title={`Try Elmo as your ${competitor.name} alternative`}
+							title={`Try Elmo as Your ${competitor.name} Alternative`}
 						/>
 					</>
 				) : null}
 
 				{competitor.switching ? (
-					<DirectorySection title={`Why teams leave ${competitor.name}`}>
+					<DirectorySection title={`Why Teams Leave ${competitor.name}`}>
 						<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">
 							What people tell us when they move to Elmo, and what we do differently. {competitor.name} is a capable
 							product with real customers, so take this as the case for a different set of tradeoffs rather than a
@@ -214,7 +214,7 @@ function AlternativesPage() {
 					</DirectorySection>
 				) : null}
 
-				<DirectorySection title={`Top ${competitor.name} alternatives and competitors`}>
+				<DirectorySection title={`Top ${competitor.name} Alternatives and Competitors`}>
 					<ToolGrid competitors={alternatives} />
 				</DirectorySection>
 
