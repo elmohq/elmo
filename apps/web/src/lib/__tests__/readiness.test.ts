@@ -11,7 +11,7 @@ describe("readinessResponse", () => {
 
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ status: "ok" });
-		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(response.headers.get("Cache-Control")).toBe("public, max-age=10, s-maxage=10");
 	});
 
 	it("reports unavailable without leaking the error when the database is unreachable", async () => {
