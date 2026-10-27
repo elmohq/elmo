@@ -7,7 +7,14 @@
  * packages/config/src/plans.ts and the cards follow.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import { PLAN_KEYS, PLANS, PLATFORM_TIER_LABELS, PREMIUM_RUNS_PER_DAY } from "@workspace/config/plans";
+import {
+	costPer1kAnswersUsd,
+	formatCostPer1k,
+	PLAN_KEYS,
+	PLANS,
+	PLATFORM_TIER_LABELS,
+	PREMIUM_RUNS_PER_DAY,
+} from "@workspace/config/plans";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { Route } from "@/routes/_authed/choose-plan";
@@ -107,6 +114,17 @@ export const ShowsWhatEachPlanOmits: Story = {
 		// Starter sells one scraped platform, so the API and premium tiers are
 		// dashes down its whole column.
 		await expect(await canvas.findByText(`${PLANS.pro.premiumIncluded} prompt/model pairings`)).toBeVisible();
+	},
+};
+
+/** Each plan says what an answer costs on it, so the bigger plans' value is visible before the table. */
+export const ShowsCostPerThousandAnswers: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		for (const key of PLAN_KEYS) {
+			const line = `${formatCostPer1k(costPer1kAnswersUsd(PLANS[key]))} per 1,000 answers`;
+			await expect(await canvas.findByText(line)).toBeVisible();
+		}
 	},
 };
 
