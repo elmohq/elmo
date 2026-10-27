@@ -11,21 +11,21 @@ overrides:
   # GHSA-g7r4-m6w7-qqqr (dev-server arbitrary file read on Windows).
   esbuild: "^0.28.1"
   seroval: "^1.5.3" # GHSA-mv8w-475r-vwqw: prototype pollution while deserializing
-  # samlify is on the 0.8 line, and 0.9 is a rewrite with a different parser API.
-  "@xmldom/xmldom": "~0.8.15"
   uuid: "^14.0.2" # GHSA-w5hq-g745-h8pq; also anchors the direct dep in apps/web
   # The bruno CLI is the only thing pulling these in, and only for the e2e API suite.
   form-data: "^4.0.6" # GHSA-hmw2-7cc7-3qxx
   axios: "^1.18.0" # GHSA-gcfj-64vw-6mp9, GHSA-xj6q-8x83-jv6g, and seven more
   "@faker-js/faker": "^10.4.1" # GHSA-qxc2-j82w-r537
   csv-parse: "^7.0.2" # GHSA-8cw4-87c7-c6xx
-  "@ai-sdk/provider-utils@^4": "^4.0.33"
   # @usebruno/cli pins these exactly; only the e2e API suite pulls them in.
   "js-yaml@^4": "^4.3.2" # GHSA-2883-xcg3-v3hh
   "yaml@^2": "^2.8.3" # GHSA-48c2-rrv3-qjmp
   # @tailwindcss/typography pins 6.0.10, and the fix only exists on the 7 line.
   postcss-selector-parser: "^7.1.6" # GHSA-rj75-hqrm-r3gf
   "@scalar/json-magic>undici": "^7.29.1" # GHSA-4cwx-7wf7-3272, GHSA-rfgv-xxqx-mfg5, and four more
+  "@vercel/cli-config>zod": "^4.6.6" # GHSA-mrhx-c7xc-m3w5; every @vercel/cli-config release pins zod exactly
+  # @azure/identity caps msal-node below the fix. Only bruno and unstorage's unused Azure driver pull it in.
+  "@azure/identity>@azure/msal-node": "^7.1.0" # GHSA-xcx6-jx8p-x3h5
 
 allowBuilds:
   "@tailwindcss/oxide": true
