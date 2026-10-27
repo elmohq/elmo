@@ -22,6 +22,35 @@ On top of the shared variables (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `SCRAPE_TA
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in |
 | `CLOUD_SIGNUP_ALLOWLIST` | Signup gate — empty denies everyone, `*` opens signup |
 
+Strongly recommended:
+
+| Variable | Purpose |
+| --- | --- |
+| `TURNSTILE_SECRET_KEY`, `VITE_TURNSTILE_SITE_KEY` | Bot protection on email sign-up, sign-in, and password reset |
+
+## Bot protection
+
+Email sign-up, sign-in, password reset, and verification-email resend all send mail to whatever
+address the caller types, so they are guarded with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)
+through better-auth's `captcha` plugin. Google sign-in, API keys, and MCP/OAuth are not challenged.
+
+Create a Turnstile widget in the Cloudflare dashboard for the app's hostname (Managed mode), then
+set its site key as `VITE_TURNSTILE_SITE_KEY` and its secret as `TURNSTILE_SECRET_KEY`. The check is
+enforced only while `TURNSTILE_SECRET_KEY` is set; without it the app logs a warning at startup and
+the forms work unchallenged. Set both together — a secret without a site key rejects every email
+sign-in.
+
+For local development, use Cloudflare's [test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/),
+which always pass:
+
+```bash
+VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+```
+
+Site key `2x00000000000000000000AB` always fails and `3x00000000000000000000FF` forces the
+interactive checkbox, for trying the error and challenge paths.
+
 ## Stripe setup
 
 The plan catalog lives in `packages/config/src/plans.ts` — prices, limits, sampling rates, and the
