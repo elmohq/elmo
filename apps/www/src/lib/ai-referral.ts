@@ -22,9 +22,8 @@ export function saveAiReferral(referral: AiReferral): void {
 
 export function loadAiReferral(): AiReferral | null {
 	const stored = read();
-	if (stored) return stored;
 	const assistant = detectAiAssistant({ referrer: document.referrer, search: window.location.search });
-	if (!assistant) return null;
+	if (!assistant || assistant === stored?.assistant) return stored;
 	const referral = { assistant, dismissed: false };
 	saveAiReferral(referral);
 	return referral;
