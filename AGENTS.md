@@ -73,6 +73,7 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 
 - Use APA Style title case for all non-prose text: titles, headings, buttons, links used as actions, nav items, tabs, form labels, table headers, and chart titles.
 - Sentences and prose stay in sentence case.
+- Elmo has no dark mode. Never design or implement anything for one, despite the `.dark` theme and `dark:` variant that ship with shadcn.
 
 ## Changesets
 
