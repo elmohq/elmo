@@ -18,6 +18,7 @@ import { SiteHeader } from "@/components/site-header";
 import { useShellScope } from "@/hooks/use-shell-scope";
 import { identifyCrispUser } from "@/lib/crisp";
 import { identifyUser, setPersonProperties } from "@/lib/posthog";
+import { reportSignupAttribution } from "@/lib/signup-attribution";
 import { viewerQuery } from "@/lib/viewer/queries";
 
 export const Route = createFileRoute("/_authed")({
@@ -58,6 +59,7 @@ function AuthedLayout() {
 			deployment_mode: context.clientConfig?.mode,
 		});
 		identifyCrispUser({ id: user.id, email: user.email, name: user.name });
+		if (context.clientConfig?.mode === "cloud") void reportSignupAttribution();
 	}, [context.session?.user, context.clientConfig?.mode]);
 
 	return <Shell />;

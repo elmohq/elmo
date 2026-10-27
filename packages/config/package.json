@@ -21,6 +21,7 @@
 		"./referrals": "./src/referrals.ts",
 		"./roles": "./src/roles.ts",
 		"./scrape-targets": "./src/scrape-targets.ts",
+		"./signup-attribution": "./src/signup-attribution.ts",
 		"./types": "./src/types.ts"
 	},
 	"dependencies": {

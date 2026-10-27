@@ -225,6 +225,13 @@
       "when": 1793059708255,
       "tag": "0031_trim_unused_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793069687174,
+      "tag": "0032_user_signup_attribution",
+      "breakpoints": true
     }
   ]
 }

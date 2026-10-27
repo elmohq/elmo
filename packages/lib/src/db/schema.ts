@@ -19,9 +19,9 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 import type { RunMentionAssessments } from "../mentions";
-// `organization` is referenced by the brands FK below; the re-export makes it
+// `organization` and `user` are referenced by FKs below; the re-export makes them
 // (and the rest of the auth schema) visible to `import * as schema` consumers.
-import { organization } from "./schema-auth";
+import { organization, user } from "./schema-auth";
 
 // Better-auth tables & relations — re-exported so `import * as schema` sees everything.
 // Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
@@ -341,6 +341,31 @@ export const usageEvents = pgTable(
 ).enableRLS();
 
 export type UsageEvent = typeof usageEvents.$inferSelect;
+
+/**
+ * Where a cloud account came from, as first seen in the browser it signed up
+ * from (see @workspace/config/signup-attribution). One row per user at most,
+ * written once and never updated. Absent row = nothing was captured.
+ */
+export const userSignupAttribution = pgTable("user_signup_attribution", {
+	userId: text("user_id")
+		.primaryKey()
+		.references(() => user.id, { onDelete: "cascade" }),
+	ref: text("ref"),
+	utmSource: text("utm_source"),
+	utmMedium: text("utm_medium"),
+	utmCampaign: text("utm_campaign"),
+	utmTerm: text("utm_term"),
+	utmContent: text("utm_content"),
+	/** Ad platform click IDs keyed by their URL parameter (gclid, fbclid, ...). */
+	clickIds: jsonb("click_ids").$type<Record<string, string>>(),
+	landingPage: text("landing_page"),
+	referrer: text("referrer"),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}).enableRLS();
+
+export type UserSignupAttribution = typeof userSignupAttribution.$inferSelect;
+export type NewUserSignupAttribution = typeof userSignupAttribution.$inferInsert;
 
 // Encrypted overrides for credential environment variables, keyed by the env-var
 // name they stand in for. Separate table, strictest access.
