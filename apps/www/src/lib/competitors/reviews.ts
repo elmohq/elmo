@@ -131,19 +131,6 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 					"Yes. Elmo Cloud starts at $29/mo with public, self-serve pricing, and its $99/mo Basic plan runs 50 prompts on four platforms up to four times a day. Self-hosting Elmo is free.",
 			},
 		],
-		sources: [
-			{ label: "Profound Pricing", url: "https://www.tryprofound.com/pricing" },
-			{ label: "Answer Engine Insights", url: "https://www.tryprofound.com/features/answer-engine-insights" },
-			{ label: "Profound Docs: REST API", url: "https://docs.tryprofound.com/rest-api/introduction" },
-			{
-				label: "Profound Docs: Exporting Prompts",
-				url: "https://docs.tryprofound.com/answer-engine-insights/export-prompts-and-topics",
-			},
-			{
-				label: "Profound Series D Announcement",
-				url: "https://www.tryprofound.com/newsroom/profound-raises-usd180m-series-d-at-usd1-8b-valuation-to-build-the-ai-platform-for-marketing-teams",
-			},
-		],
 	},
 	"peec-ai": {
 		verified: VERIFIED,
@@ -266,19 +253,6 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 					"Yes. Elmo Cloud starts at $29/mo, and its $99/mo Basic plan covers 50 prompts on four platforms up to four times a day, with no per-model add-ons. Self-hosting Elmo is free.",
 			},
 		],
-		sources: [
-			{ label: "Peec AI Pricing", url: "https://peec.ai/pricing" },
-			{ label: "Peec AI Agency Pricing", url: "https://peec.ai/pricing-agencies" },
-			{ label: "Peec AI Docs: How Peec Works", url: "https://docs.peec.ai/intro-to-peec-ai" },
-			{
-				label: "Peec AI Help: Exporting Data",
-				url: "https://help.peec.ai/article/decision-lab-where-can-i-export-my-data-and-can-i-get-full-urls-5",
-			},
-			{
-				label: "Tech.eu: Peec AI Series A",
-				url: "https://tech.eu/2025/11/18/peec-ai-raises-21m-series-a-to-help-brands-win-in-ai-search/",
-			},
-		],
 	},
 	"otterly-ai": {
 		verified: VERIFIED,
@@ -394,16 +368,6 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 				question: "Is there a cheaper alternative to OtterlyAI?",
 				answer:
 					"Elmo starts at the same $29/mo but includes 50 prompts instead of 15, and its $99/mo Basic plan covers four platforms of your choice with no per-engine add-ons. Self-hosting Elmo is free.",
-			},
-		],
-		sources: [
-			{ label: "OtterlyAI Pricing", url: "https://otterly.ai/pricing" },
-			{ label: "OtterlyAI Help: How Data Is Collected", url: "https://help.otterly.ai/how-otterlyai-collects-data" },
-			{ label: "OtterlyAI Help: Exporting Data", url: "https://help.otterly.ai/can-i-export-my-data-and-reports" },
-			{ label: "OtterlyAI Help: Compliance", url: "https://help.otterly.ai/compliance" },
-			{
-				label: "OtterlyAI: European Search Awards",
-				url: "https://otterly.ai/blog/otterlyai-wins-european-search-awards/",
 			},
 		],
 	},

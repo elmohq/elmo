@@ -10,11 +10,6 @@ export interface PricingPlan {
 	answers?: { monthlyUsd: number; perMonth: number };
 }
 
-export interface Source {
-	label: string;
-	url: string;
-}
-
 export interface PreviousPricing {
 	note: string;
 	plans: PricingPlan[];
@@ -25,9 +20,8 @@ export interface CompetitorPricing {
 	summary: string;
 	plans: PricingPlan[];
 	previous?: PreviousPricing;
-	extraCosts?: string[];
+	extraCosts?: { title: string; detail: string }[];
 	costPerAnswer?: string;
-	sources: Source[];
 }
 
 export interface ProfileSection {
@@ -71,7 +65,6 @@ export interface CompetitorReview {
 	elmoComparison: { label: string; competitor: string; elmo: string }[];
 	reviewFaqs: FaqItem[];
 	pricingFaqs: FaqItem[];
-	sources: Source[];
 }
 
 export interface CompetitorProfile {
@@ -110,10 +103,17 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				},
 			],
 			extraCosts: [
-				"Prompts, engines, regions, and languages are set by your contract and changed through Profound.",
-				"AI work such as agent runs and the AI Marketer draws on a separate credit allotment, and usage past it runs as overage or pauses.",
-				"API access and data exports are Enterprise-only.",
-				"Extra agency pitch workspaces are $199/mo for five more.",
+				{
+					title: "Contract-Set Limits",
+					detail: "Prompts, engines, regions, and languages are set by your contract and changed through Profound.",
+				},
+				{
+					title: "Separate AI Credits",
+					detail:
+						"AI work such as agent runs and the AI Marketer draws on a separate credit allotment, and usage past it runs as overage or pauses.",
+				},
+				{ title: "Enterprise-Only API", detail: "API access and data exports are Enterprise-only." },
+				{ title: "Agency Pitch Workspaces", detail: "Extra agency pitch workspaces are $199/mo for five more." },
 			],
 			costPerAnswer:
 				"Not derivable for current brand plans, since Enterprise prices and prompt volumes are private. An agency client workspace works out to about $0.044 per answer if its prompts run daily on all three engines. The previous self-serve plans worked out to about $0.066 (Starter) and $0.044 (Growth) per answer at daily runs.",
@@ -123,29 +123,17 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 					{
 						name: "Starter (Previous)",
 						price: "$99/mo",
-						includes: "50 prompts on ChatGPT only. About $66 per 1,000 answers at daily runs.",
+						includes: "50 prompts on ChatGPT only.",
 						answers: { monthlyUsd: 99, perMonth: 50 * 1 * 30 },
 					},
 					{
 						name: "Growth (Previous)",
 						price: "$399/mo",
-						includes:
-							"100 prompts on ChatGPT, Perplexity, and Google AI Overviews. About $44 per 1,000 answers at daily runs.",
+						includes: "100 prompts on ChatGPT, Perplexity, and Google AI Overviews.",
 						answers: { monthlyUsd: 399, perMonth: 100 * 3 * 30 },
 					},
 				],
 			},
-			sources: [
-				{ label: "Profound Pricing", url: "https://www.tryprofound.com/pricing" },
-				{
-					label: "Profound Agency Plan Announcement",
-					url: "https://www.tryprofound.com/blog/agencies-launch-your-aeo-practice-with-profound",
-				},
-				{ label: "Profound Docs: Credits", url: "https://docs.tryprofound.com/getting-started/credits" },
-				{ label: "Profound Docs: REST API", url: "https://docs.tryprofound.com/rest-api/introduction" },
-				{ label: "GEO Toolbox: Profound Pricing History", url: "https://geotoolbox.ai/blog/profound-pricing" },
-				{ label: "Trakkr: Profound vs Trakkr", url: "https://trakkr.ai/compare/profound-vs-trakkr" },
-			],
 		},
 		alternatives: {
 			title: "Profound Alternatives: Self-Serve & Open-Source Options (2026) · Elmo",
@@ -207,17 +195,27 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				},
 			],
 			extraCosts: [
-				"Each model beyond the three included costs extra: $35/mo on Starter, $85/mo on Pro, $165/mo on Advanced.",
-				"Perplexity and the API-based models (Claude, Grok, DeepSeek, and others) are add-ons or Enterprise-only.",
-				"European visitors see separate euro prices, which are not a straight conversion.",
-				"Peec's pricing table lists the API from Pro up, while its API docs describe it as Enterprise-only.",
+				{
+					title: "Paid Extra Models",
+					detail:
+						"Each model beyond the three included costs extra: $35/mo on Starter, $85/mo on Pro, $165/mo on Advanced.",
+				},
+				{
+					title: "Add-On Engines",
+					detail:
+						"Perplexity and the API-based models (Claude, Grok, DeepSeek, and others) are add-ons or Enterprise-only.",
+				},
+				{
+					title: "Separate Euro Prices",
+					detail: "European visitors see separate euro prices, which are not a straight conversion.",
+				},
+				{
+					title: "Conflicting API Terms",
+					detail: "Peec's pricing table lists the API from Pro up, while its API docs describe it as Enterprise-only.",
+				},
 			],
 			costPerAnswer:
 				"About $0.016 to $0.021 per AI answer on monthly billing, from the answer allowances Peec publishes.",
-			sources: [
-				{ label: "Peec AI Pricing", url: "https://peec.ai/pricing" },
-				{ label: "Peec AI Agency Pricing", url: "https://peec.ai/pricing-agencies" },
-			],
 		},
 		alternatives: {
 			title: "Peec AI Alternatives: Cheaper & Open-Source Options (2026) · Elmo",
@@ -255,18 +253,18 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				{ name: "Enterprise", price: "Custom", includes: "From 1,000 prompts, SSO, dedicated customer success." },
 			],
 			extraCosts: [
-				"Google AI Mode and Gemini cost $9, $59, or $149/mo each depending on plan; Claude costs $29, $109, or $439/mo.",
-				"Extra prompts are $99/mo per 100 on Standard and Premium; Lite cannot add prompts.",
+				{
+					title: "Paid Engine Add-Ons",
+					detail:
+						"Google AI Mode and Gemini cost $9, $59, or $149/mo each depending on plan; Claude costs $29, $109, or $439/mo.",
+				},
+				{
+					title: "Extra Prompts",
+					detail: "Extra prompts are $99/mo per 100 on Standard and Premium; Lite cannot add prompts.",
+				},
 			],
 			costPerAnswer:
 				"About $0.016 per answer on Lite and Standard and $0.010 on Premium, assuming one run per prompt per engine per day on the four base engines.",
-			sources: [
-				{ label: "OtterlyAI Pricing", url: "https://otterly.ai/pricing" },
-				{
-					label: "OtterlyAI Help: Supported AI Searches",
-					url: "https://help.otterly.ai/which-ai-searches-does-otterlyai-support",
-				},
-			],
 		},
 		alternatives: {
 			title: "OtterlyAI Alternatives: More Engines, Same Budget (2026) · Elmo",
@@ -294,9 +292,13 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				},
 				{ name: "Enterprise", price: "Custom", includes: "SSO, audit logs, multiple regions and languages, API." },
 			],
-			extraCosts: ["API access and extra credits are paid add-ons on Starter, priced on request."],
+			extraCosts: [
+				{
+					title: "Paid API and Credits",
+					detail: "API access and extra credits are paid add-ons on Starter, priced on request.",
+				},
+			],
 			costPerAnswer: "About $0.082 per AI response on Starter ($295 for 3,600 credits).",
-			sources: [{ label: "AthenaHQ Pricing", url: "https://www.athenahq.ai/pricing" }],
 		},
 	},
 	"ahrefs-brand-radar": {
@@ -319,12 +321,15 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				},
 			],
 			extraCosts: [
-				"A check is one prompt on one model in one location, so tracking more engines multiplies usage.",
-				"Ahrefs' own pages quote the AI index differently ('from $199/mo' on the pricing page, $699/mo for all platforms on the Brand Radar page), so confirm the current figure with Ahrefs.",
-			],
-			sources: [
-				{ label: "Ahrefs Brand Radar", url: "https://ahrefs.com/brand-radar" },
-				{ label: "Ahrefs Pricing", url: "https://ahrefs.com/pricing" },
+				{
+					title: "Checks Multiply per Engine",
+					detail: "A check is one prompt on one model in one location, so tracking more engines multiplies usage.",
+				},
+				{
+					title: "Conflicting AI Index Prices",
+					detail:
+						"Ahrefs' own pages quote the AI index differently ('from $199/mo' on the pricing page, $699/mo for all platforms on the Brand Radar page), so confirm the current figure with Ahrefs.",
+				},
 			],
 		},
 	},
@@ -346,8 +351,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				},
 				{ name: "Enterprise", price: "Custom", includes: "Custom task, prompt, and page limits." },
 			],
-			extraCosts: ["Tasks over the Solo allowance cost $0.025 each."],
-			sources: [{ label: "AirOps Pricing", url: "https://www.airops.com/pricing" }],
+			extraCosts: [{ title: "Task Overage", detail: "Tasks over the Solo allowance cost $0.025 each." }],
 		},
 	},
 	scrunch: {
@@ -370,14 +374,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				},
 				{ name: "Enterprise", price: "Custom", includes: "SSO and the Enterprise Data API." },
 			],
-			extraCosts: ["Extra seats are $25/mo each."],
-			sources: [
-				{ label: "Scrunch Pricing", url: "https://scrunch.com/pricing" },
-				{
-					label: "Sitecore Acquisition Announcement",
-					url: "https://www.sitecore.com/de-de/company/newsroom/press-releases/2026/06/sitecore-acquires-scrunch-to-help-brands-influence-discovery--and-buying-decisions",
-				},
-			],
+			extraCosts: [{ title: "Extra Seats", detail: "Extra seats are $25/mo each." }],
 		},
 	},
 	dataforseo: {
@@ -408,13 +405,11 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				},
 			],
 			extraCosts: [
-				"$50 minimum top-up and a $1 trial credit.",
-				"You build the tracking: scheduling, parsing, storage, and dashboards are not included.",
-			],
-			sources: [
-				{ label: "DataForSEO Pricing", url: "https://dataforseo.com/pricing" },
-				{ label: "DataForSEO AI Optimization API", url: "https://dataforseo.com/apis/ai-optimization-api" },
-				{ label: "LLM Mentions Pricing", url: "https://dataforseo.com/pricing/ai-optimization/llm-mentions" },
+				{ title: "Minimum Top-Up", detail: "$50 minimum top-up and a $1 trial credit." },
+				{
+					title: "Build-It-Yourself Tracking",
+					detail: "You build the tracking: scheduling, parsing, storage, and dashboards are not included.",
+				},
 			],
 		},
 		alternatives: {
@@ -497,9 +492,13 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				},
 				{ name: "Enterprise", price: "Custom", includes: "Custom prompt and crawler volume." },
 			],
-			extraCosts: ["Essential and Professional have a 7-day free trial; Business starts with a demo."],
+			extraCosts: [
+				{
+					title: "Trials and Demos",
+					detail: "Essential and Professional have a 7-day free trial; Business starts with a demo.",
+				},
+			],
 			costPerAnswer: "About $0.016 per response on Essential ($95 for 6,000).",
-			sources: [{ label: "Promptwatch Pricing", url: "https://www.promptwatch.com/pricing" }],
 		},
 		alternatives: {
 			title: "Promptwatch Alternatives: Cheaper & Open-Source Options (2026) · Elmo",
@@ -550,12 +549,13 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				},
 				{ name: "Enterprise", price: "Custom", includes: "Unlimited prompts, 20,000+ keywords." },
 			],
-			extraCosts: ["Every plan includes unlimited seats and no add-ons; there is a 14-day trial with no card."],
-			costPerAnswer: "About €0.053 per AI answer on Starter (€79 for 1,500), with keyword tracking included.",
-			sources: [
-				{ label: "Nightwatch Pricing", url: "https://nightwatch.io/pricing/" },
-				{ label: "Nightwatch AI Tracking", url: "https://nightwatch.io/ai-tracking/" },
+			extraCosts: [
+				{
+					title: "No Add-Ons",
+					detail: "Every plan includes unlimited seats and no add-ons; there is a 14-day trial with no card.",
+				},
 			],
+			costPerAnswer: "About €0.053 per AI answer on Starter (€79 for 1,500), with keyword tracking included.",
 		},
 		alternatives: {
 			title: "Nightwatch Alternatives for AI & LLM Tracking (2026) · Elmo",
@@ -594,14 +594,13 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				{ name: "Enterprise", price: "$499 to $4,999/mo", includes: "Higher credit volumes." },
 			],
 			extraCosts: [
-				"A 5x5 grid scan costs 25 credits, so bigger grids and more platforms use credits fast.",
-				"Monthly credits expire each month; pay-as-you-go credits are $0.05 each and do not expire.",
-			],
-			sources: [
-				{ label: "Local Falcon Pricing", url: "https://www.localfalcon.com/pricing" },
 				{
-					label: "Local Falcon: AI Visibility Scans",
-					url: "https://www.localfalcon.com/knowledge-base/kb95-how-to-run-ai-visibility-scans",
+					title: "Credits per Grid Point",
+					detail: "A 5x5 grid scan costs 25 credits, so bigger grids and more platforms use credits fast.",
+				},
+				{
+					title: "Expiring Credits",
+					detail: "Monthly credits expire each month; pay-as-you-go credits are $0.05 each and do not expire.",
 				},
 			],
 		},
