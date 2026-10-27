@@ -17,8 +17,7 @@ import { ModelIcon } from "./model-icon";
 export interface PlatformTierRow {
 	iconId: string;
 	label: string;
-	/** The exact model version behind this row, shown on hover. */
-	version?: string;
+	tooltip?: string;
 }
 
 export function PlatformTier({
@@ -44,7 +43,7 @@ export function PlatformTier({
 						{/* Logos alone were ambiguous — Google AI Mode, AI Overviews and
 						    Gemini all carry the same mark — and a name a reader has to
 						    hover for is not on the page. */}
-						{model.version ? (
+						{model.tooltip ? (
 							<Tooltip>
 								<TooltipTrigger
 									render={
@@ -56,7 +55,7 @@ export function PlatformTier({
 								{/* The marketing site's primary is brand blue; pin the neutral
 								    tooltip colors so the arrow follows the popup. */}
 								<TooltipContent className="[--primary-foreground:var(--background)] [--primary:var(--foreground)]">
-									{model.version}
+									{model.tooltip}
 								</TooltipContent>
 							</Tooltip>
 						) : (

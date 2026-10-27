@@ -34,13 +34,11 @@ describe("cloud platform menu", () => {
 	});
 
 	it("names the exact model version behind every API pick and premium model", () => {
-		// The pricing table shows these, so a customer comparing plans knows which
-		// model they are buying rather than just whose.
 		const { pickGroups, premium } = planPlatformBreakdown(PLANS.business);
 		const versioned = [...(pickGroups.find((group) => group.id === "api")?.models ?? []), ...(premium?.models ?? [])];
 		expect(versioned.length).toBeGreaterThan(0);
 		for (const member of versioned) {
-			expect(member.version, member.model).toBeTruthy();
+			expect(member.tooltip, member.model).toBeTruthy();
 		}
 	});
 

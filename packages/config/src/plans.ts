@@ -37,9 +37,7 @@ export interface CloudPlatform {
 	 * metered per prompt instead of picked per brand.
 	 */
 	premium?: boolean;
-	/** The model version a standard API pick runs. Scraped platforms have none to pin. */
 	version?: string;
-	/** The model version a premium (grounded) call runs. */
 	premiumVersion?: string;
 }
 
@@ -295,8 +293,7 @@ export interface PlanPlatformMember {
 	label: string;
 	/** Which logo stands for it. Resolved here so the shared tier renderer stays free of the catalog. */
 	iconId: string;
-	/** The exact model version Elmo Cloud runs, when there is one to pin. */
-	version?: string;
+	tooltip?: string;
 }
 
 function premiumVersionLabel(version: string | undefined): string | undefined {
@@ -309,7 +306,7 @@ function tierMember(model: string, tier: PlanPlatformGroupId): PlanPlatformMembe
 		model,
 		label: premium ? premiumModelLabel(model) : getModelMeta(model).label,
 		iconId: getModelMeta(model).iconId,
-		version: premium ? premiumVersionLabel(CLOUD_PLATFORMS[model]?.premiumVersion) : CLOUD_PLATFORMS[model]?.version,
+		tooltip: premium ? premiumVersionLabel(CLOUD_PLATFORMS[model]?.premiumVersion) : CLOUD_PLATFORMS[model]?.version,
 	};
 }
 
