@@ -35,14 +35,14 @@ export const Route = createFileRoute("/api/site-icon/")({
 				}
 
 				const contentType = upstream.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "";
-				// The service answers an unknown site with 404 and a placeholder image;
-				// pass that through so `SiteIcon` can recognize it.
+				// The service answers an unknown site with 404 and a placeholder image.
+				// Serve it as a 200 so the browser doesn't log an error for every icon-less
+				// site; `SiteIcon` recognizes the placeholder by its size.
 				if ((!upstream.ok && upstream.status !== 404) || !ICON_TYPES.has(contentType)) {
 					return new Response("Icon unavailable", { status: 502 });
 				}
 
 				return new Response(await upstream.arrayBuffer(), {
-					status: upstream.status,
 					headers: {
 						"Content-Type": contentType,
 						"Cache-Control": upstream.ok ? FOUND_CACHE : MISSING_CACHE,
