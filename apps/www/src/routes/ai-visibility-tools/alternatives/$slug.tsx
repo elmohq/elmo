@@ -1,27 +1,35 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
-import { cloudAppUrl } from "@workspace/config/referrals";
-import { buttonVariants } from "@workspace/ui/components/button";
-import { CompetitorPricingDetails } from "@/components/competitor-pricing";
+import { ArrowRight } from "lucide-react";
 import {
-	BulletList,
+	AlternativeGrid,
+	AudienceCards,
+	CompetitorHero,
+	competitorGlance,
+	ElmoPickCard,
+	QuickComparisonTable,
+	SwitchingSteps,
+} from "@/components/competitor-page";
+import { CompetitorPricingDetails, PricingSnapshot } from "@/components/competitor-pricing";
+import {
+	CompetitorPageCards,
 	CompetitorPageLinks,
 	CompetitorSignupCta,
 	ElmoComparisonTable,
 	ProsCons,
 } from "@/components/competitor-review";
-import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
+import { DirectoryBackLink, DirectorySection, ElmoCta } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
+import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
+import { CARD } from "@/components/home/ui";
 import { Navbar } from "@/components/navbar";
-import { ToolGrid } from "@/components/tool-list";
 import {
 	type Competitor,
 	type CompetitorProfile,
 	getAlternatives,
 	getAlternativesFaqs,
 	getAlternativesVerdict,
-	getComparisonSlug,
 	getCompetitorBySlug,
 	getCompetitorProfile,
 	hasOwnPages,
@@ -65,56 +73,94 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 	component: AlternativesPage,
 });
 
-function ProfileSectionView({ section }: { section: ProfileSection }) {
+function ProfileSectionView({ section, tone }: { section: ProfileSection; tone: "white" | "muted" }) {
 	const table = section.table;
 	return (
-		<DirectorySection title={section.title}>
-			<div className="max-w-3xl space-y-4 leading-relaxed text-zinc-600">
+		<DirectorySection title={section.title} tone={tone}>
+			<div className="max-w-3xl space-y-4 text-pretty leading-relaxed text-zinc-600">
 				{section.paragraphs.map((p) => (
 					<p key={p}>{p}</p>
 				))}
 			</div>
 			{table ? (
-				<div className="mt-8 overflow-x-auto">
-					<table className="w-full text-sm">
-						<thead>
-							<tr className="border-b border-zinc-200 text-left">
-								{table.columns.map((col) => (
-									<th key={col} className="py-3 pr-4 font-semibold text-zinc-950">
-										{col}
-									</th>
-								))}
-							</tr>
-						</thead>
-						<tbody>
-							{table.rows.map((row) => (
-								<tr key={row[0]} className="border-b border-dashed border-zinc-200">
-									{row.map((cell, i) => (
-										<td
-											key={table.columns[i]}
-											className={`py-3 pr-4 align-top ${i === 0 ? "font-medium text-zinc-950" : "text-zinc-600"}`}
+				<div className={`mt-8 overflow-hidden ${CARD}`}>
+					<div className="overflow-x-auto">
+						<table className="w-full min-w-[640px] text-sm">
+							<thead>
+								<tr className="border-b border-zinc-200 bg-zinc-50/80 text-left">
+									{table.columns.map((col) => (
+										<th
+											key={col}
+											className="px-4 py-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500"
 										>
-											{cell}
-										</td>
+											{col}
+										</th>
 									))}
 								</tr>
-							))}
-						</tbody>
-					</table>
-					{table.caption ? <p className="mt-3 text-sm text-zinc-500">{table.caption}</p> : null}
+							</thead>
+							<tbody>
+								{table.rows.map((row) => (
+									<tr key={row[0]} className="border-b border-dashed border-zinc-200 last:border-0">
+										{row.map((cell, i) => (
+											<td
+												key={table.columns[i]}
+												className={`px-4 py-3 align-top ${i === 0 ? "font-medium text-zinc-950" : "text-zinc-600"}`}
+											>
+												{cell}
+											</td>
+										))}
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+					{table.caption ? (
+						<p className="border-t border-zinc-200 px-4 py-3 text-xs text-zinc-500">{table.caption}</p>
+					) : null}
 				</div>
 			) : null}
 			{section.links?.length ? (
-				<ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+				<ul className="mt-6 flex flex-wrap gap-2 text-sm">
 					{section.links.map((link) => (
 						<li key={link.href}>
-							<a href={link.href} className="font-medium text-blue-700 hover:text-blue-900">
-								{link.text} →
+							<a
+								href={link.href}
+								className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 font-medium text-blue-700 ring-1 ring-zinc-200 transition hover:text-blue-900 hover:ring-zinc-300"
+							>
+								{link.text}
+								<ArrowRight className="size-3.5" />
 							</a>
 						</li>
 					))}
 				</ul>
 			) : null}
+		</DirectorySection>
+	);
+}
+
+function SwitchingReasons({ competitor }: { competitor: Competitor }) {
+	if (!competitor.switching) return null;
+	const name = competitor.name;
+	return (
+		<DirectorySection
+			eyebrow="In Their Words"
+			title={`Why Teams Leave ${name}`}
+			lede={`What people tell us when they move to Elmo from ${name}, and what we do differently.`}
+		>
+			<div className="grid gap-5 md:grid-cols-2">
+				{competitor.switching.reasons.map((reason) => (
+					<article key={reason.headline} className={`flex flex-col p-6 ${CARD}`}>
+						<h3 className="text-lg font-semibold tracking-[-0.02em] text-zinc-950">{reason.headline}</h3>
+						<p className="mt-2 flex-1 text-pretty text-sm/6 text-zinc-600">{reason.detail}</p>
+						<p className="mt-4 rounded-xl bg-blue-50/70 p-4 text-pretty text-sm/6 text-zinc-700">
+							<span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-blue-700">
+								With Elmo
+							</span>
+							{reason.elmo}
+						</p>
+					</article>
+				))}
+			</div>
 		</DirectorySection>
 	);
 }
@@ -126,111 +172,108 @@ function AlternativesPage() {
 		faqs: FaqItem[];
 		profile?: CompetitorProfile;
 	};
+	const name = competitor.name;
 	const review = profile?.pricing ? profile.review : undefined;
+	const pricing = profile?.pricing;
+	const sections = profile?.alternatives?.sections ?? [];
+	const jumpLinks = [
+		{ id: "alternatives", label: "Alternatives" },
+		{ id: "comparison", label: "Comparison" },
+		...(review ? [{ id: "who-its-for", label: "Who It's For" }] : []),
+		...(pricing ? [{ id: "pricing", label: "Pricing" }] : []),
+		...(review ? [{ id: "switching", label: "Switching" }] : []),
+		{ id: "faq", label: "FAQ" },
+	];
 	return (
-		<div className="min-h-screen">
+		<div className={`${HOME_FONT_CLASS} min-h-screen`}>
+			<HomeStyles />
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero title={`${competitor.name} Alternatives`} lead={getAlternativesVerdict(competitor)} />
+				<CompetitorHero
+					competitor={competitor}
+					eyebrow={`Alternatives · ${alternatives.length + 1} Tools Compared`}
+					title={`${name} Alternatives`}
+					lead={getAlternativesVerdict(competitor)}
+					tiles={competitorGlance(competitor, review)}
+					jumpLinks={jumpLinks}
+				>
+					{review ? <CompetitorPageLinks competitor={competitor} current="alternatives" /> : null}
+				</CompetitorHero>
 
-				<DirectorySection title={`Top ${competitor.name} Alternatives and Competitors`}>
-					<div className="mb-8 rounded-md border border-blue-200 bg-blue-50/40 p-6">
-						<p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">1. Our Pick</p>
-						<h3 className="font-heading mt-2 text-xl text-zinc-950">Elmo: The Open-Source Alternative</h3>
-						<p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">{ELMO_PITCH}</p>
-						<div className="mt-4 flex flex-wrap gap-3">
-							<a href={cloudAppUrl("marketing-competitor-alternatives")} className={buttonVariants({ size: "sm" })}>
-								Start with Elmo Cloud
-							</a>
-							<Link to="/pricing" className={buttonVariants({ variant: "outline", size: "sm" })}>
-								Elmo pricing
-							</Link>
-							<Link
-								to="/ai-visibility-tools/$slug"
-								params={{ slug: getComparisonSlug(competitor) }}
-								className={buttonVariants({ variant: "outline", size: "sm" })}
-							>
-								Elmo vs {competitor.name}
-							</Link>
-						</div>
+				<DirectorySection
+					id="alternatives"
+					eyebrow="The List"
+					title={`Top ${name} Alternatives and Competitors`}
+					tone="muted"
+				>
+					<ElmoPickCard competitor={competitor} pitch={ELMO_PITCH} />
+					<div className="mt-6">
+						<AlternativeGrid competitors={alternatives} firstRank={2} />
 					</div>
-					<ToolGrid competitors={alternatives} />
 				</DirectorySection>
 
-				{profile?.alternatives?.sections?.map((section) => (
-					<ProfileSectionView key={section.title} section={section} />
+				<DirectorySection
+					id="comparison"
+					eyebrow="At a Glance"
+					title={`${name} Alternatives Compared`}
+					lede={`Price, engine coverage, and openness for each tool above, with ${name} at the bottom for reference.`}
+				>
+					<QuickComparisonTable competitor={competitor} alternatives={alternatives.slice(0, 5)} />
+				</DirectorySection>
+
+				{sections.map((section, i) => (
+					<ProfileSectionView key={section.title} section={section} tone={i % 2 === 0 ? "muted" : "white"} />
 				))}
 
 				{review ? (
-					<DirectorySection title={`How Elmo Compares with ${competitor.name}`}>
+					<DirectorySection eyebrow="Head to Head" title={`How Elmo Compares With ${name}`} tone="muted">
 						<ElmoComparisonTable competitor={competitor} review={review} />
 					</DirectorySection>
 				) : null}
 
 				{review ? (
-					<DirectorySection title={`Who ${competitor.name} Is For`}>
-						<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">{review.bestFor}</p>
-						<div className="grid gap-8 md:grid-cols-2">
-							<div>
-								<h3 className="font-heading mb-4 text-lg text-zinc-950">Stay with {competitor.name} If</h3>
-								<BulletList items={review.pickIf} kind="pro" />
-							</div>
-							<div>
-								<h3 className="font-heading mb-4 text-lg text-zinc-950">Consider an Alternative If</h3>
-								<BulletList items={review.lookElsewhereIf} kind="con" />
-							</div>
-						</div>
+					<DirectorySection id="who-its-for" eyebrow="Fit" title={`Who ${name} Is For`} lede={review.bestFor}>
+						<AudienceCards name={name} stay={review.pickIf} leave={review.lookElsewhereIf} />
 					</DirectorySection>
 				) : null}
 
-				{profile?.pricing ? (
-					<DirectorySection title={`${competitor.name} Pricing`}>
-						<CompetitorPricingDetails pricing={profile.pricing} />
+				{pricing ? (
+					<DirectorySection id="pricing" eyebrow="Pricing" title={`${name} Pricing`} tone={review ? "muted" : "white"}>
+						{review ? (
+							<PricingSnapshot competitor={competitor} pricing={pricing} />
+						) : (
+							<CompetitorPricingDetails pricing={pricing} />
+						)}
 					</DirectorySection>
 				) : null}
 
 				{review ? (
 					<>
-						<DirectorySection title={`${competitor.name} Strengths and Limitations`}>
+						<DirectorySection eyebrow="Trade-Offs" title={`${name} Strengths and Limitations`}>
 							<ProsCons review={review} />
 						</DirectorySection>
-						<DirectorySection title={`Switching from ${competitor.name} to Elmo`}>
-							<ol className="max-w-3xl list-decimal space-y-3 pl-5 leading-relaxed text-zinc-600">
-								{review.migration.map((step) => (
-									<li key={step}>{step}</li>
-								))}
-							</ol>
-							<div className="mt-8">
-								<CompetitorPageLinks competitor={competitor} current="alternatives" />
-							</div>
+						<DirectorySection id="switching" eyebrow="Migration" title={`Switching From ${name} to Elmo`} tone="muted">
+							<SwitchingSteps steps={review.migration} />
 						</DirectorySection>
 						<CompetitorSignupCta
 							competitor={competitor}
 							from="marketing-competitor-alternatives"
-							title={`Try Elmo as Your ${competitor.name} Alternative`}
+							title={`Try Elmo as Your ${name} Alternative`}
 						/>
 					</>
 				) : null}
 
-				{competitor.switching ? (
-					<DirectorySection title={`Why Teams Leave ${competitor.name}`}>
-						<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">
-							What people tell us when they move to Elmo from {competitor.name}, and what we do differently.
-						</p>
-						<div className="max-w-3xl space-y-8">
-							{competitor.switching.reasons.map((reason) => (
-								<div key={reason.headline}>
-									<h3 className="font-heading mb-2 text-lg text-zinc-950">{reason.headline}</h3>
-									<p className="leading-relaxed text-zinc-600">{reason.detail}</p>
-									<p className="mt-3 border-l-2 border-zinc-200 pl-4 leading-relaxed text-zinc-700">{reason.elmo}</p>
-								</div>
-							))}
-						</div>
+				<SwitchingReasons competitor={competitor} />
+
+				<div id="faq" className="scroll-mt-16">
+					<Faq items={faqs} />
+				</div>
+				{review ? (
+					<DirectorySection title={`More on ${name}`} tone="muted">
+						<CompetitorPageCards competitor={competitor} current="alternatives" />
 					</DirectorySection>
 				) : null}
-
-				<Faq items={faqs} />
 				<ElmoCta />
 			</main>
 			<Footer />
