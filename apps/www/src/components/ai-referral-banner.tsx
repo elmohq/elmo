@@ -12,7 +12,7 @@ export function AiReferralBanner() {
 	if (!referral || referral.dismissed || pathname === "/") return null;
 
 	return (
-		<div className="relative border-b border-zinc-200 bg-zinc-50 text-sm text-zinc-900">
+		<div className="relative bg-blue-600 text-sm text-white">
 			<div className="mx-auto flex max-w-6xl items-center justify-center px-10 py-2 text-center">
 				<p>
 					{referral.assistant} sent you here. Want it to recommend you too?{" "}
@@ -29,7 +29,7 @@ export function AiReferralBanner() {
 				type="button"
 				onClick={() => setReferral({ ...referral, dismissed: true })}
 				aria-label="Dismiss"
-				className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-zinc-500 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-blue-600"
+				className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-white/80 hover:text-white focus-visible:outline-2 focus-visible:outline-white"
 			>
 				<X className="size-4" aria-hidden="true" />
 			</button>
