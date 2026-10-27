@@ -59,6 +59,12 @@ export const PRICING_FAQS: FaqItem[] = [
 			"Yes. Elmo is free and open source to self-host, forever. There is no license fee and no per-seat pricing — you only pay for your own infrastructure and the AI provider API keys you choose to use.",
 	},
 	{
+		question: "Can I check my AI visibility before I buy?",
+		answer:
+			"Yes. The free AI visibility checker asks ChatGPT five questions your buyers would ask and shows whether it names you, who it recommends instead, and which sources it cites. No signup. Elmo Cloud runs the same kind of check across hundreds of prompts and every major engine, every day.",
+		links: [{ text: "free AI visibility checker", href: "/tools/ai-visibility-checker" }],
+	},
+	{
 		question: "Is there a hosted or cloud version of Elmo?",
 		answer:
 			"Yes. Elmo Cloud is managed hosting for teams that would rather not run their own infrastructure, starting at $29/mo. You can also self-host Elmo for free, or get in touch about white-label deployments.",
@@ -202,5 +208,58 @@ export const DIRECTORY_FAQS: FaqItem[] = [
 		question: "Can you track brand mentions in ChatGPT?",
 		answer:
 			"Yes. AI visibility software queries ChatGPT with your prompts and records whether it mentions or cites your brand. Because answers vary between runs, tracking a consistent prompt set on a schedule gives a far more reliable read than a single manual check. Elmo does this for ChatGPT on every plan, capturing answers from the real ChatGPT app rather than only the API.",
+	},
+];
+
+// AI visibility checker (/tools/ai-visibility-checker). The questions carry the
+// tool's secondary search terms: AI visibility score, audit, AEO grader, and
+// checking ChatGPT brand mentions.
+export const CHECKER_FAQS: FaqItem[] = [
+	{
+		question: "What is an AI visibility checker?",
+		answer:
+			"An AI visibility checker tests whether AI answer engines like ChatGPT recommend your brand when buyers ask about your category. This one writes five realistic buyer questions for your site, asks them with web search on, and reports whether you're mentioned, where you rank, which competitors are named instead, and which sources the answers cite. It also checks whether AI crawlers can reach your site.",
+	},
+	{
+		question: "How is the AI visibility score calculated?",
+		answer:
+			"The score is out of 100. Being mentioned in the answers is worth 45 points, your position when mentioned 15, your own site being cited as a source 15, AI crawler access in robots.txt 15 (search crawlers count double), structured data on your homepage 7, and an llms.txt file 3. Every point is shown in the breakdown next to your score.",
+	},
+	{
+		question: "How do I check if ChatGPT mentions my brand?",
+		answer:
+			"Enter your domain above. The checker asks ChatGPT the questions your buyers would ask, without naming you, and shows whether each answer mentions your brand. To do it by hand, ask ChatGPT those questions in a fresh chat with search on and note who it names. Answers change from run to run, so repeat it on a schedule or track it with Elmo.",
+	},
+	{
+		question: "What's the difference between this and an AEO grader?",
+		answer:
+			"AEO graders such as HubSpot's audit how your pages are built (structure, schema, readability) and estimate how citable they are. This checker measures the outcome: whether AI actually recommends and cites you for real buyer questions, and who it recommends instead, plus the crawler and structured-data basics that make citations possible.",
+	},
+	{
+		question: "What does an AI visibility audit include?",
+		answer:
+			"A useful AI visibility audit covers four things: whether AI answers mention your brand for the questions buyers ask, which competitors they name instead, which sources they cite, and whether AI crawlers can access your site. This free check covers all four for five prompts on ChatGPT. A full audit runs hundreds of prompts across several engines over time.",
+	},
+	{
+		question: "Why does my score change when I run it again?",
+		answer:
+			"AI answers are not deterministic: the same question can name different brands from one run to the next, and search results shift daily. Results are cached for 24 hours, so a re-run the same day returns the same report. For a stable read, track a fixed set of prompts across engines every day, which is what Elmo does.",
+		links: [{ text: "what Elmo does", href: "/features" }],
+	},
+	{
+		question: "How do I improve my AI visibility score?",
+		answer:
+			"Let the AI search crawlers in (OAI-SearchBot, ChatGPT-User, Claude-SearchBot, PerplexityBot), add Organization JSON-LD, and publish clear pages that answer the questions in your report. Then get mentioned on the sources AI cites for your category, such as review sites, community threads, and comparison articles. Track the prompts over time to see what moves.",
+	},
+	{
+		question: "Does blocking GPTBot hurt my AI visibility?",
+		answer:
+			"Blocking GPTBot keeps your content out of OpenAI's training data, but ChatGPT search uses OAI-SearchBot and ChatGPT-User to find and cite pages. Many sites block the training crawlers and allow the search ones. Blocking the search crawlers is what stops ChatGPT from citing you, so the score weighs them more heavily.",
+		links: [{ text: "Blocking GPTBot", href: "/blog/robots-txt-ai-crawlers" }],
+	},
+	{
+		question: "Is the AI visibility checker free?",
+		answer:
+			"Yes. It's free with no signup, limited to a few checks per person per day because every check runs live AI searches. For daily tracking of hundreds of prompts across ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews, Elmo Cloud starts at $29/mo, or you can self-host Elmo for free.",
 	},
 ];

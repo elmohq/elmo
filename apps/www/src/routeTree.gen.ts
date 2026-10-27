@@ -54,6 +54,8 @@ import { Route as LegalIndexRouteImport } from './routes/legal/index'
 import { Route as LegalSplatRouteImport } from './routes/legal/$'
 import { Route as OffSiteAeoBookRouteImport } from './routes/off-site-aeo_.book'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
+import { Route as ToolsIndexRouteImport } from './routes/tools/index'
+import { Route as ToolsAiVisibilityCheckerRouteImport } from './routes/tools/ai-visibility-checker'
 import { Route as AiVisibilityToolsAlternativesIndexRouteImport } from './routes/ai-visibility-tools/alternatives/index'
 import { Route as AiVisibilityToolsAlternativesSlugRouteImport } from './routes/ai-visibility-tools/alternatives/$slug'
 import { Route as AiVisibilityToolsCategoryIndexRouteImport } from './routes/ai-visibility-tools/category/index'
@@ -64,6 +66,7 @@ import { Route as AiVisibilityToolsCompareSlugRouteImport } from './routes/ai-vi
 import { Route as AiVisibilityToolsFeaturesIndexRouteImport } from './routes/ai-visibility-tools/features/index'
 import { Route as AiVisibilityToolsFeaturesSlugRouteImport } from './routes/ai-visibility-tools/features/$slug'
 import { Route as ApiRepoActivityRefreshRouteImport } from './routes/api/repo-activity/refresh'
+import { Route as ApiToolsAiVisibilityCheckerRouteImport } from './routes/api/tools/ai-visibility-checker'
 import { Route as LlmsDotmdxBlogSplatRouteImport } from './routes/llms[.]mdx.blog.$'
 import { Route as LlmsDotmdxDocsSplatRouteImport } from './routes/llms[.]mdx.docs.$'
 import { Route as OgDocsSplatRouteImport } from './routes/og/docs/$'
@@ -299,6 +302,17 @@ const OgStatusDotpngRoute = OgStatusDotpngRouteImport.update({
   path: '/og/status.png',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsIndexRoute = ToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsAiVisibilityCheckerRoute =
+  ToolsAiVisibilityCheckerRouteImport.update({
+    id: '/tools/ai-visibility-checker',
+    path: '/tools/ai-visibility-checker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AiVisibilityToolsAlternativesIndexRoute =
   AiVisibilityToolsAlternativesIndexRouteImport.update({
     id: '/ai-visibility-tools/alternatives/',
@@ -358,6 +372,12 @@ const ApiRepoActivityRefreshRoute = ApiRepoActivityRefreshRouteImport.update({
   path: '/api/repo-activity/refresh',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiToolsAiVisibilityCheckerRoute =
+  ApiToolsAiVisibilityCheckerRouteImport.update({
+    id: '/api/tools/ai-visibility-checker',
+    path: '/api/tools/ai-visibility-checker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LlmsDotmdxBlogSplatRoute = LlmsDotmdxBlogSplatRouteImport.update({
   id: '/llms.mdx/blog/$',
   path: '/llms.mdx/blog/$',
@@ -424,6 +444,7 @@ export interface FileRoutesByFullPath {
   '/legal/$': typeof LegalSplatRoute
   '/off-site-aeo/book': typeof OffSiteAeoBookRoute
   '/og/status.png': typeof OgStatusDotpngRoute
+  '/tools/ai-visibility-checker': typeof ToolsAiVisibilityCheckerRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
@@ -431,12 +452,14 @@ export interface FileRoutesByFullPath {
   '/docs/': typeof DocsIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
   '/legal/': typeof LegalIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
   '/ai-visibility-tools/compare/$slug': typeof AiVisibilityToolsCompareSlugRoute
   '/ai-visibility-tools/features/$slug': typeof AiVisibilityToolsFeaturesSlugRoute
   '/api/repo-activity/refresh': typeof ApiRepoActivityRefreshRoute
+  '/api/tools/ai-visibility-checker': typeof ApiToolsAiVisibilityCheckerRoute
   '/llms.mdx/blog/$': typeof LlmsDotmdxBlogSplatRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
@@ -486,6 +509,7 @@ export interface FileRoutesByTo {
   '/legal/$': typeof LegalSplatRoute
   '/off-site-aeo/book': typeof OffSiteAeoBookRoute
   '/og/status.png': typeof OgStatusDotpngRoute
+  '/tools/ai-visibility-checker': typeof ToolsAiVisibilityCheckerRoute
   '/aeo-for': typeof AeoForIndexRoute
   '/ai-search': typeof AiSearchIndexRoute
   '/ai-visibility-tools': typeof AiVisibilityToolsIndexRoute
@@ -493,12 +517,14 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsIndexRoute
   '/glossary': typeof GlossaryIndexRoute
   '/legal': typeof LegalIndexRoute
+  '/tools': typeof ToolsIndexRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
   '/ai-visibility-tools/compare/$slug': typeof AiVisibilityToolsCompareSlugRoute
   '/ai-visibility-tools/features/$slug': typeof AiVisibilityToolsFeaturesSlugRoute
   '/api/repo-activity/refresh': typeof ApiRepoActivityRefreshRoute
+  '/api/tools/ai-visibility-checker': typeof ApiToolsAiVisibilityCheckerRoute
   '/llms.mdx/blog/$': typeof LlmsDotmdxBlogSplatRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
@@ -549,6 +575,7 @@ export interface FileRoutesById {
   '/legal/$': typeof LegalSplatRoute
   '/off-site-aeo_/book': typeof OffSiteAeoBookRoute
   '/og/status.png': typeof OgStatusDotpngRoute
+  '/tools/ai-visibility-checker': typeof ToolsAiVisibilityCheckerRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
@@ -556,12 +583,14 @@ export interface FileRoutesById {
   '/docs/': typeof DocsIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
   '/legal/': typeof LegalIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
   '/ai-visibility-tools/compare/$slug': typeof AiVisibilityToolsCompareSlugRoute
   '/ai-visibility-tools/features/$slug': typeof AiVisibilityToolsFeaturesSlugRoute
   '/api/repo-activity/refresh': typeof ApiRepoActivityRefreshRoute
+  '/api/tools/ai-visibility-checker': typeof ApiToolsAiVisibilityCheckerRoute
   '/llms.mdx/blog/$': typeof LlmsDotmdxBlogSplatRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
@@ -613,6 +642,7 @@ export interface FileRouteTypes {
     | '/legal/$'
     | '/off-site-aeo/book'
     | '/og/status.png'
+    | '/tools/ai-visibility-checker'
     | '/aeo-for/'
     | '/ai-search/'
     | '/ai-visibility-tools/'
@@ -620,12 +650,14 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/glossary/'
     | '/legal/'
+    | '/tools/'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
     | '/ai-visibility-tools/compare/$slug'
     | '/ai-visibility-tools/features/$slug'
     | '/api/repo-activity/refresh'
+    | '/api/tools/ai-visibility-checker'
     | '/llms.mdx/blog/$'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
@@ -675,6 +707,7 @@ export interface FileRouteTypes {
     | '/legal/$'
     | '/off-site-aeo/book'
     | '/og/status.png'
+    | '/tools/ai-visibility-checker'
     | '/aeo-for'
     | '/ai-search'
     | '/ai-visibility-tools'
@@ -682,12 +715,14 @@ export interface FileRouteTypes {
     | '/docs'
     | '/glossary'
     | '/legal'
+    | '/tools'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
     | '/ai-visibility-tools/compare/$slug'
     | '/ai-visibility-tools/features/$slug'
     | '/api/repo-activity/refresh'
+    | '/api/tools/ai-visibility-checker'
     | '/llms.mdx/blog/$'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
@@ -737,6 +772,7 @@ export interface FileRouteTypes {
     | '/legal/$'
     | '/off-site-aeo_/book'
     | '/og/status.png'
+    | '/tools/ai-visibility-checker'
     | '/aeo-for/'
     | '/ai-search/'
     | '/ai-visibility-tools/'
@@ -744,12 +780,14 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/glossary/'
     | '/legal/'
+    | '/tools/'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
     | '/ai-visibility-tools/compare/$slug'
     | '/ai-visibility-tools/features/$slug'
     | '/api/repo-activity/refresh'
+    | '/api/tools/ai-visibility-checker'
     | '/llms.mdx/blog/$'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
@@ -800,6 +838,7 @@ export interface RootRouteChildren {
   LegalSplatRoute: typeof LegalSplatRoute
   OffSiteAeoBookRoute: typeof OffSiteAeoBookRoute
   OgStatusDotpngRoute: typeof OgStatusDotpngRoute
+  ToolsAiVisibilityCheckerRoute: typeof ToolsAiVisibilityCheckerRoute
   AeoForIndexRoute: typeof AeoForIndexRoute
   AiSearchIndexRoute: typeof AiSearchIndexRoute
   AiVisibilityToolsIndexRoute: typeof AiVisibilityToolsIndexRoute
@@ -807,12 +846,14 @@ export interface RootRouteChildren {
   DocsIndexRoute: typeof DocsIndexRoute
   GlossaryIndexRoute: typeof GlossaryIndexRoute
   LegalIndexRoute: typeof LegalIndexRoute
+  ToolsIndexRoute: typeof ToolsIndexRoute
   AiVisibilityToolsAlternativesSlugRoute: typeof AiVisibilityToolsAlternativesSlugRoute
   AiVisibilityToolsCategorySlugRoute: typeof AiVisibilityToolsCategorySlugRoute
   AiVisibilityToolsCategoryOpenSourceRoute: typeof AiVisibilityToolsCategoryOpenSourceRoute
   AiVisibilityToolsCompareSlugRoute: typeof AiVisibilityToolsCompareSlugRoute
   AiVisibilityToolsFeaturesSlugRoute: typeof AiVisibilityToolsFeaturesSlugRoute
   ApiRepoActivityRefreshRoute: typeof ApiRepoActivityRefreshRoute
+  ApiToolsAiVisibilityCheckerRoute: typeof ApiToolsAiVisibilityCheckerRoute
   LlmsDotmdxBlogSplatRoute: typeof LlmsDotmdxBlogSplatRoute
   LlmsDotmdxDocsSplatRoute: typeof LlmsDotmdxDocsSplatRoute
   OgDocsSplatRoute: typeof OgDocsSplatRoute
@@ -1141,6 +1182,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OgStatusDotpngRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/': {
+      id: '/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof ToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/ai-visibility-checker': {
+      id: '/tools/ai-visibility-checker'
+      path: '/tools/ai-visibility-checker'
+      fullPath: '/tools/ai-visibility-checker'
+      preLoaderRoute: typeof ToolsAiVisibilityCheckerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ai-visibility-tools/alternatives/': {
       id: '/ai-visibility-tools/alternatives/'
       path: '/ai-visibility-tools/alternatives'
@@ -1209,6 +1264,13 @@ declare module '@tanstack/react-router' {
       path: '/api/repo-activity/refresh'
       fullPath: '/api/repo-activity/refresh'
       preLoaderRoute: typeof ApiRepoActivityRefreshRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tools/ai-visibility-checker': {
+      id: '/api/tools/ai-visibility-checker'
+      path: '/api/tools/ai-visibility-checker'
+      fullPath: '/api/tools/ai-visibility-checker'
+      preLoaderRoute: typeof ApiToolsAiVisibilityCheckerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms.mdx/blog/$': {
@@ -1288,6 +1350,7 @@ const rootRouteChildren: RootRouteChildren = {
   LegalSplatRoute: LegalSplatRoute,
   OffSiteAeoBookRoute: OffSiteAeoBookRoute,
   OgStatusDotpngRoute: OgStatusDotpngRoute,
+  ToolsAiVisibilityCheckerRoute: ToolsAiVisibilityCheckerRoute,
   AeoForIndexRoute: AeoForIndexRoute,
   AiSearchIndexRoute: AiSearchIndexRoute,
   AiVisibilityToolsIndexRoute: AiVisibilityToolsIndexRoute,
@@ -1295,6 +1358,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsIndexRoute: DocsIndexRoute,
   GlossaryIndexRoute: GlossaryIndexRoute,
   LegalIndexRoute: LegalIndexRoute,
+  ToolsIndexRoute: ToolsIndexRoute,
   AiVisibilityToolsAlternativesSlugRoute:
     AiVisibilityToolsAlternativesSlugRoute,
   AiVisibilityToolsCategorySlugRoute: AiVisibilityToolsCategorySlugRoute,
@@ -1303,6 +1367,7 @@ const rootRouteChildren: RootRouteChildren = {
   AiVisibilityToolsCompareSlugRoute: AiVisibilityToolsCompareSlugRoute,
   AiVisibilityToolsFeaturesSlugRoute: AiVisibilityToolsFeaturesSlugRoute,
   ApiRepoActivityRefreshRoute: ApiRepoActivityRefreshRoute,
+  ApiToolsAiVisibilityCheckerRoute: ApiToolsAiVisibilityCheckerRoute,
   LlmsDotmdxBlogSplatRoute: LlmsDotmdxBlogSplatRoute,
   LlmsDotmdxDocsSplatRoute: LlmsDotmdxDocsSplatRoute,
   OgDocsSplatRoute: OgDocsSplatRoute,
