@@ -15,6 +15,7 @@ import {
 	getScreenshotUrl,
 	getSoundbite,
 	graveyardFate,
+	hasOwnPages,
 	isLowDR,
 } from "@/lib/competitors";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
@@ -111,6 +112,23 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">The short version</p>
 						<p className="mt-1 text-lg font-medium text-balance text-zinc-950">{getSoundbite(competitor)}</p>
 					</div>
+					{hasOwnPages(competitor) && (
+						<p className="mt-6 text-sm text-zinc-600">
+							Weighing more than two options? See the{" "}
+							<Link
+								to="/ai-visibility-tools/alternatives/$slug"
+								params={{ slug: competitor.slug }}
+								className="font-medium text-blue-700 hover:text-blue-900"
+							>
+								best {competitor.name} alternatives
+							</Link>{" "}
+							or{" "}
+							<Link to="/pricing" className="font-medium text-blue-700 hover:text-blue-900">
+								Elmo's pricing
+							</Link>
+							.
+						</p>
+					)}
 					<FateNotice competitor={competitor} />
 					{isLowDR(competitor) && !graveyardFate(competitor) && (
 						<p className="mt-8 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-50 px-3 py-1 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">

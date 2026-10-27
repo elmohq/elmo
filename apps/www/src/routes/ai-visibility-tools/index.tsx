@@ -4,13 +4,14 @@ import { CompetitorDirectory } from "@/components/competitor-directory";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
+import { TopToolsTable } from "@/components/top-tools-table";
 import { competitors, getComparisonSlug, isLowDR, isRetired } from "@/lib/competitors";
 import { DIRECTORY_FAQS } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
-const title = "AI Visibility Tools: Compare Every AEO & GEO Platform · Elmo";
+const title = "AI Visibility Tools & LLM Visibility Trackers: 100+ Compared · Elmo";
 const description =
-	"Compare 100+ AI visibility tools, AEO software, LLM visibility trackers and GEO platforms side by side — engine coverage, pricing, and features, each head-to-head with Elmo.";
+	"Compare 100+ AI visibility tracking tools, LLM visibility trackers, AEO software and GEO platforms side by side: engine coverage, pricing, and features, each head-to-head with Elmo.";
 
 // Indexed comparison pages (mirrors the sitemap filter), surfaced as ItemList
 // structured data so AI engines can extract the full directory of tools.
@@ -79,7 +80,7 @@ function AiVisibilitySoftwarePage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
-				<CompetitorDirectory />
+				<CompetitorDirectory afterHero={<TopToolsTable />} />
 				<AiVisibilitySoftwareHub />
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
