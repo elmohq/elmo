@@ -92,8 +92,12 @@ export function clampedPaging(
 	maxLimit = 100,
 	defaultLimit = 20,
 ): { page: number; limit: number; offset: number } {
-	const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-	const limit = Math.max(1, Math.min(maxLimit, parseInt(searchParams.get("limit") || String(defaultLimit))));
+	const parsed = (name: string, fallback: number) => {
+		const value = parseInt(searchParams.get(name) ?? "", 10);
+		return Number.isNaN(value) ? fallback : value;
+	};
+	const page = Math.max(1, parsed("page", 1));
+	const limit = Math.max(1, Math.min(maxLimit, parsed("limit", defaultLimit)));
 	return { page, limit, offset: (page - 1) * limit };
 }
 

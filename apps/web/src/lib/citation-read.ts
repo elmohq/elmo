@@ -202,7 +202,7 @@ async function withPageDetails(
  * One page of `matched` and how many rows it has in all, counted apart from the
  * page so a page past the end still reports the total.
  */
-async function pageOf<T>(ctes: SQL, matched: SQL, order: SQL, limit: number, offset: number) {
+export async function pageOf<T>(ctes: SQL, matched: SQL, order: SQL, limit: number, offset: number) {
 	const [row] = await queryPg<{ total: number; rows: T[] }>(sql`
 		WITH ${ctes}, matched AS (${matched})
 		SELECT
@@ -428,10 +428,11 @@ export async function getCitationTotals(
 export async function getDomainPromptCounts(scope: AnalyticsScope, domains: string[]): Promise<Map<string, number>> {
 	if (domains.length === 0) return new Map();
 	const rows = await queryPg<{ domain: string; prompt_count: number }>(sql`
-		SELECT domain, count(DISTINCT prompt_id)::int AS prompt_count
-		FROM rollup_citation_urls
-		WHERE ${rollupScope(scope)} AND domain = ANY(${textList(domains)})
-		GROUP BY domain
+		SELECT p.domain, count(DISTINCT r.prompt_id)::int AS prompt_count
+		FROM rollup_citation_urls r
+		JOIN rollup_citation_pages p ON p.brand_id = r.brand_id AND p.page_id = r.page_id
+		WHERE ${rollupScope(scope, "r")} AND p.domain = ANY(${textList(domains)})
+		GROUP BY p.domain
 	`);
 	return new Map(rows.map((row) => [row.domain, Number(row.prompt_count)]));
 }

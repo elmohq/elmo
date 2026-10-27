@@ -15,8 +15,13 @@ import {
 	scopeFilter,
 	uuidList,
 } from "@/lib/analytics-sql";
-import { type CitationOwner, containing, type OwnedDomains, ownersCte } from "@/lib/citation-read";
-import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
+import { type CitationOwner, containing, type OwnedDomains, ownersCte, pageOf } from "@/lib/citation-read";
+import {
+	type FanoutBreakdownRow,
+	type FanoutModelTotalRow,
+	type FanoutPromptTotalRow,
+	UNAVAILABLE_SENTINEL,
+} from "@/lib/fanout-analysis";
 import type { AssessmentSums } from "@/lib/sentiment";
 
 /** The run counts every run read selects, so a new rollup column reaches them all at once. */
@@ -490,6 +495,20 @@ export interface FanoutQueryRow {
 	prompt_count: number;
 }
 
+/**
+ * Each search as the dashboard's fan-out counts it, trimmed of all whitespace and
+ * without the `unavailable` sentinel; the rollup trims only spaces.
+ */
+const fanoutQueries = (scope: AnalyticsScope) => sql`
+	queries AS (
+		SELECT * FROM (
+			SELECT lower(regexp_replace(query, '^[[:space:]]+|[[:space:]]+$', '', 'g')) AS query, prompt_id, runs, brand_mentioned_runs
+			FROM rollup_web_queries
+			WHERE ${rollupScope(scope)}
+		) q
+		WHERE query <> '' AND query <> ${UNAVAILABLE_SENTINEL}
+	)`;
+
 export async function getFanoutQueryPage(
 	scope: AnalyticsScope,
 	search: string | undefined,
@@ -497,27 +516,29 @@ export async function getFanoutQueryPage(
 	offset: number,
 ): Promise<{ rows: FanoutQueryRow[]; total: number }> {
 	const term = search?.trim();
-	const rows = await queryPg<FanoutQueryRow & { total: number }>(sql`
-		SELECT query, sum(runs)::int AS runs, count(DISTINCT prompt_id)::int AS prompt_count, count(*) OVER ()::int AS total
-		FROM rollup_web_queries
-		WHERE ${rollupScope(scope)} ${term ? sql`AND query ILIKE ${containing(term)}` : sql``}
-		GROUP BY query
-		ORDER BY runs DESC, prompt_count DESC, query
-		LIMIT ${limit} OFFSET ${offset}
-	`);
-	return { rows: rows.map(({ total: _, ...row }) => row), total: Number(rows[0]?.total ?? 0) };
+	return pageOf<FanoutQueryRow>(
+		fanoutQueries(scope),
+		sql`
+			SELECT query, sum(runs)::int AS runs, count(DISTINCT prompt_id)::int AS prompt_count
+			FROM queries
+			${term ? sql`WHERE query ILIKE ${containing(term)}` : sql``}
+			GROUP BY query`,
+		sql`runs DESC, prompt_count DESC, query`,
+		limit,
+		offset,
+	);
 }
 
 export async function getFanoutQueryTotals(
 	scope: AnalyticsScope,
 ): Promise<{ total_queries: number; unique_queries: number; brand_mentions: number }> {
 	const [row] = await queryPg<{ total_queries: number; unique_queries: number; brand_mentions: number }>(sql`
+		WITH ${fanoutQueries(scope)}
 		SELECT
 			coalesce(sum(runs), 0)::int AS total_queries,
 			count(DISTINCT query)::int AS unique_queries,
 			coalesce(sum(brand_mentioned_runs), 0)::int AS brand_mentions
-		FROM rollup_web_queries
-		WHERE ${rollupScope(scope)}
+		FROM queries
 	`);
 	return {
 		total_queries: Number(row?.total_queries ?? 0),
