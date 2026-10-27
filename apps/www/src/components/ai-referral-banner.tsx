@@ -15,8 +15,7 @@ export function AiReferralBanner() {
 		<div className="relative bg-blue-600 text-sm text-white">
 			<div className="mx-auto flex max-w-6xl items-center justify-center px-10 py-2 text-center">
 				<p>
-					{referral.assistant} sent you here because we used Elmo to get it recommending us. Want it to recommend you
-					too?{" "}
+					You found us through {referral.assistant}. That's Elmo at work. Want it to recommend you too?{" "}
 					<a
 						href={CLOUD_URL}
 						className="inline-flex items-center gap-1 whitespace-nowrap font-medium underline underline-offset-4"

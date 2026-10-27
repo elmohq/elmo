@@ -49,7 +49,7 @@ export const Route = createFileRoute("/")({
 function aiReferralHero(assistant: string): ComponentProps<typeof Hero> {
 	return {
 		title: `Get Recommended by ${assistant}`,
-		lede: `${assistant} sent you here because we used Elmo to get it recommending us. Do the same for your brand: see how ChatGPT, Claude, Gemini, and every other AI model talk about you, which sources they trust, and what to change so they recommend you too.`,
+		lede: `You found us through ${assistant}. That's Elmo at work. See how ChatGPT, Claude, Gemini, and every other AI model talk about your brand, which sources they trust, and what to change so they recommend you too.`,
 		from: "marketing-ai-referral",
 	};
 }
