@@ -22,6 +22,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
+import { TurnstileError, useTurnstile } from "@/hooks/use-turnstile";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
@@ -60,6 +61,7 @@ function RegisterPage() {
 			incomingRef={incomingRef}
 			isCloud={context.clientConfig?.mode === "cloud"}
 			hasUsers={context.clientConfig?.hasUsers ?? false}
+			turnstileSiteKey={context.clientConfig?.turnstileSiteKey}
 		/>
 	);
 }
@@ -69,6 +71,7 @@ export function RegisterForm({
 	incomingRef,
 	isCloud,
 	hasUsers,
+	turnstileSiteKey,
 }: {
 	returnTo?: string;
 	/** The `ref` this page was reached with, kept on links that stay inside auth. */
@@ -76,6 +79,7 @@ export function RegisterForm({
 	isCloud?: boolean;
 	/** A local instance before its bootstrap signup has nowhere to send an existing account. */
 	hasUsers?: boolean;
+	turnstileSiteKey?: string;
 }) {
 	const navigate = useNavigate();
 	const [name, setName] = useState("");
@@ -85,6 +89,8 @@ export function RegisterForm({
 	const [loading, setLoading] = useState(false);
 	const [pendingVerification, setPendingVerification] = useState(false);
 	const [resending, setResending] = useState(false);
+	const [resendError, setResendError] = useState<string | null>(null);
+	const turnstile = useTurnstile(turnstileSiteKey);
 	const source = isCloud ? "cloud-signup" : "self-hosted-signup";
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -98,6 +104,7 @@ export function RegisterForm({
 				password,
 				name,
 				...(isCloud && { callbackURL: safeReturnTo(returnTo) }),
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
 			});
 
 			if (result.error) {
@@ -113,16 +120,24 @@ export function RegisterForm({
 			}
 
 			navigate({ to: returnTo ?? "/app" });
-		} catch {
-			setError("Something went wrong. Please try again.");
+		} catch (err) {
+			setError(err instanceof TurnstileError ? err.message : "Something went wrong. Please try again.");
 			setLoading(false);
 		}
 	}
 
 	async function handleResend() {
 		setResending(true);
+		setResendError(null);
 		try {
-			await authClient.sendVerificationEmail({ email, callbackURL: safeReturnTo(returnTo) });
+			const result = await authClient.sendVerificationEmail({
+				email,
+				callbackURL: safeReturnTo(returnTo),
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
+			});
+			if (result.error) setResendError(result.error.message ?? "Couldn't resend the email. Please try again.");
+		} catch (err) {
+			setResendError(err instanceof TurnstileError ? err.message : "Something went wrong. Please try again.");
 		} finally {
 			setResending(false);
 		}
@@ -135,6 +150,12 @@ export function RegisterForm({
 					<p className="text-sm text-muted-foreground text-center">
 						Click the link in the email to verify your address and get started. The link expires, so verify soon.
 					</p>
+					{resendError && (
+						<Alert variant="destructive">
+							<AlertDescription>{resendError}</AlertDescription>
+						</Alert>
+					)}
+					{turnstile.enabled && <div ref={turnstile.ref} />}
 					<Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resending}>
 						{resending ? "Sending..." : "Resend verification email"}
 					</Button>
@@ -217,6 +238,7 @@ export function RegisterForm({
 						minLength={isCloud ? 8 : 6}
 					/>
 				</div>
+				{turnstile.enabled && <div ref={turnstile.ref} />}
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Creating account..." : "Create account"}
 				</Button>

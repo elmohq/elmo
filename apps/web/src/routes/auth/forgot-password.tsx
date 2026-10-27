@@ -12,12 +12,14 @@
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
+import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
+import { isCaptchaRejection, TurnstileError, useTurnstile } from "@/hooks/use-turnstile";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/forgot-password")({
@@ -41,21 +43,44 @@ function ForgotPasswordPage() {
 		return null;
 	}
 
-	return <ForgotPasswordForm isCloud />;
+	return <ForgotPasswordForm isCloud turnstileSiteKey={context.clientConfig.turnstileSiteKey} />;
 }
 
-export function ForgotPasswordForm({ isCloud, submitted: initiallySubmitted = false }: ForgotPasswordFormProps) {
+export function ForgotPasswordForm({
+	isCloud,
+	submitted: initiallySubmitted = false,
+	turnstileSiteKey,
+}: ForgotPasswordFormProps) {
 	const [email, setEmail] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [submitted, setSubmitted] = useState(initiallySubmitted);
+	const [error, setError] = useState<string | null>(null);
+	const turnstile = useTurnstile(turnstileSiteKey);
 	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		setLoading(true);
+		setError(null);
 		try {
-			await authClient.requestPasswordReset({ email, redirectTo: "/auth/reset-password" });
-		} catch {
+			const result = await authClient.requestPasswordReset({
+				email,
+				redirectTo: "/auth/reset-password",
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
+			});
+			// A failed bot check says nothing about the account, so it is safe to
+			// report; any other failure keeps the neutral confirmation.
+			if (isCaptchaRejection(result.error)) {
+				setError(new TurnstileError().message);
+				setLoading(false);
+				return;
+			}
+		} catch (err) {
+			if (err instanceof TurnstileError) {
+				setError(err.message);
+				setLoading(false);
+				return;
+			}
 			// Same neutral confirmation on failure — no account enumeration.
 		}
 		setSubmitted(true);
@@ -87,6 +112,11 @@ export function ForgotPasswordForm({ isCloud, submitted: initiallySubmitted = fa
 			footer={<SalesFooterLinks source={source} />}
 		>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
+				{error && (
+					<Alert variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
 				<div className="space-y-2">
 					<Label htmlFor="email">Email</Label>
 					<Input
@@ -100,6 +130,7 @@ export function ForgotPasswordForm({ isCloud, submitted: initiallySubmitted = fa
 						autoFocus
 					/>
 				</div>
+				{turnstile.enabled && <div ref={turnstile.ref} />}
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Sending..." : "Send reset link"}
 				</Button>
@@ -115,6 +146,7 @@ interface ForgotPasswordFormProps {
 	isCloud?: boolean;
 	/** Starts on the confirmation screen. For stories; the page always starts on the form. */
 	submitted?: boolean;
+	turnstileSiteKey?: string;
 }
 
 export function BackToSignIn() {

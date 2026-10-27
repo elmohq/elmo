@@ -23,6 +23,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
+import { TurnstileError, useTurnstile } from "@/hooks/use-turnstile";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
@@ -92,6 +93,7 @@ function LoginPage() {
 			incomingRef={incomingRef}
 			isCloud={mode === "cloud"}
 			canRegister={canRegister}
+			turnstileSiteKey={context.clientConfig?.turnstileSiteKey}
 		/>
 	);
 }
@@ -185,12 +187,14 @@ export function EmailPasswordLogin({
 	incomingRef,
 	isCloud,
 	canRegister,
+	turnstileSiteKey,
 }: {
 	destination?: string;
 	returnTo?: string;
 	incomingRef?: string;
 	isCloud?: boolean;
 	canRegister?: boolean;
+	turnstileSiteKey?: string;
 }) {
 	const navigate = useNavigate();
 	const [email, setEmail] = useState("");
@@ -198,6 +202,7 @@ export function EmailPasswordLogin({
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
+	const turnstile = useTurnstile(turnstileSiteKey);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -208,6 +213,7 @@ export function EmailPasswordLogin({
 			const result = await authClient.signIn.email({
 				email,
 				password,
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
 			});
 
 			if (result.error) {
@@ -220,7 +226,8 @@ export function EmailPasswordLogin({
 					setLoading(false);
 					return;
 				}
-				if (isCloud && result.error.status === 403) {
+				// A rejected Turnstile token is also a 403.
+				if (isCloud && result.error.code === "EMAIL_NOT_VERIFIED") {
 					setError("Please verify your email first — we just sent you a new verification link.");
 				} else {
 					setError(result.error.message ?? "Invalid email or password");
@@ -230,8 +237,8 @@ export function EmailPasswordLogin({
 			}
 
 			window.location.href = destination;
-		} catch {
-			setError("Something went wrong. Please try again.");
+		} catch (err) {
+			setError(err instanceof TurnstileError ? err.message : "Something went wrong. Please try again.");
 			setLoading(false);
 		}
 	}
@@ -300,6 +307,7 @@ export function EmailPasswordLogin({
 						autoComplete="current-password"
 					/>
 				</div>
+				{turnstile.enabled && <div ref={turnstile.ref} />}
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Signing in..." : "Sign in"}
 				</Button>
