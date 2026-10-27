@@ -222,6 +222,11 @@ const AEO: Pillar = {
 			description: "The same discipline under its other common name, and where the two terms diverge.",
 		},
 		{
+			label: "Free AI visibility checker",
+			href: "/tools/ai-visibility-checker",
+			description: "See whether ChatGPT recommends your brand today, who it names instead, and what it cites.",
+		},
+		{
 			label: "AI visibility tools",
 			href: "/ai-visibility-tools",
 			description: "Every AEO and AI visibility tracker on the market, compared feature by feature.",

@@ -31,6 +31,7 @@ Elmo is Answer Engine Optimization (AEO), also called generative engine optimiza
 
 ## Resources
 
+- [Free AI Visibility Checker](https://www.elmohq.com/tools/ai-visibility-checker): Enter a domain to get a free AI visibility score: whether ChatGPT mentions the brand for real buyer questions, which competitors it recommends instead, which sources it cites, and whether AI crawlers can reach the site.
 - [AI Visibility Tool Directory](https://www.elmohq.com/ai-visibility-tools): Compare 100+ AI visibility and Answer Engine Optimization tools, with a feature matrix, pricing, and head-to-head comparisons with Elmo.
 - [Changelog](https://www.elmohq.com/changelog): Recent releases, improvements, and bug fixes.
 - [Roadmap](https://www.elmohq.com/roadmap): What's coming next, prioritized in the open on GitHub.
