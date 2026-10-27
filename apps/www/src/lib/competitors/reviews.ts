@@ -5,6 +5,13 @@ const VERIFIED = "2026-10-27";
 export const competitorReviews: Record<string, CompetitorReview> = {
 	profound: {
 		verified: VERIFIED,
+		glance: {
+			startingPrice: { value: "Custom quote", detail: "After a 7-day trial" },
+			engines: { value: "Up to 9", detail: "On Enterprise; 3 on the trial" },
+			sampling: { value: "1× a day", detail: "Per prompt" },
+			api: { value: "Enterprise only", detail: "Exports too" },
+			openSource: { value: "No", detail: "Closed and hosted" },
+		},
 		verdict:
 			"Profound is an enterprise-only AEO suite that bundles daily answers from up to nine answer engines with prompt-volume estimates, AI crawler analytics, content agents, and ChatGPT Shopping. The catch is how you buy it. There is no published paid plan for brands, the trial is a fixed prompt set for seven days, and the API, exports, and history are Enterprise-only. It only makes sense for large marketing teams that will run a procurement process and actually use the agents and crawler analytics. Teams that mainly need to track AI visibility pay for a lot they won't use.",
 		bestFor:
@@ -74,16 +81,16 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			"Keep your exported history as a baseline. It won't import into Elmo's charts, but Elmo's API and database make it easy to join for your own reporting.",
 		],
 		elmoComparison: [
-			{ label: "Getting started", competitor: "7-day trial, then a sales call", elmo: "Self-serve signup from $29/mo" },
+			{ label: "Getting Started", competitor: "7-day trial, then a sales call", elmo: "Self-serve signup from $29/mo" },
 			{
-				label: "Published pricing",
+				label: "Published Pricing",
 				competitor: "Enterprise is custom-quoted",
 				elmo: "Every plan, on the pricing page",
 			},
 			{ label: "Sampling", competitor: "Once a day", elmo: "Up to 4× a day from the $99/mo Basic plan" },
 			{ label: "API and MCP", competitor: "Enterprise only", elmo: "Every plan" },
-			{ label: "Content agents and crawler analytics", competitor: "Included", elmo: "Not offered" },
-			{ label: "Open source", competitor: "No", elmo: "Yes, MIT-licensed and free to self-host" },
+			{ label: "Content Agents and Crawler Analytics", competitor: "Included", elmo: "Not offered" },
+			{ label: "Open Source", competitor: "No", elmo: "Yes, MIT-licensed and free to self-host" },
 		],
 		reviewFaqs: [
 			{
@@ -125,21 +132,28 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			},
 		],
 		sources: [
-			{ label: "Profound pricing", url: "https://www.tryprofound.com/pricing" },
+			{ label: "Profound Pricing", url: "https://www.tryprofound.com/pricing" },
 			{ label: "Answer Engine Insights", url: "https://www.tryprofound.com/features/answer-engine-insights" },
-			{ label: "Profound docs: REST API", url: "https://docs.tryprofound.com/rest-api/introduction" },
+			{ label: "Profound Docs: REST API", url: "https://docs.tryprofound.com/rest-api/introduction" },
 			{
-				label: "Profound docs: exporting prompts",
+				label: "Profound Docs: Exporting Prompts",
 				url: "https://docs.tryprofound.com/answer-engine-insights/export-prompts-and-topics",
 			},
 			{
-				label: "Profound Series D announcement",
+				label: "Profound Series D Announcement",
 				url: "https://www.tryprofound.com/newsroom/profound-raises-usd180m-series-d-at-usd1-8b-valuation-to-build-the-ai-platform-for-marketing-teams",
 			},
 		],
 	},
 	"peec-ai": {
 		verified: VERIFIED,
+		glance: {
+			startingPrice: { value: "$95/mo", detail: "€85 in Europe" },
+			engines: { value: "3 per plan", detail: "$35 to $165/mo per extra model" },
+			sampling: { value: "1× a day", detail: "Per prompt" },
+			api: { value: "From $245/mo", detail: "Docs say Enterprise only" },
+			openSource: { value: "No", detail: "Closed and hosted" },
+		},
 		verdict:
 			"Peec AI is a hosted, self-serve AI search tracker for marketing teams and agencies. It collects answers from the engines' web interfaces once a day, reports visibility, position, sentiment, and sources, and includes CSV export and an MCP server on every plan. Its limits are in the packaging: each plan includes three models and more cost extra, Perplexity and the API-based models such as Claude are add-ons or Enterprise-only, and every prompt runs once a day. It fits teams that only need three engines and one sample per prompt per day.",
 		bestFor:
@@ -207,16 +221,16 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			"Run both for a couple of weeks and compare trends, not single days. Elmo samples up to four times a day, so its numbers move more smoothly than a once-a-day series.",
 		],
 		elmoComparison: [
-			{ label: "Entry price", competitor: "$95/mo (€85 in Europe)", elmo: "$29/mo, or free to self-host" },
+			{ label: "Entry Price", competitor: "$95/mo (€85 in Europe)", elmo: "$29/mo, or free to self-host" },
 			{
 				label: "Around $100/mo",
 				competitor: "Starter: 50 prompts, 3 models, once a day",
 				elmo: "Basic ($99): 50 prompts, 4 platforms, up to 4× a day",
 			},
-			{ label: "Extra engines", competitor: "$35 to $165/mo per model", elmo: "No per-model fees" },
+			{ label: "Extra Engines", competitor: "$35 to $165/mo per model", elmo: "No per-model fees" },
 			{ label: "API", competitor: "From Pro ($245/mo)", elmo: "Every plan" },
-			{ label: "Cost per AI answer", competitor: "About $0.021 on Starter", elmo: "About $0.004 on Basic" },
-			{ label: "Open source", competitor: "No", elmo: "Yes, MIT-licensed" },
+			{ label: "Cost per AI Answer", competitor: "About $0.021 on Starter", elmo: "About $0.004 on Basic" },
+			{ label: "Open Source", competitor: "No", elmo: "Yes, MIT-licensed" },
 		],
 		reviewFaqs: [
 			{
@@ -253,11 +267,11 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			},
 		],
 		sources: [
-			{ label: "Peec AI pricing", url: "https://peec.ai/pricing" },
-			{ label: "Peec AI agency pricing", url: "https://peec.ai/pricing-agencies" },
-			{ label: "Peec AI docs: how Peec works", url: "https://docs.peec.ai/intro-to-peec-ai" },
+			{ label: "Peec AI Pricing", url: "https://peec.ai/pricing" },
+			{ label: "Peec AI Agency Pricing", url: "https://peec.ai/pricing-agencies" },
+			{ label: "Peec AI Docs: How Peec Works", url: "https://docs.peec.ai/intro-to-peec-ai" },
 			{
-				label: "Peec AI help: exporting data",
+				label: "Peec AI Help: Exporting Data",
 				url: "https://help.peec.ai/article/decision-lab-where-can-i-export-my-data-and-can-i-get-full-urls-5",
 			},
 			{
@@ -268,6 +282,13 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 	},
 	"otterly-ai": {
 		verified: VERIFIED,
+		glance: {
+			startingPrice: { value: "$29/mo", detail: "For 15 prompts" },
+			engines: { value: "4 base", detail: "3 more as paid add-ons" },
+			sampling: { value: "1× a day", detail: "Per prompt" },
+			api: { value: "From $189/mo", detail: "API and MCP" },
+			openSource: { value: "No", detail: "Closed and hosted" },
+		},
 		verdict:
 			"OtterlyAI is a low-cost AI search monitoring tool. Its $29/mo entry plan gets you started, it checks four engines through their websites every day, and it adds practical extras like a GEO audit, prompt research, and Looker Studio reporting. The catch is that the entry price buys 15 prompts, Gemini, Google AI Mode, and Claude cost extra on every plan, and API and MCP access start on the $189/mo Standard plan. It fits solo marketers who need only a handful of prompts on the four base engines; costs climb quickly once you want more prompts or the other three engines.",
 		bestFor: "Solo marketers tracking 15 or fewer prompts on ChatGPT, Google AI Overviews, Perplexity, and Copilot.",
@@ -332,7 +353,7 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			"Run both tools for a couple of weeks and compare trends. Elmo samples up to four times a day on paid plans, so expect smoother day-to-day numbers.",
 		],
 		elmoComparison: [
-			{ label: "Entry price", competitor: "$29/mo for 15 prompts", elmo: "$29/mo for 50 prompts on ChatGPT" },
+			{ label: "Entry Price", competitor: "$29/mo for 15 prompts", elmo: "$29/mo for 50 prompts on ChatGPT" },
 			{
 				label: "Around $100 to $200/mo",
 				competitor: "Standard ($189): 100 prompts, 4 base engines",
@@ -340,7 +361,7 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			},
 			{ label: "Gemini, AI Mode, Claude", competitor: "Paid add-ons", elmo: "No per-engine fees" },
 			{ label: "API and MCP", competitor: "From Standard ($189/mo)", elmo: "Every plan" },
-			{ label: "Open source", competitor: "No", elmo: "Yes, MIT-licensed" },
+			{ label: "Open Source", competitor: "No", elmo: "Yes, MIT-licensed" },
 		],
 		reviewFaqs: [
 			{
@@ -376,10 +397,10 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			},
 		],
 		sources: [
-			{ label: "OtterlyAI pricing", url: "https://otterly.ai/pricing" },
-			{ label: "OtterlyAI help: how data is collected", url: "https://help.otterly.ai/how-otterlyai-collects-data" },
-			{ label: "OtterlyAI help: exporting data", url: "https://help.otterly.ai/can-i-export-my-data-and-reports" },
-			{ label: "OtterlyAI help: compliance", url: "https://help.otterly.ai/compliance" },
+			{ label: "OtterlyAI Pricing", url: "https://otterly.ai/pricing" },
+			{ label: "OtterlyAI Help: How Data Is Collected", url: "https://help.otterly.ai/how-otterlyai-collects-data" },
+			{ label: "OtterlyAI Help: Exporting Data", url: "https://help.otterly.ai/can-i-export-my-data-and-reports" },
+			{ label: "OtterlyAI Help: Compliance", url: "https://help.otterly.ai/compliance" },
 			{
 				label: "OtterlyAI: European Search Awards",
 				url: "https://otterly.ai/blog/otterlyai-wins-european-search-awards/",

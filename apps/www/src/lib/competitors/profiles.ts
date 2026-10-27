@@ -6,6 +6,8 @@ export interface PricingPlan {
 	price: string;
 	billedAnnually?: string;
 	includes: string;
+	/** Monthly list price and the AI answers it buys, only where the vendor's own numbers let you work it out. */
+	answers?: { monthlyUsd: number; perMonth: number };
 }
 
 export interface Source {
@@ -42,8 +44,20 @@ export interface AlternativesContent {
 	faqs?: FaqItem[];
 }
 
+export interface GlanceFact {
+	value: string;
+	detail?: string;
+}
+
 export interface CompetitorReview {
 	verified: string;
+	glance: {
+		startingPrice: GlanceFact;
+		engines: GlanceFact;
+		sampling: GlanceFact;
+		api: GlanceFact;
+		openSource: GlanceFact;
+	};
 	verdict: string;
 	bestFor: string;
 	engines: string;
@@ -92,6 +106,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 					price: "$399/mo per client workspace",
 					includes:
 						"For agencies: 100 prompts per client on ChatGPT, Perplexity, and Google AI Overviews, 6 AEO-optimized articles a month, 400 credits, 5 seats. Price from Profound's November 2025 agency launch.",
+					answers: { monthlyUsd: 399, perMonth: 100 * 3 * 30 },
 				},
 			],
 			extraCosts: [
@@ -109,24 +124,26 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 						name: "Starter (previous)",
 						price: "$99/mo",
 						includes: "50 prompts on ChatGPT only. About $66 per 1,000 answers at daily runs.",
+						answers: { monthlyUsd: 99, perMonth: 50 * 1 * 30 },
 					},
 					{
 						name: "Growth (previous)",
 						price: "$399/mo",
 						includes:
 							"100 prompts on ChatGPT, Perplexity, and Google AI Overviews. About $44 per 1,000 answers at daily runs.",
+						answers: { monthlyUsd: 399, perMonth: 100 * 3 * 30 },
 					},
 				],
 			},
 			sources: [
-				{ label: "Profound pricing", url: "https://www.tryprofound.com/pricing" },
+				{ label: "Profound Pricing", url: "https://www.tryprofound.com/pricing" },
 				{
-					label: "Profound agency plan announcement",
+					label: "Profound Agency Plan Announcement",
 					url: "https://www.tryprofound.com/blog/agencies-launch-your-aeo-practice-with-profound",
 				},
-				{ label: "Profound docs: credits", url: "https://docs.tryprofound.com/getting-started/credits" },
-				{ label: "Profound docs: REST API", url: "https://docs.tryprofound.com/rest-api/introduction" },
-				{ label: "GEO Toolbox: Profound pricing history", url: "https://geotoolbox.ai/blog/profound-pricing" },
+				{ label: "Profound Docs: Credits", url: "https://docs.tryprofound.com/getting-started/credits" },
+				{ label: "Profound Docs: REST API", url: "https://docs.tryprofound.com/rest-api/introduction" },
+				{ label: "GEO Toolbox: Profound Pricing History", url: "https://geotoolbox.ai/blog/profound-pricing" },
 				{ label: "Trakkr: Profound vs Trakkr", url: "https://trakkr.ai/compare/profound-vs-trakkr" },
 			],
 		},
@@ -148,8 +165,8 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 						"Most teams that look for a Profound alternative want the same core numbers (visibility, share of voice, citations) without an enterprise contract. The sections below cover Profound's current pricing, what it includes, and how to bring your prompts across to Elmo.",
 					],
 					links: [
-						{ text: "Elmo for Profound users", href: "/aeo-for/profound-users" },
-						{ text: "Elmo pricing", href: "/pricing" },
+						{ text: "Elmo for Profound Users", href: "/aeo-for/profound-users" },
+						{ text: "Elmo Pricing", href: "/pricing" },
 					],
 				},
 			],
@@ -166,12 +183,14 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 					price: "$95/mo",
 					billedAnnually: "$80/mo",
 					includes: "50 prompts, 3 models, daily runs, 4,500 AI answers a month, 1 country, 1 project.",
+					answers: { monthlyUsd: 95, perMonth: 4500 },
 				},
 				{
 					name: "Pro",
 					price: "$245/mo",
 					billedAnnually: "$205/mo",
 					includes: "150 prompts, 3 models, daily runs, 13,500 answers a month, 3 countries, 2 projects, API.",
+					answers: { monthlyUsd: 245, perMonth: 13500 },
 				},
 				{
 					name: "Advanced",
@@ -179,6 +198,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 					billedAnnually: "$420/mo",
 					includes:
 						"350 prompts, 3 models, daily runs, 31,500 answers a month, 3 countries, 5 projects, API, Looker Studio connector.",
+					answers: { monthlyUsd: 495, perMonth: 31500 },
 				},
 				{
 					name: "Enterprise",
@@ -195,8 +215,8 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 			costPerAnswer:
 				"About $0.016 to $0.021 per AI answer on monthly billing, from the answer allowances Peec publishes.",
 			sources: [
-				{ label: "Peec AI pricing", url: "https://peec.ai/pricing" },
-				{ label: "Peec AI agency pricing", url: "https://peec.ai/pricing-agencies" },
+				{ label: "Peec AI Pricing", url: "https://peec.ai/pricing" },
+				{ label: "Peec AI Agency Pricing", url: "https://peec.ai/pricing-agencies" },
 			],
 		},
 		alternatives: {
@@ -216,18 +236,21 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 					price: "$29/mo",
 					billedAnnually: "$25/mo",
 					includes: "15 prompts, daily tracking on ChatGPT, Google AI Overviews, Perplexity, and Copilot, 1 workspace.",
+					answers: { monthlyUsd: 29, perMonth: 15 * 4 * 30 },
 				},
 				{
 					name: "Standard",
 					price: "$189/mo",
 					billedAnnually: "$160/mo",
 					includes: "100 prompts, unlimited workspaces, Looker Studio connector, 2,000 API and MCP requests a month.",
+					answers: { monthlyUsd: 189, perMonth: 100 * 4 * 30 },
 				},
 				{
 					name: "Premium",
 					price: "$489/mo",
 					billedAnnually: "$422/mo",
 					includes: "400 prompts, 5,000 API and MCP requests a month, personal onboarding.",
+					answers: { monthlyUsd: 489, perMonth: 400 * 4 * 30 },
 				},
 				{ name: "Enterprise", price: "Custom", includes: "From 1,000 prompts, SSO, dedicated customer success." },
 			],
@@ -238,9 +261,9 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 			costPerAnswer:
 				"About $0.016 per answer on Lite and Standard and $0.010 on Premium, assuming one run per prompt per engine per day on the four base engines.",
 			sources: [
-				{ label: "OtterlyAI pricing", url: "https://otterly.ai/pricing" },
+				{ label: "OtterlyAI Pricing", url: "https://otterly.ai/pricing" },
 				{
-					label: "OtterlyAI help: supported AI searches",
+					label: "OtterlyAI Help: Supported AI Searches",
 					url: "https://help.otterly.ai/which-ai-searches-does-otterlyai-support",
 				},
 			],
@@ -267,12 +290,13 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 					price: "$295/mo",
 					includes:
 						"3,600 credits a month, unlimited prompts and seats, 11 engines including AI Mode, Claude, and Grok.",
+					answers: { monthlyUsd: 295, perMonth: 3600 },
 				},
 				{ name: "Enterprise", price: "Custom", includes: "SSO, audit logs, multiple regions and languages, API." },
 			],
 			extraCosts: ["API access and extra credits are paid add-ons on Starter, priced on request."],
 			costPerAnswer: "About $0.082 per AI response on Starter ($295 for 3,600 credits).",
-			sources: [{ label: "AthenaHQ pricing", url: "https://www.athenahq.ai/pricing" }],
+			sources: [{ label: "AthenaHQ Pricing", url: "https://www.athenahq.ai/pricing" }],
 		},
 	},
 	"ahrefs-brand-radar": {
@@ -300,7 +324,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 			],
 			sources: [
 				{ label: "Ahrefs Brand Radar", url: "https://ahrefs.com/brand-radar" },
-				{ label: "Ahrefs pricing", url: "https://ahrefs.com/pricing" },
+				{ label: "Ahrefs Pricing", url: "https://ahrefs.com/pricing" },
 			],
 		},
 	},
@@ -323,7 +347,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				{ name: "Enterprise", price: "Custom", includes: "Custom task, prompt, and page limits." },
 			],
 			extraCosts: ["Tasks over the Solo allowance cost $0.025 each."],
-			sources: [{ label: "AirOps pricing", url: "https://www.airops.com/pricing" }],
+			sources: [{ label: "AirOps Pricing", url: "https://www.airops.com/pricing" }],
 		},
 	},
 	scrunch: {
@@ -348,9 +372,9 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 			],
 			extraCosts: ["Extra seats are $25/mo each."],
 			sources: [
-				{ label: "Scrunch pricing", url: "https://scrunch.com/pricing" },
+				{ label: "Scrunch Pricing", url: "https://scrunch.com/pricing" },
 				{
-					label: "Sitecore acquisition announcement",
+					label: "Sitecore Acquisition Announcement",
 					url: "https://www.sitecore.com/de-de/company/newsroom/press-releases/2026/06/sitecore-acquires-scrunch-to-help-brands-influence-discovery--and-buying-decisions",
 				},
 			],
@@ -388,9 +412,9 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				"You build the tracking: scheduling, parsing, storage, and dashboards are not included.",
 			],
 			sources: [
-				{ label: "DataForSEO pricing", url: "https://dataforseo.com/pricing" },
+				{ label: "DataForSEO Pricing", url: "https://dataforseo.com/pricing" },
 				{ label: "DataForSEO AI Optimization API", url: "https://dataforseo.com/apis/ai-optimization-api" },
-				{ label: "LLM Mentions pricing", url: "https://dataforseo.com/pricing/ai-optimization/llm-mentions" },
+				{ label: "LLM Mentions Pricing", url: "https://dataforseo.com/pricing/ai-optimization/llm-mentions" },
 			],
 		},
 		alternatives: {
@@ -419,7 +443,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 						],
 						caption: "Cost per prompt assumes five runs a day across ChatGPT and Google AI Mode.",
 					},
-					links: [{ text: "The best LLM scraping APIs, compared", href: "/blog/best-llm-scraping-apis" }],
+					links: [{ text: "The Best LLM Scraping APIs, Compared", href: "/blog/best-llm-scraping-apis" }],
 				},
 				{
 					title: "When You Want a Tracker, Not an API",
@@ -428,8 +452,8 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 						"If you would rather not run anything, Elmo Cloud includes the scraping, starting at $29/mo.",
 					],
 					links: [
-						{ text: "Elmo pricing", href: "/pricing" },
-						{ text: "Open-source AI visibility tools", href: "/ai-visibility-tools/category/open-source" },
+						{ text: "Elmo Pricing", href: "/pricing" },
+						{ text: "Open-Source AI Visibility Tools", href: "/ai-visibility-tools/category/open-source" },
 					],
 				},
 			],
@@ -453,22 +477,29 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 			summary:
 				"Promptwatch has three self-serve plans from $95/mo, priced by projects and prompts, and custom Enterprise.",
 			plans: [
-				{ name: "Essential", price: "$95/mo", includes: "1 project, 50 prompts, 6,000 responses, daily tracking." },
+				{
+					name: "Essential",
+					price: "$95/mo",
+					includes: "1 project, 50 prompts, 6,000 responses, daily tracking.",
+					answers: { monthlyUsd: 95, perMonth: 6000 },
+				},
 				{
 					name: "Professional",
 					price: "$245/mo",
 					includes: "2 projects, 150 prompts, 18,000 responses, content writing and refresh.",
+					answers: { monthlyUsd: 245, perMonth: 18000 },
 				},
 				{
 					name: "Business",
 					price: "$579/mo",
 					includes: "5 projects, 350 prompts, 42,000 responses, state and city tracking, Shopping Insights.",
+					answers: { monthlyUsd: 579, perMonth: 42000 },
 				},
 				{ name: "Enterprise", price: "Custom", includes: "Custom prompt and crawler volume." },
 			],
 			extraCosts: ["Essential and Professional have a 7-day free trial; Business starts with a demo."],
 			costPerAnswer: "About $0.016 per response on Essential ($95 for 6,000).",
-			sources: [{ label: "Promptwatch pricing", url: "https://www.promptwatch.com/pricing" }],
+			sources: [{ label: "Promptwatch Pricing", url: "https://www.promptwatch.com/pricing" }],
 		},
 		alternatives: {
 			title: "Promptwatch Alternatives: Cheaper & Open-Source Options (2026) · Elmo",
@@ -482,8 +513,8 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 						"The usual reasons to compare alternatives are price and scope. The entry plan is $95/mo for 50 prompts and one project, and much of the higher tiers' value is in content and commerce features that a team focused on measurement may not use. Elmo also scrapes the real ChatGPT, Google AI Mode, AI Overviews, Copilot, Perplexity, and Gemini interfaces, starts at $29/mo, and is free to self-host.",
 					],
 					links: [
-						{ text: "Elmo pricing", href: "/pricing" },
-						{ text: "Tools that capture real UI answers", href: "/ai-visibility-tools/features/real-ui-answers" },
+						{ text: "Elmo Pricing", href: "/pricing" },
+						{ text: "Tools That Capture Real UI Answers", href: "/ai-visibility-tools/features/real-ui-answers" },
 					],
 				},
 			],
@@ -522,8 +553,8 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 			extraCosts: ["Every plan includes unlimited seats and no add-ons; there is a 14-day trial with no card."],
 			costPerAnswer: "About €0.053 per AI answer on Starter (€79 for 1,500), with keyword tracking included.",
 			sources: [
-				{ label: "Nightwatch pricing", url: "https://nightwatch.io/pricing/" },
-				{ label: "Nightwatch AI tracking", url: "https://nightwatch.io/ai-tracking/" },
+				{ label: "Nightwatch Pricing", url: "https://nightwatch.io/pricing/" },
+				{ label: "Nightwatch AI Tracking", url: "https://nightwatch.io/ai-tracking/" },
 			],
 		},
 		alternatives: {
@@ -538,8 +569,8 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 						"Teams look for alternatives when AI answers become the main thing they report on. Nightwatch's AI allowance is sized next to its keyword plans (1,500 AI answers a month on Starter), so tracking more prompts more often means moving up a rank-tracking tier. A dedicated AI visibility tool puts the budget into answers instead.",
 					],
 					links: [
-						{ text: "SEO platforms with AI search tracking", href: "/ai-visibility-tools/category/seo" },
-						{ text: "Elmo pricing", href: "/pricing" },
+						{ text: "SEO Platforms With AI Search Tracking", href: "/ai-visibility-tools/category/seo" },
+						{ text: "Elmo Pricing", href: "/pricing" },
 					],
 				},
 			],
@@ -567,9 +598,9 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				"Monthly credits expire each month; pay-as-you-go credits are $0.05 each and do not expire.",
 			],
 			sources: [
-				{ label: "Local Falcon pricing", url: "https://www.localfalcon.com/pricing" },
+				{ label: "Local Falcon Pricing", url: "https://www.localfalcon.com/pricing" },
 				{
-					label: "Local Falcon: AI visibility scans",
+					label: "Local Falcon: AI Visibility Scans",
 					url: "https://www.localfalcon.com/knowledge-base/kb95-how-to-run-ai-visibility-scans",
 				},
 			],
@@ -587,10 +618,10 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 					],
 					links: [
 						{
-							text: "AI visibility tools with geographic tracking",
+							text: "AI Visibility Tools With Geographic Tracking",
 							href: "/ai-visibility-tools/features/geographic-tracking",
 						},
-						{ text: "Open-source AI visibility tools", href: "/ai-visibility-tools/category/open-source" },
+						{ text: "Open-Source AI Visibility Tools", href: "/ai-visibility-tools/category/open-source" },
 					],
 				},
 			],
