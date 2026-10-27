@@ -69,6 +69,7 @@ export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
 	grok: { premium: true },
 	mistral: { access: "api" },
 	claude: { access: "api", premium: true },
+	kimi: { access: "api" },
 };
 
 /** The platforms a plan's picks may come from — everything sold as a pick. */

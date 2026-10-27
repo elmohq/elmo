@@ -26,7 +26,7 @@ const CLOUD_TARGETS = parseScrapeTargets(
 		"copilot:brightdata:online",
 		"perplexity:brightdata:online",
 		"gemini:brightdata:online",
-		"qwen:openrouter:qwen/qwen3-235b-a22b",
+		"qwen:openrouter:qwen/qwen3-235b-a22b-2507",
 		"deepseek:openrouter:deepseek/deepseek-v3.2",
 		"grok:openrouter:x-ai/grok-4.5",
 		"mistral:openrouter:mistralai/mistral-medium-3.1",
