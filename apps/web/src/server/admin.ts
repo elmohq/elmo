@@ -8,7 +8,16 @@ import { getModelMeta } from "@workspace/config/models";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, brands, organization, type Prompt, prompts, rollupPromptRuns } from "@workspace/lib/db/schema";
+import {
+	type Brand,
+	brands,
+	organization,
+	type Prompt,
+	prompts,
+	rollupPromptRuns,
+	user,
+	userSignupAttribution,
+} from "@workspace/lib/db/schema";
 import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import type { ModelConfig } from "@workspace/lib/providers";
@@ -252,6 +261,27 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 			count: row.count,
 		})),
 	};
+});
+
+export const getRecentSignupsFn = createServerFn({ method: "GET" }).handler(async () => {
+	await requireAdmin();
+	return db
+		.select({
+			id: user.id,
+			email: user.email,
+			createdAt: user.createdAt,
+			ref: userSignupAttribution.ref,
+			utmSource: userSignupAttribution.utmSource,
+			utmMedium: userSignupAttribution.utmMedium,
+			utmCampaign: userSignupAttribution.utmCampaign,
+			clickIds: userSignupAttribution.clickIds,
+			landingPage: userSignupAttribution.landingPage,
+			referrer: userSignupAttribution.referrer,
+		})
+		.from(user)
+		.leftJoin(userSignupAttribution, eq(userSignupAttribution.userId, user.id))
+		.orderBy(desc(user.createdAt))
+		.limit(50);
 });
 
 // ============================================================================

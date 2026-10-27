@@ -2,6 +2,7 @@
  * /admin - Admin dashboard with brand statistics and charts
  */
 
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { brandSegment } from "@workspace/lib/app-urls";
@@ -26,7 +27,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
-import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
+import { getAdminStatsFn, getRecentSignupsFn, updateDelayOverrideFn } from "@/server/admin";
 
 interface BrandStats {
 	id: string;
@@ -325,6 +326,8 @@ export const Route = createFileRoute("/_authed/admin/")({
 });
 
 function AdminDashboard() {
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const isCloud = context.clientConfig?.mode === "cloud";
 	const [brands, setBrands] = useState<BrandStats[]>([]);
 	const [brandsOverTime, setBrandsOverTime] = useState<{ date: string; count: number }[]>([]);
 	const [activeBrandsOverTime, setActiveBrandsOverTime] = useState<{ date: string; count: number }[]>([]);
@@ -653,6 +656,68 @@ function AdminDashboard() {
 					</div>
 				</CardContent>
 			</Card>
+
+			{isCloud && <RecentSignups />}
 		</div>
+	);
+}
+
+function orDash(value: string | null): string {
+	return value || "—";
+}
+
+function RecentSignups() {
+	const { data: signups, error } = useQuery({
+		queryKey: ["admin", "recent-signups"],
+		queryFn: () => getRecentSignupsFn(),
+	});
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Recent Signups</CardTitle>
+				<CardDescription>Where the latest 50 accounts first came from</CardDescription>
+			</CardHeader>
+			<CardContent>
+				{error ? (
+					<p className="text-sm text-destructive">{error.message}</p>
+				) : !signups ? (
+					<Skeleton className="h-32 w-full" />
+				) : (
+					<div className="overflow-x-auto">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>User</TableHead>
+									<TableHead>Signed up</TableHead>
+									<TableHead>Ref</TableHead>
+									<TableHead>Source / medium</TableHead>
+									<TableHead>Campaign</TableHead>
+									<TableHead>Ad click</TableHead>
+									<TableHead>Referrer</TableHead>
+									<TableHead>Landing page</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{signups.map((signup) => (
+									<TableRow key={signup.id}>
+										<TableCell className="font-medium">{signup.email}</TableCell>
+										<TableCell>{new Date(signup.createdAt).toLocaleDateString()}</TableCell>
+										<TableCell>{orDash(signup.ref)}</TableCell>
+										<TableCell>{orDash([signup.utmSource, signup.utmMedium].filter(Boolean).join(" / "))}</TableCell>
+										<TableCell>{orDash(signup.utmCampaign)}</TableCell>
+										<TableCell>{orDash(Object.keys(signup.clickIds ?? {}).join(", "))}</TableCell>
+										<TableCell>{orDash(signup.referrer)}</TableCell>
+										<TableCell className="max-w-64 truncate" title={signup.landingPage ?? undefined}>
+											{orDash(signup.landingPage)}
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</div>
+				)}
+			</CardContent>
+		</Card>
 	);
 }
