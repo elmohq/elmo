@@ -135,6 +135,21 @@ export function softwareApplicationJsonLd() {
 	});
 }
 
+export function webApplicationJsonLd({ name, description, path }: { name: string; description: string; path: string }) {
+	return jsonLd({
+		"@type": "WebApplication",
+		name,
+		description,
+		url: canonicalUrl(path),
+		applicationCategory: "BusinessApplication",
+		operatingSystem: "Any",
+		browserRequirements: "Requires JavaScript",
+		isAccessibleForFree: true,
+		offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+		publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+	});
+}
+
 export function articleJsonLd({ title, description, path }: { title: string; description: string; path: string }) {
 	return jsonLd({
 		"@type": "TechArticle",

@@ -119,6 +119,43 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Upstash Redis endpoint.",
 	},
 	{
+		name: "AI_VISIBILITY_CHECKER_MODEL",
+		scope: "server",
+		requiredBy: "optional",
+		wwwOnly: true,
+		description: "OpenAI model for the www AI visibility checker. Defaults to gpt-6-luna.",
+	},
+	{
+		name: "AI_VISIBILITY_CHECKER_DAILY_LIMIT",
+		scope: "server",
+		requiredBy: "optional",
+		wwwOnly: true,
+		description: "Site-wide cap on fresh (uncached) AI visibility checks per day. Defaults to 300.",
+	},
+	{
+		name: "AI_VISIBILITY_CHECKER_SAMPLE",
+		scope: "server",
+		requiredBy: "optional",
+		wwwOnly: true,
+		description:
+			"Set to 1 to serve canned AI answers from the www checker (local development; the default there when OPENAI_API_KEY is unset).",
+	},
+	{
+		name: "TURNSTILE_SECRET_KEY",
+		scope: "server",
+		requiredBy: "optional",
+		wwwOnly: true,
+		description:
+			"Cloudflare Turnstile secret for the www AI visibility checker. Required in production, where checks are refused without it.",
+	},
+	{
+		name: "VITE_TURNSTILE_SITE_KEY",
+		scope: "client",
+		requiredBy: "optional",
+		wwwOnly: true,
+		description: "Cloudflare Turnstile site key for the www AI visibility checker widget.",
+	},
+	{
 		name: "DATAFORSEO_LOGIN",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",

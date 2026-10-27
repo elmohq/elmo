@@ -28,4 +28,10 @@ describe("referral links", () => {
 		expect(bookDemoUrl("cloud-signin")).toBe("https://www.elmohq.com/demo?ref=cloud-signin");
 		expect(demoSiteUrl("cloud-signin")).toBe("https://demo.elmohq.com/?ref=cloud-signin");
 	});
+
+	it("carries a website to prefill alongside the source", () => {
+		const link = new URL(cloudAppUrl("marketing-checker", "acme.com"));
+		expect(link.searchParams.get("ref")).toBe("marketing-checker");
+		expect(link.searchParams.get("website")).toBe("acme.com");
+	});
 });

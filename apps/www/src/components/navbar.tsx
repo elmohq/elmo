@@ -16,6 +16,7 @@ const CLOUD_URL = cloudAppUrl("marketing-nav");
 
 const navigationLinks = [
 	{ href: "/pricing", label: "Pricing" },
+	{ href: "/tools/ai-visibility-checker", label: "Free AI Checker" },
 	{ href: "/changelog", label: "Changelog" },
 	{ href: "/roadmap", label: "Roadmap" },
 	{ href: "/vision", label: "Vision" },

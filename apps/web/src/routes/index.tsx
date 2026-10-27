@@ -8,6 +8,7 @@ export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>) => ({
 		redirect: typeof search.redirect === "string" ? search.redirect : undefined,
 		ref: typeof search.ref === "string" ? search.ref : undefined,
+		website: typeof search.website === "string" ? search.website : undefined,
 	}),
 	beforeLoad: async ({ context, search }) => {
 		const session = await getSession();
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/")({
 				search: {
 					...(search.redirect ? { returnTo: search.redirect } : {}),
 					...(search.ref ? { ref: search.ref } : {}),
+					...(search.website ? { website: search.website } : {}),
 				},
 			});
 		}
