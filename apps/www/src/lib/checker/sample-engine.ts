@@ -13,7 +13,15 @@ function titleCase(domain: string): string {
 	return stem.charAt(0).toUpperCase() + stem.slice(1);
 }
 
-export function sampleProfile(input: { domain: string; brandName?: string; category?: string }): BrandProfile {
+// Roughly the real engine's pacing, so the progress UI can be worked on locally.
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function sampleProfile(input: {
+	domain: string;
+	brandName?: string;
+	category?: string;
+}): Promise<BrandProfile> {
+	await pause(1200);
 	const category = input.category || "project management software";
 	return {
 		brandName: input.brandName || titleCase(input.domain),
@@ -29,7 +37,12 @@ export function sampleProfile(input: { domain: string; brandName?: string; categ
 	};
 }
 
-export function sampleAnswer(prompt: string, index: number, brand: { name: string; domain: string }): Answer {
+export async function sampleAnswer(
+	prompt: string,
+	index: number,
+	brand: { name: string; domain: string },
+): Promise<Answer> {
+	await pause(1500 + index * 700);
 	const rivals = RIVALS.slice(index % 2, (index % 2) + 3);
 	const brandLine =
 		index % 3 === 0

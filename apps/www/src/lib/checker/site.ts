@@ -2,14 +2,15 @@ import { aiCrawlerAccess } from "./robots";
 import { safeFetch } from "./safe-fetch";
 import type { SiteSignals } from "./types";
 
+const NAMED_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
 function decodeEntities(text: string): string {
 	return text
-		.replace(/&amp;/g, "&")
-		.replace(/&lt;/g, "<")
-		.replace(/&gt;/g, ">")
-		.replace(/&quot;/g, '"')
-		.replace(/&#0?39;|&apos;/g, "'")
-		.replace(/&nbsp;/g, " ")
+		.replace(/&(?:#x([0-9a-f]{1,6})|#(\d{1,7})|([a-z]+));/gi, (entity, hex?: string, dec?: string, name?: string) => {
+			if (name) return NAMED_ENTITIES[name.toLowerCase()] ?? entity;
+			const codePoint = hex ? Number.parseInt(hex, 16) : Number(dec);
+			return codePoint > 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : "";
+		})
 		.replace(/\s+/g, " ")
 		.trim();
 }

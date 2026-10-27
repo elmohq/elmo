@@ -39,7 +39,7 @@ export async function runCheck(input: CheckInput, emit: (event: CheckEvent) => v
 		brandName: input.brandName,
 		category: input.category,
 	};
-	const profile = sample ? sampleProfile(profileInput) : await profileBrand(profileInput);
+	const profile = await (sample ? sampleProfile(profileInput) : profileBrand(profileInput));
 	const brandName = input.brandName || profile.brandName.trim() || input.domain;
 	const category = input.category || profile.category.trim();
 	const prompts = profile.prompts
@@ -53,10 +53,9 @@ export async function runCheck(input: CheckInput, emit: (event: CheckEvent) => v
 	const answers: (Answer | null)[] = await Promise.all(
 		prompts.map(async (prompt, index) => {
 			try {
-				const answer = sample
+				return await (sample
 					? sampleAnswer(prompt, index, { name: brandName, domain: input.domain })
-					: await answerPrompt(prompt);
-				return answer;
+					: answerPrompt(prompt));
 			} catch (error) {
 				console.error("[ai-visibility-checker] answer failed", error);
 				return null;
