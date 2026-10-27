@@ -1,6 +1,6 @@
 // Uptime monitors give up after a few seconds; answer before they do so a
 // slow database reads as "unavailable" rather than as an unreachable app.
-const DEFAULT_TIMEOUT_MS = 3_000;
+const DEFAULT_TIMEOUT_MS = 5_000;
 
 export async function readinessResponse(pingDatabase: () => Promise<unknown>, timeoutMs = DEFAULT_TIMEOUT_MS) {
 	let timer: ReturnType<typeof setTimeout> | undefined;
