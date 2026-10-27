@@ -10,7 +10,12 @@ import {
 	QuickComparisonTable,
 	SwitchingSteps,
 } from "@/components/competitor-page";
-import { CompetitorPricingDetails, PricingSnapshot } from "@/components/competitor-pricing";
+import {
+	CompetitorPricingDetails,
+	CostPerAnswerChart,
+	hasCostChart,
+	PricingSnapshot,
+} from "@/components/competitor-pricing";
 import {
 	CompetitorPageCards,
 	CompetitorPageLinks,
@@ -26,6 +31,7 @@ import { CARD } from "@/components/home/ui";
 import { Navbar } from "@/components/navbar";
 import {
 	type Competitor,
+	type CompetitorPricing,
 	type CompetitorProfile,
 	getAlternatives,
 	getAlternativesFaqs,
@@ -165,6 +171,34 @@ function SwitchingReasons({ competitor }: { competitor: Competitor }) {
 	);
 }
 
+function PricingSection({
+	competitor,
+	pricing,
+	snapshot,
+}: {
+	competitor: Competitor;
+	pricing: CompetitorPricing;
+	snapshot: boolean;
+}) {
+	if (snapshot) {
+		return (
+			<DirectorySection id="pricing" eyebrow="Pricing" title={`${competitor.name} Pricing`} tone="muted">
+				<PricingSnapshot competitor={competitor} pricing={pricing} />
+			</DirectorySection>
+		);
+	}
+	return (
+		<DirectorySection id="pricing" eyebrow="Pricing" title={`${competitor.name} Pricing`}>
+			<CompetitorPricingDetails pricing={pricing} />
+			{hasCostChart(pricing) ? (
+				<div className="mt-10">
+					<CostPerAnswerChart competitor={competitor} pricing={pricing} />
+				</div>
+			) : null}
+		</DirectorySection>
+	);
+}
+
 function AlternativesPage() {
 	const { competitor, alternatives, faqs, profile } = Route.useLoaderData() as {
 		competitor: Competitor;
@@ -238,15 +272,7 @@ function AlternativesPage() {
 					</DirectorySection>
 				) : null}
 
-				{pricing ? (
-					<DirectorySection id="pricing" eyebrow="Pricing" title={`${name} Pricing`} tone={review ? "muted" : "white"}>
-						{review ? (
-							<PricingSnapshot competitor={competitor} pricing={pricing} />
-						) : (
-							<CompetitorPricingDetails pricing={pricing} />
-						)}
-					</DirectorySection>
-				) : null}
+				{pricing ? <PricingSection competitor={competitor} pricing={pricing} snapshot={Boolean(review)} /> : null}
 
 				{review ? (
 					<>
