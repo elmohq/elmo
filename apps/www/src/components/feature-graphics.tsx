@@ -401,6 +401,7 @@ const API_ENGINES = [
 	{ name: "Mistral", iconId: "mistral" },
 	{ name: "DeepSeek", iconId: "deepseek" },
 	{ name: "Qwen", iconId: "qwen" },
+	{ name: "Kimi", iconId: "moonshotai" },
 ];
 
 function EngineChip({ name, iconId }: { name: string; iconId: string }) {

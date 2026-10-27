@@ -230,7 +230,7 @@ function AboutPage() {
 		{
 			term: "Platforms Tracked",
 			detail:
-				"ChatGPT, Google AI Overviews, Google AI Mode, Gemini, Perplexity, Microsoft Copilot, Claude, Grok, Mistral, DeepSeek, Qwen",
+				"ChatGPT, Google AI Overviews, Google AI Mode, Gemini, Perplexity, Microsoft Copilot, Claude, Grok, Mistral, DeepSeek, Qwen, Kimi",
 		},
 		{ term: "Competitors", detail: "Profound, Peec AI, Otterly.AI, Scrunch, Semrush AI Toolkit" },
 		{ term: "Social", detail: <LinkList links={ELMO_LINKS} /> },
