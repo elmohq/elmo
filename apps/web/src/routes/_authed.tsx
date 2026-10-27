@@ -16,6 +16,7 @@ import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { useShellScope } from "@/hooks/use-shell-scope";
+import { attributionParams } from "@/lib/attribution";
 import { identifyCrispUser } from "@/lib/crisp";
 import { identifyUser, setPersonProperties } from "@/lib/posthog";
 import { viewerQuery } from "@/lib/viewer/queries";
@@ -26,14 +27,9 @@ export const Route = createFileRoute("/_authed")({
 
 		if (!viewer) {
 			context.queryClient.removeQueries({ queryKey: viewerQuery.queryKey });
-			const { ref } = location.search as { ref?: unknown };
 			throw redirect({
 				to: "/auth/login",
-				search: {
-					returnTo: location.href,
-					// Kept at the top level too, so analytics attributes the landing to the link that brought them.
-					...(typeof ref === "string" ? { ref } : {}),
-				},
+				search: { returnTo: location.href, ...attributionParams(location.search) },
 			});
 		}
 
