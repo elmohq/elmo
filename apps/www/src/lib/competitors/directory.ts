@@ -227,6 +227,11 @@ export function formatFateDate(date: string): string {
 
 // --- Category slices ---------------------------------------------------------
 
+/** A category label mid-sentence: title-cased words drop to lowercase, acronyms like AI and API stay. */
+function categoryPhrase(category: CompetitorCategory): string {
+	return CATEGORY_LABELS[category].replace(/\b[A-Z][a-z]*\b/g, (word) => word.toLowerCase());
+}
+
 export const CATEGORY_SLUGS: Partial<Record<CompetitorCategory, string>> = {
 	tracking: "tracking",
 	content: "content-generation",
@@ -236,15 +241,15 @@ export const CATEGORY_SLUGS: Partial<Record<CompetitorCategory, string>> = {
 	"open-source": "open-source",
 };
 
-/** Reader-friendly H1/title phrasing per category (better than the bare label). */
+/** Reader-friendly H1/title phrasing per category (better than the bare label), in title case. */
 export const CATEGORY_HEADINGS: Record<CompetitorCategory, string> = {
-	tracking: "AI visibility tracking tools",
-	content: "AI content optimization tools",
-	"api-developer": "AI visibility APIs for developers",
-	ecommerce: "AI visibility tools for e-commerce",
-	"seo-traditional": "SEO platforms with AI search tracking",
-	"open-source": "Open-source AI visibility tools",
-	other: "AI visibility tools",
+	tracking: "AI Visibility Tracking Tools",
+	content: "AI Content Optimization Tools",
+	"api-developer": "API-Only AI Visibility Tools for Developers",
+	ecommerce: "AI Visibility Tools for E-commerce",
+	"seo-traditional": "SEO Platforms with AI Search Tracking",
+	"open-source": "Open-Source AI Visibility Tools",
+	other: "AI Visibility Tools",
 };
 
 const categoryBySlug = new Map<string, CompetitorCategory>(
@@ -341,7 +346,7 @@ export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[
 	return [
 		{
 			question: `What are the best alternatives to ${c.name}?`,
-			answer: `The closest alternatives to ${c.name} are other ${CATEGORY_LABELS[c.category].toLowerCase()} tools such as ${formatList(names)}. Elmo is the open-source pick: you self-host it for free and track how every major AI answer engine mentions and cites your brand.`,
+			answer: `The closest alternatives to ${c.name} are other ${categoryPhrase(c.category)} tools such as ${formatList(names)}. Elmo is the open-source pick: you self-host it for free and track how every major AI answer engine mentions and cites your brand.`,
 		},
 		{
 			question: `Is there a free alternative to ${c.name}?`,
@@ -587,12 +592,12 @@ export function getFeatureFaqs(key: FeatureKey, tools: Competitor[]): FaqItem[] 
 
 export function getCategoryVerdict(category: CompetitorCategory, tools: Competitor[]): string {
 	const names = tools.map((t) => t.name);
-	return `The ${CATEGORY_LABELS[category].toLowerCase()} category covers ${tools.length} of the tools we track, including ${formatList(names)}. ${CATEGORY_BLURB[category]} Elmo is the open-source option in this space: self-host it for free and audit how every number is built.`;
+	return `The ${categoryPhrase(category)} category covers ${tools.length} of the tools we track, including ${formatList(names)}. ${CATEGORY_BLURB[category]} Elmo is the open-source option in this space: self-host it for free and audit how every number is built.`;
 }
 
 export function getCategoryFaqs(category: CompetitorCategory, tools: Competitor[]): FaqItem[] {
 	const names = tools.map((t) => t.name);
-	const label = CATEGORY_LABELS[category].toLowerCase();
+	const label = categoryPhrase(category);
 	return [
 		{
 			question: `What are the best ${label} tools for AI visibility?`,

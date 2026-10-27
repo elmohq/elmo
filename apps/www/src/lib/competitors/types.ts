@@ -403,7 +403,7 @@ export const ELMO_FEATURES: Record<FeatureKey, boolean> = {
 export const CATEGORY_LABELS: Record<CompetitorCategory, string> = {
 	tracking: "AI Visibility Tracking",
 	content: "Content Generation",
-	"api-developer": "API",
+	"api-developer": "API-Only",
 	ecommerce: "E-commerce",
 	"seo-traditional": "Traditional SEO",
 	"open-source": "Open Source",
