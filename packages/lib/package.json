@@ -82,7 +82,7 @@
 		"@types/pg": "^8.23.1",
 		"auth": "1.7.12",
 		"drizzle-kit": "^0.31.11",
-		"stripe": "^22.6.1",
+		"stripe": "^23.0.1",
 		"typescript": "^7.0.2",
 		"vitest": "^5.0.5"
 	}
