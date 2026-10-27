@@ -8,7 +8,6 @@ import type { Citation } from "../text-extraction";
 import { chunked } from "./chunk";
 import { CLASSIFIER_VERSION } from "./constants";
 import { markWritesDirty } from "./dirty";
-import { syncBrandPages } from "./rebuild";
 
 interface Sighting {
 	url: string;
@@ -85,10 +84,6 @@ export async function upsertCitedPages(conn: DbConnection, sightings: Sighting[]
 			})
 			.returning({ id: citedPages.id, url: citedPages.url });
 		for (const row of rows) ids.set(row.url, row.id);
-		await syncBrandPages(
-			conn,
-			rows.map((row) => row.id),
-		);
 	}
 	return ids;
 }

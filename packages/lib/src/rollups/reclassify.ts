@@ -4,7 +4,6 @@ import type { DbConnection } from "../db/db-connection";
 import { citedPages } from "../db/schema";
 import { chunked } from "./chunk";
 import { CLASSIFIER_VERSION } from "./constants";
-import { syncBrandPages } from "./rebuild";
 
 interface StalePage {
 	id: number;
@@ -34,7 +33,7 @@ async function writeChunk(conn: DbConnection, pages: StalePage[]): Promise<numbe
 			SELECT 1 FROM ${citedPages} WHERE id IN (${sql.join(
 				pages.map((page) => sql`${page.id}::bigint`),
 				sql`, `,
-			)}) ORDER BY url COLLATE "C" FOR UPDATE
+			)}) ORDER BY url COLLATE "C" FOR NO KEY UPDATE
 		`);
 		const result = await tx.execute(sql`
 		UPDATE ${citedPages} AS p
@@ -42,10 +41,6 @@ async function writeChunk(conn: DbConnection, pages: StalePage[]): Promise<numbe
 		FROM (VALUES ${sql.join(values, sql`, `)}) AS v(id, page_type, static_category, classifier_version)
 		WHERE p.id = v.id
 	`);
-		await syncBrandPages(
-			tx,
-			pages.map((page) => page.id),
-		);
 		return result.rowCount ?? 0;
 	});
 }
@@ -59,8 +54,8 @@ async function writeClassifications(conn: DbConnection, pages: StalePage[]): Pro
 /**
  * Re-runs the classifier over every page stamped with an older version. Each
  * chunk commits on its own and is stamped as it goes, so a crash resumes where
- * it stopped. Each brand's copy of a page is updated with it, so nothing needs
- * rebuilding after.
+ * it stopped. Brands' copies of the pages catch up on the next rollup refresh,
+ * so nothing needs rebuilding after.
  */
 export async function reclassifyPages(conn: DbConnection, batchSize = 1000): Promise<number> {
 	let afterId = 0;

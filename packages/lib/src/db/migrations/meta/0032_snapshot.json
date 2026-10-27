@@ -1,5 +1,5 @@
 {
-  "id": "56a00896-ff15-4ab4-9aff-b7eb6db5328d",
+  "id": "0b806bdb-874e-4314-a915-8c60975abae0",
   "prevId": "1ec22bc8-67f2-4640-8393-7f0d3f6b9eae",
   "version": "7",
   "dialect": "postgresql",
@@ -468,6 +468,47 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+    "public.cited_page_changes": {
+      "name": "cited_page_changes",
+      "schema": "",
+      "columns": {
+        "page_id": {
+          "name": "page_id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "changed_at": {
+          "name": "changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "cited_page_changes_changed_at_idx": {
+          "name": "cited_page_changes_changed_at_idx",
+          "columns": [
+            {
+              "expression": "changed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "public.cited_pages": {
       "name": "cited_pages",
       "schema": "",
@@ -721,6 +762,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "pages_synced_at": {
+          "name": "pages_synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -1142,6 +1189,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
@@ -1150,6 +1204,21 @@
           "columns": [
             {
               "expression": "page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rollup_citation_pages_created_at_idx": {
+          "name": "rollup_citation_pages_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1173,19 +1242,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "rollup_citation_pages_page_id_cited_pages_id_fk": {
-          "name": "rollup_citation_pages_page_id_cited_pages_id_fk",
-          "tableFrom": "rollup_citation_pages",
-          "tableTo": "cited_pages",
-          "columnsFrom": [
-            "page_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },

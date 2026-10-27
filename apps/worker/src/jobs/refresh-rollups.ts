@@ -1,7 +1,14 @@
 import * as Sentry from "@sentry/node";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { coalesceMarks, type DirtyMark, pendingMarks, type RebuildRange, refreshRange } from "@workspace/lib/rollups";
+import {
+	coalesceMarks,
+	type DirtyMark,
+	pendingMarks,
+	type RebuildRange,
+	refreshRange,
+	syncChangedPages,
+} from "@workspace/lib/rollups";
 import type { Job } from "pg-boss";
 
 export interface RefreshRollupsData {
@@ -84,9 +91,17 @@ export async function runRefreshTick(
 		totals.marksTaken += result.marksTaken;
 	}
 
+	let pagesSynced = 0;
+	try {
+		pagesSynced = await syncChangedPages(conn);
+	} catch (error) {
+		console.error("[refresh-rollups] syncing brands' page copies failed:", error);
+		Sentry.captureException(error);
+	}
+
 	const elapsedMs = Date.now() - start;
 	console.log(
-		`[refresh-rollups] source=${options.source ?? "unknown"} marksTaken=${totals.marksTaken} ranges=${totals.ranges} failed=${totals.failed} elapsedMs=${elapsedMs}`,
+		`[refresh-rollups] source=${options.source ?? "unknown"} marksTaken=${totals.marksTaken} ranges=${totals.ranges} failed=${totals.failed} pagesSynced=${pagesSynced} elapsedMs=${elapsedMs}`,
 	);
 	return totals;
 }

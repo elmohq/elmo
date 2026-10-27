@@ -13,7 +13,7 @@ export function sentimentCondition(sentiment: SentimentFilter | undefined): SQL 
 	return sql`${brandSentiment} = ${sentiment}`;
 }
 
-export const sentimentRank = (order: readonly Sentiment[]): SQL =>
+const sentimentRank = (order: readonly Sentiment[]): SQL =>
 	sql`array_position(ARRAY[${sql.join(
 		order.map((sentiment) => sql`${sentiment}`),
 		sql`, `,
