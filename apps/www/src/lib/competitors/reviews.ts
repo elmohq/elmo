@@ -6,9 +6,9 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 	profound: {
 		verified: VERIFIED,
 		verdict:
-			"Profound is the most complete enterprise AEO suite we track: daily answers from the real interfaces of up to nine answer engines, prompt-volume estimates, AI crawler analytics, content agents, and ChatGPT Shopping, backed by a $180M Series D in September 2026. The trade-off is how you buy it. There is no published paid plan for brands, the trial is a fixed prompt set for seven days, and the API, exports, and history are Enterprise-only. It suits large marketing teams with a budget and a procurement process; smaller teams usually get more from a self-serve tool.",
+			"Profound is an enterprise-only AEO suite that bundles daily answers from up to nine answer engines with prompt-volume estimates, AI crawler analytics, content agents, and ChatGPT Shopping. The catch is how you buy it. There is no published paid plan for brands, the trial is a fixed prompt set for seven days, and the API, exports, and history are Enterprise-only. It only makes sense for large marketing teams that will run a procurement process and actually use the agents and crawler analytics. Teams that mainly need to track AI visibility pay for a lot they won't use.",
 		bestFor:
-			"Enterprise marketing teams that want AI visibility, crawler analytics, and content agents in one contract.",
+			"Large enterprises that will sign a custom contract through sales and use Profound's content agents and crawler analytics, not just tracking.",
 		engines:
 			"Up to nine on Enterprise: ChatGPT, Perplexity, Google AI Mode, Google AI Overviews, Gemini, Microsoft Copilot, Claude, DeepSeek, and either Exa Search or Grok (Profound's own pages list one or the other). The trial covers ChatGPT, Gemini, and Google AI Overviews.",
 		collection:
@@ -45,10 +45,9 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			},
 		],
 		pros: [
-			"The broadest enterprise feature set in the category, from tracking to content agents and crawler analytics.",
-			"Answers collected from the engines' real interfaces, in many languages and regions.",
-			"Prompt-volume estimates from consumer panels, which few trackers offer.",
-			"Well funded, with a long list of enterprise customers including MongoDB, Ramp, Figma, and Plaid.",
+			"Bundles tracking, content agents, and crawler analytics under one contract.",
+			"Collects answers from the engines' web interfaces, in 30+ languages and 150+ regions.",
+			"Prompt-volume estimates built from licensed consumer panels.",
 		],
 		cons: [
 			"No self-serve paid plan for brands: after a 7-day trial, Enterprise is quoted by sales.",
@@ -90,7 +89,7 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			{
 				question: "Is Profound worth it?",
 				answer:
-					"For an enterprise team that will use its crawler analytics, prompt volumes, and content agents, Profound is the most complete suite on the market. If you mainly need to know how often AI engines mention and cite you, you will pay for a lot you don't use, and a self-serve tracker will cost far less.",
+					"Only if you are an enterprise team that will use its crawler analytics, prompt volumes, and content agents enough to justify a custom contract. If you mainly need to know how often AI engines mention and cite you, you will pay for a lot you don't use, and a self-serve tracker will cost far less.",
 			},
 			{
 				question: "Which AI engines does Profound track?",
@@ -142,8 +141,9 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 	"peec-ai": {
 		verified: VERIFIED,
 		verdict:
-			"Peec AI is a polished, self-serve AI search analytics tool for marketing teams and agencies. It collects answers from the engines' real interfaces once a day, reports visibility, position, sentiment, and sources clearly, and includes CSV export and an MCP server on every plan. Its limits are in the packaging: each plan includes three models and more cost extra, Perplexity and the API-based models such as Claude are add-ons or Enterprise-only, and every prompt runs once a day. A strong pick for teams that want hosted dashboards for a few dozen to a few hundred prompts.",
-		bestFor: "Marketing teams and agencies that want a hosted, self-serve tracker with clear dashboards.",
+			"Peec AI is a hosted, self-serve AI search tracker for marketing teams and agencies. It collects answers from the engines' web interfaces once a day, reports visibility, position, sentiment, and sources, and includes CSV export and an MCP server on every plan. Its limits are in the packaging: each plan includes three models and more cost extra, Perplexity and the API-based models such as Claude are add-ons or Enterprise-only, and every prompt runs once a day. It fits teams that only need three engines and one sample per prompt per day.",
+		bestFor:
+			"Teams that need only three AI engines, are fine with one sample per prompt per day, and don't need Perplexity or Claude.",
 		engines:
 			"Pick three on Starter, Pro, and Advanced from ChatGPT, Google AI Mode, Google AI Overviews, Microsoft Copilot, Gemini, and Naver AI. Perplexity is an add-on or Enterprise model, and Enterprise adds API-based models including Claude, GPT-5 Search, Grok, DeepSeek, Qwen, and Mistral.",
 		collection:
@@ -178,10 +178,9 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			},
 		],
 		pros: [
-			"Answers collected from the real interfaces people use.",
-			"Clear, public self-serve pricing, with separate credit-based plans and free pitch workspaces for agencies.",
+			"Collects answers from the engines' web interfaces.",
+			"Public self-serve pricing, with credit-based plans and free pitch workspaces for agencies.",
 			"CSV export and an MCP server on every plan.",
-			"Funded and growing: a $21M Series A in November 2025 and 3,500+ brands and agencies, by its own count.",
 		],
 		cons: [
 			"Three models per plan; each extra model costs $35 to $165 a month depending on plan.",
@@ -223,7 +222,7 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			{
 				question: "Is Peec AI good?",
 				answer:
-					"Yes, for what it is: a well-designed hosted tracker with real-interface data, clear reporting, and fair self-serve pricing. Its main limits are three models per plan, once-a-day sampling, and extra cost for more engines.",
+					"It covers the basics of hosted AI search tracking with data from the engines' web interfaces. The trade-offs are three models per plan, once-a-day sampling, extra cost for each added engine, and no Perplexity or Claude without add-ons or Enterprise.",
 			},
 			{
 				question: "Which AI engines does Peec AI track?",
@@ -270,8 +269,8 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 	"otterly-ai": {
 		verified: VERIFIED,
 		verdict:
-			"OtterlyAI is the most affordable established AI search monitoring tool. $29/mo gets you started, it checks four engines through their websites every day, and it adds practical extras like a GEO audit, prompt research, and Looker Studio reporting. The catch is that the entry price buys 15 prompts, Gemini, Google AI Mode, and Claude cost extra on every plan, and API and MCP access start on the $189/mo Standard plan. A good place for solo marketers and small teams to start; costs climb quickly once you want more prompts and all seven engines.",
-		bestFor: "Solo marketers and small teams that want to start monitoring AI search cheaply.",
+			"OtterlyAI is a low-cost AI search monitoring tool. Its $29/mo entry plan gets you started, it checks four engines through their websites every day, and it adds practical extras like a GEO audit, prompt research, and Looker Studio reporting. The catch is that the entry price buys 15 prompts, Gemini, Google AI Mode, and Claude cost extra on every plan, and API and MCP access start on the $189/mo Standard plan. It fits solo marketers who need only a handful of prompts on the four base engines; costs climb quickly once you want more prompts or the other three engines.",
+		bestFor: "Solo marketers tracking 15 or fewer prompts on ChatGPT, Google AI Overviews, Perplexity, and Copilot.",
 		engines:
 			"ChatGPT, Google AI Overviews, Perplexity, and Microsoft Copilot on every plan. Google AI Mode, Gemini, and Claude are paid add-ons.",
 		collection:
@@ -305,10 +304,9 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			},
 		],
 		pros: [
-			"The lowest entry price among the established trackers.",
+			"A $29/mo entry plan.",
 			"Raw AI responses and citations export on every plan.",
 			"Unlimited team members, countries, and languages.",
-			"Recognized as a Gartner Cool Vendor (2025) and a European Search Awards winner (2026).",
 		],
 		cons: [
 			"Lite includes 15 prompts and can't add more.",
@@ -348,7 +346,7 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			{
 				question: "Is OtterlyAI any good?",
 				answer:
-					"It is a capable, inexpensive way to start monitoring AI search, with useful audit and research tools. The limits show as you grow: 15 prompts on Lite, paid add-ons for three of its seven engines, and API access from $189/mo.",
+					"It is an inexpensive way to start monitoring a small set of prompts. The limits show quickly: 15 prompts on Lite, paid add-ons for three of its seven engines, and API access from $189/mo.",
 			},
 			{
 				question: "Which AI engines does OtterlyAI track?",

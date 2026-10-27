@@ -145,7 +145,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				{
 					title: "Moving off Profound",
 					paragraphs: [
-						"Most teams that look for a Profound alternative want the same core numbers (visibility, share of voice, citations) without an enterprise contract. The sections below cover Profound's current pricing, where it is strong, and how to bring your prompts across to Elmo.",
+						"Most teams that look for a Profound alternative want the same core numbers (visibility, share of voice, citations) without an enterprise contract. The sections below cover Profound's current pricing, what it includes, and how to bring your prompts across to Elmo.",
 					],
 					links: [
 						{ text: "Elmo for Profound users", href: "/aeo-for/profound-users" },
@@ -209,7 +209,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 		pricing: {
 			verified: VERIFIED,
 			summary:
-				"OtterlyAI is the cheapest of the well-known trackers to start, at $29/mo, but its base price covers four engines and the rest are paid add-ons.",
+				"OtterlyAI starts at $29/mo, but that buys 15 prompts on four engines, and the other engines are paid add-ons.",
 			plans: [
 				{
 					name: "Lite",
