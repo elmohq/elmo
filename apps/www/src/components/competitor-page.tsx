@@ -378,7 +378,7 @@ export function QuickComparisonTable({
 	const th = "px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500";
 	return (
 		<div className={`overflow-hidden ${CARD}`}>
-			<div className="overflow-x-auto">
+			<div className="relative overflow-x-auto">
 				<table className="w-full min-w-[720px] text-sm">
 					<thead>
 						<tr className="border-b border-zinc-200 bg-zinc-50/80">
