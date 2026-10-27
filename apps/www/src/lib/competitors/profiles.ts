@@ -121,13 +121,13 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				note: "Offered from June to mid-September 2026 and no longer available. Shown so you can compare what Profound charged for self-serve tracking with Elmo's plans.",
 				plans: [
 					{
-						name: "Starter (previous)",
+						name: "Starter (Previous)",
 						price: "$99/mo",
 						includes: "50 prompts on ChatGPT only. About $66 per 1,000 answers at daily runs.",
 						answers: { monthlyUsd: 99, perMonth: 50 * 1 * 30 },
 					},
 					{
-						name: "Growth (previous)",
+						name: "Growth (Previous)",
 						price: "$399/mo",
 						includes:
 							"100 prompts on ChatGPT, Perplexity, and Google AI Overviews. About $44 per 1,000 answers at daily runs.",
@@ -306,14 +306,14 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				"Brand Radar is part of Ahrefs. Paid Ahrefs plans include a small number of custom-prompt checks, and more come in add-on packs.",
 			plans: [
 				{
-					name: "Included with Ahrefs Lite ($129/mo)",
+					name: "Included With Ahrefs Lite ($129/mo)",
 					price: "Included",
 					includes: "150 custom-prompt checks a month, about 5 prompts on daily refresh.",
 				},
-				{ name: "Included with Ahrefs Standard ($249/mo)", price: "Included", includes: "300 checks a month." },
-				{ name: "Included with Ahrefs Advanced ($449/mo)", price: "Included", includes: "600 checks a month." },
+				{ name: "Included With Ahrefs Standard ($249/mo)", price: "Included", includes: "300 checks a month." },
+				{ name: "Included With Ahrefs Advanced ($449/mo)", price: "Included", includes: "600 checks a month." },
 				{
-					name: "Custom-prompt packs",
+					name: "Custom-Prompt Packs",
 					price: "$50, $100, or $250/mo",
 					includes: "2,500, 7,000, or 25,000 checks, then $0.010 to $0.020 per extra check.",
 				},

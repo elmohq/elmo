@@ -67,7 +67,7 @@ const JUMP_LINKS = [
 	{ id: "plans", label: "Plans" },
 	{ id: "hidden-costs", label: "Hidden Costs" },
 	{ id: "cost-per-answer", label: "Cost per Answer" },
-	{ id: "vs-elmo", label: "vs Elmo" },
+	{ id: "vs-elmo", label: "Elmo Comparison" },
 	{ id: "faq", label: "FAQ" },
 	{ id: "sources", label: "Sources" },
 ];

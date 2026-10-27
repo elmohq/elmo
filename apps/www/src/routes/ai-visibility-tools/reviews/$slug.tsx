@@ -80,7 +80,7 @@ const JUMP_LINKS = [
 	{ id: "features", label: "Features" },
 	{ id: "pros-cons", label: "Pros and Cons" },
 	{ id: "who-its-for", label: "Who It's For" },
-	{ id: "vs-elmo", label: "vs Elmo" },
+	{ id: "vs-elmo", label: "Elmo Comparison" },
 	{ id: "alternatives", label: "Alternatives" },
 	{ id: "faq", label: "FAQ" },
 	{ id: "sources", label: "Sources" },

@@ -348,7 +348,7 @@ export function CompetitorPricingDetails({ pricing }: { pricing: CompetitorPrici
 			) : null}
 			{pricing.costPerAnswer ? (
 				<p className="mt-4 max-w-3xl text-sm text-zinc-600">
-					<span className="font-medium text-zinc-950">Cost per AI answer:</span> {pricing.costPerAnswer}
+					<span className="font-medium text-zinc-950">Cost per AI Answer:</span> {pricing.costPerAnswer}
 				</p>
 			) : null}
 			<SourceList pricing={pricing} />

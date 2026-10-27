@@ -246,7 +246,7 @@ export const CATEGORY_HEADINGS: Record<CompetitorCategory, string> = {
 	tracking: "AI Visibility Tracking Tools",
 	content: "AI Content Optimization Tools",
 	"api-developer": "API-Only AI Visibility Tools for Developers",
-	ecommerce: "AI Visibility Tools for E-commerce",
+	ecommerce: "AI Visibility Tools for E-Commerce",
 	"seo-traditional": "SEO Platforms With AI Search Tracking",
 	"open-source": "Open-Source AI Visibility Tools",
 	other: "AI Visibility Tools",

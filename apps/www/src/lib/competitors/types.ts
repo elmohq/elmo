@@ -404,7 +404,7 @@ export const CATEGORY_LABELS: Record<CompetitorCategory, string> = {
 	tracking: "AI Visibility Tracking",
 	content: "Content Generation",
 	"api-developer": "API-Only",
-	ecommerce: "E-commerce",
+	ecommerce: "E-Commerce",
 	"seo-traditional": "Traditional SEO",
 	"open-source": "Open Source",
 	other: "Other",
