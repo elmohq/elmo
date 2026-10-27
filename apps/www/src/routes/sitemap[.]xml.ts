@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { aeoVerticals } from "@/data/aeo-verticals";
 import { aiSearchEngines } from "@/data/ai-search-engines";
+import { productFeatures } from "@/data/features";
 import { glossaryTerms } from "@/data/glossary";
 import { blogSource } from "@/lib/blog";
 import {
@@ -131,6 +132,12 @@ export const Route = createFileRoute("/sitemap.xml")({
 					})),
 				];
 
+				const featurePages: SitemapEntry[] = productFeatures.map((f) => ({
+					path: `/features/${f.slug}`,
+					changefreq: "monthly",
+					priority: 0.7,
+				}));
+
 				const aiSearchPages: SitemapEntry[] = [
 					{ path: "/ai-search", changefreq: "monthly", priority: 0.7 },
 					...aiSearchEngines.map((e) => ({
@@ -152,6 +159,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 
 				const allPages: SitemapEntry[] = [
 					...staticPages,
+					...featurePages,
 					...docsPages,
 					...legalPages,
 					...blogPages,
