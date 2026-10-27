@@ -69,6 +69,11 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 - The same applies to docs and this file: never write down what's already derivable from the repo (what a file imports, what a script runs, how code is structured).
 - Don't describe prior behavior ("previously this did X") and don't reference GitHub issues or tickets in code — that context belongs in the commit message or PR.
 
+## Copy and UI text
+
+- Use APA Style title case for all non-prose text: titles, headings, buttons, links used as actions, nav items, tabs, form labels, table headers, and chart titles.
+- Sentences and prose stay in sentence case.
+
 ## Changesets
 
 - Add one only for **user-facing** changes (something an end user of the product would notice). Internal refactors, dependency bumps, and CI tweaks don't get one.
