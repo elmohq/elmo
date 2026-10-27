@@ -18,12 +18,30 @@ import { FeatureMark } from "./feature-mark";
 
 const visibleCompetitors = sortedCompetitors.filter((c) => !isRetired(c) && c.category !== "other");
 
+const CATEGORY_ORDER: Partial<Record<CompetitorCategory, string[]>> = {
+	"open-source": ["getcito", "geo-aeo-tracker", "oneglanse", "lettertrace", "ansvisor", "canonry"],
+	"seo-traditional": ["semrush-ai-toolkit", "ahrefs-brand-radar", "hubspot-aeo-grader", "se-ranking"],
+};
+
+function inCategoryOrder(competitors: Competitor[], category: CompetitorCategory): Competitor[] {
+	const order = CATEGORY_ORDER[category] ?? [];
+	const rank = (c: Competitor) => {
+		const i = order.indexOf(c.slug);
+		return i === -1 ? order.length : i;
+	};
+	return [...competitors].sort((a, b) => rank(a) - rank(b));
+}
+
 export function CompetitorDirectory({ afterHero }: { afterHero?: ReactNode }) {
 	const [selectedCategory, setSelectedCategory] = useState<CompetitorCategory | "all">("all");
 
-	const filteredCompetitors = visibleCompetitors.filter(
-		(c) => selectedCategory === "all" || c.category === selectedCategory,
-	);
+	const filteredCompetitors =
+		selectedCategory === "all"
+			? visibleCompetitors
+			: inCategoryOrder(
+					visibleCompetitors.filter((c) => c.category === selectedCategory),
+					selectedCategory,
+				);
 
 	const categories = [...new Set(visibleCompetitors.map((c) => c.category))];
 
