@@ -1,14 +1,9 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import {
-	DirectoryBackLink,
-	DirectoryElmoBanner,
-	DirectoryHero,
-	DirectorySection,
-	ElmoCta,
-} from "@/components/directory-shell";
+import { DirectoryBackLink, DirectoryElmoBanner, DirectoryHero, DirectorySection } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
+import { SwitchingBlock } from "@/components/switching-block";
 import { ToolGrid } from "@/components/tool-list";
 import {
 	type Competitor,
@@ -61,6 +56,7 @@ function AlternativesPage() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero title={`${competitor.name} alternatives`} lead={getAlternativesVerdict(competitor)} />
+				<SwitchingBlock competitor={competitor} from="marketing-alternatives-switch" />
 
 				<DirectoryElmoBanner
 					pitch="Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
@@ -94,7 +90,7 @@ function AlternativesPage() {
 				</DirectorySection>
 
 				<Faq items={getAlternativesFaqs(competitor, alternatives)} />
-				<ElmoCta />
+				<SwitchingBlock competitor={competitor} from="marketing-alternatives-switch-closing" />
 			</main>
 			<Footer />
 		</div>

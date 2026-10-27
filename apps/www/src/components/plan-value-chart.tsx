@@ -15,7 +15,7 @@ function formatMonthlyPrice(usd: number): string {
 	});
 }
 
-function PlanValueChart({ rows, caption }: { rows: PlanValueRow[]; caption: string }) {
+export function PlanValueChart({ rows, caption }: { rows: PlanValueRow[]; caption: string }) {
 	const max = Math.max(...rows.map((row) => row.costPer1kUsd));
 	return (
 		<figure>

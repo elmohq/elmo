@@ -99,3 +99,8 @@ export const PLAN_VALUE_ROWS: PlanValueRow[] = [...ELMO_VALUE_ROWS, ...COMPETITO
 export function isElmoRow(row: PlanValueRow): boolean {
 	return row.vendor === ELMO_VENDOR;
 }
+
+/** A competitor's rows, cheapest first; empty when the comparison does not cover it. */
+export function valueRowsForCompetitor(slug: string): PlanValueRow[] {
+	return PLAN_VALUE_ROWS.filter((row) => row.competitorSlug === slug);
+}
