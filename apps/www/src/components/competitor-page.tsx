@@ -200,7 +200,7 @@ export function CompetitorHero({
 function ToolThumb({ competitor }: { competitor: Competitor }) {
 	if (competitor.noScreenshot) {
 		return (
-			<div className="relative grid aspect-[16/10] place-items-center bg-zinc-50">
+			<div className="relative grid aspect-[2/1] sm:aspect-[16/10] place-items-center bg-zinc-50">
 				<div
 					aria-hidden="true"
 					className="absolute inset-0 [background-image:radial-gradient(circle,rgb(0_0_0/0.07)_1px,transparent_1px)] [background-size:16px_16px]"
@@ -218,7 +218,7 @@ function ToolThumb({ competitor }: { competitor: Competitor }) {
 			width={1920}
 			height={1080}
 			loading="lazy"
-			className="aspect-[16/10] w-full object-cover object-top"
+			className="aspect-[2/1] sm:aspect-[16/10] w-full object-cover object-top"
 		/>
 	);
 }
