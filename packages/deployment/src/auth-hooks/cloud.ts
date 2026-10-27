@@ -53,12 +53,7 @@ function getSignupAllowlist(): string[] {
 
 // ── Bot protection ────────────────────────────────────────────────────
 
-/**
- * Every email/password endpoint that creates an account or sends mail to an
- * address the caller supplies. Bots used these to send verification emails to
- * third parties, which costs us sender reputation. Sign-in is included because
- * an unverified sign-in resends the verification email (`sendOnSignIn`).
- */
+// Sign-in is included because an unverified sign-in resends the verification email.
 const TURNSTILE_PROTECTED_ENDPOINTS = [
 	"/sign-up/email",
 	"/sign-in/email",
@@ -66,10 +61,6 @@ const TURNSTILE_PROTECTED_ENDPOINTS = [
 	"/send-verification-email",
 ];
 
-/**
- * Turnstile is enforced only once its secret is configured, so the code can
- * ship ahead of the keys without locking everyone out of email sign-in.
- */
 function createTurnstilePlugin(): BetterAuthPlugin | undefined {
 	const secretKey = process.env.TURNSTILE_SECRET_KEY?.trim();
 	if (!secretKey) {

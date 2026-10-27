@@ -25,7 +25,7 @@ interface ImportMetaEnv {
 	readonly VITE_CLARITY_PROJECT_ID?: string;
 	readonly VITE_POSTHOG_KEY?: string;
 
-	// Cloudflare Turnstile (cloud)
+	// Cloudflare Turnstile
 	readonly VITE_TURNSTILE_SITE_KEY?: string;
 
 	// Sentry

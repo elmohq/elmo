@@ -118,11 +118,6 @@ describe("signup allowlist", () => {
 	});
 });
 
-/**
- * Bots used the email endpoints to send verification and reset emails to
- * third parties. Each request below runs through the plugins' request hooks
- * exactly as better-auth does, before any endpoint code.
- */
 describe("Turnstile bot protection", () => {
 	const silentLogger = { error: () => {}, warn: () => {}, info: () => {}, debug: () => {} };
 
@@ -131,7 +126,6 @@ describe("Turnstile bot protection", () => {
 		vi.stubEnv("VITE_TURNSTILE_SITE_KEY", "turnstile-site-key");
 	}
 
-	/** The response better-auth would send instead of running the endpoint, or undefined to let it run. */
 	async function send(path: string, captchaToken?: string): Promise<Response | undefined> {
 		const request = new Request(`https://app.example.com/api/auth${path}`, {
 			method: "POST",

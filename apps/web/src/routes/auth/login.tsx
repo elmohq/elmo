@@ -226,7 +226,6 @@ export function EmailPasswordLogin({
 					setLoading(false);
 					return;
 				}
-				// A rejected Turnstile token is also a 403.
 				if (isCloud && result.error.code === "EMAIL_NOT_VERIFIED") {
 					setError("Please verify your email first — we just sent you a new verification link.");
 				} else {

@@ -86,10 +86,6 @@ export interface ClientConfig {
 	 */
 	canRegister: boolean;
 	hasUsers: boolean;
-	/**
-	 * Cloudflare Turnstile site key for the email auth forms. Set only in cloud
-	 * mode, where the server demands a Turnstile token on those endpoints.
-	 */
 	turnstileSiteKey?: string;
 }
 

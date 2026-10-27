@@ -68,8 +68,6 @@ export function ForgotPasswordForm({
 				redirectTo: "/auth/reset-password",
 				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
 			});
-			// A failed bot check says nothing about the account, so it is safe to
-			// report; any other failure keeps the neutral confirmation.
 			if (isCaptchaRejection(result.error)) {
 				setError(new TurnstileError().message);
 				setLoading(false);

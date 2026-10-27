@@ -457,8 +457,6 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description:
 			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
 	},
-	// Optional so the bot check can ship before the keys exist; cloud logs a
-	// warning at startup while it is off.
 	{
 		name: "TURNSTILE_SECRET_KEY",
 		scope: "server",
