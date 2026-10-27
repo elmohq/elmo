@@ -155,8 +155,6 @@ test.describe("Demo auth is sign-in only", () => {
   test("signing in lands on the page you were sent from", async ({ page }) => {
     await page.goto(brandUrl());
 
-    // The stop at /auth/login can be over before a wait for it would start, so
-    // only where the visitor ends up, and as whom, is asserted.
     await page.waitForURL((url) => url.pathname === brandUrl(), { timeout: 30_000 });
     await expectSignedInAsDemo(page);
   });

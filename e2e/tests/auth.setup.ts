@@ -43,7 +43,6 @@ setup("authenticate", async ({ page, baseURL }, testInfo) => {
     await authenticateWithPassword(page.request, mode);
   }
 
-  // The login page signs demo visitors in to this account on its own.
   if (mode === "demo") await withDb((client) => ensureDemoAccount(client, DEMO_CREDENTIALS));
 
   await assertSessionAccepted(page.request, TEST_USER.email);

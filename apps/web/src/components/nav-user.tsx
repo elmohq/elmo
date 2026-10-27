@@ -47,7 +47,6 @@ export function NavUser({
 	const { isMobile, setOpenMobile } = useSidebar();
 	const branding = useBranding();
 	const features = useDeploymentFeatures();
-	// The demo login page signs visitors straight back in, so logging out goes nowhere.
 	const canLogOut = useDeploymentMode() !== "demo";
 
 	// NavUser only renders inside _authed routes, which redirect to /auth/login

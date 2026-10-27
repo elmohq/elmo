@@ -127,10 +127,6 @@ export async function ensureUser(client: pg.Client, user: { email: string; name:
   return rows[0].id;
 }
 
-/**
- * The shared account a real demo deployment is provisioned with. Demo has no
- * signup, so it is written directly.
- */
 export async function ensureDemoAccount(
   client: pg.Client,
   credentials: { email: string; password: string },

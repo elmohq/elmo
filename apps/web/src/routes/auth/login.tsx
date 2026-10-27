@@ -142,8 +142,6 @@ export function SSOLogin({ destination = "/app" }: { destination?: string }) {
 export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 	const [error, setError] = useState<string | null>(null);
 
-	// The credentials are public, so making the visitor click through them is
-	// friction with nothing behind it.
 	useEffect(() => {
 		let cancelled = false;
 

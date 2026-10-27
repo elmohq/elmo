@@ -34,10 +34,6 @@ export function setMockSsoError(message: string | null) {
 	_ssoError = message;
 }
 
-/**
- * Hold or fail email sign-in. A success navigates the frame away, so stories of
- * a page that signs in on its own need one of these.
- */
 export function setMockEmailSignIn(outcome: "hang" | { error: string }) {
 	_emailSignIn = outcome;
 }
