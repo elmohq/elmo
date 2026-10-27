@@ -97,11 +97,7 @@ export function clampedPaging(
 	return { page, limit, offset: (page - 1) * limit };
 }
 
-/**
- * For the analytics lists that once returned every row: big enough that most
- * brands still get everything on the first page, small enough to stay well
- * inside a response a function can return.
- */
+/** Big enough that most brands get every row on the first page, small enough to stay well inside a response a function can return. */
 export function analyticsListPaging(searchParams: URLSearchParams) {
 	return clampedPaging(searchParams, 1000, 100);
 }

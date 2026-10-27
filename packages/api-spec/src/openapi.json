@@ -2307,7 +2307,7 @@
 			"AnalyticsListLimit": {
 				"name": "limit",
 				"in": "query",
-				"description": "Items per page. Values above the maximum are clamped, not rejected. This list had no ceiling before, so the default is large enough that most windows still fit on the first page.",
+				"description": "Items per page. Values above the maximum are clamped, not rejected. The default is large enough that most windows fit on the first page.",
 				"required": false,
 				"schema": {
 					"type": "integer",
