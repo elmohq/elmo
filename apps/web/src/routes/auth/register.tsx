@@ -68,7 +68,6 @@ export function RegisterForm({
 	hasUsers,
 }: {
 	returnTo?: string;
-	/** Kept on links that stay inside auth. */
 	attribution?: AttributionParams;
 	isCloud?: boolean;
 	/** A local instance before its bootstrap signup has nowhere to send an existing account. */

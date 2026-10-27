@@ -1,9 +1,3 @@
-/**
- * Query parameters analytics reads from the landing URL to credit a visit:
- * our own `ref` tag (see @workspace/config/referrals), UTM tags, and ad click
- * IDs. Sign-in redirects copy these onto the auth page they send a visitor to,
- * since that page is the first one analytics records.
- */
 export const ATTRIBUTION_PARAMS = [
 	"ref",
 	"utm_source",
