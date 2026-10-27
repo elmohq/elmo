@@ -1,11 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import {
-	AlternativeGrid,
-	AudienceCards,
-	CompetitorHero,
-	competitorGlance,
-	SourceCards,
-} from "@/components/competitor-page";
+import { AlternativeGrid, AudienceCards, CompetitorHero, competitorGlance } from "@/components/competitor-page";
 import {
 	CompetitorPageCards,
 	CompetitorPageLinks,
@@ -70,8 +64,8 @@ export const Route = createFileRoute("/ai-visibility-tools/reviews/$slug")({
 function Fact({ label, children }: { label: string; children: string }) {
 	return (
 		<div className="bg-white p-5 md:p-6">
-			<dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">{label}</dt>
-			<dd className="mt-2 text-pretty text-sm/6 text-zinc-700">{children}</dd>
+			<dt className="text-sm font-semibold text-zinc-950">{label}</dt>
+			<dd className="mt-1.5 text-pretty text-sm/6 text-zinc-700">{children}</dd>
 		</div>
 	);
 }
@@ -83,7 +77,6 @@ const JUMP_LINKS = [
 	{ id: "vs-elmo", label: "Elmo Comparison" },
 	{ id: "alternatives", label: "Alternatives" },
 	{ id: "faq", label: "FAQ" },
-	{ id: "sources", label: "Sources" },
 ];
 
 function ReviewPage() {
@@ -103,17 +96,16 @@ function ReviewPage() {
 				<DirectoryBackLink />
 				<CompetitorHero
 					competitor={competitor}
-					eyebrow={`Review · Verified ${verified}`}
 					title={`${name} Review`}
 					lead={review.verdict}
-					note={`Based on ${name}'s own pricing, product pages, and docs, checked ${verified}. Elmo is a competitor, so we stick to what can be verified and link every source.`}
+					note={`Based on ${name}'s own pricing, product pages, and docs, checked ${verified}. Elmo is a competitor, so we stick to what can be verified.`}
 					tiles={competitorGlance(competitor, review)}
 					jumpLinks={JUMP_LINKS}
 				>
 					<CompetitorPageLinks competitor={competitor} current="review" />
 				</CompetitorHero>
 
-				<DirectorySection eyebrow="Overview" title={`${name} at a Glance`} tone="muted">
+				<DirectorySection title={`${name} at a Glance`} tone="muted">
 					<dl className="grid gap-px overflow-hidden rounded-2xl bg-zinc-200/80 ring-1 ring-zinc-200/80 md:grid-cols-2">
 						<Fact label="Best For">{review.bestFor}</Fact>
 						<Fact label="Pricing">{pricing.summary}</Fact>
@@ -122,25 +114,22 @@ function ReviewPage() {
 					</dl>
 				</DirectorySection>
 
-				<DirectorySection id="features" eyebrow="Features" title={`${name} Features`}>
+				<DirectorySection id="features" title={`${name} Features`}>
 					<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-						{review.features.map((feature, i) => (
+						{review.features.map((feature) => (
 							<div key={feature.name} className={`p-5 ${CARD}`}>
-								<span className="font-mono text-[11px] tracking-[0.18em] text-zinc-400">
-									{String(i + 1).padStart(2, "0")}
-								</span>
-								<h3 className="mt-2 font-semibold text-zinc-950">{feature.name}</h3>
+								<h3 className="font-semibold text-zinc-950">{feature.name}</h3>
 								<p className="mt-2 text-sm/6 text-zinc-600">{feature.detail}</p>
 							</div>
 						))}
 					</div>
 				</DirectorySection>
 
-				<DirectorySection id="pros-cons" eyebrow="Trade-Offs" title={`${name} Pros and Cons`} tone="muted">
+				<DirectorySection id="pros-cons" title={`${name} Pros and Cons`} tone="muted">
 					<ProsCons review={review} />
 				</DirectorySection>
 
-				<DirectorySection id="who-its-for" eyebrow="Fit" title={`Who Should Use ${name}`}>
+				<DirectorySection id="who-its-for" title={`Who Should Use ${name}`}>
 					<AudienceCards
 						name={name}
 						stay={review.pickIf}
@@ -150,7 +139,7 @@ function ReviewPage() {
 					/>
 				</DirectorySection>
 
-				<DirectorySection id="vs-elmo" eyebrow="Head to Head" title={`${name} vs Elmo`} tone="muted">
+				<DirectorySection id="vs-elmo" title={`${name} vs Elmo`} tone="muted">
 					<ElmoComparisonTable competitor={competitor} review={review} />
 				</DirectorySection>
 
@@ -162,7 +151,6 @@ function ReviewPage() {
 
 				<DirectorySection
 					id="alternatives"
-					eyebrow="Alternatives"
 					title={`${name} Alternatives`}
 					lede={`Elmo is the open-source option. These are the other tools most often compared with ${name}.`}
 				>
@@ -172,10 +160,6 @@ function ReviewPage() {
 				<div id="faq" className="scroll-mt-16">
 					<Faq items={review.reviewFaqs} />
 				</div>
-
-				<DirectorySection id="sources" eyebrow="Sources" title="Where This Review Comes From">
-					<SourceCards sources={review.sources} />
-				</DirectorySection>
 
 				<DirectorySection title={`More on ${name}`} tone="muted">
 					<CompetitorPageCards competitor={competitor} current="review" />

@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { PLANS } from "@workspace/config/plans";
-import { CompetitorHero, competitorGlance, SourceCards } from "@/components/competitor-page";
+import { CompetitorHero, competitorGlance } from "@/components/competitor-page";
 import {
 	CostPerAnswerChart,
 	ELMO_PLAN_ROWS,
@@ -69,7 +69,6 @@ const JUMP_LINKS = [
 	{ id: "cost-per-answer", label: "Cost per Answer" },
 	{ id: "vs-elmo", label: "Elmo Comparison" },
 	{ id: "faq", label: "FAQ" },
-	{ id: "sources", label: "Sources" },
 ];
 
 function PricingPage() {
@@ -90,38 +89,34 @@ function PricingPage() {
 				<DirectoryBackLink />
 				<CompetitorHero
 					competitor={competitor}
-					eyebrow={`Pricing · Verified ${verified}`}
 					title={`${name} Pricing`}
 					lead={pricing.summary}
-					note={`Prices last verified on ${verified} from ${name}'s own pages. Every source is linked at the bottom.`}
+					note={`Prices verified ${verified} from each vendor's pricing page.`}
 					tiles={competitorGlance(competitor, review)}
 					jumpLinks={jumpLinks}
 				>
 					<CompetitorPageLinks competitor={competitor} current="pricing" />
 				</CompetitorHero>
 
-				<DirectorySection
-					id="plans"
-					eyebrow="Plans"
-					title={pricing.previous ? `Current ${name} Plans` : `${name} Plans and Prices`}
-				>
+				<DirectorySection id="plans" title={pricing.previous ? `Current ${name} Plans` : `${name} Plans and Prices`}>
 					<PlanCards plans={pricing.plans} />
 					<PreviousPlans pricing={pricing} />
 				</DirectorySection>
 
 				{pricing.extraCosts?.length ? (
-					<DirectorySection id="hidden-costs" eyebrow="Watch For" title="Add-Ons and Hidden Costs" tone="muted">
+					<DirectorySection id="hidden-costs" title="Add-Ons and Hidden Costs" tone="muted">
 						<HiddenCosts items={pricing.extraCosts} />
 					</DirectorySection>
 				) : null}
 
 				<DirectorySection
 					id="cost-per-answer"
-					eyebrow="Value"
 					title="Cost per AI Answer"
 					lede="Plan prices are hard to compare because tools meter different things: prompts, models, credits, or runs per day. Dividing the price by the AI answers a plan can collect in a month puts them on one scale."
 				>
-					{hasCostChart(pricing) ? <CostPerAnswerChart competitor={competitor} pricing={pricing} /> : null}
+					{hasCostChart(pricing) ? (
+						<CostPerAnswerChart competitor={competitor} pricing={pricing} titled={false} />
+					) : null}
 					<dl className="mt-8 grid gap-6 text-sm/6 md:grid-cols-2">
 						<div>
 							<dt className="font-semibold text-zinc-950">How {name} Works Out</dt>
@@ -140,7 +135,7 @@ function PricingPage() {
 					</dl>
 				</DirectorySection>
 
-				<DirectorySection id="vs-elmo" eyebrow="Side by Side" title={`${name} vs Elmo Pricing`} tone="muted">
+				<DirectorySection id="vs-elmo" title={`${name} vs Elmo Pricing`} tone="muted">
 					<ElmoComparisonTable competitor={competitor} review={review} />
 					<h3 className="mt-12 mb-5 text-lg font-semibold tracking-[-0.02em] text-zinc-950">Elmo Plans</h3>
 					<PlanCards plans={ELMO_PLAN_ROWS} variant="elmo" />
@@ -155,13 +150,6 @@ function PricingPage() {
 				<div id="faq" className="scroll-mt-16">
 					<Faq items={review.pricingFaqs} />
 				</div>
-
-				<DirectorySection id="sources" eyebrow="Sources" title="Where These Numbers Come From">
-					<SourceCards
-						sources={pricing.sources}
-						note={`Checked ${verified}. Vendors change plans often, so check the source before you buy.`}
-					/>
-				</DirectorySection>
 
 				<DirectorySection title={`More on ${name}`} tone="muted">
 					<CompetitorPageCards competitor={competitor} current="pricing" />

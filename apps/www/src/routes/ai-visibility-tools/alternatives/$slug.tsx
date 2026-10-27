@@ -95,10 +95,7 @@ function ProfileSectionView({ section, tone }: { section: ProfileSection; tone: 
 							<thead>
 								<tr className="border-b border-zinc-200 bg-zinc-50/80 text-left">
 									{table.columns.map((col) => (
-										<th
-											key={col}
-											className="px-4 py-3 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500"
-										>
+										<th key={col} className="px-4 py-3 text-xs font-medium text-zinc-500">
 											{col}
 										</th>
 									))}
@@ -149,7 +146,6 @@ function SwitchingReasons({ competitor }: { competitor: Competitor }) {
 	const name = competitor.name;
 	return (
 		<DirectorySection
-			eyebrow="In Their Words"
 			title={`Why Teams Leave ${name}`}
 			lede={`What people tell us when they move to Elmo from ${name}, and what we do differently.`}
 		>
@@ -159,9 +155,7 @@ function SwitchingReasons({ competitor }: { competitor: Competitor }) {
 						<h3 className="text-lg font-semibold tracking-[-0.02em] text-zinc-950">{reason.headline}</h3>
 						<p className="mt-2 flex-1 text-pretty text-sm/6 text-zinc-600">{reason.detail}</p>
 						<p className="mt-4 rounded-xl bg-blue-50/70 p-4 text-pretty text-sm/6 text-zinc-700">
-							<span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-blue-700">
-								With Elmo
-							</span>
+							<span className="mb-1 block font-semibold text-zinc-950">With Elmo</span>
 							{reason.elmo}
 						</p>
 					</article>
@@ -182,13 +176,13 @@ function PricingSection({
 }) {
 	if (snapshot) {
 		return (
-			<DirectorySection id="pricing" eyebrow="Pricing" title={`${competitor.name} Pricing`} tone="muted">
+			<DirectorySection id="pricing" title={`${competitor.name} Pricing`} tone="muted">
 				<PricingSnapshot competitor={competitor} pricing={pricing} />
 			</DirectorySection>
 		);
 	}
 	return (
-		<DirectorySection id="pricing" eyebrow="Pricing" title={`${competitor.name} Pricing`}>
+		<DirectorySection id="pricing" title={`${competitor.name} Pricing`}>
 			<CompetitorPricingDetails pricing={pricing} />
 			{hasCostChart(pricing) ? (
 				<div className="mt-10">
@@ -226,7 +220,6 @@ function AlternativesPage() {
 				<DirectoryBackLink />
 				<CompetitorHero
 					competitor={competitor}
-					eyebrow={`Alternatives · ${alternatives.length + 1} Tools Compared`}
 					title={`${name} Alternatives`}
 					lead={getAlternativesVerdict(competitor)}
 					tiles={competitorGlance(competitor, review)}
@@ -235,24 +228,14 @@ function AlternativesPage() {
 					{review ? <CompetitorPageLinks competitor={competitor} current="alternatives" /> : null}
 				</CompetitorHero>
 
-				<DirectorySection
-					id="alternatives"
-					eyebrow="The List"
-					title={`Top ${name} Alternatives and Competitors`}
-					tone="muted"
-				>
+				<DirectorySection id="alternatives" title={`Top ${name} Alternatives and Competitors`} tone="muted">
 					<ElmoPickCard competitor={competitor} pitch={ELMO_PITCH} />
 					<div className="mt-6">
-						<AlternativeGrid competitors={alternatives} firstRank={2} />
+						<AlternativeGrid competitors={alternatives} />
 					</div>
 				</DirectorySection>
 
-				<DirectorySection
-					id="comparison"
-					eyebrow="At a Glance"
-					title={`${name} Alternatives Compared`}
-					lede={`Price, engine coverage, and openness for each tool above, with ${name} at the bottom for reference.`}
-				>
+				<DirectorySection id="comparison" title={`${name} Alternatives Compared`}>
 					<QuickComparisonTable competitor={competitor} alternatives={alternatives.slice(0, 5)} />
 				</DirectorySection>
 
@@ -261,13 +244,13 @@ function AlternativesPage() {
 				))}
 
 				{review ? (
-					<DirectorySection eyebrow="Head to Head" title={`How Elmo Compares With ${name}`} tone="muted">
+					<DirectorySection title={`How Elmo Compares With ${name}`} tone="muted">
 						<ElmoComparisonTable competitor={competitor} review={review} />
 					</DirectorySection>
 				) : null}
 
 				{review ? (
-					<DirectorySection id="who-its-for" eyebrow="Fit" title={`Who ${name} Is For`} lede={review.bestFor}>
+					<DirectorySection id="who-its-for" title={`Who ${name} Is For`} lede={review.bestFor}>
 						<AudienceCards name={name} stay={review.pickIf} leave={review.lookElsewhereIf} />
 					</DirectorySection>
 				) : null}
@@ -276,10 +259,10 @@ function AlternativesPage() {
 
 				{review ? (
 					<>
-						<DirectorySection eyebrow="Trade-Offs" title={`${name} Strengths and Limitations`}>
+						<DirectorySection title={`${name} Strengths and Limitations`}>
 							<ProsCons review={review} />
 						</DirectorySection>
-						<DirectorySection id="switching" eyebrow="Migration" title={`Switching From ${name} to Elmo`} tone="muted">
+						<DirectorySection id="switching" title={`Switching From ${name} to Elmo`} tone="muted">
 							<SwitchingSteps steps={review.migration} />
 						</DirectorySection>
 						<CompetitorSignupCta
