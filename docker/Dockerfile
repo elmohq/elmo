@@ -21,12 +21,17 @@ COPY packages/deployment/package.json ./packages/deployment/
 COPY packages/og/package.json ./packages/og/
 COPY packages/api-spec/package.json ./packages/api-spec/
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies. The store is a cache mount so the deploy stages below
+# link from it instead of downloading every package a second time.
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # Builder stage
 FROM base AS builder
 WORKDIR /app
+
+# deps installs only the projects these images ship, so pnpm's pre-run check
+# would otherwise see the rest of the workspace as missing and reinstall it all.
+ENV pnpm_config_verify_deps_before_run=false
 
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
@@ -54,10 +59,10 @@ RUN pnpm --filter @workspace/web build
 # Pruned standalone deployments (only each package's own deps)
 # --legacy: allows deploy without inject-workspace-packages (which breaks Alpine Docker builds)
 FROM builder AS worker-deploy
-RUN pnpm --filter @workspace/worker deploy --legacy /deploy/worker
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store pnpm --filter @workspace/worker deploy --legacy /deploy/worker
 
 FROM builder AS lib-deploy
-RUN pnpm --filter @workspace/lib deploy --legacy /deploy/lib
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store pnpm --filter @workspace/lib deploy --legacy /deploy/lib
 
 # Runner stage for web app (Nitro)
 FROM base AS web
