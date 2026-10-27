@@ -56,7 +56,7 @@ export function PlatformTier({
 								{/* The marketing site's primary is brand blue; pin the neutral
 								    tooltip colors so the arrow follows the popup. */}
 								<TooltipContent className="[--primary-foreground:var(--background)] [--primary:var(--foreground)]">
-									Runs {model.version}
+									{model.version}
 								</TooltipContent>
 							</Tooltip>
 						) : (
