@@ -19,7 +19,6 @@ export interface HeadlineDraw {
 	random: number;
 }
 
-/** The arm a visitor sees, or null when they're outside the test. */
 export function pickHeadline(config: HeadlineTestConfig, draw: HeadlineDraw): HeadlineArm | null {
 	if (draw.explicit !== null && config.explicitKeys.includes(draw.explicit)) return null;
 	if (draw.automated || new RegExp(config.botPattern, "i").test(draw.userAgent)) return null;
@@ -27,11 +26,6 @@ export function pickHeadline(config: HeadlineTestConfig, draw: HeadlineDraw): He
 	return stored ?? config.arms[Math.floor(draw.random * config.arms.length)];
 }
 
-/**
- * Draws (or recalls) the visitor's arm and tags the page with it. Serialized
- * into an inline script so it runs before first paint, which is why it reaches
- * nothing outside its arguments.
- */
 export function startHeadlineTest(config: HeadlineTestConfig, pick: typeof pickHeadline): HeadlineArm | null {
 	const root = document.documentElement;
 	const current = config.arms.find((arm) => arm === root.getAttribute(config.attribute));

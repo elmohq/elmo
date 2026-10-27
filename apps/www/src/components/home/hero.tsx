@@ -76,7 +76,6 @@ function titleWords(title: string) {
 }
 
 export interface HeadlineTestProps {
-	/** Null until the arm is known on the client; until then CSS may show `pendingTitle`. */
 	arm: HeadlineArm | null;
 	pendingTitle: string;
 }

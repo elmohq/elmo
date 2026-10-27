@@ -73,8 +73,6 @@ function useHeadlineArm(enabled: boolean): HeadlineArm | null {
 		const drawn = startHeadlineTest(HEADLINE_TEST, pickHeadline);
 		setArm(drawn);
 		if (!drawn) return;
-		// Remembering the arm is analytics storage, so it follows the analytics
-		// answer; without it the arm still holds for this page view.
 		return onAnalyticsConsent(isConsentRequired(consentRegion), (allowed) =>
 			rememberHeadline(HEADLINE_TEST.storageKey, allowed ? drawn : null),
 		);
@@ -90,7 +88,6 @@ function HomePage() {
 	return (
 		<div className={`${HOME_FONT_CLASS} min-h-screen bg-white antialiased`}>
 			<HomeStyles />
-			{/* Runs during the initial parse, ahead of the hero, so the arm is set before the headline first paints. The client bundle stringifies a minified copy, hence the suppressed mismatch. */}
 			{explicit ? null : <script suppressHydrationWarning>{HEADLINE_SCRIPT}</script>}
 			<Navbar />
 			<main>

@@ -10,10 +10,6 @@ import geist600 from "@fontsource/geist-sans/files/geist-sans-latin-600-normal.w
  */
 export const HOME_FONT_CLASS = "home-font";
 
-// The data-headline rules paint the headline test's "Win AI Search" arm before
-// hydration, at the hero's short-title size, so the server HTML can keep the
-// default H1 without that arm ever flashing it.
-//
 // Entrance motion only: the static end state is the design, which is what a
 // screenshot, a crawler, or a reduced-motion visitor gets.
 const css = `
