@@ -78,11 +78,7 @@ function useCitationSections(citationData: CitationData) {
 
 	const changed = citationData.whatsChanged;
 	const totalChanges = changed
-		? changed.newUrls.length +
-			changed.droppedUrls.length +
-			changed.titleChanges.length +
-			changed.newDomains.length +
-			changed.droppedDomains.length
+		? changed.newUrls.length + changed.droppedUrls.length + changed.newDomains.length + changed.droppedDomains.length
 		: 0;
 
 	return {

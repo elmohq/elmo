@@ -60,13 +60,6 @@ interface WhatsChanged {
 		currentCount: number;
 		category: CitationCategory;
 	}[];
-	titleChanges: {
-		url: string;
-		domain: string;
-		currentTitle: string;
-		previousTitle: string;
-		category: CitationCategory;
-	}[];
 	newDomains: { domain: string; count: number; category: CitationCategory }[];
 	droppedDomains: { domain: string; previousCount: number; category: CitationCategory }[];
 }
@@ -192,7 +185,7 @@ function buildWhatsChanged(args: {
 		.sort((a, b) => b.previousCount - a.previousCount)
 		.slice(0, WHATS_CHANGED_LIMIT);
 
-	return { newUrls, droppedUrls, titleChanges: [], newDomains, droppedDomains };
+	return { newUrls, droppedUrls, newDomains, droppedDomains };
 }
 
 /**
@@ -266,7 +259,7 @@ function emptyCitationsResult(
 		pageTypeTimeSeries: [],
 		competitors: competitorSummary,
 		competitorOnlyPrompts: [],
-		whatsChanged: { newUrls: [], droppedUrls: [], titleChanges: [], newDomains: [], droppedDomains: [] },
+		whatsChanged: { newUrls: [], droppedUrls: [], newDomains: [], droppedDomains: [] },
 	};
 }
 

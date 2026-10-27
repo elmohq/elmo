@@ -62,13 +62,6 @@ export interface CitationData {
 			currentCount: number;
 			category: CitationCategory;
 		}[];
-		titleChanges: {
-			url: string;
-			domain: string;
-			currentTitle: string;
-			previousTitle: string;
-			category: CitationCategory;
-		}[];
 		newDomains: { domain: string; count: number; category: CitationCategory }[];
 		droppedDomains: { domain: string; previousCount: number; category: CitationCategory }[];
 	};

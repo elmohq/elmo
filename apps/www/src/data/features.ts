@@ -416,7 +416,7 @@ export const productFeatures: ProductFeature[] = [
 			},
 			{
 				term: "Recent changes",
-				definition: "New and dropped pages, new and dropped domains, and title changes on cited pages.",
+				definition: "New and dropped pages, and new and dropped domains.",
 			},
 			{
 				term: "Content gaps",
