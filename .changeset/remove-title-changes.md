@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Remove the always-empty "Title Changes" tab from the citations page's Recent Changes card.
+Removes "Title Changes" tab from the citations page. It wasn't very useful since providers didn't surface titles consistently.
