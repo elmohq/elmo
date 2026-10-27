@@ -90,8 +90,22 @@ export function parsePaging(url: URL, defaultLimit = 20): { page: number; limit:
 export function clampedPaging(
 	searchParams: URLSearchParams,
 	maxLimit = 100,
+	defaultLimit = 20,
 ): { page: number; limit: number; offset: number } {
 	const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-	const limit = Math.max(1, Math.min(maxLimit, parseInt(searchParams.get("limit") || "20")));
+	const limit = Math.max(1, Math.min(maxLimit, parseInt(searchParams.get("limit") || String(defaultLimit))));
 	return { page, limit, offset: (page - 1) * limit };
+}
+
+/**
+ * For the analytics lists that once returned every row: big enough that most
+ * brands still get everything on the first page, small enough to stay well
+ * inside a response a function can return.
+ */
+export function analyticsListPaging(searchParams: URLSearchParams) {
+	return clampedPaging(searchParams, 1000, 100);
+}
+
+export function pagination(page: number, limit: number, total: number) {
+	return { page, limit, total, totalPages: Math.ceil(total / limit) };
 }

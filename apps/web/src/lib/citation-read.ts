@@ -85,7 +85,7 @@ const idList = (ids: readonly number[]) =>
 	)}]`;
 
 /** For ILIKE, so a search for `100%` or `my_site` matches those characters literally. */
-const containing = (search: string) => `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+export const containing = (search: string) => `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 /**
  * The brand's or a competitor's when the domain or a parent of it is theirs, as
@@ -398,4 +398,42 @@ export async function getCitationDomainPage(
 		rows: rows.map(({ top_count: _count, top_url: _url, ...row }) => row),
 		total,
 	}));
+}
+
+/** Citations, domains and pages in the window, Google surfaces aside. */
+export async function getCitationTotals(
+	scope: AnalyticsScope,
+): Promise<{ citations: number; uniqueDomains: number; uniqueUrls: number }> {
+	const [row] = await queryPg<{ citations: number; unique_domains: number; unique_urls: number }>(sql`
+		WITH cited AS (
+			SELECT page_id, sum(citations)::int AS count
+			FROM rollup_citation_urls
+			WHERE ${rollupScope(scope)}
+			GROUP BY page_id
+		)
+		SELECT
+			coalesce(sum(c.count), 0)::int AS citations,
+			count(DISTINCT p.domain)::int AS unique_domains,
+			count(*)::int AS unique_urls
+		FROM cited c
+		JOIN rollup_citation_pages p ON p.brand_id = ${scope.brandId} AND p.page_id = c.page_id
+		WHERE p.static_category <> ${GOOGLE_STATIC_CATEGORY}
+	`);
+	return {
+		citations: Number(row?.citations ?? 0),
+		uniqueDomains: Number(row?.unique_domains ?? 0),
+		uniqueUrls: Number(row?.unique_urls ?? 0),
+	};
+}
+
+/** Prompts citing each of `domains` in the window. */
+export async function getDomainPromptCounts(scope: AnalyticsScope, domains: string[]): Promise<Map<string, number>> {
+	if (domains.length === 0) return new Map();
+	const rows = await queryPg<{ domain: string; prompt_count: number }>(sql`
+		SELECT domain, count(DISTINCT prompt_id)::int AS prompt_count
+		FROM rollup_citation_urls
+		WHERE ${rollupScope(scope)} AND domain = ANY(${textList(domains)})
+		GROUP BY domain
+	`);
+	return new Map(rows.map((row) => [row.domain, Number(row.prompt_count)]));
 }

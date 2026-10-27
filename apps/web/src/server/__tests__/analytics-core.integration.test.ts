@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
 	getBrandAnalytics,
-	getBrandCitations,
+	getBrandCitationDomains,
+	getBrandCitationUrls,
 	getBrandPromptPerformance,
 	getBrandShareOfVoice,
 	getBrandVisibility,
@@ -128,8 +129,10 @@ describe("share of voice", () => {
 });
 
 describe("citations", () => {
+	const everything = { limit: 100, offset: 0 };
+
 	it("merges URL variants and classifies brand and competitor pages", async () => {
-		const { urls, totals } = await getBrandCitations(brandId, window);
+		const { urls, totals } = await getBrandCitationUrls(brandId, window, {}, everything);
 		expect(totals).toEqual({ citations: 5, uniqueDomains: 3, uniqueUrls: 3 });
 		expect(urls).toEqual(
 			expect.arrayContaining([
@@ -146,8 +149,19 @@ describe("citations", () => {
 		);
 	});
 
+	it("pages through URLs, with totals over all of them, and searches past the first page", async () => {
+		const firstPage = await getBrandCitationUrls(brandId, window, {}, { limit: 1, offset: 0 });
+		expect(firstPage.urls).toHaveLength(1);
+		expect(firstPage.total).toBe(3);
+		expect(firstPage.totals).toEqual({ citations: 5, uniqueDomains: 3, uniqueUrls: 3 });
+
+		const searched = await getBrandCitationUrls(brandId, window, {}, { search: "globex", limit: 1, offset: 0 });
+		expect(searched.urls.map((url) => url.url)).toEqual(["https://globex.example/x"]);
+		expect(searched.total).toBe(1);
+	});
+
 	it("compares each domain with the preceding window of the same length", async () => {
-		const { domains } = await getBrandCitations(brandId, window);
+		const { domains } = await getBrandCitationDomains(brandId, window, {}, everything);
 		const byDomain = Object.fromEntries(domains.map((domain) => [domain.domain, domain]));
 		expect(byDomain["review.example"]).toMatchObject({ count: 2, previousCount: 1, changeFactor: 2, promptCount: 2 });
 		expect(byDomain["acme.example"]).toMatchObject({ count: 2, share: 0.4, previousCount: 0, changeFactor: null });
