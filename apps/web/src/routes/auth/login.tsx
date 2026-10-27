@@ -7,7 +7,7 @@
  * Whitelabel mode: auto-redirects to Auth0 SSO (no form shown).
  */
 
-import { IconBrandGoogle, IconInfoCircle } from "@tabler/icons-react";
+import { IconBrandGoogle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { MCP_AUTHORIZE_ENDPOINT } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
@@ -121,20 +121,7 @@ export function SSOLogin({ destination = "/app" }: { destination?: string }) {
 		};
 	}, [destination]);
 
-	if (error) {
-		return (
-			<FullPageCard title="Sign in">
-				<div className="w-full space-y-4">
-					<Alert variant="destructive">
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-					<Button className="w-full" onClick={() => window.location.reload()}>
-						Try Again
-					</Button>
-				</div>
-			</FullPageCard>
-		);
-	}
+	if (error) return <SignInFailed error={error} />;
 
 	return <FullPageCard title="Signing in..." subtitle="Redirecting to your identity provider" />;
 }
@@ -164,23 +151,24 @@ export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 		};
 	}, [destination]);
 
-	if (error) {
-		return (
-			<FullPageCard title="Sign in">
-				<div className="w-full space-y-4">
-					<DemoCredentialsCallout />
-					<Alert variant="destructive">
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-					<Button className="w-full" onClick={() => window.location.reload()}>
-						Try Again
-					</Button>
-				</div>
-			</FullPageCard>
-		);
-	}
+	if (error) return <SignInFailed error={error} />;
 
 	return <FullPageCard title="Signing in..." subtitle="Opening the demo account" />;
+}
+
+function SignInFailed({ error }: { error: string }) {
+	return (
+		<FullPageCard title="Sign in">
+			<div className="w-full space-y-4">
+				<Alert variant="destructive">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+				<Button className="w-full" onClick={() => window.location.reload()}>
+					Try Again
+				</Button>
+			</div>
+		</FullPageCard>
+	);
 }
 
 export function EmailPasswordLogin({
@@ -321,26 +309,5 @@ export function EmailPasswordLogin({
 				</p>
 			)}
 		</AuthSplitLayout>
-	);
-}
-
-function DemoCredentialsCallout() {
-	return (
-		<div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-			<IconInfoCircle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
-			<div className="space-y-2">
-				<p className="font-medium text-amber-900 dark:text-amber-100">Demo Account</p>
-				<dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-900/90 dark:text-amber-100/80">
-					<div className="flex items-center gap-1.5">
-						<dt className="opacity-70">Email</dt>
-						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo@elmohq.com</dd>
-					</div>
-					<div className="flex items-center gap-1.5">
-						<dt className="opacity-70">Password</dt>
-						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo</dd>
-					</div>
-				</dl>
-			</div>
-		</div>
 	);
 }

@@ -79,7 +79,7 @@ export const Demo = () => {
 	return <DemoLogin />;
 };
 
-/** Demo when the automatic sign-in fails: the credentials, and a way to retry. */
+/** Demo when the automatic sign-in fails: the error, and a way to retry. */
 export const DemoError = () => {
 	setMockEmailSignIn({ error: "Invalid email or password" });
 	return <DemoLogin />;
