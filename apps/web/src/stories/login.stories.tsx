@@ -25,6 +25,12 @@ const elmoConfig: ClientConfig = {
 	hasUsers: true,
 };
 
+const demoConfig: ClientConfig = {
+	...elmoConfig,
+	mode: "demo",
+	features: { readOnly: true, showOptimizeButton: false, canCreateBrands: false, promotesCloud: true },
+};
+
 /** The same tenant the sidebar, brand kit and export stories use. */
 const whitelabelConfig: ClientConfig = {
 	mode: "whitelabel",
@@ -75,10 +81,26 @@ export const Cloud = () => <EmailPasswordLogin isCloud canRegister />;
 export const SelfHosted = () => <EmailPasswordLogin />;
 
 export const Demo: StoryObj = {
-	render: () => <DemoLogin />,
+	render: () => {
+		setMockRouteContext({ clientConfig: demoConfig });
+		return <DemoLogin />;
+	},
 	play: async ({ canvasElement }) => {
 		const link = await within(canvasElement).findByRole("link", { name: "Start with Elmo Cloud" });
 		await expect(link).toHaveAttribute("href", "https://app.elmohq.com/auth/register?ref=demo-signin");
+	},
+};
+
+export const ReadOnlySelfHost: StoryObj = {
+	render: () => {
+		setMockRouteContext({
+			clientConfig: { ...demoConfig, features: { ...demoConfig.features, promotesCloud: false } },
+		});
+		return <DemoLogin />;
+	},
+	play: async ({ canvasElement }) => {
+		await within(canvasElement).findByRole("button", { name: "Sign in" });
+		await expect(within(canvasElement).queryByRole("link", { name: "Start with Elmo Cloud" })).toBeNull();
 	},
 };
 

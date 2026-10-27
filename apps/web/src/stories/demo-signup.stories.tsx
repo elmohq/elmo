@@ -9,9 +9,14 @@ import { setMockRouteContext } from "./_mocks/tanstack-router";
 
 const demoConfig: ClientConfig = {
 	mode: "demo",
-	features: { readOnly: true, showOptimizeButton: false, canCreateBrands: false },
+	features: { readOnly: true, showOptimizeButton: false, canCreateBrands: false, promotesCloud: true },
 	branding: { name: "Elmo", chartColors: DEFAULT_CHART_COLORS },
 	analytics: {},
+};
+
+const readOnlySelfHostConfig: ClientConfig = {
+	...demoConfig,
+	features: { ...demoConfig.features, promotesCloud: false },
 };
 
 const cloudConfig: ClientConfig = {
@@ -85,5 +90,22 @@ export const OtherSaveError: StoryObj = {
 		const alert = await within(canvasElement).findByRole("alert");
 		await expect(alert).toHaveTextContent("Failed to save prompts.");
 		await expect(within(alert).queryByRole("link")).toBeNull();
+	},
+};
+
+export const ReadOnlySelfHost: StoryObj = {
+	render: () => {
+		applyConfig(readOnlySelfHostConfig);
+		return (
+			<>
+				<DemoSignupBanner />
+				<UnsavedChangesBar isDirty isSaving={false} error={READ_ONLY_REFUSED} onSave={() => {}} onDiscard={() => {}} />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const alert = await within(canvasElement).findByRole("alert");
+		await expect(alert).toHaveTextContent(READ_ONLY_REFUSED);
+		await expect(within(canvasElement).queryByRole("link")).toBeNull();
 	},
 };

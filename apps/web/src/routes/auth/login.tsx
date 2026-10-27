@@ -23,6 +23,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
+import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
@@ -140,6 +141,7 @@ export function SSOLogin({ destination = "/app" }: { destination?: string }) {
 }
 
 export function DemoLogin({ destination = "/app" }: { destination?: string }) {
+	const promotesCloud = useDeploymentFeatures()?.promotesCloud;
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 
@@ -175,17 +177,19 @@ export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 					{loading ? "Signing in..." : "Sign in"}
 				</Button>
 			</form>
-			<p className="pt-4 text-center text-sm text-muted-foreground">
-				Ready to track your own brand?{" "}
-				<a
-					href={cloudSignupUrl("demo-signin")}
-					target="_blank"
-					rel="noopener"
-					className="font-medium text-primary hover:underline"
-				>
-					Start with Elmo Cloud
-				</a>
-			</p>
+			{promotesCloud && (
+				<p className="pt-4 text-center text-sm text-muted-foreground">
+					Ready to track your own brand?{" "}
+					<a
+						href={cloudSignupUrl("demo-signin")}
+						target="_blank"
+						rel="noopener"
+						className="font-medium text-primary hover:underline"
+					>
+						Start with Elmo Cloud
+					</a>
+				</p>
+			)}
 		</FullPageCard>
 	);
 }

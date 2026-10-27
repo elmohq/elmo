@@ -1,10 +1,12 @@
 import { cloudSignupUrl } from "@workspace/config/referrals";
+import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { READ_ONLY_REFUSED } from "@/lib/read-only-errors";
 
 const SIGNUP_URL = cloudSignupUrl("demo-read-only");
 
 export function WriteErrorMessage({ message }: { message: string }) {
-	if (message !== READ_ONLY_REFUSED) return <>{message}</>;
+	const promotesCloud = useDeploymentFeatures()?.promotesCloud;
+	if (message !== READ_ONLY_REFUSED || !promotesCloud) return <>{message}</>;
 
 	return (
 		<>

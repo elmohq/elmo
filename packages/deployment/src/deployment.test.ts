@@ -93,6 +93,13 @@ describe("getDeployment", () => {
 		expect(deployment.features.readOnly).toBe(true);
 	});
 
+	it("promotes Elmo Cloud only on Elmo's own demo, not a read-only self-hosted install", () => {
+		expect(getDeployment({ env: { DEPLOYMENT_MODE: "demo" } }).features.promotesCloud).toBe(true);
+		resetDeploymentCache();
+		expect(getDeployment({ env: { DEPLOYMENT_MODE: "local", READ_ONLY: "true" } }).features.promotesCloud).toBe(false);
+		expect(getDeploymentFeatures({ env: { DEPLOYMENT_MODE: "local", READ_ONLY: "true" } }).promotesCloud).toBe(false);
+	});
+
 	it("caches the first resolution, so later env changes are ignored", () => {
 		const first = getDeployment({ env: { DEPLOYMENT_MODE: "cloud" } });
 		expect(getDeployment({ env: { DEPLOYMENT_MODE: "local" } })).toBe(first);

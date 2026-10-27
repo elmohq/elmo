@@ -1,13 +1,12 @@
 import { IconArrowRight } from "@tabler/icons-react";
 import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
 import { cloudSignupUrl } from "@workspace/config/referrals";
-import { useDeploymentMode } from "@/hooks/use-deployment-features";
+import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 
 const SIGNUP_URL = cloudSignupUrl("demo-banner");
 
 export function DemoSignupBanner() {
-	const mode = useDeploymentMode();
-	if (mode !== "demo") return null;
+	if (!useDeploymentFeatures()?.promotesCloud) return null;
 
 	return (
 		<div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-900 dark:text-amber-100">

@@ -13,6 +13,7 @@ export interface FeaturesConfig {
 	readOnly: boolean;
 	showOptimizeButton: boolean;
 	canCreateBrands: boolean;
+	promotesCloud?: boolean;
 	/** Cloud only: gates the Billing nav item and the billing/paywall routes. */
 	billing?: boolean;
 	teamInvites?: boolean;
