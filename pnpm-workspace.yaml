@@ -11,15 +11,12 @@ overrides:
   # GHSA-g7r4-m6w7-qqqr (dev-server arbitrary file read on Windows).
   esbuild: "^0.28.1"
   seroval: "^1.5.3" # GHSA-mv8w-475r-vwqw: prototype pollution while deserializing
-  # samlify is on the 0.8 line, and 0.9 is a rewrite with a different parser API.
-  "@xmldom/xmldom": "~0.8.15"
   uuid: "^14.0.2" # GHSA-w5hq-g745-h8pq; also anchors the direct dep in apps/web
   # The bruno CLI is the only thing pulling these in, and only for the e2e API suite.
   form-data: "^4.0.6" # GHSA-hmw2-7cc7-3qxx
   axios: "^1.18.0" # GHSA-gcfj-64vw-6mp9, GHSA-xj6q-8x83-jv6g, and seven more
   "@faker-js/faker": "^10.4.1" # GHSA-qxc2-j82w-r537
   csv-parse: "^7.0.2" # GHSA-8cw4-87c7-c6xx
-  "@ai-sdk/provider-utils@^4": "^4.0.33"
   # @usebruno/cli pins these exactly; only the e2e API suite pulls them in.
   "js-yaml@^4": "^4.3.2" # GHSA-2883-xcg3-v3hh
   "yaml@^2": "^2.8.3" # GHSA-48c2-rrv3-qjmp
