@@ -137,6 +137,19 @@ export function PreviousPlans({ pricing }: { pricing: CompetitorPricing }) {
 	);
 }
 
+function CostItems({ items }: { items: string[] }) {
+	return (
+		<ol className="space-y-4">
+			{items.map((item, i) => (
+				<li key={item} className="flex gap-4 text-pretty leading-relaxed text-zinc-700">
+					<span className="mt-0.5 font-mono text-xs text-amber-700">{String(i + 1).padStart(2, "0")}</span>
+					<span>{item}</span>
+				</li>
+			))}
+		</ol>
+	);
+}
+
 export function HiddenCosts({ items }: { items: string[] }) {
 	return (
 		<div className="grid gap-6 rounded-2xl bg-amber-50/70 p-6 ring-1 ring-amber-200/80 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-10 md:p-8">
@@ -144,14 +157,19 @@ export function HiddenCosts({ items }: { items: string[] }) {
 				<TriangleAlert className="size-5 text-amber-600" aria-hidden="true" />
 				<p className="mt-3 text-pretty font-semibold text-zinc-950">The list price is not the whole bill.</p>
 			</div>
-			<ol className="space-y-4">
-				{items.map((item, i) => (
-					<li key={item} className="flex gap-4 text-pretty leading-relaxed text-zinc-700">
-						<span className="mt-0.5 font-mono text-xs text-amber-700">{String(i + 1).padStart(2, "0")}</span>
-						<span>{item}</span>
-					</li>
-				))}
-			</ol>
+			<CostItems items={items} />
+		</div>
+	);
+}
+
+function FinePrint({ items }: { items: string[] }) {
+	return (
+		<div className="rounded-2xl bg-amber-50/70 p-5 ring-1 ring-amber-200/80 md:p-6">
+			<p className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-amber-800">
+				<TriangleAlert className="size-3.5" aria-hidden="true" />
+				Add-Ons and Fine Print
+			</p>
+			<CostItems items={items} />
 		</div>
 	);
 }
@@ -325,7 +343,7 @@ export function CompetitorPricingDetails({ pricing }: { pricing: CompetitorPrici
 			<PreviousPlans pricing={pricing} />
 			{pricing.extraCosts?.length ? (
 				<div className="mt-6">
-					<HiddenCosts items={pricing.extraCosts} />
+					<FinePrint items={pricing.extraCosts} />
 				</div>
 			) : null}
 			{pricing.costPerAnswer ? (
