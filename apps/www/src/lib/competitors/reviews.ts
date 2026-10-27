@@ -107,7 +107,12 @@ export const competitorReviews: Record<string, CompetitorReview> = {
 			{
 				question: "How much does Profound cost?",
 				answer:
-					"Profound doesn't publish a paid price for brands. Its pricing page lists a free 7-day trial and an Enterprise plan quoted by sales. Agencies have a separate plan, launched in November 2025 at $399/mo per client workspace.",
+					"Today Profound sells to brands only through an Enterprise plan quoted by sales, after a free 7-day trial. Until mid-September 2026 it also offered self-serve brand plans: Starter at $99/mo (50 prompts on ChatGPT) and Growth at $399/mo (100 prompts on ChatGPT, Perplexity, and Google AI Overviews). Agencies have a separate plan, launched in November 2025 at $399/mo per client workspace.",
+			},
+			{
+				question: "Does Profound still have Starter and Growth plans?",
+				answer:
+					"No. Profound removed its $99/mo Starter and $399/mo Growth brand plans in mid-September 2026. Brands now choose between the free 7-day trial and a custom Enterprise contract.",
 			},
 			{
 				question: "Does Profound have a free plan?",

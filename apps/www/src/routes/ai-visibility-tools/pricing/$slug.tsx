@@ -1,6 +1,12 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { PLANS } from "@workspace/config/plans";
-import { ELMO_PLAN_ROWS, elmoCostPerAnswer, PlanTable, SourceList } from "@/components/competitor-pricing";
+import {
+	ELMO_PLAN_ROWS,
+	elmoCostPerAnswer,
+	PlanTable,
+	PreviousPlans,
+	SourceList,
+} from "@/components/competitor-pricing";
 import { CompetitorPageLinks, CompetitorSignupCta, ElmoComparisonTable } from "@/components/competitor-review";
 import { DirectoryBackLink, DirectoryHero, DirectorySection } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
@@ -39,7 +45,7 @@ export const Route = createFileRoute("/ai-visibility-tools/pricing/$slug")({
 				breadcrumbJsonLd([
 					{ name: "Home", path: "/" },
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
-					{ name: `${c.name} pricing`, path },
+					{ name: `${c.name} Pricing`, path },
 				]),
 				faqJsonLd(review.pricingFaqs),
 			],
@@ -62,14 +68,15 @@ function PricingPage() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					title={`${name} pricing`}
+					title={`${name} Pricing`}
 					lead={`${pricing.summary} Prices last verified on ${formatPostDate(pricing.verified)}.`}
 				>
 					<CompetitorPageLinks competitor={competitor} current="pricing" />
 				</DirectoryHero>
 
-				<DirectorySection title={`${name} plans and prices`}>
+				<DirectorySection title={pricing.previous ? `Current ${name} plans` : `${name} plans and prices`}>
 					<PlanTable rows={pricing.plans} />
+					<PreviousPlans pricing={pricing} />
 					<SourceList pricing={pricing} />
 				</DirectorySection>
 

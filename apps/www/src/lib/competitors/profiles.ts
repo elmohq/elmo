@@ -13,10 +13,16 @@ export interface Source {
 	url: string;
 }
 
+export interface PreviousPricing {
+	note: string;
+	plans: PricingPlan[];
+}
+
 export interface CompetitorPricing {
 	verified: string;
 	summary: string;
 	plans: PricingPlan[];
+	previous?: PreviousPricing;
 	extraCosts?: string[];
 	costPerAnswer?: string;
 	sources: Source[];
@@ -67,7 +73,7 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 		pricing: {
 			verified: VERIFIED,
 			summary:
-				"Profound has no published paid price for brands. Its pricing page offers a free 7-day trial, then a custom-quoted Enterprise plan through sales.",
+				"Profound now sells to brands only through a custom-quoted Enterprise contract, after a free 7-day trial. Its self-serve Starter ($99/mo) and Growth ($399/mo) brand plans were removed in mid-September 2026; they are listed separately below for comparison.",
 			plans: [
 				{
 					name: "Trial",
@@ -95,7 +101,23 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				"Extra agency pitch workspaces are $199/mo for five more.",
 			],
 			costPerAnswer:
-				"Not derivable for brand plans, since Enterprise prices and prompt volumes are private. An agency client workspace works out to about $0.044 per answer if its prompts run daily on all three engines.",
+				"Not derivable for current brand plans, since Enterprise prices and prompt volumes are private. An agency client workspace works out to about $0.044 per answer if its prompts run daily on all three engines. The previous self-serve plans worked out to about $0.066 (Starter) and $0.044 (Growth) per answer at daily runs.",
+			previous: {
+				note: "Offered from June to mid-September 2026 and no longer available. Shown so you can compare what Profound charged for self-serve tracking with Elmo's plans.",
+				plans: [
+					{
+						name: "Starter (previous)",
+						price: "$99/mo",
+						includes: "50 prompts on ChatGPT only. About $66 per 1,000 answers at daily runs.",
+					},
+					{
+						name: "Growth (previous)",
+						price: "$399/mo",
+						includes:
+							"100 prompts on ChatGPT, Perplexity, and Google AI Overviews. About $44 per 1,000 answers at daily runs.",
+					},
+				],
+			},
 			sources: [
 				{ label: "Profound pricing", url: "https://www.tryprofound.com/pricing" },
 				{
@@ -104,6 +126,8 @@ export const competitorProfiles: Record<string, CompetitorProfile> = {
 				},
 				{ label: "Profound docs: credits", url: "https://docs.tryprofound.com/getting-started/credits" },
 				{ label: "Profound docs: REST API", url: "https://docs.tryprofound.com/rest-api/introduction" },
+				{ label: "GEO Toolbox: Profound pricing history", url: "https://geotoolbox.ai/blog/profound-pricing" },
+				{ label: "Trakkr: Profound vs Trakkr", url: "https://trakkr.ai/compare/profound-vs-trakkr" },
 			],
 		},
 		alternatives: {

@@ -90,11 +90,23 @@ export function PlanTable({
 	);
 }
 
+export function PreviousPlans({ pricing }: { pricing: CompetitorPricing }) {
+	if (!pricing.previous) return null;
+	return (
+		<div className="mt-8">
+			<h3 className="font-heading mb-2 text-lg text-zinc-950">Previous plans (no longer offered)</h3>
+			<p className="mb-4 max-w-3xl text-sm leading-relaxed text-zinc-600">{pricing.previous.note}</p>
+			<PlanTable rows={pricing.previous.plans} />
+		</div>
+	);
+}
+
 export function CompetitorPricingDetails({ pricing }: { pricing: CompetitorPricing }) {
 	return (
 		<>
 			<p className="mb-6 max-w-3xl leading-relaxed text-zinc-600">{pricing.summary}</p>
 			<PlanTable rows={pricing.plans} />
+			{pricing.previous ? <PreviousPlans pricing={pricing} /> : null}
 			{pricing.extraCosts?.length ? (
 				<ul className="mt-6 max-w-3xl list-disc space-y-2 pl-5 text-sm leading-relaxed text-zinc-600">
 					{pricing.extraCosts.map((cost) => (

@@ -74,7 +74,7 @@ export function CompetitorPageLinks({ competitor, current }: { competitor: Compe
 			{current !== "pricing" && (
 				<li>
 					<Link to="/ai-visibility-tools/pricing/$slug" params={{ slug: competitor.slug }} className={LINK}>
-						{name} pricing
+						{name} Pricing
 					</Link>
 				</li>
 			)}
