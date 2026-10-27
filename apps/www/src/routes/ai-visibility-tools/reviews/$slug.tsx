@@ -1,17 +1,24 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { ExternalLink } from "lucide-react";
 import {
-	BulletList,
+	AlternativeGrid,
+	AudienceCards,
+	CompetitorHero,
+	competitorGlance,
+	SourceCards,
+} from "@/components/competitor-page";
+import {
+	CompetitorPageCards,
 	CompetitorPageLinks,
 	CompetitorSignupCta,
 	ElmoComparisonTable,
 	ProsCons,
 } from "@/components/competitor-review";
-import { DirectoryBackLink, DirectoryHero, DirectorySection } from "@/components/directory-shell";
+import { DirectoryBackLink, DirectorySection } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
+import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
+import { CARD } from "@/components/home/ui";
 import { Navbar } from "@/components/navbar";
-import { ToolGrid } from "@/components/tool-list";
 import {
 	type Competitor,
 	type CompetitorPricing,
@@ -19,7 +26,6 @@ import {
 	getAlternatives,
 	getCompetitorBySlug,
 	getCompetitorProfile,
-	getScreenshotUrl,
 	reviewedSlugs,
 } from "@/lib/competitors";
 import { formatPostDate } from "@/lib/format";
@@ -63,12 +69,22 @@ export const Route = createFileRoute("/ai-visibility-tools/reviews/$slug")({
 
 function Fact({ label, children }: { label: string; children: string }) {
 	return (
-		<div className="py-4">
-			<dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">{label}</dt>
-			<dd className="mt-1 leading-relaxed text-zinc-700">{children}</dd>
+		<div className="bg-white p-5 md:p-6">
+			<dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">{label}</dt>
+			<dd className="mt-2 text-pretty text-sm/6 text-zinc-700">{children}</dd>
 		</div>
 	);
 }
+
+const JUMP_LINKS = [
+	{ id: "features", label: "Features" },
+	{ id: "pros-cons", label: "Pros and Cons" },
+	{ id: "who-its-for", label: "Who It's For" },
+	{ id: "vs-elmo", label: "vs Elmo" },
+	{ id: "alternatives", label: "Alternatives" },
+	{ id: "faq", label: "FAQ" },
+	{ id: "sources", label: "Sources" },
+];
 
 function ReviewPage() {
 	const { competitor, pricing, review, alternatives } = Route.useLoaderData() as {
@@ -78,69 +94,63 @@ function ReviewPage() {
 		alternatives: Competitor[];
 	};
 	const name = competitor.name;
+	const verified = formatPostDate(review.verified);
 	return (
-		<div className="min-h-screen">
+		<div className={`${HOME_FONT_CLASS} min-h-screen`}>
+			<HomeStyles />
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero title={`${name} Review`} lead={review.verdict}>
-					<p className="mb-4 text-sm text-zinc-500">
-						Based on {name}'s own pricing, product pages, and docs, checked {formatPostDate(review.verified)}. Elmo is a
-						competitor, so we stick to what can be verified and link every source.
-					</p>
+				<CompetitorHero
+					competitor={competitor}
+					eyebrow={`Review · Verified ${verified}`}
+					title={`${name} Review`}
+					lead={review.verdict}
+					note={`Based on ${name}'s own pricing, product pages, and docs, checked ${verified}. Elmo is a competitor, so we stick to what can be verified and link every source.`}
+					tiles={competitorGlance(competitor, review)}
+					jumpLinks={JUMP_LINKS}
+				>
 					<CompetitorPageLinks competitor={competitor} current="review" />
-				</DirectoryHero>
+				</CompetitorHero>
 
-				<DirectorySection title={`${name} at a Glance`}>
-					<dl className="max-w-3xl divide-y divide-zinc-200 border-y border-zinc-200">
-						<Fact label="Best for">{review.bestFor}</Fact>
+				<DirectorySection eyebrow="Overview" title={`${name} at a Glance`} tone="muted">
+					<dl className="grid gap-px overflow-hidden rounded-2xl bg-zinc-200/80 ring-1 ring-zinc-200/80 md:grid-cols-2">
+						<Fact label="Best For">{review.bestFor}</Fact>
 						<Fact label="Pricing">{pricing.summary}</Fact>
-						<Fact label="AI engines">{review.engines}</Fact>
-						<Fact label="How answers are collected">{review.collection}</Fact>
+						<Fact label="AI Engines">{review.engines}</Fact>
+						<Fact label="How Answers Are Collected">{review.collection}</Fact>
 					</dl>
-					{!competitor.noScreenshot && (
-						<div className="mt-10 overflow-hidden rounded-md border border-zinc-200 shadow-sm">
-							<img
-								src={getScreenshotUrl(competitor.slug)}
-								alt={`Screenshot of ${name} homepage`}
-								width={1920}
-								height={1080}
-								className="aspect-video w-full object-cover object-top"
-								loading="lazy"
-							/>
-						</div>
-					)}
 				</DirectorySection>
 
-				<DirectorySection title={`${name} Features`}>
+				<DirectorySection id="features" eyebrow="Features" title={`${name} Features`}>
 					<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-						{review.features.map((feature) => (
-							<div key={feature.name} className="rounded-md border border-zinc-200 bg-white p-5">
-								<h3 className="font-semibold text-zinc-950">{feature.name}</h3>
-								<p className="mt-2 text-sm leading-relaxed text-zinc-600">{feature.detail}</p>
+						{review.features.map((feature, i) => (
+							<div key={feature.name} className={`p-5 ${CARD}`}>
+								<span className="font-mono text-[11px] tracking-[0.18em] text-zinc-400">
+									{String(i + 1).padStart(2, "0")}
+								</span>
+								<h3 className="mt-2 font-semibold text-zinc-950">{feature.name}</h3>
+								<p className="mt-2 text-sm/6 text-zinc-600">{feature.detail}</p>
 							</div>
 						))}
 					</div>
 				</DirectorySection>
 
-				<DirectorySection title={`${name} Pros and Cons`}>
+				<DirectorySection id="pros-cons" eyebrow="Trade-Offs" title={`${name} Pros and Cons`} tone="muted">
 					<ProsCons review={review} />
 				</DirectorySection>
 
-				<DirectorySection title={`Who Should Use ${name}`}>
-					<div className="grid gap-8 md:grid-cols-2">
-						<div>
-							<h3 className="font-heading mb-4 text-lg text-zinc-950">Pick {name} If</h3>
-							<BulletList items={review.pickIf} kind="pro" />
-						</div>
-						<div>
-							<h3 className="font-heading mb-4 text-lg text-zinc-950">Look Elsewhere If</h3>
-							<BulletList items={review.lookElsewhereIf} kind="con" />
-						</div>
-					</div>
+				<DirectorySection id="who-its-for" eyebrow="Fit" title={`Who Should Use ${name}`}>
+					<AudienceCards
+						name={name}
+						stay={review.pickIf}
+						leave={review.lookElsewhereIf}
+						stayTitle={`Pick ${name} If`}
+						leaveTitle="Look Elsewhere If"
+					/>
 				</DirectorySection>
 
-				<DirectorySection title={`${name} vs Elmo`}>
+				<DirectorySection id="vs-elmo" eyebrow="Head to Head" title={`${name} vs Elmo`} tone="muted">
 					<ElmoComparisonTable competitor={competitor} review={review} />
 				</DirectorySection>
 
@@ -150,31 +160,25 @@ function ReviewPage() {
 					title={`Considering ${name}? Try Elmo Too`}
 				/>
 
-				<DirectorySection title={`${name} Alternatives`}>
-					<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">
-						Elmo is the open-source option. These are the other tools most often compared with {name}.
-					</p>
-					<ToolGrid competitors={alternatives} />
+				<DirectorySection
+					id="alternatives"
+					eyebrow="Alternatives"
+					title={`${name} Alternatives`}
+					lede={`Elmo is the open-source option. These are the other tools most often compared with ${name}.`}
+				>
+					<AlternativeGrid competitors={alternatives} />
 				</DirectorySection>
 
-				<Faq items={review.reviewFaqs} />
+				<div id="faq" className="scroll-mt-16">
+					<Faq items={review.reviewFaqs} />
+				</div>
 
-				<DirectorySection title="Sources">
-					<ul className="space-y-2 text-sm">
-						{review.sources.map((source) => (
-							<li key={source.url}>
-								<a
-									href={source.url}
-									target="_blank"
-									rel="noopener noreferrer nofollow"
-									className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900"
-								>
-									{source.label}
-									<ExternalLink className="h-3 w-3" />
-								</a>
-							</li>
-						))}
-					</ul>
+				<DirectorySection id="sources" eyebrow="Sources" title="Where This Review Comes From">
+					<SourceCards sources={review.sources} />
+				</DirectorySection>
+
+				<DirectorySection title={`More on ${name}`} tone="muted">
+					<CompetitorPageCards competitor={competitor} current="review" />
 				</DirectorySection>
 			</main>
 			<Footer />
