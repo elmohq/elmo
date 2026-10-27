@@ -1,6 +1,13 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { CompetitorPricingDetails } from "@/components/competitor-pricing";
 import {
+	BulletList,
+	CompetitorPageLinks,
+	CompetitorSignupCta,
+	ElmoComparisonTable,
+	ProsCons,
+} from "@/components/competitor-review";
+import {
 	DirectoryBackLink,
 	DirectoryElmoBanner,
 	DirectoryHero,
@@ -120,6 +127,7 @@ function AlternativesPage() {
 		faqs: FaqItem[];
 		profile?: CompetitorProfile;
 	};
+	const review = profile?.pricing ? profile.review : undefined;
 	return (
 		<div className="min-h-screen">
 			<Navbar />
@@ -139,10 +147,52 @@ function AlternativesPage() {
 					<ProfileSectionView key={section.title} section={section} />
 				))}
 
+				{review ? (
+					<DirectorySection title={`Who ${competitor.name} is for`}>
+						<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">{review.bestFor}</p>
+						<div className="grid gap-8 md:grid-cols-2">
+							<div>
+								<h3 className="font-heading mb-4 text-lg text-zinc-950">Stay with {competitor.name} if</h3>
+								<BulletList items={review.pickIf} kind="pro" />
+							</div>
+							<div>
+								<h3 className="font-heading mb-4 text-lg text-zinc-950">Consider an alternative if</h3>
+								<BulletList items={review.lookElsewhereIf} kind="con" />
+							</div>
+						</div>
+					</DirectorySection>
+				) : null}
+
 				{profile?.pricing ? (
 					<DirectorySection title={`${competitor.name} pricing`}>
 						<CompetitorPricingDetails pricing={profile.pricing} />
 					</DirectorySection>
+				) : null}
+
+				{review ? (
+					<>
+						<DirectorySection title={`${competitor.name} strengths and limitations`}>
+							<ProsCons review={review} />
+						</DirectorySection>
+						<DirectorySection title={`How Elmo compares with ${competitor.name}`}>
+							<ElmoComparisonTable competitor={competitor} review={review} />
+						</DirectorySection>
+						<DirectorySection title={`Switching from ${competitor.name} to Elmo`}>
+							<ol className="max-w-3xl list-decimal space-y-3 pl-5 leading-relaxed text-zinc-600">
+								{review.migration.map((step) => (
+									<li key={step}>{step}</li>
+								))}
+							</ol>
+							<div className="mt-8">
+								<CompetitorPageLinks competitor={competitor} current="alternatives" />
+							</div>
+						</DirectorySection>
+						<CompetitorSignupCta
+							competitor={competitor}
+							from="marketing-competitor-alternatives"
+							title={`Try Elmo as your ${competitor.name} alternative`}
+						/>
+					</>
 				) : null}
 
 				{competitor.switching ? (

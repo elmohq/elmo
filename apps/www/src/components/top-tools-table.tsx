@@ -8,6 +8,7 @@ import {
 	getComparisonSlug,
 	hasOwnPages,
 	isIndexed,
+	reviewedSlugs,
 	sortedCompetitors,
 } from "@/lib/competitors";
 
@@ -83,6 +84,18 @@ export function TopToolsTable({ limit = 10 }: { limit?: number }) {
 										<Link to="/ai-visibility-tools/alternatives/$slug" params={{ slug: c.slug }} className={LINK}>
 											Alternatives
 										</Link>
+										{reviewedSlugs.includes(c.slug) && (
+											<>
+												<span className="text-zinc-300"> · </span>
+												<Link to="/ai-visibility-tools/pricing/$slug" params={{ slug: c.slug }} className={LINK}>
+													Pricing
+												</Link>
+												<span className="text-zinc-300"> · </span>
+												<Link to="/ai-visibility-tools/reviews/$slug" params={{ slug: c.slug }} className={LINK}>
+													Review
+												</Link>
+											</>
+										)}
 									</td>
 								</tr>
 							))}

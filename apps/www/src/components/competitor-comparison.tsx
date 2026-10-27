@@ -17,8 +17,10 @@ import {
 	graveyardFate,
 	hasOwnPages,
 	isLowDR,
+	reviewedSlugs,
 } from "@/lib/competitors";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
+import { CompetitorPageLinks } from "./competitor-review";
 import { Faq } from "./faq";
 import { FeatureMark } from "./feature-mark";
 
@@ -128,6 +130,11 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 							</Link>
 							.
 						</p>
+					)}
+					{reviewedSlugs.includes(competitor.slug) && (
+						<div className="mt-3">
+							<CompetitorPageLinks competitor={competitor} current="comparison" />
+						</div>
 					)}
 					<FateNotice competitor={competitor} />
 					{isLowDR(competitor) && !graveyardFate(competitor) && (
