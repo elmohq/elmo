@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-const PLAUSIBLE_SCRIPT_URL = "https://plausible.io/js/script.js";
+const PLAUSIBLE_SCRIPT_URL = "https://plausible.io/js/script.pageview-props.js";
 
 const UPSTREAM_HEADERS_TO_FORWARD = ["content-type", "etag", "last-modified"] as const;
 

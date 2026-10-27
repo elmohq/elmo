@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dia
 import { ArrowRight, ArrowUpRight, Play } from "lucide-react";
 import { Fragment, lazy, type ReactNode, Suspense, useState } from "react";
 import { externalRel } from "@/lib/external-link";
+import { type HeadlineArm, withHeadline } from "@/lib/headline-test";
+import { trackPlausible } from "@/lib/plausible";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { ProductDemo } from "./product-demo";
 import { HOME_FONT_CLASS } from "./styles";
@@ -73,6 +75,11 @@ function titleWords(title: string) {
 	});
 }
 
+export interface HeadlineTestProps {
+	arm: HeadlineArm | null;
+	pendingTitle: string;
+}
+
 const DEFAULT_LEDE =
 	"Elmo is the open-source AI visibility platform for AEO and GEO. See how ChatGPT, Claude, Gemini, and every other AI model talk about your brand, which sources they trust, and exactly what to do to get recommended.";
 
@@ -87,15 +94,17 @@ export function Hero({
 	lede = DEFAULT_LEDE,
 	selfHost = true,
 	from = "marketing-hero",
+	headlineTest,
 }: {
 	badge?: ReactNode;
 	title?: string;
 	lede?: ReactNode;
 	selfHost?: boolean;
 	from?: ReferralSource;
+	headlineTest?: HeadlineTestProps;
 } = {}) {
 	const [videoOpen, setVideoOpen] = useState(false);
-	const cloudUrl = cloudAppUrl(from);
+	const cloudUrl = withHeadline(cloudAppUrl(from), headlineTest?.arm);
 	const demoUrl = demoSiteUrl(from);
 	// The display size suits a short slogan; a longer audience headline steps down so it holds to two lines.
 	const short = title.length <= 16;
@@ -112,19 +121,28 @@ export function Hero({
 					{badge}
 
 					<h1
+						data-headline-pending={headlineTest?.arm === null ? headlineTest.pendingTitle : undefined}
 						className={`mt-8 font-semibold text-balance text-zinc-950 ${short ? "text-[3.5rem] leading-[0.95] tracking-[-0.045em] sm:text-7xl lg:text-[6.5rem]" : "text-[2.75rem] leading-[1] tracking-[-0.04em] sm:text-6xl lg:text-7xl"}`}
 					>
-						{titleWords(title).map(({ word, at }) => (
-							<Fragment key={at}>
-								{at > 0 ? " " : null}
-								{/* A display-size line break at a hyphen ("e-" / "commerce") reads as a typo. */}
-								{word.includes("-") ? <span className="whitespace-nowrap">{word}</span> : word}
-							</Fragment>
-						))}
+						<span>
+							{titleWords(title).map(({ word, at }) => (
+								<Fragment key={at}>
+									{at > 0 ? " " : null}
+									{/* A display-size line break at a hyphen ("e-" / "commerce") reads as a typo. */}
+									{word.includes("-") ? <span className="whitespace-nowrap">{word}</span> : word}
+								</Fragment>
+							))}
+						</span>
 					</h1>
 					<p className="mt-6 max-w-[60ch] text-balance text-[17px]/7 text-zinc-600 md:text-xl/8">{lede}</p>
 					<div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-						<a href={cloudUrl} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
+						<a
+							href={cloudUrl}
+							onClick={() => {
+								if (headlineTest?.arm) trackPlausible("Hero CTA Click", { headline: headlineTest.arm });
+							}}
+							className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}
+						>
 							Get started
 							<ArrowRight className="size-4" aria-hidden="true" />
 						</a>
