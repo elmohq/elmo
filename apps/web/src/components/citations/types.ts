@@ -5,17 +5,18 @@ interface GoogleProductRow {
 	count: number;
 	attribution: "brand" | "competitor" | "other";
 	competitorName?: string;
-	prompts: { id: string; value: string; count: number }[];
+	prompts: { id: string; count: number }[];
 	urls: { url: string; count: number }[];
 }
 interface GoogleQueryRow {
 	query: string;
 	count: number;
-	prompts: { id: string; value: string; count: number }[];
+	prompts: { id: string; count: number }[];
 }
 export interface GoogleModuleData {
 	shopping: { totalCitations: number; brandCount: number; competitorCount: number; products: GoogleProductRow[] };
 	search: { totalCitations: number; queries: GoogleQueryRow[] };
+	promptValues: Record<string, string>;
 }
 
 export interface CitationData {

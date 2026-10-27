@@ -10,13 +10,19 @@ import { ListPagination, usePagedList } from "@/components/list-pagination";
 
 const PRODUCTS_PAGE_SIZE = 10;
 
-function PromptCountList({ prompts }: { prompts: { id: string; value: string; count: number }[] }) {
+function PromptCountList({
+	prompts,
+	promptValues,
+}: {
+	prompts: { id: string; count: number }[];
+	promptValues: Record<string, string>;
+}) {
 	return (
 		<div className="pl-5 pb-2 space-y-0.5">
 			{prompts.map((p) => (
 				<BrandPromptLink key={p.id} promptId={p.id} className="flex items-center justify-between py-1 group text-xs">
 					<span className="text-muted-foreground group-hover:text-foreground group-hover:underline truncate min-w-0">
-						{p.value}
+						{promptValues[p.id]}
 					</span>
 					<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
 				</BrandPromptLink>
@@ -124,7 +130,9 @@ export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModul
 												{product.count.toLocaleString()}
 											</span>
 										</div>
-										{isExpanded && product.prompts.length > 0 && <PromptCountList prompts={product.prompts} />}
+										{isExpanded && product.prompts.length > 0 && (
+											<PromptCountList prompts={product.prompts} promptValues={googleModule.promptValues} />
+										)}
 									</div>
 								);
 							})}
@@ -157,7 +165,9 @@ export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModul
 											</button>
 											<span className="text-sm font-semibold tabular-nums shrink-0">{q.count.toLocaleString()}</span>
 										</div>
-										{isExpanded && q.prompts.length > 0 && <PromptCountList prompts={q.prompts} />}
+										{isExpanded && q.prompts.length > 0 && (
+											<PromptCountList prompts={q.prompts} promptValues={googleModule.promptValues} />
+										)}
 									</div>
 								);
 							})}
