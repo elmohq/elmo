@@ -26,6 +26,9 @@ overrides:
   # @tailwindcss/typography pins 6.0.10, and the fix only exists on the 7 line.
   postcss-selector-parser: "^7.1.6" # GHSA-rj75-hqrm-r3gf
   "@scalar/json-magic>undici": "^7.29.1" # GHSA-4cwx-7wf7-3272, GHSA-rfgv-xxqx-mfg5, and four more
+  "@vercel/cli-config>zod": "^4.6.6" # GHSA-mrhx-c7xc-m3w5; every @vercel/cli-config release pins zod exactly
+  # @azure/identity caps msal-node below the fix. Only bruno and unstorage's unused Azure driver pull it in.
+  "@azure/identity>@azure/msal-node": "^7.1.0" # GHSA-xcx6-jx8p-x3h5
 
 allowBuilds:
   "@tailwindcss/oxide": true
