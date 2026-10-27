@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { CLOUD_ENTRY_PRICE_USD, PLANS } from "@workspace/config/plans";
 import { cloudAppUrl } from "@workspace/config/referrals";
-import { ArrowRight, ArrowUpRight, Check, CornerDownRight, ExternalLink } from "lucide-react";
+import { ArrowRight, Check, CornerDownRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { VisibilityPageGraphic } from "@/components/feature-graphics";
 import { FeatureMark } from "@/components/feature-mark";
@@ -81,7 +81,7 @@ const GRID_BG =
 /** A competitor's homepage capture in browser chrome, with its domain in the address bar. */
 export function SiteScreenshot({ competitor, className = "" }: { competitor: Competitor; className?: string }) {
 	return (
-		<figure className={className}>
+		<div className={className}>
 			<div className="overflow-hidden rounded-xl bg-white shadow-[0_0_0_1px_rgb(24_24_27/0.08),0_2px_4px_rgb(24_24_27/0.04),0_24px_48px_-16px_rgb(24_24_27/0.18)]">
 				<div className="flex h-8 items-center gap-3 border-b border-zinc-200/80 bg-zinc-50/80 px-3.5">
 					<span aria-hidden="true" className="flex gap-1.5">
@@ -101,19 +101,7 @@ export function SiteScreenshot({ competitor, className = "" }: { competitor: Com
 					className="aspect-[16/10] w-full object-cover object-top"
 				/>
 			</div>
-			<figcaption className="mt-3 text-xs text-zinc-500">
-				The{" "}
-				<a
-					href={competitor.url}
-					target="_blank"
-					rel="noopener noreferrer nofollow"
-					className="underline decoration-zinc-300 underline-offset-2 hover:text-zinc-950"
-				>
-					{competitor.domain}
-				</a>{" "}
-				homepage.
-			</figcaption>
-		</figure>
+		</div>
 	);
 }
 
@@ -124,7 +112,7 @@ export function StatTiles({ tiles }: { tiles: GlanceTile[] }) {
 		>
 			{tiles.map((tile) => (
 				<div key={tile.label} className="bg-white p-4 md:p-5">
-					<dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">{tile.label}</dt>
+					<dt className="text-sm text-zinc-500">{tile.label}</dt>
 					<dd className="mt-2 text-lg font-semibold tracking-[-0.02em] text-zinc-950 md:text-xl">{tile.value}</dd>
 					{tile.detail ? <dd className="mt-0.5 text-[13px] leading-snug text-zinc-500">{tile.detail}</dd> : null}
 				</div>
@@ -140,7 +128,6 @@ export interface JumpLink {
 
 export function CompetitorHero({
 	competitor,
-	eyebrow,
 	title,
 	lead,
 	note,
@@ -149,7 +136,6 @@ export function CompetitorHero({
 	children,
 }: {
 	competitor: Competitor;
-	eyebrow: string;
 	title: string;
 	lead: string;
 	note?: ReactNode;
@@ -164,11 +150,7 @@ export function CompetitorHero({
 			<div className="relative mx-auto max-w-6xl px-4 pb-12 pt-8 md:px-6 lg:pb-16 lg:pt-12">
 				<div className={shot ? "grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:gap-14" : ""}>
 					<div className={shot ? "" : "max-w-3xl"}>
-						<p className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-600 ring-1 ring-zinc-200">
-							<span className="size-1.5 rounded-full bg-blue-600" />
-							{eyebrow}
-						</p>
-						<h1 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-[-0.035em] text-balance text-zinc-950 md:text-5xl">
+						<h1 className="text-4xl font-semibold leading-[1.05] tracking-[-0.035em] text-balance text-zinc-950 md:text-5xl">
 							{title}
 						</h1>
 						<p className="mt-5 text-pretty text-base/7 text-zinc-600 md:text-lg/8">{lead}</p>
@@ -180,13 +162,12 @@ export function CompetitorHero({
 				<div className="mt-10 lg:mt-12">
 					<StatTiles tiles={tiles} />
 				</div>
-				<nav aria-label="On this page" className="mt-6 flex flex-wrap items-center gap-2">
-					<span className="mr-1 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-400">On This Page</span>
+				<nav aria-label="On this page" className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm">
 					{jumpLinks.map((link) => (
 						<a
 							key={link.id}
 							href={`#${link.id}`}
-							className="rounded-full bg-white px-3 py-1 text-sm text-zinc-600 ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
+							className="text-zinc-500 underline decoration-zinc-300 underline-offset-4 transition hover:text-zinc-950 hover:decoration-zinc-500"
 						>
 							{link.label}
 						</a>
@@ -205,9 +186,7 @@ function ToolThumb({ competitor }: { competitor: Competitor }) {
 					aria-hidden="true"
 					className="absolute inset-0 [background-image:radial-gradient(circle,rgb(0_0_0/0.07)_1px,transparent_1px)] [background-size:16px_16px]"
 				/>
-				<span className="relative font-mono text-xs uppercase tracking-[0.18em] text-zinc-400">
-					{competitor.domain}
-				</span>
+				<span className="relative text-sm text-zinc-400">{competitor.domain}</span>
 			</div>
 		);
 	}
@@ -223,63 +202,43 @@ function ToolThumb({ competitor }: { competitor: Competitor }) {
 	);
 }
 
-function AlternativeCard({ competitor, rank }: { competitor: Competitor; rank?: number }) {
+function AlternativeCard({ competitor }: { competitor: Competitor }) {
 	return (
 		<article className={`flex flex-col overflow-hidden ${CARD}`}>
 			<div className="border-b border-zinc-200/80">
 				<ToolThumb competitor={competitor} />
 			</div>
 			<div className="flex flex-1 flex-col p-5">
-				<div className="flex items-baseline justify-between gap-3">
-					<h3 className="text-base font-semibold text-zinc-950">{competitor.name}</h3>
-					{rank ? (
-						<span className="font-mono text-[11px] tracking-[0.18em] text-zinc-400">
-							{String(rank).padStart(2, "0")}
-						</span>
-					) : null}
-				</div>
+				<h3 className="text-base font-semibold text-zinc-950">{competitor.name}</h3>
 				<p className="mt-1.5 line-clamp-2 flex-1 text-sm/6 text-zinc-600">{competitor.tagline}</p>
 				<dl className="mt-4 grid grid-cols-2 gap-3 border-t border-dashed border-zinc-200 pt-4">
 					<div>
-						<dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">Starting Price</dt>
+						<dt className="text-xs text-zinc-500">Starting Price</dt>
 						<dd className="mt-1 truncate text-sm font-medium text-zinc-950">{startingPrice(competitor)}</dd>
 					</div>
 					<div>
-						<dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">AI Engines</dt>
+						<dt className="text-xs text-zinc-500">AI Engines</dt>
 						<dd className="mt-1 text-sm font-medium text-zinc-950">{engineSummary(competitor.features)}</dd>
 					</div>
 				</dl>
-				<div className="mt-4 flex items-center justify-between">
-					<Link
-						to="/ai-visibility-tools/$slug"
-						params={{ slug: getComparisonSlug(competitor) }}
-						className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:text-blue-900"
-					>
-						Compare With Elmo
-						<ArrowRight className="size-3.5" />
-					</Link>
-					<a
-						href={competitor.url}
-						target="_blank"
-						rel="noopener noreferrer nofollow"
-						className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-950"
-						aria-label={`Visit ${competitor.name}`}
-					>
-						Visit
-						<ExternalLink className="size-3" />
-					</a>
-				</div>
+				<Link
+					to="/ai-visibility-tools/$slug"
+					params={{ slug: getComparisonSlug(competitor) }}
+					className="mt-4 inline-flex items-center gap-1 self-start text-sm font-medium text-blue-700 hover:text-blue-900"
+				>
+					Compare With Elmo
+					<ArrowRight className="size-3.5" />
+				</Link>
 			</div>
 		</article>
 	);
 }
 
-/** `firstRank` numbers the cards when they continue a ranked list. */
-export function AlternativeGrid({ competitors, firstRank }: { competitors: Competitor[]; firstRank?: number }) {
+export function AlternativeGrid({ competitors }: { competitors: Competitor[] }) {
 	return (
 		<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-			{competitors.map((c, i) => (
-				<AlternativeCard key={c.slug} competitor={c} rank={firstRank ? firstRank + i : undefined} />
+			{competitors.map((c) => (
+				<AlternativeCard key={c.slug} competitor={c} />
 			))}
 		</div>
 	);
@@ -296,10 +255,8 @@ export function ElmoPickCard({ competitor, pitch }: { competitor: Competitor; pi
 	return (
 		<article className="grid gap-8 overflow-hidden rounded-2xl bg-white p-6 shadow-[0_0_0_1px_rgb(37_99_235/0.35),0_16px_40px_-20px_rgb(37_99_235/0.35)] md:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
 			<div>
-				<p className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-2.5 py-0.5 text-xs font-medium text-white">
-					01 · Our Pick
-				</p>
-				<h3 className="mt-4 text-2xl font-semibold tracking-[-0.025em] text-zinc-950">
+				<p className="text-sm font-medium text-blue-700">Our Pick</p>
+				<h3 className="mt-1 text-2xl font-semibold tracking-[-0.025em] text-zinc-950">
 					Elmo: The Open-Source Alternative
 				</h3>
 				<p className="mt-3 text-pretty text-sm/6 text-zinc-600">{pitch}</p>
@@ -375,7 +332,7 @@ export function QuickComparisonTable({
 	alternatives: Competitor[];
 }) {
 	const rows = [ELMO_ROW, ...alternatives.map(toRow), { ...toRow(competitor), slug: undefined }];
-	const th = "px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500";
+	const th = "px-4 py-3 text-left text-xs font-medium text-zinc-500";
 	return (
 		<div className={`overflow-hidden ${CARD}`}>
 			<div className="relative overflow-x-auto">
@@ -494,40 +451,12 @@ export function SwitchingSteps({ steps }: { steps: string[] }) {
 					{i < steps.length - 1 ? (
 						<span aria-hidden="true" className="absolute left-[17px] top-10 bottom-1 w-px bg-zinc-200" />
 					) : null}
-					<span className="relative grid size-9 shrink-0 place-items-center rounded-full bg-white font-mono text-xs font-medium text-blue-700 ring-1 ring-blue-200">
-						{String(i + 1).padStart(2, "0")}
+					<span className="relative grid size-9 shrink-0 place-items-center rounded-full bg-white text-sm font-medium text-blue-700 ring-1 ring-blue-200">
+						{i + 1}
 					</span>
 					<p className="pt-1.5 text-pretty leading-relaxed text-zinc-600">{step}</p>
 				</li>
 			))}
 		</ol>
-	);
-}
-
-export function SourceCards({ sources, note }: { sources: { label: string; url: string }[]; note?: ReactNode }) {
-	return (
-		<>
-			{note ? <p className="mb-6 max-w-3xl text-sm text-zinc-500">{note}</p> : null}
-			<ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-				{sources.map((source) => (
-					<li key={source.url}>
-						<a
-							href={source.url}
-							target="_blank"
-							rel="noopener noreferrer nofollow"
-							className="group flex h-full items-start justify-between gap-3 rounded-xl bg-white p-4 ring-1 ring-zinc-200 transition hover:ring-zinc-300"
-						>
-							<span>
-								<span className="block text-sm font-medium text-zinc-950">{source.label}</span>
-								<span className="mt-0.5 block truncate font-mono text-[11px] text-zinc-500">
-									{new URL(source.url).hostname.replace(/^www\./, "")}
-								</span>
-							</span>
-							<ArrowUpRight className="size-4 shrink-0 text-zinc-400 transition group-hover:text-zinc-950" />
-						</a>
-					</li>
-				))}
-			</ul>
-		</>
 	);
 }

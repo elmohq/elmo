@@ -109,32 +109,23 @@ export function DirectorySection({
 	title,
 	children,
 	id,
-	eyebrow,
 	lede,
 	tone = "white",
 }: {
 	title?: string;
 	children: ReactNode;
 	id?: string;
-	eyebrow?: string;
 	lede?: ReactNode;
 	tone?: "white" | "muted";
 }) {
 	return (
 		<section
 			id={id}
-			className={`scroll-mt-16 border-b border-zinc-200 py-12 ${tone === "muted" ? "bg-zinc-50/70" : "bg-white"} ${eyebrow ? "lg:py-16" : ""}`}
+			className={`scroll-mt-16 border-b border-zinc-200 py-12 ${tone === "muted" ? "bg-zinc-50/70" : "bg-white"}`}
 		>
 			<div className="mx-auto max-w-6xl px-4 md:px-6">
-				{eyebrow ? (
-					<p className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-blue-700">{eyebrow}</p>
-				) : null}
 				{title ? (
-					<h2
-						className={`font-heading text-2xl text-balance text-zinc-950 ${eyebrow ? "md:text-3xl" : ""} ${lede ? "mb-3" : "mb-8"}`}
-					>
-						{title}
-					</h2>
+					<h2 className={`font-heading text-2xl text-balance text-zinc-950 ${lede ? "mb-3" : "mb-8"}`}>{title}</h2>
 				) : null}
 				{lede ? <p className="mb-8 max-w-3xl text-pretty leading-relaxed text-zinc-600">{lede}</p> : null}
 				{children}
