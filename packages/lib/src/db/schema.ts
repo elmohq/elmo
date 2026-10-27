@@ -342,11 +342,6 @@ export const usageEvents = pgTable(
 
 export type UsageEvent = typeof usageEvents.$inferSelect;
 
-/**
- * Where a cloud account came from, as first seen in the browser it signed up
- * from (see @workspace/config/signup-attribution). One row per user at most,
- * written once and never updated. Absent row = nothing was captured.
- */
 export const userSignupAttribution = pgTable("user_signup_attribution", {
 	userId: text("user_id")
 		.primaryKey()
@@ -357,7 +352,6 @@ export const userSignupAttribution = pgTable("user_signup_attribution", {
 	utmCampaign: text("utm_campaign"),
 	utmTerm: text("utm_term"),
 	utmContent: text("utm_content"),
-	/** Ad platform click IDs keyed by their URL parameter (gclid, fbclid, ...). */
 	clickIds: jsonb("click_ids").$type<Record<string, string>>(),
 	landingPage: text("landing_page"),
 	referrer: text("referrer"),

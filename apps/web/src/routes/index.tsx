@@ -5,10 +5,6 @@ import FullPageCard from "@/components/full-page-card";
 import { getSession } from "@/lib/auth/session";
 import { entryRouteForVisitor } from "@/lib/entry-route";
 
-// The redirect below happens on the server, so a campaign's tags only reach the
-// page that records them if they are carried across it. Values pass through as
-// the router parsed them (a campaign named "2026" is a number) so they
-// serialize back to what arrived.
 function campaignParams(search: Record<string, unknown>): Record<string, unknown> {
 	return Object.fromEntries(FORWARDED_PARAMS.flatMap((key) => (key in search ? [[key, search[key]]] : [])));
 }

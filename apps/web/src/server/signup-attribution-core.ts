@@ -2,10 +2,6 @@ import { CLICK_ID_PARAMS, type SignupAttribution, sanitizeAttribution } from "@w
 import type { DeploymentMode } from "@workspace/config/types";
 import type { NewUserSignupAttribution } from "@workspace/lib/db/schema";
 
-/**
- * Long enough to cover a verification email opened days later, short enough
- * that an existing customer arriving through a campaign link isn't credited to it.
- */
 export const SIGNUP_ATTRIBUTION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function acceptsSignupAttribution(input: {
@@ -19,7 +15,6 @@ export function acceptsSignupAttribution(input: {
 	return Number.isFinite(age) && age <= SIGNUP_ATTRIBUTION_WINDOW_MS;
 }
 
-/** The row to store for `userId`, or null when there is nothing worth storing. */
 export function signupAttributionRow(userId: string, input: unknown): NewUserSignupAttribution | null {
 	const attribution: SignupAttribution = sanitizeAttribution(input);
 	const clickIds = Object.fromEntries(

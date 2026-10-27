@@ -9,10 +9,6 @@ import { acceptsSignupAttribution, signupAttributionRow } from "@/server/signup-
 
 const attributionInput = z.partialRecord(z.enum(ATTRIBUTION_KEYS), z.string().max(MAX_ATTRIBUTION_VALUE_LENGTH));
 
-/**
- * Stores where the signed-in user's account came from. First touch wins: a
- * user who already has a row keeps it, and only a recent signup is accepted at all.
- */
 export const recordSignupAttributionFn = createServerFn({ method: "POST" })
 	.validator(attributionInput)
 	.handler(async ({ data }): Promise<void> => {
