@@ -49,19 +49,11 @@ function usd(value: number): string {
 	return `$${value.toFixed(2)}`;
 }
 
-export function SourceList({ pricing }: { pricing: CompetitorPricing }) {
+export function VerifiedNote({ pricing }: { pricing: CompetitorPricing }) {
 	return (
 		<p className="mt-6 text-sm text-zinc-500">
-			Prices verified {formatPostDate(pricing.verified)} from{" "}
-			{pricing.sources.map((source, i) => (
-				<span key={source.url}>
-					{i > 0 ? ", " : ""}
-					<a href={source.url} target="_blank" rel="noopener noreferrer nofollow" className={LINK}>
-						{source.label}
-					</a>
-				</span>
-			))}
-			. Vendors change plans often, so check the source before you buy.
+			Prices verified {formatPostDate(pricing.verified)} from each vendor's pricing page. Vendors change plans often, so
+			check before you buy.
 		</p>
 	);
 }
@@ -111,7 +103,7 @@ export function PlanCards({ plans, variant = "current" }: { plans: PricingPlan[]
 						{plan.includes}
 					</p>
 					{plan.answers ? (
-						<p className="mt-4 border-t border-dashed border-zinc-200 pt-3 font-mono text-[11px] tracking-[0.04em] text-zinc-500">
+						<p className="mt-4 border-t border-dashed border-zinc-200 pt-3 text-xs text-zinc-500">
 							≈ {usd(perThousand(plan.answers))} per 1,000 answers
 						</p>
 					) : null}
@@ -125,52 +117,30 @@ export function PreviousPlans({ pricing }: { pricing: CompetitorPricing }) {
 	if (!pricing.previous) return null;
 	return (
 		<div className="mt-10 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-5 md:p-7">
-			<div className="flex flex-wrap items-center gap-3">
-				<h3 className="text-lg font-semibold tracking-[-0.02em] text-zinc-950">Previous Plans (No Longer Offered)</h3>
-				<span className="rounded-full bg-zinc-200/80 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-600">
-					Discontinued
-				</span>
-			</div>
+			<h3 className="text-lg font-semibold tracking-[-0.02em] text-zinc-950">Previous Plans (No Longer Offered)</h3>
 			<p className="mt-2 mb-5 max-w-3xl text-pretty text-sm/6 text-zinc-600">{pricing.previous.note}</p>
 			<PlanCards plans={pricing.previous.plans} variant="previous" />
 		</div>
 	);
 }
 
-function CostItems({ items }: { items: string[] }) {
+export type ExtraCost = { title: string; detail: string };
+
+export function HiddenCosts({ items }: { items: ExtraCost[] }) {
 	return (
-		<ol className="space-y-4">
-			{items.map((item, i) => (
-				<li key={item} className="flex gap-4 text-pretty leading-relaxed text-zinc-700">
-					<span className="mt-0.5 font-mono text-xs text-amber-700">{String(i + 1).padStart(2, "0")}</span>
-					<span>{item}</span>
+		<ul className={`grid gap-4 ${items.length > 1 ? "md:grid-cols-2" : ""}`}>
+			{items.map((item) => (
+				<li key={item.title} className="flex gap-4 rounded-2xl bg-amber-50/70 p-5 ring-1 ring-amber-200/70 md:p-6">
+					<span className="grid size-9 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700">
+						<TriangleAlert className="size-4" aria-hidden="true" />
+					</span>
+					<div>
+						<p className="font-semibold text-zinc-950">{item.title}</p>
+						<p className="mt-1 text-pretty text-sm/6 text-zinc-700">{item.detail}</p>
+					</div>
 				</li>
 			))}
-		</ol>
-	);
-}
-
-export function HiddenCosts({ items }: { items: string[] }) {
-	return (
-		<div className="grid gap-6 rounded-2xl bg-amber-50/70 p-6 ring-1 ring-amber-200/80 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-10 md:p-8">
-			<div>
-				<TriangleAlert className="size-5 text-amber-600" aria-hidden="true" />
-				<p className="mt-3 text-pretty font-semibold text-zinc-950">The list price is not the whole bill.</p>
-			</div>
-			<CostItems items={items} />
-		</div>
-	);
-}
-
-function FinePrint({ items }: { items: string[] }) {
-	return (
-		<div className="rounded-2xl bg-amber-50/70 p-5 ring-1 ring-amber-200/80 md:p-6">
-			<p className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-amber-800">
-				<TriangleAlert className="size-3.5" aria-hidden="true" />
-				Add-Ons and Fine Print
-			</p>
-			<CostItems items={items} />
-		</div>
+		</ul>
 	);
 }
 
@@ -216,15 +186,25 @@ export function hasCostChart(pricing: CompetitorPricing): boolean {
 }
 
 /** Horizontal bars, one per plan, longest first: Elmo in the accent, the competitor in recessive gray. */
-export function CostPerAnswerChart({ competitor, pricing }: { competitor: Competitor; pricing: CompetitorPricing }) {
+export function CostPerAnswerChart({
+	competitor,
+	pricing,
+	titled = true,
+}: {
+	competitor: Competitor;
+	pricing: CompetitorPricing;
+	titled?: boolean;
+}) {
 	const bars = [...competitorBars(competitor, pricing), ...ELMO_BARS].sort((a, b) => b.value - a.value);
 	const max = bars[0]?.value ?? 1;
 	return (
 		<figure className={`p-5 md:p-7 ${CARD}`}>
 			<figcaption>
-				<h3 className="text-lg font-semibold tracking-[-0.02em] text-zinc-950">Cost per 1,000 AI Answers</h3>
-				<p className="mt-1 text-sm text-zinc-500">
-					Monthly list price divided by the AI answers each plan can collect in 30 days. Shorter bars are cheaper.
+				{titled ? (
+					<h3 className="mb-1 text-lg font-semibold tracking-[-0.02em] text-zinc-950">Cost per 1,000 AI Answers</h3>
+				) : null}
+				<p className="text-sm text-zinc-500">
+					Monthly list price divided by the AI answers each plan can collect in 30 days.
 				</p>
 				<ul className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-600">
 					<li className="flex items-center gap-2">
@@ -324,9 +304,7 @@ export function PricingSnapshot({ competitor, pricing }: { competitor: Competito
 				<PlanPriceList plans={pricing.plans} />
 				{pricing.previous ? (
 					<>
-						<p className="mt-5 mb-1 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-							Previous Plans (No Longer Offered)
-						</p>
+						<p className="mt-5 mb-1 text-sm font-medium text-zinc-500">Previous Plans (No Longer Offered)</p>
 						<PlanPriceList plans={pricing.previous.plans} muted />
 					</>
 				) : null}
@@ -342,8 +320,8 @@ export function CompetitorPricingDetails({ pricing }: { pricing: CompetitorPrici
 			<PlanCards plans={pricing.plans} />
 			<PreviousPlans pricing={pricing} />
 			{pricing.extraCosts?.length ? (
-				<div className="mt-6">
-					<FinePrint items={pricing.extraCosts} />
+				<div className="mt-8">
+					<HiddenCosts items={pricing.extraCosts} />
 				</div>
 			) : null}
 			{pricing.costPerAnswer ? (
@@ -351,7 +329,7 @@ export function CompetitorPricingDetails({ pricing }: { pricing: CompetitorPrici
 					<span className="font-medium text-zinc-950">Cost per AI Answer:</span> {pricing.costPerAnswer}
 				</p>
 			) : null}
-			<SourceList pricing={pricing} />
+			<VerifiedNote pricing={pricing} />
 		</>
 	);
 }
