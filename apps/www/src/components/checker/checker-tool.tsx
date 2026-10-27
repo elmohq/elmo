@@ -263,7 +263,6 @@ function StageRow({
 }: {
 	label: string;
 	state: "done" | "active" | "waiting";
-	/** Set for the stage that runs the prompts, to list them as they finish. */
 	progress: Progress | null;
 }) {
 	const prompts = state !== "waiting" && progress ? progress.prompts : [];

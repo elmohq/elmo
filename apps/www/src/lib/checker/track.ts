@@ -14,7 +14,6 @@ const EVENTS = {
 	signup: { plausible: "AI Visibility Checker Signup", posthog: "ai_visibility_checker_signup" },
 } as const;
 
-/** Plausible counts the funnel without consent (it sets no cookies); PostHog gets it when consent allows. */
 export function trackChecker(event: keyof typeof EVENTS, props: Props = {}): void {
 	const names = EVENTS[event];
 	window.plausible?.(names.plausible, { props });

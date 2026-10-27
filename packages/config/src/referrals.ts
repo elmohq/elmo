@@ -59,10 +59,6 @@ export function marketingUrl(path: string, ref: ReferralSource): string {
 	return tagged(new URL(path, MARKETING_SITE_URL).toString(), ref);
 }
 
-/**
- * The cloud app itself, tagged with where the click came from. It routes new
- * visitors to sign-up on its own. `website` prefills the first brand they create.
- */
 export function cloudAppUrl(ref: ReferralSource, website?: string): string {
 	const link = new URL(tagged(`${CLOUD_APP_URL}/`, ref));
 	if (website) link.searchParams.set("website", website);

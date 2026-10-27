@@ -1,10 +1,5 @@
 import type { PromptResult, ScoreItem, SiteSignals } from "./types";
 
-/**
- * Points available per component. Answers carry most of the weight because
- * they are the outcome; the technical checks only matter insofar as they make
- * that outcome possible.
- */
 export const SCORE_WEIGHTS = {
 	mentions: 45,
 	position: 15,
@@ -14,7 +9,6 @@ export const SCORE_WEIGHTS = {
 	"llms-txt": 3,
 } as const;
 
-/** How much an answer's position is worth: being named first is what gets clicked. */
 export function positionValue(position: number | null): number {
 	if (position === null) return 0;
 	if (position === 1) return 1;
@@ -44,8 +38,6 @@ export function computeScore(
 	const positionSum = answered.reduce((sum, prompt) => sum + positionValue(prompt.position), 0);
 	const share = (count: number) => (total === 0 ? 0 : count / total);
 
-	// Unreadable robots.txt isn't held against the site: the crawlers we can't
-	// see rules for are most likely allowed, and the checklist flags it.
 	const search = site.crawlers.filter((crawler) => crawler.kind === "search");
 	const training = site.crawlers.filter((crawler) => crawler.kind === "training");
 	const open = (list: SiteSignals["crawlers"]) =>

@@ -211,9 +211,6 @@ export const DIRECTORY_FAQS: FaqItem[] = [
 	},
 ];
 
-// AI visibility checker (/tools/ai-visibility-checker). The questions carry the
-// tool's secondary search terms: AI visibility score, audit, AEO grader, and
-// checking ChatGPT brand mentions.
 export const CHECKER_FAQS: FaqItem[] = [
 	{
 		question: "What is an AI visibility checker?",

@@ -3,7 +3,6 @@ import { AD_TAG_CSP } from "@workspace/ui/lib/ad-tags";
 import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
 import { CAL_EMBED_CSP } from "@/lib/cal-embed";
 
-// Cloudflare Turnstile, which guards the free AI visibility checker.
 const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
 
 const SECURITY_HEADERS: Record<string, string> = {

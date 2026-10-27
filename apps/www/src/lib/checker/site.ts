@@ -39,7 +39,6 @@ function collectTypes(node: unknown, into: Set<string>): void {
 	if (record["@graph"]) collectTypes(record["@graph"], into);
 }
 
-/** Title, description, and the schema.org types declared in JSON-LD. */
 export function parseHomepage(html: string): Pick<SiteSignals, "title" | "description" | "structuredDataTypes"> {
 	const title =
 		decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "") || metaContent(html, "og:title");
@@ -50,9 +49,7 @@ export function parseHomepage(html: string): Pick<SiteSignals, "title" | "descri
 	)) {
 		try {
 			collectTypes(JSON.parse(match[1]), types);
-		} catch {
-			// Malformed JSON-LD is common and is the site's problem, not the check's.
-		}
+		} catch {}
 	}
 	return {
 		title: title.slice(0, 200),
@@ -80,7 +77,6 @@ export async function checkSite(host: string): Promise<SiteSignals> {
 	let robotsState: SiteSignals["robotsTxt"] = "unreachable";
 	if (robots.status === "fulfilled") {
 		const { status, contentType, text } = robots.value;
-		// RFC 9309: a 4xx means there are no rules. A soft-404 HTML page is the same thing.
 		if (status >= 400 && status < 500) {
 			robotsTxt = "";
 			robotsState = "missing";

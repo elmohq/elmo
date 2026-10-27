@@ -12,10 +12,6 @@ export interface CheckInput {
 	category?: string;
 }
 
-/**
- * Sample mode is for local development only: without it, a missing key in
- * production would quietly serve fake answers as if they were real.
- */
 export function usesSampleEngine(): boolean {
 	if (process.env.AI_VISIBILITY_CHECKER_SAMPLE === "1") return true;
 	return !process.env.OPENAI_API_KEY && process.env.NODE_ENV !== "production";

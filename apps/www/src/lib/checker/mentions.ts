@@ -3,12 +3,9 @@ import type { PromptResult, Source } from "./types";
 export interface BrandIdentity {
 	name: string;
 	aliases: string[];
-	/** The checked domain without www, e.g. "acme.com". */
 	domain: string;
 }
 
-// Same notion of a word boundary as the product's mention matching: "Ace"
-// shouldn't match inside "place", but should match before "是" or "는".
 const WORD_CHAR = String.raw`[[\p{L}\p{N}]--[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]]`;
 
 function wholeWord(term: string): RegExp {
@@ -17,11 +14,9 @@ function wholeWord(term: string): RegExp {
 }
 
 function brandTerms(brand: BrandIdentity): string[] {
-	// Very short names ("X", "Go") match too much ordinary prose to count on their own.
 	return [brand.name, ...brand.aliases, brand.domain].map((term) => term.trim()).filter((term) => term.length >= 2);
 }
 
-/** Offset of the first whole-word occurrence of any term, or -1. */
 export function firstMention(text: string, terms: string[]): number {
 	let first = -1;
 	for (const term of terms) {
@@ -43,7 +38,6 @@ export function hostOf(url: string): string | null {
 	}
 }
 
-/** Whether a URL is on the domain or one of its subdomains (blog.acme.com counts for acme.com). */
 export function isOwnUrl(url: string, domain: string): boolean {
 	const host = hostOf(url);
 	return host !== null && (host === domain || host.endsWith(`.${domain}`));
@@ -58,12 +52,6 @@ function sameBrand(candidate: string, brand: BrandIdentity): boolean {
 	});
 }
 
-/**
- * Score one answer for one brand. `namedBrands` are the companies or products
- * the answer names (from the extraction step), in any order; positions come
- * from where each first appears in the text, so they don't depend on how the
- * extractor ordered them.
- */
 export function analyzeAnswer({
 	text,
 	sources,
@@ -104,7 +92,6 @@ export function analyzeAnswer({
 	};
 }
 
-/** Brands named instead of (or alongside) yours, most frequent first. */
 export function tallyCompetitors(results: Pick<PromptResult, "competitors">[], limit = 8) {
 	const counts = new Map<string, { name: string; count: number }>();
 	for (const result of results) {

@@ -18,11 +18,6 @@ type Resolve = (hostname: string) => Promise<string[]>;
 
 const resolveAll: Resolve = async (hostname) => (await lookup(hostname, { all: true })).map((entry) => entry.address);
 
-/**
- * Throws unless `url` is plain http(s) on the default port and every address
- * its hostname resolves to is public. Checked on each redirect hop, since a
- * public site can redirect to an internal one.
- */
 export async function assertPublicUrl(url: URL, resolve: Resolve = resolveAll): Promise<void> {
 	if (url.protocol !== "http:" && url.protocol !== "https:") throw new BlockedUrlError("Only http(s) URLs are fetched");
 	if (url.port && url.port !== "80" && url.port !== "443")
@@ -65,10 +60,6 @@ async function readCapped(response: Response, maxBytes: number): Promise<string>
 	return new TextDecoder().decode(bytes);
 }
 
-/**
- * Fetch a page from a visitor-supplied site without letting the visitor aim
- * our server at anything private, hang it, or make it buffer a huge response.
- */
 export async function safeFetch(
 	input: string,
 	{ timeoutMs = 8000, maxBytes = 512 * 1024 }: { timeoutMs?: number; maxBytes?: number } = {},

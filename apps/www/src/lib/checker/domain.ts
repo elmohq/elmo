@@ -1,6 +1,5 @@
 export type DomainInputResult = { ok: true; domain: string; host: string } | { ok: false; error: string };
 
-// Hostnames that only resolve inside someone's network, never on the public web.
 const PRIVATE_SUFFIXES = [
 	"localhost",
 	"local",
@@ -18,11 +17,6 @@ const PRIVATE_SUFFIXES = [
 
 const LABEL = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
 
-/**
- * Reduce what a visitor typed ("https://www.Acme.com/pricing", "acme.com") to
- * the public hostname we check. `domain` drops a leading www so the same site
- * shares one cache entry and one brand identity; `host` is what we fetch.
- */
 export function parseDomainInput(input: string): DomainInputResult {
 	const trimmed = input.trim().toLowerCase();
 	if (!trimmed) return { ok: false, error: "Enter your website's domain." };
@@ -113,12 +107,6 @@ function expandIpv6(address: string): number[] | null {
 	return groups.length === 8 && groups.every((g) => g >= 0) ? groups : null;
 }
 
-/**
- * Whether an address resolved for a visitor-supplied domain points somewhere we
- * must never fetch from the server: loopback, private networks, link-local
- * (cloud metadata), and the other non-public ranges. Unparseable input counts
- * as private, so a surprise format fails closed.
- */
 export function isPrivateAddress(address: string): boolean {
 	const v4 = parseIpv4(address);
 	if (v4) return PRIVATE_V4.some((range) => inV4Range(v4, range));
@@ -126,7 +114,6 @@ export function isPrivateAddress(address: string): boolean {
 	return groups === null || isPrivateIpv6(groups);
 }
 
-// First-group prefixes (value, mask) that are never public unicast.
 const PRIVATE_V6_PREFIXES: [number, number][] = [
 	[0xfc00, 0xfe00], // unique local
 	[0xfe80, 0xffc0], // link-local
@@ -138,7 +125,6 @@ function isPrivateIpv6(groups: number[]): boolean {
 	const zeroBefore = (n: number) => groups.slice(0, n).every((g) => g === 0);
 
 	if (zeroBefore(7) && groups[7] <= 1) return true; // :: and ::1
-	// IPv4-mapped, IPv4-compatible, and NAT64 addresses reach the embedded IPv4 host.
 	if ((zeroBefore(5) && groups[5] === 0xffff) || zeroBefore(6) || (groups[0] === 0x64 && groups[1] === 0xff9b)) {
 		return isPrivateAddress(embeddedV4);
 	}

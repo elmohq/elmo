@@ -42,7 +42,6 @@ function loadTurnstile(): Promise<TurnstileApi> {
 		script.async = true;
 		script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new TurnstileError()));
 		script.onerror = () => {
-			// Forget the failed load so the next attempt can fetch it again.
 			scriptPromise = undefined;
 			script.remove();
 			reject(new TurnstileError());
@@ -52,13 +51,6 @@ function loadTurnstile(): Promise<TurnstileApi> {
 	return scriptPromise;
 }
 
-/**
- * Cloudflare Turnstile, solved on submit with a fresh single-use token per
- * attempt. Without a site key it does nothing and `getToken` resolves to
- * undefined, so local development needs no Cloudflare account. Most visitors
- * never see the widget; it only appears in `ref`'s element when Cloudflare
- * wants an interaction.
- */
 export function useTurnstile(siteKey: string | undefined) {
 	const [container, setContainer] = useState<HTMLDivElement | null>(null);
 	const widget = useRef<{ api: TurnstileApi; id: string; used: boolean } | null>(null);
@@ -93,7 +85,6 @@ export function useTurnstile(siteKey: string | undefined) {
 			});
 			if (id) widget.current = { api, id, used: false };
 		});
-		// Rendering waits for a submit, so a load failure surfaces there instead.
 		ready.current.catch(() => {});
 
 		return () => {
@@ -104,7 +95,6 @@ export function useTurnstile(siteKey: string | undefined) {
 		};
 	}, [siteKey, container]);
 
-	/** A fresh token for one request. Throws TurnstileError when the challenge fails. */
 	const getToken = useCallback(async (): Promise<string | undefined> => {
 		if (!siteKey) return undefined;
 		await ready.current;

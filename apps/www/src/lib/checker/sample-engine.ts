@@ -1,11 +1,5 @@
 import type { Answer, BrandProfile } from "./openai";
 
-/**
- * Canned answers for local development without an OpenAI key, so the page can
- * be built and screenshotted end to end. Results are flagged as samples in the
- * UI; production never falls back to this.
- */
-
 const RIVALS = ["Northwind", "Globex", "Initech", "Umbrella", "Hooli"];
 
 function titleCase(domain: string): string {
@@ -13,7 +7,6 @@ function titleCase(domain: string): string {
 	return stem.charAt(0).toUpperCase() + stem.slice(1);
 }
 
-// Roughly the real engine's pacing, so the progress UI can be worked on locally.
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function sampleProfile(input: {

@@ -1,7 +1,6 @@
 export interface AiCrawler {
 	token: string;
 	owner: string;
-	/** Search and user-triggered fetchers decide whether you can be cited today; training crawlers shape what models know later. */
 	kind: "search" | "training";
 	purpose: string;
 }
@@ -77,11 +76,6 @@ function patternMatches(pattern: string, path: string): boolean {
 	return new RegExp(`^${regex}${anchored ? "$" : ""}`).test(path);
 }
 
-/**
- * Whether robots.txt lets `crawler` fetch `path`, following RFC 9309: the
- * groups naming the crawler's product token apply (falling back to `*`), the
- * longest matching rule wins, and Allow wins a tie.
- */
 export function isAllowedByRobots(robotsTxt: string, crawler: string, path = "/"): boolean {
 	const groups = parseGroups(robotsTxt);
 	const token = crawler.toLowerCase();
@@ -100,11 +94,6 @@ export function isAllowedByRobots(robotsTxt: string, crawler: string, path = "/"
 	return best?.allow ?? true;
 }
 
-/**
- * Access for every AI crawler we report on. `robotsTxt` is null when the file
- * couldn't be read; a missing file (404) should be passed as "" since it
- * allows everything.
- */
 export function aiCrawlerAccess(robotsTxt: string | null): { crawler: AiCrawler; access: CrawlerAccess }[] {
 	return AI_CRAWLERS.map((crawler) => ({
 		crawler,

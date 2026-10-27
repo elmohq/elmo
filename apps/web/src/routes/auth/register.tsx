@@ -35,7 +35,6 @@ export const Route = createFileRoute("/auth/register")({
 		 * long enough for analytics to record the pageview it arrived on.
 		 */
 		ref: z.string().optional(),
-		/** A website to prefill as the new account's first brand, e.g. from the marketing-site checker. */
 		website: z.string().optional(),
 	}),
 	head: ({ match }) => {

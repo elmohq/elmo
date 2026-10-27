@@ -9,10 +9,8 @@ export interface Source {
 export interface PromptResult {
 	prompt: string;
 	mentioned: boolean;
-	/** 1 when the answer names this brand before any other, 2 when one brand comes first, and so on. */
 	position: number | null;
 	competitors: string[];
-	/** Whether the answer cites a page on the checked domain. */
 	cited: boolean;
 	sources: Source[];
 	failed?: boolean;
@@ -47,11 +45,9 @@ export interface CheckResult {
 	topSources: { domain: string; count: number }[];
 	site: SiteSignals;
 	score: { total: number; items: ScoreItem[] };
-	/** Set when the answers are canned fixtures from local development, not a real engine. */
 	sample?: boolean;
 }
 
-/** One line of the streamed response, in the order the server sends them. */
 export type CheckEvent =
 	| { type: "stage"; stage: "site" | "prompts" | "answers" | "analysis" }
 	| { type: "prompts"; brandName: string; category: string; prompts: string[] }

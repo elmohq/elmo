@@ -135,7 +135,6 @@ export function softwareApplicationJsonLd() {
 	});
 }
 
-/** A free in-browser tool on the site, e.g. the AI visibility checker. */
 export function webApplicationJsonLd({ name, description, path }: { name: string; description: string; path: string }) {
 	return jsonLd({
 		"@type": "WebApplication",

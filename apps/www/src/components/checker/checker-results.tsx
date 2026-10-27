@@ -401,7 +401,6 @@ function ChecklistItem({
 	);
 }
 
-/** The handoff the whole tool exists for: the same check, every day, in Elmo Cloud. */
 function TrackCta({ result, compact = false }: { result: CheckResult; compact?: boolean }) {
 	const signupUrl = cloudAppUrl("marketing-checker", result.domain);
 	const demoUrl = demoSiteUrl("marketing-checker");

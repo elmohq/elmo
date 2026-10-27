@@ -2,8 +2,6 @@ import { hostOf } from "./mentions";
 import type { Source } from "./types";
 
 const RESPONSES_URL = "https://api.openai.com/v1/responses";
-// Same model the product uses for its ChatGPT target, so the free check sees
-// roughly what an Elmo Cloud ChatGPT run would.
 const DEFAULT_MODEL = "gpt-6-luna";
 
 export const PROMPT_COUNT = 5;
@@ -118,7 +116,6 @@ export interface Answer {
 	sources: Source[];
 }
 
-/** Ask the prompt the way a user would, with web search on, like ChatGPT search. */
 export async function answerPrompt(prompt: string): Promise<Answer> {
 	const result = await createResponse(
 		{
@@ -140,7 +137,6 @@ export async function answerPrompt(prompt: string): Promise<Answer> {
 	return { text: parts.map((part) => part.text ?? "").join("\n"), sources: [...sources.values()] };
 }
 
-/** The companies and products each answer names, in one cheap batched call. */
 export async function extractBrandNames(answers: string[]): Promise<string[][]> {
 	const { answers: extracted } = await structured<{ answers: { index: number; brands: string[] }[] }>(
 		"named_brands",

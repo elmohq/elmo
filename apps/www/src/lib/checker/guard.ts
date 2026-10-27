@@ -3,7 +3,6 @@ import type { CheckResult } from "./types";
 
 const RESULT_TTL_SECONDS = 24 * 60 * 60;
 const PER_IP_DAILY_LIMIT = 5;
-// Each fresh check costs roughly $0.05–0.20 in model and search calls.
 const DEFAULT_GLOBAL_DAILY_LIMIT = 300;
 
 function redisConfigured(): boolean {
@@ -45,12 +44,6 @@ async function increment(key: string): Promise<number> {
 	return count;
 }
 
-/**
- * Count a fresh (uncached) check against the visitor's and the site-wide daily
- * budget. Without Redis (local development) there is nothing to count against;
- * if Redis is down in production we let checks through and rely on Turnstile,
- * rather than take the tool offline.
- */
 export async function consumeCheckQuota(ip: string): Promise<{ ok: true } | { ok: false; message: string }> {
 	if (!redisConfigured()) return { ok: true };
 	const globalLimit = Number(process.env.AI_VISIBILITY_CHECKER_DAILY_LIMIT) || DEFAULT_GLOBAL_DAILY_LIMIT;
@@ -73,10 +66,6 @@ export async function consumeCheckQuota(ip: string): Promise<{ ok: true } | { ok
 	return { ok: true };
 }
 
-/**
- * Cloudflare Turnstile verification. Skipped only when no secret is configured
- * outside production, so local development works without a Cloudflare account.
- */
 export async function verifyTurnstile(token: string | undefined, ip: string): Promise<boolean> {
 	const secret = process.env.TURNSTILE_SECRET_KEY;
 	if (!secret) return process.env.NODE_ENV !== "production";
