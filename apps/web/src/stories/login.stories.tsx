@@ -10,7 +10,7 @@ import type { Meta } from "@storybook/react";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import type { ReactNode } from "react";
 import { DemoLogin, EmailPasswordLogin, SSOLogin } from "@/routes/auth/login";
-import { resetMockAuthClient, setMockSsoError } from "./_mocks/auth-client";
+import { resetMockAuthClient, setMockEmailSignIn, setMockSsoError } from "./_mocks/auth-client";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
 
@@ -73,8 +73,17 @@ export const Cloud = () => <EmailPasswordLogin isCloud canRegister />;
  */
 export const SelfHosted = () => <EmailPasswordLogin />;
 
-/** Demo — the shared credentials on a plain card, with nothing to sell. */
-export const Demo = () => <DemoLogin />;
+/** Demo signs in to the shared account on its own; this is what shows meanwhile. */
+export const Demo = () => {
+	setMockEmailSignIn("hang");
+	return <DemoLogin />;
+};
+
+/** Demo when the automatic sign-in fails: the error, and a way to retry. */
+export const DemoError = () => {
+	setMockEmailSignIn({ error: "Invalid email or password" });
+	return <DemoLogin />;
+};
 
 /**
  * Whitelabel sign-in: no form, no pitch, just the tenant's mark while the

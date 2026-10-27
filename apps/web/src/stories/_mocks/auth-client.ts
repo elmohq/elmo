@@ -12,6 +12,7 @@ type SubscriptionResult = { error: { message?: string } | null };
 let _delayMs = 0;
 let _error: string | null = null;
 let _ssoError: string | null = null;
+let _emailSignIn: "succeed" | "hang" | { error: string } = "succeed";
 const _calls: { method: string; args: unknown }[] = [];
 
 /** Hold the call open so a story can show the in-flight spinner. */
@@ -33,10 +34,15 @@ export function setMockSsoError(message: string | null) {
 	_ssoError = message;
 }
 
+export function setMockEmailSignIn(outcome: "hang" | { error: string }) {
+	_emailSignIn = outcome;
+}
+
 export function resetMockAuthClient() {
 	_delayMs = 0;
 	_error = null;
 	_ssoError = null;
+	_emailSignIn = "succeed";
 	_calls.length = 0;
 }
 
@@ -55,7 +61,11 @@ export const authClient = {
 		list: async () => ({ data: [], error: null }),
 	},
 	signIn: {
-		email: async () => ({ error: null }),
+		email: async () => {
+			if (_emailSignIn === "hang") return new Promise<never>(() => {});
+			if (_emailSignIn !== "succeed") return { error: { message: _emailSignIn.error } };
+			return { error: null };
+		},
 		social: async () => ({ error: null }),
 		sso: async () => ({ error: _ssoError ? { message: _ssoError } : null }),
 	},

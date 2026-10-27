@@ -2,12 +2,12 @@
  * /auth/login - Login page
  *
  * Local/cloud modes: email/password form beside the sales panel.
- * Demo mode: the shared credentials on a plain card — a demo visitor is
- * already looking, and has nothing to buy.
+ * Demo mode: signs in to the shared account automatically — a demo visitor
+ * is already looking, and has nothing to buy.
  * Whitelabel mode: auto-redirects to Auth0 SSO (no form shown).
  */
 
-import { IconBrandGoogle, IconInfoCircle } from "@tabler/icons-react";
+import { IconBrandGoogle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { MCP_AUTHORIZE_ENDPOINT } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
@@ -121,60 +121,52 @@ export function SSOLogin({ destination = "/app" }: { destination?: string }) {
 		};
 	}, [destination]);
 
-	if (error) {
-		return (
-			<FullPageCard title="Sign in">
-				<div className="w-full space-y-4">
-					<Alert variant="destructive">
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-					<Button className="w-full" onClick={() => window.location.reload()}>
-						Try Again
-					</Button>
-				</div>
-			</FullPageCard>
-		);
-	}
+	if (error) return <SignInFailed error={error} />;
 
 	return <FullPageCard title="Signing in..." subtitle="Redirecting to your identity provider" />;
 }
 
 export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState(false);
 
-	async function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
-		setError(null);
-		setLoading(true);
+	useEffect(() => {
+		let cancelled = false;
 
-		try {
-			const result = await authClient.signIn.email({ email: "demo@elmohq.com", password: "demo" });
-			if (result.error) {
-				setError(result.error.message ?? "Invalid email or password");
-				setLoading(false);
-				return;
-			}
-			window.location.href = destination;
-		} catch {
-			setError("Something went wrong. Please try again.");
-			setLoading(false);
-		}
-	}
+		authClient.signIn
+			.email({ email: "demo@elmohq.com", password: "demo" })
+			.then((result) => {
+				if (cancelled) return;
+				if (result.error) {
+					setError(result.error.message ?? "Invalid email or password");
+					return;
+				}
+				window.location.href = destination;
+			})
+			.catch(() => {
+				if (!cancelled) setError("Something went wrong. Please try again.");
+			});
 
+		return () => {
+			cancelled = true;
+		};
+	}, [destination]);
+
+	if (error) return <SignInFailed error={error} />;
+
+	return <FullPageCard title="Signing in..." subtitle="Opening the demo account" />;
+}
+
+function SignInFailed({ error }: { error: string }) {
 	return (
 		<FullPageCard title="Sign in">
-			<form onSubmit={handleSubmit} className="space-y-4 w-full">
-				<DemoCredentialsCallout />
-				{error && (
-					<Alert variant="destructive">
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-				)}
-				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Signing in..." : "Sign in"}
+			<div className="w-full space-y-4">
+				<Alert variant="destructive">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+				<Button className="w-full" onClick={() => window.location.reload()}>
+					Try Again
 				</Button>
-			</form>
+			</div>
 		</FullPageCard>
 	);
 }
@@ -317,26 +309,5 @@ export function EmailPasswordLogin({
 				</p>
 			)}
 		</AuthSplitLayout>
-	);
-}
-
-function DemoCredentialsCallout() {
-	return (
-		<div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-			<IconInfoCircle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
-			<div className="space-y-2">
-				<p className="font-medium text-amber-900 dark:text-amber-100">Demo Account</p>
-				<dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-900/90 dark:text-amber-100/80">
-					<div className="flex items-center gap-1.5">
-						<dt className="opacity-70">Email</dt>
-						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo@elmohq.com</dd>
-					</div>
-					<div className="flex items-center gap-1.5">
-						<dt className="opacity-70">Password</dt>
-						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo</dd>
-					</div>
-				</dl>
-			</div>
-		</div>
 	);
 }

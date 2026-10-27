@@ -27,7 +27,7 @@ import type { NavItem } from "@/components/nav-main";
 import { OrganizationRowIcon } from "@/components/organization-row-icon";
 import { useAuth } from "@/hooks/use-auth";
 import { useBrandId } from "@/hooks/use-brand-id";
-import { useBranding, useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { useBranding, useDeploymentFeatures, useDeploymentMode } from "@/hooks/use-deployment-features";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { resetCrispSession } from "@/lib/crisp";
 import { organizationTree } from "@/lib/organizations/tree";
@@ -47,6 +47,7 @@ export function NavUser({
 	const { isMobile, setOpenMobile } = useSidebar();
 	const branding = useBranding();
 	const features = useDeploymentFeatures();
+	const canLogOut = useDeploymentMode() !== "demo";
 
 	// NavUser only renders inside _authed routes, which redirect to /auth/login
 	// when there's no session — so `user` is always present at this point.
@@ -156,23 +157,25 @@ export function NavUser({
 								<DropdownMenuSeparator />
 							</>
 						)}
-						<DropdownMenuItem
-							className="cursor-pointer"
-							onClick={() => {
-								authClient.signOut({
-									fetchOptions: {
-										onSuccess: () => {
-											resetPostHog();
-											resetCrispSession();
-											window.location.href = "/auth/logout";
+						{canLogOut && (
+							<DropdownMenuItem
+								className="cursor-pointer"
+								onClick={() => {
+									authClient.signOut({
+										fetchOptions: {
+											onSuccess: () => {
+												resetPostHog();
+												resetCrispSession();
+												window.location.href = "/auth/logout";
+											},
 										},
-									},
-								});
-							}}
-						>
-							<IconLogout />
-							Log out
-						</DropdownMenuItem>
+									});
+								}}
+							>
+								<IconLogout />
+								Log out
+							</DropdownMenuItem>
+						)}
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>
