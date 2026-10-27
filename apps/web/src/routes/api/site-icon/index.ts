@@ -34,18 +34,21 @@ export const Route = createFileRoute("/api/site-icon/")({
 					return new Response("Icon unavailable", { status: 502 });
 				}
 
+				// The service answers an unknown site with 404 and a generic globe; drop
+				// the globe so the image errors and `SiteIcon` shows its own fallback.
+				if (upstream.status === 404) {
+					return new Response(null, { status: 404, headers: { "Cache-Control": MISSING_CACHE } });
+				}
+
 				const contentType = upstream.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "";
-				// The service answers an unknown site with 404 and a placeholder image.
-				// Serve it as a 200 so the browser doesn't log an error for every icon-less
-				// site; `SiteIcon` recognizes the placeholder by its size.
-				if ((!upstream.ok && upstream.status !== 404) || !ICON_TYPES.has(contentType)) {
+				if (!upstream.ok || !ICON_TYPES.has(contentType)) {
 					return new Response("Icon unavailable", { status: 502 });
 				}
 
 				return new Response(await upstream.arrayBuffer(), {
 					headers: {
 						"Content-Type": contentType,
-						"Cache-Control": upstream.ok ? FOUND_CACHE : MISSING_CACHE,
+						"Cache-Control": FOUND_CACHE,
 						"X-Content-Type-Options": "nosniff",
 					},
 				});

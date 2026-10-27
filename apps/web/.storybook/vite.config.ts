@@ -25,6 +25,10 @@ const siteIconRoute: Plugin = {
 			});
 			const icon = await fetch(`https://t1.gstatic.com/faviconV2?${upstream.toString()}`);
 			res.statusCode = icon.status;
+			if (!icon.ok) {
+				res.end();
+				return;
+			}
 			res.setHeader("Content-Type", icon.headers.get("content-type") ?? "image/png");
 			res.end(Buffer.from(await icon.arrayBuffer()));
 		});
