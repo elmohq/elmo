@@ -5,7 +5,6 @@ export interface PlanValueRow {
 	plan: string;
 	monthlyPriceUsd: number;
 	costPer1kUsd: number;
-	/** The vendor's entry in the tool directory, when it has one. */
 	competitorSlug?: string;
 }
 
@@ -91,7 +90,6 @@ export const ELMO_VALUE_ROWS: PlanValueRow[] = PLAN_KEYS.map((key) => ({
 	costPer1kUsd: costPer1kAnswersUsd(PLANS[key]),
 }));
 
-/** Every row, cheapest per answer first. */
 export const PLAN_VALUE_ROWS: PlanValueRow[] = [...ELMO_VALUE_ROWS, ...COMPETITOR_ROWS].sort(
 	(a, b) => a.costPer1kUsd - b.costPer1kUsd,
 );
