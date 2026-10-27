@@ -84,3 +84,46 @@ export function bookDemoUrl(ref: ReferralSource): string {
 export function demoSiteUrl(ref: ReferralSource): string {
 	return tagged(DEMO_SITE_URL, ref);
 }
+
+/** The Plausible goals a click through to one of our own destinations counts toward. */
+export type LinkClickGoal = "Cloud CTA Click" | "Live Demo Click" | "Book Demo Click";
+
+export interface LinkClick {
+	goal: LinkClickGoal;
+	props: { ref?: string; page: string; destination: string };
+}
+
+/**
+ * Which goal, if any, a click on `href` counts toward, seen from the page at
+ * `pageUrl`. A link within the site the visitor is already on is navigation,
+ * not a conversion — except the booking page, which www also links to relatively.
+ */
+export function classifyLinkClick(href: string, pageUrl: string): LinkClick | null {
+	let page: URL;
+	let link: URL;
+	try {
+		page = new URL(pageUrl);
+		link = new URL(href, page);
+	} catch {
+		return null;
+	}
+	if (link.protocol !== "https:" && link.protocol !== "http:") return null;
+
+	const sameSite = link.host === page.host;
+	let goal: LinkClickGoal;
+	if (link.origin === CLOUD_APP_URL && !sameSite) goal = "Cloud CTA Click";
+	else if (link.origin === DEMO_SITE_URL && !sameSite) goal = "Live Demo Click";
+	else if ((link.origin === MARKETING_SITE_URL || sameSite) && link.pathname.replace(/\/$/, "") === "/demo")
+		goal = "Book Demo Click";
+	else return null;
+
+	const ref = link.searchParams.get("ref");
+	return {
+		goal,
+		props: {
+			...(ref ? { ref } : {}),
+			page: page.pathname,
+			destination: `${link.host}${link.pathname}`,
+		},
+	};
+}
