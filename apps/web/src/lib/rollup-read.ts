@@ -403,17 +403,16 @@ export async function getPerPromptCitationPages(scope: AnalyticsScope): Promise<
 
 export async function getPerPromptGooglePages(scope: AnalyticsScope): Promise<PerPromptCitationPageRow[]> {
 	return queryPg<PerPromptCitationPageRow>(sql`
-		SELECT
-			rcu.prompt_id AS prompt_id,
-			cp.url AS url,
-			cp.domain AS domain,
-			cp.title AS title,
-			sum(rcu.citations)::int AS count
-		FROM rollup_citation_urls rcu
-		JOIN cited_pages cp ON cp.id = rcu.page_id
-		WHERE ${rollupScope(scope, "rcu")} AND cp.static_category = ${GOOGLE_STATIC_CATEGORY}
-		GROUP BY rcu.prompt_id, rcu.page_id, cp.url, cp.domain, cp.title
-		ORDER BY rcu.prompt_id, count DESC, cp.url
+		SELECT p.prompt_id, cp.url, cp.domain, cp.title, p.count
+		FROM (
+			SELECT prompt_id, page_id, sum(citations)::int AS count
+			FROM rollup_citation_urls
+			WHERE ${rollupScope(scope)} AND domain ~ '(^|\.)google\.[a-z.]+$'
+			GROUP BY prompt_id, page_id
+		) p
+		JOIN cited_pages cp ON cp.id = p.page_id
+		WHERE cp.static_category = ${GOOGLE_STATIC_CATEGORY}
+		ORDER BY p.prompt_id, p.count DESC, cp.url
 	`);
 }
 
@@ -432,40 +431,49 @@ export async function getCitationPageStats(
 	previous: AnalyticsScope,
 ): Promise<CitationPageStats[]> {
 	return queryPg<CitationPageStats>(sql`
-		WITH earlier AS (
-			SELECT DISTINCT page_id FROM rollup_citation_urls WHERE ${rollupScope(previous)}
-		)
+		WITH
+			pages AS (
+				SELECT
+					page_id,
+					sum(citations)::int AS count,
+					round(sum(position_sum)::numeric / NULLIF(sum(citations), 0), 1)::float AS avg_position,
+					count(DISTINCT prompt_id)::int AS prompt_count
+				FROM rollup_citation_urls
+				WHERE ${rollupScope(scope)}
+				GROUP BY page_id
+			),
+			earlier AS (SELECT DISTINCT page_id FROM rollup_citation_urls WHERE ${rollupScope(previous)})
 		SELECT
-			cp.url AS url,
-			cp.domain AS domain,
-			cp.title AS title,
+			cp.url,
+			cp.domain,
+			cp.title,
 			cp.static_category,
 			cp.page_type,
-			sum(rcu.citations)::int AS count,
-			round(sum(rcu.position_sum)::numeric / NULLIF(sum(rcu.citations), 0), 1)::float AS avg_position,
-			count(DISTINCT rcu.prompt_id)::int AS prompt_count,
-			bool_and(e.page_id IS NULL) AS is_new
-		FROM rollup_citation_urls rcu
-		JOIN cited_pages cp ON cp.id = rcu.page_id
-		LEFT JOIN earlier e ON e.page_id = rcu.page_id
-		WHERE ${rollupScope(scope, "rcu")} AND cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
-		GROUP BY rcu.page_id, cp.url, cp.domain, cp.title, cp.static_category, cp.page_type
-		ORDER BY count DESC, cp.url
+			p.count,
+			p.avg_position,
+			p.prompt_count,
+			e.page_id IS NULL AS is_new
+		FROM pages p
+		JOIN cited_pages cp ON cp.id = p.page_id
+		LEFT JOIN earlier e ON e.page_id = p.page_id
+		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
+		ORDER BY p.count DESC, cp.url
 	`);
 }
 
 export async function getCitationDomainCounts(scope: AnalyticsScope): Promise<{ domain: string; count: number }[]> {
 	return queryPg<{ domain: string; count: number }>(sql`
-		SELECT domain, sum(count)::int AS count
+		SELECT cp.domain, sum(p.count)::int AS count
 		FROM (
-			SELECT cp.domain, sum(rcu.citations) AS count
-			FROM rollup_citation_urls rcu
-			JOIN cited_pages cp ON cp.id = rcu.page_id
-			WHERE ${rollupScope(scope, "rcu")} AND cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
-			GROUP BY rcu.page_id, cp.domain
-		) pages
-		GROUP BY domain
-		ORDER BY max(count) DESC
+			SELECT page_id, sum(citations) AS count
+			FROM rollup_citation_urls
+			WHERE ${rollupScope(scope)}
+			GROUP BY page_id
+		) p
+		JOIN cited_pages cp ON cp.id = p.page_id
+		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
+		GROUP BY cp.domain
+		ORDER BY max(p.count) DESC
 	`);
 }
 
@@ -476,32 +484,21 @@ export async function getDroppedCitationPages(
 	limit: number,
 ): Promise<DroppedCitationPageRow[]> {
 	return queryPg<DroppedCitationPageRow>(sql`
-		WITH earlier AS (
-			SELECT rcu.page_id, sum(rcu.citations)::int AS count
-			FROM rollup_citation_urls rcu
-			JOIN cited_pages cp ON cp.id = rcu.page_id
-			WHERE ${rollupScope(previous, "rcu")} AND cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
-			GROUP BY rcu.page_id
-			HAVING sum(rcu.citations) >= ${minCount}
-		),
-		later AS (
-			SELECT page_id, sum(citations)::int AS count
-			FROM rollup_citation_urls
-			WHERE ${rollupScope(scope)} AND page_id IN (SELECT page_id FROM earlier)
+		WITH counts AS (
+			SELECT page_id, sum(earlier)::int AS previous_count, sum(later)::int AS current_count
+			FROM (
+				SELECT page_id, citations AS earlier, 0 AS later FROM rollup_citation_urls WHERE ${rollupScope(previous)}
+				UNION ALL
+				SELECT page_id, 0, citations FROM rollup_citation_urls WHERE ${rollupScope(scope)}
+			) cited
 			GROUP BY page_id
+			HAVING sum(earlier) >= ${minCount} AND sum(later) * 2 <= sum(earlier)
 		)
-		SELECT
-			cp.url,
-			cp.domain,
-			cp.static_category,
-			cp.page_type,
-			e.count AS previous_count,
-			coalesce(l.count, 0) AS current_count
-		FROM earlier e
-		JOIN cited_pages cp ON cp.id = e.page_id
-		LEFT JOIN later l ON l.page_id = e.page_id
-		WHERE coalesce(l.count, 0) * 2 <= e.count
-		ORDER BY e.count DESC, cp.url
+		SELECT cp.url, cp.domain, cp.static_category, cp.page_type, c.previous_count, c.current_count
+		FROM counts c
+		JOIN cited_pages cp ON cp.id = c.page_id
+		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
+		ORDER BY c.previous_count DESC, cp.url
 		LIMIT ${limit}
 	`);
 }
