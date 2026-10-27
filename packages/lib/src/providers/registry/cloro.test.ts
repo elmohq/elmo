@@ -361,9 +361,6 @@ describe("cloro provider", () => {
 		expect(stored(result).textContent).toContain("Sonos Era 300");
 	});
 
-	// Cloro retries a failing attempt by moving the task back to the queue, and
-	// bills it if a later attempt completes, so a task that has started running
-	// is still worth waiting for.
 	it("keeps waiting on a task Cloro is still running or retrying", async () => {
 		vi.useFakeTimers();
 		const startedAt = Date.now();

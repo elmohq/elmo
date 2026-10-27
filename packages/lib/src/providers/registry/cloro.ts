@@ -46,11 +46,10 @@ const CLORO_TASK_URL = "https://api.cloro.dev/v1/async/task";
  * Absolute ceiling per task, so a task that never settles can't pin a worker
  * forever. A submitted task is billed if it completes whether or not anyone is
  * still waiting, and Cloro retries a failing attempt by putting the task back in
- * the queue, so this is the only deadline: running or queued, a task gets the
- * full ceiling to reach COMPLETED or FAILED. Sized well above the deepest
- * backlog a single cycle can create — a cycle submits at most (prompt job
- * concurrency x RUNS_PER_PROMPT x targets) tasks at once — and within the
- * process-prompt job's expiry.
+ * the queue, so queued and running time both count against this one deadline.
+ * Sized well above the deepest backlog a single cycle can create — a cycle
+ * submits at most (prompt job concurrency x RUNS_PER_PROMPT x targets) tasks at
+ * once.
  */
 const CLORO_TOTAL_TIMEOUT_MS = 60 * 60 * 1000;
 
