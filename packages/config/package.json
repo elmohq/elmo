@@ -18,6 +18,7 @@
 		"./model-filter": "./src/model-filter.ts",
 		"./models": "./src/models.ts",
 		"./plans": "./src/plans.ts",
+		"./ai-referral": "./src/ai-referral.ts",
 		"./referrals": "./src/referrals.ts",
 		"./roles": "./src/roles.ts",
 		"./scrape-targets": "./src/scrape-targets.ts",

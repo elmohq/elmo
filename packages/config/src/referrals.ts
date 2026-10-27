@@ -26,6 +26,7 @@ export type ReferralSource =
 	| "marketing-cta"
 	| "marketing-nav"
 	| "marketing-hero"
+	| "marketing-ai-referral"
 	| "marketing-demo-frame"
 	| "marketing-closing"
 	| "marketing-pricing-closing"
