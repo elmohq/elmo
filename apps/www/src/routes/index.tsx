@@ -49,7 +49,7 @@ export const Route = createFileRoute("/")({
 function aiReferralHero(assistant: string): ComponentProps<typeof Hero> {
 	return {
 		title: `Get Recommended by ${assistant}`,
-		lede: `You found us through ${assistant}. That's Elmo at work. See how AI search talks about your brand, which sources they trust, and what to change so they recommend you too.`,
+		lede: `You found us through ${assistant}. That's Elmo at work. See how AI search engines talk about your brand, which sources they trust, and what to change so they recommend you too.`,
 		from: "marketing-ai-referral",
 	};
 }
