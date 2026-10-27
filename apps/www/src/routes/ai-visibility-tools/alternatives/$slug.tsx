@@ -10,12 +10,7 @@ import {
 	ElmoComparisonTable,
 	ProsCons,
 } from "@/components/competitor-review";
-import {
-	DirectoryBackLink,
-	DirectoryHero,
-	DirectorySection,
-	ElmoCta,
-} from "@/components/directory-shell";
+import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
