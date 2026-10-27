@@ -49,7 +49,7 @@ export default defineConfig<ConsoleErrorOptions>({
   // failure — it is what produces the trace below.
   failOnFlakyTests: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: 4,
+  workers: process.env.CI ? "75%" : 4,
   reporter: process.env.CI
     ? [["list"], ["html", { open: "never", outputFolder: HTML_REPORT_DIR }], ["github"]]
     : [["list"], ["html", { open: "on-failure", outputFolder: HTML_REPORT_DIR }]],
