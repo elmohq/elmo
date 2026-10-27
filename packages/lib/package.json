@@ -24,7 +24,6 @@
 		"./db/unique-names": "./src/db/unique-names.ts",
 		"./auth/server": "./src/auth/server.ts",
 		"./auth/client": "./src/auth/client.ts",
-		"./auth/password": "./src/auth/password.ts",
 		"./auth/permissions": "./src/auth/permissions.ts",
 		"./auth/redirect-uri": "./src/auth/redirect-uri.ts",
 		"./constants": "./src/constants.ts",

@@ -16,7 +16,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import { type APIRequestContext, test } from "@playwright/test";
-import { hashPassword } from "@workspace/lib/auth/password";
+import { hashPassword } from "@better-auth/utils/password";
 import pg from "pg";
 import {
   DATABASE_URL,
