@@ -4,3 +4,5 @@
  */
 
 export const getCitationsFn = async (..._args: unknown[]) => undefined;
+export const getCitationUrlsFn = async (..._args: unknown[]) => ({ items: [], total: 0 });
+export const getCitationDomainsFn = async (..._args: unknown[]) => ({ items: [], total: 0 });

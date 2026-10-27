@@ -21,6 +21,7 @@ import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
+import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
@@ -271,6 +272,7 @@ function computePromptCitationStats(input: {
 		categoryCounts,
 		domainDistribution,
 		specificUrls,
+		subreddits: summarizeSubreddits(specificUrls.filter((url) => isRedditDomain(url.domain))),
 		pageTypeDistribution,
 		googleModule,
 	};

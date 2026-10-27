@@ -15,6 +15,7 @@ import {
 	scopeFilter,
 	uuidList,
 } from "@/lib/analytics-sql";
+import { type CitationOwner, type OwnedDomains, ownersCte } from "@/lib/citation-read";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
 import type { AssessmentSums } from "@/lib/sentiment";
 
@@ -115,13 +116,6 @@ export interface PerPromptCitationDomainRow {
 	prompt_id: string;
 	domain: string;
 	count: number;
-}
-
-export type CitationOwner = "brand" | "competitor";
-
-export interface OwnedDomains {
-	brandDomains: string[];
-	competitorDomains: string[];
 }
 
 export interface PerPromptDailyCitationDomainRow {
@@ -368,7 +362,7 @@ export async function getCitationUrlStats(scope: AnalyticsScope): Promise<Citati
 			round(sum(rcu.position_sum)::numeric / NULLIF(sum(rcu.citations), 0), 1)::float AS avg_position,
 			count(DISTINCT rcu.prompt_id)::int AS prompt_count
 		FROM rollup_citation_urls rcu
-		JOIN cited_pages cp ON cp.id = rcu.page_id
+		JOIN rollup_citation_pages cp ON cp.brand_id = rcu.brand_id AND cp.page_id = rcu.page_id
 		WHERE ${rollupScope(scope, "rcu")}
 		GROUP BY rcu.page_id, cp.url, cp.domain, cp.title, cp.static_category, cp.page_type
 		ORDER BY count DESC
@@ -394,7 +388,7 @@ export async function getPerPromptCitationPages(scope: AnalyticsScope): Promise<
 			cp.title AS title,
 			sum(rcu.citations)::int AS count
 		FROM rollup_citation_urls rcu
-		JOIN cited_pages cp ON cp.id = rcu.page_id
+		JOIN rollup_citation_pages cp ON cp.brand_id = rcu.brand_id AND cp.page_id = rcu.page_id
 		WHERE ${rollupScope(scope, "rcu")}
 		GROUP BY rcu.prompt_id, rcu.page_id, cp.url, cp.domain, cp.title
 		ORDER BY rcu.prompt_id, count DESC
@@ -410,7 +404,7 @@ export async function getPerPromptGooglePages(scope: AnalyticsScope): Promise<Pe
 			WHERE ${rollupScope(scope)} AND domain ~ '(^|\.)google\.[a-z.]+$'
 			GROUP BY prompt_id, page_id
 		) p
-		JOIN cited_pages cp ON cp.id = p.page_id
+		JOIN rollup_citation_pages cp ON cp.brand_id = ${scope.brandId} AND cp.page_id = p.page_id
 		WHERE cp.static_category = ${GOOGLE_STATIC_CATEGORY}
 		ORDER BY p.prompt_id, p.count DESC, cp.url
 	`);
@@ -454,7 +448,7 @@ export async function getCitationPageStats(
 			p.prompt_count,
 			e.page_id IS NULL AS is_new
 		FROM pages p
-		JOIN cited_pages cp ON cp.id = p.page_id
+		JOIN rollup_citation_pages cp ON cp.brand_id = ${scope.brandId} AND cp.page_id = p.page_id
 		LEFT JOIN earlier e ON e.page_id = p.page_id
 		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
 		ORDER BY p.count DESC, cp.url
@@ -470,7 +464,7 @@ export async function getCitationDomainCounts(scope: AnalyticsScope): Promise<{ 
 			WHERE ${rollupScope(scope)}
 			GROUP BY page_id
 		) p
-		JOIN cited_pages cp ON cp.id = p.page_id
+		JOIN rollup_citation_pages cp ON cp.brand_id = ${scope.brandId} AND cp.page_id = p.page_id
 		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
 		GROUP BY cp.domain
 		ORDER BY max(p.count) DESC
@@ -496,7 +490,7 @@ export async function getDroppedCitationPages(
 		)
 		SELECT cp.url, cp.domain, cp.static_category, cp.page_type, c.previous_count, c.current_count
 		FROM counts c
-		JOIN cited_pages cp ON cp.id = c.page_id
+		JOIN rollup_citation_pages cp ON cp.brand_id = ${scope.brandId} AND cp.page_id = c.page_id
 		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
 		ORDER BY c.previous_count DESC, cp.url
 		LIMIT ${limit}
@@ -519,44 +513,26 @@ export async function getPerPromptDailyCitationDomains(
 	`);
 }
 
-const textList = (values: string[]) =>
-	values.length === 0
-		? sql`ARRAY[]::text[]`
-		: sql`ARRAY[${sql.join(
-				values.map((value) => sql`${value}`),
-				sql`, `,
-			)}]::text[]`;
-
 export async function getPerPromptDailyCitationClasses(
 	scope: AnalyticsScope,
 	owned: OwnedDomains,
 ): Promise<PerPromptDailyCitationClassRow[]> {
 	return queryPg<PerPromptDailyCitationClassRow>(sql`
 		WITH
-			owned AS (
-				SELECT suffix, 'brand' AS owner, 1 AS precedence FROM unnest(${textList(owned.brandDomains)}) AS b(suffix)
-				UNION ALL
-				SELECT suffix, 'competitor', 2 FROM unnest(${textList(owned.competitorDomains)}) AS c(suffix)
-			),
 			cited AS (
 				SELECT
 					rcu.prompt_id,
 					${localDate(sql`rcu.bucket`, scope.timezone)} AS date,
-					rcu.domain,
+					cp.domain,
 					cp.static_category,
 					cp.page_type,
 					sum(rcu.citations)::int AS count
 				FROM rollup_citation_urls rcu
-				JOIN cited_pages cp ON cp.id = rcu.page_id
+				JOIN rollup_citation_pages cp ON cp.brand_id = rcu.brand_id AND cp.page_id = rcu.page_id
 				WHERE ${rollupScope(scope, "rcu")} AND cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
 				GROUP BY 1, 2, 3, 4, 5
 			),
-			owners AS (
-				SELECT DISTINCT ON (d.domain) d.domain, o.owner
-				FROM (SELECT DISTINCT domain FROM cited) d
-				JOIN owned o ON d.domain = o.suffix OR right(d.domain, length(o.suffix) + 1) = '.' || o.suffix
-				ORDER BY d.domain, o.precedence
-			)
+			${ownersCte(owned, sql`SELECT DISTINCT domain FROM cited`)}
 		SELECT c.prompt_id, c.date, o.owner, c.static_category, c.page_type, sum(c.count)::int AS count
 		FROM cited c
 		LEFT JOIN owners o ON o.domain = c.domain

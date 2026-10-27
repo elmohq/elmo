@@ -41,14 +41,7 @@ export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModul
 		const ps = googleModule.shopping.products;
 		return productFilter === "all" ? ps : ps.filter((p) => p.attribution === productFilter);
 	}, [googleModule, productFilter]);
-	const productCounts = useMemo(() => {
-		const ps = googleModule.shopping.products;
-		return {
-			all: ps.length,
-			brand: ps.filter((p) => p.attribution === "brand").length,
-			competitor: ps.filter((p) => p.attribution === "competitor").length,
-		};
-	}, [googleModule]);
+	const productCounts = googleModule.shopping.productCounts;
 
 	const { page, setPage, pageItems, totalItems } = usePagedList(filteredProducts, PRODUCTS_PAGE_SIZE);
 

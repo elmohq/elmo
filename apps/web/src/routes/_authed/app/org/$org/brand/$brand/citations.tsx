@@ -31,16 +31,17 @@ function CitationsPage() {
 	const trackedTargets = brand?.trackedTargets ?? [];
 
 	const modelParam = filters.model === ALL_MODELS_VALUE ? undefined : filters.model;
+	const citationFilters = {
+		lookback: filters.lookback,
+		tags: filters.tags.length > 0 ? filters.tags : undefined,
+		model: modelParam,
+	};
 	const {
 		data: citationData,
 		isLoading,
 		error: citationsError,
 		refetch: refetchCitations,
-	} = useCitations(brandId, {
-		lookback: filters.lookback,
-		tags: filters.tags.length > 0 ? filters.tags : undefined,
-		model: modelParam,
-	});
+	} = useCitations(brandId, citationFilters);
 
 	const infoContent = (
 		<>
@@ -118,6 +119,7 @@ function CitationsPage() {
 						maxDomains={10}
 						maxUrls={20}
 						days={citationData.days}
+						listSource={{ brandId, filters: citationFilters }}
 						onCompetitorAdded={() => {
 							refetchCitations();
 							queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
