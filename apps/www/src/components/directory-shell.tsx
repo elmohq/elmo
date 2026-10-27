@@ -42,7 +42,7 @@ export function DirectoryHero({ title, lead, children }: { title: string; lead: 
 export function DirectoryElmoBanner({
 	pitch,
 	comparison,
-	title = "Elmo: the open-source alternative",
+	title = "Elmo: The Open-Source Alternative",
 }: {
 	pitch: string;
 	comparison?: { slug: string; name: string };

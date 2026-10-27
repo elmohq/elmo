@@ -1,4 +1,7 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
+import { cloudAppUrl } from "@workspace/config/referrals";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { CompetitorPricingDetails } from "@/components/competitor-pricing";
 import {
 	BulletList,
@@ -9,7 +12,6 @@ import {
 } from "@/components/competitor-review";
 import {
 	DirectoryBackLink,
-	DirectoryElmoBanner,
 	DirectoryHero,
 	DirectorySection,
 	ElmoCta,
@@ -32,6 +34,8 @@ import {
 } from "@/lib/competitors";
 import type { FaqItem } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
+
+const ELMO_PITCH = `Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you can self-host it for free and verify exactly how each metric is calculated, or start on Elmo Cloud from $${CLOUD_ENTRY_PRICE_USD}/mo with unlimited seats and no sales call.`;
 
 export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")({
 	loader: ({ params }) => {
@@ -135,17 +139,39 @@ function AlternativesPage() {
 				<DirectoryBackLink />
 				<DirectoryHero title={`${competitor.name} Alternatives`} lead={getAlternativesVerdict(competitor)} />
 
-				<DirectoryElmoBanner
-					pitch="Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
-					comparison={{
-						slug: getComparisonSlug(competitor),
-						name: competitor.name,
-					}}
-				/>
+				<DirectorySection title={`Top ${competitor.name} Alternatives and Competitors`}>
+					<div className="mb-8 rounded-md border border-blue-200 bg-blue-50/40 p-6">
+						<p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">1. Our Pick</p>
+						<h3 className="font-heading mt-2 text-xl text-zinc-950">Elmo: The Open-Source Alternative</h3>
+						<p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">{ELMO_PITCH}</p>
+						<div className="mt-4 flex flex-wrap gap-3">
+							<a href={cloudAppUrl("marketing-competitor-alternatives")} className={buttonVariants({ size: "sm" })}>
+								Start with Elmo Cloud
+							</a>
+							<Link to="/pricing" className={buttonVariants({ variant: "outline", size: "sm" })}>
+								Elmo pricing
+							</Link>
+							<Link
+								to="/ai-visibility-tools/$slug"
+								params={{ slug: getComparisonSlug(competitor) }}
+								className={buttonVariants({ variant: "outline", size: "sm" })}
+							>
+								Elmo vs {competitor.name}
+							</Link>
+						</div>
+					</div>
+					<ToolGrid competitors={alternatives} />
+				</DirectorySection>
 
 				{profile?.alternatives?.sections?.map((section) => (
 					<ProfileSectionView key={section.title} section={section} />
 				))}
+
+				{review ? (
+					<DirectorySection title={`How Elmo Compares with ${competitor.name}`}>
+						<ElmoComparisonTable competitor={competitor} review={review} />
+					</DirectorySection>
+				) : null}
 
 				{review ? (
 					<DirectorySection title={`Who ${competitor.name} Is For`}>
@@ -174,9 +200,6 @@ function AlternativesPage() {
 						<DirectorySection title={`${competitor.name} Strengths and Limitations`}>
 							<ProsCons review={review} />
 						</DirectorySection>
-						<DirectorySection title={`How Elmo Compares with ${competitor.name}`}>
-							<ElmoComparisonTable competitor={competitor} review={review} />
-						</DirectorySection>
 						<DirectorySection title={`Switching from ${competitor.name} to Elmo`}>
 							<ol className="max-w-3xl list-decimal space-y-3 pl-5 leading-relaxed text-zinc-600">
 								{review.migration.map((step) => (
@@ -198,9 +221,7 @@ function AlternativesPage() {
 				{competitor.switching ? (
 					<DirectorySection title={`Why Teams Leave ${competitor.name}`}>
 						<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">
-							What people tell us when they move to Elmo, and what we do differently. {competitor.name} is a capable
-							product with real customers, so take this as the case for a different set of tradeoffs rather than a
-							verdict on the tool.
+							What people tell us when they move to Elmo from {competitor.name}, and what we do differently.
 						</p>
 						<div className="max-w-3xl space-y-8">
 							{competitor.switching.reasons.map((reason) => (
@@ -213,10 +234,6 @@ function AlternativesPage() {
 						</div>
 					</DirectorySection>
 				) : null}
-
-				<DirectorySection title={`Top ${competitor.name} Alternatives and Competitors`}>
-					<ToolGrid competitors={alternatives} />
-				</DirectorySection>
 
 				<Faq items={faqs} />
 				<ElmoCta />
