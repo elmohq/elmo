@@ -161,10 +161,11 @@ test.describe("Demo auth is sign-in only", () => {
     await expectSignedInAsDemo(page);
   });
 
-  test("the register page sends you to sign in", async ({ page, consoleErrors }) => {
+  test("the register page signs you in instead", async ({ page, consoleErrors }) => {
     consoleErrors.allow(ABORTED_SSR_STREAM);
     await page.goto("/auth/register");
-    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
   });
 
   test("the bare app URL opens on the demo account", async ({ page }) => {
