@@ -99,7 +99,7 @@ test.describe("Demo refuses writes", () => {
     expect((await writeAttempt).status()).toBe(403);
 
     await expect(page.getByText("Brand details updated successfully!")).toHaveCount(0);
-    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible();
+    await expect(page.getByText("The demo is read-only")).toBeVisible();
     expect(await countRows("brands", "id = $1 AND name = $2", [TEST_BRAND_ID, TEST_BRAND_NAME])).toBe(1);
   });
 });
@@ -188,7 +188,11 @@ test.describe("Demo features", () => {
     const save = page.getByRole("button", { name: "Save", exact: true });
     await fillUntilSaveable(nameField, "Renamed In Demo", save);
     await save.click();
-    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("The demo is read-only")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("link", { name: "start your own workspace" })).toHaveAttribute(
+      "href",
+      /app\.elmohq\.com\/auth\/register\?ref=demo-read-only/,
+    );
   });
 
   test("the team page is not offered and not reachable", async ({ page, consoleErrors }) => {
