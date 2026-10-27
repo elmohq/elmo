@@ -299,13 +299,17 @@ export interface PlanPlatformMember {
 	version?: string;
 }
 
+function premiumVersionLabel(version: string | undefined): string | undefined {
+	return version && `${version} + native web search`;
+}
+
 function tierMember(model: string, tier: PlanPlatformGroupId): PlanPlatformMember {
 	const premium = tier === "premium";
 	return {
 		model,
 		label: premium ? premiumModelLabel(model) : getModelMeta(model).label,
 		iconId: getModelMeta(model).iconId,
-		version: premium ? CLOUD_PLATFORMS[model]?.premiumVersion : CLOUD_PLATFORMS[model]?.version,
+		version: premium ? premiumVersionLabel(CLOUD_PLATFORMS[model]?.premiumVersion) : CLOUD_PLATFORMS[model]?.version,
 	};
 }
 
