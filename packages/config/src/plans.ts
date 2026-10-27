@@ -221,17 +221,14 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
 	},
 };
 
-// Published value comparisons count a month as 30 days, so these must too.
 const DAYS_PER_MONTH = 30;
 
-/** Answers a plan collects in a month at full use: one answer is one prompt checked once on one platform. */
 export function monthlyAnswers(plan: PlanDefinition): number {
 	const standard = plan.maxPrompts * plan.platformPicks * plan.standardRunsPerDay;
 	const premium = plan.premiumIncluded * PREMIUM_RUNS_PER_DAY;
 	return (standard + premium) * DAYS_PER_MONTH;
 }
 
-/** Monthly list price per 1,000 answers. */
 export function costPer1kAnswersUsd(plan: PlanDefinition): number {
 	return (plan.monthlyPriceUsd * 1000) / monthlyAnswers(plan);
 }
@@ -243,7 +240,6 @@ const COST_PER_1K_FORMAT = new Intl.NumberFormat("en-US", {
 	maximumSignificantDigits: 3,
 });
 
-/** A cost per 1,000 answers to three significant figures, e.g. "$4.13" or "$19.3". */
 export function formatCostPer1k(usd: number): string {
 	return COST_PER_1K_FORMAT.format(usd);
 }

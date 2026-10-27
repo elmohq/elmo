@@ -117,7 +117,6 @@ export const ShowsWhatEachPlanOmits: Story = {
 	},
 };
 
-/** Each plan says what an answer costs on it, so the bigger plans' value is visible before the table. */
 export const ShowsCostPerThousandAnswers: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
