@@ -75,7 +75,7 @@ export const Route = createFileRoute("/docs/$")({
 export const serverLoader = createServerFn({
 	method: "GET",
 })
-	.inputValidator((slugs: string[]) => slugs)
+	.validator((slugs: string[]) => slugs)
 	.handler(async ({ data: slugs }): Promise<LoaderData> => {
 		// Lazy import keeps fumadocs-core/source + fumadocs-openapi (and their
 		// transitive deps) out of the client bundle. The handler body is stripped

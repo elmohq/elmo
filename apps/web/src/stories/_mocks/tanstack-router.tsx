@@ -245,20 +245,12 @@ export function Await(_props: any) {
 	return null;
 }
 
-export function lazyRouteComponent(loader: any) {
-	// In real TanStack Router this returns a lazy component; for stories we can
-	// just return a function component that renders nothing.
-	// Some code paths may call the loader eagerly; guard it.
-	return function LazyRouteComponentMock(_props: any) {
-		if (typeof loader === "function") {
-			try {
-				void loader();
-			} catch {
-				// ignore
-			}
-		}
-		return null;
-	};
+function LazyRouteComponentMock(_props: any) {
+	return null;
+}
+
+export function lazyRouteComponent(_loader: any) {
+	return LazyRouteComponentMock;
 }
 
 export const Link = React.forwardRef<HTMLButtonElement, any>(function LinkMock(

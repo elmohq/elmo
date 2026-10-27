@@ -55,8 +55,8 @@
 		"./rollups/fanout": "./src/rollups/fanout.ts"
 	},
 	"dependencies": {
-		"@ai-sdk/anthropic": "^4.0.78",
-		"@ai-sdk/openai": "^4.0.91",
+		"@ai-sdk/anthropic": "^4.0.87",
+		"@ai-sdk/openai": "^4.0.101",
 		"@anthropic-ai/sdk": "^0.133.0",
 		"@better-auth/api-key": "1.7.12",
 		"@better-auth/cimd": "1.7.12",
@@ -68,15 +68,15 @@
 		"@brightdata/sdk": "^1.2.0",
 		"@mozilla/readability": "^0.6.0",
 		"@workspace/config": "workspace:*",
-		"ai": "^7.0.137",
+		"ai": "^7.0.150",
 		"better-auth": "^1.7.12",
-		"dataforseo-client": "^2.1.8",
+		"dataforseo-client": "^2.1.9",
 		"drizzle-orm": "^0.45.4",
-		"jose": "6.2.12",
-		"linkedom": "^0.18.13",
+		"jose": "6.2.13",
+		"linkedom": "^0.18.14",
 		"olostep": "^1.2.2",
 		"pg": "^8.23.1",
-		"zod": "^4.6.6"
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
 		"@types/pg": "^8.23.1",
@@ -84,6 +84,6 @@
 		"drizzle-kit": "^0.31.11",
 		"stripe": "^22.6.1",
 		"typescript": "^7.0.2",
-		"vitest": "^5.0.3"
+		"vitest": "^5.0.5"
 	}
 }

@@ -49,7 +49,7 @@ export const Route = createFileRoute("/legal/$")({
 });
 
 export const serverLoader = createServerFn({ method: "GET" })
-	.inputValidator((slugs: string[]) => slugs)
+	.validator((slugs: string[]) => slugs)
 	.handler(async ({ data: slugs }): Promise<LegalLoaderData> => {
 		// Lazy import keeps the server-only legal source out of the client bundle
 		// (same pattern as routes/blog/$.tsx and routes/docs/$.tsx).
