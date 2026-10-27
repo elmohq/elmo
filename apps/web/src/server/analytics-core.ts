@@ -610,12 +610,11 @@ export async function getBrandSentiment(
 ): Promise<BrandSentiment> {
 	const resolved = await resolveScope(brandId, filters);
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
-	const [perPrompt, praise, mixed, criticism] = await Promise.all([
+	const [perPrompt, quotes] = await Promise.all([
 		resolved.promptIds.length > 0 ? getPerPromptRunStats(scope) : [],
-		getSentimentQuotes(scope, ["positive"], QUOTES_PER_SIDE),
-		getSentimentQuotes(scope, ["mixed"], QUOTES_PER_SIDE),
-		getSentimentQuotes(scope, ["negative"], QUOTES_PER_SIDE),
+		getSentimentQuotes(scope, ["positive", "mixed", "negative"], QUOTES_PER_SIDE),
 	]);
+	const side = (sentiment: Sentiment) => quotes.filter((row) => row.sentiment === sentiment);
 	const promptsById = new Map(resolved.prompts.map((prompt) => [prompt.id, prompt]));
 	const quote = (row: SentimentQuoteRow): SentimentQuote[] => {
 		const passage = assessedPassage(row.text_content, row.brand);
@@ -643,8 +642,8 @@ export async function getBrandSentiment(
 		.sort((a, b) => (a.sentiment.score ?? 0) - (b.sentiment.score ?? 0));
 	return {
 		prompts,
-		praise: praise.flatMap(quote),
-		mixed: mixed.flatMap(quote),
-		criticism: criticism.flatMap(quote),
+		praise: side("positive").flatMap(quote),
+		mixed: side("mixed").flatMap(quote),
+		criticism: side("negative").flatMap(quote),
 	};
 }
