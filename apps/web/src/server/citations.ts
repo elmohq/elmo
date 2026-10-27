@@ -43,7 +43,7 @@ import {
 	type PerPromptCitationDomainRow,
 	type PerPromptDailyCitationClassRow,
 } from "@/lib/rollup-read";
-import { type Subreddit, summarizeSubreddits } from "@/lib/subreddits";
+import { isRedditDomain, type Subreddit, summarizeSubreddits } from "@/lib/subreddits";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 
@@ -402,7 +402,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					count: page.count,
 					isNew: page.is_new,
 				})),
-				whatsChanged.droppedUrls.map((url) => url.url),
+				whatsChanged.droppedUrls.filter((url) => isRedditDomain(url.domain)).map((url) => url.url),
 			),
 			availableTags,
 			citationTimeSeries,

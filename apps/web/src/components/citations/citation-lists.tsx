@@ -103,18 +103,39 @@ export interface RemoteListSource {
 	filters?: CitationFilters;
 }
 
+/** Back to the first page when the page's filters change, and onto the last when the list shrinks under it. */
+function useRemotePage(
+	filters: ReturnType<typeof useListFilters>,
+	source: RemoteListSource,
+	total: number | undefined,
+	pageSize: number,
+) {
+	const sourceKey = JSON.stringify(source.filters ?? {});
+	const [lastSourceKey, setLastSourceKey] = useState(sourceKey);
+	if (sourceKey !== lastSourceKey) {
+		setLastSourceKey(sourceKey);
+		filters.setPage(0);
+	}
+	const lastPage = total === undefined ? filters.page : Math.max(0, Math.ceil(total / pageSize) - 1);
+	return Math.min(filters.page, lastPage);
+}
+
 export function RemoteTopUrlsCard({ source, ...props }: UrlCardProps & { source: RemoteListSource }) {
 	const filters = useListFilters();
 	const search = useDebouncedValue(filters.search, SEARCH_DEBOUNCE_MS);
+	const [total, setTotal] = useState<number>();
+	const page = useRemotePage(filters, source, total, props.maxUrls);
 	const query = useCitationUrls(source.brandId, source.filters, {
 		search,
 		category: filters.category,
 		pageType: filters.pageType,
-		page: filters.page,
+		page,
 		pageSize: props.maxUrls,
 	});
+	if (query.data && query.data.total !== total) setTotal(query.data.total);
 	const list: CitationListControls<CitationUrlItem> = {
 		...filters,
+		page,
 		items: query.data?.items ?? [],
 		totalItems: query.data?.total ?? 0,
 		isFetching: query.isFetching,
@@ -125,14 +146,18 @@ export function RemoteTopUrlsCard({ source, ...props }: UrlCardProps & { source:
 export function RemoteTopDomainsCard({ source, ...props }: DomainCardProps & { source: RemoteListSource }) {
 	const filters = useListFilters();
 	const search = useDebouncedValue(filters.search, SEARCH_DEBOUNCE_MS);
+	const [total, setTotal] = useState<number>();
+	const page = useRemotePage(filters, source, total, props.maxDomains);
 	const query = useCitationDomains(source.brandId, source.filters, {
 		search,
 		category: filters.category,
-		page: filters.page,
+		page,
 		pageSize: props.maxDomains,
 	});
+	if (query.data && query.data.total !== total) setTotal(query.data.total);
 	const list: CitationListControls<CitationDomainItem> = {
 		...filters,
+		page,
 		items: query.data?.items ?? [],
 		totalItems: query.data?.total ?? 0,
 		isFetching: query.isFetching,

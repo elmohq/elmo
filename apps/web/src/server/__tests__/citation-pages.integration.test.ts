@@ -59,6 +59,9 @@ beforeAll(async () => {
 		GOOGLE_SEARCH,
 	]);
 	await citedBy("2026-03-10T10:00:00Z", ["https://review.example/kept"]);
+
+	await citedBy("2026-03-20T10:00:00Z", ["https://zeta.example/one", "https://alpha.example/one"]);
+	await citedBy("2026-03-20T11:00:00Z", ["https://zeta.example/one", "https://alpha.example/two"]);
 	await rebuildRollups(brandId);
 });
 
@@ -91,6 +94,24 @@ describe("citation pages", () => {
 		const secondPage = await getCitationUrlPage(current, previous, unowned, { search: "review.example" }, 1, 1);
 		expect(secondPage.total).toBe(2);
 		expect(secondPage.rows.map((row) => row.url)).toEqual(["https://review.example/halved"]);
+	});
+
+	it("still reports how many match when asked for a page past the end", async () => {
+		const { current, previous } = scopes();
+		const urls = await getCitationUrlPage(current, previous, unowned, {}, 10, 100);
+		expect(urls).toEqual({ rows: [], total: 4 });
+		const domains = await getCitationDomainPage(current, previous, unowned, {}, 10, 100);
+		expect(domains).toEqual({ rows: [], total: 3 });
+	});
+
+	it("orders domains with equal citations by their most cited page", async () => {
+		const window = { brandId, timezone: "UTC", promptIds: [promptId], from: "2026-03-20", to: "2026-03-20" };
+		const previous = { ...window, from: "2026-03-19", to: "2026-03-19" };
+		const { rows } = await getCitationDomainPage(window, previous, unowned, {}, 10, 0);
+		expect(rows.map((row) => [row.domain, row.count])).toEqual([
+			["zeta.example", 2],
+			["alpha.example", 2],
+		]);
 	});
 
 	it("treats search wildcards as literal characters", async () => {

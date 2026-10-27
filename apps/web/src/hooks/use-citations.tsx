@@ -50,6 +50,8 @@ export function useCitationUrls(brandId: string, filters: CitationFilters | unde
 				},
 			}),
 		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		refetchInterval: 60_000,
 		placeholderData: keepPreviousData,
 	});
 }
@@ -59,6 +61,8 @@ export function useCitationDomains(brandId: string, filters: CitationFilters | u
 		queryKey: citationKeys.domains(brandId, filters, query),
 		queryFn: () => getCitationDomainsFn({ data: filterParams(brandId, filters, query) }),
 		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		refetchInterval: 60_000,
 		placeholderData: keepPreviousData,
 	});
 }

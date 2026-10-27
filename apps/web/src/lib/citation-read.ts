@@ -147,7 +147,9 @@ function classifiedPages(scope: AnalyticsScope, owned: OwnedDomains, where: SQL 
 
 function urlFilter(filter: CitationUrlFilter): { pages: SQL; classes: SQL } {
 	const search = filter.search?.trim();
-	const pages = search ? sql`(j.url ILIKE ${containing(search)} OR j.title ILIKE ${containing(search)})` : sql`TRUE`;
+	const pages = search
+		? sql`(j.url ILIKE ${containing(search)} OR j.title ILIKE ${containing(search)} OR j.domain ILIKE ${containing(search)})`
+		: sql`TRUE`;
 	const category = filter.category ? sql`AND category = ${filter.category}` : sql``;
 	const pageType = filter.pageType ? sql`AND page_type = ${filter.pageType}` : sql``;
 	return { pages, classes: sql`TRUE ${category} ${pageType}` };
@@ -196,6 +198,23 @@ async function withPageDetails(
 	}));
 }
 
+/**
+ * One page of `matched` and how many rows it has in all, counted apart from the
+ * page so a page past the end still reports the total.
+ */
+async function pageOf<T>(ctes: SQL, matched: SQL, order: SQL, limit: number, offset: number) {
+	const [row] = await queryPg<{ total: number; rows: T[] }>(sql`
+		WITH ${ctes}, matched AS (${matched})
+		SELECT
+			(SELECT count(*) FROM matched)::int AS total,
+			coalesce(
+				(SELECT json_agg(m ORDER BY ${order}) FROM (SELECT * FROM matched ORDER BY ${order} LIMIT ${limit} OFFSET ${offset}) m),
+				'[]'
+			) AS rows
+	`);
+	return { rows: row?.rows ?? [], total: Number(row?.total ?? 0) };
+}
+
 export async function getCitationUrlPage(
 	scope: AnalyticsScope,
 	previous: AnalyticsScope,
@@ -205,28 +224,19 @@ export async function getCitationUrlPage(
 	offset: number,
 ): Promise<{ rows: CitationUrlListRow[]; total: number }> {
 	const { pages, classes } = urlFilter(filter);
-	const rows = await queryPg<
-		Omit<CitationUrlListRow, "prompt_count" | "is_new"> & { page_id: number; total: number }
-	>(sql`
-		WITH ${classifiedPages(scope, owned, pages)}
-		SELECT
-			page_id, url, domain, title, category, page_type, count,
-			round(position_sum::numeric / NULLIF(count, 0), 1)::float AS avg_position,
-			count(*) OVER ()::int AS total
-		FROM pages
-		WHERE ${classes}
-		ORDER BY count DESC, url
-		LIMIT ${limit} OFFSET ${offset}
-	`);
-	const total = Number(rows[0]?.total ?? 0);
-	return {
-		rows: await withPageDetails(
-			rows.map(({ total: _, ...row }) => row),
-			scope,
-			previous,
-		),
-		total,
-	};
+	const { rows, total } = await pageOf<Omit<CitationUrlListRow, "prompt_count" | "is_new"> & { page_id: number }>(
+		classifiedPages(scope, owned, pages),
+		sql`
+			SELECT
+				page_id, url, domain, title, category, page_type, count,
+				round(position_sum::numeric / NULLIF(count, 0), 1)::float AS avg_position
+			FROM pages
+			WHERE ${classes}`,
+		sql`count DESC, url`,
+		limit,
+		offset,
+	);
+	return { rows: await withPageDetails(rows, scope, previous), total };
 }
 
 /**
@@ -238,7 +248,7 @@ function domainStats(previous: AnalyticsScope): SQL {
 	return sql`
 		domain_totals AS (SELECT domain, sum(count)::int AS count FROM pages GROUP BY domain),
 		domain_tops AS (
-			SELECT DISTINCT ON (domain) domain, category, title
+			SELECT DISTINCT ON (domain) domain, category, title, count AS top_count, url AS top_url
 			FROM pages
 			ORDER BY domain, count DESC, url
 		),
@@ -255,12 +265,17 @@ function domainStats(previous: AnalyticsScope): SQL {
 				coalesce(t.count, 0)::int AS count,
 				tops.category,
 				tops.title AS example_title,
-				coalesce(e.count, 0)::int AS previous_count
+				coalesce(e.count, 0)::int AS previous_count,
+				tops.top_count,
+				tops.top_url
 			FROM domain_totals t
 			JOIN domain_tops tops ON tops.domain = t.domain
 			FULL JOIN domain_earlier e ON e.domain = t.domain
 		)`;
 }
+
+/** Most cited first, ties in the order of their most cited pages. */
+const domainOrder = sql`count DESC, top_count DESC, top_url, domain`;
 
 const isReddit = (domain: SQL) => sql`(${domain} = 'reddit.com' OR ${domain} LIKE '%.reddit.com')`;
 
@@ -324,15 +339,15 @@ export async function getCitationSummary(
 			) AS dropped_urls,
 			(
 				SELECT json_agg(d) FROM (
-					SELECT * FROM domains
+					SELECT domain, count, category, example_title, previous_count FROM domains
 					WHERE previous_count = 0 AND count >= ${minCount}
-					ORDER BY count DESC, domain
+					ORDER BY ${domainOrder}
 					LIMIT ${limit}
 				) d
 			) AS new_domains,
 			(
 				SELECT json_agg(d) FROM (
-					SELECT * FROM domains
+					SELECT domain, count, category, example_title, previous_count FROM domains
 					WHERE count = 0 AND previous_count >= ${minCount}
 					ORDER BY previous_count DESC, domain
 					LIMIT ${limit}
@@ -367,15 +382,20 @@ export async function getCitationDomainPage(
 	offset: number,
 ): Promise<{ rows: CitationDomainStatsRow[]; total: number }> {
 	const search = filter.search?.trim();
-	const rows = await queryPg<CitationDomainStatsRow & { total: number }>(sql`
-		WITH
-			${classifiedPages(scope, owned, search ? sql`j.domain ILIKE ${containing(search)}` : sql`TRUE`)},
-			${domainStats(previous)}
-		SELECT *, count(*) OVER ()::int AS total
-		FROM domains
-		WHERE count > 0 ${filter.category ? sql`AND category = ${filter.category}` : sql``}
-		ORDER BY count DESC, domain
-		LIMIT ${limit} OFFSET ${offset}
-	`);
-	return { rows: rows.map(({ total: _, ...row }) => row), total: Number(rows[0]?.total ?? 0) };
+	const ctes = sql`
+		${classifiedPages(scope, owned, search ? sql`j.domain ILIKE ${containing(search)}` : sql`TRUE`)},
+		${domainStats(previous)}`;
+	return pageOf<CitationDomainStatsRow & { top_count: number; top_url: string }>(
+		ctes,
+		sql`
+			SELECT domain, count, category, example_title, previous_count, top_count, top_url
+			FROM domains
+			WHERE count > 0 ${filter.category ? sql`AND category = ${filter.category}` : sql``}`,
+		domainOrder,
+		limit,
+		offset,
+	).then(({ rows, total }) => ({
+		rows: rows.map(({ top_count: _count, top_url: _url, ...row }) => row),
+		total,
+	}));
 }

@@ -131,6 +131,12 @@ export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModul
 							})}
 						</div>
 						<ListPagination page={page} pageSize={PRODUCTS_PAGE_SIZE} totalItems={totalItems} onPageChange={setPage} />
+						{productCounts[productFilter] > totalItems && (
+							<p className="mt-2 text-[11px] text-muted-foreground">
+								Showing the {totalItems.toLocaleString()} most cited of {productCounts[productFilter].toLocaleString()}{" "}
+								products.
+							</p>
+						)}
 					</div>
 				)}
 
