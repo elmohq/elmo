@@ -11,6 +11,7 @@ import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner
 import { initAdTags, trackAdPageView } from "@workspace/ui/lib/ad-tags";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
 import { type ReactNode, useEffect, useState } from "react";
+import { AiReferralBanner } from "@/components/ai-referral-banner";
 import { NotFound } from "@/components/not-found";
 import { getConsentRegion } from "@/lib/consent-region";
 import { initCrisp } from "@/lib/crisp";
@@ -121,6 +122,7 @@ function RootComponent() {
 
 	return (
 		<RootDocument>
+			<AiReferralBanner />
 			<Outlet />
 			{consentRequired !== null && (
 				<CookieConsentBanner consentRequired={consentRequired} policyHref="/legal/cookies" />

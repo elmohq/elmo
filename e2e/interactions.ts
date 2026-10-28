@@ -52,3 +52,23 @@ export async function fillUntilSaveable(field: Locator, value: string, save: Loc
 		await expect(save).toBeEnabled({ timeout: ATTEMPT });
 	}).toPass({ timeout: HYDRATION });
 }
+
+/**
+ * Returns once every finite CSS animation and transition on the page has run.
+ *
+ * Dialogs and popups zoom and slide in, and Playwright's stability check can
+ * pass on two matching frames mid-animation. A press and release that then land
+ * on different elements make no click, and Base UI only commits an option the
+ * press started on, so the pick is dropped without an error. Looping spinners
+ * never finish, so they are left out.
+ */
+export async function waitForMotion(page: Page): Promise<void> {
+	await page.evaluate(() =>
+		Promise.all(
+			document
+				.getAnimations()
+				.filter((animation) => animation.effect?.getComputedTiming().iterations !== Number.POSITIVE_INFINITY)
+				.map((animation) => animation.finished.catch(() => undefined)),
+		),
+	);
+}

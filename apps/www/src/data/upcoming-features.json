@@ -1,13 +1,13 @@
 {
-	"lastUpdated": "2026-09-25",
+	"lastUpdated": "2026-10-17",
 	"note": "Curated list of upcoming highlights surfaced from the project board. Refresh via the `update-changelog` Claude skill.",
 	"highlights": [
 		{
-			"title": "Citation sentiment tracking",
-			"description": "Detect whether mentions of your brand in AI responses skew positive, neutral, or negative.",
+			"title": "Site audits",
+			"description": "Check whether AI crawlers can reach your site and whether your pages give engines something to cite.",
 			"tag": "Planned",
-			"issue": 15,
-			"url": "https://github.com/elmohq/elmo/issues/15"
+			"issue": 600,
+			"url": "https://github.com/elmohq/elmo/issues/600"
 		},
 		{
 			"title": "Content simulator",

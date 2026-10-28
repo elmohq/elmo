@@ -16,7 +16,6 @@ export interface PillarSection {
 
 export interface Pillar {
 	slug: string;
-	eyebrow: string;
 	h1: string;
 	metaTitle: string;
 	description: string;
@@ -29,7 +28,6 @@ export interface Pillar {
 
 const AEO: Pillar = {
 	slug: "answer-engine-optimization",
-	eyebrow: "Guide",
 	h1: "Answer Engine Optimization (AEO)",
 	metaTitle: "Answer Engine Optimization (AEO): The Complete Guide · Elmo",
 	description:
@@ -253,7 +251,6 @@ const AEO: Pillar = {
 
 const GEO: Pillar = {
 	slug: "generative-engine-optimization",
-	eyebrow: "Guide",
 	h1: "Generative Engine Optimization (GEO)",
 	metaTitle: "Generative Engine Optimization (GEO): The Complete Guide · Elmo",
 	description:

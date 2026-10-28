@@ -207,7 +207,8 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
 		provider: "openrouter",
-		description: "OpenRouter API key.",
+		description:
+			"OpenRouter API key. Without TYPESAFE_API_KEY, the worker also calls Jev through OpenRouter with it to judge mentions and sentiment.",
 	},
 	{
 		name: "ONBOARDING_LLM_TARGET",
@@ -219,10 +220,10 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "TYPESAFE_API_KEY",
 		scope: "server",
-		// The worker refuses to start without it; the web app never uses it.
+		// The worker refuses to start without it or OPENROUTER_API_KEY; the web app never uses it.
 		requiredBy: "optional",
 		description:
-			"API key for Jev (typesafe.ai), which judges which answers mention a brand or competitor, and the sentiment toward each. Required by the worker.",
+			"API key for Jev (typesafe.ai), which judges which answers mention a brand or competitor, and the sentiment toward each. The worker needs this or OPENROUTER_API_KEY, and calls TypeSafe directly when both are set.",
 	},
 	{
 		name: "REPROCESS_DAYS",

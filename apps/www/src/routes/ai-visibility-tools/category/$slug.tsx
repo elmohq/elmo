@@ -63,11 +63,7 @@ function CategoryPage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero
-					eyebrow="Category"
-					title={CATEGORY_HEADINGS[category]}
-					lead={getCategoryVerdict(category, tools)}
-				/>
+				<DirectoryHero title={CATEGORY_HEADINGS[category]} lead={getCategoryVerdict(category, tools)} />
 				<DirectoryElmoBanner
 					pitch={getCategoryElmoPitch(category)}
 					comparison={{
@@ -78,7 +74,7 @@ function CategoryPage() {
 				<DirectorySection title="Tools in this category">
 					<ToolGrid competitors={tools} />
 				</DirectorySection>
-				<Faq items={getCategoryFaqs(category, tools)} eyebrow="/ FAQ" />
+				<Faq items={getCategoryFaqs(category, tools)} />
 				<ElmoCta />
 			</main>
 			<Footer />

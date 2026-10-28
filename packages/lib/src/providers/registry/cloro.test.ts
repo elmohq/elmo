@@ -137,6 +137,7 @@ describe("cloro provider", () => {
 				prompt: "What is a well-reviewed speaker?",
 				country: "US",
 				include: { markdown: true, searchQueries: true },
+				legacy: true,
 			},
 		});
 		expect(fetchMock.mock.calls[1][0]).toBe("https://api.cloro.dev/v1/async/task/task-1");

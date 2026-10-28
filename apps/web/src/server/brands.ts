@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
+import { getFanoutSupport } from "@workspace/config/fanout-support";
 import { targetFilterValue } from "@workspace/config/model-filter";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
@@ -87,6 +88,7 @@ function computeTrackedTargets(
 						: ("api" as const),
 				intervalHours: target.intervalHours,
 				replication: target.replication,
+				...(target.config.webSearch ? { fanout: getFanoutSupport(target.config) } : {}),
 			};
 		});
 	} catch {

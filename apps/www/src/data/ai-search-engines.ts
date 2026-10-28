@@ -18,7 +18,8 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		slug: "chatgpt",
 		name: "ChatGPT",
 		vendor: "OpenAI",
-		short: "Get your brand mentioned and cited in ChatGPT, across both its base model and its live web search.",
+		short:
+			"Get your brand mentioned and cited in OpenAI's ChatGPT, across both its base model and its live web search.",
 		intro: [
 			"ChatGPT answers from two places: what it learned during training, and what it fetches from the web when it browses. The base model reflects how your brand was described across the internet up to its training cutoff. ChatGPT Search, the browsing path, pulls in current pages and cites them.",
 			"The split matters because each path needs a different fix. A brand can be missing from the base model yet show up once ChatGPT searches. Earning durable mentions on trusted sources shapes the trained view, while clear, current, well-structured pages help you get retrieved and cited live.",

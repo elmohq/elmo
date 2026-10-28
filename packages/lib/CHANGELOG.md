@@ -1,5 +1,45 @@
 # @workspace/lib
 
+## 0.7.6
+
+### Patch Changes
+
+- dfb4d72: Fixed sign-in and API requests failing until a server restart after a brief database connection error at startup.
+- 925390b: The citations page loads faster for long date ranges.
+- 98fc42e: Dropped unused database indexes, reducing disk usage and speeding up writes for runs and citations.
+- @workspace/config@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/config@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/config@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- cacc8f9: Show ChatGPT's web search queries again for ChatGPT tracked through Cloro.
+- @workspace/config@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/config@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/config@0.7.1
+
 ## 0.7.0
 
 ### Minor Changes

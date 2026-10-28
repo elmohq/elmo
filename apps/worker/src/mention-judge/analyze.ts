@@ -6,15 +6,20 @@ import {
 	type Sentiment,
 	subjectFingerprint,
 } from "@workspace/lib/mentions";
+import { getCredential } from "@workspace/lib/secrets";
 import { type Cleaned, cleanAnswer, originalSpan } from "./clean";
 import {
 	adaptivePool,
 	JEV_MODEL,
 	type JevChoiceQuestion,
 	type JevRequest,
+	type JevResponse,
 	type JevTransport,
 	MAX_IN_FLIGHT,
+	OPENROUTER_JEV_MODEL,
+	openRouterTransport,
 	stubTransport,
+	TooLarge,
 	typesafeTransport,
 } from "./jev";
 import { matcher, mentionOffsets, quoteOptions, type Sentence, sentences } from "./passages";
@@ -182,12 +187,45 @@ function collect(subjects: Entry[], records: Map<string, MentionAssessment>): Ru
 	};
 }
 
+const MIN_ANSWER_CHARS = 2_000;
+
+/** Each question is answered independently against the same state, so splitting changes no answer. */
+async function askFitting(transport: JevTransport, request: JevRequest): Promise<JevResponse["answers"]> {
+	try {
+		return (await transport(request)).answers;
+	} catch (error) {
+		if (!(error instanceof TooLarge)) throw error;
+		const companyOf = (key: string) => key.split("__")[0];
+		const companies = [...new Set(Object.keys(request.questions).map(companyOf))];
+		if (companies.length > 1) {
+			const first = new Set(companies.slice(0, Math.ceil(companies.length / 2)));
+			const part = (inFirst: boolean): JevRequest => ({
+				...request,
+				questions: Object.fromEntries(
+					Object.entries(request.questions).filter(([key]) => first.has(companyOf(key)) === inFirst),
+				),
+			});
+			const [a, b] = await Promise.all([askFitting(transport, part(true)), askFitting(transport, part(false))]);
+			return { ...a, ...b };
+		}
+		const answer = String(request.state.answer ?? "");
+		if (answer.length < MIN_ANSWER_CHARS) throw error;
+		const shorter = { ...request.state, answer: answer.slice(0, Math.floor(answer.length / 2)) };
+		return askFitting(transport, { ...request, state: shorter });
+	}
+}
+
 /**
- * `model` is part of the stamp, so judgements from the stub are never taken for Jev's: switching
- * to a real key re-judges them.
+ * `judge` is the stamp, kept apart from the `model` ID a gateway is sent: the same Jev release
+ * through another gateway keeps history, while the stub's judgements are re-judged by a real key.
  */
-export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JEV_MODEL): MentionAnalyzer {
-	const judgeVersion = `${model}+request-${REQUEST_VERSION}`;
+export function jevAnalyzer(
+	transport: JevTransport,
+	concurrency = 8,
+	model = JEV_MODEL,
+	judge = model,
+): MentionAnalyzer {
+	const judgeVersion = `${judge}+request-${REQUEST_VERSION}`;
 	return {
 		judgeVersion,
 		concurrency,
@@ -204,11 +242,11 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 			const ask = named.filter((entry) => entry.judgedAs !== entry.fingerprint || !entry.kept);
 			const { questions, options } = questionsFor(ask, named, sentences(readable));
 			const request: JevRequest = {
-				model: JEV_MODEL,
+				model,
 				state: { rules: RULES, question: question ?? "", answer: readable },
 				questions,
 			};
-			const answers = ask.length ? (await transport(request)).answers : {};
+			const answers = ask.length ? await askFitting(transport, request) : {};
 
 			const records = new Map<string, MentionAssessment>();
 			for (const entry of named) {
@@ -230,14 +268,33 @@ export function jevAnalyzer(transport: JevTransport, concurrency = 8, model = JE
 
 let current: MentionAnalyzer | undefined;
 
-export function configureMentionAnalyzer(apiKey = process.env.TYPESAFE_API_KEY): MentionAnalyzer {
-	if (!apiKey?.trim()) throw new Error("TYPESAFE_API_KEY is required: Elmo judges mentions and sentiment with Jev");
-	if (apiKey.trim() === "stub") {
+/**
+ * A TypeSafe key wins over an OpenRouter one, so setting OPENROUTER_API_KEY for scraping never
+ * moves an existing deployment's judge or its bill. The choice is made once: a failing gateway
+ * never falls back to the other, which would bill an account the operator didn't pick.
+ */
+export function configureMentionAnalyzer(
+	apiKey = process.env.TYPESAFE_API_KEY,
+	openRouterKey: () => string | undefined = () => getCredential("OPENROUTER_API_KEY"),
+): MentionAnalyzer {
+	if (apiKey?.trim() === "stub") {
 		console.warn(
 			"[mention-judge] TYPESAFE_API_KEY=stub: judging from cue words, not Jev. For tests and development only.",
 		);
 		current = jevAnalyzer(stubTransport, 8, "stub");
-	} else current = jevAnalyzer(adaptivePool(typesafeTransport(apiKey.trim())), MAX_IN_FLIGHT);
+	} else if (apiKey?.trim()) current = jevAnalyzer(adaptivePool(typesafeTransport(apiKey.trim())), MAX_IN_FLIGHT);
+	else if (openRouterKey()?.trim()) {
+		console.log("[mention-judge] No TYPESAFE_API_KEY: calling Jev through OpenRouter, billed to OPENROUTER_API_KEY.");
+		current = jevAnalyzer(
+			adaptivePool(openRouterTransport(() => openRouterKey()?.trim())),
+			MAX_IN_FLIGHT,
+			OPENROUTER_JEV_MODEL,
+			JEV_MODEL,
+		);
+	} else
+		throw new Error(
+			"Elmo judges mentions and sentiment with Jev: set TYPESAFE_API_KEY, or OPENROUTER_API_KEY to call Jev through OpenRouter",
+		);
 	return current;
 }
 

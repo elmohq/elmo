@@ -112,7 +112,6 @@ function SupportPage() {
 			<Navbar />
 			<main className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-20">
 				<header className="mb-16 space-y-4">
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ SUPPORT</p>
 					<h1 className="font-heading text-4xl text-zinc-950 lg:text-5xl">Support</h1>
 					<p className="max-w-2xl text-lg text-balance text-zinc-600">
 						Questions about your account, billing, the MCP server, or self-hosting Elmo? Here is how to reach us.
