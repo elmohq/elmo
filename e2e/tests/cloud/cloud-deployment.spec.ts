@@ -43,10 +43,20 @@ test.describe("Cloud self-serve signup", () => {
     await expect(page.getByRole("link", { name: /create one/i })).toBeVisible();
   });
 
-  test("the bare app URL opens on sign-up, keeping the referral tag", async ({ page }) => {
-    await page.goto("/?ref=marketing-cta");
-    await page.waitForURL(/\/auth\/register\?.*ref=marketing-cta/, { timeout: 30_000 });
+  test("the bare app URL opens on sign-up, keeping the referral tag and campaign params", async ({ page }) => {
+    const attribution = { ref: "marketing-cta", utm_source: "newsletter", utm_term: "2026", li_fat_id: "abc123" };
+    await page.goto(`/?${new URLSearchParams(attribution)}`);
+    await page.waitForURL(/\/auth\/register\?/, { timeout: 30_000 });
     await expect(page.getByRole("button", { name: "Create account" })).toBeVisible({ timeout: 30_000 });
+
+    const signInLink = new URL(
+      (await page.getByRole("link", { name: "Sign in", exact: true }).getAttribute("href")) ?? "",
+      page.url(),
+    );
+    for (const [key, value] of Object.entries(attribution)) {
+      expect(new URL(page.url()).searchParams.get(key)).toBe(value);
+      expect(signInLink.searchParams.get(key)).toBe(value);
+    }
   });
 
   test("registering asks the new account to verify its email", async ({ page }) => {

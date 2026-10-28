@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { adaptivePool, JEV_MODEL, type JevRequest, RateLimited, typesafeTransport } from "./jev";
+import {
+	adaptivePool,
+	JEV_MODEL,
+	type JevRequest,
+	OPENROUTER_JEV_MODEL,
+	openRouterTransport,
+	RateLimited,
+	TooLarge,
+	typesafeTransport,
+} from "./jev";
 
 const request: JevRequest = {
 	model: JEV_MODEL,
@@ -38,6 +47,72 @@ describe("typesafeTransport", () => {
 		await expect(typesafeTransport("secret", respond(200, { answers: {} }))(request)).rejects.toThrow("brand__verdict");
 		const empty = { answers: { brand__verdict: { choice: "positive", probabilities: {} } } };
 		await expect(typesafeTransport("secret", respond(200, empty))(request)).rejects.toThrow("brand__verdict");
+	});
+});
+
+describe("openRouterTransport", () => {
+	const viaOpenRouter = { ...request, model: OPENROUTER_JEV_MODEL };
+	// OpenRouter adds its own fields to TypeSafe's response.
+	const answered = {
+		id: "gen-1",
+		model: "typesafe/jev-1.13-20260917",
+		provider: "TypeSafe",
+		answers: { brand__verdict: { choice: "positive", probabilities: { positive: 0.9, neutral: 0.1 } } },
+		usage: { input_tokens: 100, output_tokens: 0, cost: 0.000004 },
+	};
+
+	it("asks Jev through OpenRouter with the OpenRouter key", async () => {
+		const fetchImpl = respond(200, answered);
+		const response = await openRouterTransport(() => "or-secret", fetchImpl)(viaOpenRouter);
+		expect(response.answers.brand__verdict.choice).toBe("positive");
+		const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+		expect(url).toBe("https://openrouter.ai/api/v1/systemone");
+		expect(init.headers.Authorization).toBe("Bearer or-secret");
+		expect(JSON.parse(init.body).model).toBe(OPENROUTER_JEV_MODEL);
+	});
+
+	it("uses a key changed since the last call", async () => {
+		let key = "old";
+		const fetchImpl = respond(200, answered);
+		const transport = openRouterTransport(() => key, fetchImpl);
+		await transport(viaOpenRouter);
+		key = "new";
+		await transport(viaOpenRouter);
+		const calls = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls;
+		expect(calls.map(([, init]) => init.headers.Authorization)).toEqual(["Bearer old", "Bearer new"]);
+	});
+
+	it("names the OpenRouter key when it's rejected or out of credit", async () => {
+		const unauthorized = { error: { message: "No auth credentials found", code: 401 } };
+		await expect(openRouterTransport(() => "or-secret", respond(401, unauthorized))(viaOpenRouter)).rejects.toThrow(
+			"OPENROUTER_API_KEY was rejected (HTTP 401)",
+		);
+		const noCredit = { error: { message: "Insufficient credits", code: 402 } };
+		await expect(openRouterTransport(() => "or-secret", respond(402, noCredit))(viaOpenRouter)).rejects.toThrow(
+			"OPENROUTER_API_KEY was rejected (HTTP 402)",
+		);
+	});
+
+	it("says the key is gone, without calling OpenRouter, once it's removed from settings", async () => {
+		const fetchImpl = respond(200, answered);
+		await expect(openRouterTransport(() => undefined, fetchImpl)(viaOpenRouter)).rejects.toThrow(
+			"OPENROUTER_API_KEY is no longer set",
+		);
+		expect(fetchImpl).not.toHaveBeenCalled();
+	});
+
+	it("recognises a too-large request in the error OpenRouter wraps TypeSafe's in", async () => {
+		const wrapped = { error: { message: 'HTTP 400: {"detail":{"error_type":"max_tokens_exceeded"}}', code: 400 } };
+		await expect(openRouterTransport(() => "or-secret", respond(400, wrapped))(viaOpenRouter)).rejects.toBeInstanceOf(
+			TooLarge,
+		);
+	});
+
+	it("reports a rate limit with how long OpenRouter asks to wait", async () => {
+		const fetchImpl = vi.fn(async () => new Response("slow down", { status: 429, headers: { "retry-after": "3" } }));
+		await expect(
+			openRouterTransport(() => "or-secret", fetchImpl as unknown as typeof fetch)(viaOpenRouter),
+		).rejects.toMatchObject({ retryAfterMs: 3000 });
 	});
 });
 

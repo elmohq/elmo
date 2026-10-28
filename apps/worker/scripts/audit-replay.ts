@@ -11,8 +11,8 @@ import { normalizeUrl } from "@workspace/lib/citations/domain-categories";
  * often that will happen and where replay would change history instead.
  *
  * Mentions are re-judged the way the worker would, with Jev: that's a paid call per run (very
- * roughly $0.0002), so set TYPESAFE_API_KEY, keep --limit small, or pass --skip-mentions to audit
- * extraction only.
+ * roughly $0.0002), so set TYPESAFE_API_KEY (or OPENROUTER_API_KEY), keep --limit small, or pass
+ * --skip-mentions to audit extraction only.
  *
  * Usage (never loads .env; point it at a database you mean to read):
  *   cd apps/worker

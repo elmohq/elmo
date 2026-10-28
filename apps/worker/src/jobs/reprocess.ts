@@ -20,7 +20,7 @@ import {
 } from "@workspace/lib/db/schema";
 import { type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
-import { and, asc, eq, gt, gte, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
 import { type MentionAnalyzer, mentionAnalyzer } from "../mention-judge/analyze";
@@ -56,9 +56,8 @@ const STAMP_COLUMN: Record<ReprocessLayer, SQL> = {
 const staleFor = (layer: ReprocessLayer, target: AnalysisVersions): SQL =>
 	sql`${STAMP_COLUMN[layer]} IS DISTINCT FROM ${target[LAYER_KEY[layer]]}`;
 
-const PAGE_SIZE = 5000;
+const PROMPTS_PER_QUERY = 10;
 
-/** Pages by id, which is unique where creation times can tie. */
 async function queueStaleRuns(
 	conn: DbConnection,
 	boss: Pick<PgBoss, "insert">,
@@ -77,27 +76,24 @@ async function queueStaleRuns(
 		[and(gte(promptRuns.createdAt, cutoff), oldest), DERIVE_PRIORITY.recent],
 		[and(lt(promptRuns.createdAt, cutoff), oldest), DERIVE_PRIORITY.history],
 	] as const) {
-		let after: string | null = null;
-		for (;;) {
-			const rows: { id: string }[] = await conn
+		// A few prompts at a time, each read once through its (prompt_id, created_at) index: paging a
+		// large brand's runs in id order re-sorted all of them for every page, past the statement timeout.
+		for (let i = 0; i < brandPrompts.length; i += PROMPTS_PER_QUERY) {
+			const rows = await conn
 				.select({ id: promptRuns.id })
 				.from(promptRuns)
 				.leftJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
 				.leftJoin(runMentions, eq(runMentions.runId, promptRuns.id))
 				.where(
 					and(
-						// By prompt, which the runs are indexed on; a brand-wide filter would scan every tenant's runs.
 						inArray(
 							promptRuns.promptId,
-							brandPrompts.map(({ id }) => id),
+							brandPrompts.slice(i, i + PROMPTS_PER_QUERY).map(({ id }) => id),
 						),
 						age,
-						after ? gt(promptRuns.id, after) : undefined,
 						or(...layers.map((layer) => staleFor(layer, target))),
 					),
-				)
-				.orderBy(asc(promptRuns.id))
-				.limit(PAGE_SIZE);
+				);
 			await sendDeriveRuns(
 				boss,
 				brandId,
@@ -106,8 +102,6 @@ async function queueStaleRuns(
 				{ reextract: layers.includes("extraction") },
 			);
 			queued += rows.length;
-			if (rows.length < PAGE_SIZE) break;
-			after = rows[rows.length - 1].id;
 		}
 	}
 	return queued;

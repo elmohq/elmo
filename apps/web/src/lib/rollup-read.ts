@@ -3,6 +3,7 @@
  * (quarter-hour buckets, refreshed about a minute behind the raw rows).
  */
 
+import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/citations/page-classification";
 import type { CitationUrlRow } from "@workspace/lib/citations/rollup";
 import { sql } from "drizzle-orm";
 import {
@@ -101,6 +102,28 @@ export interface PerPromptCitationPageRow {
 	count: number;
 }
 
+export interface CitationPageStats extends CitationUrlStats {
+	is_new: boolean;
+}
+
+export interface DroppedCitationPageRow extends Omit<CitationUrlRow, "avg_position" | "title"> {
+	previous_count: number;
+	current_count: number;
+}
+
+export interface PerPromptCitationDomainRow {
+	prompt_id: string;
+	domain: string;
+	count: number;
+}
+
+export type CitationOwner = "brand" | "competitor";
+
+export interface OwnedDomains {
+	brandDomains: string[];
+	competitorDomains: string[];
+}
+
 export interface PerPromptDailyCitationDomainRow {
 	prompt_id: string;
 	date: string;
@@ -111,7 +134,7 @@ export interface PerPromptDailyCitationDomainRow {
 export interface PerPromptDailyCitationClassRow {
 	prompt_id: string;
 	date: string;
-	domain: string;
+	owner: CitationOwner | null;
 	static_category: string;
 	page_type: string;
 	count: number;
@@ -378,6 +401,108 @@ export async function getPerPromptCitationPages(scope: AnalyticsScope): Promise<
 	`);
 }
 
+export async function getPerPromptGooglePages(scope: AnalyticsScope): Promise<PerPromptCitationPageRow[]> {
+	return queryPg<PerPromptCitationPageRow>(sql`
+		SELECT p.prompt_id, cp.url, cp.domain, cp.title, p.count
+		FROM (
+			SELECT prompt_id, page_id, sum(citations)::int AS count
+			FROM rollup_citation_urls
+			WHERE ${rollupScope(scope)} AND domain ~ '(^|\.)google\.[a-z.]+$'
+			GROUP BY prompt_id, page_id
+		) p
+		JOIN cited_pages cp ON cp.id = p.page_id
+		WHERE cp.static_category = ${GOOGLE_STATIC_CATEGORY}
+		ORDER BY p.prompt_id, p.count DESC, cp.url
+	`);
+}
+
+export async function getPerPromptCitationDomains(scope: AnalyticsScope): Promise<PerPromptCitationDomainRow[]> {
+	return queryPg<PerPromptCitationDomainRow>(sql`
+		SELECT prompt_id, domain, sum(citations)::int AS count
+		FROM rollup_citation_urls
+		WHERE ${rollupScope(scope)}
+		GROUP BY prompt_id, domain
+		ORDER BY prompt_id
+	`);
+}
+
+export async function getCitationPageStats(
+	scope: AnalyticsScope,
+	previous: AnalyticsScope,
+): Promise<CitationPageStats[]> {
+	return queryPg<CitationPageStats>(sql`
+		WITH
+			pages AS (
+				SELECT
+					page_id,
+					sum(citations)::int AS count,
+					round(sum(position_sum)::numeric / NULLIF(sum(citations), 0), 1)::float AS avg_position,
+					count(DISTINCT prompt_id)::int AS prompt_count
+				FROM rollup_citation_urls
+				WHERE ${rollupScope(scope)}
+				GROUP BY page_id
+			),
+			earlier AS (SELECT DISTINCT page_id FROM rollup_citation_urls WHERE ${rollupScope(previous)})
+		SELECT
+			cp.url,
+			cp.domain,
+			cp.title,
+			cp.static_category,
+			cp.page_type,
+			p.count,
+			p.avg_position,
+			p.prompt_count,
+			e.page_id IS NULL AS is_new
+		FROM pages p
+		JOIN cited_pages cp ON cp.id = p.page_id
+		LEFT JOIN earlier e ON e.page_id = p.page_id
+		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
+		ORDER BY p.count DESC, cp.url
+	`);
+}
+
+export async function getCitationDomainCounts(scope: AnalyticsScope): Promise<{ domain: string; count: number }[]> {
+	return queryPg<{ domain: string; count: number }>(sql`
+		SELECT cp.domain, sum(p.count)::int AS count
+		FROM (
+			SELECT page_id, sum(citations) AS count
+			FROM rollup_citation_urls
+			WHERE ${rollupScope(scope)}
+			GROUP BY page_id
+		) p
+		JOIN cited_pages cp ON cp.id = p.page_id
+		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
+		GROUP BY cp.domain
+		ORDER BY max(p.count) DESC
+	`);
+}
+
+export async function getDroppedCitationPages(
+	scope: AnalyticsScope,
+	previous: AnalyticsScope,
+	minCount: number,
+	limit: number,
+): Promise<DroppedCitationPageRow[]> {
+	return queryPg<DroppedCitationPageRow>(sql`
+		WITH counts AS (
+			SELECT page_id, sum(earlier)::int AS previous_count, sum(later)::int AS current_count
+			FROM (
+				SELECT page_id, citations AS earlier, 0 AS later FROM rollup_citation_urls WHERE ${rollupScope(previous)}
+				UNION ALL
+				SELECT page_id, 0, citations FROM rollup_citation_urls WHERE ${rollupScope(scope)}
+			) cited
+			GROUP BY page_id
+			HAVING sum(earlier) >= ${minCount} AND sum(later) * 2 <= sum(earlier)
+		)
+		SELECT cp.url, cp.domain, cp.static_category, cp.page_type, c.previous_count, c.current_count
+		FROM counts c
+		JOIN cited_pages cp ON cp.id = c.page_id
+		WHERE cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
+		ORDER BY c.previous_count DESC, cp.url
+		LIMIT ${limit}
+	`);
+}
+
 export async function getPerPromptDailyCitationDomains(
 	scope: AnalyticsScope,
 ): Promise<PerPromptDailyCitationDomainRow[]> {
@@ -394,25 +519,49 @@ export async function getPerPromptDailyCitationDomains(
 	`);
 }
 
-// The page's stored classification, so a day's breakdown needs no per-URL rows.
-// `static_category` is tenant-independent; callers apply the brand/competitor
-// domain override on top, as they do for `getCitationUrlStats`.
+const textList = (values: string[]) =>
+	values.length === 0
+		? sql`ARRAY[]::text[]`
+		: sql`ARRAY[${sql.join(
+				values.map((value) => sql`${value}`),
+				sql`, `,
+			)}]::text[]`;
+
 export async function getPerPromptDailyCitationClasses(
 	scope: AnalyticsScope,
+	owned: OwnedDomains,
 ): Promise<PerPromptDailyCitationClassRow[]> {
 	return queryPg<PerPromptDailyCitationClassRow>(sql`
-		SELECT
-			rcu.prompt_id,
-			${localDate(sql`rcu.bucket`, scope.timezone)} AS date,
-			rcu.domain,
-			cp.static_category,
-			cp.page_type,
-			sum(rcu.citations)::int AS count
-		FROM rollup_citation_urls rcu
-		JOIN cited_pages cp ON cp.id = rcu.page_id
-		WHERE ${rollupScope(scope, "rcu")}
-		GROUP BY rcu.prompt_id, date, rcu.domain, cp.static_category, cp.page_type
-		ORDER BY rcu.prompt_id, date
+		WITH
+			owned AS (
+				SELECT suffix, 'brand' AS owner, 1 AS precedence FROM unnest(${textList(owned.brandDomains)}) AS b(suffix)
+				UNION ALL
+				SELECT suffix, 'competitor', 2 FROM unnest(${textList(owned.competitorDomains)}) AS c(suffix)
+			),
+			cited AS (
+				SELECT
+					rcu.prompt_id,
+					${localDate(sql`rcu.bucket`, scope.timezone)} AS date,
+					rcu.domain,
+					cp.static_category,
+					cp.page_type,
+					sum(rcu.citations)::int AS count
+				FROM rollup_citation_urls rcu
+				JOIN cited_pages cp ON cp.id = rcu.page_id
+				WHERE ${rollupScope(scope, "rcu")} AND cp.static_category <> ${GOOGLE_STATIC_CATEGORY}
+				GROUP BY 1, 2, 3, 4, 5
+			),
+			owners AS (
+				SELECT DISTINCT ON (d.domain) d.domain, o.owner
+				FROM (SELECT DISTINCT domain FROM cited) d
+				JOIN owned o ON d.domain = o.suffix OR right(d.domain, length(o.suffix) + 1) = '.' || o.suffix
+				ORDER BY d.domain, o.precedence
+			)
+		SELECT c.prompt_id, c.date, o.owner, c.static_category, c.page_type, sum(c.count)::int AS count
+		FROM cited c
+		LEFT JOIN owners o ON o.domain = c.domain
+		GROUP BY 1, 2, 3, 4, 5
+		ORDER BY c.prompt_id, c.date
 	`);
 }
 

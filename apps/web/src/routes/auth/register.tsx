@@ -17,23 +17,18 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Separator } from "@workspace/ui/components/separator";
 import { useState } from "react";
-import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
+import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/register")({
-	validateSearch: z.object({
-		returnTo: z.string().optional(),
-		/**
-		 * Attribution tag carried by links back to us (see
-		 * @workspace/config/referrals). Declared so the router keeps it in the URL
-		 * long enough for analytics to record the pageview it arrived on.
-		 */
-		ref: z.string().optional(),
+	validateSearch: (search: Record<string, unknown>): { returnTo?: string } & AttributionParams => ({
+		...(typeof search.returnTo === "string" ? { returnTo: search.returnTo } : {}),
+		...attributionParams(search),
 	}),
 	head: ({ match }) => {
 		const appName = getAppName(match);
@@ -45,7 +40,8 @@ export const Route = createFileRoute("/auth/register")({
 });
 
 function RegisterPage() {
-	const { returnTo, ref: incomingRef } = Route.useSearch();
+	const search = Route.useSearch();
+	const { returnTo } = search;
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const canRegister = context.clientConfig?.canRegister ?? false;
 
@@ -57,7 +53,7 @@ function RegisterPage() {
 	return (
 		<RegisterForm
 			returnTo={returnTo}
-			incomingRef={incomingRef}
+			attribution={attributionParams(search)}
 			isCloud={context.clientConfig?.mode === "cloud"}
 			hasUsers={context.clientConfig?.hasUsers ?? false}
 		/>
@@ -66,13 +62,12 @@ function RegisterPage() {
 
 export function RegisterForm({
 	returnTo,
-	incomingRef,
+	attribution,
 	isCloud,
 	hasUsers,
 }: {
 	returnTo?: string;
-	/** The `ref` this page was reached with, kept on links that stay inside auth. */
-	incomingRef?: string;
+	attribution?: AttributionParams;
 	isCloud?: boolean;
 	/** A local instance before its bootstrap signup has nowhere to send an existing account. */
 	hasUsers?: boolean;
@@ -227,7 +222,7 @@ export function RegisterForm({
 					Already have an account?{" "}
 					<Link
 						to="/auth/login"
-						search={{ ...(returnTo ? { returnTo } : {}), ...(incomingRef ? { ref: incomingRef } : {}) }}
+						search={{ ...(returnTo ? { returnTo } : {}), ...attribution }}
 						className="text-primary hover:underline font-medium"
 					>
 						Sign in

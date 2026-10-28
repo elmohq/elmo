@@ -59,9 +59,9 @@ function ComparePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero eyebrow="Comparison" title={names} lead={getCompareVerdict(tools)} />
+				<DirectoryHero title={names} lead={getCompareVerdict(tools)} />
 				{a && b && tools.length === 2 ? <PairComparison a={a} b={b} /> : <MultiComparison tools={tools} />}
-				<Faq items={getCompareFaqs(tools)} eyebrow="/ FAQ" />
+				<Faq items={getCompareFaqs(tools)} />
 				<ElmoCta />
 			</main>
 			<Footer />
