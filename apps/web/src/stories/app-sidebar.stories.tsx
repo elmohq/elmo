@@ -438,7 +438,7 @@ export const ChoosePlanGate: StoryObj = {
 		await expect(canvas.queryByRole("button", { name: "Account and organizations" })).toBeNull();
 
 		await userEvent.click(await canvas.findByRole("button", { name: "Account" }));
-		await expect(await screen.findByText("Log out")).toBeInTheDocument();
+		await expect(await screen.findByText("Log Out")).toBeInTheDocument();
 	},
 };
 

@@ -10,14 +10,14 @@ import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createOrganizationFn } from "@/server/organizations";
 
 export const Route = createFileRoute("/_authed/app/new")({
-	staticData: { crumb: "New organization" },
+	staticData: { crumb: "New Organization" },
 	beforeLoad: ({ context }) => {
 		if (!context.clientConfig?.features.canCreateOrganizations) {
 			throw redirect({ to: "/app" });
 		}
 	},
 	head: pageHead({
-		title: "New organization",
+		title: "New Organization",
 		description: "Create an organization to hold its own brands, team, and plan.",
 	}),
 	component: NewOrganizationPage,

@@ -119,7 +119,7 @@ export function NavUser({
 									<>
 										<DropdownMenuItem render={<Link to="/app/new" onClick={close} />} className="cursor-pointer">
 											<IconPlus />
-											New organization
+											New Organization
 										</DropdownMenuItem>
 										<DropdownMenuSeparator />
 									</>
@@ -182,7 +182,7 @@ export function NavUser({
 								}}
 							>
 								<IconLogout />
-								Log out
+								Log Out
 							</DropdownMenuItem>
 						)}
 					</DropdownMenuContent>
