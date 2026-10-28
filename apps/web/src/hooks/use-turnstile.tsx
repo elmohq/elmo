@@ -5,7 +5,7 @@ const CAPTCHA_ERROR_CODES = new Set(["MISSING_RESPONSE", "VERIFICATION_FAILED"])
 
 export class TurnstileError extends Error {
 	constructor() {
-		super("We couldn't confirm you're not a bot. Please try again.");
+		super("Bot check failed. Please try again.");
 		this.name = "TurnstileError";
 	}
 }
