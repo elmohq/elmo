@@ -5,7 +5,7 @@ import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
-import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
+import { getProvider, type ModelConfig, type Provider, type ScrapeResult } from "@workspace/lib/providers";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
@@ -16,7 +16,7 @@ import {
 	selectDueTargets,
 	slowestIntervalHours,
 } from "@workspace/lib/run-policy";
-import { estimateRunCostUsd } from "@workspace/lib/usage";
+import { failedRunCostUsd, runCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
@@ -189,18 +189,23 @@ async function recordUsageEvent(input: {
 	promptId: string;
 	eventType: "prompt_run" | "prompt_run_failed";
 	config: ModelConfig;
+	billing?: Pick<ScrapeResult, "billedUsd" | "billedCredits">;
 }): Promise<void> {
 	try {
-		const cost = estimateRunCostUsd(input.config.provider, input.config.webSearch);
+		const { provider, webSearch } = input.config;
+		const cost =
+			input.eventType === "prompt_run"
+				? runCostUsd({ provider, webSearchEnabled: webSearch, ...input.billing })
+				: failedRunCostUsd(provider, webSearch);
 		await db.insert(usageEvents).values({
 			organizationId: input.organizationId,
 			brandId: input.brandId,
 			promptId: input.promptId,
 			eventType: input.eventType,
-			provider: input.config.provider,
+			provider,
 			model: input.config.model,
-			webSearchEnabled: input.config.webSearch,
-			units: 1,
+			webSearchEnabled: webSearch,
+			units: input.billing?.billedCredits ?? 1,
 			estimatedCostUsd: cost === null ? null : cost.toFixed(6),
 		});
 	} catch (error) {
@@ -236,7 +241,7 @@ async function runModelIteration({
 		// fan-out page excludes verbatim repeats at read time as a display rule;
 		// providers whose query field is fabricated (DataForSEO) write the
 		// `unavailable` sentinel in their own extractor instead.
-		const { rawOutput, webQueries, modelVersion } = result;
+		const { rawOutput, webQueries, modelVersion, billedUsd, billedCredits } = result;
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
 		// Only the answer is saved here. Its text, citations and mentions are derived in their own
@@ -266,6 +271,7 @@ async function runModelIteration({
 			promptId,
 			eventType: "prompt_run",
 			config,
+			billing: { billedUsd, billedCredits },
 		});
 	} catch (error) {
 		// A single run's failure doesn't fail the job, so report it here to keep

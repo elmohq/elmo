@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimateRunCostUsd, projectMonthlyTargetCostUsd } from "./cost";
+import { estimateRunCostUsd, failedRunCostUsd, projectMonthlyTargetCostUsd, runCostUsd } from "./cost";
 
 describe("estimateRunCostUsd", () => {
 	it("prices a run by provider", () => {
@@ -38,5 +38,31 @@ describe("projectMonthlyTargetCostUsd", () => {
 		expect(
 			projectMonthlyTargetCostUsd({ costPerRunUsd: null, enabledPrompts: 10, runsPerDay: 4, replication: 5 }),
 		).toBeNull();
+	});
+});
+
+describe("runCostUsd", () => {
+	it("uses the dollars the provider billed over any estimate", () => {
+		expect(runCostUsd({ provider: "openrouter", webSearchEnabled: false, billedUsd: 0.0006 })).toBe(0.0006);
+	});
+
+	it("converts billed credits to dollars at the provider's plan rate", () => {
+		const sevenCredits = runCostUsd({ provider: "cloro", webSearchEnabled: true, billedCredits: 7 });
+		expect(sevenCredits).toBeCloseTo((7 * 500) / 1_350_000, 9);
+	});
+
+	it("falls back to the flat estimate when the provider reported nothing", () => {
+		expect(runCostUsd({ provider: "brightdata", webSearchEnabled: true })).toBe(estimateRunCostUsd("brightdata", true));
+	});
+});
+
+describe("failedRunCostUsd", () => {
+	it("costs nothing for providers that only bill results", () => {
+		expect(failedRunCostUsd("cloro", true)).toBe(0);
+		expect(failedRunCostUsd("openrouter", false)).toBe(0);
+	});
+
+	it("keeps the estimate for providers that may bill a failed call", () => {
+		expect(failedRunCostUsd("brightdata", true)).toBe(estimateRunCostUsd("brightdata", true));
 	});
 });

@@ -146,6 +146,7 @@ export const openrouter: Provider = {
 			// OpenRouter doesn't expose the search queries the model made internally.
 			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
 			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
+			billedUsd: typeof data?.usage?.cost === "number" ? data.usage.cost : undefined,
 		};
 	},
 };

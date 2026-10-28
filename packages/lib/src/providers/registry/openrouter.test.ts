@@ -30,6 +30,22 @@ afterEach(() => {
 });
 
 describe("openrouter run", () => {
+	it("reports the cost OpenRouter billed for the call", async () => {
+		stubFetch({ usage: { prompt_tokens: 17, completion_tokens: 2022, cost: 0.0010127 } });
+
+		const result = await openrouter.run("claude", "prompt", { version: "anthropic/claude-haiku-5.5" });
+
+		expect(result.billedUsd).toBe(0.0010127);
+	});
+
+	it("leaves the cost unreported when the response carries none", async () => {
+		stubFetch();
+
+		const result = await openrouter.run("claude", "prompt", { version: "anthropic/claude-haiku-5.5" });
+
+		expect(result.billedUsd).toBeUndefined();
+	});
+
 	it("caps output tokens and requests web search via the :online alias", async () => {
 		const fetchMock = stubFetch();
 
