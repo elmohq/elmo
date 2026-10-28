@@ -101,9 +101,9 @@ export function clampedPaging(
 	return { page, limit, offset: (page - 1) * limit };
 }
 
-/** Big enough that most brands get every row on the first page, small enough to stay well inside a response a function can return. */
+/** Most brands get every row on the first page, and a page stays well inside a response a function can return. */
 export function analyticsListPaging(searchParams: URLSearchParams) {
-	return clampedPaging(searchParams, 1000, 100);
+	return clampedPaging(searchParams, 1000, 1000);
 }
 
 export function pagination(page: number, limit: number, total: number) {
