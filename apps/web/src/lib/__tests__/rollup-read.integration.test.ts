@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AnalyticsScope } from "@/lib/analytics-sql";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
 import {
-	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
 	getCitationTotal,
 	getCitationUrlStats,
@@ -13,6 +12,8 @@ import {
 	getFanoutBreakdown,
 	getFanoutModelTotals,
 	getFanoutPromptTotals,
+	getFanoutQueryPage,
+	getFanoutQueryTotals,
 	getMentionTotals,
 	getPerPromptDailyCompetitors,
 	getPerPromptDailyRuns,
@@ -392,15 +393,6 @@ describe("citation stats", () => {
 		});
 		expect(rows).toHaveLength(3);
 	});
-
-	it("counts distinct prompts citing each domain", async () => {
-		const counts = await getCitationDomainPromptCounts(scope(brandId, "2026-03-01", "2026-03-02", "UTC"));
-		expect(Object.fromEntries(counts)).toEqual({ "docs.example.com": 2, "news.example.org": 1 });
-		const onlyP1 = await getCitationDomainPromptCounts(
-			scope(brandId, "2026-03-01", "2026-03-02", "UTC", { promptIds: [p1] }),
-		);
-		expect(Object.fromEntries(onlyP1)).toEqual({ "docs.example.com": 1, "news.example.org": 1 });
-	});
 });
 
 describe("query fan-out", () => {
@@ -440,6 +432,39 @@ describe("query fan-out", () => {
 			{ model: "chatgpt", runs: 3, fanout_runs: 2, total_queries: 3 },
 		]);
 		expect(await getFanoutPromptTotals(scope())).toEqual([{ prompt_id: promptId, runs: 2 }]);
+	});
+
+	it("pages through queries most run first, with totals over all of them, and searches past the first page", async () => {
+		const firstPage = await getFanoutQueryPage(scope(), undefined, 1, 0);
+		expect(firstPage).toEqual({ rows: [{ query: "crm pricing", runs: 2, prompt_count: 1 }], total: 2 });
+		expect(await getFanoutQueryPage(scope(), "HUBSPOT", 1, 0)).toEqual({
+			rows: [{ query: "hubspot alternatives", runs: 1, prompt_count: 1 }],
+			total: 1,
+		});
+		expect(await getFanoutQueryTotals(scope())).toEqual({ total_queries: 3, unique_queries: 2, brand_mentions: 1 });
+		expect(await getFanoutQueryPage(scope(), undefined, 1, 5)).toEqual({ rows: [], total: 2 });
+	});
+
+	it("counts a search the way the dashboard does, whatever whitespace surrounds it", async () => {
+		const otherBrand = await brand();
+		const otherPrompt = await createPrompt(otherBrand, { value: "crm" });
+		await createRun(otherBrand, otherPrompt, {
+			at: "2026-03-02T10:00:00Z",
+			brandMentioned: false,
+			webQueries: ["hubspot alternatives", "hubspot alternatives\n", "\t"],
+		});
+		await createRun(otherBrand, otherPrompt, {
+			at: "2026-03-02T11:00:00Z",
+			brandMentioned: false,
+			webQueries: ["\thubspot alternatives"],
+		});
+		await rebuildRollups(otherBrand);
+		const otherScope = { ...scope(), brandId: otherBrand, promptIds: [otherPrompt] };
+		expect(await getFanoutQueryPage(otherScope, undefined, 10, 0)).toEqual({
+			rows: [{ query: "hubspot alternatives", runs: 3, prompt_count: 1 }],
+			total: 1,
+		});
+		expect(await getFanoutQueryTotals(otherScope)).toMatchObject({ total_queries: 3, unique_queries: 1 });
 	});
 
 	it("follows the prompt's current text once its buckets are rebuilt", async () => {
