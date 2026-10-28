@@ -28,14 +28,12 @@ const brand = {
 	})),
 };
 
-function Shell({ children, dark }: { children: ReactNode; dark?: boolean }) {
+function Shell({ children }: { children: ReactNode }) {
 	return (
 		<TooltipProvider>
-			<div className={dark ? "dark" : undefined}>
-				<div className="bg-background text-foreground antialiased flex min-h-svh flex-col">
-					<div className="@container/main flex flex-1 flex-col gap-2">
-						<div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">{children}</div>
-					</div>
+			<div className="bg-background text-foreground antialiased flex min-h-svh flex-col">
+				<div className="@container/main flex flex-1 flex-col gap-2">
+					<div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">{children}</div>
 				</div>
 			</div>
 		</TooltipProvider>
@@ -47,12 +45,12 @@ const meta = {
 	component: CitationsPage,
 	parameters: { layout: "fullscreen" },
 	decorators: [
-		(Story, context) => {
+		(Story) => {
 			setMockBrand(brand);
 			setMockCitations({ ...mockCitationData, availableTags: ["branded", "unbranded"], days: 30 });
 			setMockCitationFlowRows(ALL_FLOW_ROWS);
 			return (
-				<Shell dark={context.parameters.dark === true}>
+				<Shell>
 					<Story />
 				</Shell>
 			);
@@ -64,5 +62,3 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
-
-export const Dark: Story = { parameters: { dark: true } };
