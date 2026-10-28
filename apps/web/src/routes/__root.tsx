@@ -13,6 +13,7 @@ import type { DeploymentMode } from "@workspace/config/types";
 import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
 import { initAdTags, trackAdPageView } from "@workspace/ui/lib/ad-tags";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
+import { trackLinkClickGoals } from "@workspace/ui/lib/plausible";
 import { useEffect, useState } from "react";
 import { usesWordmarkFont } from "@/components/logo";
 import MissingEnvPage from "@/components/missing-env-page";
@@ -149,6 +150,7 @@ function RootComponent() {
 	const { envValidation, clientConfig, consentRegion } = Route.useRouteContext();
 	const clarityProjectId = clientConfig?.analytics?.clarityProjectId;
 	const posthogKey = clientConfig?.analytics?.posthogKey;
+	const plausibleDomain = clientConfig?.analytics?.plausibleDomain;
 	const mode = clientConfig?.mode;
 	const asksForConsent = isElmoHosted(mode);
 	// Null until the browser resolves it — the time-zone fallback would read the
@@ -168,6 +170,10 @@ function RootComponent() {
 			for (const stop of stops) stop?.();
 		};
 	}, [posthogKey, clarityProjectId, asksForConsent, consentRegion]);
+
+	useEffect(() => {
+		if (plausibleDomain) return trackLinkClickGoals();
+	}, [plausibleDomain]);
 
 	const pathname = useLocation({ select: (location) => location.pathname });
 	useEffect(() => {

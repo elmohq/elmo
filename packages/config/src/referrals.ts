@@ -85,3 +85,40 @@ export function bookDemoUrl(ref: ReferralSource): string {
 export function demoSiteUrl(ref: ReferralSource, path = "/"): string {
 	return tagged(new URL(path, DEMO_SITE_URL).toString(), ref);
 }
+
+export type LinkClickGoal = "Cloud CTA Click" | "Live Demo Click" | "Book Demo Click";
+
+export interface LinkClick {
+	goal: LinkClickGoal;
+	props: { ref?: string; page: string; destination: string };
+}
+
+export function classifyLinkClick(href: string, pageUrl: string): LinkClick | null {
+	let page: URL;
+	let link: URL;
+	try {
+		page = new URL(pageUrl);
+		link = new URL(href, page);
+	} catch {
+		return null;
+	}
+	if (link.protocol !== "https:" && link.protocol !== "http:") return null;
+
+	const sameSite = link.host === page.host;
+	let goal: LinkClickGoal;
+	if (link.origin === CLOUD_APP_URL && !sameSite) goal = "Cloud CTA Click";
+	else if (link.origin === DEMO_SITE_URL && !sameSite) goal = "Live Demo Click";
+	else if ((link.origin === MARKETING_SITE_URL || sameSite) && link.pathname.replace(/\/$/, "") === "/demo")
+		goal = "Book Demo Click";
+	else return null;
+
+	const ref = link.searchParams.get("ref");
+	return {
+		goal,
+		props: {
+			...(ref ? { ref } : {}),
+			page: page.pathname,
+			destination: `${link.host}${link.pathname}`,
+		},
+	};
+}
