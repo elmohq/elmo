@@ -40,7 +40,7 @@ export function AiVisibilitySoftwareHub() {
 			<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<div className="max-w-3xl">
-						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">What AI visibility software does</h2>
+						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">What AI Visibility Software Does</h2>
 						<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							<p>
 								AI visibility software tracks how your brand appears in AI search — how often it's mentioned, cited, and
@@ -67,7 +67,7 @@ export function AiVisibilitySoftwareHub() {
 			<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<div className="max-w-3xl">
-						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Why AI visibility matters now</h2>
+						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Why AI Visibility Matters Now</h2>
 						<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							<p>
 								Search is shifting from a list of blue links to a synthesized answer. Google now shows{" "}
@@ -94,7 +94,7 @@ export function AiVisibilitySoftwareHub() {
 			<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<div className="max-w-3xl">
-						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Key features to look for</h2>
+						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Key Features to Look For</h2>
 						<p className="mt-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							The category is young and tools vary widely. These are the capabilities that separate a genuine AI
 							visibility platform from a basic prompt checker.
@@ -115,7 +115,7 @@ export function AiVisibilitySoftwareHub() {
 			<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<div className="max-w-3xl">
-						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Elmo's approach</h2>
+						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Elmo's Approach</h2>
 						<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							<p>
 								Elmo is open-source AI visibility software you can self-host. It tracks mentions, citations, and

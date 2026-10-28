@@ -17,8 +17,10 @@ import {
 	graveyardFate,
 	hasOwnPages,
 	isLowDR,
+	reviewedSlugs,
 } from "@/lib/competitors";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
+import { CompetitorPageLinks } from "./competitor-review";
 import { Faq } from "./faq";
 import { FeatureMark } from "./feature-mark";
 
@@ -129,6 +131,11 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 							.
 						</p>
 					)}
+					{reviewedSlugs.includes(competitor.slug) && (
+						<div className="mt-3">
+							<CompetitorPageLinks competitor={competitor} current="comparison" />
+						</div>
+					)}
 					<FateNotice competitor={competitor} />
 					{isLowDR(competitor) && !graveyardFate(competitor) && (
 						<p className="mt-8 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-50 px-3 py-1 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
@@ -172,7 +179,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			{!competitor.noScreenshot && (
 				<section className="border-b border-zinc-200 bg-white py-12">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<h2 className="font-heading mb-6 text-2xl text-zinc-950">{competitor.name} at a glance</h2>
+						<h2 className="font-heading mb-6 text-2xl text-zinc-950">{competitor.name} at a Glance</h2>
 						<div className="overflow-hidden rounded-md border border-zinc-200 shadow-sm">
 							<img
 								src={getScreenshotUrl(competitor.slug)}
@@ -222,7 +229,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			{/* Feature comparison table */}
 			<section className="border-b border-zinc-200 bg-white py-12">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
-					<h2 className="font-heading mb-8 text-2xl text-zinc-950">Feature comparison</h2>
+					<h2 className="font-heading mb-8 text-2xl text-zinc-950">Feature Comparison</h2>
 					<div className="overflow-x-auto">
 						<table className="w-full text-sm">
 							<thead>
@@ -260,7 +267,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			{/* Key Differences */}
 			<section className="border-b border-zinc-200 bg-white py-12">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
-					<h2 className="font-heading mb-8 text-2xl text-zinc-950">Key differences</h2>
+					<h2 className="font-heading mb-8 text-2xl text-zinc-950">Key Differences</h2>
 					<div className="grid gap-6 md:grid-cols-3">
 						{elmoOnlyFeatures.length > 0 && (
 							<div className="rounded-md border border-zinc-200 bg-zinc-50 p-5">
@@ -280,7 +287,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						{sharedFeatures.length > 0 && (
 							<div className="rounded-md border border-zinc-200 bg-zinc-50 p-5">
 								<h3 className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-									Both offer
+									Both Offer
 								</h3>
 								<ul className="space-y-2">
 									{sharedFeatures.map((f) => (
@@ -314,31 +321,31 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			{/* Why Elmo */}
 			<section className="border-b border-zinc-200 bg-white py-12">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
-					<h2 className="font-heading mb-4 text-2xl text-zinc-950">Why choose Elmo over {competitor.name}?</h2>
+					<h2 className="font-heading mb-4 text-2xl text-zinc-950">Why Choose Elmo over {competitor.name}?</h2>
 					<div className="grid gap-6 sm:grid-cols-2">
 						<div className="rounded-md border border-zinc-200 bg-white p-5">
-							<h3 className="font-semibold text-zinc-950">Open source and transparent</h3>
+							<h3 className="font-semibold text-zinc-950">Open Source and Transparent</h3>
 							<p className="mt-2 text-sm text-zinc-600">
 								Every line of code is open. You can verify exactly how your visibility data is collected, calculated,
 								and presented. No black boxes.
 							</p>
 						</div>
 						<div className="rounded-md border border-zinc-200 bg-white p-5">
-							<h3 className="font-semibold text-zinc-950">Self-host for free, forever</h3>
+							<h3 className="font-semibold text-zinc-950">Self-Host for Free, Forever</h3>
 							<p className="mt-2 text-sm text-zinc-600">
 								Run Elmo on your own infrastructure. The core platform is free and always will be, and Elmo Cloud is
 								there if you would rather not run it yourself.
 							</p>
 						</div>
 						<div className="rounded-md border border-zinc-200 bg-white p-5">
-							<h3 className="font-semibold text-zinc-950">Your data, in your stack</h3>
+							<h3 className="font-semibold text-zinc-950">Your Data, in Your Stack</h3>
 							<p className="mt-2 text-sm text-zinc-600">
 								Pull every metric, sentiment included, into your own code with the REST API and TypeScript and Python
 								SDKs, or ask Claude Code and Cursor about it over MCP. Export, fork, or migrate at any time.
 							</p>
 						</div>
 						<div className="rounded-md border border-zinc-200 bg-white p-5">
-							<h3 className="font-semibold text-zinc-950">Built to last</h3>
+							<h3 className="font-semibold text-zinc-950">Built to Last</h3>
 							<p className="mt-2 text-sm text-zinc-600">
 								Bootstrapped and sustainable. No investors pushing towards dark patterns. We'll outlast the companies
 								taking too much VC money.
@@ -354,7 +361,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			{/* CTA */}
 			<section className="border-b border-zinc-200 bg-white py-16 lg:py-24">
 				<div className="mx-auto max-w-3xl px-4 text-center md:px-6">
-					<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Ready to track your AI visibility?</h2>
+					<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Ready to Track Your AI Visibility?</h2>
 					<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
 						Deploy Elmo in minutes and start monitoring how ChatGPT, Claude, and Google AI Overviews talk about your
 						brand.

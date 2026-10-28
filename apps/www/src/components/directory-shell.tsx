@@ -42,7 +42,7 @@ export function DirectoryHero({ title, lead, children }: { title: string; lead: 
 export function DirectoryElmoBanner({
 	pitch,
 	comparison,
-	title = "Elmo: the open-source alternative",
+	title = "Elmo: The Open-Source Alternative",
 }: {
 	pitch: string;
 	comparison?: { slug: string; name: string };
@@ -59,7 +59,7 @@ export function DirectoryElmoBanner({
 							Deploy Elmo
 						</Link>
 						<Link to="/pricing" className={buttonVariants({ variant: "outline", size: "sm" })}>
-							Elmo pricing
+							Elmo Pricing
 						</Link>
 						{comparison ? (
 							<Link
@@ -82,7 +82,7 @@ export function ElmoCta() {
 	return (
 		<section className="border-b border-zinc-200 bg-white py-16 lg:py-24">
 			<div className="mx-auto max-w-3xl px-4 text-center md:px-6">
-				<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Ready to track your AI visibility?</h2>
+				<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Ready to Track Your AI Visibility?</h2>
 				<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
 					Deploy Elmo in minutes and start monitoring how ChatGPT, Claude, and Google AI Overviews talk about your
 					brand. Open source, self-hosted, free.
@@ -105,11 +105,29 @@ export function ElmoCta() {
 	);
 }
 
-export function DirectorySection({ title, children }: { title?: string; children: ReactNode }) {
+export function DirectorySection({
+	title,
+	children,
+	id,
+	lede,
+	tone = "white",
+}: {
+	title?: string;
+	children: ReactNode;
+	id?: string;
+	lede?: ReactNode;
+	tone?: "white" | "muted";
+}) {
 	return (
-		<section className="border-b border-zinc-200 bg-white py-12">
+		<section
+			id={id}
+			className={`scroll-mt-16 border-b border-zinc-200 py-12 ${tone === "muted" ? "bg-zinc-50/70" : "bg-white"}`}
+		>
 			<div className="mx-auto max-w-6xl px-4 md:px-6">
-				{title ? <h2 className="font-heading mb-8 text-2xl text-zinc-950">{title}</h2> : null}
+				{title ? (
+					<h2 className={`font-heading text-2xl text-balance text-zinc-950 ${lede ? "mb-3" : "mb-8"}`}>{title}</h2>
+				) : null}
+				{lede ? <p className="mb-8 max-w-3xl text-pretty leading-relaxed text-zinc-600">{lede}</p> : null}
 				{children}
 			</div>
 		</section>

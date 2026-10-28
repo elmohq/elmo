@@ -230,7 +230,7 @@ function GraveyardPage() {
 						announced, or the month we found the site offline.
 					</p>
 				</DirectorySection>
-				<DirectorySection title="Your AI visibility tool shut down. Now what?">
+				<DirectorySection title="Your AI Visibility Tool Shut Down. Now What?">
 					<ol className="grid gap-6 md:grid-cols-2">
 						{STEPS.map((step, i) => (
 							<li key={step.title} className="rounded-md border border-zinc-200 bg-white p-5">

@@ -8662,7 +8662,7 @@ export function getComparisonSlug(competitor: Competitor): string {
  */
 const aeoPopularityRanking: string[] = [
 	// --- Tier A: Category leaders with major funding, customers, and recognition ---
-	"profound", // Category leader: $96M Series C at a $1B valuation (Feb 2026), enterprise roster, G2 AEO Leader
+	"profound", // Category leader: $180M Series D at a $1.8B valuation (Sep 2026), enterprise roster, G2 AEO Leader
 	"peec-ai", // $21M Series A (Singular), 3,500+ brands, ten engines scraped from the real UIs
 	"airops", // $40M Series B / $225M val (Greylock), Ramp/Chime/Wiz/Carta, repositioned as AI-search platform
 	"scrunch", // $19M (Mayfield/Decibel), G2 category leader, broadest engine coverage, SOC2+HIPAA

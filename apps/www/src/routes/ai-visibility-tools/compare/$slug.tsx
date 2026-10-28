@@ -80,7 +80,7 @@ function ComparePage() {
 				<DirectoryBackLink />
 				<DirectoryHero title={names} lead={getCompareVerdict(tools)} />
 				<DirectoryElmoBanner
-					title={`Elmo: the open-source alternative, from $${CLOUD_ENTRY_PRICE_USD}/mo`}
+					title={`Elmo: The Open-Source Alternative, from $${CLOUD_ENTRY_PRICE_USD}/mo`}
 					pitch={`Elmo tracks the same answer engines as ${new Intl.ListFormat("en", { type: "conjunction" }).format(tools.map((t) => t.name))} as open-source software. Self-host it for free, or use Elmo Cloud with public, self-serve plans: no sales call, API and MCP access on every plan, and the code behind every number is yours to read.`}
 				/>
 				{a && b && tools.length === 2 ? <PairComparison a={a} b={b} /> : <MultiComparison tools={tools} />}

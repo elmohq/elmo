@@ -14,9 +14,11 @@ import {
 	competitorsWithOwnPages,
 	FEATURE_SLUGS,
 	getComparisonSlug,
+	getCompetitorProfile,
 	hasOwnPages,
 	indexableCategories,
 	indexableFeatureKeys,
+	reviewedSlugs,
 } from "@/lib/competitors";
 import { listLegalPages } from "@/lib/legal";
 import { source } from "@/lib/source";
@@ -110,6 +112,13 @@ export const Route = createFileRoute("/sitemap.xml")({
 						changefreq: "monthly",
 						priority: 0.6,
 					})),
+					...reviewedSlugs.flatMap((slug) => {
+						const lastmod = getCompetitorProfile(slug)?.review?.verified;
+						return [
+							{ path: `/ai-visibility-tools/pricing/${slug}`, changefreq: "monthly", priority: 0.7, lastmod },
+							{ path: `/ai-visibility-tools/reviews/${slug}`, changefreq: "monthly", priority: 0.7, lastmod },
+						];
+					}),
 					...indexableFeatureKeys().map((key) => ({
 						path: `/ai-visibility-tools/features/${FEATURE_SLUGS[key]}`,
 						changefreq: "monthly",
