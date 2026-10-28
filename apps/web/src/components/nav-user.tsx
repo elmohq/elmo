@@ -2,6 +2,7 @@ import {
 	IconBriefcase,
 	IconCheck,
 	IconExternalLink,
+	IconKey,
 	IconLogout,
 	IconPlus,
 	IconRefresh,
@@ -47,7 +48,9 @@ export function NavUser({
 	const { isMobile, setOpenMobile } = useSidebar();
 	const branding = useBranding();
 	const features = useDeploymentFeatures();
-	const canLogOut = useDeploymentMode() !== "demo";
+	const mode = useDeploymentMode();
+	const canLogOut = mode !== "demo";
+	const canChangePassword = mode === "local" || mode === "cloud";
 
 	// NavUser only renders inside _authed routes, which redirect to /auth/login
 	// when there's no session — so `user` is always present at this point.
@@ -116,7 +119,7 @@ export function NavUser({
 									<>
 										<DropdownMenuItem render={<Link to="/app/new" onClick={close} />} className="cursor-pointer">
 											<IconPlus />
-											New organization
+											New Organization
 										</DropdownMenuItem>
 										<DropdownMenuSeparator />
 									</>
@@ -157,6 +160,12 @@ export function NavUser({
 								<DropdownMenuSeparator />
 							</>
 						)}
+						{canChangePassword && (
+							<DropdownMenuItem render={<Link to="/change-password" onClick={close} />} className="cursor-pointer">
+								<IconKey />
+								Change Password
+							</DropdownMenuItem>
+						)}
 						{canLogOut && (
 							<DropdownMenuItem
 								className="cursor-pointer"
@@ -173,7 +182,7 @@ export function NavUser({
 								}}
 							>
 								<IconLogout />
-								Log out
+								Log Out
 							</DropdownMenuItem>
 						)}
 					</DropdownMenuContent>

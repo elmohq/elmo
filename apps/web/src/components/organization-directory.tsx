@@ -20,7 +20,7 @@ export function OrganizationDirectory({ organizations }: { organizations: Organi
 			{features?.canCreateOrganizations && (
 				<Link to="/app/new" className={buttonVariants({ variant: "outline", className: "w-full gap-1.5" })}>
 					<IconPlus className="size-4" />
-					New organization
+					New Organization
 				</Link>
 			)}
 		</div>

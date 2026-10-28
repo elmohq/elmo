@@ -12,6 +12,7 @@ type SubscriptionResult = { error: { message?: string } | null };
 let _delayMs = 0;
 let _error: string | null = null;
 let _ssoError: string | null = null;
+let _hasPassword = true;
 let _emailSignIn: "succeed" | "hang" | { error: string } = "succeed";
 const _calls: { method: string; args: unknown }[] = [];
 
@@ -38,7 +39,12 @@ export function setMockEmailSignIn(outcome: "hang" | { error: string }) {
 	_emailSignIn = outcome;
 }
 
+export function setMockHasPassword(hasPassword: boolean) {
+	_hasPassword = hasPassword;
+}
+
 export function resetMockAuthClient() {
+	_hasPassword = true;
 	_delayMs = 0;
 	_error = null;
 	_ssoError = null;
@@ -72,6 +78,11 @@ export const authClient = {
 	signUp: { email: async () => ({ error: null }) },
 	requestPasswordReset: async () => ({ error: null }),
 	resetPassword: async () => ({ error: null }),
+	changePassword: (args: unknown) => respond("changePassword", args),
+	listAccounts: async () => ({
+		data: [{ providerId: _hasPassword ? "credential" : "google" }],
+		error: null,
+	}),
 	sendVerificationEmail: async () => ({ error: null }),
 	signOut: async () => ({ error: null }),
 	useSession: () => ({ data: null, isPending: false }),

@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as DotwellKnownChangePasswordRouteImport } from './routes/[.]well-known/change-password'
 import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as AuthedAppRouteImport } from './routes/_authed/app'
+import { Route as AuthedChangePasswordRouteImport } from './routes/_authed/change-password'
 import { Route as AuthedChoosePlanRouteImport } from './routes/_authed/choose-plan'
 import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
 import { Route as AuthAuthorizeRouteImport } from './routes/auth/authorize'
@@ -108,6 +110,12 @@ const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownChangePasswordRoute =
+  DotwellKnownChangePasswordRouteImport.update({
+    id: '/.well-known/change-password',
+    path: '/.well-known/change-password',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthedAdminRoute = AuthedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -116,6 +124,11 @@ const AuthedAdminRoute = AuthedAdminRouteImport.update({
 const AuthedAppRoute = AuthedAppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedChangePasswordRoute = AuthedChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedChoosePlanRoute = AuthedChoosePlanRouteImport.update({
@@ -592,8 +605,10 @@ const AuthedAppOrgOrgBrandBrandSettingsPromptsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/.well-known/change-password': typeof DotwellKnownChangePasswordRoute
   '/admin': typeof AuthedAdminRouteWithChildren
   '/app': typeof AuthedAppRouteWithChildren
+  '/change-password': typeof AuthedChangePasswordRoute
   '/choose-plan': typeof AuthedChoosePlanRoute
   '/reports': typeof AuthedReportsRouteWithChildren
   '/auth/authorize': typeof AuthAuthorizeRoute
@@ -682,6 +697,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/.well-known/change-password': typeof DotwellKnownChangePasswordRoute
+  '/change-password': typeof AuthedChangePasswordRoute
   '/choose-plan': typeof AuthedChoosePlanRoute
   '/auth/authorize': typeof AuthAuthorizeRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -768,8 +785,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/.well-known/change-password': typeof DotwellKnownChangePasswordRoute
   '/_authed/admin': typeof AuthedAdminRouteWithChildren
   '/_authed/app': typeof AuthedAppRouteWithChildren
+  '/_authed/change-password': typeof AuthedChangePasswordRoute
   '/_authed/choose-plan': typeof AuthedChoosePlanRoute
   '/_authed/reports': typeof AuthedReportsRouteWithChildren
   '/auth/authorize': typeof AuthAuthorizeRoute
@@ -860,8 +879,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/.well-known/change-password'
     | '/admin'
     | '/app'
+    | '/change-password'
     | '/choose-plan'
     | '/reports'
     | '/auth/authorize'
@@ -950,6 +971,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/.well-known/change-password'
+    | '/change-password'
     | '/choose-plan'
     | '/auth/authorize'
     | '/auth/forgot-password'
@@ -1035,8 +1058,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authed'
+    | '/.well-known/change-password'
     | '/_authed/admin'
     | '/_authed/app'
+    | '/_authed/change-password'
     | '/_authed/choose-plan'
     | '/_authed/reports'
     | '/auth/authorize'
@@ -1127,6 +1152,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
+  DotwellKnownChangePasswordRoute: typeof DotwellKnownChangePasswordRoute
   AuthAuthorizeRoute: typeof AuthAuthorizeRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
@@ -1179,6 +1205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/change-password': {
+      id: '/.well-known/change-password'
+      path: '/.well-known/change-password'
+      fullPath: '/.well-known/change-password'
+      preLoaderRoute: typeof DotwellKnownChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/admin': {
       id: '/_authed/admin'
       path: '/admin'
@@ -1191,6 +1224,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AuthedAppRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/change-password': {
+      id: '/_authed/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof AuthedChangePasswordRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/choose-plan': {
@@ -1947,6 +1987,7 @@ const AuthedReportsRouteWithChildren = AuthedReportsRoute._addFileChildren(
 interface AuthedRouteChildren {
   AuthedAdminRoute: typeof AuthedAdminRouteWithChildren
   AuthedAppRoute: typeof AuthedAppRouteWithChildren
+  AuthedChangePasswordRoute: typeof AuthedChangePasswordRoute
   AuthedChoosePlanRoute: typeof AuthedChoosePlanRoute
   AuthedReportsRoute: typeof AuthedReportsRouteWithChildren
   AuthedAcceptInvitationInvitationIdRoute: typeof AuthedAcceptInvitationInvitationIdRoute
@@ -1955,6 +1996,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAdminRoute: AuthedAdminRouteWithChildren,
   AuthedAppRoute: AuthedAppRouteWithChildren,
+  AuthedChangePasswordRoute: AuthedChangePasswordRoute,
   AuthedChoosePlanRoute: AuthedChoosePlanRoute,
   AuthedReportsRoute: AuthedReportsRouteWithChildren,
   AuthedAcceptInvitationInvitationIdRoute:
@@ -2022,6 +2064,7 @@ const ApiV1PromptsPromptIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
+  DotwellKnownChangePasswordRoute: DotwellKnownChangePasswordRoute,
   AuthAuthorizeRoute: AuthAuthorizeRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
