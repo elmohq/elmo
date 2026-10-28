@@ -83,6 +83,12 @@ test.describe("dashboard and API parity", () => {
     expect(domains.status()).toBe(200);
     const domainBody = await domains.json();
 
+    // The domain and URL lists load after the totals, each in its own request.
+    const domainList = page.locator('[data-slot="card"]', { hasText: "Top Cited Domains" });
+    await expect(domainList.getByText(domainBody.data[0].domain, { exact: true })).toBeVisible({ timeout: 30_000 });
+    const urlList = page.locator('[data-slot="card"]', { hasText: "Top Cited URLs" });
+    await expect(urlList.locator("a[href^='http']").first()).toBeVisible({ timeout: 30_000 });
+
     const pageText = await page.locator("main").innerText();
     const totalOnPage = Number(pageText.match(/Total Citations\s*\n?\s*(\d+)/)?.[1]);
     const domainsOnPage = Number(pageText.match(/Unique Domains\s*\n?\s*(\d+)/)?.[1]);

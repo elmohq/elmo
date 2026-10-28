@@ -33,7 +33,7 @@ async function writeChunk(conn: DbConnection, pages: StalePage[]): Promise<numbe
 			SELECT 1 FROM ${citedPages} WHERE id IN (${sql.join(
 				pages.map((page) => sql`${page.id}::bigint`),
 				sql`, `,
-			)}) ORDER BY url COLLATE "C" FOR UPDATE
+			)}) ORDER BY url COLLATE "C" FOR NO KEY UPDATE
 		`);
 		const result = await tx.execute(sql`
 		UPDATE ${citedPages} AS p
@@ -54,7 +54,8 @@ async function writeClassifications(conn: DbConnection, pages: StalePage[]): Pro
 /**
  * Re-runs the classifier over every page stamped with an older version. Each
  * chunk commits on its own and is stamped as it goes, so a crash resumes where
- * it stopped. Reads join page rows live, so nothing needs rebuilding after.
+ * it stopped. Brands' copies of the pages catch up on the next rollup refresh,
+ * so nothing needs rebuilding after.
  */
 export async function reclassifyPages(conn: DbConnection, batchSize = 1000): Promise<number> {
 	let afterId = 0;

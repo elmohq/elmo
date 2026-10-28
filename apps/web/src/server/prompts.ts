@@ -41,6 +41,7 @@ import {
 } from "@/lib/rollup-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
+import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
@@ -271,6 +272,7 @@ function computePromptCitationStats(input: {
 		categoryCounts,
 		domainDistribution,
 		specificUrls,
+		subreddits: summarizeSubreddits(specificUrls.filter((url) => isRedditDomain(url.domain))),
 		pageTypeDistribution,
 		googleModule,
 	};

@@ -8,7 +8,7 @@ import { FilteredListShell } from "@/components/filtered-list-shell";
 import { PageHeader } from "@/components/page-header";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { brandKeys, useBrand } from "@/hooks/use-brands";
-import { useCitations } from "@/hooks/use-citations";
+import { citationKeys, useCitations } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { useBrandParams } from "@/hooks/use-route-params";
@@ -31,16 +31,12 @@ function CitationsPage() {
 	const trackedTargets = brand?.trackedTargets ?? [];
 
 	const modelParam = filters.model === ALL_MODELS_VALUE ? undefined : filters.model;
-	const {
-		data: citationData,
-		isLoading,
-		error: citationsError,
-		refetch: refetchCitations,
-	} = useCitations(brandId, {
+	const citationFilters = {
 		lookback: filters.lookback,
 		tags: filters.tags.length > 0 ? filters.tags : undefined,
 		model: modelParam,
-	});
+	};
+	const { data: citationData, isLoading, error: citationsError } = useCitations(brandId, citationFilters);
 
 	const infoContent = (
 		<>
@@ -118,8 +114,9 @@ function CitationsPage() {
 						maxDomains={10}
 						maxUrls={20}
 						days={citationData.days}
+						listSource={{ brandId, filters: citationFilters }}
 						onCompetitorAdded={() => {
-							refetchCitations();
+							queryClient.invalidateQueries({ queryKey: citationKeys.all });
 							queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 							queryClient.invalidateQueries({ queryKey: brandKeys.competitors(brandId) });
 							queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });
