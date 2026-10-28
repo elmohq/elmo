@@ -12,6 +12,7 @@ import { isElmoHosted, legalUrl } from "@workspace/config/legal";
 import type { DeploymentMode } from "@workspace/config/types";
 import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
 import { initAdTags, trackAdPageView } from "@workspace/ui/lib/ad-tags";
+import { rememberAttribution } from "@workspace/ui/lib/attribution";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
 import { trackLinkClickGoals } from "@workspace/ui/lib/plausible";
 import { useEffect, useState } from "react";
@@ -165,11 +166,12 @@ function RootComponent() {
 			posthogKey ? initAnalytics(posthogKey, required) : undefined,
 			clarityProjectId ? initClarity(clarityProjectId, required) : undefined,
 			asksForConsent ? initAdTags(required) : undefined,
+			mode === "cloud" ? rememberAttribution("localStorage", required) : undefined,
 		];
 		return () => {
 			for (const stop of stops) stop?.();
 		};
-	}, [posthogKey, clarityProjectId, asksForConsent, consentRegion]);
+	}, [posthogKey, clarityProjectId, asksForConsent, consentRegion, mode]);
 
 	useEffect(() => {
 		if (plausibleDomain) return trackLinkClickGoals();

@@ -14,6 +14,7 @@ import { trackLinkClickGoals } from "@workspace/ui/lib/plausible";
 import { type ReactNode, useEffect, useState } from "react";
 import { AiReferralBanner } from "@/components/ai-referral-banner";
 import { NotFound } from "@/components/not-found";
+import { forwardAttributionToApp } from "@/lib/attribution";
 import { getConsentRegion } from "@/lib/consent-region";
 import { initCrisp } from "@/lib/crisp";
 import { getGitHubStars } from "@/lib/github-stars";
@@ -110,7 +111,12 @@ function RootComponent() {
 		const required = isConsentRequired(consentRegion);
 		setConsentRequired(required);
 		initCrisp();
-		const stops = [initAnalytics(required), initAdTags(required), trackLinkClickGoals()];
+		const stops = [
+			initAnalytics(required),
+			initAdTags(required),
+			trackLinkClickGoals(),
+			forwardAttributionToApp(required),
+		];
 		return () => {
 			for (const stop of stops) stop();
 		};

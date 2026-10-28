@@ -1,16 +1,21 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { FORWARDED_PARAMS } from "@workspace/config/signup-attribution";
 import { buttonVariants } from "@workspace/ui/components/button";
 import FullPageCard from "@/components/full-page-card";
 import { attributionParams } from "@/lib/attribution";
 import { getSession } from "@/lib/auth/session";
 import { entryRouteForVisitor } from "@/lib/entry-route";
 
+function campaignParams(search: Record<string, unknown>): Record<string, unknown> {
+	return Object.fromEntries(FORWARDED_PARAMS.flatMap((key) => (key in search ? [[key, search[key]]] : [])));
+}
+
 export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>) => ({
 		redirect: typeof search.redirect === "string" ? search.redirect : undefined,
 		...attributionParams(search),
 	}),
-	beforeLoad: async ({ context, search }) => {
+	beforeLoad: async ({ context, location, search }) => {
 		const session = await getSession();
 
 		if (session) {
@@ -22,6 +27,7 @@ export const Route = createFileRoute("/")({
 			throw redirect({
 				to: entryRoute,
 				search: {
+					...campaignParams(location.search),
 					...(search.redirect ? { returnTo: search.redirect } : {}),
 					...attributionParams(search),
 				},
