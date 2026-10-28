@@ -190,7 +190,9 @@ describe("Turnstile bot protection", () => {
 		expect(await send("/get-session")).toBeUndefined();
 	});
 
-	it("is off until the secret key is configured", async () => {
+	it("is off until both keys are configured", async () => {
+		expect(await send("/sign-up/email")).toBeUndefined();
+		vi.stubEnv("TURNSTILE_SECRET_KEY", "turnstile-secret");
 		expect(await send("/sign-up/email")).toBeUndefined();
 	});
 });

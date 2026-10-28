@@ -66,9 +66,9 @@ const TURNSTILE_TEST_SECRET = /^[123]x0{20,}/;
 
 function createTurnstilePlugin(): BetterAuthPlugin | undefined {
 	const secretKey = process.env.TURNSTILE_SECRET_KEY?.trim();
-	if (!secretKey) {
+	if (!secretKey || !process.env.VITE_TURNSTILE_SITE_KEY?.trim()) {
 		console.warn(
-			"[auth] TURNSTILE_SECRET_KEY is not set: email sign-up, sign-in, and password reset have no bot protection.",
+			"[auth] TURNSTILE_SECRET_KEY and VITE_TURNSTILE_SITE_KEY are not both set: email sign-up, sign-in, and password reset have no bot protection.",
 		);
 		return undefined;
 	}
