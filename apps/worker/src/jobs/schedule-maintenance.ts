@@ -1,21 +1,23 @@
 import * as Sentry from "@sentry/node";
-import { getDeployment } from "@workspace/deployment";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { getOrgEntitlementsMap } from "@workspace/lib/entitlements";
-import { parseScrapeTargets } from "@workspace/lib/providers";
 import {
 	computeMaintenanceDecisions,
+	type LastRunRow,
 	lastRunQueryWindowMs,
+	lastRunsByTargetKey,
 	type MaintenancePromptState,
 	type PromptRunPlan,
 	resolveBrandPromptRunPlans,
-	targetKey,
+	slowestIntervalHours,
 } from "@workspace/lib/run-policy";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
-import boss from "../boss";
+import { getBoss } from "../boss";
+import { requestUnjudgedRuns } from "./derive-runs";
 import { PROMPT_JOB_OPTIONS } from "./process-prompt";
 
 export interface ScheduleMaintenanceData {
@@ -46,7 +48,32 @@ export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[
 			console.error("[schedule-maintenance] Maintenance check failed:", error);
 			throw error; // Will trigger retry
 		}
+		// Never holds up scheduling prompts, and is retried by the next tick anyway.
+		await requestJudging().catch((error) => {
+			console.error("[schedule-maintenance] Requesting judging failed:", error);
+			Sentry.captureException(error);
+		});
 	}
+}
+
+/** Past this many, answers are piling up unjudged: the judge is down or failing, not just behind. */
+const UNJUDGED_ALERT_THRESHOLD = 100;
+let lastUnjudgedAlertMs = 0;
+
+/** Asks for whatever any worker with the judge can take, and pages when answers stop being judged. */
+async function requestJudging(): Promise<void> {
+	const unjudged = await requestUnjudgedRuns();
+	if (unjudged === 0) return;
+	console.log(`[schedule-maintenance] Asked again to judge ${unjudged} runs`);
+	const now = Date.now();
+	if (unjudged < UNJUDGED_ALERT_THRESHOLD || now - lastUnjudgedAlertMs < OVERDUE_ALERT_THROTTLE_MS) return;
+	lastUnjudgedAlertMs = now;
+	Sentry.withScope((scope) => {
+		scope.setLevel("error");
+		scope.setTag("scheduler", "unjudged-runs");
+		scope.setFingerprint(["scheduler-unjudged-runs"]);
+		Sentry.captureMessage(`Judging: ${unjudged} answers still unjudged after 10 minutes`, "error");
+	});
 }
 
 type EnabledBrand = Awaited<ReturnType<typeof db.query.brands.findMany>>[number];
@@ -116,10 +143,7 @@ function resolveRunPlans(args: {
  * aggregate stops scanning all of prompt_runs on every 5-minute tick.
  */
 async function loadLastRuns(plans: Map<string, PromptRunPlan>): Promise<Map<string, Map<string, Date>>> {
-	const maxIntervalHours = Math.max(
-		1,
-		...[...plans.values()].flatMap((plan) => plan.targets.map((t) => t.intervalHours)),
-	);
+	const maxIntervalHours = Math.max(1, ...[...plans.values()].map((plan) => slowestIntervalHours(plan.targets)));
 	const windowStart = new Date(Date.now() - lastRunQueryWindowMs(maxIntervalHours));
 	const rows = await db
 		.select({
@@ -133,22 +157,14 @@ async function loadLastRuns(plans: Map<string, PromptRunPlan>): Promise<Map<stri
 		.where(gt(promptRuns.createdAt, windowStart))
 		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
-	const byPrompt = new Map<string, Map<string, Date>>();
+	const rowsByPrompt = new Map<string, LastRunRow[]>();
 	for (const run of rows) {
-		// provider is nullable on the column; a row without one predates target
-		// keying and can't be matched to a target anyway.
-		if (!run.provider) continue;
-		let byKey = byPrompt.get(run.promptId);
-		if (!byKey) {
-			byKey = new Map();
-			byPrompt.set(run.promptId, byKey);
-		}
-		byKey.set(
-			targetKey({ model: run.model, provider: run.provider, webSearch: run.webSearchEnabled }),
-			new Date(run.lastRunAt),
-		);
+		const forPrompt = rowsByPrompt.get(run.promptId);
+		if (forPrompt) forPrompt.push(run);
+		else rowsByPrompt.set(run.promptId, [run]);
 	}
-	return byPrompt;
+
+	return new Map([...rowsByPrompt].map(([promptId, promptRows]) => [promptId, lastRunsByTargetKey(promptRows)]));
 }
 
 async function expediteJobs(jobIds: string[]): Promise<void> {
@@ -176,7 +192,7 @@ async function scheduleNewJobs(promptIds: string[]): Promise<void> {
 	for (let i = 0; i < promptIds.length; i += SCHEDULE_BATCH_SIZE) {
 		const results = await Promise.allSettled(
 			promptIds.slice(i, i + SCHEDULE_BATCH_SIZE).map((promptId) =>
-				boss.send(
+				getBoss().send(
 					"process-prompt",
 					{ promptId },
 					{

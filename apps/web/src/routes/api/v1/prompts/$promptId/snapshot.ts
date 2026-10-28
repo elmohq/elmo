@@ -5,17 +5,15 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { extractDomain, inDomainSet } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
-import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
-import {
-	getPromptCitationUrlStats,
-	getPromptMentionSummary,
-	getPromptTopCompetitorMentions,
-} from "@/lib/postgres-read";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { requirePromptInScope } from "@/lib/api/scope";
+import { getCitationUrlStats, getCompetitorTotals, getMentionTotals } from "@/lib/rollup-read";
+import { mentionQuality } from "@/lib/sentiment";
 
 function isValidDate(dateStr: string): boolean {
 	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -28,13 +26,6 @@ function isValidDate(dateStr: string): boolean {
 const MAX_TOP_K = 50;
 const DEFAULT_TOP_MENTIONS = 5;
 const DEFAULT_TOP_CITATIONS = 10;
-
-function isMatchingDomain(domain: string, domainSet: Set<string>): boolean {
-	for (const owned of domainSet) {
-		if (domain === owned || domain.endsWith(`.${owned}`)) return true;
-	}
-	return false;
-}
 
 function boundedTopK(raw: string | null, fallback: number): number {
 	const parsed = Number.parseInt(raw || String(fallback), 10);
@@ -70,72 +61,48 @@ function parseSnapshotQuery(url: URL): { startDate: string; endDate: string; kMe
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
-				handle: async ({ params, request }) => {
+				scopes: ["read"],
+				handle: async ({ params, request, auth }) => {
 					const { promptId } = params;
 					const { startDate, endDate, kMentions, kCitations } = parseSnapshotQuery(new URL(request.url));
 
-					const promptResult = await db
-						.select({ id: prompts.id, brandId: prompts.brandId, value: prompts.value })
-						.from(prompts)
-						.where(eq(prompts.id, promptId))
-						.limit(1);
-					if (promptResult.length === 0) {
-						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
-					}
-					const prompt = promptResult[0];
+					const { prompt, brand } = await requirePromptInScope(auth, promptId);
+					const competitorsList = await db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId));
 
-					const [brandInfo, competitorsList] = await Promise.all([
-						db.select().from(brands).where(eq(brands.id, prompt.brandId)).limit(1),
-						db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId)),
-					]);
-					if (brandInfo.length === 0) {
-						throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
-					}
 					const brandDomains = new Set(
-						[extractDomain(brandInfo[0].website), ...(brandInfo[0].additionalDomains || []).map(extractDomain)].filter(
-							Boolean,
-						),
+						[extractDomain(brand.website), ...(brand.additionalDomains || []).map(extractDomain)].filter(Boolean),
 					);
 					const competitorDomains = new Set(
 						competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),
 					);
 
-					const timezone = "UTC";
+					const scope = {
+						brandId: prompt.brandId,
+						from: startDate,
+						to: endDate,
+						timezone: "UTC",
+						promptIds: [prompt.id],
+					};
 					const [mentionData, topCompetitors, citationUrlStats] = await Promise.all([
-						getPromptMentionSummary(promptId, startDate, endDate, timezone),
-						getPromptTopCompetitorMentions(promptId, startDate, endDate, timezone, kMentions),
-						getPromptCitationUrlStats(promptId, startDate, endDate, timezone),
+						getMentionTotals(scope),
+						getCompetitorTotals(scope, kMentions),
+						getCitationUrlStats(scope),
 					]);
 
-					const mentionsTopK = topCompetitors.map((row) => ({
-						entity: row.competitor_name,
-						count: Number(row.mention_count),
-					}));
-
-					const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
-					for (const { url, domain, title, count } of citationUrlStats) {
-						const normalizedUrl = normalizeUrl(url);
-						const existing = urlCounts.get(normalizedUrl);
-						if (existing) {
-							existing.count += Number(count);
-							if (!existing.title && title) existing.title = title;
-						} else {
-							urlCounts.set(normalizedUrl, { count: Number(count), title: title || undefined, domain });
-						}
-					}
+					const mentionsTopK = topCompetitors.map((row) => ({ entity: row.competitor, count: row.runs }));
 
 					let brandCitationsTotal = 0;
 					let competitorCitationsTotal = 0;
 					let citationsTotal = 0;
-					const allCitationUrls = Array.from(urlCounts.entries())
-						.map(([url, { count, title, domain }]) => {
+					const allCitationUrls = citationUrlStats
+						.map(({ url, title, domain, count }) => {
 							citationsTotal += count;
-							if (isMatchingDomain(domain, brandDomains)) {
+							if (inDomainSet(domain, brandDomains)) {
 								brandCitationsTotal += count;
-							} else if (isMatchingDomain(domain, competitorDomains)) {
+							} else if (inDomainSet(domain, competitorDomains)) {
 								competitorCitationsTotal += count;
 							}
 							return { url, title, count };
@@ -155,11 +122,12 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						startDate,
 						endDate,
 						mentions: {
-							mentionsTotal: Number(mentionData.brand_mentioned_count) + Number(mentionData.competitor_mentioned_count),
-							brandMentionsTotal: Number(mentionData.brand_mentioned_count),
-							competitorMentionsTotal: Number(mentionData.competitor_mentioned_count),
+							mentionsTotal: mentionData.brand_mentioned_runs + mentionData.competitor_mentions,
+							brandMentionsTotal: mentionData.brand_mentioned_runs,
+							competitorMentionsTotal: mentionData.competitor_mentions,
 							mentionsTopK,
 						},
+						...mentionQuality(mentionData),
 						citations: {
 							citationsTotal,
 							brandCitationsTotal,
@@ -169,6 +137,6 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

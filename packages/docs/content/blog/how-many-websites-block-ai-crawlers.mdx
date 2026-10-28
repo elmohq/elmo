@@ -1,0 +1,126 @@
+---
+title: "How Many Websites Block AI Crawlers? Depends Which Web You Mean"
+description: "Published blocking rates run from 9% to 54% of sites, and the spread is mostly two dials: which slice of the web was sampled, and whether the bot blocked does search or training. Here's the reconciliation, and what blocking measurably costs."
+date: "2026-09-13"
+author: ai
+metaTitle: "How Many Sites Block AI Crawlers? 2026 Data"
+tags:
+  - ai-crawlers
+  - technical-seo
+  - aeo
+  - ai-visibility
+definedTerms:
+  - term: AI search crawler
+    definition: "An AI search crawler fetches and indexes pages so an answer engine can retrieve and cite them, or fetches a page live when a user asks about it. OAI-SearchBot, PerplexityBot, and Claude-SearchBot are search crawlers. Blocking one removes your pages from that engine's citation pool going forward."
+  - term: AI training crawler
+    definition: "An AI training crawler gathers pages to build the corpora that models learn from. GPTBot, CCBot, Google-Extended, and ClaudeBot are training-class controls. Blocking one is a forward-looking opt-out from training; it does not remove what earlier crawls already collected."
+  - term: Blocking rate
+    definition: "A blocking rate is the share of a sample of websites whose robots.txt disallows a given crawler. The number is meaningless without its denominator: the same measurement produces different rates depending on whether the sample is news publishers, top-ranked domains, or the head domains of a training corpus, and on whether sites without a robots.txt count in the base."
+  - term: Default-deny blocking
+    definition: "Default-deny blocking is when infrastructure, not the site owner, blocks AI crawlers unless someone opts back in. Cloudflare has blocked AI crawlers by default for new domains since July 2025, which means a site can be invisible to AI search without anyone at the company having decided anything."
+howTo:
+  name: "How to check whether your AI crawler blocking is a decision or a default"
+  description: "Establish what your site actually tells AI crawlers today and who chose it, so a CDN default or a leftover legal request isn't silently costing you citations."
+  steps:
+    - name: Read your own robots.txt bot by bot
+      text: "Open yourdomain.com/robots.txt and list every AI user-agent with a Disallow rule. Classify each as a search crawler or a training crawler before judging anything — the two classes have opposite costs."
+    - name: Check your CDN and bot-management settings separately
+      text: "Robots.txt is not the only blocking layer. Cloudflare has blocked AI crawlers by default for new domains since July 2025, and WAF rules can return 403s to bots your robots.txt allows. A crawler blocked at the network layer is just as absent from the citation pool, and no robots.txt audit will show it."
+    - name: Find out who made each rule and why
+      text: "Blocking rules accumulate from legal requests, CDN defaults, and old scraping incidents. For each blocked AI bot, identify the decision and its date. A rule nobody remembers making is a default, not a policy."
+    - name: Pull your competitors' robots.txt files
+      text: "They are public. If the brands you compete with for AI answers block PerplexityBot or OAI-SearchBot and you don't, their absence from the retrieval pool is your opportunity — and the reverse tells you where you are conceding by default."
+    - name: Decide search and training separately
+      text: "Blocking training crawlers while allowing search crawlers is a coherent policy with a standard configuration. Blocking search crawlers is a visibility decision and deserves the measured numbers, not a blanket rule."
+    - name: Verify the outcome in the answers, not the config
+      text: "After any change, track whether the engines you unblocked start citing you. Config says what you asked for; only the answers say what happened, and non-compliant crawling means the two can differ in both directions."
+faq:
+  - question: What percentage of websites block AI crawlers?
+    answer: "There is no single figure, and the published ones span 9% to 54% because they sample different webs and count different bots. A September 2026 census of the Tranco top 5,000 found 13.3% of sites with a robots.txt blocking at least one AI search crawler. The homepages.news tracker finds 54.2% of 1,156 news publishers blocking at least one of GPTBot, Google-Extended, and CCBot — all training-class controls. The Consent in Crisis audit found about 5% of the C4 training corpus's tokens became fully restricted within a single year."
+  - question: Do news publishers block AI crawlers more than other sites?
+    answer: "Far more. The homepages.news tracker puts news publishers blocking at least one major training crawler at 54.2%, with GPTBot at 49.7% and Common Crawl's CCBot at 49.8%. The general top-5,000 census found 13.3% blocking any AI search crawler. The samples count different bot classes, so the gap overstates a like-for-like difference — but the direction is consistent everywhere it has been measured: publishers whose content is their product block most."
+  - question: Which AI crawler gets blocked the most?
+    answer: "Among search crawlers, PerplexityBot: 358 of 2,771 top sites with a robots.txt (12.9%) disallow it, against 9.0% for Anthropic's Claude-SearchBot and 8.7% for OpenAI's OAI-SearchBot. Among training-class bots on news sites, CCBot and GPTBot are effectively tied near 50%. Perplexity's lead among search bots is plausibly reputational: Cloudflare published evidence in August 2025 that Perplexity used undeclared crawlers to reach sites that had blocked its declared one."
+  - question: Does blocking AI crawlers actually reduce AI citations?
+    answer: "On Google's surfaces, yes, and it is now measured rather than assumed. A SIGIR 2026 study of 11,500 queries found sites blocking Google's AI crawler significantly less likely to be retrieved by AI Overviews despite Googlebot retaining access, and the 21 popular publishers it checked — all blocking Google-Extended — received zero Gemini citations while their ordinary rankings were untouched. Blocking a search crawler removes you from that engine's citation pool by design."
+  - question: Do AI companies respect robots.txt?
+    answer: "The major declared crawlers generally comply, but robots.txt is a request, not a wall. Cloudflare documented Perplexity operating undeclared crawlers — a generic Chrome-on-macOS user agent rotating through IPs outside its published range — at 3 to 6 million requests a day across tens of thousands of domains, reaching content whose owners had blocked PerplexityBot. Published blocking rates measure what sites ask for, not what happens."
+  - question: Could my site be blocking AI crawlers without anyone deciding to?
+    answer: "Yes, and it is increasingly the default case. Cloudflare has blocked AI crawlers by default for new domains since July 2025, WAF and bot-management rules block at the network layer where no robots.txt audit looks, and blanket Disallow rules added during 2023's scraping panic are still shipping. Before optimizing anything for AI visibility, confirm your blocking posture is a policy someone chose rather than a residue."
+  - question: Is blocking AI crawlers growing or shrinking?
+    answer: "Growing, on every longitudinal measurement. The Consent in Crisis audit of 14,000 domains found roughly 5% of C4's tokens fully restricted within one year and full restrictions on more than 28% of the corpus's actively maintained critical sources, with 45% restricted once terms of service count. Cloudflare's default-deny change means the trend no longer requires anyone to decide: sites are now born blocking."
+  - question: Should I block AI training crawlers but allow AI search crawlers?
+    answer: "It is the one split with a coherent rationale: you keep citation eligibility on the engines buyers use while opting out of future model training. The configuration is a handful of named user-agent groups, covered in our robots.txt guide. Two caveats: it only binds compliant bots, and on Google the split is muddier than the documentation implies — blocking Google-Extended correlated with reduced AI Overviews retrieval in the SIGIR data even though Google documents it as a training-only control."
+---
+
+**"Should we block AI crawlers?" is the question that reaches the meeting. The question underneath it — who already blocks, and what happened to them — now has data, and the headline numbers look irreconcilable.** A census of the top 5,000 domains taken on 7 September 2026 found 13.3% of sites with a robots.txt blocking at least one AI search crawler. The homepages.news tracker has more than half of news publishers blocking. A peer-reviewed audit of AI training corpora found 5% of tokens restricted within a single year. All three are right. They are sampling different webs and counting different bots, and once you separate those two dials, the spread turns into something a marketing team can actually use.
+
+**Key takeaways**
+
+- Published blocking rates run from about 9% to 54%. Nearly all of the spread is two variables: which slice of the web was sampled, and whether the blocked bot does **search** (feeds citations) or **training** (feeds models).
+- On the general web, blocking the citation-carrying bots is a minority position: [368 of 2,771 top-5,000 sites with a robots.txt](https://ai-visibility.lastminutedealshq.com/sites-blocking-ai-search) — 13.3% — block at least one of OAI-SearchBot, PerplexityBot, and Claude-SearchBot, and only 7.2% block all three.
+- PerplexityBot is the most-blocked search crawler at 12.9%, against 9.0% for Claude-SearchBot and 8.7% for OAI-SearchBot.
+- News publishers are a different web: [54.2% of 1,156 tracked outlets](https://palewi.re/docs/news-homepages/openai-gptbot-robotstxt.html) block at least one of GPTBot, Google-Extended, and CCBot, with GPTBot at 49.7%.
+- The trend is one-directional. The [Consent in Crisis audit](https://arxiv.org/abs/2407.14933) of 14,000 domains found ~5% of the C4 corpus's tokens fully restricted within a year, and full restrictions on 28%+ of its actively maintained critical sources.
+- Blocking now has a measured cost on Google's surfaces: in the [SIGIR 2026 dataset](https://arxiv.org/abs/2604.27790), sites blocking Google's AI crawler were significantly less likely to be retrieved by AI Overviews, and the 21 Google-Extended-blocking publishers checked drew zero Gemini citations while their rankings held.
+- Robots.txt figures are asks, not outcomes: Cloudflare documented [Perplexity crawling through undeclared bots](https://blog.cloudflare.com/perplexity-is-using-stealth-undeclared-crawlers-to-evade-website-no-crawl-directives/) at 3–6 million requests a day on sites that had blocked it.
+- Since July 2025, [Cloudflare blocks AI crawlers by default for new domains](https://blog.cloudflare.com/content-independence-day-no-ai-crawl-without-compensation/). Blocking is becoming infrastructure, which means your own posture may be nobody's decision.
+
+## Four datasets, one axis of disagreement each
+
+Set the measurements side by side and the apparent contradiction resolves into a table with two honest columns.
+
+| Dataset | Sample | Bots counted | Headline rate |
+|---|---|---|---|
+| AI search crawler census, Sep 2026 | Tranco top 5,000 (2,771 with robots.txt) | OAI-SearchBot, PerplexityBot, Claude-SearchBot | 13.3% block ≥1 |
+| homepages.news tracker, ongoing | 1,156 news publishers | GPTBot, Google-Extended, CCBot | 54.2% block ≥1 |
+| Consent in Crisis (peer-reviewed), 2023–24 | 14,000 domains behind C4, RefinedWeb, Dolma | All AI agents in robots.txt + ToS | ~5% of C4 tokens fully restricted in 1 year; 28%+ of critical sources |
+| Cloudflare, Jul 2025– | New Cloudflare domains | AI crawlers as a class | Blocked by default |
+
+The census and the news tracker look 41 points apart. They differ on both dials at once: general top sites versus publishers whose content is the product, and search crawlers versus training crawlers. Neither study measures the other's bots, so the like-for-like gap is smaller than 41 points — but every dataset that touches both slices agrees on the direction. Publishers block most, the general commercial web blocks least, and the head domains of training corpora — disproportionately news, forums, and reference sites — sit in between and are restricting fastest.
+
+The denominator matters too, in a way the headlines skip. The census reports 368 blockers out of 2,771 sites *that serve a robots.txt* — out of all 5,000 sampled domains, the share drops to 7.4%. A site with no robots.txt blocks nothing. Any blocking statistic quoted without its denominator is quietly choosing the larger or smaller version of itself.
+
+## Search bots and training bots are different questions
+
+The bot class is the dial that changes what a marketing team should do, because the two classes have opposite costs.
+
+Blocking a **training crawler** — GPTBot, CCBot, Google-Extended, ClaudeBot — is a forward-looking opt-out from model training. It costs no citations on the engines that matter today, which is why it is the popular half: news publishers block GPTBot at 49.7% and CCBot at 49.8%.
+
+Blocking a **search crawler** — OAI-SearchBot, PerplexityBot, Claude-SearchBot — removes your pages from that engine's retrieval pool. It is rarer everywhere it is measured: single digits to low teens per bot even among top sites. That asymmetry is the revealed preference of the web's operators: keep the citations, refuse the training.
+
+Within the search class, the census ranking is itself informative. PerplexityBot's 12.9% — half again the rate of OpenAI's search bot — tracks the reputational record. Cloudflare's August 2025 investigation found that when Perplexity's declared crawler was blocked, undeclared crawlers impersonating Chrome on macOS, rotating through IPs outside Perplexity's published ranges, continued fetching the content — 3–6 million requests a day against 20–25 million declared ones. Sites appear to block hardest the operator least likely to honor the block, which is either irony or exactly the escalation you would predict.
+
+The Google split deserves its own caution flag. Google documents [Google-Extended as a training-only control](https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers) that does not affect Search or AI Overviews, and our [robots.txt guide](/blog/robots-txt-ai-crawlers) explains the configuration on that basis. The SIGIR 2026 measurement complicates it: sites blocking Google's AI crawler were significantly less likely to be retrieved by AI Overviews *despite Googlebot retaining access*, and none of the 21 blocking publishers checked ever appeared in Gemini's citations. That is a correlation from 21 sites that also block other AI bots, not a controlled experiment — but it is the only published measurement, and it points the opposite way from the documentation. If your Google AI visibility matters, treat Google-Extended as a decision to make with your eyes open, not a free training opt-out. (For what opting out does and doesn't do, see [opting out of AI Overviews](/blog/opt-out-google-ai-overviews).)
+
+## What blocking measurably costs
+
+Until this year, "blocking loses you citations" was a logical claim: a crawler that cannot fetch you cannot index you, so the engine cites someone else. The [SIGIR 2026 study](https://arxiv.org/abs/2604.27790) — 11,500 queries across Google's SERP, AI Overviews, and Gemini, dataset published — turned it into a measured one, and the shape of the result is the useful part:
+
+- **Gemini citations: zero** for all 21 popular Google-Extended-blocking publishers checked, including the New York Times, CNN, BBC, and ESPN.
+- **AI Overviews retrieval: significantly reduced**, despite the content being reachable by Googlebot.
+- **Ordinary rankings: untouched.**
+
+That last line is why the cost stays invisible. Every dashboard a publisher watches — rank trackers, Search Console — shows nothing wrong, because nothing is wrong on the surface those tools see. The loss happens entirely on the surfaces they don't, which is the same blind spot that makes [rank a poor proxy for AI citations](/blog/rankings-and-ai-citations) in general.
+
+The flip side is the opportunity nobody prices in: every category has competitors inside these blocking statistics. If 13% of top sites block PerplexityBot, then on Perplexity roughly one in eight potential sources in the general pool has removed itself, and the census publishes [per-domain data](https://ai-visibility.lastminutedealshq.com/sites-blocking-ai-search) you can check your own competitors against. Their robots.txt files are public. An afternoon with them tells you where rivals have conceded a retrieval pool you can occupy — and where you are the one conceding.
+
+## The numbers are asks, not outcomes
+
+Two limitations cut through every figure above, in opposite directions.
+
+**Robots.txt-based rates undercount blocking.** The census reads robots.txt with Google's published matcher — rigorous for what it measures, blind to everything else. Network-layer blocking through WAF rules and bot management never appears in robots.txt, and since Cloudflare's July 2025 change, new domains on the largest CDN block AI crawlers *by default*, invisible to any robots.txt census unless the site also publishes the rules. True blocking prevalence is higher than any robots.txt study shows, and rising mechanically as default-deny infrastructure spreads. Cloudflare's stated rationale is the collapse of the crawl-for-traffic exchange — by its figures, earning a visit is roughly 750× harder from OpenAI's crawling and 30,000× harder from Anthropic's than under the original Google bargain, a gap our [AI referral traffic guide](/blog/ai-referral-traffic-conversion) looks at from the analytics side.
+
+**Robots.txt-based rates also overcount effective blocking.** A block only binds compliant crawlers. Cloudflare's Perplexity findings are the documented case, and the Consent in Crisis authors flag the same structural problem from the other end: restrictions are inconsistently expressed and inconsistently honored, with terms-of-service prohibitions covering 45% of C4's domains while robots.txt catches far less. What a site asks for and what its content does are different facts, and only the first one is cheap to measure.
+
+Both cuts land on the same practical point: a blocking statistic tells you about stated policy on one layer of one sample. It does not tell you whether *your* pages are reaching *your* engines' indexes. Only the answers themselves tell you that.
+
+## What this does not prove
+
+The census is a single-day snapshot of one ranking list, run by an independent operator rather than a research group; its open per-domain data is what earns it a place in the table, but nobody has replicated it yet. The homepages.news sample is news outlets, mostly US, and says nothing about commercial categories. Consent in Crisis measures the domains behind training corpora, which over-represent exactly the publisher web that blocks most, and its window closes in 2024 — before the search-crawler era matured. And the SIGIR blocking finding is a correlation across 21 publishers who differ from non-blockers in many ways besides robots.txt.
+
+None of it supports "everyone is blocking AI" or "nobody serious blocks AI," and both sentences are currently in circulation. The defensible summary: **blocking training bots is common and growing, blocking search bots is rare but real, publishers are a separate regime, and the default is drifting toward blocked without anyone deciding.** Where your site sits in that picture is a fifteen-minute check, and where your competitors sit is public record.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces on a schedule, recording every mention and cited URL. That closes the loop the config files can't: after you change what your robots.txt or CDN tells AI crawlers, the citation record shows whether the engines noticed — and whether the competitors who block are actually absent from the answers you compete for.
+
+For the configuration itself, see [robots.txt and AI crawlers](/blog/robots-txt-ai-crawlers); for what opting out of Google's surfaces really does, [opting out of AI Overviews](/blog/opt-out-google-ai-overviews). For why rank dashboards can't see any of this, [rankings and AI citations](/blog/rankings-and-ai-citations), and for whose pages the engines cite once they can crawl, [where AI citations come from](/blog/where-ai-citations-come-from). For the fundamentals, start with [AI citations](/blog/ai-citations) and [how to track your brand in AI search](/answer-engine-optimization). For the vocabulary, see the [AI search glossary](/glossary).

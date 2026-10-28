@@ -13,7 +13,7 @@ import { expect, userEvent, within } from "storybook/test";
 import { Route } from "@/routes/_authed/choose-plan";
 import type { PaywallRequired } from "@/server/billing";
 import { getMockSubscriptionCalls, resetMockAuthClient, setMockSubscriptionError } from "./_mocks/auth-client";
-import { setMockLoaderData, setMockSearch } from "./_mocks/tanstack-router";
+import { setMockLoaderData, setMockRouteContext, setMockSearch } from "./_mocks/tanstack-router";
 
 const ChoosePlanPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
@@ -37,6 +37,7 @@ const meta = {
 			resetMockAuthClient();
 			setMockSearch({});
 			setMockLoaderData(NEEDS_PLAN);
+			setMockRouteContext({ session: { user: { id: "user-1", email: "owner@acme.test" } } });
 			return (
 				<Shell>
 					<Story />
@@ -81,7 +82,7 @@ export const ComparesPlansAcrossSharedRows: Story = {
 		await expect((await canvas.findAllByText(`${PREMIUM_RUNS_PER_DAY}×/day`)).length).toBeGreaterThan(0);
 
 		// The premium tier names the grounded product, not the pick.
-		await expect(await canvas.findByText("GPT-5 Search")).toBeVisible();
+		await expect(await canvas.findByText("GPT Search")).toBeVisible();
 
 		// Limits read off the catalog rather than being restated in prose.
 		await expect(await canvas.findByText("Tracked prompts")).toBeVisible();
@@ -150,10 +151,6 @@ export const CheckoutError: Story = {
 	},
 };
 
-/**
- * Only an org admin can put a card on file. A member who was invited into an
- * unsubscribed workspace is told who to ask instead of being given dead buttons.
- */
 export const NonAdminMember: Story = {
 	render: () => {
 		setMockLoaderData({ ...NEEDS_PLAN, isOrgAdmin: false });
@@ -161,7 +158,7 @@ export const NonAdminMember: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/only a workspace admin can choose a plan/i)).toBeVisible();
+		await expect(await canvas.findByText(/only an organization admin can choose a plan/i)).toBeVisible();
 		await expect(await canvas.findByRole("button", { name: "Subscribe to Pro" })).toBeDisabled();
 	},
 };
@@ -177,7 +174,7 @@ export const ActivatingAfterCheckout: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/activating your workspace/i)).toBeVisible();
+		await expect(await canvas.findByText(/activating your organization/i)).toBeVisible();
 		await expect(canvas.queryByRole("button", { name: "Subscribe to Pro" })).toBeNull();
 	},
 };

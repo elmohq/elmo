@@ -26,6 +26,7 @@ import {
 	PROVIDER_FILTER_ORDER,
 	parseTarget,
 	passRate,
+	providerAffiliateUrl,
 	providerCategory,
 	providerColumnLabel,
 	providerPhrase,
@@ -299,82 +300,131 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 	);
 }
 
-function LatencyChart({ data }: { data: TargetStatus[] }) {
-	// Merge all targets into a time-series chart
-	// Bucket by ~6 hours for a clean chart
-	const allTimestamps = new Set<string>();
-	const seriesMeta: Record<string, { modelLabel: string; providerLabel: string }> = {};
+const LATENCY_COLORS = [
+	"hsl(221, 83%, 53%)",
+	"hsl(142, 71%, 45%)",
+	"hsl(38, 92%, 50%)",
+	"hsl(0, 84%, 60%)",
+	"hsl(262, 83%, 58%)",
+	"hsl(174, 72%, 40%)",
+	"hsl(330, 81%, 60%)",
+	"hsl(200, 98%, 39%)",
+	"hsl(47, 95%, 53%)",
+	"hsl(15, 75%, 55%)",
+];
+
+type SeriesMeta = Record<string, { modelLabel: string; providerLabel: string }>;
+
+/** Median smooths the outliers within a bucket. */
+function latencyBucketRow(ts: number, values: Record<string, number[]>): Record<string, any> {
+	const row: Record<string, any> = {
+		time: new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "numeric" }),
+	};
+	for (const [name, latencies] of Object.entries(values)) {
+		latencies.sort((a, b) => a - b);
+		row[name] = latencies[Math.floor(latencies.length / 2)];
+	}
+	return row;
+}
+
+/** All targets merged into one series, bucketed by ~6 hours over the last 7 days. */
+function buildLatencySeries(data: TargetStatus[]) {
+	const seriesMeta: SeriesMeta = {};
 	const targetNames = data.map((d) => {
 		const { model, provider } = parseTarget(d.target);
 		const name = `${formatModel(model)} (${formatProvider(provider)})`;
-		if (!seriesMeta[name])
-			seriesMeta[name] = {
-				modelLabel: formatModel(model),
-				providerLabel: formatProvider(provider),
-			};
+		seriesMeta[name] ??= { modelLabel: formatModel(model), providerLabel: formatProvider(provider) };
 		return name;
 	});
 
 	const bucketMs = 6 * 60 * 60 * 1000;
-	const now = Date.now();
-	const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-
+	const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 	const bucketMap: Record<number, Record<string, number[]>> = {};
 
-	for (let i = 0; i < data.length; i++) {
-		const deduped = dedupeEntries(data[i].entries);
-		const name = targetNames[i];
-		for (const entry of deduped) {
+	data.forEach((target, i) => {
+		for (const entry of dedupeEntries(target.entries)) {
 			if (entry.status !== "pass") continue;
 			const t = new Date(entry.ts).getTime();
 			if (t < sevenDaysAgo) continue;
 			const bucket = Math.floor(t / bucketMs) * bucketMs;
-			if (!bucketMap[bucket]) bucketMap[bucket] = {};
-			if (!bucketMap[bucket][name]) bucketMap[bucket][name] = [];
-			bucketMap[bucket][name].push(entry.latency);
+			bucketMap[bucket] ??= {};
+			bucketMap[bucket][targetNames[i]] ??= [];
+			bucketMap[bucket][targetNames[i]].push(entry.latency);
 		}
-	}
+	});
 
 	const chartData = Object.entries(bucketMap)
 		.sort(([a], [b]) => Number(a) - Number(b))
-		.map(([ts, values]) => {
-			const row: Record<string, any> = {
-				time: new Date(Number(ts)).toLocaleDateString(undefined, {
-					month: "short",
-					day: "numeric",
-					hour: "numeric",
-				}),
-			};
-			for (const [name, latencies] of Object.entries(values)) {
-				// Use median to smooth outliers
-				latencies.sort((a, b) => a - b);
-				row[name] = latencies[Math.floor(latencies.length / 2)];
-			}
-			return row;
-		});
+		.map(([ts, values]) => latencyBucketRow(Number(ts), values));
+
+	return { chartData, targetNames, seriesMeta };
+}
+
+/** Groups the hovered bucket by model; within each model, providers are listed
+ *  fastest-first. Model groups follow the same order as the page's sections
+ *  (alphabetical). */
+function LatencyTooltip({
+	active,
+	payload,
+	label,
+	seriesMeta,
+}: {
+	active?: boolean;
+	payload?: any[];
+	label?: string;
+	seriesMeta: SeriesMeta;
+}) {
+	if (!active || !payload?.length) return null;
+
+	const groups: Record<string, { providerLabel: string; color: string; value: number }[]> = {};
+	for (const item of payload) {
+		if (item.value == null) continue;
+		const meta = seriesMeta[item.name] ?? { modelLabel: item.name, providerLabel: item.name };
+		groups[meta.modelLabel] ??= [];
+		groups[meta.modelLabel].push({ providerLabel: meta.providerLabel, color: item.color, value: item.value as number });
+	}
+
+	const ordered = Object.entries(groups)
+		.map(([modelLabel, rows]) => ({ modelLabel, rows: rows.sort((a, b) => a.value - b.value) }))
+		.sort((a, b) => a.modelLabel.localeCompare(b.modelLabel));
+	if (ordered.length === 0) return null;
+
+	return (
+		<div className="border-border/50 bg-background min-w-[11rem] rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+			<div className="font-medium mb-1.5">{label}</div>
+			<div className="grid gap-2">
+				{ordered.map((group) => (
+					<div key={group.modelLabel}>
+						<div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+							{group.modelLabel}
+						</div>
+						<div className="grid gap-1">
+							{group.rows.map((row) => (
+								<div key={row.providerLabel} className="flex items-center gap-2">
+									<div className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: row.color }} />
+									<span className="flex-1 text-zinc-600">{row.providerLabel}</span>
+									<span className="font-mono font-medium tabular-nums">{formatLatency(row.value)}</span>
+								</div>
+							))}
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
+	);
+}
+
+function LatencyChart({ data }: { data: TargetStatus[] }) {
+	const { chartData, targetNames, seriesMeta } = buildLatencySeries(data);
 
 	if (chartData.length === 0) {
 		return <div className="py-12 text-center text-sm text-zinc-600">No latency data for the current selection.</div>;
 	}
 
-	const colors = [
-		"hsl(221, 83%, 53%)",
-		"hsl(142, 71%, 45%)",
-		"hsl(38, 92%, 50%)",
-		"hsl(0, 84%, 60%)",
-		"hsl(262, 83%, 58%)",
-		"hsl(174, 72%, 40%)",
-		"hsl(330, 81%, 60%)",
-		"hsl(200, 98%, 39%)",
-		"hsl(47, 95%, 53%)",
-		"hsl(15, 75%, 55%)",
-	];
-
-	const config: ChartConfig = {};
 	const uniqueNames = [...new Set(targetNames)];
-	uniqueNames.forEach((name, i) => {
-		config[name] = { label: name, color: colors[i % colors.length] };
-	});
+	const config: ChartConfig = Object.fromEntries(
+		uniqueNames.map((name, i) => [name, { label: name, color: LATENCY_COLORS[i % LATENCY_COLORS.length] }]),
+	);
 
 	return (
 		<ChartContainer config={config} className="h-[400px] w-full">
@@ -386,64 +436,13 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 					tickFormatter={(v) => formatLatency(v)}
 					label={{ value: "Latency", angle: -90, position: "insideLeft", style: { fontSize: 12 } }}
 				/>
-				<ChartTooltip
-					content={({ active, payload, label }: any) => {
-						if (!active || !payload?.length) return null;
-						// Group the hovered bucket by model; within each model list
-						// providers fastest-first. Model groups follow the same order
-						// as the page's sections (alphabetical).
-						const groups: Record<string, { providerLabel: string; color: string; value: number }[]> = {};
-						for (const item of payload as any[]) {
-							if (item.value == null) continue;
-							const meta = seriesMeta[item.name] ?? {
-								modelLabel: item.name,
-								providerLabel: item.name,
-							};
-							groups[meta.modelLabel] ??= [];
-							groups[meta.modelLabel].push({
-								providerLabel: meta.providerLabel,
-								color: item.color,
-								value: item.value as number,
-							});
-						}
-						const ordered = Object.entries(groups)
-							.map(([modelLabel, rows]) => ({
-								modelLabel,
-								rows: rows.sort((a, b) => a.value - b.value),
-							}))
-							.sort((a, b) => a.modelLabel.localeCompare(b.modelLabel));
-						if (ordered.length === 0) return null;
-						return (
-							<div className="border-border/50 bg-background min-w-[11rem] rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
-								<div className="font-medium mb-1.5">{label}</div>
-								<div className="grid gap-2">
-									{ordered.map((group) => (
-										<div key={group.modelLabel}>
-											<div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-												{group.modelLabel}
-											</div>
-											<div className="grid gap-1">
-												{group.rows.map((row) => (
-													<div key={row.providerLabel} className="flex items-center gap-2">
-														<div className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: row.color }} />
-														<span className="flex-1 text-zinc-600">{row.providerLabel}</span>
-														<span className="font-mono font-medium tabular-nums">{formatLatency(row.value)}</span>
-													</div>
-												))}
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
-						);
-					}}
-				/>
+				<ChartTooltip content={(props: any) => <LatencyTooltip {...props} seriesMeta={seriesMeta} />} />
 				{uniqueNames.map((name, i) => (
 					<Line
 						key={name}
 						type="monotone"
 						dataKey={name}
-						stroke={colors[i % colors.length]}
+						stroke={LATENCY_COLORS[i % LATENCY_COLORS.length]}
 						strokeWidth={2}
 						dot={false}
 						connectNulls
@@ -598,6 +597,29 @@ function StatWithSparkline({
 	);
 }
 
+function ProviderName({
+	provider,
+	className,
+	children,
+}: {
+	provider: string;
+	className?: string;
+	children: ReactNode;
+}) {
+	const href = providerAffiliateUrl(provider);
+	if (!href) return <span className={className}>{children}</span>;
+	return (
+		<a
+			href={href}
+			target="_blank"
+			rel="sponsored nofollow noopener noreferrer"
+			className={`${className ?? ""} underline decoration-zinc-300 underline-offset-2 hover:decoration-current`}
+		>
+			{children}
+		</a>
+	);
+}
+
 function ProviderRow({ data }: { data: TargetStatus }) {
 	const { model, provider, rest } = parseTarget(data.target);
 	const deduped = dedupeEntries(data.entries);
@@ -614,7 +636,9 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 		<div className="space-y-2 rounded-md border border-zinc-200 bg-white p-4">
 			<div className="flex items-center justify-between">
 				<div>
-					<span className="font-medium text-zinc-950">{formatProvider(provider)}</span>
+					<ProviderName provider={provider} className="font-medium text-zinc-950">
+						{formatProvider(provider)}
+					</ProviderName>
 					{rest && (
 						<span className="text-zinc-500">
 							{" "}
@@ -943,7 +967,7 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 						<div />
 						{renderProviderCells((p) => (
 							<div key={p} className="px-1 pb-1 text-center text-[11px] font-medium text-zinc-500">
-								{providerColumnLabel(p, grouped)}
+								<ProviderName provider={p}>{providerColumnLabel(p, grouped)}</ProviderName>
 							</div>
 						))}
 						<div />
@@ -1027,7 +1051,6 @@ function StatusPage() {
 			<Navbar />
 			<main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
 				<div className="mb-8">
-					<p className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ STATUS</p>
 					<h1 className="font-heading text-3xl text-zinc-950 md:text-4xl">Provider Status</h1>
 					<p className="mt-2 text-zinc-600">
 						Status of the third-party AI providers and scraping services Elmo uses to track your brand's visibility and

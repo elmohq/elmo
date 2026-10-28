@@ -3,12 +3,12 @@
  * running server honours it, which a config or root-route change could break
  * while the unit tests still pass.
  *
- * Requests to Crisp are aborted in the browser, so CI never reaches them.
+ * Requests to Crisp are aborted for the whole suite (see e2e/test.ts), so CI
+ * never reaches them. The route below is this spec's own, layered on top to
+ * count what a mode that should stay quiet tried to fetch.
  */
-import { expect, test } from "@playwright/test";
-import { isDeploymentMode, TEST_BRAND_ID } from "../../fixtures";
-
-const CRISP_HOSTS = "**://*.crisp.chat/**";
+import { CRISP_HOSTS, expect, test } from "../../test";
+import { TEST_BRAND_ID, brandUrl, isDeploymentMode } from "../../fixtures";
 
 test.describe("Support chat", () => {
   test("loads on the deployments we operate, and only those", async ({ page }, testInfo) => {
@@ -23,10 +23,10 @@ test.describe("Support chat", () => {
       return route.abort();
     });
 
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+    await page.goto(`${brandUrl()}`);
     // The loader runs in the root route's effect, so a hydrated dashboard means
     // it has either run or never will.
-    await expect(page.locator(`a[href="/app/${TEST_BRAND_ID}"][data-sidebar="menu-button"]`)).toBeVisible({
+    await expect(page.locator(`a[href="${brandUrl()}"][data-sidebar="menu-button"]`)).toBeVisible({
       timeout: 30_000,
     });
 
@@ -36,10 +36,16 @@ test.describe("Support chat", () => {
         loaderScripts: document.querySelectorAll('script[src*="crisp.chat"]').length,
       }));
 
+    const supportButton = page.getByRole("button", { name: /^Support chat/ });
+
     if (mode === "cloud" || mode === "demo") {
       await expect.poll(readLoader, { timeout: 15_000 }).toEqual({ websiteId: expect.any(String), loaderScripts: 1 });
+      // The demo keeps Crisp's own floating launcher instead.
+      if (mode === "cloud") await expect(supportButton).toBeVisible();
+      else await expect(supportButton).toHaveCount(0);
     } else {
       expect(await readLoader()).toEqual({ websiteId: null, loaderScripts: 0 });
+      await expect(supportButton).toHaveCount(0);
       expect(requestedCrisp, "a deployment we do not operate must not call Crisp").toBe(false);
     }
   });

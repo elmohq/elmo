@@ -1,12 +1,11 @@
-import { describe, expect, it } from "vitest";
 import {
 	ALL_MODELS_VALUE,
-	getAvailableModels,
 	labelForModelFilter,
 	parseModelFilter,
-	type TrackedTarget,
 	targetFilterValue,
-} from "@/lib/model-filter";
+} from "@workspace/config/model-filter";
+import { describe, expect, it } from "vitest";
+import { getAvailableModels, type TrackedTarget } from "@/lib/model-filter";
 
 const target = (model: string, premium = false): TrackedTarget => ({
 	value: targetFilterValue(model, premium),
@@ -72,7 +71,7 @@ describe("parseModelFilter", () => {
 describe("labelForModelFilter", () => {
 	it("names the grounded variant the way it is sold, not as a second ChatGPT", () => {
 		expect(labelForModelFilter("chatgpt")).toBe("ChatGPT");
-		expect(labelForModelFilter("chatgpt::premium")).toBe("GPT-5 Search");
+		expect(labelForModelFilter("chatgpt::premium")).toBe("GPT Search");
 		expect(labelForModelFilter("grok::premium")).toBe("Grok (web)");
 	});
 

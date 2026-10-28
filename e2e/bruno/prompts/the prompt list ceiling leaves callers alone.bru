@@ -1,0 +1,24 @@
+meta {
+  name: a large prompt page is clamped high, not to 100
+  type: http
+  seq: 34
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?limit=5000
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  limit: 5000
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.limit: eq 1000
+}

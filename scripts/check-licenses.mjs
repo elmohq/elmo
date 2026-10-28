@@ -20,9 +20,9 @@ import { execSync } from "node:child_process";
 // ── Allowed SPDX license identifiers ────────────────────────────────
 // Permissive licenses compatible with MIT redistribution, plus MPL-2.0.
 // MPL-2.0 is file-level copyleft: used as an unmodified dependency it places no
-// obligations on Elmo's own MIT-licensed code (e.g. satori/resvg for OG images,
-// lightningcss for CSS). Strong copyleft (GPL/LGPL/AGPL) is intentionally NOT
-// added — its terms would conflict with shipping Elmo under MIT.
+// obligations on Elmo's own MIT-licensed code (e.g. lightningcss for CSS).
+// Strong copyleft (GPL/LGPL/AGPL) is intentionally NOT added — its terms would
+// conflict with shipping Elmo under MIT.
 const ALLOWED_LICENSES = new Set([
   "MIT",
   "MIT-0",
@@ -69,6 +69,8 @@ const PACKAGE_EXCEPTIONS = new Map([
   ["@sentry/cli-linux-x64", "FSL-1.1-MIT"],
   ["@sentry/cli-win32-i686", "FSL-1.1-MIT"],
   ["@sentry/cli-win32-x64", "FSL-1.1-MIT"],
+
+  ["sentry", "FSL-1.1-Apache-2.0"],
 
   // Web fonts – OFL-1.1 permits bundling in web applications.
   ["@fontsource/geist-mono", "OFL-1.1"],

@@ -2,8 +2,8 @@
  * What makes a demo deployment different.
  *
  * Demo is local mode with READ_ONLY forced on: a public, shared instance that
- * anyone can look around but nobody can change. It advertises one set of
- * credentials on the login page, wears a "Demo" pill, and refuses every write.
+ * anyone can look around but nobody can change. It signs every visitor in to
+ * one shared account, wears a "Demo" pill, and refuses every write.
  *
  * The read-only policy itself is unit-tested as a pure function
  * (apps/web/src/lib/auth/__tests__/policies.test.ts). What these specs add is
@@ -11,7 +11,8 @@
  * write leaves the database untouched — a 403 that still wrote would pass the
  * unit tests.
  */
-import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
 import {
   COMPETITOR_IDS,
   DEMO_CREDENTIALS,
@@ -20,10 +21,18 @@ import {
   TEST_BRAND_ID,
   TEST_BRAND_NAME,
   TEST_USER,
+  brandUrl,
+  organizationUrl,
 } from "../../fixtures";
 import { withDb } from "../../session";
+import { fillUntilSaveable, openAccountMenu } from "../../interactions";
 
 const authed = { Authorization: `Bearer ${TEST_API_KEY}` };
+
+async function expectSignedInAsDemo(page: Page): Promise<void> {
+  const session = await (await page.request.get("/api/auth/get-session")).json();
+  expect(session?.user?.email).toBe(DEMO_CREDENTIALS.email);
+}
 
 async function countRows(table: string, where: string, params: unknown[]): Promise<number> {
   return withDb(async (client) => {
@@ -79,8 +88,9 @@ test.describe("Demo refuses writes", () => {
     expect(prompt.status()).toBe(200);
   });
 
-  test("saving brand settings from the UI fails and writes nothing", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/settings/brand`);
+  test("saving brand settings from the UI fails and writes nothing", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(403, "/_serverFn/"));
+    await page.goto(`${brandUrl()}/settings/brand`);
 
     const nameInput = page.getByLabel("Brand Name");
     await expect(nameInput).toBeVisible({ timeout: 30_000 });
@@ -95,6 +105,7 @@ test.describe("Demo refuses writes", () => {
     expect((await writeAttempt).status()).toBe(403);
 
     await expect(page.getByText("Brand details updated successfully!")).toHaveCount(0);
+    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible();
     expect(await countRows("brands", "id = $1 AND name = $2", [TEST_BRAND_ID, TEST_BRAND_NAME])).toBe(1);
   });
 });
@@ -134,40 +145,78 @@ test.describe("Demo auth is sign-in only", () => {
     expect(response.status()).toBe(200);
   });
 
-  test("the login page advertises the shared demo account", async ({ page }) => {
+  test("the login page signs you in to the shared demo account", async ({ page }) => {
     await page.goto("/auth/login");
 
-    await expect(page.getByText("Demo Account")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(DEMO_CREDENTIALS.email)).toBeVisible();
-    await expect(page.getByText(DEMO_CREDENTIALS.password, { exact: true }).first()).toBeVisible();
-    // Credentials are pre-filled, so there is nothing to type in.
-    await expect(page.getByLabel("Email")).toHaveCount(0);
-    await expect(page.getByLabel("Password")).toHaveCount(0);
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
   });
 
-  test("the register page sends you to sign in", async ({ page }) => {
+  test("signing in lands on the page you were sent from", async ({ page }) => {
+    await page.goto(brandUrl());
+
+    await page.waitForURL((url) => url.pathname === brandUrl(), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
+  });
+
+  test("the register page signs you in instead", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(ABORTED_SSR_STREAM);
     await page.goto("/auth/register");
-    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
+  });
+
+  test("the bare app URL opens on the demo account", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
   });
 });
 
 test.describe("Demo features", () => {
+  test("log out is not offered, since the login page would sign you straight back in", async ({ page }) => {
+    await page.goto(brandUrl());
+
+    const menu = await openAccountMenu(page);
+    await expect(menu.getByRole("menuitem").first()).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Log out" })).toHaveCount(0);
+  });
+
   test("the demo pill is shown", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+    await page.goto(`${brandUrl()}`);
     await expect(page.getByText("Demo", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("brands cannot be created", async ({ page }) => {
+  test("nothing can be created", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByText("Brand Switcher", { exact: true })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("link", { name: /create new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /create new brand|new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /new organization/i })).toHaveCount(0);
 
-    await page.goto("/app/new");
-    await page.waitForURL(/\/app(?:\/)?$/, { timeout: 30_000 });
+    await page.goto(`${organizationUrl()}/new`);
+    await page.waitForURL(new RegExp(`${organizationUrl()}/settings$`), { timeout: 30_000 });
   });
 
-  test("team settings are unavailable", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/settings/members`);
-    await page.waitForURL(new RegExp(`/app/${TEST_BRAND_ID}$`), { timeout: 30_000 });
+  test("saving organization settings fails and says why", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(403, "/_serverFn/"));
+    await page.goto(`${organizationUrl()}/settings`);
+
+    const nameField = page.getByLabel("Organization Name", { exact: true });
+    await expect(nameField).toBeEnabled({ timeout: 30_000 });
+
+    const save = page.getByRole("button", { name: "Save", exact: true });
+    await fillUntilSaveable(nameField, "Renamed In Demo", save);
+    await save.click();
+    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible({ timeout: 30_000 });
+  });
+
+  test("the team page is not offered and not reachable", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(404, `${organizationUrl()}/settings/members`));
+    await page.goto(`${organizationUrl()}/settings`);
+    await expect(
+      page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
+    ).toHaveCount(0);
+
+    await page.goto(`${organizationUrl()}/settings/members`);
+    await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
 });

@@ -2,18 +2,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import type { LookbackPeriod } from "@/lib/chart-utils";
-import {
-	getBatchChartData,
-	getCitationsTotalCount,
-	getVisibilityDailyAggregate,
-	type ProcessedBatchChartDataPoint,
-} from "@/lib/postgres-read";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { type ProcessedBatchChartDataPoint, toBatchChartData } from "@/lib/chart-utils";
+import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
+import { getPerPromptDailyCompetitors, getPerPromptDailyRuns } from "@/lib/rollup-read";
+import { getBrandVisibility } from "@/server/analytics-core";
+import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 export interface BatchChartDataResponse {
@@ -32,12 +28,13 @@ export interface BatchChartDataResponse {
 	};
 }
 
-export interface VisibilityTimeSeriesPoint {
+interface VisibilityTimeSeriesPoint {
 	date: string;
 	visibility: number | null;
 }
 
 export interface FilteredVisibilityResponse {
+	/** Whole-number percentage. The shared computation answers in ratios. */
 	currentVisibility: number;
 	totalRuns: number;
 	totalPrompts: number;
@@ -50,7 +47,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
 			search: z.string().optional(),
@@ -58,17 +55,9 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }): Promise<BatchChartDataResponse> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
-		const timezone = resolveTimezone(data.timezone);
-		const lookbackParam = data.lookback as LookbackPeriod;
-
-		// `allStrategy: "1y"` guarantees concrete bounds for every lookback
-		// (including "all"), so the dates are never null here.
-		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookbackParam, timezone, {
-			allStrategy: "1y",
-		}) as { fromDateStr: string; toDateStr: string };
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 
 		// Resolve the in-scope prompts server-side from the filter criteria so
 		// the client never ships the full prompt-id list (issue #68).
@@ -103,18 +92,14 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 			};
 		}
 
-		const chartData = await getBatchChartData(
-			data.brandId,
-			promptIds,
-			fromDateStr,
-			toDateStr,
-			timezone,
-			undefined,
-			data.model,
-		);
+		const scope = { brandId: data.brandId, from: fromDateStr, to: toDateStr, timezone, promptIds, model: data.model };
+		const [runs, competitorRuns] = await Promise.all([
+			getPerPromptDailyRuns(scope),
+			getPerPromptDailyCompetitors(scope),
+		]);
 
 		return {
-			chartData,
+			chartData: toBatchChartData(runs, competitorRuns),
 			brand: { id: brand.id, name: brand.name },
 			competitors: competitorsResult,
 			dateRange: {
@@ -128,7 +113,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
 			search: z.string().optional(),
@@ -136,82 +121,28 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }): Promise<FilteredVisibilityResponse> => {
-		const session = await requireAuthSession();
-		const lookbackParam = data.lookback as LookbackPeriod;
+		await requireBrandSession(data.brandId);
 
-		await requireBrandAccess(session.user.id, data.brandId);
+		const lookback = data.lookback;
+		// Shares the chart's window so the visibility bar can't disagree with it.
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, lookback, data.timezone);
 
-		// Resolve the in-scope prompts server-side from the filter criteria so
-		// the client never ships the full prompt-id list (issue #68).
-		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
-			tags: data.tags,
-			search: data.search,
-		});
-		const promptIds = resolvedPrompts.map((p) => p.id);
-		const totalPrompts = promptIds.length;
+		const result = await getBrandVisibility(
+			data.brandId,
+			{ from: fromDateStr, to: toDateStr, timezone },
+			{ model: data.model, tags: data.tags, search: data.search },
+		);
 
-		if (totalPrompts === 0) {
-			return {
-				currentVisibility: 0,
-				totalRuns: 0,
-				totalPrompts: 0,
-				totalCitations: 0,
-				visibilityTimeSeries: [],
-				lookback: lookbackParam,
-			};
-		}
-
-		const timezone = resolveTimezone(data.timezone);
-
-		const brandedPromptIds = resolvedPrompts
-			.filter((p) => getEffectiveBrandedStatus(p.systemTags, p.tags).isBranded)
-			.map((p) => p.id);
-
-		// `allStrategy: "1y"` caps the "all" lookback at a one-year window so
-		// the visibility bar matches the chart section. Every other lookback
-		// already returns concrete bounds, so we can destructure without
-		// null-checking.
-		const { fromDateStr: fromDate, toDateStr: toDate } = getTimezoneLookbackRange(lookbackParam, timezone, {
-			allStrategy: "1y",
-		}) as { fromDateStr: string; toDateStr: string };
-
-		const [daily, totalCitations] = await Promise.all([
-			getVisibilityDailyAggregate(data.brandId, fromDate, toDate, timezone, promptIds, brandedPromptIds, data.model),
-			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, promptIds, data.model),
-		]);
-
-		// Roll the period run totals from the raw observation sums (actual_*);
-		// the visibility time-series uses the per-day LVCF sums so gaps in
-		// individual prompt schedules do not create artificial dips in the line.
-		let totalBrandedRuns = 0;
-		let totalNonBrandedRuns = 0;
-		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = daily.map((row) => {
-			totalBrandedRuns += row.actual_branded_runs;
-			totalNonBrandedRuns += row.actual_nonbranded_runs;
-			const t = row.lvcf_branded_runs + row.lvcf_nonbranded_runs;
-			const m = row.lvcf_branded_mentioned + row.lvcf_nonbranded_mentioned;
-			return { date: row.date, visibility: t === 0 ? null : Math.round((m / t) * 100) };
-		});
-
-		const totalRuns = totalBrandedRuns + totalNonBrandedRuns;
-		// "Current" = the latest plotted point (last non-null LVCF day), so the headline
-		// number matches the right end of the trend/sparkline beside it — and the
-		// overview's current-visibility hero — rather than the whole-window average.
-		let currentVisibility = 0;
-		for (let i = visibilityTimeSeries.length - 1; i >= 0; i--) {
-			const v = visibilityTimeSeries[i].visibility;
-			if (v != null) {
-				currentVisibility = v;
-				break;
-			}
-		}
-
+		// The single place the dashboard converts the shared ratios to percentages.
+		const asPercent = (ratio: number | null) => (ratio === null ? null : Math.round(ratio * 100));
 		return {
-			currentVisibility,
-			totalRuns,
-			totalPrompts,
-			totalCitations,
-			visibilityTimeSeries,
-			lookback: lookbackParam,
+			// The hero renders a percentage, so "no runs to plot" has to arrive as a
+			// number rather than the null the shared function returns.
+			currentVisibility: asPercent(result.currentVisibility) ?? 0,
+			totalRuns: result.totalRuns,
+			totalPrompts: result.totalPrompts,
+			totalCitations: result.totalCitations,
+			visibilityTimeSeries: result.series.map((point) => ({ ...point, visibility: asPercent(point.visibility) })),
+			lookback,
 		};
 	});

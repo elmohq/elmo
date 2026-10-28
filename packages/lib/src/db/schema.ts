@@ -1,5 +1,9 @@
+import { sql } from "drizzle-orm";
 import {
+	type AnyPgColumn,
+	bigint,
 	boolean,
+	check,
 	index,
 	integer,
 	json,
@@ -7,11 +11,14 @@ import {
 	numeric,
 	pgEnum,
 	pgTable,
+	primaryKey,
 	smallint,
 	text,
 	timestamp,
+	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
+import type { RunMentionAssessments } from "../mentions";
 // `organization` is referenced by the brands FK below; the re-export makes it
 // (and the rest of the auth schema) visible to `import * as schema` consumers.
 import { organization } from "./schema-auth";
@@ -31,6 +38,7 @@ export const brands = pgTable(
 	{
 		id: text("id").primaryKey().notNull(),
 		name: text("name").notNull(),
+		slug: text("slug"),
 		website: text("website").notNull(),
 		additionalDomains: text("additional_domains").array().notNull().default([]),
 		aliases: text("aliases").array().notNull().default([]),
@@ -38,6 +46,11 @@ export const brands = pgTable(
 		onboarded: boolean("onboarded").default(false).notNull(),
 		delayOverrideHours: integer("delay_override_hours"),
 		enabledModels: text("enabled_models").array(),
+		/**
+		 * Analysis name -> the stamp this brand's run history was last reprocessed to.
+		 * Null for brands that predate stamping until the worker adopts today's stamps.
+		 */
+		analysisVersions: jsonb("analysis_versions").$type<Record<string, string>>().default({}),
 		// Hard tenancy scope. Every brand belongs to exactly one better-auth
 		// organization; org membership (the `member` table) is the access-control
 		// mechanism. Brand and organization ids are independent, so billing and
@@ -53,6 +66,10 @@ export const brands = pgTable(
 	},
 	(table) => ({
 		organizationIdIdx: index("brands_organization_id_idx").on(table.organizationId),
+		// Postgres treats nulls as distinct here, which is what lets every
+		// un-slugged brand in an organization coexist. NULLS NOT DISTINCT would
+		// allow only one.
+		organizationSlugIdx: uniqueIndex("brands_organization_id_slug_idx").on(table.organizationId, table.slug),
 	}),
 ).enableRLS();
 
@@ -84,21 +101,30 @@ export const prompts = pgTable(
 	}),
 ).enableRLS();
 
-export const competitors = pgTable("competitors", {
-	id: uuid("id").defaultRandom().primaryKey().notNull(),
-	brandId: text("brand_id")
-		.references(() => brands.id)
-		.notNull(),
-	name: text("name").notNull(),
-	domains: text("domains").array().notNull().default([]),
-	aliases: text("aliases").array().notNull().default([]),
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.defaultNow()
-		.$onUpdate(() => new Date())
-		.notNull(),
-}).enableRLS();
+export const competitors = pgTable(
+	"competitors",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		brandId: text("brand_id")
+			.references(() => brands.id)
+			.notNull(),
+		name: text("name").notNull(),
+		domains: text("domains").array().notNull().default([]),
+		aliases: text("aliases").array().notNull().default([]),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [index("competitors_brand_id_idx").on(table.brandId)],
+).enableRLS();
 
+/**
+ * Append-only: what was asked and what the provider returned, never rewritten (a
+ * trigger rejects updates). Everything derived from it lives in `run_extractions`,
+ * `run_mentions` and `citations`, which can be thrown away and re-derived.
+ */
 export const promptRuns = pgTable(
 	"prompt_runs",
 	{
@@ -114,24 +140,45 @@ export const promptRuns = pgTable(
 		version: text("version").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
 		rawOutput: json("raw_output").notNull(),
+		/**
+		 * The searches the provider reported running. Kept with the raw response
+		 * because nothing can re-derive it from `raw_output` yet.
+		 */
 		webQueries: text("web_queries").array().notNull().default([]),
-		brandMentioned: boolean("brand_mentioned").notNull(),
-		competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	},
 	(table) => ({
 		promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		createdAtIdx: index("prompt_runs_created_at_idx").on(table.createdAt),
-		webSearchCreatedAtIdx: index("prompt_runs_web_search_created_at_idx").on(table.webSearchEnabled, table.createdAt),
-		webSearchModelCreatedAtIdx: index("prompt_runs_web_search_model_created_at_idx").on(
-			table.webSearchEnabled,
-			table.model,
-			table.createdAt,
-		),
-		providerIdx: index("prompt_runs_provider_idx").on(table.provider),
-		modelCreatedAtIdx: index("prompt_runs_model_created_at_idx").on(table.model, table.createdAt),
 	}),
 ).enableRLS();
+
+/**
+ * What a run's answer says, derived from `raw_output` and replaced wholesale when
+ * the extractor changes (with the run's `citations`). One row per run.
+ */
+export const runExtractions = pgTable("run_extractions", {
+	runId: uuid("run_id")
+		.primaryKey()
+		.references(() => promptRuns.id, { onDelete: "cascade" }),
+	/** Null when the answer had no text, or the run predates stored text. */
+	textContent: text("text_content"),
+	/** The `extraction` stamp it was derived with; null for runs that predate stamping. */
+	stamp: text("stamp"),
+}).enableRLS();
+
+/** Which tracked brands a run's answer mentions, under the brand config in `stamp`. One row per run. */
+export const runMentions = pgTable("run_mentions", {
+	runId: uuid("run_id")
+		.primaryKey()
+		.references(() => promptRuns.id, { onDelete: "cascade" }),
+	brandMentioned: boolean("brand_mentioned").notNull(),
+	competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
+	/** The mention judge's assessments behind the columns above; null for mentions matched by name, before the judge. */
+	assessments: jsonb("assessments").$type<RunMentionAssessments>(),
+	/** The `mentions` stamp it was derived with; null for runs that predate stamping. */
+	stamp: text("stamp"),
+}).enableRLS();
 
 export const citations = pgTable(
 	"citations",
@@ -152,19 +199,13 @@ export const citations = pgTable(
 		title: text("title"),
 		citationIndex: smallint("citation_index").notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+		/** The normalized page this URL is; null only until a backfill resolves citations stored before pages were. */
+		pageId: bigint("page_id", { mode: "number" }).references((): AnyPgColumn => citedPages.id),
 	},
 	(table) => ({
-		brandAnalyticsIdx: index("idx_citations_brand_analytics").on(
-			table.brandId,
-			table.createdAt,
-			table.url,
-			table.domain,
-			table.title,
-			table.promptId,
-			table.model,
-		),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
-		domainIdx: index("citations_domain_idx").on(table.domain),
+		// Replay, run detail and rollup rebuilds all reach a run's citations by its id.
+		runIdx: index("citations_prompt_run_id_idx").on(table.promptRunId),
 	}),
 ).enableRLS();
 
@@ -173,6 +214,8 @@ export const reports = pgTable(
 	{
 		id: uuid("id").defaultRandom().primaryKey().notNull(),
 		brandName: text("brand_name").notNull(),
+		// Other names the brand goes by; any of them counts as a brand mention.
+		brandAliases: text("brand_aliases").array().notNull().default([]),
 		brandWebsite: text("brand_website").notNull(),
 		status: reportStatusEnum().notNull().default("pending"),
 		progress: integer("progress").notNull().default(0),
@@ -310,3 +353,221 @@ export const secrets = pgTable("secrets", {
 		.$onUpdate(() => new Date())
 		.notNull(),
 }).enableRLS();
+
+/**
+ * A function so each table gets its own column builders. `provider` is '' rather
+ * than null because null key parts never compare equal, which would let a bucket
+ * rebuild insert duplicates. Deleting a prompt cascades here, so no read has to
+ * guard against rows that outlived theirs.
+ */
+const rollupKeyColumns = () => ({
+	brandId: text("brand_id").notNull(),
+	bucket: timestamp("bucket", { withTimezone: true }).notNull(),
+	promptId: uuid("prompt_id")
+		.notNull()
+		.references(() => prompts.id, { onDelete: "cascade" }),
+	model: text("model").notNull(),
+	provider: text("provider").notNull().default(""),
+	webSearchEnabled: boolean("web_search_enabled").notNull(),
+});
+
+export const rollupPromptRuns = pgTable(
+	"rollup_prompt_runs",
+	{
+		...rollupKeyColumns(),
+		runs: integer("runs").notNull(),
+		brandMentionedRuns: integer("brand_mentioned_runs").notNull(),
+		/** Runs mentioning at least one competitor. */
+		competitorRuns: integer("competitor_runs").notNull(),
+		/** Total competitor mentions across the bucket's runs. */
+		competitorMentions: integer("competitor_mentions").notNull(),
+		/** Runs mentioning neither the brand nor any competitor. */
+		noMentionRuns: integer("no_mention_runs").notNull(),
+		/**
+		 * Runs mentioning the brand, by the judge's sentiment toward it.
+		 * No default on these: a worker still on the previous release fails its rebuild, keeping the range marked
+		 * for the new one, rather than writing zeros over it.
+		 */
+		positiveRuns: integer("positive_runs").notNull(),
+		neutralRuns: integer("neutral_runs").notNull(),
+		negativeRuns: integer("negative_runs").notNull(),
+		mixedRuns: integer("mixed_runs").notNull(),
+		/** The brand's position summed over the runs that rank it; divide by `positionedRuns` for the average. */
+		positionSum: integer("position_sum").notNull(),
+		positionedRuns: integer("positioned_runs").notNull(),
+		/** Runs with at least one genuine fan-out query (see `isFanoutQuery`). */
+		fanoutRuns: integer("fanout_runs").notNull(),
+		/** Distinct genuine fan-out queries summed over runs. */
+		fanoutQueries: integer("fanout_queries").notNull(),
+		firstRunAt: timestamp("first_run_at", { withTimezone: true }).notNull(),
+		lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_prompt_runs_pk",
+			columns: [table.brandId, table.bucket, table.promptId, table.model, table.provider, table.webSearchEnabled],
+		}),
+		index("rollup_prompt_runs_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+export const rollupCompetitorMentions = pgTable(
+	"rollup_competitor_mentions",
+	{
+		...rollupKeyColumns(),
+		/** Keyed by name, not competitor id: a bulk competitor save reinserts rows with new ids. */
+		competitorName: text("competitor_name").notNull(),
+		runs: integer("runs").notNull(),
+		/** The same sentiment and position measures as `rollup_prompt_runs` has for the brand. */
+		positiveRuns: integer("positive_runs").notNull(),
+		neutralRuns: integer("neutral_runs").notNull(),
+		negativeRuns: integer("negative_runs").notNull(),
+		mixedRuns: integer("mixed_runs").notNull(),
+		positionSum: integer("position_sum").notNull(),
+		positionedRuns: integer("positioned_runs").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_competitor_mentions_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.competitorName,
+			],
+		}),
+		index("rollup_competitor_mentions_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/**
+ * Shared by every tenant, so classification here is the tenant-independent half;
+ * brand and competitor domains are applied at read time.
+ */
+export const citedPages = pgTable("cited_pages", {
+	id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey().notNull(),
+	url: text("url").notNull().unique(),
+	domain: text("domain").notNull(),
+	/** Most recently seen non-null title. */
+	title: text("title"),
+	pageType: text("page_type").notNull(),
+	staticCategory: text("static_category").notNull(),
+	classifierVersion: integer("classifier_version").notNull(),
+	firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),
+	lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+}).enableRLS();
+
+export const rollupCitationUrls = pgTable(
+	"rollup_citation_urls",
+	{
+		...rollupKeyColumns(),
+		pageId: bigint("page_id", { mode: "number" })
+			.notNull()
+			.references(() => citedPages.id),
+		/** Denormalized from cited_pages so domain reads need no join. */
+		domain: text("domain").notNull(),
+		citations: integer("citations").notNull(),
+		/** Over `citations`, so the mean position can be re-aggregated across buckets. */
+		positionSum: integer("position_sum").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_citation_urls_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.pageId,
+			],
+		}),
+		index("rollup_citation_urls_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/** Genuine fan-out queries, each counted once per run that searched it. */
+export const rollupWebQueries = pgTable(
+	"rollup_web_queries",
+	{
+		...rollupKeyColumns(),
+		/** Normalized; see `normalizedWebQuery`. */
+		query: text("query").notNull(),
+		runs: integer("runs").notNull(),
+		brandMentionedRuns: integer("brand_mentioned_runs").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_web_queries_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.query,
+			],
+		}),
+		index("rollup_web_queries_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/**
+ * Invalidation outbox. Whoever changes raw data or interpretation marks the
+ * affected buckets in the same transaction; the refresh job deletes marks in
+ * the transaction that rebuilds them, so a rebuild that fails leaves its marks
+ * behind and a write that lands mid-rebuild leaves a fresh one.
+ */
+export const rollupDirty = pgTable(
+	"rollup_dirty",
+	{
+		brandId: text("brand_id").notNull(),
+		bucket: timestamp("bucket", { withTimezone: true }).notNull(),
+		firstMarkedAt: timestamp("first_marked_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => [
+		primaryKey({ name: "rollup_dirty_pk", columns: [table.brandId, table.bucket] }),
+		index("rollup_dirty_bucket_idx").on(table.bucket),
+	],
+).enableRLS();
+
+/**
+ * Single row recording which `ROLLUP_VERSION` the stored rollups were built
+ * with. The worker compares it on startup and marks everything for a rebuild
+ * when the code has moved on.
+ */
+export const pipelineState = pgTable(
+	"pipeline_state",
+	{
+		id: smallint("id").primaryKey().default(1),
+		rollupVersion: integer("rollup_version").notNull().default(0),
+	},
+	() => [check("pipeline_state_singleton", sql`id = 1`)],
+).enableRLS();
+
+export type CitedPage = typeof citedPages.$inferSelect;
+
+export type PipelineState = typeof pipelineState.$inferSelect;
+
+/**
+ * Data migrations that need application code, so they run in the worker rather
+ * than as SQL migrations: one row per migration, with where it has got to so a
+ * restart resumes it, and when it finished so later starts skip it.
+ */
+export const backgroundMigrations = pgTable("background_migrations", {
+	name: text("name").primaryKey(),
+	startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+	finishedAt: timestamp("finished_at", { withTimezone: true }),
+	/** The migration's own resume position. */
+	progress: jsonb("progress"),
+	rowsDone: bigint("rows_done", { mode: "number" }).notNull().default(0),
+	lastError: text("last_error"),
+}).enableRLS();
+
+export type BackgroundMigration = typeof backgroundMigrations.$inferSelect;

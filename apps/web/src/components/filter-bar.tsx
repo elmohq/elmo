@@ -13,14 +13,19 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
+import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
 import { useBrand } from "@/hooks/use-brands";
-import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
+import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
+import { type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
+import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
-export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
+export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 
+import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@workspace/config/model-filter";
 // Filter state lives in the URL, validated by the `$brand` layout route's
 // search schema (see `validateBrandFilterSearch`). The widgets here keep
 // per-key `useSearch` selectors so one filter's click doesn't re-render the
@@ -28,43 +33,14 @@ export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
 // The router commits search updates synchronously within the interaction, so
 // the URL itself is the authoritative filter state.
 import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
-import {
-	ALL_MODELS_VALUE,
-	getAvailableModels,
-	groupTrackedTargets,
-	iconIdForModelFilter,
-	labelForModelFilter,
-	type TrackedTarget,
-} from "@/lib/model-filter";
-
-/** "all" is the no-filter sentinel; any other string is a concrete model id
- *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary
- *  model ids, so we don't constrain this to a literal union. */
-export type ModelFilterValue = string;
+import { getAvailableModels, groupTrackedTargets, type TrackedTarget } from "@/lib/model-filter";
 
 /** The model filter's trigger glyph. `all` is the no-filter sentinel; every
  *  other value names one of the brand's targets, whose logo is decided by
  *  @workspace/config/models. */
-export function iconForModel(model: string, className = "size-3.5") {
+function iconForModel(model: string, className = "size-3.5") {
 	if (model === ALL_MODELS_VALUE) return <MdSelectAll className={className} />;
 	return <ModelIcon iconId={iconIdForModelFilter(model)} className={className} />;
-}
-
-export function labelForModel(model: string): string {
-	return labelForModelFilter(model);
-}
-
-const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
-	{ value: "1w", label: "Last 7 days" },
-	{ value: "1m", label: "Last 30 days" },
-	{ value: "3m", label: "Last 3 months" },
-	{ value: "6m", label: "Last 6 months" },
-	{ value: "1y", label: "Last 12 months" },
-	{ value: "all", label: "All time" },
-];
-
-function getLookbackLabel(lookback: LookbackPeriod): string {
-	return LOOKBACK_OPTIONS.find((o) => o.value === lookback)?.label ?? lookback;
 }
 
 // ------------------------------------------------------------------
@@ -116,12 +92,12 @@ export function FilterTriggerButton({
 // Model dropdown — subscribes to only the "model" URL key.
 // ------------------------------------------------------------------
 
-export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) {
+function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) {
 	const availableModels = getAvailableModels(trackedTargets);
 	const defaultModel = availableModels.includes(ALL_MODELS_VALUE)
 		? ALL_MODELS_VALUE
 		: (availableModels[0] ?? ALL_MODELS_VALUE);
-	const urlModel = useSearch({ strict: false, select: (s) => s.model });
+	const urlModel = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.model });
 	const setFilters = useFilterNavigate();
 	// If the URL has a model that isn't valid for this brand (e.g. stale deep
 	// link after a deployment change), fall back to the default rather than
@@ -142,14 +118,18 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				render={
-					<FilterTriggerButton icon={iconForModel(selected)} label={labelForModel(selected)} active={isFiltered} />
+					<FilterTriggerButton
+						icon={iconForModel(selected)}
+						label={labelForModelFilter(selected)}
+						active={isFiltered}
+					/>
 				}
 			/>
 			<DropdownMenuContent align="start" className="w-56">
 				<DropdownMenuRadioGroup value={selected} onValueChange={handleChange}>
 					<DropdownMenuRadioItem value={ALL_MODELS_VALUE} className="cursor-pointer gap-2">
 						{iconForModel(ALL_MODELS_VALUE)}
-						{labelForModel(ALL_MODELS_VALUE)}
+						{labelForModelFilter(ALL_MODELS_VALUE)}
 					</DropdownMenuRadioItem>
 					{groups.map((group) => (
 						<DropdownMenuGroup key={group.tier}>
@@ -157,7 +137,7 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 							{group.values.map((value) => (
 								<DropdownMenuRadioItem key={value} value={value} className="cursor-pointer gap-2">
 									{iconForModel(value)}
-									{labelForModel(value)}
+									{labelForModelFilter(value)}
 								</DropdownMenuRadioItem>
 							))}
 						</DropdownMenuGroup>
@@ -172,10 +152,10 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 // Lookback dropdown — subscribes to only the "lookback" URL key.
 // ------------------------------------------------------------------
 
-export function LookbackDropdown() {
-	const { brand } = useBrand();
+function LookbackDropdown() {
+	const { data: brand } = useBrand();
 	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
-	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
+	const urlLookback = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.lookback });
 	const setFilters = useFilterNavigate();
 	const selected = coerceLookback(urlLookback, defaultLookback);
 
@@ -184,20 +164,18 @@ export function LookbackDropdown() {
 	};
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger
-				render={<FilterTriggerButton icon={<Clock className="size-3.5" />} label={getLookbackLabel(selected)} />}
-			/>
-			<DropdownMenuContent align="start" className="w-48">
-				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => handleChange(v as LookbackPeriod)}>
-					{LOOKBACK_OPTIONS.map((opt) => (
-						<DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">
-							{opt.label}
-						</DropdownMenuRadioItem>
-					))}
-				</DropdownMenuRadioGroup>
-			</DropdownMenuContent>
-		</DropdownMenu>
+		<LookbackPicker
+			value={selected}
+			defaultValue={defaultLookback}
+			onChange={handleChange}
+			trigger={
+				<FilterTriggerButton
+					icon={<Clock className="size-3.5" />}
+					label={formatLookbackLabel(selected)}
+					active={parseCustomLookback(selected) !== null}
+				/>
+			}
+		/>
 	);
 }
 
@@ -207,8 +185,8 @@ export function LookbackDropdown() {
 // dropdown doesn't need to fetch.
 // ------------------------------------------------------------------
 
-export function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
-	const urlTags = useSearch({ strict: false, select: (s) => s.tags });
+function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
+	const urlTags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
 	const setFilters = useFilterNavigate();
 	const selected = useMemo(() => splitTags(urlTags), [urlTags]);
 
@@ -284,8 +262,14 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 // setState) to avoid flashing back when the URL echo races with typing.
 // ------------------------------------------------------------------
 
-export function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: string }) {
-	const urlValue = useSearch({ strict: false, select: (s) => s.q });
+function SearchInput({
+	placeholder = "Search prompts...",
+	searching = false,
+}: {
+	placeholder?: string;
+	searching?: boolean;
+}) {
+	const urlValue = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
 	const setFilters = useFilterNavigate();
 	const value = urlValue ?? "";
 
@@ -338,7 +322,7 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 				className="h-8 text-sm"
 			/>
 			<InputGroupAddon className="pl-2.5">
-				<Search className="size-3.5" />
+				{searching ? <Spinner className="size-3.5" aria-label="Searching" /> : <Search className="size-3.5" />}
 			</InputGroupAddon>
 			{local && (
 				<InputGroupAddon align="inline-end" className="pr-1.5">
@@ -357,9 +341,9 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 // prompts-summary query is read once by a single owner.
 // ------------------------------------------------------------------
 
-export function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
-	const tags = useSearch({ strict: false, select: (s) => s.tags });
-	const q = useSearch({ strict: false, select: (s) => s.q });
+function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
+	const tags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
+	const q = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
 	const active = Boolean(tags) || Boolean(q);
 	if (!active || count === undefined) return null;
 	const showTotal = total !== undefined && total !== count;
@@ -379,19 +363,24 @@ export function FilterBar({
 	availableTags,
 	trackedTargets,
 	showSearch,
+	searchPlaceholder,
 	showModelSelector,
 	resultCount,
 	resultTotal,
+	searching,
 	extraControls,
 }: {
 	availableTags: readonly string[];
 	trackedTargets: TrackedTarget[];
 	showSearch: boolean;
+	searchPlaceholder?: string;
 	showModelSelector: boolean;
 	/** Only passed by pages that filter a list; omit on pages with a single aggregate view (e.g. Citations). */
 	resultCount?: number;
 	/** Unfiltered count — when it differs from `resultCount` the line reads "n of m results". */
 	resultTotal?: number;
+	/** For searches slow enough that the input should show they're still running. */
+	searching?: boolean;
 	/** Page-specific controls rendered inline with the dropdown group
 	 *  (e.g. the prompts list's sort dropdown). */
 	extraControls?: ReactNode;
@@ -405,7 +394,7 @@ export function FilterBar({
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />
 			</div>
-			{showSearch && <SearchInput />}
+			{showSearch && <SearchInput placeholder={searchPlaceholder} searching={searching} />}
 		</div>
 	);
 }

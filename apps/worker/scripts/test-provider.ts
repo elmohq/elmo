@@ -13,8 +13,9 @@
 
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { getModelMeta } from "@workspace/config/models";
-import { getProvider, parseScrapeTargets, type ScrapeResult, STATUS_TARGETS } from "@workspace/lib/providers";
-import { extractCitations, extractTextContent } from "@workspace/lib/text-extraction";
+import { parseScrapeTargets, STATUS_TARGETS } from "@workspace/config/scrape-targets";
+import { getProvider, type ScrapeResult } from "@workspace/lib/providers";
+import { extractRun } from "@workspace/lib/text-extraction";
 import { escapeGitHubSummaryTableCell } from "./github-summary";
 
 const colors = {
@@ -126,13 +127,26 @@ export interface TargetResult {
 	rawOutputBytes: number;
 	citations: number;
 	webQueries: number;
+	realWebQueries: number;
 	webSearch: boolean;
 	sampleOutput: string;
 	issues: ValidationIssue[];
 	timestamp: string;
 }
 
-type ResultCheck = (result: ScrapeResult, providerId: string, webSearch: boolean) => ValidationIssue[];
+/** A run as it would be stored: the payload plus what extraction derives from it. */
+type CheckedResult = ScrapeResult & ReturnType<typeof extractRun>;
+
+async function runChecked(
+	provider: ReturnType<typeof getProvider>,
+	config: ReturnType<typeof parseScrapeTargets>[number],
+	prompt: string,
+): Promise<CheckedResult> {
+	const result = await provider.run(config.model, prompt, { webSearch: config.webSearch, version: config.version });
+	return { ...result, ...extractRun(result.rawOutput, config.provider) };
+}
+
+type ResultCheck = (result: CheckedResult, providerId: string, webSearch: boolean) => ValidationIssue[];
 
 const checkTextContent: ResultCheck = (result) => {
 	const issues: ValidationIssue[] = [];
@@ -141,42 +155,6 @@ const checkTextContent: ResultCheck = (result) => {
 			field: "textContent",
 			message: `Text too short (${result.textContent?.length ?? 0} chars, need ${MIN_TEXT_LENGTH}+)`,
 			severity: "error",
-		});
-	}
-	if (result.textContent?.startsWith("No text content") || result.textContent?.startsWith("Error extracting")) {
-		issues.push({
-			field: "textContent",
-			message: `Extraction returned placeholder: "${result.textContent.slice(0, 60)}"`,
-			severity: "error",
-		});
-	}
-	return issues;
-};
-
-/** The stored payload has to answer the same questions the live run did. */
-const checkRawOutput: ResultCheck = (result, providerId) => {
-	if (result.rawOutput == null) {
-		return [{ field: "rawOutput", message: "rawOutput is null", severity: "error" }];
-	}
-
-	const issues: ValidationIssue[] = [];
-	const reExtracted = extractTextContent(result.rawOutput, providerId);
-	if (
-		reExtracted.startsWith("No text content") ||
-		reExtracted.startsWith("Unknown") ||
-		reExtracted.startsWith("Error")
-	) {
-		issues.push({
-			field: "rawOutput re-extraction",
-			message: `extractTextContent(rawOutput, "${providerId}") returned: "${reExtracted.slice(0, 80)}"`,
-			severity: "error",
-		});
-	}
-	if (result.citations.length > 0 && extractCitations(result.rawOutput, providerId).length === 0) {
-		issues.push({
-			field: "rawOutput citation re-extraction",
-			message: `Provider returned ${result.citations.length} citations but extractCitations(rawOutput, "${providerId}") found 0`,
-			severity: "warning",
 		});
 	}
 	return issues;
@@ -219,9 +197,9 @@ const checkWebQueries: ResultCheck = (result, _providerId, webSearch) => {
 	];
 };
 
-const RESULT_CHECKS: ResultCheck[] = [checkTextContent, checkRawOutput, checkCitations, checkWebQueries];
+const RESULT_CHECKS: ResultCheck[] = [checkTextContent, checkCitations, checkWebQueries];
 
-function validateResult(result: ScrapeResult, providerId: string, webSearch: boolean): ValidationIssue[] {
+function validateResult(result: CheckedResult, providerId: string, webSearch: boolean): ValidationIssue[] {
 	return RESULT_CHECKS.flatMap((check) => check(result, providerId, webSearch));
 }
 
@@ -234,10 +212,10 @@ type TargetLog = (message: string, color?: string) => void;
 async function retryForCitations(args: {
 	provider: ReturnType<typeof getProvider>;
 	config: ReturnType<typeof parseScrapeTargets>[number];
-	result: ScrapeResult;
+	result: CheckedResult;
 	attemptStart: number;
 	tlog: TargetLog;
-}): Promise<{ result: ScrapeResult; retries: number; attemptStart: number }> {
+}): Promise<{ result: CheckedResult; retries: number; attemptStart: number }> {
 	const { provider, config, tlog } = args;
 	let { result, attemptStart } = args;
 	if (!config.webSearch || result.citations.length > 0 || hasRealWebQueries(result.webQueries)) {
@@ -253,10 +231,7 @@ async function retryForCitations(args: {
 		retries++;
 		try {
 			attemptStart = Date.now();
-			const retry = await provider.run(config.model, TEST_PROMPTS[i], {
-				webSearch: config.webSearch,
-				version: config.version,
-			});
+			const retry = await runChecked(provider, config, TEST_PROMPTS[i]);
 			if (retry.citations.length > 0 || hasRealWebQueries(retry.webQueries)) {
 				result = retry;
 				break;
@@ -269,7 +244,7 @@ async function retryForCitations(args: {
 }
 
 function reportResult(args: {
-	result: ScrapeResult;
+	result: CheckedResult;
 	latency: number;
 	rawOutputBytes: number;
 	issues: ValidationIssue[];
@@ -319,13 +294,10 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 	tlog(`Validating: text content (${MIN_TEXT_LENGTH}+ chars), citations, rawOutput re-extraction\n`, colors.dim);
 
 	let attemptStart = Date.now();
-	let result: ScrapeResult;
+	let result: CheckedResult;
 	let retries = 0;
 	try {
-		result = await provider.run(config.model, TEST_PROMPTS[0], {
-			webSearch: config.webSearch,
-			version: config.version,
-		});
+		result = await runChecked(provider, config, TEST_PROMPTS[0]);
 	} catch (error) {
 		const latency = Date.now() - attemptStart;
 		const errorMsg = error instanceof Error ? error.message : String(error);
@@ -342,6 +314,7 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 				rawOutputBytes: 0,
 				citations: 0,
 				webQueries: 0,
+				realWebQueries: 0,
 				webSearch: config.webSearch,
 				sampleOutput: "",
 				issues: [],
@@ -381,6 +354,7 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 			rawOutputBytes,
 			citations: result.citations.length,
 			webQueries: result.webQueries.length,
+			realWebQueries: result.webQueries.filter((q) => q !== "unavailable").length,
 			webSearch: config.webSearch,
 			sampleOutput: result.textContent?.slice(0, 500) ?? "",
 			issues,
@@ -405,34 +379,39 @@ function writeGitHubSummary(results: TargetResult[]) {
 		"|--------|--------|---------|-------|------|------------|-----------|-------------|------------|---------------|",
 	];
 
-	for (const r of results) {
-		const status = r.status === "pass" ? ":white_check_mark:" : ":x:";
-		const error = r.error ? escapeGitHubSummaryTableCell(r.error.slice(0, 100)) : "";
-		const rawKB = (r.rawOutputBytes / 1024).toFixed(1) + " KB";
-		const sample = r.sampleOutput
-			? `<details><summary>Show</summary><pre>${escapeGitHubSummaryTableCell(r.sampleOutput)}</pre></details>`
-			: "";
-		lines.push(
-			`| ${status} | <code>${escapeGitHubSummaryTableCell(r.target)}</code> | ${formatLatency(r.latency)} | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
-		);
-	}
-
-	const allIssues = results.flatMap((r) => r.issues.map((i) => ({ target: r.target, ...i })));
-
-	if (allIssues.length > 0) {
-		lines.push("", "### Validation Issues", "");
-		lines.push("| Severity | Target | Field | Issue |");
-		lines.push("|----------|--------|-------|-------|");
-		for (const i of allIssues) {
-			const icon = i.severity === "error" ? ":x:" : ":warning:";
-			lines.push(
-				`| ${icon} | <code>${escapeGitHubSummaryTableCell(i.target)}</code> | <code>${escapeGitHubSummaryTableCell(i.field)}</code> | ${escapeGitHubSummaryTableCell(i.message)} |`,
-			);
-		}
-	}
-
+	lines.push(...results.map(summaryTableRow));
+	lines.push(...validationIssuesSection(results));
 	lines.push("");
 	appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n"));
+}
+
+function summaryTableRow(r: TargetResult): string {
+	const status = r.status === "pass" ? ":white_check_mark:" : ":x:";
+	const error = r.error ? escapeGitHubSummaryTableCell(r.error.slice(0, 100)) : "";
+	const rawKB = `${(r.rawOutputBytes / 1024).toFixed(1)} KB`;
+	const sample = r.sampleOutput
+		? `<details><summary>Show</summary><pre>${escapeGitHubSummaryTableCell(r.sampleOutput)}</pre></details>`
+		: "";
+
+	return `| ${status} | <code>${escapeGitHubSummaryTableCell(r.target)}</code> | ${formatLatency(r.latency)} | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`;
+}
+
+/** Empty when nothing was flagged, so the section header stays off too. */
+function validationIssuesSection(results: TargetResult[]): string[] {
+	const allIssues = results.flatMap((r) => r.issues.map((i) => ({ target: r.target, ...i })));
+	if (allIssues.length === 0) return [];
+
+	return [
+		"",
+		"### Validation Issues",
+		"",
+		"| Severity | Target | Field | Issue |",
+		"|----------|--------|-------|-------|",
+		...allIssues.map(
+			(i) =>
+				`| ${i.severity === "error" ? ":x:" : ":warning:"} | <code>${escapeGitHubSummaryTableCell(i.target)}</code> | <code>${escapeGitHubSummaryTableCell(i.field)}</code> | ${escapeGitHubSummaryTableCell(i.message)} |`,
+		),
+	];
 }
 
 async function main() {

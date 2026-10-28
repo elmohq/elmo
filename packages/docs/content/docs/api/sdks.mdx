@@ -1,0 +1,67 @@
+---
+title: SDKs
+description: Call the Elmo API from TypeScript or Python.
+---
+
+Elmo publishes typed clients for the [REST API](/docs/api), generated from the same OpenAPI spec the
+API serves, so a new endpoint reaches them without anyone writing it by hand.
+
+| Language | Package | Source |
+| --- | --- | --- |
+| TypeScript | [`@elmohq/sdk`](https://www.npmjs.com/package/@elmohq/sdk) | [elmohq/elmo-sdk-typescript](https://github.com/elmohq/elmo-sdk-typescript) |
+| Python | [`elmo-sdk`](https://pypi.org/project/elmo-sdk/) | [elmohq/elmo-sdk-python](https://github.com/elmohq/elmo-sdk-python) |
+
+Both read an [API key](/docs/api#authentication) from `ELMO_API_KEY` and the address to call from
+`ELMO_BASE_URL`. The base URL has no default you can rely on — every instance serves the API on its own
+address — so always set it. On cloud that is `https://app.elmohq.com/api/v1`; a self-hosted instance
+uses its own `APP_URL` followed by `/api/v1`.
+
+```bash
+export ELMO_API_KEY=elmo_...
+export ELMO_BASE_URL=https://app.elmohq.com/api/v1
+```
+
+Every deployment also shows both snippets at **Settings → API**, with its own base URL filled in.
+
+## TypeScript
+
+```bash
+npm install @elmohq/sdk
+```
+
+```ts
+import { Elmo } from "@elmohq/sdk";
+
+const elmo = new Elmo();
+
+for await (const brand of elmo.brands.list()) {
+  console.log(brand.name);
+}
+```
+
+Pass `apiKey` and `baseURL` to the constructor instead of setting the environment variables, for
+example to talk to two instances from one process. Node.js 20.19 or later is required.
+
+## Python
+
+```bash
+pip install elmo-sdk
+```
+
+```python
+from elmo_sdk import Elmo
+
+elmo = Elmo()
+
+for brand in elmo.brands.list():
+    print(brand.name)
+```
+
+`AsyncElmo` has the same calls for `asyncio`. Pass `api_key` and `base_url` to the constructor instead of
+setting the environment variables. Python 3.10 or later is required.
+
+## Versions
+
+Each SDK is versioned on its own, by what changed in the API rather than by Elmo's release number: a
+removed or changed endpoint is a major version, a new one a minor version. Each repository's README
+covers pagination, errors, retries, and timeouts in full.

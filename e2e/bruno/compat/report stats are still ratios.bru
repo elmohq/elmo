@@ -1,0 +1,69 @@
+meta {
+  name: a completed report still reports its derived stats as 0-1 ratios
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reports/{{completedReportId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.reportId: eq {{completedReportId}}
+  res.body.status: eq completed
+  res.body.brandName: isString
+  res.body.brandWebsite: isString
+  res.body.createdAt: isString
+  res.body.prompts: isArray
+}
+
+tests {
+  test("unstable.sov and unstable.visibility are ratios, not percentages", function() {
+    // computeReportUnstableStats divides without scaling. A consumer that has
+    // been multiplying by 100 to display these breaks the day they become
+    // percentages, and nothing else in the response would show it.
+    const unstable = res.getBody().unstable;
+    expect(unstable.sov === null || (unstable.sov >= 0 && unstable.sov <= 1), `sov was ${unstable.sov}`).to.be.true;
+    expect(unstable.visibility >= 0 && unstable.visibility <= 1, `visibility was ${unstable.visibility}`).to.be.true;
+  });
+
+  test("per-competitor stats are ratios too", function() {
+    for (const competitor of res.getBody().unstable.competitors) {
+      expect(competitor.sov >= 0 && competitor.sov <= 1, `${competitor.name} sov was ${competitor.sov}`).to.be.true;
+      expect(
+        competitor.visibility >= 0 && competitor.visibility <= 1,
+        `${competitor.name} visibility was ${competitor.visibility}`,
+      ).to.be.true;
+      expect(competitor.promptsWithMentions).to.be.a("number");
+      expect(competitor.promptRunsWithMentions).to.be.a("number");
+    }
+  });
+
+  test("the unstable block still carries its counts", function() {
+    const unstable = res.getBody().unstable;
+    for (const field of [
+      "totalPrompts",
+      "totalPromptRuns",
+      "promptsWithBrandMentions",
+      "promptRunsWithBrandMentions",
+    ]) {
+      expect(unstable, `unstable.${field}`).to.have.property(field);
+    }
+  });
+
+  test("the per-prompt snapshot keeps its raw mention counts", function() {
+    const prompt = res.getBody().prompts[0];
+    expect(prompt.promptValue).to.be.a("string");
+    expect(prompt.totalRuns).to.be.a("number");
+    for (const field of ["mentionsTotal", "brandMentionsTotal", "competitorMentionsTotal", "mentionsTopK"]) {
+      expect(prompt.mentions, `mentions.${field}`).to.have.property(field);
+    }
+  });
+}

@@ -10,7 +10,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { DEFAULT_APP_ICON, ELMO_BACKGROUND_COLOR, ELMO_THEME_COLOR } from "@workspace/config/constants";
-import { getDeployment } from "@/lib/config/server";
+import { getDeployment } from "@workspace/deployment";
 
 interface ManifestIcon {
 	src: string;
@@ -80,7 +80,8 @@ function buildManifest(): object {
 		short_name: branding.name,
 		name: `${branding.name} - AI Search Optimization`,
 		icons,
-		start_url: ".",
+		start_url: "/",
+		scope: "/",
 		display: "standalone",
 		theme_color: themeColor,
 		background_color: ELMO_BACKGROUND_COLOR,

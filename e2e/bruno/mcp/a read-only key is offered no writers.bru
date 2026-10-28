@@ -1,0 +1,45 @@
+meta {
+  name: a read-only key is offered no writers
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgReadOnlyKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  { "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {} }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  const names = res.body.result.tools.map((tool) => tool.name);
+
+  test("it can still read everything it was issued", function() {
+    expect(names).to.include("list_prompts");
+    expect(names).to.include("get_citations");
+  });
+
+  test("and is never told about the writes", function() {
+    expect(names).to.not.include("create_prompts");
+    expect(names).to.not.include("update_prompt");
+    expect(names).to.not.include("delete_prompt");
+  });
+}
+
+docs {
+  tools/list is the caller's capabilities. A key is not offered a tool and then
+  refused it — it is never offered it, so a model never plans around one.
+}

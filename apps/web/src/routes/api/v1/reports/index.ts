@@ -7,18 +7,20 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
-import { type NewReport, reports } from "@workspace/lib/db/schema";
+import { reports } from "@workspace/lib/db/schema";
 import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
-import { count, desc, eq } from "drizzle-orm";
+import { count, desc } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
-import { sendReportJob } from "@/lib/job-scheduler";
+import { clampedPaging } from "@/lib/api/analytics-range";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { createReport, ReportCreateError, ReportQueueError } from "@/server/reports-core";
 
 const createReportBody = z.object({
 	brandName: z
 		.string("brandName is required and must be a non-empty string")
 		.trim()
 		.min(1, "brandName is required and must be a non-empty string"),
+	brandAliases: z.array(z.string()).max(10, "brandAliases can have at most 10 entries").optional(),
 	// The report worker fetches this page, so reject anything it can't fetch
 	// (non-http(s) schemes) before the row exists and the job is queued.
 	brandWebsite: z
@@ -31,47 +33,28 @@ const createReportBody = z.object({
 
 export const Route = createFileRoute("/api/v1/reports/")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			POST: createApiHandler({
+				adminOnly: true,
 				body: createReportBody,
 				status: 201,
+				mapError: (err) =>
+					err instanceof ReportCreateError || err instanceof ReportQueueError
+						? new ApiError(500, "Internal Server Error", err.message)
+						: undefined,
 				handle: async ({ body }) => {
-					const filteredPrompts = (body.manualPrompts ?? []).map((p) => p.trim()).filter((p) => p.length > 0);
-					const parsedManualPrompts = filteredPrompts.length > 0 ? filteredPrompts : undefined;
-
-					const newReport: NewReport = {
+					const createdReport = await createReport({
 						brandName: body.brandName,
-						// Full path is kept — it's what the analysis reads — but credentials
-						// are stripped before the URL is stored or handed to any fetcher.
-						brandWebsite: cleanOnboardingUrl(body.brandWebsite),
-						status: "pending",
-					};
-
-					const result = await db.insert(reports).values(newReport).returning();
-					const createdReport = result[0];
-					if (!createdReport) {
-						throw new ApiError(500, "Internal Server Error", "Failed to create report");
-					}
-
-					const success = await sendReportJob(
-						createdReport.id,
-						createdReport.brandName,
-						createdReport.brandWebsite,
-						parsedManualPrompts,
-					);
-
-					if (!success) {
-						await db
-							.update(reports)
-							.set({ status: "failed", updatedAt: new Date() })
-							.where(eq(reports.id, createdReport.id));
-						throw new ApiError(500, "Internal Server Error", "Failed to queue report generation");
-					}
+						brandAliases: body.brandAliases,
+						brandWebsite: body.brandWebsite,
+						manualPrompts: (body.manualPrompts ?? []).map((prompt) => prompt.trim()).filter(Boolean),
+					});
 
 					return {
 						reportId: createdReport.id,
 						status: createdReport.status,
 						brandName: createdReport.brandName,
+						brandAliases: createdReport.brandAliases,
 						brandWebsite: createdReport.brandWebsite,
 						createdAt: createdReport.createdAt,
 					};
@@ -79,11 +62,10 @@ export const Route = createFileRoute("/api/v1/reports/")({
 			}),
 
 			GET: createApiHandler({
+				adminOnly: true,
 				handle: async ({ request }) => {
 					const { searchParams } = new URL(request.url);
-					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
-					const offset = (page - 1) * limit;
+					const { page, limit, offset } = clampedPaging(searchParams);
 
 					const [totalCountResult] = await db.select({ count: count() }).from(reports);
 					const totalCount = totalCountResult?.count || 0;
@@ -93,6 +75,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 						.select({
 							id: reports.id,
 							brandName: reports.brandName,
+							brandAliases: reports.brandAliases,
 							brandWebsite: reports.brandWebsite,
 							status: reports.status,
 							createdAt: reports.createdAt,
@@ -103,12 +86,16 @@ export const Route = createFileRoute("/api/v1/reports/")({
 						.limit(limit)
 						.offset(offset);
 
+					// Both keys hold the same array while callers move to `data`, which
+					// every list in this API answers with. `reports` is documented as
+					// deprecated and goes in a later release.
 					return {
+						data: reportsList,
 						reports: reportsList,
 						pagination: { page, limit, total: totalCount, totalPages },
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

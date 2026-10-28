@@ -1,5 +1,101 @@
 # @workspace/api-spec
 
+## 0.7.6
+
+No changes in this release.
+
+## 0.7.5
+
+No changes in this release.
+
+## 0.7.4
+
+No changes in this release.
+
+## 0.7.3
+
+No changes in this release.
+
+## 0.7.2
+
+No changes in this release.
+
+## 0.7.1
+
+No changes in this release.
+
+## 0.7.0
+
+No changes in this release.
+
+## 0.6.2
+
+### Patch Changes
+
+- 54cdb8d: Sentiment is now a 0–100 score where neutral answers count as 50 rather than against your brand, and the API returns it as `score` in place of `positiveShare` and `negativeShare`.
+
+## 0.6.1
+
+No changes in this release.
+
+## 0.6.0
+
+### Patch Changes
+
+- caf6bfb: The API and MCP tools return each answer's mention assessments with sentiment and position, and sentiment and average position for the brand, each competitor, model and prompt, with daily series (experimental).
+
+## 0.5.2
+
+No changes in this release.
+
+## 0.5.1
+
+No changes in this release.
+
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+## 0.4.6
+
+No changes in this release.
+
+## 0.4.5
+
+No changes in this release.
+
+## 0.4.4
+
+### Patch Changes
+
+- 76ec134: Reports accept other names a brand goes by, and count a mention of any of them as a brand mention.
+
+## 0.4.3
+
+No changes in this release.
+
+## 0.4.2
+
+No changes in this release.
+
+## 0.4.1
+
+No changes in this release.
+
+## 0.4.0
+
+### Minor Changes
+
+- c9142f7: Elmo now serves a full external API and an MCP server. `/api/v1` covers brands, prompts, competitors, reports, analytics, models, tags, and opportunities. `/api/mcp` connects Claude Code, Codex, Cursor, OpenCode, and VS Code, either by signing in from the client or with an API key. Keys belong to an organization and are issued read-only or read-write from Settings, which now also has API and MCP pages describing your own deployment.
+
+### Patch Changes
+
+- 8c953b1: Every `/api/v1` list response now includes a `data` array. The `brands`, `prompts`, `competitors`, and `reports` keys still carry the same array and will be removed in a future release.
+
+## 0.3.0
+
 ## 0.2.19
 
 ## 0.2.18

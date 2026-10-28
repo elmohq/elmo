@@ -7,8 +7,8 @@ export const SITE_NAME = "Elmo";
 // optimization" because answer engines expand the acronym when they search, and
 // carries no pricing so it stays true wherever it is reused.
 export const SITE_DESCRIPTION =
-	"Open source AI visibility and answer engine optimization (AEO) platform for tracking how AI answers mention and cite your brand.";
-export const SITE_LOGO_URL = `${SITE_URL}/brand/icons/elmo-icon-512.png`;
+	"Open-source answer engine optimization (AEO) platform: track how AI answers mention and cite your brand.";
+const SITE_LOGO_URL = `${SITE_URL}/brand/icons/elmo-icon-512.png`;
 
 export function canonicalUrl(path: string): string {
 	return `${SITE_URL}${path}`;
@@ -20,15 +20,18 @@ export function ogMeta({
 	path,
 	image,
 	type = "website",
+	label,
 }: {
 	title: string;
 	description: string;
 	path: string;
 	image?: string;
 	type?: "website" | "article";
+	/** Section shown on the generated share image, e.g. "Blog". Ignored when `image` is given. */
+	label?: string;
 }) {
 	const url = canonicalUrl(path);
-	const resolvedImage = image ?? getMarketingOgImage({ title, description });
+	const resolvedImage = image ?? getMarketingOgImage({ title, description, label });
 	const absoluteImage = resolvedImage.startsWith("http") ? resolvedImage : canonicalUrl(resolvedImage);
 
 	return [
@@ -49,7 +52,7 @@ export function ogMeta({
 	];
 }
 
-export function jsonLd(data: Record<string, unknown>): {
+function jsonLd(data: Record<string, unknown>): {
 	type: string;
 	children: string;
 } {
@@ -95,6 +98,19 @@ export function organizationJsonLd() {
 			"https://peerpush.com/p/elmo",
 			"https://devhunt.org/tool/elmo",
 		],
+		foundingDate: "2025-07",
+		founder: {
+			"@type": "Person",
+			name: "Jared Rhizor",
+			url: "https://jrhizor.dev",
+			sameAs: ["https://www.linkedin.com/in/jrhizor", "https://x.com/jaredrhizor", "https://github.com/jrhizor"],
+		},
+		address: {
+			"@type": "PostalAddress",
+			addressLocality: "San Francisco",
+			addressRegion: "CA",
+			addressCountry: "US",
+		},
 		parentOrganization: {
 			"@type": "Organization",
 			name: "Blue Whale Software, LLC",

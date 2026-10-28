@@ -1,0 +1,20 @@
+meta {
+  name: reports are admin-only
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reports
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 403
+  res.body.error: eq Forbidden
+}

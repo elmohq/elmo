@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { getQueryFanoutFn } from "@/server/query-fanout";
 
 export interface QueryFanoutFilters {
@@ -12,14 +12,13 @@ export interface QueryFanoutFilters {
 	promptId?: string;
 }
 
-export const queryFanoutKeys = {
+const queryFanoutKeys = {
 	all: ["query-fanout"] as const,
 	list: (brandId: string, filters?: QueryFanoutFilters) => [...queryFanoutKeys.all, brandId, filters] as const,
 };
 
 export function useQueryFanout(brandId?: string, filters?: QueryFanoutFilters) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
 		queryKey: queryFanoutKeys.list(resolvedBrandId || "", filters),
@@ -42,8 +41,7 @@ export function useQueryFanout(brandId?: string, filters?: QueryFanoutFilters) {
 	return {
 		data: query.data,
 		isLoading: query.isLoading,
-		isFetching: query.isFetching,
-		isError: !!query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

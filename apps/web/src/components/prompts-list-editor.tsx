@@ -26,14 +26,16 @@ import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Input } from "@workspace/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Switch } from "@workspace/ui/components/switch";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { Inbox, ListPlus, Plus } from "lucide-react";
+import { Inbox, ListPlus, Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { useOrganizationParams } from "@/hooks/use-route-params";
 
 export interface EditablePrompt {
 	id?: string;
@@ -42,24 +44,13 @@ export interface EditablePrompt {
 	enabled: boolean;
 	tags: string[];
 	systemTags: string[];
-	/**
-	 * Premium models this prompt is tracked on, grounded — one of the workspace's
-	 * premium pairings each, so two models cost two pairings.
-	 */
 	premiumModels: string[];
+	suggested?: boolean;
 }
 
-/**
- * The workspace's premium allowance, as this brand's editor sees it.
- * `assignedElsewhere` covers the org's other brands, which the editor cannot see
- * but which still spend the pool — so the live count stays honest while rows are
- * changed here.
- */
 export interface PremiumAllowance {
 	total: number;
 	assignedElsewhere: number;
-	/** Where buying more happens, so the two places that say so can link there. */
-	brandId: string;
 }
 
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
@@ -71,13 +62,15 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		systemTags: partial?.systemTags ?? [],
 		premiumModels: partial?.premiumModels ?? [],
 		...(partial?.id ? { id: partial.id } : {}),
+		...(partial?.suggested ? { suggested: true } : {}),
 	};
 }
 
 /** Both places that offer more pairings send you to the same page. */
-function BillingLink({ brandId, children }: { brandId: string; children: ReactNode }) {
+function BillingLink({ children }: { children: ReactNode }) {
+	const params = useOrganizationParams();
 	return (
-		<Link to="/app/$brand/settings/billing" params={{ brand: brandId }} className="underline">
+		<Link to="/app/org/$org/settings/billing" params={params} className="underline">
 			{children}
 		</Link>
 	);
@@ -92,15 +85,12 @@ function PremiumModelsField({
 	selected,
 	promptEnabled,
 	atCapacity,
-	brandId,
 	onChange,
 	showLabel,
 }: {
 	selected: string[];
 	promptEnabled: boolean;
-	/** The workspace has no pairings left, so only unticking is allowed. */
 	atCapacity: boolean;
-	brandId: string;
 	onChange: (models: string[]) => void;
 	showLabel?: boolean;
 }) {
@@ -158,7 +148,7 @@ function PremiumModelsField({
 				})}
 				{atCapacity && (
 					<p className="px-2 pt-1 text-xs text-muted-foreground">
-						No premium pairings left. Untick one, or <BillingLink brandId={brandId}>buy more</BillingLink>.
+						No premium pairings left. Untick one, or <BillingLink>buy more</BillingLink>.
 					</p>
 				)}
 			</PopoverContent>
@@ -187,6 +177,8 @@ interface PromptsListEditorProps {
 	changedKeys?: ReadonlySet<string>;
 	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
 	premium?: PremiumAllowance;
+	leading?: ReactNode;
+	pendingRows?: number;
 }
 
 /**
@@ -320,9 +312,9 @@ function ColumnHeader({
 						<TooltipContent>
 							<p className="max-w-xs">
 								Also track this prompt on a model called directly with its own web search on, for a grounded answer with
-								citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the workspace&apos;s
-								premium pairings. This is on top of the platforms the brand tracks, which run on every prompt either
-								way.
+								citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the
+								organization&apos;s premium pairings. This is on top of the platforms the brand tracks, which run on
+								every prompt either way.
 							</p>
 						</TooltipContent>
 					</Tooltip>
@@ -335,11 +327,73 @@ function ColumnHeader({
 	);
 }
 
+function PromptTextField({
+	prompt,
+	onValueChange,
+	onRemove,
+	className,
+}: {
+	prompt: EditablePrompt;
+	onValueChange: (value: string) => void;
+	onRemove: () => void;
+	className?: string;
+}) {
+	const removable = !prompt.id;
+	return (
+		<div className={cn("relative", className)}>
+			{prompt.suggested && (
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
+								<Sparkles className="size-3.5" aria-label="Suggested" />
+							</span>
+						}
+					/>
+					<TooltipContent>Suggested. Save to start tracking it, or remove it.</TooltipContent>
+				</Tooltip>
+			)}
+			<Input
+				value={prompt.value}
+				onChange={(e) => onValueChange(e.target.value)}
+				placeholder="Enter prompt text..."
+				className={cn("min-w-0", prompt.suggested && "pl-8", removable && "pr-8")}
+			/>
+			{removable && (
+				<button
+					type="button"
+					onClick={onRemove}
+					aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
+					className="absolute inset-y-0 right-1.5 my-auto flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+				>
+					<X className="size-3.5" />
+				</button>
+			)}
+		</div>
+	);
+}
+
+const PENDING_WIDTHS = ["70%", "52%", "63%", "46%", "58%"];
+
+function PendingRows({ count, gridCols }: { count: number; gridCols: string }) {
+	return (
+		<>
+			{PENDING_WIDTHS.slice(0, count).map((width) => (
+				<div key={width} aria-hidden className={`grid grid-cols-1 ${gridCols} gap-2 items-center py-2`}>
+					<Skeleton className="hidden md:block mx-auto size-4 rounded-[4px]" />
+					<Skeleton className="h-4" style={{ width }} />
+				</div>
+			))}
+		</>
+	);
+}
+
 function PromptRow({
 	prompt,
 	index,
 	total,
 	update,
+	remove,
 	allTagOptions,
 	showSystemTags,
 	changedKeys,
@@ -353,6 +407,7 @@ function PromptRow({
 	index: number;
 	total: number;
 	update: (index: number, patch: Partial<EditablePrompt>) => void;
+	remove: (index: number) => void;
 	allTagOptions: { value: string }[];
 	showSystemTags: boolean;
 	changedKeys?: ReadonlySet<string>;
@@ -374,10 +429,10 @@ function PromptRow({
 			{/* Mobile: stacked, no selection/bulk */}
 			<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < total - 1 ? "border-b" : ""}`}>
 				<div className="flex items-start gap-2">
-					<Input
-						value={prompt.value}
-						onChange={(e) => update(index, { value: e.target.value })}
-						placeholder="Enter prompt text..."
+					<PromptTextField
+						prompt={prompt}
+						onValueChange={(value) => update(index, { value })}
+						onRemove={() => remove(index)}
 						className="min-w-0 flex-1"
 					/>
 					<div className="pt-2">
@@ -401,7 +456,6 @@ function PromptRow({
 						selected={prompt.premiumModels}
 						promptEnabled={prompt.enabled}
 						atCapacity={premiumAtCapacity}
-						brandId={premium.brandId}
 						onChange={(premiumModels) => update(index, { premiumModels })}
 						showLabel
 					/>
@@ -413,11 +467,10 @@ function PromptRow({
 				<div className="flex justify-center pt-2">
 					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
 				</div>
-				<Input
-					value={prompt.value}
-					onChange={(e) => update(index, { value: e.target.value })}
-					placeholder="Enter prompt text..."
-					className="min-w-0"
+				<PromptTextField
+					prompt={prompt}
+					onValueChange={(value) => update(index, { value })}
+					onRemove={() => remove(index)}
 				/>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
 				<TagsInput
@@ -434,7 +487,6 @@ function PromptRow({
 							selected={prompt.premiumModels}
 							promptEnabled={prompt.enabled}
 							atCapacity={premiumAtCapacity}
-							brandId={premium.brandId}
 							onChange={(premiumModels) => update(index, { premiumModels })}
 						/>
 					</div>
@@ -491,6 +543,8 @@ export function PromptsListEditor({
 	showSystemTags = true,
 	changedKeys,
 	premium,
+	leading,
+	pendingRows = 0,
 }: PromptsListEditorProps) {
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
@@ -501,6 +555,7 @@ export function PromptsListEditor({
 	const update = (index: number, patch: Partial<EditablePrompt>) => {
 		onChange(prompts.map((p, i) => (i === index ? { ...p, ...patch } : p)));
 	};
+	const remove = (index: number) => onChange(prompts.filter((_, i) => i !== index));
 	const add = () => {
 		if (prompts.length >= MAX_PROMPTS) return;
 		onChange([...prompts, newPromptEntry()]);
@@ -575,11 +630,11 @@ export function PromptsListEditor({
 					<span className="font-medium text-foreground">
 						{premiumUsed} of {premium.total}
 					</span>{" "}
-					pairings in use across this workspace — one for each model a prompt is tracked on.
+					pairings in use across this organization — one for each model a prompt is tracked on.
 					{premiumAtCapacity && (
 						<>
 							{" "}
-							Unassign one to free it up, or <BillingLink brandId={premium.brandId}>buy more</BillingLink>.
+							Unassign one to free it up, or <BillingLink>buy more</BillingLink>.
 						</>
 					)}
 				</p>
@@ -594,7 +649,11 @@ export function PromptsListEditor({
 				disabled={prompts.length === 0}
 			/>
 
-			{prompts.length === 0 ? (
+			{leading}
+
+			{pendingRows > 0 && <PendingRows count={pendingRows} gridCols={gridCols} />}
+
+			{prompts.length === 0 && pendingRows === 0 ? (
 				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -610,6 +669,7 @@ export function PromptsListEditor({
 							index={index}
 							total={prompts.length}
 							update={update}
+							remove={remove}
 							allTagOptions={allTagOptions}
 							showSystemTags={showSystemTags}
 							changedKeys={changedKeys}

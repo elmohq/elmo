@@ -1,0 +1,20 @@
+meta {
+  name: an expired key is rejected
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{expiredKey}}
+}
+
+assert {
+  res.status: eq 401
+  res.body.error: eq Unauthorized
+}

@@ -1,0 +1,20 @@
+meta {
+  name: the read scope reaches every resource
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgReadOnlyKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.brands: isArray
+}

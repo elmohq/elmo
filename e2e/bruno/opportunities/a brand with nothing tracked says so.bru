@@ -1,0 +1,25 @@
+meta {
+  name: a brand with nothing tracked says so rather than generating
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{nikeSecondBrandId}}/opportunities
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{nikeFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq insufficient-data
+  res.body.generatedAt: isNull
+  res.body.model: isNull
+  res.body.opportunities: isEmpty
+  res.body.summary: isEmpty
+  res.body.risks: isEmpty
+}

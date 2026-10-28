@@ -8,6 +8,8 @@ export interface FeaturesConfig {
 	 * cloud modes — whitelabel brands come from the admin API, demo is read-only.
 	 */
 	canCreateBrands: boolean;
+	canCreateOrganizations: boolean;
+	canEditOrganizations: boolean;
 	/**
 	 * Whether public self-serve registration is available. True only in cloud
 	 * mode. Local allows a single bootstrap signup (see ClientConfig.canRegister);
@@ -26,9 +28,9 @@ export interface FeaturesConfig {
 	 */
 	reportGeneration: boolean;
 	/**
-	 * Whether org admins can invite teammates by email. True only in cloud —
-	 * local is single-user by design, whitelabel memberships come from Auth0,
-	 * demo is read-only.
+	 * Whether the deployment owns its own team roster, which gates the team page
+	 * and every membership write. True only in cloud — local is single-user by
+	 * design, whitelabel memberships come from Auth0, demo is read-only.
 	 */
 	teamInvites: boolean;
 	/**
@@ -95,7 +97,8 @@ export interface OptimizeButtonProps {
 	brandId?: string;
 	selectedModel?: string;
 	availableModels: string[];
-	lookback?: "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+	/** A lookback preset or a `YYYY-MM-DD..YYYY-MM-DD` custom range. */
+	lookback?: string;
 	promptName?: string;
 	promptId?: string;
 	parentName?: string;

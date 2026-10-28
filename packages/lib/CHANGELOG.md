@@ -1,5 +1,188 @@
 # @workspace/lib
 
+## 0.7.6
+
+### Patch Changes
+
+- dfb4d72: Fixed sign-in and API requests failing until a server restart after a brief database connection error at startup.
+- 925390b: The citations page loads faster for long date ranges.
+- 98fc42e: Dropped unused database indexes, reducing disk usage and speeding up writes for runs and citations.
+- @workspace/config@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/config@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/config@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- cacc8f9: Show ChatGPT's web search queries again for ChatGPT tracked through Cloro.
+- @workspace/config@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/config@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/config@0.7.1
+
+## 0.7.0
+
+### Minor Changes
+
+- f5b579c: **Jev (TypeSafe) is now a required dependency of Elmo: the worker won't start without `TYPESAFE_API_KEY`.** Jev judges mentions and sentiment, which is far more accurate toward your brand and each competitor. It costs very roughly $0.15–0.35 per 1,000 answers that name a tracked company, more for long answers that name many. Upgrading re-judges the last 90 days of answers once, about three months' worth of that cost; set `REPROCESS_DAYS=all` before upgrading to re-judge your whole history instead.
+
+### Patch Changes
+
+- 0ac774b: Read the text of older ChatGPT and Claude responses recorded before Elmo stored which provider fetched them.
+- @workspace/config@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- @workspace/config@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/config@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- 1334ce8: Brand onboarding and the opportunities report now use `gpt-6-luna` (OpenAI) and `claude-sonnet-5-5` (Anthropic and OpenRouter).
+- @workspace/config@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/config@0.5.1
+
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+### Patch Changes
+
+- a55f182: Editing a brand's name, aliases or competitors now updates mentions in past responses too, not only in new ones.
+- @workspace/config@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/config@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- 4ec5ac9: Prevent some types of deployments from failing while generating the auth schema.
+- 9957eef: Fixed brands and competitors with a blank alias or domain being counted as mentioned in every answer.
+- @workspace/config@0.4.5
+
+## 0.4.4
+
+### Patch Changes
+
+- b48f545: Elmo's startup check now asks for a direct LLM key when onboarding needs one, counts provider keys saved in the app, and no longer requires the whitelabel parent-app link.
+- 1980c7d: Auth rate limiting is now counted in the database, so the limits on sign-in and password reset hold across restarts and multiple app instances.
+- 280e5f3: Prompt runs on the OpenAI API provider now store the full API response, so the searches behind an answer stay readable.
+- 76ec134: Reports accept other names a brand goes by, and count a mention of any of them as a brand mention.
+- Updated dependencies [b48f545]
+  - @workspace/config@0.4.4
+
+## 0.4.3
+
+### Patch Changes
+
+- 10bc2f0: Google AI Overview runs through SearchApi no longer fail when Google loads the overview separately from the result page.
+- @workspace/config@0.4.3
+
+## 0.4.2
+
+### Patch Changes
+
+- @workspace/config@0.4.2
+
+## 0.4.1
+
+### Patch Changes
+
+- e2543e8: Fix MCP sign-in for clients that use a client ID metadata document.
+- @workspace/config@0.4.1
+
+## 0.4.0
+
+### Minor Changes
+
+- c9142f7: Elmo now serves a full external API and an MCP server. `/api/v1` covers brands, prompts, competitors, reports, analytics, models, tags, and opportunities. `/api/mcp` connects Claude Code, Codex, Cursor, OpenCode, and VS Code, either by signing in from the client or with an API key. Keys belong to an organization and are issued read-only or read-write from Settings, which now also has API and MCP pages describing your own deployment.
+
+### Patch Changes
+
+- f6e90d9: Fixed BrightData scraping errors being stored as a prompt run's answer; those runs now fail.
+- 99f537c: Answers scraped through Cloro now keep their formatting and inline citations.
+- aa8c80d: Prompt runs on the OpenAI API provider now correctly show the search queries the model ran.
+- @workspace/config@0.4.0
+
+## 0.3.0
+
+### Minor Changes
+
+- 78593b9: Adds support for [Elmo Cloud](https://app.elmohq.com/).
+
+### Patch Changes
+
+- 1f32756: Fixed citation position calculation bug for Claude.
+- d4e5db4: Whitelabel sign-in no longer creates organizations from Auth0 `app_metadata`; it only grants membership in organizations that already exist, which are provisioned through the admin brands API.
+- 9633ca2: Truncates excessively long citation titles when stored in the database.
+- 1f32756: Track up to 500 competitors per brand.
+- 1f32756: AI citations are now de-duplicated by URL for a specific answer, so pages cited more than once count only one time.
+- 78593b9: Choose which AI platforms a brand tracks directly from the LLMs settings page.
+- 78593b9: The account menu lists every organization (not just brands) you belong to.
+- f87d2e2: Dashboard URLs now include the organization and the brand — `/app/org/{organization}/brand/{brand}`.
+- 58ff775: Keep a brand's prompts editable when it already holds more than the prompt limit.
+- 1f46b62: Fix broken docs link in `elmo init` and the LLMs settings page.
+- 1c4d39c: Support "GitHub Flavored Markdown" on prompt detail pages. LLM responses now render tables, strikethroughs, and URL autolinks more correctly.
+- 78593b9: Self-hosted deployments can set `RUNS_PER_PROMPT` to change how many times each run samples a platform, trading sampling confidence against provider spend.
+- 78593b9: Self-hosted deployments now show each tracked platform's estimated cost on the LLMs settings page, plus which providers to configure for the platforms they aren't tracking yet.
+- 78593b9: Recovering from a provider failure now re-runs only the models that missed their sample instead of re-sampling every model.
+- Updated dependencies [3ba2e5a]
+- Updated dependencies [78593b9]
+- Updated dependencies [f4f7ef2]
+- Updated dependencies [78593b9]
+- Updated dependencies [f87d2e2]
+- Updated dependencies [1f46b62]
+- Updated dependencies [78593b9]
+  - @workspace/config@0.3.0
+
 ## 0.2.19
 
 ### Patch Changes

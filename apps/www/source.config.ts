@@ -22,6 +22,9 @@ export const docs = defineDocs({
 export const blog = defineDocs({
 	dir: "../../packages/docs/content/blog",
 	docs: {
+		postprocess: {
+			includeProcessedMarkdown: true,
+		},
 		schema: pageSchema.extend({
 			// An unquoted date in YAML frontmatter (date: 2026-05-30) is parsed
 			// into a Date, while a quoted one ("2026-05-30") stays a string.
@@ -58,6 +61,21 @@ export const blog = defineDocs({
 					steps: z.array(z.object({ name: z.string(), text: z.string() })),
 				})
 				.optional(),
+		}),
+	},
+});
+
+// Published legal policies (terms, privacy, cookies, subprocessors, acceptable
+// use). Kept as content rather than route components so every revision shows up
+// as a reviewable diff — which is what the policies themselves promise.
+export const legal = defineDocs({
+	dir: "../../packages/docs/content/legal",
+	docs: {
+		schema: pageSchema.extend({
+			// Drives the "Last updated" line and the sitemap's lastmod.
+			updated: frontmatterDate,
+			// Position on the /legal index; lower sorts first.
+			order: z.number(),
 		}),
 	},
 });

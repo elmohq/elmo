@@ -9,8 +9,6 @@
 
 export const MARKETING_SITE_URL = "https://www.elmohq.com";
 export const CLOUD_APP_URL = "https://app.elmohq.com";
-/** Where a demo is booked. Not on our domain, but ours, and tagged the same way. */
-const BOOK_DEMO_URL = "https://cal.com/jrhizor/elmo";
 /** The read-only instance anyone can poke at without an account. */
 const DEMO_SITE_URL = "https://demo.elmohq.com";
 
@@ -25,7 +23,32 @@ export type ReferralSource =
 	| "self-hosted-signup"
 	| "cloud-signin"
 	| "cloud-signup"
-	| "marketing-cta";
+	| "marketing-cta"
+	| "marketing-nav"
+	| "marketing-hero"
+	| "marketing-ai-referral"
+	| "marketing-demo-frame"
+	| "marketing-closing"
+	| "marketing-pricing-closing"
+	| "marketing-aeo-for-hero"
+	| "marketing-aeo-for-closing"
+	| "marketing-profound-users-hero"
+	| "marketing-profound-users-closing"
+	| "marketing-features-hero"
+	| "marketing-features-closing"
+	| "marketing-page-cta"
+	| "marketing-vision"
+	| "marketing-about"
+	| "marketing-support"
+	| "demo-chat"
+	| "marketing-plan-starter"
+	| "marketing-plan-basic"
+	| "marketing-plan-pro"
+	| "marketing-plan-business"
+	| "marketing-pricing-starter"
+	| "marketing-pricing-basic"
+	| "marketing-pricing-pro"
+	| "marketing-pricing-business";
 
 function tagged(url: string, ref: ReferralSource): string {
 	const link = new URL(url);
@@ -36,6 +59,11 @@ function tagged(url: string, ref: ReferralSource): string {
 /** A marketing-site page, tagged with where the click came from. */
 export function marketingUrl(path: string, ref: ReferralSource): string {
 	return tagged(new URL(path, MARKETING_SITE_URL).toString(), ref);
+}
+
+/** The cloud app itself, tagged with where the click came from. It routes new visitors to sign-up on its own. */
+export function cloudAppUrl(ref: ReferralSource): string {
+	return tagged(`${CLOUD_APP_URL}/`, ref);
 }
 
 /** Cloud registration, tagged with where the click came from. */
@@ -50,10 +78,10 @@ export function cloudPricingUrl(ref: ReferralSource): string {
 
 /** The demo booking page, tagged with where the click came from. */
 export function bookDemoUrl(ref: ReferralSource): string {
-	return tagged(BOOK_DEMO_URL, ref);
+	return marketingUrl("/demo", ref);
 }
 
 /** The live demo instance, tagged with where the click came from. */
-export function demoSiteUrl(ref: ReferralSource): string {
-	return tagged(DEMO_SITE_URL, ref);
+export function demoSiteUrl(ref: ReferralSource, path = "/"): string {
+	return tagged(new URL(path, DEMO_SITE_URL).toString(), ref);
 }

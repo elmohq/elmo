@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { OptimizeButton } from "@workspace/whitelabel/components/optimize-button";
+import { OptimizeButton } from "@workspace/deployment/optimize-button";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 const meta = {
@@ -65,7 +65,7 @@ export const AllModelsMenu: Story = {
 		const items = await screen.findAllByRole("menuitem");
 		await expect(items).toHaveLength(PROPS.availableModels.length);
 
-		for (const label of ["Google AI Mode", "Claude", "GPT-5 Search"]) {
+		for (const label of ["Google AI Mode", "Claude", "GPT Search"]) {
 			await expect(screen.getByText(`Optimize for ${label}`)).toBeInTheDocument();
 		}
 

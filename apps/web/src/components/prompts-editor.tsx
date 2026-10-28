@@ -1,8 +1,18 @@
+import { MAX_PROMPTS } from "@workspace/lib/constants";
+import { Button } from "@workspace/ui/components/button";
+import { Sparkles } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import {
+	SUGGESTION_PLACEHOLDER_ROWS,
+	SuggestionsReadyPill,
+	SuggestionsStatus,
+	usePromptSuggestions,
+} from "@/components/prompt-suggestions";
 import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@/components/prompts-list-editor";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import { trackEvent } from "@/lib/posthog";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updatePromptsFn } from "@/server/prompts";
 
 interface PromptRow {
@@ -19,11 +29,6 @@ interface PromptsEditorProps {
 	brandId: string;
 	pageTitle: string;
 	pageDescription: string;
-	/**
-	 * The workspace's premium allowance. Omit to hide the column — self-hosted, or
-	 * a cloud plan whose pool is zero. Assignment lives here rather than on the LLM
-	 * settings page because it is per prompt.
-	 */
 	premium?: PremiumAllowance;
 }
 
@@ -56,56 +61,63 @@ function sameTags(a: string[], b: string[]) {
 	return [...a].sort().every((t, i) => t === sortedB[i]);
 }
 
+/** How one row differs from its baseline, or null when it is unchanged.
+ *  Clearing the text drops the prompt on save, so it counts as removed rather
+ *  than edited; an untouched blank row from "Add Prompt" isn't a change yet. */
+function classifyPrompt(
+	prompt: EditablePrompt,
+	prev: EditablePrompt | undefined,
+): "added" | "removed" | "edited" | null {
+	if (!prompt.value.trim()) return prev ? "removed" : null;
+	if (!prev) return "added";
+	const edited =
+		prompt.value.trim() !== prev.value.trim() ||
+		prompt.enabled !== prev.enabled ||
+		!sameModels(prompt.premiumModels, prev.premiumModels) ||
+		!sameTags(prompt.tags, prev.tags);
+	return edited ? "edited" : null;
+}
+
+function diffPrompts(baseline: EditablePrompt[], prompts: EditablePrompt[]) {
+	const before = new Map(baseline.map((p) => [p.id, p]));
+	const changed = new Set<string>();
+	let added = 0;
+	let edited = 0;
+
+	for (const p of prompts) {
+		const status = classifyPrompt(p, p.id ? before.get(p.id) : undefined);
+		if (!status) continue;
+		changed.add(p._key);
+		if (status === "added") added++;
+		else if (status === "edited") edited++;
+	}
+
+	const liveIds = new Set(prompts.filter((p) => p.value.trim()).map((p) => p.id));
+	return {
+		changedKeys: changed,
+		addedCount: added,
+		editedCount: edited,
+		removedCount: baseline.filter((p) => !liveIds.has(p.id)).length,
+	};
+}
+
 export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription, premium }: PromptsEditorProps) {
 	const [baseline, setBaseline] = useState<EditablePrompt[]>(() => toEditablePrompts(initialPrompts));
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(baseline);
 	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const suggestionsRef = useRef<HTMLDivElement>(null);
 	const saveInProgress = useRef(false);
 	const invalidatePromptsSummary = useInvalidatePromptsSummary();
+	const writeError = useWriteErrorMessage();
 
-	const { changedKeys, removedCount, addedCount, editedCount } = useMemo(() => {
-		const before = new Map(baseline.map((p) => [p.id, p]));
-		const changed = new Set<string>();
-		let added = 0;
-		let edited = 0;
+	const { changedKeys, removedCount, addedCount, editedCount } = useMemo(
+		() => diffPrompts(baseline, prompts),
+		[prompts, baseline],
+	);
 
-		for (const p of prompts) {
-			const prev = p.id ? before.get(p.id) : undefined;
-			if (!prev) {
-				// An untouched blank row from "Add Prompt" isn't a change yet.
-				if (p.value.trim()) {
-					changed.add(p._key);
-					added++;
-				}
-				continue;
-			}
-			// Clearing the text drops the prompt on save, so it counts as removed
-			// rather than edited.
-			if (!p.value.trim()) {
-				changed.add(p._key);
-				continue;
-			}
-			if (
-				p.value.trim() !== prev.value.trim() ||
-				p.enabled !== prev.enabled ||
-				!sameModels(p.premiumModels, prev.premiumModels) ||
-				!sameTags(p.tags, prev.tags)
-			) {
-				changed.add(p._key);
-				edited++;
-			}
-		}
-
-		const liveIds = new Set(prompts.filter((p) => p.value.trim()).map((p) => p.id));
-		return {
-			changedKeys: changed,
-			addedCount: added,
-			editedCount: edited,
-			removedCount: baseline.filter((p) => !liveIds.has(p.id)).length,
-		};
-	}, [prompts, baseline]);
-
+	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
+	const suggestions = usePromptSuggestions({ brandId, prompts, setPrompts });
 	const isDirty = changedKeys.size > 0 || removedCount > 0;
 	const summary = [
 		addedCount && `${addedCount} added`,
@@ -142,7 +154,12 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 			const saved = await updatePromptsFn({ data: { brandId, prompts: allPrompts } });
 
-			trackEvent("prompts_updated", { added: addedCount, edited: editedCount, deleted: removedCount });
+			trackEvent("prompts_updated", {
+				added: addedCount,
+				edited: editedCount,
+				deleted: removedCount,
+				suggested: validPrompts.filter((p) => p.suggested && !p.id).length,
+			});
 
 			// Adopt the server's rows so newly inserted prompts carry their real
 			// ids — re-saving without them would insert duplicates.
@@ -152,7 +169,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			invalidatePromptsSummary(brandId);
 		} catch (err) {
 			console.error("Error saving prompts:", err);
-			setError(`Failed to save prompts: ${err instanceof Error ? err.message : "Unknown error"}`);
+			setError(writeError(err, "Failed to save prompts."));
 		} finally {
 			setIsSaving(false);
 			saveInProgress.current = false;
@@ -161,14 +178,32 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 	return (
 		<div className="space-y-6">
-			<div className="flex items-center justify-between">
+			<div className="flex flex-wrap items-center justify-between gap-4">
 				<div>
 					<h1 className="text-3xl font-bold tracking-tight">{pageTitle}</h1>
 					<p className="text-muted-foreground">{pageDescription}</p>
 				</div>
+				<Button
+					variant="outline"
+					type="button"
+					onClick={suggestions.start}
+					disabled={suggestions.running || filledValues.length >= MAX_PROMPTS || suggestions.remaining === 0}
+					className="flex shrink-0 items-center gap-2 cursor-pointer"
+				>
+					<Sparkles className="h-4 w-4" /> Suggest Prompts
+				</Button>
 			</div>
 
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} changedKeys={changedKeys} premium={premium} />
+			<PromptsListEditor
+				prompts={prompts}
+				onChange={setPrompts}
+				changedKeys={changedKeys}
+				premium={premium}
+				leading={<SuggestionsStatus suggestions={suggestions} ref={suggestionsRef} />}
+				pendingRows={suggestions.running ? SUGGESTION_PLACEHOLDER_ROWS : 0}
+			/>
+
+			<SuggestionsReadyPill arrived={suggestions.arrived} target={suggestionsRef} />
 
 			<UnsavedChangesBar
 				isDirty={isDirty}

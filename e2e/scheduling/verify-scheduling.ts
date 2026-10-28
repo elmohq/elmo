@@ -135,14 +135,20 @@ if (scenario === "local") {
   assert((await runCount(prompt.id)) === 3, "cloud cadence: an immediate duplicate adds nothing");
 
   await client.query("UPDATE subscription SET status = 'canceled' WHERE id = 'sub-verify-1'");
+  // prompt_runs is append-only (a trigger rejects updates); a replica session skips
+  // triggers, which is the one way to age runs for the cadence check.
+  await client.query("BEGIN");
+  await client.query("SET LOCAL session_replication_role = replica");
   await client.query("UPDATE prompt_runs SET created_at = created_at - interval '2 days' WHERE prompt_id = $1", [prompt.id]);
+  await client.query("COMMIT");
   await sendJob(prompt.id);
   await new Promise((r) => setTimeout(r, 8000));
   assert((await runCount(prompt.id)) === 3, "canceled org: due targets do not run");
 
   await client.query("UPDATE subscription SET status = 'active' WHERE id = 'sub-verify-1'");
   await boss.send("schedule-maintenance", { source: "verify" }, { retryLimit: 0 });
-  await waitFor(async () => (await runCount(prompt.id)) > 3, 120000, "revival runs");
+  await waitFor(async () => (await runCount(prompt.id)) >= 6, 120000, "revival runs");
+  await new Promise((r) => setTimeout(r, 5000));
   const revived = await runCount(prompt.id);
   assert(revived === 6, `resubscribe: maintenance revives the chain and due targets run (got ${revived})`);
 } else {

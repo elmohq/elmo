@@ -1,5 +1,105 @@
 # @elmohq/cli
 
+## 0.7.6
+
+No changes in this release.
+
+## 0.7.5
+
+### Patch Changes
+
+- c3884e8: Call Jev through OpenRouter when no TypeSafe key is set: `elmo init` asks which to use, and can reuse your OpenRouter key.
+
+## 0.7.4
+
+No changes in this release.
+
+## 0.7.3
+
+No changes in this release.
+
+## 0.7.2
+
+No changes in this release.
+
+## 0.7.1
+
+No changes in this release.
+
+## 0.7.0
+
+### Minor Changes
+
+- f5b579c: **Jev (TypeSafe) is now a required dependency of Elmo: the worker won't start without `TYPESAFE_API_KEY`.** Jev judges mentions and sentiment, which is far more accurate toward your brand and each competitor. It costs very roughly $0.15–0.35 per 1,000 answers that name a tracked company, more for long answers that name many. Upgrading re-judges the last 90 days of answers once, about three months' worth of that cost; set `REPROCESS_DAYS=all` before upgrading to re-judge your whole history instead.
+
+## 0.6.2
+
+No changes in this release.
+
+## 0.6.1
+
+No changes in this release.
+
+## 0.6.0
+
+### Patch Changes
+
+- 1334ce8: Default the OpenAI and Anthropic model targets to `gpt-6-luna` and `claude-haiku-5-5` (`openai/gpt-6-luna` and `anthropic/claude-haiku-5.5` on OpenRouter); existing installs keep their configured models, so consider updating `SCRAPE_TARGETS` to switch from `gpt-5-mini` and `claude-sonnet-5`.
+
+## 0.5.2
+
+No changes in this release.
+
+## 0.5.1
+
+No changes in this release.
+
+## 0.5.0
+
+No changes in this release.
+
+## 0.4.6
+
+No changes in this release.
+
+## 0.4.5
+
+No changes in this release.
+
+## 0.4.4
+
+No changes in this release.
+
+## 0.4.3
+
+### Patch Changes
+
+- c728281: `elmo init` now asks for the public URL you'll reach Elmo at, so sign-in works when it's served from a domain.
+
+## 0.4.2
+
+### Patch Changes
+
+- 2043438: Add SearchApi.io as a scraper provider for ChatGPT, Perplexity, Copilot, Gemini, Google AI Mode, and Google AI Overview.
+
+## 0.4.1
+
+No changes in this release.
+
+## 0.4.0
+
+### Patch Changes
+
+- 859447d: `elmo init` now checks Docker before the setup wizard and reports whether Docker is missing or not running.
+
+## 0.3.0
+
+### Patch Changes
+
+- 3ba2e5a: `elmo init` now says up front that a managed cloud option exists, and what it costs, before walking through self-hosted setup.
+- 1f46b62: Fix broken docs link in `elmo init` and the LLMs settings page.
+- 5b90bbc: The worker now gets time to finish in-flight jobs when a deployment stops or upgrades, instead of being killed mid-evaluation.
+
 ## 0.2.19
 
 ### Patch Changes

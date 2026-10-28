@@ -1,5 +1,239 @@
 # @workspace/www
 
+## 0.7.6
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.6
+  - @workspace/config@0.7.6
+  - @workspace/docs@0.7.6
+  - @workspace/og@0.7.6
+  - @workspace/ui@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.5
+  - @workspace/config@0.7.5
+  - @workspace/docs@0.7.5
+  - @workspace/og@0.7.5
+  - @workspace/ui@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.4
+  - @workspace/config@0.7.4
+  - @workspace/docs@0.7.4
+  - @workspace/og@0.7.4
+  - @workspace/ui@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.3
+  - @workspace/config@0.7.3
+  - @workspace/docs@0.7.3
+  - @workspace/og@0.7.3
+  - @workspace/ui@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.2
+  - @workspace/config@0.7.2
+  - @workspace/docs@0.7.2
+  - @workspace/og@0.7.2
+  - @workspace/ui@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.1
+  - @workspace/config@0.7.1
+  - @workspace/docs@0.7.1
+  - @workspace/og@0.7.1
+  - @workspace/ui@0.7.1
+
+## 0.7.0
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.0
+  - @workspace/config@0.7.0
+  - @workspace/docs@0.7.0
+  - @workspace/og@0.7.0
+  - @workspace/ui@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- Updated dependencies [54cdb8d]
+- Updated dependencies [ccf05e0]
+  - @workspace/api-spec@0.6.2
+  - @workspace/docs@0.6.2
+  - @workspace/config@0.6.2
+  - @workspace/og@0.6.2
+  - @workspace/ui@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.6.1
+  - @workspace/config@0.6.1
+  - @workspace/docs@0.6.1
+  - @workspace/og@0.6.1
+  - @workspace/ui@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [caf6bfb]
+  - @workspace/api-spec@0.6.0
+  - @workspace/config@0.6.0
+  - @workspace/docs@0.6.0
+  - @workspace/og@0.6.0
+  - @workspace/ui@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+  - @workspace/og@0.5.2
+  - @workspace/api-spec@0.5.2
+  - @workspace/docs@0.5.2
+  - @workspace/ui@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.5.1
+  - @workspace/config@0.5.1
+  - @workspace/docs@0.5.1
+  - @workspace/og@0.5.1
+  - @workspace/ui@0.5.1
+
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [f1daf53]
+  - @workspace/api-spec@0.5.0
+  - @workspace/config@0.5.0
+  - @workspace/docs@0.5.0
+  - @workspace/og@0.5.0
+  - @workspace/ui@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/api-spec@0.4.6
+  - @workspace/config@0.4.6
+  - @workspace/docs@0.4.6
+  - @workspace/og@0.4.6
+  - @workspace/ui@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- @workspace/api-spec@0.4.5
+  - @workspace/config@0.4.5
+  - @workspace/docs@0.4.5
+  - @workspace/og@0.4.5
+  - @workspace/ui@0.4.5
+
+## 0.4.4
+
+### Patch Changes
+
+- Updated dependencies [b48f545]
+- Updated dependencies [76ec134]
+  - @workspace/config@0.4.4
+  - @workspace/api-spec@0.4.4
+  - @workspace/og@0.4.4
+  - @workspace/docs@0.4.4
+  - @workspace/ui@0.4.4
+
+## 0.4.3
+
+### Patch Changes
+
+- @workspace/api-spec@0.4.3
+  - @workspace/config@0.4.3
+  - @workspace/docs@0.4.3
+  - @workspace/og@0.4.3
+  - @workspace/ui@0.4.3
+
+## 0.4.2
+
+### Patch Changes
+
+- @workspace/api-spec@0.4.2
+  - @workspace/config@0.4.2
+  - @workspace/docs@0.4.2
+  - @workspace/og@0.4.2
+  - @workspace/ui@0.4.2
+
+## 0.4.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.4.1
+  - @workspace/config@0.4.1
+  - @workspace/docs@0.4.1
+  - @workspace/og@0.4.1
+  - @workspace/ui@0.4.1
+
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies [8c953b1]
+- Updated dependencies [c9142f7]
+- Updated dependencies [e30d6d4]
+  - @workspace/api-spec@0.4.0
+  - @workspace/docs@0.4.0
+  - @workspace/og@0.4.0
+  - @workspace/config@0.4.0
+  - @workspace/ui@0.4.0
+
+## 0.3.0
+
+### Minor Changes
+
+- 78593b9: Adds support for [Elmo Cloud](https://app.elmohq.com/).
+
+### Patch Changes
+
+- da87272: Rebuilt the interface on Base UI, so menus, dialogs, tooltips and form controls behave more consistently across keyboard and assistive tech.
+- 3ba2e5a: Added a "book a demo" call to action to the sign-in and sign-up pages and to the get-started section of the site.
+- Updated dependencies [da87272]
+- Updated dependencies [3ba2e5a]
+- Updated dependencies [78593b9]
+- Updated dependencies [f4f7ef2]
+- Updated dependencies [78593b9]
+- Updated dependencies [f87d2e2]
+- Updated dependencies [1f46b62]
+- Updated dependencies [78593b9]
+  - @workspace/ui@0.3.0
+  - @workspace/docs@0.3.0
+  - @workspace/config@0.3.0
+  - @workspace/og@0.3.0
+  - @workspace/api-spec@0.3.0
+
 ## 0.2.19
 
 ### Patch Changes

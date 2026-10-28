@@ -17,14 +17,20 @@ import {
 	getAlternativesVerdict,
 	getComparisonSlug,
 	getCompetitorBySlug,
-	isIndexed,
+	hasOwnPages,
 } from "@/lib/competitors";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const c = getCompetitorBySlug(params.slug);
-		if (!c || !isIndexed(c)) return {};
+		if (!c || !hasOwnPages(c)) throw notFound();
+		const alternatives = getAlternatives(c);
+		return { competitor: c, alternatives, faqs: getAlternativesFaqs(c, alternatives) };
+	},
+	head: ({ params, loaderData }) => {
+		if (!loaderData) return {};
+		const { competitor: c, faqs } = loaderData;
 		const title = `${c.name} Alternatives | Open-Source AI Visibility · Elmo`;
 		const description = `The best ${c.name} alternatives for AI visibility tracking, including Elmo — the open-source, self-hosted option you can run for free.`;
 		const path = `/ai-visibility-tools/alternatives/${params.slug}`;
@@ -37,14 +43,9 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: `${c.name} alternatives`, path },
 				]),
-				faqJsonLd(getAlternativesFaqs(c, getAlternatives(c))),
+				faqJsonLd(faqs),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const c = getCompetitorBySlug(params.slug);
-		if (!c || !isIndexed(c)) throw notFound();
-		return { competitor: c, alternatives: getAlternatives(c) };
 	},
 	component: AlternativesPage,
 });
@@ -59,11 +60,7 @@ function AlternativesPage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero
-					eyebrow="Alternatives"
-					title={`${competitor.name} alternatives`}
-					lead={getAlternativesVerdict(competitor)}
-				/>
+				<DirectoryHero title={`${competitor.name} alternatives`} lead={getAlternativesVerdict(competitor)} />
 
 				<DirectoryElmoBanner
 					pitch="Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
@@ -96,7 +93,7 @@ function AlternativesPage() {
 					<ToolGrid competitors={alternatives} />
 				</DirectorySection>
 
-				<Faq items={getAlternativesFaqs(competitor, alternatives)} eyebrow="/ FAQ" />
+				<Faq items={getAlternativesFaqs(competitor, alternatives)} />
 				<ElmoCta />
 			</main>
 			<Footer />

@@ -1,20 +1,15 @@
-/**
- * Stories for the Share of Voice page (/app/$brand/share-of-voice). Renders the
- * real page with mocked brand + share-of-voice data. The page reads filters from
- * the URL search params via the mocked router hooks (empty search = defaults).
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
-import { Route } from "@/routes/_authed/app/$brand/share-of-voice";
+import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/share-of-voice";
 
 // The route file exports only `Route` (route files must, for code-splitting).
 // Render its component via the route options — the mock exposes `options`.
 const ShareOfVoicePage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
-import { setMockShareOfVoice } from "./_mocks/server-analysis";
+import { setMockLandscape, setMockShareOfVoice } from "./_mocks/server-analysis";
 import { setMockBrand } from "./_mocks/use-brands";
-import { mockShareOfVoice } from "./analytics-fixtures";
+import { mockLandscape, mockShareOfVoice } from "./analytics-fixtures";
 
 const onboardedBrand = {
 	id: "brand-1",
@@ -50,6 +45,7 @@ const meta = {
 		(Story) => {
 			setMockBrand(onboardedBrand);
 			setMockShareOfVoice(mockShareOfVoice);
+			setMockLandscape(mockLandscape);
 			return (
 				<Shell>
 					<Story />

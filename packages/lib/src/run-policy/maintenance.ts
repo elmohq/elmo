@@ -72,13 +72,13 @@ function actionForPrompt(state: MaintenancePromptState, nowMs: number): Maintena
 	}
 
 	// A future job exists — drag it forward only if the prompt has genuinely
-	// stalled. `runFrequencyMs` is how often the prompt runs (its fastest
+	// stalled. `rescheduleHours` is how often the prompt runs (its fastest
 	// target), which is the interval the pending job was scheduled against.
 	const runTimes = [...state.lastRunAtByKey.values()].map((d) => d.getTime());
 	const expedite = shouldExpediteJob({
 		jobConsecutiveFailures: state.pendingJob.consecutiveFailures,
 		lastRunAt: runTimes.length > 0 ? new Date(Math.max(...runTimes)) : null,
-		runFrequencyMs: Math.min(...state.plan.targets.map((t) => t.intervalHours)) * 3600 * 1000,
+		runFrequencyMs: (state.plan.rescheduleHours as number) * 3600 * 1000,
 		now: nowMs,
 		minIntervalMs: EXPEDITE_MIN_INTERVAL_MS,
 	});

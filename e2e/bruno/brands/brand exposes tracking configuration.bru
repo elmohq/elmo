@@ -1,0 +1,28 @@
+meta {
+  name: a brand reports what it is tracked on and how often
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("enabled platforms and the cadence override are readable", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("enabledModels");
+    expect(body).to.have.property("delayOverrideHours");
+    expect(body.enabledModels === null || Array.isArray(body.enabledModels)).to.be.true;
+  });
+}

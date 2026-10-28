@@ -1,9 +1,8 @@
 {
   "name": "elmo",
-  "version": "0.2.13",
   "private": true,
   "license": "MIT",
-  "packageManager": "pnpm@11.18.0",
+  "packageManager": "pnpm@12.4.1",
   "engines": {
     "node": "24.x"
   },
@@ -12,6 +11,7 @@
     "build": "turbo build",
     "lint": "biome check --diagnostic-level=error --config-path=biome.json .",
     "lint:fix": "biome check --write --diagnostic-level=error --config-path=biome.json .",
+    "lint:spec": "pnpm --filter @workspace/api-spec lint:spec",
     "test": "turbo test",
     "format": "biome format --write --config-path=biome.json .",
     "knip": "knip",
@@ -19,7 +19,7 @@
     "cli:link": "npm unlink -g @elmohq/cli || true && pnpm -C apps/cli build && (cd apps/cli && npm link)",
     "cli:unlink": "npm unlink -g @elmohq/cli",
     "changeset": "changeset",
-    "version-packages": "changeset version && node scripts/sync-root-version.mjs",
+    "version-packages": "changeset version",
     "release": "pnpm build && changeset publish",
     "test:e2e": "pnpm --filter e2e test:e2e",
     "test:e2e:cloud": "pnpm --filter e2e test:e2e:cloud",
@@ -27,15 +27,18 @@
     "test:e2e:demo": "pnpm --filter e2e test:e2e:demo",
     "test:e2e-local": "bash e2e/run-local.sh",
     "test:api": "pnpm --filter e2e test:api",
+    "test:api:cloud": "pnpm --filter e2e test:api:cloud",
+    "test:api:demo": "pnpm --filter e2e test:api:demo",
+    "validate:spec": "pnpm --filter e2e validate:spec",
     "test:scripts": "node --test 'scripts/*.test.mjs'",
     "license-check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.8",
-    "@changesets/cli": "^3.0.1",
-    "knip": "^6.32.2",
-    "tsx": "^4.23.12",
-    "turbo": "^2.10.10",
+    "@biomejs/biome": "2.6.2",
+    "@changesets/cli": "^3.0.3",
+    "knip": "^6.42.1",
+    "tsx": "^4.23.15",
+    "turbo": "^2.11.10",
     "typescript": "^7.0.2"
   }
 }

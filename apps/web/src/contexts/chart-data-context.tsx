@@ -1,7 +1,11 @@
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
-import { generateDateRange } from "@/lib/chart-utils";
-import type { ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
+import {
+	type ChartSubject,
+	generateDateRange,
+	latestVisibility,
+	type ProcessedBatchChartDataPoint,
+} from "@/lib/chart-utils";
 
 // Chart data for a single prompt (pre-processed for rendering)
 export interface ProcessedChartData {
@@ -17,7 +21,7 @@ export interface ProcessedChartData {
 // Context value
 interface ChartDataContextValue {
 	batchData: ProcessedBatchChartDataPoint[] | null;
-	brand: Brand | null;
+	brand: ChartSubject | null;
 	competitors: Competitor[];
 	dateRange: string[];
 	getChartDataForPrompt: (promptId: string) => ProcessedChartData | null;
@@ -29,7 +33,7 @@ const ChartDataContext = createContext<ChartDataContextValue | null>(null);
 interface ChartDataProviderProps {
 	children: ReactNode;
 	batchData: ProcessedBatchChartDataPoint[] | null;
-	brand: Brand | null;
+	brand: ChartSubject | null;
 	competitors: Competitor[];
 	startDate: Date;
 	endDate: Date;
@@ -115,8 +119,7 @@ export function ChartDataProvider({
 				});
 			});
 
-			const lastDataPoint = chartData.filter((point) => point[brand.id] !== null).pop();
-			const lastBrandVisibility = lastDataPoint ? (lastDataPoint[brand.id] as number) : null;
+			const lastBrandVisibility = latestVisibility(chartData, brand.id);
 
 			return {
 				chartData,
@@ -137,14 +140,6 @@ export function ChartDataProvider({
 	};
 
 	return <ChartDataContext.Provider value={value}>{children}</ChartDataContext.Provider>;
-}
-
-export function useChartDataContext() {
-	const context = useContext(ChartDataContext);
-	if (!context) {
-		throw new Error("useChartDataContext must be used within a ChartDataProvider");
-	}
-	return context;
 }
 
 export function useOptionalChartDataContext() {

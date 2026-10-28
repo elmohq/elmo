@@ -8,14 +8,12 @@
  */
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { isAdmin } from "@/lib/auth/helpers";
-import { evaluateRequireAdmin } from "@/lib/auth/policies";
+import { getDeployment } from "@workspace/deployment";
 import { auth } from "@/lib/auth/server";
-import { getDeployment } from "@/lib/config/server";
 
 /**
  * Auth middleware - provides deployment context to all server functions.
- * Does NOT enforce authentication - that's done by `requireAuthMiddleware`.
+ * Does NOT enforce authentication; server functions check `session` themselves.
  */
 export const authMiddleware = createMiddleware({ type: "function" }).server(async ({ next }) => {
 	const deployment = getDeployment();
@@ -29,38 +27,3 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(asyn
 		},
 	});
 });
-
-/**
- * Middleware that requires authentication.
- * Throws an error if the user is not authenticated when auth is required.
- */
-export const requireAuthMiddleware = createMiddleware({ type: "function" })
-	.middleware([authMiddleware])
-	.server(async ({ next, context }) => {
-		if (!context.session) {
-			throw new Error("Unauthorized: Authentication required");
-		}
-
-		return next();
-	});
-
-/**
- * Middleware that requires admin access.
- * Must be used after authMiddleware.
- */
-export const requireAdminMiddleware = createMiddleware({ type: "function" })
-	.middleware([authMiddleware])
-	.server(async ({ next, context }) => {
-		const session = context.session;
-		if (!session) {
-			throw new Error("Unauthorized: Authentication required");
-		}
-
-		const userIsAdmin = isAdmin(session);
-
-		if (evaluateRequireAdmin(userIsAdmin) === "deny") {
-			throw new Error("Forbidden: Admin access required");
-		}
-
-		return next();
-	});

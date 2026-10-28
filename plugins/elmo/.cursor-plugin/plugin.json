@@ -1,0 +1,14 @@
+{
+  "name": "elmo",
+  "displayName": "Elmo",
+  "version": "1.0.0",
+  "description": "Track how ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews mention and cite your brand. Read visibility, citations, competitors and the searches models ran, and add or edit tracked prompts.",
+  "author": {
+    "name": "Elmo"
+  },
+  "homepage": "https://www.elmohq.com",
+  "repository": "https://github.com/elmohq/elmo",
+  "license": "MIT",
+  "keywords": ["ai visibility", "aeo", "geo", "seo", "brand monitoring", "mcp"],
+  "logo": "assets/logo.svg"
+}

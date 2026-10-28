@@ -1,0 +1,24 @@
+meta {
+  name: a read-only key can read
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgReadOnlyKey}}
+}
+
+params:query {
+  brandId: {{brandId}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.prompts: isArray
+}

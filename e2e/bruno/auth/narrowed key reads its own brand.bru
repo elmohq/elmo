@@ -1,0 +1,20 @@
+meta {
+  name: the same key still reaches the brand it is restricted to
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{nikeNarrowKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq nike
+}

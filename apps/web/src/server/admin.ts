@@ -5,13 +5,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { getModelMeta } from "@workspace/config/models";
-import type { DeploymentMode } from "@workspace/config/types";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, brands, type Prompt, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { type Brand, brands, organization, type Prompt, prompts, rollupPromptRuns } from "@workspace/lib/db/schema";
 import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { analyzeBrand } from "@workspace/lib/onboarding";
-import { type ModelConfig, parseScrapeTargets } from "@workspace/lib/providers";
+import type { ModelConfig } from "@workspace/lib/providers";
 import {
 	type PromptRunPlan,
 	resolveBrandPromptRunPlans,
@@ -19,13 +19,11 @@ import {
 	targetKey,
 	targetOverdueStatus,
 } from "@workspace/lib/run-policy";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, inArray, type SQL, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
-import { getAdminActiveBrandsOverTime, getAdminBrandRunStats, getAdminRunsOverTime } from "@/lib/postgres-read";
 
 // ============================================================================
 // Admin guard helper
@@ -35,6 +33,92 @@ async function requireAdmin() {
 	const session = await requireAuthSession();
 	if (!isAdmin(session)) throw new Error("Unauthorized: Admin access required");
 	return session;
+}
+
+async function organizationSlugs(organizationIds: string[]): Promise<Map<string, string>> {
+	if (organizationIds.length === 0) return new Map();
+	const rows = await db
+		.select({ id: organization.id, slug: organization.slug })
+		.from(organization)
+		.where(inArray(organization.id, [...new Set(organizationIds)]));
+	return new Map(rows.map((row) => [row.id, row.slug]));
+}
+
+function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
+	return slugs.get(organizationId) ?? organizationId;
+}
+
+// ============================================================================
+// Admin analytics queries
+// ============================================================================
+
+interface AdminRunsOverTime {
+	date: string;
+	count: number;
+}
+
+interface AdminBrandRunStats {
+	brand_id: string;
+	runs_7d: number;
+	runs_30d: number;
+	last_run_at: string | null;
+}
+
+interface AdminActiveBrandsOverTime {
+	date: string;
+	count: number;
+}
+
+async function adminRows<T>(query: SQL): Promise<T[]> {
+	const result = await db.execute(query);
+	return result.rows as T[];
+}
+
+async function getAdminRunsOverTime(): Promise<AdminRunsOverTime[]> {
+	const rows = await adminRows<AdminRunsOverTime>(sql`
+		SELECT
+			(bucket AT TIME ZONE 'UTC')::date AS date,
+			sum(runs)::int AS count
+		FROM rollup_prompt_runs
+		WHERE bucket >= now() - interval '30 days'
+		GROUP BY date
+		ORDER BY date
+	`);
+	return rows;
+}
+
+async function getAdminBrandRunStats(): Promise<AdminBrandRunStats[]> {
+	const rows = await adminRows<AdminBrandRunStats>(sql`
+		SELECT
+			brand_id,
+			coalesce(sum(runs) FILTER (WHERE bucket >= now() - interval '7 days'), 0)::int AS runs_7d,
+			coalesce(sum(runs) FILTER (WHERE bucket >= now() - interval '30 days'), 0)::int AS runs_30d,
+			to_char(max(last_run_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_run_at
+		FROM rollup_prompt_runs
+		GROUP BY brand_id
+	`);
+	return rows;
+}
+
+async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime[]> {
+	const rows = await adminRows<AdminActiveBrandsOverTime>(sql`
+		SELECT
+			target_date AS date,
+			count(DISTINCT brand_id)::int AS count
+		FROM (
+			SELECT
+				brand_id,
+				(bucket AT TIME ZONE 'UTC')::date + d AS target_date
+			FROM rollup_prompt_runs,
+				generate_series(0, 29) AS d
+			WHERE bucket >= now() - interval '60 days'
+		) expanded
+		WHERE target_date >= current_date - 30
+			AND target_date <= current_date
+		GROUP BY target_date
+		ORDER BY target_date
+	`);
+	return rows;
 }
 
 // ============================================================================
@@ -115,6 +199,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 		]);
 
 	const brandRunStatsMap = new Map(brandRunStats.map((stat) => [stat.brand_id, stat]));
+	const orgSlugs = await organizationSlugs(allBrands.map((brand) => brand.organizationId));
 
 	const brandStats = await Promise.all(
 		allBrands.map(async (brand) => {
@@ -140,6 +225,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 
 			return {
 				...brand,
+				organizationSlug: organizationSegment(orgSlugs, brand.organizationId),
 				totalPrompts: promptCounts[0]?.total || 0,
 				activePrompts: promptCounts[0]?.active || 0,
 				promptRuns7Days: runStats?.runs_7d || 0,
@@ -591,6 +677,7 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
  * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
  */
 interface WorkflowContext {
+	orgSlugs: Map<string, string>;
 	runPlans: Map<string, PromptRunPlan>;
 	lastRunsByPrompt: Map<string, Map<string, Date>>;
 	scheduleMap: Awaited<ReturnType<typeof getScheduleMap>>;
@@ -658,7 +745,7 @@ function promptWorkflowStatus(
 }
 
 function brandWorkflowSummary(
-	brand: { id: string; name: string; website: string; enabled: boolean },
+	brand: { id: string; slug: string | null; organizationId: string; name: string; website: string; enabled: boolean },
 	brandPrompts: { id: string; value: string; enabled: boolean; createdAt: Date }[],
 	context: WorkflowContext,
 ) {
@@ -667,6 +754,8 @@ function brandWorkflowSummary(
 
 	return {
 		brandId: brand.id,
+		brandSlug: brand.slug,
+		organizationSlug: organizationSegment(context.orgSlugs, brand.organizationId),
 		brandName: brand.name,
 		website: brand.website,
 		enabled: brand.enabled,
@@ -700,14 +789,19 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 	const lastRunsQuery = await db
 		.select({
-			promptId: promptRuns.promptId,
-			model: promptRuns.model,
-			provider: promptRuns.provider,
-			webSearchEnabled: promptRuns.webSearchEnabled,
-			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+			promptId: rollupPromptRuns.promptId,
+			model: rollupPromptRuns.model,
+			provider: rollupPromptRuns.provider,
+			webSearchEnabled: rollupPromptRuns.webSearchEnabled,
+			lastRunAt: sql<Date>`max(${rollupPromptRuns.lastRunAt})`.as("last_run_at"),
 		})
-		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
+		.from(rollupPromptRuns)
+		.groupBy(
+			rollupPromptRuns.promptId,
+			rollupPromptRuns.model,
+			rollupPromptRuns.provider,
+			rollupPromptRuns.webSearchEnabled,
+		);
 
 	const lastRunsByPrompt = new Map<string, Map<string, Date>>();
 	for (const run of lastRunsQuery) {
@@ -716,8 +810,8 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 			byKey = new Map();
 			lastRunsByPrompt.set(run.promptId, byKey);
 		}
-		// provider is nullable on the column; a row without one predates target
-		// keying and can't be matched to a target anyway.
+		// A run without a provider ('' in the rollups) predates target keying and
+		// can't be matched to a target anyway.
 		if (!run.provider) continue;
 		byKey.set(
 			targetKey({ model: run.model, provider: run.provider, webSearch: run.webSearchEnabled }),
@@ -725,7 +819,8 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		);
 	}
 
-	const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
+	const [orgSlugs, recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
+		organizationSlugs(allBrands.map((brand) => brand.organizationId)),
 		getRecentJobs(5000),
 		getScheduleMap(),
 		getActiveJobMap(),
@@ -753,6 +848,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	}
 
 	const context: WorkflowContext = {
+		orgSlugs,
 		runPlans,
 		lastRunsByPrompt,
 		scheduleMap,

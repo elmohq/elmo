@@ -1,0 +1,25 @@
+meta {
+  name: an unparseable prompt id
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{badUuid}}/runs?start={{windowStart}}&end={{windowEnd}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  start: {{windowStart}}
+  end: {{windowEnd}}
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq validation_error
+}

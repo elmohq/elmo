@@ -9,22 +9,29 @@
 #   2. worker — start the worker (pointed at the no-network `stub` provider)
 #      and run the `worker` project, which submits a job and asserts the worker
 #      processes it
-#   3. cloud — worker back down, recreate `web` with e2e/modes/cloud.yaml,
-#      re-seed, run the `cloud` project
-#   4. whitelabel — same with e2e/modes/whitelabel.yaml
-#   5. demo — same with e2e/modes/demo.yaml
+#   3. cloud — worker back down, run the `cloud` project and the `cloud`-tagged
+#      Bruno cases (plan enforcement, which only exists here)
+#   4. whitelabel — same, against the whitelabel container
+#   5. demo — re-seed, then the `demo` project plus the `demo`-tagged Bruno
+#      cases (every API write must be refused)
 #
-# The mode phases only recreate `web`: DEPLOYMENT_MODE is read at runtime, so
-# one image serves all of them. Ordering matters — the fixture suites run while
-# the worker is down so its self-healing scheduler can't mutate seeded data,
-# and the local phase runs first because it bootstraps the account the other
-# modes sign in with.
+# All four modes are up from the start, one container each (e2e/modes.yaml), so
+# their boots overlap and no phase pays to recreate and re-warm `web`. Cloud and
+# whitelabel each hold a database of their own, so a phase cannot read what the
+# phase before it left behind and the two are in no particular order.
+#
+# What ordering is left is real. The fixture suites run while the worker is down
+# so its self-healing scheduler can't mutate seeded data. Local runs first
+# because it bootstraps the account the other modes sign in with. Demo runs
+# after it because demo shares local's database — signup is disabled there, so
+# that bootstrapped account is the only way in — and re-seeds first because the
+# worker phase wrote runs into it.
 #
 # This workflow is the SINGLE SOURCE OF TRUTH for E2E test orchestration.
 # Run locally via: pnpm test:e2e-local  (replays this workflow with
 # https://github.com/nektos/act); `pnpm test:e2e`, `pnpm test:e2e:cloud`,
 # `pnpm test:e2e:whitelabel`, and `pnpm test:e2e:demo` run one mode's specs
-# against an already-running stack in that mode.
+# against an already-running stack.
 
 name: E2E Tests
 
@@ -49,15 +56,23 @@ jobs:
     timeout-minutes: 45
 
     env:
-      # One file set for every `docker compose` invocation below, so no step
-      # can silently run against a different effective config. The override
-      # scopes the worker to the no-network stub provider. The mode phases
-      # append their own override on top of this.
-      COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml
+      # One file set for every `docker compose` invocation below, so no step can
+      # silently run against a different effective config. The first override
+      # scopes the worker to the no-network stub provider; the second adds a
+      # container per deployment mode.
+      COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes.yaml
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      # The image build needs nothing but the checkout, so it runs in the
+      # background through the host setup below rather than after it. Its exit
+      # status lands in a file because a later step can't `wait` on it.
+      - name: Start building images
+        run: |
+          (docker buildx bake -f e2e/docker-bake.hcl --progress=plain > "$RUNNER_TEMP/build.log" 2>&1
+           echo $? > "$RUNNER_TEMP/build.exit") &
 
       # NB: no free-disk-space step here — it predated the Blacksmith migration
       # and is unnecessary on these runners (publish.yaml builds the same
@@ -69,7 +84,7 @@ jobs:
       # straight into the daemon's image store.
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -86,12 +101,15 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
+      # Not `--with-deps`: that runs apt-get update on every job, cache hit or
+      # not, for libraries the runner image already carries. If an image ever
+      # stops carrying them, Playwright fails naming `playwright install-deps`.
       - name: Install Playwright browsers
         uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
-          command: pnpm -C apps/web exec playwright install chromium --with-deps
+          command: pnpm -C apps/web exec playwright install chromium
 
       - name: Build elmo CLI
         run: pnpm -C apps/cli build
@@ -120,21 +138,33 @@ jobs:
           echo "=== elmo.yaml (services) ==="
           grep -E '^\s{2}\w' e2e/.elmo/elmo.yaml || true
 
-      # Build all images so a broken worker (or db-migrate) Dockerfile fails CI
+      # All three images, so a broken worker (or db-migrate) Dockerfile fails CI
       # here. web/worker/migrate share the base/deps/builder stages, so BuildKit
       # builds those once — building all three costs little more than building
-      # web alone. postgres is an image pull, so `build` skips it.
+      # web alone.
       - name: Build images
-        run: docker compose build
+        run: |
+          while [ ! -f "$RUNNER_TEMP/build.exit" ]; do sleep 1; done
+          cat "$RUNNER_TEMP/build.log"
+          exit "$(cat "$RUNNER_TEMP/build.exit")"
 
-      # Start web only (with its deps db-migrate + postgres). The worker stays
-      # down for now — it comes up in phase 2, after the fixture suites run.
-      - name: Start web
-        run: docker compose up -d --no-build web
+      # Every mode at once, so the four cold starts overlap instead of costing a
+      # recreate-and-wait between phases. Their deps come up with them: postgres,
+      # the per-mode databases, and a migrate for each. The worker stays down for
+      # now — it comes up in phase 2, after the fixture suites run.
+      - name: Start every deployment mode
+        run: docker compose up -d --no-build web web-cloud web-whitelabel web-demo
 
       - name: Wait for web
-        run: bash e2e/wait-for-web.sh
+        run: |
+          bash e2e/wait-for-web.sh \
+            http://localhost:1515/ \
+            http://localhost:1516/ \
+            http://localhost:1517/ \
+            http://localhost:1518/
 
+      # Every database the stack stands up, in one pass — seed.ts reads the list
+      # from MODE_STACKS rather than taking it from here.
       - name: Seed test data
         run: cd e2e && npx tsx seed.ts
 
@@ -164,37 +194,24 @@ jobs:
         if: failure()
         run: docker compose logs worker
 
-      # Phase 3+ — the remaining deployment modes. The worker goes back down so
-      # its scheduler can't touch the re-seeded fixtures, then `web` is
-      # recreated with the mode's env overlay. `--no-deps` keeps the recreate
-      # off postgres, so the bootstrapped account and its session survive.
+      # Phase 3+ — the remaining deployment modes, each already up and warm on
+      # its own port. The worker goes back down so its scheduler can't touch the
+      # fixtures the suites below read.
+      #
+      # Cloud and whitelabel own their databases, still holding the seed from
+      # before phase 1 and nothing else, so neither needs one here.
       - name: Stop worker
         run: docker compose stop worker
-
-      - name: Switch web to cloud mode
-        env:
-          COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/cloud.yaml
-        run: |
-          docker compose up -d --no-build --no-deps --force-recreate web
-          bash e2e/wait-for-web.sh
-
-      - name: Re-seed test data
-        run: cd e2e && npx tsx seed.ts
 
       - name: Run Playwright E2E tests (cloud mode)
         run: pnpm -C e2e exec playwright test --project=cloud
         env:
           PLAYWRIGHT_HTML_REPORT: playwright-report-cloud
 
-      - name: Switch web to whitelabel mode
-        env:
-          COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/whitelabel.yaml
-        run: |
-          docker compose up -d --no-build --no-deps --force-recreate web
-          bash e2e/wait-for-web.sh
-
-      - name: Re-seed test data
-        run: cd e2e && npx tsx seed.ts
+      # Plan enforcement only exists in cloud mode, so these cases are tagged
+      # `cloud` and excluded from the local run above.
+      - name: Run Bruno API tests (cloud mode)
+        run: pnpm test:api:cloud
 
       - name: Run Playwright E2E tests (whitelabel mode)
         run: pnpm -C e2e exec playwright test --project=whitelabel
@@ -203,14 +220,8 @@ jobs:
 
       # Demo has no signup, so it reuses the account the local phase
       # bootstrapped — the same way the public demo reuses a local install's
-      # database. It writes nothing, so it goes last.
-      - name: Switch web to demo mode
-        env:
-          COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/demo.yaml
-        run: |
-          docker compose up -d --no-build --no-deps --force-recreate web
-          bash e2e/wait-for-web.sh
-
+      # database. Sharing it is also why this phase re-seeds: the worker wrote
+      # runs into that database in phase 2. Demo writes nothing itself.
       - name: Re-seed test data
         run: cd e2e && npx tsx seed.ts
 
@@ -219,9 +230,23 @@ jobs:
         env:
           PLAYWRIGHT_HTML_REPORT: playwright-report-demo
 
+      # Every /api/v1 write has to be refused here, whatever the key.
+      - name: Run Bruno API tests (demo mode)
+        run: pnpm test:api:demo
+
+      # The spec is written by hand, so nothing but this stops it disagreeing
+      # with the responses the three runs above recorded.
+      - name: Check responses against the OpenAPI spec
+        run: pnpm validate:spec
+
+      # Every mode, not just `web`: a cloud or demo failure leaves its evidence
+      # in that mode's own container, and a database that never got made or
+      # migrated leaves it in the one-shot services that own that.
       - name: Dump web logs
         if: failure()
-        run: docker compose logs web
+        run: |
+          docker compose logs web web-cloud web-whitelabel web-demo \
+            mode-databases db-migrate db-migrate-cloud db-migrate-whitelabel
 
       - name: Upload Playwright reports
         uses: actions/upload-artifact@v7
@@ -282,7 +307,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -303,6 +328,7 @@ jobs:
         env:
           DEPLOYMENT_MODE: local
           SCRAPE_TARGETS: stub:stub
+          TYPESAFE_API_KEY: stub
         run: |
           ELMO_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
             nohup pnpm -C apps/worker exec tsx src/index.ts > /tmp/worker-local.log 2>&1 &
@@ -315,6 +341,7 @@ jobs:
         env:
           DEPLOYMENT_MODE: cloud
           SCRAPE_TARGETS: chatgpt:stub,perplexity:stub,gemini:stub,copilot:stub,claude:stub,claude:stub:online
+          TYPESAFE_API_KEY: stub
           STRIPE_SECRET_KEY: sk_test_ci
           STRIPE_WEBHOOK_SECRET: whsec_ci
           RESEND_API_KEY: re_ci

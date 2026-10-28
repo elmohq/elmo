@@ -5,3 +5,15 @@ auth {
 auth:bearer {
   token: {{apiKey}}
 }
+
+script:pre-request {
+  // The analytics window has to be resolved at run time, because the seeder
+  // writes its runs relative to now. It also has to stay narrow: the daily
+  // series carries one point per day of the window it is asked for, and a body
+  // of tens of thousands of points is more than Bruno's sandbox can marshal.
+  // Ninety days is far more than the few the seeder covers.
+  const end = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const start = new Date(end.getTime() - 90 * 24 * 60 * 60 * 1000);
+  bru.setVar("windowStart", start.toISOString());
+  bru.setVar("windowEnd", end.toISOString());
+}

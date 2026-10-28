@@ -1,27 +1,47 @@
 /**
  * E2E Test Database Seeder
  *
- * Seeds the LOCAL test database with realistic fixture data for E2E testing.
+ * Seeds realistic fixture data into every database the E2E stack stands up, or
+ * into the one a DATABASE_URL names.
  *
- * SAFETY: the database URL (see fixtures.ts) is hardcoded to localhost to
+ * SAFETY: the database URLs (see fixtures.ts) are built against localhost to
  * prevent accidentally running this against a production database (it DELETEs
  * all data).
  *
  * Usage: tsx seed.ts
  */
+import { createHash } from "node:crypto";
+import { createDb } from "@workspace/lib/db/db";
+import { resolveUnpagedCitations } from "@workspace/lib/rollups/citation-pages";
+import { markRunsDirty, refreshAllMarked } from "@workspace/lib/rollups/dirty";
 import pg from "pg";
 import {
+  API_KEYS,
+  type ApiKeyFixture,
+  CAPPED_BRAND_ID,
+  CAPPED_ENTITLEMENT_OVERRIDES,
+  CAPPED_ORG_ID,
+  CAPPED_PROMPT_COUNT,
   COMPETITOR_IDS,
-  DATABASE_URL,
   NIKE_BRAND_ID,
   NIKE_COMPETITOR_IDS,
   NIKE_ORG_ID,
   NIKE_PROMPT_IDS,
+  NIKE_SECOND_BRAND_ID,
   PROMPT_IDS,
   REPORT_IDS,
+  RENAMEABLE_BRAND_ID,
+  RENAMEABLE_BRAND_NAME,
+  RENAMEABLE_BRAND_SLUG,
+  SLUGGED_BRAND_ID,
+  SLUGGED_BRAND_NAME,
+  SLUGGED_BRAND_SLUG,
   TEST_BRAND_ID,
   TEST_BRAND_NAME,
   TEST_BRAND_WEBSITE,
+  UNPAID_BRAND_ID,
+  UNPAID_ORG_ID,
+  seededDatabaseUrls,
 } from "./fixtures";
 
 const RUN_IDS = [
@@ -35,19 +55,195 @@ const RUN_IDS = [
   "00000000-0000-0000-0000-200000000008",
 ];
 
-async function seed() {
-  const client = new pg.Client({ connectionString: DATABASE_URL });
+
+/** Reproduced from better-auth so keys can be seeded without a running app. */
+function hashApiKey(token: string): string {
+  return createHash("sha256").update(token).digest("base64url");
+}
+
+function toPermissions(scopes: readonly string[]): Record<string, string[]> {
+  return { api: [...scopes] };
+}
+
+/**
+ * The rate limit is production's rather than an inflated test value, so the
+ * suite exercises the ceiling callers actually get. Only the brand narrowing
+ * lives in metadata, which anyone with a session can write and so may never
+ * grant anything.
+ */
+async function seedApiKeys(client: pg.Client): Promise<void> {
+  const [{ exists }] = (
+    await client.query<{ exists: boolean }>(
+      "SELECT to_regclass('public.apikey') IS NOT NULL AS exists",
+    )
+  ).rows;
+  if (!exists) {
+    console.log("  Skipped API keys: the apikey table does not exist yet");
+    return;
+  }
+
+  await client.query("DELETE FROM apikey WHERE name LIKE 'E2E %'");
+
+  const keys = Object.values(API_KEYS) as ApiKeyFixture[];
+  for (const [index, key] of keys.entries()) {
+    await client.query(
+      `INSERT INTO apikey (
+         id, name, start, prefix, key, reference_id, enabled,
+         rate_limit_enabled, rate_limit_time_window, rate_limit_max,
+         request_count, expires_at, permissions, metadata, created_at, updated_at
+       ) VALUES ($1, $2, $3, 'elmo', $4, $5, $6, true, 60000, 1000, 0, $7, $8, $9, NOW(), NOW())`,
+      [
+        `e2e-apikey-${index + 1}`,
+        key.name,
+        key.token.slice(0, 12),
+        hashApiKey(key.token),
+        key.organizationId,
+        key.enabled !== false,
+        key.expiresInMs === undefined ? null : new Date(Date.now() + key.expiresInMs),
+        JSON.stringify(toPermissions(key.scopes)),
+        key.brandIds === null ? null : JSON.stringify({ brandIds: key.brandIds }),
+      ],
+    );
+  }
+  console.log(`  Created ${keys.length} API keys`);
+}
+
+
+/** Inert outside cloud mode, where entitlements resolve to unlimited whatever
+ * is stored here. */
+async function seedBillingTenants(client: pg.Client): Promise<void> {
+  for (const [orgId, brandId, name, website] of [
+    [CAPPED_ORG_ID, CAPPED_BRAND_ID, "Capped Co", "https://capped.example.com"],
+    [UNPAID_ORG_ID, UNPAID_BRAND_ID, "Unpaid Co", "https://unpaid.example.com"],
+  ] as const) {
+    await client.query(
+      `INSERT INTO organization (id, name, slug, created_at)
+       VALUES ($1, $2, $1, NOW()) ON CONFLICT (id) DO NOTHING`,
+      [orgId, name],
+    );
+    await client.query(
+      `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, true, true, NOW(), NOW())`,
+      [brandId, orgId, name, website],
+    );
+  }
+
+  await client.query("DELETE FROM organization_settings WHERE organization_id = ANY($1)", [
+    [CAPPED_ORG_ID, UNPAID_ORG_ID],
+  ]);
+  await client.query(
+    `INSERT INTO organization_settings (organization_id, entitlement_overrides, premium_addon_quantity, created_at, updated_at)
+     VALUES ($1, $2, 0, NOW(), NOW())`,
+    [CAPPED_ORG_ID, JSON.stringify(CAPPED_ENTITLEMENT_OVERRIDES)],
+  );
+
+  for (let i = 0; i < CAPPED_PROMPT_COUNT; i++) {
+    await client.query(
+      `INSERT INTO prompts (brand_id, value, enabled, tags, system_tags, created_at, updated_at)
+       VALUES ($1, $2, true, '{}', '{}', NOW(), NOW())`,
+      [CAPPED_BRAND_ID, `Capped tenant prompt ${i + 1}`],
+    );
+  }
+  console.log(
+    `  Created billing tenants: ${CAPPED_ORG_ID} (${CAPPED_PROMPT_COUNT}/${CAPPED_ENTITLEMENT_OVERRIDES.maxPrompts} prompts) and ${UNPAID_ORG_ID} (no plan)`,
+  );
+}
+
+/** So the API test exercises the populated path, not only "nothing generated
+ * yet". Shaped like what the generator persists. */
+async function seedOpportunities(client: pg.Client): Promise<void> {
+  const report = {
+    summary: [
+      "Competitor Alpha is named in comparison answers you are absent from.",
+      "Assistants build monitoring answers from example.com and techblog.io.",
+      "Branded prompts are covered; unbranded discovery is where the gap is.",
+    ],
+    risks: [
+      "Comparison roundups rotate slowly, so placements take time to land.",
+      "Do not chase prompts where every assistant cites the same locked-in source.",
+    ],
+    opportunities: [
+      {
+        category: "creation",
+        title: "Publish a monitoring-tool comparison for unbranded discovery",
+        why: "Assistants answer 'best AI monitoring tool' from third-party roundups, and the brand is named in none of them.",
+        relatedPrompts: [
+          {
+            text: "What is the best AI monitoring tool for tracking brand visibility?",
+            promptId: PROMPT_IDS.branded1,
+          },
+        ],
+        yourCitations: [
+          { title: "AI Monitoring Guide", domain: "example.com", url: "https://example.com/blog/ai-monitoring" },
+        ],
+        competitorCitations: [
+          { title: "Competitor Alpha Features", domain: "competitor-alpha.com", url: "https://competitor-alpha.com/features" },
+        ],
+      },
+      {
+        category: "outreach",
+        title: "Get into the techblog.io tools roundup",
+        why: "It is cited in answers where the brand is absent, and its list rotates often enough to break into.",
+        relatedPrompts: [{ text: "Compare AI visibility platforms and their features", promptId: PROMPT_IDS.branded2 }],
+        yourCitations: [],
+        competitorCitations: [
+          { title: "Best AI Tools 2025", domain: "techblog.io", url: "https://techblog.io/ai-tools-2025" },
+        ],
+      },
+    ],
+  };
+
+  await client.query(
+    `INSERT INTO brand_opportunities (brand_id, report, model, created_at)
+     VALUES ($1, $2, $3, NOW())`,
+    [TEST_BRAND_ID, JSON.stringify(report), "claude-sonnet-5"],
+  );
+  console.log(`  Created 1 opportunities report (${report.opportunities.length} opportunities)`);
+}
+
+/** The worker is down while the fixture suites run, so the seed builds the rollups analytics read itself. */
+async function buildRollups(connectionString: string): Promise<void> {
+  const conn = createDb(connectionString);
+  try {
+    await resolveUnpagedCitations(conn);
+    await markRunsDirty(conn, null);
+    await refreshAllMarked(conn);
+  } finally {
+    await conn.$client.end();
+  }
+}
+
+/** A seeded run's derived rows, unstamped like a migrated run's: `prompt_runs` holds only what the provider returned. */
+async function insertDerived(
+  client: pg.Client,
+  runId: string,
+  textContent: string | null,
+  brandMentioned: boolean,
+  competitorsMentioned: string[],
+) {
+  await client.query("INSERT INTO run_extractions (run_id, text_content) VALUES ($1, $2)", [runId, textContent]);
+  await client.query(
+    "INSERT INTO run_mentions (run_id, brand_mentioned, competitors_mentioned) VALUES ($1, $2, $3)",
+    [runId, brandMentioned, competitorsMentioned],
+  );
+}
+
+async function seed(connectionString: string) {
+  const client = new pg.Client({ connectionString });
   await client.connect();
 
   try {
-    console.log("Seeding E2E test database...");
+    console.log(`Seeding ${new URL(connectionString).pathname.slice(1)}...`);
 
+    await client.query("DELETE FROM brand_opportunities");
     await client.query("DELETE FROM citations");
     await client.query("DELETE FROM prompt_runs");
     await client.query("DELETE FROM prompts");
     await client.query("DELETE FROM competitors");
     await client.query("DELETE FROM reports");
     await client.query("DELETE FROM brands");
+    await client.query("DELETE FROM rollup_dirty");
+    await client.query("DELETE FROM cited_pages");
 
     // Signup provisions the "default" org as well, but the seed re-creates the
     // brand independently — ensure the org exists for the NOT NULL FK.
@@ -62,6 +258,20 @@ async function seed() {
       [TEST_BRAND_ID, TEST_BRAND_NAME, TEST_BRAND_WEBSITE]
     );
     console.log("  Created brand:", TEST_BRAND_ID);
+
+    await client.query(
+      `INSERT INTO brands (id, organization_id, slug, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'https://labs.example.com', true, true, NOW(), NOW())`,
+      [SLUGGED_BRAND_ID, TEST_BRAND_ID, SLUGGED_BRAND_SLUG, SLUGGED_BRAND_NAME]
+    );
+    console.log("  Created brand:", SLUGGED_BRAND_ID, `(/brand/${SLUGGED_BRAND_SLUG})`);
+
+    await client.query(
+      `INSERT INTO brands (id, organization_id, slug, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'https://rename.example.com', true, true, NOW(), NOW())`,
+      [RENAMEABLE_BRAND_ID, TEST_BRAND_ID, RENAMEABLE_BRAND_SLUG, RENAMEABLE_BRAND_NAME]
+    );
+    console.log("  Created brand:", RENAMEABLE_BRAND_ID, `(/brand/${RENAMEABLE_BRAND_SLUG})`);
 
     const promptData = [
       {
@@ -289,8 +499,8 @@ async function seed() {
 
     for (const run of promptRuns) {
       await client.query(
-        `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, version, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, version, web_search_enabled, raw_output, web_queries, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           run.id,
           run.promptId,
@@ -300,11 +510,10 @@ async function seed() {
           run.webSearchEnabled,
           JSON.stringify(run.rawOutput),
           run.webQueries,
-          run.brandMentioned,
-          run.competitorsMentioned,
           run.createdAt,
         ]
       );
+      await insertDerived(client, run.id, run.textContent, run.brandMentioned, run.competitorsMentioned);
     }
     console.log(`  Created ${promptRuns.length} prompt runs (Postgres)`);
 
@@ -417,11 +626,13 @@ async function seed() {
     }
 
     const nikeRunId = "00000000-0000-0000-0000-420000000001";
+    const nikeAnswer = "Nike Metcon and Romaleos are top picks; Adidas Powerlift is an alternative.";
     await client.query(
-      `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, provider, version, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)
-       VALUES ($1, $2, $3, 'chatgpt', 'brightdata', 'gpt-5-5', true, $4, $5, true, $6, NOW())`,
-      [nikeRunId, NIKE_PROMPT_IDS.training, NIKE_BRAND_ID, JSON.stringify({ response: "Nike Metcon and Romaleos are top picks; Adidas Powerlift is an alternative." }), ["best weightlifting shoes"], ["Adidas"]],
+      `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, provider, version, web_search_enabled, raw_output, web_queries, created_at)
+       VALUES ($1, $2, $3, 'chatgpt', 'brightdata', 'gpt-5-5', true, $4, $5, NOW())`,
+      [nikeRunId, NIKE_PROMPT_IDS.training, NIKE_BRAND_ID, JSON.stringify({ response: nikeAnswer }), ["best weightlifting shoes"]],
     );
+    await insertDerived(client, nikeRunId, nikeAnswer, true, ["Adidas"]);
     for (const [i, cite] of [
       { url: "https://runrepeat.com/best-weightlifting-shoes", domain: "runrepeat.com", title: "Best Weightlifting Shoes" },
       { url: "https://www.nike.com/training", domain: "nike.com", title: "Nike Training" },
@@ -432,7 +643,19 @@ async function seed() {
         [nikeRunId, NIKE_PROMPT_IDS.training, NIKE_BRAND_ID, cite.url, cite.domain, cite.title, i],
       );
     }
-    console.log("  Created second tenant: Nike (brand, 2 prompts, 2 competitors, 1 run, 2 citations)");
+    // So a key narrowed to one brand has something inside its own organization
+    // that it must not reach.
+    await client.query(
+      `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, 'Jordan', 'https://jordan.com', true, true, NOW(), NOW())`,
+      [NIKE_SECOND_BRAND_ID, NIKE_ORG_ID],
+    );
+    console.log("  Created second tenant: Nike (2 brands, 2 prompts, 2 competitors, 1 run, 2 citations)");
+
+    await seedOpportunities(client);
+    await seedBillingTenants(client);
+    await seedApiKeys(client);
+    await buildRollups(connectionString);
 
     console.log("\nE2E database seeding complete!");
     console.log(`  Brand: ${TEST_BRAND_ID} (${TEST_BRAND_NAME})`);
@@ -444,7 +667,19 @@ async function seed() {
   }
 }
 
-seed().catch((err) => {
+/**
+ * A run that names a database seeds that one — which is what the scheduling and
+ * mode-compat jobs do, each against a postgres of its own. A run that names
+ * none seeds every database the E2E stack stands up, so no caller has to keep
+ * its own list of them in step with MODE_STACKS.
+ */
+const targets = process.env.DATABASE_URL ? [process.env.DATABASE_URL] : seededDatabaseUrls();
+
+async function seedAll() {
+  for (const target of targets) await seed(target);
+}
+
+seedAll().catch((err) => {
   console.error("Seeding failed:", err);
   process.exit(1);
 });

@@ -11,7 +11,7 @@
  * WASM bundling regression in the standalone Docker image fails CI here instead
  * of silently shipping blank social cards.
  */
-import { test, expect } from "@playwright/test";
+import { expect, test } from "../../test";
 
 // PNG files start with this 8-byte signature.
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);

@@ -1,6 +1,6 @@
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
-import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { CachedPromptChart } from "./cached-prompt-chart";
 
 interface PromptItem {

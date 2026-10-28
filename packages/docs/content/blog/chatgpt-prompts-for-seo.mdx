@@ -1,9 +1,10 @@
 ---
-title: "ChatGPT Prompts for SEO & Marketing"
+title: "15 ChatGPT Prompts for SEO & Marketing (Copy-Paste Library)"
 description: "A library of copy-paste ChatGPT prompts for SEO and marketing: keyword research, content briefs, on-page, meta tags, and auditing your AI visibility."
 date: "2026-05-29"
+updated: "2026-09-15"
 author: ai
-metaTitle: "ChatGPT Prompts for SEO: A Copy-Paste Library"
+metaTitle: "15 Best ChatGPT Prompts for SEO & Marketing (2026)"
 tags:
   - chatgpt
   - seo
@@ -13,6 +14,8 @@ faq:
     answer: "The most useful ChatGPT prompts for SEO cover keyword research, content briefs, on-page optimization, meta tags, content refreshes, and competitor research. The best ones are specific: they give ChatGPT your topic, audience, and goal rather than a vague request."
   - question: Can ChatGPT do keyword research?
     answer: "ChatGPT can brainstorm keywords, cluster them by intent, and suggest related questions and subtopics, which speeds up research. It doesn't have live search-volume data, so pair its output with a dedicated keyword tool for accurate metrics."
+  - question: Which SEO tasks should you never use ChatGPT for?
+    answer: "Anything requiring a fact it has to recall. Search volumes, keyword difficulty, competitor rankings, backlink counts, current SERP features and supporting citations are all invented with total confidence. The reliable uses are transformations of data you supply — clustering an export, rewriting titles, drafting schema, summarizing a crawl. If the prompt asks ChatGPT to know something rather than reshape something, pair it with a tool that has the data."
   - question: How do I write good SEO prompts?
     answer: "Give ChatGPT clear context (topic, audience, intent, format), specify the output you want, and constrain it (length, tone, structure). Iterate: refine the prompt based on the first response rather than expecting a perfect answer on the first try."
 ---
@@ -27,6 +30,16 @@ faq:
 - The most strategic prompts below audit how AI describes your brand and category.
 
 Copy any prompt, replace the bracketed placeholders with your specifics, and iterate on the response. For the bigger picture of how AI is reshaping search, see our pillar on [AI for SEO](/blog/ai-for-seo).
+
+## The rule that decides whether a prompt works
+
+Before the library, the one distinction that predicts every good and bad result here.
+
+**Transformations work. Recalls do not.** Give ChatGPT data and ask it to reshape that data, and it is excellent. Ask it to retrieve a fact from memory, and it will produce a confident, plausible, wrong answer.
+
+Clustering 500 keywords you exported is a transformation. Asking for their search volumes is a recall, and the numbers will be fabricated. Rewriting 80 title tags against a template is a transformation. Asking which competitors rank for a term is a recall. Summarizing a page you paste in is a transformation. Asking for a study that supports your argument is a recall, and it will invent a citation that looks entirely real.
+
+Every prompt below is written as a transformation. Where one needs outside data, it says so.
 
 ## Keyword research prompts
 
@@ -98,6 +111,54 @@ topic more thoroughly, and what specific sections or angles should I add to
 win the comparison?
 ```
 
+## Technical SEO prompts
+
+Technical work is mostly rule-following against a published spec, which is where models are strongest. Paste in the export rather than describing it.
+
+```text
+Here is a crawl export as CSV. Group the issues by type, then rank the
+groups by likely impact on organic traffic for a [site type] site.
+For each group, give the fix and roughly how long it takes.
+Ignore anything cosmetic.
+
+[paste CSV]
+```
+
+```text
+Here are 200 lines of server log. Summarize crawl behaviour by directory:
+which sections are crawled most, which have not been visited, and any
+pattern in the user agents. Flag anything that looks like wasted crawl budget.
+
+[paste log]
+```
+
+```text
+Generate JSON-LD for a [page type] page with these fields: [fields].
+Use schema.org types only, no custom properties. Output valid JSON-LD
+in a single script tag and nothing else.
+```
+
+Validate the schema output before shipping it. Models produce syntactically perfect JSON-LD with invented property names often enough that unvalidated output is a real risk.
+
+## Internal linking prompts
+
+```text
+Here is a list of my published URLs with their titles and target keywords.
+Suggest internal links I am missing: for each suggestion, give the source
+page, the destination page, and the anchor text. Prioritize links that
+point at pages with commercial intent.
+
+[paste list]
+```
+
+```text
+Here is the body text of one page and a list of my other URLs with titles.
+Identify 5 places in this page where an internal link would genuinely help
+the reader, and write the sentence it should sit in.
+
+[paste page and list]
+```
+
 ## Prompts to audit your AI visibility
 
 This is the set most SEOs overlook. Because buyers increasingly ask ChatGPT before they search, it's worth asking ChatGPT what it thinks about your brand and category, then reading the answers critically.
@@ -124,7 +185,7 @@ Run these in both ChatGPT's base mode and its search mode, and repeat them, sinc
 
 Asking ChatGPT about your brand by hand is a useful spot check, but it doesn't scale and it's hard to track over time. The systematic version is [prompt tracking](/blog/ai-prompt-tracking): monitoring a defined set of these questions across AI engines on a schedule, and recording how your mentions, citations, and sentiment trend.
 
-[Elmo](https://www.elmohq.com/) is an open-source tool that automates exactly that, running your audit prompts across ChatGPT, Perplexity, Gemini, and Google AI Overviews so you can manage your AI visibility instead of spot-checking. If the audit prompts above surfaced a problem, that's the way to measure and fix it. For the strategy behind it, start with [answer engine optimization](/blog/answer-engine-optimization).
+[Elmo](https://www.elmohq.com/) is an open-source tool that automates exactly that, running your audit prompts across ChatGPT, Perplexity, Gemini, and Google AI Overviews so you can manage your AI visibility instead of spot-checking. If the audit prompts above surfaced a problem, that's the way to measure and fix it. For the strategy behind it, start with [answer engine optimization](/answer-engine-optimization).
 
 ## Prompt-writing best practices
 
@@ -135,3 +196,13 @@ A few habits make every prompt above work better:
 - Iterate. Treat the first response as a draft, and refine the prompt or ask follow-ups rather than expecting perfection in one shot.
 - Verify everything. ChatGPT can be confidently wrong, and it has no live volume data, so fact-check claims and pair it with dedicated SEO tools for metrics.
 - Keep a brand voice note. Paste a short style guide so drafts come back sounding like you.
+- Ask for the reasoning. "Explain why you grouped them this way" surfaces bad assumptions before you act on the output.
+- Prefer one job per prompt. Chained instructions produce output that is mediocre at all of them.
+
+## What ChatGPT cannot do for SEO
+
+Worth stating plainly, because a lot of prompt libraries imply otherwise.
+
+It has no search volume, keyword difficulty, backlink or ranking data. Any number it gives you for these is invented. It cannot see your Search Console, your analytics, or the current SERP unless you paste them in. It cannot tell you whether a page is ranking, and its account of what is on a live URL is unreliable unless browsing is on and you check what it actually retrieved.
+
+It also cannot tell you whether AI engines mention your brand. It has no visibility into what other models answer, and asking ChatGPT about your own brand tells you about one sampled response from one engine on one day — not a measurement. That job needs a tool that runs prompts across engines repeatedly and records the results.

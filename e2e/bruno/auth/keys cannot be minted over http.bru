@@ -1,0 +1,38 @@
+meta {
+  name: the key plugin's create endpoint is not reachable over HTTP
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/auth/api-key/create
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "forged",
+    "organizationId": "{{nikeOrgId}}",
+    "metadata": { "brandIds": [] }
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.error: eq Forbidden
+  res.body.message: contains issued from the dashboard
+}
+
+tests {
+  test("the refusal is our block, not an incidental auth failure", function() {
+    // Asserting the message matters: a 401 for want of a session would pass a
+    // status-only check while the endpoint sat wide open to anyone signed in.
+    expect(res.getBody().message).to.match(/issued from the dashboard/i);
+  });
+
+  test("no key comes back, whatever the status", function() {
+    expect(res.getBody() && res.getBody().key, "a forged request must never yield a usable key")
+      .to.be.undefined;
+  });
+}

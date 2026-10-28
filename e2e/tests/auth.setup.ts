@@ -14,12 +14,12 @@
  * Whichever path runs, the user ends up an admin of TEST_BRAND_ID with report
  * generator access, so shared specs see the same surface in every mode.
  */
-import { test as setup } from "@playwright/test";
 import type { APIRequestContext, Page } from "@playwright/test";
-import { authStatePath, isDeploymentMode, TEST_USER, type DeploymentMode } from "../fixtures";
+import { authStatePath, DEMO_CREDENTIALS, isDeploymentMode, TEST_USER, type DeploymentMode } from "../fixtures";
 import {
   assertSessionAccepted,
   ensureActiveCloudPlan,
+  ensureDemoAccount,
   ensureOrgMembership,
   ensureUser,
   issueSessionCookie,
@@ -27,6 +27,7 @@ import {
   userExists,
   withDb,
 } from "../session";
+import { test as setup } from "../test";
 
 setup("authenticate", async ({ page, baseURL }, testInfo) => {
   const mode = testInfo.project.name.replace(/:setup$/, "");
@@ -41,6 +42,8 @@ setup("authenticate", async ({ page, baseURL }, testInfo) => {
   } else {
     await authenticateWithPassword(page.request, mode);
   }
+
+  if (mode === "demo") await withDb((client) => ensureDemoAccount(client, DEMO_CREDENTIALS));
 
   await assertSessionAccepted(page.request, TEST_USER.email);
   await page.context().storageState({ path: authStatePath(mode) });

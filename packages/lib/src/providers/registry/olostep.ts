@@ -1,8 +1,9 @@
 import Olostep from "olostep";
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
-import type { Citation } from "../../text-extraction";
+import { type Citation, normalizeCitationTitle } from "../../text-extraction";
+import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import { nonEmptyStrings } from "./scrape-shared";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
@@ -50,14 +51,6 @@ function getClient(): Olostep {
 	return _client;
 }
 
-function extractTextFromOlostep(data: any): string {
-	if (data?.result?.markdown_content) return data.result.markdown_content;
-	if (data?.answer_markdown) return data.answer_markdown;
-	if (data?.result?.text_content) return data.result.text_content;
-	if (typeof data?.answer === "string") return data.answer;
-	return "No text content found in Olostep response.";
-}
-
 function extractCitationsFromOlostep(data: any): Citation[] {
 	const citations: Citation[] = [];
 	const sources = data?.sources ?? data?.citations ?? data?.result?.links_on_page ?? data?.inline_references ?? [];
@@ -69,7 +62,7 @@ function extractCitationsFromOlostep(data: any): Citation[] {
 			const parsed = new URL(url);
 			citations.push({
 				url,
-				title: source?.title ?? source?.label ?? undefined,
+				title: normalizeCitationTitle(source?.title ?? source?.label),
 				domain: parsed.hostname.replace(/^www\./, ""),
 				citationIndex: idx++,
 			});
@@ -81,18 +74,16 @@ function extractCitationsFromOlostep(data: any): Citation[] {
 }
 
 function extractWebQueries(data: any): string[] {
-	const nonEmpty = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
-	const asList = (value: unknown): any[] => (Array.isArray(value) ? value : []);
-
 	// Batch API returns a flat string array at data.search_queries.
-	const flat = asList(data?.search_queries).filter(nonEmpty);
+	const flat = nonEmptyStrings(data?.search_queries);
 	if (flat.length > 0) return flat;
 
 	// Scrape API nests them under network_search_calls or search_model_queries,
 	// as either bare strings or objects carrying the query.
-	return asList(data?.network_search_calls?.search_queries ?? data?.search_model_queries)
-		.map((call) => (typeof call === "string" ? call : call?.query))
-		.filter(nonEmpty);
+	const calls = data?.network_search_calls?.search_queries ?? data?.search_model_queries;
+	return nonEmptyStrings(
+		(Array.isArray(calls) ? calls : []).map((call) => (typeof call === "string" ? call : call?.query)),
+	);
 }
 
 export const olostep: Provider = {
@@ -101,9 +92,7 @@ export const olostep: Provider = {
 	access: "scraped",
 	docsAnchor: "olostep",
 
-	isConfigured() {
-		return !!getCredential("OLOSTEP_API_KEY");
-	},
+	isConfigured: configuredWhen("OLOSTEP_API_KEY"),
 
 	validateTarget(config: ModelConfig) {
 		if (!OLOSTEP_PARSERS[config.model]) {
@@ -149,11 +138,9 @@ export const olostep: Provider = {
 			// Store the parsed content directly instead of the full retrieved
 			// wrapper (which double-encodes json_content as a string).
 			rawOutput: parsed,
-			textContent: extractTextFromOlostep(parsed),
 			// Mark as "unavailable" only when citations prove a search happened
 			// but the API didn't expose the query strings
-			webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
-			citations,
+			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
 			modelVersion: parsed?.model ?? undefined,
 		};
 	},

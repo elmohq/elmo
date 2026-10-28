@@ -1,0 +1,134 @@
+---
+title: "Does AI-Written Content Get Cited by AI Search Engines?"
+description: "Roughly half of new articles are AI-generated, yet AI-written pages earn a fraction of AI citations. Five datasets on the gap, why the headline numbers seem to contradict each other, and the threshold that actually matters."
+date: "2026-09-20"
+author: ai
+metaTitle: "Do AI Search Engines Cite AI-Written Content? The Data"
+tags:
+  - ai-citations
+  - ai-search
+  - aeo
+  - ai-visibility
+definedTerms:
+  - term: Pure-AI page
+    definition: "A pure-AI page is one where a detector flags essentially all of the text as machine-generated, with no measurable human contribution. It is the strictest classification tier: Ahrefs found pure-AI pages made up 3.6% of AI Overview citations while pages mixing human and AI text made up 87.8%."
+  - term: Detection threshold
+    definition: "A detection threshold is the cutoff a study uses to label a page AI-written — for example, more than 50% of its text flagged by a detector. Because studies choose different thresholds, their headline percentages are not comparable: the same page can count as 'human' at one threshold and 'AI' at another."
+  - term: Prevalence-citation gap
+    definition: "The prevalence-citation gap is the difference between how common AI-written pages are on the web and how often they appear as cited sources in AI answers. In 2026 data, roughly half of newly published articles classify as AI-generated while AI-written pages account for somewhere between 4% and 18% of citations, depending on the threshold used."
+howTo:
+  name: "How to find out whether your AI-drafted content is being cited"
+  description: "The published studies measure the web at large. Whether the pattern holds for your pages is a join you can run yourself."
+  steps:
+    - name: Classify your own corpus first
+      text: "Run an AI detector over your published pages and record the flagged share per page. You are not auditing your writers — you are building the variable you need for the join. Without a per-page number, you cannot tell whether your cited and uncited pages differ on it."
+    - name: Separate the tiers, not the tools
+      text: "Group pages into fully automated, AI-drafted-then-edited, and human-led. Every dataset that measures a penalty finds it concentrated in the fully automated tier; a binary AI-or-not label erases the distinction that carries the signal."
+    - name: Join detector output against your actual citations
+      text: "Track which of your pages engines cite for your prompt set, then compare citation rates across the tiers. If your edited-AI pages get cited at the same rate as your human-led ones, the published averages do not apply to you, whatever they say."
+    - name: Watch the top of the distribution
+      text: "The starkest published gaps are at the top — the most-cited human pages out-earn the most-cited AI pages several times over. Check whether any of your fully automated pages have ever entered your own top tier of cited pages, not just whether they average fewer citations."
+    - name: Re-measure as the mix shifts
+      text: "AI prevalence in new content plateaued near half of new articles in 2025–2026 but engine behavior is not static. A gap measured this quarter is a fact about this quarter's engines and this quarter's web."
+    - name: Do not optimize the detector score
+      text: "A low AI-detection score is not a citation strategy, and rewriting pages to fool a detector is effort spent on a proxy. The same data showing the gap also shows no correlation between AI share and citation order once a page is cited — substance, not provenance, is the lever."
+faq:
+  - question: Does AI-written content get cited by AI search engines?
+    answer: "Yes, but far below its share of the web. Graphite found 18% of pages cited by ChatGPT and Perplexity classified as AI-generated at a more-than-50% threshold, while roughly half of newly published articles classify as AI-generated. Ahrefs found only 3.6% of Google AI Overview citations were pure-AI pages. AI-written pages get cited; they are heavily underrepresented relative to how many exist."
+  - question: Do AI engines penalize AI-generated content?
+    answer: "There is no evidence of a penalty on AI text as such. Ahrefs found no correlation between a page's AI share and its citation order in AI Overviews, and its June 2026 ranking study found average AI share nearly flat across positions one through ten. The underrepresentation looks like a correlation with everything that accompanies fully automated publishing — thin substance, no original data, no links earned — rather than provenance detection."
+  - question: How much of the web is AI-written now?
+    answer: "It depends what you count. Graphite's May 2026 study of 55,400 Common Crawl article URLs found AI-generated articles plateaued near half of new articles — 49.9% in Q1 2026. Pew Research Center's August 2026 analysis of about 490,000 pages found roughly 10% of all sampled pages showed significant AI authorship, rising to over a third of pages published after ChatGPT's launch. Graphite measured new articles; Pew measured all pages, including the pre-2023 web."
+  - question: Why does one study say 82% of AI citations are human-written and another say 91% contain AI?
+    answer: "Thresholds. Graphite labels a page human-written if less than half its text is flagged, so lightly AI-assisted pages count as human — giving 82% human. Ahrefs labels a page pure human only if none of its text is flagged, so the same assisted pages count toward its 91.4% at-least-partially-AI figure. Both datasets agree on the substance: fully automated pages are a small minority of citations, and pages mixing human and AI text are the modal cited page."
+  - question: Can the AI detectors behind these studies be trusted?
+    answer: "Individually, no — collectively, directionally. Every study relies on statistical detection: Graphite reports a 4.2% false positive rate for its detector, Ahrefs and Brandi AI use proprietary classifiers, and Pew notes single-document classification is unreliable. Heavily edited AI drafts read as human to all of them, which means the measured category is closer to 'unedited model output' than 'content an AI touched.' Four detection approaches finding the same direction is the reason to take the finding seriously; no single percentage deserves precision."
+  - question: Should we stop using AI to write content?
+    answer: "The data does not support that reading. Pages mixing human and AI text made up 87.8% of Ahrefs' AI Overview citations, and Graphite explicitly excluded AI-assisted, human-edited content from its AI-generated label while noting that workflow may be effective. What is underrepresented everywhere is the fully automated tier — model output published with little human contribution. The decision rule is about the size of the human contribution, not whether a model was involved."
+  - question: How do I know if the pattern applies to my pages?
+    answer: "Join a detector's per-page AI share against which of your pages actually get cited for the prompts you track. The published numbers are averages over the whole web; your category, your competitors, and your editing standards can move the relationship in either direction. If your edited-AI pages earn citations at the same rate as your human-led pages, the averages are not your problem."
+---
+
+**Half of what gets published is AI-written. A fraction of what gets cited is.** [Graphite's May 2026 prevalence study](https://graphite.io/five-percent/ai-now-writes-as-many-online-articles-as-humans-do) found AI-generated articles plateaued at roughly half of newly published articles — 49.9% in Q1 2026. Set that against what AI engines actually cite: [18% of ChatGPT and Perplexity citations](https://graphite.io/five-percent/ai-content-in-search-and-llms) classify as AI-generated at a majority-text threshold, and only [3.6% of Google AI Overview citations](https://ahrefs.com/blog/ai-overviews-cite-ai-generated-content-more-than-human-writing/) are pure-AI pages. The engines are built on the same technology that writes the content, and they cite it at a fraction of its prevalence. Every in-house team scaling content with AI is making a bet on how that gap behaves — usually without knowing it exists.
+
+**Key facts**
+
+| Dataset | What it measured | AI-written share |
+|---|---|---|
+| [Graphite, May 2026](https://graphite.io/five-percent/ai-now-writes-as-many-online-articles-as-humans-do) | New articles published, Q1 2026 (55,400 Common Crawl URLs, three detectors) | **49.9%** |
+| [Pew Research Center, Aug 2026](https://www.pewresearch.org/data-labs/2026/08/20/how-much-of-the-internet-is-written-with-ai/) | Pages published after ChatGPT's launch (~490,000 pages) | **over a third** |
+| [Graphite, Oct 2025](https://graphite.io/five-percent/ai-content-in-search-and-llms) | ChatGPT and Perplexity citations (>50% threshold) | **18%** |
+| [Ahrefs, Jul 2025](https://ahrefs.com/blog/ai-overviews-cite-ai-generated-content-more-than-human-writing/) | Google AI Overview citations that are pure AI | **3.6%** |
+| [Brandi AI, Sep 2026](https://www.prnewswire.com/news-releases/brandi-ai-research-most-cited-human-written-pages-earn-nearly-six-times-more-ai-citations-than-most-cited-ai-written-pages-831312183.html) | Citation share of 25 most-cited AI-written pages vs 25 most-cited human-written pages, ~900,000 answers | **4% vs 23%** |
+
+**Key takeaways**
+
+- The prevalence-citation gap is large and consistent in direction across five datasets, four detection methods, and six engines. AI-written pages exist at roughly half of new articles and get cited at somewhere between 4% and 18%, depending on how strictly "AI-written" is defined.
+- The apparent contradictions between studies are threshold artifacts. Ahrefs' "91.4% of cited pages contain AI" and Graphite's "82% of citations are human-written" describe the same world: fully automated pages are rare among citations, and pages mixing human and AI text are the modal cited source.
+- Nothing in the data shows engines detecting and demoting AI text as such. Ahrefs found no correlation between AI share and citation order, and near-flat AI share across ranking positions one through ten. The penalty attaches to what fully automated publishing correlates with, not to provenance.
+- The top of the distribution is where the gap is starkest. In Brandi AI's 900,000-answer sample, the 25 most-cited human-written pages took 23% of all citations against 4% for the AI-written top 25, and the top 1% of human-written pages out-earned the top 1% of AI-written pages 27% to under 1%.
+- The decision rule this supports is not "don't use AI." It is: the tier that underperforms everywhere is model output published with minimal human contribution, and no study has measured a citation penalty for AI-drafted content with substantial human editing — because no detector can see it.
+
+## What each dataset actually measured
+
+The question has two halves — how much AI content exists, and how much gets cited — and no single study measures both well.
+
+On prevalence, [Graphite's May 2026 study](https://graphite.io/five-percent/ai-now-writes-as-many-online-articles-as-humans-do) sampled 55,400 English-language article URLs from Common Crawl, published between January 2020 and March 2026, and classified each with three detectors (Pangram, Copyleaks, GPTZero), averaging the results. The AI-generated share of new articles hit 36% within a year of ChatGPT's launch, 48% by the second year, and then plateaued: 49.9% in Q1 2026. [Pew Research Center's August 2026 analysis](https://www.pewresearch.org/data-labs/2026/08/20/how-much-of-the-internet-is-written-with-ai/) ran the Pangram detection model over about 490,000 English-language Common Crawl pages spanning January 2021 to July 2026 and found about 10% of all sampled pages showed significant signs of AI authorship — rising to more than a third of pages published after ChatGPT's release. The two figures differ because the samples do: Graphite counted newly published articles; Pew counted all pages, most of which predate generative AI. Read together, they bracket the supply side — somewhere between a third and a half of new written content classifies as AI-generated.
+
+On citations, [Graphite's October 2025 study](https://graphite.io/five-percent/ai-content-in-search-and-llms) checked what ChatGPT and Perplexity cited across 100 keywords in each of ten categories, classifying any article as AI-generated when more than half its text was flagged by Surfer's detector. Result: 82% of cited articles were human-written, 18% AI-generated. The same study put AI-generated articles at 14% of Google's top-ranking results, with AI articles ranking measurably lower than human ones (p < 10⁻⁶) and only 7% of #1 positions. [Ahrefs' July 2025 study](https://ahrefs.com/blog/ai-overviews-cite-ai-generated-content-more-than-human-writing/) took the strictest and loosest cuts at once, classifying pages cited in Google AI Overviews across a million SERPs: 3.6% pure AI, 8.6% pure human, 87.8% a mix of the two.
+
+The fifth dataset comes from [Brandi AI](https://www.prnewswire.com/news-releases/brandi-ai-research-most-cited-human-written-pages-earn-nearly-six-times-more-ai-citations-than-most-cited-ai-written-pages-831312183.html), an AI visibility vendor, which analyzed about 900,000 AI answers across ChatGPT, Google AI Mode, Gemini, and Copilot in Q2 2026, tracking 4,210 cited pages from 1,830 prompts with a proprietary classifier. Its contribution is concentration: human-classified pages averaged 682 citations each against 119 for AI-classified ones, and the gap widened at the top — the most-cited human pages earned nearly six times the citation share of the most-cited AI pages.
+
+## Why the headline numbers seem to contradict each other
+
+Put the trade-press headlines side by side and they read as a fight: "91.4% of pages cited in AI Overviews contain AI content" versus "82% of AI citations are human-written." Both are accurate summaries of their studies. The reconciliation is entirely in the thresholds.
+
+| Study | A page counts as "AI-written" when… | A page counts as "human" when… |
+|---|---|---|
+| Graphite (Oct 2025) | more than 50% of text is flagged | up to half its text is AI |
+| Ahrefs (Jul 2025) | 100% of text is flagged ("pure AI") | 0% of text is flagged ("pure human") |
+| Ahrefs (Jul 2026) | ≥80% of text is flagged | under 50% AI |
+| Brandi AI (Sep 2026) | proprietary "Highly Likely AI" tier | proprietary "Highly Likely Human" tier |
+
+Graphite's "human-written" bucket absorbs every page with meaningful AI assistance short of a majority; Ahrefs' "pure human" bucket excludes a page for a single flagged paragraph. So Ahrefs' 87.8% "mixed" category and Graphite's 82% "human" category largely describe the same pages. Once the thresholds are aligned, all four sources agree on a single shape: **fully automated pages are a small minority of what gets cited, mostly-human pages are underrepresented only at the strictest definition, and the modal cited page is human-led with AI somewhere in the workflow.**
+
+That shape also kills the two lazy readings. "AI content doesn't get cited" is false — at Ahrefs' loose threshold, nine in ten cited pages contain some. "Engines don't care about AI content" is also false — at every strict threshold, fully automated pages appear at a fraction of their share of the web, in five independent measurements.
+
+## Is it a penalty, or a correlation?
+
+The tempting mechanism — engines detect AI text and demote it — has no support in this data, and two findings point away from it.
+
+First, [Ahrefs' June 2026 ranking study](https://ahrefs.com/blog/google-doesnt-punish-ai-content/) of top-10 results across 100,000 SERPs found a gradient, not a wall: 82.2% of top-3 positions had under 50% AI content, but average AI share barely moved across positions — 27.1% at position 1 versus 30.9% at position 10. A system detecting and demoting AI text would produce a steep slope. Second, the same team's AI Overviews study found no correlation between a page's AI share and its citation order once cited.
+
+The likelier mechanism is selection on everything that travels with fully automated publishing. Pages generated at scale tend to have no original data, no first-hand experience, no earned links, and no distribution — and retrieval, which [decides most of the citation outcome](/blog/can-content-scores-predict-ai-citations), runs on exactly those signals. Ahrefs' own conclusion from the ranking data is that Google punishes the quality problems that correlate with AI use, not AI use itself. On that reading, the prevalence-citation gap is not the engines recognizing their own species; it is half the web's new content competing with the effort level of the other half and losing on the fundamentals.
+
+There is one confound the sources themselves do not address: age. The pages AI engines cite are [typically five to eight months old at citation](/blog/how-long-to-get-cited-by-ai), so any citation sample reaches back into a slightly older, slightly more human web than today's publishing mix. That explains some of the gap — but not much of it. By mid-2025, when Graphite collected its citation data, the AI share of new articles had already been near half for over a year. A cited corpus with a six-month median age was drawn from a web that was already half AI-written. The underrepresentation is real; the age structure only shaves its edges.
+
+## What the detectors can and cannot see
+
+Every number above passes through an AI detector, and the detectors define what was actually measured — which is narrower than the headlines imply.
+
+Graphite reports its detector's error rates directly: a 4.2% false positive rate and 0.6% false negative rate on its validation set. Pew is explicit that single-document classification is unreliable and that only aggregate patterns are meaningful. Brandi AI's classifier is proprietary, described only as a "multi-signal process," with no published validation at all — one reason its 5.7x figure belongs in a corroborating role rather than a load-bearing one. And all of them share the same blind spot, which Graphite states outright: AI-drafted content with heavy human editing reads as human, and the study excluded that workflow from its AI-generated label while noting it "may be an effective strategy."
+
+That blind spot changes what the studies are evidence *of*. The measured category is not "content an AI touched" — it is text whose surface still looks like unedited model output. The finding, stated honestly, is: **pages that still read like raw model output at publish time get cited at a fraction of their prevalence.** Whether that is because engines' retrieval favors the signals such pages lack, or because the humans who skip editing also skip everything else that earns citations, the data cannot separate. For the practical question an in-house team is asking — can we use AI in the content workflow without losing AI visibility? — the distinction barely matters. Both mechanisms are dodged the same way: by the editing, the original data, and the distribution work that moves a page out of the measurable category entirely.
+
+## What this does not prove
+
+The usual discipline, plus some specific to this question. No study here is experimental: nobody generated matched AI and human pages and measured citation differences, so all five datasets show association, not causation. The detector-defined categories mean "human-written" in every table above includes an unknown amount of well-edited AI drafting. Brandi AI is a vendor in the AI visibility category publishing through a press release, with no full methodology or third-party validation; its numbers corroborate the direction and should not be quoted for precision. Graphite's citation sample — 100 keywords per category across ten categories — is small against the space of real buyer prompts, and its detector choice (Surfer, versus Pangram-family elsewhere) means cross-study percentage comparisons carry detector disagreement inside them. And all of this describes engines as they behaved in 2025–2026; both the publishing mix and the engines are moving, and [effect sizes in this field have a record of expiring](/blog/can-content-scores-predict-ai-citations).
+
+What survives all of those caveats is the direction, five times over, and the threshold structure: the underperformance concentrates in the fully automated tier at every strictness level anyone has measured.
+
+## What to do with this on Monday
+
+1. **Reframe the internal debate.** The question "should we use AI for content?" is not what the data answers. The measured split is between fully automated output and everything else — so set your policy at the tier boundary: what share of human contribution does a page get before it ships, and which pages merit more.
+2. **Classify your own corpus.** Run a detector over your published pages and store per-page AI share. Not to police writers — to build the variable you need for the only join that matters.
+3. **Join it against your citations.** Compare citation rates across your tiers for [the prompts you track](/blog/ai-prompt-tracking). The published averages are the web's; yours may differ, and your own join beats any benchmark.
+4. **Audit the top, not the mean.** Check whether any fully automated page has ever entered your top tier of cited pages. In every dataset, the top of the citation distribution is where human-led content pulls furthest ahead.
+5. **Spend the savings where the gap comes from.** If AI drafting frees writer hours, the data says to reinvest them in what fully automated content lacks — original numbers, first-hand testing, earned distribution — not in producing more pages in the underrepresented tier.
+6. **Do not chase the detector score.** Rewriting pages to read as human to a classifier optimizes the measurement, not the outcome. Nothing in five datasets suggests engines reward undetectability; they reward what edited pages tend to also have.
+
+The honest summary: the web's content supply went half-AI in about two years, and the citation layer did not follow. Not because engines can smell their own, but because the pages worth citing are still the pages somebody worked on — and for now, the detectors and the engines agree on which those are.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces on a schedule, recording every answer, mention, and cited page in your own database. That makes the join this post recommends a query: put your per-page AI-detection share next to which of your pages the engines actually cite, and find out whether the prevalence-citation gap exists in your category — instead of assuming the web-wide average is yours.
+
+For the fundamentals, start with [what AI citations are](/blog/ai-citations) and [how to track your brand in AI search](/blog/track-brand-ai-search). For the adjacent evidence, see [whether content scores predict citations](/blog/can-content-scores-predict-ai-citations), [how old cited content typically is](/blog/how-long-to-get-cited-by-ai), and [where AI citations come from](/blog/where-ai-citations-come-from). For the tooling side of AI-assisted content, see [the best AI content writers](/blog/best-ai-content-writers). For the vocabulary, the [AI search glossary](/glossary).

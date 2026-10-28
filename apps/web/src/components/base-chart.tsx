@@ -1,20 +1,20 @@
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
 	type ChartDataPoint,
+	type ChartSubject,
 	extendLinesToChartEdges,
 	filterAndCompleteChartData,
-	getBadgeClassName,
-	getBadgeVariant,
 	isExtendedDataPoint,
-	type LookbackPeriod,
 	selectCompetitorsToDisplay,
+	visibilityBadgeProps,
 } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 
 /** The brand's own line is the one people are looking for, so it carries more
  *  weight than the competitors it's plotted against. */
@@ -86,7 +86,7 @@ interface BaseChartProps {
 	visibility?: number | null;
 	showTitle?: boolean;
 	showBadge?: boolean;
-	brand: Brand;
+	brand: ChartSubject;
 	competitors: Competitor[];
 	isAnimationActive?: boolean;
 	chartType?: "bar" | "line";
@@ -198,8 +198,11 @@ export function BaseChart({
 			{showTitle && (
 				<div className="flex items-center justify-center gap-2">
 					{title && <h3 className="text-sm font-medium capitalize">{title}</h3>}
-					{showBadge && visibility !== null && (
-						<Badge variant={getBadgeVariant(visibility!)} className={`text-xs ${getBadgeClassName(visibility!)}`}>
+					{showBadge && visibility != null && (
+						<Badge
+							variant={visibilityBadgeProps(visibility).variant}
+							className={`text-xs ${visibilityBadgeProps(visibility).className}`}
+						>
 							{visibility}%
 						</Badge>
 					)}

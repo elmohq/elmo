@@ -1,34 +1,27 @@
 import * as Sentry from "@sentry/node";
-import { getDeployment } from "@workspace/deployment";
+import type { Entitlements } from "@workspace/config/entitlements";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import {
-	type Brand,
-	brands,
-	type Competitor,
-	citations,
-	competitors,
-	promptRuns,
-	prompts,
-	usageEvents,
-} from "@workspace/lib/db/schema";
-import { type Entitlements, getOrgEntitlements } from "@workspace/lib/entitlements";
-import { getProvider, type ModelConfig, type Provider, parseScrapeTargets } from "@workspace/lib/providers";
+import { type Brand, brands, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
+import { getOrgEntitlements } from "@workspace/lib/entitlements";
+import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
 	lastRunQueryWindowMs,
+	lastRunsByTargetKey,
 	type PromptRunPlan,
 	resolveBrandPromptRunPlans,
 	selectDueTargets,
-	targetKey,
+	slowestIntervalHours,
 } from "@workspace/lib/run-policy";
-import type { Citation } from "@workspace/lib/text-extraction";
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
-import boss from "../boss";
+import { getBoss } from "../boss";
 import { trackWorkerEvent } from "../telemetry";
+import { DERIVE_PRIORITY, sendDeriveRuns } from "./derive-runs";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -62,7 +55,6 @@ export const PROMPT_JOB_OPTIONS = {
 interface PromptContext {
 	prompt: typeof prompts.$inferSelect;
 	brand: Brand;
-	competitors: Competitor[];
 }
 
 /**
@@ -77,7 +69,7 @@ async function scheduleNextRun(promptId: string, cadenceHours: number, consecuti
 	const startAfterSeconds = Math.round(delayHours * 60 * 60);
 
 	try {
-		await boss.send(
+		await getBoss().send(
 			"process-prompt",
 			{ promptId, consecutiveFailures },
 			{
@@ -114,15 +106,7 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 		return null;
 	}
 
-	const brandCompetitors = await db.query.competitors.findMany({
-		where: eq(competitors.brandId, prompt.brandId),
-	});
-
-	return {
-		prompt,
-		brand,
-		competitors: brandCompetitors,
-	};
+	return { prompt, brand };
 }
 
 /**
@@ -173,15 +157,7 @@ async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number
 		.where(and(eq(promptRuns.promptId, promptId), gt(promptRuns.createdAt, windowStart)))
 		.groupBy(promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
-	const map = new Map<string, Date>();
-	for (const row of rows) {
-		if (!row.provider) continue;
-		map.set(
-			targetKey({ model: row.model, provider: row.provider, webSearch: row.webSearchEnabled }),
-			new Date(row.lastRunAt),
-		);
-	}
-	return map;
+	return lastRunsByTargetKey(rows);
 }
 
 /**
@@ -201,101 +177,6 @@ async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): P
 			and(eq(usageEvents.organizationId, organizationId), gt(usageEvents.createdAt, sql`now() - interval '24 hours'`)),
 		);
 	return Number(row?.value ?? 0) >= ceiling;
-}
-
-function extractDomainFromUrl(urlOrDomain: string): string {
-	try {
-		const url = new URL(urlOrDomain.startsWith("http") ? urlOrDomain : `https://${urlOrDomain}`);
-		return url.hostname.replace(/^www\./, "").toLowerCase();
-	} catch {
-		return urlOrDomain.replace(/^www\./, "").toLowerCase();
-	}
-}
-
-function analyzeMentions(
-	content: string,
-	brand: Brand,
-	competitorsList: Competitor[],
-): {
-	brandMentioned: boolean;
-	competitorsMentioned: string[];
-} {
-	const contentLower = content.toLowerCase();
-
-	const brandNames = [brand.name, ...(brand.aliases || [])].map((n) => n.toLowerCase());
-	const brandDomains = [
-		extractDomainFromUrl(brand.website),
-		...(brand.additionalDomains || []).map(extractDomainFromUrl),
-	];
-	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) || brandDomains.some((d) => contentLower.includes(d));
-
-	const competitorsMentioned = competitorsList
-		.filter((competitor) => {
-			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
-			const nameMatch = names.some((n) => contentLower.includes(n));
-			const domainMatch = (competitor.domains || []).some((d) => contentLower.includes(extractDomainFromUrl(d)));
-			return nameMatch || domainMatch;
-		})
-		.map((competitor) => competitor.name);
-
-	return { brandMentioned, competitorsMentioned };
-}
-
-async function savePromptRun(
-	promptId: string,
-	brandId: string,
-	model: string,
-	provider: string | null,
-	version: string,
-	webSearchEnabled: boolean,
-	rawOutput: unknown,
-	webQueries: string[],
-	brandMentioned: boolean,
-	competitorsMentioned: string[],
-): Promise<{ id: string; createdAt: Date }> {
-	const [result] = await db
-		.insert(promptRuns)
-		.values({
-			promptId,
-			brandId,
-			model,
-			provider,
-			version,
-			webSearchEnabled,
-			rawOutput,
-			webQueries,
-			brandMentioned,
-			competitorsMentioned,
-		})
-		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
-
-	return result;
-}
-
-async function saveCitations(
-	promptRunId: string,
-	promptId: string,
-	brandId: string,
-	model: string,
-	extracted: Citation[],
-	createdAt: Date,
-): Promise<void> {
-	if (extracted.length === 0) return;
-
-	await db.insert(citations).values(
-		extracted.map((c) => ({
-			promptRunId,
-			promptId,
-			brandId,
-			model,
-			url: c.url,
-			domain: c.domain,
-			title: c.title || null,
-			citationIndex: c.citationIndex,
-			createdAt,
-		})),
-	);
 }
 
 /**
@@ -331,7 +212,6 @@ async function runModelIteration({
 	promptId,
 	promptValue,
 	brand,
-	competitorsList,
 	config,
 	providerImpl,
 	runIndex,
@@ -339,7 +219,6 @@ async function runModelIteration({
 	promptId: string;
 	promptValue: string;
 	brand: Brand;
-	competitorsList: Competitor[];
 	config: ModelConfig;
 	providerImpl: Provider;
 	runIndex: number;
@@ -357,30 +236,30 @@ async function runModelIteration({
 		// fan-out page excludes verbatim repeats at read time as a display rule;
 		// providers whose query field is fabricated (DataForSEO) write the
 		// `unavailable` sentinel in their own extractor instead.
-		const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
-		console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
-
-		const safeTextContent = typeof textContent === "string" ? textContent : "";
-
-		const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
-
+		const { rawOutput, webQueries, modelVersion } = result;
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
-		const { id: promptRunId, createdAt } = await savePromptRun(
-			promptId,
-			brand.id,
-			config.model,
-			config.provider,
-			recordedVersion,
-			config.webSearch,
-			rawOutput,
-			webQueries,
-			brandMentioned,
-			competitorsMentioned,
-		);
+		// Only the answer is saved here. Its text, citations and mentions are derived in their own
+		// job, so a bug there can neither lose an answer that's been paid for nor ask for it again.
+		const [{ id: promptRunId }] = await db
+			.insert(promptRuns)
+			.values({
+				promptId,
+				brandId: brand.id,
+				model: config.model,
+				provider: config.provider,
+				version: recordedVersion,
+				webSearchEnabled: config.webSearch,
+				rawOutput,
+				webQueries,
+			})
+			.returning({ id: promptRuns.id });
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
+		// The answer is saved either way; a job that fails to queue here is picked up by the sweep.
+		await sendDeriveRuns(getBoss(), brand.id, [promptRunId], DERIVE_PRIORITY.new).catch((error) =>
+			console.error(`${logPrefix} Couldn't queue judging for run ${promptRunId}; the sweep will:`, error),
+		);
 
-		await saveCitations(promptRunId, promptId, brand.id, config.model, extractedCitations, createdAt);
 		await recordUsageEvent({
 			organizationId: brand.organizationId,
 			brandId: brand.id,
@@ -428,7 +307,7 @@ async function processPrompt(
 		return;
 	}
 
-	const { prompt, brand, competitors: competitorsList } = context;
+	const { prompt, brand } = context;
 
 	if (!prompt.enabled || !brand.enabled) {
 		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
@@ -447,8 +326,7 @@ async function processPrompt(
 		return;
 	}
 
-	const maxIntervalHours = Math.max(...plan.targets.map((t) => t.intervalHours));
-	const lastRuns = await getLastRunsByTargetKey(promptId, maxIntervalHours);
+	const lastRuns = await getLastRunsByTargetKey(promptId, slowestIntervalHours(plan.targets));
 	const dueTargets = selectDueTargets(plan.targets, lastRuns, new Date());
 
 	if (dueTargets.length === 0) {
@@ -483,7 +361,6 @@ async function processPrompt(
 				promptId,
 				promptValue: prompt.value,
 				brand,
-				competitorsList,
 				config: target.config,
 				providerImpl,
 				runIndex: i + 1,

@@ -5,9 +5,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { CRISP_WEBSITE_ID } from "@workspace/config/constants";
 import { getDeploymentModeFromEnv, getEnvValidationState } from "@workspace/config/env";
 import type { ClientConfig } from "@workspace/config/types";
+import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { countUsers } from "@workspace/lib/db/provisioning";
-import { getDeployment } from "@/lib/config/server";
+import { storedCredentialsLoaded, withStoredCredentials } from "@workspace/lib/secrets";
 
 export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
 	branding: Omit<ClientConfig["branding"], "onboardingRedirectUrl">;
@@ -64,7 +65,8 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 });
 
 export const getEnvValidationStateFn = createServerFn({ method: "GET" }).handler(async () => {
-	const envState = getEnvValidationState();
+	await storedCredentialsLoaded();
+	const envState = getEnvValidationState(withStoredCredentials());
 	return {
 		mode: envState.mode,
 		missing: envState.missing,

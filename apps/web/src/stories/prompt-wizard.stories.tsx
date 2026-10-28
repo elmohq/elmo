@@ -201,14 +201,24 @@ export const Analyzing = () => {
 };
 
 /** Review with a fully-populated suggestion — every section editable. */
-export const Review = () => {
-	useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
-	return (
-		<>
-			<PromptWizard onComplete={() => {}} />
-			<AutoAnalyze />
-		</>
-	);
+export const Review: StoryObj = {
+	render: () => {
+		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByDisplayValue("Acme")).toBeVisible();
+		await expect(canvas.getAllByDisplayValue("best widgets").length).toBeGreaterThan(0);
+		await expect(
+			canvas.getByRole("button", { name: `Start tracking (${RICH_SUGGESTION.suggestedPrompts.length} new prompts)` }),
+		).toBeEnabled();
+	},
 };
 
 /**
@@ -216,18 +226,25 @@ export const Review = () => {
  * real provider/stack detail stays server-side (captured by the worker's
  * Sentry wrapper) and is never forwarded to the browser.
  */
-export const AnalyzeError = () => {
-	useWizardSetup({
-		brand: MOCK_BRAND,
-		suggestion: RICH_SUGGESTION,
-		error: "Brand analysis failed. Please try again.",
-	});
-	return (
-		<>
-			<PromptWizard onComplete={() => {}} />
-			<AutoAnalyze />
-		</>
-	);
+export const AnalyzeError: StoryObj = {
+	render: () => {
+		useWizardSetup({
+			brand: MOCK_BRAND,
+			suggestion: RICH_SUGGESTION,
+			error: "Brand analysis failed. Please try again.",
+		});
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("Brand analysis failed. Please try again.")).toBeVisible();
+		await expect(canvas.getByRole("button", { name: /analyze brand/i })).toBeEnabled();
+	},
 };
 
 /**

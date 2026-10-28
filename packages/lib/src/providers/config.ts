@@ -1,8 +1,26 @@
+import { ENV_REGISTRY } from "@workspace/config/env-registry";
+import { WEB_QUERIES_UNAVAILABLE } from "../constants";
+import { getCredential } from "../secrets";
 import type { ModelConfig } from "./types";
 
-// SCRAPE_TARGETS parsing/formatting lives in @workspace/config (the env source
-// of truth, shared with the CLI); re-exported here for compatibility.
-export { parseScrapeTargets } from "@workspace/config/scrape-targets";
+export function configuredWhen(...credentialKeys: string[]): () => boolean {
+	return () => credentialKeys.every((key) => !!getCredential(key));
+}
+
+/**
+ * A run that searched but withheld its query strings is marked "unavailable"
+ * rather than dropped, so the read path can tell it apart from one that never
+ * searched. `searchProven` is whatever evidence a provider offers that a search
+ * ran — usually the presence of citations.
+ */
+export function reportedWebQueries(
+	queries: string[],
+	{ webSearch = true, searchProven = true }: { webSearch?: boolean; searchProven?: boolean } = {},
+): string[] {
+	if (!webSearch) return [];
+	if (queries.length > 0) return queries;
+	return searchProven ? [WEB_QUERIES_UNAVAILABLE] : [];
+}
 
 // Per-call output caps for the direct API providers: a worst-case bound on a
 // single tracked run, not a target length — sized well above any answer we
@@ -52,11 +70,20 @@ export function validateScrapeTargets(
 		id: string,
 	) => { isConfigured(): boolean; validateTarget?(config: ModelConfig): string | null } | undefined,
 ): void {
+	const errors = new Set<string>();
 	for (const config of configs) {
 		const provider = getProvider(config.provider);
-		if (!provider) throw new Error(`SCRAPE_TARGETS: unknown provider "${config.provider}"`);
-		if (!provider.isConfigured())
-			throw new Error(`SCRAPE_TARGETS: provider "${config.provider}" requires API key(s) to be configured (see docs)`);
+		if (!provider) {
+			errors.add(`SCRAPE_TARGETS: unknown provider "${config.provider}"`);
+			continue;
+		}
+		if (!provider.isConfigured()) {
+			const keys = ENV_REGISTRY.filter((spec) => spec.provider === config.provider && !getCredential(spec.name)).map(
+				(spec) => spec.name,
+			);
+			const keyList = keys.length > 0 ? `: ${keys.join(", ")}` : " (see docs)";
+			errors.add(`SCRAPE_TARGETS: provider "${config.provider}" requires API key(s) to be configured${keyList}`);
+		}
 		if (
 			(config.provider === "openai-api" ||
 				config.provider === "anthropic-api" ||
@@ -64,9 +91,9 @@ export function validateScrapeTargets(
 				config.provider === "openrouter") &&
 			!config.version
 		)
-			throw new Error(`SCRAPE_TARGETS: "${config.model}:${config.provider}" requires a version slug (third segment)`);
+			errors.add(`SCRAPE_TARGETS: "${config.model}:${config.provider}" requires a version slug (third segment)`);
 		const targetError = provider.validateTarget?.(config);
-		if (targetError)
-			throw new Error(`SCRAPE_TARGETS: invalid target "${config.model}:${config.provider}": ${targetError}`);
+		if (targetError) errors.add(`SCRAPE_TARGETS: invalid target "${config.model}:${config.provider}": ${targetError}`);
 	}
+	if (errors.size > 0) throw new Error([...errors].join("\n"));
 }

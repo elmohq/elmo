@@ -1,0 +1,28 @@
+meta {
+  name: an org key cannot add a competitor to another tenant's brand
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{baseUrl}}/api/v1/competitors
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{nikeBrandId}}",
+    "name": "Not Mine"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error: eq Validation Error
+  res.body.message: contains not found
+}

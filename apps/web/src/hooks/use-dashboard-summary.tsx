@@ -1,26 +1,31 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
-import { type DashboardSummaryResponse, getDashboardSummaryFn } from "@/server/dashboard";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
+import type { LookbackPeriod } from "@/lib/lookback";
+import { getDashboardSummaryFn } from "@/server/dashboard";
 
-export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
-export type { CitationTimeSeriesPoint, DashboardSummaryResponse, VisibilityTimeSeriesPoint } from "@/server/dashboard";
+export interface DashboardFilters {
+	lookback: LookbackPeriod;
+	model?: string;
+	tags?: string[];
+}
 
 export const dashboardKeys = {
 	all: ["dashboard"] as const,
-	summary: (brandId: string, lookback: LookbackPeriod) => [...dashboardKeys.all, "summary", brandId, lookback] as const,
+	summary: (brandId: string, filters: DashboardFilters) => [...dashboardKeys.all, "summary", brandId, filters] as const,
 };
 
-export function useDashboardSummary(brandId?: string, lookback: LookbackPeriod = "1m") {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+export function useDashboardSummary(brandId?: string, filters: DashboardFilters = { lookback: "1m" }) {
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
-		queryKey: dashboardKeys.summary(resolvedBrandId || "", lookback),
+		queryKey: dashboardKeys.summary(resolvedBrandId || "", filters),
 		queryFn: () =>
 			getDashboardSummaryFn({
 				data: {
 					brandId: resolvedBrandId!,
-					lookback,
+					lookback: filters.lookback,
+					model: filters.model,
+					tags: filters.tags?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
@@ -28,14 +33,14 @@ export function useDashboardSummary(brandId?: string, lookback: LookbackPeriod =
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
 		refetchOnReconnect: true,
-		refetchInterval: 60_000, // Auto-refresh every 60 seconds
-		placeholderData: (prev) => prev, // Keep previous data while refetching with new filters
+		refetchInterval: 60_000,
+		placeholderData: (prev) => prev,
 	});
 
 	return {
-		dashboardSummary: query.data,
+		data: query.data,
 		isLoading: query.isLoading,
-		isError: query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

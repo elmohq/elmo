@@ -50,7 +50,7 @@ export function cleanDomain(input: string): string {
 	}
 }
 
-export function isValidDomain(domain: string): boolean {
+function isValidDomain(domain: string): boolean {
 	return DOMAIN_REGEX.test(domain);
 }
 

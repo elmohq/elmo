@@ -8,7 +8,7 @@
  *
  * Stripe prices are referenced by lookup key (stripePlanLookupKey /
  * PREMIUM_ADDON_LOOKUP_KEYS) rather than per-environment price-ID env vars;
- * packages/cloud/scripts/bootstrap-stripe.ts provisions any Stripe account (test or live)
+ * packages/deployment/scripts/bootstrap-stripe.ts provisions any Stripe account (test or live)
  * with these exact keys.
  */
 
@@ -37,6 +37,8 @@ export interface CloudPlatform {
 	 * metered per prompt instead of picked per brand.
 	 */
 	premium?: boolean;
+	version?: string;
+	premiumVersion?: string;
 }
 
 /**
@@ -58,17 +60,18 @@ export interface CloudPlatform {
  * deployments change what a new brand starts out tracking.
  */
 export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
-	chatgpt: { access: "scraped", premium: true },
+	chatgpt: { access: "scraped", premium: true, premiumVersion: "GPT-6 Luna" },
 	"google-ai-mode": { access: "scraped" },
 	"google-ai-overview": { access: "scraped" },
 	copilot: { access: "scraped" },
 	perplexity: { access: "scraped" },
 	gemini: { access: "scraped" },
-	qwen: { access: "api" },
-	deepseek: { access: "api" },
-	grok: { premium: true },
-	mistral: { access: "api" },
-	claude: { access: "api", premium: true },
+	qwen: { access: "api", version: "Qwen3 235B A22B 2507" },
+	deepseek: { access: "api", version: "DeepSeek V3.2" },
+	grok: { premium: true, premiumVersion: "Grok 4.5" },
+	mistral: { access: "api", version: "Mistral Medium 3.1" },
+	claude: { access: "api", premium: true, version: "Claude Haiku 5.5", premiumVersion: "Claude Haiku 5.5" },
+	kimi: { access: "api", version: "Kimi K2.5" },
 };
 
 /** The platforms a plan's picks may come from — everything sold as a pick. */
@@ -90,11 +93,11 @@ export const PREMIUM_MODELS: readonly string[] = ["claude", "chatgpt", "grok"];
 /**
  * What a premium model is called where it is sold, which is not what it is called
  * as a pick: the premium tier sells the grounded variant, and "ChatGPT" and
- * "GPT-5 Search" are different products to a customer comparing them.
+ * "GPT Search" are different products to a customer comparing them.
  */
 const PREMIUM_LABELS: Record<string, string> = {
-	claude: "Claude Sonnet 5 (web)",
-	chatgpt: "GPT-5 Search",
+	claude: "Claude (web)",
+	chatgpt: "GPT Search",
 	grok: "Grok (web)",
 };
 
@@ -134,7 +137,7 @@ export const MAX_STANDARD_RUNS_PER_DAY = 7;
 /** Dunning: how long past_due keeps tracking alive before it pauses. */
 export const PAST_DUE_GRACE_DAYS = 7;
 
-/** Extra premium prompt/model slots: $5 each per month, Pro and Business only. */
+/** Extra premium prompt/model slots, on the plans that sell the tier. */
 export const PREMIUM_ADDON_MONTHLY_USD = 5;
 
 /** Annual = 10× monthly (two months free). */
@@ -231,6 +234,17 @@ export function isPlanKey(value: string): value is PlanKey {
 	return value in PLANS;
 }
 
+export function sellsPremium(plan: PlanDefinition): boolean {
+	return plan.premiumIncluded > 0 || plan.premiumAddonAvailable;
+}
+
+export function premiumPlanNames(): string {
+	const names = Object.values(PLANS)
+		.filter(sellsPremium)
+		.map((plan) => plan.name);
+	return new Intl.ListFormat("en", { type: "conjunction" }).format(names);
+}
+
 /**
  * Whether extra premium slots can be purchased for a resolved plan key. Custom
  * plans always may; no plan means nothing to attach the add-on to.
@@ -249,7 +263,7 @@ export function planDisplayName(planKey: PlanKey | "custom" | null): string {
 /**
  * Stripe price lookup key for a plan/interval. The @better-auth/stripe plugin
  * resolves these to price IDs at checkout time, so the same code works against
- * any Stripe account bootstrapped with packages/cloud/scripts/bootstrap-stripe.ts.
+ * any Stripe account bootstrapped with packages/deployment/scripts/bootstrap-stripe.ts.
  */
 export function stripePlanLookupKey(plan: PlanKey, interval: BillingInterval): string {
 	return `elmo_cloud_${plan}_${interval}`;
@@ -279,6 +293,21 @@ export interface PlanPlatformMember {
 	label: string;
 	/** Which logo stands for it. Resolved here so the shared tier renderer stays free of the catalog. */
 	iconId: string;
+	tooltip?: string;
+}
+
+function premiumVersionLabel(version: string | undefined): string | undefined {
+	return version && `${version} + native web search`;
+}
+
+function tierMember(model: string, tier: PlanPlatformGroupId): PlanPlatformMember {
+	const premium = tier === "premium";
+	return {
+		model,
+		label: premium ? premiumModelLabel(model) : getModelMeta(model).label,
+		iconId: getModelMeta(model).iconId,
+		tooltip: premium ? premiumVersionLabel(CLOUD_PLATFORMS[model]?.premiumVersion) : CLOUD_PLATFORMS[model]?.version,
+	};
 }
 
 /**
@@ -291,11 +320,7 @@ export function platformTierMembers(tier: PlanPlatformGroupId): PlanPlatformMemb
 		tier === "premium"
 			? PREMIUM_MODELS
 			: STANDARD_PLATFORM_MENU.filter((model) => CLOUD_PLATFORMS[model]?.access === tier);
-	return models.map((model) => ({
-		model,
-		label: tier === "premium" ? premiumModelLabel(model) : getModelMeta(model).label,
-		iconId: getModelMeta(model).iconId,
-	}));
+	return models.map((model) => tierMember(model, tier));
 }
 
 export interface PlanPlatformGroup {
@@ -359,7 +384,7 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 	const inTier = (access: ProviderAccessKind): PlanPlatformMember[] =>
 		plan.platformMenu
 			.filter((model) => CLOUD_PLATFORMS[model]?.access === access)
-			.map((model) => ({ model, label: getModelMeta(model).label, iconId: getModelMeta(model).iconId }));
+			.map((model) => tierMember(model, access));
 
 	const groups: PlanPlatformGroup[] = [
 		{
@@ -376,7 +401,7 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 	// A plan either sells the premium tier or it doesn't; when it does, the whole
 	// tier comes with it. Narrowing it to the plan's pick menu would drop the
 	// models that are premium precisely because they are too dear to pick.
-	const hasPremium = plan.premiumIncluded > 0 || plan.premiumAddonAvailable;
+	const hasPremium = sellsPremium(plan);
 
 	return {
 		// A plan with a single option has nothing to choose, so it names it.
@@ -390,11 +415,7 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 					id: "premium",
 					label: PLATFORM_TIER_LABELS.premium,
 					runsPerDay: PREMIUM_RUNS_PER_DAY,
-					models: PREMIUM_MODELS.map((model) => ({
-						model,
-						label: premiumModelLabel(model),
-						iconId: getModelMeta(model).iconId,
-					})),
+					models: PREMIUM_MODELS.map((model) => tierMember(model, "premium")),
 					includedSlots: plan.premiumIncluded,
 					addonAvailable: plan.premiumAddonAvailable,
 					summary: premiumSummary(plan),

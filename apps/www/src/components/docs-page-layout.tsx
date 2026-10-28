@@ -11,10 +11,10 @@ import { Feedback } from "@workspace/docs/components/feedback/client";
 import type { ActionResponse, PageFeedback } from "@workspace/docs/components/feedback/schema";
 import browserCollections from "collections/browser";
 import { useFumadocsLoader } from "fumadocs-core/source/client";
-import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
+import type { OpenAPIPageProps } from "fumadocs-openapi/ui";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import { Suspense } from "react";
-import { ClientAPIPage } from "@/components/api-page";
+import { OpenAPIPage } from "@/components/api-page";
 import { Footer } from "@/components/footer";
 import { useMDXComponents } from "@/components/mdx";
 import { Navbar } from "@/components/navbar";
@@ -64,7 +64,7 @@ function DocsArticle({
 	);
 }
 
-export const clientLoader = browserCollections.docs.createClientLoader({
+const clientLoader = browserCollections.docs.createClientLoader({
 	component({ toc, frontmatter, default: MDX }, _props: undefined) {
 		return (
 			<div className="flex gap-10">
@@ -173,22 +173,11 @@ function DocsPageActions({ filePath, mdUrl }: { filePath: string; mdUrl: string 
 	);
 }
 
-function OpenApiContent({
-	title,
-	description,
-	apiProps,
-}: {
-	title: string;
-	description: string;
-	apiProps: ClientApiPageProps;
-}) {
+function OpenApiContent({ title, apiProps }: { title: string; apiProps: OpenAPIPageProps }) {
 	return (
 		<article className="prose prose-zinc min-w-0 max-w-none flex-1">
 			<h1>{title}</h1>
-			{description && <p className="lead text-muted-foreground">{description}</p>}
-			<div className="not-prose">
-				<ClientAPIPage {...apiProps} />
-			</div>
+			<OpenAPIPage {...apiProps} />
 		</article>
 	);
 }
@@ -218,7 +207,7 @@ export function DocsPageLayout({ loaderData }: { loaderData: LoaderData }) {
 
 						<main className="min-w-0 flex-1">
 							{data.type === "openapi" ? (
-								<OpenApiContent title={data.title} description={data.description} apiProps={data.apiProps} />
+								<OpenApiContent title={data.title} apiProps={data.apiProps} />
 							) : (
 								<>
 									<Suspense>

@@ -11,7 +11,7 @@ Elmo is an open-source AI visibility platform (Answer Engine Optimization): it t
 - `packages/lib` — shared logic and the Drizzle schema/migrations
 - `packages/ui` — shared shadcn-based UI components
 - `packages/docs` — user-facing docs content (MDX), rendered by `apps/www`
-- `packages/deployment` — deployment-mode config (reads `DEPLOYMENT_MODE`, exposes per-mode features)
+- `packages/deployment` — deployment-mode config, per-mode auth hooks, cloud billing/email
 - `packages/config` — env validation and shared constants/types
 - `packages/api-spec` — OpenAPI spec
 - `e2e/` — Playwright end-to-end tests
@@ -47,7 +47,7 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 
 ## Environment
 
-`.env` must exist at **both** the repo root and `apps/web/.env` (Vite reads its project root; the worker reads `apps/web/.env` via `--env-file`). Minimum for local mode: `DATABASE_URL`, `DEPLOYMENT_MODE=local`, `VITE_DEPLOYMENT_MODE=local`, `BETTER_AUTH_SECRET`, `ELMO_ENCRYPTION_KEY` (`openssl rand -base64 32`), `APP_URL`/`VITE_APP_URL`, `DISABLE_TELEMETRY=1`. Env validation also requires `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DATAFORSEO_LOGIN`, and `DATAFORSEO_PASSWORD` — placeholder values work for UI-only work.
+`.env` must exist at **both** the repo root and `apps/web/.env` (Vite reads its project root; the worker reads `apps/web/.env` via `--env-file`). Minimum for local mode: `DATABASE_URL`, `DEPLOYMENT_MODE=local`, `BETTER_AUTH_SECRET`, `ELMO_ENCRYPTION_KEY` (`openssl rand -base64 32`), `APP_URL`/`VITE_APP_URL`, `DISABLE_TELEMETRY=1`, and `SCRAPE_TARGETS` plus the keys of the providers it names. Env validation also requires one direct LLM key (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, or `MISTRAL_API_KEY`) for onboarding and the Opportunities report, and the worker needs `TYPESAFE_API_KEY`, or `OPENROUTER_API_KEY` to call Jev through OpenRouter (Jev judges mentions and sentiment). For UI-only work, `SCRAPE_TARGETS=stub:stub`, `ONBOARDING_LLM_TARGET=stub:stub` and `TYPESAFE_API_KEY=stub` need no keys at all.
 
 ## Git workflow
 
@@ -55,15 +55,29 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 - Commit as you go: small, atomic commits that show real progress. Don't rewrite history (amend, rebase, force-push) to make it look tidy afterward.
 - Commit subjects are plain imperative sentences — no conventional-commit prefixes. Write `paginate top cited domains`, not `feat(web): paginate top cited domains`.
 - Don't bump package versions; releases go through Changesets.
+- Don't add coding-agent attribution (such as "Generated with …" lines or `Co-Authored-By` trailers) to commit messages or PR descriptions.
+
+## Private data
+
+- Unless explicitly authorized, never put identifying information or non-public stats into a PR description, commit message, or any committed text (code, comments, tests, fixtures, docs, changesets). This covers anything you get from MCP servers, databases, or APIs you've been given access to.
+- That includes conversion rates, customer or user names, emails, and domains, revenue and billing figures, cloud usage amounts, traffic numbers, and any other non-public information. Describe the change in general terms or use made-up placeholder data instead.
 
 ## Comments and docs
 
-- Comment only to explain **why** or to add context the code can't show. Never restate what the code already says.
+- Adding code comments should be rare. Default to writing none; good names and clear code are the documentation.
+- Add a comment only when it explains a non-obvious **why** or context the code can't show (a workaround, a surprising constraint, an external quirk). Never restate what the code already says, and don't add section labels, docstrings that echo the signature, or narration of your change.
 - The same applies to docs and this file: never write down what's already derivable from the repo (what a file imports, what a script runs, how code is structured).
 - Don't describe prior behavior ("previously this did X") and don't reference GitHub issues or tickets in code — that context belongs in the commit message or PR.
+
+## Copy and UI text
+
+- Use APA Style title case for all non-prose text: titles, headings, buttons, links used as actions, nav items, tabs, form labels, table headers, and chart titles.
+- Sentences and prose stay in sentence case.
+- Elmo has no dark mode. Never design or implement anything for one.
 
 ## Changesets
 
 - Add one only for **user-facing** changes (something an end user of the product would notice). Internal refactors, dependency bumps, and CI tweaks don't get one.
 - Keep it to one short, product-focused sentence; default to `patch`; scope it to the packages actually affected.
 - If a non-package directory (like `e2e/`) breaks Changesets tooling, fix the tooling configuration rather than inventing versions.
+- Never create a changeset for `apps/www`.

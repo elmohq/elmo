@@ -4,12 +4,6 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useEffect } from "react";
 import FullPageCard from "./components/full-page-card";
 
-export function NotFound() {
-	return (
-		<FullPageCard title="404 Not Found" subtitle="The page you're looking for doesn't exist." showBackButton={true} />
-	);
-}
-
 export function DefaultPendingComponent() {
 	return (
 		<div className="flex flex-1 flex-col gap-4 p-4 md:p-6">

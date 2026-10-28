@@ -10,8 +10,8 @@
  * deployments must keep booting unchanged while cloud lands (issue #8).
  *
  * Runs the real shared-package boot path via tsx — no build, no live DB.
- * createAuth() only constructs the better-auth instance (drizzle's pg pool is
- * lazy), so a dummy DATABASE_URL is enough.
+ * createAuth() returns as soon as the instance is constructed, so a dummy
+ * DATABASE_URL is enough for what this checks.
  *
  * Lives in apps/web because that package depends on every @workspace/* package
  * this script boots; the script itself imports only @workspace/* entrypoints
@@ -41,13 +41,15 @@ const SMOKE_MODES: SmokeMode[] = ["local", "demo", "whitelabel", "cloud"];
  * DATABASE_URL is never connected; APP_URL / VITE_APP_URL are read by
  * createAuth(); the AUTH0_* vars are read by getWhitelabelAuthOptions() and the
  * whitelabel env requirements. SCRAPE_TARGETS=chatgpt:olostep:online pulls in
- * the OLOSTEP_API_KEY provider-key requirement.
+ * the OLOSTEP_API_KEY provider-key requirement; OPENAI_API_KEY is the direct
+ * LLM key onboarding needs.
  */
 const SHARED_ENV: Record<string, string> = {
 	DATABASE_URL: "postgres://smoke:smoke@127.0.0.1:5432/smoke",
 	BETTER_AUTH_SECRET: "smoke-test-better-auth-secret-0000000000",
 	SCRAPE_TARGETS: "chatgpt:olostep:online",
 	OLOSTEP_API_KEY: "smoke-olostep-key",
+	OPENAI_API_KEY: "smoke-openai-key",
 };
 
 const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
@@ -72,8 +74,6 @@ const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
 		VITE_APP_NAME: "Smoke App",
 		VITE_APP_ICON: "https://example.com/icon.png",
 		VITE_APP_URL: "https://smoke.example.com/",
-		VITE_APP_PARENT_NAME: "Smoke Parent",
-		VITE_APP_PARENT_URL: "https://parent.example.com/",
 		VITE_OPTIMIZATION_URL_TEMPLATE: "https://parent.example.com/optimize?org_id={brandId}&prompt={prompt}",
 	},
 	cloud: {
@@ -155,10 +155,13 @@ async function smokeMode(mode: SmokeMode): Promise<string[]> {
 	// 3. auth initialization — dynamic import so DATABASE_URL is live before db.ts runs
 	try {
 		const { createAuth } = await import("@workspace/lib/auth/server");
-		const { getWhitelabelAuthOptions } = await import("@workspace/whitelabel/auth-hooks");
-		const { getCloudAuthOptions } = await import("@workspace/cloud/auth-hooks");
+		const { getWhitelabelAuthOptions } = await import("@workspace/deployment/auth-hooks/whitelabel");
+		const { getCloudAuthOptions } = await import("@workspace/deployment/auth-hooks/cloud");
 		const options = getAuthOptions(mode, getWhitelabelAuthOptions, getCloudAuthOptions);
 		const auth = createAuth(options);
+		// Initialization rejects against the dummy DATABASE_URL; left alone that is
+		// an unhandled rejection and takes the runner down mid-sweep.
+		auth.$context.catch(() => {});
 		if (typeof auth.handler !== "function" || typeof auth.api !== "object") {
 			failures.push("auth initialized without a handler/api");
 		}

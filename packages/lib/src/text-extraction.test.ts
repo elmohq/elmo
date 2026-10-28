@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+	CITATION_TITLE_MAX_LENGTH,
 	extractCitations,
 	extractCitationsFromBrightdata,
 	extractCitationsFromDataforseoLlm,
 	extractCitationsFromGoogle,
 	extractCitationsFromOpenAI,
 	extractCitationsFromOxylabs,
+	extractorFor,
+	extractRun,
 	extractTextContent,
 	extractTextFromAnthropic,
 	extractTextFromBrightdata,
@@ -14,6 +17,9 @@ import {
 	extractTextFromGoogle,
 	extractTextFromOpenAI,
 	extractTextFromOxylabs,
+	normalizeCitationTitle,
+	storableText,
+	tryExtractTextContent,
 } from "./text-extraction";
 
 /** A minimal DataForSEO AI Optimization "LLM Responses" payload. */
@@ -306,6 +312,84 @@ describe("text-extraction", () => {
 		it("should attempt generic extraction for unknown providers", () => {
 			expect(extractTextContent({ choices: [{ message: { content: "generic" } }] }, "unknown")).toBe("generic");
 			expect(extractTextContent({ answer_markdown: "md content" }, "unknown")).toBe("md content");
+		});
+	});
+
+	describe("tryExtractTextContent", () => {
+		const emptyPayloads: [label: string, providerOrEngine: string, rawOutput: unknown][] = [
+			["openai", "openai-api", {}],
+			["openai by legacy engine", "chatgpt", {}],
+			["anthropic", "anthropic-api", {}],
+			["anthropic by legacy engine", "claude", null],
+			["mistral", "mistral-api", {}],
+			["dataforseo serp", "dataforseo", {}],
+			["dataforseo by legacy engine", "google-ai-overview", {}],
+			["dataforseo llm responses", "dataforseo", { tasks: [{ result: [{ items: [{ sections: [] }] }] }] }],
+			["dataforseo llm scraper", "dataforseo", { tasks: [{ result: [{ sources: [] }] }] }],
+			["openrouter", "openrouter", {}],
+			["searchapi", "searchapi", {}],
+			["olostep", "olostep", {}],
+			["brightdata", "brightdata", {}],
+			["brightdata with no record", "brightdata", null],
+			["oxylabs", "oxylabs", { results: [{ content: {} }] }],
+			["oxylabs with no content", "oxylabs", {}],
+			["cloro", "cloro", {}],
+			["cloro with no answer", "cloro", null],
+			["an unknown provider", "unknown", {}],
+			["an unknown provider with no payload", "unknown", null],
+		];
+
+		it.each(emptyPayloads)("reports no text for %s", (_label, providerOrEngine, rawOutput) => {
+			expect(extractTextContent(rawOutput, providerOrEngine).trim()).not.toBe("");
+			expect(tryExtractTextContent(rawOutput, providerOrEngine)).toBeNull();
+		});
+
+		it("reports no text when a payload cannot be parsed", () => {
+			expect(tryExtractTextContent({ json_content: "{not json" }, "olostep")).toBeNull();
+		});
+
+		it("reports no text for a blank answer", () => {
+			expect(tryExtractTextContent("   ", "unknown")).toBeNull();
+		});
+
+		it("returns the answer when the payload has one", () => {
+			const rawOutput = { output: [{ type: "message", content: [{ type: "output_text", text: "The answer." }] }] };
+			expect(tryExtractTextContent(rawOutput, "openai-api")).toBe("The answer.");
+		});
+	});
+
+	describe("storableText", () => {
+		it("keeps a real answer and drops a provider's placeholder", () => {
+			expect(storableText("Acme leads the pack.")).toBe("Acme leads the pack.");
+			expect(storableText(extractTextFromOpenAI({}))).toBeNull();
+			expect(storableText("")).toBeNull();
+			expect(storableText(undefined)).toBeNull();
+		});
+	});
+
+	describe("extractRun", () => {
+		it("extracts an answer and its citations together", () => {
+			const rawOutput = {
+				output: [
+					{
+						type: "message",
+						content: [
+							{
+								type: "output_text",
+								text: "The answer.",
+								annotations: [{ type: "url_citation", url: "https://example.com/a", title: "A" }],
+							},
+						],
+					},
+				],
+			};
+			const run = extractRun(rawOutput, "openai-api");
+			expect(run.textContent).toBe("The answer.");
+			expect(run.citations.map((citation) => citation.url)).toEqual(["https://example.com/a"]);
+		});
+
+		it("yields nothing to store for an empty payload", () => {
+			expect(extractRun({}, "openai-api")).toEqual({ textContent: null, citations: [] });
 		});
 	});
 
@@ -685,6 +769,45 @@ describe("text-extraction", () => {
 		});
 	});
 
+	describe("searchapi", () => {
+		const AI_OVERVIEW = {
+			ai_overview: {
+				markdown: "The **Brooks Ghost** is a well-reviewed beginner shoe.",
+				reference_links: [
+					{ index: 0, title: "Best beginner shoes", link: "https://www.runnersworld.com/beginner-shoes" },
+				],
+			},
+		};
+
+		it("reads a chatbot answer and the pages it cited", () => {
+			const rawOutput = {
+				markdown: "The **Marshall Stockwell III** is a well-reviewed speaker.",
+				reference_links: [{ index: 0, title: "Review", link: "https://www.techradar.com/stockwell-iii" }],
+				web_results: [{ position: 1, title: "Roundup", link: "https://www.whathifi.com/roundup" }],
+			};
+			expect(extractTextContent(rawOutput, "searchapi")).toBe(
+				"The **Marshall Stockwell III** is a well-reviewed speaker.",
+			);
+			// `web_results` is what ChatGPT retrieved, not what it cited.
+			expect(extractCitations(rawOutput, "searchapi").map((c) => c.domain)).toEqual(["techradar.com"]);
+		});
+
+		it("unwraps the AI Overview from the result page around it", () => {
+			expect(extractTextContent(AI_OVERVIEW, "searchapi")).toContain("Brooks Ghost");
+			expect(extractCitations(AI_OVERVIEW, "searchapi").map((c) => c.domain)).toEqual(["runnersworld.com"]);
+		});
+
+		it("falls back to the typed blocks when an answer carries no markdown", () => {
+			const rawOutput = {
+				text_blocks: [
+					{ type: "header", answer: "Blockchain" },
+					{ type: "unordered_list", items: [{ type: "paragraph", answer: "A distributed ledger." }] },
+				],
+			};
+			expect(extractTextContent(rawOutput, "searchapi")).toBe("Blockchain\n\nA distributed ledger.");
+		});
+	});
+
 	describe("extractCitationsFromBrightdata", () => {
 		it("extracts AI Overview references by href, trims title noise, and de-dupes", () => {
 			const rawOutput = {
@@ -743,5 +866,64 @@ describe("text-extraction", () => {
 		it("should return empty array for unknown model group", () => {
 			expect(extractCitations({}, "unknown")).toEqual([]);
 		});
+	});
+
+	describe("citation titles", () => {
+		it("keeps titles that are already a sensible length", () => {
+			expect(normalizeCitationTitle("A perfectly normal page title")).toBe("A perfectly normal page title");
+		});
+
+		it("treats a missing or empty title as absent", () => {
+			expect(normalizeCitationTitle(undefined)).toBeUndefined();
+			expect(normalizeCitationTitle("")).toBeUndefined();
+			expect(normalizeCitationTitle(12345)).toBeUndefined();
+		});
+
+		it("bounds titles so an oversized one cannot fail the citation insert", () => {
+			const bodyText = "x".repeat(11_325);
+			expect(normalizeCitationTitle(bodyText)).toHaveLength(CITATION_TITLE_MAX_LENGTH);
+		});
+
+		it("truncates on whole characters so multi-byte titles stay valid", () => {
+			const truncated = normalizeCitationTitle("\u{1D518}".repeat(CITATION_TITLE_MAX_LENGTH + 50));
+			expect(truncated).toBe("\u{1D518}".repeat(CITATION_TITLE_MAX_LENGTH));
+		});
+
+		it("bounds titles arriving from a provider payload", () => {
+			const citations = extractCitationsFromOpenAI({
+				output: [
+					{
+						type: "message",
+						content: [
+							{
+								type: "output_text",
+								text: "answer",
+								annotations: [{ type: "url_citation", url: "https://example.com/manual.pdf", title: "y".repeat(8000) }],
+							},
+						],
+					},
+				],
+			});
+			expect(citations).toHaveLength(1);
+			expect(citations[0].title).toHaveLength(CITATION_TITLE_MAX_LENGTH);
+		});
+	});
+});
+
+describe("extractorFor", () => {
+	const openAiPayload = { output: [{ type: "message", content: [{ type: "output_text", text: "Acme is great." }] }] };
+
+	it("reads a run with its provider's extractor", () => {
+		expect(tryExtractTextContent(openAiPayload, extractorFor({ provider: "openai-api", model: "chatgpt" }))).toBe(
+			"Acme is great.",
+		);
+	});
+
+	it("falls back to the engine's extractor when the provider names none, as runs recorded as `direct` do", () => {
+		expect(tryExtractTextContent(openAiPayload, extractorFor({ provider: "direct", model: "chatgpt" }))).toBe(
+			"Acme is great.",
+		);
+		expect(extractorFor({ provider: null, model: "claude" })).toBe("claude");
+		expect(extractorFor({ provider: "constructor", model: "claude" })).toBe("claude");
 	});
 });

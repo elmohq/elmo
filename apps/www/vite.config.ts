@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { embedBinaries, externalizeResvg } from "@workspace/og/vite-plugin";
+import { embedBinaries } from "@workspace/og/vite-plugin";
 import mdx from "fumadocs-mdx/vite";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
@@ -29,12 +29,19 @@ export default defineConfig({
 	},
 	plugins: [
 		embedBinaries(),
-		externalizeResvg(),
 		mdx(MdxConfig),
 		tailwindcss(),
-		tanstackStart(),
+		tanstackStart({
+			router: {
+				// Route `head`s must read `loaderData`, not data modules, or the data lands in the entry bundle.
+				codeSplittingOptions: {
+					defaultBehavior: [["loader", "component"], ["errorComponent"], ["notFoundComponent"]],
+				},
+			},
+		}),
 		nitro({
-			traceDeps: ["@resvg/resvg-js"],
+			traceDeps: ["@takumi-rs/core"],
+			exportConditions: ["import"],
 			alias: {
 				tslib: tslibEsm,
 			},

@@ -1,26 +1,23 @@
-/**
- * Brand-onboarding persistence helpers. Server-only — used by the API routes
- * under /api/v1/brands and by the server functions in ./onboarding.ts.
- *
- * Separated from onboarding.ts so that client components importing server
- * functions don't transitively pull in db/drizzle/pg (which breaks the
- * client bundle). Server functions live in onboarding.ts; everything else
- * lives here.
- */
+/** Split from onboarding.ts so a client component importing a server function
+ * does not transitively pull in drizzle and pg. */
 
+import { slugify } from "@workspace/lib/app-urls";
+import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
+import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
-import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
+import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
+import {
+	assertCanAddPrompts,
+	assertCompetitorCap,
+	getBrandOrganizationId,
+	withQuotaLock,
+} from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { eq } from "drizzle-orm";
+import { count, desc, eq, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
-
-// ============================================================================
-// Errors
-// ============================================================================
 
 export class BrandConflictError extends Error {
 	constructor(public readonly brandId: string) {
@@ -35,10 +32,6 @@ export class BrandNotFoundError extends Error {
 		this.name = "BrandNotFoundError";
 	}
 }
-
-// ============================================================================
-// Schemas
-// ============================================================================
 
 const competitorInputSchema = z.object({
 	name: z.string().min(1),
@@ -55,13 +48,6 @@ const promptInputSchema = z.object({
 type CompetitorInput = z.infer<typeof competitorInputSchema>;
 type PromptInput = z.infer<typeof promptInputSchema>;
 
-/**
- * POST /api/v1/brands body.
- *
- * The API speaks a single `domains` list to mirror the competitor endpoints.
- * Internally, the first cleaned entry is stored as the brand's `website`
- * (`https://<host>`) and the rest are stored in `additionalDomains`.
- */
 export const createBrandInputSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
@@ -69,9 +55,11 @@ export const createBrandInputSchema = z.object({
 	aliases: z.array(z.string()).optional(),
 	competitors: z.array(competitorInputSchema).optional(),
 	prompts: z.array(promptInputSchema).optional(),
+	/** Omitted, an admin key provisions a new organization — the only way to
+	 * create one over the API. */
+	organizationId: z.string().min(1).optional(),
 });
 
-/** PATCH /api/v1/brands/:brandId body. brandId comes from the URL. */
 export const updateBrandBodySchema = z.object({
 	brandName: z.string().min(1).optional(),
 	domains: z.array(z.string()).min(1).optional(),
@@ -79,7 +67,6 @@ export const updateBrandBodySchema = z.object({
 	enabled: z.boolean().optional(),
 });
 
-/** Wizard save: brand-level fields + new prompts/competitors in one shot. */
 export const wizardOnboardingInputSchema = z.object({
 	brandId: z.string().min(1),
 	brandName: z.string().min(1).optional(),
@@ -90,7 +77,6 @@ export const wizardOnboardingInputSchema = z.object({
 	prompts: z.array(promptInputSchema).optional(),
 });
 
-/** Internal shape for createBrand — matches storage (website + additionalDomains). */
 export interface CreateBrandInput {
 	id: string;
 	name: string;
@@ -99,9 +85,13 @@ export interface CreateBrandInput {
 	aliases?: string[];
 	competitors?: CompetitorInput[];
 	prompts?: PromptInput[];
+	/** Null provisions one named after the brand id, which is right for an admin
+	 * key standing up a tenant and wrong inside an existing workspace. */
+	organizationId?: string | null;
+	conn?: DbConnection;
+	afterCommit?: (task: () => Promise<unknown>) => void;
 }
 
-/** Internal shape for updateBrand — matches storage. */
 export interface UpdateBrandInput {
 	brandId: string;
 	brandName?: string;
@@ -116,17 +106,16 @@ export type WizardOnboardingInput = z.infer<typeof wizardOnboardingInputSchema>;
 export interface BrandResult {
 	id: string;
 	name: string;
+	organizationId: string;
 	domains: string[];
 	aliases: string[];
 	enabled: boolean;
 	onboarded: boolean;
+	enabledModels: string[] | null;
+	delayOverrideHours: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
-
-// ============================================================================
-// Helpers
-// ============================================================================
 
 function validateAndFormatWebsite(url: string): string {
 	const trimmed = url.trim();
@@ -146,20 +135,18 @@ export function buildBrandResult(row: typeof brands.$inferSelect): BrandResult {
 	return {
 		id: row.id,
 		name: row.name,
+		organizationId: row.organizationId,
 		domains: [websiteHost, ...row.additionalDomains],
 		aliases: row.aliases,
 		enabled: row.enabled,
 		onboarded: row.onboarded,
+		enabledModels: row.enabledModels,
+		delayOverrideHours: row.delayOverrideHours,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	};
 }
 
-/**
- * Validation error thrown by the API → internal converters when the supplied
- * `domains` array contains no valid entries after cleaning. Callers should
- * surface this as a 400.
- */
 export class InvalidDomainsError extends Error {
 	constructor(message = "domains: at least one valid domain is required") {
 		super(message);
@@ -174,7 +161,6 @@ function splitDomainsForStorage(domains: string[]): { website: string; additiona
 	return { website: `https://${primary}`, additionalDomains: rest };
 }
 
-/** Convert POST /api/v1/brands body into the internal createBrand input. */
 export function apiCreateInputToInternal(input: z.infer<typeof createBrandInputSchema>): CreateBrandInput {
 	const { website, additionalDomains } = splitDomainsForStorage(input.domains);
 	return {
@@ -185,10 +171,10 @@ export function apiCreateInputToInternal(input: z.infer<typeof createBrandInputS
 		aliases: input.aliases,
 		competitors: input.competitors,
 		prompts: input.prompts,
+		organizationId: input.organizationId ?? null,
 	};
 }
 
-/** Convert PATCH /api/v1/brands/:brandId body into the internal updateBrand input. */
 export function apiUpdateInputToInternal(
 	brandId: string,
 	input: z.infer<typeof updateBrandBodySchema>,
@@ -211,10 +197,12 @@ async function insertCompetitors(args: {
 	brandId: string;
 	websiteHost: string;
 	source: { name: string; domains: string[]; aliases: string[] }[];
+	conn?: DbConnection;
 }): Promise<number> {
 	if (args.source.length === 0) return 0;
+	const conn = args.conn ?? db;
 
-	const existing = await db.query.competitors.findMany({
+	const existing = await conn.query.competitors.findMany({
 		where: eq(competitors.brandId, args.brandId),
 	});
 	const existingDomains = new Set(existing.flatMap((c) => c.domains));
@@ -233,9 +221,9 @@ async function insertCompetitors(args: {
 	}
 	if (toInsert.length === 0) return 0;
 
-	await assertCompetitorCap(args.brandId, toInsert.length);
+	await assertCompetitorCap(args.brandId, toInsert.length, conn);
 
-	await db.insert(competitors).values(toInsert);
+	await conn.insert(competitors).values(toInsert);
 	return toInsert.length;
 }
 
@@ -245,12 +233,16 @@ async function insertPrompts(args: {
 	website: string;
 	source: { value: string; tags: string[]; enabled: boolean }[];
 	dedupeAgainstExisting: boolean;
-}): Promise<number> {
-	if (args.source.length === 0) return 0;
+	conn?: DbConnection;
+	/** The brand row may still be uncommitted, so a lookup would find nothing. */
+	organizationId?: string;
+}): Promise<string[]> {
+	if (args.source.length === 0) return [];
+	const conn = args.conn ?? db;
 
 	const seen = new Set<string>();
 	if (args.dedupeAgainstExisting) {
-		const existing = await db.query.prompts.findMany({
+		const existing = await conn.query.prompts.findMany({
 			where: eq(prompts.brandId, args.brandId),
 		});
 		for (const p of existing) seen.add(p.value.toLowerCase());
@@ -277,20 +269,14 @@ async function insertPrompts(args: {
 			systemTags: computeSystemTags(value, args.brandName, args.website),
 		});
 	}
-	if (rows.length === 0) return 0;
+	if (rows.length === 0) return [];
 
-	// Covers both wizard onboarding and POST /api/v1/brands — the two bulk
-	// prompt-creation surfaces share this chokepoint.
-	await assertCanAddPrompts(await getBrandOrganizationId(args.brandId), rows.filter((r) => r.enabled).length);
+	const organizationId = args.organizationId ?? (await getBrandOrganizationId(args.brandId));
+	await assertCanAddPrompts(organizationId, rows.filter((r) => r.enabled).length, args.conn);
 
-	const inserted = await db.insert(prompts).values(rows).returning({ id: prompts.id });
-	await createMultiplePromptJobSchedulers(inserted.map((r) => r.id));
-	return inserted.length;
+	const inserted = await conn.insert(prompts).values(rows).returning({ id: prompts.id });
+	return inserted.map((r) => r.id);
 }
-
-// ============================================================================
-// createBrand — pure create
-// ============================================================================
 
 export async function createBrand(input: CreateBrandInput): Promise<BrandResult> {
 	const formattedWebsite = validateAndFormatWebsite(input.website);
@@ -299,62 +285,68 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
 
-	// Brands are hard-scoped to an org via a NOT NULL FK. The admin API uses the
-	// supplied id for both records, so materialize the org first. This is a no-op
-	// when an earlier call already created it.
-	//
-	// Both writes share a transaction so a conflicting brand id doesn't strand
-	// the org we just made: brand ids and org ids are independent now, so a
-	// taken brand id no longer implies the org already exists.
-	await db.transaction(async (tx) => {
-		await ensureOrganization({ id: input.id, name: input.name }, tx);
+	// One transaction for the whole aggregate: a brand with none of its prompts
+	// cannot be retried past BrandConflictError.
+	const organizationId = input.organizationId ?? input.id;
+	const write = async (tx: DbConnection) => {
+		if (!input.organizationId) {
+			await ensureOrganization({ id: input.id, name: input.name }, tx);
+		}
+		const slug = await findUnusedBrandSlug(organizationId, slugify(input.name, "brand"), tx);
 
 		const [inserted] = await tx
 			.insert(brands)
 			.values({
 				id: input.id,
-				organizationId: input.id,
+				organizationId,
 				name: input.name,
+				slug,
 				website: formattedWebsite,
 				additionalDomains,
 				aliases,
 				enabled: true,
 				onboarded: true,
 			})
-			.onConflictDoNothing()
+			.onConflictDoNothing({ target: brands.id })
 			.returning({ id: brands.id });
 		if (!inserted) throw new BrandConflictError(input.id);
-	});
 
-	await insertCompetitors({
-		brandId: input.id,
-		websiteHost,
-		source: (input.competitors ?? []).map((c) => ({
-			name: c.name,
-			domains: c.domains ?? [],
-			aliases: c.aliases ?? [],
-		})),
-	});
+		await insertCompetitors({
+			brandId: input.id,
+			websiteHost,
+			source: (input.competitors ?? []).map((c) => ({
+				name: c.name,
+				domains: c.domains ?? [],
+				aliases: c.aliases ?? [],
+			})),
+			conn: tx,
+		});
 
-	await insertPrompts({
-		brandId: input.id,
-		brandName: input.name,
-		website: formattedWebsite,
-		source: (input.prompts ?? []).map((p) => ({
-			value: p.value,
-			tags: sanitizeUserTags(p.tags ?? []),
-			enabled: p.enabled ?? true,
-		})),
-		dedupeAgainstExisting: false,
-	});
+		return await insertPrompts({
+			brandId: input.id,
+			brandName: input.name,
+			website: formattedWebsite,
+			source: (input.prompts ?? []).map((p) => ({
+				value: p.value,
+				tags: sanitizeUserTags(p.tags ?? []),
+				enabled: p.enabled ?? true,
+			})),
+			dedupeAgainstExisting: false,
+			conn: tx,
+			organizationId,
+		});
+	};
+	const promptIds = input.conn ? await write(input.conn) : await claimNewBrandSlug(() => db.transaction(write));
 
-	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.id) });
+	// A scheduler for a rolled-back prompt would outlive it, and it queries
+	// through the pool.
+	const schedule = () => createMultiplePromptJobSchedulers(promptIds);
+	if (input.afterCommit) input.afterCommit(schedule);
+	else await schedule();
+
+	const refreshed = await (input.conn ?? db).query.brands.findFirst({ where: eq(brands.id, input.id) });
 	return buildBrandResult(refreshed!);
 }
-
-// ============================================================================
-// updateBrand — pure brand-level update
-// ============================================================================
 
 export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult> {
 	const existing = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
@@ -381,10 +373,6 @@ export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult>
 	return buildBrandResult(refreshed!);
 }
 
-// ============================================================================
-// Wizard save — brand fields + new prompts/competitors in one shot
-// ============================================================================
-
 export async function saveWizardOnboarding(input: WizardOnboardingInput): Promise<BrandResult> {
 	await updateBrand({
 		brandId: input.brandId,
@@ -400,28 +388,52 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 	if (!existing) throw new BrandNotFoundError(input.brandId);
 	const websiteHost = new URL(existing.website).hostname.replace(/^www\./, "");
 
-	await insertCompetitors({
-		brandId: input.brandId,
-		websiteHost,
-		source: (input.competitors ?? []).map((c) => ({
-			name: c.name,
-			domains: c.domains ?? [],
-			aliases: c.aliases ?? [],
-		})),
-	});
+	// Both inserts check a usage count first, so they run under one lock: two
+	// saves racing each other must not both spend the same last slot.
+	const wizardPromptIds = await withQuotaLock(existing.organizationId, async (tx) => {
+		await insertCompetitors({
+			brandId: input.brandId,
+			websiteHost,
+			source: (input.competitors ?? []).map((c) => ({
+				name: c.name,
+				domains: c.domains ?? [],
+				aliases: c.aliases ?? [],
+			})),
+			conn: tx,
+		});
 
-	await insertPrompts({
-		brandId: input.brandId,
-		brandName: existing.name,
-		website: existing.website,
-		source: (input.prompts ?? []).map((p) => ({
-			value: p.value,
-			tags: sanitizeUserTags(p.tags ?? []),
-			enabled: p.enabled ?? true,
-		})),
-		dedupeAgainstExisting: true,
+		return insertPrompts({
+			brandId: input.brandId,
+			brandName: existing.name,
+			website: existing.website,
+			source: (input.prompts ?? []).map((p) => ({
+				value: p.value,
+				tags: sanitizeUserTags(p.tags ?? []),
+				enabled: p.enabled ?? true,
+			})),
+			dedupeAgainstExisting: true,
+			conn: tx,
+			organizationId: existing.organizationId,
+		});
 	});
+	await createMultiplePromptJobSchedulers(wizardPromptIds);
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);
+}
+
+export interface ListBrandsFilters {
+	limit?: number;
+	offset?: number;
+	scope?: SQL;
+}
+
+export async function listBrands(filters: ListBrandsFilters): Promise<{ data: BrandResult[]; total: number }> {
+	const where = filters.scope;
+	const [totals] = await db.select({ count: count() }).from(brands).where(where);
+	let query = db.select().from(brands).where(where).orderBy(desc(brands.createdAt)).$dynamic();
+	if (filters.limit !== undefined) query = query.limit(filters.limit).offset(filters.offset ?? 0);
+	const rows = await query;
+
+	return { data: rows.map(buildBrandResult), total: totals?.count ?? 0 };
 }

@@ -19,6 +19,19 @@ For each prompt, Elmo shows:
 
 A high visibility score means AI models consistently mention your brand when answering that type of question. A low score suggests an opportunity to improve your content or SEO for that topic.
 
+## How Mentions Are Decided
+
+Elmo finds every place a response uses your brand's name, an alias, or one of its domains as a whole word. It then sends the response to [Jev](https://typesafe.ai), a language model built for judging text, which reads it and decides whether the response is really talking about your brand. Responses that name no tracked company aren't sent.
+
+- **Counted** — the response talks about your brand, or cites a link containing your brand's name or domain. When Jev can't tell either way it counts too, so a real mention is never hidden.
+- **Not counted** — the name means something else ("an apple a day"), refers to a different company with the same name, or the response says it has no information about your brand.
+
+Judged responses show the passage behind each company's assessment. Jev also reads the response's sentiment toward each company: positive, neutral, negative or mixed; the **Sentiment** card on the overview scores them from 0 to 100, where 50 is neutral ([details](/docs/user-guide/sentiment)).
+
+The **Position** card shows where your brand comes among the tracked companies an answer names, on average: 1 means it's named first. Responses show each company's position next to its name. Companies you don't track aren't counted. Like visibility, both count each prompt's latest answers, so the overview's cards, chart and table always agree.
+
+Competitors are judged the same way. When you add a competitor or change a brand's or competitor's names, aliases, or domains, past responses are re-judged for just that company in the background, starting within a couple of minutes (edits made together are handled in one pass) and with the last 30 days first, and every company's position is updated; a new version of the judge re-judges them all. Re-judging covers the last 90 days by default; older responses keep how they were judged at the time, so a long-range chart can shift at that point.
+
 ## Filtering and Sorting
 
 You can filter prompts by tags and sort by score, trend direction, or recency. This helps you focus on:

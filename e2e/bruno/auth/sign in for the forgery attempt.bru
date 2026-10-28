@@ -1,0 +1,27 @@
+meta {
+  name: sign in, so the forgery attempt carries a real session
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-in/email
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "e2e@test.local",
+    "password": "e2e-test-password-123"
+  }
+}
+
+docs {
+  Deliberately asserts nothing. The next two cases have to attempt key creation
+  *as a signed-in user* — a request with no session would be refused for want of
+  one, and would pass whether or not the endpoint is actually blocked. Where a
+  bootstrapped account exists this leaves a cookie behind; where it doesn't, the
+  next cases still hold, because they assert the block's own message rather than
+  a bare status.
+}

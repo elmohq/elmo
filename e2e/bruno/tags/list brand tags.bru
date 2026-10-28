@@ -1,0 +1,45 @@
+meta {
+  name: list the tags in use on a brand
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/tags
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.brandId: eq default
+  res.body.data: isArray
+}
+
+tests {
+  test("a tag reports how many prompts carry it", function() {
+    const byName = Object.fromEntries(res.getBody().data.map((t) => [t.name, t]));
+    expect(byName).to.have.property("bruno-alpha");
+    expect(byName["bruno-alpha"].promptCount).to.equal(2);
+    expect(byName["bruno-alpha"].system).to.equal(false);
+  });
+
+  test("the computed tags are always listed and marked as such", function() {
+    const byName = Object.fromEntries(res.getBody().data.map((t) => [t.name, t]));
+    for (const name of ["branded", "unbranded"]) {
+      expect(byName, `${name} should always be listed`).to.have.property(name);
+      expect(byName[name].system).to.equal(true);
+    }
+  });
+
+  test("system tags come first, then user tags alphabetically", function() {
+    const names = res.getBody().data.map((t) => t.name);
+    expect(names.slice(0, 2).sort()).to.eql(["branded", "unbranded"]);
+    const users = names.slice(2);
+    expect(users).to.eql([...users].sort());
+  });
+}

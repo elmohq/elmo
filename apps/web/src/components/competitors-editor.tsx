@@ -8,6 +8,7 @@
  */
 
 import { IconInfoCircle } from "@tabler/icons-react";
+import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -18,7 +19,6 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { SiteIcon } from "@/components/site-icon";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 export interface CompetitorEntry {
 	_key: string;

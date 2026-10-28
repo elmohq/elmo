@@ -1,7 +1,17 @@
+import type { PlanKey } from "@workspace/config/plans";
+
 export interface AeoVertical {
 	slug: string;
 	/** Display noun used after "AEO for", e.g. "agencies". */
 	audience: string;
+	/** The cloud tier the pricing table points this audience at. */
+	plan: PlanKey;
+	/** Audiences likely to run Docker themselves get self-hosting pitched alongside the cloud. */
+	technical?: boolean;
+	/** Page <h1>, in title case, when "AEO for {Audience}" is not what buyers search. */
+	headline?: string;
+	metaTitle?: string;
+	metaDescription?: string;
 	short: string;
 	intro: string[];
 	/** Illustrative prompts buyers in this vertical ask AI engines. */
@@ -15,6 +25,12 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "agencies",
 		audience: "agencies",
+		plan: "business",
+		technical: true,
+		headline: "AI Visibility Software for Agencies",
+		metaTitle: "AI Visibility & SEO Software for Agencies (White-Label) · Elmo",
+		metaDescription:
+			"White-label AI visibility software for agencies: track every client's presence in ChatGPT, Perplexity and AI Overviews, report under your own brand, and self-host without per-seat fees.",
 		short:
 			"Track AI visibility for every client and report it under your own brand, on an open-source platform you can run at agency scale.",
 		intro: [
@@ -33,7 +49,7 @@ export const aeoVerticals: AeoVertical[] = [
 			},
 			{
 				name: "Turn gaps into a retainer",
-				text: "Every prompt where a client is missing is a concrete content brief. That is the bridge from reporting to billable work.",
+				text: "Every prompt where a client is missing is a concrete content brief, which turns reporting into billable work.",
 			},
 			{
 				name: "White-label the dashboards",
@@ -58,6 +74,12 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "saas",
 		audience: "SaaS companies",
+		plan: "pro",
+		technical: true,
+		headline: "AEO for B2B SaaS",
+		metaTitle: "AEO for B2B SaaS: Tools and Tactics for Software Buyers · Elmo",
+		metaDescription:
+			"How B2B SaaS teams win the 'best [category] software' and 'X vs Y' answers where buyers now build their shortlists, and which AEO tools fit a software company.",
 		short: "Win the 'best [category] software' and 'X vs Y' answers where buyers now build their shortlists.",
 		intro: [
 			"SaaS buyers increasingly ask an AI engine to shortlist tools before they ever reach a vendor site. Best project management software, Notion vs Asana, alternatives to a given tool. If the model does not name you, you are out of the consideration set before the demo.",
@@ -91,6 +113,11 @@ export const aeoVerticals: AeoVertical[] = [
 			"Elmo tracks exactly these prompts across every major engine, shows which competitors get named with or instead of you, and flags when a model gets your features or pricing wrong.",
 		faqs: [
 			{
+				question: "What is the best AEO tool for B2B SaaS?",
+				answer:
+					"There is no single answer, because SaaS teams buy for two different jobs. If you need broad engine coverage and enterprise reporting, the larger hosted platforms cover it. If you want to own the data, audit how the visibility score is calculated, and avoid per-seat pricing across a growing team, a self-hosted open-source tool fits better — Elmo is the most complete one. Whichever you pick, the requirement specific to SaaS is competitor benchmarking on comparison and alternatives prompts, since that is where buyers build shortlists. Compare the options in the AI visibility tool directory.",
+			},
+			{
 				question: "How do I show up when buyers ask AI for software recommendations?",
 				answer:
 					"Publish clear, current content for the comparison and alternatives queries in your category, earn reviews on trusted sources, and track those prompts so you can see where you appear and where a competitor does instead.",
@@ -105,6 +132,8 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "ecommerce",
 		audience: "e-commerce brands",
+		plan: "basic",
+		headline: "AEO for E-Commerce",
 		short: "Make sure AI shopping answers and buying-guide queries surface your products, not just your competitors'.",
 		intro: [
 			"Shoppers ask AI engines to compare products and recommend the best option, and some engines now have dedicated shopping features. Best running shoes for flat feet, cheapest option under a hundred dollars. The answer usually names a few brands and skips the rest.",
@@ -147,6 +176,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "b2b",
 		audience: "B2B companies",
+		plan: "pro",
 		short: "Show up when buyers research categories, vendors, and you, across long and considered purchases.",
 		intro: [
 			"B2B purchases involve a lot of research, and much of it now starts with an AI engine. Buyers ask what a category is, who the serious vendors are, and whether you are credible, long before they fill out a form.",
@@ -193,10 +223,16 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "startups",
 		audience: "startups",
+		plan: "starter",
+		technical: true,
+		headline: "Startup SEO and AI Search Visibility",
+		metaTitle: "Startup SEO in the AI Search Era: A Practical Guide · Elmo",
+		metaDescription:
+			"Startup SEO when a growing share of searches end in an AI answer: which prompts to track first, what to publish, and how to measure visibility on no budget.",
 		short: "Build AI visibility from zero without enterprise pricing, on a tool you can self-host for free.",
 		intro: [
 			"A new brand starts out invisible to AI engines, because there is little for the models to have learned. The job is to build a credible footprint quickly: clear content, early reviews, and mentions on sources the models trust.",
-			"Budgets are tight, which is the catch with most tools in this space. An open-source platform you self-host for free lets you start measuring on day one and only pay for the API calls you actually make.",
+			"Budgets are tight, and most tools in this space are priced for larger companies. An open-source platform you self-host for free lets you start measuring on day one and only pay for the API calls you actually make.",
 		],
 		examplePrompts: ["best [new category] tools", "alternatives to [incumbent]", "what is [your brand]"],
 		plays: [
@@ -235,6 +271,12 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "enterprise",
 		audience: "enterprises",
+		plan: "business",
+		technical: true,
+		headline: "Enterprise AI Visibility Platforms",
+		metaTitle: "Enterprise AI Visibility & AEO Platform Requirements · Elmo",
+		metaDescription:
+			"What an enterprise AEO platform has to do: multi-brand tracking, data residency, SSO, export, and a visibility methodology your analysts can audit rather than trust.",
 		short: "Track AI visibility at scale while keeping your prompts and history on your own infrastructure.",
 		intro: [
 			"Large brands have the most to lose when an AI engine describes them wrongly, and the most scrutiny over where their data goes. Many AI visibility tools are closed and hosted, which means handing your prompt strategy and history to a third party.",
@@ -277,9 +319,10 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "healthcare",
 		audience: "healthcare brands",
+		plan: "basic",
 		short: "Monitor and correct how AI engines describe your healthcare brand, where accuracy is not optional.",
 		intro: [
-			"Health topics are exactly where AI engines are most cautious, and where errors do the most damage. An inaccurate description of a provider, product, or service is a real risk, not a cosmetic one.",
+			"Health topics are exactly where AI engines are most cautious, and where errors do the most damage. An inaccurate description of a provider, product, or service carries real risk.",
 			"Accuracy and data control both matter here. Authoritative, well-sourced content shapes what the models say, and self-hosting keeps sensitive prompt data on your own infrastructure rather than a vendor's.",
 		],
 		examplePrompts: ["is [treatment] safe", "best [specialty] near me", "what does [brand] treat"],
@@ -319,6 +362,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "financial-services",
 		audience: "financial services",
+		plan: "pro",
 		short: "Track how AI engines describe your financial brand, with the accuracy and data control the sector demands.",
 		intro: [
 			"Finance is another area where engines tread carefully, and where a wrong answer about rates, products, or eligibility carries compliance weight. Buyers ask AI engines for recommendations and comparisons all the same.",
@@ -361,6 +405,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "law-firms",
 		audience: "law firms",
+		plan: "basic",
 		short:
 			"Win the 'best [practice area] lawyer near me' answers, where the AI response now stands between a potential client and a consultation.",
 		intro: [
@@ -414,6 +459,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "local-business",
 		audience: "local businesses",
+		plan: "starter",
 		short:
 			"Show up when someone asks an AI assistant for the best option near them, across every location you operate.",
 		intro: [
@@ -462,6 +508,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "real-estate",
 		audience: "real estate companies",
+		plan: "basic",
 		short:
 			"Be the brokerage an AI assistant names when someone asks how to buy, sell, or find an agent in your market.",
 		intro: [
@@ -477,7 +524,7 @@ export const aeoVerticals: AeoVertical[] = [
 		plays: [
 			{
 				name: "Own the neighbourhood question",
-				text: "Portals cover cities; almost nobody covers neighbourhoods well. Publish current, specific analysis at that level and you become the citable source for questions the portals answer vaguely.",
+				text: "Portals cover cities; almost nobody covers neighbourhoods well. Publishing current, specific analysis at that level makes you the citable source for questions the portals answer vaguely.",
 			},
 			{
 				name: "Answer the commission question directly",
@@ -510,6 +557,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "education",
 		audience: "education institutions",
+		plan: "pro",
 		short:
 			"Reach prospective students at the point where they now start: asking an AI assistant which programme is worth it.",
 		intro: [
@@ -558,6 +606,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "travel-hospitality",
 		audience: "travel and hospitality brands",
+		plan: "basic",
 		short:
 			"Get named in the itineraries and recommendations AI assistants now build for travellers before they ever reach a booking site.",
 		intro: [
@@ -606,6 +655,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "manufacturing",
 		audience: "manufacturers",
+		plan: "basic",
 		short: "Be the supplier an AI assistant names when an engineer or buyer asks who makes the part they need.",
 		intro: [
 			"Industrial buying starts with a specification, not a brand. An engineer describes a requirement — material, tolerance, certification, volume — and asks who can supply it. That question increasingly goes to an assistant, and the answer is a short list of manufacturers assembled from spec sheets and technical documentation.",
@@ -653,6 +703,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "insurance",
 		audience: "insurance companies",
+		plan: "pro",
 		short: "Be named accurately when someone asks an AI assistant which policy to buy and what it actually covers.",
 		intro: [
 			"Insurance shopping is a research problem before it is a purchase, and the research has moved to assistants. What does this policy cover, what is a reasonable premium, which carrier handles claims well. The answers shape the shortlist before any quote form is filled in.",
@@ -700,6 +751,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "automotive",
 		audience: "automotive brands",
+		plan: "pro",
 		short:
 			"Get named in the comparisons AI assistants build when someone is deciding which vehicle or service to choose.",
 		intro: [
@@ -748,6 +800,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "nonprofits",
 		audience: "nonprofits",
+		plan: "starter",
 		short:
 			"Be the organisation an AI assistant names when someone asks where to donate or who is doing the work in your cause area.",
 		intro: [
@@ -796,6 +849,8 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "cybersecurity",
 		audience: "cybersecurity companies",
+		plan: "pro",
+		technical: true,
 		short:
 			"Win the vendor shortlist that security buyers now assemble by asking an AI assistant before they call an analyst.",
 		intro: [
@@ -844,6 +899,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "recruiting",
 		audience: "recruiting and HR companies",
+		plan: "basic",
 		short: "Be named when employers ask an AI assistant which staffing partner or HR platform to use.",
 		intro: [
 			"Both sides of the recruiting market now research with assistants. Employers ask which agencies specialise in a role or region and which HR platforms fit their size; candidates ask which firms are worth working with. Each conversation produces a short list, and neither runs through your website first.",
@@ -891,6 +947,8 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "dev-tools",
 		audience: "developer tools companies",
+		plan: "pro",
+		technical: true,
 		short:
 			"Get recommended inside the coding assistants and AI answers developers now consult before choosing a library or platform.",
 		intro: [
@@ -942,6 +1000,21 @@ export const aeoVerticals: AeoVertical[] = [
 		],
 	},
 ];
+
+const MINOR_WORDS = new Set(["a", "an", "and", "for", "in", "of", "on", "or", "the", "to", "vs"]);
+
+/** Capitalises each word and each hyphenated part, leaving minor words and existing capitals (SaaS, HR) alone. */
+function titleCase(text: string) {
+	return text
+		.split(" ")
+		.map((word, i) => (i > 0 && MINOR_WORDS.has(word) ? word : word.replace(/(^|-)(\w)/g, (m) => m.toUpperCase())))
+		.join(" ");
+}
+
+/** The page's title, as its <h1> and wherever the page is listed. */
+export function aeoHeadline(v: AeoVertical): string {
+	return v.headline ?? titleCase(`AEO for ${v.audience}`);
+}
 
 export function getAeoVertical(slug: string): AeoVertical | undefined {
 	return aeoVerticals.find((v) => v.slug === slug);

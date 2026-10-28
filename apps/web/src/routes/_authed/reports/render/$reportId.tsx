@@ -23,6 +23,7 @@ import {
 	type ReportPromptRun,
 	selectRepresentativePrompts,
 } from "@workspace/lib/report-metrics";
+import { isPromptBranded } from "@workspace/lib/tag-utils";
 import { BarChart3, Rocket, Target } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { PromptChartPrint } from "@/components/prompt-chart-print";
@@ -76,21 +77,6 @@ const loadReportData = createServerFn({ method: "GET" })
 		if (!hasReportAccess(session)) throw new Error("Not authorized");
 		return getReportByIdFn({ data: { reportId } });
 	});
-
-function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
-	const promptLower = promptValue.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
-	try {
-		const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
-		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
-		const domainWithoutTld = domain.split(".")[0];
-		return (
-			promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld)
-		);
-	} catch {
-		return promptLower.includes(brandNameLower);
-	}
-}
 
 type ReportRecord = NonNullable<Awaited<ReturnType<typeof loadReportData>>>;
 
@@ -269,8 +255,8 @@ function buildReportModel(report: ReportRecord) {
 
 	const { simpleRuns, fullRuns, chartRuns } = flattenPromptRuns(data.promptRuns);
 
-	const brandNameLower = report.brandName.toLowerCase().trim();
-	const isBrandName = (name: string) => name.toLowerCase().trim() === brandNameLower;
+	const brandNames = new Set([report.brandName, ...report.brandAliases].map((name) => name.toLowerCase().trim()));
+	const isBrandName = (name: string) => brandNames.has(name.toLowerCase().trim());
 	const filteredCompetitors = dedupeCompetitors(data.competitors, isBrandName);
 
 	// Core metrics
@@ -281,7 +267,7 @@ function buildReportModel(report: ReportRecord) {
 
 	const selectedPrompts = selectRepresentativePrompts(promptSoVs, (id: string) => {
 		const p = promptMap.get(id);
-		return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite) : false;
+		return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite, report.brandAliases) : false;
 	});
 
 	// Rich analysis
@@ -809,6 +795,31 @@ function OpportunitiesPage({
 	);
 }
 
+/** How much room the brand has left to gain. The badge and the recommendation
+ *  read off the same SoV tiers, so they're resolved together. */
+function sovOpportunity(overallSoV: number | null) {
+	const sov = overallSoV ?? 0;
+	if (sov < 20) {
+		return {
+			label: "High",
+			badgeClass: "bg-rose-50 text-rose-700",
+			recommendation: "Prioritize content creation to establish AI presence",
+		};
+	}
+	if (sov < 40) {
+		return {
+			label: "Medium",
+			badgeClass: "bg-amber-50 text-amber-700",
+			recommendation: "Expand content to increase brand share of voice",
+		};
+	}
+	return {
+		label: "Low",
+		badgeClass: "bg-emerald-50 text-emerald-700",
+		recommendation: "Maintain leadership and defend competitive position",
+	};
+}
+
 function NextStepsPage({
 	report,
 	branding,
@@ -819,6 +830,7 @@ function NextStepsPage({
 	model: ReportModel;
 }) {
 	const { overallSoV, promptSoVs, promptMap, sovColor, totalPrompts, promptsWithMentions } = model;
+	const opportunity = sovOpportunity(overallSoV);
 	return (
 		<>
 			{/* ===== SoV OPPORTUNITY + WHAT TO DO NEXT ===== */}
@@ -850,18 +862,12 @@ function NextStepsPage({
 								</td>
 								<td className="text-center py-3 px-4">
 									<span
-										className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold ${(overallSoV ?? 0) < 20 ? "bg-rose-50 text-rose-700" : (overallSoV ?? 0) < 40 ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}
+										className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold ${opportunity.badgeClass}`}
 									>
-										{(overallSoV ?? 0) < 20 ? "High" : (overallSoV ?? 0) < 40 ? "Medium" : "Low"}
+										{opportunity.label}
 									</span>
 								</td>
-								<td className="py-3 px-4 text-xs text-slate-600">
-									{(overallSoV ?? 0) < 20
-										? "Prioritize content creation to establish AI presence"
-										: (overallSoV ?? 0) < 40
-											? "Expand content to increase brand share of voice"
-											: "Maintain leadership and defend competitive position"}
-								</td>
+								<td className="py-3 px-4 text-xs text-slate-600">{opportunity.recommendation}</td>
 							</tr>
 						</tbody>
 					</table>

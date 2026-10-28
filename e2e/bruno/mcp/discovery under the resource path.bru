@@ -1,0 +1,26 @@
+meta {
+  name: the same document under the resource path
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/.well-known/oauth-protected-resource/api/mcp
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the two spellings agree", function() {
+    expect(res.body.resource).to.contain("/api/mcp");
+  });
+}
+
+docs {
+  RFC 9728 §3.1 puts the resource's own path after the well-known prefix.
+  Clients disagree about which spelling to use, so both are served.
+}

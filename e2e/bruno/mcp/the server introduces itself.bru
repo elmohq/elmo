@@ -1,0 +1,49 @@
+meta {
+  name: the server introduces itself
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+  Accept: application/json, text/event-stream
+}
+
+body:json {
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": {},
+      "clientInfo": { "name": "bruno", "version": "1" }
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.result.serverInfo.name: eq elmo
+}
+
+tests {
+  test("the reply is one buffered JSON body, not a stream", function() {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+  });
+
+  test("it tells a model where to start", function() {
+    expect(res.body.result.instructions).to.contain("list_brands");
+  });
+}
+
+docs {
+  A buffered reply rather than SSE: every tool here is request/response, and a
+  stream that outlives the handler is a stream a serverless platform may cut.
+}

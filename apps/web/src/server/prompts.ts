@@ -1,33 +1,51 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
+import { extractDomain } from "@workspace/lib/citations/domain-categories";
+import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { assertAllowed, assertPromptSaveAllowed, decidePromptCap, promptSaveDelta } from "@workspace/lib/entitlements";
+import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
+import { brands, competitors, promptRuns, prompts, runMentions, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import {
+	assertAllowed,
+	assertPromptSaveAllowed,
+	decidePromptCap,
+	promptSaveDelta,
+	withQuotaLock,
+} from "@workspace/lib/entitlements";
+import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { extractTextContent } from "@workspace/lib/text-extraction";
+import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+
+import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
-import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
-import { extractDomain } from "@/lib/domain-categories";
-import { classifyUrl } from "@/lib/domain-categories.server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
+import {
+	getPromptWebQueryCounts,
+	getResponseMatches,
+	getResponseSentimentCounts,
+	type ResponseSearchScope,
+} from "@/lib/postgres-read";
 import {
 	type CitationUrlStats,
-	getPromptCitationUrlStats,
-	getPromptCompetitorDailyStats,
-	getPromptDailyStats,
+	getCitationUrlStats,
+	getCompetitorTotals,
+	getMentionTotals,
+	getPerPromptRunStats,
 	getPromptsFirstEvaluatedAt,
-	getPromptsSummary,
-	getPromptWebQueriesForMapping,
-	getPromptWebQueryCounts,
-} from "@/lib/postgres-read";
+	type PerPromptRunStats,
+} from "@/lib/rollup-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
+import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { resolveBrandLookbackDays } from "@/server/brand-window";
+import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
+import { toResponse } from "@/server/responses";
 // Server Functions
 // ============================================================================
 
@@ -37,8 +55,7 @@ import { planPromptSave } from "@/server/prompt-save";
 export const getPromptMetadataFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string(), promptId: z.string() }))
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const prompt = await db.query.prompts.findFirst({
 			where: and(eq(prompts.id, data.promptId), eq(prompts.brandId, data.brandId)),
@@ -82,66 +99,6 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 /**
  * Get prompts summary for a brand (visibility scores, tags, etc.)
  */
-type PromptDailyStat = Awaited<ReturnType<typeof getPromptDailyStats>>[number];
-type PromptCompetitorDailyStat = Awaited<ReturnType<typeof getPromptCompetitorDailyStats>>[number];
-type PromptWebQuery = Awaited<ReturnType<typeof getPromptWebQueriesForMapping>>[number];
-type PromptSummaryStat = Awaited<ReturnType<typeof getPromptsSummary>>[number];
-
-function buildVisibilityChartData(args: {
-	dateRange: string[];
-	dailyStats: PromptDailyStat[];
-	competitorStats: PromptCompetitorDailyStat[];
-	brandId: string;
-	competitors: { id: string; name: string }[];
-}): { date: string; [seriesId: string]: number | string | null }[] {
-	const runsByDate = new Map(args.dailyStats.map((stat) => [String(stat.date), stat]));
-	const mentionsByDate = new Map<string, Map<string, number>>();
-	for (const stat of args.competitorStats) {
-		const date = String(stat.date);
-		const byCompetitor = mentionsByDate.get(date) ?? new Map<string, number>();
-		byCompetitor.set(stat.competitor_name, Number(stat.mention_count));
-		mentionsByDate.set(date, byCompetitor);
-	}
-
-	return args.dateRange.map((date) => {
-		const dayStat = runsByDate.get(date);
-		const totalRuns = Number(dayStat?.total_runs ?? 0);
-		const rate = (count: number) => (totalRuns === 0 ? null : Math.round((count / totalRuns) * 100));
-		const mentions = mentionsByDate.get(date);
-		const point: { date: string; [seriesId: string]: number | string | null } = { date };
-		point[args.brandId] = rate(Number(dayStat?.brand_mentioned_count ?? 0));
-		for (const competitor of args.competitors) point[competitor.id] = rate(mentions?.get(competitor.name) ?? 0);
-		return point;
-	});
-}
-
-function earliestQuery(rows: PromptWebQuery[]): string | undefined {
-	const oldest = rows[0];
-	if (!oldest) return undefined;
-	const oldestTime = new Date(oldest.created_at_iso).getTime();
-	return rows
-		.filter((row) => new Date(row.created_at_iso).getTime() === oldestTime)
-		.map((row) => row.web_query)
-		.sort()[0];
-}
-
-/**
- * The query this prompt first triggered, overall and per model — what labels the
- * chart's series. Rows arrive oldest-first.
- */
-function webQueryMappings(
-	rows: PromptWebQuery[],
-	promptId: string,
-): { webQueryMapping: Record<string, string>; modelWebQueryMappings: Record<string, Record<string, string>> } {
-	const overall = earliestQuery(rows);
-	const modelWebQueryMappings: Record<string, Record<string, string>> = {};
-	for (const model of new Set(rows.map((row) => row.model))) {
-		const query = earliestQuery(rows.filter((row) => row.model === model));
-		if (query) modelWebQueryMappings[model] = { [promptId]: query };
-	}
-	return { webQueryMapping: overall ? { [promptId]: overall } : {}, modelWebQueryMappings };
-}
-
 function summarizePrompt(
 	prompt: {
 		id: string;
@@ -151,15 +108,19 @@ function summarizePrompt(
 		tags: string[] | null;
 		systemTags: string[] | null;
 	},
-	stats: PromptSummaryStat | undefined,
+	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
 ) {
 	const userTags = prompt.tags || [];
 	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
 	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
-	const totalRuns = Number(stats?.total_runs ?? 0);
-	const brandMentionRate = Number(stats?.brand_mention_rate ?? 0);
-	const competitorMentionRate = Number(stats?.competitor_mention_rate ?? 0);
+	const totalRuns = stats?.runs ?? 0;
+	// The API publishes these ratios unrounded; the dashboard renders
+	// percentages, and this is where it rounds.
+	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
+	const brandMentionRate = Math.round(ratio(stats?.brand_mentioned_runs) * 100);
+	const competitorMentionRate = Math.round(ratio(stats?.competitor_runs) * 100);
+	const weightedMentions = (stats?.brand_mentioned_runs ?? 0) * 2 + (stats?.competitor_mentions ?? 0);
 
 	return {
 		id: prompt.id,
@@ -169,7 +130,7 @@ function summarizePrompt(
 		totalRuns,
 		brandMentionRate,
 		competitorMentionRate,
-		averageWeightedMentions: totalRuns > 0 ? Number(stats?.total_weighted_mentions ?? 0) / totalRuns : 0,
+		averageWeightedMentions: totalRuns > 0 ? weightedMentions / totalRuns : 0,
 		hasVisibilityData: totalRuns > 0 && (brandMentionRate > 0 || competitorMentionRate > 0),
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
@@ -195,7 +156,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			lookback: z.string().optional().default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
 			tags: z.string().optional(),
@@ -203,8 +164,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const allPrompts = await db
 			.select()
@@ -219,12 +179,20 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		}
 
 		const timezone = resolveTimezone(data.timezone, "UTC");
-		const { fromDateStr, toDateStr } = getTimezoneLookbackRange((data.lookback || "1m") as LookbackPeriod, timezone);
+		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(data.lookback, timezone);
 
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
 		const [summaryData, firstEvaluatedData] = await Promise.all([
-			getPromptsSummary(data.brandId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model, promptIds),
+			getPerPromptRunStats({
+				brandId: data.brandId,
+				from: fromDateStr,
+				to: toDateStr,
+				timezone,
+				promptIds,
+				model: data.model,
+				webSearchEnabled,
+			}),
 			getPromptsFirstEvaluatedAt(data.brandId, promptIds),
 		]);
 
@@ -233,7 +201,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 
 		// Collect all user tags (system tags are added separately)
 		const allUserTags = new Set<string>();
-		const tagFilter = data.tags?.split(",").filter(Boolean) || [];
+		const tagFilter = parseTagFilter(data.tags);
 
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
@@ -292,9 +260,7 @@ function computePromptCitationStats(input: {
 		() => input.promptValue,
 	);
 
-	const specificUrls = rollUpCitationUrls(urlStats, (domain, url, title) =>
-		classifyUrl(domain, url, title, input.brandDomains, input.competitorDomains),
-	);
+	const specificUrls = rollUpCitationUrls(urlStats, input.brandDomains, input.competitorDomains);
 	const domainDistribution = rollUpCitationDomains(specificUrls);
 	const { categoryCounts, totalCitations, pageTypeDistribution } = tallyCitations(specificUrls);
 	if (totalCitations === 0) return undefined;
@@ -310,6 +276,22 @@ function computePromptCitationStats(input: {
 	};
 }
 
+/** Run window for the prompt detail endpoints: the last `days` up to now, or —
+ *  for a custom range — the `days` UTC calendar days ending on `endDate`. */
+function promptRunWindow(days: number, endDate?: string): { fromDate: Date; toDate: Date } {
+	if (!endDate) {
+		const toDate = new Date();
+		const fromDate = new Date(toDate);
+		fromDate.setDate(fromDate.getDate() - days);
+		return { fromDate, toDate };
+	}
+	const toDate = new Date(`${endDate}T00:00:00Z`);
+	toDate.setUTCDate(toDate.getUTCDate() + 1);
+	const fromDate = new Date(toDate);
+	fromDate.setUTCDate(fromDate.getUTCDate() - days);
+	return { fromDate, toDate };
+}
+
 /**
  * Get stats for a single prompt (mentions, web queries, citations)
  * Replicates: apps/web/src/app/api/prompts/[promptId]/stats/route.ts
@@ -318,7 +300,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			promptId: z.string(),
-			days: z.number().optional().default(7),
+			lookback: lookbackSchema.default("1w"),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -333,86 +315,42 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		if (prompt.length === 0) throw new Error("Prompt not found");
 		await requireBrandAccess(session.user.id, prompt[0].brandId);
 
-		const fromDate = new Date();
-		fromDate.setDate(fromDate.getDate() - data.days);
-		const toDate = new Date();
-		const fromDateStr = fromDate.toISOString().split("T")[0];
-		const toDateStr = toDate.toISOString().split("T")[0];
-		const timezone = "UTC";
-		const timeCondition = gte(promptRuns.createdAt, fromDate);
-
-		const [mentionStatsResult, competitorMentionsResult] = await Promise.all([
-			// Total runs + brand mentions
-			db
-				.select({
-					totalRuns: count(),
-					brandMentions: sql<number>`SUM(CASE WHEN ${promptRuns.brandMentioned} THEN 1 ELSE 0 END)`,
-				})
-				.from(promptRuns)
-				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
-
-			// Competitor mentions (separate to avoid unnest issues)
-			db
-				.select({ competitorsMentioned: promptRuns.competitorsMentioned })
-				.from(promptRuns)
-				.where(
-					and(
-						eq(promptRuns.promptId, data.promptId),
-						timeCondition,
-						sql`array_length(${promptRuns.competitorsMentioned}, 1) > 0`,
-					),
-				),
+		const { fromDate, toDate } = promptRunWindow(
+			await resolveBrandLookbackDays(prompt[0].brandId, data.lookback),
+			customRangeEnd(data.lookback),
+		);
+		// A rolling window, like the runs list beside it; the rollups answer it to the quarter hour.
+		const scope = {
+			brandId: prompt[0].brandId,
+			from: bucketStart(fromDate).toISOString(),
+			to: toDate.toISOString(),
+			timezone: "UTC",
+			promptIds: [data.promptId],
+		};
+		const [mentionTotals, competitorMentions, brandResult, allCompetitors] = await Promise.all([
+			getMentionTotals(scope),
+			getCompetitorTotals(scope),
+			db.select({ name: brands.name }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
+			db.select({ name: competitors.name }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
 
 		// ---- Process mention stats ----
-		const mentionData = mentionStatsResult[0];
 		const mentionStats: { name: string; count: number }[] = [];
 
-		if (mentionData) {
-			const [brandResult, allCompetitors] = await Promise.all([
-				db.select({ name: brands.name }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
-				db.select({ name: competitors.name }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
-			]);
+		const brandName = brandResult[0]?.name;
+		if (brandName) {
+			mentionStats.push({ name: brandName, count: mentionTotals.brand_mentioned_runs });
+		}
 
-			const brandName = brandResult[0]?.name;
-			if (brandName) {
-				mentionStats.push({ name: brandName, count: Number(mentionData.brandMentions) });
-			}
+		// Only current competitors, each listed once (two rows can share a name) even when no run named it.
+		const mentionsByName = new Map(competitorMentions.map((row) => [row.competitor, row.runs]));
+		for (const name of new Set(allCompetitors.map((c) => c.name))) {
+			mentionStats.push({ name, count: mentionsByName.get(name) ?? 0 });
+		}
 
-			const competitorCounts: Record<string, number> = {};
-			allCompetitors.forEach((c) => {
-				competitorCounts[c.name] = 0;
-			});
-
-			competitorMentionsResult.forEach((row: any) => {
-				(row.competitorsMentioned || []).forEach((name: string) => {
-					if (name?.trim() && Object.hasOwn(competitorCounts, name)) {
-						competitorCounts[name] += 1;
-					}
-				});
-			});
-
-			Object.entries(competitorCounts).forEach(([name, cnt]) => {
-				mentionStats.push({ name, count: cnt });
-			});
-
-			// "no brand mentions" category
-			const noMentionRuns = await db
-				.select({ count: count() })
-				.from(promptRuns)
-				.where(
-					and(
-						eq(promptRuns.promptId, data.promptId),
-						timeCondition,
-						eq(promptRuns.brandMentioned, false),
-						sql`array_length(${promptRuns.competitorsMentioned}, 1) IS NULL OR array_length(${promptRuns.competitorsMentioned}, 1) = 0`,
-					),
-				);
-
-			const noMentionCount = Number(noMentionRuns[0]?.count || 0);
-			if (noMentionCount > 0) {
-				mentionStats.push({ name: "(no brand mentions)", count: noMentionCount });
-			}
+		const noMentionCount = mentionTotals.no_mention_runs;
+		if (noMentionCount > 0) {
+			mentionStats.push({ name: "(no brand mentions)", count: noMentionCount });
 		}
 
 		mentionStats.sort((a, b) => (a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count));
@@ -435,7 +373,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
 		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
 
-		const urlStats = await getPromptCitationUrlStats(data.promptId, fromDateStr, toDateStr, timezone);
+		const urlStats = await getCitationUrlStats(scope);
 
 		const citationStats = computePromptCitationStats({
 			urlStats,
@@ -452,7 +390,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			aggregations: {
 				mentionStats,
 				citationStats,
-				totalRuns: Number(mentionData?.totalRuns || 0),
+				totalRuns: mentionTotals.runs,
 			},
 		};
 	});
@@ -466,42 +404,47 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 			promptId: z.string(),
 			page: z.number().optional().default(1),
 			limit: z.number().optional().default(10),
-			days: z.number().optional().default(7),
+			lookback: lookbackSchema.default("1w"),
+			sentiment: sentimentFilterSchema.optional(),
+			sort: responseSortSchema.default("newest"),
 		}),
 	)
 	.handler(async ({ data }) => {
+		const session = await requireAuthSession();
+
 		const prompt = await db.query.prompts.findFirst({
 			where: eq(prompts.id, data.promptId),
 		});
 		if (!prompt) throw new Error("Prompt not found");
 
-		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, prompt.brandId);
 
-		const fromDate = new Date();
-		fromDate.setDate(fromDate.getDate() - data.days);
-
+		const { fromDate, toDate } = promptRunWindow(
+			await resolveBrandLookbackDays(prompt.brandId, data.lookback),
+			customRangeEnd(data.lookback),
+		);
+		// The same read as the Responses page, over this prompt and the rolling window beside it.
+		const scope: ResponseSearchScope = {
+			brandId: prompt.brandId,
+			from: fromDate.toISOString(),
+			to: toDate.toISOString(),
+			timezone: "UTC",
+			promptIds: [data.promptId],
+		};
 		const offset = (data.page - 1) * data.limit;
-
-		const [runs, totalResult] = await Promise.all([
-			db.query.promptRuns.findMany({
-				where: and(eq(promptRuns.promptId, data.promptId), gte(promptRuns.createdAt, fromDate)),
-				orderBy: desc(promptRuns.createdAt),
-				limit: data.limit,
-				offset,
-			}),
-			db
-				.select({ count: count() })
-				.from(promptRuns)
-				.where(and(eq(promptRuns.promptId, data.promptId), gte(promptRuns.createdAt, fromDate))),
+		const [rows, sentimentFilterCounts] = await Promise.all([
+			getResponseMatches({ ...scope, sentiment: data.sentiment }, data.limit, offset, data.sort),
+			getResponseSentimentCounts(scope),
 		]);
-
+		const total = data.sentiment ? sentimentFilterCounts[data.sentiment] : sentimentFilterCounts.all;
 		return {
-			runs: runs.map((r) => ({ ...r, rawOutput: r.rawOutput as {} })),
-			total: totalResult[0]?.count || 0,
+			runs: rows.map(toResponse),
+			total,
+			/** Before the sentiment filter narrows them. */
+			sentimentFilterCounts,
 			page: data.page,
 			limit: data.limit,
-			hasMore: offset + runs.length < (totalResult[0]?.count || 0),
+			hasMore: offset + rows.length < total,
 		};
 	});
 
@@ -530,8 +473,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, data.brandId),
@@ -539,7 +481,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		if (!brand) throw new Error("Brand not found");
 
 		const existingRows = await db
-			.select({ id: prompts.id, enabled: prompts.enabled, premiumModels: prompts.premiumModels })
+			.select({ id: prompts.id, value: prompts.value, enabled: prompts.enabled, premiumModels: prompts.premiumModels })
 			.from(prompts)
 			.where(eq(prompts.brandId, data.brandId));
 		const existingIds = new Set(existingRows.map((p) => p.id));
@@ -562,6 +504,12 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
+			const retexted = updates.filter(({ id, prompt }) => existingById.get(id)?.value !== prompt.value);
+			await markPromptRunsDirty(
+				tx,
+				data.brandId,
+				retexted.map(({ id }) => id),
+			);
 
 			if (inserts.length > 0) {
 				await tx.insert(prompts).values(
@@ -596,114 +544,32 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		return saved;
 	});
 
-export const getPromptChartDataFn = createServerFn({ method: "GET" })
-	.validator(
-		z.object({
-			brandId: z.string(),
-			promptId: z.string(),
-			lookback: z.string().optional().default("1m"),
-			webSearchEnabled: z.string().optional(),
-			model: z.string().optional(),
-			timezone: z.string().optional(),
-		}),
-	)
-	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-
-		const timezone = resolveTimezone(data.timezone);
-		const lookbackParam = (data.lookback || "1m") as LookbackPeriod;
-		const { fromDateStr } = getTimezoneLookbackRange(lookbackParam, timezone);
-		// "all" leaves the query unbounded below; the chart still ends today, and
-		// its start is pulled back to the first day with data once that is known.
-		const toDateStr = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
-		const endDate = new Date(toDateStr);
-		let startDate = fromDateStr ? new Date(fromDateStr) : new Date();
-
-		const [promptData, brandData, competitorsData] = await Promise.all([
-			db
-				.select({ id: prompts.id, value: prompts.value, brandId: prompts.brandId })
-				.from(prompts)
-				.where(eq(prompts.id, data.promptId))
-				.limit(1),
-			db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
-			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
-		]);
-
-		if (promptData.length === 0) throw new Error("Prompt not found");
-		if (brandData.length === 0) throw new Error("Brand not found");
-		if (promptData[0].brandId !== data.brandId) throw new Error("Access denied");
-
-		const prompt = promptData[0];
-		const brand = brandData[0];
-		const brandCompetitors = competitorsData;
-
-		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
-
-		const [dailyStats, competitorStats, webQueryData] = await Promise.all([
-			getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model),
-			getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model),
-			getPromptWebQueriesForMapping(data.promptId, fromDateStr, toDateStr, timezone),
-		]);
-
-		if (lookbackParam === "all" && dailyStats.length > 0) {
-			const sortedDates = dailyStats.map((s) => String(s.date)).sort();
-			startDate = new Date(sortedDates[0]);
-		}
-
-		const dateRange = generateDateRange(startDate, endDate);
-		const sortedCompetitors = [...brandCompetitors].sort((a, b) => a.name.localeCompare(b.name));
-		const chartData = buildVisibilityChartData({
-			dateRange,
-			dailyStats,
-			competitorStats,
-			brandId: brand.id,
-			competitors: sortedCompetitors,
-		});
-
-		const totalRuns = dailyStats.reduce((sum, s) => sum + Number(s.total_runs), 0);
-		const seriesIds = [brand.id, ...sortedCompetitors.map((c) => c.id)];
-		const hasVisibilityData = chartData.some((point) => seriesIds.some((id) => Number(point[id] ?? 0) > 0));
-		const lastBrandVisibility =
-			(chartData.filter((point) => point[brand.id] !== null).pop()?.[brand.id] as number | undefined) ?? null;
-		const { webQueryMapping, modelWebQueryMappings } = webQueryMappings(webQueryData, data.promptId);
-
-		return {
-			prompt: { id: prompt.id, value: prompt.value },
-			chartData,
-			brand,
-			competitors: brandCompetitors,
-			totalRuns,
-			hasVisibilityData,
-			lastBrandVisibility,
-			webQueryMapping,
-			modelWebQueryMappings,
-		};
-	});
-
-// ============================================================================
-// Web Query Lookup (for OptimizeButton)
-// ============================================================================
-
 export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
 			promptId: z.string(),
-			lookback: z.string().optional().default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const timezone = resolveTimezone(data.timezone, "UTC");
-		const { fromDateStr } = getTimezoneLookbackRange((data.lookback || "1m") as LookbackPeriod, timezone);
-		const toDateStr = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
+		const range = getTimezoneLookbackRange(data.lookback, timezone);
+		const toDateStr = range.toDateStr ?? new Date().toLocaleDateString("en-CA", { timeZone: timezone });
+		const fromDateStr = range.fromDateStr;
 
-		const webQueryData = await getPromptWebQueryCounts(data.promptId, fromDateStr, toDateStr, timezone, data.model);
+		const webQueryData = await getPromptWebQueryCounts(
+			data.brandId,
+			data.promptId,
+			fromDateStr,
+			toDateStr,
+			timezone,
+			data.model,
+		);
 
 		let webQuery: string | null = null;
 		let maxOverallCount = 0;

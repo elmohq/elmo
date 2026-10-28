@@ -1,0 +1,40 @@
+meta {
+  name: another tenant's brand reads as one that does not exist
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": { "name": "get_brand", "arguments": { "brandId": "{{nikeBrandId}}" } }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.result.isError: eq true
+}
+
+tests {
+  test("worded as absence, with nothing said about who holds it", function() {
+    const message = res.body.result.content[0].text;
+    expect(message).to.contain("not found");
+    expect(message).to.not.contain("Nike");
+    expect(message).to.not.contain("permission");
+  });
+}

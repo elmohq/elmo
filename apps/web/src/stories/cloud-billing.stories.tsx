@@ -1,23 +1,10 @@
-/**
- * Stories for the cloud Billing settings page (/app/$brand/settings/billing).
- *
- * Covers the states an operator can't easily reach on demand: a failed payment
- * inside the dunning window, tracking paused once that window closes, a
- * workspace over its limits after a downgrade, and a contract ("custom") plan
- * billed outside self-serve.
- *
- * Every fixture goes through the real entitlement resolver and the real plan
- * catalog, so the meters and the add-on card can't drift from what the plans
- * actually grant — one story says "pro with 5 extra Claude prompts" and the
- * pool, the limits and the add-on availability all follow from that.
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { type EntitlementOverrides, resolveEntitlements } from "@workspace/config/entitlements";
 import { isPremiumAddonAvailable, type PlanKey } from "@workspace/config/plans";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
-import { Route } from "@/routes/_authed/app/$brand/settings/billing";
+import { Route } from "@/routes/_authed/app/org/$org/settings/billing";
 import type { BillingState } from "@/server/billing";
 import { resetMockAuthClient, setMockSubscriptionDelay } from "./_mocks/auth-client";
 import { setMockAddonError } from "./_mocks/server-billing";
@@ -41,6 +28,7 @@ interface StateSpec {
 	cancelAtPeriodEnd?: boolean;
 	billingInterval?: string;
 	usage?: BillingState["usage"];
+	hasBillingAccount?: boolean;
 }
 
 function billingState(spec: StateSpec = {}): BillingState {
@@ -64,6 +52,7 @@ function billingState(spec: StateSpec = {}): BillingState {
 		subscription: plan
 			? {
 					id: "sub_1",
+					stripeSubscriptionId: "sub_stripe_1",
 					plan,
 					status,
 					periodEnd: periodEnd?.toISOString() ?? null,
@@ -72,6 +61,7 @@ function billingState(spec: StateSpec = {}): BillingState {
 					seats: null,
 				}
 			: null,
+		hasBillingAccount: spec.hasBillingAccount ?? plan !== null,
 		premiumAddonQuantity: addonQuantity,
 		premiumAddonAvailable: isPremiumAddonAvailable(entitlements.planKey),
 		usage: spec.usage ?? { brands: 1, enabledPrompts: 84, premiumAssigned: 12 },
@@ -111,7 +101,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Healthy Pro workspace: meters under the plan, add-on purchasable. */
 export const ProPlan: Story = {
 	render: () => renderWith({ addonQuantity: 5 }),
 	play: async ({ canvasElement }) => {
@@ -158,6 +147,8 @@ export const PaymentFailedInGrace: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("Payment failed")).toBeVisible();
+		await expect(await canvas.findByRole("button", { name: /manage billing/i })).toBeVisible();
+		await expect(canvas.queryByRole("button", { name: /switch to/i })).toBeNull();
 	},
 };
 
@@ -195,6 +186,22 @@ export const NoSubscription: Story = {
 	},
 };
 
+/** An ended subscription: invoices stay reachable in the portal, and a new plan is one click away. */
+export const SubscriptionEnded: Story = {
+	render: () =>
+		renderWith({
+			plan: null,
+			hasBillingAccount: true,
+			usage: { brands: 1, enabledPrompts: 0, premiumAssigned: 0 },
+		}),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByRole("button", { name: /choose a plan/i })).toBeVisible();
+		await expect(await canvas.findByRole("button", { name: /manage billing/i })).toBeVisible();
+		await expect(canvas.queryByRole("button", { name: /switch to/i })).toBeNull();
+	},
+};
+
 /**
  * A contract org: `planOverride: "custom"` entitles it without any Stripe
  * subscription, so there is no plan to switch and no portal to open.
@@ -208,7 +215,7 @@ export const CustomContractPlan: Story = {
 		}),
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("Custom")).toBeVisible();
+		await expect(await canvas.findByText("Custom plan")).toBeVisible();
 		await expect(await canvas.findByText(/billed outside self-serve/i)).toBeVisible();
 		await expect(await canvas.findByText("640 / 1000")).toBeVisible();
 		// A contract has no published price, so no total is invented for it.
@@ -221,7 +228,7 @@ export const NonAdminMember: Story = {
 	render: () => renderWith({ role: "member" }),
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/only workspace admins can change the plan/i)).toBeVisible();
+		await expect(await canvas.findByText(/only organization admins can change the plan/i)).toBeVisible();
 		await expect(canvas.queryByRole("button", { name: /manage billing/i })).toBeNull();
 		// A member sees the plan and the total but is offered no way to change it.
 		await expect(await canvas.findByText("$299")).toBeVisible();
@@ -237,8 +244,7 @@ export const OpeningBillingPortal: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// The current plan's card carries the way in to Stripe.
-		await userEvent.click(await canvas.findByRole("button", { name: /^manage$/i }));
+		await userEvent.click(await canvas.findByRole("button", { name: /manage billing/i }));
 		// Every other action disables while one is in flight.
 		await expect(await canvas.findByRole("button", { name: /switch to starter/i })).toBeDisabled();
 	},
@@ -271,13 +277,25 @@ export const ComparesPlansWithCurrentMarked: Story = {
 	render: () => renderWith(),
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// The badge marks the active plan; it carries no button to press.
+		// The badge marks the active plan; its card offers nothing to press.
 		await expect(await canvas.findByText("Current")).toBeVisible();
+		await expect(await canvas.findByRole("button", { name: "Your plan" })).toBeDisabled();
 		// Every other plan offers a switch.
 		for (const name of ["Starter", "Basic", "Business"]) {
 			await expect(await canvas.findByRole("button", { name: `Switch to ${name}` })).toBeEnabled();
 		}
 		await expect(canvas.queryByRole("button", { name: "Switch to Pro" })).toBeNull();
+	},
+};
+
+/** The full feature table stays folded until someone asks to compare. */
+export const FeatureTableOnRequest: Story = {
+	render: () => renderWith(),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByText("API access")).toBeNull();
+		await userEvent.click(await canvas.findByRole("button", { name: /compare all features/i }));
+		await expect(await canvas.findByText("API access")).toBeVisible();
 	},
 };
 

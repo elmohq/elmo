@@ -51,21 +51,16 @@ export async function getBoss(): Promise<PgBoss> {
 			retryBackoff: false,
 			expireInSeconds: 60 * 15,
 		});
+		await boss.createQueue("suggest-prompts", {
+			retryLimit: 1,
+			retryDelay: 10,
+			retryBackoff: false,
+			expireInSeconds: 60 * 15,
+		});
 
 		bossInstance = boss;
 		return boss;
 	})();
 
 	return bossPromise;
-}
-
-/**
- * Stop the pg-boss client (for graceful shutdown).
- */
-export async function stopBoss(): Promise<void> {
-	if (bossInstance) {
-		await bossInstance.stop();
-		bossInstance = null;
-		bossPromise = null;
-	}
 }

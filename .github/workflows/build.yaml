@@ -1,5 +1,6 @@
-# Host-side checks: format and lint, type check, unit + Storybook tests, and a
-# real `pnpm build` that must leave the working tree clean.
+# Host-side checks: format and lint, type check, unit, Storybook and Postgres
+# integration tests, and a real `pnpm build` that must leave the working tree
+# clean.
 #
 # The clean-tree check is the point of running a host build at all.
 # `routeTree.gen.ts` is committed because `tsc` needs it to resolve routes, so
@@ -7,8 +8,12 @@
 # where the file is regenerated in the image and the checked-in copy is never
 # consulted.
 #
-# Keep it excluded from Biome (see biome.json) — the router generator formats
-# its own output with Prettier, and a formatter fighting it would make every
+# `schema-auth.ts` is covered the same way. Turbo regenerates it before
+# check-types, so a better-auth bump or a new schema-bearing plugin fails here
+# instead of leaving drizzle-kit to snapshot a stale schema.
+#
+# Keep both excluded from Biome (see biome.json) — their generators format
+# their own output with Prettier, and a formatter fighting them would make every
 # build dirty this job.
 
 name: Build
@@ -33,12 +38,28 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 25
 
+    # For the integration tests only.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: elmo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -57,6 +78,11 @@ jobs:
       - name: Format and lint
         run: pnpm lint
 
+      # The OpenAPI document is written by hand and no compiler reads it, so
+      # this is the only thing that holds it to the spec it claims to be.
+      - name: Lint the OpenAPI document
+        run: pnpm lint:spec
+
       # Redundant with `pnpm build` (turbo's build depends on check-types), but
       # it fails in a minute instead of after the whole build, and turbo caches
       # the result so the build step doesn't repeat it.
@@ -65,6 +91,18 @@ jobs:
 
       - name: Unit tests
         run: pnpm turbo test
+
+      # One package at a time: the lib suite truncates tables the others write to.
+      - name: Integration tests
+        run: |
+          pnpm -C apps/web test:integration
+          pnpm -C apps/worker test:integration
+          pnpm -C packages/lib test:integration
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/elmo_test
+          # Off UTC on purpose: a timestamp that loses its zone between Postgres
+          # and JS only reads wrong on a host that isn't in UTC.
+          TZ: America/Los_Angeles
 
       # scripts/ is outside the workspace, so turbo does not reach it.
       - name: Release script tests
@@ -92,12 +130,15 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
+      # Not `--with-deps`: that runs apt-get update on every job, cache hit or
+      # not, for libraries the runner image already carries. If an image ever
+      # stops carrying them, Playwright fails naming `playwright install-deps`.
       - name: Install Playwright browsers
         uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
-          command: pnpm -C apps/web exec playwright install chromium --with-deps
+          command: pnpm -C apps/web exec playwright install chromium
 
       - name: Storybook tests
         run: pnpm -C apps/web test:storybook

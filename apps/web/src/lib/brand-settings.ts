@@ -1,5 +1,5 @@
+import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 import { validateWebsiteUrl } from "@/lib/brand-website";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 /**
  * Pure normalization/validation for the "edit brand settings" flow, extracted
@@ -23,7 +23,7 @@ export interface BrandUpdateInput {
 	aliases?: string[];
 }
 
-export interface BrandUpdateFields {
+interface BrandUpdateFields {
 	name?: string;
 	website?: string;
 	additionalDomains?: string[];

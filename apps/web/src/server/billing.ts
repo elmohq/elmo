@@ -6,10 +6,13 @@
  * no custom payment surface here.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { setPremiumAddonQuantity } from "@workspace/cloud/billing";
 import type { Entitlements } from "@workspace/config/entitlements";
-import { isPremiumAddonAvailable } from "@workspace/config/plans";
+import { isPremiumAddonAvailable, premiumPlanNames } from "@workspace/config/plans";
 import { isOrgAdminRole } from "@workspace/config/roles";
+import { getDeployment } from "@workspace/deployment";
+import { setPremiumAddonQuantity } from "@workspace/deployment/billing";
+import { db } from "@workspace/lib/db/db";
+import { organization } from "@workspace/lib/db/schema";
 import {
 	countOrgAssignedPremiumSlots,
 	countOrgBrands,
@@ -17,9 +20,9 @@ import {
 	getOrgBillingState,
 	getOrgEntitlementsMap,
 } from "@workspace/lib/entitlements";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { listUserOrganizations, requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
+import { listUserOrganizations, requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 
 export type BillingState = {
 	billingEnabled: boolean;
@@ -27,6 +30,7 @@ export type BillingState = {
 	entitlements: Entitlements;
 	subscription: {
 		id: string;
+		stripeSubscriptionId: string | null;
 		plan: string;
 		status: string;
 		periodEnd: string | null;
@@ -34,6 +38,7 @@ export type BillingState = {
 		billingInterval: string | null;
 		seats: number | null;
 	} | null;
+	hasBillingAccount: boolean;
 	premiumAddonQuantity: number;
 	premiumAddonAvailable: boolean;
 	usage: { brands: number; enabledPrompts: number; premiumAssigned: number };
@@ -49,14 +54,28 @@ export type PaywallRequired = {
 
 export type PaywallState = { needsPlan: false } | PaywallRequired;
 
+const LIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "past_due"]);
+
+function liveSubscription<T extends { status: string | null }>(row: T | null): T | null {
+	return row && LIVE_SUBSCRIPTION_STATUSES.has(row.status ?? "") ? row : null;
+}
+
 export const getBillingStateFn = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string() }))
+	.validator(z.object({ organizationId: z.string() }))
 	.handler(async ({ data }): Promise<BillingState> => {
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.organizationId);
 		const deployment = getDeployment();
 
-		const state = await getOrgBillingState(org.id);
+		const [state, [billingAccount]] = await Promise.all([
+			getOrgBillingState(org.id),
+			db
+				.select({ stripeCustomerId: organization.stripeCustomerId })
+				.from(organization)
+				.where(eq(organization.id, org.id))
+				.limit(1),
+		]);
+		const subscription = liveSubscription(state.subscription);
 		const [brandsUsed, promptsUsed, premiumAssigned] = state.entitlements.unlimited
 			? [0, 0, 0]
 			: await Promise.all([
@@ -69,36 +88,25 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 			billingEnabled: deployment.features.billing,
 			organization: org,
 			entitlements: state.entitlements,
-			subscription: state.subscription
+			subscription: subscription
 				? {
-						id: state.subscription.id,
-						plan: state.subscription.plan,
-						status: state.subscription.status ?? "incomplete",
-						periodEnd: state.subscription.periodEnd?.toISOString() ?? null,
-						cancelAtPeriodEnd: state.subscription.cancelAtPeriodEnd ?? false,
-						billingInterval: state.subscription.billingInterval ?? null,
-						seats: state.subscription.seats ?? null,
+						id: subscription.id,
+						stripeSubscriptionId: subscription.stripeSubscriptionId ?? null,
+						plan: subscription.plan,
+						status: subscription.status ?? "incomplete",
+						periodEnd: subscription.periodEnd?.toISOString() ?? null,
+						cancelAtPeriodEnd: subscription.cancelAtPeriodEnd ?? false,
+						billingInterval: subscription.billingInterval ?? null,
+						seats: subscription.seats ?? null,
 					}
 				: null,
+			hasBillingAccount: subscription !== null || Boolean(billingAccount?.stripeCustomerId),
 			premiumAddonQuantity: state.settings?.premiumAddonQuantity ?? 0,
 			premiumAddonAvailable: isPremiumAddonAvailable(state.entitlements.planKey),
 			usage: { brands: brandsUsed, enabledPrompts: promptsUsed, premiumAssigned },
 		};
 	});
 
-/**
- * The paywall decision, and the org it is about.
- *
- * Two questions, one answer shape, because the callers ask different ones:
- *  - with `organizationId` (a brand's owning org): is *this* workspace paid up?
- *  - without: does this user have anywhere at all to go? Any entitled org keeps
- *    the app usable; only a user whose every org is unsubscribed is stopped, and
- *    they are pointed at their own workspace.
- *
- * The org always comes back with the verdict. A paywall that says "pay" without
- * saying "for what" is how a member of a paid team and an unpaid one ends up at
- * checkout for the wrong workspace.
- */
 export const getPaywallStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string().optional() }).optional())
 	.handler(async ({ data }): Promise<PaywallState> => {
@@ -118,7 +126,6 @@ export const getPaywallStateFn = createServerFn({ method: "GET" })
 		const entitlementsByOrg = await getOrgEntitlementsMap(orgs.map((org) => org.id));
 		const needsPlan = (org: { id: string }) => entitlementsByOrg.get(org.id)?.standing === "none";
 
-		// listUserOrganizations is oldest-first, so orgs[0] is the user's own workspace.
 		const subject = scoped ?? orgs[0];
 		if (scoped ? !needsPlan(scoped) : !orgs.every(needsPlan)) {
 			return { needsPlan: false };
@@ -133,22 +140,23 @@ export const getPaywallStateFn = createServerFn({ method: "GET" })
 	});
 
 export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
-	.validator(z.object({ brandId: z.string(), quantity: z.number().int().min(0).max(1000) }))
+	.validator(z.object({ organizationId: z.string(), quantity: z.number().int().min(0).max(1000) }))
 	.handler(async ({ data }) => {
 		const deployment = getDeployment();
 		if (!deployment.features.billing) throw new Error("Billing is not enabled on this deployment");
 
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.organizationId);
 		if (!isOrgAdminRole(org.role)) {
-			throw new Error("Only workspace admins can change billing");
+			throw new Error("Only organization admins can change billing");
 		}
 
 		const state = await getOrgBillingState(org.id);
 		if (!isPremiumAddonAvailable(state.entitlements.planKey)) {
-			throw new Error("Extra premium pairings are available on the Pro and Business plans");
+			throw new Error(`Extra premium pairings are available on the ${premiumPlanNames()} plans`);
 		}
-		if (!state.subscription?.stripeSubscriptionId) {
+		const subscription = liveSubscription(state.subscription);
+		if (!subscription?.stripeSubscriptionId) {
 			throw new Error("No active subscription to attach the add-on to");
 		}
 
@@ -163,7 +171,7 @@ export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
 		}
 
 		const quantity = await setPremiumAddonQuantity({
-			stripeSubscriptionId: state.subscription.stripeSubscriptionId,
+			stripeSubscriptionId: subscription.stripeSubscriptionId,
 			organizationId: org.id,
 			quantity: data.quantity,
 		});

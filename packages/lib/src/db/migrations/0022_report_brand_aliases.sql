@@ -1,0 +1,1 @@
+ALTER TABLE "reports" ADD COLUMN "brand_aliases" text[] DEFAULT '{}' NOT NULL;
