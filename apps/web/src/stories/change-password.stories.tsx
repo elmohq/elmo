@@ -50,7 +50,14 @@ export const Updated: Story = {
 		await expect(canvas.getByText("Continue")).toBeVisible();
 		await expect(canvas.queryByLabelText("Current Password")).not.toBeInTheDocument();
 		await expect(getMockSubscriptionCalls()).toEqual([
-			{ method: "changePassword", args: { currentPassword: "old-password-123", newPassword: "new-password-123" } },
+			{
+				method: "changePassword",
+				args: {
+					currentPassword: "old-password-123",
+					newPassword: "new-password-123",
+					revokeOtherSessions: true,
+				},
+			},
 		]);
 	},
 };

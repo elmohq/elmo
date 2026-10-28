@@ -90,7 +90,7 @@ function ChangePasswordForm() {
 		setLoading(true);
 
 		try {
-			const result = await authClient.changePassword({ currentPassword, newPassword });
+			const result = await authClient.changePassword({ currentPassword, newPassword, revokeOtherSessions: true });
 			if (result.error) {
 				setError(result.error.message ?? "Failed to change password");
 				setLoading(false);
