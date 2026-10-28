@@ -33,14 +33,12 @@ function FlowCardHarness({
 	);
 }
 
-function Shell({ children, dark, width }: { children: ReactNode; dark?: boolean; width?: number }) {
+function Shell({ children, width }: { children: ReactNode; width?: number }) {
 	return (
 		<TooltipProvider>
-			<div className={dark ? "dark" : undefined}>
-				<div className="bg-background text-foreground antialiased min-h-svh p-4 md:p-6">
-					<div className="mx-auto flex flex-col gap-4" style={{ maxWidth: width ?? 1152 }}>
-						{children}
-					</div>
+			<div className="bg-background text-foreground antialiased min-h-svh p-4 md:p-6">
+				<div className="mx-auto flex flex-col gap-4" style={{ maxWidth: width ?? 1152 }}>
+					{children}
 				</div>
 			</div>
 		</TooltipProvider>
@@ -54,7 +52,7 @@ const meta = {
 	args: { initialDomain: "acme.com" },
 	decorators: [
 		(Story, context) => (
-			<Shell dark={context.parameters.dark === true} width={context.parameters.width as number | undefined}>
+			<Shell width={context.parameters.width as number | undefined}>
 				<Story />
 			</Shell>
 		),
@@ -67,15 +65,11 @@ type Story = StoryObj<typeof meta>;
 /** The brand's own site: marketing pages, a blog, comparisons, docs and help-centre subdomains. */
 export const BrandSite: Story = {};
 
-export const BrandSiteDark: Story = { parameters: { dark: true } };
-
 /** A competitor's site, to see which of its pages engines lean on. */
 export const Competitor: Story = { args: { initialDomain: "hubspot.com" } };
 
 /** A third-party review site: which of its category and review pages carry the answers. */
 export const ReviewSite: Story = { args: { initialDomain: "g2.com" } };
-
-export const ReviewSiteDark: Story = { args: { initialDomain: "g2.com" }, parameters: { dark: true } };
 
 /** One cited page: no section column, every engine straight into it. */
 export const SinglePage: Story = { args: { initialDomain: "pipedrive.com" } };

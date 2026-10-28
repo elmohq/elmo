@@ -407,10 +407,7 @@ function FlowChart({
 								strokeOpacity={emphasis.links === null ? undefined : lit ? 0.7 : 0.05}
 								className={cn(
 									"transition-[stroke-opacity] duration-150",
-									emphasis.links === null &&
-										(intoFold
-											? "[stroke-opacity:0.12] dark:[stroke-opacity:0.14]"
-											: "[stroke-opacity:0.32] dark:[stroke-opacity:0.3]"),
+									emphasis.links === null && (intoFold ? "[stroke-opacity:0.12]" : "[stroke-opacity:0.32]"),
 								)}
 								data-link={positioned.index}
 							/>
