@@ -5,7 +5,9 @@ import { CitationFlowCard } from "@/components/citations/citation-flow-card";
 import { type CitationFlowRow, flowDomainOptions } from "@/lib/citation-flow";
 import { flowRowsFor, MODELS, mockCitationData } from "./citation-fixtures";
 
-const domains = flowDomainOptions(mockCitationData.domainDistribution, [{ domain: "acme.com", category: "brand" }]);
+const domains = flowDomainOptions(mockCitationData.domainDistribution ?? [], [
+	{ domain: "acme.com", category: "brand" },
+]);
 
 /** The card as the page drives it: picking a domain swaps in that domain's rows. */
 function FlowCardHarness({

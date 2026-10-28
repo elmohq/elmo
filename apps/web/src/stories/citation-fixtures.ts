@@ -301,6 +301,7 @@ function buildCitationData(): CitationData {
 			{ id: "c2", name: "Pipedrive", domains: ["pipedrive.com"] },
 		],
 		competitorOnlyPrompts: [],
+		subreddits: [],
 	};
 }
 
