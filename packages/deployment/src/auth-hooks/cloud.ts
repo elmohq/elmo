@@ -61,6 +61,9 @@ const TURNSTILE_PROTECTED_ENDPOINTS = [
 	"/send-verification-email",
 ];
 
+// Cloudflare's test secrets verify every token as solved on example.com.
+const TURNSTILE_TEST_SECRET = /^[123]x0{20,}/;
+
 function createTurnstilePlugin(): BetterAuthPlugin | undefined {
 	const secretKey = process.env.TURNSTILE_SECRET_KEY?.trim();
 	if (!secretKey) {
@@ -78,6 +81,7 @@ function createTurnstilePlugin(): BetterAuthPlugin | undefined {
 		provider: "cloudflare-turnstile",
 		secretKey,
 		endpoints: TURNSTILE_PROTECTED_ENDPOINTS,
+		allowedHostnames: TURNSTILE_TEST_SECRET.test(secretKey) ? undefined : [new URL(process.env.APP_URL!).hostname],
 	});
 }
 

@@ -38,10 +38,11 @@ Create a Turnstile widget in the Cloudflare dashboard for the app's hostname (Ma
 set its site key as `VITE_TURNSTILE_SITE_KEY` and its secret as `TURNSTILE_SECRET_KEY`. The check is
 enforced only while `TURNSTILE_SECRET_KEY` is set; without it the app logs a warning at startup and
 the forms work unchallenged. Set both together — a secret without a site key rejects every email
-sign-in.
+sign-in. Tokens are only accepted when Cloudflare reports they were solved on the hostname in
+`APP_URL`, so the widget's hostname list must include it.
 
 For local development, use Cloudflare's [test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/),
-which always pass:
+which always pass and skip the hostname check:
 
 ```bash
 VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA

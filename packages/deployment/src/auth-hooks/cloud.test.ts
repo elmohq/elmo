@@ -140,9 +140,9 @@ describe("Turnstile bot protection", () => {
 		return undefined;
 	}
 
-	function stubSiteverify(success: boolean) {
+	function stubSiteverify(success: boolean, hostname = "app.example.com") {
 		const fetchMock = vi.fn(async () =>
-			Response.json({ success, "error-codes": success ? [] : ["invalid-input-response"] }),
+			Response.json({ success, hostname, "error-codes": success ? [] : ["invalid-input-response"] }),
 		);
 		vi.stubGlobal("fetch", fetchMock);
 		return fetchMock;
@@ -161,6 +161,20 @@ describe("Turnstile bot protection", () => {
 		stubSiteverify(false);
 		const response = await send("/sign-up/email", "forged-token");
 		expect(response?.status).toBe(403);
+	});
+
+	it("rejects a token solved on another site", async () => {
+		enableTurnstile();
+		stubSiteverify(true, "evil.example.net");
+		const response = await send("/sign-up/email", "borrowed-token");
+		expect(response?.status).toBe(403);
+	});
+
+	it("accepts Cloudflare test keys on any host so local sign-in works", async () => {
+		vi.stubEnv("TURNSTILE_SECRET_KEY", "1x0000000000000000000000000000000AA");
+		vi.stubEnv("VITE_TURNSTILE_SITE_KEY", "1x00000000000000000000AA");
+		stubSiteverify(true, "example.com");
+		expect(await send("/sign-up/email", "XXXX.DUMMY.TOKEN.XXXX")).toBeUndefined();
 	});
 
 	it("lets a request with a token Cloudflare accepts through", async () => {
