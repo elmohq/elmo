@@ -12,7 +12,6 @@ import {
 /** Below this width three columns of labels can't share a row, so the flow becomes a ranked list. */
 export const MIN_CHART_WIDTH = 640;
 const NODE_WIDTH = 8;
-const HEADER_HEIGHT = 22;
 const TOOLTIP_OFFSET = 14;
 const TOOLTIP_MAX_WIDTH = 288;
 const FONT = "12px ui-sans-serif, system-ui, sans-serif";
@@ -148,7 +147,17 @@ function nodeHeading(node: CitationFlowNode): string {
 	return node.name;
 }
 
-function FlowTooltip({ flow, focus, colors }: { flow: CitationFlow; focus: Focus; colors: Map<string, string> }) {
+function FlowTooltip({
+	flow,
+	focus,
+	colors,
+	canExpand,
+}: {
+	flow: CitationFlow;
+	focus: Focus;
+	colors: Map<string, string>;
+	canExpand: boolean;
+}) {
 	if (focus.type === "link") {
 		const link = flow.links[focus.index];
 		const source = flow.nodes[link.source];
@@ -187,14 +196,30 @@ function FlowTooltip({ flow, focus, colors }: { flow: CitationFlow; focus: Focus
 			</div>
 			{node.kind !== "engine" && <EngineBreakdown byModel={node.byModel} engines={flow.engines} colors={colors} />}
 			{node.kind === "page" && <div className="text-muted-foreground">Click to open the page</div>}
-			{node.kind === "more" && <div className="text-muted-foreground">Show all pages to list them</div>}
+			{node.kind === "engine" && <div className="text-muted-foreground">Click to highlight its citations</div>}
+			{node.kind === "more" && canExpand && <div className="text-muted-foreground">Click to show all pages</div>}
 		</>
 	);
 }
 
-function NodeGroup({ index, lit, children }: { index: number; lit: boolean; children: ReactNode }) {
+function NodeGroup({
+	index,
+	lit,
+	button,
+	children,
+}: {
+	index: number;
+	lit: boolean;
+	button?: { label: string; pressed?: boolean };
+	children: ReactNode;
+}) {
 	return (
-		<g data-node={index} opacity={lit ? 1 : 0.3} className="transition-opacity duration-150">
+		<g
+			data-node={index}
+			opacity={lit ? 1 : 0.3}
+			className={cn("transition-opacity duration-150", button && "cursor-pointer outline-none")}
+			{...(button && { role: "button", tabIndex: 0, "aria-label": button.label, "aria-pressed": button.pressed })}
+		>
 			{children}
 		</g>
 	);
@@ -302,17 +327,25 @@ function FlowNodeMark({
 	colors,
 	lit,
 	pageLabelWidth,
+	pinned,
+	canExpand,
 }: {
 	positioned: PositionedNode;
 	flow: CitationFlow;
 	colors: Map<string, string>;
 	lit: boolean;
 	pageLabelWidth: number;
+	pinned: string | null;
+	canExpand: boolean;
 }) {
 	const { node, index } = positioned;
 	if (node.kind === "engine") {
 		return (
-			<NodeGroup index={index} lit={lit}>
+			<NodeGroup
+				index={index}
+				lit={lit}
+				button={{ label: `Highlight ${nodeHeading(node)}`, pressed: pinned === node.model }}
+			>
 				<EngineMark
 					positioned={positioned}
 					color={node.model ? colors.get(node.model) : undefined}
@@ -329,7 +362,11 @@ function FlowNodeMark({
 		);
 	}
 	const mark = (
-		<NodeGroup index={index} lit={lit}>
+		<NodeGroup
+			index={index}
+			lit={lit}
+			button={node.kind === "more" && canExpand ? { label: "Show all pages" } : undefined}
+		>
 			<PageMark positioned={positioned} labelWidth={pageLabelWidth} />
 		</NodeGroup>
 	);
@@ -443,6 +480,9 @@ export function FlowChart({
 	focus,
 	hovered,
 	onHover,
+	pinned,
+	onPin,
+	onExpand,
 }: {
 	flow: CitationFlow;
 	width: number;
@@ -450,19 +490,26 @@ export function FlowChart({
 	focus: Focus | null;
 	hovered: Focus | null;
 	onHover: (focus: Focus | null) => void;
+	pinned: string | null;
+	onPin: (model: string | null) => void;
+	onExpand?: () => void;
 }) {
 	const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
 	const layout = useFlowLayout(flow, width);
 	const emphasis = useMemo(() => emphasisFor(flow, focus), [flow, focus]);
 	const pageX = layout.columnX[layout.columnX.length - 1];
 	const pageLabelWidth = layout.width - pageX - NODE_WIDTH - 8;
-	const headers = flow.showSections ? ["Engine", "Section", "Page"] : ["Engine", "Page"];
+	const activate = (target: Focus | null) => {
+		if (target?.type === "engine") onPin(pinned === target.model ? null : target.model);
+		else if (target?.type === "node" && flow.nodes[target.index].kind === "more") onExpand?.();
+		else if (!target) onPin(null);
+	};
 
 	return (
 		<div className="relative">
 			<svg
 				width={layout.width}
-				height={layout.height + HEADER_HEIGHT}
+				height={layout.height}
 				role="img"
 				aria-label={`${flow.totalCitations} citations to ${flow.domain} from ${flow.engines.length} engines across ${flow.pageCount} pages`}
 				className="block overflow-visible"
@@ -476,20 +523,16 @@ export function FlowChart({
 					setPointer(null);
 					onHover(null);
 				}}
+				onClick={(event) => activate(focusAt(flow, event.target))}
+				onKeyDown={(event) => {
+					if (event.key !== "Enter" && event.key !== " ") return;
+					const target = focusAt(flow, event.target);
+					if (!target) return;
+					event.preventDefault();
+					activate(target);
+				}}
 			>
-				<g className="fill-muted-foreground text-[11px] font-medium">
-					{headers.map((header, i) => (
-						<text
-							key={header}
-							x={i === 0 ? layout.columnX[0] - 10 : layout.columnX[i] + NODE_WIDTH + (i === headers.length - 1 ? 8 : 6)}
-							y={10}
-							textAnchor={i === 0 ? "end" : "start"}
-						>
-							{header}
-						</text>
-					))}
-				</g>
-				<g transform={`translate(0, ${HEADER_HEIGHT})`}>
+				<g>
 					<FlowBands flow={flow} layout={layout} colors={colors} emphasis={emphasis} />
 					{layout.nodes.map((positioned) => (
 						<FlowNodeMark
@@ -499,6 +542,8 @@ export function FlowChart({
 							colors={colors}
 							lit={emphasis.nodes === null || emphasis.nodes.has(positioned.index)}
 							pageLabelWidth={pageLabelWidth}
+							pinned={pinned}
+							canExpand={onExpand !== undefined}
 						/>
 					))}
 				</g>
@@ -513,7 +558,7 @@ export function FlowChart({
 							: { left: pointer.x + TOOLTIP_OFFSET }),
 					}}
 				>
-					<FlowTooltip flow={flow} focus={hovered} colors={colors} />
+					<FlowTooltip flow={flow} focus={hovered} colors={colors} canExpand={onExpand !== undefined} />
 				</div>
 			)}
 		</div>

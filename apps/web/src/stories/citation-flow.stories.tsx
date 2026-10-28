@@ -82,12 +82,11 @@ export const Loading: Story = { args: { rows: () => undefined } };
 /** Under the chart's minimum width the same pages read as a ranked list split by engine. */
 export const Narrow: Story = { parameters: { width: 420 } };
 
-/** Hovering an engine in the legend isolates its flows down to the pages it cites. */
+/** Clicking an engine isolates its flows down to the pages it cites. */
 export const HighlightEngine: Story = {
 	play: async ({ canvasElement }) => {
-		const button = Array.from(canvasElement.querySelectorAll("button")).find((b) =>
-			b.textContent?.includes("Perplexity"),
-		);
-		button?.click();
+		canvasElement
+			.querySelector<SVGElement>('[aria-label="Highlight Perplexity"]')
+			?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 	},
 };

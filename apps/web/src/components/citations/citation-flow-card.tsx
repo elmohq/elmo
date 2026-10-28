@@ -23,8 +23,6 @@ import {
 	type CitationFlowRow,
 	DEFAULT_FLOW_LIMITS,
 	type FlowDomainOption,
-	flowHeadline,
-	TOP_LEVEL,
 } from "@/lib/citation-flow";
 import { OTHERS_COLOR, useChartColors } from "@/lib/company-colors";
 
@@ -99,39 +97,6 @@ function FlowList({
 				</li>
 			)}
 		</ol>
-	);
-}
-
-function Headline({ flow, model }: { flow: CitationFlow; model: string | null }) {
-	const headline = flowHeadline(flow, model ?? undefined);
-	if (!headline || flow.totalCitations < 2) return null;
-	const engine = <span className="font-medium text-foreground">{engineLabel(headline.model)}</span>;
-	const focus = (
-		<span className="font-medium text-foreground">
-			{headline.focus === TOP_LEVEL ? "top-level pages" : headline.focus}
-		</span>
-	);
-	return (
-		<p className="text-sm text-muted-foreground">
-			{headline.soleEngine ? (
-				<>
-					Every citation to {flow.domain} comes from {engine}
-				</>
-			) : (
-				<>
-					{engine} {model ? "accounts for" : "drives"}{" "}
-					<span className="font-medium text-foreground tabular-nums">{headline.share}%</span> of citations to{" "}
-					{flow.domain}
-				</>
-			)}
-			{headline.focusShare < 100 || flow.pageCount > 1 ? (
-				<>
-					; {headline.focusShare}% of {headline.soleEngine ? "them" : "its citations"} go to {focus}.
-				</>
-			) : (
-				"."
-			)}
-		</p>
 	);
 }
 
@@ -218,39 +183,47 @@ function FlowView({
 
 	const focusModel = hover?.type === "engine" ? hover.model : pinned;
 	const focus: Focus | null = hover ?? (pinned ? { type: "engine", model: pinned } : null);
-	const hasFold = flow.nodes.some((node) => node.kind === "more");
-	const shownPages = flow.nodes.filter((node) => node.kind === "page").length;
-	const canToggleExpanded = (hasFold || expanded) && flow.pageCount > DEFAULT_FLOW_LIMITS.maxPages;
+	const expand = expanded ? undefined : () => onExpandedChange(true);
 
 	return (
 		<div className="space-y-4">
-			<Headline flow={flow} model={focusModel} />
-			<EngineLegend
-				flow={flow}
-				colors={colors}
-				pinned={pinned}
-				focusModel={focusModel}
-				onPin={setPinned}
-				onHover={setHover}
-			/>
 			{width >= MIN_CHART_WIDTH ? (
-				<FlowChart flow={flow} width={width} colors={colors} focus={focus} hovered={hover} onHover={setHover} />
+				<FlowChart
+					flow={flow}
+					width={width}
+					colors={colors}
+					focus={focus}
+					hovered={hover}
+					onHover={setHover}
+					pinned={pinned}
+					onPin={setPinned}
+					onExpand={expand}
+				/>
 			) : (
-				<FlowList flow={flow} colors={colors} focusModel={focusModel} onExpand={() => onExpandedChange(true)} />
+				<>
+					<EngineLegend
+						flow={flow}
+						colors={colors}
+						pinned={pinned}
+						focusModel={focusModel}
+						onPin={setPinned}
+						onHover={setHover}
+					/>
+					<FlowList flow={flow} colors={colors} focusModel={focusModel} onExpand={() => onExpandedChange(true)} />
+				</>
 			)}
-			<div className="flex min-h-7 items-center justify-between gap-3 border-t pt-3 text-xs text-muted-foreground tabular-nums">
-				<span>
-					{flow.totalCitations.toLocaleString()} citations
-					{flow.showSections && ` · ${flow.sectionCount} sections`} ·{" "}
-					{canToggleExpanded ? `${shownPages} of ${flow.pageCount}` : flow.pageCount}{" "}
-					{flow.pageCount === 1 ? "page" : "pages"}
-				</span>
-				{canToggleExpanded && (
-					<Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onExpandedChange(!expanded)}>
-						{expanded ? `Show Top ${DEFAULT_FLOW_LIMITS.maxPages}` : `Show All ${flow.pageCount} Pages`}
+			{expanded && flow.pageCount > DEFAULT_FLOW_LIMITS.maxPages && (
+				<div className="flex justify-end">
+					<Button
+						variant="ghost"
+						size="sm"
+						className="h-7 text-xs text-muted-foreground"
+						onClick={() => onExpandedChange(false)}
+					>
+						Show Top {DEFAULT_FLOW_LIMITS.maxPages} Pages
 					</Button>
-				)}
-			</div>
+				</div>
+			)}
 		</div>
 	);
 }

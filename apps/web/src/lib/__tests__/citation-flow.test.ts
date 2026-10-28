@@ -5,7 +5,6 @@ import {
 	type CitationFlowRow,
 	defaultFlowDomain,
 	flowDomainOptions,
-	flowHeadline,
 } from "@/lib/citation-flow";
 
 const row = (model: string, url: string, count: number): CitationFlowRow => ({ model, url, title: null, count });
@@ -154,28 +153,6 @@ describe("buildCitationFlow", () => {
 		const flow = buildCitationFlow({ rows: [row("chatgpt", "https://hubspot.com/", 3)], domain: "acme.com" });
 		expect(flow.totalCitations).toBe(0);
 		expect(flow.nodes).toEqual([]);
-		expect(flowHeadline(flow)).toBeNull();
-	});
-});
-
-describe("flowHeadline", () => {
-	it("names the leading engine, its share, and where most of its citations land", () => {
-		const flow = buildCitationFlow({
-			rows: [
-				row("chatgpt", "https://g2.com/categories/crm", 6),
-				row("chatgpt", "https://g2.com/products/acme", 2),
-				row("perplexity", "https://g2.com/products/acme", 2),
-			],
-			domain: "g2.com",
-		});
-		expect(flowHeadline(flow)).toMatchObject({
-			model: "chatgpt",
-			share: 80,
-			focus: "/categories",
-			focusKind: "section",
-			focusShare: 75,
-			soleEngine: false,
-		});
 	});
 });
 

@@ -327,37 +327,6 @@ export function buildCitationFlow(input: {
 	return { ...base, nodes: out.nodes, links: out.links };
 }
 
-export interface FlowHeadline {
-	model: string;
-	share: number;
-	focus: string;
-	focusKind: "section" | "page";
-	focusShare: number;
-	soleEngine: boolean;
-}
-
-export function flowHeadline(flow: CitationFlow, model?: string): FlowHeadline | null {
-	if (flow.totalCitations === 0) return null;
-	const lead = flow.engines.find((engine) => engine.model === model) ?? ranked(flow.engines, (e) => e.model)[0];
-	const focusKind = flow.showSections ? "section" : "page";
-	const candidates = flow.nodes.filter(
-		(node) => node.kind === focusKind && !(node.kind === "section" && node.name === OTHER_SECTIONS),
-	);
-	const focus = ranked(
-		candidates.map((node) => ({ node, count: node.byModel[lead.model] ?? 0 })),
-		(c) => c.node.id,
-	)[0];
-	if (!focus || focus.count === 0) return null;
-	return {
-		model: lead.model,
-		share: Math.round((lead.count / flow.totalCitations) * 100),
-		focus: focus.node.name,
-		focusKind,
-		focusShare: Math.round((focus.count / lead.count) * 100),
-		soleEngine: flow.engines.length === 1,
-	};
-}
-
 export interface FlowDomainOption {
 	domain: string;
 	count: number;
