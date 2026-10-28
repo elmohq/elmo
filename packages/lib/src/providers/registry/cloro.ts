@@ -9,10 +9,24 @@ import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, response
 // send a `prompt`, while Google AI Overview rides on the Google Search task and
 // sends a `query` with the AI Overview block requested. ChatGPT is the only
 // surface that hides its fan-out queries behind an `include` flag.
-type CloroTaskConfig = { taskType: string; field: "prompt" | "query"; include: Record<string, unknown> };
+type CloroTaskConfig = {
+	taskType: string;
+	field: "prompt" | "query";
+	include: Record<string, unknown>;
+	params?: Record<string, unknown>;
+};
 
 const CLORO_TASKS: Record<string, CloroTaskConfig> = {
-	chatgpt: { taskType: "CHATGPT", field: "prompt", include: { markdown: true, searchQueries: true } },
+	// ChatGPT's default mobile-web interface doesn't send its search queries to
+	// the page, so `searchQueries` comes back empty without `legacy`, which asks
+	// for the desktop interface that still streams them. Cloro documents it as
+	// best-effort: OpenAI may stop serving that interface without notice.
+	chatgpt: {
+		taskType: "CHATGPT",
+		field: "prompt",
+		include: { markdown: true, searchQueries: true },
+		params: { legacy: true },
+	},
 	perplexity: { taskType: "PERPLEXITY", field: "prompt", include: { markdown: true } },
 	copilot: { taskType: "COPILOT", field: "prompt", include: { markdown: true } },
 	gemini: { taskType: "GEMINI", field: "prompt", include: { markdown: true } },
@@ -174,7 +188,12 @@ export const cloro: Provider = {
 			throw new Error(`Cloro: no task mapping for model "${model}". Supported: ${Object.keys(CLORO_TASKS).join(", ")}`);
 		}
 
-		const payload: Record<string, any> = { [task.field]: prompt, country: CLORO_COUNTRY, include: task.include };
+		const payload: Record<string, any> = {
+			[task.field]: prompt,
+			country: CLORO_COUNTRY,
+			include: task.include,
+			...task.params,
+		};
 
 		const response = await runAsyncTask(task.taskType, payload);
 		const answer = cloroAnswer(response) ?? {};

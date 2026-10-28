@@ -101,20 +101,24 @@ export const prompts = pgTable(
 	}),
 ).enableRLS();
 
-export const competitors = pgTable("competitors", {
-	id: uuid("id").defaultRandom().primaryKey().notNull(),
-	brandId: text("brand_id")
-		.references(() => brands.id)
-		.notNull(),
-	name: text("name").notNull(),
-	domains: text("domains").array().notNull().default([]),
-	aliases: text("aliases").array().notNull().default([]),
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.defaultNow()
-		.$onUpdate(() => new Date())
-		.notNull(),
-}).enableRLS();
+export const competitors = pgTable(
+	"competitors",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		brandId: text("brand_id")
+			.references(() => brands.id)
+			.notNull(),
+		name: text("name").notNull(),
+		domains: text("domains").array().notNull().default([]),
+		aliases: text("aliases").array().notNull().default([]),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [index("competitors_brand_id_idx").on(table.brandId)],
+).enableRLS();
 
 /**
  * Append-only: what was asked and what the provider returned, never rewritten (a
@@ -146,14 +150,6 @@ export const promptRuns = pgTable(
 	(table) => ({
 		promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		createdAtIdx: index("prompt_runs_created_at_idx").on(table.createdAt),
-		webSearchCreatedAtIdx: index("prompt_runs_web_search_created_at_idx").on(table.webSearchEnabled, table.createdAt),
-		webSearchModelCreatedAtIdx: index("prompt_runs_web_search_model_created_at_idx").on(
-			table.webSearchEnabled,
-			table.model,
-			table.createdAt,
-		),
-		providerIdx: index("prompt_runs_provider_idx").on(table.provider),
-		modelCreatedAtIdx: index("prompt_runs_model_created_at_idx").on(table.model, table.createdAt),
 	}),
 ).enableRLS();
 
@@ -207,20 +203,9 @@ export const citations = pgTable(
 		pageId: bigint("page_id", { mode: "number" }).references((): AnyPgColumn => citedPages.id),
 	},
 	(table) => ({
-		brandAnalyticsIdx: index("citations_brand_created_analytics_idx").on(
-			table.brandId,
-			table.createdAt,
-			table.url,
-			table.domain,
-			table.title,
-			table.promptId,
-			table.model,
-			table.citationIndex,
-		),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		// Replay, run detail and rollup rebuilds all reach a run's citations by its id.
 		runIdx: index("citations_prompt_run_id_idx").on(table.promptRunId),
-		domainIdx: index("citations_domain_idx").on(table.domain),
 	}),
 ).enableRLS();
 
@@ -462,22 +447,18 @@ export const rollupCompetitorMentions = pgTable(
  * Shared by every tenant, so classification here is the tenant-independent half;
  * brand and competitor domains are applied at read time.
  */
-export const citedPages = pgTable(
-	"cited_pages",
-	{
-		id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey().notNull(),
-		url: text("url").notNull().unique(),
-		domain: text("domain").notNull(),
-		/** Most recently seen non-null title. */
-		title: text("title"),
-		pageType: text("page_type").notNull(),
-		staticCategory: text("static_category").notNull(),
-		classifierVersion: integer("classifier_version").notNull(),
-		firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),
-		lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
-	},
-	(table) => [index("cited_pages_domain_idx").on(table.domain)],
-).enableRLS();
+export const citedPages = pgTable("cited_pages", {
+	id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey().notNull(),
+	url: text("url").notNull().unique(),
+	domain: text("domain").notNull(),
+	/** Most recently seen non-null title. */
+	title: text("title"),
+	pageType: text("page_type").notNull(),
+	staticCategory: text("static_category").notNull(),
+	classifierVersion: integer("classifier_version").notNull(),
+	firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),
+	lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+}).enableRLS();
 
 export const rollupCitationUrls = pgTable(
 	"rollup_citation_urls",

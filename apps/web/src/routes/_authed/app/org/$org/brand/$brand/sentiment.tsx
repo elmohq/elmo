@@ -1,11 +1,11 @@
-import { IconArrowDown, IconArrowUp } from "@tabler/icons-react";
+import { IconArrowDown, IconArrowUp, IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getModelMeta } from "@workspace/config/models";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
-import { TooltipProvider } from "@workspace/ui/components/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
@@ -39,6 +39,21 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/sentime
 /** Side-by-side cards share a header height, so a title beside a control lines up with one beside none. */
 const ROW_HEADER = "flex min-h-8 flex-row items-center";
 
+function TitleWithInfo({ title, children }: { title: string; children: React.ReactNode }) {
+	return (
+		<CardTitle className="flex items-center gap-1.5">
+			{title}
+			<Tooltip>
+				<TooltipTrigger
+					aria-label={`About ${title}`}
+					render={<IconInfoCircle className="size-3.5 cursor-help text-muted-foreground" />}
+				/>
+				<TooltipContent className="max-w-xs text-sm font-normal">{children}</TooltipContent>
+			</Tooltip>
+		</CardTitle>
+	);
+}
+
 /** The top row's two cards; they sit in the page's grid so their columns line up with the row below. */
 function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors: Map<string, string> }) {
 	const brand = brandOf(landscape);
@@ -46,7 +61,10 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 		<>
 			<Card>
 				<CardHeader>
-					<CardTitle>Sentiment</CardTitle>
+					<TitleWithInfo title="Sentiment">
+						How AI answers that mention you describe you, from each prompt's latest answers. The number in the middle is
+						your score out of 100: 50 is neutral, higher means more praise than criticism.
+					</TitleWithInfo>
 				</CardHeader>
 				<CardContent>
 					<RingChart
@@ -62,7 +80,10 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 			</Card>
 			<Card>
 				<CardHeader>
-					<CardTitle>Sentiment Trends</CardTitle>
+					<TitleWithInfo title="Sentiment Trends">
+						Your sentiment score each day beside your closest competitors'. A company only has a score on days when an
+						answer mentions it.
+					</TitleWithInfo>
 				</CardHeader>
 				<CardContent>
 					<CompanyTrendChart
@@ -82,15 +103,26 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 	);
 }
 
-function Quotes({ criticism, praise }: { criticism: SentimentQuote[]; praise: SentimentQuote[] }) {
-	const [side, setSide] = useState<"criticism" | "praise">(criticism.length > 0 ? "criticism" : "praise");
-	const quotes = side === "criticism" ? criticism : praise;
+const QUOTE_SIDES = {
+	praise: "No positive answers in this period.",
+	mixed: "No mixed answers in this period.",
+	criticism: "No negative answers in this period.",
+} as const;
+
+type QuoteSide = keyof typeof QUOTE_SIDES;
+
+function Quotes({ quotesBySide }: { quotesBySide: Record<QuoteSide, SentimentQuote[]> }) {
+	const [side, setSide] = useState<QuoteSide>("praise");
+	const quotes = quotesBySide[side];
 	return (
 		<Card>
 			<CardHeader className={`${ROW_HEADER} flex-wrap justify-between gap-4`}>
-				<CardTitle>What AI Says About You</CardTitle>
+				<TitleWithInfo title="What AI Says About You">
+					The passages from this period where AI speaks of you most clearly, at most one per prompt. Click a prompt to
+					see the full answer.
+				</TitleWithInfo>
 				<div role="tablist" aria-label="Sentiment" className="inline-flex rounded-lg bg-muted p-0.5 text-sm">
-					{(["criticism", "praise"] as const).map((value) => (
+					{(Object.keys(QUOTE_SIDES) as QuoteSide[]).map((value) => (
 						<button
 							key={value}
 							type="button"
@@ -109,9 +141,7 @@ function Quotes({ criticism, praise }: { criticism: SentimentQuote[]; praise: Se
 			</CardHeader>
 			<CardContent>
 				{quotes.length === 0 ? (
-					<p className="py-8 text-center text-sm text-muted-foreground">
-						{side === "criticism" ? "No negative or mixed answers in this period." : "No positive answers yet."}
-					</p>
+					<p className="py-8 text-center text-sm text-muted-foreground">{QUOTE_SIDES[side]}</p>
 				) : (
 					<div className="divide-y">
 						{quotes.map((quote) => (
@@ -240,7 +270,10 @@ function PromptTable({ prompts }: { prompts: PromptSentiment[] }) {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Sentiment by Prompt</CardTitle>
+				<TitleWithInfo title="Sentiment by Prompt">
+					Every answer in the period that mentions you, grouped by prompt. Mentions counts those answers, the score is
+					out of 100 as above, and the bar splits them into positive, neutral, mixed and negative.
+				</TitleWithInfo>
 			</CardHeader>
 			<CardContent>
 				{prompts.length === 0 ? (
@@ -325,12 +358,14 @@ function SentimentPage() {
 	const colors = useCompanyColors(landscape);
 
 	const infoContent = (
-		<p>
-			Each answer that mentions your brand is read for its sentiment toward it: positive, neutral, mixed or negative.
-			Answers that don't mention you aren't counted. The score runs from 0 to 100: positive answers count 100, neutral
-			and mixed 50, and negative 0, so 50 means AI is neutral about you on balance. Like visibility, the figures count
-			each prompt's latest answers; the prompt table covers the whole period.
-		</p>
+		<div className="space-y-2">
+			<p>When an AI answer mentions your brand, it's read as positive, neutral, mixed or negative toward you.</p>
+			<p>
+				The score turns those into a number out of 100: positive answers count 100, neutral and mixed 50, negative 0. So
+				50 means neutral overall, and above 50 means more praise than criticism.
+			</p>
+			<p>Answers that don't mention you aren't counted.</p>
+		</div>
 	);
 
 	let content: React.ReactNode;
@@ -360,14 +395,17 @@ function SentimentPage() {
 						<SentimentOverview landscape={landscape} colors={colors} />
 						<Card>
 							<CardHeader className={ROW_HEADER}>
-								<CardTitle>Sentiment by Model</CardTitle>
+								<TitleWithInfo title="Sentiment by Model">
+									Each company's sentiment score in each AI model's latest answers. "All" combines every model. A dash
+									means that model hasn't mentioned the company.
+								</TitleWithInfo>
 							</CardHeader>
 							{/* A long field of competitors scrolls in place rather than stretching the page. */}
 							<CardContent className="max-h-[560px] overflow-auto">
 								<ModelGrid landscape={landscape} metric="sentiment" />
 							</CardContent>
 						</Card>
-						<Quotes criticism={data.criticism} praise={data.praise} />
+						<Quotes quotesBySide={data} />
 					</div>
 					<PromptTable prompts={data.prompts} />
 				</div>

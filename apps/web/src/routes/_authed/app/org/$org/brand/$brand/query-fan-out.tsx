@@ -8,6 +8,7 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
+import { FanoutEngineStatusCard, fanoutByModel } from "@/components/fanout-engine-status";
 import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-sections";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { HistoryButton } from "@/components/history-button";
@@ -78,7 +79,12 @@ function QueryFanoutPage() {
 		// totalRuns counts only web-search-enabled runs — a brand whose models all
 		// run without web search lands here even with plenty of runs.
 		content = (
-			<EmptyState message="No runs with web search enabled for the selected filters. Fan-out appears once your prompts have been run by an engine with web search." />
+			<TooltipProvider delay={150}>
+				<div className="space-y-6">
+					<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
+					<EmptyState message="No runs with web search enabled for the selected filters. Fan-out appears once your prompts have been run by an engine with web search." />
+				</div>
+			</TooltipProvider>
 		);
 	} else if (data.totalQueries === 0) {
 		// Runs happened but none exposed fan-out — still show the KPIs (run counts)
@@ -87,6 +93,7 @@ function QueryFanoutPage() {
 			<TooltipProvider delay={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
+					<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
 					<EmptyState message="No web queries in this period — the engines you track didn't expose any searches for these prompts and filters." />
 				</div>
 			</TooltipProvider>
@@ -96,6 +103,9 @@ function QueryFanoutPage() {
 			<TooltipProvider delay={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
+					{fanoutByModel(trackedTargets).some((e) => e.support.status !== "supported") && (
+						<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
+					)}
 					<Tabs value={tab} onValueChange={(v) => setTab(v as FanoutTab)} className="gap-4">
 						<TabsList className="max-w-full">
 							<TabsTrigger value="fanout" className="max-[380px]:text-xs">

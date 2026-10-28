@@ -70,7 +70,7 @@ function StatisticsPage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
-				<DirectoryHero eyebrow="Statistics" title="AI search statistics" lead={lead} />
+				<DirectoryHero title="AI search statistics" lead={lead} />
 
 				<section className="border-b border-zinc-200 bg-white py-12">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">

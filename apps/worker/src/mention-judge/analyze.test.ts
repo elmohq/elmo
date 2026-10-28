@@ -1,8 +1,8 @@
 import type { MentionConfig } from "@workspace/lib/mentions";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cuedAnalyzer as analyzer } from "./__fixtures__/cued-judge";
 import { configureMentionAnalyzer, jevAnalyzer } from "./analyze";
-import { type JevRequest, stubTransport } from "./jev";
+import { JEV_MODEL, type JevRequest, OPENROUTER_JEV_MODEL, stubTransport, TooLarge } from "./jev";
 
 const config: MentionConfig = {
 	brand: { name: "Apple", aliases: [], domains: ["https://www.apple.com"] },
@@ -75,6 +75,33 @@ describe("judged mentions", () => {
 	});
 });
 
+describe("answers too large for Jev", () => {
+	it("asks about fewer companies at a time, and gets the same judgements", async () => {
+		const text = "Apple is great value. Globex is a solid alternative. Initech is the one to avoid.";
+		const sizes: number[] = [];
+		const small = jevAnalyzer(async (request) => {
+			if (Object.keys(request.questions).length > 2) throw new TooLarge("too large");
+			sizes.push(Object.keys(request.questions).length);
+			return stubTransport(request);
+		});
+		expect(await small.analyze(text, config)).toEqual(await analyzer.analyze(text, config));
+		expect(sizes).toEqual([2, 2, 2]);
+	});
+
+	it("reads less of the answer when one company alone doesn't fit", async () => {
+		const text = `Apple is great value. ${"Filler words about laptops. ".repeat(400)}`;
+		const answers: number[] = [];
+		const result = await jevAnalyzer(async (request) => {
+			const answer = String(request.state.answer);
+			answers.push(answer.length);
+			if (answer.length > 5_000) throw new TooLarge("too large");
+			return stubTransport(request);
+		}).analyze(text, config);
+		expect(result.brandMentioned).toBe(true);
+		expect(answers.at(-1)).toBeLessThanOrEqual(5_000);
+	});
+});
+
 describe("re-judging after a config change", () => {
 	const text = "Initech leads the pack. Apple is great value. Globex is a solid alternative.";
 
@@ -129,17 +156,89 @@ describe("re-judging after a config change", () => {
 });
 
 describe("configureMentionAnalyzer", () => {
-	it("refuses to run without a key", () => {
-		expect(() => configureMentionAnalyzer("")).toThrow("TYPESAFE_API_KEY");
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		vi.restoreAllMocks();
+	});
+	const noOpenRouter = () => undefined;
+	const openRouter = () => "or-key";
+
+	it("refuses to run without a key, naming both that would do", () => {
+		expect(() => configureMentionAnalyzer("", noOpenRouter)).toThrow(/TYPESAFE_API_KEY.*OPENROUTER_API_KEY/);
+		expect(() => configureMentionAnalyzer("", () => "  ")).toThrow("OPENROUTER_API_KEY");
 	});
 
 	it("stamps the stub's judgements apart from Jev's, so a real key re-judges them", () => {
-		expect(configureMentionAnalyzer("stub").judgeVersion).not.toBe(configureMentionAnalyzer("key").judgeVersion);
+		expect(configureMentionAnalyzer("stub", noOpenRouter).judgeVersion).not.toBe(
+			configureMentionAnalyzer("key", noOpenRouter).judgeVersion,
+		);
+	});
+
+	/** Where the judge sends its first request, and with which model and key; the request is rejected. */
+	async function firstCall(configure: () => ReturnType<typeof configureMentionAnalyzer>) {
+		// Before configuring: the transport takes `fetch` when it's made.
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockResolvedValue(new Response(JSON.stringify({ error: { message: "bad key", code: 401 } }), { status: 401 }));
+		const error = await configure()
+			.analyze("Apple is great.", config)
+			.catch((e: Error) => e);
+		const calls = fetchSpy.mock.calls.length;
+		const [url, init] = fetchSpy.mock.calls[0];
+		fetchSpy.mockRestore();
+		return {
+			url,
+			calls,
+			error,
+			model: JSON.parse(String(init?.body)).model,
+			authorization: new Headers(init?.headers).get("Authorization"),
+		};
+	}
+
+	it("calls Jev through OpenRouter, with OpenRouter's model name, when that's the only key", async () => {
+		expect(await firstCall(() => configureMentionAnalyzer("", openRouter))).toMatchObject({
+			url: "https://openrouter.ai/api/v1/systemone",
+			model: OPENROUTER_JEV_MODEL,
+			authorization: "Bearer or-key",
+		});
+	});
+
+	it("reads the OpenRouter key as a provider credential", async () => {
+		vi.stubEnv("OPENROUTER_API_KEY", "or-key");
+		expect((await firstCall(() => configureMentionAnalyzer(""))).url).toBe("https://openrouter.ai/api/v1/systemone");
+	});
+
+	it("keeps TypeSafe when an OpenRouter key is set too", async () => {
+		expect(await firstCall(() => configureMentionAnalyzer("ts-key", openRouter))).toMatchObject({
+			url: "https://api.typesafe.ai/v1/systemone",
+			model: JEV_MODEL,
+			authorization: "Bearer ts-key",
+		});
+	});
+
+	it("stops at a rejected OpenRouter key without trying TypeSafe", async () => {
+		const call = await firstCall(() => configureMentionAnalyzer("", openRouter));
+		expect(call.calls).toBe(1);
+		expect(String(call.error)).toContain("OPENROUTER_API_KEY was rejected");
+	});
+
+	it("keeps judgements made through TypeSafe after switching to OpenRouter", async () => {
+		const text = "Apple is great value. Globex is a solid alternative.";
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(
+				async (_url, init) => new Response(JSON.stringify(await stubTransport(JSON.parse(String(init?.body))))),
+			);
+		const viaTypeSafe = await configureMentionAnalyzer("ts-key", noOpenRouter).analyze(text, config);
+		fetchSpy.mockClear();
+		const viaOpenRouter = await configureMentionAnalyzer("", openRouter).analyze(text, config, viaTypeSafe.assessments);
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(viaOpenRouter.brandMentioned).toBe(viaTypeSafe.brandMentioned);
 	});
 
 	it("judges locally with the stub key, calling no one", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
-		const stub = configureMentionAnalyzer("stub");
+		const stub = configureMentionAnalyzer("stub", noOpenRouter);
 		expect((await stub.analyze("Apple is great.", config)).brandMentioned).toBe(true);
 		expect(fetchSpy).not.toHaveBeenCalled();
 		fetchSpy.mockRestore();

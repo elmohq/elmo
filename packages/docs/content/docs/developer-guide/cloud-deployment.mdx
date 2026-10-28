@@ -77,11 +77,37 @@ standard platform** (the run policy uses the first match per model), plus a grou
 model sold in the premium tier:
 
 ```
-chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online
+chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online
 ```
 
 Platforms are offered to customers only when they appear in both the plan menu
 (`STANDARD_PLATFORM_MENU`) and `SCRAPE_TARGETS`.
+
+### Supported model versions
+
+These are the exact versions Elmo Cloud runs. Scraped platforms have no version to pin: they track
+whatever the live product serves its users that day.
+
+| Platform | Sold as | Version |
+| --- | --- | --- |
+| ChatGPT | Pick (scraped) | Live chatgpt.com |
+| ChatGPT | Premium | `gpt-6-luna` with web search, via the OpenAI API |
+| Google AI Mode | Pick (scraped) | Live product |
+| Google AI Overviews | Pick (scraped) | Live product |
+| Copilot | Pick (scraped) | Live product |
+| Perplexity | Pick (scraped) | Live product |
+| Gemini | Pick (scraped) | Live gemini.google.com |
+| Qwen | Pick (API) | `qwen/qwen3-235b-a22b-2507`, via OpenRouter |
+| DeepSeek | Pick (API) | `deepseek/deepseek-v3.2`, via OpenRouter |
+| Mistral | Pick (API) | `mistralai/mistral-medium-3.1`, via OpenRouter |
+| Claude | Pick (API) | `claude-haiku-5-5`, via the Anthropic API |
+| Claude | Premium | `claude-haiku-5-5` with web search, via the Anthropic API |
+| Grok | Premium | `x-ai/grok-4.5` with web search, via OpenRouter |
+| Kimi | Pick (API) | `moonshotai/kimi-k2.5`, via OpenRouter |
+
+API picks are priced against a design point of roughly **$0.004 per run**, which is why Kimi runs
+K2.5 rather than K3: K3's output tokens cost several times that per answer. Check a new model's
+per-run price against that point before adding it to the menu or bumping a version.
 
 Some models are configured twice on purpose, and the two entries are sold differently:
 
@@ -112,7 +138,7 @@ Every pick samples at the plan's rate, whether it is scraped or an API call — 
 a grounded call is. Only the grounded targets depart, at `PREMIUM_RUNS_PER_DAY`, which a custom plan
 can raise through the `premiumRunsPerDay` override.
 
-Qwen, DeepSeek and Mistral carry no `:online` variant at all: they have no native search tool, so
+Qwen, DeepSeek, Mistral and Kimi carry no `:online` variant at all: they have no native search tool, so
 OpenRouter would fall back to Exa, whose results are not a surface a consumer would ever see. They
 report mentions but no citations, since a run with no web search returns no source annotations — as
 does any ungrounded pick.

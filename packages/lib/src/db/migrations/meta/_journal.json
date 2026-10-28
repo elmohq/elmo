@@ -218,6 +218,13 @@
       "when": 1792045939783,
       "tag": "0030_rollup_verdicts_without_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793059708255,
+      "tag": "0031_trim_unused_indexes",
+      "breakpoints": true
     }
   ]
 }

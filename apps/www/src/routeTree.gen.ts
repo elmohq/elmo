@@ -15,7 +15,6 @@ import { Route as AnswerEngineOptimizationRouteImport } from './routes/answer-en
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as DemoRouteImport } from './routes/demo'
-import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as GenerativeEngineOptimizationRouteImport } from './routes/generative-engine-optimization'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
@@ -40,6 +39,7 @@ import { Route as AiSearchIndexRouteImport } from './routes/ai-search/index'
 import { Route as AiSearchSlugRouteImport } from './routes/ai-search/$slug'
 import { Route as AiVisibilityToolsIndexRouteImport } from './routes/ai-visibility-tools/index'
 import { Route as AiVisibilityToolsSlugRouteImport } from './routes/ai-visibility-tools/$slug'
+import { Route as AiVisibilityToolsGraveyardRouteImport } from './routes/ai-visibility-tools/graveyard'
 import { Route as ApiOpenapiDotjsonRouteImport } from './routes/api/openapi[.]json'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
@@ -47,6 +47,8 @@ import { Route as BlogSplatRouteImport } from './routes/blog/$'
 import { Route as BlogRssDotxmlRouteImport } from './routes/blog/rss[.]xml'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
+import { Route as FeaturesIndexRouteImport } from './routes/features/index'
+import { Route as FeaturesSlugRouteImport } from './routes/features/$slug'
 import { Route as GlossaryIndexRouteImport } from './routes/glossary/index'
 import { Route as GlossarySlugRouteImport } from './routes/glossary/$slug'
 import { Route as LegalIndexRouteImport } from './routes/legal/index'
@@ -98,11 +100,6 @@ const ChangelogRoute = ChangelogRouteImport.update({
 const DemoRoute = DemoRouteImport.update({
   id: '/demo',
   path: '/demo',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FeaturesRoute = FeaturesRouteImport.update({
-  id: '/features',
-  path: '/features',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GenerativeEngineOptimizationRoute =
@@ -227,6 +224,12 @@ const AiVisibilityToolsSlugRoute = AiVisibilityToolsSlugRouteImport.update({
   path: '/ai-visibility-tools/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AiVisibilityToolsGraveyardRoute =
+  AiVisibilityToolsGraveyardRouteImport.update({
+    id: '/ai-visibility-tools/graveyard',
+    path: '/ai-visibility-tools/graveyard',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiOpenapiDotjsonRoute = ApiOpenapiDotjsonRouteImport.update({
   id: '/api/openapi.json',
   path: '/api/openapi.json',
@@ -260,6 +263,16 @@ const DocsIndexRoute = DocsIndexRouteImport.update({
 const DocsSplatRoute = DocsSplatRouteImport.update({
   id: '/docs/$',
   path: '/docs/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeaturesIndexRoute = FeaturesIndexRouteImport.update({
+  id: '/features/',
+  path: '/features/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeaturesSlugRoute = FeaturesSlugRouteImport.update({
+  id: '/features/$slug',
+  path: '/features/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GlossaryIndexRoute = GlossaryIndexRouteImport.update({
@@ -385,7 +398,6 @@ export interface FileRoutesByFullPath {
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/demo': typeof DemoRoute
-  '/features': typeof FeaturesRoute
   '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
@@ -407,11 +419,13 @@ export interface FileRoutesByFullPath {
   '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
+  '/ai-visibility-tools/graveyard': typeof AiVisibilityToolsGraveyardRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
+  '/features/$slug': typeof FeaturesSlugRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/legal/$': typeof LegalSplatRoute
   '/off-site-aeo/book': typeof OffSiteAeoBookRoute
@@ -421,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/docs/': typeof DocsIndexRoute
+  '/features/': typeof FeaturesIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
@@ -446,7 +461,6 @@ export interface FileRoutesByTo {
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/demo': typeof DemoRoute
-  '/features': typeof FeaturesRoute
   '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
@@ -468,11 +482,13 @@ export interface FileRoutesByTo {
   '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
+  '/ai-visibility-tools/graveyard': typeof AiVisibilityToolsGraveyardRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
+  '/features/$slug': typeof FeaturesSlugRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/legal/$': typeof LegalSplatRoute
   '/off-site-aeo/book': typeof OffSiteAeoBookRoute
@@ -482,6 +498,7 @@ export interface FileRoutesByTo {
   '/ai-visibility-tools': typeof AiVisibilityToolsIndexRoute
   '/blog': typeof BlogIndexRoute
   '/docs': typeof DocsIndexRoute
+  '/features': typeof FeaturesIndexRoute
   '/glossary': typeof GlossaryIndexRoute
   '/legal': typeof LegalIndexRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
@@ -508,7 +525,6 @@ export interface FileRoutesById {
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/demo': typeof DemoRoute
-  '/features': typeof FeaturesRoute
   '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
@@ -530,11 +546,13 @@ export interface FileRoutesById {
   '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
+  '/ai-visibility-tools/graveyard': typeof AiVisibilityToolsGraveyardRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
+  '/features/$slug': typeof FeaturesSlugRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/legal/$': typeof LegalSplatRoute
   '/off-site-aeo_/book': typeof OffSiteAeoBookRoute
@@ -544,6 +562,7 @@ export interface FileRoutesById {
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/docs/': typeof DocsIndexRoute
+  '/features/': typeof FeaturesIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
@@ -571,7 +590,6 @@ export interface FileRouteTypes {
     | '/brand'
     | '/changelog'
     | '/demo'
-    | '/features'
     | '/generative-engine-optimization'
     | '/llms-full.txt'
     | '/llms.txt'
@@ -593,11 +611,13 @@ export interface FileRouteTypes {
     | '/aeo-for/profound-users'
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
+    | '/ai-visibility-tools/graveyard'
     | '/api/openapi.json'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
     | '/docs/$'
+    | '/features/$slug'
     | '/glossary/$slug'
     | '/legal/$'
     | '/off-site-aeo/book'
@@ -607,6 +627,7 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/'
     | '/blog/'
     | '/docs/'
+    | '/features/'
     | '/glossary/'
     | '/legal/'
     | '/ai-visibility-tools/alternatives/$slug'
@@ -632,7 +653,6 @@ export interface FileRouteTypes {
     | '/brand'
     | '/changelog'
     | '/demo'
-    | '/features'
     | '/generative-engine-optimization'
     | '/llms-full.txt'
     | '/llms.txt'
@@ -654,11 +674,13 @@ export interface FileRouteTypes {
     | '/aeo-for/profound-users'
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
+    | '/ai-visibility-tools/graveyard'
     | '/api/openapi.json'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
     | '/docs/$'
+    | '/features/$slug'
     | '/glossary/$slug'
     | '/legal/$'
     | '/off-site-aeo/book'
@@ -668,6 +690,7 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools'
     | '/blog'
     | '/docs'
+    | '/features'
     | '/glossary'
     | '/legal'
     | '/ai-visibility-tools/alternatives/$slug'
@@ -693,7 +716,6 @@ export interface FileRouteTypes {
     | '/brand'
     | '/changelog'
     | '/demo'
-    | '/features'
     | '/generative-engine-optimization'
     | '/llms-full.txt'
     | '/llms.txt'
@@ -715,11 +737,13 @@ export interface FileRouteTypes {
     | '/aeo-for/profound-users'
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
+    | '/ai-visibility-tools/graveyard'
     | '/api/openapi.json'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
     | '/docs/$'
+    | '/features/$slug'
     | '/glossary/$slug'
     | '/legal/$'
     | '/off-site-aeo_/book'
@@ -729,6 +753,7 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/'
     | '/blog/'
     | '/docs/'
+    | '/features/'
     | '/glossary/'
     | '/legal/'
     | '/ai-visibility-tools/alternatives/$slug'
@@ -755,7 +780,6 @@ export interface RootRouteChildren {
   BrandRoute: typeof BrandRoute
   ChangelogRoute: typeof ChangelogRoute
   DemoRoute: typeof DemoRoute
-  FeaturesRoute: typeof FeaturesRoute
   GenerativeEngineOptimizationRoute: typeof GenerativeEngineOptimizationRoute
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
@@ -777,11 +801,13 @@ export interface RootRouteChildren {
   AeoForProfoundUsersRoute: typeof AeoForProfoundUsersRoute
   AiSearchSlugRoute: typeof AiSearchSlugRoute
   AiVisibilityToolsSlugRoute: typeof AiVisibilityToolsSlugRoute
+  AiVisibilityToolsGraveyardRoute: typeof AiVisibilityToolsGraveyardRoute
   ApiOpenapiDotjsonRoute: typeof ApiOpenapiDotjsonRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
   BlogRssDotxmlRoute: typeof BlogRssDotxmlRoute
   DocsSplatRoute: typeof DocsSplatRoute
+  FeaturesSlugRoute: typeof FeaturesSlugRoute
   GlossarySlugRoute: typeof GlossarySlugRoute
   LegalSplatRoute: typeof LegalSplatRoute
   OffSiteAeoBookRoute: typeof OffSiteAeoBookRoute
@@ -791,6 +817,7 @@ export interface RootRouteChildren {
   AiVisibilityToolsIndexRoute: typeof AiVisibilityToolsIndexRoute
   BlogIndexRoute: typeof BlogIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
+  FeaturesIndexRoute: typeof FeaturesIndexRoute
   GlossaryIndexRoute: typeof GlossaryIndexRoute
   LegalIndexRoute: typeof LegalIndexRoute
   AiVisibilityToolsAlternativesSlugRoute: typeof AiVisibilityToolsAlternativesSlugRoute
@@ -852,13 +879,6 @@ declare module '@tanstack/react-router' {
       path: '/demo'
       fullPath: '/demo'
       preLoaderRoute: typeof DemoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/features': {
-      id: '/features'
-      path: '/features'
-      fullPath: '/features'
-      preLoaderRoute: typeof FeaturesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/generative-engine-optimization': {
@@ -1029,6 +1049,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiVisibilityToolsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ai-visibility-tools/graveyard': {
+      id: '/ai-visibility-tools/graveyard'
+      path: '/ai-visibility-tools/graveyard'
+      fullPath: '/ai-visibility-tools/graveyard'
+      preLoaderRoute: typeof AiVisibilityToolsGraveyardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/openapi.json': {
       id: '/api/openapi.json'
       path: '/api/openapi.json'
@@ -1076,6 +1103,20 @@ declare module '@tanstack/react-router' {
       path: '/docs/$'
       fullPath: '/docs/$'
       preLoaderRoute: typeof DocsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/features/': {
+      id: '/features/'
+      path: '/features'
+      fullPath: '/features/'
+      preLoaderRoute: typeof FeaturesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/features/$slug': {
+      id: '/features/$slug'
+      path: '/features/$slug'
+      fullPath: '/features/$slug'
+      preLoaderRoute: typeof FeaturesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/glossary/': {
@@ -1235,7 +1276,6 @@ const rootRouteChildren: RootRouteChildren = {
   BrandRoute: BrandRoute,
   ChangelogRoute: ChangelogRoute,
   DemoRoute: DemoRoute,
-  FeaturesRoute: FeaturesRoute,
   GenerativeEngineOptimizationRoute: GenerativeEngineOptimizationRoute,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
@@ -1257,11 +1297,13 @@ const rootRouteChildren: RootRouteChildren = {
   AeoForProfoundUsersRoute: AeoForProfoundUsersRoute,
   AiSearchSlugRoute: AiSearchSlugRoute,
   AiVisibilityToolsSlugRoute: AiVisibilityToolsSlugRoute,
+  AiVisibilityToolsGraveyardRoute: AiVisibilityToolsGraveyardRoute,
   ApiOpenapiDotjsonRoute: ApiOpenapiDotjsonRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
   BlogRssDotxmlRoute: BlogRssDotxmlRoute,
   DocsSplatRoute: DocsSplatRoute,
+  FeaturesSlugRoute: FeaturesSlugRoute,
   GlossarySlugRoute: GlossarySlugRoute,
   LegalSplatRoute: LegalSplatRoute,
   OffSiteAeoBookRoute: OffSiteAeoBookRoute,
@@ -1271,6 +1313,7 @@ const rootRouteChildren: RootRouteChildren = {
   AiVisibilityToolsIndexRoute: AiVisibilityToolsIndexRoute,
   BlogIndexRoute: BlogIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
+  FeaturesIndexRoute: FeaturesIndexRoute,
   GlossaryIndexRoute: GlossaryIndexRoute,
   LegalIndexRoute: LegalIndexRoute,
   AiVisibilityToolsAlternativesSlugRoute:

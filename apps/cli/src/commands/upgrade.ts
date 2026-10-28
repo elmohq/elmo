@@ -160,7 +160,8 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 		process.exit(0);
 	}
 
-	await ensureJudgeKey(configDir, buildMigrationContext(configDir, cliVersion), options.yes);
+	const judgedBefore = detectedVersion !== null && semver.gte(detectedVersion, FIRST_JEV_VERSION);
+	await ensureJudgeKey(configDir, buildMigrationContext(configDir, cliVersion), options.yes, judgedBefore);
 
 	// ── Stop the stack so migrations + image swap run on a quiet deployment ─
 	assertDockerRunning();
@@ -201,8 +202,16 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 	p.outro(pc.green(`Upgraded to ${cliVersion}.`));
 }
 
+/** The first version to judge with Jev; a deployment from before it hasn't chosen how to call Jev. */
+const FIRST_JEV_VERSION = "0.7.0";
+
 /** Elmo can't judge answers without a Jev key, so an upgrade that lacks one asks for it before stopping anything. */
-async function ensureJudgeKey(configDir: string, context: MigrationContext, nonInteractive: boolean | undefined) {
+async function ensureJudgeKey(
+	configDir: string,
+	context: MigrationContext,
+	nonInteractive: boolean | undefined,
+	judgedBefore: boolean,
+) {
 	// Without this, an unreadable .env would be replaced by one holding only the key.
 	if (!(await fs.stat(path.join(configDir, ".env")).catch(() => null))) {
 		log.error(
@@ -212,16 +221,30 @@ async function ensureJudgeKey(configDir: string, context: MigrationContext, nonI
 	}
 	const env = await context.readEnv();
 	if (env.TYPESAFE_API_KEY?.trim()) return;
-	if (nonInteractive) {
-		log.error(
-			"This version needs TYPESAFE_API_KEY (Jev, https://console.typesafe.ai) to judge mentions and sentiment.",
+	const hasOpenRouter = Boolean(env.OPENROUTER_API_KEY?.trim());
+	if (hasOpenRouter && (judgedBefore || nonInteractive)) {
+		log.info(
+			"Judging mentions and sentiment with Jev through OpenRouter, billed to OPENROUTER_API_KEY. To call TypeSafe directly instead, add TYPESAFE_API_KEY with `elmo edit env`.",
 		);
-		log.info("Add it to .env with `elmo edit env`, then rerun the upgrade.");
+		if (!judgedBefore)
+			log.warn(
+				"Jev costs very roughly $0.15–0.35 per 1,000 answers that name a tracked company, and the first start re-judges the last 90 days (REPROCESS_DAYS).",
+			);
+		return;
+	}
+	if (nonInteractive) {
+		// A key saved only in Elmo's settings lives in the database, which the CLI can't read.
+		log.error(
+			"This version judges mentions and sentiment with Jev, and needs TYPESAFE_API_KEY (https://console.typesafe.ai) or OPENROUTER_API_KEY in .env to call it.",
+		);
+		log.info("Add one with `elmo edit env`, then rerun the upgrade.");
 		process.exit(1);
 	}
 	await collectJudgeKey(env);
 	await context.writeEnv(env);
-	log.success("Saved TYPESAFE_API_KEY to .env.");
+	log.success(
+		`Saved .env: Elmo will call Jev ${env.TYPESAFE_API_KEY ? "directly from TypeSafe" : "through OpenRouter"}.`,
+	);
 }
 
 function buildMigrationContext(configDir: string, version: string): MigrationContext {

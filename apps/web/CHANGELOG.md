@@ -1,5 +1,85 @@
 # @workspace/web
 
+## 0.7.6
+
+### Patch Changes
+
+- dfb4d72: Fixed sign-in and API requests failing until a server restart after a brief database connection error at startup.
+- 925390b: The citations page loads faster for long date ranges.
+- 6745dff: The sentiment page loads faster.
+- 8f1f968: Added a `/api/health` endpoint for uptime monitors.
+- e14cf97: Elmo Cloud plans can now track Kimi as one of their platforms.
+- 0355b6b: Removes "Title Changes" tab from the citations page. It wasn't very useful since providers don't surface titles consistently.
+- Updated dependencies [dfb4d72]
+- Updated dependencies [925390b]
+- Updated dependencies [98fc42e]
+  - @workspace/lib@0.7.6
+  - @workspace/deployment@0.7.6
+  - @workspace/api-spec@0.7.6
+  - @workspace/config@0.7.6
+  - @workspace/og@0.7.6
+  - @workspace/ui@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.5
+  - @workspace/config@0.7.5
+  - @workspace/deployment@0.7.5
+  - @workspace/lib@0.7.5
+  - @workspace/og@0.7.5
+  - @workspace/ui@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- fb89931: Show query availability on the Query Fan-Out page before any web-search runs come in.
+- db38a42: The web and worker images now ship with Node.js 24.22.1, which includes the [October 2026 Node.js security fixes](https://nodejs.org/en/blog/vulnerability), so self-hosted installs should update.
+- @workspace/api-spec@0.7.4
+  - @workspace/config@0.7.4
+  - @workspace/deployment@0.7.4
+  - @workspace/lib@0.7.4
+  - @workspace/og@0.7.4
+  - @workspace/ui@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- 5cdd077: Show which engines reveal their web searches on the Query Fan-Out page, and flag any that stopped.
+- Updated dependencies [cacc8f9]
+  - @workspace/lib@0.7.3
+  - @workspace/deployment@0.7.3
+  - @workspace/api-spec@0.7.3
+  - @workspace/config@0.7.3
+  - @workspace/og@0.7.3
+  - @workspace/ui@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.2
+  - @workspace/config@0.7.2
+  - @workspace/deployment@0.7.2
+  - @workspace/lib@0.7.2
+  - @workspace/og@0.7.2
+  - @workspace/ui@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- 345c66d: The sentiment page's quotes now open on praise, with mixed and criticism in their own tabs, and each card explains what its numbers mean.
+- @workspace/api-spec@0.7.1
+  - @workspace/config@0.7.1
+  - @workspace/deployment@0.7.1
+  - @workspace/lib@0.7.1
+  - @workspace/og@0.7.1
+  - @workspace/ui@0.7.1
+
 ## 0.7.0
 
 ### Patch Changes

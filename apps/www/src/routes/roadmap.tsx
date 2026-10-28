@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpRight, MessageCircle, ThumbsUp } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight, ArrowUpRight, MessageCircle, ThumbsUp } from "lucide-react";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import upcomingData from "@/data/upcoming-features.json";
@@ -9,7 +9,6 @@ import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
 const title = "Roadmap · Elmo";
 const description = "See what's coming next for Elmo. React or comment on GitHub issues to help prioritize.";
 
-const PROJECT_BOARD_URL = "https://github.com/orgs/elmohq/projects/3/views/1";
 const ISSUES_URL = "https://github.com/elmohq/elmo/issues";
 
 interface UpcomingHighlight {
@@ -153,8 +152,7 @@ function RoadmapPage() {
 				{/* Header */}
 				<section className="border-b border-zinc-200 bg-white">
 					<div className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-20">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ ROADMAP</p>
-						<h1 className="mt-4 max-w-[16ch] text-4xl font-semibold tracking-tight text-zinc-950 lg:text-5xl">
+						<h1 className="max-w-[16ch] text-4xl font-semibold tracking-tight text-zinc-950 lg:text-5xl">
 							What's coming next.
 						</h1>
 						<p className="mt-5 max-w-[58ch] text-pretty text-lg text-zinc-600">
@@ -162,24 +160,22 @@ function RoadmapPage() {
 						</p>
 						<div className="mt-7 flex flex-wrap items-center gap-2">
 							<a
-								href={PROJECT_BOARD_URL}
+								href="https://github.com/elmohq/elmo/issues/new"
 								target="_blank"
 								rel="noopener noreferrer"
 								className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
 							>
 								<GitHubGlyph className="size-3.5" />
-								View Roadmap on GitHub
-								<ArrowUpRight className="size-3.5" />
-							</a>
-							<a
-								href="https://github.com/elmohq/elmo/issues/new"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-medium leading-none text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300"
-							>
 								Request a feature
 								<ArrowUpRight className="size-3.5" />
 							</a>
+							<Link
+								to="/changelog"
+								className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-medium leading-none text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300"
+							>
+								See what shipped
+								<ArrowRight className="size-3.5" />
+							</Link>
 						</div>
 					</div>
 				</section>
@@ -189,8 +185,7 @@ function RoadmapPage() {
 					<section className="border-b border-zinc-200 bg-zinc-50/40">
 						<div className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-16">
 							<div className="mb-8">
-								<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600">/ ON DECK</p>
-								<h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Upcoming Features</h2>
+								<h2 className="text-2xl font-semibold tracking-tight text-zinc-950">Upcoming Features</h2>
 							</div>
 							<ul className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
 								{upcoming.map((h) => (
@@ -207,8 +202,7 @@ function RoadmapPage() {
 				<section className="bg-white">
 					<div className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-16">
 						<div className="mb-6">
-							<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ ISSUES</p>
-							<h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Trending and Recent Issues</h2>
+							<h2 className="text-2xl font-semibold tracking-tight text-zinc-950">Trending and Recent Issues</h2>
 						</div>
 						<ul className="space-y-2">
 							{popularIssues.map((issue) => (

@@ -55,12 +55,12 @@ For the full self-hosting walkthrough, see the [Elmo docs](https://www.elmohq.co
 
 ## Commands
 
-| Command | Description |
-| --- | --- |
-| `elmo init` | Interactive wizard to set up a local Elmo instance |
-| `elmo compose <args...>` | Run any `docker compose` command against your Elmo project (e.g. `elmo compose up -d`, `elmo compose down`, `elmo compose logs -f`, `elmo compose build`, `elmo compose ps`) |
-| `elmo edit <env\|compose>` | Change API keys, scrape targets, or the Docker Compose YAML |
-| `elmo upgrade` | Move your deployment to this CLI's version — runs migrations, re-pins image tags, and restarts the stack |
+| Command                    | Description                                                                                                                                                                  |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `elmo init`                | Interactive wizard to set up a local Elmo instance                                                                                                                           |
+| `elmo compose <args...>`   | Run any `docker compose` command against your Elmo project (e.g. `elmo compose up -d`, `elmo compose down`, `elmo compose logs -f`, `elmo compose build`, `elmo compose ps`) |
+| `elmo edit <env\|compose>` | Change API keys, scrape targets, or the Docker Compose YAML                                                                                                                  |
+| `elmo upgrade`             | Move your deployment to this CLI's version — runs migrations, re-pins image tags, and restarts the stack                                                                     |
 
 Run `elmo --help` or `elmo <command> --help` for the full list of flags.
 
@@ -83,7 +83,6 @@ See [the telemetry docs](https://www.elmohq.com/docs/developer-guide/telemetry) 
 ## Star, contribute, and chat
 
 Elmo is built in the open and we'd love your help.
-
 - ⭐ **[Star us on GitHub](https://github.com/elmohq/elmo)** — it genuinely helps more people find the project.
 - 💬 **[Join the Discord](https://discord.gg/s24nubCtKz)** — get help, share what you're building, and talk to the team.
 - 🐛 **[File an issue](https://github.com/elmohq/elmo/issues)** if something breaks or you have a feature request.
