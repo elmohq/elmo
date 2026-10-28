@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/citations";
-import { setMockCitationFlowRows, setMockCitations } from "./_mocks/server-citations";
+import { setMockCitationDomains, setMockCitationFlowRows, setMockCitations } from "./_mocks/server-citations";
 import { setMockBrand } from "./_mocks/use-brands";
 import { ALL_FLOW_ROWS, MODELS, mockCitationData } from "./citation-fixtures";
 
@@ -48,6 +48,7 @@ const meta = {
 		(Story) => {
 			setMockBrand(brand);
 			setMockCitations({ ...mockCitationData, availableTags: ["branded", "unbranded"], days: 30 });
+			setMockCitationDomains(mockCitationData.domainDistribution);
 			setMockCitationFlowRows(ALL_FLOW_ROWS);
 			return (
 				<Shell>

@@ -3,16 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { useMemo, useState } from "react";
 import { UnderlineTabs } from "@/components/citations/shared";
 import { TrackDomainPopover } from "@/components/citations/track-domain-popover";
-import type { CitationData } from "@/components/citations/types";
-import { ListPagination, usePagedList } from "@/components/list-pagination";
+import type { CitationData, CitationDomainItem, CitationListControls } from "@/components/citations/types";
+import { ListPagination } from "@/components/list-pagination";
 import { DOMAIN_CATEGORY_COLORS, ProgressBarChart } from "@/components/progress-bar-chart";
 import { SiteIcon } from "@/components/site-icon";
 
 export function TopDomainsCard({
-	domains,
+	list,
 	sourceTabs,
 	maxDomains,
 	brandId,
@@ -21,7 +20,7 @@ export function TopDomainsCard({
 	onCompetitorAdded,
 	onDomainSelect,
 }: {
-	domains: CitationData["domainDistribution"];
+	list: CitationListControls<CitationDomainItem>;
 	sourceTabs: { key: string; label: string }[];
 	maxDomains: number;
 	brandId?: string;
@@ -30,23 +29,6 @@ export function TopDomainsCard({
 	onCompetitorAdded?: () => void;
 	onDomainSelect?: (domain: string) => void;
 }) {
-	const [domainSearch, setDomainSearch] = useState("");
-	const [selectedCategory, setSelectedCategory] = useState<string>("all");
-
-	const filteredDomains = useMemo(() => {
-		let result = domains;
-		if (selectedCategory !== "all") {
-			result = result.filter((d) => d.category === selectedCategory);
-		}
-		if (domainSearch) {
-			const q = domainSearch.toLowerCase();
-			result = result.filter((d) => d.domain.toLowerCase().includes(q));
-		}
-		return result;
-	}, [domains, selectedCategory, domainSearch]);
-
-	const { page, setPage, pageItems, totalItems } = usePagedList(filteredDomains, maxDomains);
-
 	return (
 		<Card className="gap-4">
 			<CardHeader>
@@ -67,11 +49,8 @@ export function TopDomainsCard({
 					<InputGroup className="h-8 shrink-0 sm:w-48">
 						<InputGroupInput
 							placeholder="Search domains..."
-							value={domainSearch}
-							onChange={(e) => {
-								setDomainSearch(e.target.value);
-								setPage(0);
-							}}
+							value={list.search}
+							onChange={(e) => list.setSearch(e.target.value)}
 							className="h-8 text-xs"
 						/>
 						<InputGroupAddon className="pl-2.5">
@@ -84,23 +63,16 @@ export function TopDomainsCard({
 			<CardContent>
 				{sourceTabs.length > 2 && (
 					<div className="mb-3">
-						<UnderlineTabs
-							tabs={sourceTabs}
-							activeKey={selectedCategory}
-							onSelect={(key) => {
-								setSelectedCategory(key);
-								setPage(0);
-							}}
-						/>
+						<UnderlineTabs tabs={sourceTabs} activeKey={list.category} onSelect={list.setCategory} />
 					</div>
 				)}
 				{/* The card itself is gated on the UNFILTERED list by the parent;
 				    only the rows react to the search/tab filters, so a no-match
 				    search shows this message instead of hiding the section (#322). */}
-				{filteredDomains.length > 0 ? (
-					<>
+				{list.totalItems > 0 ? (
+					<div className={`transition-opacity ${list.isFetching ? "opacity-60" : ""}`}>
 						<ProgressBarChart
-							items={pageItems.map((domain) => ({
+							items={list.items.map((domain) => ({
 								label: domain.domain,
 								count: domain.count,
 								icon: <SiteIcon domain={domain.domain} size="md" />,
@@ -121,10 +93,17 @@ export function TopDomainsCard({
 							colorMapping={DOMAIN_CATEGORY_COLORS}
 							percentageMode="max"
 						/>
-						<ListPagination page={page} pageSize={maxDomains} totalItems={totalItems} onPageChange={setPage} />
-					</>
+						<ListPagination
+							page={list.page}
+							pageSize={maxDomains}
+							totalItems={list.totalItems}
+							onPageChange={list.setPage}
+						/>
+					</div>
 				) : (
-					<p className="text-sm text-muted-foreground text-center py-4">No domains match the current filters.</p>
+					!list.isFetching && (
+						<p className="text-sm text-muted-foreground text-center py-4">No domains match the current filters.</p>
+					)
 				)}
 			</CardContent>
 		</Card>

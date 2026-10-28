@@ -69,17 +69,29 @@ export function DomainPicker({
 	domains,
 	value,
 	onChange,
+	search,
+	onSearchChange,
 }: {
 	domains: readonly FlowDomainOption[];
 	value: string | undefined;
 	onChange: (domain: string) => void;
+	search: string;
+	onSearchChange: (search: string) => void;
 }) {
 	const { groups, nested } = useMemo(() => groupDomains(domains), [domains]);
-	const selected = domains.find((d) => d.domain === value) ?? null;
+	const selected = value
+		? (domains.find((d) => d.domain === value) ?? { domain: value, count: 0, category: "other" as const })
+		: null;
 
 	return (
 		<Combobox
 			items={groups}
+			filter={null}
+			inputValue={search}
+			onInputValueChange={onSearchChange}
+			onOpenChange={(open: boolean) => {
+				if (!open) onSearchChange("");
+			}}
 			value={selected}
 			onValueChange={(next: FlowDomainOption | null) => next && onChange(next.domain)}
 			itemToStringLabel={(item: FlowDomainOption) => item.domain}

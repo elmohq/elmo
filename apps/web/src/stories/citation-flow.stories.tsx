@@ -20,12 +20,15 @@ function FlowCardHarness({
 	modelOrder?: string[];
 }) {
 	const [domain, setDomain] = useState(initialDomain);
+	const [search, setSearch] = useState("");
 	const domainRows = useMemo(() => (rows ? rows(domain) : flowRowsFor(domain)), [rows, domain]);
 	return (
 		<CitationFlowCard
-			domains={domains}
+			domains={domains.filter((option) => option.domain.includes(search.toLowerCase()))}
 			domain={domain}
 			onDomainChange={setDomain}
+			search={search}
+			onSearchChange={setSearch}
 			rows={domainRows}
 			isLoading={isLoading}
 			modelOrder={modelOrder}

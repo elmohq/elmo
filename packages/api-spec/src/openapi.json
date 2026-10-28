@@ -1212,10 +1212,13 @@
 						"items": {
 							"$ref": "#/components/schemas/CitationDomain"
 						},
-						"description": "Every domain cited over the window, ordered by citation count."
+						"description": "This page of the domains cited over the window, ordered by citation count. `totals` covers every domain."
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
 					}
 				},
-				"required": ["brandId", "range", "totals", "data"]
+				"required": ["brandId", "range", "totals", "data", "pagination"]
 			},
 			"CitationUrl": {
 				"type": "object",
@@ -1309,10 +1312,13 @@
 						"items": {
 							"$ref": "#/components/schemas/CitationUrl"
 						},
-						"description": "Every URL cited over the window, ordered by citation count."
+						"description": "This page of the URLs cited over the window, ordered by citation count. `totals` covers every URL."
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
 					}
 				},
-				"required": ["brandId", "range", "totals", "data"]
+				"required": ["brandId", "range", "totals", "data", "pagination"]
 			},
 			"FanoutQuery": {
 				"type": "object",
@@ -1366,7 +1372,10 @@
 						"items": {
 							"$ref": "#/components/schemas/FanoutQuery"
 						},
-						"description": "Every distinct sub-query over the window, ordered by the runs that ran it."
+						"description": "This page of the distinct sub-queries over the window, ordered by the runs that ran them. The totals cover every query."
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
 					}
 				},
 				"required": [
@@ -1378,7 +1387,8 @@
 					"totalRuns",
 					"avgQueriesPerRun",
 					"coverageRate",
-					"data"
+					"data",
+					"pagination"
 				]
 			},
 			"PromptPerformance": {
@@ -2293,6 +2303,27 @@
 				"schema": {
 					"type": "string"
 				}
+			},
+			"AnalyticsListLimit": {
+				"name": "limit",
+				"in": "query",
+				"description": "Items per page. Values above the maximum are clamped, not rejected. The default is large enough that most windows fit on the first page.",
+				"required": false,
+				"schema": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 1000,
+					"default": 1000
+				}
+			},
+			"CitationCategoryFilter": {
+				"name": "category",
+				"in": "query",
+				"description": "Only rows in this category, as the dashboard classifies them for this brand: `brand`, `competitor`, `editorial`, `reviews`, `ecommerce`, `social`, `developer`, `pr`, `reference`, `institutional` or `other`.",
+				"required": false,
+				"schema": {
+					"type": "string"
+				}
 			}
 		},
 		"requestBodies": {
@@ -2650,6 +2681,24 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/Page"
+					},
+					{
+						"$ref": "#/components/parameters/AnalyticsListLimit"
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"description": "Case-insensitive substring match on the domain, across every domain cited in the window.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"$ref": "#/components/parameters/CitationCategoryFilter"
 					}
 				],
 				"responses": {
@@ -2706,6 +2755,33 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/Page"
+					},
+					{
+						"$ref": "#/components/parameters/AnalyticsListLimit"
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"description": "Case-insensitive substring match on the URL or page title, across every URL cited in the window.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"$ref": "#/components/parameters/CitationCategoryFilter"
+					},
+					{
+						"name": "pageType",
+						"in": "query",
+						"description": "Only pages of this type, e.g. `article`, `review` or `product`.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -2860,6 +2936,21 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/Page"
+					},
+					{
+						"$ref": "#/components/parameters/AnalyticsListLimit"
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"description": "Case-insensitive substring match on the search, across every search run in the window.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -3962,7 +4053,9 @@
 										"mixed": 2,
 										"score": 0.85
 									},
-									"position": { "average": 1.6 },
+									"position": {
+										"average": 1.6
+									},
 									"citations": {
 										"citationsTotal": 1240,
 										"brandCitationsTotal": 85,

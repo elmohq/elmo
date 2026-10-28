@@ -7,15 +7,13 @@ import type { ResponseSort, Sentiment, SentimentFilter, SentimentFilterCounts } 
 
 const brandSentiment = sql`(CASE WHEN rm.brand_mentioned THEN rm.assessments->'brand'->>'sentiment' END)`;
 
-export const sentimentConfidence = sql`COALESCE((rm.assessments->'brand'->'sentimentProbabilities'->>(rm.assessments->'brand'->>'sentiment'))::float8, 0)`;
-
 export function sentimentCondition(sentiment: SentimentFilter | undefined): SQL {
 	if (!sentiment) return sql`TRUE`;
 	if (sentiment === "unmentioned") return sql`NOT rm.brand_mentioned`;
 	return sql`${brandSentiment} = ${sentiment}`;
 }
 
-export const sentimentRank = (order: readonly Sentiment[]): SQL =>
+const sentimentRank = (order: readonly Sentiment[]): SQL =>
 	sql`array_position(ARRAY[${sql.join(
 		order.map((sentiment) => sql`${sentiment}`),
 		sql`, `,

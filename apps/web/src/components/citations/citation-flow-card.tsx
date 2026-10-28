@@ -232,6 +232,8 @@ export function CitationFlowCard({
 	domains,
 	domain,
 	onDomainChange,
+	search,
+	onSearchChange,
 	rows,
 	isLoading = false,
 	modelOrder = [],
@@ -239,6 +241,8 @@ export function CitationFlowCard({
 	domains: readonly FlowDomainOption[];
 	domain: string | undefined;
 	onDomainChange: (domain: string) => void;
+	search: string;
+	onSearchChange: (search: string) => void;
 	rows: readonly CitationFlowRow[] | undefined;
 	isLoading?: boolean;
 	modelOrder?: readonly string[];
@@ -298,7 +302,13 @@ export function CitationFlowCard({
 						</CardTitle>
 						<CardDescription>Which engines cite a domain, and which of its pages they cite</CardDescription>
 					</div>
-					<DomainPicker domains={domains} value={domain} onChange={onDomainChange} />
+					<DomainPicker
+						domains={domains}
+						value={domain}
+						onChange={onDomainChange}
+						search={search}
+						onSearchChange={onSearchChange}
+					/>
 				</div>
 			</CardHeader>
 			<Separator />

@@ -8,10 +8,12 @@ import {
 	organization,
 	promptRuns,
 	prompts,
+	rollupCitationPages,
 	rollupCitationUrls,
 	rollupCompetitorMentions,
 	rollupDirty,
 	rollupPromptRuns,
+	rollupSentimentQuotes,
 	rollupWebQueries,
 } from "@workspace/lib/db/schema";
 import type { RunMentionAssessments } from "@workspace/lib/mentions";
@@ -37,7 +39,15 @@ export async function createBrand(opts: { name?: string; website?: string; addit
 }
 
 export async function deleteBrand(brandId: string) {
-	for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupWebQueries, rollupCitationUrls, rollupDirty]) {
+	for (const table of [
+		rollupPromptRuns,
+		rollupCompetitorMentions,
+		rollupWebQueries,
+		rollupCitationUrls,
+		rollupCitationPages,
+		rollupSentimentQuotes,
+		rollupDirty,
+	]) {
 		await db.delete(table).where(eq(table.brandId, brandId));
 	}
 	await db.delete(citations).where(eq(citations.brandId, brandId));

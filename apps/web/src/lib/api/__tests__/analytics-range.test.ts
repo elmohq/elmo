@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { parseAnalyticsWindow, parsePaging, publicRange } from "../analytics-range";
+import { analyticsListPaging, parseAnalyticsWindow, parsePaging, publicRange } from "../analytics-range";
 
 const WINDOW = "start=2026-01-01T00:00:00Z&end=2026-02-01T00:00:00Z";
 
 describe("analytics API query parsing", () => {
+	it("pages the analytics lists 1000 at a time by default, clamping out-of-range and unreadable values", () => {
+		const paging = (query: string) => analyticsListPaging(new URLSearchParams(query));
+		expect(paging("")).toEqual({ page: 1, limit: 1000, offset: 0 });
+		expect(paging("page=3&limit=50")).toEqual({ page: 3, limit: 50, offset: 100 });
+		expect(paging("limit=5000")).toMatchObject({ limit: 1000 });
+		expect(paging("page=x&limit=abc")).toEqual({ page: 1, limit: 1000, offset: 0 });
+	});
+
 	it("rejects malformed pagination instead of silently coercing it", () => {
 		expect(() => parsePaging(new URL("https://example.com?page=abc"))).toThrow("page must be a positive integer");
 		expect(() => parsePaging(new URL("https://example.com?limit=101"))).toThrow(
