@@ -1,12 +1,13 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
+import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
-import { changeExistingPassword } from "@/lib/change-existing-password";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/change-password")({
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/_authed/change-password")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: buildTitle("Change password", { appName }) },
+				{ title: buildTitle("Change Password", { appName }) },
 				{ name: "description", content: "Change the password for your account." },
 			],
 		};
@@ -28,7 +29,7 @@ function ChangePasswordPage() {
 	if (clientConfig?.mode === "demo" || clientConfig?.mode === "whitelabel") {
 		return (
 			<FullPageCard
-				title="Change password"
+				title="Change Password"
 				subtitle={
 					clientConfig.mode === "demo"
 						? "Password changes are disabled for the shared demo account."
@@ -39,10 +40,40 @@ function ChangePasswordPage() {
 		);
 	}
 
+	return <PasswordAccountGate />;
+}
+
+function PasswordAccountGate() {
+	const accounts = useQuery({
+		queryKey: ["auth", "accounts"],
+		queryFn: async () => {
+			const result = await authClient.listAccounts();
+			if (result.error) throw new Error(result.error.message);
+			return result.data;
+		},
+	});
+
+	if (accounts.isPending) return null;
+
+	// Google-only accounts have no password to verify. A reset link creates one.
+	if (accounts.data && !accounts.data.some((account) => account.providerId === "credential")) {
+		return (
+			<FullPageCard
+				title="Change Password"
+				subtitle="Your account signs in with Google and doesn't have a password yet. Request a reset link to set one."
+				showBackButton
+			>
+				<Link to="/auth/forgot-password" className={buttonVariants({ className: "w-full" })}>
+					Set a Password
+				</Link>
+			</FullPageCard>
+		);
+	}
+
 	return <ChangePasswordForm />;
 }
 
-export function ChangePasswordForm() {
+function ChangePasswordForm() {
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
@@ -60,7 +91,7 @@ export function ChangePasswordForm() {
 		setLoading(true);
 
 		try {
-			const result = await changeExistingPassword({ currentPassword, newPassword });
+			const result = await authClient.changePassword({ currentPassword, newPassword });
 			if (result.error) {
 				setError(result.error.message ?? "Failed to change password");
 				setLoading(false);
@@ -75,7 +106,7 @@ export function ChangePasswordForm() {
 
 	if (updated) {
 		return (
-			<FullPageCard title="Password updated" subtitle="Your password has been changed.">
+			<FullPageCard title="Password Updated" subtitle="Your password has been changed.">
 				<Link to="/app" className={buttonVariants({ className: "w-full" })}>
 					Continue
 				</Link>
@@ -84,7 +115,7 @@ export function ChangePasswordForm() {
 	}
 
 	return (
-		<FullPageCard title="Change password" subtitle="Enter your current password and choose a new one.">
+		<FullPageCard title="Change Password" subtitle="Enter your current password and choose a new one.">
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
 				{error && (
 					<Alert variant="destructive">
@@ -92,7 +123,7 @@ export function ChangePasswordForm() {
 					</Alert>
 				)}
 				<div className="space-y-2">
-					<Label htmlFor="current-password">Current password</Label>
+					<Label htmlFor="current-password">Current Password</Label>
 					<Input
 						id="current-password"
 						type="password"
@@ -105,7 +136,7 @@ export function ChangePasswordForm() {
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="new-password">New password</Label>
+					<Label htmlFor="new-password">New Password</Label>
 					<Input
 						id="new-password"
 						type="password"
@@ -118,7 +149,7 @@ export function ChangePasswordForm() {
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="confirm-password">Confirm new password</Label>
+					<Label htmlFor="confirm-password">Confirm New Password</Label>
 					<Input
 						id="confirm-password"
 						type="password"
@@ -131,7 +162,7 @@ export function ChangePasswordForm() {
 					/>
 				</div>
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Changing..." : "Change password"}
+					{loading ? "Changing..." : "Change Password"}
 				</Button>
 			</form>
 		</FullPageCard>

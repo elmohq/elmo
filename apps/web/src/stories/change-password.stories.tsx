@@ -1,28 +1,35 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "storybook/test";
-import { ChangePasswordForm, Route } from "@/routes/_authed/change-password";
-import { getMockSubscriptionCalls, resetMockAuthClient, setMockSubscriptionError } from "./_mocks/auth-client";
+import { Route } from "@/routes/_authed/change-password";
+import {
+	getMockSubscriptionCalls,
+	resetMockAuthClient,
+	setMockHasPassword,
+	setMockSubscriptionError,
+} from "./_mocks/auth-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
 
+const ChangePasswordPage = Route.options.component as React.ComponentType;
+
 const meta = {
-	title: "Auth / Change password",
-	component: ChangePasswordForm,
+	title: "Auth / Change Password",
+	component: ChangePasswordPage,
 	parameters: { layout: "fullscreen" },
 	beforeEach: () => {
 		resetMockAuthClient();
 		setMockRouteContext({ clientConfig: { mode: "local" } });
 	},
-} satisfies Meta<typeof ChangePasswordForm>;
+} satisfies Meta<typeof ChangePasswordPage>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 async function fillPasswords(canvasElement: HTMLElement, confirmation = "new-password-123") {
 	const canvas = within(canvasElement);
-	await userEvent.type(canvas.getByLabelText("Current password"), "old-password-123");
-	await userEvent.type(canvas.getByLabelText("New password"), "new-password-123");
-	await userEvent.type(canvas.getByLabelText("Confirm new password"), confirmation);
-	await userEvent.click(canvas.getByRole("button", { name: "Change password" }));
+	await userEvent.type(await canvas.findByLabelText("Current Password"), "old-password-123");
+	await userEvent.type(canvas.getByLabelText("New Password"), "new-password-123");
+	await userEvent.type(canvas.getByLabelText("Confirm New Password"), confirmation);
+	await userEvent.click(canvas.getByRole("button", { name: "Change Password" }));
 	return canvas;
 }
 
@@ -39,9 +46,9 @@ export const Mismatch: Story = {
 export const Updated: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = await fillPasswords(canvasElement);
-		await expect(await canvas.findByText("Password updated")).toBeVisible();
+		await expect(await canvas.findByText("Password Updated")).toBeVisible();
 		await expect(canvas.getByText("Continue")).toBeVisible();
-		await expect(canvas.queryByLabelText("Current password")).not.toBeInTheDocument();
+		await expect(canvas.queryByLabelText("Current Password")).not.toBeInTheDocument();
 		await expect(getMockSubscriptionCalls()).toEqual([
 			{ method: "changePassword", args: { currentPassword: "old-password-123", newPassword: "new-password-123" } },
 		]);
@@ -53,36 +60,46 @@ export const InvalidCurrentPassword: Story = {
 		setMockSubscriptionError("Invalid password");
 		const canvas = await fillPasswords(canvasElement);
 		await expect(await canvas.findByRole("alert")).toHaveTextContent("Invalid password");
-		await expect(canvas.getByRole("button", { name: "Change password" })).toBeEnabled();
-		await expect(canvas.queryByText("Password updated")).not.toBeInTheDocument();
+		await expect(canvas.getByRole("button", { name: "Change Password" })).toBeEnabled();
+		await expect(canvas.queryByText("Password Updated")).not.toBeInTheDocument();
 		setMockSubscriptionError(null);
-		await userEvent.click(canvas.getByRole("button", { name: "Change password" }));
-		await expect(await canvas.findByText("Password updated")).toBeVisible();
+		await userEvent.click(canvas.getByRole("button", { name: "Change Password" }));
+		await expect(await canvas.findByText("Password Updated")).toBeVisible();
 	},
 };
 
 export const Demo: Story = {
 	render: () => {
 		setMockRouteContext({ clientConfig: { mode: "demo" } });
-		const Page = Route.options.component as typeof ChangePasswordForm;
-		return <Page />;
+		return <ChangePasswordPage />;
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(canvas.getByText("Password changes are disabled for the shared demo account.")).toBeVisible();
-		await expect(canvas.queryByLabelText("Current password")).not.toBeInTheDocument();
+		await expect(canvas.queryByLabelText("Current Password")).not.toBeInTheDocument();
 	},
 };
 
 export const SingleSignOn: Story = {
 	render: () => {
 		setMockRouteContext({ clientConfig: { mode: "whitelabel" } });
-		const Page = Route.options.component as typeof ChangePasswordForm;
-		return <Page />;
+		return <ChangePasswordPage />;
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(canvas.getByText(/Your password is managed by your sign-in provider/)).toBeVisible();
-		await expect(canvas.queryByLabelText("Current password")).not.toBeInTheDocument();
+		await expect(canvas.queryByLabelText("Current Password")).not.toBeInTheDocument();
+	},
+};
+
+export const GoogleOnlyAccount: Story = {
+	beforeEach: () => {
+		setMockHasPassword(false);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText(/signs in with Google/)).toBeVisible();
+		await expect(canvas.getByRole("button", { name: "Set a Password" })).toBeVisible();
+		await expect(canvas.queryByLabelText("Current Password")).not.toBeInTheDocument();
 	},
 };
