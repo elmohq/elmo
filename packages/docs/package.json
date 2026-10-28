@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/docs",
-	"version": "0.7.5",
+	"version": "0.7.6",
 	"private": true,
 	"license": "MIT",
 	"type": "module",
@@ -13,7 +13,7 @@
 	},
 	"dependencies": {
 		"@workspace/ui": "workspace:*",
-		"lucide-react": "^1.55.0"
+		"lucide-react": "^1.61.0"
 	},
 	"peerDependencies": {
 		"@tanstack/react-router": ">=1.0.0",

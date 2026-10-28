@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/config",
-	"version": "0.7.5",
+	"version": "0.7.6",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
@@ -18,17 +18,18 @@
 		"./model-filter": "./src/model-filter.ts",
 		"./models": "./src/models.ts",
 		"./plans": "./src/plans.ts",
+		"./ai-referral": "./src/ai-referral.ts",
 		"./referrals": "./src/referrals.ts",
 		"./roles": "./src/roles.ts",
 		"./scrape-targets": "./src/scrape-targets.ts",
 		"./types": "./src/types.ts"
 	},
 	"dependencies": {
-		"zod": "^4.6.6"
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
 		"@types/node": "^26.6.5",
 		"typescript": "^7.0.2",
-		"vitest": "^5.0.3"
+		"vitest": "^5.0.5"
 	}
 }

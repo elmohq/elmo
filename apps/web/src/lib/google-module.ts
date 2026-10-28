@@ -27,7 +27,7 @@ export interface GoogleModulePageRow {
 	count: number;
 }
 
-type GooglePromptRef = { id: string; value: string; count: number };
+type GooglePromptRef = { id: string; count: number };
 type GoogleProduct = {
 	name: string;
 	count: number;
@@ -40,11 +40,13 @@ type GoogleQuery = { query: string; count: number; prompts: GooglePromptRef[] };
 export type GoogleModule = {
 	shopping: { totalCitations: number; brandCount: number; competitorCount: number; products: GoogleProduct[] };
 	search: { totalCitations: number; queries: GoogleQuery[] };
+	promptValues: Record<string, string>;
 };
 
 export const emptyGoogleModule = (): GoogleModule => ({
 	shopping: { totalCitations: 0, brandCount: 0, competitorCount: 0, products: [] },
 	search: { totalCitations: 0, queries: [] },
+	promptValues: {},
 });
 
 type ProductAgg = {
@@ -118,13 +120,15 @@ export function buildGoogleModule(
 ): GoogleModule {
 	const { productByKey, queryByKey } = tallyGooglePages(pages, brandName, competitors);
 
+	const promptValues: Record<string, string> = {};
 	const promptRefs = (m: Map<string, number>): GooglePromptRef[] =>
 		[...m.entries()]
-			.map(([id, count]) => {
+			.flatMap(([id, count]) => {
 				const value = promptValue(id);
-				return value ? { id, value, count } : null;
+				if (!value) return [];
+				promptValues[id] = value;
+				return [{ id, count }];
 			})
-			.filter((p): p is GooglePromptRef => p !== null)
 			.sort((a, b) => b.count - a.count);
 
 	const products: GoogleProduct[] = [...productByKey.values()]
@@ -156,5 +160,6 @@ export function buildGoogleModule(
 			totalCitations: queries.reduce((s, q) => s + q.count, 0),
 			queries,
 		},
+		promptValues,
 	};
 }

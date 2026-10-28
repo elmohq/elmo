@@ -1,6 +1,6 @@
 {
   "name": "e2e",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -20,15 +20,16 @@
     "@workspace/lib": "workspace:*"
   },
   "devDependencies": {
+    "@better-auth/utils": "0.5.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
-    "@playwright/test": "^1.64.0",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
-    "@usebruno/cli": "4.2.1",
+    "@usebruno/cli": "4.3.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "pg": "^8.23.1",
-    "pg-boss": "^12.37.1",
+    "pg-boss": "^12.38.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }

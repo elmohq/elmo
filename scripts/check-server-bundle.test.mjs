@@ -66,6 +66,13 @@ test("ignores the traced dependencies' own sources", () => {
   assert.equal(status, 0);
 });
 
+test("passes a require of a package that is only probed optionally", () => {
+  const { status } = check({
+    ".output/server/_ssr/onboarding.mjs": 'try { var cssstyle = __require("cssstyle"); } catch {}\n',
+  });
+  assert.equal(status, 0);
+});
+
 // The Vercel preset writes function directories and no .output at all, which is
 // the layout that actually shipped the broken bundle.
 test("checks the vercel preset's function directories", () => {

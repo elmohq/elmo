@@ -33,6 +33,15 @@ describe("cloud platform menu", () => {
 		}
 	});
 
+	it("names the exact model version behind every API pick and premium model", () => {
+		const { pickGroups, premium } = planPlatformBreakdown(PLANS.business);
+		const versioned = [...(pickGroups.find((group) => group.id === "api")?.models ?? []), ...(premium?.models ?? [])];
+		expect(versioned.length).toBeGreaterThan(0);
+		for (const member of versioned) {
+			expect(member.tooltip, member.model).toBeTruthy();
+		}
+	});
+
 	it("keeps a model too dear to pick out of the pick menu", () => {
 		// Grok's own answers cost several times a scrape per run, so it is sold as
 		// a metered premium call rather than one of four picks sampled 4x/day.

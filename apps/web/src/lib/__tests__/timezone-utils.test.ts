@@ -23,21 +23,19 @@ describe("resolveTimezone", () => {
 	});
 
 	describe("without a resolved fallback", () => {
-		afterEach(() => vi.unstubAllGlobals());
+		afterEach(() => vi.restoreAllMocks());
 
 		it("uses the system timezone", () => {
-			vi.stubGlobal("Intl", {
-				DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone: "Australia/Sydney" }) }),
-			});
+			vi.spyOn(Intl, "DateTimeFormat").mockReturnValue({
+				resolvedOptions: () => ({ timeZone: "Australia/Sydney" }),
+			} as Intl.DateTimeFormat);
 
 			expect(resolveTimezone(undefined, undefined)).toBe("Australia/Sydney");
 		});
 
 		it("uses UTC when the system timezone cannot be resolved", () => {
-			vi.stubGlobal("Intl", {
-				DateTimeFormat: () => {
-					throw new Error("timezone data unavailable");
-				},
+			vi.spyOn(Intl, "DateTimeFormat").mockImplementation(() => {
+				throw new Error("timezone data unavailable");
 			});
 
 			expect(resolveTimezone(undefined, undefined)).toBe("UTC");

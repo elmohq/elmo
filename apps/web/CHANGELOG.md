@@ -1,5 +1,25 @@
 # @workspace/web
 
+## 0.7.6
+
+### Patch Changes
+
+- dfb4d72: Fixed sign-in and API requests failing until a server restart after a brief database connection error at startup.
+- 925390b: The citations page loads faster for long date ranges.
+- 6745dff: The sentiment page loads faster.
+- 8f1f968: Added a `/api/health` endpoint for uptime monitors.
+- e14cf97: Elmo Cloud plans can now track Kimi as one of their platforms.
+- 0355b6b: Removes "Title Changes" tab from the citations page. It wasn't very useful since providers don't surface titles consistently.
+- Updated dependencies [dfb4d72]
+- Updated dependencies [925390b]
+- Updated dependencies [98fc42e]
+  - @workspace/lib@0.7.6
+  - @workspace/deployment@0.7.6
+  - @workspace/api-spec@0.7.6
+  - @workspace/config@0.7.6
+  - @workspace/og@0.7.6
+  - @workspace/ui@0.7.6
+
 ## 0.7.5
 
 ### Patch Changes
