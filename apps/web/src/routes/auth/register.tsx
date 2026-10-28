@@ -21,7 +21,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
-import { TurnstileError, useTurnstile } from "@/hooks/use-turnstile";
+import { CAPTCHA_FAILED_MESSAGE, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
 import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
@@ -57,7 +57,6 @@ function RegisterPage() {
 			attribution={attributionParams(search)}
 			isCloud={context.clientConfig?.mode === "cloud"}
 			hasUsers={context.clientConfig?.hasUsers ?? false}
-			turnstileSiteKey={context.clientConfig?.turnstileSiteKey}
 		/>
 	);
 }
@@ -67,14 +66,12 @@ export function RegisterForm({
 	attribution,
 	isCloud,
 	hasUsers,
-	turnstileSiteKey,
 }: {
 	returnTo?: string;
 	attribution?: AttributionParams;
 	isCloud?: boolean;
 	/** A local instance before its bootstrap signup has nowhere to send an existing account. */
 	hasUsers?: boolean;
-	turnstileSiteKey?: string;
 }) {
 	const navigate = useNavigate();
 	const [name, setName] = useState("");
@@ -83,7 +80,7 @@ export function RegisterForm({
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [pendingVerification, setPendingVerification] = useState(false);
-	const turnstile = useTurnstile(turnstileSiteKey);
+	const turnstile = useTurnstile();
 	const source = isCloud ? "cloud-signup" : "self-hosted-signup";
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -101,7 +98,9 @@ export function RegisterForm({
 			});
 
 			if (result.error) {
-				setError(result.error.message ?? "Registration failed");
+				setError(
+					isCaptchaRejection(result.error) ? CAPTCHA_FAILED_MESSAGE : (result.error.message ?? "Registration failed"),
+				);
 				setLoading(false);
 				return;
 			}
@@ -113,14 +112,14 @@ export function RegisterForm({
 			}
 
 			navigate({ to: returnTo ?? "/app" });
-		} catch (err) {
-			setError(err instanceof TurnstileError ? err.message : "Something went wrong. Please try again.");
+		} catch {
+			setError("Something went wrong. Please try again.");
 			setLoading(false);
 		}
 	}
 
 	if (pendingVerification) {
-		return <CheckYourEmail email={email} returnTo={returnTo} turnstileSiteKey={turnstileSiteKey} />;
+		return <CheckYourEmail email={email} returnTo={returnTo} />;
 	}
 
 	return (
@@ -219,18 +218,10 @@ export function RegisterForm({
 	);
 }
 
-function CheckYourEmail({
-	email,
-	returnTo,
-	turnstileSiteKey,
-}: {
-	email: string;
-	returnTo?: string;
-	turnstileSiteKey?: string;
-}) {
+function CheckYourEmail({ email, returnTo }: { email: string; returnTo?: string }) {
 	const [resending, setResending] = useState(false);
 	const [resendError, setResendError] = useState<string | null>(null);
-	const turnstile = useTurnstile(turnstileSiteKey);
+	const turnstile = useTurnstile();
 
 	async function handleResend() {
 		setResending(true);
@@ -241,9 +232,10 @@ function CheckYourEmail({
 				callbackURL: safeReturnTo(returnTo),
 				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
 			});
-			if (result.error) setResendError(result.error.message ?? "Couldn't resend the email. Please try again.");
-		} catch (err) {
-			setResendError(err instanceof TurnstileError ? err.message : "Something went wrong. Please try again.");
+			if (isCaptchaRejection(result.error)) setResendError(CAPTCHA_FAILED_MESSAGE);
+			else if (result.error) setResendError(result.error.message ?? "Couldn't resend the email. Please try again.");
+		} catch {
+			setResendError("Something went wrong. Please try again.");
 		} finally {
 			setResending(false);
 		}

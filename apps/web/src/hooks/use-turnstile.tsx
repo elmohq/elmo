@@ -1,35 +1,33 @@
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+import { useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
 import { useCallback, useRef } from "react";
 
-const CAPTCHA_ERROR_CODES = new Set(["MISSING_RESPONSE", "VERIFICATION_FAILED"]);
+export const CAPTCHA_FAILED_MESSAGE = "Bot check failed. Please try again.";
 
-export class TurnstileError extends Error {
-	constructor() {
-		super("Bot check failed. Please try again.");
-		this.name = "TurnstileError";
-	}
-}
+const CAPTCHA_ERROR_CODES = new Set(["MISSING_RESPONSE", "VERIFICATION_FAILED"]);
 
 export function isCaptchaRejection(error: { code?: string } | null | undefined): boolean {
 	return !!error?.code && CAPTCHA_ERROR_CODES.has(error.code);
 }
 
-export function useTurnstile(siteKey: string | undefined) {
+export function useTurnstile() {
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const siteKey = context.clientConfig?.turnstileSiteKey;
 	const ref = useRef<TurnstileInstance>(null);
 
 	const getCaptchaHeaders = useCallback(async (): Promise<Record<string, string> | undefined> => {
-		if (!siteKey) return undefined;
 		const widget = ref.current;
-		if (!widget) throw new TurnstileError();
+		if (!widget) return undefined;
 		try {
 			return { "x-captcha-response": await widget.getResponsePromise() };
 		} catch {
-			throw new TurnstileError();
+			return undefined;
 		} finally {
 			// Tokens are single-use, so start solving the next one right away.
 			widget.reset();
 		}
-	}, [siteKey]);
+	}, []);
 
 	const widget = siteKey ? (
 		<Turnstile

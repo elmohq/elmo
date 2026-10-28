@@ -23,7 +23,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
-import { TurnstileError, useTurnstile } from "@/hooks/use-turnstile";
+import { CAPTCHA_FAILED_MESSAGE, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
 import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
@@ -93,7 +93,6 @@ function LoginPage() {
 			attribution={attributionParams(search)}
 			isCloud={mode === "cloud"}
 			canRegister={canRegister}
-			turnstileSiteKey={context.clientConfig?.turnstileSiteKey}
 		/>
 	);
 }
@@ -179,14 +178,12 @@ export function EmailPasswordLogin({
 	attribution,
 	isCloud,
 	canRegister,
-	turnstileSiteKey,
 }: {
 	destination?: string;
 	returnTo?: string;
 	attribution?: AttributionParams;
 	isCloud?: boolean;
 	canRegister?: boolean;
-	turnstileSiteKey?: string;
 }) {
 	const navigate = useNavigate();
 	const [email, setEmail] = useState("");
@@ -194,7 +191,7 @@ export function EmailPasswordLogin({
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
-	const turnstile = useTurnstile(turnstileSiteKey);
+	const turnstile = useTurnstile();
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -220,6 +217,8 @@ export function EmailPasswordLogin({
 				}
 				if (isCloud && result.error.code === "EMAIL_NOT_VERIFIED") {
 					setError("Please verify your email first — we just sent you a new verification link.");
+				} else if (isCaptchaRejection(result.error)) {
+					setError(CAPTCHA_FAILED_MESSAGE);
 				} else {
 					setError(result.error.message ?? "Invalid email or password");
 				}
@@ -228,8 +227,8 @@ export function EmailPasswordLogin({
 			}
 
 			window.location.href = destination;
-		} catch (err) {
-			setError(err instanceof TurnstileError ? err.message : "Something went wrong. Please try again.");
+		} catch {
+			setError("Something went wrong. Please try again.");
 			setLoading(false);
 		}
 	}

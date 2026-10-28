@@ -19,7 +19,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
-import { isCaptchaRejection, TurnstileError, useTurnstile } from "@/hooks/use-turnstile";
+import { CAPTCHA_FAILED_MESSAGE, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/forgot-password")({
@@ -43,19 +43,15 @@ function ForgotPasswordPage() {
 		return null;
 	}
 
-	return <ForgotPasswordForm isCloud turnstileSiteKey={context.clientConfig.turnstileSiteKey} />;
+	return <ForgotPasswordForm isCloud />;
 }
 
-export function ForgotPasswordForm({
-	isCloud,
-	submitted: initiallySubmitted = false,
-	turnstileSiteKey,
-}: ForgotPasswordFormProps) {
+export function ForgotPasswordForm({ isCloud, submitted: initiallySubmitted = false }: ForgotPasswordFormProps) {
 	const [email, setEmail] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [submitted, setSubmitted] = useState(initiallySubmitted);
 	const [error, setError] = useState<string | null>(null);
-	const turnstile = useTurnstile(turnstileSiteKey);
+	const turnstile = useTurnstile();
 	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -69,16 +65,11 @@ export function ForgotPasswordForm({
 				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
 			});
 			if (isCaptchaRejection(result.error)) {
-				setError(new TurnstileError().message);
+				setError(CAPTCHA_FAILED_MESSAGE);
 				setLoading(false);
 				return;
 			}
-		} catch (err) {
-			if (err instanceof TurnstileError) {
-				setError(err.message);
-				setLoading(false);
-				return;
-			}
+		} catch {
 			// Same neutral confirmation on failure — no account enumeration.
 		}
 		setSubmitted(true);
@@ -144,7 +135,6 @@ interface ForgotPasswordFormProps {
 	isCloud?: boolean;
 	/** Starts on the confirmation screen. For stories; the page always starts on the form. */
 	submitted?: boolean;
-	turnstileSiteKey?: string;
 }
 
 export function BackToSignIn() {
