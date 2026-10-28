@@ -128,7 +128,7 @@ export function ForgotPasswordForm({
 						autoFocus
 					/>
 				</div>
-				{turnstile.enabled && <div ref={turnstile.ref} />}
+				{turnstile.widget}
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Sending..." : "Send reset link"}
 				</Button>

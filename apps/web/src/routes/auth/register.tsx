@@ -197,7 +197,7 @@ export function RegisterForm({
 						minLength={isCloud ? 8 : 6}
 					/>
 				</div>
-				{turnstile.enabled && <div ref={turnstile.ref} />}
+				{turnstile.widget}
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Creating account..." : "Create account"}
 				</Button>
@@ -260,7 +260,7 @@ function CheckYourEmail({
 						<AlertDescription>{resendError}</AlertDescription>
 					</Alert>
 				)}
-				{turnstile.enabled && <div ref={turnstile.ref} />}
+				{turnstile.widget}
 				<Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resending}>
 					{resending ? "Sending..." : "Resend verification email"}
 				</Button>

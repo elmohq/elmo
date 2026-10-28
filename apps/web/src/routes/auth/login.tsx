@@ -298,7 +298,7 @@ export function EmailPasswordLogin({
 						autoComplete="current-password"
 					/>
 				</div>
-				{turnstile.enabled && <div ref={turnstile.ref} />}
+				{turnstile.widget}
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Signing in..." : "Sign in"}
 				</Button>
