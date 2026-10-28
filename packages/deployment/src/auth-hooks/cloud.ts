@@ -72,11 +72,6 @@ function createTurnstilePlugin(): BetterAuthPlugin | undefined {
 		);
 		return undefined;
 	}
-	if (!process.env.VITE_TURNSTILE_SITE_KEY?.trim()) {
-		console.warn(
-			"[auth] TURNSTILE_SECRET_KEY is set without VITE_TURNSTILE_SITE_KEY: the browser cannot solve the challenge, so every email sign-up, sign-in, and password reset will be rejected.",
-		);
-	}
 	return captcha({
 		provider: "cloudflare-turnstile",
 		secretKey,
