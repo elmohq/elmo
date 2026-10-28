@@ -18,6 +18,8 @@ export default defineConfig({
 					name: "integration",
 					include: ["src/**/*.integration.test.ts"],
 					globalSetup: ["src/test/integration/global-setup.ts"],
+					// The files truncate the tables they share.
+					fileParallelism: false,
 					// Its own variable rather than DATABASE_URL, which in a dev checkout
 					// points at data these tests would write into.
 					env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? "" },
