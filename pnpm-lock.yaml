@@ -254,6 +254,9 @@ importers:
       '@fontsource/titan-one':
         specifier: ^5.3.0
         version: 5.3.0
+      '@marsidev/react-turnstile':
+        specifier: ^1.6.3
+        version: 1.6.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.1
         version: 1.32.1(supports-color@7.2.0)(zod@4.6.7)
@@ -2287,6 +2290,12 @@ packages:
 
   '@marijn/find-cluster-break@1.0.4':
     resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
+
+  '@marsidev/react-turnstile@1.6.3':
+    resolution: {integrity: sha512-JdMMArjEVDMs5jnGMBeXl3y6dkMuIXPG4Tu88Uo2Rkf8ujEw/iJ2Yp/3n4kDF3BjJ+bJB9WC19LPWc5a7/4srA==}
+    peerDependencies:
+      react: ^17.0.2 || ^18.0.0 || ^19.0
+      react-dom: ^17.0.2 || ^18.0.0 || ^19.0
 
   '@mdx-js/mdx@3.1.1':
     resolution: {integrity: sha512-f6ZO2ifpwAQIpzGWaBQT2TXxPv6z3RBzQKpVftEWN78Vl/YweF1uwussDx8ECAXVtr3Rs89fKyG9YlzUs9DyGQ==}
@@ -11574,6 +11583,11 @@ snapshots:
       yaml: 2.9.1
 
   '@marijn/find-cluster-break@1.0.4': {}
+
+  '@marsidev/react-turnstile@1.6.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+    dependencies:
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
 
   '@mdx-js/mdx@3.1.1(supports-color@7.2.0)':
     dependencies:

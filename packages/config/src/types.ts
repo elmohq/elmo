@@ -86,6 +86,7 @@ export interface ClientConfig {
 	 */
 	canRegister: boolean;
 	hasUsers: boolean;
+	turnstileSiteKey?: string;
 }
 
 export interface WebQueryResult {
