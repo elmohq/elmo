@@ -26,10 +26,7 @@ export interface Subreddit {
 const MAX_SUBREDDITS = 100;
 const MAX_URLS_PER_SUBREDDIT = 20;
 
-/**
- * Reddit pages grouped by subreddit, most cited first. Each lists only its most
- * cited pages; its counts still cover all of them.
- */
+/** Each subreddit lists only its most cited pages; its counts still cover all of them. */
 export function summarizeSubreddits(pages: SubredditPage[], droppedUrls: string[] = []): Subreddit[] {
 	const dropped = new Set(droppedUrls.map(extractSubreddit).filter(Boolean));
 	const bySubreddit = new Map<string, Omit<Subreddit, "name" | "allNew" | "hasDropped">>();
