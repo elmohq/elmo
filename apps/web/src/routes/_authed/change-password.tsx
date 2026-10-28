@@ -55,7 +55,6 @@ function PasswordAccountGate() {
 
 	if (accounts.isPending) return null;
 
-	// Google-only accounts have no password to verify. A reset link creates one.
 	if (accounts.data && !accounts.data.some((account) => account.providerId === "credential")) {
 		return (
 			<FullPageCard

@@ -39,7 +39,6 @@ export function setMockEmailSignIn(outcome: "hang" | { error: string }) {
 	_emailSignIn = outcome;
 }
 
-/** Simulate an account that only signs in with Google. */
 export function setMockHasPassword(hasPassword: boolean) {
 	_hasPassword = hasPassword;
 }
