@@ -64,7 +64,6 @@ export interface CitationData {
 	totalCitations: number;
 	uniqueDomains: number;
 	categoryCounts: Record<CitationCategory, number>;
-	/** Every domain and URL, when the view has them all in memory; the brand view pages through them on the server. */
 	domainDistribution?: CitationDomainItem[];
 	specificUrls?: CitationUrlItem[];
 	subreddits: Subreddit[];

@@ -179,7 +179,6 @@ export function buildGoogleModule(
 	};
 }
 
-/** The module's totals and counts without its lists, which the brand view pages through on its own. */
 export function googleModuleTotals(module: GoogleModule): GoogleModule {
 	return {
 		shopping: { ...module.shopping, products: [] },
@@ -190,7 +189,6 @@ export function googleModuleTotals(module: GoogleModule): GoogleModule {
 
 export type GoogleProductFilter = "all" | ProductAttribution["kind"];
 
-/** One page of the module's products or search queries, with the prompt text its rows refer to. */
 export function pageGoogleList(
 	module: GoogleModule,
 	list: { kind: "products"; filter: GoogleProductFilter } | { kind: "queries" },

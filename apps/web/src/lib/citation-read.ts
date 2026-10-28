@@ -198,10 +198,7 @@ async function withPageDetails(
 	}));
 }
 
-/**
- * One page of `matched` and how many rows it has in all, counted apart from the
- * page so a page past the end still reports the total.
- */
+/** The total is counted apart from the page, so a page past the end still reports it. */
 async function pageOf<T>(ctes: SQL, matched: SQL, order: SQL, limit: number, offset: number) {
 	const [row] = await queryPg<{ total: number; rows: T[] }>(sql`
 		WITH ${ctes}, matched AS (${matched})
@@ -274,7 +271,6 @@ function domainStats(previous: AnalyticsScope): SQL {
 		)`;
 }
 
-/** Most cited first, ties in the order of their most cited pages. */
 const domainOrder = sql`count DESC, top_count DESC, top_url, domain`;
 
 const isReddit = (domain: SQL) => sql`(${domain} = 'reddit.com' OR ${domain} LIKE '%.reddit.com')`;

@@ -105,7 +105,6 @@ export interface RemoteListSource {
 	filters?: CitationFilters;
 }
 
-/** Back to the first page when the page's filters change, and onto the last when the list shrinks under it. */
 function useRemotePage(
 	filters: ReturnType<typeof useListFilters>,
 	source: RemoteListSource,
