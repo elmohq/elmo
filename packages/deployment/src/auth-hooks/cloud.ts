@@ -3,12 +3,15 @@
  *
  * Public self-serve signup: email/password with required verification,
  * Google OAuth, Resend transactional email, disposable-domain blocking,
- * invite-only signup allowlist, and umbrella org provisioning on signup.
+ * invite-only signup allowlist, Cloudflare Turnstile bot protection on the
+ * email endpoints, and umbrella org provisioning on signup.
  */
 
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
 import { provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
+import type { BetterAuthPlugin } from "better-auth";
 import { APIError } from "better-auth/api";
+import { captcha } from "better-auth/plugins";
 import { createStripeBillingPlugin } from "../billing/plugin";
 import { isDisposableEmail } from "../disposable-domains";
 import { sendEmail } from "../email";
@@ -48,10 +51,40 @@ function getSignupAllowlist(): string[] {
 		.filter(Boolean);
 }
 
+// ── Bot protection ────────────────────────────────────────────────────
+
+// Sign-in is included because an unverified sign-in resends the verification email.
+const TURNSTILE_PROTECTED_ENDPOINTS = [
+	"/sign-up/email",
+	"/sign-in/email",
+	"/request-password-reset",
+	"/send-verification-email",
+];
+
+// Cloudflare's test secrets verify every token as solved on example.com.
+const TURNSTILE_TEST_SECRET = /^[123]x0{20,}/;
+
+function createTurnstilePlugin(): BetterAuthPlugin | undefined {
+	const secretKey = process.env.TURNSTILE_SECRET_KEY?.trim();
+	if (!secretKey || !process.env.VITE_TURNSTILE_SITE_KEY?.trim()) {
+		console.warn(
+			"[auth] TURNSTILE_SECRET_KEY and VITE_TURNSTILE_SITE_KEY are not both set: email sign-up, sign-in, and password reset have no bot protection.",
+		);
+		return undefined;
+	}
+	return captcha({
+		provider: "cloudflare-turnstile",
+		secretKey,
+		endpoints: TURNSTILE_PROTECTED_ENDPOINTS,
+		allowedHostnames: TURNSTILE_TEST_SECRET.test(secretKey) ? undefined : [new URL(process.env.APP_URL!).hostname],
+	});
+}
+
 // ── Auth options ──────────────────────────────────────────────────────
 
 export function getCloudAuthOptions(): CreateAuthOptions {
 	const appUrl = process.env.APP_URL!;
+	const turnstile = createTurnstilePlugin();
 	return {
 		requireEmailVerification: true,
 		emailVerification: {
@@ -98,7 +131,7 @@ export function getCloudAuthOptions(): CreateAuthOptions {
 				},
 			},
 		},
-		extraPlugins: [createStripeBillingPlugin()],
+		extraPlugins: [createStripeBillingPlugin(), ...(turnstile ? [turnstile] : [])],
 		organizationOptions: {
 			sendInvitationEmail: async (data) => {
 				await sendEmail(

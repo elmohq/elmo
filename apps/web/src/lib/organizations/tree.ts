@@ -35,7 +35,7 @@ export function organizationTree(organization: OrganizationSummary): Organizatio
 			kind: "new-brand",
 			key: "new-brand",
 			link: { to: "/app/org/$org/new", params },
-			label: organization.brands.length > 0 ? "New brand" : "Create your first brand",
+			label: organization.brands.length > 0 ? "New Brand" : "Create Your First Brand",
 		});
 	} else if (needsSetup(organization)) {
 		children.push({

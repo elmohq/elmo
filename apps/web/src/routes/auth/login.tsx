@@ -23,6 +23,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
+import { CAPTCHA_FAILED_MESSAGE, CaptchaError, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
 import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
@@ -171,6 +172,14 @@ function SignInFailed({ error }: { error: string }) {
 	);
 }
 
+function signInErrorMessage(error: { code?: string; message?: string }, isCloud?: boolean) {
+	if (isCloud && error.code === "EMAIL_NOT_VERIFIED") {
+		return "Please verify your email first — we just sent you a new verification link.";
+	}
+	if (isCaptchaRejection(error)) return CAPTCHA_FAILED_MESSAGE;
+	return error.message ?? "Invalid email or password";
+}
+
 export function EmailPasswordLogin({
 	destination = "/app",
 	returnTo,
@@ -190,6 +199,7 @@ export function EmailPasswordLogin({
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
+	const turnstile = useTurnstile();
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -200,6 +210,7 @@ export function EmailPasswordLogin({
 			const result = await authClient.signIn.email({
 				email,
 				password,
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
 			});
 
 			if (result.error) {
@@ -212,18 +223,14 @@ export function EmailPasswordLogin({
 					setLoading(false);
 					return;
 				}
-				if (isCloud && result.error.status === 403) {
-					setError("Please verify your email first — we just sent you a new verification link.");
-				} else {
-					setError(result.error.message ?? "Invalid email or password");
-				}
+				setError(signInErrorMessage(result.error, isCloud));
 				setLoading(false);
 				return;
 			}
 
 			window.location.href = destination;
-		} catch {
-			setError("Something went wrong. Please try again.");
+		} catch (err) {
+			setError(err instanceof CaptchaError ? err.message : "Something went wrong. Please try again.");
 			setLoading(false);
 		}
 	}
@@ -292,6 +299,7 @@ export function EmailPasswordLogin({
 						autoComplete="current-password"
 					/>
 				</div>
+				{turnstile.widget}
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Signing in..." : "Sign in"}
 				</Button>

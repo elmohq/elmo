@@ -21,6 +21,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
+import { CAPTCHA_FAILED_MESSAGE, CaptchaError, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
 import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
@@ -79,7 +80,7 @@ export function RegisterForm({
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [pendingVerification, setPendingVerification] = useState(false);
-	const [resending, setResending] = useState(false);
+	const turnstile = useTurnstile();
 	const source = isCloud ? "cloud-signup" : "self-hosted-signup";
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -93,10 +94,13 @@ export function RegisterForm({
 				password,
 				name,
 				...(isCloud && { callbackURL: safeReturnTo(returnTo) }),
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
 			});
 
 			if (result.error) {
-				setError(result.error.message ?? "Registration failed");
+				setError(
+					isCaptchaRejection(result.error) ? CAPTCHA_FAILED_MESSAGE : (result.error.message ?? "Registration failed"),
+				);
 				setLoading(false);
 				return;
 			}
@@ -108,34 +112,14 @@ export function RegisterForm({
 			}
 
 			navigate({ to: returnTo ?? "/app" });
-		} catch {
-			setError("Something went wrong. Please try again.");
+		} catch (err) {
+			setError(err instanceof CaptchaError ? err.message : "Something went wrong. Please try again.");
 			setLoading(false);
 		}
 	}
 
-	async function handleResend() {
-		setResending(true);
-		try {
-			await authClient.sendVerificationEmail({ email, callbackURL: safeReturnTo(returnTo) });
-		} finally {
-			setResending(false);
-		}
-	}
-
 	if (pendingVerification) {
-		return (
-			<FullPageCard title="Check your email" subtitle={`We sent a verification link to ${email}`}>
-				<div className="space-y-4 w-full">
-					<p className="text-sm text-muted-foreground text-center">
-						Click the link in the email to verify your address and get started. The link expires, so verify soon.
-					</p>
-					<Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resending}>
-						{resending ? "Sending..." : "Resend verification email"}
-					</Button>
-				</div>
-			</FullPageCard>
-		);
+		return <CheckYourEmail email={email} returnTo={returnTo} />;
 	}
 
 	return (
@@ -212,6 +196,7 @@ export function RegisterForm({
 						minLength={isCloud ? 8 : 6}
 					/>
 				</div>
+				{turnstile.widget}
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Creating account..." : "Create account"}
 				</Button>
@@ -230,5 +215,48 @@ export function RegisterForm({
 				</p>
 			)}
 		</AuthSplitLayout>
+	);
+}
+
+function CheckYourEmail({ email, returnTo }: { email: string; returnTo?: string }) {
+	const [resending, setResending] = useState(false);
+	const [resendError, setResendError] = useState<string | null>(null);
+	const turnstile = useTurnstile();
+
+	async function handleResend() {
+		setResending(true);
+		setResendError(null);
+		try {
+			const result = await authClient.sendVerificationEmail({
+				email,
+				callbackURL: safeReturnTo(returnTo),
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
+			});
+			if (isCaptchaRejection(result.error)) setResendError(CAPTCHA_FAILED_MESSAGE);
+			else if (result.error) setResendError(result.error.message ?? "Couldn't resend the email. Please try again.");
+		} catch (err) {
+			setResendError(err instanceof CaptchaError ? err.message : "Something went wrong. Please try again.");
+		} finally {
+			setResending(false);
+		}
+	}
+
+	return (
+		<FullPageCard title="Check your email" subtitle={`We sent a verification link to ${email}`}>
+			<div className="space-y-4 w-full">
+				<p className="text-sm text-muted-foreground text-center">
+					Click the link in the email to verify your address and get started. The link expires, so verify soon.
+				</p>
+				{resendError && (
+					<Alert variant="destructive">
+						<AlertDescription>{resendError}</AlertDescription>
+					</Alert>
+				)}
+				{turnstile.widget}
+				<Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resending}>
+					{resending ? "Sending..." : "Resend verification email"}
+				</Button>
+			</div>
+		</FullPageCard>
 	);
 }
