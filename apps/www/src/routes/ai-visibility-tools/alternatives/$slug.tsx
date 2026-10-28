@@ -1,4 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { CompetitorPricingDetails } from "@/components/competitor-pricing";
 import {
 	DirectoryBackLink,
 	DirectoryElmoBanner,
@@ -12,13 +13,17 @@ import { Navbar } from "@/components/navbar";
 import { ToolGrid } from "@/components/tool-list";
 import {
 	type Competitor,
+	type CompetitorProfile,
 	getAlternatives,
 	getAlternativesFaqs,
 	getAlternativesVerdict,
 	getComparisonSlug,
 	getCompetitorBySlug,
+	getCompetitorProfile,
 	hasOwnPages,
+	type ProfileSection,
 } from "@/lib/competitors";
+import type { FaqItem } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")({
@@ -26,13 +31,17 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 		const c = getCompetitorBySlug(params.slug);
 		if (!c || !hasOwnPages(c)) throw notFound();
 		const alternatives = getAlternatives(c);
-		return { competitor: c, alternatives, faqs: getAlternativesFaqs(c, alternatives) };
+		const profile = getCompetitorProfile(c.slug);
+		const faqs = [...(profile?.alternatives?.faqs ?? []), ...getAlternativesFaqs(c, alternatives)];
+		return { competitor: c, alternatives, faqs, profile };
 	},
 	head: ({ params, loaderData }) => {
 		if (!loaderData) return {};
-		const { competitor: c, faqs } = loaderData;
-		const title = `${c.name} Alternatives | Open-Source AI Visibility · Elmo`;
-		const description = `The best ${c.name} alternatives for AI visibility tracking, including Elmo — the open-source, self-hosted option you can run for free.`;
+		const { competitor: c, faqs, profile } = loaderData;
+		const title = profile?.alternatives?.title ?? `${c.name} Alternatives | Open-Source AI Visibility · Elmo`;
+		const description =
+			profile?.alternatives?.description ??
+			`The best ${c.name} alternatives for AI visibility tracking, including Elmo — the open-source, self-hosted option you can run for free.`;
 		const path = `/ai-visibility-tools/alternatives/${params.slug}`;
 		return {
 			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
@@ -50,10 +59,66 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 	component: AlternativesPage,
 });
 
+function ProfileSectionView({ section }: { section: ProfileSection }) {
+	const table = section.table;
+	return (
+		<DirectorySection title={section.title}>
+			<div className="max-w-3xl space-y-4 leading-relaxed text-zinc-600">
+				{section.paragraphs.map((p) => (
+					<p key={p}>{p}</p>
+				))}
+			</div>
+			{table ? (
+				<div className="mt-8 overflow-x-auto">
+					<table className="w-full text-sm">
+						<thead>
+							<tr className="border-b border-zinc-200 text-left">
+								{table.columns.map((col) => (
+									<th key={col} className="py-3 pr-4 font-semibold text-zinc-950">
+										{col}
+									</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{table.rows.map((row) => (
+								<tr key={row[0]} className="border-b border-dashed border-zinc-200">
+									{row.map((cell, i) => (
+										<td
+											key={table.columns[i]}
+											className={`py-3 pr-4 align-top ${i === 0 ? "font-medium text-zinc-950" : "text-zinc-600"}`}
+										>
+											{cell}
+										</td>
+									))}
+								</tr>
+							))}
+						</tbody>
+					</table>
+					{table.caption ? <p className="mt-3 text-sm text-zinc-500">{table.caption}</p> : null}
+				</div>
+			) : null}
+			{section.links?.length ? (
+				<ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+					{section.links.map((link) => (
+						<li key={link.href}>
+							<a href={link.href} className="font-medium text-blue-700 hover:text-blue-900">
+								{link.text} →
+							</a>
+						</li>
+					))}
+				</ul>
+			) : null}
+		</DirectorySection>
+	);
+}
+
 function AlternativesPage() {
-	const { competitor, alternatives } = Route.useLoaderData() as {
+	const { competitor, alternatives, faqs, profile } = Route.useLoaderData() as {
 		competitor: Competitor;
 		alternatives: Competitor[];
+		faqs: FaqItem[];
+		profile?: CompetitorProfile;
 	};
 	return (
 		<div className="min-h-screen">
@@ -69,6 +134,16 @@ function AlternativesPage() {
 						name: competitor.name,
 					}}
 				/>
+
+				{profile?.alternatives?.sections?.map((section) => (
+					<ProfileSectionView key={section.title} section={section} />
+				))}
+
+				{profile?.pricing ? (
+					<DirectorySection title={`${competitor.name} pricing`}>
+						<CompetitorPricingDetails pricing={profile.pricing} />
+					</DirectorySection>
+				) : null}
 
 				{competitor.switching ? (
 					<DirectorySection title={`Why teams leave ${competitor.name}`}>
@@ -89,11 +164,11 @@ function AlternativesPage() {
 					</DirectorySection>
 				) : null}
 
-				<DirectorySection title={`Other ${competitor.name} alternatives`}>
+				<DirectorySection title={`Top ${competitor.name} alternatives and competitors`}>
 					<ToolGrid competitors={alternatives} />
 				</DirectorySection>
 
-				<Faq items={getAlternativesFaqs(competitor, alternatives)} />
+				<Faq items={faqs} />
 				<ElmoCta />
 			</main>
 			<Footer />

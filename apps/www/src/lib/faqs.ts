@@ -184,6 +184,16 @@ export const DIRECTORY_FAQS: FaqItem[] = [
 			"Answer Engine Optimization (AEO), also called generative engine optimization (GEO), is the practice of improving how often AI answer engines mention and cite your brand. AI visibility tools measure that presence so you can track and improve it over time.",
 	},
 	{
+		question: "What is the difference between AI visibility tools and LLM visibility trackers?",
+		answer:
+			"They are the same category under different names. An LLM visibility tracker, AI visibility tool, AEO tool, or GEO tool runs prompts through large language models and AI search engines and records whether your brand is mentioned, cited, and how it is described. Some vendors also use LLM visibility for tools that only query model APIs, so check whether a tracker captures answers from the real ChatGPT and Google AI interfaces your buyers use.",
+	},
+	{
+		question: "How much do AI visibility tracking tools cost?",
+		answer:
+			"Prices range from free to enterprise contracts. Elmo is free to self-host, and self-serve plans from Elmo Cloud and OtterlyAI start at $29/mo. Dedicated trackers such as Peec AI and Promptwatch start around $95/mo, while Profound sells enterprise contracts through sales. Most tools price by the number of prompts and AI engines you track, so compare the cost per tracked answer rather than the headline price.",
+	},
+	{
 		question: "How do I choose the best AI visibility tool?",
 		answer:
 			"The right tool depends on which AI engines you need to track, whether you want self-hosting and data ownership, your budget, and any agency or white-label needs. This directory compares 100+ tools feature-by-feature. If you want every major engine, auditable metrics, and no lock-in, Elmo is open source: self-host it for free or use Elmo Cloud.",

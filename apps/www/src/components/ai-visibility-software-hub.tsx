@@ -126,9 +126,13 @@ export function AiVisibilitySoftwareHub() {
 							<p>
 								That matters in a market full of opaque scoring and inflated pricing. With Elmo you own your data and
 								avoid vendor lock-in: the self-hosted core is free, and managed cloud hosting is there if you would
-								rather not run it. To see how it compares with the rest of the field, read our roundup of the{" "}
+								rather not run it. Compare it with any tool in the directory above, see{" "}
+								<a className={LINK} href="/pricing">
+									Elmo's pricing
+								</a>
+								, read our shortlist of the{" "}
 								<a className={LINK} href="/blog/best-ai-visibility-tools">
-									best AI visibility tools
+									best AI visibility tools by use case
 								</a>{" "}
 								or learn{" "}
 								<a className={LINK} href="/answer-engine-optimization">

@@ -42,28 +42,35 @@ export function DirectoryHero({ title, lead, children }: { title: string; lead: 
 export function DirectoryElmoBanner({
 	pitch,
 	comparison,
+	title = "Elmo: the open-source alternative",
 }: {
 	pitch: string;
-	comparison: { slug: string; name: string };
+	comparison?: { slug: string; name: string };
+	title?: string;
 }) {
 	return (
 		<section className="border-b border-zinc-200 bg-zinc-50 py-10">
 			<div className="mx-auto max-w-6xl px-4 md:px-6">
 				<div className="rounded-md border border-blue-200 bg-blue-50/40 p-6">
-					<h2 className="font-heading text-xl text-zinc-950">Elmo: the open-source alternative</h2>
+					<h2 className="font-heading text-xl text-zinc-950">{title}</h2>
 					<p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">{pitch}</p>
 					<div className="mt-4 flex flex-wrap gap-3">
 						<Link {...SELF_HOST_LINK} className={buttonVariants({ size: "sm" })}>
 							Deploy Elmo
 						</Link>
-						<Link
-							to="/ai-visibility-tools/$slug"
-							params={{ slug: comparison.slug }}
-							className={buttonVariants({ variant: "outline", size: "sm" })}
-						>
-							Elmo vs {comparison.name}
-							<ArrowRight className="h-3.5 w-3.5" />
+						<Link to="/pricing" className={buttonVariants({ variant: "outline", size: "sm" })}>
+							Elmo pricing
 						</Link>
+						{comparison ? (
+							<Link
+								to="/ai-visibility-tools/$slug"
+								params={{ slug: comparison.slug }}
+								className={buttonVariants({ variant: "outline", size: "sm" })}
+							>
+								Elmo vs {comparison.name}
+								<ArrowRight className="h-3.5 w-3.5" />
+							</Link>
+						) : null}
 					</div>
 				</div>
 			</div>
