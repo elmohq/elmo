@@ -82,7 +82,7 @@ export const Demo: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(canvas.getByText("Password changes are disabled for the shared demo account.")).toBeVisible();
+		await expect(canvas.getByText("Password changes are disabled for the demo.")).toBeVisible();
 		await expect(canvas.queryByLabelText("Current Password")).not.toBeInTheDocument();
 	},
 };
@@ -94,7 +94,7 @@ export const SingleSignOn: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(canvas.getByText(/Your password is managed by your sign-in provider/)).toBeVisible();
+		await expect(canvas.getByText("Change your password with your provider.")).toBeVisible();
 		await expect(canvas.queryByLabelText("Current Password")).not.toBeInTheDocument();
 	},
 };
@@ -105,7 +105,7 @@ export const GoogleOnlyAccount: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/signs in with Google/)).toBeVisible();
+		await expect(await canvas.findByText("You don't have a password yet.")).toBeVisible();
 		await expect(canvas.getByRole("button", { name: "Set a Password" })).toBeVisible();
 		await expect(canvas.queryByLabelText("Current Password")).not.toBeInTheDocument();
 	},

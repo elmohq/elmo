@@ -32,8 +32,8 @@ function ChangePasswordPage() {
 				title="Change Password"
 				subtitle={
 					clientConfig.mode === "demo"
-						? "Password changes are disabled for the shared demo account."
-						: "Your password is managed by your sign-in provider. Change it with your provider."
+						? "Password changes are disabled for the demo."
+						: "Change your password with your provider."
 				}
 				showBackButton
 			/>
@@ -57,11 +57,7 @@ function PasswordAccountGate() {
 
 	if (accounts.data && !accounts.data.some((account) => account.providerId === "credential")) {
 		return (
-			<FullPageCard
-				title="Change Password"
-				subtitle="Your account signs in with Google and doesn't have a password yet. Request a reset link to set one."
-				showBackButton
-			>
+			<FullPageCard title="Change Password" subtitle="You don't have a password yet." showBackButton>
 				<Link to="/auth/forgot-password" className={buttonVariants({ className: "w-full" })}>
 					Set a Password
 				</Link>
