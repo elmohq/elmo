@@ -272,11 +272,6 @@ const citationFiltersSchema = z.object({
 	model: z.string().optional(),
 });
 
-/**
- * The brand, its prompts and the window every Citations read shares, so the
- * Citation Flow answers for exactly the filters the rest of the page does.
- * `scope` is null when no prompt matches the tag filter.
- */
 async function resolveCitationScope(data: z.infer<typeof citationFiltersSchema>) {
 	const days = await resolveBrandLookbackDays(data.brandId, data.lookback);
 	const endDate = customRangeEnd(data.lookback);
@@ -430,7 +425,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/** One domain's citations per engine and page, for the Citation Flow. */
 export const getCitationFlowFn = createServerFn({ method: "GET" })
 	.validator(citationFiltersSchema.extend({ domain: z.string().min(1).max(253) }))
 	.handler(async ({ data }): Promise<CitationFlowRow[]> => {

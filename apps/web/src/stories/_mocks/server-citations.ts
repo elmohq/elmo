@@ -11,7 +11,6 @@ export function setMockCitations(data: unknown) {
 	_citations = data;
 }
 
-/** Every page's rows; the mock answers a domain the way the server read does. */
 export function setMockCitationFlowRows(rows: CitationFlowRow[]) {
 	_flowRows = rows;
 }

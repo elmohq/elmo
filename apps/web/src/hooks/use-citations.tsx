@@ -43,7 +43,6 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 	};
 }
 
-/** One domain's citations per engine and page, under the same filters as the rest of the Citations page. */
 export function useCitationFlow(brandId: string | undefined, filters: CitationFilters, domain: string | undefined) {
 	const resolvedBrandId = useResolvedBrandId(brandId);
 	return useQuery({

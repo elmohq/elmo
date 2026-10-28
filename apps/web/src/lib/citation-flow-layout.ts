@@ -1,18 +1,10 @@
-/**
- * Positions a citation flow as a Sankey: one column per node kind, every
- * column on one scale so a band keeps its width end to end. Each node gets at
- * least a label's height of room, so a two-citation page never has its label
- * collide with its neighbour's.
- */
 import type { CitationFlow, CitationFlowLink, CitationFlowNode } from "@/lib/citation-flow";
 
 export interface FlowLayoutOptions {
 	width: number;
-	/** Room left of the first column for engine labels, and right of the last for page labels. */
 	leftGutter: number;
 	rightGutter: number;
 	nodeWidth: number;
-	/** The smallest slot a node takes in each column, so labels never overlap. */
 	minSlot: { engine: number; section: number; page: number };
 	gap: { engine: number; section: number; page: number };
 	/** Pixels per citation never exceed this, so a ten-citation domain isn't drawn as slabs. */
@@ -25,7 +17,6 @@ export interface FlowLayoutOptions {
 export interface PositionedNode {
 	index: number;
 	node: CitationFlowNode;
-	/** 0 for engines; the last column holds the pages. */
 	column: number;
 	x: number;
 	y: number;
@@ -55,7 +46,6 @@ type ColumnKey = keyof FlowLayoutOptions["minSlot"];
 const columnKey = (node: CitationFlowNode): ColumnKey =>
 	node.kind === "engine" ? "engine" : node.kind === "section" ? "section" : "page";
 
-/** A column's height at `scale`: every node at least its slot, plus the gaps between them. */
 function columnHeight(values: number[], scale: number, slot: number, gap: number): number {
 	return values.reduce((sum, value) => sum + Math.max(value * scale, slot), 0) + gap * Math.max(values.length - 1, 0);
 }
@@ -67,7 +57,6 @@ interface Column {
 	gap: number;
 }
 
-/** The largest scale, up to `max`, at which every column fits in `budget`. */
 function fitScale(columns: Column[], budget: number, max: number): number {
 	const fits = (scale: number) => columns.every((c) => columnHeight(c.values, scale, c.slot, c.gap) <= budget);
 	if (fits(max)) return max;
@@ -81,11 +70,7 @@ function fitScale(columns: Column[], budget: number, max: number): number {
 	return lo;
 }
 
-/**
- * Where each band meets each node: bands leave and enter a node stacked in the
- * order of the node at their other end, then by engine, so they cross as little
- * as possible. Returns each link's centre at the given end.
- */
+// Bands stack in the order of the node at their other end, then by engine, so they cross as little as possible.
 function bandCentres(flow: CitationFlow, positioned: PositionedNode[], scale: number, end: "source" | "target") {
 	const other = end === "source" ? "target" : "source";
 	const engineRank = new Map(flow.engines.map((engine, i) => [engine.model, i]));
@@ -123,7 +108,6 @@ export function layoutCitationFlow(flow: CitationFlow, options: FlowLayoutOption
 		};
 	});
 
-	// Budget the height from the page rows, then find the largest scale at which every column fits.
 	const budget = Math.max(
 		options.minHeight,
 		columns[columns.length - 1].nodes.length * options.rowHeight,

@@ -28,7 +28,6 @@ export function TopDomainsCard({
 	brandName?: string;
 	competitors?: CitationData["competitors"];
 	onCompetitorAdded?: () => void;
-	/** Opens the domain in the Citation Flow. */
 	onDomainSelect?: (domain: string) => void;
 }) {
 	const [domainSearch, setDomainSearch] = useState("");

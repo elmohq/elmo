@@ -1,12 +1,5 @@
-/**
- * How one cited domain is cited: engine → site section → page, weighted by
- * citations. Pure, so the server read, the card and the Storybook fixtures
- * share it.
- *
- * Pages arrive already normalized by the rollups (`cited_pages.url`), which drops
- * `www.`, query-string tracking and trailing slashes, so a section never splits
- * on those.
- */
+// Pages arrive already normalized by the rollups (`cited_pages.url`), which drops
+// `www.`, query-string tracking and trailing slashes, so a section never splits on those.
 import { type CitationCategory, extractDomain } from "@workspace/lib/citations/domain-categories";
 
 export interface CitationFlowRow {
@@ -21,17 +14,12 @@ export type CitationFlowNodeKind = "engine" | "section" | "page" | "more";
 export interface CitationFlowNode {
 	id: string;
 	kind: CitationFlowNodeKind;
-	/** What the column shows: the engine, `docs.acme.com` / `/blog`, or the page's path. */
 	name: string;
 	value: number;
-	/** Engines only. */
 	model?: string;
-	/** Pages only. */
 	url?: string;
 	title?: string;
-	/** Folded nodes only: how many pages (or sections) they stand for. */
 	hiddenCount?: number;
-	/** Citations of this node per engine, for the tooltip breakdown and per-engine highlighting. */
 	byModel: Record<string, number>;
 }
 
@@ -39,7 +27,6 @@ export interface CitationFlowLink {
 	source: number;
 	target: number;
 	value: number;
-	/** Every link carries one engine's flow, so a page's inbound band is split by engine colour. */
 	model: string;
 }
 
@@ -48,9 +35,7 @@ export interface CitationFlow {
 	totalCitations: number;
 	pageCount: number;
 	sectionCount: number;
-	/** False when every page sits in one section: a column of one node adds nothing to read. */
 	showSections: boolean;
-	/** Engines in display order with their totals. */
 	engines: { model: string; count: number }[];
 	nodes: CitationFlowNode[];
 	links: CitationFlowLink[];
@@ -228,7 +213,6 @@ class FlowWriter {
 	}
 }
 
-/** The section column: the most cited sections, then one node for the rest. Returns each section's node. */
 function writeSections(out: FlowWriter, visible: SectionAgg[], folded: SectionAgg[]): Map<SectionAgg, number> {
 	const sectionOf = new Map<SectionAgg, number>();
 	for (const section of visible) {
@@ -257,7 +241,6 @@ function writeSections(out: FlowWriter, visible: SectionAgg[], folded: SectionAg
 	return sectionOf;
 }
 
-/** The fold of the long tail, fed from each section it drains (or straight from the engines). */
 function writeFold(out: FlowWriter, hidden: PageAgg[], sectionOf: Map<SectionAgg, number> | null) {
 	const index = out.node({
 		id: "more",
@@ -344,18 +327,11 @@ export function buildCitationFlow(input: {
 	return { ...base, nodes: out.nodes, links: out.links };
 }
 
-/**
- * The one sentence worth reading before the chart: which engine leads, and
- * where in the domain its citations land.
- */
 export interface FlowHeadline {
 	model: string;
-	/** Share of the domain's citations from that engine, 0–100. */
 	share: number;
-	/** The section (or page, without sections) that engine cites most. */
 	focus: string;
 	focusKind: "section" | "page";
-	/** Share of the engine's citations that land there, 0–100. */
 	focusShare: number;
 	soleEngine: boolean;
 }
@@ -384,16 +360,11 @@ export function flowHeadline(flow: CitationFlow, model?: string): FlowHeadline |
 
 export interface FlowDomainOption {
 	domain: string;
-	/** Citations to the domain and its subdomains, matching what the flow will total. */
 	count: number;
 	category: CitationCategory;
 }
 
-/**
- * Every cited host, plus the brand's and competitors' configured domains when
- * only their subdomains were cited, each counted with its subdomains so the
- * picker's number is the chart's total.
- */
+/** Counts include subdomains so the picker's number matches the chart's total. */
 export function flowDomainOptions(
 	cited: readonly { domain: string; count: number; category: CitationCategory }[],
 	configured: readonly { domain: string; category: CitationCategory }[] = [],
@@ -414,7 +385,6 @@ export function flowDomainOptions(
 	);
 }
 
-/** The brand's own site when it is cited at all, otherwise the most cited domain. */
 export function defaultFlowDomain(options: readonly FlowDomainOption[]): string | undefined {
 	return (options.find((option) => option.category === "brand") ?? options[0])?.domain;
 }

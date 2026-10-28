@@ -376,11 +376,7 @@ export async function getCitationUrlStats(scope: AnalyticsScope): Promise<Citati
 	`);
 }
 
-/**
- * One domain's pages, per engine, for the Citation Flow. `domain` is the
- * normalized host, so its subdomains match by suffix as `inDomainSet` does.
- * Google surfaces are left out, as everywhere else on the Citations page.
- */
+// Subdomains match by suffix as `inDomainSet` does; Google surfaces are left out as everywhere else on the Citations page.
 export async function getCitationFlowRows(scope: AnalyticsScope, domain: string): Promise<CitationFlowRow[]> {
 	return queryPg<CitationFlowRow>(sql`
 		SELECT rcu.model, cp.url, cp.title, sum(rcu.citations)::int AS count

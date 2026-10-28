@@ -32,7 +32,6 @@ interface CitationsDisplayProps {
 	maxUrls?: number;
 	days?: number;
 	onCompetitorAdded?: () => void;
-	/** Turns on the Citation Flow, which reads its own data under the same filters. */
 	flow?: CitationFlowOptions;
 }
 
@@ -272,7 +271,6 @@ export function CitationsDisplay({
 				/>
 			)}
 
-			{/* One domain, drilled into: which engines cite which of its pages */}
 			{flow && flowDomains.length > 0 && (
 				<CitationFlowSection
 					brandId={brandId}

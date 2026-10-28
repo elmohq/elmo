@@ -16,7 +16,6 @@ const total = (flow: CitationFlow, kinds: string[]) =>
 const names = (flow: CitationFlow, kind: string) =>
 	flow.nodes.filter((node) => node.kind === kind).map((node) => [node.name, node.value]);
 
-/** What flows into and out of every node, so conservation can be checked per node. */
 function throughput(flow: CitationFlow) {
 	const inflow = new Map<number, number>();
 	const outflow = new Map<number, number>();

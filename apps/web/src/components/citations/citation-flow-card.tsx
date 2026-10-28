@@ -90,7 +90,6 @@ function useElementWidth<T extends HTMLElement>() {
 	return [ref, width] as const;
 }
 
-/** What the pointer is on: an engine (from its node or the legend), a node, or one band. */
 type Focus = { type: "engine"; model: string } | { type: "node"; index: number } | { type: "link"; index: number };
 
 interface Emphasis {
@@ -98,7 +97,6 @@ interface Emphasis {
 	nodes: Set<number> | null;
 }
 
-/** Which bands and nodes stay lit for a focus; null means everything is. */
 function emphasisFor(flow: CitationFlow, focus: Focus | null): Emphasis {
 	if (!focus) return { links: null, nodes: null };
 	const links = new Set<number>();
@@ -212,7 +210,6 @@ interface ChartProps {
 	onFocus: (focus: Focus | null) => void;
 }
 
-/** What a hovered element stands for, read from the data attributes the marks carry. */
 function focusAt(flow: CitationFlow, target: EventTarget | null): Focus | null {
 	const mark = target instanceof Element ? target.closest<SVGElement>("[data-link],[data-node]") : null;
 	if (!mark) return null;
@@ -236,7 +233,6 @@ function FlowNodeMark({
 	const midY = y + height / 2;
 	const isLast = positioned.column === layout.columnX.length - 1;
 	const drawnHeight = Math.max(height, 2);
-	// The chart reads this to know what the pointer is on.
 	const hover = { "data-node": index };
 	const fade = { opacity: lit ? 1 : 0.3, className: "transition-opacity duration-150" };
 
@@ -323,7 +319,6 @@ function FlowNodeMark({
 			</tspan>
 		</text>
 	);
-	// The whole row is the target: node, label and the space between.
 	const hit = <rect x={x} y={midY - 10} width={pageLabelWidth + NODE_WIDTH + 8} height={20} fill="transparent" />;
 
 	if (isMore) {
@@ -438,7 +433,6 @@ function FlowChart({
 	);
 }
 
-/** The narrow-screen form: the same pages, ranked, each bar split by engine. */
 function FlowList({
 	flow,
 	colors,
@@ -599,7 +593,6 @@ function DomainPicker({
 	);
 }
 
-/** The leading engine's story, or the highlighted engine's while one is. */
 function Headline({ flow, model }: { flow: CitationFlow; model: string | null }) {
 	const headline = flowHeadline(flow, model ?? undefined);
 	if (!headline || flow.totalCitations < 2) return null;
@@ -717,7 +710,6 @@ function EngineLegend({
 	);
 }
 
-/** A domain with citations: the headline, the legend, and the chart (or the ranked list when narrow). */
 function FlowView({
 	flow,
 	width,
@@ -809,21 +801,16 @@ export function CitationFlowCard({
 	isLoading = false,
 	modelOrder = [],
 }: {
-	/** Cited domains under the page's filters, most cited first. */
 	domains: readonly FlowDomainOption[];
 	domain: string | undefined;
 	onDomainChange: (domain: string) => void;
-	/** Undefined while the first load for this domain is in flight. */
 	rows: readonly CitationFlowRow[] | undefined;
-	/** True while rows are being refreshed for a filter change. */
 	isLoading?: boolean;
-	/** The brand's tracked models, so an engine keeps its colour whatever the filter. */
 	modelOrder?: readonly string[];
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const [containerRef, width] = useElementWidth<HTMLDivElement>();
 
-	// A new domain starts collapsed.
 	const [shownDomain, setShownDomain] = useState(domain);
 	if (shownDomain !== domain) {
 		setShownDomain(domain);
