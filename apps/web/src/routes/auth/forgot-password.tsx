@@ -19,7 +19,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
-import { CAPTCHA_FAILED_MESSAGE, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
+import { CAPTCHA_FAILED_MESSAGE, CaptchaError, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/forgot-password")({
@@ -69,7 +69,12 @@ export function ForgotPasswordForm({ isCloud, submitted: initiallySubmitted = fa
 				setLoading(false);
 				return;
 			}
-		} catch {
+		} catch (err) {
+			if (err instanceof CaptchaError) {
+				setError(err.message);
+				setLoading(false);
+				return;
+			}
 			// Same neutral confirmation on failure — no account enumeration.
 		}
 		setSubmitted(true);

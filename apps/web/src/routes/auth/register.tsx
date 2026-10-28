@@ -21,7 +21,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
-import { CAPTCHA_FAILED_MESSAGE, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
+import { CAPTCHA_FAILED_MESSAGE, CaptchaError, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
 import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
@@ -112,8 +112,8 @@ export function RegisterForm({
 			}
 
 			navigate({ to: returnTo ?? "/app" });
-		} catch {
-			setError("Something went wrong. Please try again.");
+		} catch (err) {
+			setError(err instanceof CaptchaError ? err.message : "Something went wrong. Please try again.");
 			setLoading(false);
 		}
 	}
@@ -234,8 +234,8 @@ function CheckYourEmail({ email, returnTo }: { email: string; returnTo?: string 
 			});
 			if (isCaptchaRejection(result.error)) setResendError(CAPTCHA_FAILED_MESSAGE);
 			else if (result.error) setResendError(result.error.message ?? "Couldn't resend the email. Please try again.");
-		} catch {
-			setResendError("Something went wrong. Please try again.");
+		} catch (err) {
+			setResendError(err instanceof CaptchaError ? err.message : "Something went wrong. Please try again.");
 		} finally {
 			setResending(false);
 		}

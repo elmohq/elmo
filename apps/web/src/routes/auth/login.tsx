@@ -23,7 +23,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
-import { CAPTCHA_FAILED_MESSAGE, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
+import { CAPTCHA_FAILED_MESSAGE, CaptchaError, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
 import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
@@ -172,6 +172,14 @@ function SignInFailed({ error }: { error: string }) {
 	);
 }
 
+function signInErrorMessage(error: { code?: string; message?: string }, isCloud?: boolean) {
+	if (isCloud && error.code === "EMAIL_NOT_VERIFIED") {
+		return "Please verify your email first — we just sent you a new verification link.";
+	}
+	if (isCaptchaRejection(error)) return CAPTCHA_FAILED_MESSAGE;
+	return error.message ?? "Invalid email or password";
+}
+
 export function EmailPasswordLogin({
 	destination = "/app",
 	returnTo,
@@ -215,20 +223,14 @@ export function EmailPasswordLogin({
 					setLoading(false);
 					return;
 				}
-				if (isCloud && result.error.code === "EMAIL_NOT_VERIFIED") {
-					setError("Please verify your email first — we just sent you a new verification link.");
-				} else if (isCaptchaRejection(result.error)) {
-					setError(CAPTCHA_FAILED_MESSAGE);
-				} else {
-					setError(result.error.message ?? "Invalid email or password");
-				}
+				setError(signInErrorMessage(result.error, isCloud));
 				setLoading(false);
 				return;
 			}
 
 			window.location.href = destination;
-		} catch {
-			setError("Something went wrong. Please try again.");
+		} catch (err) {
+			setError(err instanceof CaptchaError ? err.message : "Something went wrong. Please try again.");
 			setLoading(false);
 		}
 	}
