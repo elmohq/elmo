@@ -4,6 +4,7 @@ import { Closing } from "@/components/home/closing";
 import { Faq } from "@/components/home/faq";
 import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { Navbar } from "@/components/navbar";
+import { PlanValueSection } from "@/components/plan-value-chart";
 import { Pricing } from "@/components/pricing";
 import { PRICING_FAQS } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
@@ -38,6 +39,7 @@ function PricingPage() {
 			<Navbar />
 			<main>
 				<Pricing as="h1" />
+				<PlanValueSection />
 				<Faq items={PRICING_FAQS} />
 				<Closing from="marketing-pricing-closing" />
 			</main>
