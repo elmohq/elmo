@@ -90,7 +90,7 @@ export function DomainPicker({
 					<Button
 						variant="outline"
 						size="sm"
-						className="w-full min-w-0 justify-between gap-2 font-normal sm:w-64"
+						className="w-full min-w-0 justify-between gap-2 font-normal @xl/card-header:w-64"
 						aria-label="Domain to analyze"
 					/>
 				}

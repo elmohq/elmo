@@ -174,7 +174,7 @@ function EngineLegend({
 }) {
 	return (
 		<ul className="flex flex-wrap gap-1" aria-label="Engines">
-			{flow.engines.map(({ model, count }) => (
+			{flow.engines.map(({ model }) => (
 				<li key={model}>
 					<button
 						type="button"
@@ -192,7 +192,6 @@ function EngineLegend({
 						<EngineSwatch color={colors.get(model)} />
 						<ModelIcon iconId={getModelMeta(model).iconId} className="size-3.5" />
 						<span className="font-medium">{engineLabel(model)}</span>
-						<span className="text-muted-foreground tabular-nums">{count.toLocaleString()}</span>
 					</button>
 				</li>
 			))}
@@ -225,14 +224,7 @@ function FlowView({
 
 	return (
 		<div className="space-y-4">
-			<div className="flex flex-col gap-3 @2xl/flow:flex-row @2xl/flow:items-start @2xl/flow:justify-between">
-				<Headline flow={flow} model={focusModel} />
-				<p className="shrink-0 text-xs text-muted-foreground tabular-nums">
-					{flow.totalCitations.toLocaleString()} citations
-					{flow.showSections && ` · ${flow.sectionCount} sections`} · {flow.pageCount}{" "}
-					{flow.pageCount === 1 ? "page" : "pages"}
-				</p>
-			</div>
+			<Headline flow={flow} model={focusModel} />
 			<EngineLegend
 				flow={flow}
 				colors={colors}
@@ -246,16 +238,19 @@ function FlowView({
 			) : (
 				<FlowList flow={flow} colors={colors} focusModel={focusModel} onExpand={() => onExpandedChange(true)} />
 			)}
-			{canToggleExpanded && (
-				<div className="flex items-center justify-between gap-3 border-t pt-3 text-xs text-muted-foreground">
-					<span className="tabular-nums">
-						Showing {shownPages} of {flow.pageCount} pages
-					</span>
+			<div className="flex min-h-7 items-center justify-between gap-3 border-t pt-3 text-xs text-muted-foreground tabular-nums">
+				<span>
+					{flow.totalCitations.toLocaleString()} citations
+					{flow.showSections && ` · ${flow.sectionCount} sections`} ·{" "}
+					{canToggleExpanded ? `${shownPages} of ${flow.pageCount}` : flow.pageCount}{" "}
+					{flow.pageCount === 1 ? "page" : "pages"}
+				</span>
+				{canToggleExpanded && (
 					<Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onExpandedChange(!expanded)}>
-						{expanded ? `Show top ${DEFAULT_FLOW_LIMITS.maxPages}` : `Show all ${flow.pageCount} pages`}
+						{expanded ? `Show Top ${DEFAULT_FLOW_LIMITS.maxPages}` : `Show All ${flow.pageCount} Pages`}
 					</Button>
-				</div>
-			)}
+				)}
+			</div>
 		</div>
 	);
 }
@@ -310,7 +305,7 @@ export function CitationFlowCard({
 	return (
 		<Card id={CITATION_FLOW_ID} className="scroll-mt-4 gap-4">
 			<CardHeader>
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<div className="flex flex-col gap-3 @xl/card-header:flex-row @xl/card-header:items-center @xl/card-header:justify-between">
 					<div className="min-w-0 space-y-1">
 						<CardTitle className="flex items-center gap-1.5">
 							Citation Flow

@@ -95,7 +95,7 @@ function focusAt(flow: CitationFlow, target: EventTarget | null): Focus | null {
 	return kind === "engine" && model ? { type: "engine", model } : { type: "node", index };
 }
 
-function bandPath({ x0, y0, x1, y1 }: PositionedLink) {
+function bandPath({ x0, y0, x1, y1 }: Pick<PositionedLink, "x0" | "y0" | "x1" | "y1">) {
 	const mid = (x0 + x1) / 2;
 	return `M${x0},${y0}C${mid},${y0} ${mid},${y1} ${x1},${y1}`;
 }
@@ -262,15 +262,7 @@ function SectionMark({ positioned }: { positioned: PositionedNode }) {
 		<>
 			<NodeBar positioned={positioned} className="fill-muted-foreground/60" />
 			{/* Section labels sit on a chip so they read over the bands leaving them. */}
-			<rect
-				x={chipX}
-				y={midY - 10}
-				width={chipWidth}
-				height={20}
-				rx={5}
-				className="fill-card/90 stroke-border"
-				strokeWidth={1}
-			/>
+			<rect x={chipX} y={midY - 10} width={chipWidth} height={20} rx={4} className="fill-card/85" />
 			<text x={chipX + 8} y={midY + 0.5} dominantBaseline="middle" className="text-xs">
 				<tspan className={cn("font-medium", node.hiddenCount ? "fill-muted-foreground" : "fill-foreground")}>
 					{node.name}
@@ -355,6 +347,44 @@ function FlowNodeMark({
 	);
 }
 
+interface Band {
+	key: string;
+	x0: number;
+	y0: number;
+	x1: number;
+	y1: number;
+	width: number;
+	target: number;
+}
+
+/** The engine bands between one section and one page sit side by side, so they draw as one band. */
+function mergeBands(links: PositionedLink[]): Band[] {
+	const merged = new Map<string, { links: PositionedLink[]; target: number }>();
+	for (const positioned of links) {
+		const key = `${positioned.link.source}-${positioned.link.target}`;
+		const entry = merged.get(key) ?? { links: [], target: positioned.link.target };
+		entry.links.push(positioned);
+		merged.set(key, entry);
+	}
+	return [...merged].map(([key, entry]) => {
+		const span = (centre: (l: PositionedLink) => number) => {
+			const top = Math.min(...entry.links.map((l) => centre(l) - l.width / 2));
+			const bottom = Math.max(...entry.links.map((l) => centre(l) + l.width / 2));
+			return (top + bottom) / 2;
+		};
+		const { x0, x1 } = entry.links[0];
+		return {
+			key,
+			x0,
+			x1,
+			y0: span((l) => l.y0),
+			y1: span((l) => l.y1),
+			width: entry.links.reduce((sum, l) => sum + l.width, 0),
+			target: entry.target,
+		};
+	});
+}
+
 function FlowBands({
 	flow,
 	layout,
@@ -366,20 +396,37 @@ function FlowBands({
 	colors: Map<string, string>;
 	emphasis: Emphasis;
 }) {
+	const resting = emphasis.links === null;
+	// At rest only the engine bands carry colour; past the sections the bands are structure, and
+	// per-engine stripes there turn the chart into noise. Hovering or pinning brings the colour back.
+	const neutral = ({ link }: PositionedLink) => {
+		const source = flow.nodes[link.source];
+		const target = flow.nodes[link.target];
+		return resting && (source.kind === "section" || target.kind === "more" || Boolean(target.hiddenCount));
+	};
+	const coloured = layout.links.filter((positioned) => !neutral(positioned));
+	const merged = mergeBands(layout.links.filter(neutral));
 	return (
 		<g fill="none">
-			{layout.links.map((positioned) => {
-				const lit = emphasis.links === null || emphasis.links.has(positioned.index);
-				// The fold isn't the story: its bands stay neutral so they don't pull the eye across the chart.
-				const intoFold = flow.nodes[positioned.link.target].kind === "more";
-				const neutral = intoFold && !(lit && emphasis.links);
+			{merged.map((band) => (
+				<path
+					key={band.key}
+					d={bandPath(band)}
+					stroke="var(--muted-foreground)"
+					strokeWidth={Math.max(band.width, 1)}
+					strokeOpacity={0.14}
+					data-node={band.target}
+				/>
+			))}
+			{coloured.map((positioned) => {
+				const lit = resting || emphasis.links?.has(positioned.index);
 				return (
 					<path
 						key={positioned.index}
 						d={bandPath(positioned)}
-						stroke={neutral ? "var(--muted-foreground)" : colors.get(positioned.link.model)}
+						stroke={colors.get(positioned.link.model)}
 						strokeWidth={Math.max(positioned.width, 1)}
-						strokeOpacity={emphasis.links === null ? (intoFold ? 0.12 : 0.32) : lit ? 0.7 : 0.05}
+						strokeOpacity={resting ? 0.35 : lit ? 0.7 : 0.05}
 						className="transition-[stroke-opacity] duration-150"
 						data-link={positioned.index}
 					/>
