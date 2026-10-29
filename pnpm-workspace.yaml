@@ -10,7 +10,7 @@ overrides:
   # GHSA-67mh-4wv8-2f99 (drizzle-kit's @esbuild-kit loader asks for the 0.18 line) and
   # GHSA-g7r4-m6w7-qqqr (dev-server arbitrary file read on Windows).
   esbuild: "^0.28.1"
-  seroval: "^1.5.3" # GHSA-mv8w-475r-vwqw: prototype pollution while deserializing
+  seroval: "~1.6.11" # GHSA-97r2-qh9m-474h and five more; 1.7.x currently fails trustPolicy
   uuid: "^14.0.2" # GHSA-w5hq-g745-h8pq; also anchors the direct dep in apps/web
   # The bruno CLI is the only thing pulling these in, and only for the e2e API suite.
   form-data: "^4.0.6" # GHSA-hmw2-7cc7-3qxx
