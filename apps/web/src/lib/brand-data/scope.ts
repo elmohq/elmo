@@ -98,47 +98,54 @@ function lowerBound(values: Int32Array, length: number, target: number) {
 	return lo;
 }
 
+/** Which prompts the scope covers, by store index; null for all of them. */
+function promptMask(store: BrandStore, scope: AnalyticsScope): Uint8Array | null {
+	const { promptIds, excludedPromptIds } = scope;
+	if (promptIds?.length !== 0 && excludedPromptIds) {
+		if (excludedPromptIds.length === 0) return null;
+		const mask = new Uint8Array(store.bundle.prompts.length).fill(1);
+		for (const id of excludedPromptIds) {
+			const index = store.promptIndex.get(id);
+			if (index !== undefined) mask[index] = 0;
+		}
+		return mask;
+	}
+	if (!promptIds) return null;
+	const mask = new Uint8Array(store.bundle.prompts.length);
+	for (const id of promptIds) {
+		const index = store.promptIndex.get(id);
+		if (index !== undefined) mask[index] = 1;
+	}
+	return mask;
+}
+
+/** Mirrors `modelFilter`: null for every row, false for none, else a row test. */
+function modelMatcher(store: BrandStore, table: StoreRunKeys, model: string | undefined) {
+	const target = model ? parseModelFilter(model) : null;
+	if (!target) return null;
+	const targetModel = store.bundle.dicts.models.indexOf(target.model);
+	if (targetModel < 0 || (target.premium && store.apiProviders.size === 0)) return false;
+	if (store.apiProviders.size === 0) return (i: number) => table.model[i] === targetModel;
+	return (i: number) =>
+		table.model[i] === targetModel &&
+		(table.web[i] === 1 && store.apiProviders.has(table.provider[i])) === target.premium;
+}
+
 /** Mirrors `scopeFilter`: the rows of a table the scope covers, by index. */
 export function scopeRows(store: BrandStore, table: StoreRunKeys, scope: AnalyticsScope): Int32Array {
 	if (scope.brandId !== store.bundle.brandId) return new Int32Array(0);
+	const matchesModel = modelMatcher(store, table, scope.model);
+	if (matchesModel === false) return new Int32Array(0);
 	const { start, end } = windowMinutes(scope);
 	const first = Number.isFinite(start) ? lowerBound(table.bucket, table.length, Math.ceil(start)) : 0;
 	const last = Number.isFinite(end) ? lowerBound(table.bucket, table.length, Math.ceil(end)) : table.length;
-
-	let promptAllowed: Uint8Array | null = null;
-	const { promptIds, excludedPromptIds } = scope;
-	if (promptIds?.length !== 0 && excludedPromptIds) {
-		if (excludedPromptIds.length > 0) {
-			promptAllowed = new Uint8Array(store.bundle.prompts.length).fill(1);
-			for (const id of excludedPromptIds) {
-				const index = store.promptIndex.get(id);
-				if (index !== undefined) promptAllowed[index] = 0;
-			}
-		}
-	} else if (promptIds) {
-		promptAllowed = new Uint8Array(store.bundle.prompts.length);
-		for (const id of promptIds) {
-			const index = store.promptIndex.get(id);
-			if (index !== undefined) promptAllowed[index] = 1;
-		}
-	}
-
-	const target = scope.model ? parseModelFilter(scope.model) : null;
-	const targetModel = target ? store.bundle.dicts.models.indexOf(target.model) : -1;
-	if (target && (targetModel < 0 || (target.premium && store.apiProviders.size === 0))) return new Int32Array(0);
+	const promptAllowed = promptMask(store, scope);
 	const web = scope.webSearchEnabled;
-
 	const rows = new Int32Array(Math.max(0, last - first));
 	let count = 0;
 	for (let i = first; i < last; i++) {
 		if (promptAllowed && !promptAllowed[table.prompt[i]]) continue;
-		if (target) {
-			if (table.model[i] !== targetModel) continue;
-			if (store.apiProviders.size > 0) {
-				const grounded = table.web[i] === 1 && store.apiProviders.has(table.provider[i]);
-				if (grounded !== target.premium) continue;
-			}
-		}
+		if (matchesModel && !matchesModel(i)) continue;
 		if (web !== undefined && (table.web[i] === 1) !== web) continue;
 		rows[count++] = i;
 	}

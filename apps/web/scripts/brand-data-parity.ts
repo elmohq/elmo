@@ -123,7 +123,8 @@ for (const brandId of brandIds) {
 			const a1 = performance.now();
 			const actual = await read(mem as unknown as typeof pg, scope);
 			const a2 = performance.now();
-			const t = (timing[name] ??= [0, 0]);
+			timing[name] ??= [0, 0];
+			const t = timing[name];
 			t[0] += a1 - a0;
 			t[1] += a2 - a1;
 			const e = JSON.stringify(normalize(expected));

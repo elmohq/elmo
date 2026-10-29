@@ -88,6 +88,88 @@ const emptyKeys = () => ({
 	web: [] as number[],
 });
 
+type Dictionaries = Record<keyof BrandBundle["dicts"], ReturnType<typeof dictionary>>;
+
+/** Adds every chunk's pages, ordered by URL so URL-ordered reads need no sort; returns page id → index. */
+function appendPages(bundle: BrandBundle, dicts: Dictionaries, chunks: BrandChunk[]): Map<number, number> {
+	const pageRows: {
+		id: number;
+		url: string;
+		domain: string;
+		title: string | null;
+		pageType: string;
+		category: string;
+	}[] = [];
+	for (const chunk of chunks) {
+		if (chunk.data.kind !== "pages") continue;
+		const { columns, dicts: local } = chunk.data;
+		for (let i = 0; i < columns.id.length; i++) {
+			pageRows.push({
+				id: columns.id[i] as number,
+				url: columns.url[i] as string,
+				domain: local.domains[columns.domain[i] as number],
+				title: columns.title[i] as string | null,
+				pageType: local.pageTypes[columns.pageType[i] as number],
+				category: local.categories[columns.category[i] as number],
+			});
+		}
+	}
+	pageRows.sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : a.id - b.id));
+	const pageIndex = new Map<number, number>();
+	const pages = bundle.citationPages;
+	for (const page of pageRows) {
+		pageIndex.set(page.id, pages.id.length);
+		pages.id.push(page.id);
+		pages.url.push(page.url);
+		pages.domain.push(dicts.domains.id(page.domain));
+		pages.title.push(page.title);
+		pages.pageType.push(dicts.pageTypes.id(page.pageType));
+		pages.category.push(dicts.categories.id(page.category));
+	}
+	return pageIndex;
+}
+
+/** How a chunk column's values become the bundle's: prompt and page references re-indexed, dictionary columns re-mapped. */
+function columnMapper(
+	name: string,
+	values: (number | string | null)[],
+	context: {
+		dicts: Dictionaries;
+		local: Record<string, string[]>;
+		prompts: (number | undefined)[];
+		pages: (number | undefined)[] | null;
+	},
+): (i: number) => number | string | null {
+	const { dicts, local, prompts, pages } = context;
+	if (name === "prompt") return (i) => prompts[i] as number;
+	if (name === "page" && pages) return (i) => pages[i] as number;
+	const dictName = DICTIONARY_COLUMNS[name] as keyof Dictionaries | "promptIds" | undefined;
+	if (!dictName || dictName === "promptIds") return (i) => values[i];
+	return (i) => dicts[dictName].id(local[dictName][values[i] as number]);
+}
+
+/** Appends one month of a run table, mapping the chunk's dictionaries onto the bundle's. */
+function appendRuns(
+	bundle: BrandBundle,
+	dicts: Dictionaries,
+	chunk: RunChunk,
+	promptIndex: Map<string, number>,
+	pageIndex: Map<number, number>,
+) {
+	const { table, columns, dicts: local } = chunk;
+	const target = bundle[table] as unknown as Record<string, (number | string | null)[]>;
+	const n = (columns.bucket ?? []).length;
+	const prompts = (columns.prompt ?? []).map((value) => promptIndex.get(local.promptIds[value as number]));
+	const pages = table === "citations" ? columns.page.map((value) => pageIndex.get(value as number)) : null;
+	const keep = (i: number) => prompts[i] !== undefined && (!pages || pages[i] !== undefined);
+	for (const [name, values] of Object.entries(columns)) {
+		const out = target[name];
+		if (!out) continue;
+		const map = columnMapper(name, values, { dicts, local, prompts, pages });
+		for (let i = 0; i < n; i++) if (keep(i)) out.push(map(i));
+	}
+}
+
 /** Merges chunks into the single bundle the in-memory reads expect. */
 export function assembleBundle(brandId: string, version: string, chunks: Iterable<BrandChunk>): BrandBundle | null {
 	const all = [...chunks];
@@ -157,69 +239,13 @@ export function assembleBundle(brandId: string, version: string, chunks: Iterabl
 		sentimentQuotes: { ...emptyKeys(), sentiment: [], runId: [], confidence: [], createdAt: [] },
 	};
 
-	// Pages first, ordered by URL so URL-ordered reads need no sort.
-	const pageRows: {
-		id: number;
-		url: string;
-		domain: string;
-		title: string | null;
-		pageType: string;
-		category: string;
-	}[] = [];
-	for (const chunk of all) {
-		if (chunk.data.kind !== "pages") continue;
-		const { columns, dicts: local } = chunk.data;
-		for (let i = 0; i < columns.id.length; i++) {
-			pageRows.push({
-				id: columns.id[i] as number,
-				url: columns.url[i] as string,
-				domain: local.domains[columns.domain[i] as number],
-				title: columns.title[i] as string | null,
-				pageType: local.pageTypes[columns.pageType[i] as number],
-				category: local.categories[columns.category[i] as number],
-			});
-		}
-	}
-	pageRows.sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : a.id - b.id));
-	const pageIndex = new Map<number, number>();
-	for (const page of pageRows) {
-		pageIndex.set(page.id, bundle.citationPages.id.length);
-		bundle.citationPages.id.push(page.id);
-		bundle.citationPages.url.push(page.url);
-		bundle.citationPages.domain.push(dicts.domains.id(page.domain));
-		bundle.citationPages.title.push(page.title);
-		bundle.citationPages.pageType.push(dicts.pageTypes.id(page.pageType));
-		bundle.citationPages.category.push(dicts.categories.id(page.category));
-	}
-
-	// Months in order keep every table sorted by bucket.
+	const pageIndex = appendPages(bundle, dicts, all);
 	const runChunks = all
 		.filter((chunk): chunk is BrandChunk & { data: RunChunk } => chunk.data.kind === "run")
 		.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 	for (const chunk of runChunks) {
-		const { table, columns, dicts: local } = chunk.data;
-		if (table === "citations" && pageIndex.size === 0) continue;
-		const target = bundle[table] as unknown as Record<string, (number | string | null)[]>;
-		const n = (columns.bucket ?? []).length;
-		const keep: boolean[] = new Array(n);
-		for (let i = 0; i < n; i++) {
-			const prompt = promptIndex.get(local.promptIds[columns.prompt[i] as number]);
-			const page = table === "citations" ? pageIndex.get(columns.page[i] as number) : 0;
-			keep[i] = prompt !== undefined && page !== undefined;
-		}
-		for (const [name, values] of Object.entries(columns)) {
-			const out = target[name];
-			if (!out) continue;
-			const dictName = DICTIONARY_COLUMNS[name];
-			for (let i = 0; i < n; i++) {
-				if (!keep[i]) continue;
-				const value = values[i];
-				if (name === "prompt") out.push(promptIndex.get(local.promptIds[value as number]) as number);
-				else if (name === "page" && table === "citations") out.push(pageIndex.get(value as number) as number);
-				else if (dictName) out.push(dicts[dictName as keyof typeof dicts].id(local[dictName][value as number]));
-				else out.push(value);
-			}
-		}
+		if (chunk.data.table === "citations" && pageIndex.size === 0) continue;
+		appendRuns(bundle, dicts, chunk.data, promptIndex, pageIndex);
 	}
 	return bundle;
 }

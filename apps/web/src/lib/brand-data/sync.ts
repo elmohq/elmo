@@ -84,7 +84,40 @@ interface BrandSync {
 	run: () => Promise<void>;
 }
 
+type Apply = (chunks: BrandChunk[], removed?: string[]) => void;
+
 const syncs = new Map<string, BrandSync>();
+
+const dataUrl = (brandId: string, chunks?: string[]) =>
+	`/api/brand-data/${encodeURIComponent(brandId)}${chunks ? `?chunks=${encodeURIComponent(chunks.join(","))}` : ""}`;
+
+async function fetchJson<T>(url: string): Promise<T> {
+	const response = await fetch(url, { credentials: "same-origin" });
+	if (!response.ok) throw new Error(`Brand data request failed: ${response.status}`);
+	return response.json() as Promise<T>;
+}
+
+/**
+ * One pass: compare the server's manifest with what the collection holds, drop
+ * chunks the server no longer has, and fetch changed ones core first.
+ */
+async function syncOnce(brandId: string, held: Collection<BrandChunk, string>, apply: Apply) {
+	const { chunks: manifest } = await fetchJson<{ chunks: ChunkManifestEntry[] }>(dataUrl(brandId));
+	const current = new Set(manifest.map((entry) => entry.id));
+	const removed = ([...held.keys()] as string[]).filter((id) => !current.has(id));
+	const stale = manifest.filter((entry) => held.get(entry.id)?.hash !== entry.hash);
+	apply([], removed);
+	const ordered = [...stale.filter((e) => !isCitationChunk(e.id)), ...stale.filter((e) => isCitationChunk(e.id))];
+	const fetched: BrandChunk[] = [];
+	for (let i = 0; i < ordered.length; i += SYNC_BATCH) {
+		const ids = ordered.slice(i, i + SYNC_BATCH).map((entry) => entry.id);
+		const { chunks } = await fetchJson<{ chunks: BrandChunk[] }>(dataUrl(brandId, ids));
+		apply(chunks);
+		fetched.push(...chunks);
+	}
+	void idbWrite(brandId, manifest, fetched, removed).catch(() => {});
+	return { manifest, changed: stale.length + removed.length };
+}
 
 function brandSync(brandId: string): BrandSync {
 	const existing = syncs.get(brandId);
@@ -100,68 +133,40 @@ function brandSync(brandId: string): BrandSync {
 		gcTime: Number.POSITIVE_INFINITY,
 		sync: {
 			rowUpdateMode: "full",
-			sync: ({ begin, write, commit, markReady, collection: self }) => {
-				let ready = false;
-				const apply = (chunks: BrandChunk[], removed: string[] = []) => {
+			sync: ({ begin, write, commit, markReady, collection: held }) => {
+				const apply: Apply = (chunks, removed = []) => {
 					if (chunks.length === 0 && removed.length === 0) return;
 					begin();
-					for (const chunk of chunks) write({ type: self.has(chunk.id) ? "update" : "insert", value: chunk });
-					for (const id of removed) {
-						const old = self.get(id);
-						if (old) write({ type: "delete", value: old });
+					for (const chunk of chunks) write({ type: held.has(chunk.id) ? "update" : "insert", value: chunk });
+					for (const old of removed.map((id) => held.get(id)).filter((chunk) => chunk !== undefined)) {
+						write({ type: "delete", value: old });
 					}
 					commit();
 				};
-				const markReadyOnce = () => {
-					if (!ready) {
-						ready = true;
-						markReady();
-					}
+				let ready = false;
+				const readyOnce = () => {
+					if (!ready) markReady();
+					ready = true;
 				};
-
-				let seeded = false;
+				const seeded = idbRead(brandId)
+					.catch(() => ({ chunks: [] as BrandChunk[], manifest: undefined }))
+					.then((cached) => {
+						if (cached.manifest) manifest = cached.manifest;
+						apply(cached.chunks);
+						if (cached.chunks.length > 0) readyOnce();
+					});
 				let running: Promise<void> | null = null;
 				runNow = () => {
-					running ??= (async () => {
-						if (!seeded) {
-							seeded = true;
-							const cached = await idbRead(brandId).catch(() => ({ chunks: [] as BrandChunk[], manifest: undefined }));
-							if (cached.manifest) manifest = cached.manifest;
-							apply(cached.chunks);
-							if (cached.chunks.length > 0) markReadyOnce();
-						}
-						const response = await fetch(`/api/brand-data/${encodeURIComponent(brandId)}`, {
-							credentials: "same-origin",
+					running ??= seeded
+						.then(() => syncOnce(brandId, held, apply))
+						.then((result) => {
+							manifest = result.manifest;
+							readyOnce();
+							if (result.changed === 0) publish(brandId, held, manifest);
+						})
+						.finally(() => {
+							running = null;
 						});
-						if (!response.ok) throw new Error(`Brand data manifest failed: ${response.status}`);
-						const fresh = ((await response.json()) as { chunks: ChunkManifestEntry[] }).chunks;
-						const freshIds = new Set(fresh.map((entry) => entry.id));
-						const removed = [...self.keys()].filter((id) => !freshIds.has(id as string)) as string[];
-						const stale = fresh.filter((entry) => self.get(entry.id)?.hash !== entry.hash);
-						manifest = fresh;
-						apply([], removed);
-						const ordered = [
-							...stale.filter((e) => !isCitationChunk(e.id)),
-							...stale.filter((e) => isCitationChunk(e.id)),
-						];
-						const fetched: BrandChunk[] = [];
-						for (let i = 0; i < ordered.length; i += SYNC_BATCH) {
-							const ids = ordered.slice(i, i + SYNC_BATCH).map((entry) => entry.id);
-							const batch = await fetch(
-								`/api/brand-data/${encodeURIComponent(brandId)}?chunks=${encodeURIComponent(ids.join(","))}`,
-								{ credentials: "same-origin" },
-							);
-							if (!batch.ok) throw new Error(`Brand data chunks failed: ${batch.status}`);
-							const { chunks } = (await batch.json()) as { chunks: BrandChunk[] };
-							apply(chunks);
-							fetched.push(...chunks);
-						}
-						markReadyOnce();
-						void idbWrite(brandId, fresh, fetched, removed).catch(() => {});
-						if (stale.length === 0 && removed.length === 0) publish(brandId, self, manifest);
-					})().finally(() => {
-						running = null;
-					});
 					return running;
 				};
 				void runNow().catch((error) => console.warn("[brand-data] sync failed", error));

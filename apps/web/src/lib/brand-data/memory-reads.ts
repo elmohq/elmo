@@ -221,6 +221,27 @@ function* dateRange(from: string, to: string) {
 	}
 }
 
+type Observation = { runs: number; mentioned: number };
+
+/** Adds one prompt to the daily totals: its own runs, and its latest result carried over every day. */
+function carryPrompt(
+	totals: VisibilityDailyAggregate[],
+	dates: string[],
+	days: Map<string, Observation> | undefined,
+	side: "branded" | "nonbranded",
+) {
+	let carried = days ? dates.map((date) => days.get(date)).find(Boolean) : undefined;
+	dates.forEach((date, d) => {
+		const obs = days?.get(date);
+		if (obs) carried = obs;
+		const row = totals[d];
+		row[`actual_${side}_runs`] += obs?.runs ?? 0;
+		row[`actual_${side}_mentioned`] += obs?.mentioned ?? 0;
+		row[`lvcf_${side}_runs`] += carried?.runs ?? 0;
+		row[`lvcf_${side}_mentioned`] += carried?.mentioned ?? 0;
+	});
+}
+
 /** Mirrors the SQL's per-prompt grid: each day takes the prompt's latest result, or its first before it ran. */
 export async function getVisibilityDailyAggregate(
 	scope: DailyScope,
@@ -251,31 +272,7 @@ export async function getVisibilityDailyAggregate(
 		lvcf_nonbranded_mentioned: 0,
 	}));
 	for (const id of new Set(scope.promptIds)) {
-		const days = observations.get(id);
-		const isBranded = branded.has(id);
-		let first: { runs: number; mentioned: number } | undefined;
-		if (days) for (const date of dates) if (!first) first = days.get(date);
-		let carried = first;
-		dates.forEach((date, d) => {
-			const obs = days?.get(date);
-			if (obs) carried = obs;
-			const row = totals[d];
-			if (isBranded) {
-				if (obs) {
-					row.actual_branded_runs += obs.runs;
-					row.actual_branded_mentioned += obs.mentioned;
-				}
-				row.lvcf_branded_runs += carried?.runs ?? 0;
-				row.lvcf_branded_mentioned += carried?.mentioned ?? 0;
-			} else {
-				if (obs) {
-					row.actual_nonbranded_runs += obs.runs;
-					row.actual_nonbranded_mentioned += obs.mentioned;
-				}
-				row.lvcf_nonbranded_runs += carried?.runs ?? 0;
-				row.lvcf_nonbranded_mentioned += carried?.mentioned ?? 0;
-			}
-		});
+		carryPrompt(totals, dates, observations.get(id), branded.has(id) ? "branded" : "nonbranded");
 	}
 	return totals;
 }
