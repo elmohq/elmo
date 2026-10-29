@@ -20,7 +20,7 @@
 		"drizzle-orm": "^0.45.4",
 		"pg": "^8.23.1",
 		"pg-boss": "^12.38.0",
-		"posthog-node": "^5.57.0"
+		"posthog-node": "^5.57.1"
 	},
 	"devDependencies": {
 		"@types/node": "^26.6.5",
