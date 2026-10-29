@@ -11,6 +11,7 @@ import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner
 import { initAdTags, trackAdPageView } from "@workspace/ui/lib/ad-tags";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
 import { type ReactNode, useEffect, useState } from "react";
+import { AiReferralBanner } from "@/components/ai-referral-banner";
 import { NotFound } from "@/components/not-found";
 import { getConsentRegion } from "@/lib/consent-region";
 import { initCrisp } from "@/lib/crisp";
@@ -48,6 +49,7 @@ export const Route = createRootRoute({
 			{ name: "twitter:title", content: ROOT_TITLE },
 			{ name: "twitter:description", content: SITE_DESCRIPTION },
 			{ name: "twitter:image", content: ROOT_OG_IMAGE },
+			{ name: "twitter:creator", content: "@tryelmo" },
 			{ name: "theme-color", content: "#2563eb" },
 			{ name: "apple-mobile-web-app-title", content: SITE_NAME },
 		],
@@ -121,6 +123,7 @@ function RootComponent() {
 
 	return (
 		<RootDocument>
+			<AiReferralBanner />
 			<Outlet />
 			{consentRequired !== null && (
 				<CookieConsentBanner consentRequired={consentRequired} policyHref="/legal/cookies" />

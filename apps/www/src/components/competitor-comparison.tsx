@@ -8,10 +8,13 @@ import {
 	ELMO_FEATURES,
 	FEATURE_CATEGORIES,
 	type FeatureKey,
+	formatFateDate,
 	getComparisonFaqs,
 	getComparisonVerdict,
 	getPopularityGrade,
 	getScreenshotUrl,
+	getSoundbite,
+	graveyardFate,
 	isLowDR,
 } from "@/lib/competitors";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
@@ -31,6 +34,31 @@ function FeatureRow({ label, elmo, competitor }: { label: string; elmo: boolean;
 				<FeatureMark has={competitor} />
 			</td>
 		</tr>
+	);
+}
+
+function FateNotice({ competitor }: { competitor: Competitor }) {
+	const fate = graveyardFate(competitor);
+	if (!fate || !competitor.fate) return null;
+	const heading =
+		fate === "shut-down"
+			? `${competitor.name} has shut down`
+			: fate === "pivoted"
+				? `${competitor.name} has pivoted away from AI visibility`
+				: `${competitor.name} has been acquired`;
+	return (
+		<div className="mt-6 max-w-3xl rounded-md border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
+			<p className="font-medium text-zinc-950">
+				{heading} ({formatFateDate(competitor.fate.date)})
+			</p>
+			<p className="mt-1">
+				{competitor.fate.summary}{" "}
+				<Link to="/ai-visibility-tools/graveyard" className="text-blue-700 hover:underline">
+					See the AEO Graveyard
+				</Link>{" "}
+				for what to do next.
+			</p>
+		</div>
 	);
 }
 
@@ -79,22 +107,16 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">Elmo vs {competitor.name}</h1>
 					<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">{getComparisonVerdict(competitor)}</p>
-					{competitor.status === "shutting-down" && (
-						<div className="mt-4 rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-							Note: {competitor.name} is shutting down.
-						</div>
-					)}
-					{isLowDR(competitor) && (
-						<div className="mt-4 flex items-start gap-3 rounded-md border border-amber-500/20 bg-amber-50/50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
-							<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-							<div>
-								<p className="font-medium">Limited market presence</p>
-								<p className="mt-0.5 text-amber-800/80 dark:text-amber-300/70">
-									{competitor.name} appears to be a very early-stage product with limited adoption. Information on this
-									page may be incomplete, and the tool's availability or feature set could change.
-								</p>
-							</div>
-						</div>
+					<div className="mt-6 max-w-3xl border-l-2 border-blue-600 pl-4">
+						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">The short version</p>
+						<p className="mt-1 text-lg font-medium text-balance text-zinc-950">{getSoundbite(competitor)}</p>
+					</div>
+					<FateNotice competitor={competitor} />
+					{isLowDR(competitor) && !graveyardFate(competitor) && (
+						<p className="mt-8 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-50 px-3 py-1 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+							<AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+							{competitor.name} appears to be a very early-stage product with limited adoption.
+						</p>
 					)}
 				</div>
 			</section>
@@ -129,32 +151,34 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			</section>
 
 			{/* Screenshot */}
-			<section className="border-b border-zinc-200 bg-white py-12">
-				<div className="mx-auto max-w-6xl px-4 md:px-6">
-					<h2 className="font-heading mb-6 text-2xl text-zinc-950">{competitor.name} at a glance</h2>
-					<div className="overflow-hidden rounded-md border border-zinc-200 shadow-sm">
-						<img
-							src={getScreenshotUrl(competitor.slug)}
-							alt={`Screenshot of ${competitor.name} homepage`}
-							width={1920}
-							height={1080}
-							className="aspect-video w-full object-cover object-top"
-							loading="lazy"
-						/>
+			{!competitor.noScreenshot && (
+				<section className="border-b border-zinc-200 bg-white py-12">
+					<div className="mx-auto max-w-6xl px-4 md:px-6">
+						<h2 className="font-heading mb-6 text-2xl text-zinc-950">{competitor.name} at a glance</h2>
+						<div className="overflow-hidden rounded-md border border-zinc-200 shadow-sm">
+							<img
+								src={getScreenshotUrl(competitor.slug)}
+								alt={`Screenshot of ${competitor.name} homepage`}
+								width={1920}
+								height={1080}
+								className="aspect-video w-full object-cover object-top"
+								loading="lazy"
+							/>
+						</div>
+						<div className="mt-3 flex items-center gap-2">
+							<a
+								href={competitor.url}
+								target="_blank"
+								rel="noopener noreferrer nofollow"
+								className="inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-950"
+							>
+								Visit {competitor.domain}
+								<ExternalLink className="h-3 w-3" />
+							</a>
+						</div>
 					</div>
-					<div className="mt-3 flex items-center gap-2">
-						<a
-							href={competitor.url}
-							target="_blank"
-							rel="noopener noreferrer nofollow"
-							className="inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-950"
-						>
-							Visit {competitor.domain}
-							<ExternalLink className="h-3 w-3" />
-						</a>
-					</div>
-				</div>
-			</section>
+				</section>
+			)}
 
 			{/* About the competitor */}
 			<section className="border-b border-zinc-200 bg-white py-12">

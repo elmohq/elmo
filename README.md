@@ -120,7 +120,7 @@ elmo init
 elmo compose up -d
 ```
 
-You'll need API keys for at least one AI provider or scraper, plus a [TypeSafe](https://console.typesafe.ai) key for Jev, which judges mentions and sentiment. Jev costs very roughly $0.15–0.35 per 1,000 answers: about $2–4 a month for 25 prompts on 3 platforms, or $11–26 for 100 prompts on 5. See [mention judging](https://www.elmohq.com/docs/developer-guide/configuration#mention-judging).
+You'll need API keys for at least one AI provider or scraper, plus a [TypeSafe](https://console.typesafe.ai) key for Jev, which judges mentions and sentiment (or an OpenRouter key, to call Jev through OpenRouter). Jev costs very roughly $0.15–0.35 per 1,000 answers: about $2–4 a month for 25 prompts on 3 platforms, or $11–26 for 100 prompts on 5. See [mention judging](https://www.elmohq.com/docs/developer-guide/configuration#mention-judging).
 
 Once the services report healthy, open **http://localhost:1515** and create your account. The full walkthrough is in the [getting started guide](https://www.elmohq.com/docs/getting-started).
 
@@ -175,9 +175,9 @@ A web app serves the dashboard and REST API, a worker schedules and executes pro
 ## Sponsors
 
 <p align="left">
-  <a href="https://www.llumohq.com/">
-    <img src="https://nynjceth7hnajxhe.public.blob.vercel-storage.com/sponsors/llumo.png" alt="Llumo" width="78">
-  </a>
+  <a href="https://www.searchapi.io/?utm_source=github&utm_medium=sponsorship&utm_campaign=google_search_api&utm_content=elmohq_elmo"><img src="https://nynjceth7hnajxhe.public.blob.vercel-storage.com/sponsors/searchapi-card.png" alt="SearchApi" width="210"></a>
+  <a href="https://www.llumohq.com/?ref=elmo"><img src="https://nynjceth7hnajxhe.public.blob.vercel-storage.com/sponsors/llumo-card.png" alt="Llumo" width="210"></a>
+  <a href="https://scavio.dev/?via=elmo"><img src="https://nynjceth7hnajxhe.public.blob.vercel-storage.com/sponsors/scavio-card.png" alt="Scavio" width="210"></a>
 </p>
 
 <a href="https://github.com/sponsors/elmohq"><strong>Become a sponsor →</strong></a>

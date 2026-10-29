@@ -25,7 +25,7 @@ describe("organizationTree", () => {
 
 	it("lists the brands, then the way to add one", () => {
 		const { children } = organizationTree(organization({ kind: "allowed" }, ["nike", "adidas"]));
-		expect(children.map((row) => row.label)).toEqual(["nike", "adidas", "New brand"]);
+		expect(children.map((row) => row.label)).toEqual(["nike", "adidas", "New Brand"]);
 	});
 
 	it("hands each row its own address", () => {
@@ -49,7 +49,7 @@ describe("organizationTree", () => {
 				kind: "new-brand",
 				key: "new-brand",
 				link: { to: "/app/org/$org/new", params: { org: "acme" } },
-				label: "Create your first brand",
+				label: "Create Your First Brand",
 			},
 		]);
 	});

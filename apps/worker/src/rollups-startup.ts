@@ -29,8 +29,9 @@ export async function initializePipeline(boss: Pick<PgBoss, "send">): Promise<vo
 	}
 
 	// Pages carry the classifier version they were stamped with, so this is a
-	// no-op once current and resumes where a crash left it. Reads join the page
-	// rows live, so it needs no rebuild and needn't hold up startup.
+	// no-op once current and resumes where a crash left it. Brands' copies of the
+	// pages are updated with them, so it needs no rebuild and needn't hold up
+	// startup.
 	reclassifyPages(db)
 		.then((updated) => {
 			if (updated > 0) console.log(`[rollups-startup] reclassified ${updated} cited pages`);

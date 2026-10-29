@@ -17,14 +17,14 @@ import {
 	getAlternativesVerdict,
 	getComparisonSlug,
 	getCompetitorBySlug,
-	isIndexed,
+	hasOwnPages,
 } from "@/lib/competitors";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")({
 	loader: ({ params }) => {
 		const c = getCompetitorBySlug(params.slug);
-		if (!c || !isIndexed(c)) throw notFound();
+		if (!c || !hasOwnPages(c)) throw notFound();
 		const alternatives = getAlternatives(c);
 		return { competitor: c, alternatives, faqs: getAlternativesFaqs(c, alternatives) };
 	},

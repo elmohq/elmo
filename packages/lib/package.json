@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/lib",
-	"version": "0.7.2",
+	"version": "0.7.7",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
@@ -55,35 +55,35 @@
 		"./rollups/fanout": "./src/rollups/fanout.ts"
 	},
 	"dependencies": {
-		"@ai-sdk/anthropic": "^4.0.78",
-		"@ai-sdk/openai": "^4.0.91",
-		"@anthropic-ai/sdk": "^0.133.0",
-		"@better-auth/api-key": "1.7.7",
-		"@better-auth/cimd": "1.7.7",
-		"@better-auth/core": "1.7.7",
-		"@better-auth/mcp": "1.7.7",
-		"@better-auth/oauth-provider": "1.7.7",
-		"@better-auth/sso": "^1.7.7",
-		"@better-auth/stripe": "^1.7.7",
+		"@ai-sdk/anthropic": "^4.0.88",
+		"@ai-sdk/openai": "^4.0.102",
+		"@anthropic-ai/sdk": "^1.3.0",
+		"@better-auth/api-key": "1.7.12",
+		"@better-auth/cimd": "1.7.12",
+		"@better-auth/core": "1.7.12",
+		"@better-auth/mcp": "1.7.12",
+		"@better-auth/oauth-provider": "1.7.12",
+		"@better-auth/sso": "^1.7.12",
+		"@better-auth/stripe": "catalog:",
 		"@brightdata/sdk": "^1.2.0",
 		"@mozilla/readability": "^0.6.0",
 		"@workspace/config": "workspace:*",
-		"ai": "^7.0.137",
-		"better-auth": "^1.7.7",
-		"dataforseo-client": "^2.1.8",
-		"drizzle-orm": "^0.45.4",
-		"jose": "6.2.12",
-		"linkedom": "^0.18.13",
+		"ai": "^7.0.153",
+		"better-auth": "catalog:",
+		"dataforseo-client": "^2.1.9",
+		"drizzle-orm": "catalog:",
+		"jose": "6.2.13",
+		"linkedom": "^0.18.14",
 		"olostep": "^1.2.2",
-		"pg": "^8.23.1",
-		"zod": "^4.6.6"
+		"pg": "catalog:",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@types/pg": "^8.23.1",
-		"auth": "1.7.7",
+		"@types/pg": "catalog:",
+		"auth": "1.7.12",
 		"drizzle-kit": "^0.31.11",
-		"stripe": "^22.6.1",
-		"typescript": "^7.0.2",
-		"vitest": "^5.0.3"
+		"stripe": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	}
 }

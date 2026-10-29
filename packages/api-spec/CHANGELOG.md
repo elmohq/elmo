@@ -1,5 +1,27 @@
 # @workspace/api-spec
 
+## 0.7.7
+
+### Patch Changes
+
+- e139254: The API's cited URLs, cited domains and query fan-out lists are paginated and searchable, so large brands no longer get responses too big to return.
+
+## 0.7.6
+
+No changes in this release.
+
+## 0.7.5
+
+No changes in this release.
+
+## 0.7.4
+
+No changes in this release.
+
+## 0.7.3
+
+No changes in this release.
+
 ## 0.7.2
 
 No changes in this release.

@@ -254,6 +254,7 @@ const DEVELOPER_DOMAINS = new Set([
 	"mistral.ai",
 	"cohere.com",
 	"deepseek.com",
+	"moonshot.ai",
 	"x.ai",
 	"together.ai",
 	"groq.com",

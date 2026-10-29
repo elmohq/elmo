@@ -81,6 +81,7 @@ jobs:
                 rawOutputBytes: r.rawOutputBytes,
                 citations: r.citations,
                 webQueries: r.webQueries,
+                realWebQueries: r.realWebQueries,
                 webSearch: r.webSearch,
                 error: r.error || null,
               });

@@ -8,9 +8,12 @@ import {
 	rollupCitationUrls,
 	rollupCompetitorMentions,
 	rollupPromptRuns,
+	rollupSentimentQuotes,
 	rollupWebQueries,
+	runExtractions,
 	runMentions,
 } from "../db/schema";
+import { copyBrandPages } from "./brand-pages";
 import { assertBucketAligned, bucketSql } from "./bucket";
 import { isFanoutQuery, normalizedWebQuery } from "./fanout";
 
@@ -20,6 +23,7 @@ export interface RebuildStats {
 	competitorRows: number;
 	webQueryRows: number;
 	urlRows: number;
+	quoteRows: number;
 }
 
 /**
@@ -59,12 +63,20 @@ export async function rebuildRange(
 		const competitorRows = await insertCompetitorRollup(tx, brandId, from, toExclusive);
 		const webQueryRows = await insertWebQueryRollup(tx, brandId, from, toExclusive);
 		const urlRows = await insertCitationRollup(tx, brandId, from, toExclusive);
-		return { runs, competitorRows, webQueryRows, urlRows };
+		await copyBrandPages(tx, brandId, from, toExclusive);
+		const quoteRows = await insertSentimentQuoteRollup(tx, brandId, from, toExclusive);
+		return { runs, competitorRows, webQueryRows, urlRows, quoteRows };
 	});
 }
 
 async function clearRange(tx: DbConnection, brandId: string, from: Date, toExclusive: Date): Promise<void> {
-	for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupWebQueries, rollupCitationUrls]) {
+	for (const table of [
+		rollupPromptRuns,
+		rollupCompetitorMentions,
+		rollupWebQueries,
+		rollupCitationUrls,
+		rollupSentimentQuotes,
+	]) {
 		await tx.execute(sql`
 			DELETE FROM ${table}
 			WHERE brand_id = ${brandId} AND bucket >= ${from} AND bucket < ${toExclusive}
@@ -192,6 +204,35 @@ async function insertCitationRollup(tx: DbConnection, brandId: string, from: Dat
 		JOIN ${citedPages} cp ON cp.id = c.page_id
 		${inRange(brandId, from, toExclusive)}
 		GROUP BY ${keyColumns}, c.page_id, cp.domain
+	`);
+	return result.rowCount ?? 0;
+}
+
+const brandSentiment = sql`m.assessments->'brand'`;
+
+async function insertSentimentQuoteRollup(
+	tx: DbConnection,
+	brandId: string,
+	from: Date,
+	toExclusive: Date,
+): Promise<number> {
+	const sentiment = sql`(${brandSentiment}->>'sentiment')`;
+	const passage = sql`${brandSentiment}->'passage'`;
+	const confidence = sql`coalesce((${brandSentiment}->'sentimentProbabilities'->>${sentiment})::float8, 0)`;
+	const result = await tx.execute(sql`
+		INSERT INTO ${rollupSentimentQuotes} (
+			brand_id, bucket, prompt_id, model, provider, web_search_enabled, sentiment, run_id, confidence, created_at
+		)
+		SELECT DISTINCT ON (${keyColumns}, ${sentiment})
+			${keyColumns}, ${sentiment}, pr.id, ${confidence}, pr.created_at
+		${brandRuns(brandId)}
+		JOIN ${runExtractions} re ON re.run_id = pr.id
+		${inRange(brandId, from, toExclusive)}
+			AND m.brand_mentioned
+			AND ${sentiment} IS NOT NULL
+			AND (${passage}->>'start')::int < (${passage}->>'end')::int
+			AND re.text_content IS NOT NULL
+		ORDER BY ${keyColumns}, ${sentiment}, ${confidence} DESC, pr.created_at DESC, pr.id
 	`);
 	return result.rowCount ?? 0;
 }

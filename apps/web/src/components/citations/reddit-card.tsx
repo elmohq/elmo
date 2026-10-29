@@ -3,69 +3,14 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { useMemo, useState } from "react";
-import { extractSubreddit, formatUrlForDisplay } from "@/components/citations/shared";
-import type { CitationData } from "@/components/citations/types";
+import { useState } from "react";
+import { formatUrlForDisplay } from "@/components/citations/shared";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
+import type { Subreddit } from "@/lib/subreddits";
 
 const SUBREDDITS_PAGE_SIZE = 8;
 
-/** Exact-host check (citation `domain` is a normalized lowercase hostname).
- *  A substring match would also catch lookalikes such as
- *  "notreddit.com" or "reddit.com.evil.net" (CodeQL js/incomplete-url-substring-sanitization). */
-const isRedditDomain = (domain: string) => domain === "reddit.com" || domain.endsWith(".reddit.com");
-
-interface SubredditTally {
-	count: number;
-	newPages: number;
-	totalPages: number;
-	urls: { url: string; title?: string; count: number; isNew?: boolean }[];
-}
-
-function groupBySubreddit(specificUrls: CitationData["specificUrls"]): Map<string, SubredditTally> {
-	const bySubreddit = new Map<string, SubredditTally>();
-	for (const cited of specificUrls) {
-		if (!isRedditDomain(cited.domain)) continue;
-		const subreddit = extractSubreddit(cited.url);
-		if (!subreddit) continue;
-
-		const tally = bySubreddit.get(subreddit) ?? { count: 0, newPages: 0, totalPages: 0, urls: [] };
-		tally.count += cited.count;
-		tally.totalPages += 1;
-		if (cited.isNew) tally.newPages += 1;
-		tally.urls.push({ url: cited.url, title: cited.title, count: cited.count, isNew: cited.isNew });
-		bySubreddit.set(subreddit, tally);
-	}
-	return bySubreddit;
-}
-
-export function useSubredditData(
-	specificUrls: CitationData["specificUrls"],
-	whatsChanged: CitationData["whatsChanged"],
-) {
-	return useMemo(() => {
-		const droppedUrlSet = new Set(
-			whatsChanged?.droppedUrls
-				.filter((u) => isRedditDomain(u.domain))
-				.map((u) => extractSubreddit(u.url))
-				.filter(Boolean) ?? [],
-		);
-
-		return Array.from(groupBySubreddit(specificUrls).entries())
-			.map(([name, data]) => ({
-				name,
-				count: data.count,
-				newPages: data.newPages,
-				totalPages: data.totalPages,
-				allNew: data.newPages === data.totalPages,
-				hasDropped: droppedUrlSet.has(name),
-				urls: data.urls.sort((a, b) => b.count - a.count),
-			}))
-			.sort((a, b) => b.count - a.count);
-	}, [specificUrls, whatsChanged]);
-}
-
-export function RedditCard({ subreddits }: { subreddits: ReturnType<typeof useSubredditData> }) {
+export function RedditCard({ subreddits }: { subreddits: Subreddit[] }) {
 	const [expandedSubreddit, setExpandedSubreddit] = useState<string | null>(null);
 	const { page, setPage, pageItems, totalItems } = usePagedList(subreddits, SUBREDDITS_PAGE_SIZE);
 

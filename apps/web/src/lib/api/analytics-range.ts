@@ -90,8 +90,22 @@ export function parsePaging(url: URL, defaultLimit = 20): { page: number; limit:
 export function clampedPaging(
 	searchParams: URLSearchParams,
 	maxLimit = 100,
+	defaultLimit = 20,
 ): { page: number; limit: number; offset: number } {
-	const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-	const limit = Math.max(1, Math.min(maxLimit, parseInt(searchParams.get("limit") || "20")));
+	const parsed = (name: string, fallback: number) => {
+		const value = parseInt(searchParams.get(name) ?? "", 10);
+		return Number.isNaN(value) ? fallback : value;
+	};
+	const page = Math.max(1, parsed("page", 1));
+	const limit = Math.max(1, Math.min(maxLimit, parsed("limit", defaultLimit)));
 	return { page, limit, offset: (page - 1) * limit };
+}
+
+/** Most brands get every row on the first page, and a page stays well inside a response a function can return. */
+export function analyticsListPaging(searchParams: URLSearchParams) {
+	return clampedPaging(searchParams, 1000, 1000);
+}
+
+export function pagination(page: number, limit: number, total: number) {
+	return { page, limit, total, totalPages: Math.ceil(total / limit) };
 }

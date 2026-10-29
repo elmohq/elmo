@@ -1,6 +1,6 @@
 ---
 title: MCP
-description: Connect Claude Code, Codex, Cursor, VS Code, or another AI client to Elmo.
+description: Connect Claude, ChatGPT, Claude Code, Codex, Cursor, VS Code, or another AI client to Elmo.
 ---
 
 Elmo serves a [Model Context Protocol](https://modelcontextprotocol.io) endpoint at `/api/mcp`, so an
@@ -18,6 +18,19 @@ There are two ways to connect. Signing in from the client is the quickest, and t
 acts as you, in the workspaces you belong to. An API key is for a client that can't open a browser —
 a container, a scheduled job — and is also how you grant a client *less* than your own access.
 
+## Quick setup
+
+[`add-mcp`](https://github.com/neon-solutions/add-mcp) finds the AI clients installed on your machine and
+adds Elmo to each of them:
+
+```bash
+npx add-mcp https://app.elmohq.com/api/mcp --name elmo
+```
+
+Add `-g` to install it for every project rather than just the current one, and `-y` to skip the
+prompt. Each client then asks you to sign in the first time it uses Elmo. To set up a single client
+by hand, or one `add-mcp` doesn't cover, follow its section below.
+
 ## Sign in from the client
 
 Give the client the URL and it opens a browser for you to sign in. There is no application to
@@ -31,13 +44,65 @@ claude mcp add --transport http elmo https://app.elmohq.com/api/mcp
 
 Then run `/mcp` and choose **Authenticate**.
 
+### Claude.ai and Claude Desktop
+
+Custom connectors are available on every Claude plan; the Free plan is limited to one.
+
+1. Open **Customize → Connectors**, choose **+ Add**, then **Add custom connector**.
+2. Name it `Elmo`, set the URL to `https://app.elmohq.com/api/mcp`, and choose **Continue**.
+3. Review the detected authentication settings, choose **Continue**, and choose **Add**.
+4. Sign in to Elmo when Claude asks.
+
+On Team and Enterprise plans, an owner adds the connector first under **Organization settings →
+Connectors**, choosing **Add**, then **Custom → Web**. Members then find it under **Customize →
+Connectors** and choose **Connect**.
+
+### ChatGPT
+
+Custom MCP servers are added from ChatGPT on the web, and workspace admins can restrict them.
+
+1. Open [Plugins](https://chatgpt.com/plugins), choose **+**, then **Add custom MCP server**.
+2. Name it `Elmo`, set the server URL to `https://app.elmohq.com/api/mcp`, and choose **OAuth** for
+   authentication.
+3. Confirm the warning with **I understand and want to continue**, then choose **Create as a plugin**.
+4. Install the plugin and sign in to Elmo.
+
+### Codex
+
+```bash
+codex mcp add elmo --url https://app.elmohq.com/api/mcp
+codex mcp login elmo
+```
+
+### Cursor
+
+[Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=elmo&config=eyJ1cmwiOiJodHRwczovL2FwcC5lbG1vaHEuY29tL2FwaS9tY3AifQ%3D%3D)
+
+Or put it in `~/.cursor/mcp.json`, or `.cursor/mcp.json` for a single project:
+
+```json
+{
+  "mcpServers": {
+    "elmo": { "url": "https://app.elmohq.com/api/mcp" }
+  }
+}
+```
+
+Cursor shows the server as needing login; sign in from there. Older Cursor releases send a callback
+Elmo can't accept, so if signing in fails, use an API key instead.
+
 ### VS Code
+
+[Add to VS Code](vscode:mcp/install?%7B%22name%22%3A%22elmo%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fapp.elmohq.com%2Fapi%2Fmcp%22%7D)
+
+Or from a terminal:
 
 ```bash
 code --add-mcp '{"name":"elmo","type":"http","url":"https://app.elmohq.com/api/mcp"}'
 ```
 
-Or put it under `servers` in `mcp.json`:
+Or run **MCP: Add Server** from the Command Palette, choose **HTTP**, and enter the URL. Or put it
+under `servers` in `mcp.json`:
 
 ```json
 {
@@ -49,9 +114,44 @@ Or put it under `servers` in `mcp.json`:
 
 VS Code asks you to sign in the first time it starts the server.
 
+### Devin Desktop
+
+Devin Desktop, formerly Windsurf, shares its MCP servers with Devin CLI:
+
+```bash
+devin mcp add -s user elmo https://app.elmohq.com/api/mcp
+devin mcp login elmo
+```
+
+Or put it in `~/.config/devin/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "elmo": { "url": "https://app.elmohq.com/api/mcp" }
+  }
+}
+```
+
+### Antigravity
+
+Antigravity's IDE and CLI, which replaced Gemini CLI, read `~/.gemini/config/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "elmo": { "serverUrl": "https://app.elmohq.com/api/mcp" }
+  }
+}
+```
+
+To sign in, open **Agent settings → Customizations** and choose **Authenticate** next to Elmo. After
+signing in, Antigravity shows a code in the browser; paste it back into the settings panel and choose
+**Submit**.
+
 ### OpenCode
 
-In `opencode.json`:
+In `opencode.json`, or `~/.config/opencode/opencode.json` for every project:
 
 ```json
 {
@@ -68,26 +168,28 @@ In `opencode.json`:
 
 Then `opencode mcp auth elmo`.
 
-### Cursor
+### Goose
 
-In `~/.cursor/mcp.json`:
+[Add to Goose](goose://extension?url=https%3A%2F%2Fapp.elmohq.com%2Fapi%2Fmcp&type=streamable_http&id=elmo&name=Elmo&description=Read%20your%20AI%20visibility%20data%20and%20manage%20prompts%20in%20Elmo)
+
+Or run `goose configure`, choose **Add Extension → Remote Extension (Streamable HTTP)**, and enter the
+URL.
+
+### Other clients
+
+Any client that supports remote MCP servers over Streamable HTTP with OAuth can connect: give it
+`https://app.elmohq.com/api/mcp` and sign in when it asks. A client that only runs local servers can
+reach Elmo through [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
 
 ```json
 {
   "mcpServers": {
-    "elmo": { "url": "https://app.elmohq.com/api/mcp" }
+    "elmo": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://app.elmohq.com/api/mcp"]
+    }
   }
 }
-```
-
-Cursor shows the server as needing login; sign in from there. Older Cursor releases send a callback
-Elmo can't accept, so if signing in fails, use an API key instead.
-
-### Codex
-
-```bash
-codex mcp add elmo --url https://app.elmohq.com/api/mcp
-codex mcp login elmo
 ```
 
 ## Or use an API key
@@ -96,7 +198,14 @@ Issue one from **Settings → API Keys** in the organization's settings sidebar 
 organization, so they are not found under a brand. Issue it read-only and optionally narrow it to
 selected brands.
 
-Send it as a bearer token.
+Send it as a bearer token. ChatGPT only connects by signing in; Claude.ai and Claude Desktop take the
+key when you add the connector: choose **No sign in** under **Authentication** and add an
+`Authorization: Bearer elmo_...` request header. `add-mcp` takes it as a header for every client it configures:
+
+```bash
+npx add-mcp https://app.elmohq.com/api/mcp --name elmo \
+  --header "Authorization: Bearer elmo_..."
+```
 
 Claude Code:
 
@@ -133,6 +242,32 @@ VS Code, in `mcp.json`:
     "elmo": {
       "type": "http",
       "url": "https://app.elmohq.com/api/mcp",
+      "headers": { "Authorization": "Bearer elmo_..." }
+    }
+  }
+}
+```
+
+Devin Desktop and Devin CLI, in `~/.config/devin/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "elmo": {
+      "url": "https://app.elmohq.com/api/mcp",
+      "headers": { "Authorization": "Bearer elmo_..." }
+    }
+  }
+}
+```
+
+Antigravity, in `~/.gemini/config/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "elmo": {
+      "serverUrl": "https://app.elmohq.com/api/mcp",
       "headers": { "Authorization": "Bearer elmo_..." }
     }
   }
