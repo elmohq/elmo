@@ -5,6 +5,7 @@
 import { buildBrandBundle } from "@/lib/brand-data/build-bundle.server";
 import * as mem from "@/lib/brand-data/memory-reads";
 import { decodeBrandBundle, setBrandStore } from "@/lib/brand-data/store";
+import type { AnalyticsScope } from "@/lib/analytics-sql";
 import * as pg from "@/lib/rollup-read";
 
 const normalize = (value: unknown): unknown => {
@@ -41,7 +42,7 @@ for (const brandId of brandIds) {
 	const models = bundle.dicts.models;
 	const today = new Date().toISOString().slice(0, 10);
 	const shift = (days: number) => new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
-	const scopes = [];
+	const scopes: AnalyticsScope[] = [];
 	for (const timezone of ["UTC", "America/New_York", "Asia/Kolkata", "Pacific/Chatham"])
 		for (const from of [shift(6), shift(29), shift(400)])
 			scopes.push({ brandId, from, to: today, timezone, promptIds: prompts });
