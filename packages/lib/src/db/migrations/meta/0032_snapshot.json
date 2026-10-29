@@ -468,47 +468,6 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
-    "public.cited_page_changes": {
-      "name": "cited_page_changes",
-      "schema": "",
-      "columns": {
-        "page_id": {
-          "name": "page_id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "changed_at": {
-          "name": "changed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "cited_page_changes_changed_at_idx": {
-          "name": "cited_page_changes_changed_at_idx",
-          "columns": [
-            {
-              "expression": "changed_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.cited_pages": {
       "name": "cited_pages",
       "schema": "",
@@ -762,12 +721,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "pages_synced_at": {
-          "name": "pages_synced_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -1189,13 +1142,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         }
       },
       "indexes": {
@@ -1204,21 +1150,6 @@
           "columns": [
             {
               "expression": "page_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "rollup_citation_pages_created_at_idx": {
-          "name": "rollup_citation_pages_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

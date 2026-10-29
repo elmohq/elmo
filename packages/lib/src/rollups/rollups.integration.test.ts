@@ -23,7 +23,6 @@ import {
 	runMentions,
 } from "../db/schema";
 import type { RunMentionAssessments } from "../mentions";
-import { syncChangedPages } from "./brand-pages";
 import { resolveUnpagedCitations, upsertCitedPages } from "./citation-pages";
 import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
 import { markDirty, markPromptRunsDirty, markRunsDirty, pendingMarks, refreshRange } from "./dirty";
@@ -143,11 +142,11 @@ async function reset(db: TestDb): Promise<void> {
 	await db.execute(sql`
 		TRUNCATE citations, prompt_runs, prompts, competitors, brands, organization,
 			rollup_prompt_runs, rollup_competitor_mentions, rollup_citation_urls, cited_pages, rollup_dirty,
-			rollup_citation_pages, rollup_sentiment_quotes, cited_page_changes
+			rollup_citation_pages, rollup_sentiment_quotes
 		RESTART IDENTITY CASCADE
 	`);
 	await db.execute(sql`INSERT INTO pipeline_state (id) VALUES (1) ON CONFLICT DO NOTHING`);
-	await db.execute(sql`UPDATE pipeline_state SET rollup_version = 0, pages_synced_at = NULL`);
+	await db.execute(sql`UPDATE pipeline_state SET rollup_version = 0`);
 }
 
 async function seed(db: TestDb): Promise<void> {
@@ -493,81 +492,17 @@ describe("rollups against postgres", () => {
 		);
 	});
 
-	it("carries a page's new title and class to every brand's copy on the next sync, without a rebuild", async () => {
+	it("brings a brand's copy of a page up to date when a rebuild next cites it", async () => {
 		await rebuildAll(db);
-		const OTHER_BRAND = "brand-rollups-other";
-		const OTHER_PROMPT = "aaaaaaaa-0000-4000-8000-000000000003";
-		await db.insert(brands).values({
-			id: OTHER_BRAND,
-			name: "Other Brand",
-			website: "https://other-brand.test",
-			organizationId: ORG_ID,
-		});
-		await db.insert(prompts).values({ id: OTHER_PROMPT, brandId: OTHER_BRAND, value: "crm" });
-		await insertRuns(db, [
-			{
-				id: RUN(9),
-				promptId: OTHER_PROMPT,
-				brandId: OTHER_BRAND,
-				model: "gpt-5",
-				provider: null,
-				version: "1",
-				webSearchEnabled: true,
-				rawOutput: {},
-				mentions: { brandMentioned: false, competitorsMentioned: [], assessments: null, stamp: null },
-				createdAt: B0,
-			},
-		]);
-		const [guide] = (await pageRows(db)).filter((page) => page.url === GUIDE);
-		await db.insert(citations).values({
-			promptRunId: RUN(9),
-			promptId: OTHER_PROMPT,
-			brandId: OTHER_BRAND,
-			model: "gpt-5",
-			url: GUIDE,
-			domain: "example.com",
-			citationIndex: 0,
-			createdAt: B0,
-			pageId: guide.id,
-		});
-		await rebuildRange(db, OTHER_BRAND, B0, B1);
-
-		await syncChangedPages(db);
 		await upsertCitedPages(db, [
 			{ url: GUIDE, domain: "example.com", title: "Acme pricing", seenAt: new Date("2026-02-01T00:00:00.000Z") },
 		]);
-		expect((await brandPageRows(db)).find((copy) => copy.url === GUIDE)?.title).not.toBe("Acme pricing");
-		expect(await syncChangedPages(db)).toBe(2);
+		await rebuildAll(db);
 
 		const [page] = (await pageRows(db)).filter((row) => row.url === GUIDE);
-		const copies = (await brandPageRows(db)).filter((copy) => copy.url === GUIDE);
-		expect(copies.map((copy) => copy.brandId).sort()).toEqual([OTHER_BRAND, BRAND_ID].sort());
-		for (const copy of copies) {
-			expect([copy.title, copy.staticCategory, copy.pageType]).toEqual([
-				page.title,
-				page.staticCategory,
-				page.pageType,
-			]);
-		}
+		const [copy] = (await brandPageRows(db)).filter((row) => row.url === GUIDE);
 		expect(page.title).toBe("Acme pricing");
-	});
-
-	it("catches up a copy taken just before its page changed", async () => {
-		await rebuildAll(db);
-		await syncChangedPages(db);
-		// A copy taken from a snapshot the page change overtook.
-		await db.execute(sql`UPDATE rollup_citation_pages SET title = 'Stale title' WHERE url = ${GUIDE}`);
-		await db.execute(sql`UPDATE rollup_citation_pages SET created_at = now() WHERE url = ${GUIDE}`);
-		await syncChangedPages(db);
-		const [page] = (await pageRows(db)).filter((row) => row.url === GUIDE);
-		expect((await brandPageRows(db)).find((copy) => copy.url === GUIDE)?.title).toBe(page.title);
-	});
-
-	it("leaves copies alone when nothing changed", async () => {
-		await rebuildAll(db);
-		await syncChangedPages(db);
-		await rebuildAll(db);
-		expect(await syncChangedPages(db)).toBe(0);
+		expect([copy.title, copy.staticCategory, copy.pageType]).toEqual([page.title, page.staticCategory, page.pageType]);
 	});
 
 	it("keeps, per bucket and sentiment, the quotable run the judge is surest of", async () => {
@@ -696,7 +631,6 @@ describe("rollups against postgres", () => {
 			["google", "search"],
 			["editorial", "article"],
 		]);
-		await syncChangedPages(db);
 		expect((await brandPageRows(db)).map((copy) => [copy.staticCategory, copy.pageType])).toEqual(
 			pages.map((page) => [page.staticCategory, page.pageType]),
 		);

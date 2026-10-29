@@ -461,19 +461,6 @@ export const citedPages = pgTable("cited_pages", {
 	lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
 }).enableRLS();
 
-/**
- * When each page's title, domain or classification last changed, kept by a
- * trigger on `cited_pages` so brands' copies can catch up (see `syncChangedPages`).
- */
-export const citedPageChanges = pgTable(
-	"cited_page_changes",
-	{
-		pageId: bigint("page_id", { mode: "number" }).primaryKey().notNull(),
-		changedAt: timestamp("changed_at", { withTimezone: true }).notNull(),
-	},
-	(table) => [index("cited_page_changes_changed_at_idx").on(table.changedAt)],
-).enableRLS();
-
 export const rollupCitationUrls = pgTable(
 	"rollup_citation_urls",
 	{
@@ -507,9 +494,9 @@ export const rollupCitationUrls = pgTable(
 /**
  * The pages a brand has cited, copied from `cited_pages` so a brand's reads find
  * them together instead of one lookup apiece across every tenant's pages. A
- * trigger on `rollup_citation_urls` adds a brand's copy when a rollup first cites
- * the page; copies catch up with page changes on the next rollup refresh (see
- * `syncChangedPages`).
+ * rebuild refreshes the copies of the pages its range cites, so a page's change
+ * reaches a brand when the brand next cites it; reclassification updates every
+ * copy at once.
  */
 export const rollupCitationPages = pgTable(
 	"rollup_citation_pages",
@@ -523,12 +510,10 @@ export const rollupCitationPages = pgTable(
 		title: text("title"),
 		pageType: text("page_type").notNull(),
 		staticCategory: text("static_category").notNull(),
-		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	},
 	(table) => [
 		primaryKey({ name: "rollup_citation_pages_pk", columns: [table.brandId, table.pageId] }),
 		index("rollup_citation_pages_page_id_idx").on(table.pageId),
-		index("rollup_citation_pages_created_at_idx").on(table.createdAt),
 	],
 ).enableRLS();
 
@@ -618,8 +603,6 @@ export const pipelineState = pgTable(
 	{
 		id: smallint("id").primaryKey().default(1),
 		rollupVersion: integer("rollup_version").notNull().default(0),
-		/** Brands' page copies match every page change before this (see `syncChangedPages`). */
-		pagesSyncedAt: timestamp("pages_synced_at", { withTimezone: true }),
 	},
 	() => [check("pipeline_state_singleton", sql`id = 1`)],
 ).enableRLS();

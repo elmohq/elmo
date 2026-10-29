@@ -16,12 +16,7 @@ import {
 	uuidList,
 } from "@/lib/analytics-sql";
 import { type CitationOwner, containing, type OwnedDomains, ownersCte, pageOf } from "@/lib/citation-read";
-import {
-	type FanoutBreakdownRow,
-	type FanoutModelTotalRow,
-	type FanoutPromptTotalRow,
-	UNAVAILABLE_SENTINEL,
-} from "@/lib/fanout-analysis";
+import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
 import type { AssessmentSums } from "@/lib/sentiment";
 
 /** The run counts every run read selects, so a new rollup column reaches them all at once. */
@@ -495,18 +490,11 @@ export interface FanoutQueryRow {
 	prompt_count: number;
 }
 
-/**
- * Each search as the dashboard's fan-out counts it, trimmed of all whitespace and
- * without the `unavailable` sentinel; the rollup trims only spaces.
- */
 const fanoutQueries = (scope: AnalyticsScope) => sql`
 	queries AS (
-		SELECT * FROM (
-			SELECT lower(regexp_replace(query, '^[[:space:]]+|[[:space:]]+$', '', 'g')) AS query, prompt_id, runs, brand_mentioned_runs
-			FROM rollup_web_queries
-			WHERE ${rollupScope(scope)}
-		) q
-		WHERE query <> '' AND query <> ${UNAVAILABLE_SENTINEL}
+		SELECT query, prompt_id, runs, brand_mentioned_runs
+		FROM rollup_web_queries
+		WHERE ${rollupScope(scope)}
 	)`;
 
 export async function getFanoutQueryPage(
