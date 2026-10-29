@@ -51,6 +51,58 @@ const assessed = (
 	};
 };
 
+const FIXTURE_TARGETS = [
+	{ model: "chatgpt", provider: "brightdata", webSearch: true },
+	{ model: "chatgpt", provider: "openai-api", webSearch: true },
+	{ model: "claude", provider: "anthropic-api", webSearch: false },
+];
+const FIXTURE_DAYS = [
+	"2026-02-27",
+	"2026-02-28",
+	"2026-03-01",
+	"2026-03-02",
+	"2026-03-15",
+	"2026-03-31",
+	"2026-04-01",
+	"2026-04-02",
+];
+const SENTIMENTS = ["positive", "negative", "mixed", "neutral"] as const;
+
+async function createFixtureRun(
+	n: number,
+	day: string,
+	key: string,
+	promptId: string,
+	target: (typeof FIXTURE_TARGETS)[number],
+) {
+	const mentioned = n % 3 !== 0;
+	const rivals = n % 2 === 0 ? ["Globex"] : n % 5 === 0 ? ["Globex", "Initech"] : [];
+	const { text, assessments } = assessed(
+		`Answer ${n} about ${key}: Acme and friends compared at length.`,
+		mentioned ? { sentiment: SENTIMENTS[n % 4], position: 1 + (n % 3) } : null,
+		Object.fromEntries(rivals.map((name, i) => [name, { sentiment: SENTIMENTS[(n + i) % 4], position: 2 + i }])),
+	);
+	const run = await createRun(brandId, promptId, {
+		at: `${day}T${n % 2 === 0 ? "03:30" : "18:10"}:00Z`,
+		brandMentioned: mentioned,
+		competitors: rivals,
+		...target,
+		webQueries: target.webSearch ? [`${key} options ${n % 4}`, "crm comparison"] : [],
+		text,
+		assessments,
+	});
+	if (!target.webSearch) return;
+	const cited = [
+		[`https://docs.acme.example/guide/${n % 3}`, "Acme guide"],
+		[`https://globex.example/pricing/${n % 2}`, "Globex pricing"],
+		[`https://www.reddit.com/r/crm/comments/${n % 4}/acme`, "Acme thread"],
+		[`https://review.example/best-crm-${day}`, "Best CRMs"],
+		[`https://www.google.com/search?q=acme+crm+${n % 3}`, null],
+		[`https://www.google.com/shopping/product/${n % 4}?q=Acme+Pro`, "Acme Pro"],
+	] as const;
+	for (const [i, [url, title]] of cited.entries()) await createCitation(run, url, { title, index: i + 1 });
+}
+
 async function syncLocalCopy() {
 	const manifest = await chunkManifest(brandId);
 	const bundle = assembleBundle(brandId, manifestVersion(manifest), await buildChunks(brandId, manifest));
@@ -67,57 +119,10 @@ beforeAll(async () => {
 	promptIds.startups = await createPrompt(brandId, { value: "crm for startups", tags: ["sales", "startup"] });
 	promptIds.retired = await createPrompt(brandId, { value: "old prompt", enabled: false });
 
-	const targets = [
-		{ model: "chatgpt", provider: "brightdata", webSearch: true },
-		{ model: "chatgpt", provider: "openai-api", webSearch: true },
-		{ model: "claude", provider: "anthropic-api", webSearch: false },
-	];
-	const days = [
-		"2026-02-27",
-		"2026-02-28",
-		"2026-03-01",
-		"2026-03-02",
-		"2026-03-15",
-		"2026-03-31",
-		"2026-04-01",
-		"2026-04-02",
-	];
 	let n = 0;
-	for (const day of days) {
+	for (const day of FIXTURE_DAYS) {
 		for (const [key, promptId] of Object.entries(promptIds)) {
-			for (const target of targets) {
-				n++;
-				const mentioned = n % 3 !== 0;
-				const rivals = n % 2 === 0 ? ["Globex"] : n % 5 === 0 ? ["Globex", "Initech"] : [];
-				const sentiments = ["positive", "negative", "mixed", "neutral"] as const;
-				const { text, assessments } = assessed(
-					`Answer ${n} about ${key}: Acme and friends compared at length.`,
-					mentioned ? { sentiment: sentiments[n % 4], position: 1 + (n % 3) } : null,
-					Object.fromEntries(rivals.map((name, i) => [name, { sentiment: sentiments[(n + i) % 4], position: 2 + i }])),
-				);
-				const run = await createRun(brandId, promptId, {
-					at: `${day}T${n % 2 === 0 ? "03:30" : "18:10"}:00Z`,
-					brandMentioned: mentioned,
-					competitors: rivals,
-					...target,
-					webQueries: target.webSearch ? [`${key} options ${n % 4}`, "crm comparison"] : [],
-					text,
-					assessments,
-				});
-				if (!target.webSearch) continue;
-				await createCitation(run, `https://docs.acme.example/guide/${n % 3}`, { title: "Acme guide", index: 1 });
-				await createCitation(run, `https://globex.example/pricing/${n % 2}`, { title: "Globex pricing", index: 2 });
-				await createCitation(run, `https://www.reddit.com/r/crm/comments/${n % 4}/acme`, {
-					title: "Acme thread",
-					index: 3,
-				});
-				await createCitation(run, `https://review.example/best-crm-${day}`, { title: "Best CRMs", index: 4 });
-				await createCitation(run, `https://www.google.com/search?q=acme+crm+${n % 3}`, { index: 5 });
-				await createCitation(run, `https://www.google.com/shopping/product/${n % 4}?q=Acme+Pro`, {
-					title: "Acme Pro",
-					index: 6,
-				});
-			}
+			for (const target of FIXTURE_TARGETS) await createFixtureRun(++n, day, key, promptId, target);
 		}
 	}
 	await rebuildRollups(brandId);
