@@ -160,6 +160,7 @@ const ordinal = (n: number) => {
 function badgeTip(company: MentionedCompany): string {
 	const parts: string[] = [];
 	if (company.record?.position) parts.push(`Named ${ordinal(company.record.position)} among the tracked companies.`);
+	if (company.record?.citedOnly) parts.push("Only cited as a source, so it has no sentiment.");
 	if (company.passage) parts.push("Click to mark the passage this rests on.");
 	return parts.join(" ");
 }

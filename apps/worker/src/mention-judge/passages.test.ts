@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matcher, mentionOffsets, quoteOptions, sentences } from "./passages";
+import { matcher, mentionOffsets, namedInProse, quoteOptions, sentences } from "./passages";
 
 const elmo = { name: "Elmo", aliases: [], domains: ["https://www.elmohq.com"] };
 const peec = { name: "Peec", aliases: ["Peec AI"], domains: ["peec.ai"] };
@@ -106,5 +106,28 @@ describe("mentionOffsets", () => {
 		const text = "Sources: [review](https://example.com/peec-vs-elmo). Elmo leads.";
 		expect(mentionOffsets(text, elmo)).toEqual([text.indexOf("Elmo leads")]);
 		expect(mentionOffsets(text, peec)).toEqual([text.indexOf("peec-vs")]);
+	});
+});
+
+describe("namedInProse", () => {
+	it("doesn't count links to a company's site, citation chips or bare URLs as naming it", () => {
+		for (const text of [
+			"Great boots ([elmohq.com](https://www.elmohq.com/p?utm_source=chatgpt.com)).",
+			"A solid pick.[[1]](https://elmohq.com/x)",
+			"![](https://www.google.com/s2/favicons?domain=https://www.elmohq.com&sz=32) Elmo +2",
+			"See https://elmohq.com/docs for more.",
+			"Read [the review](https://elmohq.com/elmo-review).",
+		])
+			expect(namedInProse(text, elmo), text).toBe(false);
+	});
+
+	it("counts the company's name, a link's own text, and a domain written as prose", () => {
+		for (const text of [
+			"Elmo leads ([elmohq.com](https://elmohq.com)).",
+			"Try [Elmo](https://elmohq.com) today.",
+			"Sign up at elmohq.com.",
+			"![](https://www.google.com/s2/favicons?domain=elmohq.com) Docs +1 — Elmo is open source.",
+		])
+			expect(namedInProse(text, elmo), text).toBe(true);
 	});
 });
