@@ -113,6 +113,7 @@ export function TrendAreaChart({
 								fill={`var(--color-${k})`}
 								fillOpacity={0.8}
 								strokeWidth={0}
+								isAnimationActive={false}
 							/>
 						))}
 					</AreaChart>

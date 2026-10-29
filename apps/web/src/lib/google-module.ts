@@ -72,6 +72,29 @@ function addPromptCount(byPrompt: Map<string, number>, promptId: string, count: 
 	byPrompt.set(promptId, (byPrompt.get(promptId) ?? 0) + count);
 }
 
+type GoogleSurface = { kind: "product" | "query"; name: string; key: string } | null;
+
+const surfaces = new Map<string, GoogleSurface>();
+const MAX_CACHED_SURFACES = 500_000;
+
+/** What a cited Google URL points at. Parsed once per URL: a long range sees the same pages under many prompts. */
+function googleSurface(url: string, title: string | null): GoogleSurface {
+	const cacheKey = `${url}\u0000${title ?? ""}`;
+	const cached = surfaces.get(cacheKey);
+	if (cached !== undefined) return cached;
+	let surface: GoogleSurface = null;
+	if (isGoogleShoppingUrl(url)) {
+		const name = parseGoogleProductName(url, title);
+		if (name) surface = { kind: "product", name, key: name.toLowerCase() };
+	} else if (isGoogleSearchUrl(url)) {
+		const query = parseGoogleSearchQuery(url);
+		if (query) surface = { kind: "query", name: query, key: query.toLowerCase() };
+	}
+	if (surfaces.size >= MAX_CACHED_SURFACES) surfaces.clear();
+	surfaces.set(cacheKey, surface);
+	return surface;
+}
+
 /**
  * Fold cited Google URLs onto the product or the search query they represent,
  * keyed case-insensitively so the same product cited two ways is one row.
@@ -87,29 +110,23 @@ function tallyGooglePages(
 	for (const row of pages) {
 		if (!row.url) continue;
 		const count = Number(row.count);
-
-		if (isGoogleShoppingUrl(row.url)) {
-			const name = parseGoogleProductName(row.url, row.title);
-			if (!name) continue;
-			const product = productByKey.get(name.toLowerCase()) ?? {
-				name,
+		const surface = googleSurface(row.url, row.title);
+		if (surface?.kind === "product") {
+			const product = productByKey.get(surface.key) ?? {
+				name: surface.name,
 				count: 0,
-				attribution: attributeProduct(name, brandName, competitors),
+				attribution: attributeProduct(surface.name, brandName, competitors),
 				prompts: new Map(),
 			};
 			product.count += count;
 			addPromptCount(product.prompts, row.prompt_id, count);
-			productByKey.set(name.toLowerCase(), product);
-			continue;
+			productByKey.set(surface.key, product);
+		} else if (surface?.kind === "query") {
+			const entry = queryByKey.get(surface.key) ?? { query: surface.name, count: 0, prompts: new Map() };
+			entry.count += count;
+			addPromptCount(entry.prompts, row.prompt_id, count);
+			queryByKey.set(surface.key, entry);
 		}
-
-		if (!isGoogleSearchUrl(row.url)) continue;
-		const query = parseGoogleSearchQuery(row.url);
-		if (!query) continue;
-		const entry = queryByKey.get(query.toLowerCase()) ?? { query, count: 0, prompts: new Map() };
-		entry.count += count;
-		addPromptCount(entry.prompts, row.prompt_id, count);
-		queryByKey.set(query.toLowerCase(), entry);
 	}
 
 	return { productByKey, queryByKey };

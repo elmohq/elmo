@@ -40,6 +40,19 @@ interface ChartDataProviderProps {
 	isLoading: boolean;
 }
 
+const WEEKLY_AFTER_DAYS = 92;
+
+/** Consecutive days grouped into Monday-to-Sunday weeks, each labelled by its first day in range. */
+function weeks(days: string[]): string[][] {
+	const groups: string[][] = [];
+	for (const day of days) {
+		const monday = new Date(`${day}T00:00:00Z`).getUTCDay() === 1;
+		if (groups.length === 0 || monday) groups.push([day]);
+		else groups[groups.length - 1].push(day);
+	}
+	return groups;
+}
+
 export function ChartDataProvider({
 	children,
 	batchData,
@@ -81,11 +94,23 @@ export function ChartDataProvider({
 				dailyStatsMap.set(String(stat.date), stat);
 			}
 
-			const chartData: Array<{ date: string; [key: string]: number | string | null }> = dateRange.map((date) => {
-				const dayStat = dailyStatsMap.get(date);
-				const totalRuns = dayStat ? Number(dayStat.total_runs) : 0;
+			// Past three months a point per week: a year of daily points per prompt is more than a chart can show.
+			const periods = dateRange.length > WEEKLY_AFTER_DAYS ? weeks(dateRange) : dateRange.map((date) => [date]);
+			const chartData: Array<{ date: string; [key: string]: number | string | null }> = periods.map((days) => {
+				let totalRuns = 0;
+				let brandMentions = 0;
+				const competitorMentions = new Map<string, number>();
+				for (const day of days) {
+					const dayStat = dailyStatsMap.get(day);
+					if (!dayStat) continue;
+					totalRuns += Number(dayStat.total_runs);
+					brandMentions += Number(dayStat.brand_mentioned_count);
+					for (const [name, count] of Object.entries(dayStat.competitor_counts || {})) {
+						competitorMentions.set(name, (competitorMentions.get(name) ?? 0) + Number(count));
+					}
+				}
 
-				const dataPoint: { date: string; [key: string]: number | string | null } = { date };
+				const dataPoint: { date: string; [key: string]: number | string | null } = { date: days[0] };
 
 				if (totalRuns === 0) {
 					dataPoint[brand.id] = null;
@@ -95,15 +120,9 @@ export function ChartDataProvider({
 					return dataPoint;
 				}
 
-				const brandMentions = dayStat ? Number(dayStat.brand_mentioned_count) : 0;
-				const brandVisibility = Math.round((brandMentions / totalRuns) * 100);
-				dataPoint[brand.id] = brandVisibility;
-
-				const competitorCounts = dayStat?.competitor_counts || {};
+				dataPoint[brand.id] = Math.round((brandMentions / totalRuns) * 100);
 				sortedCompetitors.forEach((competitor) => {
-					const competitorMentions = competitorCounts[competitor.name] || 0;
-					const competitorVisibility = Math.round((competitorMentions / totalRuns) * 100);
-					dataPoint[competitor.id] = competitorVisibility;
+					dataPoint[competitor.id] = Math.round(((competitorMentions.get(competitor.name) ?? 0) / totalRuns) * 100);
 				});
 
 				return dataPoint;
