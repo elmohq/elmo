@@ -35,6 +35,7 @@ import { Route as AuthedAppIndexRouteImport } from './routes/_authed/app/index'
 import { Route as AuthedAppNewRouteImport } from './routes/_authed/app/new'
 import { Route as AuthedReportsIndexRouteImport } from './routes/_authed/reports/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiBrandDataBrandIdRouteImport } from './routes/api/brand-data/$brandId'
 import { Route as ApiHealthIndexRouteImport } from './routes/api/health/index'
 import { Route as ApiManifestIndexRouteImport } from './routes/api/manifest/index'
 import { Route as ApiMcpSplatRouteImport } from './routes/api/mcp/$'
@@ -234,6 +235,11 @@ const AuthedReportsIndexRoute = AuthedReportsIndexRouteImport.update({
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBrandDataBrandIdRoute = ApiBrandDataBrandIdRouteImport.update({
+  id: '/api/brand-data/$brandId',
+  path: '/api/brand-data/$brandId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthIndexRoute = ApiHealthIndexRouteImport.update({
@@ -624,6 +630,7 @@ export interface FileRoutesByFullPath {
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/brand-data/$brandId': typeof ApiBrandDataBrandIdRoute
   '/api/mcp/$': typeof ApiMcpSplatRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/v1/me': typeof ApiV1MeRoute
@@ -713,6 +720,7 @@ export interface FileRoutesByTo {
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/brand-data/$brandId': typeof ApiBrandDataBrandIdRoute
   '/api/mcp/$': typeof ApiMcpSplatRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/v1/me': typeof ApiV1MeRoute
@@ -804,6 +812,7 @@ export interface FileRoutesById {
   '/_authed/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/_authed/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/brand-data/$brandId': typeof ApiBrandDataBrandIdRoute
   '/api/mcp/$': typeof ApiMcpSplatRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/v1/me': typeof ApiV1MeRoute
@@ -898,6 +907,7 @@ export interface FileRouteTypes {
     | '/admin/workflows'
     | '/app/new'
     | '/api/auth/$'
+    | '/api/brand-data/$brandId'
     | '/api/mcp/$'
     | '/api/v1/$'
     | '/api/v1/me'
@@ -987,6 +997,7 @@ export interface FileRouteTypes {
     | '/admin/workflows'
     | '/app/new'
     | '/api/auth/$'
+    | '/api/brand-data/$brandId'
     | '/api/mcp/$'
     | '/api/v1/$'
     | '/api/v1/me'
@@ -1077,6 +1088,7 @@ export interface FileRouteTypes {
     | '/_authed/admin/workflows'
     | '/_authed/app/new'
     | '/api/auth/$'
+    | '/api/brand-data/$brandId'
     | '/api/mcp/$'
     | '/api/v1/$'
     | '/api/v1/me'
@@ -1162,6 +1174,7 @@ export interface RootRouteChildren {
   DotwellKnownOauthAuthorizationServerSplatRoute: typeof DotwellKnownOauthAuthorizationServerSplatRoute
   DotwellKnownOauthProtectedResourceSplatRoute: typeof DotwellKnownOauthProtectedResourceSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiBrandDataBrandIdRoute: typeof ApiBrandDataBrandIdRoute
   ApiMcpSplatRoute: typeof ApiMcpSplatRoute
   ApiV1SplatRoute: typeof ApiV1SplatRoute
   ApiV1MeRoute: typeof ApiV1MeRoute
@@ -1371,6 +1384,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/brand-data/$brandId': {
+      id: '/api/brand-data/$brandId'
+      path: '/api/brand-data/$brandId'
+      fullPath: '/api/brand-data/$brandId'
+      preLoaderRoute: typeof ApiBrandDataBrandIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health/': {
@@ -2076,6 +2096,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotwellKnownOauthProtectedResourceSplatRoute:
     DotwellKnownOauthProtectedResourceSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiBrandDataBrandIdRoute: ApiBrandDataBrandIdRoute,
   ApiMcpSplatRoute: ApiMcpSplatRoute,
   ApiV1SplatRoute: ApiV1SplatRoute,
   ApiV1MeRoute: ApiV1MeRoute,

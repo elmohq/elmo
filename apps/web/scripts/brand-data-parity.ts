@@ -2,10 +2,11 @@
  * Runs every rollup read through Postgres and through a brand's in-memory store
  * and reports any difference. Usage: tsx scripts/brand-data-parity.ts <brandId...>
  */
+
+import type { AnalyticsScope } from "@/lib/analytics-sql";
 import { buildBrandBundle } from "@/lib/brand-data/build-bundle.server";
 import * as mem from "@/lib/brand-data/memory-reads";
 import { decodeBrandBundle, setBrandStore } from "@/lib/brand-data/store";
-import type { AnalyticsScope } from "@/lib/analytics-sql";
 import * as pg from "@/lib/rollup-read";
 
 const normalize = (value: unknown): unknown => {

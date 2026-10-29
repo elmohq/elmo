@@ -36,7 +36,6 @@ import {
 	getVisibilityDailyAggregate,
 } from "@/lib/analytics/reads";
 import type { DailyScope } from "@/lib/analytics-sql";
-import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
 import { buildLandscape, type Landscape } from "@/lib/landscape";
@@ -58,6 +57,8 @@ import {
 	sumAssessments,
 } from "@/lib/sentiment";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
+
+const isCalendarDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 export interface AnalyticsWindow {
 	/** Either calendar days (`YYYY-MM-DD`, read in `timezone`, `to` inclusive) or

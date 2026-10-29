@@ -20,3 +20,8 @@ export function sharedRead<T>(key: string, read: () => Promise<T>): Promise<T> {
 	value.catch(() => reads.delete(key));
 	return value;
 }
+
+/** For when the data behind every shared read has just changed. */
+export function clearSharedReads() {
+	reads.clear();
+}

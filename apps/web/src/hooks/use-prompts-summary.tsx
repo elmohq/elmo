@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
+import { getPromptsSummaryFn } from "@/lib/brand-data/local-first";
 import type { LookbackPeriod } from "@/lib/lookback";
-import { getPromptsSummaryFn } from "@/server/prompts";
 
 export interface PromptsSummaryFilters {
 	lookback?: LookbackPeriod;

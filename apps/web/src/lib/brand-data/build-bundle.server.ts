@@ -125,7 +125,7 @@ export async function buildBrandBundle(brandId: string): Promise<BrandBundle> {
 			page_type: string;
 			static_category: string;
 		}>(
-			sql`SELECT page_id, url, domain, title, page_type, static_category FROM rollup_citation_pages WHERE brand_id = ${brandId}`,
+			sql`SELECT page_id, url, domain, title, page_type, static_category FROM rollup_citation_pages WHERE brand_id = ${brandId} ORDER BY url COLLATE "C", page_id`,
 		),
 		rows<KeyRow & { sentiment: string; run_id: string; confidence: number; created_at: Date }>(
 			sql`SELECT * FROM rollup_sentiment_quotes WHERE brand_id = ${brandId} ORDER BY bucket`,

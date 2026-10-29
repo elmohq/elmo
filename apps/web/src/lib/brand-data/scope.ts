@@ -99,8 +99,8 @@ function lowerBound(values: Int32Array, length: number, target: number) {
 }
 
 /** Mirrors `scopeFilter`: the rows of a table the scope covers, by index. */
-export function scopeRows(store: BrandStore, table: StoreRunKeys, scope: AnalyticsScope): number[] {
-	if (scope.brandId !== store.bundle.brandId) return [];
+export function scopeRows(store: BrandStore, table: StoreRunKeys, scope: AnalyticsScope): Int32Array {
+	if (scope.brandId !== store.bundle.brandId) return new Int32Array(0);
 	const { start, end } = windowMinutes(scope);
 	const first = Number.isFinite(start) ? lowerBound(table.bucket, table.length, Math.ceil(start)) : 0;
 	const last = Number.isFinite(end) ? lowerBound(table.bucket, table.length, Math.ceil(end)) : table.length;
@@ -125,10 +125,11 @@ export function scopeRows(store: BrandStore, table: StoreRunKeys, scope: Analyti
 
 	const target = scope.model ? parseModelFilter(scope.model) : null;
 	const targetModel = target ? store.bundle.dicts.models.indexOf(target.model) : -1;
-	if (target && (targetModel < 0 || (target.premium && store.apiProviders.size === 0))) return [];
+	if (target && (targetModel < 0 || (target.premium && store.apiProviders.size === 0))) return new Int32Array(0);
 	const web = scope.webSearchEnabled;
 
-	const rows: number[] = [];
+	const rows = new Int32Array(Math.max(0, last - first));
+	let count = 0;
 	for (let i = first; i < last; i++) {
 		if (promptAllowed && !promptAllowed[table.prompt[i]]) continue;
 		if (target) {
@@ -139,7 +140,7 @@ export function scopeRows(store: BrandStore, table: StoreRunKeys, scope: Analyti
 			}
 		}
 		if (web !== undefined && (table.web[i] === 1) !== web) continue;
-		rows.push(i);
+		rows[count++] = i;
 	}
-	return rows;
+	return rows.subarray(0, count);
 }

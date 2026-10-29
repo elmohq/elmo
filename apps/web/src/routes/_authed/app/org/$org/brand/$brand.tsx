@@ -8,6 +8,7 @@ import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { useBrandDataSync } from "@/hooks/use-brand-data-sync";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { getAppName } from "@/lib/route-head";
@@ -100,5 +101,11 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 	},
 	staleTime: 5 * 60 * 1000,
 	pendingComponent: BrandLayoutSkeleton,
-	component: () => <Outlet />,
+	component: BrandLayout,
 });
+
+function BrandLayout() {
+	const { brandId } = Route.useRouteContext();
+	useBrandDataSync(brandId);
+	return <Outlet />;
+}
