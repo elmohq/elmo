@@ -4,13 +4,10 @@
  * recent buckets, so a sync usually fetches only the current month's chunks.
  * Each chunk carries its own dictionaries; `assembleBundle` merges them.
  */
-import {
-	BRAND_BUNDLE_FORMAT,
-	type BrandBundle,
-	type BundleBrand,
-	type BundleCompetitor,
-	type BundlePrompt,
-} from "@/lib/brand-data/bundle";
+import type { BrandBundle, BundleBrand, BundleCompetitor, BundlePrompt } from "@/lib/brand-data/bundle";
+
+/** Bump when a chunk's shape changes; browsers drop copies in any other format. */
+export const BRAND_DATA_FORMAT = 1;
 
 export const RUN_TABLES = ["promptRuns", "competitorMentions", "webQueries", "sentimentQuotes", "citations"] as const;
 export type RunTable = (typeof RUN_TABLES)[number];
@@ -18,6 +15,11 @@ export type RunTable = (typeof RUN_TABLES)[number];
 export interface ChunkManifestEntry {
 	id: string;
 	hash: string;
+}
+
+export interface ChunkManifest {
+	format: number;
+	chunks: ChunkManifestEntry[];
 }
 
 export interface EntitiesChunk {
@@ -187,7 +189,6 @@ export function assembleBundle(brandId: string, version: string, chunks: Iterabl
 		sentiments: dictionary(),
 	};
 	const bundle: BrandBundle = {
-		format: BRAND_BUNDLE_FORMAT,
 		brandId,
 		version,
 		apiProviderIds: entities.apiProviderIds,

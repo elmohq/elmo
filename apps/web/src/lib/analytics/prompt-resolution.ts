@@ -13,7 +13,7 @@
  */
 import { SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { getPromptRows } from "@/lib/analytics/reads";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 
 export interface ResolvedPrompt {
 	id: string;
@@ -38,10 +38,11 @@ export interface ResolvedPrompt {
  * (apps/web/src/server/prompts.ts), which produces the displayed list.
  */
 export async function resolveFilteredPrompts(
+	reader: AnalyticsReader,
 	brandId: string,
 	opts: { tags?: string; search?: string },
 ): Promise<ResolvedPrompt[]> {
-	const allPrompts = (await getPromptRows(brandId)).filter((prompt) => prompt.enabled);
+	const allPrompts = (await reader.getPromptRows(brandId)).filter((prompt) => prompt.enabled);
 
 	const tagFilter = parseTagFilter(opts.tags);
 	const search = opts.search?.toLowerCase();

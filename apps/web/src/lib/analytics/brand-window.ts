@@ -1,4 +1,4 @@
-import { getBrandEarliestRunDate } from "@/lib/analytics/reads";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 import {
@@ -12,6 +12,7 @@ import {
 export type BrandWindow = { timezone: string } & CalendarDayRange;
 
 export async function resolveBrandWindow(
+	reader: AnalyticsReader,
 	brandId: string,
 	lookback: LookbackPeriod,
 	timezoneParam: string,
@@ -29,7 +30,7 @@ export async function resolveBrandWindow(
 	if (custom?.from) return { timezone, fromDateStr: custom.from, toDateStr };
 
 	// "all", and a custom range with an open start, begin at the brand's first run.
-	const earliest = await getBrandEarliestRunDate(brandId);
+	const earliest = await reader.getBrandEarliestRunDate(brandId);
 	// A brand with no runs gets an empty window rather than an open-ended one, so
 	// the charts draw a single day of nothing instead of a decade of it.
 	if (!earliest) return { timezone, fromDateStr: toDateStr, toDateStr };
@@ -41,11 +42,12 @@ export async function resolveBrandWindow(
 /** The same lookback as a count of days ending today, for the pages that
  * still window by day count in UTC rather than by calendar range. */
 export async function resolveBrandLookbackDays(
+	reader: AnalyticsReader,
 	brandId: string,
 	lookback: LookbackPeriod,
 	options?: { now?: Date },
 ): Promise<number> {
 	if (lookback !== "all" && !parseCustomLookback(lookback)) return getDaysFromLookback(lookback);
-	const { fromDateStr, toDateStr } = await resolveBrandWindow(brandId, lookback, "UTC", options);
+	const { fromDateStr, toDateStr } = await resolveBrandWindow(reader, brandId, lookback, "UTC", options);
 	return Math.round((Date.parse(toDateStr) - Date.parse(fromDateStr)) / 86_400_000) + 1;
 }

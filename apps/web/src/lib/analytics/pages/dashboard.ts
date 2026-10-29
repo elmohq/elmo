@@ -2,7 +2,7 @@ import { z } from "zod";
 import { resolveBrandWindow } from "@/lib/analytics/brand-window";
 import { getCompetitiveLandscape } from "@/lib/analytics/core";
 import { resolveFilteredPrompts } from "@/lib/analytics/prompt-resolution";
-import { getMentionTotals } from "@/lib/analytics/reads";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 import { brandOf, LANDSCAPE_METRICS, type Landscape, type LandscapeMetric } from "@/lib/landscape";
 import { lookbackSchema } from "@/lib/lookback";
 
@@ -43,21 +43,32 @@ function card(series: OverviewCard["series"]): OverviewCard {
 }
 
 export async function computeDashboardSummary(
+	reader: AnalyticsReader,
 	input: z.input<typeof dashboardSummaryInput>,
 ): Promise<DashboardSummaryResponse> {
 	const data = dashboardSummaryInput.parse(input);
 
-	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
+	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(
+		reader,
+		data.brandId,
+		data.lookback,
+		data.timezone,
+	);
 	const window = { from: fromDateStr, to: toDateStr, timezone };
 	const filters = { model: data.model, tags: data.tags };
-	const prompts = resolveFilteredPrompts(data.brandId, { tags: data.tags });
+	const prompts = resolveFilteredPrompts(reader, data.brandId, { tags: data.tags });
 	const [landscape, promptCount, totals] = await Promise.all([
-		getCompetitiveLandscape(data.brandId, window, filters),
+		getCompetitiveLandscape(reader, data.brandId, window, filters),
 		prompts.then((p) => p.length),
 		prompts.then((p) =>
 			p.length === 0
 				? null
-				: getMentionTotals({ ...window, brandId: data.brandId, promptIds: p.map((x) => x.id), model: data.model }),
+				: reader.getMentionTotals({
+						...window,
+						brandId: data.brandId,
+						promptIds: p.map((x) => x.id),
+						model: data.model,
+					}),
 		),
 	]);
 	// Every card is the brand's own line in the landscape, so each matches its row and its page.

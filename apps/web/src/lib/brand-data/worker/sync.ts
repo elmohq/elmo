@@ -1,38 +1,26 @@
-/**
- * Keeps each brand's data in a TanStack DB collection of chunks. Its sync
- * adapter seeds from IndexedDB so a return visit computes at once, then asks the
- * server for the chunk manifest and fetches only the chunks whose hash changed:
- * core analytics first, the citation long tail after. Every change rebuilds the
- * in-memory store the analytics reads use.
- */
 import { type Collection, createCollection } from "@tanstack/db";
 import {
 	assembleBundle,
+	BRAND_DATA_FORMAT,
 	type BrandChunk,
+	type ChunkManifest,
 	type ChunkManifestEntry,
 	isCitationChunk,
 	manifestVersion,
 } from "@/lib/brand-data/chunks";
 import { decodeBrandBundle, setBrandStore } from "@/lib/brand-data/store";
-
-export interface BrandDataStatus {
-	core: boolean;
-	citations: boolean;
-	version: string | null;
-}
+import type { BrandDataStatus } from "@/lib/brand-data/worker/protocol";
 
 const SYNC_BATCH = 12;
 
-const DB_NAME = "elmo-brand-data";
+const DB_PREFIX = "elmo-brand-data";
+const DB_NAME = `${DB_PREFIX}-v${BRAND_DATA_FORMAT}`;
 const STORE = "chunks";
 
 function idb(): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
-		const open = indexedDB.open(DB_NAME, 2);
-		open.onupgradeneeded = () => {
-			for (const name of [...open.result.objectStoreNames]) open.result.deleteObjectStore(name);
-			open.result.createObjectStore(STORE);
-		};
+		const open = indexedDB.open(DB_NAME, 1);
+		open.onupgradeneeded = () => open.result.createObjectStore(STORE);
 		open.onsuccess = () => resolve(open.result);
 		open.onerror = () => reject(open.error);
 	});
@@ -67,16 +55,23 @@ async function idbWrite(brandId: string, manifest: ChunkManifestEntry[], put: Br
 	});
 }
 
+/** Drops copies written by other bundle formats, which this build cannot read. */
+export async function removeOtherFormats() {
+	const databases = await indexedDB.databases?.().catch(() => []);
+	for (const { name } of databases ?? []) {
+		if (name?.startsWith(DB_PREFIX) && name !== DB_NAME) indexedDB.deleteDatabase(name);
+	}
+}
+
 const statuses = new Map<string, BrandDataStatus>();
-const listeners = new Set<(brandId: string) => void>();
+let onStatus: (brandId: string, status: BrandDataStatus) => void = () => {};
+
+export function setStatusListener(listener: (brandId: string, status: BrandDataStatus) => void) {
+	onStatus = listener;
+}
 
 export function brandDataStatus(brandId: string): BrandDataStatus {
 	return statuses.get(brandId) ?? { core: false, citations: false, version: null };
-}
-
-export function onBrandDataChange(listener: (brandId: string) => void): () => void {
-	listeners.add(listener);
-	return () => listeners.delete(listener);
 }
 
 interface BrandSync {
@@ -97,12 +92,20 @@ async function fetchJson<T>(url: string): Promise<T> {
 	return response.json() as Promise<T>;
 }
 
+/** The server now writes a format this build cannot read; it keeps answering from the server until reloaded. */
+export class IncompatibleFormatError extends Error {
+	constructor(format: number) {
+		super(`Brand data format ${format} is not ${BRAND_DATA_FORMAT}`);
+	}
+}
+
 /**
  * One pass: compare the server's manifest with what the collection holds, drop
  * chunks the server no longer has, and fetch changed ones core first.
  */
 async function syncOnce(brandId: string, held: Collection<BrandChunk, string>, apply: Apply) {
-	const { chunks: manifest } = await fetchJson<{ chunks: ChunkManifestEntry[] }>(dataUrl(brandId));
+	const { format, chunks: manifest } = await fetchJson<ChunkManifest>(dataUrl(brandId));
+	if (format !== BRAND_DATA_FORMAT) throw new IncompatibleFormatError(format);
 	const current = new Set(manifest.map((entry) => entry.id));
 	const removed = ([...held.keys()] as string[]).filter((id) => !current.has(id));
 	const stale = manifest.filter((entry) => held.get(entry.id)?.hash !== entry.hash);
@@ -127,7 +130,7 @@ function brandSync(brandId: string): BrandSync {
 	let runNow: () => Promise<void> = async () => {};
 
 	const collection = createCollection<BrandChunk, string>({
-		id: `brand-chunks:${brandId}`,
+		id: `brand-chunks:v${BRAND_DATA_FORMAT}:${brandId}`,
 		getKey: (chunk) => chunk.id,
 		startSync: true,
 		gcTime: Number.POSITIVE_INFINITY,
@@ -169,7 +172,7 @@ function brandSync(brandId: string): BrandSync {
 						});
 					return running;
 				};
-				void runNow().catch((error) => console.warn("[brand-data] sync failed", error));
+				void runNow().catch(() => {});
 				return () => {};
 			},
 		},
@@ -204,8 +207,9 @@ function publish(brandId: string, collection: Collection<BrandChunk, string>, ma
 	const bundle = assembleBundle(brandId, version, chunks);
 	if (!bundle) return;
 	setBrandStore(decodeBrandBundle(bundle));
-	statuses.set(brandId, { core: true, citations, version });
-	for (const listener of listeners) listener(brandId);
+	const status = { core: true, citations, version };
+	statuses.set(brandId, status);
+	onStatus(brandId, status);
 }
 
 /** Starts the brand's sync if needed and brings it up to date. */

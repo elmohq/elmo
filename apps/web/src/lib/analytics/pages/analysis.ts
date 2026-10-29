@@ -6,6 +6,7 @@ import {
 	getBrandShareOfVoice,
 	getCompetitiveLandscape,
 } from "@/lib/analytics/core";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 import type { Landscape } from "@/lib/landscape";
 import { lookbackSchema } from "@/lib/lookback";
 
@@ -35,10 +36,19 @@ export const shareOfVoiceInput = z.object({
 	timezone: z.string().default("UTC"),
 });
 
-export async function computeShareOfVoice(input: z.input<typeof shareOfVoiceInput>): Promise<ShareOfVoiceResponse> {
+export async function computeShareOfVoice(
+	reader: AnalyticsReader,
+	input: z.input<typeof shareOfVoiceInput>,
+): Promise<ShareOfVoiceResponse> {
 	const data = shareOfVoiceInput.parse(input);
-	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
+	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(
+		reader,
+		data.brandId,
+		data.lookback,
+		data.timezone,
+	);
 	const result = await getBrandShareOfVoice(
+		reader,
 		data.brandId,
 		{ from: fromDateStr, to: toDateStr, timezone },
 		{ model: data.model, tags: data.tags, search: data.search },
@@ -60,10 +70,19 @@ export const landscapeInput = z.object({
 	timezone: z.string().default("UTC"),
 });
 
-export async function computeLandscape(input: z.input<typeof landscapeInput>): Promise<Landscape> {
+export async function computeLandscape(
+	reader: AnalyticsReader,
+	input: z.input<typeof landscapeInput>,
+): Promise<Landscape> {
 	const data = landscapeInput.parse(input);
-	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
+	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(
+		reader,
+		data.brandId,
+		data.lookback,
+		data.timezone,
+	);
 	return getCompetitiveLandscape(
+		reader,
 		data.brandId,
 		{ from: fromDateStr, to: toDateStr, timezone },
 		{ model: data.model, tags: data.tags },
@@ -72,10 +91,19 @@ export async function computeLandscape(input: z.input<typeof landscapeInput>): P
 
 export const brandSentimentInput = landscapeInput;
 
-export async function computeBrandSentiment(input: z.input<typeof brandSentimentInput>): Promise<BrandSentiment> {
+export async function computeBrandSentiment(
+	reader: AnalyticsReader,
+	input: z.input<typeof brandSentimentInput>,
+): Promise<BrandSentiment> {
 	const data = brandSentimentInput.parse(input);
-	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
+	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(
+		reader,
+		data.brandId,
+		data.lookback,
+		data.timezone,
+	);
 	return getBrandSentiment(
+		reader,
 		data.brandId,
 		{ from: fromDateStr, to: toDateStr, timezone },
 		{ model: data.model, tags: data.tags },

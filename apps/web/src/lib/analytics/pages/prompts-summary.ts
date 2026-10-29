@@ -2,7 +2,7 @@ import { SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { z } from "zod";
 import { parseTagFilter } from "@/lib/analytics/prompt-resolution";
-import { getPerPromptRunStats, getPromptRows, getPromptsFirstEvaluatedAt } from "@/lib/analytics/reads";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 import { lookbackSchema } from "@/lib/lookback";
 import type { PerPromptRunStats } from "@/lib/rollup-read";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
@@ -72,10 +72,10 @@ function byVisibilityThenName(a: PromptSummary, b: PromptSummary): number {
 	return a.value.localeCompare(b.value);
 }
 
-export async function computePromptsSummary(input: z.input<typeof promptsSummaryInput>) {
+export async function computePromptsSummary(reader: AnalyticsReader, input: z.input<typeof promptsSummaryInput>) {
 	const data = promptsSummaryInput.parse(input);
 
-	const allPrompts = (await getPromptRows(data.brandId)).filter((prompt) => prompt.enabled);
+	const allPrompts = (await reader.getPromptRows(data.brandId)).filter((prompt) => prompt.enabled);
 
 	const promptIds = allPrompts.map((p) => p.id);
 
@@ -89,7 +89,7 @@ export async function computePromptsSummary(input: z.input<typeof promptsSummary
 	const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
 	const [summaryData, firstEvaluatedData] = await Promise.all([
-		getPerPromptRunStats({
+		reader.getPerPromptRunStats({
 			brandId: data.brandId,
 			from: fromDateStr,
 			to: toDateStr,
@@ -98,7 +98,7 @@ export async function computePromptsSummary(input: z.input<typeof promptsSummary
 			model: data.model,
 			webSearchEnabled,
 		}),
-		getPromptsFirstEvaluatedAt(data.brandId, promptIds),
+		reader.getPromptsFirstEvaluatedAt(data.brandId, promptIds),
 	]);
 
 	const summaryMap = new Map(summaryData.map((s) => [s.prompt_id, s]));

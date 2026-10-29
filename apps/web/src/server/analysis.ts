@@ -21,6 +21,7 @@ import {
 	type ShareOfVoiceResponse,
 	shareOfVoiceInput,
 } from "@/lib/analytics/pages/analysis";
+import { pgReader } from "@/lib/analytics/pg-reader";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import type { Landscape } from "@/lib/landscape";
 
@@ -30,19 +31,19 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 	.validator(shareOfVoiceInput)
 	.handler(async ({ data }): Promise<ShareOfVoiceResponse> => {
 		await requireBrandSession(data.brandId);
-		return computeShareOfVoice(data);
+		return computeShareOfVoice(pgReader, data);
 	});
 
 export const getCompetitiveLandscapeFn = createServerFn({ method: "GET" })
 	.validator(landscapeInput)
 	.handler(async ({ data }): Promise<Landscape> => {
 		await requireBrandSession(data.brandId);
-		return computeLandscape(data);
+		return computeLandscape(pgReader, data);
 	});
 
 export const getBrandSentimentFn = createServerFn({ method: "GET" })
 	.validator(brandSentimentInput)
 	.handler(async ({ data }): Promise<BrandSentiment> => {
 		await requireBrandSession(data.brandId);
-		return computeBrandSentiment(data);
+		return computeBrandSentiment(pgReader, data);
 	});

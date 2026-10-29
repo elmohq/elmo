@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { resolveBrandWindow } from "@/lib/analytics/brand-window";
 import { getBrandQueryFanout } from "@/lib/analytics/core";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 import type { FanoutAnalysis } from "@/lib/fanout-analysis";
 import { lookbackSchema } from "@/lib/lookback";
 
@@ -22,10 +23,19 @@ export interface QueryFanoutResponse extends FanoutAnalysis {
 	coverageRate: number;
 }
 
-export async function computeQueryFanout(input: z.input<typeof queryFanoutInput>): Promise<QueryFanoutResponse> {
+export async function computeQueryFanout(
+	reader: AnalyticsReader,
+	input: z.input<typeof queryFanoutInput>,
+): Promise<QueryFanoutResponse> {
 	const data = queryFanoutInput.parse(input);
-	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
+	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(
+		reader,
+		data.brandId,
+		data.lookback,
+		data.timezone,
+	);
 	const analysis = await getBrandQueryFanout(
+		reader,
 		data.brandId,
 		{ from: fromDateStr, to: toDateStr, timezone },
 		{ model: data.model, tags: data.tags, search: data.search },

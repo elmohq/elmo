@@ -2,12 +2,7 @@ import { z } from "zod";
 import { resolveBrandWindow } from "@/lib/analytics/brand-window";
 import { getBrandVisibility } from "@/lib/analytics/core";
 import { resolveFilteredPrompts } from "@/lib/analytics/prompt-resolution";
-import {
-	getBrandRow,
-	getCompetitorRows,
-	getPerPromptDailyCompetitors,
-	getPerPromptDailyRuns,
-} from "@/lib/analytics/reads";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 import { type ProcessedBatchChartDataPoint, toBatchChartData } from "@/lib/chart-utils";
 import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
 
@@ -51,13 +46,16 @@ export const visibilityInput = z.object({
 	timezone: z.string().default("UTC"),
 });
 
-export async function computeBatchChartData(input: z.input<typeof visibilityInput>): Promise<BatchChartDataResponse> {
+export async function computeBatchChartData(
+	reader: AnalyticsReader,
+	input: z.input<typeof visibilityInput>,
+): Promise<BatchChartDataResponse> {
 	const data = visibilityInput.parse(input);
 	const [{ timezone, fromDateStr, toDateStr }, resolvedPrompts, brand, competitorRows] = await Promise.all([
-		resolveBrandWindow(data.brandId, data.lookback, data.timezone),
-		resolveFilteredPrompts(data.brandId, { tags: data.tags, search: data.search }),
-		getBrandRow(data.brandId),
-		getCompetitorRows(data.brandId),
+		resolveBrandWindow(reader, data.brandId, data.lookback, data.timezone),
+		resolveFilteredPrompts(reader, data.brandId, { tags: data.tags, search: data.search }),
+		reader.getBrandRow(data.brandId),
+		reader.getCompetitorRows(data.brandId),
 	]);
 	if (!brand) throw new Error("Brand not found");
 	const competitors = competitorRows.map((c) => ({ id: c.id, name: c.name }));
@@ -67,7 +65,10 @@ export async function computeBatchChartData(input: z.input<typeof visibilityInpu
 		return { chartData: [], brand: { id: brand.id, name: brand.name }, competitors, dateRange };
 	}
 	const scope = { brandId: data.brandId, from: fromDateStr, to: toDateStr, timezone, promptIds, model: data.model };
-	const [runs, competitorRuns] = await Promise.all([getPerPromptDailyRuns(scope), getPerPromptDailyCompetitors(scope)]);
+	const [runs, competitorRuns] = await Promise.all([
+		reader.getPerPromptDailyRuns(scope),
+		reader.getPerPromptDailyCompetitors(scope),
+	]);
 	return {
 		chartData: toBatchChartData(runs, competitorRuns),
 		brand: { id: brand.id, name: brand.name },
@@ -77,12 +78,19 @@ export async function computeBatchChartData(input: z.input<typeof visibilityInpu
 }
 
 export async function computeFilteredVisibility(
+	reader: AnalyticsReader,
 	input: z.input<typeof visibilityInput>,
 ): Promise<FilteredVisibilityResponse> {
 	const data = visibilityInput.parse(input);
 	// Shares the chart's window so the visibility bar can't disagree with it.
-	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
+	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(
+		reader,
+		data.brandId,
+		data.lookback,
+		data.timezone,
+	);
 	const result = await getBrandVisibility(
+		reader,
 		data.brandId,
 		{ from: fromDateStr, to: toDateStr, timezone },
 		{ model: data.model, tags: data.tags, search: data.search },

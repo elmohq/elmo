@@ -1,21 +1,5 @@
-/**
- * The analytics server functions, answered in the browser whenever the brand's
- * data is already here, so a page or filter change needs no request. Until it
- * arrives each call goes to the server as before.
- */
-import { computeBrandSentiment, computeLandscape, computeShareOfVoice } from "@/lib/analytics/pages/analysis";
-import {
-	computeCitationDomains,
-	computeCitationFlow,
-	computeCitations,
-	computeCitationUrls,
-	computeGoogleShopping,
-} from "@/lib/analytics/pages/citations";
-import { computeDashboardSummary } from "@/lib/analytics/pages/dashboard";
-import { computePromptsSummary } from "@/lib/analytics/pages/prompts-summary";
-import { computeQueryFanout } from "@/lib/analytics/pages/query-fanout";
-import { computeBatchChartData, computeFilteredVisibility } from "@/lib/analytics/pages/visibility";
-import { brandDataStatus } from "@/lib/brand-data/sync";
+import { canComputeLocally, computeLocally } from "@/lib/brand-data/client";
+import type { LocalComputation } from "@/lib/brand-data/worker/protocol";
 import * as analysis from "@/server/analysis";
 import * as citations from "@/server/citations";
 import * as dashboard from "@/server/dashboard";
@@ -25,28 +9,28 @@ import * as visibility from "@/server/visibility";
 
 type ServerFn<D, R> = (options: { data: D }) => Promise<R>;
 
-function localFirst<D extends { brandId: string }, R>(
-	part: "core" | "citations",
-	server: ServerFn<D, R>,
-	compute: (data: D) => Promise<R>,
-): ServerFn<D, R> {
-	return (options) => (brandDataStatus(options.data.brandId)[part] ? compute(options.data) : server(options));
+/** Answers in the browser once the brand's data has synced; until then, and if that fails, asks the server. */
+function localFirst<D extends { brandId: string }, R>(name: LocalComputation, server: ServerFn<D, R>): ServerFn<D, R> {
+	return async (options) => {
+		if (!canComputeLocally(options.data.brandId, name)) return server(options);
+		try {
+			return await computeLocally<R>(options.data.brandId, name, options.data);
+		} catch {
+			return server(options);
+		}
+	};
 }
 
-export const getDashboardSummaryFn = localFirst("core", dashboard.getDashboardSummaryFn, computeDashboardSummary);
-export const getShareOfVoiceFn = localFirst("core", analysis.getShareOfVoiceFn, computeShareOfVoice);
-export const getCompetitiveLandscapeFn = localFirst("core", analysis.getCompetitiveLandscapeFn, computeLandscape);
-export const getBrandSentimentFn = localFirst("core", analysis.getBrandSentimentFn, computeBrandSentiment);
-export const getBatchChartDataFn = localFirst("core", visibility.getBatchChartDataFn, computeBatchChartData);
-export const getFilteredVisibilityFn = localFirst(
-	"core",
-	visibility.getFilteredVisibilityFn,
-	computeFilteredVisibility,
-);
-export const getPromptsSummaryFn = localFirst("core", prompts.getPromptsSummaryFn, computePromptsSummary);
-export const getQueryFanoutFn = localFirst("core", queryFanout.getQueryFanoutFn, computeQueryFanout);
-export const getCitationsFn = localFirst("citations", citations.getCitationsFn, computeCitations);
-export const getCitationUrlsFn = localFirst("citations", citations.getCitationUrlsFn, computeCitationUrls);
-export const getCitationDomainsFn = localFirst("citations", citations.getCitationDomainsFn, computeCitationDomains);
-export const getGoogleShoppingFn = localFirst("citations", citations.getGoogleShoppingFn, computeGoogleShopping);
-export const getCitationFlowFn = localFirst("citations", citations.getCitationFlowFn, computeCitationFlow);
+export const getDashboardSummaryFn = localFirst("dashboardSummary", dashboard.getDashboardSummaryFn);
+export const getShareOfVoiceFn = localFirst("shareOfVoice", analysis.getShareOfVoiceFn);
+export const getCompetitiveLandscapeFn = localFirst("landscape", analysis.getCompetitiveLandscapeFn);
+export const getBrandSentimentFn = localFirst("brandSentiment", analysis.getBrandSentimentFn);
+export const getBatchChartDataFn = localFirst("batchChartData", visibility.getBatchChartDataFn);
+export const getFilteredVisibilityFn = localFirst("filteredVisibility", visibility.getFilteredVisibilityFn);
+export const getPromptsSummaryFn = localFirst("promptsSummary", prompts.getPromptsSummaryFn);
+export const getQueryFanoutFn = localFirst("queryFanout", queryFanout.getQueryFanoutFn);
+export const getCitationsFn = localFirst("citations", citations.getCitationsFn);
+export const getCitationUrlsFn = localFirst("citationUrls", citations.getCitationUrlsFn);
+export const getCitationDomainsFn = localFirst("citationDomains", citations.getCitationDomainsFn);
+export const getGoogleShoppingFn = localFirst("googleShopping", citations.getGoogleShoppingFn);
+export const getCitationFlowFn = localFirst("citationFlow", citations.getCitationFlowFn);

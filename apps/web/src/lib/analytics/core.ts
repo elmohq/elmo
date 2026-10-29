@@ -1,3 +1,4 @@
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 /**
  * No session, Request or auth: a caller passes a brand it has already decided
  * the requester may see, so the dashboard and `/api/v1` cannot compute
@@ -8,33 +9,6 @@ import { getModelMeta } from "@workspace/config/models";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { resolveFilteredPrompts } from "@/lib/analytics/prompt-resolution";
-import {
-	getBrandRow,
-	getCitationDomainPage,
-	getCitationsCountByModel,
-	getCitationTotal,
-	getCitationTotals,
-	getCitationUrlPage,
-	getCompetitorRows,
-	getCompetitorTotals,
-	getDailyAssessments,
-	getDomainPromptCounts,
-	getFanoutBreakdown,
-	getFanoutModelTotals,
-	getFanoutPromptTotals,
-	getFanoutQueryPage,
-	getFanoutQueryTotals,
-	getMentionTotals,
-	getPerPromptDailyCompetitors,
-	getPerPromptDailyRuns,
-	getPerPromptRunStats,
-	getPromptModelDailyCompetitors,
-	getPromptModelDailyRuns,
-	getPromptsFirstEvaluatedAt,
-	getRunsByModel,
-	getSentimentQuotes,
-	getVisibilityDailyAggregate,
-} from "@/lib/analytics/reads";
 import type { DailyScope } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
@@ -112,8 +86,8 @@ function analyticsScope(
 	return { brandId, from: window.from, to: window.to, timezone: window.timezone, promptIds, model: filters.model };
 }
 
-async function resolveScope(brandId: string, filters: AnalyticsFilters) {
-	const resolved = await resolveFilteredPrompts(brandId, { tags: filters.tags, search: filters.search });
+async function resolveScope(reader: AnalyticsReader, brandId: string, filters: AnalyticsFilters) {
+	const resolved = await resolveFilteredPrompts(reader, brandId, { tags: filters.tags, search: filters.search });
 	return {
 		promptIds: resolved.map((prompt) => prompt.id),
 		brandedPromptIds: resolved
@@ -128,19 +102,20 @@ async function resolveScope(brandId: string, filters: AnalyticsFilters) {
  * doesn't read as a dip. "Current" is the last plotted point, not the average.
  */
 export async function getBrandVisibility(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
 ): Promise<BrandVisibility> {
-	const { promptIds, brandedPromptIds } = await resolveScope(brandId, filters);
+	const { promptIds, brandedPromptIds } = await resolveScope(reader, brandId, filters);
 	if (promptIds.length === 0) {
 		return { currentVisibility: null, totalRuns: 0, totalPrompts: 0, totalCitations: 0, series: [] };
 	}
 
 	const scope = analyticsScope(brandId, window, promptIds, filters);
 	const [daily, totalCitations] = await Promise.all([
-		getVisibilityDailyAggregate(scope, brandedPromptIds),
-		getCitationTotal(scope),
+		reader.getVisibilityDailyAggregate(scope, brandedPromptIds),
+		reader.getCitationTotal(scope),
 	]);
 
 	let totalRuns = 0;
@@ -195,11 +170,12 @@ function shareSeries(perPromptDaily: PerPromptDailyRuns[], dateRange: string[]) 
 }
 
 export async function getBrandShareOfVoice(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
 ): Promise<BrandShareOfVoice> {
-	const [brandRow, resolved] = await Promise.all([getBrandRow(brandId), resolveScope(brandId, filters)]);
+	const [brandRow, resolved] = await Promise.all([reader.getBrandRow(brandId), resolveScope(reader, brandId, filters)]);
 	const brandName = brandRow?.name ?? "Your brand";
 	if (resolved.promptIds.length === 0) {
 		return { brandName, brandShare: null, totalRuns: 0, entries: [], series: [] };
@@ -209,10 +185,10 @@ export async function getBrandShareOfVoice(
 	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
 	const [totals, perPromptDaily, perPromptCompetitorDaily, competitorRows] = await Promise.all([
-		getMentionTotals(scope),
-		getPerPromptDailyRuns(scope),
-		getPerPromptDailyCompetitors(scope),
-		getCompetitorTotals(scope),
+		reader.getMentionTotals(scope),
+		reader.getPerPromptDailyRuns(scope),
+		reader.getPerPromptDailyCompetitors(scope),
+		reader.getCompetitorTotals(scope),
 	]);
 	const competitorTotals = new Map(competitorRows.map((row) => [row.competitor, row]));
 
@@ -266,15 +242,19 @@ export interface ModelVisibility extends MentionQuality {
 }
 
 async function getBrandModelBreakdown(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
 ): Promise<ModelVisibility[]> {
-	const { promptIds } = await resolveScope(brandId, filters);
+	const { promptIds } = await resolveScope(reader, brandId, filters);
 	if (promptIds.length === 0) return [];
 	const scope = analyticsScope(brandId, window, promptIds, filters);
 
-	const [rows, citationRows] = await Promise.all([getRunsByModel(scope), getCitationsCountByModel(scope)]);
+	const [rows, citationRows] = await Promise.all([
+		reader.getRunsByModel(scope),
+		reader.getCitationsCountByModel(scope),
+	]);
 	const citationsByModel = new Map(citationRows.map((row) => [row.model, row.count]));
 
 	return rows.map((row) => {
@@ -292,8 +272,8 @@ async function getBrandModelBreakdown(
 	});
 }
 
-async function citationContext(brandId: string) {
-	const [brand, competitorRows] = await Promise.all([getBrandRow(brandId), getCompetitorRows(brandId)]);
+async function citationContext(reader: AnalyticsReader, brandId: string) {
+	const [brand, competitorRows] = await Promise.all([reader.getBrandRow(brandId), reader.getCompetitorRows(brandId)]);
 	const brandDomains = new Set(
 		[extractDomain(brand?.website ?? ""), ...(brand?.additionalDomains ?? []).map(extractDomain)].filter(Boolean),
 	);
@@ -309,8 +289,13 @@ export interface CitationListOptions {
 }
 
 /** The window's scope and the equal-length one before it, as instants so it lands where the window begins. */
-async function citationWindows(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters) {
-	const { promptIds } = await resolveScope(brandId, filters);
+async function citationWindows(
+	reader: AnalyticsReader,
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters,
+) {
+	const { promptIds } = await resolveScope(reader, brandId, filters);
 	const scope = analyticsScope(brandId, window, promptIds, filters);
 	const { start, end } = windowInstants(window);
 	const previous = {
@@ -318,28 +303,34 @@ async function citationWindows(brandId: string, window: AnalyticsWindow, filters
 		from: new Date(start.getTime() - (end.getTime() - start.getTime())).toISOString(),
 		to: start.toISOString(),
 	};
-	const { brandDomains, competitorDomains } = await citationContext(brandId);
+	const { brandDomains, competitorDomains } = await citationContext(reader, brandId);
 	return { scope, previous, owned: { brandDomains: [...brandDomains], competitorDomains: [...competitorDomains] } };
 }
 
 const EMPTY_CITATION_TOTALS = { citations: 0, uniqueDomains: 0, uniqueUrls: 0 };
 
-async function getBrandCitationTotals(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters) {
-	const { promptIds } = await resolveScope(brandId, filters);
+async function getBrandCitationTotals(
+	reader: AnalyticsReader,
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters,
+) {
+	const { promptIds } = await resolveScope(reader, brandId, filters);
 	if (promptIds.length === 0) return EMPTY_CITATION_TOTALS;
-	return getCitationTotals(analyticsScope(brandId, window, promptIds, filters));
+	return reader.getCitationTotals(analyticsScope(brandId, window, promptIds, filters));
 }
 
 export async function getBrandCitationUrls(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters,
 	options: CitationListOptions & { pageType?: string },
 ) {
-	const { scope, previous, owned } = await citationWindows(brandId, window, filters);
+	const { scope, previous, owned } = await citationWindows(reader, brandId, window, filters);
 	if (scope.promptIds.length === 0) return { urls: [], total: 0, totals: EMPTY_CITATION_TOTALS };
 	const [page, totals] = await Promise.all([
-		getCitationUrlPage(
+		reader.getCitationUrlPage(
 			scope,
 			previous,
 			owned,
@@ -347,7 +338,7 @@ export async function getBrandCitationUrls(
 			options.limit,
 			options.offset,
 		),
-		getCitationTotals(scope),
+		reader.getCitationTotals(scope),
 	]);
 	return {
 		urls: page.rows.map((row) => ({
@@ -366,15 +357,16 @@ export async function getBrandCitationUrls(
 }
 
 export async function getBrandCitationDomains(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters,
 	options: CitationListOptions,
 ) {
-	const { scope, previous, owned } = await citationWindows(brandId, window, filters);
+	const { scope, previous, owned } = await citationWindows(reader, brandId, window, filters);
 	if (scope.promptIds.length === 0) return { domains: [], total: 0, totals: EMPTY_CITATION_TOTALS };
 	const [page, totals] = await Promise.all([
-		getCitationDomainPage(
+		reader.getCitationDomainPage(
 			scope,
 			previous,
 			owned,
@@ -382,9 +374,9 @@ export async function getBrandCitationDomains(
 			options.limit,
 			options.offset,
 		),
-		getCitationTotals(scope),
+		reader.getCitationTotals(scope),
 	]);
-	const promptCounts = await getDomainPromptCounts(
+	const promptCounts = await reader.getDomainPromptCounts(
 		scope,
 		page.rows.map((row) => row.domain),
 	);
@@ -404,12 +396,13 @@ export async function getBrandCitationDomains(
 }
 
 export async function getBrandFanoutQueries(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters,
 	options: { search?: string; limit: number; offset: number },
 ) {
-	const { promptIds } = await resolveScope(brandId, filters);
+	const { promptIds } = await resolveScope(reader, brandId, filters);
 	const scope = analyticsScope(brandId, window, promptIds, filters);
 	if (promptIds.length === 0) {
 		return {
@@ -424,9 +417,9 @@ export async function getBrandFanoutQueries(
 		};
 	}
 	const [page, totals, modelTotals] = await Promise.all([
-		getFanoutQueryPage(scope, options.search, options.limit, options.offset),
-		getFanoutQueryTotals(scope),
-		getFanoutModelTotals(scope),
+		reader.getFanoutQueryPage(scope, options.search, options.limit, options.offset),
+		reader.getFanoutQueryTotals(scope),
+		reader.getFanoutModelTotals(scope),
 	]);
 	const totalRuns = modelTotals.reduce((sum, row) => sum + row.runs, 0);
 	const fanoutRuns = modelTotals.reduce((sum, row) => sum + row.fanout_runs, 0);
@@ -443,12 +436,13 @@ export async function getBrandFanoutQueries(
 }
 
 export async function getBrandQueryFanout(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
 	options: { promptId?: string } = {},
 ): Promise<FanoutAnalysis & { brandName: string }> {
-	const [brandRow, resolved] = await Promise.all([getBrandRow(brandId), resolveScope(brandId, filters)]);
+	const [brandRow, resolved] = await Promise.all([reader.getBrandRow(brandId), resolveScope(reader, brandId, filters)]);
 	const brandName = brandRow?.name ?? "Your brand";
 
 	const promptIds = options.promptId ? resolved.promptIds.filter((id) => id === options.promptId) : resolved.promptIds;
@@ -456,9 +450,9 @@ export async function getBrandQueryFanout(
 
 	const scope = analyticsScope(brandId, window, promptIds, filters);
 	const [breakdown, modelTotals, promptTotals] = await Promise.all([
-		getFanoutBreakdown(scope),
-		getFanoutModelTotals(scope),
-		getFanoutPromptTotals(scope),
+		reader.getFanoutBreakdown(scope),
+		reader.getFanoutModelTotals(scope),
+		reader.getFanoutPromptTotals(scope),
 	]);
 
 	const promptValues = new Map(
@@ -514,16 +508,17 @@ export interface PromptPerformance extends MentionQuality {
 
 /** Only prompts that ran appear, which is why no row carries an `enabled` flag. */
 export async function getBrandPromptPerformance(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
 ): Promise<PromptPerformance[]> {
-	const resolved = await resolveScope(brandId, filters);
+	const resolved = await resolveScope(reader, brandId, filters);
 	if (resolved.promptIds.length === 0) return [];
 
 	const [runStats, firstEvaluated] = await Promise.all([
-		getPerPromptRunStats(analyticsScope(brandId, window, resolved.promptIds, filters)),
-		getPromptsFirstEvaluatedAt(brandId, resolved.promptIds),
+		reader.getPerPromptRunStats(analyticsScope(brandId, window, resolved.promptIds, filters)),
+		reader.getPromptsFirstEvaluatedAt(brandId, resolved.promptIds),
 	]);
 
 	const statsById = new Map(runStats.map((row) => [row.prompt_id, row]));
@@ -553,17 +548,18 @@ export interface BrandMentionQuality {
 }
 
 export async function getBrandMentionQuality(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
 ): Promise<BrandMentionQuality> {
-	const { promptIds } = await resolveScope(brandId, filters);
+	const { promptIds } = await resolveScope(reader, brandId, filters);
 	if (promptIds.length === 0) {
 		return { sentiment: { ...sentimentSummary(NO_ASSESSMENTS), series: [] }, position: { average: null, series: [] } };
 	}
 	const bounds = windowInstants(window);
 	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
-	const rows = await getDailyAssessments(analyticsScope(brandId, window, promptIds, filters));
+	const rows = await reader.getDailyAssessments(analyticsScope(brandId, window, promptIds, filters));
 	const byDate = new Map(rows.map((row) => [row.date, row]));
 	const day = (date: string) => byDate.get(date) ?? NO_ASSESSMENTS;
 	const totals = sumAssessments(rows);
@@ -584,13 +580,18 @@ export async function getBrandMentionQuality(
 
 /** The long lists — cited domains and URLs, sub-queries, per-prompt results —
  * are endpoints of their own. */
-export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
+export async function getBrandAnalytics(
+	reader: AnalyticsReader,
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+) {
 	const [visibility, shareOfVoice, models, citations, quality] = await Promise.all([
-		getBrandVisibility(brandId, window, filters),
-		getBrandShareOfVoice(brandId, window, filters),
-		getBrandModelBreakdown(brandId, window, filters),
-		getBrandCitationTotals(brandId, window, filters),
-		getBrandMentionQuality(brandId, window, filters),
+		getBrandVisibility(reader, brandId, window, filters),
+		getBrandShareOfVoice(reader, brandId, window, filters),
+		getBrandModelBreakdown(reader, brandId, window, filters),
+		getBrandCitationTotals(reader, brandId, window, filters),
+		getBrandMentionQuality(reader, brandId, window, filters),
 	]);
 
 	return {
@@ -611,14 +612,15 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 }
 
 export async function getCompetitiveLandscape(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
 ): Promise<Landscape> {
 	const [brandRow, competitorRows, resolved] = await Promise.all([
-		getBrandRow(brandId),
-		getCompetitorRows(brandId),
-		resolveScope(brandId, filters),
+		reader.getBrandRow(brandId),
+		reader.getCompetitorRows(brandId),
+		resolveScope(reader, brandId, filters),
 	]);
 	const bounds = windowInstants(window);
 	const dates = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
@@ -631,7 +633,7 @@ export async function getCompetitiveLandscape(
 	const [runs, competitorRuns] =
 		resolved.promptIds.length === 0
 			? [[], []]
-			: await Promise.all([getPromptModelDailyRuns(scope), getPromptModelDailyCompetitors(scope)]);
+			: await Promise.all([reader.getPromptModelDailyRuns(scope), reader.getPromptModelDailyCompetitors(scope)]);
 	return buildLandscape({ brand, competitors: tracked, dates, runs, competitorRuns });
 }
 
@@ -666,15 +668,16 @@ const QUOTES_PER_SIDE = 5;
 
 /** The overall split comes from the competitive landscape, which every headline shares. */
 export async function getBrandSentiment(
+	reader: AnalyticsReader,
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
 ): Promise<BrandSentiment> {
-	const resolved = await resolveScope(brandId, filters);
+	const resolved = await resolveScope(reader, brandId, filters);
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
 	const [perPrompt, quotes] = await Promise.all([
-		resolved.promptIds.length > 0 ? getPerPromptRunStats(scope) : [],
-		getSentimentQuotes(scope, ["positive", "mixed", "negative"], QUOTES_PER_SIDE),
+		resolved.promptIds.length > 0 ? reader.getPerPromptRunStats(scope) : [],
+		reader.getSentimentQuotes(scope, ["positive", "mixed", "negative"], QUOTES_PER_SIDE),
 	]);
 	const side = (sentiment: Sentiment) => quotes.filter((row) => row.sentiment === sentiment);
 	const promptsById = new Map(resolved.prompts.map((prompt) => [prompt.id, prompt]));

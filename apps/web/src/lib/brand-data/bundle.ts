@@ -5,8 +5,6 @@
  * timezone decides the day boundaries exactly as the server does.
  */
 
-export const BRAND_BUNDLE_FORMAT = 1;
-
 /** Shared by every rollup table: which bucket, prompt and target a row belongs to. */
 export interface RunKeyColumns {
 	/** Minutes since the Unix epoch. */
@@ -110,7 +108,6 @@ export interface BundlePrompt {
 }
 
 export interface BrandBundle {
-	format: typeof BRAND_BUNDLE_FORMAT;
 	brandId: string;
 	version: string;
 	/** Providers that call a model's API directly, which the model filter tells apart. */

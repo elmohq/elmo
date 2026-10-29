@@ -1,22 +1,18 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { onBrandDataChange, syncBrandData } from "@/lib/brand-data/sync";
-import { clearSharedReads } from "@/lib/shared-read";
+import { onBrandDataChange, syncBrandData } from "@/lib/brand-data/client";
 
 const SYNC_INTERVAL_MS = 60_000;
 
-/** Keeps the brand's local data current and recomputes its pages whenever it changes. */
+/** Keeps the brand's synced data current and recomputes its pages when it changes. */
 export function useBrandDataSync(brandId: string | undefined) {
 	const queryClient = useQueryClient();
 	useEffect(() => {
 		if (!brandId) return;
-		const sync = () => {
-			syncBrandData(brandId).catch((error) => console.warn("[brand-data] sync failed", error));
-		};
+		const sync = () => syncBrandData(brandId);
 		const unsubscribe = onBrandDataChange((changed) => {
-			if (changed !== brandId) return;
-			clearSharedReads();
-			queryClient.invalidateQueries({ predicate: (query) => query.queryKey.includes(brandId) });
+			if (changed === brandId)
+				queryClient.invalidateQueries({ predicate: (query) => query.queryKey.includes(brandId) });
 		});
 		sync();
 		const interval = window.setInterval(sync, SYNC_INTERVAL_MS);

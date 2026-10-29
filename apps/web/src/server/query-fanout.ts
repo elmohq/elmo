@@ -10,6 +10,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { computeQueryFanout, type QueryFanoutResponse, queryFanoutInput } from "@/lib/analytics/pages/query-fanout";
+import { pgReader } from "@/lib/analytics/pg-reader";
 import { requireBrandSession } from "@/lib/auth/helpers";
 
 export type { QueryFanoutResponse } from "@/lib/analytics/pages/query-fanout";
@@ -18,5 +19,5 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 	.validator(queryFanoutInput)
 	.handler(async ({ data }): Promise<QueryFanoutResponse> => {
 		await requireBrandSession(data.brandId);
-		return computeQueryFanout(data);
+		return computeQueryFanout(pgReader, data);
 	});

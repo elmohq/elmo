@@ -22,18 +22,7 @@ import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { z } from "zod";
 import { resolveBrandLookbackDays } from "@/lib/analytics/brand-window";
 import { parseTagFilter } from "@/lib/analytics/prompt-resolution";
-import {
-	getBrandRow,
-	getCitationDomainPage,
-	getCitationFlowRows,
-	getCitationSummary,
-	getCitationUrlPage,
-	getCompetitorRows,
-	getPerPromptCitationDomains,
-	getPerPromptDailyCitationClasses,
-	getPerPromptGooglePages,
-	getPromptRows,
-} from "@/lib/analytics/reads";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import type { CitationFlowRow } from "@/lib/citation-flow";
 import type {
@@ -262,15 +251,15 @@ const citationFiltersSchema = z.object({
 type CitationFilters = z.infer<typeof citationFiltersSchema>;
 
 /** All UTC, so the server's zone doesn't matter. */
-async function resolveCitationScope(data: CitationFilters) {
-	const days = await resolveBrandLookbackDays(data.brandId, data.lookback);
+async function resolveCitationScope(reader: AnalyticsReader, data: CitationFilters) {
+	const days = await resolveBrandLookbackDays(reader, data.brandId, data.lookback);
 	const endDate = customRangeEnd(data.lookback);
 	const window = citationDateWindow(endDate ? new Date(`${endDate}T00:00:00Z`) : new Date(), days);
 
 	const [brand, competitorsList, brandPrompts] = await Promise.all([
-		getBrandRow(data.brandId),
-		getCompetitorRows(data.brandId),
-		getPromptRows(data.brandId),
+		reader.getBrandRow(data.brandId),
+		reader.getCompetitorRows(data.brandId),
+		reader.getPromptRows(data.brandId),
 	]);
 	const allPrompts = brandPrompts.filter((prompt) => prompt.enabled);
 
@@ -307,18 +296,16 @@ async function resolveCitationScope(data: CitationFilters) {
 }
 
 /** Google AI Mode's Shopping products and search queries, built once for the summary and both lists. */
-function getGoogleModule({
-	scope,
-	brand,
-	competitorsList,
-	allPrompts,
-}: Awaited<ReturnType<typeof resolveCitationScope>>) {
+function getGoogleModule(
+	reader: AnalyticsReader,
+	{ scope, brand, competitorsList, allPrompts }: Awaited<ReturnType<typeof resolveCitationScope>>,
+) {
 	const brandName = brand?.name ?? "";
 	const competitorNames = competitorsList.map((c) => ({ id: c.id, name: c.name }));
 	return sharedRead(`google-module:${JSON.stringify([scope, brandName, competitorNames])}`, async () => {
 		const promptsById = new Map(allPrompts.map((prompt) => [prompt.id, prompt.value]));
 		return buildGoogleModule(
-			scope.promptIds.length > 0 ? await getPerPromptGooglePages(scope) : [],
+			scope.promptIds.length > 0 ? await reader.getPerPromptGooglePages(scope) : [],
 			brandName,
 			competitorNames,
 			(id) => promptsById.get(id),
@@ -354,9 +341,12 @@ function emptyCitationsResult(
 
 export const citationsInput = citationFiltersSchema;
 
-export async function computeCitations(input: z.input<typeof citationsInput>): Promise<CitationsResult> {
+export async function computeCitations(
+	reader: AnalyticsReader,
+	input: z.input<typeof citationsInput>,
+): Promise<CitationsResult> {
 	const data = citationsInput.parse(input);
-	const resolved = await resolveCitationScope(data);
+	const resolved = await resolveCitationScope(reader, data);
 	const { brand, competitorsList, allPrompts, brandDomains, competitorDomains, owned, scope, previousScope } = resolved;
 
 	const userTags = new Set(allPrompts.flatMap((prompt) => prompt.tags || []));
@@ -371,13 +361,13 @@ export async function computeCitations(input: z.input<typeof citationsInput>): P
 	if (scope.promptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, resolved.days);
 
 	const [summary, perPromptDailyClasses, googleModule, promptDomains] = await Promise.all([
-		getCitationSummary(scope, previousScope, owned, {
+		reader.getCitationSummary(scope, previousScope, owned, {
 			minCount: MIN_COUNT_FOR_WHATS_CHANGED,
 			limit: WHATS_CHANGED_LIMIT,
 		}),
-		getPerPromptDailyCitationClasses(scope, owned),
-		getGoogleModule(resolved),
-		getPerPromptCitationDomains(scope),
+		reader.getPerPromptDailyCitationClasses(scope, owned),
+		getGoogleModule(reader, resolved),
+		reader.getPerPromptCitationDomains(scope),
 	]);
 
 	const categorizeDomain = (domain: string): CitationCategory =>
@@ -448,13 +438,14 @@ export type CitationUrlListItem = CitationUrl & { promptCount: number; isNew: bo
 export const citationUrlsInput = citationFiltersSchema.extend({ ...listPageSchema, pageType: z.string().optional() });
 
 export async function computeCitationUrls(
+	reader: AnalyticsReader,
 	input: z.input<typeof citationUrlsInput>,
 ): Promise<{ items: CitationUrlListItem[]; total: number }> {
 	const data = citationUrlsInput.parse(input);
-	const { scope, previousScope, owned } = await resolveCitationScope(data);
+	const { scope, previousScope, owned } = await resolveCitationScope(reader, data);
 	if (scope.promptIds.length === 0) return { items: [], total: 0 };
 
-	const { rows, total } = await getCitationUrlPage(
+	const { rows, total } = await reader.getCitationUrlPage(
 		scope,
 		previousScope,
 		owned,
@@ -491,13 +482,14 @@ export interface CitationDomainListItem {
 export const citationDomainsInput = citationFiltersSchema.extend(listPageSchema);
 
 export async function computeCitationDomains(
+	reader: AnalyticsReader,
 	input: z.input<typeof citationDomainsInput>,
 ): Promise<{ items: CitationDomainListItem[]; total: number }> {
 	const data = citationDomainsInput.parse(input);
-	const { scope, previousScope, owned } = await resolveCitationScope(data);
+	const { scope, previousScope, owned } = await resolveCitationScope(reader, data);
 	if (scope.promptIds.length === 0) return { items: [], total: 0 };
 
-	const { rows, total } = await getCitationDomainPage(
+	const { rows, total } = await reader.getCitationDomainPage(
 		scope,
 		previousScope,
 		owned,
@@ -527,9 +519,9 @@ export const googleShoppingInput = citationFiltersSchema.extend({
 	pageSize: listPageSchema.pageSize,
 });
 
-export async function computeGoogleShopping(input: z.input<typeof googleShoppingInput>) {
+export async function computeGoogleShopping(reader: AnalyticsReader, input: z.input<typeof googleShoppingInput>) {
 	const data = googleShoppingInput.parse(input);
-	const googleModule = await getGoogleModule(await resolveCitationScope(data));
+	const googleModule = await getGoogleModule(reader, await resolveCitationScope(reader, data));
 	const list =
 		data.list === "products" ? { kind: "products" as const, filter: data.attribution } : { kind: "queries" as const };
 	return pageGoogleList(googleModule, list, data.page * data.pageSize, data.pageSize);
@@ -537,10 +529,13 @@ export async function computeGoogleShopping(input: z.input<typeof googleShopping
 
 export const citationFlowInput = citationFiltersSchema.extend({ domain: z.string().min(1).max(253) });
 
-export async function computeCitationFlow(input: z.input<typeof citationFlowInput>): Promise<CitationFlowRow[]> {
+export async function computeCitationFlow(
+	reader: AnalyticsReader,
+	input: z.input<typeof citationFlowInput>,
+): Promise<CitationFlowRow[]> {
 	const data = citationFlowInput.parse(input);
 	const domain = cleanAndValidateDomain(data.domain);
-	const { scope } = await resolveCitationScope(data);
+	const { scope } = await resolveCitationScope(reader, data);
 	if (scope.promptIds.length === 0 || !domain) return [];
-	return getCitationFlowRows(scope, domain);
+	return reader.getCitationFlowRows(scope, domain);
 }

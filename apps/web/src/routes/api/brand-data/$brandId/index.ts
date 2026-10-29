@@ -1,8 +1,8 @@
 import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 import { createFileRoute } from "@tanstack/react-router";
-import { requireBrandSession } from "@/lib/auth/helpers";
 import { buildChunks, chunkManifest } from "@/lib/brand-data/build-bundle.server";
-import type { BrandChunk } from "@/lib/brand-data/chunks";
+import { BRAND_DATA_FORMAT, type BrandChunk, type ChunkManifest } from "@/lib/brand-data/chunks";
+import { authorizedBrand } from "@/routes/api/brand-data/-authorize";
 
 const MAX_CACHED_CHUNKS = 2_000;
 const built = new Map<string, Promise<BrandChunk>>();
@@ -22,15 +22,18 @@ function cachedChunks(brandId: string, wanted: { id: string; hash: string }[]) {
 	return Promise.all(wanted.map(({ id, hash }) => built.get(`${brandId}|${id}|${hash}`) as Promise<BrandChunk>));
 }
 
-/** `?` alone answers the manifest; `?chunks=a,b` answers those chunks at their current hash. */
-export const Route = createFileRoute("/api/brand-data/$brandId")({
+export const Route = createFileRoute("/api/brand-data/$brandId/")({
 	server: {
 		handlers: {
 			GET: async ({ params, request }) => {
-				await requireBrandSession(params.brandId);
+				const denied = await authorizedBrand(params.brandId);
+				if (denied) return denied;
 				const manifest = await chunkManifest(params.brandId);
 				const requested = new URL(request.url).searchParams.get("chunks");
-				if (!requested) return Response.json({ chunks: manifest }, { headers: { "Cache-Control": "no-store" } });
+				if (!requested) {
+					const body: ChunkManifest = { format: BRAND_DATA_FORMAT, chunks: manifest };
+					return Response.json(body, { headers: { "Cache-Control": "no-store" } });
+				}
 				const ids = new Set(requested.split(","));
 				const chunks = await cachedChunks(
 					params.brandId,

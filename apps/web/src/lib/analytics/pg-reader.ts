@@ -1,10 +1,10 @@
-/** The analytics reads as Postgres answers them; server only. */
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { asc, desc, eq } from "drizzle-orm";
 import type { AnalyticsBrandRow, AnalyticsCompetitorRow, AnalyticsPromptRow } from "@/lib/analytics/entities";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 
-export {
+import {
 	getCitationDomainPage,
 	getCitationFlowRows,
 	getCitationSummary,
@@ -12,8 +12,8 @@ export {
 	getCitationUrlPage,
 	getDomainPromptCounts,
 } from "@/lib/citation-read";
-export { getSentimentQuotes } from "@/lib/postgres-read";
-export {
+import { getSentimentQuotes } from "@/lib/postgres-read";
+import {
 	getBrandEarliestRunDate,
 	getCitationsCountByModel,
 	getCitationTotal,
@@ -41,7 +41,7 @@ export {
 	getVisibilityDailyAggregate,
 } from "@/lib/rollup-read";
 
-export async function getBrandRow(brandId: string): Promise<AnalyticsBrandRow | undefined> {
+async function getBrandRow(brandId: string): Promise<AnalyticsBrandRow | undefined> {
 	const [row] = await db
 		.select({
 			id: brands.id,
@@ -56,7 +56,7 @@ export async function getBrandRow(brandId: string): Promise<AnalyticsBrandRow | 
 	return row ? { ...row, additionalDomains: row.additionalDomains ?? [] } : undefined;
 }
 
-export async function getCompetitorRows(brandId: string): Promise<AnalyticsCompetitorRow[]> {
+async function getCompetitorRows(brandId: string): Promise<AnalyticsCompetitorRow[]> {
 	return db
 		.select({ id: competitors.id, name: competitors.name, domains: competitors.domains })
 		.from(competitors)
@@ -64,8 +64,7 @@ export async function getCompetitorRows(brandId: string): Promise<AnalyticsCompe
 		.orderBy(asc(competitors.createdAt), asc(competitors.id));
 }
 
-/** Newest first, as the prompt list shows them. */
-export async function getPromptRows(brandId: string): Promise<AnalyticsPromptRow[]> {
+async function getPromptRows(brandId: string): Promise<AnalyticsPromptRow[]> {
 	const rows = await db
 		.select({
 			id: prompts.id,
@@ -80,3 +79,41 @@ export async function getPromptRows(brandId: string): Promise<AnalyticsPromptRow
 		.orderBy(desc(prompts.createdAt), asc(prompts.id));
 	return rows.map((row) => ({ ...row, tags: row.tags ?? [], systemTags: row.systemTags ?? [] }));
 }
+
+export const pgReader: AnalyticsReader = {
+	getBrandRow,
+	getCompetitorRows,
+	getPromptRows,
+	getSentimentQuotes,
+	getCitationDomainPage,
+	getCitationFlowRows,
+	getCitationSummary,
+	getCitationTotals,
+	getCitationUrlPage,
+	getDomainPromptCounts,
+	getBrandEarliestRunDate,
+	getCitationsCountByModel,
+	getCitationTotal,
+	getCitationUrlStats,
+	getCompetitorTotals,
+	getDailyAssessments,
+	getFanoutBreakdown,
+	getFanoutModelTotals,
+	getFanoutPromptTotals,
+	getFanoutQueryPage,
+	getFanoutQueryTotals,
+	getMentionTotals,
+	getPerPromptCitationDomains,
+	getPerPromptCitationPages,
+	getPerPromptDailyCitationClasses,
+	getPerPromptDailyCitationDomains,
+	getPerPromptDailyCompetitors,
+	getPerPromptDailyRuns,
+	getPerPromptGooglePages,
+	getPerPromptRunStats,
+	getPromptModelDailyCompetitors,
+	getPromptModelDailyRuns,
+	getPromptsFirstEvaluatedAt,
+	getRunsByModel,
+	getVisibilityDailyAggregate,
+};
