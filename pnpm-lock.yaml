@@ -162,6 +162,132 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@base-ui/react':
+      specifier: ^1.9.0
+      version: 1.9.0
+    '@better-auth/stripe':
+      specifier: ^1.7.12
+      version: 1.7.12
+    '@fontsource/geist-mono':
+      specifier: ^5.3.0
+      version: 5.3.0
+    '@fontsource/geist-sans':
+      specifier: ^5.3.0
+      version: 5.3.0
+    '@fontsource/titan-one':
+      specifier: ^5.3.0
+      version: 5.3.0
+    '@modelcontextprotocol/sdk':
+      specifier: ^1.32.2
+      version: 1.32.2
+    '@tailwindcss/typography':
+      specifier: ^0.5.20
+      version: 0.5.20
+    '@tailwindcss/vite':
+      specifier: ^4.3.3
+      version: 4.3.3
+    '@takumi-rs/core':
+      specifier: ^2.17.1
+      version: 2.17.1
+    '@tanstack/react-router':
+      specifier: ^1.170.46
+      version: 1.170.46
+    '@tanstack/react-start':
+      specifier: ^1.169.4
+      version: 1.169.4
+    '@types/node':
+      specifier: ^26.6.5
+      version: 26.6.5
+    '@types/pg':
+      specifier: ^8.23.1
+      version: 8.23.1
+    '@types/react':
+      specifier: ^19.3.0
+      version: 19.3.0
+    '@types/react-dom':
+      specifier: ^19.3.0
+      version: 19.3.0
+    '@vitejs/plugin-react':
+      specifier: ^6.1.2
+      version: 6.1.2
+    auth0:
+      specifier: ^7.6.0
+      version: 7.6.0
+    better-auth:
+      specifier: ^1.7.12
+      version: 1.7.12
+    drizzle-orm:
+      specifier: ^0.45.4
+      version: 0.45.4
+    lucide-react:
+      specifier: ^1.61.0
+      version: 1.61.0
+    nitro:
+      specifier: npm:nitro-nightly@3.0.1-20260223-102354-c0b46421
+      version: 3.0.1-20260223-102354-c0b46421
+    pg:
+      specifier: ^8.23.1
+      version: 8.23.1
+    pg-boss:
+      specifier: ^12.38.0
+      version: 12.38.0
+    png-to-ico:
+      specifier: ^3.0.2
+      version: 3.0.2
+    posthog-js:
+      specifier: ^1.438.21
+      version: 1.438.21
+    posthog-node:
+      specifier: ^5.57.1
+      version: 5.57.1
+    react:
+      specifier: ^19.3.1
+      version: 19.3.1
+    react-dom:
+      specifier: ^19.3.1
+      version: 19.3.1
+    react-icons:
+      specifier: ^5.7.0
+      version: 5.7.0
+    react-markdown:
+      specifier: ^10.1.0
+      version: 10.1.0
+    recharts:
+      specifier: ^3.10.1
+      version: 3.10.1
+    remark-gfm:
+      specifier: ^4.0.1
+      version: 4.0.1
+    stripe:
+      specifier: ^22.6.1
+      version: 22.6.1
+    tailwindcss:
+      specifier: ^4.3.3
+      version: 4.3.3
+    tslib:
+      specifier: ^2.8.1
+      version: 2.8.1
+    tsx:
+      specifier: ^4.23.15
+      version: 4.23.15
+    tw-animate-css:
+      specifier: ^1.4.0
+      version: 1.4.0
+    typescript:
+      specifier: ^7.0.2
+      version: 7.0.2
+    vite:
+      specifier: ^8.3.5
+      version: 8.3.5
+    vitest:
+      specifier: ^5.0.5
+      version: 5.0.5
+    zod:
+      specifier: ^4.6.7
+      version: 4.6.7
+
 overrides:
   esbuild: ^0.28.1
   seroval: ^1.5.3
@@ -191,13 +317,13 @@ importers:
         specifier: ^6.43.0
         version: 6.43.0
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       turbo:
         specifier: ^2.11.10
         version: 2.11.10
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
 
   apps/cli:
@@ -215,14 +341,14 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       posthog-node:
-        specifier: ^5.57.1
+        specifier: 'catalog:'
         version: 5.57.1(@opentelemetry/api@1.9.1)
       semver:
         specifier: ^7.8.5
         version: 7.8.5
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       '@types/semver':
         specifier: ^7.8.0
@@ -234,31 +360,31 @@ importers:
         specifier: ^1.2.15
         version: 1.2.15
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vitest:
-        specifier: ^5.0.5
+        specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
 
   apps/web:
     dependencies:
       '@base-ui/react':
-        specifier: ^1.9.0
+        specifier: 'catalog:'
         version: 1.9.0(@date-fns/tz@1.5.0)(@types/react@19.3.0)(date-fns@4.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@fontsource/geist-mono':
-        specifier: ^5.3.0
+        specifier: 'catalog:'
         version: 5.3.0
       '@fontsource/geist-sans':
-        specifier: ^5.3.0
+        specifier: 'catalog:'
         version: 5.3.0
       '@fontsource/titan-one':
-        specifier: ^5.3.0
+        specifier: 'catalog:'
         version: 5.3.0
       '@marsidev/react-turnstile':
         specifier: ^1.6.3
         version: 1.6.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@modelcontextprotocol/sdk':
-        specifier: ^1.32.2
+        specifier: 'catalog:'
         version: 1.32.2(supports-color@7.2.0)(zod@4.6.7)
       '@scalar/api-reference-react':
         specifier: ^0.9.83
@@ -270,13 +396,13 @@ importers:
         specifier: ^3.49.0
         version: 3.49.0(react@19.3.1)
       '@tailwindcss/typography':
-        specifier: ^0.5.20
+        specifier: 'catalog:'
         version: 0.5.20(tailwindcss@4.3.3)
       '@tailwindcss/vite':
-        specifier: ^4.3.3
+        specifier: 'catalog:'
         version: 4.3.3(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
       '@takumi-rs/core':
-        specifier: ^2.17.1
+        specifier: 'catalog:'
         version: 2.17.1(csstype@3.2.3)(preact@10.29.8)(react@19.3.1)
       '@tanstack/devtools-vite':
         specifier: ^0.8.5
@@ -291,13 +417,13 @@ importers:
         specifier: ^5.104.5
         version: 5.104.5(@tanstack/react-query@5.104.5(@types/react@19.3.0)(react@19.3.1))(@types/react@19.3.0)(csstype@3.2.3)(react@19.3.1)
       '@tanstack/react-router':
-        specifier: ^1.170.46
+        specifier: 'catalog:'
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-router-ssr-query':
         specifier: ^1.167.3
         version: 1.167.3(@tanstack/query-core@5.104.5)(@tanstack/react-query@5.104.5(@types/react@19.3.0)(react@19.3.1))(@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@tanstack/router-core@1.171.39)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-start':
-        specifier: ^1.169.4
+        specifier: 'catalog:'
         version: 1.169.4(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.15)(supports-color@7.2.0)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
       '@tanstack/react-virtual':
         specifier: ^3.14.22
@@ -321,58 +447,58 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       auth0:
-        specifier: ^7.6.0
+        specifier: 'catalog:'
         version: 7.6.0
       drizzle-orm:
-        specifier: ^0.45.4
+        specifier: 'catalog:'
         version: 0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1)
       html2canvas-pro:
         specifier: ^2.5.2
         version: 2.5.2
       lucide-react:
-        specifier: ^1.61.0
+        specifier: 'catalog:'
         version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
       pg:
-        specifier: ^8.23.1
+        specifier: 'catalog:'
         version: 8.23.1
       pg-boss:
-        specifier: ^12.38.0
+        specifier: 'catalog:'
         version: 12.38.0(@opentelemetry/api@1.9.1)
       posthog-js:
-        specifier: ^1.438.21
+        specifier: 'catalog:'
         version: 1.438.21(@types/react@19.3.0)(react@19.3.1)
       react:
-        specifier: ^19.3.1
+        specifier: 'catalog:'
         version: 19.3.1
       react-dom:
-        specifier: ^19.3.1
+        specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)
       react-icons:
-        specifier: ^5.7.0
+        specifier: 'catalog:'
         version: 5.7.0(react@19.3.1)
       react-markdown:
-        specifier: ^10.1.0
+        specifier: 'catalog:'
         version: 10.1.0(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0)
       recharts:
-        specifier: ^3.10.1
+        specifier: 'catalog:'
         version: 3.10.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react-is@18.3.1)(react@19.3.1)(redux@5.0.1)
       remark-gfm:
-        specifier: ^4.0.1
+        specifier: 'catalog:'
         version: 4.0.1(supports-color@7.2.0)
       tailwindcss:
-        specifier: ^4.3.3
+        specifier: 'catalog:'
         version: 4.3.3
       tslib:
-        specifier: ^2.8.1
+        specifier: 'catalog:'
         version: 2.8.1
       tw-animate-css:
-        specifier: ^1.4.0
+        specifier: 'catalog:'
         version: 1.4.0
       uuid:
         specifier: ^14.0.2
         version: 14.0.3
       zod:
-        specifier: ^4.6.7
+        specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
       '@storybook/addon-vitest':
@@ -388,19 +514,19 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       '@types/pg':
-        specifier: ^8.23.1
+        specifier: 'catalog:'
         version: 8.23.1
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
-        specifier: ^6.1.2
+        specifier: 'catalog:'
         version: 6.1.2(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
       '@vitest/browser-playwright':
         specifier: ^5.0.5
@@ -412,25 +538,25 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0
       nitro:
-        specifier: npm:nitro-nightly@3.0.1-20260223-102354-c0b46421
+        specifier: 'catalog:'
         version: nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1(supports-color@7.2.0))(@azure/keyvault-secrets@4.11.2(supports-color@7.2.0))(@upstash/redis@1.39.0)(@vercel/blob@2.8.2)(better-sqlite3@12.11.1)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1))(giget@3.3.1)(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))(xml2js@0.6.2)
       playwright:
         specifier: ^1.64.1
         version: 1.64.1
       png-to-ico:
-        specifier: ^3.0.2
+        specifier: 'catalog:'
         version: 3.0.2
       storybook:
         specifier: ^10.6.3
         version: 10.6.3(@types/react@19.3.0)(prettier@3.9.6)(react@19.3.1)
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vite:
-        specifier: ^8.3.5
+        specifier: 'catalog:'
         version: 8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)
       vitest:
-        specifier: ^5.0.5
+        specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
 
   apps/worker:
@@ -448,68 +574,68 @@ importers:
         specifier: workspace:*
         version: link:../../packages/lib
       auth0:
-        specifier: ^7.6.0
+        specifier: 'catalog:'
         version: 7.6.0
       drizzle-orm:
-        specifier: ^0.45.4
+        specifier: 'catalog:'
         version: 0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1)
       pg:
-        specifier: ^8.23.1
+        specifier: 'catalog:'
         version: 8.23.1
       pg-boss:
-        specifier: ^12.38.0
+        specifier: 'catalog:'
         version: 12.38.0(@opentelemetry/api@1.9.1)
       posthog-node:
-        specifier: ^5.57.1
+        specifier: 'catalog:'
         version: 5.57.1(@opentelemetry/api@1.9.1)
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       '@types/pg':
-        specifier: ^8.23.1
+        specifier: 'catalog:'
         version: 8.23.1
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vitest:
-        specifier: ^5.0.5
+        specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
 
   apps/www:
     dependencies:
       '@base-ui/react':
-        specifier: ^1.9.0
+        specifier: 'catalog:'
         version: 1.9.0(@date-fns/tz@1.5.0)(@types/react@19.3.0)(date-fns@4.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@fontsource/geist-mono':
-        specifier: ^5.3.0
+        specifier: 'catalog:'
         version: 5.3.0
       '@fontsource/geist-sans':
-        specifier: ^5.3.0
+        specifier: 'catalog:'
         version: 5.3.0
       '@fontsource/titan-one':
-        specifier: ^5.3.0
+        specifier: 'catalog:'
         version: 5.3.0
       '@mux/mux-player-react':
         specifier: ^3.14.1
         version: 3.14.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tailwindcss/typography':
-        specifier: ^0.5.20
+        specifier: 'catalog:'
         version: 0.5.20(tailwindcss@4.3.3)
       '@tailwindcss/vite':
-        specifier: ^4.3.3
+        specifier: 'catalog:'
         version: 4.3.3(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
       '@takumi-rs/core':
-        specifier: ^2.17.1
+        specifier: 'catalog:'
         version: 2.17.1(csstype@3.2.3)(preact@10.29.8)(react@19.3.1)
       '@tanstack/react-router':
-        specifier: ^1.170.46
+        specifier: 'catalog:'
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-start':
-        specifier: ^1.169.4
+        specifier: 'catalog:'
         version: 1.169.4(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.15)(supports-color@7.2.0)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
       '@upstash/redis':
         specifier: ^1.39.0
@@ -542,74 +668,74 @@ importers:
         specifier: ^16.17.8
         version: 16.17.8(@types/mdx@2.0.14)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1(supports-color@7.2.0))(@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.3.0)(lucide-react@1.61.0(@types/react@19.3.0)(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@7.2.0)(zod@4.6.7))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)
       lucide-react:
-        specifier: ^1.61.0
+        specifier: 'catalog:'
         version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
       nitro:
-        specifier: npm:nitro-nightly@3.0.1-20260223-102354-c0b46421
+        specifier: 'catalog:'
         version: nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1(supports-color@7.2.0))(@azure/keyvault-secrets@4.11.2(supports-color@7.2.0))(@upstash/redis@1.39.0)(@vercel/blob@2.8.2)(better-sqlite3@12.11.1)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1))(giget@3.3.1)(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))(xml2js@0.6.2)
       posthog-js:
-        specifier: ^1.438.21
+        specifier: 'catalog:'
         version: 1.438.21(@types/react@19.3.0)(react@19.3.1)
       react:
-        specifier: ^19.3.1
+        specifier: 'catalog:'
         version: 19.3.1
       react-dom:
-        specifier: ^19.3.1
+        specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)
       react-markdown:
-        specifier: ^10.1.0
+        specifier: 'catalog:'
         version: 10.1.0(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0)
       recharts:
-        specifier: ^3.10.1
+        specifier: 'catalog:'
         version: 3.10.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react-is@18.3.1)(react@19.3.1)(redux@5.0.1)
       remark-gfm:
-        specifier: ^4.0.1
+        specifier: 'catalog:'
         version: 4.0.1(supports-color@7.2.0)
       shiki:
         specifier: ^4.5.0
         version: 4.5.0
       tailwindcss:
-        specifier: ^4.3.3
+        specifier: 'catalog:'
         version: 4.3.3
       tslib:
-        specifier: ^2.8.1
+        specifier: 'catalog:'
         version: 2.8.1
       tw-animate-css:
-        specifier: ^1.4.0
+        specifier: 'catalog:'
         version: 1.4.0
       zod:
-        specifier: ^4.6.7
+        specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
       '@types/mdx':
         specifier: ^2.0.14
         version: 2.0.14
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
       '@vercel/blob':
         specifier: ^2.8.2
         version: 2.8.2
       '@vitejs/plugin-react':
-        specifier: ^6.1.2
+        specifier: 'catalog:'
         version: 6.1.2(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
       png-to-ico:
-        specifier: ^3.0.2
+        specifier: 'catalog:'
         version: 3.0.2
       tar-stream:
         specifier: 3.2.2
         version: 3.2.2
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vite:
-        specifier: ^8.3.5
+        specifier: 'catalog:'
         version: 8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)
 
   e2e:
@@ -622,16 +748,16 @@ importers:
         specifier: 0.5.0
         version: 0.5.0
       '@modelcontextprotocol/sdk':
-        specifier: ^1.32.2
+        specifier: 'catalog:'
         version: 1.32.2(supports-color@7.2.0)(zod@4.6.7)
       '@playwright/test':
         specifier: ^1.64.1
         version: 1.64.1
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       '@types/pg':
-        specifier: ^8.23.1
+        specifier: 'catalog:'
         version: 8.23.1
       '@usebruno/cli':
         specifier: 4.3.0
@@ -643,16 +769,16 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1(ajv@8.20.0)
       pg:
-        specifier: ^8.23.1
+        specifier: 'catalog:'
         version: 8.23.1
       pg-boss:
-        specifier: ^12.38.0
+        specifier: 'catalog:'
         version: 12.38.0(@opentelemetry/api@1.9.1)
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
 
   packages/api-spec:
@@ -664,23 +790,23 @@ importers:
   packages/config:
     dependencies:
       zod:
-        specifier: ^4.6.7
+        specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vitest:
-        specifier: ^5.0.5
+        specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
 
   packages/deployment:
     dependencies:
       '@better-auth/stripe':
-        specifier: ^1.7.12
+        specifier: 'catalog:'
         version: 1.7.12(@better-auth/core@1.7.12(@better-auth/utils@0.5.0)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.4(zod@4.6.7))(jose@6.2.13)(kysely@0.28.17)(nanostores@1.5.0))(better-auth@1.7.12(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.169.4(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.15)(supports-color@8.1.1)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)))(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(solid-js@1.9.11)(vitest@5.0.5)(vue@3.5.42(typescript@7.0.2)))(better-call@1.4.4(zod@4.6.7))(stripe@22.6.1(@types/node@26.6.5))
       '@tabler/icons-react':
         specifier: ^3.0.0
@@ -698,13 +824,13 @@ importers:
         specifier: ^7.3.0
         version: 7.6.0
       better-auth:
-        specifier: ^1.7.12
+        specifier: 'catalog:'
         version: 1.7.12(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.169.4(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.15)(supports-color@8.1.1)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)))(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(solid-js@1.9.11)(vitest@5.0.5)(vue@3.5.42(typescript@7.0.2))
       disposable-email-domains:
         specifier: ^1.0.62
         version: 1.0.62
       drizzle-orm:
-        specifier: ^0.45.4
+        specifier: 'catalog:'
         version: 0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1)
       react:
         specifier: ^19.0.0
@@ -713,32 +839,32 @@ importers:
         specifier: ^6.34.1
         version: 6.34.1
       stripe:
-        specifier: ^22.6.1
+        specifier: 'catalog:'
         version: 22.6.1(@types/node@26.6.5)
       zod:
-        specifier: ^4.6.7
+        specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
       '@types/disposable-email-domains':
         specifier: ^1.0.6
         version: 1.0.6
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       '@types/pg':
-        specifier: ^8.23.1
+        specifier: 'catalog:'
         version: 8.23.1
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       pg:
-        specifier: ^8.23.1
+        specifier: 'catalog:'
         version: 8.23.1
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vitest:
-        specifier: ^5.0.5
+        specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
 
   packages/docs:
@@ -751,19 +877,19 @@ importers:
         version: link:../ui
       fumadocs-core:
         specifier: '>=16.0.0'
-        version: 16.17.7(@mdx-js/mdx@3.1.1(supports-color@7.2.0))(@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.3.0)(lucide-react@1.61.0(@types/react@19.3.0)(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@7.2.0)(zod@4.6.7)
+        version: 16.17.8(@mdx-js/mdx@3.1.1(supports-color@7.2.0))(@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.3.0)(lucide-react@1.61.0(@types/react@19.3.0)(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@7.2.0)(zod@4.6.7)
       lucide-react:
-        specifier: ^1.61.0
+        specifier: 'catalog:'
         version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: '>=19.0.0'
         version: 19.3.1
     devDependencies:
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
 
   packages/lib:
@@ -796,7 +922,7 @@ importers:
         specifier: ^1.7.12
         version: 1.7.12(@better-auth/core@1.7.12(@better-auth/utils@0.5.0)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.4(zod@4.6.7))(jose@6.2.13)(kysely@0.28.17)(nanostores@1.5.0))(@better-auth/utils@0.5.0)(@better-fetch/fetch@1.3.2)(better-auth@1.7.12(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.169.4(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.15)(supports-color@7.2.0)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)))(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(solid-js@1.9.11)(vitest@5.0.5)(vue@3.5.42(typescript@7.0.2)))(better-call@1.4.4(zod@4.6.7))
       '@better-auth/stripe':
-        specifier: ^1.7.12
+        specifier: 'catalog:'
         version: 1.7.12(@better-auth/core@1.7.12(@better-auth/utils@0.5.0)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.4(zod@4.6.7))(jose@6.2.13)(kysely@0.28.17)(nanostores@1.5.0))(better-auth@1.7.12(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.169.4(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.15)(supports-color@7.2.0)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)))(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(solid-js@1.9.11)(vitest@5.0.5)(vue@3.5.42(typescript@7.0.2)))(better-call@1.4.4(zod@4.6.7))(stripe@22.6.1(@types/node@26.6.5))
       '@brightdata/sdk':
         specifier: ^1.2.0
@@ -811,13 +937,13 @@ importers:
         specifier: ^7.0.153
         version: 7.0.153(zod@4.6.7)
       better-auth:
-        specifier: ^1.7.12
+        specifier: 'catalog:'
         version: 1.7.12(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.169.4(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.15)(supports-color@7.2.0)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)))(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(solid-js@1.9.11)(vitest@5.0.5)(vue@3.5.42(typescript@7.0.2))
       dataforseo-client:
         specifier: ^2.1.9
         version: 2.1.9
       drizzle-orm:
-        specifier: ^0.45.4
+        specifier: 'catalog:'
         version: 0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.39.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1)
       jose:
         specifier: 6.2.13
@@ -829,14 +955,14 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2
       pg:
-        specifier: ^8.23.1
+        specifier: 'catalog:'
         version: 8.23.1
       zod:
-        specifier: ^4.6.7
+        specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
       '@types/pg':
-        specifier: ^8.23.1
+        specifier: 'catalog:'
         version: 8.23.1
       auth:
         specifier: 1.7.12
@@ -845,19 +971,19 @@ importers:
         specifier: ^0.31.11
         version: 0.31.11
       stripe:
-        specifier: ^22.6.1
+        specifier: 'catalog:'
         version: 22.6.1(@types/node@26.6.5)
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vitest:
-        specifier: ^5.0.5
+        specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
 
   packages/og:
     dependencies:
       '@takumi-rs/core':
-        specifier: ^2.17.1
+        specifier: 'catalog:'
         version: 2.17.1(csstype@3.2.3)(preact@10.29.8)(react@19.3.1)
       '@takumi-rs/helpers':
         specifier: ^2.13.5
@@ -866,29 +992,29 @@ importers:
         specifier: workspace:*
         version: link:../config
       react:
-        specifier: ^19.3.1
+        specifier: 'catalog:'
         version: 19.3.1
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       nitro:
-        specifier: npm:nitro-nightly@3.0.1-20260223-102354-c0b46421
+        specifier: 'catalog:'
         version: nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.39.0)(@vercel/blob@2.8.2)(better-sqlite3@12.11.1)(chokidar@5.0.0)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))(xml2js@0.6.2)
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vite:
-        specifier: ^8.3.5
+        specifier: 'catalog:'
         version: 8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)
 
   packages/ui:
     dependencies:
       '@base-ui/react':
-        specifier: ^1.9.0
+        specifier: 'catalog:'
         version: 1.9.0(@date-fns/tz@1.5.0)(@types/react@19.3.0)(date-fns@4.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@hookform/resolvers':
         specifier: ^6.0.0
@@ -903,7 +1029,7 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       lucide-react:
-        specifier: ^1.61.0
+        specifier: 'catalog:'
         version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: ^19
@@ -918,32 +1044,32 @@ importers:
         specifier: ^7.91.0
         version: 7.91.0(@types/react@19.3.0)(react@19.3.1)
       react-icons:
-        specifier: ^5.7.0
+        specifier: 'catalog:'
         version: 5.7.0(react@19.3.1)
       recharts:
-        specifier: ^3.10.1
+        specifier: 'catalog:'
         version: 3.10.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react-is@18.3.1)(react@19.3.1)(redux@5.0.1)
       tailwind-merge:
         specifier: ^3.7.0
         version: 3.7.0
       zod:
-        specifier: ^4.6.7
+        specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
       tailwindcss:
-        specifier: ^4.3.3
+        specifier: 'catalog:'
         version: 4.3.3
       tw-animate-css:
-        specifier: ^1.4.0
+        specifier: 'catalog:'
         version: 1.4.0
       typescript:
-        specifier: ^7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
 
 packages:
@@ -6805,71 +6931,6 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
-
-  fumadocs-core@16.17.7:
-    resolution: {integrity: sha512-o8uR1JuFgAHrUSbX/hzThOsvW8tFXfV4vlrWf7VeFd+lbQsRqwr8R7gvs96Vwwzn5xSDfgg0boQalyv1llJAQQ==}
-    peerDependencies:
-      '@mdx-js/mdx': '*'
-      '@mixedbread/sdk': 0.x.x
-      '@modelcontextprotocol/server': 2.x.x
-      '@orama/core': 1.x.x
-      '@oramacloud/client': 2.x.x
-      '@tanstack/react-router': 1.x.x
-      '@types/estree-jsx': '*'
-      '@types/hast': '*'
-      '@types/mdast': '*'
-      '@types/react': '*'
-      algoliasearch: 5.x.x
-      flexsearch: '*'
-      lucide-react: '*'
-      meilisearch: '>=0.50.0 <1.0.0'
-      next: 16.x.x
-      react: ^19.2.0
-      react-dom: ^19.2.0
-      react-router: 7.x.x || 8.x.x
-      waku: '*'
-      zod: 4.x.x
-    peerDependenciesMeta:
-      '@mdx-js/mdx':
-        optional: true
-      '@mixedbread/sdk':
-        optional: true
-      '@modelcontextprotocol/server':
-        optional: true
-      '@orama/core':
-        optional: true
-      '@oramacloud/client':
-        optional: true
-      '@tanstack/react-router':
-        optional: true
-      '@types/estree-jsx':
-        optional: true
-      '@types/hast':
-        optional: true
-      '@types/mdast':
-        optional: true
-      '@types/react':
-        optional: true
-      algoliasearch:
-        optional: true
-      flexsearch:
-        optional: true
-      lucide-react:
-        optional: true
-      meilisearch:
-        optional: true
-      next:
-        optional: true
-      react:
-        optional: true
-      react-dom:
-        optional: true
-      react-router:
-        optional: true
-      waku:
-        optional: true
-      zod:
-        optional: true
 
   fumadocs-core@16.17.8:
     resolution: {integrity: sha512-6MCVT2gy5i2U8i7MLQEy6eImd5/AJ69zzg3XvuHQmPi0w/V2u5QTTfK8dLLSfxniQU7obs9nSpzh+adEEL1QUQ==}
@@ -16787,42 +16848,6 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
-
-  fumadocs-core@16.17.7(@mdx-js/mdx@3.1.1(supports-color@7.2.0))(@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.3.0)(lucide-react@1.61.0(@types/react@19.3.0)(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@7.2.0)(zod@4.6.7):
-    dependencies:
-      '@fumari/image-size': 0.1.1
-      estree-util-value-to-estree: 3.5.0
-      github-slugger: 2.0.0
-      hast-util-from-dom: 5.0.1
-      hast-util-to-estree: 3.1.3(supports-color@7.2.0)
-      hast-util-to-jsx-runtime: 2.3.6(supports-color@7.2.0)
-      mdast-util-mdx: 3.0.0(supports-color@7.2.0)
-      micromark: 4.0.2(supports-color@7.2.0)
-      micromark-extension-gfm-table: 2.1.2
-      npm-to-yarn: 3.2.0
-      remark: 15.0.1(supports-color@7.2.0)
-      remark-gfm: 4.0.1(supports-color@7.2.0)
-      remark-rehype: 11.1.2
-      scroll-into-view-if-needed: 3.1.0
-      shiki: 4.5.0
-      tinyglobby: 0.2.17
-      unified: 11.0.5
-      vfile: 6.0.3
-      yaml: 2.9.1
-      zbsearch: 4.0.1
-    optionalDependencies:
-      '@mdx-js/mdx': 3.1.1(supports-color@7.2.0)
-      '@tanstack/react-router': 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@types/estree-jsx': 1.0.5
-      '@types/hast': 3.0.5
-      '@types/mdast': 4.0.4
-      '@types/react': 19.3.0
-      lucide-react: 1.61.0(@types/react@19.3.0)(react@19.3.1)
-      react: 19.3.1
-      react-dom: 19.3.1(react@19.3.1)
-      zod: 4.6.7
-    transitivePeerDependencies:
-      - supports-color
 
   fumadocs-core@16.17.8(@mdx-js/mdx@3.1.1(supports-color@7.2.0))(@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.3.0)(lucide-react@1.61.0(@types/react@19.3.0)(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@7.2.0)(zod@4.6.7):
     dependencies:

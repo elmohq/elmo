@@ -19,16 +19,16 @@
 		"./auth-hooks/whitelabel": "./src/auth-hooks/whitelabel.ts"
 	},
 	"dependencies": {
-		"@better-auth/stripe": "^1.7.12",
+		"@better-auth/stripe": "catalog:",
 		"@workspace/config": "workspace:*",
 		"@workspace/lib": "workspace:*",
 		"@workspace/ui": "workspace:*",
-		"better-auth": "^1.7.12",
+		"better-auth": "catalog:",
 		"disposable-email-domains": "^1.0.62",
-		"drizzle-orm": "^0.45.4",
+		"drizzle-orm": "catalog:",
 		"resend": "^6.34.1",
-		"stripe": "^22.6.1",
-		"zod": "^4.6.7"
+		"stripe": "catalog:",
+		"zod": "catalog:"
 	},
 	"peerDependencies": {
 		"@tabler/icons-react": "^3.0.0",
@@ -37,11 +37,11 @@
 	},
 	"devDependencies": {
 		"@types/disposable-email-domains": "^1.0.6",
-		"@types/node": "^26.6.5",
-		"@types/pg": "^8.23.1",
-		"@types/react": "^19.3.0",
-		"pg": "^8.23.1",
-		"typescript": "^7.0.2",
-		"vitest": "^5.0.5"
+		"@types/node": "catalog:",
+		"@types/pg": "catalog:",
+		"@types/react": "catalog:",
+		"pg": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	}
 }

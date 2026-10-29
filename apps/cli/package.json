@@ -37,15 +37,15 @@
 		"commander": "^15.0.0",
 		"dotenv": "18.0.9",
 		"picocolors": "^1.1.1",
-		"posthog-node": "^5.57.1",
+		"posthog-node": "catalog:",
 		"semver": "^7.8.5"
 	},
 	"devDependencies": {
-		"@types/node": "^26.6.5",
+		"@types/node": "catalog:",
 		"@types/semver": "^7.8.0",
 		"@workspace/config": "workspace:*",
 		"rolldown": "^1.2.15",
-		"typescript": "^7.0.2",
-		"vitest": "^5.0.5"
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	}
 }
