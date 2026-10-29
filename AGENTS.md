@@ -42,6 +42,7 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 ## Package management and supply-chain security
 
 - **Always use pnpm.** Never install or run dependencies with npm, yarn, or `npx` — that sidesteps the workspace's protections.
+- A dependency that more than one package uses is versioned once, in the `catalog` in `pnpm-workspace.yaml`, and each package depends on it as `"catalog:"`. Peer dependency ranges stay as written: they state compatibility, not the version we install.
 - This repo enforces [pnpm supply-chain security](https://pnpm.io/supply-chain-security) via `pnpm-workspace.yaml`: `minimumReleaseAge` (a multi-day cooldown on new releases), `trustPolicy: no-downgrade`, `blockExoticSubdeps`, and an `allowBuilds` allowlist for install scripts.
 - **Never weaken or bypass these controls**: don't add `minimumReleaseAgeExclude` entries, don't flip packages to `true` in `allowBuilds`, don't suppress `pnpm audit` advisories, and don't remove `overrides` (many are scoped security patches or dedup anchors). If an install fails because of these controls, that is the system working — report it instead of working around it.
 
