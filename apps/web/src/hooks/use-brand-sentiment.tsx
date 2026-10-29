@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { ShareOfVoiceFilters } from "@/hooks/use-share-of-voice";
-import { getBrandSentimentFn } from "@/server/analysis";
+import { getBrandSentimentFn } from "@/lib/brand-data/local-first";
 
 export function useBrandSentiment(brandId?: string, filters?: ShareOfVoiceFilters) {
 	const resolvedBrandId = useResolvedBrandId(brandId);

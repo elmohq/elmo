@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const getBrandEarliestRunDate = vi.hoisted(() => vi.fn<(brandId: string) => Promise<string | null>>());
-vi.mock("@/lib/rollup-read", () => ({ getBrandEarliestRunDate }));
+import { bindReader } from "@/lib/analytics/bind-reader";
+import * as brandWindow from "@/lib/analytics/brand-window";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
 
-const { resolveBrandLookbackDays, resolveBrandWindow } = await import("@/server/brand-window");
+const getBrandEarliestRunDate = vi.fn<(brandId: string) => Promise<string | null>>();
+const reader = { getBrandEarliestRunDate } as unknown as AnalyticsReader;
+const resolveBrandWindow = bindReader(reader, brandWindow.resolveBrandWindow);
+const resolveBrandLookbackDays = bindReader(reader, brandWindow.resolveBrandLookbackDays);
 
 const now = new Date("2024-03-31T12:00:00Z");
 

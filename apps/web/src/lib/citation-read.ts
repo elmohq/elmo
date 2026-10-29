@@ -231,7 +231,7 @@ export async function getCitationUrlPage(
 				round(position_sum::numeric / NULLIF(count, 0), 1)::float AS avg_position
 			FROM pages
 			WHERE ${classes}`,
-		sql`count DESC, url`,
+		sql`count DESC, url COLLATE "C"`,
 		limit,
 		offset,
 	);
@@ -249,7 +249,7 @@ function domainStats(previous: AnalyticsScope): SQL {
 		domain_tops AS (
 			SELECT DISTINCT ON (domain) domain, category, title, count AS top_count, url AS top_url
 			FROM pages
-			ORDER BY domain, count DESC, url
+			ORDER BY domain, count DESC, url COLLATE "C"
 		),
 		domain_earlier AS (
 			SELECT p.domain, sum(r.citations)::int AS count
@@ -273,7 +273,7 @@ function domainStats(previous: AnalyticsScope): SQL {
 		)`;
 }
 
-const domainOrder = sql`count DESC, top_count DESC, top_url, domain`;
+const domainOrder = sql`count DESC, top_count DESC, top_url COLLATE "C", domain COLLATE "C"`;
 
 const isReddit = (domain: SQL) => sql`(${domain} = 'reddit.com' OR ${domain} LIKE '%.reddit.com')`;
 
@@ -316,7 +316,7 @@ export async function getCitationSummary(
 						round(p.position_sum::numeric / NULLIF(p.count, 0), 1)::float AS avg_position
 					FROM pages p
 					WHERE p.count >= ${minCount} AND NOT EXISTS (SELECT 1 FROM earlier e WHERE e.page_id = p.page_id)
-					ORDER BY p.count DESC, p.url
+					ORDER BY p.count DESC, p.url COLLATE "C"
 					LIMIT ${limit}
 				) n
 			) AS new_urls,
@@ -331,7 +331,7 @@ export async function getCitationSummary(
 					WHERE e.count >= ${minCount}
 						AND coalesce(c.count, 0) * 2 <= e.count
 						AND rp.static_category <> ${GOOGLE_STATIC_CATEGORY}
-					ORDER BY e.count DESC, rp.url
+					ORDER BY e.count DESC, rp.url COLLATE "C"
 					LIMIT ${limit}
 				) d
 			) AS dropped_urls,
@@ -347,7 +347,7 @@ export async function getCitationSummary(
 				SELECT json_agg(d) FROM (
 					SELECT domain, count, category, example_title, previous_count FROM domains
 					WHERE count = 0 AND previous_count >= ${minCount}
-					ORDER BY previous_count DESC, domain
+					ORDER BY previous_count DESC, domain COLLATE "C"
 					LIMIT ${limit}
 				) d
 			) AS dropped_domains,
@@ -356,7 +356,7 @@ export async function getCitationSummary(
 					SELECT p.url, p.title, p.count, NOT EXISTS (SELECT 1 FROM earlier e WHERE e.page_id = p.page_id) AS is_new
 					FROM pages p
 					WHERE ${isReddit(sql`p.domain`)}
-					ORDER BY p.count DESC, p.url
+					ORDER BY p.count DESC, p.url COLLATE "C"
 				) r
 			) AS reddit_pages
 	`);
@@ -371,13 +371,15 @@ export async function getCitationSummary(
 	};
 }
 
+const domainStatsOwner = {};
+
 /** Every domain the scope cites, in list order; shared by the cards that page through them. */
 function getCitationDomainStats(
 	scope: AnalyticsScope,
 	previous: AnalyticsScope,
 	owned: OwnedDomains,
 ): Promise<CitationDomainStatsRow[]> {
-	return sharedRead(`citation-domains:${JSON.stringify([scope, previous, owned])}`, () =>
+	return sharedRead(domainStatsOwner, `citation-domains:${JSON.stringify([scope, previous, owned])}`, () =>
 		queryPg<CitationDomainStatsRow>(sql`
 			WITH ${classifiedPages(scope, owned)}, ${domainStats(previous)}
 			SELECT domain, count, category, example_title, previous_count
@@ -451,6 +453,6 @@ export async function getCitationFlowRows(scope: AnalyticsScope, domain: string)
 			AND (r.domain = ${domain} OR right(r.domain, ${domain.length + 1}) = ${`.${domain}`})
 			AND p.static_category <> ${GOOGLE_STATIC_CATEGORY}
 		GROUP BY r.model, r.page_id, p.url, p.title
-		ORDER BY count DESC
+		ORDER BY count DESC, p.url COLLATE "C", r.model COLLATE "C"
 	`);
 }

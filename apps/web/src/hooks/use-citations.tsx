@@ -1,13 +1,13 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import type { LookbackPeriod } from "@/lib/lookback";
 import {
 	getCitationDomainsFn,
 	getCitationFlowFn,
 	getCitationsFn,
 	getCitationUrlsFn,
 	getGoogleShoppingFn,
-} from "@/server/citations";
+} from "@/lib/brand-data/local-first";
+import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface CitationFilters {
 	lookback?: LookbackPeriod;

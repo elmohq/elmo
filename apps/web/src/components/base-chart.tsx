@@ -16,6 +16,19 @@ import {
 } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
 
+const shortDayFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const shortDayLabels = new Map<string, string>();
+
+/** Recharts formats every category on every render, so a year of days is formatted thousands of times. */
+function shortDayLabel(day: string): string {
+	let label = shortDayLabels.get(day);
+	if (label === undefined) {
+		label = shortDayFormat.format(new Date(`${day}T00:00:00Z`));
+		shortDayLabels.set(day, label);
+	}
+	return label;
+}
+
 /** The brand's own line is the one people are looking for, so it carries more
  *  weight than the competitors it's plotted against. */
 const BRAND_STROKE_WIDTH = 3;
@@ -221,16 +234,7 @@ export function BaseChart({
 								minTickGap={32}
 								domain={["dataMin", "dataMax"]}
 								type="category"
-								tickFormatter={(value) => {
-									// Fix: Parse date string directly to avoid double timezone conversion
-									// value is already a properly bucketed date string like "2025-07-21"
-									const [year, month, day] = value.split("-").map(Number);
-									const date = new Date(year, month - 1, day); // Create local date
-									return date.toLocaleDateString("en-US", {
-										month: "short",
-										day: "numeric",
-									});
-								}}
+								tickFormatter={shortDayLabel}
 							/>
 							<YAxis
 								domain={[0, "auto"]}
@@ -306,16 +310,7 @@ export function BaseChart({
 								minTickGap={32}
 								domain={["dataMin", "dataMax"]}
 								type="category"
-								tickFormatter={(value) => {
-									// Fix: Parse date string directly to avoid double timezone conversion
-									// value is already a properly bucketed date string like "2025-07-21"
-									const [year, month, day] = value.split("-").map(Number);
-									const date = new Date(year, month - 1, day); // Create local date
-									return date.toLocaleDateString("en-US", {
-										month: "short",
-										day: "numeric",
-									});
-								}}
+								tickFormatter={shortDayLabel}
 							/>
 							<YAxis
 								domain={[0, "auto"]}

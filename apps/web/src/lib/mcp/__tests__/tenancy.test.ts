@@ -45,7 +45,8 @@ vi.mock("@workspace/lib/db/db", () => {
 	return { db: chain };
 });
 
-vi.mock("@/lib/postgres-read", () => ({
+vi.mock("@/lib/postgres-read", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@/lib/postgres-read")>()),
 	getPromptRuns: async () => [],
 	countPromptRuns: async () => 0,
 }));

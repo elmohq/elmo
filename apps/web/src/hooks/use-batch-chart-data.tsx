@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
+import { getBatchChartDataFn } from "@/lib/brand-data/local-first";
 import type { LookbackPeriod } from "@/lib/lookback";
-import { getBatchChartDataFn } from "@/server/visibility";
 
 export interface BatchChartDataFilters {
 	lookback?: LookbackPeriod;
