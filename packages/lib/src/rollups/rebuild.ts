@@ -13,6 +13,7 @@ import {
 	runExtractions,
 	runMentions,
 } from "../db/schema";
+import { copyBrandPages } from "./brand-pages";
 import { assertBucketAligned, bucketSql } from "./bucket";
 import { isFanoutQuery, normalizedWebQuery } from "./fanout";
 
@@ -62,6 +63,7 @@ export async function rebuildRange(
 		const competitorRows = await insertCompetitorRollup(tx, brandId, from, toExclusive);
 		const webQueryRows = await insertWebQueryRollup(tx, brandId, from, toExclusive);
 		const urlRows = await insertCitationRollup(tx, brandId, from, toExclusive);
+		await copyBrandPages(tx, brandId, from, toExclusive);
 		const quoteRows = await insertSentimentQuoteRollup(tx, brandId, from, toExclusive);
 		return { runs, competitorRows, webQueryRows, urlRows, quoteRows };
 	});
