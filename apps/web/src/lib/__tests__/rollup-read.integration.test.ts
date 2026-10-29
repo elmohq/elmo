@@ -497,7 +497,7 @@ describe("query fan-out", () => {
 		expect(await getFanoutQueryPage(scope(), undefined, 1, 5)).toEqual({ rows: [], total: 2 });
 	});
 
-	it("counts a search the way the dashboard does, whatever whitespace surrounds it", async () => {
+	it("counts a search once per run, whatever whitespace surrounds it", async () => {
 		const otherBrand = await brand();
 		const otherPrompt = await createPrompt(otherBrand, { value: "crm" });
 		await createRun(otherBrand, otherPrompt, {
@@ -513,10 +513,10 @@ describe("query fan-out", () => {
 		await rebuildRollups(otherBrand);
 		const otherScope = { ...scope(), brandId: otherBrand, promptIds: [otherPrompt] };
 		expect(await getFanoutQueryPage(otherScope, undefined, 10, 0)).toEqual({
-			rows: [{ query: "hubspot alternatives", runs: 3, prompt_count: 1 }],
+			rows: [{ query: "hubspot alternatives", runs: 2, prompt_count: 1 }],
 			total: 1,
 		});
-		expect(await getFanoutQueryTotals(otherScope)).toMatchObject({ total_queries: 3, unique_queries: 1 });
+		expect(await getFanoutQueryTotals(otherScope)).toMatchObject({ total_queries: 2, unique_queries: 1 });
 	});
 
 	it("follows the prompt's current text once its buckets are rebuilt", async () => {
