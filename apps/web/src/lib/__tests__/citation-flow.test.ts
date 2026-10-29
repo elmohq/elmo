@@ -45,7 +45,7 @@ describe("buildCitationFlow", () => {
 		expect(names(flow, "section")).toEqual([
 			["/blog", 5],
 			["docs.acme.com", 5],
-			["Top-level pages", 4],
+			["Top-Level Pages", 4],
 		]);
 		expect(names(flow, "page").map(([name]) => name)).toEqual(["/a", "/b", "/api/auth", "/pricing"]);
 	});
@@ -124,7 +124,7 @@ describe("buildCitationFlow", () => {
 		const flow = buildCitationFlow({ rows, domain: "acme.com", limits: { maxSections: 3, maxPages: 4 } });
 
 		const sections = flow.nodes.filter((node) => node.kind === "section");
-		expect(sections.map((node) => node.name)).toEqual(["s0.acme.com", "s1.acme.com", "s2.acme.com", "Other sections"]);
+		expect(sections.map((node) => node.name)).toEqual(["s0.acme.com", "s1.acme.com", "s2.acme.com", "Other Sections"]);
 		expect(sections[3].hiddenCount).toBe(9);
 		expect(flow.nodes.filter((node) => node.kind === "page")).toHaveLength(4);
 		const more = flow.nodes.filter((node) => node.kind === "more");

@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useMemo } from "react";
 import { CitationsDisplay } from "@/components/citations-display";
 import { ALL_MODELS_VALUE } from "@/components/filter-bar";
 import { FilteredListShell } from "@/components/filtered-list-shell";
@@ -38,13 +39,18 @@ function CitationsPage() {
 		model: modelParam,
 	};
 	const { data: citationData, isLoading, error: citationsError } = useCitations(brandId, citationFilters);
-	const flowSource = {
-		brandId,
-		filters: citationFilters,
-		brandDomains: [brand?.website ?? "", ...(brand?.additionalDomains ?? [])].map(extractDomain).filter(Boolean),
-		competitorDomains: (citationData?.competitors ?? []).flatMap((c) => c.domains.map(extractDomain)),
-		modelOrder: [...new Set(trackedTargets.map((target) => target.model))],
-	};
+	const tagsKey = filters.tags.join(",");
+	const competitors = citationData?.competitors;
+	const flowSource = useMemo(
+		() => ({
+			brandId,
+			filters: { lookback: filters.lookback, tags: tagsKey ? tagsKey.split(",") : undefined, model: modelParam },
+			brandDomains: [brand?.website ?? "", ...(brand?.additionalDomains ?? [])].map(extractDomain).filter(Boolean),
+			competitorDomains: (competitors ?? []).flatMap((c) => c.domains.map(extractDomain)),
+			modelOrder: [...new Set((brand?.trackedTargets ?? []).map((target) => target.model))],
+		}),
+		[brandId, filters.lookback, tagsKey, modelParam, brand, competitors],
+	);
 
 	const infoContent = (
 		<>

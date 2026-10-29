@@ -40,7 +40,7 @@ function FlowList({
 	flow: CitationFlow;
 	colors: Map<string, string>;
 	focusModel: string | null;
-	onExpand: () => void;
+	onExpand?: () => void;
 }) {
 	const pages = flow.nodes.filter((node) => node.kind === "page");
 	const more = flow.nodes.find((node) => node.kind === "more");
@@ -90,10 +90,14 @@ function FlowList({
 				);
 			})}
 			{more && (
-				<li>
-					<button type="button" onClick={onExpand} className="text-sm text-muted-foreground hover:text-foreground">
-						+ {more.name} · {more.value.toLocaleString()} citations
-					</button>
+				<li className="text-sm text-muted-foreground">
+					{onExpand ? (
+						<button type="button" onClick={onExpand} className="hover:text-foreground">
+							+ {more.name} · {more.value.toLocaleString()} citations
+						</button>
+					) : (
+						`+ ${more.name} · ${more.value.toLocaleString()} citations`
+					)}
 				</li>
 			)}
 		</ol>
@@ -177,8 +181,13 @@ function FlowView({
 	expanded: boolean;
 	onExpandedChange: (expanded: boolean) => void;
 }) {
-	const [hover, setHover] = useState<Focus | null>(null);
-	const [pinned, setPinned] = useState<string | null>(null);
+	// Hover and pin refer to this flow's nodes and engines, so a rebuilt flow (expanded, refetched,
+	// another domain or filter) starts clean rather than pointing at whatever now sits at that index.
+	const [hoverState, setHoverState] = useState<{ flow: CitationFlow; focus: Focus | null }>({ flow, focus: null });
+	const hover = hoverState.flow === flow ? hoverState.focus : null;
+	const setHover = (focus: Focus | null) => setHoverState({ flow, focus });
+	const [pinState, setPinned] = useState<string | null>(null);
+	const pinned = flow.engines.some((engine) => engine.model === pinState) ? pinState : null;
 	const colors = useEngineColors(flow, modelOrder);
 
 	const focusModel = hover?.type === "engine" ? hover.model : pinned;
@@ -209,7 +218,7 @@ function FlowView({
 						onPin={setPinned}
 						onHover={setHover}
 					/>
-					<FlowList flow={flow} colors={colors} focusModel={focusModel} onExpand={() => onExpandedChange(true)} />
+					<FlowList flow={flow} colors={colors} focusModel={focusModel} onExpand={expand} />
 				</>
 			)}
 			{expanded && flow.pageCount > DEFAULT_FLOW_LIMITS.maxPages && (
@@ -228,23 +237,53 @@ function FlowView({
 	);
 }
 
+function FlowBody({
+	domain,
+	flow,
+	error,
+	isLoadingDomains,
+	...view
+}: {
+	domain: string | undefined;
+	flow: CitationFlow | undefined;
+	error?: Error | null;
+	isLoadingDomains: boolean;
+	width: number;
+	modelOrder: readonly string[];
+	expanded: boolean;
+	onExpandedChange: (expanded: boolean) => void;
+}) {
+	if (error && !flow) return <Placeholder>The Citation Flow couldn't load. Try again in a moment.</Placeholder>;
+	if (!domain && isLoadingDomains) return <Skeleton className="h-72 w-full" />;
+	if (!domain) return <Placeholder>No domains were cited under the current filters.</Placeholder>;
+	if (!flow) return <Skeleton className="h-72 w-full" />;
+	if (flow.totalCitations === 0) {
+		return <Placeholder>No AI answers cited {domain} under the current filters.</Placeholder>;
+	}
+	return <FlowView flow={flow} {...view} />;
+}
+
 export function CitationFlowCard({
 	domains,
 	domain,
 	onDomainChange,
 	search,
 	onSearchChange,
+	isLoadingDomains = false,
 	rows,
 	isLoading = false,
+	error,
 	modelOrder = [],
 }: {
 	domains: readonly FlowDomainOption[];
+	isLoadingDomains?: boolean;
 	domain: string | undefined;
 	onDomainChange: (domain: string) => void;
 	search: string;
 	onSearchChange: (search: string) => void;
 	rows: readonly CitationFlowRow[] | undefined;
 	isLoading?: boolean;
+	error?: Error | null;
 	modelOrder?: readonly string[];
 }) {
 	const [expanded, setExpanded] = useState(false);
@@ -267,16 +306,6 @@ export function CitationFlowCard({
 					})
 				: undefined,
 		[rows, domain, modelOrder, expanded],
-	);
-
-	const body = !domain ? (
-		<Placeholder>Choose a domain to see how AI engines cite it.</Placeholder>
-	) : !flow ? (
-		<Skeleton className="h-72 w-full" />
-	) : flow.totalCitations === 0 ? (
-		<Placeholder>No AI answers cited {domain} under the current filters.</Placeholder>
-	) : (
-		<FlowView flow={flow} width={width} modelOrder={modelOrder} expanded={expanded} onExpandedChange={setExpanded} />
 	);
 
 	return (
@@ -314,7 +343,16 @@ export function CitationFlowCard({
 			<Separator />
 			<CardContent>
 				<div ref={containerRef} className={cn("@container/flow transition-opacity", isLoading && flow && "opacity-60")}>
-					{body}
+					<FlowBody
+						domain={domain}
+						flow={flow}
+						error={error}
+						isLoadingDomains={isLoadingDomains}
+						width={width}
+						modelOrder={modelOrder}
+						expanded={expanded}
+						onExpandedChange={setExpanded}
+					/>
 				</div>
 			</CardContent>
 		</Card>

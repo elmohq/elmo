@@ -1,5 +1,3 @@
-// Pages arrive already normalized by the rollups (`cited_pages.url`), which drops
-// `www.`, query-string tracking and trailing slashes, so a section never splits on those.
 import { type CitationCategory, extractDomain } from "@workspace/lib/citations/domain-categories";
 
 export interface CitationFlowRow {
@@ -9,7 +7,7 @@ export interface CitationFlowRow {
 	count: number;
 }
 
-export type CitationFlowNodeKind = "engine" | "section" | "page" | "more";
+type CitationFlowNodeKind = "engine" | "section" | "page" | "more";
 
 export interface CitationFlowNode {
 	id: string;
@@ -48,9 +46,9 @@ export interface CitationFlowLimits {
 
 export const DEFAULT_FLOW_LIMITS: CitationFlowLimits = { maxSections: 6, maxPages: 12 };
 
-export const OTHER_SECTIONS = "Other sections";
+const OTHER_SECTIONS = "Other Sections";
 /** The section for pages directly under the domain (/pricing), which have no folder to name them. */
-export const TOP_LEVEL = "Top-level pages";
+const TOP_LEVEL = "Top-Level Pages";
 
 /** The same rule the server read uses: the domain itself or any subdomain of it. */
 export function matchesDomain(host: string, domain: string): boolean {
@@ -69,7 +67,7 @@ interface ParsedPage {
  * is (/blog), and single-segment pages like /pricing sit under the bare domain,
  * since a folder of one page tells you nothing.
  */
-export function sectionFor(url: string, domain: string): ParsedPage | null {
+function sectionFor(url: string, domain: string): ParsedPage | null {
 	let parsed: URL;
 	try {
 		parsed = new URL(url);

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CitationFlowCard } from "@/components/citations/citation-flow-card";
-import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "@/components/citations/citation-lists";
 import { type CitationFilters, useCitationDomains, useCitationFlow } from "@/hooks/use-citations";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { defaultFlowDomain, flowDomainOptions } from "@/lib/citation-flow";
 import type { CitationDomainListItem } from "@/server/citations";
 
@@ -41,6 +41,8 @@ function useFlowDomains(source: CitationFlowSource, search: string) {
 	return {
 		options: optionsFrom(searched.data?.items ?? []).filter((option) => !needle || option.domain.includes(needle)),
 		defaultDomain: defaultFlowDomain(optionsFrom(top.data?.items ?? [])),
+		isLoading: top.isPending,
+		error: top.error,
 	};
 }
 
@@ -54,20 +56,22 @@ export function CitationFlowSection({
 	onDomainChange: (domain: string) => void;
 }) {
 	const [search, setSearch] = useState("");
-	const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
-	const { options, defaultDomain } = useFlowDomains(source, debouncedSearch);
-	const shownDomain = domain ?? defaultDomain;
-	const { data, isFetching } = useCitationFlow(source.brandId, source.filters, shownDomain);
+	const debouncedSearch = useDebouncedValue(search);
+	const domains = useFlowDomains(source, debouncedSearch);
+	const shownDomain = domain ?? domains.defaultDomain;
+	const flow = useCitationFlow(source.brandId, source.filters, shownDomain);
 
 	return (
 		<CitationFlowCard
-			domains={options}
+			domains={domains.options}
+			isLoadingDomains={domains.isLoading}
 			domain={shownDomain}
 			onDomainChange={onDomainChange}
 			search={search}
 			onSearchChange={setSearch}
-			rows={data}
-			isLoading={isFetching}
+			rows={flow.data}
+			isLoading={flow.isPlaceholderData}
+			error={flow.error ?? domains.error}
 			modelOrder={source.modelOrder}
 		/>
 	);

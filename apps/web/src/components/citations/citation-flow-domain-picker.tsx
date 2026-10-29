@@ -41,7 +41,7 @@ function groupDomains(domains: readonly FlowDomainOption[]) {
 	const nested = new Set<FlowDomainOption>();
 	const groups: DomainGroup[] = [
 		{
-			value: "Your brand",
+			value: "Your Brand",
 			items: nestSubdomains(
 				domains.filter((d) => d.category === "brand"),
 				nested,
@@ -55,7 +55,7 @@ function groupDomains(domains: readonly FlowDomainOption[]) {
 			),
 		},
 		{
-			value: "Other sources",
+			value: "Other Sources",
 			items: nestSubdomains(
 				domains.filter((d) => !isBrandOrCompetitor(d)),
 				nested,
@@ -109,7 +109,7 @@ export function DomainPicker({
 			>
 				<span className="flex min-w-0 items-center gap-2">
 					<SiteIcon domain={value} size="xs" />
-					<span className="truncate font-medium">{value ?? "Choose a domain"}</span>
+					<span className="truncate font-medium">{value ?? "Choose a Domain"}</span>
 				</span>
 			</ComboboxTrigger>
 			<ComboboxContent align="end" className="w-80">

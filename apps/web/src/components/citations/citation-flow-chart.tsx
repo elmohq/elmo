@@ -24,7 +24,7 @@ export type Focus =
 
 export const engineLabel = (model: string) => getModelMeta(model).label;
 
-export function pct(value: number, total: number) {
+function pct(value: number, total: number) {
 	if (total <= 0) return "0%";
 	const share = (value / total) * 100;
 	return `${share > 0 && share < 1 ? "<1" : Math.round(share)}%`;
@@ -217,7 +217,10 @@ function NodeGroup({
 		<g
 			data-node={index}
 			opacity={lit ? 1 : 0.3}
-			className={cn("transition-opacity duration-150", button && "cursor-pointer outline-none")}
+			className={cn(
+				"transition-opacity duration-150",
+				button && "cursor-pointer focus-visible:outline-2 focus-visible:outline-ring",
+			)}
 			{...(button && { role: "button", tabIndex: 0, "aria-label": button.label, "aria-pressed": button.pressed })}
 		>
 			{children}
@@ -376,7 +379,7 @@ function FlowNodeMark({
 			href={node.url}
 			target="_blank"
 			rel="noreferrer"
-			className="group outline-none"
+			className="group focus-visible:outline-2 focus-visible:outline-ring"
 			aria-label={`${node.title || node.name}, ${node.value.toLocaleString()} citations`}
 		>
 			{mark}
@@ -510,8 +513,6 @@ export function FlowChart({
 			<svg
 				width={layout.width}
 				height={layout.height}
-				role="img"
-				aria-label={`${flow.totalCitations} citations to ${flow.domain} from ${flow.engines.length} engines across ${flow.pageCount} pages`}
 				className="block overflow-visible"
 				onMouseMove={(event) => {
 					const box = event.currentTarget.getBoundingClientRect();
@@ -524,6 +525,16 @@ export function FlowChart({
 					onHover(null);
 				}}
 				onClick={(event) => activate(focusAt(flow, event.target))}
+				onFocus={(event) => {
+					const box = event.currentTarget.getBoundingClientRect();
+					const mark = (event.target as Element).getBoundingClientRect();
+					setPointer({ x: mark.right - box.left, y: mark.top + mark.height / 2 - box.top });
+					onHover(focusAt(flow, event.target));
+				}}
+				onBlur={() => {
+					setPointer(null);
+					onHover(null);
+				}}
 				onKeyDown={(event) => {
 					if (event.key !== "Enter" && event.key !== " ") return;
 					const target = focusAt(flow, event.target);
@@ -532,6 +543,7 @@ export function FlowChart({
 					activate(target);
 				}}
 			>
+				<title>{`${flow.totalCitations} citations to ${flow.domain} from ${flow.engines.length} engines across ${flow.pageCount} pages`}</title>
 				<g>
 					<FlowBands flow={flow} layout={layout} colors={colors} emphasis={emphasis} />
 					{layout.nodes.map((positioned) => (
