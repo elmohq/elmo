@@ -21,7 +21,7 @@ import type { CitationUrl } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
@@ -268,15 +268,22 @@ async function resolveCitationScope(data: CitationFilters) {
 	const endDate = customRangeEnd(data.lookback);
 	const window = citationDateWindow(endDate ? new Date(`${endDate}T00:00:00Z`) : new Date(), days);
 
-	const [brandResult, competitorsList, allPrompts] = await Promise.all([
+	const [brandResult, competitorsList, brandPrompts] = await Promise.all([
 		db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
 		db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
 		db
-			.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
+			.select({
+				id: prompts.id,
+				value: prompts.value,
+				tags: prompts.tags,
+				systemTags: prompts.systemTags,
+				enabled: prompts.enabled,
+			})
 			.from(prompts)
-			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+			.where(eq(prompts.brandId, data.brandId)),
 	]);
 	const brand = brandResult[0];
+	const allPrompts = brandPrompts.filter((prompt) => prompt.enabled);
 
 	const brandDomains = new Set(
 		[extractDomain(brand?.website || ""), ...(brand?.additionalDomains || []).map(extractDomain)].filter(Boolean),
@@ -292,6 +299,8 @@ async function resolveCitationScope(data: CitationFilters) {
 		to: window.toDateStr,
 		timezone: "UTC",
 		promptIds,
+		excludedPromptIds:
+			tagFilter.length > 0 ? undefined : brandPrompts.filter((prompt) => !prompt.enabled).map((prompt) => prompt.id),
 		model: data.model,
 	};
 	return {

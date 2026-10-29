@@ -57,6 +57,12 @@ export interface AnalyticsScope {
 	timezone: string;
 	/** Undefined for every prompt; an empty list matches nothing. */
 	promptIds?: string[];
+	/**
+	 * The brand's other prompts, when `promptIds` is all of the rest. Filtering them
+	 * out instead of listing every included prompt keeps the planner's row estimate
+	 * honest: a long `IN` list reads as a small slice and gets nested-loop plans.
+	 */
+	excludedPromptIds?: string[];
 	model?: string;
 	webSearchEnabled?: boolean;
 }
@@ -80,12 +86,17 @@ export function scopeFilter(scope: AnalyticsScope, columns: ScopeColumns): SQL {
 	const { alias } = columns;
 	return sql`${column("brand_id", alias)} = ${scope.brandId}
 		${windowFilter(column(columns.time, alias), scope.from, scope.to, scope.timezone)}
-		${promptFilter(scope.promptIds, alias)}
+		${promptFilter(scope, alias)}
 		${modelFilter(scope.model, { alias })}
 		${webSearchFilter(scope.webSearchEnabled, alias)}`;
 }
 
-function promptFilter(promptIds: string[] | undefined, alias?: string): SQL {
+function promptFilter({ promptIds, excludedPromptIds }: AnalyticsScope, alias?: string): SQL {
+	if (promptIds?.length !== 0 && excludedPromptIds) {
+		return excludedPromptIds.length === 0
+			? sql``
+			: sql`AND ${column("prompt_id", alias)} NOT IN (${uuidList(excludedPromptIds)})`;
+	}
 	if (!promptIds) return sql``;
 	if (promptIds.length === 0) return sql`AND FALSE`;
 	return sql`AND ${column("prompt_id", alias)} IN (${uuidList(promptIds)})`;
