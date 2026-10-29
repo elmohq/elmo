@@ -1,5 +1,25 @@
 # @workspace/web
 
+## 0.7.7
+
+### Patch Changes
+
+- d5689fb: Add a citation flow chart to the citations page that shows which AI engines cite any domain — yours, a competitor's or a third party's — and which of its sections and pages they cite.
+- 9139b0a: Added Cloudflare Turnstile bot protection to Elmo Cloud email sign-up, sign-in, and password reset.
+- e139254: The API's cited URLs, cited domains and query fan-out lists are paginated and searchable, so large brands no longer get responses too big to return.
+- 25b2959: Keep light-colored brand icons with transparent backgrounds visible on the site.
+- 0982452: Additional citations and sentiment page speed optimizations.
+- e1b0c18: Added a `/.well-known/change-password` redirect to the in-app change-password page.
+- Updated dependencies [9139b0a]
+- Updated dependencies [e139254]
+- Updated dependencies [0982452]
+  - @workspace/deployment@0.7.7
+  - @workspace/api-spec@0.7.7
+  - @workspace/lib@0.7.7
+  - @workspace/config@0.7.7
+  - @workspace/og@0.7.7
+  - @workspace/ui@0.7.7
+
 ## 0.7.6
 
 ### Patch Changes

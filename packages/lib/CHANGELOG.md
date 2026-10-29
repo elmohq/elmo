@@ -1,5 +1,12 @@
 # @workspace/lib
 
+## 0.7.7
+
+### Patch Changes
+
+- 0982452: Additional citations and sentiment page speed optimizations.
+- @workspace/config@0.7.7
+
 ## 0.7.6
 
 ### Patch Changes

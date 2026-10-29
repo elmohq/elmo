@@ -1,5 +1,9 @@
 # @workspace/ui
 
+## 0.7.7
+
+No changes in this release.
+
 ## 0.7.6
 
 No changes in this release.
