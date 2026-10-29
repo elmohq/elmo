@@ -1,0 +1,119 @@
+{
+	"metaTitle": "AI Visibility Tools Directory: Compare 200+ Trackers",
+	"metaDescription": "Browse and filter 203 AI visibility tools, LLM trackers, and AEO software by engine coverage, features, category, and pricing. Includes 11 open-source options.",
+	"title": "AI Visibility Tools and LLM Trackers Directory",
+	"lead": "AI visibility tools—also called LLM visibility trackers, AEO software, or GEO platforms—monitor how often and how accurately answer engines like ChatGPT, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. This directory catalogs 203 tools across the market (with 128 actively indexed for side-by-side feature comparison) so you can filter the field by engine coverage, capabilities, licensing, and price.",
+	"sections": [
+		{
+			"heading": "What AI Search Visibility Analysis Software Actually Measures",
+			"paragraphs": [
+				"Traditional search visibility software tracks where your URLs rank on a results page for a list of keywords. AI visibility analysis software solves a different problem: when a buyer asks an answer engine a question about your category, there is often no list of ten blue links—just a synthesized response that names a few brands and links to a handful of sources.",
+				"To measure that presence, an LLM visibility tracker runs a defined set of buyer prompts against multiple AI engines on a recurring schedule. Each run captures the generated text, checks whether your brand or domain is named, extracts the [AI citations](/blog/ai-citations) the engine used to ground its claims, and compares your mention rate against named competitors. Because generative answers vary from run to run, reliable software samples prompts repeatedly over time rather than relying on one-off checks.",
+				"If you want our opinionated, tested shortlist rather than the full catalog, read our buyer's guide to the [best AI visibility tools](/blog/best-ai-visibility-tools). Use this directory when you want to filter the entire market by a specific engine, technical requirement, or budget constraint."
+			]
+		},
+		{
+			"heading": "How the AI Visibility Software Market Breaks Down",
+			"paragraphs": [
+				"The 203 platforms in this directory do not all do the same job. While most center on prompt monitoring, the broader landscape splits into six distinct categories depending on whether you need standalone tracking, content workflows, raw data, or self-hosted infrastructure."
+			],
+			"items": [
+				{
+					"title": "Dedicated AI Visibility Trackers (159 Tools)",
+					"body": "Purpose-built [AI visibility tracking platforms](/ai-visibility-tools/category/tracking) focus on scheduled prompt execution, brand mention detection, citation analytics, and competitor share of voice across multiple answer engines. Examples in the directory include Profound, Peec AI, OtterlyAI, Promptwatch, LLMrefs, and Elmo."
+				},
+				{
+					"title": "Content Generation and Workflows (14 Tools)",
+					"body": "Platforms in the [content generation category](/ai-visibility-tools/category/content-generation)—such as Writesonic, Frase, AirOps, and Scrunch—pair visibility tracking or audit data with automated content drafting, refresh workflows, and on-page optimization."
+				},
+				{
+					"title": "Open-Source Platforms (11 Tools)",
+					"body": "The [open-source category](/ai-visibility-tools/category/open-source) includes 11 tools with inspectable codebases that you can self-host on your own infrastructure, avoiding vendor lock-in and opaque scoring formulas."
+				},
+				{
+					"title": "E-Commerce and Shopping Trackers (9 Tools)",
+					"body": "Specialized [e-commerce visibility tools](/ai-visibility-tools/category/ecommerce) like Bluefish monitor how AI assistants recommend retail products, track shopping carousels, or cover retail-specific assistants such as Amazon Rufus."
+				},
+				{
+					"title": "Traditional SEO Suites (6 Tools)",
+					"body": "Established [traditional SEO platforms](/ai-visibility-tools/category/seo) like SE Visible have added AI Overviews and ChatGPT tracking modules alongside classic keyword rank tracking and backlink auditing."
+				},
+				{
+					"title": "Developer APIs and Scraping Providers (4 Tools)",
+					"body": "For engineering teams building internal trackers, the [API category](/ai-visibility-tools/category/api) covers underlying data providers and LLM scraping APIs that return structured answer and citation data at scale."
+				}
+			]
+		},
+		{
+			"heading": "Core Capabilities to Filter By When Evaluating Tools",
+			"paragraphs": [
+				"Because two tools can look identical on a homepage while collecting completely different data, narrowing down your options starts with verifying specific technical capabilities. You can filter the directory grid above—or browse dedicated [feature pages](/ai-visibility-tools/features)—across 35 tracked criteria."
+			],
+			"items": [
+				{
+					"title": "Engine Coverage Across Real Surfaces",
+					"body": "Almost every indexed tool tracks [ChatGPT](/ai-visibility-tools/features/chatgpt) (121 tools), [Perplexity](/ai-visibility-tools/features/perplexity) (108), and [Gemini](/ai-visibility-tools/features/gemini) (107). Coverage drops off for [Google AI Overviews](/ai-visibility-tools/features/google-ai-overviews) (91), [Claude](/ai-visibility-tools/features/claude) (90), [Google AI Mode](/ai-visibility-tools/features/google-ai-mode) (72), and [Microsoft Copilot](/ai-visibility-tools/features/microsoft-copilot) (51)."
+				},
+				{
+					"title": "Real UI Answers vs. Model APIs",
+					"body": "Raw model APIs often return different answers and citations than consumer apps. Only 11 indexed tools capture [real UI answers](/ai-visibility-tools/features/real-ui-answers) directly from consumer interfaces, and 7 support [bring your own keys](/ai-visibility-tools/features/bring-your-own-keys) for scraping or model providers."
+				},
+				{
+					"title": "Citations, Mentions, and Share of Voice",
+					"body": "Being named in an answer is separate from earning a source link. Look for tools that pair [brand mention tracking](/ai-visibility-tools/features/brand-mention-tracking) (125 tools) and [competitor benchmarking](/ai-visibility-tools/features/competitor-benchmarking) (120) with granular [citation analytics](/ai-visibility-tools/features/citation-analytics) (118)."
+				},
+				{
+					"title": "Query Fan-Out and Sentiment Analysis",
+					"body": "Before answering, search-enabled models run background web queries. Only 20 tools capture [query fan-out](/ai-visibility-tools/features/query-fan-out) searches to show how engines rewrite prompts, while 94 tools evaluate [sentiment analysis](/ai-visibility-tools/features/sentiment-analysis) to flag negative or inaccurate brand descriptions."
+				},
+				{
+					"title": "APIs, MCP Servers, and Agency Reporting",
+					"body": "If visibility data needs to live outside a vendor dashboard, filter for [API access](/ai-visibility-tools/features/data-export-api) (82 tools), [MCP access](/ai-visibility-tools/features/mcp-server) (69) for querying data from coding assistants, or [white-label agency features](/ai-visibility-tools/features/white-label) (56)."
+				}
+			]
+		},
+		{
+			"heading": "How to Narrow Down Your Options by Budget and Workflow",
+			"paragraphs": [
+				"Pricing in the AI visibility market ranges from $0 self-hosted software and $20/mo entry plans (such as Rankscale at $20/mo, Waikay at $24.95/mo, or Elmo Cloud and OtterlyAI at $29/mo) up to mid-market subscriptions ($79/mo to $295/mo for tools like LLMrefs, Peec AI, Promptwatch, Searchable, Scrunch, Goodie, and AthenaHQ) and custom enterprise contracts.",
+				"If you are testing the waters without budget, 64 tools in the directory offer a free tier or trial—and our guide to [free AI visibility tools](/blog/free-ai-visibility-tools) explains what free tiers, graders, and open-source self-hosting can and cannot do. When comparing paid tiers, check how each vendor meters usage: most price by the number of tracked prompts, the number of AI engines queried per prompt, and how frequently those prompts run.",
+				"Before committing to an annual contract, verify [why AI visibility scores differ](/blog/why-ai-visibility-scores-differ) across platforms. A tool that only queries cheap API endpoints once a week will look inexpensive on paper but miss the citations buyers actually see in consumer interfaces."
+			]
+		},
+		{
+			"heading": "Why We Built Elmo as an Open-Source Alternative",
+			"paragraphs": [
+				"Elmo publishes and maintains this directory. We built Elmo because most AI visibility software operates as a black box: vendors charge hundreds of dollars a month to run basic prompt loops, hide how they detect mentions or weight sentiment, and lock your historical answer data inside their proprietary dashboards.",
+				"Elmo is open-source (MIT) AI visibility software. You can self-host it for free using your own scraping provider and model API keys, or use managed Elmo Cloud starting at $29/mo (with white-label options for agencies). It tracks ChatGPT, Google AI Overviews, Google AI Mode, Gemini, Perplexity, Microsoft Copilot, Claude, and Grok—capturing real consumer UI answers via scraping providers alongside direct model APIs.",
+				"Every raw answer, cited URL, [query fan-out](/features/query-fan-out) search, [sentiment passage](/features/sentiment-analysis), and [share of voice](/features/share-of-voice) calculation is stored in PostgreSQL and inspectable in our repository. Where Elmo does not support a capability—such as prompt volume estimates, AI crawler log analytics, geographic tracking, or AI content generation—the directory filters above point you directly to the tools that do."
+			]
+		}
+	],
+	"listTitle": "All AI Visibility Tools and Trackers",
+	"faqs": [
+		{
+			"question": "What is AI visibility analysis software?",
+			"answer": "AI visibility analysis software (also known as an LLM visibility tracker or AEO tool) measures how often and how accurately AI answer engines mention and cite your brand. Instead of tracking traditional search engine rank positions, it runs buyer prompts across engines like ChatGPT, Perplexity, Gemini, and Google AI Overviews on a schedule to track brand mentions, cited URLs, sentiment, and competitor share of voice."
+		},
+		{
+			"question": "What is the difference between AI visibility tools, LLM trackers, AEO software, and GEO tools?",
+			"answer": "Practitioners use these terms interchangeably to describe the same category of software. LLM visibility trackers emphasize monitoring large language models, while AEO (Answer Engine Optimization) and GEO (Generative Engine Optimization) tools emphasize optimizing content to earn more citations inside AI-generated answers. In this directory, 159 tools focus primarily on visibility tracking, while others bundle content generation, site audits, or traditional SEO."
+		},
+		{
+			"question": "Which AI engines should an LLM visibility tool track?",
+			"answer": "At a minimum, most teams track ChatGPT, Perplexity, Google Gemini, and Google AI Overviews, as these account for the bulk of consumer AI search activity. Depending on your audience, you may also want coverage for Google AI Mode, Microsoft Copilot, Claude, Grok, DeepSeek, or Meta AI. In our directory of 128 indexed tools, 121 support ChatGPT and 108 support Perplexity, while 91 cover Google AI Overviews and 72 cover Google AI Mode."
+		},
+		{
+			"question": "Are there open-source or free AI visibility tracking tools?",
+			"answer": "Yes. This directory lists 11 open-source AI visibility tools and 64 platforms that offer a free tier or free grader. Elmo is an MIT-licensed open-source platform that you can self-host for free by bringing your own scraping or model API keys, or run on managed Elmo Cloud starting at $29 per month."
+		},
+		{
+			"question": "How much does AI visibility tracking software cost?",
+			"answer": "Entry-level self-serve plans start around $20 to $39 per month—including Rankscale ($20/mo), Waikay ($24.95/mo), Elmo Cloud ($29/mo), OtterlyAI ($29/mo), and Frase ($39/mo). Mid-market platforms typically charge between $79 and $295 per month (such as LLMrefs, Writesonic, Peec AI, Promptwatch, Searchable, Scrunch, Goodie, and AthenaHQ), while enterprise platforms use custom pricing based on prompt volume and engine count."
+		},
+		{
+			"question": "Why do different LLM visibility trackers report different scores for the same brand?",
+			"answer": "AI visibility scores depend entirely on which prompts are tracked, how frequently they are sampled, and how the tool queries each engine. A platform that scrapes the live ChatGPT or Google AI Overviews consumer interface will capture different citations and mentions than one calling a raw model API without web search. Because generative responses vary between runs, small sample sizes or unweighted prompt sets also cause large swings between tools."
+		}
+	]
+}
