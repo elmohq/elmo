@@ -387,7 +387,7 @@ export async function getPerPromptGooglePages(scope: AnalyticsScope): Promise<Pe
 		) p
 		JOIN rollup_citation_pages cp ON cp.brand_id = ${scope.brandId} AND cp.page_id = p.page_id
 		WHERE cp.static_category = ${GOOGLE_STATIC_CATEGORY}
-		ORDER BY p.prompt_id, p.count DESC, cp.url
+		ORDER BY p.prompt_id, p.count DESC, cp.url COLLATE "C"
 	`);
 }
 
@@ -511,7 +511,7 @@ export async function getFanoutQueryPage(
 			FROM queries
 			${term ? sql`WHERE query ILIKE ${containing(term)}` : sql``}
 			GROUP BY query`,
-		sql`runs DESC, prompt_count DESC, query`,
+		sql`runs DESC, prompt_count DESC, query COLLATE "C"`,
 		limit,
 		offset,
 	);

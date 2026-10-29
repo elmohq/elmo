@@ -1,10 +1,19 @@
-import { memoryReader } from "@/lib/brand-data/memory-reader";
+import type { QuoteText } from "@/lib/brand-data/memory-entity-reads";
+import { createMemoryReader } from "@/lib/brand-data/memory-reader";
 import { computations } from "@/lib/brand-data/worker/computations";
 import type { WorkerRequest, WorkerResponse } from "@/lib/brand-data/worker/protocol";
 import { brandDataStatus, removeOtherFormats, setStatusListener, syncBrandData } from "@/lib/brand-data/worker/sync";
 import { clearSharedReads } from "@/lib/shared-read";
 
 const post = (message: WorkerResponse) => self.postMessage(message);
+
+const memoryReader = createMemoryReader(async (brandId, runIds) => {
+	const response = await fetch(`/api/brand-data/${encodeURIComponent(brandId)}/quotes?runIds=${runIds.join(",")}`, {
+		credentials: "same-origin",
+	});
+	if (!response.ok) throw new Error(`Quote request failed: ${response.status}`);
+	return (await response.json()) as QuoteText[];
+});
 
 const MAX_REMEMBERED = 200;
 const remembered = new Map<string, Promise<unknown>>();
@@ -23,7 +32,7 @@ function compute(brandId: string, name: keyof typeof computations, input: unknow
 
 setStatusListener((brandId, status) => {
 	for (const key of remembered.keys()) if (key.startsWith(`${brandId}|`)) remembered.delete(key);
-	clearSharedReads();
+	clearSharedReads(memoryReader);
 	post({ type: "status", brandId, status });
 });
 

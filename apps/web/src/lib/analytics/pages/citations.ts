@@ -302,7 +302,7 @@ function getGoogleModule(
 ) {
 	const brandName = brand?.name ?? "";
 	const competitorNames = competitorsList.map((c) => ({ id: c.id, name: c.name }));
-	return sharedRead(`google-module:${JSON.stringify([scope, brandName, competitorNames])}`, async () => {
+	return sharedRead(reader, `google-module:${JSON.stringify([scope, brandName, competitorNames])}`, async () => {
 		const promptsById = new Map(allPrompts.map((prompt) => [prompt.id, prompt.value]));
 		return buildGoogleModule(
 			scope.promptIds.length > 0 ? await reader.getPerPromptGooglePages(scope) : [],

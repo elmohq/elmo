@@ -526,5 +526,5 @@ export async function getCitationFlowRows(scope: AnalyticsScope, domain: string)
 		}
 		row.count += t.citations[i];
 	}
-	return [...groups.values()].sort((a, b) => b.count - a.count);
+	return [...groups.values()].sort((a, b) => b.count - a.count || cmp(a.url, b.url) || cmp(a.model, b.model));
 }

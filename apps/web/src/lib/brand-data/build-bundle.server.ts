@@ -1,6 +1,7 @@
 import { db } from "@workspace/lib/db/db";
+import { brandDataVersions } from "@workspace/lib/db/schema";
 import { getAllProviders } from "@workspace/lib/providers";
-import { type SQL, sql } from "drizzle-orm";
+import { eq, type SQL, sql } from "drizzle-orm";
 import type { BrandBundle } from "@/lib/brand-data/bundle";
 import {
 	assembleBundle,
@@ -13,58 +14,23 @@ import {
 
 const rows = async <T>(query: SQL) => (await db.execute(query)).rows as T[];
 
-/** Cited pages are chunked by id; new pages get new ids, so older ranges stay put. */
+/** Must match the `pages:` chunk ids the `brand_data_versions` triggers write. */
 const PAGE_ID_RANGE = 200_000;
 
-const TABLES: Record<RunTable, { table: string; fingerprint: SQL }> = {
-	promptRuns: {
-		table: "rollup_prompt_runs",
-		fingerprint: sql`concat(count(*), '|', sum(runs), '|', sum(brand_mentioned_runs), '|', sum(competitor_mentions), '|', sum(positive_runs), '|', sum(fanout_queries), '|', max(last_run_at))`,
-	},
-	competitorMentions: {
-		table: "rollup_competitor_mentions",
-		fingerprint: sql`concat(count(*), '|', sum(runs), '|', sum(positive_runs), '|', sum(position_sum), '|', sum(hashtext(competitor_name)))`,
-	},
-	webQueries: {
-		table: "rollup_web_queries",
-		fingerprint: sql`concat(count(*), '|', sum(runs), '|', sum(brand_mentioned_runs), '|', sum(hashtext(query)))`,
-	},
-	sentimentQuotes: {
-		table: "rollup_sentiment_quotes",
-		fingerprint: sql`concat(count(*), '|', sum(hashtext(run_id::text)), '|', sum(confidence))`,
-	},
-	citations: {
-		table: "rollup_citation_urls",
-		fingerprint: sql`concat(count(*), '|', sum(citations), '|', sum(position_sum), '|', sum(page_id))`,
-	},
+const TABLES: Record<RunTable, string> = {
+	promptRuns: "rollup_prompt_runs",
+	competitorMentions: "rollup_competitor_mentions",
+	webQueries: "rollup_web_queries",
+	sentimentQuotes: "rollup_sentiment_quotes",
+	citations: "rollup_citation_urls",
 };
 
-/** Cheap enough for every poll: per-month fingerprints from the rollups' own index. */
 export async function chunkManifest(brandId: string): Promise<ChunkManifestEntry[]> {
-	const months = (name: RunTable) =>
-		sql`SELECT ${name}::text || ':' || to_char(bucket AT TIME ZONE 'UTC', 'YYYY-MM') AS id, md5(${TABLES[name].fingerprint}) AS hash
-			FROM ${sql.raw(TABLES[name].table)} WHERE brand_id = ${brandId} GROUP BY 1`;
-	const result = await rows<ChunkManifestEntry>(sql`
-		${months("promptRuns")}
-		UNION ALL ${months("competitorMentions")}
-		UNION ALL ${months("webQueries")}
-		UNION ALL ${months("sentimentQuotes")}
-		UNION ALL ${months("citations")}
-		UNION ALL
-		SELECT 'pages:' || (page_id / ${sql.raw(String(PAGE_ID_RANGE))})::text, md5(concat(count(*), '|', sum(page_id), '|', sum(hashtext(concat(url, title, domain, page_type, static_category)))))
-		FROM rollup_citation_pages WHERE brand_id = ${brandId} GROUP BY page_id / ${sql.raw(String(PAGE_ID_RANGE))}
-		UNION ALL
-		SELECT 'entities', md5(concat_ws('|',
-			(SELECT concat(name, website, additional_domains, delay_override_hours) FROM brands WHERE id = ${brandId}),
-			(SELECT string_agg(concat(id, value, enabled, tags, system_tags, created_at), ',' ORDER BY id) FROM prompts WHERE brand_id = ${brandId}),
-			(SELECT string_agg(concat(id, name, domains), ',' ORDER BY id) FROM competitors WHERE brand_id = ${brandId})
-		))
-	`);
-	return result;
-}
-
-export async function brandDataVersion(brandId: string): Promise<string> {
-	return manifestVersion(await chunkManifest(brandId));
+	const versions = await db
+		.select({ id: brandDataVersions.chunkId, version: brandDataVersions.version })
+		.from(brandDataVersions)
+		.where(eq(brandDataVersions.brandId, brandId));
+	return versions.map(({ id, version }) => ({ id, hash: String(version) }));
 }
 
 function dictionaries() {
@@ -205,7 +171,7 @@ const DICT_FOR: Record<string, string> = {
 async function runChunk(brandId: string, table: RunTable, month: string): Promise<BrandChunk["data"]> {
 	const start = `${month}-01T00:00:00Z`;
 	const result = await rows<KeyRow & Record<string, unknown>>(sql`
-		SELECT * FROM ${sql.raw(TABLES[table].table)}
+		SELECT * FROM ${sql.raw(TABLES[table])}
 		WHERE brand_id = ${brandId}
 			AND bucket >= ${start}::timestamptz AND bucket < (${start}::timestamptz + interval '1 month')
 		ORDER BY bucket
