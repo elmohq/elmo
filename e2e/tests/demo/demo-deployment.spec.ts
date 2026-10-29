@@ -180,6 +180,7 @@ test.describe("Demo features", () => {
     const menu = await openAccountMenu(page);
     await expect(menu.getByRole("menuitem").first()).toBeVisible();
     await expect(menu.getByRole("menuitem", { name: "Log Out" })).toHaveCount(0);
+    await expect(menu.locator('[role="separator"]:last-child')).toHaveCount(0);
   });
 
   test("the demo pill is shown", async ({ page }) => {
