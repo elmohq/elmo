@@ -4,7 +4,6 @@ import { onBrandDataChange, syncBrandData } from "@/lib/brand-data/client";
 
 const SYNC_INTERVAL_MS = 60_000;
 
-/** Keeps the brand's synced data current and recomputes its pages when it changes. */
 export function useBrandDataSync(brandId: string | undefined) {
 	const queryClient = useQueryClient();
 	useEffect(() => {

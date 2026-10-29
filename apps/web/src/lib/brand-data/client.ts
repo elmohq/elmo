@@ -21,6 +21,14 @@ function getWorker(): Worker | null {
 		return worker;
 	}
 	worker = new Worker(new URL("./worker/brand-data.worker.ts", import.meta.url), { type: "module" });
+	worker.onerror = () => {
+		worker = null;
+		const synced = [...statuses.keys()];
+		statuses.clear();
+		for (const request of pending.values()) request.reject(new Error("Brand data worker stopped"));
+		pending.clear();
+		for (const brandId of synced) for (const listener of listeners) listener(brandId);
+	};
 	worker.onmessage = ({ data: message }: MessageEvent<WorkerResponse>) => {
 		if (message.type === "status") {
 			statuses.set(message.brandId, message.status);

@@ -23,7 +23,6 @@ function keys(columns: RunKeyColumns): RunKeys {
 	};
 }
 
-/** A brand's bundle decoded into typed columns, rows sorted by bucket. */
 export function decodeBrandBundle(bundle: BrandBundle) {
 	const r = bundle.promptRuns;
 	const c = bundle.competitorMentions;
@@ -88,16 +87,23 @@ export function decodeBrandBundle(bundle: BrandBundle) {
 export type BrandStore = ReturnType<typeof decodeBrandBundle>;
 export type StoreRunKeys = RunKeys;
 
+const MAX_STORES = 3;
 const stores = new Map<string, BrandStore>();
 
-export function setBrandStore(store: BrandStore) {
+/** Returns the brands evicted to stay within `MAX_STORES`, least recently used first. */
+export function setBrandStore(store: BrandStore): string[] {
+	stores.delete(store.bundle.brandId);
 	stores.set(store.bundle.brandId, store);
+	const evicted = [...stores.keys()].slice(0, Math.max(0, stores.size - MAX_STORES));
+	for (const brandId of evicted) stores.delete(brandId);
+	return evicted;
 }
 
 export function getBrandStore(brandId: string): BrandStore | undefined {
-	return stores.get(brandId);
-}
-
-export function clearBrandStore(brandId: string) {
-	stores.delete(brandId);
+	const store = stores.get(brandId);
+	if (store) {
+		stores.delete(brandId);
+		stores.set(brandId, store);
+	}
+	return store;
 }

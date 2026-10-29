@@ -55,7 +55,6 @@ async function idbWrite(brandId: string, manifest: ChunkManifestEntry[], put: Br
 	});
 }
 
-/** Drops copies written by other bundle formats, which this build cannot read. */
 export async function removeOtherFormats() {
 	const databases = await indexedDB.databases?.().catch(() => []);
 	for (const { name } of databases ?? []) {
@@ -99,10 +98,6 @@ export class IncompatibleFormatError extends Error {
 	}
 }
 
-/**
- * One pass: compare the server's manifest with what the collection holds, drop
- * chunks the server no longer has, and fetch changed ones core first.
- */
 async function syncOnce(brandId: string, held: Collection<BrandChunk, string>, apply: Apply) {
 	const { format, chunks: manifest } = await fetchJson<ChunkManifest>(dataUrl(brandId));
 	if (format !== BRAND_DATA_FORMAT) throw new IncompatibleFormatError(format);
@@ -206,13 +201,26 @@ function publish(brandId: string, collection: Collection<BrandChunk, string>, ma
 		: [...collection.values()].filter((chunk) => !isCitationChunk(chunk.id));
 	const bundle = assembleBundle(brandId, version, chunks);
 	if (!bundle) return;
-	setBrandStore(decodeBrandBundle(bundle));
+	for (const evicted of setBrandStore(decodeBrandBundle(bundle))) forget(evicted);
 	const status = { core: true, citations, version };
 	statuses.set(brandId, status);
 	onStatus(brandId, status);
 }
 
-/** Starts the brand's sync if needed and brings it up to date. */
-export function syncBrandData(brandId: string): Promise<void> {
-	return brandSync(brandId).run();
+/** Drops the brand's synced copy from memory, so its pages ask the server until it syncs again. */
+function forget(brandId: string) {
+	const sync = syncs.get(brandId);
+	syncs.delete(brandId);
+	void sync?.collection.cleanup();
+	statuses.delete(brandId);
+	onStatus(brandId, { core: false, citations: false, version: null });
+}
+
+export async function syncBrandData(brandId: string): Promise<void> {
+	try {
+		await brandSync(brandId).run();
+	} catch (error) {
+		if (error instanceof IncompatibleFormatError) forget(brandId);
+		throw error;
+	}
 }

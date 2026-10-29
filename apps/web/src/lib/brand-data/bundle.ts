@@ -1,11 +1,5 @@
-/**
- * A brand's analytics data as the browser holds it: every rollup row at its
- * stored grain, with repeated strings sent once in dictionaries and columns sent
- * as plain number arrays. Grain stays the rollups' quarter hour so a viewer's
- * timezone decides the day boundaries exactly as the server does.
- */
+/** Rows stay at the rollups' quarter-hour grain so the viewer's timezone decides day boundaries, as on the server. */
 
-/** Shared by every rollup table: which bucket, prompt and target a row belongs to. */
 export interface RunKeyColumns {
 	/** Minutes since the Unix epoch. */
 	bucket: number[];

@@ -2,15 +2,7 @@ import { db } from "@workspace/lib/db/db";
 import { brandDataVersions } from "@workspace/lib/db/schema";
 import { getAllProviders } from "@workspace/lib/providers";
 import { eq, type SQL, sql } from "drizzle-orm";
-import type { BrandBundle } from "@/lib/brand-data/bundle";
-import {
-	assembleBundle,
-	type BrandChunk,
-	type ChunkManifestEntry,
-	type EntitiesChunk,
-	manifestVersion,
-	type RunTable,
-} from "@/lib/brand-data/chunks";
+import type { BrandChunk, ChunkManifestEntry, EntitiesChunk, RunTable } from "@/lib/brand-data/chunks";
 
 const rows = async <T>(query: SQL) => (await db.execute(query)).rows as T[];
 
@@ -113,7 +105,6 @@ async function entitiesChunk(brandId: string): Promise<EntitiesChunk> {
 	};
 }
 
-/** The columns each table's chunk carries, and how to read each from a row. */
 const RUN_COLUMNS: Record<RunTable, Record<string, (row: Record<string, unknown>) => number | string | null>> = {
 	promptRuns: {
 		runs: (r) => r.runs as number,
@@ -246,12 +237,4 @@ export async function buildChunks(brandId: string, manifest: ChunkManifestEntry[
 			return { id, hash, data };
 		}),
 	);
-}
-
-/** Every chunk merged, as the browser would assemble them. */
-export async function buildBrandBundle(brandId: string): Promise<BrandBundle> {
-	const manifest = await chunkManifest(brandId);
-	const bundle = assembleBundle(brandId, manifestVersion(manifest), await buildChunks(brandId, manifest));
-	if (!bundle) throw new Error("Brand not found");
-	return bundle;
 }

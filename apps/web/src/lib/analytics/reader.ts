@@ -3,7 +3,6 @@ import type * as citationRead from "@/lib/citation-read";
 import type * as postgresRead from "@/lib/postgres-read";
 import type * as rollupRead from "@/lib/rollup-read";
 
-/** Everything the analytics read: Postgres on the server, the brand's synced data in the browser. */
 export interface AnalyticsReader {
 	getBrandRow(brandId: string): Promise<AnalyticsBrandRow | undefined>;
 	getCompetitorRows(brandId: string): Promise<AnalyticsCompetitorRow[]>;

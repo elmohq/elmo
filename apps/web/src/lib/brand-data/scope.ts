@@ -57,7 +57,6 @@ const nextDay = (day: string) => {
 };
 
 const localDays = new Map<string, Map<number, string>>();
-/** The calendar day a bucket (minutes since the epoch) falls on in `timezone`. */
 export function localDay(bucketMinutes: number, timezone: string): string {
 	let cache = localDays.get(timezone);
 	if (!cache) {
@@ -76,7 +75,6 @@ export function localDayOfMs(ms: number, timezone: string): string {
 	return dayFormat(timezone).format(new Date(ms));
 }
 
-/** Minutes bounds `[start, end)` of the scope's window, null for unbounded. */
 export function windowMinutes(scope: AnalyticsScope): { start: number; end: number } {
 	const start = scope.from
 		? (isCalendarDay(scope.from) ? zonedMidnight(scope.from, scope.timezone) : Date.parse(scope.from)) / 60_000
@@ -98,7 +96,6 @@ function lowerBound(values: Int32Array, length: number, target: number) {
 	return lo;
 }
 
-/** Which prompts the scope covers, by store index; null for all of them. */
 function promptMask(store: BrandStore, scope: AnalyticsScope): Uint8Array | null {
 	const { promptIds, excludedPromptIds } = scope;
 	if (promptIds?.length !== 0 && excludedPromptIds) {

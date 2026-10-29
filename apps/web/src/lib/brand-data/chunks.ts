@@ -1,9 +1,4 @@
-/**
- * A brand's data as independently versioned chunks: its entities, every rollup
- * table by UTC month, and its cited pages by id range. A rollup refresh rewrites
- * recent buckets, so a sync usually fetches only the current month's chunks.
- * Each chunk carries its own dictionaries; `assembleBundle` merges them.
- */
+/** Rollup tables are chunked by UTC month because a refresh rewrites recent buckets, so a sync usually refetches only the current month. */
 import type { BrandBundle, BundleBrand, BundleCompetitor, BundlePrompt } from "@/lib/brand-data/bundle";
 
 /** Bump when a chunk's shape changes; browsers drop copies in any other format. */
@@ -30,7 +25,6 @@ export interface EntitiesChunk {
 	apiProviderIds: string[];
 }
 
-/** Columns keyed by name; string-valued keys are indexes into `dicts`. */
 export interface RunChunk {
 	kind: "run";
 	table: RunTable;
@@ -50,7 +44,6 @@ export interface BrandChunk {
 	data: EntitiesChunk | RunChunk | PagesChunk;
 }
 
-/** Which dictionary each dictionary-encoded column draws from. */
 export const DICTIONARY_COLUMNS: Record<string, string> = {
 	prompt: "promptIds",
 	model: "models",
@@ -92,7 +85,6 @@ const emptyKeys = () => ({
 
 type Dictionaries = Record<keyof BrandBundle["dicts"], ReturnType<typeof dictionary>>;
 
-/** Adds every chunk's pages, ordered by URL so URL-ordered reads need no sort; returns page id → index. */
 function appendPages(bundle: BrandBundle, dicts: Dictionaries, chunks: BrandChunk[]): Map<number, number> {
 	const pageRows: {
 		id: number;
@@ -131,7 +123,6 @@ function appendPages(bundle: BrandBundle, dicts: Dictionaries, chunks: BrandChun
 	return pageIndex;
 }
 
-/** How a chunk column's values become the bundle's: prompt and page references re-indexed, dictionary columns re-mapped. */
 function columnMapper(
 	name: string,
 	values: (number | string | null)[],
@@ -150,7 +141,6 @@ function columnMapper(
 	return (i) => dicts[dictName].id(local[dictName][values[i] as number]);
 }
 
-/** Appends one month of a run table, mapping the chunk's dictionaries onto the bundle's. */
 function appendRuns(
 	bundle: BrandBundle,
 	dicts: Dictionaries,
@@ -172,7 +162,6 @@ function appendRuns(
 	}
 }
 
-/** Merges chunks into the single bundle the in-memory reads expect. */
 export function assembleBundle(brandId: string, version: string, chunks: Iterable<BrandChunk>): BrandBundle | null {
 	const all = [...chunks];
 	const entities = all.find((chunk) => chunk.data.kind === "entities")?.data as EntitiesChunk | undefined;
@@ -251,7 +240,6 @@ export function assembleBundle(brandId: string, version: string, chunks: Iterabl
 	return bundle;
 }
 
-/** The version of everything the chunks hold, so a status check needs only the manifest. */
 export function manifestVersion(manifest: ChunkManifestEntry[]): string {
 	let hash = 0;
 	for (const { id, hash: chunkHash } of [...manifest].sort((a, b) => (a.id < b.id ? -1 : 1))) {

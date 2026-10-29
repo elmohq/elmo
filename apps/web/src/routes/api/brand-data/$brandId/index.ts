@@ -1,7 +1,7 @@
 import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 import { createFileRoute } from "@tanstack/react-router";
-import { buildChunks, chunkManifest } from "@/lib/brand-data/build-bundle.server";
 import { BRAND_DATA_FORMAT, type BrandChunk, type ChunkManifest } from "@/lib/brand-data/chunks";
+import { buildChunks, chunkManifest } from "@/lib/brand-data/chunks.server";
 import { authorizedBrand } from "@/routes/api/brand-data/-authorize";
 
 const MAX_CACHED_CHUNKS = 2_000;

@@ -1,8 +1,4 @@
-/**
- * The rollup reads of `rollup-read.ts`, answered from a brand's in-memory store.
- * Each function returns what its SQL twin returns, row for row, so the analytics
- * code above them cannot tell which one it is talking to.
- */
+/** Mirrors `rollup-read.ts` row for row, so the analytics above cannot tell which reader they are using. */
 import type { AnalyticsScope, DailyScope } from "@/lib/analytics-sql";
 import { localDay, localDayOfMs, scopeRows } from "@/lib/brand-data/scope";
 import { type BrandStore, getBrandStore } from "@/lib/brand-data/store";
@@ -223,7 +219,6 @@ function* dateRange(from: string, to: string) {
 
 type Observation = { runs: number; mentioned: number };
 
-/** Adds one prompt to the daily totals: its own runs, and its latest result carried over every day. */
 function carryPrompt(
 	totals: VisibilityDailyAggregate[],
 	dates: string[],

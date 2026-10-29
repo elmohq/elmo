@@ -1,9 +1,4 @@
-/**
- * The citation reads of `citation-read.ts`, answered from a brand's in-memory
- * store. Pages are handled by their index in the store: a URL ordering computed
- * once per store turns every `count DESC, url` sort into a counting sort, and a
- * scope's rows and per-page sums are kept for the cards that ask again.
- */
+/** Mirrors `citation-read.ts` row for row. A URL ordering computed once per store turns each `count DESC, url` sort into a counting sort. */
 import { CONTENT_PUBLISHER_CATEGORIES } from "@workspace/lib/citations/domain-categories";
 import type { AnalyticsScope } from "@/lib/analytics-sql";
 import { ownerResolver, storeFor } from "@/lib/brand-data/memory-reads";
@@ -35,14 +30,11 @@ function avgPosition(positionSum: number, count: number): number | null {
 }
 
 interface StoreIndex {
-	/** Page indexes in URL order. */
 	pagesByUrl: Int32Array;
-	/** Each page's place in that order. */
 	urlRank: Int32Array;
 	googleCategory: number;
 	isGoogle: Uint8Array;
 	redditDomain: Uint8Array;
-	/** Kept per scope or owned-domain key; a page load asks for a handful. */
 	rows: Map<string, Int32Array>;
 	sums: Map<string, PageSums>;
 	owners: Map<string, Uint8Array>;
@@ -105,7 +97,6 @@ function rowsFor(store: BrandStore, scope: AnalyticsScope): Int32Array {
 }
 
 interface PageSums {
-	/** Pages the scope cites, every category, in URL order. */
 	pages: Int32Array;
 	count: Float64Array;
 	positionSum: Float64Array;
@@ -139,7 +130,6 @@ function ownersFor(store: BrandStore, owned: OwnedDomains): Uint8Array {
 	});
 }
 
-/** The page's class for this brand, as `classifiedPages` resolves it. */
 function classify(store: BrandStore, owners: Uint8Array, p: number) {
 	const pages = store.citationPages;
 	const owner = OWNERS[owners[pages.domain[p]]];
@@ -152,11 +142,9 @@ function classify(store: BrandStore, owners: Uint8Array, p: number) {
 
 interface PageClasses {
 	names: { category: string; pageType: string }[];
-	/** Index into `names`, per page. */
 	code: Uint16Array;
 }
 
-/** Every page's class for this brand, coded once per set of owned domains. */
 function classesFor(store: BrandStore, owned: OwnedDomains): PageClasses {
 	return remember(storeIndex(store).classes, JSON.stringify(owned), () => {
 		const owners = ownersFor(store, owned);
@@ -273,7 +261,6 @@ interface DomainStat extends CitationDomainStatsRow {
 	top_url: string | null;
 }
 
-/** Each domain's citations over the scope and its most cited page (`count DESC, url`). */
 function domainTops(store: BrandStore, sums: PageSums) {
 	const { urlRank } = storeIndex(store);
 	const domainCount = store.bundle.dicts.domains.length;

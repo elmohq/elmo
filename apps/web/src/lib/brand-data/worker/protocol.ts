@@ -6,7 +6,6 @@ export interface BrandDataStatus {
 	version: string | null;
 }
 
-/** The analytics computed in the worker, and the part of a brand's data each one needs. */
 export const LOCAL_COMPUTATIONS = {
 	dashboardSummary: "core",
 	shareOfVoice: "core",

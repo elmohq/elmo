@@ -18,8 +18,15 @@ const memoryReader = createMemoryReader(async (brandId, runIds) => {
 const MAX_REMEMBERED = 200;
 const remembered = new Map<string, Promise<unknown>>();
 
+const canonical = (value: unknown) =>
+	JSON.stringify(value, (_key, v) =>
+		v && typeof v === "object" && !Array.isArray(v)
+			? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : 1)))
+			: v,
+	);
+
 function compute(brandId: string, name: keyof typeof computations, input: unknown) {
-	const key = `${brandId}|${brandDataStatus(brandId).version}|${name}|${JSON.stringify(input)}`;
+	const key = `${brandId}|${brandDataStatus(brandId).version}|${name}|${canonical(input)}`;
 	let result = remembered.get(key);
 	if (!result) {
 		result = computations[name](memoryReader, input as never);

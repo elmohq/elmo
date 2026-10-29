@@ -1,5 +1,3 @@
-/** Entity reads and sentiment quotes, answered from a brand's in-memory store. */
-
 import type { MentionAssessment } from "@workspace/lib/mentions";
 import type { AnalyticsBrandRow, AnalyticsCompetitorRow, AnalyticsPromptRow } from "@/lib/analytics/entities";
 import type { PromptListScope } from "@/lib/analytics-sql";

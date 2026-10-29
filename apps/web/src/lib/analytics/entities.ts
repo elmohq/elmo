@@ -1,4 +1,3 @@
-/** The brand-level rows the analytics read alongside its rollups. */
 export interface AnalyticsBrandRow {
 	id: string;
 	name: string;

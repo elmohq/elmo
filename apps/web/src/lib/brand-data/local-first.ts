@@ -9,7 +9,6 @@ import * as visibility from "@/server/visibility";
 
 type ServerFn<D, R> = (options: { data: D }) => Promise<R>;
 
-/** Answers in the browser once the brand's data has synced; until then, and if that fails, asks the server. */
 function localFirst<D extends { brandId: string }, R>(name: LocalComputation, server: ServerFn<D, R>): ServerFn<D, R> {
 	return async (options) => {
 		if (!canComputeLocally(options.data.brandId, name)) return server(options);
