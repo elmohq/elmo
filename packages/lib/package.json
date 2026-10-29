@@ -55,9 +55,15 @@
 		"./rollups/fanout": "./src/rollups/fanout.ts"
 	},
 	"dependencies": {
+<<<<<<< HEAD
 		"@ai-sdk/anthropic": "^4.0.87",
 		"@ai-sdk/openai": "^4.0.101",
 		"@anthropic-ai/sdk": "^1.3.0",
+=======
+		"@ai-sdk/anthropic": "^4.0.88",
+		"@ai-sdk/openai": "^4.0.102",
+		"@anthropic-ai/sdk": "^0.133.0",
+>>>>>>> origin/main
 		"@better-auth/api-key": "1.7.12",
 		"@better-auth/cimd": "1.7.12",
 		"@better-auth/core": "1.7.12",
@@ -68,7 +74,7 @@
 		"@brightdata/sdk": "^1.2.0",
 		"@mozilla/readability": "^0.6.0",
 		"@workspace/config": "workspace:*",
-		"ai": "^7.0.150",
+		"ai": "^7.0.153",
 		"better-auth": "^1.7.12",
 		"dataforseo-client": "^2.1.9",
 		"drizzle-orm": "^0.45.4",
