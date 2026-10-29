@@ -106,26 +106,32 @@ CREATE TRIGGER "brands_brand_data_update" AFTER UPDATE ON "brands"
 INSERT INTO "brand_data_versions" ("brand_id", "chunk_id", "version")
 SELECT "brand_id", 'promptRuns:' || "month", nextval('brand_data_version_seq')
 FROM (SELECT DISTINCT "brand_id", to_char("bucket" AT TIME ZONE 'UTC', 'YYYY-MM') AS "month" FROM "rollup_prompt_runs") existing
+WHERE EXISTS (SELECT 1 FROM "brands" WHERE "brands"."id" = existing."brand_id")
 ON CONFLICT DO NOTHING;--> statement-breakpoint
 INSERT INTO "brand_data_versions" ("brand_id", "chunk_id", "version")
 SELECT "brand_id", 'competitorMentions:' || "month", nextval('brand_data_version_seq')
 FROM (SELECT DISTINCT "brand_id", to_char("bucket" AT TIME ZONE 'UTC', 'YYYY-MM') AS "month" FROM "rollup_competitor_mentions") existing
+WHERE EXISTS (SELECT 1 FROM "brands" WHERE "brands"."id" = existing."brand_id")
 ON CONFLICT DO NOTHING;--> statement-breakpoint
 INSERT INTO "brand_data_versions" ("brand_id", "chunk_id", "version")
 SELECT "brand_id", 'webQueries:' || "month", nextval('brand_data_version_seq')
 FROM (SELECT DISTINCT "brand_id", to_char("bucket" AT TIME ZONE 'UTC', 'YYYY-MM') AS "month" FROM "rollup_web_queries") existing
+WHERE EXISTS (SELECT 1 FROM "brands" WHERE "brands"."id" = existing."brand_id")
 ON CONFLICT DO NOTHING;--> statement-breakpoint
 INSERT INTO "brand_data_versions" ("brand_id", "chunk_id", "version")
 SELECT "brand_id", 'sentimentQuotes:' || "month", nextval('brand_data_version_seq')
 FROM (SELECT DISTINCT "brand_id", to_char("bucket" AT TIME ZONE 'UTC', 'YYYY-MM') AS "month" FROM "rollup_sentiment_quotes") existing
+WHERE EXISTS (SELECT 1 FROM "brands" WHERE "brands"."id" = existing."brand_id")
 ON CONFLICT DO NOTHING;--> statement-breakpoint
 INSERT INTO "brand_data_versions" ("brand_id", "chunk_id", "version")
 SELECT "brand_id", 'citations:' || "month", nextval('brand_data_version_seq')
 FROM (SELECT DISTINCT "brand_id", to_char("bucket" AT TIME ZONE 'UTC', 'YYYY-MM') AS "month" FROM "rollup_citation_urls") existing
+WHERE EXISTS (SELECT 1 FROM "brands" WHERE "brands"."id" = existing."brand_id")
 ON CONFLICT DO NOTHING;--> statement-breakpoint
 INSERT INTO "brand_data_versions" ("brand_id", "chunk_id", "version")
 SELECT "brand_id", 'pages:' || "range", nextval('brand_data_version_seq')
 FROM (SELECT DISTINCT "brand_id", "page_id" / 200000 AS "range" FROM "rollup_citation_pages") existing
+WHERE EXISTS (SELECT 1 FROM "brands" WHERE "brands"."id" = existing."brand_id")
 ON CONFLICT DO NOTHING;--> statement-breakpoint
 INSERT INTO "brand_data_versions" ("brand_id", "chunk_id", "version")
 SELECT "id", 'entities', nextval('brand_data_version_seq') FROM "brands"
