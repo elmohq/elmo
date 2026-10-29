@@ -19,8 +19,6 @@ ${processed}`;
 
 export const MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8";
 
-// An agent that lands on a dead link needs somewhere to go next, not just a
-// status code.
 const NOT_FOUND_MARKDOWN = `# Page not found
 
 There is no page at this URL on elmohq.com. It may have moved, or it may never have existed.
