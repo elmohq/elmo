@@ -1,58 +1,51 @@
-import { gzipSync } from "node:zlib";
+import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 import { createFileRoute } from "@tanstack/react-router";
 import { requireBrandSession } from "@/lib/auth/helpers";
-import { brandDataVersion, buildBrandBundle } from "@/lib/brand-data/build-bundle.server";
-import type { BrandBundle } from "@/lib/brand-data/bundle";
+import { buildChunks, chunkManifest } from "@/lib/brand-data/build-bundle.server";
+import type { BrandChunk } from "@/lib/brand-data/chunks";
 
-type Part = "core" | "citations";
+const MAX_CACHED_CHUNKS = 2_000;
+const built = new Map<string, Promise<BrandChunk>>();
 
-/** A brand's bundle split so the analytics pages can start before the citation long tail arrives. */
-function split(bundle: BrandBundle): Record<Part, unknown> {
-	const { citations, citationPages, ...core } = bundle;
-	const empty = { bucket: [], prompt: [], model: [], provider: [], web: [] };
-	return {
-		core: {
-			...core,
-			citations: { ...empty, page: [], citations: [], positionSum: [] },
-			citationPages: { id: [], url: [], domain: [], title: [], pageType: [], category: [] },
-		},
-		citations: { version: bundle.version, citations, citationPages, dicts: bundle.dicts },
-	};
-}
-
-const built = new Map<string, Promise<Record<Part, Buffer>>>();
-
-function compressedParts(brandId: string, version: string) {
-	const key = `${brandId}:${version}`;
-	let parts = built.get(key);
-	if (!parts) {
-		parts = buildBrandBundle(brandId).then((bundle) => {
-			const { core, citations } = split(bundle);
-			return { core: gzipSync(JSON.stringify(core)), citations: gzipSync(JSON.stringify(citations)) };
+function cachedChunks(brandId: string, wanted: { id: string; hash: string }[]) {
+	const missing = wanted.filter(({ id, hash }) => !built.has(`${brandId}|${id}|${hash}`));
+	if (missing.length > 0) {
+		const building = buildChunks(brandId, missing);
+		missing.forEach(({ id, hash }, i) => {
+			const key = `${brandId}|${id}|${hash}`;
+			if (built.size >= MAX_CACHED_CHUNKS) built.delete(built.keys().next().value as string);
+			const chunk = building.then((chunks) => chunks[i]);
+			chunk.catch(() => built.delete(key));
+			built.set(key, chunk);
 		});
-		for (const old of built.keys()) if (old.startsWith(`${brandId}:`)) built.delete(old);
-		built.set(key, parts);
-		parts.catch(() => built.delete(key));
 	}
-	return parts;
+	return Promise.all(wanted.map(({ id, hash }) => built.get(`${brandId}|${id}|${hash}`) as Promise<BrandChunk>));
 }
 
+/** `?` alone answers the manifest; `?chunks=a,b` answers those chunks at their current hash. */
 export const Route = createFileRoute("/api/brand-data/$brandId")({
 	server: {
 		handlers: {
 			GET: async ({ params, request }) => {
 				await requireBrandSession(params.brandId);
-				const url = new URL(request.url);
-				const version = await brandDataVersion(params.brandId);
-				const part = url.searchParams.get("part") as Part | null;
-				if (!part) return Response.json({ version }, { headers: { "Cache-Control": "no-store" } });
-				const parts = await compressedParts(params.brandId, version);
-				return new Response(new Uint8Array(parts[part]), {
+				const manifest = await chunkManifest(params.brandId);
+				const requested = new URL(request.url).searchParams.get("chunks");
+				if (!requested) return Response.json({ chunks: manifest }, { headers: { "Cache-Control": "no-store" } });
+				const ids = new Set(requested.split(","));
+				const chunks = await cachedChunks(
+					params.brandId,
+					manifest.filter((entry) => ids.has(entry.id)),
+				);
+				const body = JSON.stringify({ chunks });
+				const brotli = request.headers.get("accept-encoding")?.includes("br");
+				const encoded = brotli
+					? brotliCompressSync(body, { params: { [constants.BROTLI_PARAM_QUALITY]: 5 } })
+					: gzipSync(body);
+				return new Response(new Uint8Array(encoded), {
 					headers: {
 						"Content-Type": "application/json",
-						"Content-Encoding": "gzip",
-						"Cache-Control": "private, no-cache",
-						"X-Brand-Data-Version": version,
+						"Content-Encoding": brotli ? "br" : "gzip",
+						"Cache-Control": "no-store",
 					},
 				});
 			},
