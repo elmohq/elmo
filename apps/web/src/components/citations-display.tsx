@@ -6,7 +6,9 @@ import {
 	type CitationPageType,
 	PAGE_TYPE_CONFIG,
 } from "@workspace/lib/citations/domain-categories";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { CITATION_FLOW_ID } from "@/components/citations/citation-flow-card";
+import { CitationFlowSection, type CitationFlowSource } from "@/components/citations/citation-flow-section";
 import {
 	LocalGoogleShoppingCard,
 	LocalTopDomainsCard,
@@ -36,6 +38,7 @@ interface CitationsDisplayProps {
 	days?: number;
 	onCompetitorAdded?: () => void;
 	listSource?: RemoteListSource;
+	flowSource?: CitationFlowSource;
 }
 
 /**
@@ -175,6 +178,7 @@ export function CitationsDisplay({
 	days = 7,
 	onCompetitorAdded,
 	listSource,
+	flowSource,
 }: CitationsDisplayProps) {
 	const { brandShare, chartSourceCategories, chartPageTypes, urlSourceTabs, urlPageTypeTabs, whatsChanged } =
 		useCitationSections(citationData);
@@ -182,6 +186,14 @@ export function CitationsDisplay({
 
 	const contentGaps = citationData.competitorOnlyPrompts ?? [];
 	const googleModule = citationData.googleModule;
+
+	const [flowDomain, setFlowDomain] = useState<string>();
+	const openInFlow = flowSource
+		? (domain: string) => {
+				setFlowDomain(domain);
+				document.getElementById(CITATION_FLOW_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+			}
+		: undefined;
 
 	// Bail out only AFTER every hook above has run unconditionally (Rules of Hooks).
 	if (citationData.totalCitations === 0) return null;
@@ -193,6 +205,7 @@ export function CitationsDisplay({
 		brandName,
 		competitors: citationData.competitors,
 		onCompetitorAdded,
+		onDomainSelect: openInFlow,
 	};
 	const urlCardProps = {
 		sourceTabs: urlSourceTabs,
@@ -226,6 +239,8 @@ export function CitationsDisplay({
 						<LocalTopDomainsCard domains={citationData.domainDistribution} {...domainCardProps} />
 					)
 				: listSource && <RemoteTopDomainsCard source={listSource} {...domainCardProps} />}
+
+			{flowSource && <CitationFlowSection source={flowSource} domain={flowDomain} onDomainChange={setFlowDomain} />}
 
 			{citationData.specificUrls
 				? citationData.specificUrls.length > 0 && (

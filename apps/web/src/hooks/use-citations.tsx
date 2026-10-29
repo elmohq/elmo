@@ -1,7 +1,13 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
-import { getCitationDomainsFn, getCitationsFn, getCitationUrlsFn, getGoogleShoppingFn } from "@/server/citations";
+import {
+	getCitationDomainsFn,
+	getCitationFlowFn,
+	getCitationsFn,
+	getCitationUrlsFn,
+	getGoogleShoppingFn,
+} from "@/server/citations";
 
 export interface CitationFilters {
 	lookback?: LookbackPeriod;
@@ -129,4 +135,27 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 		error: query.error,
 		refetch: query.refetch,
 	};
+}
+
+export function useCitationFlow(brandId: string | undefined, filters: CitationFilters, domain: string | undefined) {
+	const resolvedBrandId = useResolvedBrandId(brandId);
+	return useQuery({
+		queryKey: [...citationKeys.all, resolvedBrandId || "", filters, "flow", domain] as const,
+		queryFn: () =>
+			getCitationFlowFn({
+				data: {
+					brandId: resolvedBrandId!,
+					lookback: filters.lookback ?? "1w",
+					tags: filters.tags?.join(","),
+					model: filters.model,
+					domain: domain!,
+				},
+			}),
+		enabled: !!resolvedBrandId && !!domain,
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		refetchInterval: 60_000,
+		// Keep the chart up while a filter changes, but never show one domain's flow under another's name.
+		placeholderData: (prev, prevQuery) => (prevQuery?.queryKey.at(-1) === domain ? prev : undefined),
+	});
 }

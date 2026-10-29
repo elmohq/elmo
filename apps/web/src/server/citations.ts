@@ -5,6 +5,7 @@ import {
 	CITATION_PAGE_TYPES,
 	type CitationCategory,
 	type CitationPageType,
+	cleanAndValidateDomain,
 	emptyCategoryCounts,
 	emptyPageTypeCounts,
 	extractDomain,
@@ -24,12 +25,14 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
+import type { CitationFlowRow } from "@/lib/citation-flow";
 import {
 	type CitationClassTotalRow,
 	type CitationDomainStatsRow,
 	type CitationSummary,
 	type CitationUrlListRow,
 	getCitationDomainPage,
+	getCitationFlowRows,
 	getCitationSummary,
 	getCitationUrlPage,
 	type OwnedDomains,
@@ -528,4 +531,14 @@ export const getGoogleShoppingFn = createServerFn({ method: "GET" })
 		const list =
 			data.list === "products" ? { kind: "products" as const, filter: data.attribution } : { kind: "queries" as const };
 		return pageGoogleList(googleModule, list, data.page * data.pageSize, data.pageSize);
+	});
+
+export const getCitationFlowFn = createServerFn({ method: "GET" })
+	.validator(citationFiltersSchema.extend({ domain: z.string().min(1).max(253) }))
+	.handler(async ({ data }): Promise<CitationFlowRow[]> => {
+		await requireBrandSession(data.brandId);
+		const domain = cleanAndValidateDomain(data.domain);
+		const { scope } = await resolveCitationScope(data);
+		if (scope.promptIds.length === 0 || !domain) return [];
+		return getCitationFlowRows(scope, domain);
 	});

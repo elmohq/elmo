@@ -2,6 +2,7 @@ import { CONTENT_PUBLISHER_CATEGORIES } from "@workspace/lib/citations/domain-ca
 import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/citations/page-classification";
 import { type SQL, sql } from "drizzle-orm";
 import { type AnalyticsScope, queryPg, scopeFilter } from "@/lib/analytics-sql";
+import type { CitationFlowRow } from "@/lib/citation-flow";
 
 export type CitationOwner = "brand" | "competitor";
 
@@ -431,4 +432,18 @@ export async function getDomainPromptCounts(scope: AnalyticsScope, domains: stri
 		GROUP BY p.domain
 	`);
 	return new Map(rows.map((row) => [row.domain, Number(row.prompt_count)]));
+}
+
+// Subdomains match by suffix as `inDomainSet` does; Google surfaces are left out as everywhere else on the Citations page.
+export async function getCitationFlowRows(scope: AnalyticsScope, domain: string): Promise<CitationFlowRow[]> {
+	return queryPg<CitationFlowRow>(sql`
+		SELECT r.model, p.url, p.title, sum(r.citations)::int AS count
+		FROM rollup_citation_urls r
+		JOIN rollup_citation_pages p ON p.brand_id = r.brand_id AND p.page_id = r.page_id
+		WHERE ${rollupScope(scope, "r")}
+			AND (r.domain = ${domain} OR right(r.domain, ${domain.length + 1}) = ${`.${domain}`})
+			AND p.static_category <> ${GOOGLE_STATIC_CATEGORY}
+		GROUP BY r.model, r.page_id, p.url, p.title
+		ORDER BY count DESC
+	`);
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { GoogleShoppingCard, PRODUCTS_PAGE_SIZE, QUERIES_PAGE_SIZE } from "@/components/citations/google-shopping-card";
 import { TopDomainsCard } from "@/components/citations/top-domains-card";
 import { TopUrlsCard } from "@/components/citations/top-urls-card";
@@ -11,17 +11,7 @@ import type {
 } from "@/components/citations/types";
 import { usePagedList } from "@/components/list-pagination";
 import { type CitationFilters, useCitationDomains, useCitationUrls, useGoogleShopping } from "@/hooks/use-citations";
-
-const SEARCH_DEBOUNCE_MS = 250;
-
-function useDebouncedValue<T>(value: T, delayMs: number): T {
-	const [debounced, setDebounced] = useState(value);
-	useEffect(() => {
-		const timer = setTimeout(() => setDebounced(value), delayMs);
-		return () => clearTimeout(timer);
-	}, [value, delayMs]);
-	return debounced;
-}
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "@/hooks/use-debounced-value";
 
 function useListFilters() {
 	const [page, setPage] = useState(0);
@@ -88,6 +78,7 @@ interface DomainCardProps {
 	brandName?: string;
 	competitors?: CitationData["competitors"];
 	onCompetitorAdded?: () => void;
+	onDomainSelect?: (domain: string) => void;
 }
 
 export function LocalTopUrlsCard({ urls, ...props }: UrlCardProps & { urls: CitationUrlItem[] }) {
