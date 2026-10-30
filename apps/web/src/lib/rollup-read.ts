@@ -447,6 +447,7 @@ export function rollupReads(query: SqlQuery) {
 		`);
 	}
 
+	/** In no particular order: a long range returns a row per search, and callers fold them onto products and queries. */
 	async function getPerPromptGooglePages(scope: AnalyticsScope): Promise<PerPromptCitationPageRow[]> {
 		return query<PerPromptCitationPageRow>(sql`
 			SELECT p.prompt_id, cp.url, cp.domain, cp.title, p.count
@@ -458,7 +459,6 @@ export function rollupReads(query: SqlQuery) {
 			) p
 			JOIN rollup_citation_pages cp ON cp.brand_id = ${scope.brandId} AND cp.page_id = p.page_id
 			WHERE cp.static_category = ${GOOGLE_STATIC_CATEGORY}
-			ORDER BY p.prompt_id, p.count DESC, cp.url COLLATE "C"
 		`);
 	}
 

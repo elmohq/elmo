@@ -87,20 +87,18 @@ function converter(field: Field): (value: unknown) => unknown {
 	}
 }
 
+/** Converts column by column: reading a large result cell by cell walks Arrow's chunks for every value. */
 export function toRows<T>(table: Table): T[] {
 	const fields = table.schema.fields;
-	const converters = fields.map(converter);
-	const columns = fields.map((_, i) => table.getChildAt(i));
-	const rows: T[] = new Array(table.numRows);
-	for (let r = 0; r < table.numRows; r++) {
-		const row: Record<string, unknown> = {};
-		for (let c = 0; c < fields.length; c++) {
-			const value = columns[c]?.get(r);
-			row[fields[c].name] = value === null || value === undefined ? null : converters[c](value);
+	const rows: Record<string, unknown>[] = Array.from({ length: table.numRows }, () => ({}));
+	fields.forEach((field, c) => {
+		const convert = converter(field);
+		let r = 0;
+		for (const value of table.getChildAt(c) ?? []) {
+			rows[r++][field.name] = value === null || value === undefined ? null : convert(value);
 		}
-		rows[r] = row as T;
-	}
-	return rows;
+	});
+	return rows as T[];
 }
 
 /** Postgres functions the analytics SQL uses that DuckDB lacks or spells differently. */

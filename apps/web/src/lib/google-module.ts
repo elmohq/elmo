@@ -68,6 +68,8 @@ type ProductAgg = {
 };
 type QueryAgg = { query: string; count: number; prompts: Map<string, number> };
 
+const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
 function addPromptCount(byPrompt: Map<string, number>, promptId: string, count: number): void {
 	byPrompt.set(promptId, (byPrompt.get(promptId) ?? 0) + count);
 }
@@ -97,7 +99,8 @@ function googleSurface(url: string, title: string | null): GoogleSurface {
 
 /**
  * Fold cited Google URLs onto the product or the search query they represent,
- * keyed case-insensitively so the same product cited two ways is one row.
+ * keyed case-insensitively so the same product cited two ways is one row. Rows
+ * come in any order, so each keeps its alphabetically first spelling.
  */
 function tallyGooglePages(
 	pages: GoogleModulePageRow[],
@@ -118,11 +121,16 @@ function tallyGooglePages(
 				attribution: attributeProduct(surface.name, brandName, competitors),
 				prompts: new Map(),
 			};
+			if (surface.name < product.name) {
+				product.name = surface.name;
+				product.attribution = attributeProduct(surface.name, brandName, competitors);
+			}
 			product.count += count;
 			addPromptCount(product.prompts, row.prompt_id, count);
 			productByKey.set(surface.key, product);
 		} else if (surface?.kind === "query") {
 			const entry = queryByKey.get(surface.key) ?? { query: surface.name, count: 0, prompts: new Map() };
+			if (surface.name < entry.query) entry.query = surface.name;
 			entry.count += count;
 			addPromptCount(entry.prompts, row.prompt_id, count);
 			queryByKey.set(surface.key, entry);
@@ -154,10 +162,10 @@ export function buildGoogleModule(
 				promptValues[id] = value;
 				return [{ id, count }];
 			})
-			.sort((a, b) => b.count - a.count);
+			.sort((a, b) => b.count - a.count || byText(a.id, b.id));
 
-	const allProducts = [...productByKey.values()].sort((a, b) => b.count - a.count);
-	const allQueries = [...queryByKey.values()].sort((a, b) => b.count - a.count);
+	const allProducts = [...productByKey.values()].sort((a, b) => b.count - a.count || byText(a.name, b.name));
+	const allQueries = [...queryByKey.values()].sort((a, b) => b.count - a.count || byText(a.query, b.query));
 	const attributed = (kind: ProductAttribution["kind"]) => allProducts.filter((p) => p.attribution.kind === kind);
 	const total = (rows: { count: number }[]) => rows.reduce((sum, row) => sum + row.count, 0);
 
