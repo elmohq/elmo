@@ -50,6 +50,24 @@ describe("buildCitationFlow", () => {
 		expect(names(flow, "page").map(([name]) => name)).toEqual(["/a", "/b", "/api/auth", "/pricing"]);
 	});
 
+	it("counts a page once whether or not the engine tagged its link with campaign parameters", () => {
+		const flow = buildCitationFlow({
+			rows: [
+				row("chatgpt", "https://acme.com/blog/a?utm_source=chatgpt.com", 3),
+				row("perplexity", "https://acme.com/blog/a", 2),
+				row("gemini", "https://acme.com/blog/a#pricing", 1),
+				row("chatgpt", "https://acme.com/blog/a?id=2&utm_medium=ai", 4),
+			],
+			domain: "acme.com",
+		});
+
+		expect(flow.pageCount).toBe(2);
+		expect(flow.nodes.filter((node) => node.kind === "page").map((node) => [node.url, node.value])).toEqual([
+			["https://acme.com/blog/a", 6],
+			["https://acme.com/blog/a?id=2", 4],
+		]);
+	});
+
 	it("reads a competitor or third-party domain the same way as the brand's own", () => {
 		const flow = buildCitationFlow({
 			rows: [
