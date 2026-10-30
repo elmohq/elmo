@@ -14,6 +14,7 @@ let _error: string | null = null;
 let _ssoError: string | null = null;
 let _hasPassword = true;
 let _emailSignIn: "succeed" | "hang" | { error: string } = "succeed";
+let _lastLoginMethod: string | null = null;
 const _calls: { method: string; args: unknown }[] = [];
 
 /** Hold the call open so a story can show the in-flight spinner. */
@@ -43,12 +44,17 @@ export function setMockHasPassword(hasPassword: boolean) {
 	_hasPassword = hasPassword;
 }
 
+export function setMockLastLoginMethod(method: string | null) {
+	_lastLoginMethod = method;
+}
+
 export function resetMockAuthClient() {
 	_hasPassword = true;
 	_delayMs = 0;
 	_error = null;
 	_ssoError = null;
 	_emailSignIn = "succeed";
+	_lastLoginMethod = null;
 	_calls.length = 0;
 }
 
@@ -59,6 +65,7 @@ async function respond(method: string, args: unknown): Promise<SubscriptionResul
 }
 
 export const authClient = {
+	getLastUsedLoginMethod: () => _lastLoginMethod,
 	subscription: {
 		upgrade: (args: unknown) => respond("upgrade", args),
 		billingPortal: (args: unknown) => respond("billingPortal", args),

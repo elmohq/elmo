@@ -1,3 +1,6 @@
+import { betterAuth } from "better-auth";
+import { memoryAdapter } from "better-auth/adapters/memory";
+import { organization } from "better-auth/plugins";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getCloudAuthOptions } from "./cloud";
 
@@ -194,5 +197,114 @@ describe("Turnstile bot protection", () => {
 		expect(await send("/sign-up/email")).toBeUndefined();
 		vi.stubEnv("TURNSTILE_SECRET_KEY", "turnstile-secret");
 		expect(await send("/sign-up/email")).toBeUndefined();
+	});
+});
+
+describe("remembering the cloud login method", () => {
+	const baseURL = "https://app.example.com";
+	const email = "reader@example.com";
+	const password = "test-password-for-login";
+	const methodCookie = "better-auth.last_used_login_method";
+
+	async function createLoginAuth() {
+		const options = getCloudAuthOptions();
+		const auth = betterAuth({
+			baseURL,
+			secret: "test-secret-for-remembering-login-methods",
+			database: memoryAdapter({ user: [], account: [], session: [], verification: [] }),
+			emailAndPassword: { enabled: true, requireEmailVerification: options.requireEmailVerification },
+			socialProviders: options.socialProviders,
+			plugins: [organization(), ...(options.extraPlugins ?? [])],
+		});
+		await auth.api.signUpEmail({ body: { email, password, name: "Example Reader" } });
+		const context = await auth.$context;
+		const user = await context.internalAdapter.findUserByEmail(email);
+		if (!user) throw new Error("expected the test user to exist");
+		await context.internalAdapter.updateUser(user.user.id, { emailVerified: true });
+		return auth;
+	}
+
+	function cookieHeader(response: Response) {
+		return response.headers
+			.getSetCookie()
+			.map((cookie) => cookie.split(";")[0])
+			.join("; ");
+	}
+
+	it("remembers a successful email sign-in for 30 days and keeps the hint after sign-out", async () => {
+		const auth = await createLoginAuth();
+		const response = await auth.api.signInEmail({ body: { email, password }, asResponse: true });
+		const cookie = response.headers.getSetCookie().find((cookie) => cookie.startsWith(`${methodCookie}=`));
+
+		expect(response.status).toBe(200);
+		expect(cookie).toContain(`${methodCookie}=email`);
+		expect(cookie).toContain("Max-Age=2592000");
+		expect(cookie?.toLowerCase()).not.toContain("httponly");
+
+		const signOut = await auth.api.signOut({
+			headers: new Headers({ cookie: cookieHeader(response) }),
+			asResponse: true,
+		});
+		expect(signOut.status).toBe(200);
+		expect(signOut.headers.getSetCookie().some((cookie) => cookie.startsWith(`${methodCookie}=`))).toBe(false);
+	});
+
+	it("does not replace the previous method when a password is incorrect", async () => {
+		const auth = await createLoginAuth();
+		const response = await auth.api.signInEmail({
+			body: { email, password: "incorrect-password" },
+			headers: new Headers({ cookie: `${methodCookie}=google` }),
+			asResponse: true,
+		});
+
+		expect(response.status).toBe(401);
+		expect(response.headers.getSetCookie().some((cookie) => cookie.startsWith(`${methodCookie}=`))).toBe(false);
+	});
+
+	it("does not remember an email sign-in that still requires verification", async () => {
+		const auth = await createLoginAuth();
+		const context = await auth.$context;
+		const user = await context.internalAdapter.findUserByEmail(email);
+		if (!user) throw new Error("expected the test user to exist");
+		await context.internalAdapter.updateUser(user.user.id, { emailVerified: false });
+		const response = await auth.api.signInEmail({ body: { email, password }, asResponse: true });
+
+		expect(response.status).toBe(403);
+		expect(response.headers.getSetCookie().some((cookie) => cookie.startsWith(`${methodCookie}=`))).toBe(false);
+	});
+
+	it("remembers Google only after its callback succeeds and updates the hint when switching to email", async () => {
+		const auth = await createLoginAuth();
+		const context = await auth.$context;
+		const google = context.socialProviders.find((provider) => provider.id === "google");
+		if (!google) throw new Error("expected the Google provider to exist");
+		vi.spyOn(google, "validateAuthorizationCode").mockResolvedValue({ accessToken: "test-google-token" });
+		vi.spyOn(google, "getUserInfo").mockResolvedValue({
+			user: { name: "Example Reader", email, emailVerified: true },
+			data: { sub: "google-reader" },
+		});
+
+		const start = await auth.api.signInSocial({ body: { provider: "google", callbackURL: "/app" }, asResponse: true });
+		expect(start.headers.getSetCookie().some((cookie) => cookie.startsWith(`${methodCookie}=`))).toBe(false);
+		const { url } = (await start.json()) as { url: string };
+		const state = new URL(url).searchParams.get("state");
+		if (!state) throw new Error("expected OAuth state in the Google authorization URL");
+		const callback = await auth.handler(
+			new Request(`${baseURL}/api/auth/callback/google?${new URLSearchParams({ code: "test-code", state })}`, {
+				headers: { cookie: cookieHeader(start) },
+			}),
+		);
+
+		expect(callback.status).toBe(302);
+		expect(callback.headers.get("location")).toBe("/app");
+		expect(cookieHeader(callback)).toContain(`${methodCookie}=google`);
+
+		const emailLogin = await auth.api.signInEmail({
+			body: { email, password },
+			headers: new Headers({ cookie: cookieHeader(callback) }),
+			asResponse: true,
+		});
+		expect(emailLogin.status).toBe(200);
+		expect(cookieHeader(emailLogin)).toContain(`${methodCookie}=email`);
 	});
 });

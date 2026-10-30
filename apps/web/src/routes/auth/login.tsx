@@ -13,6 +13,7 @@ import { MCP_AUTHORIZE_ENDPOINT } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -198,8 +199,13 @@ export function EmailPasswordLogin({
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [lastLoginMethod, setLastLoginMethod] = useState<string | null>(null);
 	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
 	const turnstile = useTurnstile();
+
+	useEffect(() => {
+		setLastLoginMethod(isCloud ? authClient.getLastUsedLoginMethod() : null);
+	}, [isCloud]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -251,7 +257,7 @@ export function EmailPasswordLogin({
 						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: destination })}
 					>
 						<IconBrandGoogle className="size-4" />
-						Continue with Google
+						Continue with Google {lastLoginMethod === "google" && <Badge variant="secondary">Last Used</Badge>}
 					</Button>
 					<LegalConsentNotice action="continuing with Google" />
 					<div className="flex items-center gap-3">
@@ -301,7 +307,8 @@ export function EmailPasswordLogin({
 				</div>
 				{turnstile.widget}
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Signing in..." : "Sign in"}
+					{loading ? "Signing in..." : "Sign In"}{" "}
+					{lastLoginMethod === "email" && <Badge variant="secondary">Last Used</Badge>}
 				</Button>
 			</form>
 			{canRegister && (

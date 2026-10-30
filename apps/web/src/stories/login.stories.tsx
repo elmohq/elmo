@@ -6,11 +6,12 @@
  * sales panel shows — engine coverage, the runs-per-day comparison — comes from
  * packages/config, so these stories are also where a plan change shows up first.
  */
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import type { ReactNode } from "react";
+import { expect, within } from "storybook/test";
 import { DemoLogin, EmailPasswordLogin, SSOLogin } from "@/routes/auth/login";
-import { resetMockAuthClient, setMockEmailSignIn, setMockSsoError } from "./_mocks/auth-client";
+import { resetMockAuthClient, setMockEmailSignIn, setMockLastLoginMethod, setMockSsoError } from "./_mocks/auth-client";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
 
@@ -65,13 +66,68 @@ export default {
 } satisfies Meta;
 
 /** Cloud — Google, password recovery, and the pitch for signing up with us. */
-export const Cloud = () => <EmailPasswordLogin isCloud canRegister />;
+export const Cloud: StoryObj = {
+	render: () => <EmailPasswordLogin isCloud canRegister />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByText("Last Used")).not.toBeInTheDocument();
+		await expect(canvas.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+		await expect(canvas.getByRole("button", { name: "Sign In" })).toBeVisible();
+	},
+};
+
+export const CloudLastUsedGoogle: StoryObj = {
+	render: () => {
+		setMockLastLoginMethod("google");
+		return <EmailPasswordLogin isCloud canRegister />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByRole("button", { name: "Continue with Google Last Used" })).toBeVisible();
+		await expect(canvas.getByRole("button", { name: "Sign In" })).toBeVisible();
+		await expect(canvas.getAllByText("Last Used")).toHaveLength(1);
+	},
+};
+
+export const CloudLastUsedEmail: StoryObj = {
+	render: () => {
+		setMockLastLoginMethod("email");
+		return <EmailPasswordLogin isCloud canRegister />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByRole("button", { name: "Sign In Last Used" })).toBeVisible();
+		await expect(canvas.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+		await expect(canvas.getAllByText("Last Used")).toHaveLength(1);
+	},
+};
+
+export const CloudUnknownLoginMethod: StoryObj = {
+	render: () => {
+		setMockLastLoginMethod("unknown");
+		return <EmailPasswordLogin isCloud canRegister />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByText("Last Used")).not.toBeInTheDocument();
+	},
+};
 
 /**
  * Self-hosted, once the instance has its account. Before that the page
  * redirects to sign-up, so there is no unbootstrapped story to tell.
  */
-export const SelfHosted = () => <EmailPasswordLogin />;
+export const SelfHosted: StoryObj = {
+	render: () => {
+		setMockLastLoginMethod("email");
+		return <EmailPasswordLogin />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByText("Last Used")).not.toBeInTheDocument();
+		await expect(canvas.queryByRole("button", { name: /Google/ })).not.toBeInTheDocument();
+	},
+};
 
 /** Demo signs in to the shared account on its own; this is what shows meanwhile. */
 export const Demo = () => {
