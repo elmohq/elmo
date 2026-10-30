@@ -1,3 +1,4 @@
+import spec from "@workspace/api-spec";
 import { resetDeploymentCache } from "@workspace/deployment";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -238,5 +239,95 @@ describe("createApiHandler", () => {
 			params: { promptId: "not-a-uuid" },
 		});
 		expect(response.status).toBe(401);
+	});
+});
+
+interface DocumentedHeader {
+	required?: boolean;
+	schema: { type: string };
+}
+
+const RATE_LIMIT_HEADERS = (spec.components.responses.RateLimitError as { headers: Record<string, DocumentedHeader> })
+	.headers;
+
+describe("createApiHandler, for a key over its rate limit", () => {
+	beforeEach(() => {
+		vi.stubEnv("ADMIN_API_KEYS", API_KEY);
+		vi.stubEnv("DEPLOYMENT_MODE", "local");
+		resetDeploymentCache();
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		resetDeploymentCache();
+	});
+
+	// What better-auth's verifyApiKey answers once a key's window is spent. It
+	// counts the window in milliseconds, so `tryAgainIn` is milliseconds too.
+	async function overLimit(tryAgainIn?: number): Promise<Response> {
+		verifyApiKey.mockResolvedValueOnce({
+			valid: false,
+			key: null,
+			error: {
+				message: "Rate limit exceeded.",
+				code: "RATE_LIMITED",
+				...(tryAgainIn === undefined ? {} : { details: { tryAgainIn } }),
+			},
+		});
+		const handler = createApiHandler({ handle: async () => ({ ok: true }) });
+		return handler({ request: makeRequest({ apiKey: "elmo_spent" }), params: {} });
+	}
+
+	it("answers 429 without running the handler", async () => {
+		const handle = vi.fn();
+		verifyApiKey.mockResolvedValueOnce({ valid: false, key: null, error: { code: "RATE_LIMITED" } });
+		const handler = createApiHandler({ handle });
+		const response = await handler({ request: makeRequest({ apiKey: "elmo_spent" }), params: {} });
+
+		expect(response.status).toBe(429);
+		expect(await response.json()).toEqual({
+			error: "Too Many Requests",
+			message: "Rate limit exceeded for this API key",
+			code: "rate_limited",
+		});
+		expect(handle).not.toHaveBeenCalled();
+	});
+
+	it("tells the caller how many seconds are left in the window", async () => {
+		const response = await overLimit(41_250);
+
+		expect(response.headers.get("Retry-After")).toBe("42");
+	});
+
+	it("never asks a caller to wait longer than the one-minute window", async () => {
+		const response = await overLimit(60_000);
+
+		expect(response.headers.get("Retry-After")).toBe("60");
+	});
+
+	it("asks for at least a second when the window is about to reset", async () => {
+		const response = await overLimit(1);
+
+		expect(response.headers.get("Retry-After")).toBe("1");
+	});
+
+	it("asks for a full window when better-auth does not say how long", async () => {
+		const response = await overLimit();
+
+		expect(response.headers.get("Retry-After")).toBe("60");
+	});
+
+	it.each([
+		["with a wait from better-auth", 30_000],
+		["without one", undefined],
+	])("sends the headers the API reference documents for a 429, %s", async (_, tryAgainIn) => {
+		const response = await overLimit(tryAgainIn);
+
+		const sent = [...response.headers.keys()].filter((name) => name !== "content-type");
+		expect(sent).toEqual(Object.keys(RATE_LIMIT_HEADERS).map((name) => name.toLowerCase()));
+		for (const [name, header] of Object.entries(RATE_LIMIT_HEADERS)) {
+			if (header.required) expect(response.headers.has(name)).toBe(true);
+			if (header.schema.type === "integer") expect(response.headers.get(name)).toMatch(/^[1-9]\d*$/);
+		}
 	});
 });
