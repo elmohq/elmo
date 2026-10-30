@@ -4,6 +4,7 @@ import {
 	computeCitationFlow,
 	computeCitations,
 	computeCitationUrls,
+	computeGoogleModule,
 	computeGoogleShopping,
 } from "@/lib/analytics/pages/citations";
 import { computeDashboardSummary } from "@/lib/analytics/pages/dashboard";
@@ -24,6 +25,7 @@ export const computations = {
 	promptsSummary: computePromptsSummary,
 	queryFanout: computeQueryFanout,
 	citations: computeCitations,
+	googleModule: computeGoogleModule,
 	citationUrls: computeCitationUrls,
 	citationDomains: computeCitationDomains,
 	googleShopping: computeGoogleShopping,

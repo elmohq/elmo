@@ -64,7 +64,6 @@ interface CitationsResult {
 	uniqueDomains: number;
 	categoryCounts: Record<CitationCategory, number>;
 	pageTypeDistribution: { pageType: CitationPageType; count: number }[];
-	googleModule: GoogleModule;
 	subreddits: Subreddit[];
 	availableTags: string[];
 	citationTimeSeries: ({ date: string } & Record<CitationCategory, number>)[];
@@ -328,7 +327,6 @@ function emptyCitationsResult(
 		uniqueDomains: 0,
 		categoryCounts: emptyCategoryCounts(),
 		pageTypeDistribution: [],
-		googleModule: emptyGoogleModule(),
 		subreddits: [],
 		availableTags,
 		citationTimeSeries: [],
@@ -340,6 +338,16 @@ function emptyCitationsResult(
 }
 
 export const citationsInput = citationFiltersSchema;
+
+/** Google AI Mode's totals, apart from the rest of the page: folding every cited Google URL is its slowest part. */
+export async function computeGoogleModule(
+	reader: AnalyticsReader,
+	input: z.input<typeof citationsInput>,
+): Promise<GoogleModule> {
+	const resolved = await resolveCitationScope(reader, citationsInput.parse(input));
+	if (resolved.scope.promptIds.length === 0) return emptyGoogleModule();
+	return googleModuleTotals(await getGoogleModule(reader, resolved));
+}
 
 export async function computeCitations(
 	reader: AnalyticsReader,
@@ -360,13 +368,12 @@ export async function computeCitations(
 	const competitorSummary = competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains }));
 	if (scope.promptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, resolved.days);
 
-	const [summary, perPromptDailyClasses, googleModule, promptDomains] = await Promise.all([
+	const [summary, perPromptDailyClasses, promptDomains] = await Promise.all([
 		reader.getCitationSummary(scope, previousScope, owned, {
 			minCount: MIN_COUNT_FOR_WHATS_CHANGED,
 			limit: WHATS_CHANGED_LIMIT,
 		}),
 		reader.getPerPromptDailyCitationClasses(scope, owned),
-		getGoogleModule(reader, resolved),
 		reader.getPerPromptCitationDomains(scope),
 	]);
 
@@ -402,7 +409,6 @@ export async function computeCitations(
 		uniqueDomains: summary.uniqueDomains,
 		categoryCounts,
 		pageTypeDistribution,
-		googleModule: googleModuleTotals(googleModule),
 		subreddits: summarizeSubreddits(
 			summary.redditPages.map((page) => ({
 				url: page.url,

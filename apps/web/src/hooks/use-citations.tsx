@@ -112,6 +112,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 	return {
 		data: query.data,
 		isLoading: query.isLoading,
+		isPlaceholderData: query.isPlaceholderData,
 		error: query.error,
 		refetch: query.refetch,
 	};
@@ -133,5 +134,26 @@ export function useCitationFlow(brandId: string | undefined, filters: CitationFi
 		...brandDataQuery,
 		// Keep the chart up while a filter changes, but never show one domain's flow under another's name.
 		placeholderData: (prev, prevQuery) => (prevQuery?.queryKey.at(-1) === domain ? prev : undefined),
+	});
+}
+
+/**
+ * Google AI Mode's totals, which take longer than the rest of the page. Pass `enabled` once the page's own data
+ * has loaded: the brand's data answers one query at a time, so this would otherwise hold up the rest.
+ */
+export function useGoogleModule(brandId: string | undefined, filters: CitationFilters, enabled: boolean) {
+	const resolvedBrandId = useResolvedBrandId(brandId);
+	return useQuery({
+		queryKey: [...citationKeys.list(resolvedBrandId || "", filters), "google-module"] as const,
+		queryFn: () =>
+			computeBrandData("googleModule", {
+				brandId: resolvedBrandId!,
+				lookback: filters.lookback ?? "1w",
+				tags: filters.tags?.join(","),
+				model: filters.model,
+			}),
+		enabled: !!resolvedBrandId && enabled,
+		...brandDataQuery,
+		placeholderData: (prev) => prev,
 	});
 }

@@ -19,6 +19,7 @@ const answers: Record<string, Answer> = {
 	brandSentiment: getBrandSentimentFn,
 	queryFanout: getQueryFanoutFn,
 	citations: getCitationsFn,
+	googleModule: async () => ((await getCitationsFn()) as { googleModule?: unknown } | undefined)?.googleModule ?? null,
 	citationUrls: getCitationUrlsFn,
 	citationDomains: getCitationDomainsFn,
 	googleShopping: getGoogleShoppingFn,
