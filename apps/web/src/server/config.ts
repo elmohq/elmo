@@ -61,6 +61,7 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 		defaultDelayHours: getDefaultDelayHours(),
 		canRegister,
 		hasUsers,
+		turnstileSiteKey: deployment.mode === "cloud" ? process.env.VITE_TURNSTILE_SITE_KEY || undefined : undefined,
 	};
 });
 

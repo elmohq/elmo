@@ -1,5 +1,5 @@
 import { getCredential } from "../../secrets";
-import { type Citation, cloroAnswer, extractCitationsFromCloro, extractTextFromCloro } from "../../text-extraction";
+import { type Citation, cloroAnswer, extractCitationsFromCloro } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ScrapeResult } from "../types";
 import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, responseError, sleep } from "./scrape-shared";
@@ -9,10 +9,24 @@ import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, response
 // send a `prompt`, while Google AI Overview rides on the Google Search task and
 // sends a `query` with the AI Overview block requested. ChatGPT is the only
 // surface that hides its fan-out queries behind an `include` flag.
-type CloroTaskConfig = { taskType: string; field: "prompt" | "query"; include: Record<string, unknown> };
+type CloroTaskConfig = {
+	taskType: string;
+	field: "prompt" | "query";
+	include: Record<string, unknown>;
+	params?: Record<string, unknown>;
+};
 
 const CLORO_TASKS: Record<string, CloroTaskConfig> = {
-	chatgpt: { taskType: "CHATGPT", field: "prompt", include: { markdown: true, searchQueries: true } },
+	// ChatGPT's default mobile-web interface doesn't send its search queries to
+	// the page, so `searchQueries` comes back empty without `legacy`, which asks
+	// for the desktop interface that still streams them. Cloro documents it as
+	// best-effort: OpenAI may stop serving that interface without notice.
+	chatgpt: {
+		taskType: "CHATGPT",
+		field: "prompt",
+		include: { markdown: true, searchQueries: true },
+		params: { legacy: true },
+	},
 	perplexity: { taskType: "PERPLEXITY", field: "prompt", include: { markdown: true } },
 	copilot: { taskType: "COPILOT", field: "prompt", include: { markdown: true } },
 	gemini: { taskType: "GEMINI", field: "prompt", include: { markdown: true } },
@@ -174,23 +188,25 @@ export const cloro: Provider = {
 			throw new Error(`Cloro: no task mapping for model "${model}". Supported: ${Object.keys(CLORO_TASKS).join(", ")}`);
 		}
 
-		const payload: Record<string, any> = { [task.field]: prompt, country: CLORO_COUNTRY, include: task.include };
+		const payload: Record<string, any> = {
+			[task.field]: prompt,
+			country: CLORO_COUNTRY,
+			include: task.include,
+			...task.params,
+		};
 
 		const response = await runAsyncTask(task.taskType, payload);
 		const answer = cloroAnswer(response) ?? {};
 
-		const textContent = extractTextFromCloro(response);
 		const citations: Citation[] = extractCitationsFromCloro(response);
 		const webQueries = queriesFromKeys(answer, CLORO_QUERY_KEYS);
 
 		return {
 			rawOutput: response,
-			textContent,
 			// Every Cloro surface web-searches, so surface the queries Cloro
 			// exposed, or mark them unavailable when citations prove a search
 			// happened but no query strings came back.
 			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
-			citations,
 			modelVersion: typeof answer.model === "string" ? answer.model : undefined,
 		};
 	},

@@ -1,0 +1,25 @@
+$ curl -sI https://www.fernhollowgear.com/blog/how-to-choose-a-sleeping-bag
+HTTP/2 200
+content-type: text/html; charset=utf-8
+cache-control: public, max-age=0, must-revalidate
+x-robots-tag: noindex, nofollow
+x-powered-by: Next.js
+date: Wed, 07 Oct 2026 16:02:11 GMT
+
+$ curl -sI https://www.fernhollowgear.com/products/ultralight-2p-tent
+HTTP/2 200
+content-type: text/html; charset=utf-8
+cache-control: public, max-age=0, must-revalidate
+x-robots-tag: noindex, nofollow
+x-powered-by: Next.js
+date: Wed, 07 Oct 2026 16:02:13 GMT
+
+$ curl -s https://www.fernhollowgear.com/robots.txt
+User-agent: *
+Allow: /
+Sitemap: https://www.fernhollowgear.com/sitemap.xml
+
+$ curl -sI https://www.fernhollowgear.com/index.php/blog/stove-fuel-comparison
+HTTP/2 301
+location: https://www.fernhollowgear.com/
+date: Wed, 07 Oct 2026 16:02:15 GMT

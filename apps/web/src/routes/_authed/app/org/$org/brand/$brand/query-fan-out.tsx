@@ -8,6 +8,7 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
+import { FanoutEngineStatusCard, fanoutByModel } from "@/components/fanout-engine-status";
 import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-sections";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { HistoryButton } from "@/components/history-button";
@@ -78,7 +79,12 @@ function QueryFanoutPage() {
 		// totalRuns counts only web-search-enabled runs — a brand whose models all
 		// run without web search lands here even with plenty of runs.
 		content = (
-			<EmptyState message="No runs with web search enabled for the selected filters. Fan-out appears once your prompts have been run by an engine with web search." />
+			<TooltipProvider delay={150}>
+				<div className="space-y-6">
+					<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
+					<EmptyState message="No runs with web search enabled for the selected filters. Fan-out appears once your prompts have been run by an engine with web search." />
+				</div>
+			</TooltipProvider>
 		);
 	} else if (data.totalQueries === 0) {
 		// Runs happened but none exposed fan-out — still show the KPIs (run counts)
@@ -87,6 +93,7 @@ function QueryFanoutPage() {
 			<TooltipProvider delay={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
+					<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
 					<EmptyState message="No web queries in this period — the engines you track didn't expose any searches for these prompts and filters." />
 				</div>
 			</TooltipProvider>
@@ -96,11 +103,20 @@ function QueryFanoutPage() {
 			<TooltipProvider delay={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
+					{fanoutByModel(trackedTargets).some((e) => e.support.status !== "supported") && (
+						<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
+					)}
 					<Tabs value={tab} onValueChange={(v) => setTab(v as FanoutTab)} className="gap-4">
-						<TabsList>
-							<TabsTrigger value="fanout">Prompt Fan-Out</TabsTrigger>
-							<TabsTrigger value="top-queries">Top Queries</TabsTrigger>
-							<TabsTrigger value="words">Query Words</TabsTrigger>
+						<TabsList className="max-w-full">
+							<TabsTrigger value="fanout" className="max-[380px]:text-xs">
+								Prompt Fan-Out
+							</TabsTrigger>
+							<TabsTrigger value="top-queries" className="max-[380px]:text-xs">
+								Top Queries
+							</TabsTrigger>
+							<TabsTrigger value="words" className="max-[380px]:text-xs">
+								Query Words
+							</TabsTrigger>
 						</TabsList>
 						<TabsContent value="fanout">
 							<Prompts prompts={data.byPrompt} />
@@ -140,12 +156,12 @@ type FanoutData = NonNullable<ReturnType<typeof useQueryFanout>["data"]>;
 function StatCard({ label, value, tip }: { label: string; value: React.ReactNode; tip: React.ReactNode }) {
 	return (
 		<Card className="py-4">
-			<CardContent>
-				<div className="text-muted-foreground flex items-center gap-1 text-sm">
+			<CardContent className="max-sm:px-4">
+				<div className="text-muted-foreground flex items-center gap-1 text-xs sm:text-sm">
 					{label}
 					<InfoTip>{tip}</InfoTip>
 				</div>
-				<div className="mt-1.5 text-3xl font-bold tabular-nums">{value}</div>
+				<div className="mt-1.5 text-2xl font-bold tabular-nums sm:text-3xl">{value}</div>
 			</CardContent>
 		</Card>
 	);
@@ -203,7 +219,7 @@ function StatRow({ data }: { data: FanoutData }) {
 	// OpenRouter) are left off rather than listed as 0.
 	const breakdown = data.byModel.filter((m) => m.fanoutRuns > 0).sort((a, b) => b.fanoutRuns - a.fanoutRuns);
 	return (
-		<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		<div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
 			<StatCard
 				label="Search Prompt Runs"
 				value={data.totalRuns.toLocaleString()}
@@ -231,7 +247,7 @@ function StatRow({ data }: { data: FanoutData }) {
 function LoadingState() {
 	return (
 		<div className="space-y-6">
-			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			<div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
 				{["a", "b", "c", "d"].map((k) => (
 					<Card key={k} className="py-4">
 						<CardContent className="space-y-2">
@@ -296,7 +312,8 @@ function SortHead<K extends string>({
 	);
 }
 
-const GRID = "grid grid-cols-[1.25rem_1fr_4.5rem_7rem] items-center gap-3";
+// Phones drop the per-run average so the prompt itself stays readable.
+const GRID = "grid grid-cols-[1.25rem_1fr_3.5rem] items-center gap-2 sm:grid-cols-[1.25rem_1fr_4.5rem_7rem] sm:gap-3";
 
 function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 	const [expanded, setExpanded] = useState<Set<string>>(
@@ -326,7 +343,7 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 	return (
 		<Card className="gap-4">
 			<CardHeader>
-				<div className="flex items-center justify-between gap-4">
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
 					<div>
 						<CardTitle className="flex items-center gap-1.5 text-base">
 							Prompts
@@ -337,7 +354,7 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 						</CardTitle>
 						<CardDescription>The web searches each prompt triggers.</CardDescription>
 					</div>
-					<div className="relative w-64 shrink-0">
+					<div className="relative w-full shrink-0 sm:w-64">
 						<IconSearch className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
 						<Input
 							value={search}
@@ -355,7 +372,7 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 					<span className="text-right">
 						<SortHead k="queries" label="Queries" sort={sort} setSort={setSort} />
 					</span>
-					<span className="text-right">
+					<span className="text-right max-sm:hidden">
 						<SortHead k="avg" label="Avg/Prompt Run" sort={sort} setSort={setSort} />
 					</span>
 				</div>
@@ -375,13 +392,15 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 										{isOpen ? <IconChevronDown className="size-4" /> : <IconChevronRight className="size-4" />}
 									</span>
 									<span className="min-w-0">
-										<span className="block truncate text-sm font-medium" title={p.promptValue}>
+										<span className="line-clamp-2 text-sm font-medium sm:block sm:truncate" title={p.promptValue}>
 											{p.promptValue || "(untitled prompt)"}
 										</span>
 										<span className="text-muted-foreground text-xs">{p.uniqueQueries.toLocaleString()} variations</span>
 									</span>
 									<span className="text-right text-sm tabular-nums">{p.totalQueries.toLocaleString()}</span>
-									<span className="text-right text-sm tabular-nums">{p.avgPerExecution.toLocaleString()}</span>
+									<span className="text-right text-sm tabular-nums max-sm:hidden">
+										{p.avgPerExecution.toLocaleString()}
+									</span>
 								</button>
 								{isOpen && keywords && (
 									<div className="border-border mb-3 ml-8 mr-2 space-y-2 border-l pl-4">

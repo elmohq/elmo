@@ -64,6 +64,7 @@ const cols: { heading: string; links: FooterLink[] }[] = [
 	{
 		heading: "Company",
 		links: [
+			{ label: "About", href: "/about" },
 			{ label: "Vision", href: "/vision" },
 			{ label: "Brand Assets", href: "/brand" },
 			{ label: "Merch", href: "https://shop.elmohq.com", external: true },

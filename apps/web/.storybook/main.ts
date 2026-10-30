@@ -52,6 +52,10 @@ const config: StorybookConfig = {
 						replacement: path.resolve(mocksDir, "server-platform-picks.ts"),
 					},
 					{ find: /^@\/server\/prompts(\.ts)?$/, replacement: path.resolve(mocksDir, "server-prompts.ts") },
+					{
+						find: /^@\/server\/prompt-suggestions(\.ts)?$/,
+						replacement: path.resolve(mocksDir, "server-prompt-suggestions.ts"),
+					},
 					{ find: /^@\/server\/billing(\.ts)?$/, replacement: path.resolve(mocksDir, "server-billing.ts") },
 					{ find: /^@\/server\/team(\.ts)?$/, replacement: path.resolve(mocksDir, "server-team.ts") },
 					{ find: /^@\/server\/api-keys(\.ts)?$/, replacement: path.resolve(mocksDir, "server-api-keys.ts") },
@@ -69,6 +73,7 @@ const config: StorybookConfig = {
 					{ find: /^@\/server\/citations(\.ts)?$/, replacement: path.resolve(mocksDir, "server-citations.ts") },
 					{ find: /^@\/server\/dashboard(\.ts)?$/, replacement: path.resolve(mocksDir, "server-dashboard.ts") },
 					{ find: /^@\/server\/analysis(\.ts)?$/, replacement: path.resolve(mocksDir, "server-analysis.ts") },
+					{ find: /^@\/server\/query-fanout(\.ts)?$/, replacement: path.resolve(mocksDir, "server-query-fanout.ts") },
 					{
 						find: /^@\/server\/opportunities-fn(\.ts)?$/,
 						replacement: path.resolve(mocksDir, "server-opportunities.ts"),

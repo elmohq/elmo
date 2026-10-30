@@ -1,6 +1,6 @@
 import { onAnalyticsConsent } from "@workspace/ui/lib/cookie-consent";
+import { afterPageIdle } from "@workspace/ui/lib/idle";
 import type { PostHog } from "posthog-js";
-import { afterPageIdle } from "./idle";
 
 const POSTHOG_KEY = "phc_Jhx9LnI9cTDFHpQmpOzJSDTW127qD9pFU65KRnYym6z";
 const POSTHOG_HOST = "https://var.elmohq.com";
@@ -32,6 +32,8 @@ function load(): Promise<void> {
 				capture_pageleave: true,
 				autocapture: false,
 				disable_session_recording: true,
+				// Our own links carry `ref` instead of UTM params; see packages/config/src/referrals.ts.
+				custom_campaign_params: ["ref"],
 				// Prevent PostHog from auto-loading optional feature scripts we don't use.
 				// Without these, /static/{surveys,dead-clicks-autocapture,web-vitals}.js
 				// were being fetched even though the server returns surveys:false etc.

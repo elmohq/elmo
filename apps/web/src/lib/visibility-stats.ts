@@ -305,7 +305,7 @@ export function shareOfVoiceLeaderboardLVCF(
 
 	const competitors = [...compMentions.entries()]
 		.map(([name, mentions]) => ({ name, mentions, prompts: compPrompts.get(name) ?? 0 }))
-		.sort((a, b) => b.mentions - a.mentions);
+		.sort((a, b) => b.mentions - a.mentions || a.name.localeCompare(b.name));
 
 	return { brandMentions, brandPrompts, competitors };
 }

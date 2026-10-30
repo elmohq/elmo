@@ -2,6 +2,7 @@ import {
 	IconBriefcase,
 	IconCheck,
 	IconExternalLink,
+	IconKey,
 	IconLogout,
 	IconPlus,
 	IconRefresh,
@@ -27,7 +28,7 @@ import type { NavItem } from "@/components/nav-main";
 import { OrganizationRowIcon } from "@/components/organization-row-icon";
 import { useAuth } from "@/hooks/use-auth";
 import { useBrandId } from "@/hooks/use-brand-id";
-import { useBranding, useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { useBranding, useDeploymentFeatures, useDeploymentMode } from "@/hooks/use-deployment-features";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { resetCrispSession } from "@/lib/crisp";
 import { organizationTree } from "@/lib/organizations/tree";
@@ -106,18 +107,17 @@ export function NavUser({
 								</div>
 							</DropdownMenuLabel>
 						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
 
 						{showOrganizations && (
 							<>
 								<OrganizationSwitcher onNavigate={close} />
 								{features?.canCreateOrganizations && (
 									<>
+										<DropdownMenuSeparator />
 										<DropdownMenuItem render={<Link to="/app/new" onClick={close} />} className="cursor-pointer">
 											<IconPlus />
-											New organization
+											New Organization
 										</DropdownMenuItem>
-										<DropdownMenuSeparator />
 									</>
 								)}
 							</>
@@ -125,6 +125,7 @@ export function NavUser({
 
 						{adminItems.length > 0 && (
 							<>
+								<DropdownMenuSeparator />
 								<DropdownMenuGroup>
 									<DropdownMenuLabel className="text-muted-foreground text-xs">Admin</DropdownMenuLabel>
 									{adminItems.map((item) => (
@@ -138,12 +139,12 @@ export function NavUser({
 										</DropdownMenuItem>
 									))}
 								</DropdownMenuGroup>
-								<DropdownMenuSeparator />
 							</>
 						)}
 
 						{parentDashboard && (
 							<>
+								<DropdownMenuSeparator />
 								<DropdownMenuGroup>
 									<DropdownMenuItem
 										render={<a href={parentDashboard.url} target="_blank" rel="noreferrer" />}
@@ -153,30 +154,50 @@ export function NavUser({
 										{parentDashboard.name} Dashboard
 									</DropdownMenuItem>
 								</DropdownMenuGroup>
-								<DropdownMenuSeparator />
 							</>
 						)}
-						<DropdownMenuItem
-							className="cursor-pointer"
-							onClick={() => {
-								authClient.signOut({
-									fetchOptions: {
-										onSuccess: () => {
-											resetPostHog();
-											resetCrispSession();
-											window.location.href = "/auth/logout";
-										},
-									},
-								});
-							}}
-						>
-							<IconLogout />
-							Log out
-						</DropdownMenuItem>
+						<AccountActions onNavigate={close} />
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>
 		</SidebarMenu>
+	);
+}
+
+function AccountActions({ onNavigate }: { onNavigate: () => void }) {
+	const mode = useDeploymentMode();
+	const canLogOut = mode !== "demo";
+	const canChangePassword = mode === "local" || mode === "cloud";
+
+	return (
+		<>
+			{(canChangePassword || canLogOut) && <DropdownMenuSeparator />}
+			{canChangePassword && (
+				<DropdownMenuItem render={<Link to="/change-password" onClick={onNavigate} />} className="cursor-pointer">
+					<IconKey />
+					Change Password
+				</DropdownMenuItem>
+			)}
+			{canLogOut && (
+				<DropdownMenuItem
+					className="cursor-pointer"
+					onClick={() => {
+						authClient.signOut({
+							fetchOptions: {
+								onSuccess: () => {
+									resetPostHog();
+									resetCrispSession();
+									window.location.href = "/auth/logout";
+								},
+							},
+						});
+					}}
+				>
+					<IconLogout />
+					Log Out
+				</DropdownMenuItem>
+			)}
+		</>
 	);
 }
 
@@ -187,11 +208,11 @@ function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
 	if (organizations.length > INLINE_ORGANIZATION_LIMIT) {
 		return (
 			<>
+				<DropdownMenuSeparator />
 				<DropdownMenuItem render={<Link to="/app" onClick={onNavigate} />} className="cursor-pointer">
 					<IconStatusChange />
 					Switch Brand
 				</DropdownMenuItem>
-				<DropdownMenuSeparator />
 			</>
 		);
 	}
@@ -207,6 +228,7 @@ function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
 				/>
 			))}
 
+			{(isLoading || error) && <DropdownMenuSeparator />}
 			{isLoading && (
 				<DropdownMenuItem disabled>
 					<span className="text-muted-foreground">Loading organizations…</span>
@@ -241,6 +263,7 @@ function OrganizationSection({
 
 	return (
 		<DropdownMenuGroup aria-label={organization.name}>
+			<DropdownMenuSeparator />
 			<DropdownMenuItem
 				render={<Link {...heading.link} onClick={onNavigate} />}
 				aria-label={heading.ariaLabel}
@@ -254,7 +277,7 @@ function OrganizationSection({
 			</DropdownMenuItem>
 
 			{children.length > 0 && (
-				<div className="mb-2 ml-4 border-l pl-1">
+				<div className="ml-4 border-l pl-1">
 					{children.map((row) => (
 						<DropdownMenuItem
 							key={row.key}
@@ -272,8 +295,6 @@ function OrganizationSection({
 					))}
 				</div>
 			)}
-
-			<DropdownMenuSeparator />
 		</DropdownMenuGroup>
 	);
 }

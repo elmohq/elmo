@@ -132,3 +132,24 @@ describe("ResponseMarkdown search highlights", () => {
 		expect(renderWith("**Acme** beats acme-lite.")).not.toContain("<mark");
 	});
 });
+
+describe("marking a passage", () => {
+	const markText = (html: string) =>
+		[...html.matchAll(/<mark class="x" data-passage="">(.*?)<\/mark>/g)].map((m) => m[1]).join("|");
+
+	it("marks exactly the source span, across formatting, and nothing else", () => {
+		const text = "Intro line.\n\nAcme is **the easiest** CRM to set up. Globex is pricier.";
+		const start = text.indexOf("Acme");
+		const end = text.indexOf(" Globex");
+		const html = renderToStaticMarkup(
+			<ResponseMarkdown markRange={{ start, end, className: "x" }}>{text}</ResponseMarkdown>,
+		);
+		expect(markText(html)).toBe("Acme is |the easiest| CRM to set up.");
+		expect(html).toContain("<strong><mark");
+		expect(html).not.toContain('<mark class="x" data-passage="">Intro');
+	});
+
+	it("leaves the answer unmarked without a range", () => {
+		expect(renderToStaticMarkup(<ResponseMarkdown>{"Acme is great."}</ResponseMarkdown>)).not.toContain("<mark");
+	});
+});

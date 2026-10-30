@@ -60,7 +60,6 @@ function FeatureHub() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					eyebrow="By feature"
 					title="Browse AI visibility tools by feature"
 					lead="Filter the field by capability. Pick a feature to see which AI visibility tools offer it and how they compare, including the open-source option you can self-host."
 				/>

@@ -54,9 +54,9 @@ const DATAFORSEO_TARGETS = [
 	{ model: "perplexity", kind: "api" },
 ] as const;
 
-const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
-const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-5";
+const DEFAULT_OPENAI_MODEL = "gpt-6-luna";
+const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-5-5";
+const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-haiku-5.5";
 const DEFAULT_MISTRAL_MODEL = "mistral-medium-latest";
 
 type Credential = {
@@ -292,12 +292,12 @@ export async function collectProvider(spec: ProviderSpec, env: EnvMap, targets: 
 	}
 
 	if (spec.picker) {
-		const selected = (await p.multiselect({
+		const selected = await p.multiselect({
 			message: spec.picker.message,
 			options: spec.picker.options,
 			required: spec.picker.required,
 			initialValues: [...spec.picker.initialValues],
-		})) as string[] | symbol;
+		});
 		assertNotCancelled(selected);
 		targets.push(...selected);
 	}

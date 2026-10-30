@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { Check, X } from "lucide-react";
 import { useState } from "react";
 import {
 	CATEGORY_LABELS,
@@ -12,14 +11,12 @@ import {
 	getComparisonSlug,
 	getFeatureLabel,
 	getPopularityGrade,
+	isRetired,
 	sortedCompetitors,
 } from "@/lib/competitors";
+import { FeatureMark } from "./feature-mark";
 
-function FeatureIcon({ has }: { has: boolean }) {
-	return has ? <Check className="mx-auto h-4 w-4 text-blue-600" /> : <X className="mx-auto h-4 w-4 text-zinc-300" />;
-}
-
-const visibleCompetitors = sortedCompetitors.filter((c) => c.status !== "shutting-down" && c.category !== "other");
+const visibleCompetitors = sortedCompetitors.filter((c) => !isRetired(c) && c.category !== "other");
 
 export function CompetitorDirectory() {
 	const [selectedCategory, setSelectedCategory] = useState<CompetitorCategory | "all">("all");
@@ -39,7 +36,6 @@ export function CompetitorDirectory() {
 					className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgb(0_0_0/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(0_0_0/0.04)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
 				/>
 				<div className="relative mx-auto max-w-6xl px-4 md:px-6">
-					<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ RESOURCES</p>
 					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl lg:text-6xl">
 						AI Visibility Tools
 					</h1>
@@ -129,7 +125,9 @@ function FeatureMatrix({ competitors: items }: { competitors: Competitor[] }) {
 	const stickyCell = "sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]";
 
 	return (
-		<div className="overflow-x-auto">
+		// relative: the cells' sr-only labels are absolutely positioned, and without a
+		// containing block here they stretch the whole page instead of this scroller.
+		<div className="relative overflow-x-auto">
 			<table className="w-full min-w-[800px] text-sm">
 				<thead>
 					<tr className="border-b border-zinc-200">
@@ -160,11 +158,11 @@ function FeatureMatrix({ competitors: items }: { competitors: Competitor[] }) {
 									{getFeatureLabel(featureKey as FeatureKey)}
 								</td>
 								<td className="border-x border-zinc-200 bg-blue-50 px-2 py-2">
-									<FeatureIcon has={ELMO_FEATURES[featureKey as FeatureKey] ?? false} />
+									<FeatureMark has={ELMO_FEATURES[featureKey as FeatureKey] ?? false} />
 								</td>
 								{items.map((c) => (
 									<td key={c.slug} className="px-2 py-2">
-										<FeatureIcon has={c.features[featureKey as FeatureKey] ?? false} />
+										<FeatureMark has={c.features[featureKey as FeatureKey] ?? false} />
 									</td>
 								))}
 							</tr>

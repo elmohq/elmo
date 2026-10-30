@@ -28,6 +28,7 @@ interface StateSpec {
 	cancelAtPeriodEnd?: boolean;
 	billingInterval?: string;
 	usage?: BillingState["usage"];
+	hasBillingAccount?: boolean;
 }
 
 function billingState(spec: StateSpec = {}): BillingState {
@@ -51,6 +52,7 @@ function billingState(spec: StateSpec = {}): BillingState {
 		subscription: plan
 			? {
 					id: "sub_1",
+					stripeSubscriptionId: "sub_stripe_1",
 					plan,
 					status,
 					periodEnd: periodEnd?.toISOString() ?? null,
@@ -59,6 +61,7 @@ function billingState(spec: StateSpec = {}): BillingState {
 					seats: null,
 				}
 			: null,
+		hasBillingAccount: spec.hasBillingAccount ?? plan !== null,
 		premiumAddonQuantity: addonQuantity,
 		premiumAddonAvailable: isPremiumAddonAvailable(entitlements.planKey),
 		usage: spec.usage ?? { brands: 1, enabledPrompts: 84, premiumAssigned: 12 },
@@ -144,6 +147,8 @@ export const PaymentFailedInGrace: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("Payment failed")).toBeVisible();
+		await expect(await canvas.findByRole("button", { name: /manage billing/i })).toBeVisible();
+		await expect(canvas.queryByRole("button", { name: /switch to/i })).toBeNull();
 	},
 };
 
@@ -178,6 +183,22 @@ export const NoSubscription: Story = {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("No active subscription")).toBeVisible();
 		await expect(await canvas.findByRole("button", { name: /choose a plan/i })).toBeVisible();
+	},
+};
+
+/** An ended subscription: invoices stay reachable in the portal, and a new plan is one click away. */
+export const SubscriptionEnded: Story = {
+	render: () =>
+		renderWith({
+			plan: null,
+			hasBillingAccount: true,
+			usage: { brands: 1, enabledPrompts: 0, premiumAssigned: 0 },
+		}),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByRole("button", { name: /choose a plan/i })).toBeVisible();
+		await expect(await canvas.findByRole("button", { name: /manage billing/i })).toBeVisible();
+		await expect(canvas.queryByRole("button", { name: /switch to/i })).toBeNull();
 	},
 };
 

@@ -89,3 +89,8 @@ apps/web/storybook-static/
 .claude/worktrees/
 .readonlydb
 .pnpm-store/
+
+# Built from skills/ by apps/www/scripts/build-agent-skills.mjs.
+apps/www/public/.well-known/agent-skills/
+# The model the worker loaded before it judged with Jev; old checkouts may still have it.
+apps/worker/mention-judge

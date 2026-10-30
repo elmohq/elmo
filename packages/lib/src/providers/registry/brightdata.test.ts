@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { brightdata, extractWebQueries, readAnswer } from "./brightdata";
+import { extractRun } from "../../text-extraction";
+import { brightdata, extractWebQueries, readAnswer, storedRecord } from "./brightdata";
 
 const { cancelSnapshot } = vi.hoisted(() => ({ cancelSnapshot: vi.fn() }));
 
@@ -54,6 +55,18 @@ describe("extractWebQueries", () => {
 
 	it("reports nothing when the payload carries no query fields", () => {
 		expect(extractWebQueries({ answer_text: "hello" })).toEqual([]);
+	});
+});
+
+describe("storedRecord", () => {
+	it("drops the HTML when the answer lives in a structured field", () => {
+		const stored = storedRecord({ answer_text: "Acme leads.", answer_html: "<p>Acme leads.</p>", response_raw: "raw" });
+		expect(stored).toEqual({ answer_text: "Acme leads." });
+	});
+
+	it("keeps response_raw when it is the only answer, so a replay still finds the text", () => {
+		const stored = storedRecord({ response_raw: "Acme leads.", answer_html: "<p>Acme leads.</p>" });
+		expect(extractRun(stored, "brightdata").textContent).toBe("Acme leads.");
 	});
 });
 

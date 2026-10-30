@@ -90,6 +90,10 @@ function TeamSettingsPage() {
 						value={inviteEmail}
 						onChange={(e) => setInviteEmail(e.target.value)}
 						required
+						autoComplete="off"
+						data-lpignore="true"
+						data-1p-ignore
+						data-bwignore
 						className="w-64"
 					/>
 				</div>

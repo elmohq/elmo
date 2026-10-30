@@ -77,6 +77,36 @@ Brand onboarding and the Opportunities report also need one direct LLM API key �
 | `DATAFORSEO_PASSWORD` | DataForSEO password |
 | `SCRAPE_TARGETS` | Comma-separated `model:provider[:version][:online]` entries. See [Providers](/docs/user-guide/providers#scrape_targets-format). |
 
+### Mention Judging
+
+Elmo uses [Jev](https://typesafe.ai) from TypeSafe to read each answer. Jev decides which tracked companies the answer really mentions, its sentiment toward each one, and the passage that shows it. **The worker won't start without a key for Jev**: either a TypeSafe key from [console.typesafe.ai](https://console.typesafe.ai), or an `OPENROUTER_API_KEY`, which calls Jev through [OpenRouter](https://openrouter.ai/typesafe/jev-1.13) and bills your OpenRouter account.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TYPESAFE_API_KEY` | TypeSafe API key for Jev. When set, Elmo calls TypeSafe directly, even if `OPENROUTER_API_KEY` is set too. | — |
+| `OPENROUTER_API_KEY` | Without `TYPESAFE_API_KEY`, Elmo calls Jev through OpenRouter with this key. | — |
+| `REPROCESS_DAYS` | How far back reprocessing (re-extracting and re-judging history) goes, in days, or `all` | `90` |
+
+`elmo init` asks which one to use, offering the OpenRouter key you entered for onboarding if there is one. If you add an OpenRouter key just for Jev, it also pins `ONBOARDING_LLM_TARGET` to the provider you chose for onboarding, which OpenRouter would otherwise take over from Anthropic or Mistral. `elmo upgrade` asks the same before it stops anything when `.env` has neither key, or only an OpenRouter key on a deployment from before Jev; it can't see a key saved only in Elmo's settings.
+
+Elmo makes one Jev call for each answer that names a tracked company. Answers that name none are never sent. Its cost grows with the answer's length and with how many tracked companies it names.
+
+Very roughly, that's **$0.15–0.35 per 1,000 answers**. A month of answers is about prompts × platforms × `RUNS_PER_PROMPT` × 30 when prompts run daily:
+
+| What you track (daily, 5 samples) | Answers a month | Jev, per month |
+|---|---|---|
+| 25 prompts × 3 platforms | ~11,000 | ~$2–4 |
+| 100 prompts × 5 platforms | ~75,000 | ~$11–26 |
+| 500 prompts × 5 platforms | ~375,000 | ~$55–130 |
+
+These are estimates, not quotes; see TypeSafe's pricing, or OpenRouter's for Jev, for current rates.
+
+The worker picks TypeSafe or OpenRouter when it starts, and never falls back from one to the other. Both serve the same Jev release, so switching keeps the judgements you already have; only a new Jev version in an Elmo release re-judges history. OpenRouter serves Jev 1.13 from a dated snapshot that it may update to a newer 1.13 one, and runs requests over about 32 KB in Jev's long-context mode, so long answers may be judged slightly differently there.
+
+A large re-judge goes as fast as your TypeSafe or OpenRouter rate limit allows, with nothing to configure. Each worker finds the limit itself: it speeds up while calls succeed, slows down when Jev rate-limits it, and retries those calls after the wait Jev asks for. For example, with a 100,000 input tokens per second limit, one worker judges about a million answers in roughly 16 hours.
+
+When the judge's version, or a brand's or competitor's names, change, the worker re-judges that brand's history in the background, starting with the last 30 days. A re-judge only goes back `REPROCESS_DAYS`, and only through enabled prompts of enabled brands. Older answers keep how they were judged when they were recorded. A prompt or brand that's enabled again has its answers within the window caught up at that point. Re-judging only asks about what changed. Adding a competitor, or editing one's names, aliases or domains, asks Jev about that company alone, and only in answers that name it. That costs a fraction of judging those answers from scratch. Removing a competitor asks nothing. Edits made within a minute of each other are handled in one pass. A new judge version re-judges everything in the window, so it costs about `REPROCESS_DAYS` worth of answers: at the default, roughly three months of the figures above.
+
 ## Updating Configuration
 
 To change environment variables after initial setup:

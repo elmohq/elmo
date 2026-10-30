@@ -1,0 +1,126 @@
+---
+title: "Do People Click the Sources Cited in AI Answers?"
+description: "A randomized experiment with 37,561 Washington Post readers, Pew's browsing panel, and Seer Interactive's CTR data disagree by an order of magnitude on whether AI citations get clicked. The reason they disagree is the useful part."
+date: "2026-10-05"
+author: ai
+metaTitle: "Do People Click AI Citations? What the Data Shows"
+tags:
+  - ai-citations
+  - ai-search
+  - ai-visibility
+  - aeo
+definedTerms:
+  - term: Citation click share
+    definition: "Citation click share is the fraction of result clicks on an AI-answered query that go to the sources linked inside the answer, rather than to the conventional results below it. It measures how much of the remaining traffic the citation captures, not how much traffic the query sends overall."
+  - term: Destination query
+    definition: "A destination query is one where the cited page is itself what the searcher wants to reach: a specific article, product, tool, dataset, or template. The answer can describe it but cannot replace it, so citations on destination queries get clicked."
+  - term: Evidence query
+    definition: "An evidence query is one where the cited page only supports a fact the answer already states. Once the reader has the fact, the link has little left to offer, so citations on evidence queries are rarely clicked and work mainly as brand exposure."
+howTo:
+  name: "How to estimate what an AI citation is worth on a given query"
+  description: "Use the published click data to set expectations per query, rather than applying one citation click-through figure across your whole prompt set."
+  steps:
+    - name: Sort your tracked queries into destination and evidence queries
+      text: "Ask whether the reader needs your page itself or only a fact from it. Product, tool, template, and pricing queries are destination queries; definitions, statistics, and how-it-works questions are usually evidence queries."
+    - name: Set a click expectation for each group
+      text: "On destination queries, plan for citations to take something like a third of the result clicks, as in the Washington Post experiment. On evidence queries, plan for roughly one click in nine or fewer, as in Pew's Google data."
+    - name: Value evidence-query citations as exposure, not traffic
+      text: "If the citation will rarely be clicked, what you get from it is whether the answer names you. Track brand mention and citation as separate fields so you can see whether evidence-query citations carry your name."
+    - name: Compare cited and uncited CTR in your own Search Console data
+      text: "Split informational queries with an AI Overview into those where you are cited and those where you are not, and compare organic CTR. Seer Interactive's 0.70% versus 0.52% is a benchmark, not a forecast for your site."
+    - name: Do not attribute the gap to the citation alone
+      text: "Sites that get cited tend to be stronger sites. A cited-versus-uncited CTR gap overstates what winning the citation would add, so treat it as an upper bound when making the case for the work."
+faq:
+  - question: Do people click the links in AI answers?
+    answer: "Sometimes, and how often depends heavily on context. In a randomized experiment on The Washington Post's archive search, readers clicked a cited source after 14.3% of searches that showed an AI answer. On Google, Pew Research Center measured clicks on links inside AI summaries in just 1% of visits to pages that showed one. The gap mostly reflects whether the cited page is what the reader wanted or just support for a fact."
+  - question: What percentage of clicks go to AI Overview citations?
+    answer: "In Pew's March 2025 browsing data, users clicked a link inside the AI summary on 1% of visits and a traditional result on 8%, so citations drew roughly one click in nine. In the Washington Post experiment, cited sources drew 14.3% of next actions against 32.1% for conventional results, or about 31% of result clicks."
+  - question: Does being cited in an AI Overview increase click-through rate?
+    answer: "It correlates with a higher one. Seer Interactive's analysis of 3,119 informational queries across 42 client organizations found organic CTR of 0.70% when the brand was cited in the AI Overview versus 0.52% when it was not, in Q3 2025. Both were well below the 1.45% CTR on queries with no AI Overview. Seer cautions it cannot prove the citation causes the difference."
+  - question: Do AI answers reduce total clicks to websites?
+    answer: "Per search, yes. In the Washington Post experiment, article consumption per search fell 18.2% when an AI answer was shown. But readers searched 29.4% more often, so article opens per reader rose slightly, by 4.9%. Pew found Google users clicked a result on 8% of visits with an AI summary against 15% without one."
+  - question: Is it better to rank first or be cited in an AI answer?
+    answer: "On informational queries the data says you need both, and neither restores the old click rate. In Seer Interactive's data, being cited in the AI Overview recovered only about a fifth of the organic CTR lost to the overview itself. Where an AI answer appears, the citation decides whether the answer uses your page; the ranking still collects most of the clicks that remain."
+---
+
+**Yes, sometimes. And the answer swings by an order of magnitude depending on what the reader came for.** A randomized experiment with 37,561 Washington Post readers found that when an AI answer sat above search results, [readers clicked one of its cited sources after 14.3% of searches](https://arxiv.org/abs/2609.38946). On Google, Pew Research Center found people clicked a link inside an AI summary [on 1% of visits](https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/). Both studies are sound. They are measuring two different kinds of query, and which kind your prompts are tells you what a citation is worth.
+
+**Key takeaways**
+
+- In the Washington Post experiment, showing an AI answer cut clicks on conventional results from 52.9% to 32.1% of searches, while clicks on cited sources rose from zero to 14.3%. Citations took about **31% of result clicks**.
+- On Google, Pew measured 1% of visits ending in a click on an AI-summary link against 8% on a traditional result: roughly **one click in nine**.
+- Seer Interactive found brands cited in an AI Overview earned **0.70% organic CTR versus 0.52%** when not cited, both far below the 1.45% on queries with no overview. The citation claws back about a fifth of the loss.
+- The disagreement lines up with one variable: whether the cited page is the thing the reader wants (a **destination**) or only supports a fact the answer already gave them (**evidence**).
+- AI answers cut clicks per search but increase searching. Washington Post readers searched 29.4% more, and article opens per reader rose 4.9%.
+- No dataset shows the citation *causes* the click advantage. Google says AI Overview links get more clicks than ordinary listings, and has never published the numbers.
+
+## Three datasets, three denominators
+
+Every number in circulation about citation clicks is a ratio, and each study divides by something different. Line them up before comparing.
+
+| Source | Setting | Denominator | Cited-source clicks | Conventional-result clicks |
+|---|---|---|---|---|
+| [Lee, Lee, Lee & Lee (arXiv, 2026)](https://arxiv.org/abs/2609.38946) | Washington Post archive search, Oct–Nov 2024, randomized | Searches (24,683 treatment) | 14.3% | 32.1% (vs 52.9% in control) |
+| [Pew Research Center (2025)](https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/) | Google, March 2025, 900 US adults, 68,879 searches | Visits to results pages with an AI summary | 1% | 8% (vs 15% without a summary) |
+| [Seer Interactive (2025)](https://www.seerinteractive.com/insights/aio-impact-on-google-ctr-september-2025-update) | Google, Jun 2024–Sep 2025, 3,119 informational queries, 42 organizations | The brand's own organic impressions | n/a | 0.70% when cited, 0.52% when not, 1.45% with no AI Overview |
+
+The first two can be put on a common footing: the share of result clicks that went to a citation. In the Washington Post data that is 14.3 out of 46.4 points, about 31%. In Pew's data it is 1 out of about 9, roughly 11%. Seer's figures answer a different question, how a brand's own listing performs depending on whether it is also cited, and it is the only one of the three built from Search Console data across many sites.
+
+So the spread is not 1% against 14.3%. It is closer to one click in nine against one in three. That is still a large gap, and it has an explanation.
+
+## Why the Washington Post's readers clicked and Google's didn't
+
+The Washington Post study is the strongest causal evidence available on this question. Readers were assigned by browser cookie at their first search to either conventional semantic search results or the same results with an AI answer on top, citing up to five archive articles. Nothing else differed. Treatment readers spent 58.3% more time on search pages, and the authors report confidence intervals on every headline result.
+
+But look at what the treatment group was doing. Someone searching a newspaper's archive wants an article. The AI answer could summarize what the coverage said, but the reader came for the coverage, and every citation was a Post article: precisely the thing they were looking for. The citation was the destination.
+
+A Google user asking an informational question mostly wants the answer. Once the summary gives it, the linked source has little left to offer. Pew's sample is everyday Google browsing, and Seer's dataset is explicitly informational and educational queries, the category where an AI answer is most complete on its own.
+
+That reading has a second, independent piece of support. Shopify reported that half of AI-referred sessions land straight on a product page, [2.5 times the rate of traditional search](/blog/ai-referral-traffic-conversion). When an engine refers a visitor at all, it is disproportionately to a page the visitor needs to act on, which is a destination.
+
+The authors make the narrower version of this point themselves: the study ran "within one publisher's archive," and may not generalize to engines drawing on many publishers. Three more differences cut the same way. The Post's answers cited at most five sources, all from one site, so there was no competition between domains for the click. The experiment ran in late 2024 and the Pew panel in March 2025, both before AI answers reached their [current share of Google searches](/blog/ai-overviews-share-of-searches). And Pew counts per page visit while the Post counts per search, so a reader who searched three times shows up differently in each.
+
+## What a citation recovers, and what it doesn't
+
+Seer's numbers are the most useful for anyone deciding whether to chase a citation on Google, and the most commonly misread. The headline, "35% higher organic CTR when cited," is accurate. The baseline is the problem.
+
+| Seer, Q3 2025 | Organic CTR | Paid CTR |
+|---|---|---|
+| No AI Overview | 1.45% | 13.88% |
+| AI Overview, brand cited | 0.70% | 7.89% |
+| AI Overview, brand not cited | 0.52% | 4.14% |
+
+Take the gap between "no overview" and "overview, not cited" as what the overview costs a brand. Being cited recovers 0.18 of those 0.93 points of organic CTR, about **19%**. On paid it recovers about 38%. A citation on an informational query is worth having. It does not get you back to where you were.
+
+Seer is also explicit that the arrow may point the other way: "it's equally possible that brands with stronger authority and higher baseline CTRs are simply more likely to be cited by Google's AI." A brand that wins citations is probably a brand people already click. That makes 19% an upper bound on what winning the citation would add for a site that is not currently cited.
+
+The only party with complete data has made a stronger claim. Announcing AI Overviews in May 2024, Google's head of Search wrote that ["the links included in AI Overviews get more clicks than if the page had appeared as a traditional web listing for that query."](https://blog.google/products/search/generative-ai-google-search-may-2024/) That can be true per link and still fit Pew's 1%, because it compares a cited page against the same page as an ordinary listing, not against the clicks the query used to send. Google has not published figures behind it, and its new Search Console AI report [shows impressions only](/blog/search-console-ai-visibility), with no clicks. Until it does, the claim cannot be checked.
+
+## AI answers move clicks rather than simply removing them
+
+The finding in the Washington Post data most likely to surprise marketers is not about citations at all. With the AI answer on, article consumption per search fell 18.2%, and follow-up searches more than doubled, from 10.4% to 21.6% of next actions. Readers searched 29.4% more overall, and article opens per reader ended up 4.9% higher than in the control group.
+
+On an owned search box, an AI answer turned one search into several. Each answer prompted another question, and some of those questions ended in a click. That matches what we described in [multi-turn AI search](/blog/multi-turn-ai-search): the unit of behavior is the session, not the query. A brand that is cited on the opening question and absent from the follow-ups has missed the turns where the remaining clicks happen.
+
+The authors also checked whether the AI answer funneled attention to already-popular articles. It did not: cited sources showed no statistically significant difference in popularity rank from the conventional results returned for the same queries. On this evidence, the citation slot is not reserved for the biggest names, which is a better result for challenger brands than most commentary assumes.
+
+## What this does not prove
+
+**The cleanest experiment is the least like Google.** One publisher, one site's articles, at most five citations, no competing domains. It establishes that people will click citations when the cited page is what they want. It does not give you a citation click rate for ChatGPT or AI Overviews.
+
+**The Google numbers are correlational and dated.** Pew's panel is from March 2025 and Seer's quarter ends September 2025. Neither randomized anything, and both predate the current scale of AI answers. Pew's 1% is also an average across every query type, so it will understate destination queries and overstate pure fact lookups.
+
+**Nobody has measured citation clicks on ChatGPT, Perplexity, or Claude** with comparable rigor. Referral logs show only the clicks that happened and arrive with no record of how many answers were shown, so no public dataset gives a click-through rate for citations on those engines.
+
+## A decision rule for your prompt set
+
+Read together, the three datasets support one practical rule: **estimate what a citation is worth by whether the reader needs your page, not by a single citation CTR.**
+
+1. **Sort tracked queries into destination and evidence queries.** "Best invoicing software for contractors" and "invoice template for contractors" are destination queries: the reader has to leave the answer to act. "What is net 30" is an evidence query: the answer is the product.
+2. **On destination queries, expect the citation to compete for real traffic.** The Washington Post case, where the cited page was the goal, is the closest model: citations took about a third of result clicks. These are the queries where being cited, and being the page cited, pays off in sessions.
+3. **On evidence queries, expect roughly one click in nine or fewer, and value the citation as exposure.** If nobody clicks, all the citation can do is put your name in front of the reader. That depends on whether the answer names you as well as linking you, which ChatGPT skipped in about four of five appearances in the data we covered in [ghost citations](/blog/ghost-citations). An unnamed citation on an evidence query is worth very little.
+4. **Never pitch a citation as recovering lost traffic on informational queries.** On Seer's numbers it recovers about a fifth, at best. Make the case on presence in the answer, and report referral sessions as supporting evidence.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, recording brand mentions, cited URLs, and the competitors named beside you on every run. Because the data is yours to query, tagging prompts as destination or evidence queries and comparing citation and mention rates across the two is a column and a `GROUP BY`, not a feature request.
+
+For the fundamentals, start with [AI citations](/blog/ai-citations) and [how to track your brand in AI search](/answer-engine-optimization). For what happens after the click, see [AI referral traffic conversion](/blog/ai-referral-traffic-conversion). For the vocabulary, see the [AI search glossary](/glossary).

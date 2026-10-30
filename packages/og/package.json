@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/og",
-	"version": "0.4.4",
+	"version": "0.7.7",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
@@ -15,16 +15,16 @@
 		"./virtual": "./src/virtual.d.ts"
 	},
 	"dependencies": {
-		"@takumi-rs/core": "^2.13.5",
+		"@takumi-rs/core": "catalog:",
 		"@takumi-rs/helpers": "^2.13.5",
 		"@workspace/config": "workspace:*",
-		"react": "^19.2.8"
+		"react": "catalog:"
 	},
 	"devDependencies": {
-		"@types/node": "^26.4.1",
-		"@types/react": "^19.2.18",
-		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
-		"typescript": "^7.0.2",
-		"vite": "^8.2.2"
+		"@types/node": "catalog:",
+		"@types/react": "catalog:",
+		"nitro": "catalog:",
+		"typescript": "catalog:",
+		"vite": "catalog:"
 	}
 }

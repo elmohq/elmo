@@ -1,0 +1,27 @@
+# robots.txt for www.quillstack.example
+# last edited by web team 2026-03
+
+User-agent: *
+Disallow: /app/
+Disallow: /api/
+Disallow: /search
+Crawl-delay: 10
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: PerplexityBot
+User-agent: Claude-SearchBot
+Disallow: /docs/
+Disallow: /pricing
+
+User-agent: CCBot
+Disallow: /
+
+Sitemap: https://www.quillstack.example/sitemap.xml

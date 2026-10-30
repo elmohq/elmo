@@ -471,7 +471,7 @@ export function computeFanoutAnalysis(
 			avgPerExecution: m.fanout_runs > 0 ? Math.round((m.total_queries / m.fanout_runs) * 10) / 10 : 0,
 			topQueries: perModel.has(m.model) ? toQueryStats(perModel.get(m.model)!, L.perModelTop) : [],
 		}))
-		.sort((a, b) => b.totalQueries - a.totalQueries || b.runs - a.runs);
+		.sort((a, b) => b.totalQueries - a.totalQueries || b.runs - a.runs || a.model.localeCompare(b.model));
 
 	// Every prompt that produced fan-out (no cap) — the Prompts tab searches and
 	// sorts the full set client-side; `variations` per prompt is still bounded.
@@ -488,7 +488,7 @@ export function computeFanoutAnalysis(
 				variations: toQueryStats(pp.queries, L.variations),
 			};
 		})
-		.sort((a, b) => b.totalQueries - a.totalQueries);
+		.sort((a, b) => b.totalQueries - a.totalQueries || a.promptValue.localeCompare(b.promptValue));
 
 	// Breadth framing — the searches that matter beyond a single prompt, with
 	// the prompts behind each one so the list can drill down like the

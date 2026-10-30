@@ -2,11 +2,13 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, reports } from "@workspace/lib/db/schema";
-import { analyzeMentions } from "@workspace/lib/mentions";
+import type { MentionConfig } from "@workspace/lib/mentions";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getProvider, type ModelConfig } from "@workspace/lib/providers";
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
+import { extractRun } from "@workspace/lib/text-extraction";
 import { eq } from "drizzle-orm";
+import { mentionAnalyzer } from "./mention-judge/analyze";
 
 interface CompetitorResult {
 	name: string;
@@ -162,6 +164,22 @@ function selectOptimalPrompts(
 	return selectedPrompts;
 }
 
+const JUDGE_ATTEMPTS = 3;
+const JUDGE_RETRY_DELAY_MS = 5_000;
+
+/** Judges a report's answer, retrying on its own: the answer is paid for and is never fetched again. */
+async function judgeWithRetries(text: string, config: MentionConfig, question: string) {
+	for (let attempt = 1; ; attempt++) {
+		try {
+			return await mentionAnalyzer().analyze(text, config, null, question);
+		} catch (error) {
+			if (attempt >= JUDGE_ATTEMPTS) throw error;
+			console.error(`Mention judge failed (attempt ${attempt} of ${JUDGE_ATTEMPTS}); retrying:`, error);
+			await new Promise((resolve) => setTimeout(resolve, JUDGE_RETRY_DELAY_MS * attempt));
+		}
+	}
+}
+
 // Whitelabel uses its fixed 2+1+1 mapping; other modes match day-to-day
 // tracking frequency.
 async function runPrompt(
@@ -173,35 +191,43 @@ async function runPrompt(
 	scrapeConfigs: ModelConfig[],
 	job: ReportJobContext,
 ): Promise<PromptRunResult> {
-	const runOne = async (config: ModelConfig) => {
-		const providerImpl = getProvider(config.provider);
-		const result = await providerImpl.run(config.model, promptValue, {
+	const mentionConfig = {
+		brand: { name: brandName, aliases: brandAliases, domains: [brandWebsite] },
+		competitors: competitors.map((competitor) => ({
+			name: competitor.name,
+			aliases: [],
+			domains: [competitor.domain],
+		})),
+	};
+	const callProvider = async (config: ModelConfig) => {
+		const result = await getProvider(config.provider).run(config.model, promptValue, {
 			webSearch: config.webSearch,
 			version: config.version,
 		});
-		const { brandMentioned, competitorsMentioned } = analyzeMentions(
-			result.textContent,
-			{ name: brandName, aliases: brandAliases, domains: [brandWebsite] },
-			competitors.map((competitor) => ({ name: competitor.name, domains: [competitor.domain] })),
-		);
-		return {
-			model: config.model,
-			version: result.modelVersion ?? config.version ?? config.provider,
-			webSearchEnabled: config.webSearch,
-			rawOutput: result.rawOutput,
-			webQueries: result.webQueries,
-			textContent: result.textContent,
-			brandMentioned,
-			competitorsMentioned,
-		};
+		return { config, result, textContent: extractRun(result.rawOutput, config.provider).textContent ?? "" };
 	};
 
-	const runPromises = scrapeConfigs.flatMap((config) => {
-		const count = getReportRunsForModel(config.model);
-		return Array.from({ length: count }, () => runOne(config));
-	});
-
-	const runResults = await Promise.all(runPromises);
+	// Every provider call settles before any judging, so a judge failure retries only the judging.
+	const answers = await Promise.all(
+		scrapeConfigs.flatMap((config) =>
+			Array.from({ length: getReportRunsForModel(config.model) }, () => callProvider(config)),
+		),
+	);
+	const runResults = await Promise.all(
+		answers.map(async ({ config, result, textContent }) => {
+			const { brandMentioned, competitorsMentioned } = await judgeWithRetries(textContent, mentionConfig, promptValue);
+			return {
+				model: config.model,
+				version: result.modelVersion ?? config.version ?? config.provider,
+				webSearchEnabled: config.webSearch,
+				rawOutput: result.rawOutput,
+				webQueries: result.webQueries,
+				textContent,
+				brandMentioned,
+				competitorsMentioned,
+			};
+		}),
+	);
 
 	job.log(`Completed ${runResults.length} runs for prompt: "${promptValue}"`);
 
@@ -225,6 +251,8 @@ export async function processReportJob(job: ReportJobContext) {
 	}
 
 	try {
+		// Before anything is spent: the answers a report pays for can't be judged without it.
+		mentionAnalyzer();
 		await db.update(reports).set({ status: "processing", updatedAt: new Date() }).where(eq(reports.id, reportId));
 
 		job.log(`Report ${reportId} marked as processing`);
@@ -289,6 +317,7 @@ export async function processReportJob(job: ReportJobContext) {
 
 		const totalCandidates = candidatePrompts.length;
 		let completedCandidates = 0;
+		let failedCandidates = 0;
 
 		const batchSize = 20;
 		for (let i = 0; i < candidatePrompts.length; i += batchSize) {
@@ -316,6 +345,7 @@ export async function processReportJob(job: ReportJobContext) {
 					job.log(
 						`Error testing candidate "${candidate.prompt}": ${error instanceof Error ? error.message : "Unknown error"}`,
 					);
+					failedCandidates++;
 					completedCandidates++;
 					const progress = 40 + (completedCandidates / totalCandidates) * 30;
 					job.updateProgress(progress);
@@ -335,6 +365,10 @@ export async function processReportJob(job: ReportJobContext) {
 				await new Promise((resolve) => setTimeout(resolve, 1000));
 			}
 		}
+
+		// A report built from no answers would read as "never mentioned"; fail it instead.
+		if (failedCandidates === candidatePrompts.length)
+			throw new Error("Every candidate prompt failed: are the providers or the judge (Jev) down?");
 
 		job.updateProgress(70);
 

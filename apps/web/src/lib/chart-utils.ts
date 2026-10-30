@@ -1,7 +1,10 @@
-import { CITATION_CATEGORIES, type CitationCategory } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { daysInRange, type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
-import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
+import type { PerPromptDailyCompetitorRow, PerPromptDailyRuns } from "@/lib/rollup-read";
+
+/** A calendar day ("2026-03-04") as a chart labels it ("Mar 4"). */
+export const formatShortDate = (date: string) =>
+	new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
 export interface ChartSubject {
@@ -106,9 +109,35 @@ export function citationDateWindow(
 	};
 }
 
-export interface DailyVisibilityBucket {
-	branded: { total: number; mentioned: number };
-	nonBranded: { total: number; mentioned: number };
+/** One prompt's day on the per-prompt charts. */
+export interface ProcessedBatchChartDataPoint {
+	prompt_id: string;
+	date: string;
+	total_runs: number;
+	brand_mentioned_count: number;
+	/** Runs that day naming each competitor. */
+	competitor_counts: Record<string, number>;
+}
+
+export function toBatchChartData(
+	runs: PerPromptDailyRuns[],
+	competitors: PerPromptDailyCompetitorRow[],
+): ProcessedBatchChartDataPoint[] {
+	const dayKey = (promptId: string, date: string) => `${promptId}|${date}`;
+	const countsByDay = new Map<string, Record<string, number>>();
+	for (const row of competitors) {
+		const key = dayKey(row.prompt_id, row.date);
+		const counts = countsByDay.get(key) ?? {};
+		counts[row.competitor] = row.runs;
+		countsByDay.set(key, counts);
+	}
+	return runs.map((row) => ({
+		prompt_id: row.prompt_id,
+		date: row.date,
+		total_runs: row.runs,
+		brand_mentioned_count: row.brand_mentioned_runs,
+		competitor_counts: countsByDay.get(dayKey(row.prompt_id, row.date)) ?? {},
+	}));
 }
 
 /**
@@ -117,7 +146,7 @@ export interface DailyVisibilityBucket {
  * observation so days before its first run still contribute — otherwise a
  * staggered schedule reads as a ramp-up rather than steady coverage.
  */
-function carryForward<V>(
+export function carryForward<V>(
 	byPrompt: Map<string, Map<string, V>>,
 	dateRange: string[],
 	visit: (promptId: string, date: string, carried: V, actual: V | undefined) => void,
@@ -133,72 +162,6 @@ function carryForward<V>(
 		}
 	}
 }
-
-/**
- * Per-prompt Last Value Carried Forward (LVCF) for visibility data.
- *
- * For each prompt, carries forward its last known (total_runs, brand_mentioned_count)
- * to fill gap days when it didn't run. Then aggregates across all prompts per day,
- * split by branded/non-branded status.
- *
- * This eliminates periodic artifacts caused by staggered prompt schedules:
- * every prompt contributes to every day's aggregate via its last observation.
- */
-export function applyPerPromptLVCF(
-	perPromptData: PerPromptVisibilityPoint[],
-	dateRange: string[],
-	brandedPromptIds: string[],
-): {
-	dailyVisibilityMap: Map<string, DailyVisibilityBucket>;
-	totalBrandedRuns: number;
-	totalBrandedMentioned: number;
-	totalNonBrandedRuns: number;
-	totalNonBrandedMentioned: number;
-} {
-	const brandedSet = new Set(brandedPromptIds);
-
-	const byPrompt = new Map<string, Map<string, { total: number; mentioned: number }>>();
-	for (const row of perPromptData) {
-		const byDate = byPrompt.get(row.prompt_id) ?? new Map<string, { total: number; mentioned: number }>();
-		byDate.set(String(row.date), { total: Number(row.total_runs), mentioned: Number(row.brand_mentioned_count) });
-		byPrompt.set(row.prompt_id, byDate);
-	}
-
-	const dailyVisibilityMap = new Map<string, DailyVisibilityBucket>();
-	const observed = {
-		branded: { runs: 0, mentioned: 0 },
-		nonBranded: { runs: 0, mentioned: 0 },
-	};
-
-	carryForward(byPrompt, dateRange, (promptId, date, carried, actual) => {
-		const isBranded = brandedSet.has(promptId);
-		const bucket = dailyVisibilityMap.get(date) ?? {
-			branded: { total: 0, mentioned: 0 },
-			nonBranded: { total: 0, mentioned: 0 },
-		};
-		dailyVisibilityMap.set(date, bucket);
-
-		const day = isBranded ? bucket.branded : bucket.nonBranded;
-		day.total += carried.total;
-		day.mentioned += carried.mentioned;
-
-		// Period totals measure observations, not the synthetic daily series.
-		if (!actual) return;
-		const period = isBranded ? observed.branded : observed.nonBranded;
-		period.runs += actual.total;
-		period.mentioned += actual.mentioned;
-	});
-
-	return {
-		dailyVisibilityMap,
-		totalBrandedRuns: observed.branded.runs,
-		totalBrandedMentioned: observed.branded.mentioned,
-		totalNonBrandedRuns: observed.nonBranded.runs,
-		totalNonBrandedMentioned: observed.nonBranded.mentioned,
-	};
-}
-
-export type CitationCategories = Record<CitationCategory, number>;
 
 /**
  * Generalized per-prompt LVCF with cadence normalization over arbitrary string
@@ -240,26 +203,6 @@ export function applyPerPromptKeyedLVCF<K extends string>(
 	return daily;
 }
 
-/** Dashboard wrapper that converts citation domains to category keys before smoothing. */
-export function applyPerPromptCitationLVCF(
-	perPromptData: PerPromptDailyCitationStats[],
-	dateRange: string[],
-	cadenceHours: number | null | undefined,
-	categorizeDomain: (domain: string) => CitationCategory,
-): Map<string, CitationCategories> {
-	return applyPerPromptKeyedLVCF(
-		perPromptData.map((r) => ({
-			prompt_id: r.prompt_id,
-			date: r.date,
-			key: categorizeDomain(r.domain),
-			count: Number(r.count),
-		})),
-		dateRange,
-		cadenceHours,
-		CITATION_CATEGORIES,
-	);
-}
-
 export interface ChartDataPoint {
 	date: string;
 	[key: string]: number | string | boolean | null;
@@ -283,10 +226,16 @@ export function latestVisibility(chartData: ChartDataPoint[], id: string): numbe
 	return point ? (point[id] as number) : null;
 }
 
-import type { Competitor, PromptRun } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
+
+interface VisibilityRun {
+	createdAt: Date | string;
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
+}
 
 export function calculateVisibilityPercentages(
-	promptRuns: PromptRun[],
+	promptRuns: VisibilityRun[],
 	brand: ChartSubject,
 	competitors: Competitor[],
 	lookback: LookbackPeriod,
@@ -334,7 +283,7 @@ export function calculateVisibilityPercentages(
 			acc[dateKey].push(run);
 			return acc;
 		},
-		{} as Record<string, PromptRun[]>,
+		{} as Record<string, VisibilityRun[]>,
 	);
 
 	return dateRange.map((date) => {

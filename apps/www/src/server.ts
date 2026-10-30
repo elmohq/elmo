@@ -1,18 +1,20 @@
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
+import { AD_TAG_CSP } from "@workspace/ui/lib/ad-tags";
 import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
+import { CAL_EMBED_CSP } from "@/lib/cal-embed";
 
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline' https://var.elmohq.com https://*.crisp.chat",
-		"style-src 'self' 'unsafe-inline' https://*.crisp.chat",
+		`script-src 'self' 'unsafe-inline' https://var.elmohq.com https://*.crisp.chat ${CAL_EMBED_CSP} ${AD_TAG_CSP.script}`,
+		`style-src 'self' 'unsafe-inline' https://*.crisp.chat ${AD_TAG_CSP.style}`,
 		"img-src 'self' data: https:",
-		"font-src 'self' data: https://*.crisp.chat",
-		"connect-src 'self' https://var.elmohq.com https://*.mux.com https://*.litix.io https://*.crisp.chat wss://*.relay.crisp.chat wss://*.relay.rescue.crisp.chat",
+		`font-src 'self' data: https://*.crisp.chat ${AD_TAG_CSP.font}`,
+		`connect-src 'self' https://var.elmohq.com https://*.mux.com https://*.litix.io https://*.crisp.chat wss://*.relay.crisp.chat wss://*.relay.rescue.crisp.chat ${AD_TAG_CSP.connect}`,
 		"media-src 'self' blob: https://*.mux.com https://*.crisp.chat",
 		"worker-src 'self' blob: https://*.crisp.chat",
 		// YouTube embeds in blog posts (privacy-enhanced youtube-nocookie host).
-		"frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://*.crisp.chat",
+		`frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://*.crisp.chat ${CAL_EMBED_CSP} ${AD_TAG_CSP.frame}`,
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
@@ -92,9 +94,23 @@ function withAcceptHtml(request: Request): Request {
 // Keep permanent redirects server-side so backlinks and ranking signals reach
 // the canonical replacement rather than a client-rendered not-found page.
 const PERMANENT_REDIRECTS: Record<string, string> = {
+	"/blog/aeo-agent-skill": "/blog/aeo-skill",
+	"/blog/ai-search-engines": "/blog/best-ai-search-engine",
+	"/blog/ai-search-glossary": "/glossary",
 	"/blog/answer-engine-optimization": "/answer-engine-optimization",
 	"/blog/best-open-source-aeo-tools": "/ai-visibility-tools/category/open-source",
 	"/blog/generative-ai-for-marketing": "/blog/ai-for-seo",
+	"/blog/generative-ai-seo": "/generative-engine-optimization",
+	"/blog/generative-engine-optimization": "/generative-engine-optimization",
+	"/blog/geo-vs-seo": "/blog/aeo-vs-seo",
+	"/blog/google-ai-overviews": "/ai-search/google-ai-overviews",
+	"/blog/how-long-does-it-take-to-get-cited-by-ai": "/blog/how-long-to-get-cited-by-ai",
+	"/blog/how-to-appear-in-chatgpt": "/ai-search/chatgpt",
+	"/blog/how-to-appear-in-google-gemini": "/ai-search/gemini",
+	"/blog/how-to-rank-in-perplexity": "/ai-search/perplexity",
+	"/blog/iab-ai-visibility-framework": "/blog/iab-ai-visibility-metrics",
+	"/blog/llm-optimization": "/glossary/llmo",
+	"/blog/llm-seo": "/glossary/llmo",
 	"/blog/track-brand-ai-search": "/answer-engine-optimization",
 	"/blog/what-is-generative-seo": "/generative-engine-optimization",
 	"/docs/mcp": "/docs/api/mcp",

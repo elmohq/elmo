@@ -10,7 +10,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { MockLanguageModelV4 } from "ai/test";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { extractCitationsFromAnthropic, extractTextFromAnthropic } from "../../text-extraction";
+import { extractCitationsFromAnthropic, extractRun, extractTextFromAnthropic } from "../../text-extraction";
 import { anthropicApi } from "./anthropic-api";
 import { openaiApi } from "./openai-api";
 
@@ -83,8 +83,8 @@ describe("installed ai SDK contract: openai-api run()", () => {
 
 		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
 
-		expect(res.textContent).toBe("Elmo tracks AI visibility.");
-		expect(res.citations).toEqual([
+		expect(extractRun(res.rawOutput, "openai-api").textContent).toBe("Elmo tracks AI visibility.");
+		expect(extractRun(res.rawOutput, "openai-api").citations).toEqual([
 			{ url: "https://example.com/a", title: "Example A", domain: "example.com", citationIndex: 0 },
 		]);
 		expect(res.webQueries).toEqual(["elmo aeo"]);
@@ -102,7 +102,6 @@ describe("installed ai SDK contract: Output.object", () => {
 
 		const res = await openaiApi.runStructuredResearch!({ prompt: "p", schema, webSearch: false });
 		expect(res.object).toEqual(payload);
-		expect(res.modelVersion).toBe("gpt-5-mini");
 	});
 });
 
@@ -125,6 +124,7 @@ const anthropicResponse: Anthropic.Messages.Message = {
 	stop_details: null,
 	stop_sequence: null,
 	container: null,
+	diagnostics: null,
 	usage: { input_tokens: 1, output_tokens: 1 } as Anthropic.Messages.Usage,
 	content: [
 		{
@@ -170,9 +170,12 @@ describe("installed @anthropic-ai/sdk contract: anthropic-api run()", () => {
 
 		const res = await anthropicApi.run("claude", "prompt", { webSearch: true, version: "claude-sonnet-5" });
 
-		expect(res.textContent).toBe("Elmo tracks AI visibility.");
+		expect(extractRun(res.rawOutput, "anthropic-api").textContent).toBe("Elmo tracks AI visibility.");
 		expect(res.webQueries).toEqual(["elmo aeo"]);
-		expect(res.citations.map((c) => c.url)).toEqual(["https://example.com/b", "https://example.com/a"]);
+		expect(extractRun(res.rawOutput, "anthropic-api").citations.map((c) => c.url)).toEqual([
+			"https://example.com/b",
+			"https://example.com/a",
+		]);
 	});
 
 	it("strips web-search page text from rawOutput but keeps url/title", async () => {

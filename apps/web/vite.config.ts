@@ -43,6 +43,9 @@ export default defineConfig({
 			},
 		}),
 		viteReact(),
-		...sentryTanstackStart(),
+		// Build-time instrumentation forces `pg` into the bundle, where its
+		// `require("pg-pool")` resolves to an ESM namespace instead of the Pool
+		// class, and any chunk that imports `pg` directly throws on load.
+		...sentryTanstackStart({ buildTimeInstrumentation: false }),
 	],
 });

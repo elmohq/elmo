@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractRun } from "../../text-extraction";
 import { oxylabs } from "./oxylabs";
+
+/** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
+const stored = (result: { rawOutput: unknown }) => extractRun(result.rawOutput, "oxylabs");
 
 const RESULT_PAYLOAD = {
 	results: [
@@ -79,8 +83,8 @@ describe("oxylabs provider", () => {
 		});
 		expect(fetchMock.mock.calls[1][0]).toBe("https://data.oxylabs.io/v1/queries/job-123");
 		expect(fetchMock.mock.calls[3][0]).toBe("https://data.oxylabs.io/v1/queries/job-123/results");
-		expect(result.textContent).toContain("Sonos Era 300");
-		expect(result.citations).toHaveLength(1);
+		expect(stored(result).textContent).toContain("Sonos Era 300");
+		expect(stored(result).citations).toHaveLength(1);
 		expect(result.webQueries).toEqual(["recent speaker reviews"]);
 		expect(result.modelVersion).toBe("gpt-5");
 	});
@@ -99,7 +103,7 @@ describe("oxylabs provider", () => {
 		const result = await promise;
 
 		// Citations prove a search ran, but Oxylabs never reports what was searched.
-		expect(result.citations).toHaveLength(1);
+		expect(stored(result).citations).toHaveLength(1);
 		expect(result.webQueries).toEqual(["unavailable"]);
 	});
 
@@ -137,7 +141,7 @@ describe("oxylabs provider", () => {
 		const result = await promise;
 
 		expect(fetchMock).toHaveBeenCalledTimes(5);
-		expect(result.textContent).toContain("Sonos Era 300");
+		expect(stored(result).textContent).toContain("Sonos Era 300");
 	});
 
 	it("fails a faulted asynchronous job without requesting results", async () => {

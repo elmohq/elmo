@@ -1,5 +1,147 @@
 # @workspace/deployment
 
+## 0.7.7
+
+### Patch Changes
+
+- 9139b0a: Added Cloudflare Turnstile bot protection to Elmo Cloud email sign-up, sign-in, and password reset.
+- Updated dependencies [0982452]
+  - @workspace/lib@0.7.7
+  - @workspace/config@0.7.7
+  - @workspace/ui@0.7.7
+
+## 0.7.6
+
+### Patch Changes
+
+- Updated dependencies [dfb4d72]
+- Updated dependencies [925390b]
+- Updated dependencies [98fc42e]
+  - @workspace/lib@0.7.6
+  - @workspace/config@0.7.6
+  - @workspace/ui@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/config@0.7.5
+  - @workspace/lib@0.7.5
+  - @workspace/ui@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/config@0.7.4
+  - @workspace/lib@0.7.4
+  - @workspace/ui@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- Updated dependencies [cacc8f9]
+  - @workspace/lib@0.7.3
+  - @workspace/config@0.7.3
+  - @workspace/ui@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/config@0.7.2
+  - @workspace/lib@0.7.2
+  - @workspace/ui@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/config@0.7.1
+  - @workspace/lib@0.7.1
+  - @workspace/ui@0.7.1
+
+## 0.7.0
+
+### Patch Changes
+
+- Updated dependencies [0ac774b]
+- Updated dependencies [f5b579c]
+  - @workspace/lib@0.7.0
+  - @workspace/config@0.7.0
+  - @workspace/ui@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- @workspace/config@0.6.2
+  - @workspace/lib@0.6.2
+  - @workspace/ui@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/config@0.6.1
+  - @workspace/lib@0.6.1
+  - @workspace/ui@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [1334ce8]
+  - @workspace/lib@0.6.0
+  - @workspace/config@0.6.0
+  - @workspace/ui@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+  - @workspace/lib@0.5.2
+  - @workspace/ui@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/config@0.5.1
+  - @workspace/lib@0.5.1
+  - @workspace/ui@0.5.1
+
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [f1daf53]
+- Updated dependencies [a55f182]
+  - @workspace/lib@0.5.0
+  - @workspace/config@0.5.0
+  - @workspace/ui@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/config@0.4.6
+  - @workspace/lib@0.4.6
+  - @workspace/ui@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- Updated dependencies [4ec5ac9]
+- Updated dependencies [9957eef]
+  - @workspace/lib@0.4.5
+  - @workspace/config@0.4.5
+  - @workspace/ui@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

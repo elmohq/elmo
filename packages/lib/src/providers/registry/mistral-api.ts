@@ -1,5 +1,4 @@
 import { getCredential } from "../../secrets";
-import { type Citation, extractCitationsFromMistral } from "../../text-extraction";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, configuredWhen, warnIfOutputCapped } from "../config";
 import type {
 	Provider,
@@ -75,12 +74,8 @@ function conversationText(data: any): string {
 	return texts.join("\n");
 }
 
-function parseConversationsResponse(data: any): { textContent: string; citations: Citation[]; webQueries: string[] } {
-	return {
-		textContent: conversationText(data),
-		citations: extractCitationsFromMistral(data),
-		webQueries: conversationWebQueries(data),
-	};
+function parseConversationsResponse(data: any): { textContent: string; webQueries: string[] } {
+	return { textContent: conversationText(data), webQueries: conversationWebQueries(data) };
 }
 
 export const mistralApi: Provider = {
@@ -105,8 +100,7 @@ export const mistralApi: Provider = {
 				tools: [{ type: "web_search" }],
 				completion_args: { max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["mistral-api"] },
 			});
-			const parsed = parseConversationsResponse(data);
-			return { ...parsed, rawOutput: data, modelVersion: data?.model ?? version };
+			return { rawOutput: data, webQueries: conversationWebQueries(data), modelVersion: data?.model ?? version };
 		}
 
 		const data = await mistralPost("/v1/chat/completions", {
@@ -117,9 +111,7 @@ export const mistralApi: Provider = {
 		warnIfOutputCapped("mistral-api", version, data?.choices?.[0]?.finish_reason);
 		return {
 			rawOutput: data,
-			textContent: data?.choices?.[0]?.message?.content ?? "",
 			webQueries: [],
-			citations: [],
 			modelVersion: data?.model ?? version,
 		};
 	},

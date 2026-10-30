@@ -60,12 +60,9 @@ function getManagementClient(): ManagementClient {
 
 async function fetchAuth0AppMetadata(auth0UserId: string): Promise<Auth0AppMetadata> {
 	const client = getManagementClient();
-	const userData = await client.users.get(auth0UserId);
-	const appMetadataRaw =
-		(userData as { app_metadata?: unknown }).app_metadata ??
-		(userData as { data?: { app_metadata?: unknown } }).data?.app_metadata;
+	const { app_metadata } = await client.users.get(auth0UserId);
 
-	const parsed = Auth0AppMetadataSchema.safeParse(appMetadataRaw);
+	const parsed = Auth0AppMetadataSchema.safeParse(app_metadata);
 	if (!parsed.success) {
 		// Missing/malformed metadata in a successful Auth0 response revokes access by policy.
 		console.error(

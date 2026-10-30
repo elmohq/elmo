@@ -95,7 +95,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "AUTH0_MGMT_API_DOMAIN",
 		scope: "server",
 		requiredBy: ["whitelabel"],
-		description: "Auth0 Management API domain.",
+		description: "Auth0 Management API domain as a bare hostname (e.g. tenant.us.auth0.com).",
 	},
 	{
 		name: "UPSTASH_REDIS_REST_URL",
@@ -207,7 +207,8 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
 		provider: "openrouter",
-		description: "OpenRouter API key.",
+		description:
+			"OpenRouter API key. Without TYPESAFE_API_KEY, the worker also calls Jev through OpenRouter with it to judge mentions and sentiment.",
 	},
 	{
 		name: "ONBOARDING_LLM_TARGET",
@@ -215,6 +216,21 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		requiredBy: "optional",
 		description:
 			"model:provider override for the LLM behind brand onboarding and the Opportunities report (e.g., 'claude:anthropic-api'). Defaults to the first configured provider in RESEARCH_PROVIDER_PREFERENCE.",
+	},
+	{
+		name: "TYPESAFE_API_KEY",
+		scope: "server",
+		// The worker refuses to start without it or OPENROUTER_API_KEY; the web app never uses it.
+		requiredBy: "optional",
+		description:
+			"API key for Jev (typesafe.ai), which judges which answers mention a brand or competitor, and the sentiment toward each. The worker needs this or OPENROUTER_API_KEY, and calls TypeSafe directly when both are set.",
+	},
+	{
+		name: "REPROCESS_DAYS",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"How far back the worker reprocesses history (re-extracting and re-judging answers) after the extractor, the judge, or a brand's names or competitors change, in days (default 90), or 'all'. Only enabled prompts of enabled brands are reprocessed.",
 	},
 	{
 		name: "JINA_API_KEY",
@@ -440,6 +456,19 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		requiredBy: ["cloud"],
 		description:
 			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
+	},
+	{
+		name: "TURNSTILE_SECRET_KEY",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Cloud only: Cloudflare Turnstile secret key. When set, email sign-up, sign-in, password reset, and verification resend require a Turnstile token.",
+	},
+	{
+		name: "VITE_TURNSTILE_SITE_KEY",
+		scope: "client",
+		requiredBy: "optional",
+		description: "Cloud only: Cloudflare Turnstile site key for the widget on the email auth forms.",
 	},
 ];
 

@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { extractRun } from "../../text-extraction";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 import { openrouter } from "./openrouter";
+
+/** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
+const stored = (result: { rawOutput: unknown }) => extractRun(result.rawOutput, "openrouter");
 
 function stubFetch(overrides: Record<string, unknown> = {}) {
 	const fetchMock = vi.fn().mockResolvedValue({
@@ -63,6 +67,6 @@ describe("openrouter run", () => {
 
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
 		// Logged, never thrown — the partial answer still flows through.
-		expect(result.textContent).toBe("clipped");
+		expect(stored(result).textContent).toBe("clipped");
 	});
 });

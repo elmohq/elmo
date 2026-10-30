@@ -1,5 +1,102 @@
 # @workspace/og
 
+## 0.7.7
+
+### Patch Changes
+
+- @workspace/config@0.7.7
+
+## 0.7.6
+
+### Patch Changes
+
+- @workspace/config@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/config@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/config@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- @workspace/config@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/config@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/config@0.7.1
+
+## 0.7.0
+
+### Patch Changes
+
+- @workspace/config@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- @workspace/config@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/config@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- @workspace/config@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/config@0.5.1
+
+## 0.5.0
+
+### Patch Changes
+
+- @workspace/config@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/config@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- @workspace/config@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

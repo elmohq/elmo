@@ -16,6 +16,7 @@ import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { useShellScope } from "@/hooks/use-shell-scope";
+import { attributionParams } from "@/lib/attribution";
 import { identifyCrispUser } from "@/lib/crisp";
 import { identifyUser, setPersonProperties } from "@/lib/posthog";
 import { viewerQuery } from "@/lib/viewer/queries";
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/_authed")({
 			context.queryClient.removeQueries({ queryKey: viewerQuery.queryKey });
 			throw redirect({
 				to: "/auth/login",
-				search: { returnTo: location.href },
+				search: { returnTo: location.href, ...attributionParams(location.search) },
 			});
 		}
 

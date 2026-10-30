@@ -1,0 +1,26 @@
+meta {
+  name: a cited domains page past the ceiling is rejected
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/citations/domains?start={{windowStart}}&end={{windowEnd}}&limit=1001
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  start: {{windowStart}}
+  end: {{windowEnd}}
+  limit: 1001
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq validation_error
+}

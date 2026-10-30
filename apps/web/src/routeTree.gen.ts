@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as DotwellKnownChangePasswordRouteImport } from './routes/[.]well-known/change-password'
 import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as AuthedAppRouteImport } from './routes/_authed/app'
+import { Route as AuthedChangePasswordRouteImport } from './routes/_authed/change-password'
 import { Route as AuthedChoosePlanRouteImport } from './routes/_authed/choose-plan'
 import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
 import { Route as AuthAuthorizeRouteImport } from './routes/auth/authorize'
@@ -33,10 +35,12 @@ import { Route as AuthedAppIndexRouteImport } from './routes/_authed/app/index'
 import { Route as AuthedAppNewRouteImport } from './routes/_authed/app/new'
 import { Route as AuthedReportsIndexRouteImport } from './routes/_authed/reports/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiHealthIndexRouteImport } from './routes/api/health/index'
 import { Route as ApiManifestIndexRouteImport } from './routes/api/manifest/index'
 import { Route as ApiMcpSplatRouteImport } from './routes/api/mcp/$'
 import { Route as ApiOgIndexRouteImport } from './routes/api/og/index'
 import { Route as ApiSetupStatusIndexRouteImport } from './routes/api/setup-status/index'
+import { Route as ApiSiteIconIndexRouteImport } from './routes/api/site-icon/index'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
 import { Route as ApiV1MeRouteImport } from './routes/api/v1/me'
 import { Route as ApiV1ModelsRouteImport } from './routes/api/v1/models'
@@ -73,6 +77,7 @@ import { Route as AuthedAppOrgOrgSettingsBillingRouteImport } from './routes/_au
 import { Route as AuthedAppOrgOrgSettingsBrandsRouteImport } from './routes/_authed/app/org/$org/settings/brands'
 import { Route as AuthedAppOrgOrgSettingsMcpRouteImport } from './routes/_authed/app/org/$org/settings/mcp'
 import { Route as AuthedAppOrgOrgSettingsMembersRouteImport } from './routes/_authed/app/org/$org/settings/members'
+import { Route as AuthedAppOrgOrgSettingsSkillRouteImport } from './routes/_authed/app/org/$org/settings/skill'
 import { Route as ApiV1BrandsBrandIdCitationsDomainsRouteImport } from './routes/api/v1/brands/$brandId/citations/domains'
 import { Route as ApiV1BrandsBrandIdCitationsUrlsRouteImport } from './routes/api/v1/brands/$brandId/citations/urls'
 import { Route as ApiV1BrandsBrandIdTagsIndexRouteImport } from './routes/api/v1/brands/$brandId/tags/index'
@@ -84,6 +89,7 @@ import { Route as AuthedAppOrgOrgBrandBrandCitationsRouteImport } from './routes
 import { Route as AuthedAppOrgOrgBrandBrandOpportunitiesRouteImport } from './routes/_authed/app/org/$org/brand/$brand/opportunities'
 import { Route as AuthedAppOrgOrgBrandBrandQueryFanOutRouteImport } from './routes/_authed/app/org/$org/brand/$brand/query-fan-out'
 import { Route as AuthedAppOrgOrgBrandBrandResponsesRouteImport } from './routes/_authed/app/org/$org/brand/$brand/responses'
+import { Route as AuthedAppOrgOrgBrandBrandSentimentRouteImport } from './routes/_authed/app/org/$org/brand/$brand/sentiment'
 import { Route as AuthedAppOrgOrgBrandBrandShareOfVoiceRouteImport } from './routes/_authed/app/org/$org/brand/$brand/share-of-voice'
 import { Route as AuthedAppOrgOrgBrandBrandVisibilityRouteImport } from './routes/_authed/app/org/$org/brand/$brand/visibility'
 import { Route as AuthedAppOrgOrgBrandBrandPromptsIndexRouteImport } from './routes/_authed/app/org/$org/brand/$brand/prompts/index'
@@ -104,6 +110,12 @@ const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownChangePasswordRoute =
+  DotwellKnownChangePasswordRouteImport.update({
+    id: '/.well-known/change-password',
+    path: '/.well-known/change-password',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthedAdminRoute = AuthedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -112,6 +124,11 @@ const AuthedAdminRoute = AuthedAdminRouteImport.update({
 const AuthedAppRoute = AuthedAppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedChangePasswordRoute = AuthedChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedChoosePlanRoute = AuthedChoosePlanRouteImport.update({
@@ -219,6 +236,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthIndexRoute = ApiHealthIndexRouteImport.update({
+  id: '/api/health/',
+  path: '/api/health/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiManifestIndexRoute = ApiManifestIndexRouteImport.update({
   id: '/api/manifest/',
   path: '/api/manifest/',
@@ -237,6 +259,11 @@ const ApiOgIndexRoute = ApiOgIndexRouteImport.update({
 const ApiSetupStatusIndexRoute = ApiSetupStatusIndexRouteImport.update({
   id: '/api/setup-status/',
   path: '/api/setup-status/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSiteIconIndexRoute = ApiSiteIconIndexRouteImport.update({
+  id: '/api/site-icon/',
+  path: '/api/site-icon/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1SplatRoute = ApiV1SplatRouteImport.update({
@@ -437,6 +464,12 @@ const AuthedAppOrgOrgSettingsMembersRoute =
     path: '/members',
     getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
   } as any)
+const AuthedAppOrgOrgSettingsSkillRoute =
+  AuthedAppOrgOrgSettingsSkillRouteImport.update({
+    id: '/skill',
+    path: '/skill',
+    getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
+  } as any)
 const ApiV1BrandsBrandIdCitationsDomainsRoute =
   ApiV1BrandsBrandIdCitationsDomainsRouteImport.update({
     id: '/citations/domains',
@@ -503,6 +536,12 @@ const AuthedAppOrgOrgBrandBrandResponsesRoute =
     path: '/responses',
     getParentRoute: () => AuthedAppOrgOrgBrandBrandRoute,
   } as any)
+const AuthedAppOrgOrgBrandBrandSentimentRoute =
+  AuthedAppOrgOrgBrandBrandSentimentRouteImport.update({
+    id: '/sentiment',
+    path: '/sentiment',
+    getParentRoute: () => AuthedAppOrgOrgBrandBrandRoute,
+  } as any)
 const AuthedAppOrgOrgBrandBrandShareOfVoiceRoute =
   AuthedAppOrgOrgBrandBrandShareOfVoiceRouteImport.update({
     id: '/share-of-voice',
@@ -566,8 +605,10 @@ const AuthedAppOrgOrgBrandBrandSettingsPromptsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/.well-known/change-password': typeof DotwellKnownChangePasswordRoute
   '/admin': typeof AuthedAdminRouteWithChildren
   '/app': typeof AuthedAppRouteWithChildren
+  '/change-password': typeof AuthedChangePasswordRoute
   '/choose-plan': typeof AuthedChoosePlanRoute
   '/reports': typeof AuthedReportsRouteWithChildren
   '/auth/authorize': typeof AuthAuthorizeRoute
@@ -592,9 +633,11 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthedAdminIndexRoute
   '/app/': typeof AuthedAppIndexRoute
   '/reports/': typeof AuthedReportsIndexRoute
+  '/api/health/': typeof ApiHealthIndexRoute
   '/api/manifest/': typeof ApiManifestIndexRoute
   '/api/og/': typeof ApiOgIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
+  '/api/site-icon/': typeof ApiSiteIconIndexRoute
   '/app/org/$org': typeof AuthedAppOrgOrgRouteWithChildren
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
@@ -627,6 +670,7 @@ export interface FileRoutesByFullPath {
   '/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/app/org/$org/settings/mcp': typeof AuthedAppOrgOrgSettingsMcpRoute
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
+  '/app/org/$org/settings/skill': typeof AuthedAppOrgOrgSettingsSkillRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
   '/api/v1/prompts/$promptId/runs/$runId': typeof ApiV1PromptsPromptIdRunsRunIdRoute
@@ -638,6 +682,7 @@ export interface FileRoutesByFullPath {
   '/app/org/$org/brand/$brand/opportunities': typeof AuthedAppOrgOrgBrandBrandOpportunitiesRoute
   '/app/org/$org/brand/$brand/query-fan-out': typeof AuthedAppOrgOrgBrandBrandQueryFanOutRoute
   '/app/org/$org/brand/$brand/responses': typeof AuthedAppOrgOrgBrandBrandResponsesRoute
+  '/app/org/$org/brand/$brand/sentiment': typeof AuthedAppOrgOrgBrandBrandSentimentRoute
   '/app/org/$org/brand/$brand/share-of-voice': typeof AuthedAppOrgOrgBrandBrandShareOfVoiceRoute
   '/app/org/$org/brand/$brand/visibility': typeof AuthedAppOrgOrgBrandBrandVisibilityRoute
   '/app/org/$org/brand/$brand/': typeof AuthedAppOrgOrgBrandBrandIndexRoute
@@ -652,6 +697,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/.well-known/change-password': typeof DotwellKnownChangePasswordRoute
+  '/change-password': typeof AuthedChangePasswordRoute
   '/choose-plan': typeof AuthedChoosePlanRoute
   '/auth/authorize': typeof AuthAuthorizeRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -675,9 +722,11 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthedAdminIndexRoute
   '/app': typeof AuthedAppIndexRoute
   '/reports': typeof AuthedReportsIndexRoute
+  '/api/health': typeof ApiHealthIndexRoute
   '/api/manifest': typeof ApiManifestIndexRoute
   '/api/og': typeof ApiOgIndexRoute
   '/api/setup-status': typeof ApiSetupStatusIndexRoute
+  '/api/site-icon': typeof ApiSiteIconIndexRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
@@ -707,6 +756,7 @@ export interface FileRoutesByTo {
   '/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/app/org/$org/settings/mcp': typeof AuthedAppOrgOrgSettingsMcpRoute
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
+  '/app/org/$org/settings/skill': typeof AuthedAppOrgOrgSettingsSkillRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
   '/api/v1/prompts/$promptId/runs/$runId': typeof ApiV1PromptsPromptIdRunsRunIdRoute
@@ -718,6 +768,7 @@ export interface FileRoutesByTo {
   '/app/org/$org/brand/$brand/opportunities': typeof AuthedAppOrgOrgBrandBrandOpportunitiesRoute
   '/app/org/$org/brand/$brand/query-fan-out': typeof AuthedAppOrgOrgBrandBrandQueryFanOutRoute
   '/app/org/$org/brand/$brand/responses': typeof AuthedAppOrgOrgBrandBrandResponsesRoute
+  '/app/org/$org/brand/$brand/sentiment': typeof AuthedAppOrgOrgBrandBrandSentimentRoute
   '/app/org/$org/brand/$brand/share-of-voice': typeof AuthedAppOrgOrgBrandBrandShareOfVoiceRoute
   '/app/org/$org/brand/$brand/visibility': typeof AuthedAppOrgOrgBrandBrandVisibilityRoute
   '/app/org/$org/brand/$brand': typeof AuthedAppOrgOrgBrandBrandIndexRoute
@@ -734,8 +785,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/.well-known/change-password': typeof DotwellKnownChangePasswordRoute
   '/_authed/admin': typeof AuthedAdminRouteWithChildren
   '/_authed/app': typeof AuthedAppRouteWithChildren
+  '/_authed/change-password': typeof AuthedChangePasswordRoute
   '/_authed/choose-plan': typeof AuthedChoosePlanRoute
   '/_authed/reports': typeof AuthedReportsRouteWithChildren
   '/auth/authorize': typeof AuthAuthorizeRoute
@@ -760,9 +813,11 @@ export interface FileRoutesById {
   '/_authed/admin/': typeof AuthedAdminIndexRoute
   '/_authed/app/': typeof AuthedAppIndexRoute
   '/_authed/reports/': typeof AuthedReportsIndexRoute
+  '/api/health/': typeof ApiHealthIndexRoute
   '/api/manifest/': typeof ApiManifestIndexRoute
   '/api/og/': typeof ApiOgIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
+  '/api/site-icon/': typeof ApiSiteIconIndexRoute
   '/_authed/app/org/$org': typeof AuthedAppOrgOrgRouteWithChildren
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
@@ -795,6 +850,7 @@ export interface FileRoutesById {
   '/_authed/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/_authed/app/org/$org/settings/mcp': typeof AuthedAppOrgOrgSettingsMcpRoute
   '/_authed/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
+  '/_authed/app/org/$org/settings/skill': typeof AuthedAppOrgOrgSettingsSkillRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
   '/api/v1/prompts/$promptId/runs/$runId': typeof ApiV1PromptsPromptIdRunsRunIdRoute
@@ -806,6 +862,7 @@ export interface FileRoutesById {
   '/_authed/app/org/$org/brand/$brand/opportunities': typeof AuthedAppOrgOrgBrandBrandOpportunitiesRoute
   '/_authed/app/org/$org/brand/$brand/query-fan-out': typeof AuthedAppOrgOrgBrandBrandQueryFanOutRoute
   '/_authed/app/org/$org/brand/$brand/responses': typeof AuthedAppOrgOrgBrandBrandResponsesRoute
+  '/_authed/app/org/$org/brand/$brand/sentiment': typeof AuthedAppOrgOrgBrandBrandSentimentRoute
   '/_authed/app/org/$org/brand/$brand/share-of-voice': typeof AuthedAppOrgOrgBrandBrandShareOfVoiceRoute
   '/_authed/app/org/$org/brand/$brand/visibility': typeof AuthedAppOrgOrgBrandBrandVisibilityRoute
   '/_authed/app/org/$org/brand/$brand/': typeof AuthedAppOrgOrgBrandBrandIndexRoute
@@ -822,8 +879,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/.well-known/change-password'
     | '/admin'
     | '/app'
+    | '/change-password'
     | '/choose-plan'
     | '/reports'
     | '/auth/authorize'
@@ -848,9 +907,11 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/app/'
     | '/reports/'
+    | '/api/health/'
     | '/api/manifest/'
     | '/api/og/'
     | '/api/setup-status/'
+    | '/api/site-icon/'
     | '/app/org/$org'
     | '/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
@@ -883,6 +944,7 @@ export interface FileRouteTypes {
     | '/app/org/$org/settings/brands'
     | '/app/org/$org/settings/mcp'
     | '/app/org/$org/settings/members'
+    | '/app/org/$org/settings/skill'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
     | '/api/v1/prompts/$promptId/runs/$runId'
@@ -894,6 +956,7 @@ export interface FileRouteTypes {
     | '/app/org/$org/brand/$brand/opportunities'
     | '/app/org/$org/brand/$brand/query-fan-out'
     | '/app/org/$org/brand/$brand/responses'
+    | '/app/org/$org/brand/$brand/sentiment'
     | '/app/org/$org/brand/$brand/share-of-voice'
     | '/app/org/$org/brand/$brand/visibility'
     | '/app/org/$org/brand/$brand/'
@@ -908,6 +971,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/.well-known/change-password'
+    | '/change-password'
     | '/choose-plan'
     | '/auth/authorize'
     | '/auth/forgot-password'
@@ -931,9 +996,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/reports'
+    | '/api/health'
     | '/api/manifest'
     | '/api/og'
     | '/api/setup-status'
+    | '/api/site-icon'
     | '/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
     | '/api/v1/competitors/$competitorId'
@@ -963,6 +1030,7 @@ export interface FileRouteTypes {
     | '/app/org/$org/settings/brands'
     | '/app/org/$org/settings/mcp'
     | '/app/org/$org/settings/members'
+    | '/app/org/$org/settings/skill'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
     | '/api/v1/prompts/$promptId/runs/$runId'
@@ -974,6 +1042,7 @@ export interface FileRouteTypes {
     | '/app/org/$org/brand/$brand/opportunities'
     | '/app/org/$org/brand/$brand/query-fan-out'
     | '/app/org/$org/brand/$brand/responses'
+    | '/app/org/$org/brand/$brand/sentiment'
     | '/app/org/$org/brand/$brand/share-of-voice'
     | '/app/org/$org/brand/$brand/visibility'
     | '/app/org/$org/brand/$brand'
@@ -989,8 +1058,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authed'
+    | '/.well-known/change-password'
     | '/_authed/admin'
     | '/_authed/app'
+    | '/_authed/change-password'
     | '/_authed/choose-plan'
     | '/_authed/reports'
     | '/auth/authorize'
@@ -1015,9 +1086,11 @@ export interface FileRouteTypes {
     | '/_authed/admin/'
     | '/_authed/app/'
     | '/_authed/reports/'
+    | '/api/health/'
     | '/api/manifest/'
     | '/api/og/'
     | '/api/setup-status/'
+    | '/api/site-icon/'
     | '/_authed/app/org/$org'
     | '/_authed/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
@@ -1050,6 +1123,7 @@ export interface FileRouteTypes {
     | '/_authed/app/org/$org/settings/brands'
     | '/_authed/app/org/$org/settings/mcp'
     | '/_authed/app/org/$org/settings/members'
+    | '/_authed/app/org/$org/settings/skill'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
     | '/api/v1/prompts/$promptId/runs/$runId'
@@ -1061,6 +1135,7 @@ export interface FileRouteTypes {
     | '/_authed/app/org/$org/brand/$brand/opportunities'
     | '/_authed/app/org/$org/brand/$brand/query-fan-out'
     | '/_authed/app/org/$org/brand/$brand/responses'
+    | '/_authed/app/org/$org/brand/$brand/sentiment'
     | '/_authed/app/org/$org/brand/$brand/share-of-voice'
     | '/_authed/app/org/$org/brand/$brand/visibility'
     | '/_authed/app/org/$org/brand/$brand/'
@@ -1077,6 +1152,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
+  DotwellKnownChangePasswordRoute: typeof DotwellKnownChangePasswordRoute
   AuthAuthorizeRoute: typeof AuthAuthorizeRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
@@ -1092,9 +1168,11 @@ export interface RootRouteChildren {
   ApiV1ModelsRoute: typeof ApiV1ModelsRoute
   DotwellKnownOauthAuthorizationServerIndexRoute: typeof DotwellKnownOauthAuthorizationServerIndexRoute
   DotwellKnownOauthProtectedResourceIndexRoute: typeof DotwellKnownOauthProtectedResourceIndexRoute
+  ApiHealthIndexRoute: typeof ApiHealthIndexRoute
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
+  ApiSiteIconIndexRoute: typeof ApiSiteIconIndexRoute
   ApiV1BrandsBrandIdRoute: typeof ApiV1BrandsBrandIdRouteWithChildren
   ApiV1CompetitorsCompetitorIdRoute: typeof ApiV1CompetitorsCompetitorIdRoute
   ApiV1OrganizationsOrganizationIdRoute: typeof ApiV1OrganizationsOrganizationIdRouteWithChildren
@@ -1127,6 +1205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/change-password': {
+      id: '/.well-known/change-password'
+      path: '/.well-known/change-password'
+      fullPath: '/.well-known/change-password'
+      preLoaderRoute: typeof DotwellKnownChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/admin': {
       id: '/_authed/admin'
       path: '/admin'
@@ -1139,6 +1224,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AuthedAppRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/change-password': {
+      id: '/_authed/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof AuthedChangePasswordRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/choose-plan': {
@@ -1281,6 +1373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health/': {
+      id: '/api/health/'
+      path: '/api/health'
+      fullPath: '/api/health/'
+      preLoaderRoute: typeof ApiHealthIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/manifest/': {
       id: '/api/manifest/'
       path: '/api/manifest'
@@ -1307,6 +1406,13 @@ declare module '@tanstack/react-router' {
       path: '/api/setup-status'
       fullPath: '/api/setup-status/'
       preLoaderRoute: typeof ApiSetupStatusIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/site-icon/': {
+      id: '/api/site-icon/'
+      path: '/api/site-icon'
+      fullPath: '/api/site-icon/'
+      preLoaderRoute: typeof ApiSiteIconIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/$': {
@@ -1561,6 +1667,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppOrgOrgSettingsMembersRouteImport
       parentRoute: typeof AuthedAppOrgOrgSettingsRoute
     }
+    '/_authed/app/org/$org/settings/skill': {
+      id: '/_authed/app/org/$org/settings/skill'
+      path: '/skill'
+      fullPath: '/app/org/$org/settings/skill'
+      preLoaderRoute: typeof AuthedAppOrgOrgSettingsSkillRouteImport
+      parentRoute: typeof AuthedAppOrgOrgSettingsRoute
+    }
     '/api/v1/brands/$brandId/citations/domains': {
       id: '/api/v1/brands/$brandId/citations/domains'
       path: '/citations/domains'
@@ -1636,6 +1749,13 @@ declare module '@tanstack/react-router' {
       path: '/responses'
       fullPath: '/app/org/$org/brand/$brand/responses'
       preLoaderRoute: typeof AuthedAppOrgOrgBrandBrandResponsesRouteImport
+      parentRoute: typeof AuthedAppOrgOrgBrandBrandRoute
+    }
+    '/_authed/app/org/$org/brand/$brand/sentiment': {
+      id: '/_authed/app/org/$org/brand/$brand/sentiment'
+      path: '/sentiment'
+      fullPath: '/app/org/$org/brand/$brand/sentiment'
+      preLoaderRoute: typeof AuthedAppOrgOrgBrandBrandSentimentRouteImport
       parentRoute: typeof AuthedAppOrgOrgBrandBrandRoute
     }
     '/_authed/app/org/$org/brand/$brand/share-of-voice': {
@@ -1734,6 +1854,7 @@ interface AuthedAppOrgOrgSettingsRouteChildren {
   AuthedAppOrgOrgSettingsBrandsRoute: typeof AuthedAppOrgOrgSettingsBrandsRoute
   AuthedAppOrgOrgSettingsMcpRoute: typeof AuthedAppOrgOrgSettingsMcpRoute
   AuthedAppOrgOrgSettingsMembersRoute: typeof AuthedAppOrgOrgSettingsMembersRoute
+  AuthedAppOrgOrgSettingsSkillRoute: typeof AuthedAppOrgOrgSettingsSkillRoute
   AuthedAppOrgOrgSettingsIndexRoute: typeof AuthedAppOrgOrgSettingsIndexRoute
 }
 
@@ -1745,6 +1866,7 @@ const AuthedAppOrgOrgSettingsRouteChildren: AuthedAppOrgOrgSettingsRouteChildren
     AuthedAppOrgOrgSettingsBrandsRoute: AuthedAppOrgOrgSettingsBrandsRoute,
     AuthedAppOrgOrgSettingsMcpRoute: AuthedAppOrgOrgSettingsMcpRoute,
     AuthedAppOrgOrgSettingsMembersRoute: AuthedAppOrgOrgSettingsMembersRoute,
+    AuthedAppOrgOrgSettingsSkillRoute: AuthedAppOrgOrgSettingsSkillRoute,
     AuthedAppOrgOrgSettingsIndexRoute: AuthedAppOrgOrgSettingsIndexRoute,
   }
 
@@ -1759,6 +1881,7 @@ interface AuthedAppOrgOrgBrandBrandRouteChildren {
   AuthedAppOrgOrgBrandBrandOpportunitiesRoute: typeof AuthedAppOrgOrgBrandBrandOpportunitiesRoute
   AuthedAppOrgOrgBrandBrandQueryFanOutRoute: typeof AuthedAppOrgOrgBrandBrandQueryFanOutRoute
   AuthedAppOrgOrgBrandBrandResponsesRoute: typeof AuthedAppOrgOrgBrandBrandResponsesRoute
+  AuthedAppOrgOrgBrandBrandSentimentRoute: typeof AuthedAppOrgOrgBrandBrandSentimentRoute
   AuthedAppOrgOrgBrandBrandShareOfVoiceRoute: typeof AuthedAppOrgOrgBrandBrandShareOfVoiceRoute
   AuthedAppOrgOrgBrandBrandVisibilityRoute: typeof AuthedAppOrgOrgBrandBrandVisibilityRoute
   AuthedAppOrgOrgBrandBrandIndexRoute: typeof AuthedAppOrgOrgBrandBrandIndexRoute
@@ -1783,6 +1906,8 @@ const AuthedAppOrgOrgBrandBrandRouteChildren: AuthedAppOrgOrgBrandBrandRouteChil
       AuthedAppOrgOrgBrandBrandQueryFanOutRoute,
     AuthedAppOrgOrgBrandBrandResponsesRoute:
       AuthedAppOrgOrgBrandBrandResponsesRoute,
+    AuthedAppOrgOrgBrandBrandSentimentRoute:
+      AuthedAppOrgOrgBrandBrandSentimentRoute,
     AuthedAppOrgOrgBrandBrandShareOfVoiceRoute:
       AuthedAppOrgOrgBrandBrandShareOfVoiceRoute,
     AuthedAppOrgOrgBrandBrandVisibilityRoute:
@@ -1862,6 +1987,7 @@ const AuthedReportsRouteWithChildren = AuthedReportsRoute._addFileChildren(
 interface AuthedRouteChildren {
   AuthedAdminRoute: typeof AuthedAdminRouteWithChildren
   AuthedAppRoute: typeof AuthedAppRouteWithChildren
+  AuthedChangePasswordRoute: typeof AuthedChangePasswordRoute
   AuthedChoosePlanRoute: typeof AuthedChoosePlanRoute
   AuthedReportsRoute: typeof AuthedReportsRouteWithChildren
   AuthedAcceptInvitationInvitationIdRoute: typeof AuthedAcceptInvitationInvitationIdRoute
@@ -1870,6 +1996,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAdminRoute: AuthedAdminRouteWithChildren,
   AuthedAppRoute: AuthedAppRouteWithChildren,
+  AuthedChangePasswordRoute: AuthedChangePasswordRoute,
   AuthedChoosePlanRoute: AuthedChoosePlanRoute,
   AuthedReportsRoute: AuthedReportsRouteWithChildren,
   AuthedAcceptInvitationInvitationIdRoute:
@@ -1937,6 +2064,7 @@ const ApiV1PromptsPromptIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
+  DotwellKnownChangePasswordRoute: DotwellKnownChangePasswordRoute,
   AuthAuthorizeRoute: AuthAuthorizeRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
@@ -1956,9 +2084,11 @@ const rootRouteChildren: RootRouteChildren = {
     DotwellKnownOauthAuthorizationServerIndexRoute,
   DotwellKnownOauthProtectedResourceIndexRoute:
     DotwellKnownOauthProtectedResourceIndexRoute,
+  ApiHealthIndexRoute: ApiHealthIndexRoute,
   ApiManifestIndexRoute: ApiManifestIndexRoute,
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
+  ApiSiteIconIndexRoute: ApiSiteIconIndexRoute,
   ApiV1BrandsBrandIdRoute: ApiV1BrandsBrandIdRouteWithChildren,
   ApiV1CompetitorsCompetitorIdRoute: ApiV1CompetitorsCompetitorIdRoute,
   ApiV1OrganizationsOrganizationIdRoute:

@@ -1,5 +1,6 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
+  "agentGuidance": false,
   "globalEnv": [
     "DATABASE_URL",
     "APP_URL",
@@ -26,6 +27,8 @@
     "OXYLABS_PASSWORD",
     "CLORO_API_KEY",
     "OPENROUTER_API_KEY",
+    "TYPESAFE_API_KEY",
+    "REPROCESS_DAYS",
     "JINA_API_KEY",
     "ONBOARDING_LLM_TARGET",
     "ELMO_ENCRYPTION_KEY",
@@ -61,7 +64,9 @@
     "RESEND_API_KEY",
     "GOOGLE_CLIENT_ID",
     "GOOGLE_CLIENT_SECRET",
-    "RESEND_FROM_EMAIL"
+    "RESEND_FROM_EMAIL",
+    "TURNSTILE_SECRET_KEY",
+    "VITE_TURNSTILE_SITE_KEY"
   ],
   "tasks": {
     "//#format": {
@@ -73,6 +78,11 @@
     },
     "build": {
       "dependsOn": ["^build", "check-types"],
+      "outputs": [".output/**", ".vercel/output/**", "dist/**"]
+    },
+    "@workspace/www#build": {
+      "dependsOn": ["^build", "check-types"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/skills/**"],
       "outputs": [".output/**", ".vercel/output/**", "dist/**"]
     },
     "@workspace/worker#build": {

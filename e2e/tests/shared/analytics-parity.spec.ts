@@ -25,20 +25,21 @@ function dayStart(date: Date): string {
 }
 
 test.describe("dashboard and API parity", () => {
-  test("the visibility hero and GET /analytics report the same number", async ({ page, request }) => {
+  test("the visibility card and GET /analytics report the same number", async ({ page, request }) => {
     await page.goto(brandUrl());
 
-    // The sibling card also reads "<n>%", so the trailing word disambiguates.
-    const hero = page.getByText(/\d+%\s*Visibility/).first();
-    await expect(hero).toBeVisible({ timeout: 30_000 });
-    const rendered = Number((await hero.textContent())?.match(/(\d+)%/)?.[1]);
+    // Other cards also read "<n>%", so the figure is read from inside the Visibility card.
+    const card = page.getByRole("link", { name: /^AI Visibility/ });
+    const figure = card.getByText(/^(\d+%|—)$/).first();
+    await expect(figure).toBeVisible({ timeout: 30_000 });
+    const rendered = Number((await figure.textContent())?.match(/(\d+)%/)?.[1] ?? 0);
 
     const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?${lastMonth()}`, { headers: AUTH });
     expect(response.status()).toBe(200);
     const body = await response.json();
 
     // Ratios against a rendered percentage, each rounded once at its own edge.
-    // The page shows 0 where the API says "nothing to plot".
+    // The page shows a dash where the API says "nothing to plot".
     expect(Math.round((body.visibility.current ?? 0) * 100)).toBe(rendered);
   });
 
@@ -81,6 +82,12 @@ test.describe("dashboard and API parity", () => {
     });
     expect(domains.status()).toBe(200);
     const domainBody = await domains.json();
+
+    // The domain and URL lists load after the totals, each in its own request.
+    const domainList = page.locator('[data-slot="card"]', { hasText: "Top Cited Domains" });
+    await expect(domainList.getByText(domainBody.data[0].domain, { exact: true })).toBeVisible({ timeout: 30_000 });
+    const urlList = page.locator('[data-slot="card"]', { hasText: "Top Cited URLs" });
+    await expect(urlList.locator("a[href^='http']").first()).toBeVisible({ timeout: 30_000 });
 
     const pageText = await page.locator("main").innerText();
     const totalOnPage = Number(pageText.match(/Total Citations\s*\n?\s*(\d+)/)?.[1]);

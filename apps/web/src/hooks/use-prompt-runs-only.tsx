@@ -1,24 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
 import type { LookbackPeriod } from "@/lib/lookback";
+import type { ResponseSort, SentimentFilter } from "@/lib/sentiment";
 import { getPromptRunsFn } from "@/server/prompts";
+
+interface PromptRunsOptions {
+	page: number;
+	limit: number;
+	lookback: LookbackPeriod;
+	sentiment?: SentimentFilter;
+	sort: ResponseSort;
+}
 
 const promptRunsKeys = {
 	all: ["prompt-runs"] as const,
-	list: (promptId: string, options: { page: number; limit: number; lookback: LookbackPeriod }) =>
-		[...promptRunsKeys.all, promptId, options] as const,
+	list: (promptId: string, options: PromptRunsOptions) => [...promptRunsKeys.all, promptId, options] as const,
 };
 
-export function usePromptRunsOnly(
-	promptId?: string,
-	options?: { page?: number; limit?: number; lookback?: LookbackPeriod },
-) {
-	const page = options?.page || 1;
-	const limit = options?.limit || 10;
-	const lookback = options?.lookback ?? "1w";
+export function usePromptRunsOnly(promptId?: string, options?: Partial<PromptRunsOptions>) {
+	const resolved: PromptRunsOptions = {
+		page: options?.page || 1,
+		limit: options?.limit || 10,
+		lookback: options?.lookback ?? "1w",
+		sentiment: options?.sentiment,
+		sort: options?.sort ?? "newest",
+	};
 
 	const query = useQuery({
-		queryKey: promptRunsKeys.list(promptId || "", { page, limit, lookback }),
-		queryFn: () => getPromptRunsFn({ data: { promptId: promptId!, page, limit, lookback } }),
+		queryKey: promptRunsKeys.list(promptId || "", resolved),
+		queryFn: () => getPromptRunsFn({ data: { promptId: promptId!, ...resolved } }),
 		enabled: !!promptId,
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,

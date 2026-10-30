@@ -10,6 +10,7 @@ import pc from "picocolors";
 import { buildComposeYaml } from "../compose.js";
 import { CONFIG_HOME, type EnvMap, ensureDir, fileExists, type PostgresMode, writeConfigFiles } from "../config.js";
 import { assertDockerRunning, runDockerCompose, waitForHealthy } from "../docker.js";
+import { collectJudgeKey } from "../judge.js";
 import {
 	collectCredentials,
 	collectProvider,
@@ -207,7 +208,7 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 
 	// ── Direct API ──────────────────────────────────────────────────────────
 	const direct = await p.select({
-		message: "Direct LLM API (powers onboarding analysis + sentiment scoring)",
+		message: "Direct LLM API (powers onboarding analysis + the Opportunities report)",
 		options: [
 			{ value: "openrouter" as const, label: "OpenRouter — one key, all major models (recommended)" },
 			{ value: "anthropic" as const, label: "Anthropic — direct Claude" },
@@ -356,6 +357,9 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 
 	// ── AI providers ─────────────────────────────────────────────────────
 	const setupMode = await configureProvidersInteractive(env);
+
+	// ── Mention and sentiment judging ─────────────────────────────────────
+	await collectJudgeKey(env);
 
 	// ── Telemetry ───────────────────────────────────────────────────────
 	p.note(

@@ -1,5 +1,169 @@
 # @workspace/worker
 
+## 0.7.7
+
+### Patch Changes
+
+- 0982452: Additional citations and sentiment page speed optimizations.
+- Updated dependencies [9139b0a]
+- Updated dependencies [0982452]
+  - @workspace/deployment@0.7.7
+  - @workspace/lib@0.7.7
+  - @workspace/config@0.7.7
+
+## 0.7.6
+
+### Patch Changes
+
+- Updated dependencies [dfb4d72]
+- Updated dependencies [925390b]
+- Updated dependencies [98fc42e]
+  - @workspace/lib@0.7.6
+  - @workspace/deployment@0.7.6
+  - @workspace/config@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- c3884e8: Call Jev through OpenRouter when no TypeSafe key is set: `elmo init` asks which to use, and can reuse your OpenRouter key.
+- @workspace/config@0.7.5
+  - @workspace/deployment@0.7.5
+  - @workspace/lib@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- db38a42: The web and worker images now ship with Node.js 24.22.1, which includes the [October 2026 Node.js security fixes](https://nodejs.org/en/blog/vulnerability), so self-hosted installs should update.
+- @workspace/config@0.7.4
+  - @workspace/deployment@0.7.4
+  - @workspace/lib@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- Updated dependencies [cacc8f9]
+  - @workspace/lib@0.7.3
+  - @workspace/deployment@0.7.3
+  - @workspace/config@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- 09bea7c: Fix reprocessing timing out for brands with many prompts.
+- @workspace/config@0.7.2
+  - @workspace/deployment@0.7.2
+  - @workspace/lib@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- f06d0c1: Split rare cases where many tracked companies result in too large Jev calls.
+- @workspace/config@0.7.1
+  - @workspace/deployment@0.7.1
+  - @workspace/lib@0.7.1
+
+## 0.7.0
+
+### Minor Changes
+
+- f5b579c: **Jev (TypeSafe) is now a required dependency of Elmo: the worker won't start without `TYPESAFE_API_KEY`.** Jev judges mentions and sentiment, which is far more accurate toward your brand and each competitor. It costs very roughly $0.15–0.35 per 1,000 answers that name a tracked company, more for long answers that name many. Upgrading re-judges the last 90 days of answers once, about three months' worth of that cost; set `REPROCESS_DAYS=all` before upgrading to re-judge your whole history instead.
+
+### Patch Changes
+
+- 0ac774b: Read the text of older ChatGPT and Claude responses recorded before Elmo stored which provider fetched them.
+- 55973f9: Re-judge history only for enabled prompts and brands, and only over the last 90 days by default (`REPROCESS_DAYS`); a prompt or brand enabled again has that window brought up to date then.
+- Updated dependencies [0ac774b]
+- Updated dependencies [f5b579c]
+  - @workspace/lib@0.7.0
+  - @workspace/deployment@0.7.0
+  - @workspace/config@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- @workspace/config@0.6.2
+  - @workspace/deployment@0.6.2
+  - @workspace/lib@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/config@0.6.1
+  - @workspace/deployment@0.6.1
+  - @workspace/lib@0.6.1
+
+## 0.6.0
+
+### Minor Changes
+
+- a76b237: Decide brand and competitor mentions with a bundled local model that matches whole words and reads each mention in context, so names that are also ordinary words no longer inflate visibility; past responses are re-judged in the background after upgrading.
+
+### Patch Changes
+
+- Updated dependencies [1334ce8]
+  - @workspace/lib@0.6.0
+  - @workspace/deployment@0.6.0
+  - @workspace/config@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Additional backfill speedups and crash prevention.
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+  - @workspace/deployment@0.5.2
+  - @workspace/lib@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- Improve rollup backfill speed.
+- @workspace/config@0.5.1
+  - @workspace/deployment@0.5.1
+  - @workspace/lib@0.5.1
+
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+### Patch Changes
+
+- a55f182: Editing a brand's name, aliases or competitors now updates mentions in past responses too, not only in new ones.
+- Updated dependencies [f1daf53]
+- Updated dependencies [a55f182]
+  - @workspace/lib@0.5.0
+  - @workspace/deployment@0.5.0
+  - @workspace/config@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/config@0.4.6
+  - @workspace/deployment@0.4.6
+  - @workspace/lib@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- Updated dependencies [4ec5ac9]
+- Updated dependencies [9957eef]
+  - @workspace/lib@0.4.5
+  - @workspace/deployment@0.4.5
+  - @workspace/config@0.4.5
+
 ## 0.4.4
 
 ### Patch Changes

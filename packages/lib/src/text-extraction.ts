@@ -8,6 +8,9 @@
  * at write time, so these functions are primarily for reading historical data.
  */
 
+/** Bump to replay a provider parsing fix over stored runs from `raw_output`. */
+export const EXTRACTOR_VERSION = 1;
+
 // ============================================================================
 // Text extraction by provider
 // ============================================================================
@@ -377,43 +380,9 @@ export function extractTextFromSearchapi(rawOutput: any): string {
 	return firstText("No text content found in SearchApi output.", [() => searchapiText(rawOutput)]);
 }
 
-/**
- * Extract text content from stored rawOutput.
- * Dispatches based on provider (how data was fetched), falling back to engine
- * because persisted runs may not identify a provider.
- */
+/** Extract text content from stored rawOutput, with the extractor `extractorFor` names. */
 export function extractTextContent(rawOutput: any, providerOrEngine: string): string {
-	switch (providerOrEngine) {
-		case "openai-api":
-		case "openai":
-		case "chatgpt":
-			return extractTextFromOpenAI(rawOutput);
-		case "anthropic-api":
-		case "anthropic":
-		case "claude":
-			return extractTextFromAnthropic(rawOutput);
-		case "mistral-api":
-			return extractTextFromMistral(rawOutput);
-		case "dataforseo":
-		case "google":
-		case "google-ai-mode":
-		case "google-ai-overview":
-			return extractTextFromDataforseo(rawOutput);
-		case "openrouter":
-			return extractTextFromOpenRouter(rawOutput);
-		case "searchapi":
-			return extractTextFromSearchapi(rawOutput);
-		case "olostep":
-			return extractTextFromOlostep(rawOutput);
-		case "brightdata":
-			return extractTextFromBrightdata(rawOutput);
-		case "oxylabs":
-			return extractTextFromOxylabs(rawOutput);
-		case "cloro":
-			return extractTextFromCloro(rawOutput);
-		default:
-			return tryGenericExtraction(rawOutput);
-	}
+	return (extractor(providerOrEngine)?.text ?? tryGenericExtraction)(rawOutput);
 }
 
 function tryGenericExtraction(rawOutput: any): string {
@@ -424,6 +393,41 @@ function tryGenericExtraction(rawOutput: any): string {
 	if (rawOutput?.answer_text) return rawOutput.answer_text;
 	if (rawOutput?.content?.[0]?.text) return rawOutput.content[0].text;
 	return "Unknown provider format - cannot extract text content.";
+}
+
+/**
+ * `extractTextContent`'s reader-facing placeholders. Stored as a run's text, one
+ * would be treated as the answer by every later layer.
+ */
+const EXTRACTION_FAILURE_SENTINELS: ReadonlySet<string> = new Set([
+	"Error extracting text content.",
+	"No AI overview content found.",
+	"No content.",
+	"No content in BrightData output.",
+	"No content in Cloro output.",
+	"No content in Oxylabs output.",
+	"No text content found in Anthropic output.",
+	"No text content found in BrightData output.",
+	"No text content found in Cloro output.",
+	"No text content found in DataForSEO LLM output.",
+	"No text content found in DataForSEO Scraper output.",
+	"No text content found in Mistral output.",
+	"No text content found in Olostep output.",
+	"No text content found in OpenAI output.",
+	"No text content found in OpenRouter output.",
+	"No text content found in Oxylabs output.",
+	"No text content found in SearchApi output.",
+	"Unknown provider format - cannot extract text content.",
+]);
+
+/** An answer worth storing, or null for a blank answer or an extraction placeholder. */
+export function storableText(text: unknown): string | null {
+	if (typeof text !== "string" || !text.trim() || EXTRACTION_FAILURE_SENTINELS.has(text)) return null;
+	return text;
+}
+
+export function tryExtractTextContent(rawOutput: unknown, providerOrEngine: string): string | null {
+	return storableText(extractTextContent(rawOutput, providerOrEngine));
 }
 
 // ============================================================================
@@ -669,41 +673,59 @@ export function extractCitationsFromSearchapi(rawOutput: any): Citation[] {
 	});
 }
 
-/**
- * Extract citations from stored rawOutput.
- * Dispatches based on provider (how data was fetched), falling back to engine
- * because persisted runs may not identify a provider.
- */
+/** Extract citations from stored rawOutput, with the extractor `extractorFor` names. */
 export function extractCitations(rawOutput: any, providerOrEngine: string): Citation[] {
-	switch (providerOrEngine) {
-		case "openai-api":
-		case "openai":
-		case "chatgpt":
-			return extractCitationsFromOpenAI(rawOutput);
-		case "dataforseo":
-		case "google":
-		case "google-ai-mode":
-		case "google-ai-overview":
-			return extractCitationsFromDataforseo(rawOutput);
-		case "openrouter":
-			return extractCitationsFromOpenRouter(rawOutput);
-		case "searchapi":
-			return extractCitationsFromSearchapi(rawOutput);
-		case "olostep":
-			return extractCitationsFromOlostep(rawOutput);
-		case "brightdata":
-			return extractCitationsFromBrightdata(rawOutput);
-		case "oxylabs":
-			return extractCitationsFromOxylabs(rawOutput);
-		case "cloro":
-			return extractCitationsFromCloro(rawOutput);
-		case "anthropic-api":
-		case "anthropic":
-		case "claude":
-			return extractCitationsFromAnthropic(rawOutput);
-		case "mistral-api":
-			return extractCitationsFromMistral(rawOutput);
-		default:
-			return [];
-	}
+	return extractor(providerOrEngine)?.citations(rawOutput) ?? [];
+}
+
+export function extractRun(
+	rawOutput: unknown,
+	providerOrEngine: string,
+): { textContent: string | null; citations: Citation[] } {
+	return {
+		textContent: tryExtractTextContent(rawOutput, providerOrEngine),
+		citations: extractCitations(rawOutput, providerOrEngine),
+	};
+}
+
+interface Extractor {
+	text: (rawOutput: any) => string;
+	citations: (rawOutput: any) => Citation[];
+}
+
+const OPENAI: Extractor = { text: extractTextFromOpenAI, citations: extractCitationsFromOpenAI };
+const ANTHROPIC: Extractor = { text: extractTextFromAnthropic, citations: extractCitationsFromAnthropic };
+const DATAFORSEO: Extractor = { text: extractTextFromDataforseo, citations: extractCitationsFromDataforseo };
+
+/** By provider (how the data was fetched), or by engine for runs that don't name one. */
+const EXTRACTORS: Record<string, Extractor> = {
+	"openai-api": OPENAI,
+	openai: OPENAI,
+	chatgpt: OPENAI,
+	"anthropic-api": ANTHROPIC,
+	anthropic: ANTHROPIC,
+	claude: ANTHROPIC,
+	"mistral-api": { text: extractTextFromMistral, citations: extractCitationsFromMistral },
+	dataforseo: DATAFORSEO,
+	google: DATAFORSEO,
+	"google-ai-mode": DATAFORSEO,
+	"google-ai-overview": DATAFORSEO,
+	openrouter: { text: extractTextFromOpenRouter, citations: extractCitationsFromOpenRouter },
+	searchapi: { text: extractTextFromSearchapi, citations: extractCitationsFromSearchapi },
+	olostep: { text: extractTextFromOlostep, citations: extractCitationsFromOlostep },
+	brightdata: { text: extractTextFromBrightdata, citations: extractCitationsFromBrightdata },
+	oxylabs: { text: extractTextFromOxylabs, citations: extractCitationsFromOxylabs },
+	cloro: { text: extractTextFromCloro, citations: extractCitationsFromCloro },
+};
+
+/**
+ * Which extractor reads a stored run: its provider's, or, when the provider names none (runs
+ * recorded as `direct`, or before the provider column), its engine's.
+ */
+export function extractorFor(run: { provider: string | null; model: string }): string {
+	return run.provider && extractor(run.provider) ? run.provider : run.model;
+}
+
+function extractor(key: string): Extractor | undefined {
+	return Object.hasOwn(EXTRACTORS, key) ? EXTRACTORS[key] : undefined;
 }

@@ -1,5 +1,5 @@
 import { CRISP_WEBSITE_ID } from "@workspace/config/constants";
-import { afterPageIdle } from "./idle";
+import { afterPageIdle } from "@workspace/ui/lib/idle";
 
 type CrispCommand = unknown[];
 

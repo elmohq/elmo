@@ -1,6 +1,5 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { extractTextContent } from "@workspace/lib/text-extraction";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -20,6 +19,7 @@ import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
+import { SentimentFilterCard } from "@/components/sentiment-filter";
 import { SiteIcon } from "@/components/site-icon";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
@@ -27,10 +27,12 @@ import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { useBrandParams } from "@/hooks/use-route-params";
+import { type SentimentSearch, useSentimentSearch, validateSentimentSearch } from "@/hooks/use-sentiment-search";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { promptKeywords } from "@/lib/fanout-analysis";
 import { PROMPT_DETAIL_TABS, type PromptDetailTab } from "@/lib/prompt-detail-tabs";
 import { pageHead } from "@/lib/route-head";
+import type { SentimentFilterCounts } from "@/lib/sentiment";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 import { getPromptMetadataFn } from "@/server/prompts";
@@ -70,8 +72,9 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/prompts
 	staticData: { crumb: "Prompt History" },
 	// `tab` is part of the route's search schema so links can target a specific
 	// tab (e.g. View Details → web-queries). Absent means the default tab.
-	validateSearch: (search: Record<string, unknown>): { tab?: PromptDetailTab } => ({
+	validateSearch: (search: Record<string, unknown>): { tab?: PromptDetailTab } & SentimentSearch => ({
 		tab: PROMPT_DETAIL_TABS.includes(search.tab as PromptDetailTab) ? (search.tab as PromptDetailTab) : undefined,
+		...validateSentimentSearch(search),
 	}),
 	head: pageHead({ title: "Prompt Details", description: "Detailed analysis of a tracked prompt's performance." }),
 	component: PromptHistoryPage,
@@ -212,6 +215,7 @@ function PromptHistoryPage() {
 	);
 	const [visitedTabs, setVisitedTabs] = useState<Set<PromptDetailTab>>(() => new Set([activeTab]));
 	const [currentPage, setCurrentPage] = useState(1);
+	const sentimentSearch = useSentimentSearch(() => setCurrentPage(1));
 	const { promptMeta, isMetaLoading } = usePromptMetadata(brandId, promptId);
 
 	const { data: brand } = useBrand(brandId);
@@ -235,6 +239,8 @@ function PromptHistoryPage() {
 		page: currentPage,
 		limit: RUNS_PER_PAGE,
 		lookback,
+		sentiment: sentimentSearch.sentiment,
+		sort: sentimentSearch.sort,
 	});
 
 	const { runs, total: totalRunCount, totalPages } = runsPage(runsData);
@@ -359,6 +365,8 @@ function PromptHistoryPage() {
 					<ResponsesTab
 						runs={runs}
 						totalRuns={totalRunCount}
+						sentimentFilterCounts={runsData?.sentimentFilterCounts}
+						sentimentSearch={sentimentSearch}
 						isLoading={isRunsLoading}
 						currentPage={currentPage}
 						onPageChange={handlePageChange}
@@ -584,6 +592,8 @@ function CitationsTab({
 function ResponsesTab({
 	runs,
 	totalRuns,
+	sentimentFilterCounts,
+	sentimentSearch,
 	isLoading,
 	currentPage,
 	onPageChange,
@@ -592,15 +602,17 @@ function ResponsesTab({
 }: {
 	runs: PromptRun[];
 	totalRuns: number;
+	sentimentFilterCounts?: SentimentFilterCounts;
+	sentimentSearch: ReturnType<typeof useSentimentSearch>;
 	isLoading: boolean;
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	brandName?: string;
 	domainFor: (name: string) => string | undefined;
 }) {
-	if (isLoading && runs.length === 0) return <ResponseCardSkeletons count={3} />;
+	if (isLoading && runs.length === 0 && !sentimentFilterCounts) return <ResponseCardSkeletons count={3} />;
 
-	if (runs.length === 0) {
+	if (!sentimentFilterCounts || sentimentFilterCounts.all === 0) {
 		return (
 			<div className="py-12 text-center text-muted-foreground text-sm">No prompt runs found for this time period.</div>
 		);
@@ -610,14 +622,20 @@ function ResponsesTab({
 		<div className="space-y-4">
 			<h3 className="text-base font-medium">Individual Prompt Runs</h3>
 
+			<SentimentFilterCard
+				counts={sentimentFilterCounts}
+				value={sentimentSearch.sentiment}
+				onChange={sentimentSearch.setSentiment}
+				sort={sentimentSearch.sort}
+				onSortChange={sentimentSearch.setSort}
+			/>
+
+			{runs.length === 0 && (
+				<div className="py-12 text-center text-muted-foreground text-sm">No runs match this filter.</div>
+			)}
+
 			{runs.map((run) => (
-				<ResponseCard
-					key={run.id}
-					run={run}
-					text={extractTextContent(run.rawOutput, run.provider ?? run.model)}
-					brandName={brandName}
-					domainFor={domainFor}
-				/>
+				<ResponseCard key={run.id} run={run} text={run.textContent} brandName={brandName} domainFor={domainFor} />
 			))}
 
 			<ListPagination

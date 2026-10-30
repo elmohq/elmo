@@ -22,6 +22,35 @@ On top of the shared variables (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `SCRAPE_TA
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in |
 | `CLOUD_SIGNUP_ALLOWLIST` | Signup gate — empty denies everyone, `*` opens signup |
 
+Strongly recommended:
+
+| Variable | Purpose |
+| --- | --- |
+| `TURNSTILE_SECRET_KEY`, `VITE_TURNSTILE_SITE_KEY` | Bot protection on email sign-up, sign-in, and password reset |
+
+## Bot protection
+
+Email sign-up, sign-in, password reset, and verification-email resend all send mail to whatever
+address the caller types, so they are guarded with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)
+through better-auth's `captcha` plugin. Google sign-in, API keys, and MCP/OAuth are not challenged.
+
+Create a Turnstile widget in the Cloudflare dashboard for the app's hostname (Managed mode), then
+set its site key as `VITE_TURNSTILE_SITE_KEY` and its secret as `TURNSTILE_SECRET_KEY`. The check is
+enforced only while both are set; otherwise the app logs a warning at startup and the forms work
+unchallenged. Tokens are only accepted when Cloudflare reports they were solved on the hostname in
+`APP_URL`, so the widget's hostname list must include it.
+
+For local development, use Cloudflare's [test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/),
+which always pass and skip the hostname check:
+
+```bash
+VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+```
+
+Site key `2x00000000000000000000AB` always fails and `3x00000000000000000000FF` forces the
+interactive checkbox, for trying the error and challenge paths.
+
 ## Stripe setup
 
 The plan catalog lives in `packages/config/src/plans.ts` — prices, limits, sampling rates, and the
@@ -77,11 +106,37 @@ standard platform** (the run policy uses the first match per model), plus a grou
 model sold in the premium tier:
 
 ```
-chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-sonnet-5,chatgpt:openai-api:gpt-5-mini:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-sonnet-5:online
+chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online
 ```
 
 Platforms are offered to customers only when they appear in both the plan menu
 (`STANDARD_PLATFORM_MENU`) and `SCRAPE_TARGETS`.
+
+### Supported model versions
+
+These are the exact versions Elmo Cloud runs. Scraped platforms have no version to pin: they track
+whatever the live product serves its users that day.
+
+| Platform | Sold as | Version |
+| --- | --- | --- |
+| ChatGPT | Pick (scraped) | Live chatgpt.com |
+| ChatGPT | Premium | `gpt-6-luna` with web search, via the OpenAI API |
+| Google AI Mode | Pick (scraped) | Live product |
+| Google AI Overviews | Pick (scraped) | Live product |
+| Copilot | Pick (scraped) | Live product |
+| Perplexity | Pick (scraped) | Live product |
+| Gemini | Pick (scraped) | Live gemini.google.com |
+| Qwen | Pick (API) | `qwen/qwen3-235b-a22b-2507`, via OpenRouter |
+| DeepSeek | Pick (API) | `deepseek/deepseek-v3.2`, via OpenRouter |
+| Mistral | Pick (API) | `mistralai/mistral-medium-3.1`, via OpenRouter |
+| Claude | Pick (API) | `claude-haiku-5-5`, via the Anthropic API |
+| Claude | Premium | `claude-haiku-5-5` with web search, via the Anthropic API |
+| Grok | Premium | `x-ai/grok-4.5` with web search, via OpenRouter |
+| Kimi | Pick (API) | `moonshotai/kimi-k2.5`, via OpenRouter |
+
+API picks are priced against a design point of roughly **$0.004 per run**, which is why Kimi runs
+K2.5 rather than K3: K3's output tokens cost several times that per answer. Check a new model's
+per-run price against that point before adding it to the menu or bumping a version.
 
 Some models are configured twice on purpose, and the two entries are sold differently:
 
@@ -101,7 +156,7 @@ not discount its premium slot — `resolvePromptRunPlan` builds the two sets fro
 (`brand.enabledModels` and `prompt.premiumModels`) and simply concatenates them.
 
 Which models are sellable that way is a `premium` flag in `CLOUD_PLATFORMS`, not a model id threaded
-through the code: today Claude, Grok and ChatGPT (GPT-5 Search). Adding another means adding the flag
+through the code: today Claude, Grok and ChatGPT (GPT Search). Adding another means adding the flag
 and a grounded target — nothing in the schema, the guards or the run policy names a model.
 
 "Grounded" means **a direct API call with the model's own web search on**, which is what
@@ -112,7 +167,7 @@ Every pick samples at the plan's rate, whether it is scraped or an API call — 
 a grounded call is. Only the grounded targets depart, at `PREMIUM_RUNS_PER_DAY`, which a custom plan
 can raise through the `premiumRunsPerDay` override.
 
-Qwen, DeepSeek and Mistral carry no `:online` variant at all: they have no native search tool, so
+Qwen, DeepSeek, Mistral and Kimi carry no `:online` variant at all: they have no native search tool, so
 OpenRouter would fall back to Exa, whose results are not a surface a consumer would ever see. They
 report mentions but no citations, since a run with no web search returns no source annotations — as
 does any ungrounded pick.

@@ -1,0 +1,40 @@
+---
+title: Skill
+description: Install the aeo skill to give Claude Code, Cursor, Codex, and other agents an evidence-based AEO workflow.
+---
+
+The [`aeo` skill](https://github.com/elmohq/elmo/tree/main/skills/aeo) teaches Claude Code, Cursor,
+Codex, and other coding agents an evidence-based answer engine optimization workflow: measure,
+diagnose, fix, then measure again. It works with or without Elmo, and it is MIT-licensed.
+
+## Install
+
+```bash
+npx skills add elmohq/elmo
+```
+
+The skills CLI finds the agents on your machine and installs the skill, with its reference files and
+audit script, for each. To install by hand, copy
+[`skills/aeo`](https://github.com/elmohq/elmo/tree/main/skills/aeo) into your agent's skills directory
+(for Claude Code, `~/.claude/skills/aeo`). On claude.ai, zip the `aeo` folder and upload it in the
+Skills settings.
+
+## Connect it to your data
+
+With Elmo connected over [MCP](/docs/api/mcp), the agent reads your tracked visibility, citations,
+and fan-out queries instead of guessing. Without it, the skill falls back to sampling answers by hand.
+
+Every deployment also shows these instructions at **Settings → Skill** in the organization's settings
+sidebar.
+
+## Try
+
+> How's our brand doing in AI search this week?
+
+> Why did our Google AI Overviews visibility drop last month?
+
+> Audit our site's access for AI crawlers and fix what's blocking them.
+
+> Which pages do the engines cite when we lose, and how do we get onto them?
+
+[Read how the skill compares with other AEO skills](/blog/aeo-skill).

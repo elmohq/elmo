@@ -93,6 +93,9 @@ export function ContactForm({ source, title = "White Label Inquiry" }: ContactFo
 									onChange={(e) => setEmail(e.target.value)}
 									placeholder="jane@agency.com"
 									required
+									data-lpignore="true"
+									data-1p-ignore
+									data-bwignore
 									className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 								/>
 							</div>

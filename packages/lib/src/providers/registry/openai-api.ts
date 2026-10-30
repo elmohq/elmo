@@ -1,7 +1,6 @@
 import { createOpenAI, openai } from "@ai-sdk/openai";
 import { generateText, type InferToolOutput } from "ai";
 import { getCredential } from "../../secrets";
-import { extractCitationsFromOpenAI, extractTextFromOpenAI } from "../../text-extraction";
 import {
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
 	configuredWhen,
@@ -22,7 +21,7 @@ import type {
 import { structuredResearch } from "./ai-sdk";
 import { nonEmptyStrings } from "./scrape-shared";
 
-const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
+const DEFAULT_RESEARCH_MODEL = "gpt-6-luna";
 
 function getOpenAIResponsesModel(model: string) {
 	const apiKey = getCredential("OPENAI_API_KEY");
@@ -93,8 +92,6 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 	return {
 		rawOutput,
 		webQueries: reportedWebQueries(webQueries, { webSearch: options?.webSearch ?? false }),
-		textContent: extractTextFromOpenAI(rawOutput),
-		citations: extractCitationsFromOpenAI(rawOutput),
 		modelVersion: model,
 	};
 }

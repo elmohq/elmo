@@ -10,19 +10,22 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { ColHead } from "@/components/col-head";
+import { CompanyTrendChart } from "@/components/company-trend-chart";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
 import { SiteIcon } from "@/components/site-icon";
-import { TrendChart } from "@/components/trend-chart";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
-import { useShareOfVoice } from "@/hooks/use-share-of-voice";
+import { useCompetitiveLandscape, useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { useSiteIcons } from "@/hooks/use-site-icons";
+import { useCompanyColors } from "@/lib/company-colors";
+import { chartedCompanies, type Landscape } from "@/lib/landscape";
+import { METRIC_META } from "@/lib/overview-metrics";
 import { pageHead } from "@/lib/route-head";
-import { shareOfVoiceColorMap } from "@/lib/share-of-voice-palette";
+import type { ShareOfVoiceEntry } from "@/server/analysis";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/share-of-voice")({
 	staticData: { crumb: "Share of Voice" },
@@ -32,20 +35,63 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/share-o
 
 const formatPct = (share: number) => `${Math.round(share * 100)}%`;
 
-/** Latest non-null point of the share-of-voice trend — the value the line ends on. */
-function currentShareOf(series: Array<{ share: number | null }>): number | null {
-	for (let i = series.length - 1; i >= 0; i--) {
-		const v = series[i]?.share;
-		if (typeof v === "number") return v;
-	}
-	return null;
-}
-
 const TIPS = {
 	mentions: "Number of runs in which this brand was mentioned in the AI answer.",
 	share: "This brand's share of all brand + competitor mentions.",
 	prompts: "Number of distinct prompts this brand appeared in.",
 };
+
+function ShareOfVoiceOverview({
+	entries,
+	landscape,
+	landscapeFailed,
+	colors,
+	domainFor,
+}: {
+	entries: ShareOfVoiceEntry[];
+	landscape?: Landscape;
+	landscapeFailed: boolean;
+	colors: Map<string, string>;
+	domainFor: (name: string) => string | undefined;
+}) {
+	return (
+		<div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+			<Card>
+				<CardHeader>
+					<CardTitle>Share of Voice</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<ShareOfVoiceDonut entries={entries} colors={colors} domainFor={domainFor} />
+				</CardContent>
+			</Card>
+
+			<Card>
+				<CardHeader>
+					<CardTitle>Share of Voice Trends</CardTitle>
+				</CardHeader>
+				<CardContent>
+					{landscape ? (
+						<CompanyTrendChart
+							dates={landscape.dates}
+							companies={chartedCompanies(landscape, "share").map((c) => ({
+								name: c.name,
+								isBrand: c.isBrand,
+								color: colors.get(c.name) ?? "#94a3b8",
+								values: c.series.share,
+							}))}
+							format={METRIC_META.share.format}
+							height={220}
+						/>
+					) : landscapeFailed ? (
+						<p className="py-8 text-center text-sm text-muted-foreground">Couldn't load the trends right now.</p>
+					) : (
+						<Skeleton className="h-[250px] w-full" />
+					)}
+				</CardContent>
+			</Card>
+		</div>
+	);
+}
 
 function ShareOfVoicePage() {
 	const brandId = useBrandId();
@@ -60,6 +106,12 @@ function ShareOfVoicePage() {
 	const availableTags = promptsSummary?.availableTags ?? [];
 
 	const { data, isLoading } = useShareOfVoice(brandId, { lookback, model: modelParam, tags });
+	const { data: landscape, error: landscapeError } = useCompetitiveLandscape(brandId, {
+		lookback,
+		model: modelParam,
+		tags,
+	});
+	const colors = useCompanyColors(landscape, data?.entries);
 
 	const infoContent = (
 		<>
@@ -72,7 +124,6 @@ function ShareOfVoicePage() {
 	);
 
 	const maxMentions = data?.entries.reduce((m, e) => Math.max(m, e.mentions), 0) ?? 0;
-	const barColors = shareOfVoiceColorMap(data?.entries ?? []);
 
 	let content: React.ReactNode;
 	if (isLoading && !data) {
@@ -99,43 +150,15 @@ function ShareOfVoicePage() {
 			</Card>
 		);
 	} else {
-		// The big number = the trend's last plotted point, so it matches the line beside it.
-		const currentShare = currentShareOf(data.shareTimeSeries);
 		content = (
 			<TooltipProvider delay={150}>
-				<div className="grid gap-6 lg:grid-cols-2">
-					<Card>
-						<CardHeader>
-							<CardTitle>Share of Voice</CardTitle>
-						</CardHeader>
-						<CardContent className="flex items-center justify-between gap-4">
-							<div>
-								<div className="text-3xl sm:text-4xl font-bold tabular-nums">
-									{currentShare !== null ? `${currentShare}%` : "—"}
-								</div>
-								<p className="text-sm text-muted-foreground mt-1 max-w-[18rem]">
-									{data.brandName} across {data.totalRuns.toLocaleString()} runs
-									{data.entries.length > 1 ? ` and ${data.entries.length - 1} competitors` : ""}.
-								</p>
-							</div>
-							<ShareOfVoiceDonut entries={data.entries} domainFor={domainFor} />
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader>
-							<CardTitle>Share of Voice Trends</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<TrendChart
-								data={data.shareTimeSeries.map((p) => ({ date: p.date, value: p.share }))}
-								label="Share of Voice"
-								color="#2563eb"
-								className="aspect-auto h-[180px] w-full"
-							/>
-						</CardContent>
-					</Card>
-				</div>
+				<ShareOfVoiceOverview
+					entries={data.entries}
+					landscape={landscape}
+					landscapeFailed={!!landscapeError && !landscape}
+					colors={colors}
+					domainFor={domainFor}
+				/>
 
 				<Card>
 					<CardHeader>
@@ -145,15 +168,15 @@ function ShareOfVoicePage() {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead className="w-10">#</TableHead>
+									<TableHead className="w-10 max-sm:w-8">#</TableHead>
 									<TableHead>Brand</TableHead>
-									<TableHead className="text-right">
+									<TableHead className="text-right max-sm:hidden">
 										<ColHead label="Mentions" tip={TIPS.mentions} right />
 									</TableHead>
-									<TableHead className="w-[34%]">
+									<TableHead className="w-[34%] max-sm:w-24">
 										<ColHead label="Share" tip={TIPS.share} />
 									</TableHead>
-									<TableHead className="text-right">
+									<TableHead className="text-right max-sm:hidden">
 										<ColHead label="Prompts" tip={TIPS.prompts} right />
 									</TableHead>
 								</TableRow>
@@ -163,9 +186,10 @@ function ShareOfVoicePage() {
 									<TableRow key={e.name} className={e.isBrand ? "bg-muted/40" : undefined}>
 										<TableCell className="text-muted-foreground tabular-nums">{i + 1}</TableCell>
 										<TableCell className="font-medium">
-											<span className="inline-flex items-center gap-2">
+											<span className="flex items-center gap-2">
 												<SiteIcon domain={domainFor(e.name)} size="md" />
-												{e.name}
+												{/* Capped on phones so the share bars keep their room. */}
+												<span className="truncate max-sm:max-w-24">{e.name}</span>
 												{e.isBrand && (
 													<Badge variant="secondary" className="text-xs">
 														You
@@ -173,15 +197,17 @@ function ShareOfVoicePage() {
 												)}
 											</span>
 										</TableCell>
-										<TableCell className="text-right tabular-nums">{e.mentions.toLocaleString()}</TableCell>
+										<TableCell className="text-right tabular-nums max-sm:hidden">
+											{e.mentions.toLocaleString()}
+										</TableCell>
 										<TableCell>
 											<div className="flex items-center gap-2">
-												<div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+												<div className="bg-muted h-2 w-full overflow-hidden rounded-full max-[380px]:hidden">
 													<div
 														className="h-full rounded-full"
 														style={{
 															width: `${maxMentions > 0 ? (e.mentions / maxMentions) * 100 : 0}%`,
-															backgroundColor: barColors.get(e.name) ?? "#cbd5e1",
+															backgroundColor: colors.get(e.name) ?? "#cbd5e1",
 														}}
 													/>
 												</div>
@@ -190,7 +216,9 @@ function ShareOfVoicePage() {
 												</span>
 											</div>
 										</TableCell>
-										<TableCell className="text-right tabular-nums text-muted-foreground">{e.prompts}</TableCell>
+										<TableCell className="text-right tabular-nums text-muted-foreground max-sm:hidden">
+											{e.prompts}
+										</TableCell>
 									</TableRow>
 								))}
 							</TableBody>

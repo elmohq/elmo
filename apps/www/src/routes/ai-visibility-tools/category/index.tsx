@@ -42,7 +42,6 @@ function CategoryHub() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					eyebrow="By category"
 					title="Browse AI visibility tools by category"
 					lead="The market splits into a few distinct groups. Pick the type of tool you're after to compare the options in that category side by side."
 				/>

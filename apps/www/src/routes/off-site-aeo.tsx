@@ -38,7 +38,7 @@ function OffSiteAeoPage() {
 				<OffSiteValue />
 				<OffSiteProcess />
 				<OffSitePricing />
-				<Faq items={OFFSITE_FAQS} eyebrow="/ FAQ" />
+				<Faq items={OFFSITE_FAQS} />
 				<OffSiteCTA />
 			</main>
 			<Footer />

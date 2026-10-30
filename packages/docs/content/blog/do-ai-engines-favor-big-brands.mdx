@@ -1,0 +1,137 @@
+---
+title: "Do AI Engines Favor Big Brands Over Smaller Ones?"
+description: "Field data says AI answers mention market leaders far more than niche brands. Controlled experiments say brand name barely moves a model's ranking. We reconcile the research and give challenger brands a rule for telling a brand-prior gap from an evidence gap."
+date: "2026-10-08"
+author: ai
+metaTitle: "Do AI Engines Favor Big Brands? What the Research Shows"
+tags:
+  - ai-visibility
+  - ai-search
+  - aeo
+  - share-of-voice
+definedTerms:
+  - term: Big brand bias
+    definition: "Big brand bias is the tendency of AI answer engines to name well-known market leaders more often than smaller or niche brands in answers to prompts that do not name a brand."
+  - term: Incumbent tie-break
+    definition: "An incumbent tie-break is when a language model picks the familiar brand because nothing in the prompt or the retrieved evidence separates it from the alternatives. It disappears once a competitor shows a small, explicit advantage."
+  - term: Constrained prompt
+    definition: "A constrained prompt is a buying question that states a requirement, such as a use case, budget, region, integration, or specification, giving the engine something other than familiarity to choose on."
+howTo:
+  name: "How to tell whether you are losing to a brand prior or an evidence gap"
+  description: "Split your prompt set by how much the prompt constrains the answer, then compare your mention rate against the category leader on each half."
+  steps:
+    - name: Split your prompts into generic and constrained
+      text: "Generic prompts ask for the best or top brands in a category. Constrained prompts add a requirement where you have a verifiable edge: a use case, price band, region, integration, or specification."
+    - name: Run every prompt repeatedly on every engine
+      text: "Recommended products change between identical runs, so collect at least three runs per prompt per engine and compute mention rates rather than reading single answers."
+    - name: Compare your mention rate with the leader's on each half
+      text: "Compute your mention rate and the category leader's on generic prompts and on constrained prompts, per engine."
+    - name: Diagnose the gap
+      text: "If you trail on generic prompts but close most of the gap on constrained ones, you are seeing an incumbent tie-break. If you trail by the same margin on both, the engines are not finding evidence about you, and the fix is coverage in the sources they cite."
+    - name: Act on the diagnosis
+      text: "For a tie-break gap, prioritize constrained prompts and stop benchmarking against the leader on generic ones. For an evidence gap, invest in third-party editorial and review coverage that states your advantage in checkable terms."
+faq:
+  - question: Do AI engines favor big brands?
+    answer: "On generic prompts, yes. A University of Toronto study of 50 unbranded cola prompts found 62.2% of brand mentions in ChatGPT and Perplexity went to 20 major brands and 9.0% to 20 niche ones. But controlled experiments show the preference is a tie-breaker: a small explicit advantage for a competitor overturns it."
+  - question: Can a small brand get recommended by ChatGPT over a market leader?
+    answer: "Yes, when the engine has evidence of a concrete advantage. In a June 2026 experiment, a fictional brand with a 0.075-star rating edge, 1.6 times the reviews, or a 7.3% lower price beat a real incumbent half the time on otherwise identical products. Without that evidence, the incumbent won every trial."
+  - question: Which AI engine is hardest for a challenger brand to break into?
+    answer: "In Chu and Hou's experiments, Claude. A minimal rating advantage flipped the recommendation to the challenger in 11% of Claude trials, against 94% for GPT-4o-mini and 88% for Gemini 3 Flash. In the Toronto cola test, Perplexity gave niche brands a smaller share than ChatGPT, 5.8% against 12.3%."
+  - question: Does persuasive marketing language help small brands in AI answers?
+    answer: "In one experiment, fabricated clinical-trial claims lifted a fictional brand above the incumbent in 73.3% of trials. The authors used made-up claims on purpose to find an upper bound. The gain also nearly vanished once every competitor used the same language, so it is a race to the bottom, not a strategy."
+  - question: Why do AI answers mention big brands so much more often?
+    answer: "Two reasons stack. Models carry priors from training that link familiar brands with quality. Retrieval then finds far more third-party material about market leaders, such as Wikipedia, which supplied about 19.7% of ChatGPT's citations in the cola study. A challenger has to fix the second problem to get past the first."
+---
+
+**AI answer engines do mention big brands far more often than small ones, but the research says they are not attached to them.** A University of Toronto team asked ChatGPT and Perplexity 50 unbranded questions about the best and most popular colas. [Of 986 brand mentions, 62.2% went to 20 major brands and 9.0% to 20 niche ones](https://arxiv.org/abs/2509.08919). A controlled experiment published in June 2026 found something that looks like the opposite. Across 14,395 trials, [brand identity explained 1.2% of how three LLMs ranked products](https://arxiv.org/abs/2606.17443), and the product details shown to the model explained 82.4%.
+
+Both findings hold. This post covers how they fit together, what that means for a challenger brand, and a test that tells you which of two different problems you have.
+
+**Key takeaways**
+
+- On generic "best [category]" prompts, AI engines lean heavily toward market leaders. Three independent research groups find a familiar-brand preference in different settings.
+- The preference works as a **tie-breaker**. When products were otherwise identical, the incumbent won 100% of 670 trials. Give a fictional rival a 0.075-star rating edge, 1.6 times the reviews, or a 7.3% lower price, and it wins about half the time.
+- In the field, the tie rarely gets broken, because engines find much more third-party evidence about leaders than about challengers.
+- Engines differ. Claude held onto the incumbent far more than GPT-4o-mini or Gemini 3 Flash, and Perplexity gave niche colas half the share ChatGPT did.
+- The practical test is to compare your gap to the leader on **generic** prompts with your gap on **constrained** ones. The difference tells you whether you are losing to a prior or to missing evidence.
+
+## What the research measured
+
+Four studies bear on the question. They use different designs, which is why their headline numbers seem to disagree.
+
+| | Kamruzzaman et al. (EMNLP 2024) | Chen et al. (preprint, data Aug 2025) | Chu & Hou (preprint, Jun 2026) | Uberti-Bona Marin et al. (preprint, Sep 2026) |
+|---|---|---|---|---|
+| Design | Word-association and choice prompts, no retrieval | Live engines, unbranded prompts | Controlled product lists: 1 real brand, 9 fictional | Live consumer interfaces and APIs, real shopping queries |
+| Engines | GPT-4o, Llama-3-8B, Gemma-7B, Mistral-7B | ChatGPT, Perplexity (cola test); plus Claude, Gemini (sourcing test) | GPT-4o-mini, Claude Sonnet 4.6, Gemini 3 Flash | ChatGPT, Gemini, Google AI Overviews |
+| Scale | 8,728 association instances; 772 country-of-origin instances | 50 prompts, 986 brand mentions | 14,395 trials in the main ranking analysis | 117 product queries × 3 runs × 5 conditions |
+| Finding on brand size | Global brands linked with positive attributes, local brands with negative ones | 62.2% of mentions to major brands, 9.0% to niche | Incumbent wins every tie; a small explicit edge overturns it | Recommended products change heavily between identical runs |
+
+Sources: [Kamruzzaman, Nguyen & Kim](https://aclanthology.org/2024.emnlp-main.707); [Chen, Wang, Chen & Koudas](https://arxiv.org/abs/2509.08919); [Chu & Hou](https://arxiv.org/abs/2606.17443); [Uberti-Bona Marin et al.](https://arxiv.org/abs/2609.18729).
+
+Only the first paper is peer-reviewed. The other three are arXiv preprints from university groups, and none is from an AI visibility vendor.
+
+## The evidence that the bias is real
+
+**Models carry a familiar-brand prior.** Kamruzzaman and colleagues asked four models to match brands from 15 countries with positive and negative attributes. In all eight model-and-direction settings, the models linked global brands with favorable traits and local brands with unfavorable ones. When the authors swapped brand names for the phrases "global brand" and "local brand," the pattern held and tended to get stronger. The models have learned that "global" means "good," whatever the specific brand.
+
+**Live engines lean toward leaders on generic prompts.** In the Toronto cola test, Coca-Cola and Pepsi led on both engines, with Dr Pepper third. Perplexity was more skewed than ChatGPT, giving 67.9% of mentions to major brands and 5.8% to niche ones, against 56.3% and 12.3%. The same paper found that when the four engines it tested answered questions about niche brands, their sources agreed less (71–76% agreement against 76–81% for well-known brands). Engines converge on leaders and scatter on everyone else.
+
+**The prior shows up in other domains.** A separate team testing investment advice found models [consistently favored a few dominant names such as Apple and Microsoft](https://arxiv.org/abs/2503.08750) across 567,000 generated recommendations, and the preference survived debiasing techniques.
+
+## The evidence that the bias is shallow
+
+Chu and Hou built product lists with one real brand, such as CeraVe moisturizer or Anker USB-C cables, and nine invented brands. They then varied the specs.
+
+- **With identical specs, the real brand won 100% of 670 valid trials.** No fictional brand was recommended even once.
+- **With a minimal edge, it flipped.** The challenger won 3.6–6.0% of trials when tied and 64–80% at the smallest advantage tested. The 50% crossover came at a 0.075-star rating lead, 1.6 times the review count, or a 7.3% price discount.
+- **Across the full ranking analysis,** product parameters explained 82.4% of the variance, list position 6.5%, and brand identity 1.2%.
+
+Kamruzzaman's paper shows the same thing from another angle. When the prompt said which country the user was in, GPT-4o picked the local brand over the global one 75% of the time. A single piece of context outweighed the "global is good" association.
+
+## How both can be true
+
+The familiar-brand preference is a default. Models use it when neither the prompt nor the evidence gives them a better reason to choose. That is the **incumbent tie-break**, and it reconciles the numbers.
+
+In Chu and Hou's experiments, the challenger's advantage was placed directly in the prompt, so the model could not miss it. A real challenger's advantage has to be *retrieved*, and retrieval favors leaders twice over:
+
+1. **There is more written about them.** In the cola test, Wikipedia supplied about 19.7% of ChatGPT's citations. Market leaders have long entries; indie sodas often have none. The consumer-product audit found editorial and product-review sites made up 56.7% of the domains ChatGPT cited and 45.2% for Gemini. Those are publications that review leaders by default.
+2. **Engines lean on third-party sources.** In the Toronto sourcing test, earned media made up 86–95% of what Claude and ChatGPT cited for niche brands. A niche brand's own site barely counts, so its advantage needs to appear somewhere else.
+
+Chu and Hou also ran a small retrieval experiment. In it, the real brand ranked poorly on embedding similarity and survived in 0% of runs. The authors call this result directional only. Still, it suggests the bias can fall at the retrieval stage too, against whoever's description fits the query worst rather than in favor of the incumbent.
+
+So the field result and the lab result describe the same mechanism. Generic prompts supply no tie-breaking evidence, the evidence that retrieval does find is mostly about leaders, and the prior settles the rest. Where the evidence for a challenger is present and explicit, the prior gives way quickly.
+
+## Where the engines differ
+
+Challengers should not expect the same treatment everywhere.
+
+- **Claude was the stickiest.** A minimal rating advantage flipped the pick to the challenger in 11% of Claude trials, against 94% for GPT-4o-mini and 88% for Gemini 3 Flash.
+- **Perplexity was the most skewed toward leaders** in the cola test, despite citing a much wider spread of domains (about 60.6% of its citations fell outside its top sources).
+- **ChatGPT was the least consistent.** In the consumer-product audit, the products it recommended in repeated identical runs overlapped by a Jaccard score of 0.178, against 0.287 for Gemini and 0.421 for AI Overviews. A single ChatGPT answer that leaves you out tells you very little.
+
+## What this research does not prove
+
+**"Most popular" has a correct answer.** Some of the Toronto prompts asked for the *most popular* colas, and Coca-Cola is the most popular cola. Part of that 62.2% is the engines answering accurately. The test also covers one consumer category on two engines, at one point in time.
+
+**Fictional brands are not small brands.** Chu and Hou's invented names start with no reputation at all. A real challenger may have a thin or mixed record that the model has partly learned, which could help or hurt. Their main results also come from one product domain.
+
+**The marketing-language result is a warning, not a tactic.** Adding fabricated clinical-trial claims to the challenger's description lifted it above the incumbent in 73.3% of trials. The authors used made-up claims on purpose, to find an upper bound. When all nine fictional competitors used the same language, the incumbent's survival rate went back up to 93.8%, and the individual payoff fell to almost nothing. It is deceptive, and it stops working once your competitors do it too.
+
+**None of the studies measures revenue.** They measure mentions and picks. Those are only the top of the funnel.
+
+## The decision rule: generic gap vs constrained gap
+
+A challenger brand has two possible problems that look the same on a share-of-voice dashboard. Either the engines know about you and default to the leader when nothing breaks the tie, or they are not finding evidence about you at all. The fixes are different, so separate the two before you act.
+
+1. **Split your [prompt set](/blog/ai-prompt-tracking) in two.** *Generic*: "best [category]," "top [category] brands." *Constrained*: the same question with a requirement where you have a checkable edge, such as a use case, price band, region, integration, or spec.
+2. **Run every prompt at least three times per engine.** With product overlap as low as 0.178 between identical ChatGPT runs, mention *rates* are the only usable unit. Our own tracking shows the cited sources for the same prompt [turning over heavily from day to day](/blog/citation-volatility).
+3. **Compute your mention rate and the leader's on each half, per engine.** Pooling engines hides the fact that Claude and Perplexity behave differently from GPT and Gemini.
+4. **Read the gap.**
+   - *You trail on generic prompts but close most of the gap on constrained ones:* that is the incumbent tie-break, and it is working as the research predicts. Stop judging yourself against the leader on generic prompts. Put your effort into the constrained prompts that match your real advantages.
+   - *You trail by about the same margin on both:* that is an evidence gap. Engines are not retrieving anything that states your advantage. The fix is coverage in the third-party editorial, review, and community sources the engines actually cite for your category. Our breakdown of [where AI citations come from](/blog/where-ai-citations-come-from) and our post on [whether engines cite the same sources](/blog/do-ai-engines-cite-the-same-sources) show how much that list varies by engine.
+   - *You match the leader on generic prompts:* engines already treat you as an incumbent. Defend the constrained prompts where challengers can break the tie against you.
+5. **Make the advantage explicit and verifiable.** In the experiments, what flipped the pick was a number: a rating, a review count, a price. Vague superiority claims did not. Get your concrete edge stated plainly in places engines retrieve from. Don't rely on your own ["best of" listicle](/blog/self-promotional-listicles-ai-visibility); engines rarely adopt a vendor's self-ranking.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform. It runs your prompt sets repeatedly across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, and records every brand named and every source cited on each run. Tag prompts as generic or constrained, and the generic-versus-constrained gap against your category leader is a query over your own data.
+
+For the fundamentals, start with [AI share of voice](/blog/ai-share-of-voice) and [AI competitor analysis](/blog/ai-competitor-analysis), then [how to track your brand in AI search](/answer-engine-optimization). For the vocabulary, see the [AI search glossary](/glossary).

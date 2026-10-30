@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { aeoVerticals } from "@/data/aeo-verticals";
 import { aiSearchEngines } from "@/data/ai-search-engines";
+import { productFeatures } from "@/data/features";
 import { glossaryTerms } from "@/data/glossary";
 import { blogSource } from "@/lib/blog";
 import {
@@ -10,12 +11,12 @@ import {
 	compareSetSlug,
 	compareSets,
 	competitors,
+	competitorsWithOwnPages,
 	FEATURE_SLUGS,
 	getComparisonSlug,
+	hasOwnPages,
 	indexableCategories,
 	indexableFeatureKeys,
-	indexedCompetitors,
-	isLowDR,
 } from "@/lib/competitors";
 import { listLegalPages } from "@/lib/legal";
 import { source } from "@/lib/source";
@@ -47,10 +48,12 @@ const staticPages: SitemapEntry[] = [
 	{ path: "/blog", changefreq: "weekly", priority: 0.7 },
 	{ path: "/statistics", changefreq: "weekly", priority: 0.8 },
 	{ path: "/ai-visibility-tools", changefreq: "weekly", priority: 0.8 },
+	{ path: "/about", changefreq: "monthly", priority: 0.7 },
 	{ path: "/vision", changefreq: "monthly", priority: 0.6 },
 	{ path: "/brand", changefreq: "monthly", priority: 0.5 },
 	{ path: "/status", changefreq: "daily", priority: 0.5 },
 	{ path: "/support", changefreq: "monthly", priority: 0.5 },
+	{ path: "/demo", changefreq: "monthly", priority: 0.5 },
 	{ path: "/legal", changefreq: "yearly", priority: 0.3 },
 ];
 
@@ -79,13 +82,11 @@ export const Route = createFileRoute("/sitemap.xml")({
 					lastmod: page.data.updated ?? page.data.date,
 				}));
 
-				const comparisonPages: SitemapEntry[] = competitors
-					.filter((c) => c.status !== "shutting-down" && c.category !== "other" && !isLowDR(c))
-					.map((c) => ({
-						path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
-						changefreq: "monthly",
-						priority: 0.6,
-					}));
+				const comparisonPages: SitemapEntry[] = competitors.filter(hasOwnPages).map((c) => ({
+					path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
+					changefreq: "monthly",
+					priority: 0.6,
+				}));
 
 				// Programmatic directory sub-pages (hubs + generated pages).
 				const directorySubPages: SitemapEntry[] = [
@@ -93,6 +94,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 					{ path: "/ai-visibility-tools/alternatives", changefreq: "monthly", priority: 0.5 },
 					{ path: "/ai-visibility-tools/features", changefreq: "monthly", priority: 0.5 },
 					{ path: "/ai-visibility-tools/category", changefreq: "monthly", priority: 0.5 },
+					{ path: "/ai-visibility-tools/graveyard", changefreq: "monthly", priority: 0.5 },
 					...comparePairs.map(([a, b]) => ({
 						path: `/ai-visibility-tools/compare/${comparePairSlug(a, b)}`,
 						changefreq: "monthly",
@@ -103,7 +105,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 						changefreq: "monthly",
 						priority: 0.6,
 					})),
-					...indexedCompetitors.map((c) => ({
+					...competitorsWithOwnPages.map((c) => ({
 						path: `/ai-visibility-tools/alternatives/${c.slug}`,
 						changefreq: "monthly",
 						priority: 0.6,
@@ -130,6 +132,12 @@ export const Route = createFileRoute("/sitemap.xml")({
 					})),
 				];
 
+				const featurePages: SitemapEntry[] = productFeatures.map((f) => ({
+					path: `/features/${f.slug}`,
+					changefreq: "monthly",
+					priority: 0.7,
+				}));
+
 				const aiSearchPages: SitemapEntry[] = [
 					{ path: "/ai-search", changefreq: "monthly", priority: 0.7 },
 					...aiSearchEngines.map((e) => ({
@@ -141,6 +149,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 
 				const aeoForPages: SitemapEntry[] = [
 					{ path: "/aeo-for", changefreq: "monthly", priority: 0.7 },
+					{ path: "/aeo-for/profound-users", changefreq: "monthly", priority: 0.6 },
 					...aeoVerticals.map((v) => ({
 						path: `/aeo-for/${v.slug}`,
 						changefreq: "monthly",
@@ -150,6 +159,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 
 				const allPages: SitemapEntry[] = [
 					...staticPages,
+					...featurePages,
 					...docsPages,
 					...legalPages,
 					...blogPages,

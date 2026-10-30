@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>2026 State of Mid-Market Payroll Report | Tallyroll</title>
+  <meta name="description" content="Download the 2026 State of Mid-Market Payroll report.">
+  <meta name="robots" content="index, follow">
+</head>
+<body>
+  <main>
+    <h1>The 2026 State of Mid-Market Payroll</h1>
+    <p>Our biggest research report yet. Fill out the form to get the full PDF.</p>
+    <img src="/img/report-hero-stats.png" alt="report stats" width="1200" height="800">
+    <!-- report-hero-stats.png shows: "41% of mid-market companies ran at least one off-cycle payroll to fix an error in 2025",
+         "Average cost per payroll error: $291", "Survey of 1,140 US payroll leaders, fielded May-June 2026" -->
+    <form action="/api/lead" method="post">
+      <input name="work_email" type="email" required placeholder="Work email">
+      <input name="company_size" required placeholder="Company size">
+      <button type="submit">Get the report</button>
+    </form>
+    <!-- On submit, the PDF is emailed from https://assets.tallyroll.com/r/2026-payroll-report.pdf (robots.txt on assets.tallyroll.com: Disallow: /r/) -->
+  </main>
+</body>
+</html>
