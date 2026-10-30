@@ -2,7 +2,6 @@ export * from "./brand-pages";
 export * from "./bucket";
 export * from "./citation-pages";
 export * from "./constants";
-export * from "./data-versions";
 export * from "./dirty";
 export * from "./fanout";
 export * from "./pipeline-state";

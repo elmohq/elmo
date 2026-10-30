@@ -15,7 +15,6 @@ import {
 } from "../db/schema";
 import { copyBrandPages } from "./brand-pages";
 import { assertBucketAligned, bucketSql } from "./bucket";
-import { bumpMonths } from "./data-versions";
 import { isFanoutQuery, normalizedWebQuery } from "./fanout";
 
 export interface RebuildStats {
@@ -66,7 +65,6 @@ export async function rebuildRange(
 		const urlRows = await insertCitationRollup(tx, brandId, from, toExclusive);
 		await copyBrandPages(tx, brandId, from, toExclusive);
 		const quoteRows = await insertSentimentQuoteRollup(tx, brandId, from, toExclusive);
-		await bumpMonths(tx, brandId, from, toExclusive);
 		return { runs, competitorRows, webQueryRows, urlRows, quoteRows };
 	});
 }

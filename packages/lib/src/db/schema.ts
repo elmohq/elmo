@@ -594,23 +594,6 @@ export const rollupDirty = pgTable(
 ).enableRLS();
 
 /**
- * Versions of the parts of a brand's rollups that browsers keep a copy of: each
- * UTC month (`month:2026-03`) and each range of cited page ids (`pages:12`).
- * Bumped by the rollup writes that change them; a part with no row is version 0.
- */
-export const brandDataVersions = pgTable(
-	"brand_data_versions",
-	{
-		brandId: text("brand_id")
-			.notNull()
-			.references(() => brands.id, { onDelete: "cascade" }),
-		chunkId: text("chunk_id").notNull(),
-		version: bigint("version", { mode: "number" }).notNull(),
-	},
-	(table) => [primaryKey({ name: "brand_data_versions_pk", columns: [table.brandId, table.chunkId] })],
-).enableRLS();
-
-/**
  * Single row recording which `ROLLUP_VERSION` the stored rollups were built
  * with. The worker compares it on startup and marks everything for a rebuild
  * when the code has moved on.

@@ -229,13 +229,12 @@ describe("brand data versions", () => {
 		expect(changed(before, await versions())).toEqual(["entities"]);
 	});
 
-	it("lists every month from the brand's first run through this one", async () => {
-		const { chunks } = await brandVersions(brandId, new Date("2026-05-20T00:00:00Z"));
+	it("lists each month the brand has runs in", async () => {
+		const { chunks } = await brandVersions(brandId);
 		expect(chunks.filter((entry) => entry.id.startsWith("runs:")).map((entry) => entry.id)).toEqual([
 			"runs:2026-02",
 			"runs:2026-03",
 			"runs:2026-04",
-			"runs:2026-05",
 		]);
 	});
 });

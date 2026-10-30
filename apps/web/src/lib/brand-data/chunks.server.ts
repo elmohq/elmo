@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { db } from "@workspace/lib/db/db";
 import { getAllProviders } from "@workspace/lib/providers";
-import { PAGE_ID_RANGE } from "@workspace/lib/rollups";
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type BrandChunk,
@@ -18,6 +17,8 @@ import {
 } from "@/lib/brand-data/chunks";
 
 const rows = async <T>(query: SQL) => (await db.execute(query)).rows as T[];
+
+const PAGE_ID_RANGE = 200_000;
 
 const TABLES: Record<RunTable, string> = {
 	promptRuns: "rollup_prompt_runs",
@@ -122,55 +123,44 @@ async function entitiesChunk(brandId: string, monthVersions: string): Promise<En
 const contentVersion = (data: unknown) =>
 	createHash("sha256").update(JSON.stringify(data)).digest("base64url").slice(0, 22);
 
-function monthIds(earliest: Date | string | null, now: Date): string[] {
-	if (!earliest) return [];
-	const months: string[] = [];
-	const month = new Date(earliest);
-	month.setUTCDate(1);
-	month.setUTCHours(0, 0, 0, 0);
-	for (; month <= now; month.setUTCMonth(month.getUTCMonth() + 1)) months.push(month.toISOString().slice(0, 7));
-	return months;
-}
-
 interface BrandVersions {
 	chunks: ChunkManifestEntry[];
 	entities: EntitiesChunk;
 }
 
-/** Every chunk the brand has, with the version the browser compares against its copy. */
-export async function brandVersions(brandId: string, now = new Date()): Promise<BrandVersions> {
-	const [versions, [span], ranges] = await Promise.all([
-		rows<{ chunk_id: string; version: string }>(
-			sql`SELECT chunk_id, version::text AS version FROM brand_data_versions WHERE brand_id = ${brandId}`,
-		),
-		rows<{ earliest: Date | null }>(
-			sql`SELECT min(bucket) AS earliest FROM rollup_prompt_runs WHERE brand_id = ${brandId}`,
-		),
-		rows<{ range: number }>(sql`
-			SELECT DISTINCT (page_id / ${PAGE_ID_RANGE})::int AS range FROM rollup_citation_pages
-			WHERE brand_id = ${brandId} ORDER BY 1
+/**
+ * Every chunk the brand has, with the version the browser compares against its copy. A rollup refresh rewrites
+ * every table of the range it rebuilds in one transaction, and page copies are only written when they change, so
+ * the rows' count and newest writing transaction (`xmin`) move exactly when a month's or page range's data may have.
+ */
+export async function brandVersions(brandId: string): Promise<BrandVersions> {
+	const [[pipeline], months, ranges] = await Promise.all([
+		rows<{ rollup_version: number }>(sql`SELECT rollup_version FROM pipeline_state WHERE id = 1`),
+		rows<{ month: string; version: string }>(sql`
+			SELECT to_char(bucket AT TIME ZONE 'UTC', 'YYYY-MM') AS month, count(*) || '.' || max(xmin::text::bigint) AS version
+			FROM rollup_prompt_runs WHERE brand_id = ${brandId} GROUP BY 1 ORDER BY 1
+		`),
+		rows<{ range: number; version: string }>(sql`
+			SELECT (page_id / ${PAGE_ID_RANGE})::int AS range, count(*) || '.' || max(xmin::text::bigint) AS version
+			FROM rollup_citation_pages WHERE brand_id = ${brandId} GROUP BY 1 ORDER BY 1
 		`),
 	]);
-	const versionOf = new Map(versions.map((row) => [row.chunk_id, row.version]));
-	const months = monthIds(span?.earliest ?? null, now).map((month) => ({
-		month,
-		version: versionOf.get(`month:${month}`) ?? "0",
-	}));
+	const rollupVersion = pipeline?.rollup_version ?? 0;
 	const entities = await entitiesChunk(brandId, months.map((m) => m.version).join(","));
 	return {
 		entities,
 		chunks: [
 			{ id: ENTITIES_CHUNK, version: contentVersion(entities) },
 			...months.flatMap(({ month, version }) =>
-				(Object.keys(MONTH_TABLES) as ChunkGroup[]).map((group) => ({ id: monthChunkId(group, month), version })),
+				(Object.keys(MONTH_TABLES) as ChunkGroup[]).map((group) => ({
+					id: monthChunkId(group, month),
+					version: `${rollupVersion}:${version}`,
+				})),
 			),
-			...ranges.flatMap(({ range }) => {
-				const version = versionOf.get(`pages:${range}`) ?? "0";
-				return [
-					{ id: `pages:${range}`, version },
-					{ id: `urls:${range}`, version },
-				];
-			}),
+			...ranges.flatMap(({ range, version }) => [
+				{ id: `pages:${range}`, version: `${rollupVersion}:${version}` },
+				{ id: `urls:${range}`, version: `${rollupVersion}:${version}` },
+			]),
 		],
 	};
 }

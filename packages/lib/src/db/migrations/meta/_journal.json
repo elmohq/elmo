@@ -232,13 +232,6 @@
       "when": 1793088892579,
       "tag": "0032_rollup_pages_and_quotes",
       "breakpoints": true
-    },
-    {
-      "idx": 33,
-      "version": "7",
-      "when": 1793316761016,
-      "tag": "0033_brand_data_versions",
-      "breakpoints": true
     }
   ]
 }
