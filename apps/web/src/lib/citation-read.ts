@@ -3,6 +3,7 @@ import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/citations/page-classifica
 import { type SQL, sql } from "drizzle-orm";
 import { type AnalyticsScope, queryPg, scopeFilter } from "@/lib/analytics-sql";
 import type { CitationFlowRow } from "@/lib/citation-flow";
+import { sharedRead } from "@/lib/shared-read";
 
 export type CitationOwner = "brand" | "competitor";
 
@@ -370,6 +371,23 @@ export async function getCitationSummary(
 	};
 }
 
+/** Every domain the scope cites, in list order; shared by the cards that page through them. */
+function getCitationDomainStats(
+	scope: AnalyticsScope,
+	previous: AnalyticsScope,
+	owned: OwnedDomains,
+): Promise<CitationDomainStatsRow[]> {
+	return sharedRead(`citation-domains:${JSON.stringify([scope, previous, owned])}`, () =>
+		queryPg<CitationDomainStatsRow>(sql`
+			WITH ${classifiedPages(scope, owned)}, ${domainStats(previous)}
+			SELECT domain, count, category, example_title, previous_count
+			FROM domains
+			WHERE count > 0
+			ORDER BY ${domainOrder}
+		`),
+	);
+}
+
 export async function getCitationDomainPage(
 	scope: AnalyticsScope,
 	previous: AnalyticsScope,
@@ -378,23 +396,12 @@ export async function getCitationDomainPage(
 	limit: number,
 	offset: number,
 ): Promise<{ rows: CitationDomainStatsRow[]; total: number }> {
-	const search = filter.search?.trim();
-	const ctes = sql`
-		${classifiedPages(scope, owned, search ? sql`j.domain ILIKE ${containing(search)}` : sql`TRUE`)},
-		${domainStats(previous)}`;
-	return pageOf<CitationDomainStatsRow & { top_count: number; top_url: string }>(
-		ctes,
-		sql`
-			SELECT domain, count, category, example_title, previous_count, top_count, top_url
-			FROM domains
-			WHERE count > 0 ${filter.category ? sql`AND category = ${filter.category}` : sql``}`,
-		domainOrder,
-		limit,
-		offset,
-	).then(({ rows, total }) => ({
-		rows: rows.map(({ top_count: _count, top_url: _url, ...row }) => row),
-		total,
-	}));
+	const search = filter.search?.trim().toLowerCase();
+	const matched = (await getCitationDomainStats(scope, previous, owned)).filter(
+		(row) =>
+			(!search || row.domain.toLowerCase().includes(search)) && (!filter.category || row.category === filter.category),
+	);
+	return { rows: matched.slice(offset, offset + limit), total: matched.length };
 }
 
 export async function getCitationTotals(
