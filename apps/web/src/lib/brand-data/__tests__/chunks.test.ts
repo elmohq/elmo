@@ -76,7 +76,16 @@ describe("assembling a brand's chunks", () => {
 });
 
 describe("reading a brand that is still syncing", () => {
-	const available = new Set(["entities", "runs:2026-02", "runs:2026-03", "citations:2026-03", "pages:0", "pages:1"]);
+	const available = new Set([
+		"entities",
+		"runs:2026-02",
+		"runs:2026-03",
+		"citations:2026-03",
+		"pages:0",
+		"pages:1",
+		"urls:0",
+		"urls:1",
+	]);
 	const store = (loaded: string[]) => {
 		const chunks = [entities, february, march].filter((chunk) => loaded.includes(chunk.id));
 		const bundle = assembleBundle("b", chunks);
@@ -126,5 +135,13 @@ describe("reading a brand that is still syncing", () => {
 		const synced = store(["entities", "runs:2026-03", "citations:2026-03", "pages:1"]);
 		const scope = { brandId: "b", from: "2026-03-01", to: "2026-03-31", timezone: "UTC" };
 		expect(missing(() => scopeRows(synced, synced.citations, scope))).toEqual(["pages:0"]);
+	});
+
+	it("waits for the pages' text only when a read shows it", () => {
+		const synced = store(["entities", "runs:2026-03", "citations:2026-03", "pages:0", "pages:1", "urls:1"]);
+		const scope = { brandId: "b", from: "2026-03-01", to: "2026-03-31", timezone: "UTC" };
+		expect(missing(() => scopeRows(synced, synced.citations, scope))).toEqual([]);
+		expect(missing(() => synced.citationPages.domain)).toEqual([]);
+		expect(missing(() => synced.citationPages.url)).toEqual(["urls:0"]);
 	});
 });

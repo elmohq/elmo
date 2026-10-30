@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { computeBrandData } from "@/lib/brand-data/client";
+import { brandDataQuery, computeBrandData } from "@/lib/brand-data/client";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface CitationFilters {
@@ -52,7 +52,7 @@ export function useGoogleShopping(
 				model: filters?.model,
 				...query,
 			}),
-		staleTime: 5 * 60_000,
+		...brandDataQuery,
 		placeholderData: keepPreviousData,
 	});
 }
@@ -78,7 +78,7 @@ export function useCitationUrls(brandId: string, filters: CitationFilters | unde
 				...filterParams(brandId, filters, query),
 				pageType: query.pageType === "all" ? undefined : query.pageType,
 			}),
-		staleTime: 5 * 60_000,
+		...brandDataQuery,
 		placeholderData: keepPreviousData,
 	});
 }
@@ -87,7 +87,7 @@ export function useCitationDomains(brandId: string, filters: CitationFilters | u
 	return useQuery({
 		queryKey: citationKeys.domains(brandId, filters, query),
 		queryFn: () => computeBrandData("citationDomains", filterParams(brandId, filters, query)),
-		staleTime: 5 * 60_000,
+		...brandDataQuery,
 		placeholderData: keepPreviousData,
 	});
 }
@@ -105,7 +105,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 				model: filters?.model,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 5 * 60_000,
+		...brandDataQuery,
 		placeholderData: (prev) => prev,
 	});
 
@@ -130,7 +130,7 @@ export function useCitationFlow(brandId: string | undefined, filters: CitationFi
 				domain: domain!,
 			}),
 		enabled: !!resolvedBrandId && !!domain,
-		staleTime: 5 * 60_000,
+		...brandDataQuery,
 		// Keep the chart up while a filter changes, but never show one domain's flow under another's name.
 		placeholderData: (prev, prevQuery) => (prevQuery?.queryKey.at(-1) === domain ? prev : undefined),
 	});

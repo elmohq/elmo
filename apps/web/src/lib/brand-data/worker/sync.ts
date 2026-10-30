@@ -7,6 +7,7 @@ import {
 	type ChunkManifestEntry,
 	ENTITIES_CHUNK,
 	isPagesChunk,
+	isUrlsChunk,
 } from "@/lib/brand-data/chunks";
 import { decodeBrandBundle, forgetBrandStore, setBrandStore } from "@/lib/brand-data/store";
 
@@ -75,11 +76,12 @@ async function fetchJson<T>(url: string): Promise<T> {
 const dataUrl = (brandId: string, chunks?: string[]) =>
 	`/api/brand-data/${encodeURIComponent(brandId)}${chunks ? `?chunks=${encodeURIComponent(chunks.join(","))}` : ""}`;
 
-/** Entities first, then this month's runs back to the oldest, then cited pages, then citations. */
+/** Entities first, then this month's runs back to the oldest, then cited pages and citations, then the pages' text. */
 function rank(id: string) {
 	if (id === ENTITIES_CHUNK) return 0;
 	if (id.startsWith("runs:")) return 1;
-	return isPagesChunk(id) ? 2 : 3;
+	if (isPagesChunk(id)) return 2;
+	return isUrlsChunk(id) ? 4 : 3;
 }
 
 interface Waiter {

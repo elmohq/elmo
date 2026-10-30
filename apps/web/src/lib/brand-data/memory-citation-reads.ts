@@ -458,16 +458,21 @@ export async function getCitationTotals(
 	scope: AnalyticsScope,
 ): Promise<{ citations: number; uniqueDomains: number; uniqueUrls: number }> {
 	const store = storeFor(scope.brandId);
-	const sums = pageSums(store, scope);
-	const { isGoogle } = storeIndex(store);
+	const t = store.citations;
+	const pages = store.citationPages;
+	const googleCategory = store.bundle.dicts.categories.indexOf(GOOGLE_STATIC_CATEGORY);
+	const cited = new Uint8Array(pages.length);
+	const domains = new Set<number>();
 	let citations = 0;
 	let urls = 0;
-	const domains = new Set<number>();
-	for (const p of sums.pages) {
-		if (isGoogle[p]) continue;
-		citations += sums.count[p];
+	for (const i of scopeRows(store, t, scope)) {
+		const p = t.page[i];
+		if (pages.category[p] === googleCategory) continue;
+		citations += t.citations[i];
+		if (cited[p]) continue;
+		cited[p] = 1;
 		urls++;
-		domains.add(store.citationPages.domain[p]);
+		domains.add(pages.domain[p]);
 	}
 	return { citations, uniqueDomains: domains.size, uniqueUrls: urls };
 }

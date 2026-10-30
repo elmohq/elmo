@@ -50,15 +50,22 @@ export interface PagesChunk {
 	columns: Columns;
 }
 
+/** The cited pages' text, which most views never show and outweighs everything else a brand has. */
+export interface UrlsChunk {
+	kind: "urls";
+	columns: Columns;
+}
+
 export interface BrandChunk {
 	id: string;
 	version: string;
-	data: EntitiesChunk | MonthChunk | PagesChunk;
+	data: EntitiesChunk | MonthChunk | PagesChunk | UrlsChunk;
 }
 
 export const ENTITIES_CHUNK = "entities";
 export const monthChunkId = (group: ChunkGroup, month: string) => `${group}:${month}`;
 export const isPagesChunk = (id: string) => id.startsWith("pages:");
+export const isUrlsChunk = (id: string) => id.startsWith("urls:");
 
 /** The `YYYY-MM` UTC months that overlap `[start, end)`, in minutes since the epoch. */
 export function monthsOverlapping(months: Iterable<string>, start: number, end: number): string[] {
@@ -108,37 +115,37 @@ const emptyKeys = () => ({
 type Dictionaries = Record<keyof BrandBundle["dicts"], ReturnType<typeof dictionary>>;
 
 function appendPages(bundle: BrandBundle, dicts: Dictionaries, chunks: BrandChunk[]): Map<number, number> {
-	const pageRows: {
-		id: number;
-		url: string;
-		domain: string;
-		title: string | null;
-		pageType: string;
-		category: string;
-	}[] = [];
+	const text = new Map<number, { url: string; title: string | null }>();
+	for (const chunk of chunks) {
+		if (chunk.data.kind !== "urls") continue;
+		const { columns } = chunk.data;
+		for (let i = 0; i < columns.id.length; i++) {
+			text.set(columns.id[i] as number, { url: columns.url[i] as string, title: columns.title[i] as string | null });
+		}
+	}
+	const pageRows: { id: number; domain: string; pageType: string; category: string }[] = [];
 	for (const chunk of chunks) {
 		if (chunk.data.kind !== "pages") continue;
 		const { columns, dicts: local } = chunk.data;
 		for (let i = 0; i < columns.id.length; i++) {
 			pageRows.push({
 				id: columns.id[i] as number,
-				url: columns.url[i] as string,
 				domain: local.domains[columns.domain[i] as number],
-				title: columns.title[i] as string | null,
 				pageType: local.pageTypes[columns.pageType[i] as number],
 				category: local.categories[columns.category[i] as number],
 			});
 		}
 	}
-	pageRows.sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : a.id - b.id));
+	const urlOf = (id: number) => text.get(id)?.url ?? "";
+	pageRows.sort((a, b) => (urlOf(a.id) < urlOf(b.id) ? -1 : urlOf(a.id) > urlOf(b.id) ? 1 : a.id - b.id));
 	const pageIndex = new Map<number, number>();
 	const pages = bundle.citationPages;
 	for (const page of pageRows) {
 		pageIndex.set(page.id, pages.id.length);
 		pages.id.push(page.id);
-		pages.url.push(page.url);
+		pages.url.push(urlOf(page.id));
 		pages.domain.push(dicts.domains.id(page.domain));
-		pages.title.push(page.title);
+		pages.title.push(text.get(page.id)?.title ?? null);
 		pages.pageType.push(dicts.pageTypes.id(page.pageType));
 		pages.category.push(dicts.categories.id(page.category));
 	}

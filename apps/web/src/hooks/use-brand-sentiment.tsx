@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { ShareOfVoiceFilters } from "@/hooks/use-share-of-voice";
-import { computeBrandData } from "@/lib/brand-data/client";
+import { brandDataQuery, computeBrandData } from "@/lib/brand-data/client";
 
 export function useBrandSentiment(brandId?: string, filters?: ShareOfVoiceFilters) {
 	const resolvedBrandId = useResolvedBrandId(brandId);
@@ -16,7 +16,7 @@ export function useBrandSentiment(brandId?: string, filters?: ShareOfVoiceFilter
 				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 5 * 60_000,
+		...brandDataQuery,
 		placeholderData: (prev) => prev,
 	});
 }

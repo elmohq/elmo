@@ -9,6 +9,9 @@ export type ComputationResult<K extends BrandComputation> = Awaited<ReturnType<C
 
 const TIMEOUT_MS = 60_000;
 
+/** Options for queries answered from synced brand data, which a sync invalidates when it changes the data. */
+export const brandDataQuery = { meta: { brandData: true }, staleTime: 5 * 60_000 } as const;
+
 const listeners = new Set<(brandId: string, state: SyncState) => void>();
 const pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>();
 let nextId = 0;

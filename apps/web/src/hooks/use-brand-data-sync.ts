@@ -29,7 +29,9 @@ export function useBrandDataSync(brandId: string | undefined) {
 			schedule(state.nextSyncInSeconds ?? DEFAULT_SYNC_SECONDS);
 			if (state.generation === generation) return;
 			generation = state.generation;
-			queryClient.invalidateQueries({ predicate: (query) => query.queryKey.includes(brandId) });
+			queryClient.invalidateQueries({
+				predicate: (query) => query.meta?.brandData === true && query.queryKey.includes(brandId),
+			});
 		});
 		const onVisible = () => {
 			if (document.visibilityState === "visible" && Date.now() - lastSync > MIN_FOCUS_SYNC_MS) sync();

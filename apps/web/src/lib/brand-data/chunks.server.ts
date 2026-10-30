@@ -14,6 +14,7 @@ import {
 	monthChunkId,
 	type PagesChunk,
 	type RunTable,
+	type UrlsChunk,
 } from "@/lib/brand-data/chunks";
 
 const rows = async <T>(query: SQL) => (await db.execute(query)).rows as T[];
@@ -163,10 +164,13 @@ export async function brandVersions(brandId: string, now = new Date()): Promise<
 			...months.flatMap(({ month, version }) =>
 				(Object.keys(MONTH_TABLES) as ChunkGroup[]).map((group) => ({ id: monthChunkId(group, month), version })),
 			),
-			...ranges.map(({ range }) => ({
-				id: `pages:${range}`,
-				version: versionOf.get(`pages:${range}`) ?? "0",
-			})),
+			...ranges.flatMap(({ range }) => {
+				const version = versionOf.get(`pages:${range}`) ?? "0";
+				return [
+					{ id: `pages:${range}`, version },
+					{ id: `urls:${range}`, version },
+				];
+			}),
 		],
 	};
 }
@@ -275,36 +279,36 @@ async function monthChunk(brandId: string, group: ChunkGroup, month: string): Pr
 }
 
 async function pagesChunk(brandId: string, range: number): Promise<PagesChunk> {
-	const result = await rows<{
-		page_id: string;
-		url: string;
-		domain: string;
-		title: string | null;
-		page_type: string;
-		static_category: string;
-	}>(sql`
-		SELECT page_id, url, domain, title, page_type, static_category FROM rollup_citation_pages
+	const result = await rows<{ page_id: string; domain: string; page_type: string; static_category: string }>(sql`
+		SELECT page_id, domain, page_type, static_category FROM rollup_citation_pages
 		WHERE brand_id = ${brandId} AND page_id >= ${range * PAGE_ID_RANGE} AND page_id < ${(range + 1) * PAGE_ID_RANGE}
-		ORDER BY url COLLATE "C"
+		ORDER BY page_id
 	`);
 	const dicts = dictionaries();
-	const columns: Record<string, (number | string | null)[]> = {
-		id: [],
-		url: [],
-		domain: [],
-		title: [],
-		pageType: [],
-		category: [],
-	};
+	const columns: Record<string, (number | string | null)[]> = { id: [], domain: [], pageType: [], category: [] };
 	for (const row of result) {
 		columns.id.push(Number(row.page_id));
-		columns.url.push(row.url);
 		columns.domain.push(dicts.id("domains", row.domain));
-		columns.title.push(row.title);
 		columns.pageType.push(dicts.id("pageTypes", row.page_type));
 		columns.category.push(dicts.id("categories", row.static_category));
 	}
 	return { kind: "pages", dicts: dicts.values(), columns };
+}
+
+async function urlsChunk(brandId: string, range: number): Promise<UrlsChunk> {
+	const result = await rows<{ page_id: string; url: string; title: string | null }>(sql`
+		SELECT page_id, url, title FROM rollup_citation_pages
+		WHERE brand_id = ${brandId} AND page_id >= ${range * PAGE_ID_RANGE} AND page_id < ${(range + 1) * PAGE_ID_RANGE}
+		ORDER BY page_id
+	`);
+	return {
+		kind: "urls",
+		columns: {
+			id: result.map((row) => Number(row.page_id)),
+			url: result.map((row) => row.url),
+			title: result.map((row) => row.title),
+		},
+	};
 }
 
 export function buildChunk(brandId: string, entry: ChunkManifestEntry, entities: EntitiesChunk): Promise<BrandChunk> {
@@ -314,7 +318,9 @@ export function buildChunk(brandId: string, entry: ChunkManifestEntry, entities:
 			? Promise.resolve(entities)
 			: kind === "pages"
 				? pagesChunk(brandId, Number(key))
-				: monthChunk(brandId, kind as ChunkGroup, key);
+				: kind === "urls"
+					? urlsChunk(brandId, Number(key))
+					: monthChunk(brandId, kind as ChunkGroup, key);
 	return data.then((value) => ({ ...entry, data: value }));
 }
 

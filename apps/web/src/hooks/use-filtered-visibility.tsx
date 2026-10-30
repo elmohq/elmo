@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { computeBrandData } from "@/lib/brand-data/client";
+import { brandDataQuery, computeBrandData } from "@/lib/brand-data/client";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface FilteredVisibilityFilters {
@@ -34,7 +34,7 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 5 * 60_000,
+		...brandDataQuery,
 		placeholderData: (prev) => prev,
 	});
 

@@ -1,5 +1,5 @@
 import type { BrandBundle, RunKeyColumns } from "@/lib/brand-data/bundle";
-import { type ChunkGroup, isPagesChunk, monthChunkId, monthsOverlapping } from "@/lib/brand-data/chunks";
+import { type ChunkGroup, isPagesChunk, isUrlsChunk, monthChunkId, monthsOverlapping } from "@/lib/brand-data/chunks";
 
 const ints = (values: number[]) => Int32Array.from(values);
 const floats = (values: number[]) => Float64Array.from(values);
@@ -30,6 +30,19 @@ function keys(columns: RunKeyColumns, group: ChunkGroup = "runs"): RunKeys {
 export interface Coverage {
 	available: ReadonlySet<string>;
 	loaded: ReadonlySet<string>;
+}
+
+/** Makes the pages' URLs and titles wait for their chunks while any are still syncing. */
+function withPageText<T extends { url: string[]; title: (string | null)[] }>(
+	pages: T,
+	{ available, loaded }: Coverage,
+): T {
+	const missing = [...available].filter((id) => isUrlsChunk(id) && !loaded.has(id));
+	if (missing.length === 0) return pages;
+	const wait = (): never => {
+		throw new MissingChunksError(missing);
+	};
+	return Object.defineProperties(pages, { url: { get: wait }, title: { get: wait } });
 }
 
 export function decodeBrandBundle(bundle: BrandBundle, coverage: Coverage) {
@@ -80,15 +93,18 @@ export function decodeBrandBundle(bundle: BrandBundle, coverage: Coverage) {
 			citations: ints(u.citations),
 			positionSum: ints(u.positionSum),
 		},
-		citationPages: {
-			id: p.id,
-			url: p.url,
-			domain: ints(p.domain),
-			title: p.title,
-			pageType: ints(p.pageType),
-			category: ints(p.category),
-			length: p.id.length,
-		},
+		citationPages: withPageText(
+			{
+				id: p.id,
+				url: p.url,
+				domain: ints(p.domain),
+				title: p.title,
+				pageType: ints(p.pageType),
+				category: ints(p.category),
+				length: p.id.length,
+			},
+			coverage,
+		),
 		sentimentQuotes: {
 			...keys(q),
 			sentiment: ints(q.sentiment),

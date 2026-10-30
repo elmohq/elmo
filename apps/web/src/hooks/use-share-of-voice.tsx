@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { computeBrandData } from "@/lib/brand-data/client";
+import { brandDataQuery, computeBrandData } from "@/lib/brand-data/client";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface ShareOfVoiceFilters {
@@ -29,7 +29,7 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 5 * 60_000,
+		...brandDataQuery,
 		placeholderData: (prev) => prev,
 	});
 
@@ -54,7 +54,7 @@ export function useCompetitiveLandscape(brandId?: string, filters?: ShareOfVoice
 				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 5 * 60_000,
+		...brandDataQuery,
 		placeholderData: (prev) => prev,
 	});
 }

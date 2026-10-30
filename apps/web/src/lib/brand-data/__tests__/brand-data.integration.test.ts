@@ -208,7 +208,7 @@ describe("brand data versions", () => {
 		expect(changed(before, await versions())).toEqual(["citations:2026-04", "runs:2026-04"]);
 	});
 
-	it("moves the range of pages a newly cited page lands in", async () => {
+	it("moves the range of pages, and their text, a newly cited page lands in", async () => {
 		const before = await versions();
 		const at = new Date("2026-04-02T13:00:00Z");
 		const run = await createRun(brandId, promptIds.crm, { at: at.toISOString(), brandMentioned: true });
@@ -216,8 +216,8 @@ describe("brand data versions", () => {
 		await resolveUnpagedCitations(db);
 		await rebuildRange(db, brandId, bucketStart(at), bucketEnd(at));
 		const moved = changed(before, await versions());
-		expect(moved.filter((id) => id.startsWith("pages:"))).toHaveLength(1);
-		expect(moved.filter((id) => !id.startsWith("pages:"))).toEqual(["citations:2026-04", "runs:2026-04"]);
+		const range = moved.find((id) => id.startsWith("pages:"))?.slice("pages:".length);
+		expect(moved).toEqual(["citations:2026-04", `pages:${range}`, "runs:2026-04", `urls:${range}`]);
 	});
 
 	it("moves the entities when a prompt changes", async () => {

@@ -25,6 +25,7 @@ const answers: Record<string, Answer> = {
 	citationFlow: getCitationFlowFn,
 };
 
+export const brandDataQuery = { meta: { brandData: true }, staleTime: 5 * 60_000 } as const;
 export const computeBrandData = async (name: string, input: unknown) =>
 	(await answers[name]?.({ data: input as never })) ?? null;
 export const syncBrandData = (_brandId: string) => {};
