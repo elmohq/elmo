@@ -1,55 +1,42 @@
 import { createHash } from "node:crypto";
 import { db } from "@workspace/lib/db/db";
-import { getAllProviders } from "@workspace/lib/providers";
+import {
+	rollupCitationPages,
+	rollupCitationUrls,
+	rollupCompetitorMentions,
+	rollupPromptRuns,
+	rollupSentimentQuotes,
+	rollupWebQueries,
+} from "@workspace/lib/db/schema";
+import {
+	Bool,
+	type DataType,
+	Float64,
+	Int32,
+	Table,
+	TimestampMillisecond,
+	tableToIPC,
+	Utf8,
+	type Vector,
+	vectorFromArray,
+} from "apache-arrow";
 import { type SQL, sql } from "drizzle-orm";
+import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
 import {
 	type BrandChunk,
 	type ChunkGroup,
 	type ChunkManifestEntry,
 	ENTITIES_CHUNK,
 	type EntitiesChunk,
-	MONTH_TABLES,
-	type MonthChunk,
+	monthBounds,
 	monthChunkId,
-	type PagesChunk,
-	type RunTable,
-	type UrlsChunk,
+	PAGE_ATTRIBUTES,
+	PAGE_ID_RANGE,
+	PAGE_TEXT,
+	ROLLUP_TABLES,
 } from "@/lib/brand-data/chunks";
 
 const rows = async <T>(query: SQL) => (await db.execute(query)).rows as T[];
-
-const PAGE_ID_RANGE = 200_000;
-
-const TABLES: Record<RunTable, string> = {
-	promptRuns: "rollup_prompt_runs",
-	competitorMentions: "rollup_competitor_mentions",
-	webQueries: "rollup_web_queries",
-	sentimentQuotes: "rollup_sentiment_quotes",
-	citations: "rollup_citation_urls",
-};
-
-function dictionaries() {
-	const store = new Map<string, { index: Map<string, number>; values: string[] }>();
-	const id = (dict: string, value: string) => {
-		let d = store.get(dict);
-		if (!d) {
-			d = { index: new Map(), values: [] };
-			store.set(dict, d);
-		}
-		let i = d.index.get(value);
-		if (i === undefined) {
-			i = d.values.length;
-			d.index.set(value, i);
-			d.values.push(value);
-		}
-		return i;
-	};
-	const values = () => Object.fromEntries([...store].map(([name, d]) => [name, d.values]));
-	return { id, values };
-}
-
-const minutes = (value: Date | string) => Math.round(new Date(value).getTime() / 60_000);
-const millis = (value: Date | string | null) => (value === null ? 0 : new Date(value).getTime());
 
 const MAX_FIRST_EVALUATED = 500;
 const firstEvaluated = new Map<string, { key: string; value: Promise<Map<string, string>> }>();
@@ -96,7 +83,6 @@ async function entitiesChunk(brandId: string, monthVersions: string): Promise<En
 	const brand = brandRows[0];
 	if (!brand) throw new Error("Brand not found");
 	return {
-		kind: "entities",
 		brand: {
 			id: brand.id,
 			name: brand.name,
@@ -114,9 +100,6 @@ async function entitiesChunk(brandId: string, monthVersions: string): Promise<En
 			createdAt: new Date(row.created_at).toISOString(),
 			firstEvaluatedAt: first.get(row.id) ?? null,
 		})),
-		apiProviderIds: getAllProviders()
-			.filter((provider) => provider.access === "api")
-			.map((provider) => provider.id),
 	};
 }
 
@@ -152,7 +135,7 @@ export async function brandVersions(brandId: string): Promise<BrandVersions> {
 		chunks: [
 			{ id: ENTITIES_CHUNK, version: contentVersion(entities) },
 			...months.flatMap(({ month, version }) =>
-				(Object.keys(MONTH_TABLES) as ChunkGroup[]).map((group) => ({
+				(Object.keys(ROLLUP_TABLES) as ChunkGroup[]).map((group) => ({
 					id: monthChunkId(group, month),
 					version: `${rollupVersion}:${version}`,
 				})),
@@ -165,153 +148,85 @@ export async function brandVersions(brandId: string): Promise<BrandVersions> {
 	};
 }
 
-const RUN_COLUMNS: Record<RunTable, Record<string, (row: Record<string, unknown>) => number | string | null>> = {
-	promptRuns: {
-		runs: (r) => r.runs as number,
-		brandMentioned: (r) => r.brand_mentioned_runs as number,
-		competitorRuns: (r) => r.competitor_runs as number,
-		competitorMentions: (r) => r.competitor_mentions as number,
-		noMention: (r) => r.no_mention_runs as number,
-		fanoutRuns: (r) => r.fanout_runs as number,
-		fanoutQueries: (r) => r.fanout_queries as number,
-		firstRunAt: (r) => millis(r.first_run_at as Date),
-		lastRunAt: (r) => millis(r.last_run_at as Date),
-		positive: (r) => r.positive_runs as number,
-		neutral: (r) => r.neutral_runs as number,
-		negative: (r) => r.negative_runs as number,
-		mixed: (r) => r.mixed_runs as number,
-		positionSum: (r) => r.position_sum as number,
-		positioned: (r) => r.positioned_runs as number,
-	},
-	competitorMentions: {
-		competitor: (r) => r.competitor_name as string,
-		runs: (r) => r.runs as number,
-		positive: (r) => r.positive_runs as number,
-		neutral: (r) => r.neutral_runs as number,
-		negative: (r) => r.negative_runs as number,
-		mixed: (r) => r.mixed_runs as number,
-		positionSum: (r) => r.position_sum as number,
-		positioned: (r) => r.positioned_runs as number,
-	},
-	webQueries: {
-		query: (r) => r.query as string,
-		runs: (r) => r.runs as number,
-		brandMentioned: (r) => r.brand_mentioned_runs as number,
-	},
-	sentimentQuotes: {
-		sentiment: (r) => r.sentiment as string,
-		runId: (r) => r.run_id as string,
-		confidence: (r) => r.confidence as number,
-		createdAt: (r) => millis(r.created_at as Date),
-	},
-	citations: {
-		page: (r) => Number(r.page_id),
-		citations: (r) => r.citations as number,
-		positionSum: (r) => r.position_sum as number,
-	},
+const TABLES: Record<string, PgTable> = {
+	rollup_prompt_runs: rollupPromptRuns,
+	rollup_competitor_mentions: rollupCompetitorMentions,
+	rollup_web_queries: rollupWebQueries,
+	rollup_sentiment_quotes: rollupSentimentQuotes,
+	rollup_citation_urls: rollupCitationUrls,
 };
 
-const DICT_FOR: Record<string, string> = {
-	model: "models",
-	provider: "providers",
-	competitor: "competitors",
-	query: "queries",
-	sentiment: "sentiments",
+const ARROW_TYPES: Record<string, () => DataType> = {
+	text: () => new Utf8(),
+	uuid: () => new Utf8(),
+	boolean: () => new Bool(),
+	integer: () => new Int32(),
+	bigint: () => new Float64(),
+	"double precision": () => new Float64(),
+	"timestamp with time zone": () => new TimestampMillisecond("UTC"),
 };
 
-interface KeyRow {
-	bucket: Date | string;
-	prompt_id: string;
-	model: string;
-	provider: string;
-	web_search_enabled: boolean;
+/** node-postgres, as drizzle configures it, returns timestamps as Postgres's text and bigints as strings. */
+function arrowValue(value: unknown, sqlType: string): unknown {
+	if (value === null || value === undefined) return null;
+	if (sqlType === "timestamp with time zone")
+		return new Date(String(value).replace(" ", "T").replace(/\+00$/, "Z")).getTime();
+	if (sqlType === "bigint") return Number(value);
+	return value;
 }
 
-async function monthChunk(brandId: string, group: ChunkGroup, month: string): Promise<MonthChunk> {
-	const [y, m] = month.split("-").map(Number);
-	const start = new Date(Date.UTC(y, m - 1, 1)).toISOString();
-	const end = new Date(Date.UTC(y, m, 1)).toISOString();
-	const dicts = dictionaries();
-	const tables: MonthChunk["tables"] = {};
-	const results = await Promise.all(
-		MONTH_TABLES[group].map((table) =>
-			rows<KeyRow & Record<string, unknown>>(sql`
-				SELECT * FROM ${sql.raw(TABLES[table])}
-				WHERE brand_id = ${brandId} AND bucket >= ${start}::timestamptz AND bucket < ${end}::timestamptz
-				ORDER BY bucket
-			`),
-		),
-	);
-	MONTH_TABLES[group].forEach((table, t) => {
-		const spec = RUN_COLUMNS[table];
-		const columns: Record<string, (number | string | null)[]> = {
-			bucket: [],
-			prompt: [],
-			model: [],
-			provider: [],
-			web: [],
-			...Object.fromEntries(Object.keys(spec).map((name) => [name, []])),
-		};
-		for (const row of results[t]) {
-			columns.bucket.push(minutes(row.bucket));
-			columns.prompt.push(dicts.id("promptIds", row.prompt_id));
-			columns.model.push(dicts.id("models", row.model));
-			columns.provider.push(dicts.id("providers", row.provider));
-			columns.web.push(row.web_search_enabled ? 1 : 0);
-			for (const [name, read] of Object.entries(spec)) {
-				const value = read(row);
-				columns[name].push(DICT_FOR[name] ? dicts.id(DICT_FOR[name], value as string) : value);
-			}
-		}
-		tables[table] = columns;
-	});
-	return { kind: "month", dicts: dicts.values(), tables };
-}
-
-async function pagesChunk(brandId: string, range: number): Promise<PagesChunk> {
-	const result = await rows<{ page_id: string; domain: string; page_type: string; static_category: string }>(sql`
-		SELECT page_id, domain, page_type, static_category FROM rollup_citation_pages
-		WHERE brand_id = ${brandId} AND page_id >= ${range * PAGE_ID_RANGE} AND page_id < ${(range + 1) * PAGE_ID_RANGE}
-		ORDER BY page_id
-	`);
-	const dicts = dictionaries();
-	const columns: Record<string, (number | string | null)[]> = { id: [], domain: [], pageType: [], category: [] };
-	for (const row of result) {
-		columns.id.push(Number(row.page_id));
-		columns.domain.push(dicts.id("domains", row.domain));
-		columns.pageType.push(dicts.id("pageTypes", row.page_type));
-		columns.category.push(dicts.id("categories", row.static_category));
+/** The rows as an Arrow stream with the table's own column types; `brand_id` is left out, as every row shares it. */
+function toArrow(table: PgTable, rows: Record<string, unknown>[], only?: string[]): Uint8Array {
+	const vectors: Record<string, Vector> = {};
+	for (const column of getTableConfig(table).columns) {
+		if (column.name === "brand_id" || (only && !only.includes(column.name))) continue;
+		const sqlType = column.getSQLType();
+		const type = ARROW_TYPES[sqlType];
+		if (!type) throw new Error(`No Arrow type for ${sqlType}`);
+		vectors[column.name] = vectorFromArray(
+			rows.map((row) => arrowValue(row[column.name], sqlType)),
+			type(),
+		);
 	}
-	return { kind: "pages", dicts: dicts.values(), columns };
+	return tableToIPC(new Table(vectors), "stream");
 }
 
-async function urlsChunk(brandId: string, range: number): Promise<UrlsChunk> {
-	const result = await rows<{ page_id: string; url: string; title: string | null }>(sql`
-		SELECT page_id, url, title FROM rollup_citation_pages
+async function monthTables(brandId: string, group: ChunkGroup, month: string): Promise<Record<string, Uint8Array>> {
+	const { start, end } = monthBounds(month);
+	const entries = await Promise.all(
+		ROLLUP_TABLES[group].map(async (name) => {
+			const result = await rows<Record<string, unknown>>(sql`
+				SELECT * FROM ${sql.raw(name)}
+				WHERE brand_id = ${brandId} AND bucket >= ${start.toISOString()}::timestamptz AND bucket < ${end.toISOString()}::timestamptz
+				ORDER BY bucket
+			`);
+			return [name, toArrow(TABLES[name], result)] as const;
+		}),
+	);
+	return Object.fromEntries(entries);
+}
+
+async function pageTable(brandId: string, range: number, columns: string[]): Promise<Uint8Array> {
+	const result = await rows<Record<string, unknown>>(sql`
+		SELECT ${sql.raw(columns.join(", "))} FROM rollup_citation_pages
 		WHERE brand_id = ${brandId} AND page_id >= ${range * PAGE_ID_RANGE} AND page_id < ${(range + 1) * PAGE_ID_RANGE}
 		ORDER BY page_id
 	`);
-	return {
-		kind: "urls",
-		columns: {
-			id: result.map((row) => Number(row.page_id)),
-			url: result.map((row) => row.url),
-			title: result.map((row) => row.title),
-		},
-	};
+	return toArrow(rollupCitationPages, result, columns);
 }
 
-export function buildChunk(brandId: string, entry: ChunkManifestEntry, entities: EntitiesChunk): Promise<BrandChunk> {
+export async function buildChunk(
+	brandId: string,
+	entry: ChunkManifestEntry,
+	entities: EntitiesChunk,
+): Promise<BrandChunk> {
 	const [kind, key] = entry.id.split(":");
-	const data: Promise<BrandChunk["data"]> =
-		entry.id === ENTITIES_CHUNK
-			? Promise.resolve(entities)
-			: kind === "pages"
-				? pagesChunk(brandId, Number(key))
-				: kind === "urls"
-					? urlsChunk(brandId, Number(key))
-					: monthChunk(brandId, kind as ChunkGroup, key);
-	return data.then((value) => ({ ...entry, data: value }));
+	if (entry.id === ENTITIES_CHUNK) return { ...entry, entities };
+	if (kind === "pages")
+		return { ...entry, tables: { rollup_citation_pages: await pageTable(brandId, Number(key), PAGE_ATTRIBUTES) } };
+	if (kind === "urls")
+		return { ...entry, tables: { rollup_citation_pages: await pageTable(brandId, Number(key), PAGE_TEXT) } };
+	return { ...entry, tables: await monthTables(brandId, kind as ChunkGroup, key) };
 }
 
 const SECOND = 1;

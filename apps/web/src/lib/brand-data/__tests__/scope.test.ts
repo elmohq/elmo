@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { localDay, windowMinutes, zonedMidnight } from "@/lib/brand-data/scope";
+import { windowMinutes, zonedMidnight } from "@/lib/brand-data/scope";
 
 const minutes = (iso: string) => Date.parse(iso) / 60_000;
 
@@ -8,12 +8,6 @@ describe("brand data day boundaries", () => {
 		expect(new Date(zonedMidnight("2026-03-08", "America/New_York")).toISOString()).toBe("2026-03-08T05:00:00.000Z");
 		expect(new Date(zonedMidnight("2026-03-09", "America/New_York")).toISOString()).toBe("2026-03-09T04:00:00.000Z");
 		expect(new Date(zonedMidnight("2026-03-01", "Asia/Kathmandu")).toISOString()).toBe("2026-02-28T18:15:00.000Z");
-	});
-
-	it("places a bucket on the viewer's calendar day", () => {
-		expect(localDay(minutes("2026-03-01T03:30:00Z"), "UTC")).toBe("2026-03-01");
-		expect(localDay(minutes("2026-03-01T03:30:00Z"), "America/New_York")).toBe("2026-02-28");
-		expect(localDay(minutes("2026-02-28T18:15:00Z"), "Asia/Kathmandu")).toBe("2026-03-01");
 	});
 
 	it("covers whole calendar days through the last one, and instants as given", () => {

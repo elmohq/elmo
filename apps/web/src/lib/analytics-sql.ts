@@ -1,12 +1,9 @@
 import { parseModelFilter } from "@workspace/config/model-filter";
-import { db } from "@workspace/lib/db/db";
-import { getAllProviders } from "@workspace/lib/providers";
+import { API_PROVIDER_IDS } from "@workspace/lib/providers/access";
 import { type SQL, sql } from "drizzle-orm";
 
-export async function queryPg<T>(query: SQL): Promise<T[]> {
-	const result = await db.execute(query);
-	return result.rows as T[];
-}
+/** Runs a query and returns its rows as node-postgres would: Postgres on the server, DuckDB in the browser. */
+export type SqlQuery = <T>(query: SQL) => Promise<T[]>;
 
 // The dashboard passes calendar days (resolved in `timezone`, `to` inclusive of its
 // whole day); `/api/v1` passes instants, used as given.
@@ -107,9 +104,7 @@ function promptFilter({ promptIds, excludedPromptIds }: AnalyticsScope, alias?: 
 // A provider that picks its route per target (DataForSEO) is classified by its default,
 // since the row doesn't record which route ran. Older runs have no provider; rollups
 // store that as '', and both read it as not an API route.
-export const API_PROVIDER_IDS = getAllProviders()
-	.filter((provider) => provider.access === "api")
-	.map((provider) => provider.id);
+export { API_PROVIDER_IDS };
 
 // Providers are bound one parameter per id, not as an array: drizzle flattens a JS
 // array into a single text parameter, which `ANY(...)` can't compare element-wise.

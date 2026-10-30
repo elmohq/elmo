@@ -2,26 +2,11 @@ import { db } from "@workspace/lib/db/db";
 import { prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { pgReader } from "@/lib/analytics/pg-reader";
 import type { AnalyticsScope } from "@/lib/analytics-sql";
-import { getCitationFlowRows } from "@/lib/citation-read";
+
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
-import {
-	getCitationsCountByModel,
-	getCitationTotal,
-	getCitationUrlStats,
-	getCompetitorTotals,
-	getFanoutBreakdown,
-	getFanoutModelTotals,
-	getFanoutPromptTotals,
-	getFanoutQueryPage,
-	getFanoutQueryTotals,
-	getMentionTotals,
-	getPerPromptDailyCompetitors,
-	getPerPromptDailyRuns,
-	getPerPromptRunStats,
-	getRunsByModel,
-	getVisibilityDailyAggregate,
-} from "@/lib/rollup-read";
+
 import { NO_ASSESSMENTS } from "@/lib/sentiment";
 import {
 	createBrand,
@@ -76,7 +61,7 @@ describe("mention totals", () => {
 	});
 
 	it("counts runs, prompts and mentions for the brand within the window", async () => {
-		expect(await getMentionTotals(scope(brandId, "2026-03-01", "2026-03-03", "UTC"))).toMatchObject({
+		expect(await pgReader.getMentionTotals(scope(brandId, "2026-03-01", "2026-03-03", "UTC"))).toMatchObject({
 			prompts: 2,
 			runs: 3,
 			brand_mentioned_runs: 2,
@@ -86,17 +71,19 @@ describe("mention totals", () => {
 	});
 
 	it("narrows to the given prompts", async () => {
-		const totals = await getMentionTotals(scope(brandId, "2026-03-01", "2026-03-03", "UTC", { promptIds: [p1] }));
+		const totals = await pgReader.getMentionTotals(
+			scope(brandId, "2026-03-01", "2026-03-03", "UTC", { promptIds: [p1] }),
+		);
 		expect(totals).toMatchObject({ prompts: 1, runs: 2, brand_mentioned_runs: 1 });
 	});
 
 	it("matches nothing for an empty prompt list", async () => {
-		const totals = await getMentionTotals(scope(brandId, null, null, "UTC", { promptIds: [] }));
+		const totals = await pgReader.getMentionTotals(scope(brandId, null, null, "UTC", { promptIds: [] }));
 		expect(totals).toMatchObject({ runs: 0, prompts: 0, last_run_at: null });
 	});
 
 	it("covers all time without a window", async () => {
-		const totals = await getMentionTotals(scope(brandId, null, null, "UTC"));
+		const totals = await pgReader.getMentionTotals(scope(brandId, null, null, "UTC"));
 		expect(totals).toMatchObject({ runs: 4, brand_mentioned_runs: 2 });
 	});
 });
@@ -116,7 +103,7 @@ describe("date windows", () => {
 
 	it("reads calendar days in the caller's timezone", async () => {
 		const runs = async (day: string, timezone: string) =>
-			(await getMentionTotals(scope(brandId, day, day, timezone, { promptIds: [promptId] }))).runs;
+			(await pgReader.getMentionTotals(scope(brandId, day, day, timezone, { promptIds: [promptId] }))).runs;
 		expect(await runs("2026-03-03", "America/New_York")).toBe(1);
 		expect(await runs("2026-03-03", "UTC")).toBe(0);
 		// Ahead of UTC, the day starts the evening before: 03:00Z is already mid-morning.
@@ -124,12 +111,14 @@ describe("date windows", () => {
 	});
 
 	it("includes the whole of the last calendar day", async () => {
-		const totals = await getMentionTotals(scope(brandId, "2026-03-04", "2026-03-04", "UTC", { promptIds: [promptId] }));
+		const totals = await pgReader.getMentionTotals(
+			scope(brandId, "2026-03-04", "2026-03-04", "UTC", { promptIds: [promptId] }),
+		);
 		expect(totals.runs).toBe(2);
 	});
 
 	it("buckets daily rows by the caller's local date", async () => {
-		const ny = await getPerPromptDailyRuns(
+		const ny = await pgReader.getPerPromptDailyRuns(
 			scope(brandId, "2026-03-01", "2026-03-05", "America/New_York", { promptIds: [promptId] }),
 		);
 		expect(ny.map((row) => [row.date, row.runs, row.brand_mentioned_runs, row.competitor_mentions])).toEqual([
@@ -139,7 +128,7 @@ describe("date windows", () => {
 	});
 
 	it("treats instant bounds as half-open", async () => {
-		const totals = await getMentionTotals(
+		const totals = await pgReader.getMentionTotals(
 			scope(brandId, "2026-03-04T03:00:00.000Z", "2026-03-04T15:00:00.000Z", "UTC", { promptIds: [promptId] }),
 		);
 		expect(totals.runs).toBe(1);
@@ -165,7 +154,7 @@ describe("daily visibility aggregate", () => {
 	});
 
 	it("carries each prompt's last observation across days it did not run", async () => {
-		const rows = await getVisibilityDailyAggregate(
+		const rows = await pgReader.getVisibilityDailyAggregate(
 			{ brandId, from: "2026-03-01", to: "2026-03-05", timezone: "UTC", promptIds: [branded, unbranded, neverRan] },
 			[branded],
 		);
@@ -189,7 +178,7 @@ describe("daily visibility aggregate", () => {
 	});
 
 	it("keeps actual totals free of carried-forward values", async () => {
-		const rows = await getVisibilityDailyAggregate(
+		const rows = await pgReader.getVisibilityDailyAggregate(
 			{ brandId, from: "2026-03-01", to: "2026-03-05", timezone: "UTC", promptIds: [branded, unbranded, neverRan] },
 			[branded],
 		);
@@ -212,7 +201,7 @@ describe("daily visibility aggregate", () => {
 	});
 
 	it("counts every prompt as non-branded when none are branded", async () => {
-		const rows = await getVisibilityDailyAggregate(
+		const rows = await pgReader.getVisibilityDailyAggregate(
 			{ brandId, from: "2026-03-03", to: "2026-03-03", timezone: "UTC", promptIds: [branded, unbranded] },
 			[],
 		);
@@ -254,18 +243,21 @@ describe("model filter", () => {
 	const day = (model?: string) => scope(brandId, "2026-03-02", "2026-03-02", "UTC", { promptIds: [promptId], model });
 
 	it("separates a grounded API run from the scraped product", async () => {
-		expect(await getMentionTotals(day("chatgpt"))).toMatchObject({ runs: 2, brand_mentioned_runs: 0 });
-		expect(await getMentionTotals(day("chatgpt::premium"))).toMatchObject({ runs: 1, brand_mentioned_runs: 1 });
+		expect(await pgReader.getMentionTotals(day("chatgpt"))).toMatchObject({ runs: 2, brand_mentioned_runs: 0 });
+		expect(await pgReader.getMentionTotals(day("chatgpt::premium"))).toMatchObject({
+			runs: 1,
+			brand_mentioned_runs: 1,
+		});
 	});
 
 	it("attributes citations through the run that produced them", async () => {
-		expect(await getCitationTotal(day("chatgpt"))).toBe(2);
-		expect(await getCitationTotal(day("chatgpt::premium"))).toBe(1);
-		expect(await getCitationTotal(day())).toBe(3);
+		expect(await pgReader.getCitationTotal(day("chatgpt"))).toBe(2);
+		expect(await pgReader.getCitationTotal(day("chatgpt::premium"))).toBe(1);
+		expect(await pgReader.getCitationTotal(day())).toBe(3);
 	});
 
 	it("breaks runs down by model", async () => {
-		const rows = await getRunsByModel(day());
+		const rows = await pgReader.getRunsByModel(day());
 		expect(rows.map((row) => [row.model, row.runs, row.brand_mentioned_runs])).toEqual([
 			["chatgpt", 3, 1],
 			["claude", 1, 1],
@@ -273,10 +265,10 @@ describe("model filter", () => {
 	});
 
 	it("breaks citations down by model within the model filter", async () => {
-		expect(await getCitationsCountByModel(day())).toEqual([{ model: "chatgpt", count: 3 }]);
-		expect(await getCitationsCountByModel(day("chatgpt"))).toEqual([{ model: "chatgpt", count: 2 }]);
-		expect(await getCitationsCountByModel(day("chatgpt::premium"))).toEqual([{ model: "chatgpt", count: 1 }]);
-		expect(await getCitationsCountByModel(day("claude"))).toEqual([]);
+		expect(await pgReader.getCitationsCountByModel(day())).toEqual([{ model: "chatgpt", count: 3 }]);
+		expect(await pgReader.getCitationsCountByModel(day("chatgpt"))).toEqual([{ model: "chatgpt", count: 2 }]);
+		expect(await pgReader.getCitationsCountByModel(day("chatgpt::premium"))).toEqual([{ model: "chatgpt", count: 1 }]);
+		expect(await pgReader.getCitationsCountByModel(day("claude"))).toEqual([]);
 	});
 });
 
@@ -302,7 +294,7 @@ describe("prompt mention stats", () => {
 	const window = () => scope(brandId, "2026-03-01", "2026-03-02", "UTC", { promptIds: [promptId] });
 
 	it("totals a prompt's runs by who they mentioned", async () => {
-		expect(await getMentionTotals(window())).toEqual({
+		expect(await pgReader.getMentionTotals(window())).toEqual({
 			runs: 3,
 			brand_mentioned_runs: 1,
 			competitor_runs: 2,
@@ -322,7 +314,7 @@ describe("prompt mention stats", () => {
 	});
 
 	it("reports each prompt's run days and last run in the scope's timezone", async () => {
-		expect(await getPerPromptRunStats(window())).toEqual([
+		expect(await pgReader.getPerPromptRunStats(window())).toEqual([
 			expect.objectContaining({
 				prompt_id: promptId,
 				runs: 3,
@@ -334,22 +326,22 @@ describe("prompt mention stats", () => {
 			}),
 		]);
 		// 11:00Z is already the next morning at UTC+14.
-		const [kiritimati] = await getPerPromptRunStats(
+		const [kiritimati] = await pgReader.getPerPromptRunStats(
 			scope(brandId, null, null, "Pacific/Kiritimati", { promptIds: [promptId] }),
 		);
 		expect(kiritimati).toMatchObject({ last_run_at: "2026-03-02T11:00:00.000Z", last_run_date: "2026-03-03" });
 	});
 
 	it("ranks competitors by the runs that mentioned them", async () => {
-		expect(await getCompetitorTotals(window(), 5)).toEqual([
+		expect(await pgReader.getCompetitorTotals(window(), 5)).toEqual([
 			{ competitor: "Globex", runs: 2, ...NO_ASSESSMENTS },
 			{ competitor: "Initech", runs: 1, ...NO_ASSESSMENTS },
 		]);
-		expect(await getCompetitorTotals(window(), 1)).toHaveLength(1);
+		expect(await pgReader.getCompetitorTotals(window(), 1)).toHaveLength(1);
 	});
 
 	it("counts competitor mentions per prompt and day", async () => {
-		const rows = await getPerPromptDailyCompetitors(window());
+		const rows = await pgReader.getPerPromptDailyCompetitors(window());
 		expect(rows.map((row) => [row.date, row.competitor, row.runs])).toEqual(
 			expect.arrayContaining([
 				["2026-03-01", "Globex", 1],
@@ -381,7 +373,7 @@ describe("citation stats", () => {
 	});
 
 	it("reports each URL's count, average position and prompt reach", async () => {
-		const rows = await getCitationUrlStats(scope(brandId, "2026-03-01", "2026-03-02", "UTC"));
+		const rows = await pgReader.getCitationUrlStats(scope(brandId, "2026-03-01", "2026-03-02", "UTC"));
 		expect(rows[0]).toEqual({
 			url: "https://docs.example.com/a",
 			domain: "docs.example.com",
@@ -423,7 +415,7 @@ describe("citation flow rows", () => {
 	});
 
 	it("returns the domain's and its subdomains' pages per engine, within the window", async () => {
-		const rows = await getCitationFlowRows(window(), "g2.com");
+		const rows = await pgReader.getCitationFlowRows(window(), "g2.com");
 		expect(rows.map(({ model, url, count }) => [model, url, count]).sort()).toEqual([
 			["chatgpt", "https://g2.com/categories/crm", 1],
 			["chatgpt", "https://g2.com/products/acme", 1],
@@ -433,9 +425,9 @@ describe("citation flow rows", () => {
 	});
 
 	it("narrows to the page's prompt and model filters", async () => {
-		const onlyP1 = await getCitationFlowRows(window({ promptIds: [p1] }), "g2.com");
+		const onlyP1 = await pgReader.getCitationFlowRows(window({ promptIds: [p1] }), "g2.com");
 		expect(new Set(onlyP1.map((row) => row.model))).toEqual(new Set(["chatgpt"]));
-		const onlyPerplexity = await getCitationFlowRows(window({ model: "perplexity" }), "g2.com");
+		const onlyPerplexity = await pgReader.getCitationFlowRows(window({ model: "perplexity" }), "g2.com");
 		expect(onlyPerplexity.map((row) => row.url).sort()).toEqual([
 			"https://g2.com/categories/crm",
 			"https://learn.g2.com/crm-guide",
@@ -443,7 +435,7 @@ describe("citation flow rows", () => {
 	});
 
 	it("leaves out Google surfaces, as the rest of the Citations page does", async () => {
-		expect(await getCitationFlowRows(window(), "google.com")).toEqual([]);
+		expect(await pgReader.getCitationFlowRows(window(), "google.com")).toEqual([]);
 	});
 });
 
@@ -472,7 +464,7 @@ describe("query fan-out", () => {
 	});
 
 	it("counts genuine queries once per run, ignoring echoes of the prompt and the unavailable sentinel", async () => {
-		const rows = await getFanoutBreakdown(scope());
+		const rows = await pgReader.getFanoutBreakdown(scope());
 		expect(rows.map((row) => [row.query, row.count, row.brand_mentions]).sort()).toEqual([
 			["crm pricing", 2, 1],
 			["hubspot alternatives", 1, 0],
@@ -480,21 +472,25 @@ describe("query fan-out", () => {
 	});
 
 	it("totals search runs separately from runs that fanned out", async () => {
-		expect(await getFanoutModelTotals(scope())).toEqual([
+		expect(await pgReader.getFanoutModelTotals(scope())).toEqual([
 			{ model: "chatgpt", runs: 3, fanout_runs: 2, total_queries: 3 },
 		]);
-		expect(await getFanoutPromptTotals(scope())).toEqual([{ prompt_id: promptId, runs: 2 }]);
+		expect(await pgReader.getFanoutPromptTotals(scope())).toEqual([{ prompt_id: promptId, runs: 2 }]);
 	});
 
 	it("pages through queries most run first, with totals over all of them, and searches past the first page", async () => {
-		const firstPage = await getFanoutQueryPage(scope(), undefined, 1, 0);
+		const firstPage = await pgReader.getFanoutQueryPage(scope(), undefined, 1, 0);
 		expect(firstPage).toEqual({ rows: [{ query: "crm pricing", runs: 2, prompt_count: 1 }], total: 2 });
-		expect(await getFanoutQueryPage(scope(), "HUBSPOT", 1, 0)).toEqual({
+		expect(await pgReader.getFanoutQueryPage(scope(), "HUBSPOT", 1, 0)).toEqual({
 			rows: [{ query: "hubspot alternatives", runs: 1, prompt_count: 1 }],
 			total: 1,
 		});
-		expect(await getFanoutQueryTotals(scope())).toEqual({ total_queries: 3, unique_queries: 2, brand_mentions: 1 });
-		expect(await getFanoutQueryPage(scope(), undefined, 1, 5)).toEqual({ rows: [], total: 2 });
+		expect(await pgReader.getFanoutQueryTotals(scope())).toEqual({
+			total_queries: 3,
+			unique_queries: 2,
+			brand_mentions: 1,
+		});
+		expect(await pgReader.getFanoutQueryPage(scope(), undefined, 1, 5)).toEqual({ rows: [], total: 2 });
 	});
 
 	it("counts a search once per run, whatever whitespace surrounds it", async () => {
@@ -512,17 +508,17 @@ describe("query fan-out", () => {
 		});
 		await rebuildRollups(otherBrand);
 		const otherScope = { ...scope(), brandId: otherBrand, promptIds: [otherPrompt] };
-		expect(await getFanoutQueryPage(otherScope, undefined, 10, 0)).toEqual({
+		expect(await pgReader.getFanoutQueryPage(otherScope, undefined, 10, 0)).toEqual({
 			rows: [{ query: "hubspot alternatives", runs: 2, prompt_count: 1 }],
 			total: 1,
 		});
-		expect(await getFanoutQueryTotals(otherScope)).toMatchObject({ total_queries: 2, unique_queries: 1 });
+		expect(await pgReader.getFanoutQueryTotals(otherScope)).toMatchObject({ total_queries: 2, unique_queries: 1 });
 	});
 
 	it("follows the prompt's current text once its buckets are rebuilt", async () => {
 		await db.update(prompts).set({ value: "CRM pricing" }).where(eq(prompts.id, promptId));
 		await rebuildRollups(brandId);
-		const rows = await getFanoutBreakdown(scope());
+		const rows = await pgReader.getFanoutBreakdown(scope());
 		expect(rows.map((row) => row.query).sort()).toEqual(["best crm for startups", "hubspot alternatives"]);
 		await db.update(prompts).set({ value: "Best CRM for startups" }).where(eq(prompts.id, promptId));
 		await rebuildRollups(brandId);

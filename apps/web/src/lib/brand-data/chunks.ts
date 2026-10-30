@@ -1,20 +1,19 @@
 /**
  * A brand's data is split into chunks the browser syncs one at a time: its entities, each UTC month of rollups,
  * and each range of cited pages. A refresh rewrites recent buckets, so a sync usually refetches only this month.
+ * Rollup chunks carry the server's rollup rows as Arrow, which DuckDB loads into tables shaped like the server's.
  */
-import type { BrandBundle, BundleBrand, BundleCompetitor, BundlePrompt } from "@/lib/brand-data/bundle";
 
 /** Bump when a chunk's shape changes; browsers drop copies in any other format. */
-export const BRAND_DATA_FORMAT = 2;
+export const BRAND_DATA_FORMAT = 3;
 
 export const BRAND_DATA_DB_PREFIX = "elmo-brand-data";
 
-export const MONTH_TABLES = {
-	runs: ["promptRuns", "competitorMentions", "webQueries", "sentimentQuotes"],
-	citations: ["citations"],
+export const ROLLUP_TABLES = {
+	runs: ["rollup_prompt_runs", "rollup_competitor_mentions", "rollup_web_queries", "rollup_sentiment_quotes"],
+	citations: ["rollup_citation_urls"],
 } as const;
-export type ChunkGroup = keyof typeof MONTH_TABLES;
-export type RunTable = (typeof MONTH_TABLES)[ChunkGroup][number];
+export type ChunkGroup = keyof typeof ROLLUP_TABLES;
 
 export interface ChunkManifestEntry {
 	id: string;
@@ -28,39 +27,48 @@ export interface ChunkManifest {
 	nextSyncInSeconds: number;
 }
 
+export interface EntityBrand {
+	id: string;
+	name: string;
+	website: string;
+	additionalDomains: string[];
+	delayOverrideHours: number | null;
+}
+
+export interface EntityCompetitor {
+	id: string;
+	name: string;
+	domains: string[];
+}
+
+export interface EntityPrompt {
+	id: string;
+	value: string;
+	tags: string[];
+	systemTags: string[];
+	enabled: boolean;
+	createdAt: string;
+	firstEvaluatedAt: string | null;
+}
+
 export interface EntitiesChunk {
-	kind: "entities";
-	brand: BundleBrand;
-	competitors: BundleCompetitor[];
-	prompts: BundlePrompt[];
-	apiProviderIds: string[];
-}
-
-type Columns = Record<string, (number | string | null)[]>;
-
-export interface MonthChunk {
-	kind: "month";
-	dicts: Record<string, string[]>;
-	tables: Partial<Record<RunTable, Columns>>;
-}
-
-export interface PagesChunk {
-	kind: "pages";
-	dicts: Record<string, string[]>;
-	columns: Columns;
-}
-
-/** The cited pages' text, which most views never show and outweighs everything else a brand has. */
-export interface UrlsChunk {
-	kind: "urls";
-	columns: Columns;
+	brand: EntityBrand;
+	competitors: EntityCompetitor[];
+	prompts: EntityPrompt[];
 }
 
 export interface BrandChunk {
 	id: string;
 	version: string;
-	data: EntitiesChunk | MonthChunk | PagesChunk | UrlsChunk;
+	entities?: EntitiesChunk;
+	/** Arrow IPC streams by table name. */
+	tables?: Record<string, Uint8Array>;
 }
+
+export const PAGE_ID_RANGE = 200_000;
+/** A page range's chunks split its pages' attributes, which most views need, from their text, which few do. */
+export const PAGE_ATTRIBUTES = ["page_id", "domain", "page_type", "static_category"];
+export const PAGE_TEXT = ["page_id", "url", "title"];
 
 export const ENTITIES_CHUNK = "entities";
 export const monthChunkId = (group: ChunkGroup, month: string) => `${group}:${month}`;
@@ -75,204 +83,50 @@ export function monthsOverlapping(months: Iterable<string>, start: number, end: 
 	});
 }
 
-export const DICTIONARY_COLUMNS: Record<string, string> = {
-	prompt: "promptIds",
-	model: "models",
-	provider: "providers",
-	competitor: "competitors",
-	query: "queries",
-	sentiment: "sentiments",
-	domain: "domains",
-	pageType: "pageTypes",
-	category: "categories",
-};
-
-function dictionary(initial: string[] = []) {
-	const index = new Map(initial.map((value, i) => [value, i]));
-	const values = [...initial];
-	return {
-		values,
-		id(value: string) {
-			let id = index.get(value);
-			if (id === undefined) {
-				id = values.length;
-				index.set(value, id);
-				values.push(value);
-			}
-			return id;
-		},
-	};
+export function monthBounds(month: string): { start: Date; end: Date } {
+	const [y, m] = month.split("-").map(Number);
+	return { start: new Date(Date.UTC(y, m - 1, 1)), end: new Date(Date.UTC(y, m, 1)) };
 }
 
-const emptyKeys = () => ({
-	bucket: [] as number[],
-	prompt: [] as number[],
-	model: [] as number[],
-	provider: [] as number[],
-	web: [] as number[],
-});
+interface FrameHeader {
+	id: string;
+	version: string;
+	entities?: EntitiesChunk;
+	tables?: [name: string, bytes: number][];
+}
 
-type Dictionaries = Record<keyof BrandBundle["dicts"], ReturnType<typeof dictionary>>;
+/** Packs chunks into one body: a length-prefixed JSON header, then each table's Arrow bytes in header order. */
+export function encodeChunks(chunks: BrandChunk[]): Uint8Array {
+	const headers: FrameHeader[] = chunks.map(({ id, version, entities, tables }) => ({
+		id,
+		version,
+		entities,
+		tables: tables && Object.entries(tables).map(([name, bytes]) => [name, bytes.byteLength]),
+	}));
+	const header = new TextEncoder().encode(JSON.stringify(headers));
+	const payloads = chunks.flatMap((chunk) => Object.values(chunk.tables ?? {}));
+	const body = new Uint8Array(4 + header.byteLength + payloads.reduce((sum, bytes) => sum + bytes.byteLength, 0));
+	new DataView(body.buffer).setUint32(0, header.byteLength);
+	body.set(header, 4);
+	let offset = 4 + header.byteLength;
+	for (const bytes of payloads) {
+		body.set(bytes, offset);
+		offset += bytes.byteLength;
+	}
+	return body;
+}
 
-function appendPages(bundle: BrandBundle, dicts: Dictionaries, chunks: BrandChunk[]): Map<number, number> {
-	const text = new Map<number, { url: string; title: string | null }>();
-	for (const chunk of chunks) {
-		if (chunk.data.kind !== "urls") continue;
-		const { columns } = chunk.data;
-		for (let i = 0; i < columns.id.length; i++) {
-			text.set(columns.id[i] as number, { url: columns.url[i] as string, title: columns.title[i] as string | null });
+export function decodeChunks(body: Uint8Array): BrandChunk[] {
+	const headerLength = new DataView(body.buffer, body.byteOffset).getUint32(0);
+	const headers = JSON.parse(new TextDecoder().decode(body.subarray(4, 4 + headerLength))) as FrameHeader[];
+	let offset = 4 + headerLength;
+	return headers.map(({ id, version, entities, tables }) => {
+		if (!tables) return { id, version, entities };
+		const decoded: Record<string, Uint8Array> = {};
+		for (const [name, bytes] of tables) {
+			decoded[name] = body.slice(offset, offset + bytes);
+			offset += bytes;
 		}
-	}
-	const pageRows: { id: number; domain: string; pageType: string; category: string }[] = [];
-	for (const chunk of chunks) {
-		if (chunk.data.kind !== "pages") continue;
-		const { columns, dicts: local } = chunk.data;
-		for (let i = 0; i < columns.id.length; i++) {
-			pageRows.push({
-				id: columns.id[i] as number,
-				domain: local.domains[columns.domain[i] as number],
-				pageType: local.pageTypes[columns.pageType[i] as number],
-				category: local.categories[columns.category[i] as number],
-			});
-		}
-	}
-	const urlOf = (id: number) => text.get(id)?.url ?? "";
-	pageRows.sort((a, b) => (urlOf(a.id) < urlOf(b.id) ? -1 : urlOf(a.id) > urlOf(b.id) ? 1 : a.id - b.id));
-	const pageIndex = new Map<number, number>();
-	const pages = bundle.citationPages;
-	for (const page of pageRows) {
-		pageIndex.set(page.id, pages.id.length);
-		pages.id.push(page.id);
-		pages.url.push(urlOf(page.id));
-		pages.domain.push(dicts.domains.id(page.domain));
-		pages.title.push(text.get(page.id)?.title ?? null);
-		pages.pageType.push(dicts.pageTypes.id(page.pageType));
-		pages.category.push(dicts.categories.id(page.category));
-	}
-	return pageIndex;
-}
-
-function columnMapper(
-	name: string,
-	values: (number | string | null)[],
-	context: {
-		dicts: Dictionaries;
-		local: Record<string, string[]>;
-		prompts: (number | undefined)[];
-		pages: (number | undefined)[] | null;
-	},
-): (i: number) => number | string | null {
-	const { dicts, local, prompts, pages } = context;
-	if (name === "prompt") return (i) => prompts[i] as number;
-	if (name === "page" && pages) return (i) => pages[i] as number;
-	const dictName = DICTIONARY_COLUMNS[name] as keyof Dictionaries | "promptIds" | undefined;
-	if (!dictName || dictName === "promptIds") return (i) => values[i];
-	return (i) => dicts[dictName].id(local[dictName][values[i] as number]);
-}
-
-function appendRuns(
-	bundle: BrandBundle,
-	dicts: Dictionaries,
-	table: RunTable,
-	chunk: MonthChunk,
-	indexes: { prompts: Map<string, number>; pages: Map<number, number> },
-) {
-	const columns = chunk.tables[table];
-	if (!columns) return;
-	const local = chunk.dicts;
-	const target = bundle[table] as unknown as Columns;
-	const n = columns.bucket.length;
-	const prompts = columns.prompt.map((value) => indexes.prompts.get(local.promptIds[value as number]));
-	const pages = table === "citations" ? columns.page.map((value) => indexes.pages.get(value as number)) : null;
-	const keep = (i: number) => prompts[i] !== undefined && (!pages || pages[i] !== undefined);
-	for (const [name, values] of Object.entries(columns)) {
-		const out = target[name];
-		if (!out) continue;
-		const map = columnMapper(name, values, { dicts, local, prompts, pages });
-		for (let i = 0; i < n; i++) if (keep(i)) out.push(map(i));
-	}
-}
-
-function emptyBundle(brandId: string, entities: EntitiesChunk, dicts: Dictionaries): BrandBundle {
-	return {
-		brandId,
-		apiProviderIds: entities.apiProviderIds,
-		brand: entities.brand,
-		competitors: entities.competitors,
-		prompts: entities.prompts,
-		dicts: {
-			models: dicts.models.values,
-			providers: dicts.providers.values,
-			competitors: dicts.competitors.values,
-			queries: dicts.queries.values,
-			domains: dicts.domains.values,
-			pageTypes: dicts.pageTypes.values,
-			categories: dicts.categories.values,
-			sentiments: dicts.sentiments.values,
-		},
-		promptRuns: {
-			...emptyKeys(),
-			runs: [],
-			brandMentioned: [],
-			competitorRuns: [],
-			competitorMentions: [],
-			noMention: [],
-			fanoutRuns: [],
-			fanoutQueries: [],
-			firstRunAt: [],
-			lastRunAt: [],
-			positive: [],
-			neutral: [],
-			negative: [],
-			mixed: [],
-			positionSum: [],
-			positioned: [],
-		},
-		competitorMentions: {
-			...emptyKeys(),
-			competitor: [],
-			runs: [],
-			positive: [],
-			neutral: [],
-			negative: [],
-			mixed: [],
-			positionSum: [],
-			positioned: [],
-		},
-		webQueries: { ...emptyKeys(), query: [], runs: [], brandMentioned: [] },
-		citations: { ...emptyKeys(), page: [], citations: [], positionSum: [] },
-		citationPages: { id: [], url: [], domain: [], title: [], pageType: [], category: [] },
-		sentimentQuotes: { ...emptyKeys(), sentiment: [], runId: [], confidence: [], createdAt: [] },
-	};
-}
-
-/** Merges whichever chunks have synced into one bundle, months in order; null until the entities have. */
-export function assembleBundle(brandId: string, chunks: Iterable<BrandChunk>): BrandBundle | null {
-	const all = [...chunks];
-	const entities = all.find((chunk) => chunk.data.kind === "entities")?.data as EntitiesChunk | undefined;
-	if (!entities) return null;
-	const dicts = {
-		models: dictionary(),
-		providers: dictionary(),
-		competitors: dictionary(),
-		queries: dictionary(),
-		domains: dictionary(),
-		pageTypes: dictionary(),
-		categories: dictionary(),
-		sentiments: dictionary(),
-	};
-	const bundle = emptyBundle(brandId, entities, dicts);
-	const indexes = {
-		prompts: new Map(entities.prompts.map((prompt, i) => [prompt.id, i])),
-		pages: appendPages(bundle, dicts, all),
-	};
-	const months = all
-		.filter((chunk): chunk is BrandChunk & { data: MonthChunk } => chunk.data.kind === "month")
-		.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-	for (const chunk of months) {
-		for (const table of Object.keys(chunk.data.tables) as RunTable[]) {
-			appendRuns(bundle, dicts, table, chunk.data, indexes);
-		}
-	}
-	return bundle;
+		return { id, version, tables: decoded };
+	});
 }

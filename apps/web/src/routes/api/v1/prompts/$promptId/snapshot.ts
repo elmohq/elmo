@@ -4,15 +4,17 @@
  *
  * Protected by API key authentication.
  */
+
 import { createFileRoute } from "@tanstack/react-router";
 import { extractDomain, inDomainSet } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { pgReader } from "@/lib/analytics/pg-reader";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requirePromptInScope } from "@/lib/api/scope";
-import { getCitationUrlStats, getCompetitorTotals, getMentionTotals } from "@/lib/rollup-read";
+
 import { mentionQuality } from "@/lib/sentiment";
 
 function isValidDate(dateStr: string): boolean {
@@ -87,9 +89,9 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						promptIds: [prompt.id],
 					};
 					const [mentionData, topCompetitors, citationUrlStats] = await Promise.all([
-						getMentionTotals(scope),
-						getCompetitorTotals(scope, kMentions),
-						getCitationUrlStats(scope),
+						pgReader.getMentionTotals(scope),
+						pgReader.getCompetitorTotals(scope, kMentions),
+						pgReader.getCitationUrlStats(scope),
 					]);
 
 					const mentionsTopK = topCompetitors.map((row) => ({ entity: row.competitor, count: row.runs }));

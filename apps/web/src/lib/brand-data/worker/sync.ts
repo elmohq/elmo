@@ -1,57 +1,37 @@
 import {
-	assembleBundle,
 	BRAND_DATA_DB_PREFIX,
 	BRAND_DATA_FORMAT,
 	type BrandChunk,
 	type ChunkManifest,
 	type ChunkManifestEntry,
+	decodeChunks,
 	ENTITIES_CHUNK,
+	type EntitiesChunk,
 	isPagesChunk,
 	isUrlsChunk,
 } from "@/lib/brand-data/chunks";
-import { decodeBrandBundle, forgetBrandStore, setBrandStore } from "@/lib/brand-data/store";
+import type { Coverage } from "@/lib/brand-data/coverage";
+import { removeBrandDataFiles } from "@/lib/brand-data/duck/browser";
+import {
+	applyChunk,
+	compactRollups,
+	type DuckEngineConnection,
+	joinPages,
+	removeBrand,
+	removeChunk,
+	storedBrand,
+	storeManifest,
+} from "@/lib/brand-data/duck/engine";
 
 const BATCH_SIZE = 3;
 const PARALLEL_REQUESTS = 2;
+const MAX_BRANDS = 3;
 
-const DB_NAME = `${BRAND_DATA_DB_PREFIX}-v${BRAND_DATA_FORMAT}`;
-const STORE = "chunks";
-const MANIFEST_KEY = "~manifest";
-
-function openDb(): Promise<IDBDatabase> {
-	return new Promise((resolve, reject) => {
-		const open = indexedDB.open(DB_NAME, 1);
-		open.onupgradeneeded = () => open.result.createObjectStore(STORE);
-		open.onsuccess = () => resolve(open.result);
-		open.onerror = () => reject(open.error);
-	});
-}
-
-async function transact<T>(
-	mode: IDBTransactionMode,
-	run: (store: IDBObjectStore) => IDBRequest<T> | undefined,
-): Promise<T | undefined> {
-	const db = await openDb();
-	try {
-		return await new Promise<T | undefined>((resolve, reject) => {
-			const tx = db.transaction(STORE, mode);
-			const request = run(tx.objectStore(STORE));
-			tx.oncomplete = () => resolve(request?.result);
-			tx.onerror = () => reject(tx.error);
-			tx.onabort = () => reject(tx.error);
-		});
-	} finally {
-		db.close();
-	}
-}
-
-const brandKeys = (brandId: string) => IDBKeyRange.bound(`${brandId}|`, `${brandId}|￿`);
-
+/** Clears what earlier builds kept: IndexedDB copies and other formats' database files. */
 export async function removeOtherFormats() {
 	const databases = await indexedDB.databases?.().catch(() => []);
-	for (const { name } of databases ?? []) {
-		if (name?.startsWith(BRAND_DATA_DB_PREFIX) && name !== DB_NAME) indexedDB.deleteDatabase(name);
-	}
+	for (const { name } of databases ?? []) if (name?.startsWith(BRAND_DATA_DB_PREFIX)) indexedDB.deleteDatabase(name);
+	await removeBrandDataFiles(true).catch(() => {});
 }
 
 export class IncompatibleFormatError extends Error {
@@ -66,11 +46,36 @@ class ForbiddenError extends Error {
 	}
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
+async function fetchOk(url: string): Promise<Response> {
 	const response = await fetch(url, { credentials: "same-origin" });
 	if (response.status === 401 || response.status === 403) throw new ForbiddenError();
 	if (!response.ok) throw new Error(`Brand data request failed: ${response.status}`);
-	return response.json() as Promise<T>;
+	return response;
+}
+
+let writer: Promise<DuckEngineConnection> | undefined;
+let writes: Promise<unknown> = Promise.resolve();
+
+export function setDuckWriter(connection: Promise<DuckEngineConnection>) {
+	writer = connection;
+}
+
+/** Runs DuckDB writes one at a time, each in a transaction, so reads on other connections never see half a chunk. */
+function write(change: (conn: DuckEngineConnection) => Promise<void>): Promise<void> {
+	const next = writes.then(async () => {
+		if (!writer) throw new Error("DuckDB isn't open");
+		const conn = await writer;
+		await conn.query("BEGIN TRANSACTION");
+		try {
+			await change(conn);
+			await conn.query("COMMIT");
+		} catch (error) {
+			await conn.query("ROLLBACK");
+			throw error;
+		}
+	});
+	writes = next.catch(() => {});
+	return next;
 }
 
 const dataUrl = (brandId: string, chunks?: string[]) =>
@@ -115,9 +120,10 @@ export interface SyncState {
 
 type Listener = (brandId: string, state: SyncState) => void;
 
-/** One brand's chunks: seeded from IndexedDB, refreshed from the server, and published to the store as they land. */
+/** One brand's chunks: seeded from IndexedDB, refreshed from the server, and loaded into DuckDB as they land. */
 class BrandSync {
-	private readonly chunks = new Map<string, BrandChunk>();
+	private readonly versions = new Map<string, string>();
+	entities: EntitiesChunk | undefined;
 	private manifest: ChunkManifestEntry[] = [];
 	private readonly wanted = new Set<string>();
 	private readonly waiters = new Set<Waiter>();
@@ -134,12 +140,32 @@ class BrandSync {
 	}
 
 	private async seed() {
-		const cached = await transact("readonly", (store) => store.getAll(brandKeys(this.brandId))).catch(() => []);
-		for (const value of (cached ?? []) as ({ manifest: ChunkManifestEntry[] } | BrandChunk)[]) {
-			if ("manifest" in value) this.manifest = value.manifest;
-			else this.chunks.set(value.id, value);
+		let stored: Awaited<ReturnType<typeof storedBrand>> | undefined;
+		await write(async (conn) => {
+			stored = await storedBrand(conn, this.brandId);
+		});
+		if (!stored || stored.versions.size === 0) return;
+		for (const [id, version] of stored.versions) this.versions.set(id, version);
+		this.entities = stored.entities;
+		if (stored.manifest) this.manifest = stored.manifest;
+		this.publish();
+	}
+
+	private async load(chunks: BrandChunk[]) {
+		await write(async (conn) => {
+			for (const chunk of chunks) await applyChunk(conn, this.brandId, chunk);
+			if (chunks.some((chunk) => isPagesChunk(chunk.id) || isUrlsChunk(chunk.id))) await joinPages(conn);
+		});
+		for (const chunk of chunks) {
+			if (chunk.entities) this.entities = chunk.entities;
+			this.versions.set(chunk.id, chunk.version);
+			this.wanted.delete(chunk.id);
 		}
-		if (this.chunks.size > 0) this.publish();
+		this.publish();
+	}
+
+	coverage(): Coverage {
+		return { available: this.available(), loaded: new Set(this.versions.keys()) };
 	}
 
 	refresh(): Promise<void> {
@@ -170,46 +196,41 @@ class BrandSync {
 	}
 
 	private async download() {
-		const manifest = await fetchJson<ChunkManifest>(dataUrl(this.brandId));
+		const manifest = (await (await fetchOk(dataUrl(this.brandId))).json()) as ChunkManifest;
 		if (manifest.format !== BRAND_DATA_FORMAT) throw new IncompatibleFormatError();
 		const current = new Set(manifest.chunks.map((entry) => entry.id));
-		const removed = [...this.chunks.keys()].filter((id) => !current.has(id));
+		const removed = [...this.versions.keys()].filter((id) => !current.has(id));
 		const coverageChanged =
 			removed.length > 0 ||
 			manifest.chunks.length !== this.manifest.length ||
 			this.manifest.some((e) => !current.has(e.id));
-		for (const id of removed) this.chunks.delete(id);
+		if (removed.length > 0) {
+			await write(async (conn) => {
+				for (const id of removed) await removeChunk(conn, this.brandId, id);
+			});
+			for (const id of removed) this.versions.delete(id);
+			if (removed.some((id) => isPagesChunk(id) || isUrlsChunk(id))) await write(joinPages);
+		}
 		this.manifest = manifest.chunks;
 		this.state = { ...this.state, nextSyncInSeconds: manifest.nextSyncInSeconds };
 		const stale = new Set(
-			manifest.chunks.filter((entry) => this.chunks.get(entry.id)?.version !== entry.version).map((entry) => entry.id),
+			manifest.chunks.filter((entry) => this.versions.get(entry.id) !== entry.version).map((entry) => entry.id),
 		);
 		if (coverageChanged) this.publish();
 		else this.listener(this.brandId, this.state);
-		if (removed.length > 0) {
-			void transact("readwrite", (store) => {
-				for (const id of removed) store.delete(`${this.brandId}|${id}`);
-				return undefined;
-			}).catch(() => {});
-		}
+		const changed = stale.size + removed.length > 0;
 		await Promise.all(Array.from({ length: PARALLEL_REQUESTS }, () => this.drain(stale)));
-		void transact("readwrite", (store) =>
-			store.put({ manifest: this.manifest }, `${this.brandId}|${MANIFEST_KEY}`),
-		).catch(() => {});
+		await write(async (conn) => {
+			await storeManifest(conn, this.brandId, this.manifest);
+			if (changed) await compactRollups(conn);
+		});
 	}
 
 	private async drain(stale: Set<string>) {
 		for (let batch = this.nextBatch(stale); batch.length > 0; batch = this.nextBatch(stale)) {
-			const { chunks } = await fetchJson<{ chunks: BrandChunk[] }>(dataUrl(this.brandId, batch));
-			for (const chunk of chunks) {
-				this.chunks.set(chunk.id, chunk);
-				this.wanted.delete(chunk.id);
-			}
-			this.publish();
-			void transact("readwrite", (store) => {
-				for (const chunk of chunks) store.put(chunk, `${this.brandId}|${chunk.id}`);
-				return undefined;
-			}).catch(() => {});
+			const response = await fetchOk(dataUrl(this.brandId, batch));
+			const chunks = decodeChunks(new Uint8Array(await response.arrayBuffer()));
+			await this.load(chunks);
 		}
 	}
 
@@ -223,24 +244,19 @@ class BrandSync {
 	}
 
 	private available() {
-		return new Set([...this.manifest.map((entry) => entry.id), ...this.chunks.keys()]);
+		return new Set([...this.manifest.map((entry) => entry.id), ...this.versions.keys()]);
 	}
 
 	private publish() {
-		const bundle = assembleBundle(this.brandId, this.chunks.values());
-		if (bundle) {
-			const coverage = { available: this.available(), loaded: new Set(this.chunks.keys()) };
-			for (const evicted of setBrandStore(decodeBrandBundle(bundle, coverage))) forgetBrand(evicted);
-			this.state = { ...this.state, generation: this.state.generation + 1 };
-			this.listener(this.brandId, this.state);
-		}
+		this.state = { ...this.state, generation: this.state.generation + 1 };
+		this.listener(this.brandId, this.state);
 		this.settle();
 	}
 
 	private settle() {
 		const available = this.available();
 		for (const waiter of this.waiters) {
-			if (waiter.ids.every((id) => this.chunks.has(id) || !available.has(id))) {
+			if (waiter.ids.every((id) => this.versions.has(id) || !available.has(id))) {
 				this.waiters.delete(waiter);
 				waiter.resolve();
 			}
@@ -265,26 +281,29 @@ export function setSyncListener(next: Listener) {
 	listener = next;
 }
 
+/** The brand's sync, most recently used last, so the worker keeps at most `MAX_BRANDS` brands in DuckDB. */
 export function brandSync(brandId: string): BrandSync {
 	let sync = syncs.get(brandId);
+	syncs.delete(brandId);
 	if (!sync) {
+		for (const evicted of [...syncs.keys()].slice(0, Math.max(0, syncs.size + 1 - MAX_BRANDS))) forgetBrand(evicted);
 		sync = new BrandSync(brandId, (id, state) => listener(id, state));
-		syncs.set(brandId, sync);
 	}
+	syncs.set(brandId, sync);
 	return sync;
 }
 
-/** Drops the brand's copy from memory, and from IndexedDB too when the viewer may no longer read it. */
+export const syncedBrands = {
+	entities: (brandId: string) => syncs.get(brandId)?.entities,
+	coverage: (brandId: string): Coverage =>
+		syncs.get(brandId)?.coverage() ?? { available: new Set([ENTITIES_CHUNK]), loaded: new Set() },
+};
+
+/** Drops the brand's copy, to keep at most `MAX_BRANDS` or because the viewer may no longer read it. */
 function forgetBrand(brandId: string, error = new Error("Brand data was unloaded")) {
 	syncs.get(brandId)?.close(error);
 	syncs.delete(brandId);
-	forgetBrandStore(brandId);
-	if (error instanceof ForbiddenError) {
-		void transact("readwrite", (store) => {
-			store.delete(brandKeys(brandId));
-			return undefined;
-		}).catch(() => {});
-	}
+	void write((conn) => removeBrand(conn, brandId)).catch(() => {});
 }
 
 export function syncBrand(brandId: string): Promise<void> {

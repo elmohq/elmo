@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { extractorFor, extractTextContent } from "@workspace/lib/text-extraction";
 import { z } from "zod";
+import { pgReader } from "@/lib/analytics/pg-reader";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { lookbackSchema } from "@/lib/lookback";
 import {
@@ -9,7 +10,7 @@ import {
 	type ResponseMatchRow,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
-import { getMentionTotals } from "@/lib/rollup-read";
+
 import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
@@ -60,7 +61,7 @@ export const searchResponsesFn = createServerFn({ method: "GET" })
 		const { scope, prompts } = await resolveSearch(data);
 		const promptValues = new Map(prompts.map((prompt) => [prompt.id, prompt.value]));
 		const [totals, rows] = await Promise.all([
-			getMentionTotals(scope),
+			pgReader.getMentionTotals(scope),
 			getResponseMatches({ ...scope, sentiment: data.sentiment }, PAGE_SIZE, data.page * PAGE_SIZE, data.sort),
 		]);
 		return {

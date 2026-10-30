@@ -20,6 +20,7 @@
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.9.0",
+		"@duckdb/duckdb-wasm": "1.32.0",
 		"@fontsource/geist-mono": "^5.3.0",
 		"@fontsource/geist-sans": "^5.3.0",
 		"@fontsource/titan-one": "^5.3.0",
@@ -45,6 +46,7 @@
 		"@workspace/lib": "workspace:*",
 		"@workspace/og": "workspace:*",
 		"@workspace/ui": "workspace:*",
+		"apache-arrow": "17.0.0",
 		"auth0": "^7.6.0",
 		"drizzle-orm": "^0.45.4",
 		"html2canvas-pro": "^2.5.2",

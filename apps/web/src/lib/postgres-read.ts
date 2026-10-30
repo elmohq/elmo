@@ -5,15 +5,10 @@
 
 import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
 import { type SQL, sql } from "drizzle-orm";
-import {
-	type AnalyticsScope,
-	modelFilter,
-	type PromptListScope,
-	queryPg,
-	scopeFilter,
-	windowFilter,
-} from "@/lib/analytics-sql";
+import { queryPg } from "@/lib/analytics/pg-query";
+import { type AnalyticsScope, modelFilter, type PromptListScope, scopeFilter, windowFilter } from "@/lib/analytics-sql";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
+import { sentimentQuotePicks } from "@/lib/rollup-read";
 import type { ResponseSort, Sentiment, SentimentFilter, SentimentFilterCounts } from "@/lib/sentiment";
 import { responseOrder, sentimentBucket, sentimentCondition, toSentimentFilterCounts } from "@/lib/sentiment-sql";
 
@@ -223,33 +218,11 @@ export async function getSentimentQuotes(
 ): Promise<SentimentQuoteRow[]> {
 	if (scope.promptIds.length === 0 || sentiments.length === 0) return [];
 	return queryPg<SentimentQuoteRow>(sql`
-		WITH
-			best AS (
-				SELECT DISTINCT ON (sentiment, prompt_id) run_id, prompt_id, model, created_at, sentiment, confidence
-				FROM rollup_sentiment_quotes
-				WHERE ${scopeFilter(scope, { time: "bucket" })}
-					AND sentiment IN (${sql.join(
-						sentiments.map((sentiment) => sql`${sentiment}`),
-						sql`, `,
-					)})
-				ORDER BY sentiment, prompt_id, confidence DESC, created_at DESC, run_id
-			),
-			ranked AS (
-				SELECT *, row_number() OVER (PARTITION BY sentiment ORDER BY confidence DESC, created_at DESC, run_id) AS place
-				FROM best
-			)
-		SELECT
-			r.run_id::text AS id,
-			r.prompt_id::text AS prompt_id,
-			r.model,
-			r.created_at,
-			r.sentiment,
-			rm.assessments->'brand' AS brand,
-			re.text_content
-		FROM ranked r
-		JOIN run_mentions rm ON rm.run_id = r.run_id
-		JOIN run_extractions re ON re.run_id = r.run_id
-		WHERE r.place <= ${limit}
-		ORDER BY r.sentiment, r.place
+		WITH picked AS (${sentimentQuotePicks(scope, sentiments, limit)})
+		SELECT p.id, p.prompt_id, p.model, p.created_at, p.sentiment, rm.assessments->'brand' AS brand, re.text_content
+		FROM picked p
+		JOIN run_mentions rm ON rm.run_id = p.id::uuid
+		JOIN run_extractions re ON re.run_id = p.id::uuid
+		ORDER BY p.sentiment, p.place
 	`);
 }

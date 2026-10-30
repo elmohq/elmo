@@ -1,7 +1,7 @@
 import { db } from "@workspace/lib/db/db";
 import { promptRuns, runExtractions, runMentions } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
-import type { QuoteText } from "@/lib/brand-data/memory-entity-reads";
+import type { QuoteText } from "@/lib/brand-data/duck/reader";
 
 export async function loadQuoteTexts(brandId: string, runIds: string[]): Promise<QuoteText[]> {
 	const rows = await db

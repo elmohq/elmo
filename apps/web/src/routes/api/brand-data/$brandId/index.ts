@@ -3,9 +3,11 @@ import { brotliCompress, constants, gzip } from "node:zlib";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	BRAND_DATA_FORMAT,
+	type BrandChunk,
 	type ChunkManifest,
 	type ChunkManifestEntry,
 	type EntitiesChunk,
+	encodeChunks,
 } from "@/lib/brand-data/chunks";
 import { brandVersions, buildChunk, nextSyncInSeconds } from "@/lib/brand-data/chunks.server";
 import { authorizedBrand } from "@/routes/api/brand-data/-authorize";
@@ -17,18 +19,22 @@ const MAX_CHUNKS_PER_REQUEST = 12;
 const MAX_CACHED_BYTES = 64 * 1024 * 1024;
 const MAX_CONCURRENT_BUILDS = 3;
 
-const cached = new Map<string, string>();
+const cached = new Map<string, BrandChunk>();
 let cachedBytes = 0;
-const building = new Map<string, Promise<string>>();
+const building = new Map<string, Promise<BrandChunk>>();
 
-function remember(key: string, json: string) {
-	if (json.length > MAX_CACHED_BYTES / 8) return;
-	cached.set(key, json);
-	cachedBytes += json.length;
+const sizeOf = (chunk: BrandChunk) =>
+	Object.values(chunk.tables ?? {}).reduce((sum, bytes) => sum + bytes.byteLength, 0) || 1024;
+
+function remember(key: string, chunk: BrandChunk) {
+	const size = sizeOf(chunk);
+	if (size > MAX_CACHED_BYTES / 8) return;
+	cached.set(key, chunk);
+	cachedBytes += size;
 	for (const [oldest, value] of cached) {
 		if (cachedBytes <= MAX_CACHED_BYTES) break;
 		cached.delete(oldest);
-		cachedBytes -= value.length;
+		cachedBytes -= sizeOf(value);
 	}
 }
 
@@ -46,8 +52,8 @@ async function limited<T>(task: () => Promise<T>): Promise<T> {
 	}
 }
 
-/** A chunk as JSON, built once per version and shared by every request for it. */
-function chunkJson(brandId: string, entry: ChunkManifestEntry, entities: EntitiesChunk): Promise<string> {
+/** A chunk, built once per version and shared by every request for it. */
+function chunkFor(brandId: string, entry: ChunkManifestEntry, entities: EntitiesChunk): Promise<BrandChunk> {
 	const key = `${brandId}|${entry.id}|${entry.version}`;
 	const hit = cached.get(key);
 	if (hit !== undefined) {
@@ -58,9 +64,8 @@ function chunkJson(brandId: string, entry: ChunkManifestEntry, entities: Entitie
 	let pending = building.get(key);
 	if (!pending) {
 		pending = limited(() => buildChunk(brandId, entry, entities)).then((chunk) => {
-			const json = JSON.stringify(chunk);
-			remember(key, json);
-			return json;
+			remember(key, chunk);
+			return chunk;
 		});
 		building.set(key, pending);
 		void pending.finally(() => building.delete(key)).catch(() => {});
@@ -68,7 +73,7 @@ function chunkJson(brandId: string, entry: ChunkManifestEntry, entities: Entitie
 	return pending;
 }
 
-async function compressed(body: string, acceptEncoding: string | null) {
+async function compressed(body: Uint8Array, acceptEncoding: string | null) {
 	if (acceptEncoding?.includes("br")) {
 		return { encoding: "br", bytes: await brotli(body, { params: { [constants.BROTLI_PARAM_QUALITY]: 5 } }) };
 	}
@@ -93,14 +98,15 @@ export const Route = createFileRoute("/api/brand-data/$brandId/")({
 				const ids = new Set(requested.split(",").slice(0, MAX_CHUNKS_PER_REQUEST));
 				const { chunks, entities } = await brandVersions(params.brandId);
 				const parts = await Promise.all(
-					chunks.filter((entry) => ids.has(entry.id)).map((entry) => chunkJson(params.brandId, entry, entities)),
+					chunks.filter((entry) => ids.has(entry.id)).map((entry) => chunkFor(params.brandId, entry, entities)),
 				);
-				const { encoding, bytes } = await compressed(
-					`{"chunks":[${parts.join(",")}]}`,
-					request.headers.get("accept-encoding"),
-				);
+				const { encoding, bytes } = await compressed(encodeChunks(parts), request.headers.get("accept-encoding"));
 				return new Response(new Uint8Array(bytes), {
-					headers: { "Content-Type": "application/json", "Content-Encoding": encoding, "Cache-Control": "no-store" },
+					headers: {
+						"Content-Type": "application/octet-stream",
+						"Content-Encoding": encoding,
+						"Cache-Control": "no-store",
+					},
 				});
 			},
 		},

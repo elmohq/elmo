@@ -1,4 +1,5 @@
 /** Server functions for prompt operations. */
+
 import { createServerFn } from "@tanstack/react-start";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
@@ -9,6 +10,7 @@ import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { pgReader } from "@/lib/analytics/pg-reader";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
@@ -20,7 +22,7 @@ import {
 	getResponseSentimentCounts,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
-import { type CitationUrlStats, getCitationUrlStats, getCompetitorTotals, getMentionTotals } from "@/lib/rollup-read";
+import type { CitationUrlStats } from "@/lib/rollup-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
@@ -182,8 +184,8 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			promptIds: [data.promptId],
 		};
 		const [mentionTotals, competitorMentions, brandResult, allCompetitors] = await Promise.all([
-			getMentionTotals(scope),
-			getCompetitorTotals(scope),
+			pgReader.getMentionTotals(scope),
+			pgReader.getCompetitorTotals(scope),
 			db.select({ name: brands.name }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
 			db.select({ name: competitors.name }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
@@ -227,7 +229,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
 		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
 
-		const urlStats = await getCitationUrlStats(scope);
+		const urlStats = await pgReader.getCitationUrlStats(scope);
 
 		const citationStats = computePromptCitationStats({
 			urlStats,

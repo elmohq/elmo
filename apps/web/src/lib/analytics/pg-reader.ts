@@ -2,44 +2,11 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { asc, desc, eq } from "drizzle-orm";
 import type { AnalyticsBrandRow, AnalyticsCompetitorRow, AnalyticsPromptRow } from "@/lib/analytics/entities";
+import { queryPg } from "@/lib/analytics/pg-query";
 import type { AnalyticsReader } from "@/lib/analytics/reader";
-
-import {
-	getCitationDomainPage,
-	getCitationFlowRows,
-	getCitationSummary,
-	getCitationTotals,
-	getCitationUrlPage,
-	getDomainPromptCounts,
-} from "@/lib/citation-read";
+import { citationReads } from "@/lib/citation-read";
 import { getSentimentQuotes } from "@/lib/postgres-read";
-import {
-	getBrandEarliestRunDate,
-	getCitationsCountByModel,
-	getCitationTotal,
-	getCitationUrlStats,
-	getCompetitorTotals,
-	getDailyAssessments,
-	getFanoutBreakdown,
-	getFanoutModelTotals,
-	getFanoutPromptTotals,
-	getFanoutQueryPage,
-	getFanoutQueryTotals,
-	getMentionTotals,
-	getPerPromptCitationDomains,
-	getPerPromptCitationPages,
-	getPerPromptDailyCitationClasses,
-	getPerPromptDailyCitationDomains,
-	getPerPromptDailyCompetitors,
-	getPerPromptDailyRuns,
-	getPerPromptGooglePages,
-	getPerPromptRunStats,
-	getPromptModelDailyCompetitors,
-	getPromptModelDailyRuns,
-	getPromptsFirstEvaluatedAt,
-	getRunsByModel,
-	getVisibilityDailyAggregate,
-} from "@/lib/rollup-read";
+import { rollupReads } from "@/lib/rollup-read";
 
 async function getBrandRow(brandId: string): Promise<AnalyticsBrandRow | undefined> {
 	const [row] = await db
@@ -85,35 +52,6 @@ export const pgReader: AnalyticsReader = {
 	getCompetitorRows,
 	getPromptRows,
 	getSentimentQuotes,
-	getCitationDomainPage,
-	getCitationFlowRows,
-	getCitationSummary,
-	getCitationTotals,
-	getCitationUrlPage,
-	getDomainPromptCounts,
-	getBrandEarliestRunDate,
-	getCitationsCountByModel,
-	getCitationTotal,
-	getCitationUrlStats,
-	getCompetitorTotals,
-	getDailyAssessments,
-	getFanoutBreakdown,
-	getFanoutModelTotals,
-	getFanoutPromptTotals,
-	getFanoutQueryPage,
-	getFanoutQueryTotals,
-	getMentionTotals,
-	getPerPromptCitationDomains,
-	getPerPromptCitationPages,
-	getPerPromptDailyCitationClasses,
-	getPerPromptDailyCitationDomains,
-	getPerPromptDailyCompetitors,
-	getPerPromptDailyRuns,
-	getPerPromptGooglePages,
-	getPerPromptRunStats,
-	getPromptModelDailyCompetitors,
-	getPromptModelDailyRuns,
-	getPromptsFirstEvaluatedAt,
-	getRunsByModel,
-	getVisibilityDailyAggregate,
+	...rollupReads(queryPg),
+	...citationReads(queryPg),
 };

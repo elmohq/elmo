@@ -15,6 +15,9 @@ export default defineConfig({
 	build: {
 		sourcemap: "hidden",
 	},
+	worker: {
+		format: "es",
+	},
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version),
 	},
@@ -23,6 +26,11 @@ export default defineConfig({
 		alias: {
 			"@/": new URL("./src/", import.meta.url).pathname,
 			tslib: tslibEsm,
+			// DuckDB-WASM ships a build that runs in the calling thread but doesn't export it.
+			"duckdb-wasm-blocking": new URL(
+				"./node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-blocking.mjs",
+				import.meta.url,
+			).pathname,
 		},
 	},
 	plugins: [
@@ -34,6 +42,7 @@ export default defineConfig({
 			traceDeps: ["@takumi-rs/core"],
 			exportConditions: ["import"],
 			sourcemap: true,
+			compressPublicAssets: { brotli: true, gzip: true },
 			alias: {
 				tslib: tslibEsm,
 			},

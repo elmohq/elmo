@@ -1,10 +1,9 @@
 import { CONTENT_PUBLISHER_CATEGORIES } from "@workspace/lib/citations/domain-categories";
 import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/citations/page-classification";
 import { type SQL, sql } from "drizzle-orm";
-import { type AnalyticsScope, queryPg, scopeFilter } from "@/lib/analytics-sql";
+import { type AnalyticsScope, type SqlQuery, scopeFilter } from "@/lib/analytics-sql";
 import type { CitationFlowRow } from "@/lib/citation-flow";
 import { sharedRead } from "@/lib/shared-read";
-
 export type CitationOwner = "brand" | "competitor";
 
 export interface OwnedDomains {
@@ -106,7 +105,7 @@ export function ownersCte(owned: OwnedDomains, domains: SQL): SQL {
 			FROM (${domains}) d
 			CROSS JOIN LATERAL (
 				SELECT array_to_string(labels[i:], '.') AS suffix
-				FROM (SELECT string_to_array(d.domain, '.') AS labels) l, generate_series(1, cardinality(l.labels)) i
+				FROM (SELECT string_to_array(d.domain, '.') AS labels) l, generate_series(1, cardinality(l.labels)) AS g(i)
 			) s
 			JOIN owned o ON o.suffix = s.suffix
 			ORDER BY d.domain, o.precedence
@@ -117,9 +116,11 @@ const publisherCategories = textList([...CONTENT_PUBLISHER_CATEGORIES]);
 
 /** Must answer what `resolveOwnedPageClass` would for the page's owner and stored class. */
 const resolvedCategory = sql`coalesce(o.owner, j.static_category)`;
+
 const resolvedPageType = sql`CASE
 	WHEN j.page_type = 'other' AND ${resolvedCategory} = ANY(${publisherCategories}) THEN 'article'
 	ELSE j.page_type
+
 END`;
 
 /**
@@ -157,52 +158,9 @@ function urlFilter(filter: CitationUrlFilter): { pages: SQL; classes: SQL } {
 	return { pages, classes: sql`TRUE ${category} ${pageType}` };
 }
 
-async function pageDetails(
-	scope: AnalyticsScope,
-	previous: AnalyticsScope,
-	pageIds: number[],
-): Promise<Map<number, { promptCount: number; isNew: boolean }>> {
-	if (pageIds.length === 0) return new Map();
-	const rows = await queryPg<{ page_id: number; prompt_count: number; cited_before: boolean }>(sql`
-		WITH
-			current AS (
-				SELECT page_id, count(DISTINCT prompt_id)::int AS prompt_count
-				FROM rollup_citation_urls
-				WHERE ${rollupScope(scope)} AND page_id = ANY(${idList(pageIds)})
-				GROUP BY page_id
-			),
-			earlier AS (
-				SELECT DISTINCT page_id
-				FROM rollup_citation_urls
-				WHERE ${rollupScope(previous)} AND page_id = ANY(${idList(pageIds)})
-			)
-		SELECT c.page_id, c.prompt_count, e.page_id IS NOT NULL AS cited_before
-		FROM current c
-		LEFT JOIN earlier e ON e.page_id = c.page_id
-	`);
-	return new Map(rows.map((row) => [Number(row.page_id), { promptCount: row.prompt_count, isNew: !row.cited_before }]));
-}
-
-async function withPageDetails(
-	rows: (Omit<CitationUrlListRow, "prompt_count" | "is_new"> & { page_id: number })[],
-	scope: AnalyticsScope,
-	previous: AnalyticsScope,
-): Promise<CitationUrlListRow[]> {
-	const details = await pageDetails(
-		scope,
-		previous,
-		rows.map((row) => Number(row.page_id)),
-	);
-	return rows.map(({ page_id, ...row }) => ({
-		...row,
-		prompt_count: details.get(Number(page_id))?.promptCount ?? 0,
-		is_new: details.get(Number(page_id))?.isNew ?? true,
-	}));
-}
-
 /** The total is counted apart from the page, so a page past the end still reports it. */
-export async function pageOf<T>(ctes: SQL, matched: SQL, order: SQL, limit: number, offset: number) {
-	const [row] = await queryPg<{ total: number; rows: T[] }>(sql`
+export async function pageOf<T>(query: SqlQuery, ctes: SQL, matched: SQL, order: SQL, limit: number, offset: number) {
+	const [row] = await query<{ total: number; rows: T[] }>(sql`
 		WITH ${ctes}, matched AS (${matched})
 		SELECT
 			(SELECT count(*) FROM matched)::int AS total,
@@ -212,30 +170,6 @@ export async function pageOf<T>(ctes: SQL, matched: SQL, order: SQL, limit: numb
 			) AS rows
 	`);
 	return { rows: row?.rows ?? [], total: Number(row?.total ?? 0) };
-}
-
-export async function getCitationUrlPage(
-	scope: AnalyticsScope,
-	previous: AnalyticsScope,
-	owned: OwnedDomains,
-	filter: CitationUrlFilter,
-	limit: number,
-	offset: number,
-): Promise<{ rows: CitationUrlListRow[]; total: number }> {
-	const { pages, classes } = urlFilter(filter);
-	const { rows, total } = await pageOf<Omit<CitationUrlListRow, "prompt_count" | "is_new"> & { page_id: number }>(
-		classifiedPages(scope, owned, pages),
-		sql`
-			SELECT
-				page_id, url, domain, title, category, page_type, count,
-				round(position_sum::numeric / NULLIF(count, 0), 1)::float AS avg_position
-			FROM pages
-			WHERE ${classes}`,
-		sql`count DESC, url COLLATE "C"`,
-		limit,
-		offset,
-	);
-	return { rows: await withPageDetails(rows, scope, previous), total };
 }
 
 /**
@@ -277,182 +211,264 @@ const domainOrder = sql`count DESC, top_count DESC, top_url COLLATE "C", domain 
 
 const isReddit = (domain: SQL) => sql`(${domain} = 'reddit.com' OR ${domain} LIKE '%.reddit.com')`;
 
-export async function getCitationSummary(
-	scope: AnalyticsScope,
-	previous: AnalyticsScope,
-	owned: OwnedDomains,
-	options: { minCount: number; limit: number },
-): Promise<CitationSummary> {
-	const { minCount, limit } = options;
-	const [row] = await queryPg<{
-		classes: CitationClassTotalRow[] | null;
-		unique_domains: number;
-		new_urls: (Omit<CitationUrlListRow, "prompt_count" | "is_new"> & { page_id: number })[] | null;
-		dropped_urls: DroppedCitationPageRow[] | null;
-		new_domains: CitationDomainStatsRow[] | null;
-		dropped_domains: CitationDomainStatsRow[] | null;
-		reddit_pages: RedditPageRow[] | null;
-	}>(sql`
-		WITH
-			${classifiedPages(scope, owned)},
-			earlier AS (
+export function citationReads(query: SqlQuery) {
+	const domainStatsOwner = {};
+
+	async function pageDetails(
+		scope: AnalyticsScope,
+		previous: AnalyticsScope,
+		pageIds: number[],
+	): Promise<Map<number, { promptCount: number; isNew: boolean }>> {
+		if (pageIds.length === 0) return new Map();
+		const rows = await query<{ page_id: number; prompt_count: number; cited_before: boolean }>(sql`
+			WITH
+				current AS (
+					SELECT page_id, count(DISTINCT prompt_id)::int AS prompt_count
+					FROM rollup_citation_urls
+					WHERE ${rollupScope(scope)} AND page_id = ANY(${idList(pageIds)})
+					GROUP BY page_id
+				),
+				earlier AS (
+					SELECT DISTINCT page_id
+					FROM rollup_citation_urls
+					WHERE ${rollupScope(previous)} AND page_id = ANY(${idList(pageIds)})
+				)
+			SELECT c.page_id, c.prompt_count, e.page_id IS NOT NULL AS cited_before
+			FROM current c
+			LEFT JOIN earlier e ON e.page_id = c.page_id
+		`);
+		return new Map(
+			rows.map((row) => [Number(row.page_id), { promptCount: row.prompt_count, isNew: !row.cited_before }]),
+		);
+	}
+
+	async function withPageDetails(
+		rows: (Omit<CitationUrlListRow, "prompt_count" | "is_new"> & { page_id: number })[],
+		scope: AnalyticsScope,
+		previous: AnalyticsScope,
+	): Promise<CitationUrlListRow[]> {
+		const details = await pageDetails(
+			scope,
+			previous,
+			rows.map((row) => Number(row.page_id)),
+		);
+		return rows.map(({ page_id, ...row }) => ({
+			...row,
+			prompt_count: details.get(Number(page_id))?.promptCount ?? 0,
+			is_new: details.get(Number(page_id))?.isNew ?? true,
+		}));
+	}
+
+	async function getCitationUrlPage(
+		scope: AnalyticsScope,
+		previous: AnalyticsScope,
+		owned: OwnedDomains,
+		filter: CitationUrlFilter,
+		limit: number,
+		offset: number,
+	): Promise<{ rows: CitationUrlListRow[]; total: number }> {
+		const { pages, classes } = urlFilter(filter);
+		const { rows, total } = await pageOf<Omit<CitationUrlListRow, "prompt_count" | "is_new"> & { page_id: number }>(
+			query,
+			classifiedPages(scope, owned, pages),
+			sql`
+				SELECT
+					page_id, url, domain, title, category, page_type, count,
+					round(position_sum::numeric / NULLIF(count, 0), 1)::float AS avg_position
+				FROM pages
+				WHERE ${classes}`,
+			sql`count DESC, url COLLATE "C"`,
+			limit,
+			offset,
+		);
+		return { rows: await withPageDetails(rows, scope, previous), total };
+	}
+
+	async function getCitationSummary(
+		scope: AnalyticsScope,
+		previous: AnalyticsScope,
+		owned: OwnedDomains,
+		options: { minCount: number; limit: number },
+	): Promise<CitationSummary> {
+		const { minCount, limit } = options;
+		const [row] = await query<{
+			classes: CitationClassTotalRow[] | null;
+			unique_domains: number;
+			new_urls: (Omit<CitationUrlListRow, "prompt_count" | "is_new"> & { page_id: number })[] | null;
+			dropped_urls: DroppedCitationPageRow[] | null;
+			new_domains: CitationDomainStatsRow[] | null;
+			dropped_domains: CitationDomainStatsRow[] | null;
+			reddit_pages: RedditPageRow[] | null;
+		}>(sql`
+			WITH
+				${classifiedPages(scope, owned)},
+				earlier AS (
+					SELECT page_id, sum(citations)::int AS count
+					FROM rollup_citation_urls
+					WHERE ${rollupScope(previous)}
+					GROUP BY page_id
+				),
+				${domainStats(previous)}
+			SELECT
+				(
+					SELECT json_agg(t) FROM (
+						SELECT category, page_type, sum(count)::int AS count FROM pages GROUP BY category, page_type
+					) t
+				) AS classes,
+				(SELECT count(*) FROM domain_totals)::int AS unique_domains,
+				(
+					SELECT json_agg(n) FROM (
+						SELECT
+							p.page_id, p.url, p.domain, p.title, p.category, p.page_type, p.count,
+							round(p.position_sum::numeric / NULLIF(p.count, 0), 1)::float AS avg_position
+						FROM pages p
+						WHERE p.count >= ${minCount} AND NOT EXISTS (SELECT 1 FROM earlier e WHERE e.page_id = p.page_id)
+						ORDER BY p.count DESC, p.url COLLATE "C"
+						LIMIT ${limit}
+					) n
+				) AS new_urls,
+				(
+					SELECT json_agg(d) FROM (
+						SELECT
+							rp.url, rp.domain, rp.static_category, rp.page_type,
+							e.count AS previous_count, coalesce(c.count, 0)::int AS current_count
+						FROM earlier e
+						LEFT JOIN cited c ON c.page_id = e.page_id
+						JOIN rollup_citation_pages rp ON rp.brand_id = ${scope.brandId} AND rp.page_id = e.page_id
+						WHERE e.count >= ${minCount}
+							AND coalesce(c.count, 0) * 2 <= e.count
+							AND rp.static_category <> ${GOOGLE_STATIC_CATEGORY}
+						ORDER BY e.count DESC, rp.url COLLATE "C"
+						LIMIT ${limit}
+					) d
+				) AS dropped_urls,
+				(
+					SELECT json_agg(d) FROM (
+						SELECT domain, count, category, example_title, previous_count FROM domains
+						WHERE previous_count = 0 AND count >= ${minCount}
+						ORDER BY ${domainOrder}
+						LIMIT ${limit}
+					) d
+				) AS new_domains,
+				(
+					SELECT json_agg(d) FROM (
+						SELECT domain, count, category, example_title, previous_count FROM domains
+						WHERE count = 0 AND previous_count >= ${minCount}
+						ORDER BY previous_count DESC, domain COLLATE "C"
+						LIMIT ${limit}
+					) d
+				) AS dropped_domains,
+				(
+					SELECT json_agg(r) FROM (
+						SELECT p.url, p.title, p.count, NOT EXISTS (SELECT 1 FROM earlier e WHERE e.page_id = p.page_id) AS is_new
+						FROM pages p
+						WHERE ${isReddit(sql`p.domain`)}
+						ORDER BY p.count DESC, p.url COLLATE "C"
+					) r
+				) AS reddit_pages
+		`);
+		return {
+			classes: row?.classes ?? [],
+			uniqueDomains: Number(row?.unique_domains ?? 0),
+			newUrls: await withPageDetails(row?.new_urls ?? [], scope, previous),
+			droppedUrls: row?.dropped_urls ?? [],
+			newDomains: row?.new_domains ?? [],
+			droppedDomains: row?.dropped_domains ?? [],
+			redditPages: row?.reddit_pages ?? [],
+		};
+	}
+
+	/** Every domain the scope cites, in list order; shared by the cards that page through them. */
+	function getCitationDomainStats(
+		scope: AnalyticsScope,
+		previous: AnalyticsScope,
+		owned: OwnedDomains,
+	): Promise<CitationDomainStatsRow[]> {
+		return sharedRead(domainStatsOwner, `citation-domains:${JSON.stringify([scope, previous, owned])}`, () =>
+			query<CitationDomainStatsRow>(sql`
+				WITH ${classifiedPages(scope, owned)}, ${domainStats(previous)}
+				SELECT domain, count, category, example_title, previous_count
+				FROM domains
+				WHERE count > 0
+				ORDER BY ${domainOrder}
+			`),
+		);
+	}
+
+	async function getCitationDomainPage(
+		scope: AnalyticsScope,
+		previous: AnalyticsScope,
+		owned: OwnedDomains,
+		filter: { category?: string; search?: string },
+		limit: number,
+		offset: number,
+	): Promise<{ rows: CitationDomainStatsRow[]; total: number }> {
+		const search = filter.search?.trim().toLowerCase();
+		const matched = (await getCitationDomainStats(scope, previous, owned)).filter(
+			(row) =>
+				(!search || row.domain.toLowerCase().includes(search)) &&
+				(!filter.category || row.category === filter.category),
+		);
+		return { rows: matched.slice(offset, offset + limit), total: matched.length };
+	}
+
+	async function getCitationTotals(
+		scope: AnalyticsScope,
+	): Promise<{ citations: number; uniqueDomains: number; uniqueUrls: number }> {
+		const [row] = await query<{ citations: number; unique_domains: number; unique_urls: number }>(sql`
+			WITH cited AS (
 				SELECT page_id, sum(citations)::int AS count
 				FROM rollup_citation_urls
-				WHERE ${rollupScope(previous)}
+				WHERE ${rollupScope(scope)}
 				GROUP BY page_id
-			),
-			${domainStats(previous)}
-		SELECT
-			(
-				SELECT json_agg(t) FROM (
-					SELECT category, page_type, sum(count)::int AS count FROM pages GROUP BY category, page_type
-				) t
-			) AS classes,
-			(SELECT count(*) FROM domain_totals)::int AS unique_domains,
-			(
-				SELECT json_agg(n) FROM (
-					SELECT
-						p.page_id, p.url, p.domain, p.title, p.category, p.page_type, p.count,
-						round(p.position_sum::numeric / NULLIF(p.count, 0), 1)::float AS avg_position
-					FROM pages p
-					WHERE p.count >= ${minCount} AND NOT EXISTS (SELECT 1 FROM earlier e WHERE e.page_id = p.page_id)
-					ORDER BY p.count DESC, p.url COLLATE "C"
-					LIMIT ${limit}
-				) n
-			) AS new_urls,
-			(
-				SELECT json_agg(d) FROM (
-					SELECT
-						rp.url, rp.domain, rp.static_category, rp.page_type,
-						e.count AS previous_count, coalesce(c.count, 0)::int AS current_count
-					FROM earlier e
-					LEFT JOIN cited c ON c.page_id = e.page_id
-					JOIN rollup_citation_pages rp ON rp.brand_id = ${scope.brandId} AND rp.page_id = e.page_id
-					WHERE e.count >= ${minCount}
-						AND coalesce(c.count, 0) * 2 <= e.count
-						AND rp.static_category <> ${GOOGLE_STATIC_CATEGORY}
-					ORDER BY e.count DESC, rp.url COLLATE "C"
-					LIMIT ${limit}
-				) d
-			) AS dropped_urls,
-			(
-				SELECT json_agg(d) FROM (
-					SELECT domain, count, category, example_title, previous_count FROM domains
-					WHERE previous_count = 0 AND count >= ${minCount}
-					ORDER BY ${domainOrder}
-					LIMIT ${limit}
-				) d
-			) AS new_domains,
-			(
-				SELECT json_agg(d) FROM (
-					SELECT domain, count, category, example_title, previous_count FROM domains
-					WHERE count = 0 AND previous_count >= ${minCount}
-					ORDER BY previous_count DESC, domain COLLATE "C"
-					LIMIT ${limit}
-				) d
-			) AS dropped_domains,
-			(
-				SELECT json_agg(r) FROM (
-					SELECT p.url, p.title, p.count, NOT EXISTS (SELECT 1 FROM earlier e WHERE e.page_id = p.page_id) AS is_new
-					FROM pages p
-					WHERE ${isReddit(sql`p.domain`)}
-					ORDER BY p.count DESC, p.url COLLATE "C"
-				) r
-			) AS reddit_pages
-	`);
+			)
+			SELECT
+				coalesce(sum(c.count), 0)::int AS citations,
+				count(DISTINCT p.domain)::int AS unique_domains,
+				count(*)::int AS unique_urls
+			FROM cited c
+			JOIN rollup_citation_pages p ON p.brand_id = ${scope.brandId} AND p.page_id = c.page_id
+			WHERE p.static_category <> ${GOOGLE_STATIC_CATEGORY}
+		`);
+		return {
+			citations: Number(row?.citations ?? 0),
+			uniqueDomains: Number(row?.unique_domains ?? 0),
+			uniqueUrls: Number(row?.unique_urls ?? 0),
+		};
+	}
+
+	async function getDomainPromptCounts(scope: AnalyticsScope, domains: string[]): Promise<Map<string, number>> {
+		if (domains.length === 0) return new Map();
+		const rows = await query<{ domain: string; prompt_count: number }>(sql`
+			SELECT p.domain, count(DISTINCT r.prompt_id)::int AS prompt_count
+			FROM rollup_citation_urls r
+			JOIN rollup_citation_pages p ON p.brand_id = r.brand_id AND p.page_id = r.page_id
+			WHERE ${rollupScope(scope, "r")} AND p.domain = ANY(${textList(domains)})
+			GROUP BY p.domain
+		`);
+		return new Map(rows.map((row) => [row.domain, Number(row.prompt_count)]));
+	}
+
+	// Subdomains match by suffix as `inDomainSet` does; Google surfaces are left out as everywhere else on the Citations page.
+	async function getCitationFlowRows(scope: AnalyticsScope, domain: string): Promise<CitationFlowRow[]> {
+		return query<CitationFlowRow>(sql`
+			SELECT r.model, p.url, p.title, sum(r.citations)::int AS count
+			FROM rollup_citation_urls r
+			JOIN rollup_citation_pages p ON p.brand_id = r.brand_id AND p.page_id = r.page_id
+			WHERE ${rollupScope(scope, "r")}
+				AND (r.domain = ${domain} OR right(r.domain, ${domain.length + 1}) = ${`.${domain}`})
+				AND p.static_category <> ${GOOGLE_STATIC_CATEGORY}
+			GROUP BY r.model, r.page_id, p.url, p.title
+			ORDER BY count DESC, p.url COLLATE "C", r.model COLLATE "C"
+		`);
+	}
+
 	return {
-		classes: row?.classes ?? [],
-		uniqueDomains: Number(row?.unique_domains ?? 0),
-		newUrls: await withPageDetails(row?.new_urls ?? [], scope, previous),
-		droppedUrls: row?.dropped_urls ?? [],
-		newDomains: row?.new_domains ?? [],
-		droppedDomains: row?.dropped_domains ?? [],
-		redditPages: row?.reddit_pages ?? [],
+		getCitationUrlPage,
+		getCitationSummary,
+		getCitationDomainPage,
+		getCitationTotals,
+		getDomainPromptCounts,
+		getCitationFlowRows,
 	};
-}
-
-const domainStatsOwner = {};
-
-/** Every domain the scope cites, in list order; shared by the cards that page through them. */
-function getCitationDomainStats(
-	scope: AnalyticsScope,
-	previous: AnalyticsScope,
-	owned: OwnedDomains,
-): Promise<CitationDomainStatsRow[]> {
-	return sharedRead(domainStatsOwner, `citation-domains:${JSON.stringify([scope, previous, owned])}`, () =>
-		queryPg<CitationDomainStatsRow>(sql`
-			WITH ${classifiedPages(scope, owned)}, ${domainStats(previous)}
-			SELECT domain, count, category, example_title, previous_count
-			FROM domains
-			WHERE count > 0
-			ORDER BY ${domainOrder}
-		`),
-	);
-}
-
-export async function getCitationDomainPage(
-	scope: AnalyticsScope,
-	previous: AnalyticsScope,
-	owned: OwnedDomains,
-	filter: { category?: string; search?: string },
-	limit: number,
-	offset: number,
-): Promise<{ rows: CitationDomainStatsRow[]; total: number }> {
-	const search = filter.search?.trim().toLowerCase();
-	const matched = (await getCitationDomainStats(scope, previous, owned)).filter(
-		(row) =>
-			(!search || row.domain.toLowerCase().includes(search)) && (!filter.category || row.category === filter.category),
-	);
-	return { rows: matched.slice(offset, offset + limit), total: matched.length };
-}
-
-export async function getCitationTotals(
-	scope: AnalyticsScope,
-): Promise<{ citations: number; uniqueDomains: number; uniqueUrls: number }> {
-	const [row] = await queryPg<{ citations: number; unique_domains: number; unique_urls: number }>(sql`
-		WITH cited AS (
-			SELECT page_id, sum(citations)::int AS count
-			FROM rollup_citation_urls
-			WHERE ${rollupScope(scope)}
-			GROUP BY page_id
-		)
-		SELECT
-			coalesce(sum(c.count), 0)::int AS citations,
-			count(DISTINCT p.domain)::int AS unique_domains,
-			count(*)::int AS unique_urls
-		FROM cited c
-		JOIN rollup_citation_pages p ON p.brand_id = ${scope.brandId} AND p.page_id = c.page_id
-		WHERE p.static_category <> ${GOOGLE_STATIC_CATEGORY}
-	`);
-	return {
-		citations: Number(row?.citations ?? 0),
-		uniqueDomains: Number(row?.unique_domains ?? 0),
-		uniqueUrls: Number(row?.unique_urls ?? 0),
-	};
-}
-
-export async function getDomainPromptCounts(scope: AnalyticsScope, domains: string[]): Promise<Map<string, number>> {
-	if (domains.length === 0) return new Map();
-	const rows = await queryPg<{ domain: string; prompt_count: number }>(sql`
-		SELECT p.domain, count(DISTINCT r.prompt_id)::int AS prompt_count
-		FROM rollup_citation_urls r
-		JOIN rollup_citation_pages p ON p.brand_id = r.brand_id AND p.page_id = r.page_id
-		WHERE ${rollupScope(scope, "r")} AND p.domain = ANY(${textList(domains)})
-		GROUP BY p.domain
-	`);
-	return new Map(rows.map((row) => [row.domain, Number(row.prompt_count)]));
-}
-
-// Subdomains match by suffix as `inDomainSet` does; Google surfaces are left out as everywhere else on the Citations page.
-export async function getCitationFlowRows(scope: AnalyticsScope, domain: string): Promise<CitationFlowRow[]> {
-	return queryPg<CitationFlowRow>(sql`
-		SELECT r.model, p.url, p.title, sum(r.citations)::int AS count
-		FROM rollup_citation_urls r
-		JOIN rollup_citation_pages p ON p.brand_id = r.brand_id AND p.page_id = r.page_id
-		WHERE ${rollupScope(scope, "r")}
-			AND (r.domain = ${domain} OR right(r.domain, ${domain.length + 1}) = ${`.${domain}`})
-			AND p.static_category <> ${GOOGLE_STATIC_CATEGORY}
-		GROUP BY r.model, r.page_id, p.url, p.title
-		ORDER BY count DESC, p.url COLLATE "C", r.model COLLATE "C"
-	`);
 }

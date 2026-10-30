@@ -15,7 +15,10 @@
 
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import * as pgRead from "../src/lib/rollup-read";
+import { queryPg } from "../src/lib/analytics/pg-query";
+import { rollupReads } from "../src/lib/rollup-read";
+
+const pgRead = rollupReads(queryPg);
 
 const db = drizzle(process.env.DATABASE_URL!);
 

@@ -24,16 +24,9 @@ import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schem
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { pgReader } from "@/lib/analytics/pg-reader";
 import { isBrandedPrompt } from "@/lib/prompt-tags";
-import {
-	getPerPromptCitationPages,
-	getPerPromptDailyCitationDomains,
-	getPerPromptDailyCompetitors,
-	getPerPromptRunStats,
-	getRunsByModel,
-	type PerPromptDailyCompetitorRow,
-	type PerPromptRunStats,
-} from "@/lib/rollup-read";
+import type { PerPromptDailyCompetitorRow, PerPromptRunStats } from "@/lib/rollup-read";
 import { resolveLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
@@ -269,13 +262,13 @@ async function loadDigestData(
 			.select({ name: competitors.name, domains: competitors.domains })
 			.from(competitors)
 			.where(eq(competitors.brandId, brandId)),
-		getPerPromptRunStats(s30),
-		getPerPromptDailyCompetitors(s30),
-		getPerPromptDailyCitationDomains(s30),
-		getPerPromptCitationPages(s30),
-		getPerPromptRunStats(s7),
-		getPerPromptDailyCompetitors(s7),
-		getRunsByModel(s30),
+		pgReader.getPerPromptRunStats(s30),
+		pgReader.getPerPromptDailyCompetitors(s30),
+		pgReader.getPerPromptDailyCitationDomains(s30),
+		pgReader.getPerPromptCitationPages(s30),
+		pgReader.getPerPromptRunStats(s7),
+		pgReader.getPerPromptDailyCompetitors(s7),
+		pgReader.getRunsByModel(s30),
 	]);
 	return { brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel };
 }

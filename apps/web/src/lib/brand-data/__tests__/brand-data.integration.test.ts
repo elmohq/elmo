@@ -5,13 +5,16 @@ import { bucketEnd, bucketStart, rebuildRange, resolveUnpagedCitations } from "@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pgReader } from "@/lib/analytics/pg-reader";
-import { assembleBundle } from "@/lib/brand-data/chunks";
+import type { AnalyticsReader } from "@/lib/analytics/reader";
+import { decodeChunks, type EntitiesChunk, encodeChunks } from "@/lib/brand-data/chunks";
 import { brandVersions, buildChunk } from "@/lib/brand-data/chunks.server";
-import { createMemoryReader } from "@/lib/brand-data/memory-reader";
+import { applyChunk, compactRollups, joinPages } from "@/lib/brand-data/duck/engine";
+import { duckQuery } from "@/lib/brand-data/duck/query";
+import { createDuckReader } from "@/lib/brand-data/duck/reader";
 import { loadQuoteTexts } from "@/lib/brand-data/quote-texts.server";
-import { decodeBrandBundle, setBrandStore } from "@/lib/brand-data/store";
 import { computations } from "@/lib/brand-data/worker/computations";
 import type { BrandComputation } from "@/lib/brand-data/worker/protocol";
+import { openTestDuck } from "@/test/duck";
 import {
 	createBrand,
 	createCitation,
@@ -24,7 +27,7 @@ import {
 
 let brandId: string;
 const promptIds: Record<string, string> = {};
-const memoryReader = createMemoryReader(loadQuoteTexts);
+let duckReader: AnalyticsReader;
 
 const assessed = (
 	text: string,
@@ -103,15 +106,26 @@ async function createFixtureRun(
 	for (const [i, [url, title]] of cited.entries()) await createCitation(run, url, { title, index: i + 1 });
 }
 
+/** Syncs the brand as the browser does: every chunk, through the wire format, into DuckDB. */
 async function syncLocalCopy() {
 	const { chunks, entities } = await brandVersions(brandId);
-	const bundle = assembleBundle(
-		brandId,
-		await Promise.all(chunks.map((entry) => buildChunk(brandId, entry, entities))),
-	);
-	if (!bundle) throw new Error("No entities chunk");
+	const built = await Promise.all(chunks.map((entry) => buildChunk(brandId, entry, entities)));
+	const db = await openTestDuck();
+	const writer = db.connect();
+	let synced: EntitiesChunk | undefined;
+	for (const chunk of decodeChunks(encodeChunks(built))) {
+		if (chunk.entities) synced = chunk.entities;
+		await applyChunk(writer, brandId, chunk);
+	}
+	await joinPages(writer);
+	await compactRollups(writer);
 	const ids = new Set(chunks.map((entry) => entry.id));
-	setBrandStore(decodeBrandBundle(bundle, { available: ids, loaded: ids }));
+	const conn = db.connect();
+	duckReader = createDuckReader(
+		() => duckQuery(conn),
+		{ entities: () => synced, coverage: () => ({ available: ids, loaded: ids }) },
+		loadQuoteTexts,
+	);
 }
 
 beforeAll(async () => {
@@ -185,7 +199,7 @@ describe("a brand's local copy", () => {
 	it.each(Object.keys(computations) as BrandComputation[])("computes %s exactly as the server does", async (name) => {
 		for (const input of inputs(name)) {
 			const server = await computations[name](pgReader, input as never);
-			const local = await computations[name](memoryReader, input as never);
+			const local = await computations[name](duckReader, input as never);
 			expect(local, JSON.stringify(input)).toEqual(server);
 		}
 	});

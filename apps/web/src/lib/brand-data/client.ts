@@ -88,8 +88,9 @@ export function computeBrandData<K extends BrandComputation>(
 /** Removes every brand's synced copy from this browser, as when signing out. */
 export async function clearBrandData() {
 	stopWorker(new Error("Signed out"));
-	const databases = await indexedDB.databases?.().catch(() => []);
-	for (const { name } of databases ?? []) {
-		if (name?.startsWith(BRAND_DATA_DB_PREFIX)) indexedDB.deleteDatabase(name);
+	const root = await navigator.storage?.getDirectory().catch(() => undefined);
+	if (!root) return;
+	for await (const name of (root as unknown as { keys(): AsyncIterable<string> }).keys()) {
+		if (name.startsWith(BRAND_DATA_DB_PREFIX)) await root.removeEntry(name).catch(() => {});
 	}
 }
