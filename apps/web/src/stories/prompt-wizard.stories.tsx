@@ -222,10 +222,6 @@ export const Review: StoryObj = {
 	},
 };
 
-/**
- * Adding a domain the website already covers. `acme.com` is tracked, so the input
- * turns down `blog.acme.com` rather than taking a chip that would change nothing.
- */
 export const ReviewRejectsCoveredDomain: StoryObj = {
 	render: () => {
 		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });

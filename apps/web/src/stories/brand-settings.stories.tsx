@@ -1,12 +1,3 @@
-/**
- * Stories for the brand settings page — the name, slug, website, additional
- * domains, and aliases a brand is tracked under.
- *
- * The route's component is rendered directly via `Route.options.component`; the
- * brand comes from the `@/hooks/use-brands` mock and the organization from the
- * router mock's loader data.
- */
-
 import type { Meta, StoryObj } from "@storybook/react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
@@ -51,7 +42,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Every field populated from the stored brand. */
 export const Default: Story = {
 	render: () => {
 		setMockBrand(MOCK_BRAND);
@@ -59,7 +49,6 @@ export const Default: Story = {
 	},
 };
 
-/** Opens the domains input so the popover and its chips are visible in the frame. */
 async function openDomains(canvasElement: HTMLElement) {
 	const canvas = within(canvasElement);
 	await canvas.findByText("Additional Domains");
@@ -69,10 +58,6 @@ async function openDomains(canvasElement: HTMLElement) {
 	return within(canvasElement.ownerDocument.body);
 }
 
-/**
- * Adding a domain the website already covers. `acme.com` is the website, so the
- * input turns down `blog.acme.com` rather than taking a chip that does nothing.
- */
 export const RejectsCoveredDomain: Story = {
 	render: () => {
 		setMockBrand(MOCK_BRAND);
@@ -89,7 +74,6 @@ export const RejectsCoveredDomain: Story = {
 	},
 };
 
-/** The website itself is already tracked, so it is turned down by name. */
 export const RejectsTheWebsite: Story = {
 	render: () => {
 		setMockBrand(MOCK_BRAND);
