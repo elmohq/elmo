@@ -1,6 +1,5 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { extractTextContent } from "@workspace/lib/text-extraction";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -19,18 +18,21 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
-import { ResponseMarkdown } from "@/components/response-markdown";
+import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
+import { SentimentFilterCard } from "@/components/sentiment-filter";
 import { SiteIcon } from "@/components/site-icon";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { useBrandParams } from "@/hooks/use-route-params";
+import { type SentimentSearch, useSentimentSearch, validateSentimentSearch } from "@/hooks/use-sentiment-search";
 import { useSiteIcons } from "@/hooks/use-site-icons";
-import { getDaysFromLookback } from "@/lib/chart-utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
 import { PROMPT_DETAIL_TABS, type PromptDetailTab } from "@/lib/prompt-detail-tabs";
 import { pageHead } from "@/lib/route-head";
+import type { SentimentFilterCounts } from "@/lib/sentiment";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 import { getPromptMetadataFn } from "@/server/prompts";
@@ -70,8 +72,9 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/prompts
 	staticData: { crumb: "Prompt History" },
 	// `tab` is part of the route's search schema so links can target a specific
 	// tab (e.g. View Details → web-queries). Absent means the default tab.
-	validateSearch: (search: Record<string, unknown>): { tab?: PromptDetailTab } => ({
+	validateSearch: (search: Record<string, unknown>): { tab?: PromptDetailTab } & SentimentSearch => ({
 		tab: PROMPT_DETAIL_TABS.includes(search.tab as PromptDetailTab) ? (search.tab as PromptDetailTab) : undefined,
+		...validateSentimentSearch(search),
 	}),
 	head: pageHead({ title: "Prompt Details", description: "Detailed analysis of a tracked prompt's performance." }),
 	component: PromptHistoryPage,
@@ -195,10 +198,9 @@ function PromptHeader({
 
 function PromptHistoryPage() {
 	const { promptId } = Route.useParams();
-	const { brandId } = Route.useRouteContext();
+	const brandId = useBrandId();
 
 	const lookback = useLookbackPeriod();
-	const days = getDaysFromLookback(lookback);
 
 	const activeTab = Route.useSearch({ select: (s) => s.tab ?? "mentions" });
 	const navigate = Route.useNavigate();
@@ -213,6 +215,7 @@ function PromptHistoryPage() {
 	);
 	const [visitedTabs, setVisitedTabs] = useState<Set<PromptDetailTab>>(() => new Set([activeTab]));
 	const [currentPage, setCurrentPage] = useState(1);
+	const sentimentSearch = useSentimentSearch(() => setCurrentPage(1));
 	const { promptMeta, isMetaLoading } = usePromptMetadata(brandId, promptId);
 
 	const { data: brand } = useBrand(brandId);
@@ -224,7 +227,7 @@ function PromptHistoryPage() {
 		data: promptStats,
 		isLoading: isStatsLoading,
 		error: statsError,
-	} = usePromptStats(shouldFetchStats ? promptId : "", { days });
+	} = usePromptStats(shouldFetchStats ? promptId : "", { lookback });
 	const aggregations = promptStats?.aggregations;
 
 	const shouldFetchRuns = visitedTabs.has("responses");
@@ -235,7 +238,9 @@ function PromptHistoryPage() {
 	} = usePromptRunsOnly(shouldFetchRuns ? promptId : "", {
 		page: currentPage,
 		limit: RUNS_PER_PAGE,
-		days,
+		lookback,
+		sentiment: sentimentSearch.sentiment,
+		sort: sentimentSearch.sort,
 	});
 
 	const { runs, total: totalRunCount, totalPages } = runsPage(runsData);
@@ -360,6 +365,8 @@ function PromptHistoryPage() {
 					<ResponsesTab
 						runs={runs}
 						totalRuns={totalRunCount}
+						sentimentFilterCounts={runsData?.sentimentFilterCounts}
+						sentimentSearch={sentimentSearch}
 						isLoading={isRunsLoading}
 						currentPage={currentPage}
 						onPageChange={handlePageChange}
@@ -585,6 +592,8 @@ function CitationsTab({
 function ResponsesTab({
 	runs,
 	totalRuns,
+	sentimentFilterCounts,
+	sentimentSearch,
 	isLoading,
 	currentPage,
 	onPageChange,
@@ -593,49 +602,17 @@ function ResponsesTab({
 }: {
 	runs: PromptRun[];
 	totalRuns: number;
+	sentimentFilterCounts?: SentimentFilterCounts;
+	sentimentSearch: ReturnType<typeof useSentimentSearch>;
 	isLoading: boolean;
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	brandName?: string;
 	domainFor: (name: string) => string | undefined;
 }) {
-	const formatDate = (value: Date | string) => new Date(value).toLocaleString(undefined, { timeZoneName: "short" });
+	if (isLoading && runs.length === 0 && !sentimentFilterCounts) return <ResponseCardSkeletons count={3} />;
 
-	const formatRawOutput = (rawOutput: any) =>
-		typeof rawOutput === "string" ? rawOutput : JSON.stringify(rawOutput, null, 2);
-
-	if (isLoading && runs.length === 0) {
-		return (
-			<div className="space-y-4">
-				{skeletonRows(3).map((row) => (
-					<Card key={row}>
-						<CardHeader className="pb-0 gap-y-0">
-							<div className="grid grid-cols-3 gap-x-4">
-								<div>
-									<Skeleton className="h-4 w-20 mb-1" />
-									<Skeleton className="h-4 w-16" />
-								</div>
-								<div>
-									<Skeleton className="h-4 w-16 mb-1" />
-									<Skeleton className="h-4 w-24" />
-								</div>
-								<div>
-									<Skeleton className="h-4 w-20 mb-1" />
-									<Skeleton className="h-4 w-32" />
-								</div>
-							</div>
-						</CardHeader>
-						<Separator />
-						<CardContent className="space-y-4">
-							<Skeleton className="h-20 w-full" />
-						</CardContent>
-					</Card>
-				))}
-			</div>
-		);
-	}
-
-	if (runs.length === 0) {
+	if (!sentimentFilterCounts || sentimentFilterCounts.all === 0) {
 		return (
 			<div className="py-12 text-center text-muted-foreground text-sm">No prompt runs found for this time period.</div>
 		);
@@ -645,77 +622,20 @@ function ResponsesTab({
 		<div className="space-y-4">
 			<h3 className="text-base font-medium">Individual Prompt Runs</h3>
 
+			<SentimentFilterCard
+				counts={sentimentFilterCounts}
+				value={sentimentSearch.sentiment}
+				onChange={sentimentSearch.setSentiment}
+				sort={sentimentSearch.sort}
+				onSortChange={sentimentSearch.setSort}
+			/>
+
+			{runs.length === 0 && (
+				<div className="py-12 text-center text-muted-foreground text-sm">No runs match this filter.</div>
+			)}
+
 			{runs.map((run) => (
-				<Card key={run.id}>
-					<CardHeader className="pb-0 gap-y-0">
-						<div className="grid grid-cols-3 gap-x-4 text-sm">
-							<div>
-								<span className="text-muted-foreground block text-xs mb-0.5">Model</span>
-								<span>{getModelDisplayName(run.model)}</span>
-							</div>
-							<div>
-								<span className="text-muted-foreground block text-xs mb-0.5">Version</span>
-								<span>{run.version}</span>
-							</div>
-							<div>
-								<span className="text-muted-foreground block text-xs mb-0.5">Evaluated</span>
-								<span>{formatDate(run.createdAt)}</span>
-							</div>
-						</div>
-					</CardHeader>
-					<Separator />
-					<CardContent className="space-y-5">
-						{run.webQueries && run.webQueries.length > 0 && (
-							<div>
-								<span className="text-xs text-muted-foreground block mb-1.5">Web Queries</span>
-								<div className="flex flex-wrap gap-1.5">
-									{[...new Set<string>(run.webQueries)].map((query) => (
-										<Badge key={query} variant="outline" className="text-xs font-normal">
-											{query}
-										</Badge>
-									))}
-								</div>
-							</div>
-						)}
-
-						<div>
-							<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
-							<div className="flex flex-wrap gap-1.5">
-								{run.brandMentioned && brandName && (
-									<Badge className="text-xs font-normal">
-										<SiteIcon domain={domainFor(brandName)} size="xs" />
-										{brandName}
-									</Badge>
-								)}
-								{[...new Set<string>(run.competitorsMentioned ?? [])].map((competitor) => (
-									<Badge key={competitor} variant="outline" className="text-xs font-normal">
-										<SiteIcon domain={domainFor(competitor)} size="xs" />
-										{competitor}
-									</Badge>
-								))}
-								{!run.brandMentioned && (!run.competitorsMentioned || run.competitorsMentioned.length === 0) && (
-									<span className="text-xs text-muted-foreground">None</span>
-								)}
-							</div>
-						</div>
-
-						<div>
-							<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
-							<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
-								<ResponseMarkdown>{extractTextContent(run.rawOutput, run.provider ?? run.model)}</ResponseMarkdown>
-							</div>
-						</div>
-
-						<div>
-							<span className="text-xs text-muted-foreground block mb-1.5">Raw Output</span>
-							<div className="rounded-md border bg-muted/20 p-4 max-h-64 overflow-auto">
-								<pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap">
-									{formatRawOutput(run.rawOutput)}
-								</pre>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
+				<ResponseCard key={run.id} run={run} text={run.textContent} brandName={brandName} domainFor={domainFor} />
 			))}
 
 			<ListPagination

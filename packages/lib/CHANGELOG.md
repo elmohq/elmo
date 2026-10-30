@@ -1,5 +1,164 @@
 # @workspace/lib
 
+## 0.7.7
+
+### Patch Changes
+
+- 0982452: Additional citations and sentiment page speed optimizations.
+- @workspace/config@0.7.7
+
+## 0.7.6
+
+### Patch Changes
+
+- dfb4d72: Fixed sign-in and API requests failing until a server restart after a brief database connection error at startup.
+- 925390b: The citations page loads faster for long date ranges.
+- 98fc42e: Dropped unused database indexes, reducing disk usage and speeding up writes for runs and citations.
+- @workspace/config@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/config@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/config@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- cacc8f9: Show ChatGPT's web search queries again for ChatGPT tracked through Cloro.
+- @workspace/config@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/config@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/config@0.7.1
+
+## 0.7.0
+
+### Minor Changes
+
+- f5b579c: **Jev (TypeSafe) is now a required dependency of Elmo: the worker won't start without `TYPESAFE_API_KEY`.** Jev judges mentions and sentiment, which is far more accurate toward your brand and each competitor. It costs very roughly $0.15–0.35 per 1,000 answers that name a tracked company, more for long answers that name many. Upgrading re-judges the last 90 days of answers once, about three months' worth of that cost; set `REPROCESS_DAYS=all` before upgrading to re-judge your whole history instead.
+
+### Patch Changes
+
+- 0ac774b: Read the text of older ChatGPT and Claude responses recorded before Elmo stored which provider fetched them.
+- @workspace/config@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- @workspace/config@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/config@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- 1334ce8: Brand onboarding and the opportunities report now use `gpt-6-luna` (OpenAI) and `claude-sonnet-5-5` (Anthropic and OpenRouter).
+- @workspace/config@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/config@0.5.1
+
+## 0.5.0
+
+### Minor Changes
+
+- f1daf53: All stats in the UI and API are significantly faster. This is a large migration and there may be a delay for stats to appear initially as the worker backfills.
+
+### Patch Changes
+
+- a55f182: Editing a brand's name, aliases or competitors now updates mentions in past responses too, not only in new ones.
+- @workspace/config@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/config@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- 4ec5ac9: Prevent some types of deployments from failing while generating the auth schema.
+- 9957eef: Fixed brands and competitors with a blank alias or domain being counted as mentioned in every answer.
+- @workspace/config@0.4.5
+
+## 0.4.4
+
+### Patch Changes
+
+- b48f545: Elmo's startup check now asks for a direct LLM key when onboarding needs one, counts provider keys saved in the app, and no longer requires the whitelabel parent-app link.
+- 1980c7d: Auth rate limiting is now counted in the database, so the limits on sign-in and password reset hold across restarts and multiple app instances.
+- 280e5f3: Prompt runs on the OpenAI API provider now store the full API response, so the searches behind an answer stay readable.
+- 76ec134: Reports accept other names a brand goes by, and count a mention of any of them as a brand mention.
+- Updated dependencies [b48f545]
+  - @workspace/config@0.4.4
+
+## 0.4.3
+
+### Patch Changes
+
+- 10bc2f0: Google AI Overview runs through SearchApi no longer fail when Google loads the overview separately from the result page.
+- @workspace/config@0.4.3
+
+## 0.4.2
+
+### Patch Changes
+
+- @workspace/config@0.4.2
+
+## 0.4.1
+
+### Patch Changes
+
+- e2543e8: Fix MCP sign-in for clients that use a client ID metadata document.
+- @workspace/config@0.4.1
+
+## 0.4.0
+
+### Minor Changes
+
+- c9142f7: Elmo now serves a full external API and an MCP server. `/api/v1` covers brands, prompts, competitors, reports, analytics, models, tags, and opportunities. `/api/mcp` connects Claude Code, Codex, Cursor, OpenCode, and VS Code, either by signing in from the client or with an API key. Keys belong to an organization and are issued read-only or read-write from Settings, which now also has API and MCP pages describing your own deployment.
+
+### Patch Changes
+
+- f6e90d9: Fixed BrightData scraping errors being stored as a prompt run's answer; those runs now fail.
+- 99f537c: Answers scraped through Cloro now keep their formatting and inline citations.
+- aa8c80d: Prompt runs on the OpenAI API provider now correctly show the search queries the model ran.
+- @workspace/config@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

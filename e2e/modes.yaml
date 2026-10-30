@@ -95,7 +95,6 @@ services:
     environment:
       DATABASE_URL: *cloud-database
       DEPLOYMENT_MODE: cloud
-      VITE_DEPLOYMENT_MODE: cloud
       APP_URL: http://localhost:1516
       VITE_APP_URL: http://localhost:1516
       # Admits the E2E user plus the two domains e2e/tests/cloud uses. The
@@ -126,7 +125,6 @@ services:
     environment:
       DATABASE_URL: *whitelabel-database
       DEPLOYMENT_MODE: whitelabel
-      VITE_DEPLOYMENT_MODE: whitelabel
       APP_URL: http://localhost:1517
       VITE_APP_URL: http://localhost:1517
       VITE_APP_NAME: Acme AI Search
@@ -149,6 +147,5 @@ services:
         condition: service_completed_successfully
     environment:
       DEPLOYMENT_MODE: demo
-      VITE_DEPLOYMENT_MODE: demo
       APP_URL: http://localhost:1518
       VITE_APP_URL: http://localhost:1518

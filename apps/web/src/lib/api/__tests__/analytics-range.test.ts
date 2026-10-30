@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { parseAnalyticsWindow, parsePaging, publicRange } from "../analytics-range";
+import { analyticsListPaging, parseAnalyticsWindow, parsePaging, publicRange } from "../analytics-range";
 
 const WINDOW = "start=2026-01-01T00:00:00Z&end=2026-02-01T00:00:00Z";
 
 describe("analytics API query parsing", () => {
+	it("pages the analytics lists 1000 at a time by default, clamping out-of-range and unreadable values", () => {
+		const paging = (query: string) => analyticsListPaging(new URLSearchParams(query));
+		expect(paging("")).toEqual({ page: 1, limit: 1000, offset: 0 });
+		expect(paging("page=3&limit=50")).toEqual({ page: 3, limit: 50, offset: 100 });
+		expect(paging("limit=5000")).toMatchObject({ limit: 1000 });
+		expect(paging("page=x&limit=abc")).toEqual({ page: 1, limit: 1000, offset: 0 });
+	});
+
 	it("rejects malformed pagination instead of silently coercing it", () => {
 		expect(() => parsePaging(new URL("https://example.com?page=abc"))).toThrow("page must be a positive integer");
 		expect(() => parsePaging(new URL("https://example.com?limit=101"))).toThrow(
@@ -34,6 +42,21 @@ describe("analytics API query parsing", () => {
 		const empty = "start=2026-01-01T00:00:00Z&end=2026-01-01T00:00:00Z";
 		expect(() => parseAnalyticsWindow(new URL(`https://example.com?${backwards}`))).toThrow("start must be before end");
 		expect(() => parseAnalyticsWindow(new URL(`https://example.com?${empty}`))).toThrow("start must be before end");
+	});
+
+	it.each<[string, string, string, string]>([
+		["mid-bucket bounds", "2026-01-01T00:17:33Z", "2026-02-01T10:59:59.999Z", "2026-01-01T00:15:00.000Z"],
+		["the last quarter of the hour", "2026-01-01T00:47:00Z", "2026-02-01T10:59:59.999Z", "2026-01-01T00:45:00.000Z"],
+	])("floors %s down to the quarter hour the analytics are bucketed by", (_label, start, end, expectedStart) => {
+		const window = parseAnalyticsWindow(new URL(`https://example.com?start=${start}&end=${end}`));
+
+		expect(publicRange(window)).toEqual({ start: expectedStart, end: "2026-02-01T10:45:00.000Z" });
+	});
+
+	it("refuses a window that alignment collapses to nothing", () => {
+		expect(() =>
+			parseAnalyticsWindow(new URL("https://example.com?start=2026-01-01T10:05:00Z&end=2026-01-01T10:10:00Z")),
+		).toThrow("same quarter-hour bucket");
 	});
 
 	it("keeps the instant the caller sent, normalized to UTC", () => {

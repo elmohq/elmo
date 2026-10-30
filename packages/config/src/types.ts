@@ -86,6 +86,7 @@ export interface ClientConfig {
 	 */
 	canRegister: boolean;
 	hasUsers: boolean;
+	turnstileSiteKey?: string;
 }
 
 export interface WebQueryResult {
@@ -97,7 +98,8 @@ export interface OptimizeButtonProps {
 	brandId?: string;
 	selectedModel?: string;
 	availableModels: string[];
-	lookback?: "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+	/** A lookback preset or a `YYYY-MM-DD..YYYY-MM-DD` custom range. */
+	lookback?: string;
 	promptName?: string;
 	promptId?: string;
 	parentName?: string;

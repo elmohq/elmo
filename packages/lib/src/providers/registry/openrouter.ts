@@ -12,11 +12,9 @@ import { jsonSchemaResponseFormat, parseSchemaJson } from "./ai-sdk";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
-// Default to GPT-5 Mini via OpenRouter — supports OpenRouter's *native*
-// web-search plugin (vs the Exa fallback) and produced the best brand-info
-// recall + cheapest cost in our compare-onboarding runs. Other families that
-// support native search per the docs: Anthropic, Perplexity, xAI.
-const DEFAULT_RESEARCH_MODEL = "openai/gpt-5-mini";
+// Must be a family with OpenRouter's *native* web-search plugin (vs the Exa
+// fallback); per the docs that's OpenAI, Anthropic, Perplexity, and xAI.
+const DEFAULT_RESEARCH_MODEL = "anthropic/claude-sonnet-5.5";
 
 function openrouterHeaders(): Record<string, string> {
 	return {
@@ -25,24 +23,6 @@ function openrouterHeaders(): Record<string, string> {
 		"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
 		"X-Title": "Elmo AEO",
 	};
-}
-
-/** The Responses-style shape, where text lives in `output[].content[].text`. */
-function responsesApiTexts(output: unknown): string[] {
-	if (!Array.isArray(output)) return [];
-	return output
-		.filter((item: any) => item?.type === "message")
-		.flatMap((msg: any) => msg.content ?? [])
-		.filter((c: any) => c?.type === "output_text" && c.text)
-		.map((c: any) => c.text as string);
-}
-
-function extractTextFromOpenRouterResponse(data: any): string {
-	const chatContent = data?.choices?.[0]?.message?.content;
-	if (chatContent) return chatContent;
-
-	const texts = responsesApiTexts(data?.output);
-	return texts.length > 0 ? texts.join("\n") : "No text content found in OpenRouter response.";
 }
 
 function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
@@ -163,10 +143,8 @@ export const openrouter: Provider = {
 
 		return {
 			rawOutput: data,
-			textContent: extractTextFromOpenRouterResponse(data),
 			// OpenRouter doesn't expose the search queries the model made internally.
 			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
-			citations,
 			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
 		};
 	},

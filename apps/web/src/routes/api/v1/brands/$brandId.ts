@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 			// No params schema: brand IDs are caller-chosen strings (e.g. "acme"),
 			// not UUIDs like the competitor/prompt/report routes validate.
 			GET: createApiHandler({
-				scopes: ["brands:read"],
+				scopes: ["read"],
 				handle: async ({ params, auth }) => {
 					return buildBrandResult(await requireBrandInScope(auth, params.brandId));
 				},
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 						return new ApiError(404, "Not Found", err.message);
 					}
 				},
-				scopes: ["brands:write"],
+				scopes: ["write"],
 				handle: async ({ params, body, auth }) => {
 					// Stops the worker sampling the brand entirely, and no dashboard
 					// control does it at any role. Refused rather than ignored, so a

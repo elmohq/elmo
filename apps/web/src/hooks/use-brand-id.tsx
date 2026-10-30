@@ -3,14 +3,21 @@ import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
 /**
  * The `$brand` segment is a slug or an id, so it is not something to hand to a
- * server function or use in a query key. The brand layout loads the brand; this
- * reads its id from that loader data. Undefined outside a brand page.
+ * server function or use in a query key. This reads the id the brand layout
+ * resolved; the layout stays matched across brand pages, so a page left
+ * mid-hydration can still read it.
  */
-export function useBrandId(): string | undefined {
-	return useMatch({ from: BRAND_ROUTE_ID, shouldThrow: false, select: (match) => match.loaderData?.brand.id });
+export function useBrandId(): string;
+export function useBrandId(opts: { shouldThrow: false }): string | undefined;
+export function useBrandId(opts?: { shouldThrow: false }): string | undefined {
+	return useMatch({
+		from: BRAND_ROUTE_ID,
+		shouldThrow: opts?.shouldThrow ?? true,
+		select: (match) => match.context.brandId,
+	});
 }
 
 export function useResolvedBrandId(brandId?: string): string | undefined {
-	const routeBrandId = useBrandId();
+	const routeBrandId = useBrandId({ shouldThrow: false });
 	return brandId || routeBrandId;
 }

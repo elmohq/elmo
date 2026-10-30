@@ -4,7 +4,6 @@
  */
 
 import { getDeployment } from "@workspace/deployment";
-import { API_SCOPES, type ApiScope } from "@/lib/api/scopes";
 import { type Principal, principalScopes } from "@/lib/auth/api-auth";
 import { getAnalytics, getCitations, getOpportunities, getPromptPerformance, getQueryFanout } from "./analytics";
 import { getBilling, getBrand, listBrandsTool, listCompetitorsTool } from "./brands";
@@ -45,7 +44,3 @@ export function toolsFor(auth: Principal): McpTool[] {
 		return tool.scopes.every((scope) => held.has(scope));
 	});
 }
-
-export const TOOL_SCOPES: readonly ApiScope[] = API_SCOPES.filter((scope) =>
-	MCP_TOOLS.some((tool) => tool.scopes.includes(scope)),
-);

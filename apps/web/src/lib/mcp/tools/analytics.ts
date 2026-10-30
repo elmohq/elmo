@@ -1,15 +1,19 @@
 /**
- * Over `analytics-core`, the same functions the dashboard calls. None paginate,
- * because none can grow without bound; the lists that can have their own tools.
+ * Over `analytics-core`, the same functions the dashboard calls. The lists that
+ * grow with the window (citations, fan-out queries) return their top rows and
+ * take a search, so a model can still look up one that isn't near the top.
  */
+
+import { z } from "zod";
 import { publicRange } from "@/lib/api/analytics-range";
 import { requireBrandInScope } from "@/lib/api/scope";
 import type { AnalyticsFilters, AnalyticsWindow } from "@/server/analytics-core";
 import {
 	getBrandAnalytics,
-	getBrandCitations,
+	getBrandCitationDomains,
+	getBrandCitationUrls,
+	getBrandFanoutQueries,
 	getBrandPromptPerformance,
-	getBrandQueryFanout,
 } from "@/server/analytics-core";
 import { publishedOpportunities } from "@/server/opportunities-core";
 import { brandIdArg, defineTool, filtersFrom, type McpTool, windowArgs, windowFor } from "./define";
@@ -28,7 +32,7 @@ function analyticsTool(tool: {
 }): McpTool {
 	return defineTool({
 		...tool,
-		scopes: ["analytics:read"],
+		scopes: ["read"],
 		readOnly: true,
 		input: { brandId: brandIdArg, ...windowArgs },
 		run: async ({ auth }, args) => {
@@ -44,7 +48,7 @@ export const getAnalytics = analyticsTool({
 	name: "get_analytics",
 	title: "Get a brand's analytics",
 	description:
-		"Everything a brand's window says in one call: visibility and its daily trend, share of voice against tracked competitors, the per-model breakdown, and citation totals. The first thing to read when asked how a brand is doing. Rates are fractions of 1, not percentages.",
+		"Everything a brand's window says in one call: visibility and its daily trend, share of voice against tracked competitors, the per-model breakdown, and citation totals. Also, experimentally: the sentiment of answers toward the brand and each competitor (positive, neutral, negative, mixed) and where each comes among the tracked companies an answer names (position 1 = named first), overall and per model, and per day for the brand. These count every answer in the window, while visibility and share of voice count each prompt's latest answers. The first thing to read when asked how a brand is doing. Rates are fractions of 1, not percentages.",
 	run: async ({ brand, range, filters }) => getBrandAnalytics(brand.id, range, filters),
 });
 
@@ -52,45 +56,70 @@ export const getPromptPerformance = analyticsTool({
 	name: "get_prompt_performance",
 	title: "Get per-prompt performance",
 	description:
-		"How each prompt performed over the window — which questions surface the brand and which don't. Enabled prompts only; a disabled one isn't sampled, so it has nothing to report.",
+		"How each prompt performed over the window — which questions surface the brand and which don't, and (experimentally) how its answers describe the brand and where they place it among the tracked companies they name. Enabled prompts only; a disabled one isn't sampled, so it has nothing to report.",
 	run: async ({ brand, range, filters }) => ({ data: await getBrandPromptPerformance(brand.id, range, filters) }),
 });
 
-export const getCitations = analyticsTool({
+const searchArg = z.string().optional().describe("Only rows containing this text, matched case-insensitively.");
+
+const limitArg = (defaultLimit: number, max: number) =>
+	z
+		.number()
+		.int()
+		.min(1)
+		.max(max)
+		.optional()
+		.describe(`Rows to return, most frequent first. Defaults to ${defaultLimit}; the totals always cover every row.`);
+
+const CITATION_LIMIT = 50;
+const QUERY_LIMIT = 100;
+
+export const getCitations = defineTool({
 	name: "get_citations",
 	title: "Get cited sources",
 	description:
-		"The pages the models cited while answering about this brand, by domain and by URL, each categorized as the brand's own, a competitor's, or editorial. The core of an AEO content plan: the editorial pages here are where the models are getting their answers.",
-	run: async ({ brand, range, filters }) => {
-		const { domains, urls, totals } = await getBrandCitations(brand.id, range, filters);
+		"The pages the models cited while answering about this brand, by domain and by URL, each categorized as the brand's own, a competitor's, or editorial. The core of an AEO content plan: the editorial pages here are where the models are getting their answers. Returns the most cited domains and URLs; pass `search` to find a specific one anywhere in the window.",
+	scopes: ["read"],
+	readOnly: true,
+	input: { brandId: brandIdArg, ...windowArgs, search: searchArg, limit: limitArg(CITATION_LIMIT, 200) },
+	run: async ({ auth }, args) => {
+		const brand = await requireBrandInScope(auth, args.brandId);
+		const range = windowFor(args);
+		const filters = filtersFrom(args);
+		const options = { search: args.search, limit: args.limit ?? CITATION_LIMIT, offset: 0 };
+		const [domains, urls] = await Promise.all([
+			getBrandCitationDomains(brand.id, range, filters, options),
+			getBrandCitationUrls(brand.id, range, filters, options),
+		]);
 		return {
-			totals: { citations: totals.citations, uniqueDomains: totals.uniqueDomains, uniqueUrls: totals.uniqueUrls },
-			domains,
-			urls,
+			brandId: brand.id,
+			range: publicRange(range),
+			totals: urls.totals,
+			domains: domains.domains,
+			matchingDomains: domains.total,
+			urls: urls.urls,
+			matchingUrls: urls.total,
 		};
 	},
 });
 
-export const getQueryFanout = analyticsTool({
+export const getQueryFanout = defineTool({
 	name: "get_query_fanout",
 	title: "Get the searches the models ran",
 	description:
-		"The web searches the models actually ran while answering, and how often. These are the phrasings to optimize for — they are frequently not the prompt's own wording.",
-	run: async ({ brand, range, filters }) => {
-		const analysis = await getBrandQueryFanout(brand.id, range, filters, { uncapped: true });
-		return {
-			totalQueries: analysis.totalQueries,
-			uniqueQueries: analysis.uniqueQueries,
-			fanoutRuns: analysis.fanoutRuns,
-			totalRuns: analysis.totalRuns,
-			avgQueriesPerRun: analysis.avgPerExecution,
-			coverageRate: analysis.coverageRate,
-			data: analysis.topByRuns.map((entry) => ({
-				query: entry.query,
-				runs: entry.runs,
-				promptCount: entry.prompts,
-			})),
-		};
+		"The web searches the models actually ran while answering, and how often. These are the phrasings to optimize for — they are frequently not the prompt's own wording. Returns the most run searches; pass `search` to find others.",
+	scopes: ["read"],
+	readOnly: true,
+	input: { brandId: brandIdArg, ...windowArgs, search: searchArg, limit: limitArg(QUERY_LIMIT, 500) },
+	run: async ({ auth }, args) => {
+		const brand = await requireBrandInScope(auth, args.brandId);
+		const range = windowFor(args);
+		const { queries, total, ...totals } = await getBrandFanoutQueries(brand.id, range, filtersFrom(args), {
+			search: args.search,
+			limit: args.limit ?? QUERY_LIMIT,
+			offset: 0,
+		});
+		return { brandId: brand.id, range: publicRange(range), ...totals, data: queries, matchingQueries: total };
 	},
 });
 
@@ -100,7 +129,7 @@ export const getOpportunities = defineTool({
 	title: "Get the latest opportunities report",
 	description:
 		"The most recent stored opportunities report for a brand: what to write, what to fix, and the risks Elmo found. `status` says whether there was enough data to write one.",
-	scopes: ["analytics:read"],
+	scopes: ["read"],
 	readOnly: true,
 	input: { brandId: brandIdArg },
 	run: async ({ auth }, args) => {

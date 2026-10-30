@@ -7,14 +7,13 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { db } from "@workspace/lib/db/db";
+import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-categories";
 import { competitors } from "@workspace/lib/db/schema";
-import { assertCompetitorCap } from "@workspace/lib/entitlements";
+import { assertCompetitorCap, withQuotaLock } from "@workspace/lib/entitlements";
 import { z } from "zod";
 import { clampedPaging } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
-import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { listCompetitors } from "@/server/competitors-core";
 
 const createCompetitorBody = z.object({
@@ -28,7 +27,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				scopes: ["competitors:read"],
+				scopes: ["read"],
 				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
 					const { page, limit, offset } = clampedPaging(searchParams);
@@ -54,25 +53,29 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 			POST: createApiHandler({
 				body: createCompetitorBody,
 				status: 201,
-				scopes: ["competitors:write"],
+				scopes: ["write"],
 				handle: async ({ body, auth }) => {
 					const { brandId, name, domains, aliases } = body;
 
-					await requireBrandInScope(auth, brandId, "body");
+					const brand = await requireBrandInScope(auth, brandId, "body");
 
-					await assertCompetitorCap(brandId, 1);
+					// Check and insert under one lock: otherwise two requests on a
+					// brand's last competitor slot both pass the check.
+					return await withQuotaLock(brand.organizationId, async (tx) => {
+						await assertCompetitorCap(brandId, 1, tx);
 
-					const [inserted] = await db
-						.insert(competitors)
-						.values({
-							brandId,
-							name,
-							domains: dedupeDomains(domains ?? []),
-							aliases: dedupeAliases(aliases ?? []),
-						})
-						.returning();
+						const [inserted] = await tx
+							.insert(competitors)
+							.values({
+								brandId,
+								name,
+								domains: dedupeDomains(domains ?? []),
+								aliases: dedupeAliases(aliases ?? []),
+							})
+							.returning();
 
-					return inserted;
+						return inserted;
+					});
 				},
 			}),
 		}),

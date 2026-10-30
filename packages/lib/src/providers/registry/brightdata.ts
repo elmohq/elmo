@@ -1,6 +1,6 @@
 import { bdclient } from "@brightdata/sdk";
 import { getCredential } from "../../secrets";
-import { extractCitationsFromBrightdata, extractTextFromBrightdata } from "../../text-extraction";
+import { extractCitationsFromBrightdata } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { type Attempt, nonEmptyStrings, pollDelay, retryTransient, sleep } from "./scrape-shared";
@@ -80,21 +80,50 @@ async function attemptGoogleAiOverview(zone: string, url: string): Promise<Attem
 	return {
 		result: {
 			rawOutput: parsed,
-			textContent: extractTextFromBrightdata(parsed),
 			// The SERP API doesn't expose the query expansion behind the overview;
 			// mark it unavailable when sources prove a live result, else empty.
 			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
-			citations,
 			modelVersion: "brightdata-serp",
 		},
 	};
 }
 
-function normalizeAnswer(record: Record<string, any>): string {
+function findAnswer(record: Record<string, any>): string | null {
 	for (const key of ["answer_text_markdown", "answer_text", "answer", "response_raw", "response", "text", "content"]) {
 		if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
 	}
-	return JSON.stringify(record).slice(0, 2000);
+	return null;
+}
+
+/**
+ * The record minus its bulky HTML. `response_raw` stays when it is the only answer
+ * the record has: extraction reads the stored record, so dropping it would leave
+ * the run with no text the first time it is replayed.
+ */
+export function storedRecord(record: Record<string, any>): Record<string, any> {
+	const { answer_html, response_raw, answer_section_html, ...trimmed } = record;
+	const answeredElsewhere = findAnswer(trimmed) !== null;
+	return answeredElsewhere || response_raw === undefined ? trimmed : { ...trimmed, response_raw };
+}
+
+function rowError(record: Record<string, any>): string | null {
+	const parts = [record.error, record.error_code]
+		.map((value) => (typeof value === "string" ? value.trim() : value ? JSON.stringify(value) : ""))
+		.filter(Boolean);
+	return parts.length > 0 ? parts.join(" — ") : null;
+}
+
+/** Exported for tests. `include_errors=true` means a ready snapshot can carry a
+ *  per-input failure in place of an answer. */
+export function readAnswer(record: Record<string, any>, subject: string): string {
+	const answer = findAnswer(record);
+	if (answer) return answer;
+	const error = rowError(record);
+	throw new Error(
+		error
+			? `BrightData ${subject} returned an error row: ${error}`
+			: `BrightData ${subject} returned a row with no answer`,
+	);
 }
 
 /**
@@ -171,24 +200,21 @@ export const brightdata: Provider = {
 			consumed = true;
 
 			const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
-			const answer = normalizeAnswer(record);
+			// Refuses a snapshot with no answer, which extraction would store as empty.
+			readAnswer(record, `${model} snapshot ${snapshotId}`);
 
 			const webQueries = extractWebQueries(record);
 			const citations = extractCitationsFromBrightdata(record);
 
-			// Drop large HTML fields that aren't used for extraction.
-			// Keeps all structured data (shopping, recommendations, citations, etc.)
-			const { answer_html, response_raw, answer_section_html, ...trimmed } = record;
+			const trimmed = storedRecord(record);
 			const rawOutput = Array.isArray(payload) ? [trimmed] : trimmed;
 
 			return {
 				rawOutput,
-				textContent: answer,
 				webQueries: reportedWebQueries(webQueries, {
 					webSearch: options?.webSearch ?? false,
 					searchProven: citations.length > 0,
 				}),
-				citations,
 				modelVersion: record?.model ?? undefined,
 			};
 		} finally {
@@ -238,10 +264,15 @@ async function triggerSnapshot(datasetId: string, model: string, prompt: string,
  *  status string doesn't fail the run on the very first poll. */
 const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
 
-async function pollUntilReady(snapshotId: string): Promise<void> {
-	const maxAttempts = 60;
+/** BrightData publishes no collection deadline, so this is sized past the
+ *  slowest error row a stuck input has been seen to produce — not to any
+ *  documented limit. Too low and their reason never reaches us. */
+const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
-	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+async function pollUntilReady(snapshotId: string): Promise<void> {
+	const deadline = Date.now() + POLL_TIMEOUT_MS;
+
+	for (let attempt = 0; Date.now() < deadline; attempt++) {
 		const status = await getSnapshotStatus(snapshotId);
 		if (status === "ready") return;
 		if (TERMINAL_FAILURE.has(status)) {

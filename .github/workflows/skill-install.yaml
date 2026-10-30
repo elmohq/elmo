@@ -1,0 +1,62 @@
+# The weekly run also installs from GitHub and elmohq.com, whose archive can
+# break on a site deploy without touching skills/. The CLI is pinned so a new
+# release can't fail this job on its own.
+
+name: Skill install
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  pull_request:
+    branches: [main]
+    paths:
+      - "skills/**"
+      - ".claude/skills/**"
+      - "apps/www/scripts/build-agent-skills.mjs"
+      - ".github/workflows/skill-install.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SKILLS_CLI: skills@1.7.1
+
+jobs:
+  install:
+    name: Install
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: List skills in this checkout
+        run: |
+          out=$(cd "$RUNNER_TEMP" && pnpm dlx "$SKILLS_CLI" add "$GITHUB_WORKSPACE" --list 2>&1)
+          echo "$out"
+          grep -q "aeo" <<<"$out"
+          if grep -qE "add-changeset|add-competitor" <<<"$out"; then
+            echo "internal skills are listed"
+            exit 1
+          fi
+
+      - name: Install from this checkout
+        run: scripts/check-skill-install.sh "$GITHUB_WORKSPACE" checkout
+
+      - name: Install from GitHub
+        if: github.event_name != 'pull_request'
+        run: scripts/check-skill-install.sh elmohq/elmo github
+
+      - name: Install from elmohq.com
+        if: github.event_name != 'pull_request'
+        run: scripts/check-skill-install.sh https://www.elmohq.com website

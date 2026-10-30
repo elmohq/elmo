@@ -8,13 +8,13 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { isBrandInScope } from "@/lib/api/scope";
-import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 
 // z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
 // always used; z.uuid() enforces RFC version bits and rejects existing IDs.
@@ -45,7 +45,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: competitorParams,
-				scopes: ["competitors:read"],
+				scopes: ["read"],
 				handle: async ({ params, auth }) => {
 					return await loadInScope(auth, params.competitorId);
 				},
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 			PATCH: createApiHandler({
 				params: competitorParams,
 				body: updateCompetitorBody,
-				scopes: ["competitors:write"],
+				scopes: ["write"],
 				handle: async ({ params, body, auth }) => {
 					await loadInScope(auth, params.competitorId);
 					const { competitorId } = params;
@@ -86,7 +86,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 
 			DELETE: createApiHandler({
 				params: competitorParams,
-				scopes: ["competitors:delete"],
+				scopes: ["write"],
 				handle: async ({ params, auth }) => {
 					await loadInScope(auth, params.competitorId);
 					const [deleted] = await db.delete(competitors).where(eq(competitors.id, params.competitorId)).returning();

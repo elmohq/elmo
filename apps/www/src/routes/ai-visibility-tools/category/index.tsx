@@ -15,7 +15,8 @@ const items = indexableCategories.map((category) => ({
 }));
 
 export const Route = createFileRoute("/ai-visibility-tools/category/")({
-	head: () => ({
+	loader: () => ({ items }),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/ai-visibility-tools/category/")({
 				{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 				{ name: "Categories", path: "/ai-visibility-tools/category" },
 			]),
-			itemListJsonLd(items),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: CategoryHub,
@@ -41,7 +42,6 @@ function CategoryHub() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					eyebrow="By category"
 					title="Browse AI visibility tools by category"
 					lead="The market splits into a few distinct groups. Pick the type of tool you're after to compare the options in that category side by side."
 				/>

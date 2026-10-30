@@ -1,5 +1,5 @@
 import { getCredential } from "../../secrets";
-import { type Citation, extractCitationsFromOxylabs, extractTextFromOxylabs } from "../../text-extraction";
+import { type Citation, extractCitationsFromOxylabs } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, responseError, sleep } from "./scrape-shared";
@@ -166,20 +166,17 @@ export const oxylabs: Provider = {
 		const payload = await runAsyncQuery(body);
 		const content = payload.results?.[0]?.content ?? {};
 
-		const textContent = extractTextFromOxylabs(payload);
 		const citations: Citation[] = extractCitationsFromOxylabs(payload);
 		const webQueries = queriesFromKeys(content, OXYLABS_QUERY_KEYS);
 
 		return {
 			rawOutput: payload,
-			textContent,
 			// Every source but ChatGPT always searches, so only ChatGPT's toggle
 			// can rule out queries entirely.
 			webQueries: reportedWebQueries(webQueries, {
 				webSearch: model !== "chatgpt" || (options?.webSearch ?? false),
 				searchProven: citations.length > 0,
 			}),
-			citations,
 			modelVersion:
 				typeof content.llm_model === "string"
 					? content.llm_model

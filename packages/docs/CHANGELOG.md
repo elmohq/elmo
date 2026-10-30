@@ -1,5 +1,136 @@
 # @workspace/docs
 
+## 0.7.7
+
+### Patch Changes
+
+- @workspace/ui@0.7.7
+
+## 0.7.6
+
+### Patch Changes
+
+- @workspace/ui@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/ui@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/ui@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- @workspace/ui@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/ui@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/ui@0.7.1
+
+## 0.7.0
+
+### Patch Changes
+
+- @workspace/ui@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- ccf05e0: The Sentiment by Prompt table now lists the highest scores first, adds a Positive column, and sorts by Mentions, Score, Positive or Negative when you click a header.
+- @workspace/ui@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/ui@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- @workspace/ui@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- @workspace/ui@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/ui@0.5.1
+
+## 0.5.0
+
+### Patch Changes
+
+- @workspace/ui@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/ui@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- @workspace/ui@0.4.5
+
+## 0.4.4
+
+### Patch Changes
+
+- @workspace/ui@0.4.4
+
+## 0.4.3
+
+### Patch Changes
+
+- @workspace/ui@0.4.3
+
+## 0.4.2
+
+### Patch Changes
+
+- @workspace/ui@0.4.2
+
+## 0.4.1
+
+### Patch Changes
+
+- @workspace/ui@0.4.1
+
+## 0.4.0
+
+### Minor Changes
+
+- c9142f7: Elmo now serves a full external API and an MCP server. `/api/v1` covers brands, prompts, competitors, reports, analytics, models, tags, and opportunities. `/api/mcp` connects Claude Code, Codex, Cursor, OpenCode, and VS Code, either by signing in from the client or with an API key. Keys belong to an organization and are issued read-only or read-write from Settings, which now also has API and MCP pages describing your own deployment.
+
+### Patch Changes
+
+- @workspace/ui@0.4.0
+
 ## 0.3.0
 
 ### Patch Changes

@@ -101,6 +101,14 @@ function AuthorizePage() {
 						<dt className="text-muted-foreground">Client</dt>
 						<dd className="font-medium break-all">{label}</dd>
 					</div>
+					<div className="flex flex-wrap items-baseline gap-x-2">
+						<dt className="text-muted-foreground">Identity</dt>
+						{client.publisherHost ? (
+							<dd className="font-mono text-xs break-all">{client.publisherHost}</dd>
+						) : (
+							<dd>Unverified — it named itself</dd>
+						)}
+					</div>
 					{client.redirectHosts.length ? (
 						<div className="flex flex-wrap items-baseline gap-x-2">
 							<dt className="text-muted-foreground">Sends you back to</dt>
@@ -108,7 +116,18 @@ function AuthorizePage() {
 						</div>
 					) : null}
 				</dl>
+				{client.loopbackOnly && (
+					<Alert>
+						<AlertDescription>
+							This client runs on your computer, so Elmo can't tell which program is asking. Continue only if you just
+							started this from a client you trust.
+						</AlertDescription>
+					</Alert>
+				)}
 				<p className="text-sm text-muted-foreground">
+					{client.publisherHost
+						? `Its name and callback address come from a document it publishes at ${client.publisherHost}. `
+						: null}
 					It will act as you, in the workspaces you belong to. Revoke it by signing out of the client or removing its
 					access from your account.
 				</p>

@@ -42,6 +42,6 @@ const ICONS: Record<string, IconType> = {
 
 export function ModelIcon({ iconId, className = "size-3.5" }: { iconId: string; className?: string }) {
 	const Icon = ICONS[iconId];
-	if (!Icon) return <Sparkles className={className} />;
-	return <Icon className={className} />;
+	if (!Icon) return <Sparkles className={className} aria-hidden="true" />;
+	return <Icon className={className} aria-hidden="true" />;
 }

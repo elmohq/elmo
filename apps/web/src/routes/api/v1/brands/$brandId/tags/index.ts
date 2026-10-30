@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/tags/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				scopes: ["prompts:read"],
+				scopes: ["read"],
 				handle: async ({ params, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
 					return { brandId: brand.id, data: await listBrandTags(brand.id) };

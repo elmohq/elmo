@@ -1,8 +1,10 @@
 import { apiKey } from "@better-auth/api-key";
+import { cimd } from "@better-auth/cimd";
+import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
 import { type SSOOptions, sso } from "@better-auth/sso";
-import { MCP_PATH } from "@workspace/config/constants";
+import { API_KEY_RATE_LIMIT_PER_MINUTE, MCP_PATH } from "@workspace/config/constants";
 import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
@@ -17,6 +19,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import type { JWTPayload } from "jose";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
+import { nativeClientRegistrationDefault } from "./native-client-registration";
 import { ac, adminRole, memberRole, ownerRole, userRole } from "./permissions";
 
 export interface CreateAuthOptions {
@@ -114,6 +117,9 @@ export function createAuth(options?: CreateAuthOptions) {
 		basePath: "/api/auth",
 		trustedOrigins: origins,
 
+		// The default memory store is per-instance and resets on cold starts.
+		rateLimit: { storage: "database" },
+
 		emailAndPassword: {
 			enabled: options?.emailAndPasswordEnabled !== false,
 			requireEmailVerification: options?.requireEmailVerification === true,
@@ -161,7 +167,7 @@ export function createAuth(options?: CreateAuthOptions) {
 				enableMetadata: true,
 				// Stamped onto each key at creation, so raising it does nothing for
 				// keys already issued.
-				rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 1_000 },
+				rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: API_KEY_RATE_LIMIT_PER_MINUTE },
 			}),
 			admin({
 				ac,
@@ -174,6 +180,8 @@ export function createAuth(options?: CreateAuthOptions) {
 			// The header would otherwise sign a JWT on every session read.
 			jwt({ disableSettingJwtHeader: true }),
 			mcpResourceDefault(resource),
+			nativeClientRegistrationDefault(),
+			cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
 			mcp({
 				loginPage: LOGIN_PAGE,
 				consentPage: MCP_AUTHORIZE_PAGE,

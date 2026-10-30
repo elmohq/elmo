@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/deployment",
-	"version": "0.3.0",
+	"version": "0.7.7",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
@@ -19,29 +19,29 @@
 		"./auth-hooks/whitelabel": "./src/auth-hooks/whitelabel.ts"
 	},
 	"dependencies": {
-		"@better-auth/stripe": "^1.7.2",
+		"@better-auth/stripe": "catalog:",
 		"@workspace/config": "workspace:*",
 		"@workspace/lib": "workspace:*",
 		"@workspace/ui": "workspace:*",
-		"better-auth": "^1.7.2",
+		"better-auth": "catalog:",
 		"disposable-email-domains": "^1.0.62",
-		"drizzle-orm": "^0.45.2",
-		"resend": "^6.17.2",
-		"stripe": "^22.5.0",
-		"zod": "^4.4.3"
+		"drizzle-orm": "catalog:",
+		"resend": "^6.34.1",
+		"stripe": "catalog:",
+		"zod": "catalog:"
 	},
 	"peerDependencies": {
 		"@tabler/icons-react": "^3.0.0",
-		"auth0": "^6.0.0",
+		"auth0": "^7.3.0",
 		"react": "^19.0.0"
 	},
 	"devDependencies": {
 		"@types/disposable-email-domains": "^1.0.6",
-		"@types/node": "^26.2.0",
-		"@types/pg": "^8.21.0",
-		"@types/react": "^19.2.18",
-		"pg": "^8.23.0",
-		"typescript": "^7.0.2",
-		"vitest": "^4.1.10"
+		"@types/node": "catalog:",
+		"@types/pg": "catalog:",
+		"@types/react": "catalog:",
+		"pg": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	}
 }

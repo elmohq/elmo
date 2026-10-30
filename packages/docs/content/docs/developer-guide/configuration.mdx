@@ -11,7 +11,7 @@ Elmo supports several deployment modes, controlled by the `DEPLOYMENT_MODE` envi
 |------|-------------|
 | `local` | Single-org, email/password auth. Best for individual use. **(default)** |
 | `demo` | Read-only mode for showcasing Elmo without allowing changes. |
-| `cloud` | Managed hosting (coming soon). |
+| `cloud` | Managed hosting. [Sign up for Elmo Cloud](https://app.elmohq.com/auth/register). |
 
 ## Environment Variables
 
@@ -59,19 +59,53 @@ New values are encrypted under the new key while anything saved under a retired 
 
 At least one provider is required for Elmo to track visibility. See [Providers](/docs/user-guide/providers) for a full cost/capability breakdown and recommended setups.
 
+Brand onboarding and the Opportunities report also need one direct LLM API key — `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, or `MISTRAL_API_KEY` — even if `SCRAPE_TARGETS` only uses scrapers. Elmo uses the first of those that's set; to pick one explicitly, set `ONBOARDING_LLM_TARGET` (e.g. `claude:anthropic-api`).
+
 | Variable | Description |
 |----------|-------------|
 | `BRIGHTDATA_API_TOKEN` | BrightData token — recommended scraper for ChatGPT + Google AI Mode. [Sign up](https://get.brightdata.com/elmo?sid=docs) |
 | `OXYLABS_USERNAME` | Oxylabs Web Scraper API username — alternative scraper for ChatGPT, Perplexity, Google AI Mode. [Sign up](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) |
 | `OXYLABS_PASSWORD` | Oxylabs Web Scraper API password |
-| `CLORO_API_KEY` | Cloro key — alternative scraper for ChatGPT, Perplexity, Copilot, Gemini, Google AI Mode, and Google AI Overview. [Sign up](https://affiliate.cloro.dev/elmo?sid=docs) |
+| `CLORO_API_KEY` | Cloro key — alternative scraper for ChatGPT, Perplexity, Copilot, Gemini, Google AI Mode, and Google AI Overview. [Sign up](https://cloro.dev?fpr=elmo&fp_sid=docs) |
+| `SEARCHAPI_API_KEY` | SearchApi.io key — alternative scraper for ChatGPT, Perplexity, Copilot, Gemini, Google AI Mode, and Google AI Overview, at one flat price per search. [Sign up](https://www.searchapi.io/?via=elmo) |
 | `OLOSTEP_API_KEY` | Olostep key — recommended scraper, powers most large-scale trackers. [Sign up](https://olostep.com/?ref=elmo) |
 | `OPENAI_API_KEY` | OpenAI API key — enables ChatGPT (via API, not the consumer UI) |
 | `ANTHROPIC_API_KEY` | Anthropic API key — enables Claude tracking |
 | `OPENROUTER_API_KEY` | OpenRouter key — one key for Claude + other hosted models |
+| `MISTRAL_API_KEY` | Mistral API key — enables Mistral tracking |
 | `DATAFORSEO_LOGIN` | DataForSEO login — optional, enables DataForSEO targets such as `chatgpt:dataforseo:online`, `gemini:dataforseo:online`, `google-ai-mode:dataforseo:online`, and `perplexity:dataforseo:online` |
 | `DATAFORSEO_PASSWORD` | DataForSEO password |
 | `SCRAPE_TARGETS` | Comma-separated `model:provider[:version][:online]` entries. See [Providers](/docs/user-guide/providers#scrape_targets-format). |
+
+### Mention Judging
+
+Elmo uses [Jev](https://typesafe.ai) from TypeSafe to read each answer. Jev decides which tracked companies the answer really mentions, its sentiment toward each one, and the passage that shows it. **The worker won't start without a key for Jev**: either a TypeSafe key from [console.typesafe.ai](https://console.typesafe.ai), or an `OPENROUTER_API_KEY`, which calls Jev through [OpenRouter](https://openrouter.ai/typesafe/jev-1.13) and bills your OpenRouter account.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TYPESAFE_API_KEY` | TypeSafe API key for Jev. When set, Elmo calls TypeSafe directly, even if `OPENROUTER_API_KEY` is set too. | — |
+| `OPENROUTER_API_KEY` | Without `TYPESAFE_API_KEY`, Elmo calls Jev through OpenRouter with this key. | — |
+| `REPROCESS_DAYS` | How far back reprocessing (re-extracting and re-judging history) goes, in days, or `all` | `90` |
+
+`elmo init` asks which one to use, offering the OpenRouter key you entered for onboarding if there is one. If you add an OpenRouter key just for Jev, it also pins `ONBOARDING_LLM_TARGET` to the provider you chose for onboarding, which OpenRouter would otherwise take over from Anthropic or Mistral. `elmo upgrade` asks the same before it stops anything when `.env` has neither key, or only an OpenRouter key on a deployment from before Jev; it can't see a key saved only in Elmo's settings.
+
+Elmo makes one Jev call for each answer that names a tracked company. Answers that name none are never sent. Its cost grows with the answer's length and with how many tracked companies it names.
+
+Very roughly, that's **$0.15–0.35 per 1,000 answers**. A month of answers is about prompts × platforms × `RUNS_PER_PROMPT` × 30 when prompts run daily:
+
+| What you track (daily, 5 samples) | Answers a month | Jev, per month |
+|---|---|---|
+| 25 prompts × 3 platforms | ~11,000 | ~$2–4 |
+| 100 prompts × 5 platforms | ~75,000 | ~$11–26 |
+| 500 prompts × 5 platforms | ~375,000 | ~$55–130 |
+
+These are estimates, not quotes; see TypeSafe's pricing, or OpenRouter's for Jev, for current rates.
+
+The worker picks TypeSafe or OpenRouter when it starts, and never falls back from one to the other. Both serve the same Jev release, so switching keeps the judgements you already have; only a new Jev version in an Elmo release re-judges history. OpenRouter serves Jev 1.13 from a dated snapshot that it may update to a newer 1.13 one, and runs requests over about 32 KB in Jev's long-context mode, so long answers may be judged slightly differently there.
+
+A large re-judge goes as fast as your TypeSafe or OpenRouter rate limit allows, with nothing to configure. Each worker finds the limit itself: it speeds up while calls succeed, slows down when Jev rate-limits it, and retries those calls after the wait Jev asks for. For example, with a 100,000 input tokens per second limit, one worker judges about a million answers in roughly 16 hours.
+
+When the judge's version, or a brand's or competitor's names, change, the worker re-judges that brand's history in the background, starting with the last 30 days. A re-judge only goes back `REPROCESS_DAYS`, and only through enabled prompts of enabled brands. Older answers keep how they were judged when they were recorded. A prompt or brand that's enabled again has its answers within the window caught up at that point. Re-judging only asks about what changed. Adding a competitor, or editing one's names, aliases or domains, asks Jev about that company alone, and only in answers that name it. That costs a fraction of judging those answers from scratch. Removing a competitor asks nothing. Edits made within a minute of each other are handled in one pass. A new judge version re-judges everything in the window, so it costs about `REPROCESS_DAYS` worth of answers: at the default, roughly three months of the figures above.
 
 ## Updating Configuration
 
@@ -85,6 +119,12 @@ nano ~/.elmo/.env
 elmo compose down
 elmo compose up -d
 ```
+
+## Serving Elmo from a Domain
+
+`elmo init` asks how you'll access Elmo. Choose **From a domain** and enter it (for example `elmo.example.com`, which becomes `https://elmo.example.com`), then point your reverse proxy at the port you pick. Sign-in is only accepted from the configured URL.
+
+To change it later, run `elmo edit env`, set both `APP_URL` and `VITE_APP_URL` to the new URL (for example `https://elmo.example.com`), then restart with `elmo compose up -d`. Elmo must be served from the root of its domain, not a subpath.
 
 ## Using an External Database
 

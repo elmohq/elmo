@@ -1,17 +1,19 @@
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { z } from "zod";
-import type { Citation } from "../text-extraction";
 
 // Canonical definition lives next to the SCRAPE_TARGETS parser in
 // @workspace/config; re-exported here so provider code keeps importing it
 // from "./types".
 export type { ModelConfig };
 
+/**
+ * What a provider fetched. Text and citations are derived from `rawOutput` by
+ * `extractRun` in `text-extraction`, at write time and on every replay alike, so
+ * `rawOutput` must keep whatever extraction reads.
+ */
 export interface ScrapeResult {
-	textContent: string;
 	rawOutput: unknown;
 	webQueries: string[];
-	citations: Citation[];
 	modelVersion?: string;
 }
 

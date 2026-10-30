@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/v1/brands/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				scopes: ["brands:read"],
+				scopes: ["read"],
 				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
 					const { page, limit, offset } = clampedPaging(searchParams);
@@ -60,7 +60,7 @@ export const Route = createFileRoute("/api/v1/brands/")({
 			POST: createApiHandler({
 				body: createBrandInputSchema,
 				status: 201,
-				scopes: ["brands:write"],
+				scopes: ["write"],
 				mapError: (err) => {
 					if (err instanceof InvalidDomainsError) {
 						return new ApiError(400, "Validation Error", err.message);

@@ -66,6 +66,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # The image build needs nothing but the checkout, so it runs in the
+      # background through the host setup below rather than after it. Its exit
+      # status lands in a file because a later step can't `wait` on it.
+      - name: Start building images
+        run: |
+          (docker buildx bake -f e2e/docker-bake.hcl --progress=plain > "$RUNNER_TEMP/build.log" 2>&1
+           echo $? > "$RUNNER_TEMP/build.exit") &
+
       # NB: no free-disk-space step here — it predated the Blacksmith migration
       # and is unnecessary on these runners (publish.yaml builds the same
       # Dockerfile without it). We also deliberately do NOT use a buildx
@@ -76,7 +84,7 @@ jobs:
       # straight into the daemon's image store.
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -130,12 +138,15 @@ jobs:
           echo "=== elmo.yaml (services) ==="
           grep -E '^\s{2}\w' e2e/.elmo/elmo.yaml || true
 
-      # Build all images so a broken worker (or db-migrate) Dockerfile fails CI
+      # All three images, so a broken worker (or db-migrate) Dockerfile fails CI
       # here. web/worker/migrate share the base/deps/builder stages, so BuildKit
       # builds those once — building all three costs little more than building
-      # web alone. postgres is an image pull, so `build` skips it.
+      # web alone.
       - name: Build images
-        run: docker compose build
+        run: |
+          while [ ! -f "$RUNNER_TEMP/build.exit" ]; do sleep 1; done
+          cat "$RUNNER_TEMP/build.log"
+          exit "$(cat "$RUNNER_TEMP/build.exit")"
 
       # Every mode at once, so the four cold starts overlap instead of costing a
       # recreate-and-wait between phases. Their deps come up with them: postgres,
@@ -296,7 +307,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -317,6 +328,7 @@ jobs:
         env:
           DEPLOYMENT_MODE: local
           SCRAPE_TARGETS: stub:stub
+          TYPESAFE_API_KEY: stub
         run: |
           ELMO_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
             nohup pnpm -C apps/worker exec tsx src/index.ts > /tmp/worker-local.log 2>&1 &
@@ -329,6 +341,7 @@ jobs:
         env:
           DEPLOYMENT_MODE: cloud
           SCRAPE_TARGETS: chatgpt:stub,perplexity:stub,gemini:stub,copilot:stub,claude:stub,claude:stub:online
+          TYPESAFE_API_KEY: stub
           STRIPE_SECRET_KEY: sk_test_ci
           STRIPE_WEBHOOK_SECRET: whsec_ci
           RESEND_API_KEY: re_ci

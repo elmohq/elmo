@@ -1,5 +1,226 @@
 # @workspace/www
 
+## 0.7.7
+
+### Patch Changes
+
+- Updated dependencies [e139254]
+  - @workspace/api-spec@0.7.7
+  - @workspace/config@0.7.7
+  - @workspace/docs@0.7.7
+  - @workspace/og@0.7.7
+  - @workspace/ui@0.7.7
+
+## 0.7.6
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.6
+  - @workspace/config@0.7.6
+  - @workspace/docs@0.7.6
+  - @workspace/og@0.7.6
+  - @workspace/ui@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.5
+  - @workspace/config@0.7.5
+  - @workspace/docs@0.7.5
+  - @workspace/og@0.7.5
+  - @workspace/ui@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.4
+  - @workspace/config@0.7.4
+  - @workspace/docs@0.7.4
+  - @workspace/og@0.7.4
+  - @workspace/ui@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.3
+  - @workspace/config@0.7.3
+  - @workspace/docs@0.7.3
+  - @workspace/og@0.7.3
+  - @workspace/ui@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.2
+  - @workspace/config@0.7.2
+  - @workspace/docs@0.7.2
+  - @workspace/og@0.7.2
+  - @workspace/ui@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.1
+  - @workspace/config@0.7.1
+  - @workspace/docs@0.7.1
+  - @workspace/og@0.7.1
+  - @workspace/ui@0.7.1
+
+## 0.7.0
+
+### Patch Changes
+
+- @workspace/api-spec@0.7.0
+  - @workspace/config@0.7.0
+  - @workspace/docs@0.7.0
+  - @workspace/og@0.7.0
+  - @workspace/ui@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- Updated dependencies [54cdb8d]
+- Updated dependencies [ccf05e0]
+  - @workspace/api-spec@0.6.2
+  - @workspace/docs@0.6.2
+  - @workspace/config@0.6.2
+  - @workspace/og@0.6.2
+  - @workspace/ui@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.6.1
+  - @workspace/config@0.6.1
+  - @workspace/docs@0.6.1
+  - @workspace/og@0.6.1
+  - @workspace/ui@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [caf6bfb]
+  - @workspace/api-spec@0.6.0
+  - @workspace/config@0.6.0
+  - @workspace/docs@0.6.0
+  - @workspace/og@0.6.0
+  - @workspace/ui@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [d93ea18]
+  - @workspace/config@0.5.2
+  - @workspace/og@0.5.2
+  - @workspace/api-spec@0.5.2
+  - @workspace/docs@0.5.2
+  - @workspace/ui@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.5.1
+  - @workspace/config@0.5.1
+  - @workspace/docs@0.5.1
+  - @workspace/og@0.5.1
+  - @workspace/ui@0.5.1
+
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [f1daf53]
+  - @workspace/api-spec@0.5.0
+  - @workspace/config@0.5.0
+  - @workspace/docs@0.5.0
+  - @workspace/og@0.5.0
+  - @workspace/ui@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/api-spec@0.4.6
+  - @workspace/config@0.4.6
+  - @workspace/docs@0.4.6
+  - @workspace/og@0.4.6
+  - @workspace/ui@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- @workspace/api-spec@0.4.5
+  - @workspace/config@0.4.5
+  - @workspace/docs@0.4.5
+  - @workspace/og@0.4.5
+  - @workspace/ui@0.4.5
+
+## 0.4.4
+
+### Patch Changes
+
+- Updated dependencies [b48f545]
+- Updated dependencies [76ec134]
+  - @workspace/config@0.4.4
+  - @workspace/api-spec@0.4.4
+  - @workspace/og@0.4.4
+  - @workspace/docs@0.4.4
+  - @workspace/ui@0.4.4
+
+## 0.4.3
+
+### Patch Changes
+
+- @workspace/api-spec@0.4.3
+  - @workspace/config@0.4.3
+  - @workspace/docs@0.4.3
+  - @workspace/og@0.4.3
+  - @workspace/ui@0.4.3
+
+## 0.4.2
+
+### Patch Changes
+
+- @workspace/api-spec@0.4.2
+  - @workspace/config@0.4.2
+  - @workspace/docs@0.4.2
+  - @workspace/og@0.4.2
+  - @workspace/ui@0.4.2
+
+## 0.4.1
+
+### Patch Changes
+
+- @workspace/api-spec@0.4.1
+  - @workspace/config@0.4.1
+  - @workspace/docs@0.4.1
+  - @workspace/og@0.4.1
+  - @workspace/ui@0.4.1
+
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies [8c953b1]
+- Updated dependencies [c9142f7]
+- Updated dependencies [e30d6d4]
+  - @workspace/api-spec@0.4.0
+  - @workspace/docs@0.4.0
+  - @workspace/og@0.4.0
+  - @workspace/config@0.4.0
+  - @workspace/ui@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

@@ -13,6 +13,7 @@ import { Card, CardContent } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Spinner } from "@workspace/ui/components/spinner";
+import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { ExternalLink } from "lucide-react";
 import { useState } from "react";
@@ -45,6 +46,7 @@ function ReportsPage() {
 
 	const [formData, setFormData] = useState({
 		brandName: "",
+		brandAliases: [] as string[],
 		brandWebsite: "",
 		manualPrompts: "",
 	});
@@ -54,9 +56,12 @@ function ReportsPage() {
 	const createMutation = useMutation({
 		mutationFn: (data: typeof formData) => createReportFn({ data }),
 		onSuccess: (_data, variables) => {
-			trackEvent("report_created", { has_manual_prompts: Boolean(variables.manualPrompts) });
+			trackEvent("report_created", {
+				has_manual_prompts: Boolean(variables.manualPrompts),
+				brand_alias_count: variables.brandAliases.length,
+			});
 			setSuccess("Report request submitted successfully!");
-			setFormData({ brandName: "", brandWebsite: "", manualPrompts: "" });
+			setFormData({ brandName: "", brandAliases: [], brandWebsite: "", manualPrompts: "" });
 			queryClient.invalidateQueries({ queryKey: ["reports"] });
 		},
 		onError: (err: Error) => {
@@ -128,6 +133,24 @@ function ReportsPage() {
 									disabled={createMutation.isPending}
 								/>
 							</div>
+						</div>
+
+						<div className="space-y-2">
+							<Label>
+								Other Brand Names <span className="text-muted-foreground font-normal">(Optional)</span>
+							</Label>
+							<TagsInput
+								value={formData.brandAliases}
+								onValueChange={(brandAliases) => setFormData({ ...formData, brandAliases })}
+								placeholder="Add a name variant..."
+								searchPlaceholder="Add a name variant..."
+								maxItems={10}
+								disabled={createMutation.isPending}
+							/>
+							<p className="text-xs text-muted-foreground">
+								Spellings, abbreviations, or product names the brand also goes by. A mention of any of them counts as a
+								brand mention.
+							</p>
 						</div>
 
 						<div className="space-y-2">

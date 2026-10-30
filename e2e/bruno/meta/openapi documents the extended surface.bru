@@ -68,20 +68,14 @@ tests {
     }
   });
 
-  test("no operation grants a billing write scope", function() {
-    for (const operations of Object.values(res.getBody().paths)) {
-      for (const operation of Object.values(operations)) {
-        expect(operation["x-elmo-scopes"] || []).to.not.include("billing:write");
-      }
-    }
-  });
-
-  test("every operation declares the scope it needs", function() {
+  test("every operation declares the scope it needs, and only ones that exist", function() {
     const methods = ["get", "post", "put", "patch", "delete"];
     for (const [path, operations] of Object.entries(res.getBody().paths)) {
       for (const [method, operation] of Object.entries(operations)) {
         if (!methods.includes(method)) continue;
-        expect(operation["x-elmo-scopes"], `${method} ${path}`).to.be.an("array");
+        const scopes = operation["x-elmo-scopes"];
+        expect(scopes, `${method} ${path}`).to.be.an("array");
+        for (const scope of scopes) expect(["read", "write"], `${method} ${path}`).to.include(scope);
       }
     }
   });

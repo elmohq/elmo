@@ -6,7 +6,7 @@ import { resetDeploymentCache } from "@workspace/deployment";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { API_SCOPES, type ApiScope } from "@/lib/api/scopes";
 import type { AdminAuth, OrganizationAuth, UserAuth } from "@/lib/auth/api-auth";
-import { MCP_TOOLS, TOOL_SCOPES, toolsFor } from "../tools";
+import { MCP_TOOLS, toolsFor } from "../tools";
 
 const WRITE_TOOLS = ["create_prompts", "update_prompt"];
 const UNSCOPED_TOOLS = ["whoami", "list_models"];
@@ -81,13 +81,6 @@ describe("the tool registry", () => {
 		}
 		for (const name of names) expect(name).not.toMatch(/^delete_/);
 	});
-
-	it("asks for no scope the API no longer issues", () => {
-		for (const tool of MCP_TOOLS) {
-			for (const scope of tool.scopes) expect(API_SCOPES).toContain(scope);
-		}
-		expect(TOOL_SCOPES).toContain("billing:read");
-	});
 });
 
 describe("which tools a connection is offered", () => {
@@ -103,22 +96,12 @@ describe("which tools a connection is offered", () => {
 		expect(names(orgKey([])).sort()).toEqual([...UNSCOPED_TOOLS].sort());
 	});
 
-	it("offers no writer to a read-only key", () => {
-		const readOnlyKey = orgKey(API_SCOPES.filter((scope) => !scope.endsWith(":write") && !scope.endsWith(":delete")));
-		for (const write of WRITE_TOOLS) expect(names(readOnlyKey)).not.toContain(write);
-		expect(names(readOnlyKey)).toContain("list_prompts");
-	});
-
-	it("offers billing only to a key issued the billing scope", () => {
-		expect(names(orgKey(["brands:read"]))).not.toContain("get_billing");
-		expect(names(orgKey(["billing:read"]))).toContain("get_billing");
-	});
-
-	it("does not offer analytics to a key that only reads prompts", () => {
-		const offered = names(orgKey(["prompts:read"]));
-		expect(offered).toContain("list_prompts");
-		expect(offered).not.toContain("get_analytics");
-		expect(offered).not.toContain("get_citations");
+	it("offers every reader, and no writer, to a read-only key", () => {
+		const offered = names(orgKey(["read"]));
+		for (const write of WRITE_TOOLS) expect(offered).not.toContain(write);
+		for (const read of ["list_prompts", "get_analytics", "get_citations", "get_billing", "list_runs"]) {
+			expect(offered).toContain(read);
+		}
 	});
 
 	it("drops every writer in a read-only deployment, whatever the key holds", () => {

@@ -22,6 +22,8 @@ export interface McpTool {
 	description: string;
 	scopes: readonly ApiScope[];
 	readOnly: boolean;
+	/** `false` for a write tool that only adds. */
+	destructive?: boolean;
 	input: z.ZodRawShape;
 	/** Already validated by the SDK; erased because the registry holds many shapes. */
 	run(ctx: McpToolContext, args: Record<string, unknown>): Promise<unknown>;
@@ -33,6 +35,7 @@ export function defineTool<S extends z.ZodRawShape>(tool: {
 	description: string;
 	scopes?: readonly ApiScope[];
 	readOnly: boolean;
+	destructive?: boolean;
 	input: S;
 	run(ctx: McpToolContext, args: z.output<z.ZodObject<S>>): Promise<unknown>;
 }): McpTool {
@@ -52,8 +55,14 @@ export const modelArg = z.string().optional().describe("Restrict to one model, b
 /** Half-open `[start, end)`. A timestamp carries its own offset, so there is no
  * time zone to pass beside it. */
 export const windowArgs = {
-	start: z.string().describe("Start of the window, an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z. Inclusive."),
-	end: z.string().describe("End of the window, an ISO 8601 timestamp. Exclusive."),
+	start: z
+		.string()
+		.describe(
+			"Start of the window, an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z. Inclusive, and aligned down to the quarter hour.",
+		),
+	end: z
+		.string()
+		.describe("End of the window, an ISO 8601 timestamp. Exclusive, and aligned down to the quarter hour."),
 	model: modelArg,
 	tags: z.string().optional().describe("Comma-separated prompt tags; only prompts carrying one are counted."),
 };

@@ -46,9 +46,12 @@ Add AI provider API keys if you want to test visibility tracking:
 Run Drizzle migrations to create the schema:
 
 ```bash
-cd apps/web
-pnpm drizzle-kit migrate
+pnpm --filter @workspace/lib exec drizzle-kit migrate
 ```
+
+## Mention Judge
+
+The worker judges mentions and sentiment with [Jev](/docs/developer-guide/configuration#mention-judging), so it needs `TYPESAFE_API_KEY`, or `OPENROUTER_API_KEY` to call Jev through OpenRouter. For UI work without a key, set it to `stub`: answers get placeholder judgements and nothing is sent anywhere.
 
 ## Start Development Servers
 
@@ -85,10 +88,10 @@ The Docker build uses a multi-stage `docker/Dockerfile` with separate targets fo
 
 ## Component Stories
 
-Elmo uses Ladle for component development in isolation:
+Elmo uses Storybook for component development in isolation:
 
 ```bash
-pnpm --filter @workspace/web ladle
+pnpm --filter @workspace/web storybook
 ```
 
 Stories live in `apps/web/src/stories/` and cover the app sidebar, prompt charts, and other components across deployment modes.

@@ -97,15 +97,13 @@ cat <<'HEADER'
  * new table needs indexes beyond what the generator emits, add them in a new
  * migration — not in this file.
  *
- * `apikey.metadata` is writable by anyone with a session, by plugin design.
- * Never store anything there that grants access.
+ * One column deserves a warning the generator can't carry: `apikey.metadata` is
+ * writable by anyone with a session, by plugin design. Never store anything
+ * there that grants access — see readBrandRestriction in
+ * apps/web/src/lib/auth/api-auth.ts.
  */
 HEADER
 cat "$TMP_OUTPUT"
 } > "$OUTPUT"
-
-# The CLI formats with Prettier and emits imports unsorted, both of which fail
-# `pnpm lint`. Run Biome so the generated file is committable as-is.
-pnpm exec biome check --write "$OUTPUT" >/dev/null
 
 echo "[generate-auth-schema] Written $(wc -l < "$OUTPUT") lines to $OUTPUT"

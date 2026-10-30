@@ -16,7 +16,7 @@ export type ConsoleErrorPattern = string | RegExp;
 export const CRISP_HOSTS = "**://*.crisp.chat/**";
 
 const ALWAYS_ALLOWED: ConsoleErrorPattern[] = [
-	/t[0-9]\.gstatic\.com/,
+	/\/api\/site-icon\?/,
 	/Failed to load resource: net::ERR_FAILED.*crisp\.chat/,
 ];
 

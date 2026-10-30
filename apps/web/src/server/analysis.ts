@@ -13,9 +13,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
+import type { Landscape } from "@/lib/landscape";
 import { lookbackSchema } from "@/lib/lookback";
-import { resolveLookbackRange } from "@/lib/timezone-utils";
-import { getBrandShareOfVoice } from "@/server/analytics-core";
+import {
+	type BrandSentiment,
+	getBrandSentiment,
+	getBrandShareOfVoice,
+	getCompetitiveLandscape,
+} from "@/server/analytics-core";
+import { resolveBrandWindow } from "@/server/brand-window";
 
 export interface ShareOfVoiceEntry {
 	name: string;
@@ -32,8 +38,6 @@ export interface ShareOfVoiceResponse {
 	brandShare: number | null;
 	totalRuns: number;
 	model: string | null;
-	/** Brand share of voice over time (percentage 0..100, null on days with no runs). */
-	shareTimeSeries: Array<{ date: string; share: number | null }>;
 }
 
 export const getShareOfVoiceFn = createServerFn({ method: "GET" })
@@ -50,7 +54,7 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<ShareOfVoiceResponse> => {
 		await requireBrandSession(data.brandId);
 
-		const { timezone, fromDateStr, toDateStr } = resolveLookbackRange(data.lookback, data.timezone);
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const result = await getBrandShareOfVoice(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
@@ -59,18 +63,51 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 
 		return {
 			brandName: result.brandName,
-			// Exact ratios, not percentages: the leaderboard, donut, and trend each
-			// round the same ratio once, so they can never read a point apart.
+			// Exact ratios, not percentages: the leaderboard and donut each round the
+			// same ratio once, so they can never read a point apart.
 			brandShare: result.brandShare,
 			totalRuns: result.totalRuns,
 			model: data.model ?? null,
-			// The trend is the one figure this response carries as a percentage;
-			// `brandShare` and `entries` stay ratios because the leaderboard, donut,
-			// and headline each round the same ratio once at the point of display.
-			shareTimeSeries: result.series.map((point) => ({
-				...point,
-				share: point.share === null ? null : Math.round(point.share * 100),
-			})),
 			entries: result.entries,
 		};
+	});
+
+export const getCompetitiveLandscapeFn = createServerFn({ method: "GET" })
+	.validator(
+		z.object({
+			brandId: z.string(),
+			lookback: lookbackSchema.default("1m"),
+			model: z.string().optional(),
+			tags: z.string().optional(),
+			timezone: z.string().default("UTC"),
+		}),
+	)
+	.handler(async ({ data }): Promise<Landscape> => {
+		await requireBrandSession(data.brandId);
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
+		return getCompetitiveLandscape(
+			data.brandId,
+			{ from: fromDateStr, to: toDateStr, timezone },
+			{ model: data.model, tags: data.tags },
+		);
+	});
+
+export const getBrandSentimentFn = createServerFn({ method: "GET" })
+	.validator(
+		z.object({
+			brandId: z.string(),
+			lookback: lookbackSchema.default("1m"),
+			model: z.string().optional(),
+			tags: z.string().optional(),
+			timezone: z.string().default("UTC"),
+		}),
+	)
+	.handler(async ({ data }): Promise<BrandSentiment> => {
+		await requireBrandSession(data.brandId);
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
+		return getBrandSentiment(
+			data.brandId,
+			{ from: fromDateStr, to: toDateStr, timezone },
+			{ model: data.model, tags: data.tags },
+		);
 	});

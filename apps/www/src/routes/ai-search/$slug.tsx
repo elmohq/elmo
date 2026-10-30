@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { type AiSearchEngine, aiSearchEngines, getAiSearchEngine } from "@/data/ai-search-engines";
 import type { FaqItem } from "@/lib/faqs";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, howToJsonLd, ogMeta } from "@/lib/seo";
 
 function engineFaqs(e: AiSearchEngine): FaqItem[] {
@@ -22,9 +23,17 @@ function engineFaqs(e: AiSearchEngine): FaqItem[] {
 }
 
 export const Route = createFileRoute("/ai-search/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const e = getAiSearchEngine(params.slug);
-		if (!e) return {};
+		if (!e) throw notFound();
+		const related = (e.related ?? [])
+			.map((slug) => aiSearchEngines.find((x) => x.slug === slug))
+			.filter((x): x is AiSearchEngine => Boolean(x));
+		return { engine: e, related };
+	},
+	head: ({ loaderData }) => {
+		if (!loaderData) return {};
+		const e = loaderData.engine;
 		const title = `How to Appear in ${e.name} · Elmo`;
 		const description = e.short;
 		const path = `/ai-search/${e.slug}`;
@@ -45,14 +54,6 @@ export const Route = createFileRoute("/ai-search/$slug")({
 				faqJsonLd(engineFaqs(e)),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const e = getAiSearchEngine(params.slug);
-		if (!e) throw notFound();
-		const related = (e.related ?? [])
-			.map((slug) => aiSearchEngines.find((x) => x.slug === slug))
-			.filter((x): x is AiSearchEngine => Boolean(x));
-		return { engine: e, related };
 	},
 	component: EnginePage,
 });
@@ -78,11 +79,11 @@ function EnginePage() {
 
 				<article className="mx-auto max-w-6xl px-4 py-10 md:px-6">
 					<div className="max-w-3xl">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">{engine.vendor}</p>
-						<h1 className="font-heading mt-2 text-4xl text-balance text-zinc-950 md:text-5xl">
+						<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">
 							How to appear in {engine.name}
 						</h1>
-						<div className="mt-6 space-y-5 text-lg leading-relaxed text-zinc-700">
+						<p className="mt-4 text-xl leading-snug text-balance text-zinc-600">{engine.short}</p>
+						<div className="mt-8 space-y-5 text-lg leading-relaxed text-zinc-700">
 							{engine.intro.map((p) => (
 								<p key={p.slice(0, 32)}>{p}</p>
 							))}
@@ -108,7 +109,7 @@ function EnginePage() {
 							<p className="mt-2 leading-relaxed text-zinc-600">{engine.tracking}</p>
 							<div className="mt-4">
 								<Link
-									to="/docs"
+									{...SELF_HOST_LINK}
 									className="inline-flex h-9 items-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
 								>
 									Start tracking with Elmo
@@ -135,7 +136,7 @@ function EnginePage() {
 					</div>
 				</article>
 
-				<Faq items={engineFaqs(engine)} eyebrow="/ FAQ" />
+				<Faq items={engineFaqs(engine)} />
 				<ElmoCta />
 			</main>
 			<Footer />

@@ -184,9 +184,9 @@ async function main(): Promise<void> {
 	await waitFor("OpenAI API key");
 	await send(`sk-placeholder-not-used${ENTER}`);
 	await waitFor("OpenAI model");
-	await send(ENTER); // accept default gpt-5-mini
+	await send(ENTER); // accept default gpt-6-luna
 	await waitFor("Enable web search?");
-	await send(ENTER); // Yes — chatgpt:openai-api:gpt-5-mini:online
+	await send(ENTER); // Yes — chatgpt:openai-api:gpt-6-luna:online
 
 	// Mistral confirm (default No) → No
 	await waitFor("Configure Mistral API?");
@@ -205,6 +205,10 @@ async function main(): Promise<void> {
 
 	// Oxylabs confirm (default No) → No
 	await waitFor("Configure Oxylabs?");
+	await send(ENTER);
+
+	// SearchApi confirm (default No) → No
+	await waitFor("Configure SearchApi?");
 	await send(ENTER);
 
 	// Olostep confirm (default No) → No
@@ -229,6 +233,12 @@ async function main(): Promise<void> {
 	await waitFor("Edit SCRAPE_TARGETS before saving?");
 	await send(ENTER);
 
+	// Jev key: the stub judges locally, so the e2e stack calls no one.
+	await waitFor("How should Elmo call Jev?");
+	await send(ENTER); // TypeSafe directly, the default without an OpenRouter key
+	await waitFor("TypeSafe API key");
+	await send(`stub${ENTER}`);
+
 	// Telemetry opt-in (default Yes) → No
 	await waitFor("Share telemetry?");
 	await send(ARROW_LEFT);
@@ -236,6 +246,10 @@ async function main(): Promise<void> {
 
 	// Product updates email (optional)
 	await waitFor("email to receive product updates");
+	await send(ENTER);
+
+	// Access mode select — default "On this machine (localhost)"
+	await waitFor("How will you access Elmo?");
 	await send(ENTER);
 
 	// Web app port (default 1515) → accept default

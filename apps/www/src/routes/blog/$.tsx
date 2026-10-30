@@ -109,7 +109,7 @@ export const Route = createFileRoute("/blog/$")({
 });
 
 const serverLoader = createServerFn({ method: "GET" })
-	.inputValidator((slugs: string[]) => slugs)
+	.validator((slugs: string[]) => slugs)
 	.handler(async ({ data: slugs }): Promise<BlogPostLoaderData> => {
 		// Lazy import keeps the server-only blog source out of the client bundle
 		// (see the note in @/lib/blog and the same pattern in routes/docs/$.tsx).

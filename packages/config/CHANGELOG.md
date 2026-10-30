@@ -1,5 +1,93 @@
 # @workspace/config
 
+## 0.7.7
+
+No changes in this release.
+
+## 0.7.6
+
+No changes in this release.
+
+## 0.7.5
+
+No changes in this release.
+
+## 0.7.4
+
+No changes in this release.
+
+## 0.7.3
+
+No changes in this release.
+
+## 0.7.2
+
+No changes in this release.
+
+## 0.7.1
+
+No changes in this release.
+
+## 0.7.0
+
+No changes in this release.
+
+## 0.6.2
+
+No changes in this release.
+
+## 0.6.1
+
+No changes in this release.
+
+## 0.6.0
+
+No changes in this release.
+
+## 0.5.2
+
+### Patch Changes
+
+- d93ea18: Name the premium ChatGPT and Claude tiers "GPT Search" and "Claude (web)" so they stay accurate across model upgrades.
+
+## 0.5.1
+
+No changes in this release.
+
+## 0.5.0
+
+No changes in this release.
+
+## 0.4.6
+
+No changes in this release.
+
+## 0.4.5
+
+No changes in this release.
+
+## 0.4.4
+
+### Patch Changes
+
+- b48f545: Elmo's startup check now asks for a direct LLM key when onboarding needs one, counts provider keys saved in the app, and no longer requires the whitelabel parent-app link.
+
+## 0.4.3
+
+No changes in this release.
+
+## 0.4.2
+
+No changes in this release.
+
+## 0.4.1
+
+No changes in this release.
+
+## 0.4.0
+
+No changes in this release.
+
 ## 0.3.0
 
 ### Minor Changes

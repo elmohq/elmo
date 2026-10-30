@@ -46,4 +46,4 @@ Please do not open a public issue for security vulnerabilities. Email
 - [Discord](https://discord.gg/s24nubCtKz) — fastest way to ask questions.
 - [GitHub Issues](https://github.com/elmohq/elmo/issues) — for bug reports
   and feature requests.
-- [Schedule a call](https://cal.com/jrhizor/elmo) — for anything else.
+- [Schedule a call](https://www.elmohq.com/demo) — for anything else.

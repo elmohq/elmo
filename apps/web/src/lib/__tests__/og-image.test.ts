@@ -7,22 +7,21 @@ import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 
-function loadFont(spec: string): ArrayBuffer {
-	const buf = readFileSync(require.resolve(spec));
-	return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+function loadFont(spec: string): Buffer {
+	return readFileSync(require.resolve(spec));
 }
 
 const fonts = [
-	{ name: "Titan One", data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff"), weight: 400 },
-	{ name: "Geist Sans", data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff"), weight: 400 },
-	{ name: "Geist Sans", data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff"), weight: 500 },
-	{ name: "Geist Mono", data: loadFont("@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff"), weight: 400 },
+	{ name: "Titan One", data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"), weight: 400 },
+	{ name: "Geist Sans", data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2"), weight: 400 },
+	{ name: "Geist Sans", data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2"), weight: 500 },
+	{ name: "Geist Mono", data: loadFont("@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2"), weight: 400 },
 ].map((font) => ({ ...font, style: "normal" as const, weight: font.weight as 400 | 500 }));
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 async function renderCard(options: OgImageOptions) {
-	const png = Buffer.from(await renderOgPng(renderOgImage(options), { width: OG_WIDTH, height: OG_HEIGHT, fonts }));
+	const png = await renderOgPng(renderOgImage(options), { width: OG_WIDTH, height: OG_HEIGHT, fonts });
 	expect(png.subarray(0, 8).equals(PNG_MAGIC)).toBe(true);
 	// IHDR is the first chunk: width and height are the two big-endian ints after the 8-byte signature and 8-byte chunk header.
 	return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };

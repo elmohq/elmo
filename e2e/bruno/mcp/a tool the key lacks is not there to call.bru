@@ -11,7 +11,7 @@ post {
 }
 
 headers {
-  Authorization: Bearer {{orgNoBillingKey}}
+  Authorization: Bearer {{orgNoScopesKey}}
   Accept: application/json, text/event-stream
   mcp-protocol-version: 2025-06-18
 }
@@ -38,5 +38,5 @@ tests {
 
 docs {
   Calling a tool that was never registered is refused by the protocol itself.
-  A key without billing:read cannot reach the handler at all.
+  A key without the read scope cannot reach the handler at all.
 }

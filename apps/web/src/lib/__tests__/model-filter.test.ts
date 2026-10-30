@@ -71,7 +71,7 @@ describe("parseModelFilter", () => {
 describe("labelForModelFilter", () => {
 	it("names the grounded variant the way it is sold, not as a second ChatGPT", () => {
 		expect(labelForModelFilter("chatgpt")).toBe("ChatGPT");
-		expect(labelForModelFilter("chatgpt::premium")).toBe("GPT-5 Search");
+		expect(labelForModelFilter("chatgpt::premium")).toBe("GPT Search");
 		expect(labelForModelFilter("grok::premium")).toBe("Grok (web)");
 	});
 

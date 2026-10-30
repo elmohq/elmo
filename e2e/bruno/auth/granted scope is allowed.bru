@@ -1,5 +1,5 @@
 meta {
-  name: the same key can still list brands
+  name: the read scope reaches every resource
   type: http
   seq: 11
 }
@@ -11,7 +11,7 @@ get {
 }
 
 headers {
-  Authorization: Bearer {{orgBrandsOnlyKey}}
+  Authorization: Bearer {{orgReadOnlyKey}}
 }
 
 assert {

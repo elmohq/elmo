@@ -2,7 +2,7 @@
  * Mock for @tanstack/react-router used in Storybook stories.
  * Provides stubs for the router hooks and components that the app uses.
  */
-import React, { createContext, type ReactNode, useContext } from "react";
+import React, { createContext, type ReactNode, useContext, useSyncExternalStore } from "react";
 
 // This mock is used for Storybook bundling. It intentionally provides a broad
 // surface-area of exports to satisfy app imports without pulling in a real router.
@@ -97,10 +97,18 @@ export function useParams(_opts?: unknown) {
 	return { org: "mock-organization", brand: "mock-brand-id" };
 }
 
+// Paths never change in stories, but `search` updates are applied so URL-backed
+// state (the filter bar) round-trips the way it does in the app.
+function navigate(opts: unknown) {
+	const next = (opts as { search?: unknown } | undefined)?.search;
+	const resolved = typeof next === "function" ? next(_search) : next;
+	if (typeof resolved !== "object" || resolved === null) return;
+	_search = Object.fromEntries(Object.entries(resolved).filter(([, value]) => value !== undefined));
+	for (const listener of _searchListeners) listener();
+}
+
 export function useNavigate() {
-	return (_opts: unknown) => {
-		/* noop */
-	};
+	return navigate;
 }
 
 export function useLocation() {
@@ -124,19 +132,35 @@ export function useBlocker(_opts?: unknown) {
 // Honor `select` so per-key subscribers (filter-bar widgets) get `undefined`
 // instead of the whole empty object.
 let _search: Record<string, unknown> = {};
+const _searchListeners = new Set<() => void>();
 
+// Stories call this while rendering, so it seeds state without notifying.
 export function setMockSearch(search: Record<string, unknown>) {
 	_search = search;
 }
 
+export function getMockSearch(): Record<string, unknown> {
+	return _search;
+}
+
+function subscribeSearch(listener: () => void) {
+	_searchListeners.add(listener);
+	return () => _searchListeners.delete(listener);
+}
+
 export function useSearch(opts?: { select?: (search: Record<string, unknown>) => unknown }) {
-	return opts?.select ? opts.select(_search) : _search;
+	const search = useSyncExternalStore(subscribeSearch, () => _search);
+	return opts?.select ? opts.select(search) : search;
 }
 
 export function useMatch(opts?: { from?: string; shouldThrow?: boolean; select?: (match: any) => unknown }) {
 	const found = opts?.from ? _matches.find((match) => match.routeId === opts.from) : _matches[_matches.length - 1];
 	if (!found) return undefined;
-	const match = { ...found, params: { org: "mock-organization", brand: "mock-brand-id" } };
+	const match = {
+		...found,
+		params: { org: "mock-organization", brand: "mock-brand-id" },
+		context: { ...BASE_ROUTE_CONTEXT, ..._routeContext },
+	};
 	return opts?.select ? opts.select(match) : match;
 }
 
@@ -179,6 +203,7 @@ function buildLocation({ to, params }: { to?: string; params?: Record<string, st
 export function useRouter() {
 	return {
 		navigate: (_opts: unknown) => {},
+		invalidate: async () => {},
 		buildLocation,
 		state: { location: { pathname: "/", search: "", hash: "" } },
 	};
@@ -220,20 +245,12 @@ export function Await(_props: any) {
 	return null;
 }
 
-export function lazyRouteComponent(loader: any) {
-	// In real TanStack Router this returns a lazy component; for stories we can
-	// just return a function component that renders nothing.
-	// Some code paths may call the loader eagerly; guard it.
-	return function LazyRouteComponentMock(_props: any) {
-		if (typeof loader === "function") {
-			try {
-				void loader();
-			} catch {
-				// ignore
-			}
-		}
-		return null;
-	};
+function LazyRouteComponentMock(_props: any) {
+	return null;
+}
+
+export function lazyRouteComponent(_loader: any) {
+	return LazyRouteComponentMock;
 }
 
 export const Link = React.forwardRef<HTMLButtonElement, any>(function LinkMock(

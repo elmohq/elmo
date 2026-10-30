@@ -75,7 +75,7 @@ faq:
 
 The paper models AI search as two parties with one shared currency. Content suppliers want citations, because citations are how a generative engine allocates attention and attribution. The platform wants answers that are trustworthy. Both are pulling on the same document.
 
-Formally it is a repeated Stackelberg game with partial monitoring: the platform moves first by setting a policy, suppliers respond by rewriting, and neither side sees the other's private state. Practically it is a description of a market anyone doing [generative engine optimization](/blog/what-is-generative-seo) already lives in. The abstract states the tension without hedging: "content providers are incentivized to optimize for model citation, while platforms must preserve answer quality and trustworthy attribution."
+Formally it is a repeated Stackelberg game with partial monitoring: the platform moves first by setting a policy, suppliers respond by rewriting, and neither side sees the other's private state. Practically it is a description of a market anyone doing [generative engine optimization](/generative-engine-optimization) already lives in. The abstract states the tension without hedging: "content providers are incentivized to optimize for model citation, while platforms must preserve answer quality and trustworthy attribution."
 
 The experiments run on three benchmarks — an e-commerce set, GEO-Bench, and Researchy-GEO — each pairing a query with five candidate documents. One document gets rewritten by an attacker; the engine then answers and cites.
 
@@ -125,7 +125,7 @@ VCR — verifiable-content rewards — inverts the design. Rather than only puni
 
 Read that qualifier twice, because it is the whole idea. Not claims present. Claims present *and supported*. A number you can trace back to something real earns credit; a number that appeared during optimization earns nothing. Across three benchmarks and three engines, VCR posted the largest Net score every time, with an average advantage of 12.1 percentage points over whichever baseline was strongest in each setting, and it also produced the highest scores on the direct document-quality dimensions the authors measure — clarity, depth, insight, and factuality.
 
-For anyone doing [answer engine optimization](/blog/answer-engine-optimization), that is a more useful signal than another ranking factor. It splits a piece of advice that has always been treated as one thing:
+For anyone doing [answer engine optimization](/answer-engine-optimization), that is a more useful signal than another ranking factor. It splits a piece of advice that has always been treated as one thing:
 
 | The tactic | Under a verifiability mechanism |
 |---|---|
@@ -186,4 +186,4 @@ The useful frame is not that GEO is dead. It is that GEO has entered the phase e
 
 [Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces and records the full answer text alongside every mention, citation, and competitor named beside you. Because the raw answers are yours to query, you can check what an engine actually said about your brand rather than inferring it from a citation count — which is the measurement this paper's failure mode calls for.
 
-For the fundamentals, start with [what AI citations are](/blog/ai-citations) and [where they come from](/blog/where-ai-citations-come-from). For the adjacent research, see [what happens to GEO tactics under competition](/blog/do-geo-tactics-stop-working) and [whether the sources AI cites check out](/blog/can-you-trust-ai-citations). For the practice, see the [AEO guide](/blog/answer-engine-optimization) and [how to track your brand in AI search](/blog/track-brand-ai-search). For the vocabulary, the [AI search glossary](/glossary).
+For the fundamentals, start with [what AI citations are](/blog/ai-citations) and [where they come from](/blog/where-ai-citations-come-from). For the adjacent research, see [what happens to GEO tactics under competition](/blog/do-geo-tactics-stop-working) and [whether the sources AI cites check out](/blog/can-you-trust-ai-citations). For the practice, see the [AEO guide](/answer-engine-optimization) and [how to track your brand in AI search](/answer-engine-optimization). For the vocabulary, the [AI search glossary](/glossary).

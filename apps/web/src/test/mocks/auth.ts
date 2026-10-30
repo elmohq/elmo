@@ -20,21 +20,6 @@ export const WHITELABEL_FEATURES: FeaturesConfig = FEATURES_BY_MODE.whitelabel;
 export const CLOUD_FEATURES: FeaturesConfig = FEATURES_BY_MODE.cloud;
 
 // ============================================================================
-// Mock Session (for tests that need a user object)
-// ============================================================================
-
-export function createMockSession(overrides: Partial<{ id: string; name: string; email: string; image: string }> = {}) {
-	return {
-		user: {
-			id: overrides.id ?? "test-user-id",
-			name: overrides.name ?? "Test User",
-			email: overrides.email ?? "test@example.com",
-			image: overrides.image,
-		},
-	};
-}
-
-// ============================================================================
 // Mock Deployment
 // ============================================================================
 

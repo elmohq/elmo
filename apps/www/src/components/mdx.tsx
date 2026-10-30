@@ -16,12 +16,14 @@ async function onBlockFeedback(feedback: BlockFeedback): Promise<ActionResponse>
 	return { success: true };
 }
 
+function TrackedFeedbackBlock(props: { id: string; body?: string; children: React.ReactNode }) {
+	return <FeedbackBlock {...props} onSendAction={onBlockFeedback} />;
+}
+
 export function getMDXComponents(components?: MDXComponents) {
 	return {
 		...defaultMdxComponents,
-		FeedbackBlock: (props: { id: string; body?: string; children: React.ReactNode }) => (
-			<FeedbackBlock {...props} onSendAction={onBlockFeedback} />
-		),
+		FeedbackBlock: TrackedFeedbackBlock,
 		YouTube: YouTubeEmbed,
 		ProviderCTA,
 		...components,

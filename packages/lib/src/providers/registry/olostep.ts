@@ -51,14 +51,6 @@ function getClient(): Olostep {
 	return _client;
 }
 
-function extractTextFromOlostep(data: any): string {
-	if (data?.result?.markdown_content) return data.result.markdown_content;
-	if (data?.answer_markdown) return data.answer_markdown;
-	if (data?.result?.text_content) return data.result.text_content;
-	if (typeof data?.answer === "string") return data.answer;
-	return "No text content found in Olostep response.";
-}
-
 function extractCitationsFromOlostep(data: any): Citation[] {
 	const citations: Citation[] = [];
 	const sources = data?.sources ?? data?.citations ?? data?.result?.links_on_page ?? data?.inline_references ?? [];
@@ -146,11 +138,9 @@ export const olostep: Provider = {
 			// Store the parsed content directly instead of the full retrieved
 			// wrapper (which double-encodes json_content as a string).
 			rawOutput: parsed,
-			textContent: extractTextFromOlostep(parsed),
 			// Mark as "unavailable" only when citations prove a search happened
 			// but the API didn't expose the query strings
 			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
-			citations,
 			modelVersion: parsed?.model ?? undefined,
 		};
 	},

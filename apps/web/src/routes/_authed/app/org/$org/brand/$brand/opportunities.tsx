@@ -13,6 +13,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { OpportunitiesReport } from "@/components/opportunities-report";
 import { PageHeader } from "@/components/page-header";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { useOpportunities } from "@/hooks/use-opportunities";
 import { pageHead } from "@/lib/route-head";
 
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/opportu
 });
 
 function OpportunitiesPage() {
-	const { brandId } = Route.useRouteContext();
+	const brandId = useBrandId();
 	const { data, isLoading, error } = useOpportunities(brandId);
 
 	const infoContent = "Recommendations based on your visibility and citation metrics. Refreshed weekly.";

@@ -2,11 +2,13 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, reports } from "@workspace/lib/db/schema";
-import { analyzeMentions } from "@workspace/lib/mentions";
+import type { MentionConfig } from "@workspace/lib/mentions";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getProvider, type ModelConfig } from "@workspace/lib/providers";
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
+import { extractRun } from "@workspace/lib/text-extraction";
 import { eq } from "drizzle-orm";
+import { mentionAnalyzer } from "./mention-judge/analyze";
 
 interface CompetitorResult {
 	name: string;
@@ -52,6 +54,8 @@ function getReportRunsForModel(model: string): number {
 export interface ReportJobData {
 	reportId: string;
 	brandName: string;
+	/** Absent on jobs queued before reports stored brand name variants. */
+	brandAliases?: string[];
 	brandWebsite: string;
 	manualPrompts?: string[];
 }
@@ -92,6 +96,7 @@ function selectOptimalPrompts(
 		}>;
 	}>,
 	brandName: string,
+	brandAliases: string[],
 	brandWebsite: string,
 ): string[] {
 	const scoredCandidates = candidateResults.map((candidate) => {
@@ -102,7 +107,7 @@ function selectOptimalPrompts(
 		const brandMentionRate = totalRuns > 0 ? brandMentionCount / totalRuns : 0;
 		const competitorMentionRate = totalRuns > 0 ? competitorMentionCount / totalRuns : 0;
 
-		const isActuallyBranded = isPromptBranded(candidate.promptValue, brandName, brandWebsite);
+		const isActuallyBranded = isPromptBranded(candidate.promptValue, brandName, brandWebsite, brandAliases);
 
 		return {
 			promptValue: candidate.promptValue,
@@ -159,45 +164,70 @@ function selectOptimalPrompts(
 	return selectedPrompts;
 }
 
+const JUDGE_ATTEMPTS = 3;
+const JUDGE_RETRY_DELAY_MS = 5_000;
+
+/** Judges a report's answer, retrying on its own: the answer is paid for and is never fetched again. */
+async function judgeWithRetries(text: string, config: MentionConfig, question: string) {
+	for (let attempt = 1; ; attempt++) {
+		try {
+			return await mentionAnalyzer().analyze(text, config, null, question);
+		} catch (error) {
+			if (attempt >= JUDGE_ATTEMPTS) throw error;
+			console.error(`Mention judge failed (attempt ${attempt} of ${JUDGE_ATTEMPTS}); retrying:`, error);
+			await new Promise((resolve) => setTimeout(resolve, JUDGE_RETRY_DELAY_MS * attempt));
+		}
+	}
+}
+
 // Whitelabel uses its fixed 2+1+1 mapping; other modes match day-to-day
 // tracking frequency.
 async function runPrompt(
 	promptValue: string,
 	brandName: string,
+	brandAliases: string[],
 	brandWebsite: string,
 	competitors: CompetitorResult[],
 	scrapeConfigs: ModelConfig[],
 	job: ReportJobContext,
 ): Promise<PromptRunResult> {
-	const runOne = async (config: ModelConfig) => {
-		const providerImpl = getProvider(config.provider);
-		const result = await providerImpl.run(config.model, promptValue, {
+	const mentionConfig = {
+		brand: { name: brandName, aliases: brandAliases, domains: [brandWebsite] },
+		competitors: competitors.map((competitor) => ({
+			name: competitor.name,
+			aliases: [],
+			domains: [competitor.domain],
+		})),
+	};
+	const callProvider = async (config: ModelConfig) => {
+		const result = await getProvider(config.provider).run(config.model, promptValue, {
 			webSearch: config.webSearch,
 			version: config.version,
 		});
-		const { brandMentioned, competitorsMentioned } = analyzeMentions(
-			result.textContent,
-			{ name: brandName, domains: [brandWebsite] },
-			competitors.map((competitor) => ({ name: competitor.name, domains: [competitor.domain] })),
-		);
-		return {
-			model: config.model,
-			version: result.modelVersion ?? config.version ?? config.provider,
-			webSearchEnabled: config.webSearch,
-			rawOutput: result.rawOutput,
-			webQueries: result.webQueries,
-			textContent: result.textContent,
-			brandMentioned,
-			competitorsMentioned,
-		};
+		return { config, result, textContent: extractRun(result.rawOutput, config.provider).textContent ?? "" };
 	};
 
-	const runPromises = scrapeConfigs.flatMap((config) => {
-		const count = getReportRunsForModel(config.model);
-		return Array.from({ length: count }, () => runOne(config));
-	});
-
-	const runResults = await Promise.all(runPromises);
+	// Every provider call settles before any judging, so a judge failure retries only the judging.
+	const answers = await Promise.all(
+		scrapeConfigs.flatMap((config) =>
+			Array.from({ length: getReportRunsForModel(config.model) }, () => callProvider(config)),
+		),
+	);
+	const runResults = await Promise.all(
+		answers.map(async ({ config, result, textContent }) => {
+			const { brandMentioned, competitorsMentioned } = await judgeWithRetries(textContent, mentionConfig, promptValue);
+			return {
+				model: config.model,
+				version: result.modelVersion ?? config.version ?? config.provider,
+				webSearchEnabled: config.webSearch,
+				rawOutput: result.rawOutput,
+				webQueries: result.webQueries,
+				textContent,
+				brandMentioned,
+				competitorsMentioned,
+			};
+		}),
+	);
 
 	job.log(`Completed ${runResults.length} runs for prompt: "${promptValue}"`);
 
@@ -209,6 +239,7 @@ async function runPrompt(
 
 export async function processReportJob(job: ReportJobContext) {
 	const { reportId, brandName, brandWebsite, manualPrompts } = job.data;
+	const brandAliases = job.data.brandAliases ?? [];
 
 	job.log(`Processing report ID: ${reportId} for brand: ${brandName}`);
 
@@ -220,6 +251,8 @@ export async function processReportJob(job: ReportJobContext) {
 	}
 
 	try {
+		// Before anything is spent: the answers a report pays for can't be judged without it.
+		mentionAnalyzer();
 		await db.update(reports).set({ status: "processing", updatedAt: new Date() }).where(eq(reports.id, reportId));
 
 		job.log(`Report ${reportId} marked as processing`);
@@ -238,19 +271,22 @@ export async function processReportJob(job: ReportJobContext) {
 		// The report renderer's CompetitorResult expects a single primary domain;
 		// analyzeBrand returns the full list now. Take the first as the canonical
 		// one for the report's UI (which doesn't display the rest anyway).
+		// A brand name variant listed as a competitor would count the brand's own
+		// mentions against it.
+		const brandNames = new Set([brandName, ...brandAliases].map((name) => name.trim().toLowerCase()));
 		const competitors: CompetitorResult[] = suggestion.competitors
-			.filter((c) => c.domains.length > 0)
+			.filter((c) => c.domains.length > 0 && !brandNames.has(c.name.trim().toLowerCase()))
 			.map((c) => ({ name: c.name, domain: c.domains[0] }));
 		job.updateProgress(35);
 
 		const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = useManualPrompts
 			? manualPrompts.map((prompt) => ({
 					prompt: prompt.toLowerCase().trim(),
-					brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite),
+					brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite, brandAliases),
 				}))
 			: suggestion.suggestedPrompts.map((p) => ({
 					prompt: p.prompt,
-					brandedPrompt: isPromptBranded(p.prompt, brandName, brandWebsite),
+					brandedPrompt: isPromptBranded(p.prompt, brandName, brandWebsite, brandAliases),
 				}));
 
 		if (candidatePrompts.length === 0) {
@@ -281,13 +317,22 @@ export async function processReportJob(job: ReportJobContext) {
 
 		const totalCandidates = candidatePrompts.length;
 		let completedCandidates = 0;
+		let failedCandidates = 0;
 
 		const batchSize = 20;
 		for (let i = 0; i < candidatePrompts.length; i += batchSize) {
 			const batch = candidatePrompts.slice(i, i + batchSize);
 			const batchPromises = batch.map(async (candidate) => {
 				try {
-					const result = await runPrompt(candidate.prompt, brandName, brandWebsite, competitors, scrapeConfigs, job);
+					const result = await runPrompt(
+						candidate.prompt,
+						brandName,
+						brandAliases,
+						brandWebsite,
+						competitors,
+						scrapeConfigs,
+						job,
+					);
 					completedCandidates++;
 					const progress = 40 + (completedCandidates / totalCandidates) * 30;
 					job.updateProgress(progress);
@@ -300,6 +345,7 @@ export async function processReportJob(job: ReportJobContext) {
 					job.log(
 						`Error testing candidate "${candidate.prompt}": ${error instanceof Error ? error.message : "Unknown error"}`,
 					);
+					failedCandidates++;
 					completedCandidates++;
 					const progress = 40 + (completedCandidates / totalCandidates) * 30;
 					job.updateProgress(progress);
@@ -320,10 +366,14 @@ export async function processReportJob(job: ReportJobContext) {
 			}
 		}
 
+		// A report built from no answers would read as "never mentioned"; fail it instead.
+		if (failedCandidates === candidatePrompts.length)
+			throw new Error("Every candidate prompt failed: are the providers or the judge (Jev) down?");
+
 		job.updateProgress(70);
 
 		job.log(`Selecting optimal ${TARGET_PROMPTS_COUNT} prompts from ${candidateResults.length} candidates`);
-		const selectedPromptValues = selectOptimalPrompts(candidateResults, brandName, brandWebsite);
+		const selectedPromptValues = selectOptimalPrompts(candidateResults, brandName, brandAliases, brandWebsite);
 		job.updateProgress(75);
 
 		job.log(`Running final ${selectedPromptValues.length} selected prompts`);
@@ -353,7 +403,7 @@ export async function processReportJob(job: ReportJobContext) {
 			value: promptValue,
 			enabled: true,
 			tags: [],
-			systemTags: computeSystemTags(promptValue, brandName, brandWebsite),
+			systemTags: computeSystemTags(promptValue, brandName, brandWebsite, brandAliases),
 		}));
 
 		const reportData: ReportData = {

@@ -31,7 +31,10 @@ test.describe("Overview Page", () => {
   });
 
   test("sidebar navigation links work", async ({ page }) => {
-    await page.goto(`${BRAND_URL}`);
+    // Leaving a page mid-hydration trips a TanStack Router race: React re-renders
+    // the departing route after the router has dropped its match, and logs the
+    // recovered errors #520/#422. The links are what's under test, not that race.
+    await page.goto(`${BRAND_URL}`, { waitUntil: "networkidle" });
 
     const visibilityLink = page.locator(`a[href="${BRAND_URL}/visibility"][data-sidebar="menu-button"]`);
     await expect(visibilityLink).toBeVisible({ timeout: 15_000 });

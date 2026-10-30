@@ -225,6 +225,31 @@ export const Local: StoryObj = {
 		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
 		await expect(await screen.findByText("Workflows")).toBeInTheDocument();
 		await expect(await screen.findByText("Tools")).toBeInTheDocument();
+		await expect(screen.getByRole("menuitem", { name: "Change Password" })).toBeInTheDocument();
+	},
+};
+
+/** Organization settings — the keys page and the docs beside it */
+export const OrganizationSettings: StoryObj = {
+	render: () => {
+		configureMocks(localConfig, onboardedBrand, authedUser("Local Admin", "admin@localhost", "local-admin"), {
+			isAdmin: true,
+			hasReportAccess: true,
+		});
+
+		return (
+			<SidebarFrame label="Organization settings">
+				<AppSidebar section="organization" organization={organization} />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("API Keys")).toBeVisible();
+		// The reference and the connection guide are docs, not settings.
+		await expect(await canvas.findByText("Docs")).toBeVisible();
+		await expect(await canvas.findByText("API")).toBeVisible();
+		await expect(await canvas.findByText("MCP")).toBeVisible();
 	},
 };
 
@@ -345,6 +370,7 @@ export const Cloud: StoryObj = {
 		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
 		await expect(await screen.findByText("Workflows")).toBeInTheDocument();
 		await expect(screen.queryByText("Reports")).toBeNull();
+		await expect(screen.getByRole("menuitem", { name: "Change Password" })).toBeInTheDocument();
 	},
 };
 
@@ -387,6 +413,10 @@ export const WhitelabelHasNoBillingOrTeam: StoryObj = {
 		await expect(await canvas.findByText("Brands")).toBeInTheDocument();
 		await expect(canvas.queryByText("Team")).toBeNull();
 		await expect(canvas.queryByText("Billing")).toBeNull();
+
+		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
+		await screen.findByRole("menu");
+		await expect(screen.queryByRole("menuitem", { name: "Change Password" })).toBeNull();
 	},
 };
 
@@ -408,7 +438,7 @@ export const ChoosePlanGate: StoryObj = {
 		await expect(canvas.queryByRole("button", { name: "Account and organizations" })).toBeNull();
 
 		await userEvent.click(await canvas.findByRole("button", { name: "Account" }));
-		await expect(await screen.findByText("Log out")).toBeInTheDocument();
+		await expect(await screen.findByText("Log Out")).toBeInTheDocument();
 	},
 };
 

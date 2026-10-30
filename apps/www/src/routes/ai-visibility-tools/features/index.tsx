@@ -33,7 +33,8 @@ const items = indexableFeatureKeys().map((key) => ({
 }));
 
 export const Route = createFileRoute("/ai-visibility-tools/features/")({
-	head: () => ({
+	loader: () => ({ items }),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -46,7 +47,7 @@ export const Route = createFileRoute("/ai-visibility-tools/features/")({
 				{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 				{ name: "Features", path: "/ai-visibility-tools/features" },
 			]),
-			itemListJsonLd(items),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: FeatureHub,
@@ -59,7 +60,6 @@ function FeatureHub() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					eyebrow="By feature"
 					title="Browse AI visibility tools by feature"
 					lead="Filter the field by capability. Pick a feature to see which AI visibility tools offer it and how they compare, including the open-source option you can self-host."
 				/>

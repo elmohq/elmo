@@ -1,5 +1,153 @@
 # e2e
 
+## 0.7.7
+
+### Patch Changes
+
+- Updated dependencies [0982452]
+  - @workspace/lib@0.7.7
+
+## 0.7.6
+
+### Patch Changes
+
+- Updated dependencies [dfb4d72]
+- Updated dependencies [925390b]
+- Updated dependencies [98fc42e]
+  - @workspace/lib@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/lib@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/lib@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- Updated dependencies [cacc8f9]
+  - @workspace/lib@0.7.3
+
+## 0.7.2
+
+### Patch Changes
+
+- @workspace/lib@0.7.2
+
+## 0.7.1
+
+### Patch Changes
+
+- @workspace/lib@0.7.1
+
+## 0.7.0
+
+### Patch Changes
+
+- Updated dependencies [0ac774b]
+- Updated dependencies [f5b579c]
+  - @workspace/lib@0.7.0
+
+## 0.6.2
+
+### Patch Changes
+
+- @workspace/lib@0.6.2
+
+## 0.6.1
+
+### Patch Changes
+
+- @workspace/lib@0.6.1
+
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [1334ce8]
+  - @workspace/lib@0.6.0
+
+## 0.5.2
+
+### Patch Changes
+
+- @workspace/lib@0.5.2
+
+## 0.5.1
+
+### Patch Changes
+
+- @workspace/lib@0.5.1
+
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [f1daf53]
+- Updated dependencies [a55f182]
+  - @workspace/lib@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- @workspace/lib@0.4.6
+
+## 0.4.5
+
+### Patch Changes
+
+- Updated dependencies [4ec5ac9]
+- Updated dependencies [9957eef]
+  - @workspace/lib@0.4.5
+
+## 0.4.4
+
+### Patch Changes
+
+- Updated dependencies [b48f545]
+- Updated dependencies [1980c7d]
+- Updated dependencies [280e5f3]
+- Updated dependencies [76ec134]
+  - @workspace/lib@0.4.4
+
+## 0.4.3
+
+### Patch Changes
+
+- Updated dependencies [10bc2f0]
+  - @workspace/lib@0.4.3
+
+## 0.4.2
+
+### Patch Changes
+
+- @workspace/lib@0.4.2
+
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [e2543e8]
+  - @workspace/lib@0.4.1
+
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies [f6e90d9]
+- Updated dependencies [99f537c]
+- Updated dependencies [c9142f7]
+- Updated dependencies [aa8c80d]
+  - @workspace/lib@0.4.0
+
 ## 0.3.0
 
 ### Patch Changes
