@@ -3,9 +3,13 @@ import type { SyncState } from "@/lib/brand-data/worker/sync";
 
 export type BrandComputation = keyof typeof computations;
 
-export type WorkerRequest =
+/** Work one tab's engine does for any tab. */
+export type Job =
 	| { type: "sync"; brandId: string }
-	| { type: "compute"; id: number; brandId: string; name: BrandComputation; input: unknown };
+	| { type: "compute"; brandId: string; name: BrandComputation; input: unknown }
+	| { type: "clear" };
+
+export type WorkerRequest = { id: number; job: Job };
 
 export type WorkerResponse =
 	| { type: "status"; brandId: string; state: SyncState }

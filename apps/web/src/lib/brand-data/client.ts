@@ -1,6 +1,6 @@
 import { BRAND_DATA_DB_PREFIX } from "@/lib/brand-data/chunks";
 import type { computations } from "@/lib/brand-data/worker/computations";
-import type { BrandComputation, WorkerRequest, WorkerResponse } from "@/lib/brand-data/worker/protocol";
+import type { BrandComputation, Job, WorkerRequest, WorkerResponse } from "@/lib/brand-data/worker/protocol";
 import type { SyncState } from "@/lib/brand-data/worker/sync";
 
 type Computations = typeof computations;
@@ -8,6 +8,7 @@ export type ComputationInput<K extends BrandComputation> = Parameters<Computatio
 export type ComputationResult<K extends BrandComputation> = Awaited<ReturnType<Computations[K]>>;
 
 const TIMEOUT_MS = 60_000;
+const CLEAR_TIMEOUT_MS = 3_000;
 
 /** Options for queries answered from synced brand data, which a sync invalidates when it changes the data. */
 export const brandDataQuery = { meta: { brandData: true }, staleTime: 5 * 60_000 } as const;
@@ -42,8 +43,30 @@ function getWorker(): Worker {
 	return worker;
 }
 
-function send(request: WorkerRequest) {
-	getWorker().postMessage(request);
+function request(job: Job, timeoutMs = TIMEOUT_MS): Promise<unknown> {
+	return new Promise((resolve, reject) => {
+		const id = nextId++;
+		const timer = setTimeout(() => {
+			pending.delete(id);
+			reject(new Error("Brand data took too long to load"));
+		}, timeoutMs);
+		pending.set(id, {
+			resolve: (value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			reject: (error) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		});
+		try {
+			getWorker().postMessage({ id, job } satisfies WorkerRequest);
+		} catch (error) {
+			pending.get(id)?.reject(error as Error);
+			pending.delete(id);
+		}
+	});
 }
 
 export function onBrandDataChange(listener: (brandId: string, state: SyncState) => void): () => void {
@@ -52,7 +75,7 @@ export function onBrandDataChange(listener: (brandId: string, state: SyncState) 
 }
 
 export function syncBrandData(brandId: string) {
-	send({ type: "sync", brandId });
+	void request({ type: "sync", brandId }).catch(() => {});
 }
 
 /** Answers from the brand's synced data, waiting for whatever part of it the answer needs. */
@@ -60,33 +83,12 @@ export function computeBrandData<K extends BrandComputation>(
 	name: K,
 	input: ComputationInput<K> & { brandId: string },
 ): Promise<ComputationResult<K>> {
-	return new Promise((resolve, reject) => {
-		const id = nextId++;
-		const timer = setTimeout(() => {
-			pending.delete(id);
-			reject(new Error("Brand data took too long to load"));
-		}, TIMEOUT_MS);
-		pending.set(id, {
-			resolve: (value) => {
-				clearTimeout(timer);
-				resolve(value as ComputationResult<K>);
-			},
-			reject: (error) => {
-				clearTimeout(timer);
-				reject(error);
-			},
-		});
-		try {
-			send({ type: "compute", id, brandId: input.brandId, name, input });
-		} catch (error) {
-			pending.get(id)?.reject(error as Error);
-			pending.delete(id);
-		}
-	});
+	return request({ type: "compute", brandId: input.brandId, name, input }) as Promise<ComputationResult<K>>;
 }
 
 /** Removes every brand's synced copy from this browser, as when signing out. */
 export async function clearBrandData() {
+	if (worker) await request({ type: "clear" }, CLEAR_TIMEOUT_MS).catch(() => {});
 	stopWorker(new Error("Signed out"));
 	const root = await navigator.storage?.getDirectory().catch(() => undefined);
 	if (!root) return;

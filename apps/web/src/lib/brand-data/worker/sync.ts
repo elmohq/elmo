@@ -306,6 +306,14 @@ function forgetBrand(brandId: string, error = new Error("Brand data was unloaded
 	void write((conn) => removeBrand(conn, brandId)).catch(() => {});
 }
 
+/** Drops every brand, as when the database it was kept in is deleted. */
+export function forgetAllBrands() {
+	for (const sync of syncs.values()) sync.close(new Error("Brand data was cleared"));
+	syncs.clear();
+	writer = undefined;
+	writes = Promise.resolve();
+}
+
 export function syncBrand(brandId: string): Promise<void> {
 	return brandSync(brandId).refresh();
 }
