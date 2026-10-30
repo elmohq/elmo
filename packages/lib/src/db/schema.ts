@@ -594,9 +594,9 @@ export const rollupDirty = pgTable(
 ).enableRLS();
 
 /**
- * The version of each chunk of a brand's data that browsers keep a copy of: its
- * entities, each rollup table by UTC month, and its cited pages by id range.
- * Triggers on those tables bump it on every write, whoever the writer.
+ * Versions of the parts of a brand's rollups that browsers keep a copy of: each
+ * UTC month (`month:2026-03`) and each range of cited page ids (`pages:12`).
+ * Bumped by the rollup writes that change them; a part with no row is version 0.
  */
 export const brandDataVersions = pgTable(
 	"brand_data_versions",
