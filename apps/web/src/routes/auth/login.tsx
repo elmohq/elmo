@@ -13,6 +13,7 @@ import { MCP_AUTHORIZE_ENDPOINT } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -180,6 +181,18 @@ function signInErrorMessage(error: { code?: string; message?: string }, isCloud?
 	return error.message ?? "Invalid email or password";
 }
 
+function LastUsedBadge() {
+	// The leading space keeps the button's accessible name "Sign In Last Used" rather than "Sign InLast Used".
+	return (
+		<>
+			{" "}
+			<Badge variant="secondary" className="pointer-events-none absolute -top-3 right-3">
+				Last Used
+			</Badge>
+		</>
+	);
+}
+
 export function EmailPasswordLogin({
 	destination = "/app",
 	returnTo,
@@ -198,8 +211,13 @@ export function EmailPasswordLogin({
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [lastLoginMethod, setLastLoginMethod] = useState<string | null>(null);
 	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
 	const turnstile = useTurnstile();
+
+	useEffect(() => {
+		setLastLoginMethod(isCloud ? authClient.getLastUsedLoginMethod() : null);
+	}, [isCloud]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -247,11 +265,12 @@ export function EmailPasswordLogin({
 					<Button
 						type="button"
 						variant="outline"
-						className="w-full"
+						className="relative w-full"
 						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: destination })}
 					>
 						<IconBrandGoogle className="size-4" />
 						Continue with Google
+						{lastLoginMethod === "google" && <LastUsedBadge />}
 					</Button>
 					<LegalConsentNotice action="continuing with Google" />
 					<div className="flex items-center gap-3">
@@ -300,8 +319,9 @@ export function EmailPasswordLogin({
 					/>
 				</div>
 				{turnstile.widget}
-				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Signing in..." : "Sign in"}
+				<Button type="submit" className="relative w-full" disabled={loading}>
+					{loading ? "Signing in..." : "Sign In"}
+					{lastLoginMethod === "email" && <LastUsedBadge />}
 				</Button>
 			</form>
 			{canRegister && (

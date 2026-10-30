@@ -11,7 +11,7 @@ import type { CreateAuthOptions } from "@workspace/lib/auth/server";
 import { provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError } from "better-auth/api";
-import { captcha } from "better-auth/plugins";
+import { captcha, lastLoginMethod } from "better-auth/plugins";
 import { createStripeBillingPlugin } from "../billing/plugin";
 import { isDisposableEmail } from "../disposable-domains";
 import { sendEmail } from "../email";
@@ -131,7 +131,7 @@ export function getCloudAuthOptions(): CreateAuthOptions {
 				},
 			},
 		},
-		extraPlugins: [createStripeBillingPlugin(), ...(turnstile ? [turnstile] : [])],
+		extraPlugins: [createStripeBillingPlugin(), lastLoginMethod(), ...(turnstile ? [turnstile] : [])],
 		organizationOptions: {
 			sendInvitationEmail: async (data) => {
 				await sendEmail(
