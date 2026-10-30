@@ -331,19 +331,25 @@ export const FORUM_DOMAINS = new Set([
 	"cafemom.com",
 ]);
 
-/**
- * True if `domain` equals, or is a subdomain of, any entry in `set`. Walks the
- * domain's parent suffixes so lookups stay O(labels) regardless of set size —
- * important for the large editorial set.
- */
-export function inDomainSet(domain: string, set: Set<string>): boolean {
+// Walks parent suffixes so lookups stay O(labels) regardless of set size — the editorial set is large.
+function coveringDomain(domain: string, set: Set<string>): string | null {
 	let d = domain;
 	while (true) {
-		if (set.has(d)) return true;
+		if (set.has(d)) return d;
 		const dot = d.indexOf(".");
-		if (dot === -1) return false;
+		if (dot === -1) return null;
 		d = d.slice(dot + 1);
 	}
+}
+
+export function inDomainSet(domain: string, set: Set<string>): boolean {
+	return coveringDomain(domain, set) !== null;
+}
+
+export function redundantDomainReason(domain: string, tracked: (string | null)[]): string | null {
+	const covering = coveringDomain(domain, new Set(tracked.filter((d): d is string => d !== null)));
+	if (!covering) return null;
+	return covering === domain ? "is already tracked" : `is already covered by ${covering}`;
 }
 
 /**
