@@ -5,7 +5,7 @@ packages:
 
 catalog:
   "@base-ui/react": "^1.9.0"
-  "@better-auth/stripe": "^1.7.12"
+  "@better-auth/stripe": "^1.7.13"
   "@fontsource/geist-mono": "^5.3.0"
   "@fontsource/geist-sans": "^5.3.0"
   "@fontsource/titan-one": "^5.3.0"
@@ -21,7 +21,7 @@ catalog:
   "@types/react-dom": "^19.3.0"
   "@vitejs/plugin-react": "^6.1.2"
   auth0: "^7.6.0"
-  better-auth: "^1.7.12"
+  better-auth: "^1.7.13"
   drizzle-orm: "^0.45.4"
   lucide-react: "^1.61.0"
   nitro: "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421"
@@ -36,7 +36,7 @@ catalog:
   react-markdown: "^10.1.0"
   recharts: "^3.10.1"
   remark-gfm: "^4.0.1"
-  stripe: "^22.6.1"
+  stripe: "^23.0.1"
   tailwindcss: "^4.3.3"
   tslib: "^2.8.1"
   tsx: "^4.23.15"
