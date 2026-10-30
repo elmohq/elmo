@@ -1,3 +1,4 @@
+import { v4 } from "uuid";
 import { BRAND_DATA_DB_PREFIX, BRAND_DATA_FORMAT } from "@/lib/brand-data/chunks";
 import type { Job } from "@/lib/brand-data/worker/protocol";
 import type { SyncState } from "@/lib/brand-data/worker/sync";
@@ -31,7 +32,7 @@ export function shareAcrossTabs(options: {
 	onStatus: (brandId: string, state: SyncState) => void;
 }) {
 	const channel = new BroadcastChannel(NAME);
-	const tab = crypto.randomUUID();
+	const tab = v4();
 	const pending = new Map<number, Pending>();
 	let leading = false;
 	let alone = false;
@@ -57,32 +58,34 @@ export function shareAcrossTabs(options: {
 		channel.postMessage({ type: "job", from: tab, id, job: request.job } satisfies Message);
 	};
 
-	channel.onmessage = ({ data: message }: MessageEvent<Message>) => {
-		if (message.type === "job" && leading) {
-			channel.postMessage({ type: "ack", to: message.from, id: message.id } satisfies Message);
-			options.run(message.job).then(
-				(value) => channel.postMessage({ type: "reply", to: message.from, id: message.id, value } satisfies Message),
-				(error: Error) =>
-					channel.postMessage({
-						type: "reply",
-						to: message.from,
-						id: message.id,
-						error: error.message,
-					} satisfies Message),
-			);
-		} else if (message.type === "ack" && message.to === tab) {
-			clearTimeout(pending.get(message.id)?.timer);
-		} else if (message.type === "reply" && message.to === tab) {
-			const request = pending.get(message.id);
-			pending.delete(message.id);
-			if (message.error === undefined) request?.resolve(message.value);
-			else request?.reject(new Error(message.error));
-		} else if (message.type === "status") {
-			options.onStatus(message.brandId, message.state);
-		} else if (message.type === "leader") {
-			for (const id of pending.keys()) send(id);
-		}
+	const answer = (message: Extract<Message, { type: "job" }>) => {
+		channel.postMessage({ type: "ack", to: message.from, id: message.id } satisfies Message);
+		const reply = (body: { value?: unknown; error?: string }) =>
+			channel.postMessage({ type: "reply", to: message.from, id: message.id, ...body } satisfies Message);
+		options.run(message.job).then(
+			(value) => reply({ value }),
+			(error: Error) => reply({ error: error.message }),
+		);
 	};
+
+	const settle = (message: Extract<Message, { type: "reply" }>) => {
+		const request = pending.get(message.id);
+		pending.delete(message.id);
+		if (message.error === undefined) request?.resolve(message.value);
+		else request?.reject(new Error(message.error));
+	};
+
+	const handlers: { [T in Message["type"]]: (message: Extract<Message, { type: T }>) => void } = {
+		job: (message) => leading && answer(message),
+		ack: (message) => message.to === tab && clearTimeout(pending.get(message.id)?.timer),
+		reply: (message) => message.to === tab && settle(message),
+		status: (message) => options.onStatus(message.brandId, message.state),
+		leader: () => {
+			for (const id of pending.keys()) send(id);
+		},
+	};
+	channel.onmessage = ({ data: message }: MessageEvent<Message>) =>
+		(handlers[message.type] as (message: Message) => void)(message);
 
 	void navigator.locks.request(NAME, () => {
 		leading = true;
