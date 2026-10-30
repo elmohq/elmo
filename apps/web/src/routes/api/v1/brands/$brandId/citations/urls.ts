@@ -23,7 +23,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/citations/urls")({
 					const brand = await requireBrandInScope(auth, params.brandId);
 					const url = new URL(request.url);
 					const range = parseAnalyticsWindow(url);
-					const { page, limit, offset } = analyticsListPaging(url.searchParams);
+					const { page, limit, offset } = analyticsListPaging(url);
 					const { urls, total, totals } = await getBrandCitationUrls(brand.id, range, parseAnalyticsFilters(url), {
 						search: url.searchParams.get("q") ?? undefined,
 						category: url.searchParams.get("category") ?? undefined,

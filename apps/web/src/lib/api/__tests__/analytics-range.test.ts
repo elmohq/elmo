@@ -4,18 +4,29 @@ import { analyticsListPaging, parseAnalyticsWindow, parsePaging, publicRange } f
 const WINDOW = "start=2026-01-01T00:00:00Z&end=2026-02-01T00:00:00Z";
 
 describe("analytics API query parsing", () => {
-	it("pages the analytics lists 1000 at a time by default, clamping out-of-range and unreadable values", () => {
-		const paging = (query: string) => analyticsListPaging(new URLSearchParams(query));
+	it("pages the analytics lists 1000 at a time by default, rejecting out-of-range and unreadable values", () => {
+		const paging = (query: string) => analyticsListPaging(new URL(`https://example.com?${query}`));
 		expect(paging("")).toEqual({ page: 1, limit: 1000, offset: 0 });
 		expect(paging("page=3&limit=50")).toEqual({ page: 3, limit: 50, offset: 100 });
-		expect(paging("limit=5000")).toMatchObject({ limit: 1000 });
-		expect(paging("page=x&limit=abc")).toEqual({ page: 1, limit: 1000, offset: 0 });
+		expect(() => paging("limit=5000")).toThrow("limit must be an integer between 1 and 1000");
+		expect(() => paging("page=x")).toThrow("page must be a positive integer");
 	});
 
 	it("rejects malformed pagination instead of silently coercing it", () => {
 		expect(() => parsePaging(new URL("https://example.com?page=abc"))).toThrow("page must be a positive integer");
 		expect(() => parsePaging(new URL("https://example.com?limit=101"))).toThrow(
 			"limit must be an integer between 1 and 100",
+		);
+	});
+
+	it("validates pagination against an endpoint-specific limit", () => {
+		expect(parsePaging(new URL("https://example.com?page=2&limit=1000"), { maxLimit: 1000 })).toEqual({
+			page: 2,
+			limit: 1000,
+			offset: 1000,
+		});
+		expect(() => parsePaging(new URL("https://example.com?limit=1001"), { maxLimit: 1000 })).toThrow(
+			"limit must be an integer between 1 and 1000",
 		);
 	});
 

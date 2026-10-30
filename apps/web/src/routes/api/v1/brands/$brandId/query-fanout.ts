@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/query-fanout")({
 					const brand = await requireBrandInScope(auth, params.brandId);
 					const url = new URL(request.url);
 					const range = parseAnalyticsWindow(url);
-					const { page, limit, offset } = analyticsListPaging(url.searchParams);
+					const { page, limit, offset } = analyticsListPaging(url);
 					const { queries, total, ...totals } = await getBrandFanoutQueries(
 						brand.id,
 						range,

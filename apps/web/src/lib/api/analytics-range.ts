@@ -70,40 +70,29 @@ export function parseAnalyticsFilters(url: URL): { model?: string; tags?: string
 	};
 }
 
-export function parsePaging(url: URL, defaultLimit = 20): { page: number; limit: number; offset: number } {
+interface PagingOptions {
+	defaultLimit?: number;
+	maxLimit?: number;
+}
+
+export function parsePaging(
+	url: URL,
+	{ defaultLimit = 20, maxLimit = 100 }: PagingOptions = {},
+): { page: number; limit: number; offset: number } {
 	const rawPage = url.searchParams.get("page") ?? "1";
 	const rawLimit = url.searchParams.get("limit") ?? String(defaultLimit);
 	if (!/^\d+$/.test(rawPage) || Number(rawPage) < 1) invalid("page must be a positive integer");
-	if (!/^\d+$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 100) {
-		invalid("limit must be an integer between 1 and 100");
+	if (!/^\d+$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > maxLimit) {
+		invalid(`limit must be an integer between 1 and ${maxLimit}`);
 	}
 	const page = Number(rawPage);
 	const limit = Number(rawLimit);
 	return { page, limit, offset: (page - 1) * limit };
 }
 
-/**
- * Clamped rather than rejected, unlike `parsePaging`: on the list endpoints
- * that predate the spec the cap is there to bound a runaway query, not to
- * change what an existing caller gets back.
- */
-export function clampedPaging(
-	searchParams: URLSearchParams,
-	maxLimit = 100,
-	defaultLimit = 20,
-): { page: number; limit: number; offset: number } {
-	const parsed = (name: string, fallback: number) => {
-		const value = parseInt(searchParams.get(name) ?? "", 10);
-		return Number.isNaN(value) ? fallback : value;
-	};
-	const page = Math.max(1, parsed("page", 1));
-	const limit = Math.max(1, Math.min(maxLimit, parsed("limit", defaultLimit)));
-	return { page, limit, offset: (page - 1) * limit };
-}
-
 /** Most brands get every row on the first page, and a page stays well inside a response a function can return. */
-export function analyticsListPaging(searchParams: URLSearchParams) {
-	return clampedPaging(searchParams, 1000, 1000);
+export function analyticsListPaging(url: URL) {
+	return parsePaging(url, { defaultLimit: 1000, maxLimit: 1000 });
 }
 
 export function pagination(page: number, limit: number, total: number) {
