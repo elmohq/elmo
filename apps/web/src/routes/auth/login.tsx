@@ -181,6 +181,18 @@ function signInErrorMessage(error: { code?: string; message?: string }, isCloud?
 	return error.message ?? "Invalid email or password";
 }
 
+function LastUsedBadge() {
+	// The leading space keeps the button's accessible name "Sign In Last Used" rather than "Sign InLast Used".
+	return (
+		<>
+			{" "}
+			<Badge variant="secondary" className="pointer-events-none absolute -top-3 right-3">
+				Last Used
+			</Badge>
+		</>
+	);
+}
+
 export function EmailPasswordLogin({
 	destination = "/app",
 	returnTo,
@@ -257,15 +269,8 @@ export function EmailPasswordLogin({
 						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: destination })}
 					>
 						<IconBrandGoogle className="size-4" />
-						Continue with Google{" "}
-						{lastLoginMethod === "google" && (
-							<Badge
-								variant="secondary"
-								className="pointer-events-none absolute -top-3 right-3 rounded-full bg-blue-100 text-blue-700"
-							>
-								Last Used
-							</Badge>
-						)}
+						Continue with Google
+						{lastLoginMethod === "google" && <LastUsedBadge />}
 					</Button>
 					<LegalConsentNotice action="continuing with Google" />
 					<div className="flex items-center gap-3">
@@ -315,15 +320,8 @@ export function EmailPasswordLogin({
 				</div>
 				{turnstile.widget}
 				<Button type="submit" className="relative w-full" disabled={loading}>
-					{loading ? "Signing in..." : "Sign In"}{" "}
-					{lastLoginMethod === "email" && (
-						<Badge
-							variant="secondary"
-							className="pointer-events-none absolute -top-3 right-3 rounded-full bg-blue-100 text-blue-700"
-						>
-							Last Used
-						</Badge>
-					)}
+					{loading ? "Signing in..." : "Sign In"}
+					{lastLoginMethod === "email" && <LastUsedBadge />}
 				</Button>
 			</form>
 			{canRegister && (
