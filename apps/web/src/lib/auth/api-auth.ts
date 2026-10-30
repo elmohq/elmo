@@ -181,8 +181,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 					error: "Too Many Requests",
 					message: "Rate limit exceeded for this API key",
 					code: "rate_limited",
-					retryAfterSeconds:
-						typeof tryAgainIn === "number" ? Math.min(60, Math.max(1, Math.ceil(tryAgainIn / 1000))) : 60,
+					retryAfterSeconds: typeof tryAgainIn === "number" ? Math.max(1, Math.ceil(tryAgainIn / 1000)) : 60,
 				},
 			};
 		}

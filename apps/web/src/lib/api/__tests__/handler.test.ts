@@ -299,8 +299,8 @@ describe("createApiHandler, for a key over its rate limit", () => {
 		expect(response.headers.get("Retry-After")).toBe("42");
 	});
 
-	it("never asks a caller to wait longer than the one-minute window", async () => {
-		const response = await overLimit(90_000);
+	it("asks for the full window when the key was just limited", async () => {
+		const response = await overLimit(60_000);
 
 		expect(response.headers.get("Retry-After")).toBe("60");
 	});
