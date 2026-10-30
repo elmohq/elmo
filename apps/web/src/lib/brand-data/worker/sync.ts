@@ -76,12 +76,30 @@ async function fetchJson<T>(url: string): Promise<T> {
 const dataUrl = (brandId: string, chunks?: string[]) =>
 	`/api/brand-data/${encodeURIComponent(brandId)}${chunks ? `?chunks=${encodeURIComponent(chunks.join(","))}` : ""}`;
 
-/** Entities first, then this month's runs back to the oldest, then cited pages and citations, then the pages' text. */
-function rank(id: string) {
-	if (id === ENTITIES_CHUNK) return 0;
-	if (id.startsWith("runs:")) return 1;
-	if (isPagesChunk(id)) return 2;
-	return isUrlsChunk(id) ? 4 : 3;
+const RECENT_DAYS = 31;
+
+/**
+ * The order to fetch chunks in: everything the last 30 days needs, from the entities through the pages' text,
+ * then each older month, newest first.
+ */
+export function syncOrder(ids: Iterable<string>, now = new Date()): string[] {
+	const recentFrom = new Date(now.getTime() - RECENT_DAYS * 86_400_000).toISOString().slice(0, 7);
+	const key = (id: string): [number, string, number] => {
+		if (id === ENTITIES_CHUNK) return [0, "", 0];
+		if (isPagesChunk(id)) return [2, "", 0];
+		if (isUrlsChunk(id)) return [4, "", 0];
+		const [group, month] = id.split(":");
+		const citations = group === "citations" ? 1 : 0;
+		if (month >= recentFrom) return [citations ? 3 : 1, "", 0];
+		return [5, month, citations];
+	};
+	const compare = (a: string, b: string) => {
+		const [ka, kb] = [key(a), key(b)];
+		return (
+			ka[0] - kb[0] || (ka[1] > kb[1] ? -1 : ka[1] < kb[1] ? 1 : 0) || ka[2] - kb[2] || (a < b ? -1 : a > b ? 1 : 0)
+		);
+	};
+	return [...ids].sort(compare);
 }
 
 interface Waiter {
@@ -195,13 +213,11 @@ class BrandSync {
 		}
 	}
 
+	/** The next chunks to fetch; the pages' text goes one chunk at a time, so a view's months never wait long behind it. */
 	private nextBatch(stale: Set<string>): string[] {
-		const batch = [...stale]
-			.sort(
-				(a, b) =>
-					Number(this.wanted.has(b)) - Number(this.wanted.has(a)) || rank(a) - rank(b) || (a < b ? 1 : a > b ? -1 : 0),
-			)
-			.slice(0, BATCH_SIZE);
+		const ordered = syncOrder(stale);
+		const queue = [...ordered.filter((id) => this.wanted.has(id)), ...ordered.filter((id) => !this.wanted.has(id))];
+		const batch = queue.length > 0 && isUrlsChunk(queue[0]) ? queue.slice(0, 1) : queue.slice(0, BATCH_SIZE);
 		for (const id of batch) stale.delete(id);
 		return batch;
 	}
