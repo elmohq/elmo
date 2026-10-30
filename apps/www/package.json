@@ -11,6 +11,7 @@
 		"build": "node scripts/build-agent-skills.mjs && vite build && node ../../scripts/check-server-bundle.mjs .",
 		"start": "node .output/server/index.mjs",
 		"check-types": "tsc --noEmit",
+		"test": "vitest run",
 		"generate-icons": "tsx scripts/generate-brand-icons.tsx"
 	},
 	"dependencies": {
@@ -41,14 +42,19 @@
 		"react-dom": "catalog:",
 		"react-markdown": "catalog:",
 		"recharts": "catalog:",
+		"rehype-parse": "^9.0.1",
+		"rehype-remark": "^10.0.1",
 		"remark-gfm": "catalog:",
+		"remark-stringify": "^11.0.0",
 		"shiki": "^4.5.0",
 		"tailwindcss": "catalog:",
 		"tslib": "catalog:",
 		"tw-animate-css": "catalog:",
+		"unified": "^11.0.5",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
+		"@types/hast": "^3.0.5",
 		"@types/mdx": "^2.0.14",
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
@@ -58,6 +64,7 @@
 		"png-to-ico": "catalog:",
 		"tar-stream": "3.2.2",
 		"typescript": "catalog:",
-		"vite": "catalog:"
+		"vite": "catalog:",
+		"vitest": "catalog:"
 	}
 }

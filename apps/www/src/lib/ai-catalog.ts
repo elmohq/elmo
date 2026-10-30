@@ -1,7 +1,7 @@
 import { CLOUD_APP_URL } from "@workspace/config/referrals";
 import { canonicalUrl, SITE_NAME } from "@/lib/seo";
 
-const mcpServerCard = {
+export const mcpServerCard = {
 	$schema: "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
 	name: "com.elmohq/elmo",
 	version: __APP_VERSION__,
