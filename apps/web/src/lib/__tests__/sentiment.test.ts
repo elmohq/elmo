@@ -62,7 +62,14 @@ describe("sumAssessments", () => {
 	it("sums every field across rows", () => {
 		const rows = [
 			sums({ positive_runs: 1, neutral_runs: 2, negative_runs: 3, mixed_runs: 4, position_sum: 5, positioned_runs: 6 }),
-			sums({ positive_runs: 7, neutral_runs: 8, negative_runs: 9, mixed_runs: 10, position_sum: 11, positioned_runs: 12 }),
+			sums({
+				positive_runs: 7,
+				neutral_runs: 8,
+				negative_runs: 9,
+				mixed_runs: 10,
+				position_sum: 11,
+				positioned_runs: 12,
+			}),
 		];
 		expect(sumAssessments(rows)).toEqual({
 			positive_runs: 8,
