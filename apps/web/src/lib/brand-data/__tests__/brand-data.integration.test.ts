@@ -234,6 +234,19 @@ describe("brand data versions", () => {
 		expect(moved).toEqual(["citations:2026-04", `pages:${range}`, "runs:2026-04", `urls:${range}`]);
 	});
 
+	it("versions the current month by day, so a refresh moves only the day it rebuilt", async () => {
+		const today = new Date();
+		const at = (hour: number) =>
+			new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), hour));
+		const day = at(0).toISOString().slice(0, 10);
+		await createRun(brandId, promptIds.crm, { at: at(1).toISOString(), brandMentioned: true, webSearch: false });
+		await rebuildRange(db, brandId, bucketStart(at(1)), bucketEnd(at(1)));
+		const before = await versions();
+		await createRun(brandId, promptIds.crm, { at: at(2).toISOString(), brandMentioned: false, webSearch: false });
+		await rebuildRange(db, brandId, bucketStart(at(2)), bucketEnd(at(2)));
+		expect(changed(before, await versions())).toEqual([`citations:${day}`, `runs:${day}`]);
+	});
+
 	it("moves the entities when a prompt changes", async () => {
 		const before = await versions();
 		await db
@@ -249,6 +262,7 @@ describe("brand data versions", () => {
 			"runs:2026-02",
 			"runs:2026-03",
 			"runs:2026-04",
+			expect.stringMatching(/^runs:\d{4}-\d{2}-\d{2}$/),
 		]);
 	});
 });

@@ -1,5 +1,5 @@
 import type { AnalyticsScope } from "@/lib/analytics-sql";
-import { type ChunkGroup, isPagesChunk, isUrlsChunk, monthChunkId, monthsOverlapping } from "@/lib/brand-data/chunks";
+import { type ChunkGroup, isPagesChunk, isUrlsChunk, periodChunkId, periodsOverlapping } from "@/lib/brand-data/chunks";
 import { windowMinutes } from "@/lib/brand-data/scope";
 
 /** Which of the brand's chunks exist, and which of those have synced. */
@@ -19,8 +19,8 @@ export function missingChunks(coverage: Coverage, group: ChunkGroup, scope: Anal
 	const { available, loaded } = coverage;
 	const { start, end } = windowMinutes(scope);
 	const prefix = `${group}:`;
-	const months = [...available].filter((id) => id.startsWith(prefix)).map((id) => id.slice(prefix.length));
-	const needed = monthsOverlapping(months, start, end).map((month) => monthChunkId(group, month));
+	const periods = [...available].filter((id) => id.startsWith(prefix)).map((id) => id.slice(prefix.length));
+	const needed = periodsOverlapping(periods, start, end).map((period) => periodChunkId(group, period));
 	if (group === "citations" && needed.length > 0) needed.push(...[...available].filter(isPagesChunk));
 	return needed.filter((id) => !loaded.has(id));
 }

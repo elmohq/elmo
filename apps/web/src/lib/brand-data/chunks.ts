@@ -1,6 +1,7 @@
 /**
- * A brand's data is split into chunks the browser syncs one at a time: its entities, each UTC month of rollups,
- * and each range of cited pages. A refresh rewrites recent buckets, so a sync usually refetches only this month.
+ * A brand's data is split into chunks the browser syncs one at a time: its entities, each UTC month of rollups
+ * (each day, for the current month), and each range of cited pages. A refresh rewrites only the buckets that
+ * changed, so a sync refetches only the days it touched.
  * Rollup chunks carry the server's rollup rows as Arrow, which DuckDB loads into tables shaped like the server's.
  */
 
@@ -71,21 +72,24 @@ export const PAGE_ATTRIBUTES = ["page_id", "domain", "page_type", "static_catego
 export const PAGE_TEXT = ["page_id", "url", "title"];
 
 export const ENTITIES_CHUNK = "entities";
-export const monthChunkId = (group: ChunkGroup, month: string) => `${group}:${month}`;
+export const periodChunkId = (group: ChunkGroup, period: string) => `${group}:${period}`;
 export const isPagesChunk = (id: string) => id.startsWith("pages:");
 export const isUrlsChunk = (id: string) => id.startsWith("urls:");
 
-/** The `YYYY-MM` UTC months that overlap `[start, end)`, in minutes since the epoch. */
-export function monthsOverlapping(months: Iterable<string>, start: number, end: number): string[] {
-	return [...months].filter((month) => {
-		const [y, m] = month.split("-").map(Number);
-		return Date.UTC(y, m - 1, 1) / 60_000 < end && Date.UTC(y, m, 1) / 60_000 > start;
-	});
+/** A UTC month (`YYYY-MM`) or, for the current month, a UTC day (`YYYY-MM-DD`). */
+export function periodBounds(period: string): { start: Date; end: Date } {
+	const [y, m, d] = period.split("-").map(Number);
+	return d
+		? { start: new Date(Date.UTC(y, m - 1, d)), end: new Date(Date.UTC(y, m - 1, d + 1)) }
+		: { start: new Date(Date.UTC(y, m - 1, 1)), end: new Date(Date.UTC(y, m, 1)) };
 }
 
-export function monthBounds(month: string): { start: Date; end: Date } {
-	const [y, m] = month.split("-").map(Number);
-	return { start: new Date(Date.UTC(y, m - 1, 1)), end: new Date(Date.UTC(y, m, 1)) };
+/** The periods that overlap `[start, end)`, in minutes since the epoch. */
+export function periodsOverlapping(periods: Iterable<string>, start: number, end: number): string[] {
+	return [...periods].filter((period) => {
+		const bounds = periodBounds(period);
+		return bounds.start.getTime() / 60_000 < end && bounds.end.getTime() / 60_000 > start;
+	});
 }
 
 interface FrameHeader {

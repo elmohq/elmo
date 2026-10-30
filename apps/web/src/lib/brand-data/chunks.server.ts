@@ -28,11 +28,11 @@ import {
 	type ChunkManifestEntry,
 	ENTITIES_CHUNK,
 	type EntitiesChunk,
-	monthBounds,
-	monthChunkId,
 	PAGE_ATTRIBUTES,
 	PAGE_ID_RANGE,
 	PAGE_TEXT,
+	periodBounds,
+	periodChunkId,
 	ROLLUP_TABLES,
 } from "@/lib/brand-data/chunks";
 
@@ -117,10 +117,15 @@ interface BrandVersions {
  * the rows' count and newest writing transaction (`xmin`) move exactly when a month's or page range's data may have.
  */
 export async function brandVersions(brandId: string): Promise<BrandVersions> {
-	const [[pipeline], months, ranges] = await Promise.all([
+	const [[pipeline], periods, ranges] = await Promise.all([
 		rows<{ rollup_version: number }>(sql`SELECT rollup_version FROM pipeline_state WHERE id = 1`),
-		rows<{ month: string; version: string }>(sql`
-			SELECT to_char(bucket AT TIME ZONE 'UTC', 'YYYY-MM') AS month, count(*) || '.' || max(xmin::text::bigint) AS version
+		rows<{ period: string; version: string }>(sql`
+			SELECT
+				to_char(
+					bucket AT TIME ZONE 'UTC',
+					CASE WHEN bucket >= date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' THEN 'YYYY-MM-DD' ELSE 'YYYY-MM' END
+				) AS period,
+				count(*) || '.' || max(xmin::text::bigint) AS version
 			FROM rollup_prompt_runs WHERE brand_id = ${brandId} GROUP BY 1 ORDER BY 1
 		`),
 		rows<{ range: number; version: string }>(sql`
@@ -129,14 +134,14 @@ export async function brandVersions(brandId: string): Promise<BrandVersions> {
 		`),
 	]);
 	const rollupVersion = pipeline?.rollup_version ?? 0;
-	const entities = await entitiesChunk(brandId, months.map((m) => m.version).join(","));
+	const entities = await entitiesChunk(brandId, periods.map((p) => p.version).join(","));
 	return {
 		entities,
 		chunks: [
 			{ id: ENTITIES_CHUNK, version: contentVersion(entities) },
-			...months.flatMap(({ month, version }) =>
+			...periods.flatMap(({ period, version }) =>
 				(Object.keys(ROLLUP_TABLES) as ChunkGroup[]).map((group) => ({
-					id: monthChunkId(group, month),
+					id: periodChunkId(group, period),
 					version: `${rollupVersion}:${version}`,
 				})),
 			),
@@ -191,8 +196,8 @@ function toArrow(table: PgTable, rows: Record<string, unknown>[], only?: string[
 	return tableToIPC(new Table(vectors), "stream");
 }
 
-async function monthTables(brandId: string, group: ChunkGroup, month: string): Promise<Record<string, Uint8Array>> {
-	const { start, end } = monthBounds(month);
+async function periodTables(brandId: string, group: ChunkGroup, period: string): Promise<Record<string, Uint8Array>> {
+	const { start, end } = periodBounds(period);
 	const entries = await Promise.all(
 		ROLLUP_TABLES[group].map(async (name) => {
 			const result = await rows<Record<string, unknown>>(sql`
@@ -226,7 +231,7 @@ export async function buildChunk(
 		return { ...entry, tables: { rollup_citation_pages: await pageTable(brandId, Number(key), PAGE_ATTRIBUTES) } };
 	if (kind === "urls")
 		return { ...entry, tables: { rollup_citation_pages: await pageTable(brandId, Number(key), PAGE_TEXT) } };
-	return { ...entry, tables: await monthTables(brandId, kind as ChunkGroup, key) };
+	return { ...entry, tables: await periodTables(brandId, kind as ChunkGroup, key) };
 }
 
 const SECOND = 1;

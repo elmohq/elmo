@@ -56,4 +56,13 @@ describe("reading a brand that is still syncing", () => {
 		const synced = coverage(["entities", "citations:2026-03", "pages:1"]);
 		expect(missingChunks(synced, "citations", march)).toEqual(["pages:0"]);
 	});
+
+	it("waits only for the days of the current month a window covers", () => {
+		const days: Coverage = {
+			available: new Set(["entities", "runs:2026-09", "runs:2026-10-01", "runs:2026-10-29", "runs:2026-10-30"]),
+			loaded: new Set(["entities", "runs:2026-10-01"]),
+		};
+		const lastTwoDays = { brandId: "b", from: "2026-10-29", to: "2026-10-30", timezone: "UTC" };
+		expect(missingChunks(days, "runs", lastTwoDays)).toEqual(["runs:2026-10-29", "runs:2026-10-30"]);
+	});
 });

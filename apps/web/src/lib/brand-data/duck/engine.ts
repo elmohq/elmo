@@ -11,10 +11,10 @@ import {
 	type BrandChunk,
 	type ChunkManifestEntry,
 	type EntitiesChunk,
-	monthBounds,
 	PAGE_ATTRIBUTES,
 	PAGE_ID_RANGE,
 	PAGE_TEXT,
+	periodBounds,
 	ROLLUP_TABLES,
 } from "@/lib/brand-data/chunks";
 import { type DuckConnection, preparePostgresDialect, toRows } from "@/lib/brand-data/duck/query";
@@ -131,7 +131,7 @@ function chunkRows(id: string): { tables: string[]; where: string; bounds: unkno
 			bounds: [range * PAGE_ID_RANGE, (range + 1) * PAGE_ID_RANGE],
 		};
 	}
-	const { start, end } = monthBounds(key);
+	const { start, end } = periodBounds(key);
 	return {
 		tables: [...ROLLUP_TABLES[kind as keyof typeof ROLLUP_TABLES]],
 		where: "bucket >= $2::TIMESTAMPTZ AND bucket < $3::TIMESTAMPTZ",
