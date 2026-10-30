@@ -14,7 +14,7 @@ export const Route = createFileRoute("/api/brand-data/$brandId/quotes")({
 				const runIds = runIdsSchema.safeParse(new URL(request.url).searchParams.get("runIds")?.split(","));
 				if (!runIds.success) return Response.json({ error: "Invalid runIds" }, { status: 400 });
 				return Response.json(await loadQuoteTexts(params.brandId, runIds.data), {
-					headers: { "Cache-Control": "private, max-age=3600" },
+					headers: { "Cache-Control": "no-store" },
 				});
 			},
 		},

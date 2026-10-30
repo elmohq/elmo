@@ -1,6 +1,6 @@
 import { parseModelFilter } from "@workspace/config/model-filter";
 import type { AnalyticsScope } from "@/lib/analytics-sql";
-import type { BrandStore, StoreRunKeys } from "@/lib/brand-data/store";
+import { type BrandStore, requireChunks, type StoreRunKeys } from "@/lib/brand-data/store";
 
 const isCalendarDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
@@ -131,9 +131,10 @@ function modelMatcher(store: BrandStore, table: StoreRunKeys, model: string | un
 /** Mirrors `scopeFilter`: the rows of a table the scope covers, by index. */
 export function scopeRows(store: BrandStore, table: StoreRunKeys, scope: AnalyticsScope): Int32Array {
 	if (scope.brandId !== store.bundle.brandId) return new Int32Array(0);
+	const { start, end } = windowMinutes(scope);
+	requireChunks(store, table.group, start, end);
 	const matchesModel = modelMatcher(store, table, scope.model);
 	if (matchesModel === false) return new Int32Array(0);
-	const { start, end } = windowMinutes(scope);
 	const first = Number.isFinite(start) ? lowerBound(table.bucket, table.length, Math.ceil(start)) : 0;
 	const last = Number.isFinite(end) ? lowerBound(table.bucket, table.length, Math.ceil(end)) : table.length;
 	const promptAllowed = promptMask(store, scope);

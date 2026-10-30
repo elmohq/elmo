@@ -7,7 +7,6 @@
 const noop = async (..._args: unknown[]) => undefined;
 
 export const getPromptMetadataFn = noop;
-export const getPromptsSummaryFn = noop;
 export const getPromptStatsFn = noop;
 export const getPromptRunsFn = noop;
 

@@ -9,8 +9,6 @@ import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { computePromptsSummary, promptsSummaryInput } from "@/lib/analytics/pages/prompts-summary";
-import { pgReader } from "@/lib/analytics/pg-reader";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
@@ -78,13 +76,6 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			systemTags: prompt.systemTags || [],
 			nextRunAt,
 		};
-	});
-
-export const getPromptsSummaryFn = createServerFn({ method: "GET" })
-	.validator(promptsSummaryInput)
-	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
-		return computePromptsSummary(pgReader, data);
 	});
 
 /**

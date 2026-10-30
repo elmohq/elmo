@@ -1,4 +1,4 @@
-import type { QueryFanoutResponse } from "@/server/query-fanout";
+import type { QueryFanoutResponse } from "@/lib/analytics/pages/query-fanout";
 
 let _fanout: QueryFanoutResponse | null = null;
 

@@ -21,11 +21,11 @@ import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useCompetitiveLandscape, useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { useSiteIcons } from "@/hooks/use-site-icons";
+import type { ShareOfVoiceEntry } from "@/lib/analytics/pages/analysis";
 import { useCompanyColors } from "@/lib/company-colors";
 import { chartedCompanies, type Landscape } from "@/lib/landscape";
 import { METRIC_META } from "@/lib/overview-metrics";
 import { pageHead } from "@/lib/route-head";
-import type { ShareOfVoiceEntry } from "@/server/analysis";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/share-of-voice")({
 	staticData: { crumb: "Share of Voice" },

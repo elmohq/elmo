@@ -1,20 +1,31 @@
-/** Rollup tables are chunked by UTC month because a refresh rewrites recent buckets, so a sync usually refetches only the current month. */
+/**
+ * A brand's data is split into chunks the browser syncs one at a time: its entities, each UTC month of rollups,
+ * and each range of cited pages. A refresh rewrites recent buckets, so a sync usually refetches only this month.
+ */
 import type { BrandBundle, BundleBrand, BundleCompetitor, BundlePrompt } from "@/lib/brand-data/bundle";
 
 /** Bump when a chunk's shape changes; browsers drop copies in any other format. */
-export const BRAND_DATA_FORMAT = 1;
+export const BRAND_DATA_FORMAT = 2;
 
-export const RUN_TABLES = ["promptRuns", "competitorMentions", "webQueries", "sentimentQuotes", "citations"] as const;
-export type RunTable = (typeof RUN_TABLES)[number];
+export const BRAND_DATA_DB_PREFIX = "elmo-brand-data";
+
+export const MONTH_TABLES = {
+	runs: ["promptRuns", "competitorMentions", "webQueries", "sentimentQuotes"],
+	citations: ["citations"],
+} as const;
+export type ChunkGroup = keyof typeof MONTH_TABLES;
+export type RunTable = (typeof MONTH_TABLES)[ChunkGroup][number];
 
 export interface ChunkManifestEntry {
 	id: string;
-	hash: string;
+	version: string;
 }
 
 export interface ChunkManifest {
 	format: number;
 	chunks: ChunkManifestEntry[];
+	/** When new data is likely, from the brand's upcoming and running prompt evaluations. */
+	nextSyncInSeconds: number;
 }
 
 export interface EntitiesChunk {
@@ -25,23 +36,36 @@ export interface EntitiesChunk {
 	apiProviderIds: string[];
 }
 
-export interface RunChunk {
-	kind: "run";
-	table: RunTable;
+type Columns = Record<string, (number | string | null)[]>;
+
+export interface MonthChunk {
+	kind: "month";
 	dicts: Record<string, string[]>;
-	columns: Record<string, (number | string | null)[]>;
+	tables: Partial<Record<RunTable, Columns>>;
 }
 
 export interface PagesChunk {
 	kind: "pages";
 	dicts: Record<string, string[]>;
-	columns: Record<string, (number | string | null)[]>;
+	columns: Columns;
 }
 
 export interface BrandChunk {
 	id: string;
-	hash: string;
-	data: EntitiesChunk | RunChunk | PagesChunk;
+	version: string;
+	data: EntitiesChunk | MonthChunk | PagesChunk;
+}
+
+export const ENTITIES_CHUNK = "entities";
+export const monthChunkId = (group: ChunkGroup, month: string) => `${group}:${month}`;
+export const isPagesChunk = (id: string) => id.startsWith("pages:");
+
+/** The `YYYY-MM` UTC months that overlap `[start, end)`, in minutes since the epoch. */
+export function monthsOverlapping(months: Iterable<string>, start: number, end: number): string[] {
+	return [...months].filter((month) => {
+		const [y, m] = month.split("-").map(Number);
+		return Date.UTC(y, m - 1, 1) / 60_000 < end && Date.UTC(y, m, 1) / 60_000 > start;
+	});
 }
 
 export const DICTIONARY_COLUMNS: Record<string, string> = {
@@ -55,8 +79,6 @@ export const DICTIONARY_COLUMNS: Record<string, string> = {
 	pageType: "pageTypes",
 	category: "categories",
 };
-
-export const isCitationChunk = (id: string) => id.startsWith("citations:") || id.startsWith("pages:");
 
 function dictionary(initial: string[] = []) {
 	const index = new Map(initial.map((value, i) => [value, i]));
@@ -144,15 +166,17 @@ function columnMapper(
 function appendRuns(
 	bundle: BrandBundle,
 	dicts: Dictionaries,
-	chunk: RunChunk,
-	promptIndex: Map<string, number>,
-	pageIndex: Map<number, number>,
+	table: RunTable,
+	chunk: MonthChunk,
+	indexes: { prompts: Map<string, number>; pages: Map<number, number> },
 ) {
-	const { table, columns, dicts: local } = chunk;
-	const target = bundle[table] as unknown as Record<string, (number | string | null)[]>;
-	const n = (columns.bucket ?? []).length;
-	const prompts = (columns.prompt ?? []).map((value) => promptIndex.get(local.promptIds[value as number]));
-	const pages = table === "citations" ? columns.page.map((value) => pageIndex.get(value as number)) : null;
+	const columns = chunk.tables[table];
+	if (!columns) return;
+	const local = chunk.dicts;
+	const target = bundle[table] as unknown as Columns;
+	const n = columns.bucket.length;
+	const prompts = columns.prompt.map((value) => indexes.prompts.get(local.promptIds[value as number]));
+	const pages = table === "citations" ? columns.page.map((value) => indexes.pages.get(value as number)) : null;
 	const keep = (i: number) => prompts[i] !== undefined && (!pages || pages[i] !== undefined);
 	for (const [name, values] of Object.entries(columns)) {
 		const out = target[name];
@@ -162,24 +186,9 @@ function appendRuns(
 	}
 }
 
-export function assembleBundle(brandId: string, version: string, chunks: Iterable<BrandChunk>): BrandBundle | null {
-	const all = [...chunks];
-	const entities = all.find((chunk) => chunk.data.kind === "entities")?.data as EntitiesChunk | undefined;
-	if (!entities) return null;
-	const promptIndex = new Map(entities.prompts.map((prompt, i) => [prompt.id, i]));
-	const dicts = {
-		models: dictionary(),
-		providers: dictionary(),
-		competitors: dictionary(),
-		queries: dictionary(),
-		domains: dictionary(),
-		pageTypes: dictionary(),
-		categories: dictionary(),
-		sentiments: dictionary(),
-	};
-	const bundle: BrandBundle = {
+function emptyBundle(brandId: string, entities: EntitiesChunk, dicts: Dictionaries): BrandBundle {
+	return {
 		brandId,
-		version,
 		apiProviderIds: entities.apiProviderIds,
 		brand: entities.brand,
 		competitors: entities.competitors,
@@ -228,22 +237,35 @@ export function assembleBundle(brandId: string, version: string, chunks: Iterabl
 		citationPages: { id: [], url: [], domain: [], title: [], pageType: [], category: [] },
 		sentimentQuotes: { ...emptyKeys(), sentiment: [], runId: [], confidence: [], createdAt: [] },
 	};
-
-	const pageIndex = appendPages(bundle, dicts, all);
-	const runChunks = all
-		.filter((chunk): chunk is BrandChunk & { data: RunChunk } => chunk.data.kind === "run")
-		.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-	for (const chunk of runChunks) {
-		if (chunk.data.table === "citations" && pageIndex.size === 0) continue;
-		appendRuns(bundle, dicts, chunk.data, promptIndex, pageIndex);
-	}
-	return bundle;
 }
 
-export function manifestVersion(manifest: ChunkManifestEntry[]): string {
-	let hash = 0;
-	for (const { id, hash: chunkHash } of [...manifest].sort((a, b) => (a.id < b.id ? -1 : 1))) {
-		for (const char of `${id}=${chunkHash};`) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) | 0;
+/** Merges whichever chunks have synced into one bundle, months in order; null until the entities have. */
+export function assembleBundle(brandId: string, chunks: Iterable<BrandChunk>): BrandBundle | null {
+	const all = [...chunks];
+	const entities = all.find((chunk) => chunk.data.kind === "entities")?.data as EntitiesChunk | undefined;
+	if (!entities) return null;
+	const dicts = {
+		models: dictionary(),
+		providers: dictionary(),
+		competitors: dictionary(),
+		queries: dictionary(),
+		domains: dictionary(),
+		pageTypes: dictionary(),
+		categories: dictionary(),
+		sentiments: dictionary(),
+	};
+	const bundle = emptyBundle(brandId, entities, dicts);
+	const indexes = {
+		prompts: new Map(entities.prompts.map((prompt, i) => [prompt.id, i])),
+		pages: appendPages(bundle, dicts, all),
+	};
+	const months = all
+		.filter((chunk): chunk is BrandChunk & { data: MonthChunk } => chunk.data.kind === "month")
+		.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+	for (const chunk of months) {
+		for (const table of Object.keys(chunk.data.tables) as RunTable[]) {
+			appendRuns(bundle, dicts, table, chunk.data, indexes);
+		}
 	}
-	return (hash >>> 0).toString(36);
+	return bundle;
 }

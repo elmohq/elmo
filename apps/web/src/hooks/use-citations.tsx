@@ -1,12 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import {
-	getCitationDomainsFn,
-	getCitationFlowFn,
-	getCitationsFn,
-	getCitationUrlsFn,
-	getGoogleShoppingFn,
-} from "@/lib/brand-data/local-first";
+import { computeBrandData } from "@/lib/brand-data/client";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface CitationFilters {
@@ -51,18 +45,14 @@ export function useGoogleShopping(
 		enabled,
 		queryKey: citationKeys.google(brandId, filters, query),
 		queryFn: () =>
-			getGoogleShoppingFn({
-				data: {
-					brandId,
-					lookback: filters?.lookback ?? "1w",
-					tags: filters?.tags?.join(","),
-					model: filters?.model,
-					...query,
-				},
+			computeBrandData("googleShopping", {
+				brandId,
+				lookback: filters?.lookback ?? "1w",
+				tags: filters?.tags?.join(","),
+				model: filters?.model,
+				...query,
 			}),
-		staleTime: 30_000,
-		refetchOnWindowFocus: true,
-		refetchInterval: 60_000,
+		staleTime: 5 * 60_000,
 		placeholderData: keepPreviousData,
 	});
 }
@@ -84,15 +74,11 @@ export function useCitationUrls(brandId: string, filters: CitationFilters | unde
 	return useQuery({
 		queryKey: citationKeys.urls(brandId, filters, query),
 		queryFn: () =>
-			getCitationUrlsFn({
-				data: {
-					...filterParams(brandId, filters, query),
-					pageType: query.pageType === "all" ? undefined : query.pageType,
-				},
+			computeBrandData("citationUrls", {
+				...filterParams(brandId, filters, query),
+				pageType: query.pageType === "all" ? undefined : query.pageType,
 			}),
-		staleTime: 30_000,
-		refetchOnWindowFocus: true,
-		refetchInterval: 60_000,
+		staleTime: 5 * 60_000,
 		placeholderData: keepPreviousData,
 	});
 }
@@ -100,10 +86,8 @@ export function useCitationUrls(brandId: string, filters: CitationFilters | unde
 export function useCitationDomains(brandId: string, filters: CitationFilters | undefined, query: CitationListQuery) {
 	return useQuery({
 		queryKey: citationKeys.domains(brandId, filters, query),
-		queryFn: () => getCitationDomainsFn({ data: filterParams(brandId, filters, query) }),
-		staleTime: 30_000,
-		refetchOnWindowFocus: true,
-		refetchInterval: 60_000,
+		queryFn: () => computeBrandData("citationDomains", filterParams(brandId, filters, query)),
+		staleTime: 5 * 60_000,
 		placeholderData: keepPreviousData,
 	});
 }
@@ -114,18 +98,14 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 	const query = useQuery({
 		queryKey: citationKeys.list(resolvedBrandId || "", filters),
 		queryFn: () =>
-			getCitationsFn({
-				data: {
-					brandId: resolvedBrandId!,
-					lookback: filters?.lookback ?? "1w",
-					tags: filters?.tags?.join(","),
-					model: filters?.model,
-				},
+			computeBrandData("citations", {
+				brandId: resolvedBrandId!,
+				lookback: filters?.lookback ?? "1w",
+				tags: filters?.tags?.join(","),
+				model: filters?.model,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 30_000,
-		refetchOnWindowFocus: true,
-		refetchInterval: 60_000,
+		staleTime: 5 * 60_000,
 		placeholderData: (prev) => prev,
 	});
 
@@ -142,19 +122,15 @@ export function useCitationFlow(brandId: string | undefined, filters: CitationFi
 	return useQuery({
 		queryKey: [...citationKeys.all, resolvedBrandId || "", filters, "flow", domain] as const,
 		queryFn: () =>
-			getCitationFlowFn({
-				data: {
-					brandId: resolvedBrandId!,
-					lookback: filters.lookback ?? "1w",
-					tags: filters.tags?.join(","),
-					model: filters.model,
-					domain: domain!,
-				},
+			computeBrandData("citationFlow", {
+				brandId: resolvedBrandId!,
+				lookback: filters.lookback ?? "1w",
+				tags: filters.tags?.join(","),
+				model: filters.model,
+				domain: domain!,
 			}),
 		enabled: !!resolvedBrandId && !!domain,
-		staleTime: 30_000,
-		refetchOnWindowFocus: true,
-		refetchInterval: 60_000,
+		staleTime: 5 * 60_000,
 		// Keep the chart up while a filter changes, but never show one domain's flow under another's name.
 		placeholderData: (prev, prevQuery) => (prevQuery?.queryKey.at(-1) === domain ? prev : undefined),
 	});

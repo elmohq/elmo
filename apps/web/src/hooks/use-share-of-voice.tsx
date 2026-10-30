@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { getCompetitiveLandscapeFn, getShareOfVoiceFn } from "@/lib/brand-data/local-first";
+import { computeBrandData } from "@/lib/brand-data/client";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface ShareOfVoiceFilters {
@@ -21,17 +21,15 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 	const query = useQuery({
 		queryKey: shareOfVoiceKeys.list(resolvedBrandId || "", filters),
 		queryFn: () =>
-			getShareOfVoiceFn({
-				data: {
-					brandId: resolvedBrandId!,
-					lookback: filters?.lookback ?? "1m",
-					model: filters?.model,
-					tags: filters?.tags?.join(","),
-					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				},
+			computeBrandData("shareOfVoice", {
+				brandId: resolvedBrandId!,
+				lookback: filters?.lookback ?? "1m",
+				model: filters?.model,
+				tags: filters?.tags?.join(","),
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 30_000,
+		staleTime: 5 * 60_000,
 		placeholderData: (prev) => prev,
 	});
 
@@ -48,17 +46,15 @@ export function useCompetitiveLandscape(brandId?: string, filters?: ShareOfVoice
 	return useQuery({
 		queryKey: [...shareOfVoiceKeys.all, "landscape", resolvedBrandId || "", filters] as const,
 		queryFn: () =>
-			getCompetitiveLandscapeFn({
-				data: {
-					brandId: resolvedBrandId!,
-					lookback: filters?.lookback ?? "1m",
-					model: filters?.model,
-					tags: filters?.tags?.join(","),
-					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				},
+			computeBrandData("landscape", {
+				brandId: resolvedBrandId!,
+				lookback: filters?.lookback ?? "1m",
+				model: filters?.model,
+				tags: filters?.tags?.join(","),
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 30_000,
+		staleTime: 5 * 60_000,
 		placeholderData: (prev) => prev,
 	});
 }

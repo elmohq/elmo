@@ -1,23 +1,23 @@
-import { type Collection, createCollection } from "@tanstack/db";
 import {
 	assembleBundle,
+	BRAND_DATA_DB_PREFIX,
 	BRAND_DATA_FORMAT,
 	type BrandChunk,
 	type ChunkManifest,
 	type ChunkManifestEntry,
-	isCitationChunk,
-	manifestVersion,
+	ENTITIES_CHUNK,
+	isPagesChunk,
 } from "@/lib/brand-data/chunks";
-import { decodeBrandBundle, setBrandStore } from "@/lib/brand-data/store";
-import type { BrandDataStatus } from "@/lib/brand-data/worker/protocol";
+import { decodeBrandBundle, forgetBrandStore, setBrandStore } from "@/lib/brand-data/store";
 
-const SYNC_BATCH = 12;
+const BATCH_SIZE = 3;
+const PARALLEL_REQUESTS = 2;
 
-const DB_PREFIX = "elmo-brand-data";
-const DB_NAME = `${DB_PREFIX}-v${BRAND_DATA_FORMAT}`;
+const DB_NAME = `${BRAND_DATA_DB_PREFIX}-v${BRAND_DATA_FORMAT}`;
 const STORE = "chunks";
+const MANIFEST_KEY = "~manifest";
 
-function idb(): Promise<IDBDatabase> {
+function openDb(): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
 		const open = indexedDB.open(DB_NAME, 1);
 		open.onupgradeneeded = () => open.result.createObjectStore(STORE);
@@ -26,201 +26,249 @@ function idb(): Promise<IDBDatabase> {
 	});
 }
 
-async function idbRead(brandId: string): Promise<{ manifest?: ChunkManifestEntry[]; chunks: BrandChunk[] }> {
-	const db = await idb();
-	return new Promise((resolve, reject) => {
-		const request = db
-			.transaction(STORE)
-			.objectStore(STORE)
-			.getAll(IDBKeyRange.bound(`${brandId}|`, `${brandId}|￿`));
-		request.onsuccess = () => {
-			const values = request.result as ({ manifest: ChunkManifestEntry[] } | BrandChunk)[];
-			const manifest = values.find((v): v is { manifest: ChunkManifestEntry[] } => "manifest" in v)?.manifest;
-			resolve({ manifest, chunks: values.filter((v): v is BrandChunk => "data" in v) });
-		};
-		request.onerror = () => reject(request.error);
-	});
+async function transact<T>(
+	mode: IDBTransactionMode,
+	run: (store: IDBObjectStore) => IDBRequest<T> | undefined,
+): Promise<T | undefined> {
+	const db = await openDb();
+	try {
+		return await new Promise<T | undefined>((resolve, reject) => {
+			const tx = db.transaction(STORE, mode);
+			const request = run(tx.objectStore(STORE));
+			tx.oncomplete = () => resolve(request?.result);
+			tx.onerror = () => reject(tx.error);
+			tx.onabort = () => reject(tx.error);
+		});
+	} finally {
+		db.close();
+	}
 }
 
-async function idbWrite(brandId: string, manifest: ChunkManifestEntry[], put: BrandChunk[], remove: string[]) {
-	const db = await idb();
-	return new Promise<void>((resolve, reject) => {
-		const tx = db.transaction(STORE, "readwrite");
-		const store = tx.objectStore(STORE);
-		store.put({ manifest }, `${brandId}|~manifest`);
-		for (const chunk of put) store.put(chunk, `${brandId}|${chunk.id}`);
-		for (const id of remove) store.delete(`${brandId}|${id}`);
-		tx.oncomplete = () => resolve();
-		tx.onerror = () => reject(tx.error);
-	});
-}
+const brandKeys = (brandId: string) => IDBKeyRange.bound(`${brandId}|`, `${brandId}|￿`);
 
 export async function removeOtherFormats() {
 	const databases = await indexedDB.databases?.().catch(() => []);
 	for (const { name } of databases ?? []) {
-		if (name?.startsWith(DB_PREFIX) && name !== DB_NAME) indexedDB.deleteDatabase(name);
+		if (name?.startsWith(BRAND_DATA_DB_PREFIX) && name !== DB_NAME) indexedDB.deleteDatabase(name);
 	}
 }
 
-const statuses = new Map<string, BrandDataStatus>();
-let onStatus: (brandId: string, status: BrandDataStatus) => void = () => {};
-
-export function setStatusListener(listener: (brandId: string, status: BrandDataStatus) => void) {
-	onStatus = listener;
+export class IncompatibleFormatError extends Error {
+	constructor() {
+		super("Elmo has been updated. Reload the page to see the latest data.");
+	}
 }
 
-export function brandDataStatus(brandId: string): BrandDataStatus {
-	return statuses.get(brandId) ?? { core: false, citations: false, version: null };
+class ForbiddenError extends Error {
+	constructor() {
+		super("You no longer have access to this brand.");
+	}
 }
-
-interface BrandSync {
-	collection: Collection<BrandChunk, string>;
-	run: () => Promise<void>;
-}
-
-type Apply = (chunks: BrandChunk[], removed?: string[]) => void;
-
-const syncs = new Map<string, BrandSync>();
-
-const dataUrl = (brandId: string, chunks?: string[]) =>
-	`/api/brand-data/${encodeURIComponent(brandId)}${chunks ? `?chunks=${encodeURIComponent(chunks.join(","))}` : ""}`;
 
 async function fetchJson<T>(url: string): Promise<T> {
 	const response = await fetch(url, { credentials: "same-origin" });
+	if (response.status === 401 || response.status === 403) throw new ForbiddenError();
 	if (!response.ok) throw new Error(`Brand data request failed: ${response.status}`);
 	return response.json() as Promise<T>;
 }
 
-/** The server now writes a format this build cannot read; it keeps answering from the server until reloaded. */
-export class IncompatibleFormatError extends Error {
-	constructor(format: number) {
-		super(`Brand data format ${format} is not ${BRAND_DATA_FORMAT}`);
+const dataUrl = (brandId: string, chunks?: string[]) =>
+	`/api/brand-data/${encodeURIComponent(brandId)}${chunks ? `?chunks=${encodeURIComponent(chunks.join(","))}` : ""}`;
+
+/** Entities first, then this month's runs back to the oldest, then cited pages, then citations. */
+function rank(id: string) {
+	if (id === ENTITIES_CHUNK) return 0;
+	if (id.startsWith("runs:")) return 1;
+	return isPagesChunk(id) ? 2 : 3;
+}
+
+interface Waiter {
+	ids: string[];
+	resolve: () => void;
+	reject: (error: Error) => void;
+}
+
+export interface SyncState {
+	generation: number;
+	nextSyncInSeconds: number | null;
+}
+
+type Listener = (brandId: string, state: SyncState) => void;
+
+/** One brand's chunks: seeded from IndexedDB, refreshed from the server, and published to the store as they land. */
+class BrandSync {
+	private readonly chunks = new Map<string, BrandChunk>();
+	private manifest: ChunkManifestEntry[] = [];
+	private readonly wanted = new Set<string>();
+	private readonly waiters = new Set<Waiter>();
+	private refreshing: Promise<void> | null = null;
+	private failure: Error | null = null;
+	private readonly seeded: Promise<void>;
+	private state: SyncState = { generation: 0, nextSyncInSeconds: null };
+
+	constructor(
+		readonly brandId: string,
+		private readonly listener: Listener,
+	) {
+		this.seeded = this.seed();
+	}
+
+	private async seed() {
+		const cached = await transact("readonly", (store) => store.getAll(brandKeys(this.brandId))).catch(() => []);
+		for (const value of (cached ?? []) as ({ manifest: ChunkManifestEntry[] } | BrandChunk)[]) {
+			if ("manifest" in value) this.manifest = value.manifest;
+			else this.chunks.set(value.id, value);
+		}
+		if (this.chunks.size > 0) this.publish();
+	}
+
+	refresh(): Promise<void> {
+		if (this.failure) return Promise.reject(this.failure);
+		this.refreshing ??= this.seeded
+			.then(() => this.download())
+			.catch((error: Error) => {
+				if (error instanceof IncompatibleFormatError) this.failure = error;
+				if (error instanceof ForbiddenError) forgetBrand(this.brandId, error);
+				this.rejectWaiters(error);
+				throw error;
+			})
+			.finally(() => {
+				this.refreshing = null;
+				this.rejectWaiters(new Error("Brand data is unavailable"));
+			});
+		return this.refreshing;
+	}
+
+	/** Resolves once every one of `ids` the brand has has synced, fetching them ahead of the rest. */
+	need(ids: string[]): Promise<void> {
+		if (this.failure) return Promise.reject(this.failure);
+		for (const id of ids) this.wanted.add(id);
+		const ready = new Promise<void>((resolve, reject) => this.waiters.add({ ids, resolve, reject }));
+		this.settle();
+		if (this.waiters.size > 0) void this.refresh().catch(() => {});
+		return ready;
+	}
+
+	private async download() {
+		const manifest = await fetchJson<ChunkManifest>(dataUrl(this.brandId));
+		if (manifest.format !== BRAND_DATA_FORMAT) throw new IncompatibleFormatError();
+		const current = new Set(manifest.chunks.map((entry) => entry.id));
+		const removed = [...this.chunks.keys()].filter((id) => !current.has(id));
+		const coverageChanged =
+			removed.length > 0 ||
+			manifest.chunks.length !== this.manifest.length ||
+			this.manifest.some((e) => !current.has(e.id));
+		for (const id of removed) this.chunks.delete(id);
+		this.manifest = manifest.chunks;
+		this.state = { ...this.state, nextSyncInSeconds: manifest.nextSyncInSeconds };
+		const stale = new Set(
+			manifest.chunks.filter((entry) => this.chunks.get(entry.id)?.version !== entry.version).map((entry) => entry.id),
+		);
+		if (coverageChanged) this.publish();
+		else this.listener(this.brandId, this.state);
+		if (removed.length > 0) {
+			void transact("readwrite", (store) => {
+				for (const id of removed) store.delete(`${this.brandId}|${id}`);
+				return undefined;
+			}).catch(() => {});
+		}
+		await Promise.all(Array.from({ length: PARALLEL_REQUESTS }, () => this.drain(stale)));
+		void transact("readwrite", (store) =>
+			store.put({ manifest: this.manifest }, `${this.brandId}|${MANIFEST_KEY}`),
+		).catch(() => {});
+	}
+
+	private async drain(stale: Set<string>) {
+		for (let batch = this.nextBatch(stale); batch.length > 0; batch = this.nextBatch(stale)) {
+			const { chunks } = await fetchJson<{ chunks: BrandChunk[] }>(dataUrl(this.brandId, batch));
+			for (const chunk of chunks) {
+				this.chunks.set(chunk.id, chunk);
+				this.wanted.delete(chunk.id);
+			}
+			this.publish();
+			void transact("readwrite", (store) => {
+				for (const chunk of chunks) store.put(chunk, `${this.brandId}|${chunk.id}`);
+				return undefined;
+			}).catch(() => {});
+		}
+	}
+
+	private nextBatch(stale: Set<string>): string[] {
+		const batch = [...stale]
+			.sort(
+				(a, b) =>
+					Number(this.wanted.has(b)) - Number(this.wanted.has(a)) || rank(a) - rank(b) || (a < b ? 1 : a > b ? -1 : 0),
+			)
+			.slice(0, BATCH_SIZE);
+		for (const id of batch) stale.delete(id);
+		return batch;
+	}
+
+	private available() {
+		return new Set([...this.manifest.map((entry) => entry.id), ...this.chunks.keys()]);
+	}
+
+	private publish() {
+		const bundle = assembleBundle(this.brandId, this.chunks.values());
+		if (bundle) {
+			const coverage = { available: this.available(), loaded: new Set(this.chunks.keys()) };
+			for (const evicted of setBrandStore(decodeBrandBundle(bundle, coverage))) forgetBrand(evicted);
+			this.state = { ...this.state, generation: this.state.generation + 1 };
+			this.listener(this.brandId, this.state);
+		}
+		this.settle();
+	}
+
+	private settle() {
+		const available = this.available();
+		for (const waiter of this.waiters) {
+			if (waiter.ids.every((id) => this.chunks.has(id) || !available.has(id))) {
+				this.waiters.delete(waiter);
+				waiter.resolve();
+			}
+		}
+	}
+
+	private rejectWaiters(error: Error) {
+		for (const waiter of this.waiters) waiter.reject(error);
+		this.waiters.clear();
+	}
+
+	close(error: Error) {
+		this.failure = error;
+		this.rejectWaiters(error);
 	}
 }
 
-async function syncOnce(brandId: string, held: Collection<BrandChunk, string>, apply: Apply) {
-	const { format, chunks: manifest } = await fetchJson<ChunkManifest>(dataUrl(brandId));
-	if (format !== BRAND_DATA_FORMAT) throw new IncompatibleFormatError(format);
-	const current = new Set(manifest.map((entry) => entry.id));
-	const removed = ([...held.keys()] as string[]).filter((id) => !current.has(id));
-	const stale = manifest.filter((entry) => held.get(entry.id)?.hash !== entry.hash);
-	apply([], removed);
-	const ordered = [...stale.filter((e) => !isCitationChunk(e.id)), ...stale.filter((e) => isCitationChunk(e.id))];
-	const fetched: BrandChunk[] = [];
-	for (let i = 0; i < ordered.length; i += SYNC_BATCH) {
-		const ids = ordered.slice(i, i + SYNC_BATCH).map((entry) => entry.id);
-		const { chunks } = await fetchJson<{ chunks: BrandChunk[] }>(dataUrl(brandId, ids));
-		apply(chunks);
-		fetched.push(...chunks);
-	}
-	void idbWrite(brandId, manifest, fetched, removed).catch(() => {});
-	return { manifest, changed: stale.length + removed.length };
+const syncs = new Map<string, BrandSync>();
+let listener: Listener = () => {};
+
+export function setSyncListener(next: Listener) {
+	listener = next;
 }
 
-function brandSync(brandId: string): BrandSync {
-	const existing = syncs.get(brandId);
-	if (existing) return existing;
-
-	let manifest: ChunkManifestEntry[] = [];
-	let runNow: () => Promise<void> = async () => {};
-
-	const collection = createCollection<BrandChunk, string>({
-		id: `brand-chunks:v${BRAND_DATA_FORMAT}:${brandId}`,
-		getKey: (chunk) => chunk.id,
-		startSync: true,
-		gcTime: Number.POSITIVE_INFINITY,
-		sync: {
-			rowUpdateMode: "full",
-			sync: ({ begin, write, commit, markReady, collection: held }) => {
-				const apply: Apply = (chunks, removed = []) => {
-					if (chunks.length === 0 && removed.length === 0) return;
-					begin();
-					for (const chunk of chunks) write({ type: held.has(chunk.id) ? "update" : "insert", value: chunk });
-					for (const old of removed.map((id) => held.get(id)).filter((chunk) => chunk !== undefined)) {
-						write({ type: "delete", value: old });
-					}
-					commit();
-				};
-				let ready = false;
-				const readyOnce = () => {
-					if (!ready) markReady();
-					ready = true;
-				};
-				const seeded = idbRead(brandId)
-					.catch(() => ({ chunks: [] as BrandChunk[], manifest: undefined }))
-					.then((cached) => {
-						if (cached.manifest) manifest = cached.manifest;
-						apply(cached.chunks);
-						if (cached.chunks.length > 0) readyOnce();
-					});
-				let running: Promise<void> | null = null;
-				runNow = () => {
-					running ??= seeded
-						.then(() => syncOnce(brandId, held, apply))
-						.then((result) => {
-							manifest = result.manifest;
-							readyOnce();
-							if (result.changed === 0) publish(brandId, held, manifest);
-						})
-						.finally(() => {
-							running = null;
-						});
-					return running;
-				};
-				void runNow().catch(() => {});
-				return () => {};
-			},
-		},
-	});
-
-	let scheduled = false;
-	collection.subscribeChanges(() => {
-		if (scheduled) return;
-		scheduled = true;
-		queueMicrotask(() => {
-			scheduled = false;
-			publish(brandId, collection, manifest);
-		});
-	});
-
-	const sync: BrandSync = { collection, run: () => runNow() };
-	syncs.set(brandId, sync);
+export function brandSync(brandId: string): BrandSync {
+	let sync = syncs.get(brandId);
+	if (!sync) {
+		sync = new BrandSync(brandId, (id, state) => listener(id, state));
+		syncs.set(brandId, sync);
+	}
 	return sync;
 }
 
-function publish(brandId: string, collection: Collection<BrandChunk, string>, manifest: ChunkManifestEntry[]) {
-	const has = (entry: ChunkManifestEntry) => collection.get(entry.id)?.hash === entry.hash;
-	const core = manifest.length > 0 && manifest.filter((e) => !isCitationChunk(e.id)).every(has);
-	if (!core) return;
-	const citations = manifest.filter((e) => isCitationChunk(e.id)).every(has);
-	const version = manifestVersion(manifest);
-	const previous = statuses.get(brandId);
-	if (previous?.version === version && previous.citations === citations) return;
-	const chunks = citations
-		? collection.values()
-		: [...collection.values()].filter((chunk) => !isCitationChunk(chunk.id));
-	const bundle = assembleBundle(brandId, version, chunks);
-	if (!bundle) return;
-	for (const evicted of setBrandStore(decodeBrandBundle(bundle))) forget(evicted);
-	const status = { core: true, citations, version };
-	statuses.set(brandId, status);
-	onStatus(brandId, status);
-}
-
-/** Drops the brand's synced copy from memory, so its pages ask the server until it syncs again. */
-function forget(brandId: string) {
-	const sync = syncs.get(brandId);
+/** Drops the brand's copy from memory, and from IndexedDB too when the viewer may no longer read it. */
+function forgetBrand(brandId: string, error = new Error("Brand data was unloaded")) {
+	syncs.get(brandId)?.close(error);
 	syncs.delete(brandId);
-	void sync?.collection.cleanup();
-	statuses.delete(brandId);
-	onStatus(brandId, { core: false, citations: false, version: null });
+	forgetBrandStore(brandId);
+	if (error instanceof ForbiddenError) {
+		void transact("readwrite", (store) => {
+			store.delete(brandKeys(brandId));
+			return undefined;
+		}).catch(() => {});
+	}
 }
 
-export async function syncBrandData(brandId: string): Promise<void> {
-	try {
-		await brandSync(brandId).run();
-	} catch (error) {
-		if (error instanceof IncompatibleFormatError) forget(brandId);
-		throw error;
-	}
+export function syncBrand(brandId: string): Promise<void> {
+	return brandSync(brandId).refresh();
 }

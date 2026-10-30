@@ -1,7 +1,8 @@
 /** Mirrors `rollup-read.ts` row for row, so the analytics above cannot tell which reader they are using. */
 import type { AnalyticsScope, DailyScope } from "@/lib/analytics-sql";
+import { ENTITIES_CHUNK } from "@/lib/brand-data/chunks";
 import { localDay, localDayOfMs, scopeRows } from "@/lib/brand-data/scope";
-import { type BrandStore, getBrandStore } from "@/lib/brand-data/store";
+import { type BrandStore, getBrandStore, MissingChunksError } from "@/lib/brand-data/store";
 import type { CitationOwner, OwnedDomains } from "@/lib/citation-read";
 import type { FanoutBreakdownRow, FanoutModelTotalRow, FanoutPromptTotalRow } from "@/lib/fanout-analysis";
 import type {
@@ -29,7 +30,7 @@ const GOOGLE_STATIC_CATEGORY = "google";
 
 export function storeFor(brandId: string): BrandStore {
 	const store = getBrandStore(brandId);
-	if (!store) throw new Error(`No local data for brand ${brandId}`);
+	if (!store) throw new MissingChunksError([ENTITIES_CHUNK]);
 	return store;
 }
 
@@ -273,33 +274,26 @@ export async function getVisibilityDailyAggregate(
 }
 
 export async function getBrandEarliestRunDate(brandId: string): Promise<string | null> {
-	const t = storeFor(brandId).promptRuns;
-	let min = Number.POSITIVE_INFINITY;
-	for (let i = 0; i < t.length; i++) if (t.firstRunAt[i] < min) min = t.firstRunAt[i];
-	return Number.isFinite(min) ? new Date(min).toISOString() : null;
+	const first = storeFor(brandId)
+		.bundle.prompts.flatMap((prompt) => (prompt.firstEvaluatedAt ? [prompt.firstEvaluatedAt] : []))
+		.sort()[0];
+	return first ?? null;
 }
 
 export async function getPromptsFirstEvaluatedAt(
 	brandId: string,
 	promptIds: string[],
 ): Promise<PromptFirstEvaluatedAt[]> {
-	if (promptIds.length === 0) return [];
-	const store = storeFor(brandId);
-	const t = store.promptRuns;
-	const wanted = new Set(promptIds.map((id) => store.promptIndex.get(id)));
-	const first = new Map<number, number>();
-	for (let i = 0; i < t.length; i++) {
-		if (!wanted.has(t.prompt[i])) continue;
-		const current = first.get(t.prompt[i]);
-		if (current === undefined || t.firstRunAt[i] < current) first.set(t.prompt[i], t.firstRunAt[i]);
-	}
-	return [...first].map(([index, ms]) => ({
-		prompt_id: promptId(store, index),
-		first_evaluated_at: new Date(ms).toISOString(),
-	}));
+	const wanted = new Set(promptIds);
+	return storeFor(brandId).bundle.prompts.flatMap((prompt) =>
+		wanted.has(prompt.id) && prompt.firstEvaluatedAt
+			? [{ prompt_id: prompt.id, first_evaluated_at: prompt.firstEvaluatedAt }]
+			: [],
+	);
 }
 
 type Citations = BrandStore["citations"];
+
 const page = (store: BrandStore, t: Citations, i: number) => t.page[i];
 const pageDomain = (store: BrandStore, p: number) => store.bundle.dicts.domains[store.citationPages.domain[p]];
 const pageCategory = (store: BrandStore, p: number) => store.bundle.dicts.categories[store.citationPages.category[p]];

@@ -3,10 +3,10 @@ import { getFanoutSupport } from "@workspace/config/fanout-support";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
+import type { QueryFanoutResponse } from "@/lib/analytics/pages/query-fanout";
 import { computeFanoutAnalysis, type FanoutBreakdownRow } from "@/lib/fanout-analysis";
 import type { TrackedTarget } from "@/lib/model-filter";
 import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/query-fan-out";
-import type { QueryFanoutResponse } from "@/server/query-fanout";
 import { setMockQueryFanout } from "./_mocks/server-query-fanout";
 import { setMockBrand } from "./_mocks/use-brands";
 

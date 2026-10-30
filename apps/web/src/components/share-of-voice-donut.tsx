@@ -5,8 +5,8 @@
 
 import { RingChart, type RingSlice } from "@/components/ring-chart";
 import { SiteIcon } from "@/components/site-icon";
+import type { ShareOfVoiceEntry } from "@/lib/analytics/pages/analysis";
 import { OTHERS_COLOR } from "@/lib/company-colors";
-import type { ShareOfVoiceEntry } from "@/server/analysis";
 
 const percent = (value: number, total: number) => `${Math.round((value / total) * 100)}%`;
 

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { getFilteredVisibilityFn } from "@/lib/brand-data/local-first";
+import { computeBrandData } from "@/lib/brand-data/client";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface FilteredVisibilityFilters {
@@ -25,21 +25,16 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 			filters?.search,
 		],
 		queryFn: () =>
-			getFilteredVisibilityFn({
-				data: {
-					brandId: resolvedBrandId!,
-					lookback: filters?.lookback || "1m",
-					model: filters?.model,
-					tags: filters?.tags?.join(","),
-					search: filters?.search,
-					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				},
+			computeBrandData("filteredVisibility", {
+				brandId: resolvedBrandId!,
+				lookback: filters?.lookback || "1m",
+				model: filters?.model,
+				tags: filters?.tags?.join(","),
+				search: filters?.search,
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 30_000,
-		refetchOnWindowFocus: true,
-		refetchOnReconnect: true,
-		refetchInterval: 60_000,
+		staleTime: 5 * 60_000,
 		placeholderData: (prev) => prev,
 	});
 

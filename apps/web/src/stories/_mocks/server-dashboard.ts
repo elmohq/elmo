@@ -1,15 +1,9 @@
 /**
- * Mock for @/server/dashboard used in Storybook stories. The real module
- * imports pg via @workspace/lib/db, which is not browser-safe. The types come
- * from it all the same — `import type` is erased before Storybook's alias
- * redirects the module, so a story can't drift from the real response shape.
- *
- * Stories set the summary via setMockDashboardSummary(); getDashboardSummaryFn
- * (called by the real useDashboardSummary hook through react-query) returns it.
- */
-import type { DashboardSummaryResponse } from "@/server/dashboard";
+ * Overview data for Storybook stories, which the brand-data client mock
+ * answers with. Stories set it via setMockDashboardSummary().
+ */ import type { DashboardSummaryResponse } from "@/lib/analytics/pages/dashboard";
 
-export type { CitationTimeSeriesPoint, DashboardSummaryResponse, VisibilityTimeSeriesPoint } from "@/server/dashboard";
+export type { DashboardSummaryResponse } from "@/lib/analytics/pages/dashboard";
 
 let _summary: DashboardSummaryResponse | null = null;
 

@@ -1,4 +1,5 @@
 import type { BrandBundle, RunKeyColumns } from "@/lib/brand-data/bundle";
+import { type ChunkGroup, isPagesChunk, monthChunkId, monthsOverlapping } from "@/lib/brand-data/chunks";
 
 const ints = (values: number[]) => Int32Array.from(values);
 const floats = (values: number[]) => Float64Array.from(values);
@@ -10,10 +11,12 @@ interface RunKeys {
 	provider: Int32Array;
 	web: Int32Array;
 	length: number;
+	group: ChunkGroup;
 }
 
-function keys(columns: RunKeyColumns): RunKeys {
+function keys(columns: RunKeyColumns, group: ChunkGroup = "runs"): RunKeys {
 	return {
+		group,
 		bucket: ints(columns.bucket),
 		prompt: ints(columns.prompt),
 		model: ints(columns.model),
@@ -23,7 +26,13 @@ function keys(columns: RunKeyColumns): RunKeys {
 	};
 }
 
-export function decodeBrandBundle(bundle: BrandBundle) {
+/** Which of the brand's chunks exist, and which of those the store was assembled from. */
+export interface Coverage {
+	available: ReadonlySet<string>;
+	loaded: ReadonlySet<string>;
+}
+
+export function decodeBrandBundle(bundle: BrandBundle, coverage: Coverage) {
 	const r = bundle.promptRuns;
 	const c = bundle.competitorMentions;
 	const w = bundle.webQueries;
@@ -32,6 +41,7 @@ export function decodeBrandBundle(bundle: BrandBundle) {
 	const q = bundle.sentimentQuotes;
 	return {
 		bundle,
+		coverage,
 		promptIndex: new Map(bundle.prompts.map((prompt, i) => [prompt.id, i])),
 		apiProviders: new Set(bundle.dicts.providers.flatMap((id, i) => (bundle.apiProviderIds.includes(id) ? [i] : []))),
 		promptRuns: {
@@ -64,7 +74,12 @@ export function decodeBrandBundle(bundle: BrandBundle) {
 			positioned: ints(c.positioned),
 		},
 		webQueries: { ...keys(w), query: ints(w.query), runs: ints(w.runs), brandMentioned: ints(w.brandMentioned) },
-		citations: { ...keys(u), page: ints(u.page), citations: ints(u.citations), positionSum: ints(u.positionSum) },
+		citations: {
+			...keys(u, "citations"),
+			page: ints(u.page),
+			citations: ints(u.citations),
+			positionSum: ints(u.positionSum),
+		},
 		citationPages: {
 			id: p.id,
 			url: p.url,
@@ -99,6 +114,10 @@ export function setBrandStore(store: BrandStore): string[] {
 	return evicted;
 }
 
+export function forgetBrandStore(brandId: string) {
+	stores.delete(brandId);
+}
+
 export function getBrandStore(brandId: string): BrandStore | undefined {
 	const store = stores.get(brandId);
 	if (store) {
@@ -106,4 +125,21 @@ export function getBrandStore(brandId: string): BrandStore | undefined {
 		stores.set(brandId, store);
 	}
 	return store;
+}
+
+export class MissingChunksError extends Error {
+	constructor(readonly chunkIds: string[]) {
+		super(`Brand data still syncing: ${chunkIds.join(", ")}`);
+	}
+}
+
+/** Throws unless every chunk with rows of `group` in `[start, end)` minutes has synced. */
+export function requireChunks(store: BrandStore, group: ChunkGroup, start: number, end: number) {
+	const { available, loaded } = store.coverage;
+	const prefix = `${group}:`;
+	const months = [...available].filter((id) => id.startsWith(prefix)).map((id) => id.slice(prefix.length));
+	const needed = monthsOverlapping(months, start, end).map((month) => monthChunkId(group, month));
+	if (group === "citations" && needed.length > 0) needed.push(...[...available].filter(isPagesChunk));
+	const missing = needed.filter((id) => !loaded.has(id));
+	if (missing.length > 0) throw new MissingChunksError(missing);
 }

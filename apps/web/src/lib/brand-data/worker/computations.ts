@@ -11,11 +11,10 @@ import { computePromptsSummary } from "@/lib/analytics/pages/prompts-summary";
 import { computeQueryFanout } from "@/lib/analytics/pages/query-fanout";
 import { computeBatchChartData, computeFilteredVisibility } from "@/lib/analytics/pages/visibility";
 import type { AnalyticsReader } from "@/lib/analytics/reader";
-import type { LocalComputation } from "@/lib/brand-data/worker/protocol";
 
 type Computation = (reader: AnalyticsReader, input: never) => Promise<unknown>;
 
-export const computations: Record<LocalComputation, Computation> = {
+export const computations = {
 	dashboardSummary: computeDashboardSummary,
 	shareOfVoice: computeShareOfVoice,
 	landscape: computeLandscape,
@@ -29,4 +28,4 @@ export const computations: Record<LocalComputation, Computation> = {
 	citationDomains: computeCitationDomains,
 	googleShopping: computeGoogleShopping,
 	citationFlow: computeCitationFlow,
-};
+} satisfies Record<string, Computation>;

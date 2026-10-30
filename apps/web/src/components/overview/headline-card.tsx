@@ -6,10 +6,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import { Area, AreaChart, Tooltip as ChartTooltip, ResponsiveContainer, YAxis } from "recharts";
 import { useBrandParams } from "@/hooks/use-route-params";
+import type { OverviewCard } from "@/lib/analytics/pages/dashboard";
 import { formatShortDate } from "@/lib/chart-utils";
 import { type LandscapeMetric, lowerIsBetter } from "@/lib/landscape";
 import { GRADE_STYLES, type Grade, METRIC_META } from "@/lib/overview-metrics";
-import type { OverviewCard } from "@/server/dashboard";
 
 /** Drawn in the card's own color: the grade already says good or bad, and a second verdict would clash with it. */
 function Change({ metric, change, className }: { metric: LandscapeMetric; change: number | null; className?: string }) {

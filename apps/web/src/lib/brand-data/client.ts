@@ -1,38 +1,34 @@
-import {
-	type BrandDataStatus,
-	LOCAL_COMPUTATIONS,
-	type LocalComputation,
-	type WorkerRequest,
-	type WorkerResponse,
-} from "@/lib/brand-data/worker/protocol";
+import { BRAND_DATA_DB_PREFIX } from "@/lib/brand-data/chunks";
+import type { computations } from "@/lib/brand-data/worker/computations";
+import type { BrandComputation, WorkerRequest, WorkerResponse } from "@/lib/brand-data/worker/protocol";
+import type { SyncState } from "@/lib/brand-data/worker/sync";
 
-const NOT_SYNCED: BrandDataStatus = { core: false, citations: false, version: null };
+type Computations = typeof computations;
+export type ComputationInput<K extends BrandComputation> = Parameters<Computations[K]>[1];
+export type ComputationResult<K extends BrandComputation> = Awaited<ReturnType<Computations[K]>>;
 
-const statuses = new Map<string, BrandDataStatus>();
-const listeners = new Set<(brandId: string) => void>();
+const TIMEOUT_MS = 60_000;
+
+const listeners = new Set<(brandId: string, state: SyncState) => void>();
 const pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>();
 let nextId = 0;
-let worker: Worker | null | undefined;
+let worker: Worker | undefined;
 
-function getWorker(): Worker | null {
-	if (worker !== undefined) return worker;
-	if (typeof Worker === "undefined" || typeof indexedDB === "undefined") {
-		worker = null;
-		return worker;
-	}
+function stopWorker(error: Error) {
+	worker?.terminate();
+	worker = undefined;
+	for (const request of pending.values()) request.reject(error);
+	pending.clear();
+}
+
+function getWorker(): Worker {
+	if (worker) return worker;
+	if (typeof Worker === "undefined") throw new Error("Brand data needs a browser");
 	worker = new Worker(new URL("./worker/brand-data.worker.ts", import.meta.url), { type: "module" });
-	worker.onerror = () => {
-		worker = null;
-		const synced = [...statuses.keys()];
-		statuses.clear();
-		for (const request of pending.values()) request.reject(new Error("Brand data worker stopped"));
-		pending.clear();
-		for (const brandId of synced) for (const listener of listeners) listener(brandId);
-	};
+	worker.onerror = () => stopWorker(new Error("Brand data stopped unexpectedly. Reload the page to try again."));
 	worker.onmessage = ({ data: message }: MessageEvent<WorkerResponse>) => {
 		if (message.type === "status") {
-			statuses.set(message.brandId, message.status);
-			for (const listener of listeners) listener(message.brandId);
+			for (const listener of listeners) listener(message.brandId, message.state);
 			return;
 		}
 		const request = pending.get(message.id);
@@ -44,14 +40,10 @@ function getWorker(): Worker | null {
 }
 
 function send(request: WorkerRequest) {
-	getWorker()?.postMessage(request);
+	getWorker().postMessage(request);
 }
 
-export function brandDataStatus(brandId: string): BrandDataStatus {
-	return statuses.get(brandId) ?? NOT_SYNCED;
-}
-
-export function onBrandDataChange(listener: (brandId: string) => void): () => void {
+export function onBrandDataChange(listener: (brandId: string, state: SyncState) => void): () => void {
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
@@ -60,14 +52,41 @@ export function syncBrandData(brandId: string) {
 	send({ type: "sync", brandId });
 }
 
-export function canComputeLocally(brandId: string, name: LocalComputation): boolean {
-	return brandDataStatus(brandId)[LOCAL_COMPUTATIONS[name]];
+/** Answers from the brand's synced data, waiting for whatever part of it the answer needs. */
+export function computeBrandData<K extends BrandComputation>(
+	name: K,
+	input: ComputationInput<K> & { brandId: string },
+): Promise<ComputationResult<K>> {
+	return new Promise((resolve, reject) => {
+		const id = nextId++;
+		const timer = setTimeout(() => {
+			pending.delete(id);
+			reject(new Error("Brand data took too long to load"));
+		}, TIMEOUT_MS);
+		pending.set(id, {
+			resolve: (value) => {
+				clearTimeout(timer);
+				resolve(value as ComputationResult<K>);
+			},
+			reject: (error) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		});
+		try {
+			send({ type: "compute", id, brandId: input.brandId, name, input });
+		} catch (error) {
+			pending.get(id)?.reject(error as Error);
+			pending.delete(id);
+		}
+	});
 }
 
-export function computeLocally<T>(brandId: string, name: LocalComputation, input: unknown): Promise<T> {
-	const id = nextId++;
-	return new Promise<T>((resolve, reject) => {
-		pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
-		send({ type: "compute", id, brandId, name, input });
-	});
+/** Removes every brand's synced copy from this browser, as when signing out. */
+export async function clearBrandData() {
+	stopWorker(new Error("Signed out"));
+	const databases = await indexedDB.databases?.().catch(() => []);
+	for (const { name } of databases ?? []) {
+		if (name?.startsWith(BRAND_DATA_DB_PREFIX)) indexedDB.deleteDatabase(name);
+	}
 }

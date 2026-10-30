@@ -70,13 +70,13 @@ const config: StorybookConfig = {
 						replacement: path.resolve(mocksDir, "server-premium-tracking.ts"),
 					},
 					{ find: /^@workspace\/lib\/auth\/client$/, replacement: path.resolve(mocksDir, "auth-client.ts") },
-					{ find: /^@\/server\/citations(\.ts)?$/, replacement: path.resolve(mocksDir, "server-citations.ts") },
-					{ find: /^@\/server\/dashboard(\.ts)?$/, replacement: path.resolve(mocksDir, "server-dashboard.ts") },
-					{ find: /^@\/server\/analysis(\.ts)?$/, replacement: path.resolve(mocksDir, "server-analysis.ts") },
-					{ find: /^@\/server\/query-fanout(\.ts)?$/, replacement: path.resolve(mocksDir, "server-query-fanout.ts") },
 					{
 						find: /^@\/server\/opportunities-fn(\.ts)?$/,
 						replacement: path.resolve(mocksDir, "server-opportunities.ts"),
+					},
+					{
+						find: /^@\/lib\/brand-data\/client(\.ts)?$/,
+						replacement: path.resolve(mocksDir, "brand-data-client.ts"),
 					},
 					{ find: /^@tanstack\/react-router$/, replacement: path.resolve(mocksDir, "tanstack-router.tsx") },
 					{ find: /^@tanstack\/react-start\/server$/, replacement: path.resolve(mocksDir, "tanstack-start.ts") },

@@ -1,17 +1,12 @@
 /**
- * Mock for @/server/analysis used in Storybook stories. The real module imports
- * pg via the postgres read layer, which is not browser-safe. The types come
- * from it all the same — `import type` is erased before Storybook's alias
- * redirects the module, so a story can't drift from the real response shape.
- *
- * Stories set data via setMockShareOfVoice(); the real useShareOfVoice hook calls
- * this through react-query. (Opportunities now live in @/server/opportunities.)
+ * Share of Voice data for Storybook stories, which the brand-data client mock
+ * answers with. Stories set it via setMockShareOfVoice() and friends.
  */
+import type { ShareOfVoiceResponse } from "@/lib/analytics/pages/analysis";
 import type { Landscape } from "@/lib/landscape";
-import type { ShareOfVoiceResponse } from "@/server/analysis";
 import type { BrandSentiment } from "@/server/analytics-core";
 
-export type { ShareOfVoiceResponse } from "@/server/analysis";
+export type { ShareOfVoiceResponse } from "@/lib/analytics/pages/analysis";
 
 let _sov: ShareOfVoiceResponse | null = null;
 

@@ -1,13 +1,22 @@
+import { createHash } from "node:crypto";
 import { db } from "@workspace/lib/db/db";
-import { brandDataVersions } from "@workspace/lib/db/schema";
 import { getAllProviders } from "@workspace/lib/providers";
-import { eq, type SQL, sql } from "drizzle-orm";
-import type { BrandChunk, ChunkManifestEntry, EntitiesChunk, RunTable } from "@/lib/brand-data/chunks";
+import { PAGE_ID_RANGE } from "@workspace/lib/rollups";
+import { type SQL, sql } from "drizzle-orm";
+import {
+	type BrandChunk,
+	type ChunkGroup,
+	type ChunkManifestEntry,
+	ENTITIES_CHUNK,
+	type EntitiesChunk,
+	MONTH_TABLES,
+	type MonthChunk,
+	monthChunkId,
+	type PagesChunk,
+	type RunTable,
+} from "@/lib/brand-data/chunks";
 
 const rows = async <T>(query: SQL) => (await db.execute(query)).rows as T[];
-
-/** Must match the `pages:` chunk ids the `brand_data_versions` triggers write. */
-const PAGE_ID_RANGE = 200_000;
 
 const TABLES: Record<RunTable, string> = {
 	promptRuns: "rollup_prompt_runs",
@@ -16,14 +25,6 @@ const TABLES: Record<RunTable, string> = {
 	sentimentQuotes: "rollup_sentiment_quotes",
 	citations: "rollup_citation_urls",
 };
-
-export async function chunkManifest(brandId: string): Promise<ChunkManifestEntry[]> {
-	const versions = await db
-		.select({ id: brandDataVersions.chunkId, version: brandDataVersions.version })
-		.from(brandDataVersions)
-		.where(eq(brandDataVersions.brandId, brandId));
-	return versions.map(({ id, version }) => ({ id, hash: String(version) }));
-}
 
 function dictionaries() {
 	const store = new Map<string, { index: Map<string, number>; values: string[] }>();
@@ -45,19 +46,29 @@ function dictionaries() {
 	return { id, values };
 }
 
-interface KeyRow {
-	bucket: Date | string;
-	prompt_id: string;
-	model: string;
-	provider: string;
-	web_search_enabled: boolean;
-}
-
 const minutes = (value: Date | string) => Math.round(new Date(value).getTime() / 60_000);
 const millis = (value: Date | string | null) => (value === null ? 0 : new Date(value).getTime());
 
-async function entitiesChunk(brandId: string): Promise<EntitiesChunk> {
-	const [brandRows, competitorRows, promptRows] = await Promise.all([
+const MAX_FIRST_EVALUATED = 500;
+const firstEvaluated = new Map<string, { key: string; value: Promise<Map<string, string>> }>();
+
+/** Scans every rollup row of the brand, so it is reused until one of the brand's months changes. */
+function promptFirstEvaluated(brandId: string, monthVersions: string): Promise<Map<string, string>> {
+	const cached = firstEvaluated.get(brandId);
+	if (cached?.key === monthVersions) return cached.value;
+	const value = rows<{ prompt_id: string; first: Date }>(sql`
+		SELECT prompt_id, min(first_run_at) AS first FROM rollup_prompt_runs
+		WHERE brand_id = ${brandId} GROUP BY prompt_id
+	`).then((result) => new Map(result.map((row) => [row.prompt_id, new Date(row.first).toISOString()])));
+	value.catch(() => firstEvaluated.delete(brandId));
+	firstEvaluated.delete(brandId);
+	if (firstEvaluated.size >= MAX_FIRST_EVALUATED) firstEvaluated.delete(firstEvaluated.keys().next().value as string);
+	firstEvaluated.set(brandId, { key: monthVersions, value });
+	return value;
+}
+
+async function entitiesChunk(brandId: string, monthVersions: string): Promise<EntitiesChunk> {
+	const [brandRows, competitorRows, promptRows, first] = await Promise.all([
 		rows<{
 			id: string;
 			name: string;
@@ -78,6 +89,7 @@ async function entitiesChunk(brandId: string): Promise<EntitiesChunk> {
 		}>(
 			sql`SELECT id, value, tags, system_tags, enabled, created_at FROM prompts WHERE brand_id = ${brandId} ORDER BY created_at DESC, id`,
 		),
+		promptFirstEvaluated(brandId, monthVersions),
 	]);
 	const brand = brandRows[0];
 	if (!brand) throw new Error("Brand not found");
@@ -98,10 +110,64 @@ async function entitiesChunk(brandId: string): Promise<EntitiesChunk> {
 			systemTags: row.system_tags ?? [],
 			enabled: row.enabled,
 			createdAt: new Date(row.created_at).toISOString(),
+			firstEvaluatedAt: first.get(row.id) ?? null,
 		})),
 		apiProviderIds: getAllProviders()
 			.filter((provider) => provider.access === "api")
 			.map((provider) => provider.id),
+	};
+}
+
+const contentVersion = (data: unknown) =>
+	createHash("sha256").update(JSON.stringify(data)).digest("base64url").slice(0, 22);
+
+function monthIds(earliest: Date | string | null, now: Date): string[] {
+	if (!earliest) return [];
+	const months: string[] = [];
+	const month = new Date(earliest);
+	month.setUTCDate(1);
+	month.setUTCHours(0, 0, 0, 0);
+	for (; month <= now; month.setUTCMonth(month.getUTCMonth() + 1)) months.push(month.toISOString().slice(0, 7));
+	return months;
+}
+
+interface BrandVersions {
+	chunks: ChunkManifestEntry[];
+	entities: EntitiesChunk;
+}
+
+/** Every chunk the brand has, with the version the browser compares against its copy. */
+export async function brandVersions(brandId: string, now = new Date()): Promise<BrandVersions> {
+	const [versions, [span], ranges] = await Promise.all([
+		rows<{ chunk_id: string; version: string }>(
+			sql`SELECT chunk_id, version::text AS version FROM brand_data_versions WHERE brand_id = ${brandId}`,
+		),
+		rows<{ earliest: Date | null }>(
+			sql`SELECT min(bucket) AS earliest FROM rollup_prompt_runs WHERE brand_id = ${brandId}`,
+		),
+		rows<{ range: number }>(sql`
+			SELECT DISTINCT (page_id / ${PAGE_ID_RANGE})::int AS range FROM rollup_citation_pages
+			WHERE brand_id = ${brandId} ORDER BY 1
+		`),
+	]);
+	const versionOf = new Map(versions.map((row) => [row.chunk_id, row.version]));
+	const months = monthIds(span?.earliest ?? null, now).map((month) => ({
+		month,
+		version: versionOf.get(`month:${month}`) ?? "0",
+	}));
+	const entities = await entitiesChunk(brandId, months.map((m) => m.version).join(","));
+	return {
+		entities,
+		chunks: [
+			{ id: ENTITIES_CHUNK, version: contentVersion(entities) },
+			...months.flatMap(({ month, version }) =>
+				(Object.keys(MONTH_TABLES) as ChunkGroup[]).map((group) => ({ id: monthChunkId(group, month), version })),
+			),
+			...ranges.map(({ range }) => ({
+				id: `pages:${range}`,
+				version: versionOf.get(`pages:${range}`) ?? "0",
+			})),
+		],
 	};
 }
 
@@ -159,39 +225,56 @@ const DICT_FOR: Record<string, string> = {
 	sentiment: "sentiments",
 };
 
-async function runChunk(brandId: string, table: RunTable, month: string): Promise<BrandChunk["data"]> {
-	const start = `${month}-01T00:00:00Z`;
-	const result = await rows<KeyRow & Record<string, unknown>>(sql`
-		SELECT * FROM ${sql.raw(TABLES[table])}
-		WHERE brand_id = ${brandId}
-			AND bucket >= ${start}::timestamptz AND bucket < (${start}::timestamptz + interval '1 month')
-		ORDER BY bucket
-	`);
-	const dicts = dictionaries();
-	const spec = RUN_COLUMNS[table];
-	const columns: Record<string, (number | string | null)[]> = {
-		bucket: [],
-		prompt: [],
-		model: [],
-		provider: [],
-		web: [],
-		...Object.fromEntries(Object.keys(spec).map((name) => [name, []])),
-	};
-	for (const row of result) {
-		columns.bucket.push(minutes(row.bucket));
-		columns.prompt.push(dicts.id("promptIds", row.prompt_id));
-		columns.model.push(dicts.id("models", row.model));
-		columns.provider.push(dicts.id("providers", row.provider));
-		columns.web.push(row.web_search_enabled ? 1 : 0);
-		for (const [name, read] of Object.entries(spec)) {
-			const value = read(row);
-			columns[name].push(DICT_FOR[name] ? dicts.id(DICT_FOR[name], value as string) : value);
-		}
-	}
-	return { kind: "run", table, dicts: dicts.values(), columns };
+interface KeyRow {
+	bucket: Date | string;
+	prompt_id: string;
+	model: string;
+	provider: string;
+	web_search_enabled: boolean;
 }
 
-async function pagesChunk(brandId: string, range: number): Promise<BrandChunk["data"]> {
+async function monthChunk(brandId: string, group: ChunkGroup, month: string): Promise<MonthChunk> {
+	const [y, m] = month.split("-").map(Number);
+	const start = new Date(Date.UTC(y, m - 1, 1)).toISOString();
+	const end = new Date(Date.UTC(y, m, 1)).toISOString();
+	const dicts = dictionaries();
+	const tables: MonthChunk["tables"] = {};
+	const results = await Promise.all(
+		MONTH_TABLES[group].map((table) =>
+			rows<KeyRow & Record<string, unknown>>(sql`
+				SELECT * FROM ${sql.raw(TABLES[table])}
+				WHERE brand_id = ${brandId} AND bucket >= ${start}::timestamptz AND bucket < ${end}::timestamptz
+				ORDER BY bucket
+			`),
+		),
+	);
+	MONTH_TABLES[group].forEach((table, t) => {
+		const spec = RUN_COLUMNS[table];
+		const columns: Record<string, (number | string | null)[]> = {
+			bucket: [],
+			prompt: [],
+			model: [],
+			provider: [],
+			web: [],
+			...Object.fromEntries(Object.keys(spec).map((name) => [name, []])),
+		};
+		for (const row of results[t]) {
+			columns.bucket.push(minutes(row.bucket));
+			columns.prompt.push(dicts.id("promptIds", row.prompt_id));
+			columns.model.push(dicts.id("models", row.model));
+			columns.provider.push(dicts.id("providers", row.provider));
+			columns.web.push(row.web_search_enabled ? 1 : 0);
+			for (const [name, read] of Object.entries(spec)) {
+				const value = read(row);
+				columns[name].push(DICT_FOR[name] ? dicts.id(DICT_FOR[name], value as string) : value);
+			}
+		}
+		tables[table] = columns;
+	});
+	return { kind: "month", dicts: dicts.values(), tables };
+}
+
+async function pagesChunk(brandId: string, range: number): Promise<PagesChunk> {
 	const result = await rows<{
 		page_id: string;
 		url: string;
@@ -224,17 +307,41 @@ async function pagesChunk(brandId: string, range: number): Promise<BrandChunk["d
 	return { kind: "pages", dicts: dicts.values(), columns };
 }
 
-export async function buildChunks(brandId: string, manifest: ChunkManifestEntry[]): Promise<BrandChunk[]> {
-	return Promise.all(
-		manifest.map(async ({ id, hash }) => {
-			const [kind, key] = id.split(":");
-			const data =
-				kind === "entities"
-					? await entitiesChunk(brandId)
-					: kind === "pages"
-						? await pagesChunk(brandId, Number(key))
-						: await runChunk(brandId, kind as RunTable, key);
-			return { id, hash, data };
-		}),
-	);
+export function buildChunk(brandId: string, entry: ChunkManifestEntry, entities: EntitiesChunk): Promise<BrandChunk> {
+	const [kind, key] = entry.id.split(":");
+	const data: Promise<BrandChunk["data"]> =
+		entry.id === ENTITIES_CHUNK
+			? Promise.resolve(entities)
+			: kind === "pages"
+				? pagesChunk(brandId, Number(key))
+				: monthChunk(brandId, kind as ChunkGroup, key);
+	return data.then((value) => ({ ...entry, data: value }));
+}
+
+const SECOND = 1;
+const MINUTE = 60 * SECOND;
+
+/**
+ * How long until the brand's data is likely to change: soon while its prompts are being evaluated or
+ * their results are waiting to be rolled up, else shortly after the next evaluation is due.
+ */
+export async function nextSyncInSeconds(brandId: string): Promise<number> {
+	try {
+		const [row] = await rows<{ busy: boolean; next_due: Date | null }>(sql`
+			SELECT
+				EXISTS (SELECT 1 FROM rollup_dirty WHERE brand_id = ${brandId})
+					OR coalesce(bool_or(j.state = 'active' OR j.start_after <= now()), false) AS busy,
+				min(j.start_after) FILTER (WHERE j.start_after > now()) AS next_due
+			FROM pgboss.job j
+			WHERE j.name = 'process-prompt'
+				AND j.state IN ('created', 'retry', 'active')
+				AND j.data->>'promptId' IN (SELECT id::text FROM prompts WHERE brand_id = ${brandId} AND enabled)
+		`);
+		if (row?.busy) return 20 * SECOND;
+		if (!row?.next_due) return 15 * MINUTE;
+		const untilDue = (new Date(row.next_due).getTime() - Date.now()) / 1000;
+		return Math.round(Math.min(15 * MINUTE, Math.max(20 * SECOND, untilDue + 90 * SECOND)));
+	} catch {
+		return 5 * MINUTE;
+	}
 }

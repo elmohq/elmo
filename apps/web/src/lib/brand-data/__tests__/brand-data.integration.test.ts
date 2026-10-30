@@ -1,17 +1,17 @@
 import { db } from "@workspace/lib/db/db";
 import { prompts } from "@workspace/lib/db/schema";
 import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
-import { bucketEnd, bucketStart, rebuildRange } from "@workspace/lib/rollups";
+import { bucketEnd, bucketStart, rebuildRange, resolveUnpagedCitations } from "@workspace/lib/rollups";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pgReader } from "@/lib/analytics/pg-reader";
-import { assembleBundle, manifestVersion } from "@/lib/brand-data/chunks";
-import { buildChunks, chunkManifest } from "@/lib/brand-data/chunks.server";
+import { assembleBundle } from "@/lib/brand-data/chunks";
+import { brandVersions, buildChunk } from "@/lib/brand-data/chunks.server";
 import { createMemoryReader } from "@/lib/brand-data/memory-reader";
 import { loadQuoteTexts } from "@/lib/brand-data/quote-texts.server";
 import { decodeBrandBundle, setBrandStore } from "@/lib/brand-data/store";
 import { computations } from "@/lib/brand-data/worker/computations";
-import type { LocalComputation } from "@/lib/brand-data/worker/protocol";
+import type { BrandComputation } from "@/lib/brand-data/worker/protocol";
 import {
 	createBrand,
 	createCitation,
@@ -104,10 +104,14 @@ async function createFixtureRun(
 }
 
 async function syncLocalCopy() {
-	const manifest = await chunkManifest(brandId);
-	const bundle = assembleBundle(brandId, manifestVersion(manifest), await buildChunks(brandId, manifest));
+	const { chunks, entities } = await brandVersions(brandId);
+	const bundle = assembleBundle(
+		brandId,
+		await Promise.all(chunks.map((entry) => buildChunk(brandId, entry, entities))),
+	);
 	if (!bundle) throw new Error("No entities chunk");
-	setBrandStore(decodeBrandBundle(bundle));
+	const ids = new Set(chunks.map((entry) => entry.id));
+	setBrandStore(decodeBrandBundle(bundle, { available: ids, loaded: ids }));
 }
 
 beforeAll(async () => {
@@ -137,7 +141,7 @@ const ranges = ["2026-03-01..2026-03-31", "2026-02-15..2026-04-15", "all"];
 const timezones = ["UTC", "America/New_York", "Asia/Kolkata"];
 const filters = [{}, { model: "chatgpt" }, { model: "chatgpt::premium" }, { tags: "sales" }];
 
-function inputs(name: LocalComputation): Record<string, unknown>[] {
+function inputs(name: BrandComputation): Record<string, unknown>[] {
 	const base = ranges.flatMap((lookback) => filters.map((filter) => ({ brandId, lookback, ...filter })));
 	const zoned = base.flatMap((input) => timezones.map((timezone) => ({ ...input, timezone })));
 	switch (name) {
@@ -178,7 +182,7 @@ function inputs(name: LocalComputation): Record<string, unknown>[] {
 }
 
 describe("a brand's local copy", () => {
-	it.each(Object.keys(computations) as LocalComputation[])("computes %s exactly as the server does", async (name) => {
+	it.each(Object.keys(computations) as BrandComputation[])("computes %s exactly as the server does", async (name) => {
 		for (const input of inputs(name)) {
 			const server = await computations[name](pgReader, input as never);
 			const local = await computations[name](memoryReader, input as never);
@@ -188,19 +192,32 @@ describe("a brand's local copy", () => {
 });
 
 describe("brand data versions", () => {
-	const versions = async () => new Map((await chunkManifest(brandId)).map((entry) => [entry.id, entry.hash]));
+	const versions = async () =>
+		new Map((await brandVersions(brandId)).chunks.map((entry) => [entry.id, entry.version] as const));
 	const changed = (before: Map<string, string>, after: Map<string, string>) =>
 		[...after]
-			.filter(([id, hash]) => before.get(id) !== hash)
+			.filter(([id, version]) => before.get(id) !== version)
 			.map(([id]) => id)
 			.sort();
 
-	it("moves only the chunks whose rows a refresh rewrote", async () => {
+	it("moves only the months a refresh rewrote", async () => {
 		const before = await versions();
 		const at = new Date("2026-04-02T12:00:00Z");
 		await createRun(brandId, promptIds.crm, { at: at.toISOString(), brandMentioned: true, webSearch: false });
 		await rebuildRange(db, brandId, bucketStart(at), bucketEnd(at));
-		expect(changed(before, await versions())).toEqual(["promptRuns:2026-04"]);
+		expect(changed(before, await versions())).toEqual(["citations:2026-04", "runs:2026-04"]);
+	});
+
+	it("moves the range of pages a newly cited page lands in", async () => {
+		const before = await versions();
+		const at = new Date("2026-04-02T13:00:00Z");
+		const run = await createRun(brandId, promptIds.crm, { at: at.toISOString(), brandMentioned: true });
+		await createCitation(run, "https://new.example/first-citation");
+		await resolveUnpagedCitations(db);
+		await rebuildRange(db, brandId, bucketStart(at), bucketEnd(at));
+		const moved = changed(before, await versions());
+		expect(moved.filter((id) => id.startsWith("pages:"))).toHaveLength(1);
+		expect(moved.filter((id) => !id.startsWith("pages:"))).toEqual(["citations:2026-04", "runs:2026-04"]);
 	});
 
 	it("moves the entities when a prompt changes", async () => {
@@ -210,5 +227,15 @@ describe("brand data versions", () => {
 			.set({ tags: ["sales", "renamed"] })
 			.where(eq(prompts.id, promptIds.startups));
 		expect(changed(before, await versions())).toEqual(["entities"]);
+	});
+
+	it("lists every month from the brand's first run through this one", async () => {
+		const { chunks } = await brandVersions(brandId, new Date("2026-05-20T00:00:00Z"));
+		expect(chunks.filter((entry) => entry.id.startsWith("runs:")).map((entry) => entry.id)).toEqual([
+			"runs:2026-02",
+			"runs:2026-03",
+			"runs:2026-04",
+			"runs:2026-05",
+		]);
 	});
 });

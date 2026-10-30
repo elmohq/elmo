@@ -99,11 +99,11 @@ export interface BundlePrompt {
 	systemTags: string[];
 	enabled: boolean;
 	createdAt: string;
+	firstEvaluatedAt: string | null;
 }
 
 export interface BrandBundle {
 	brandId: string;
-	version: string;
 	/** Providers that call a model's API directly, which the model filter tells apart. */
 	apiProviderIds: string[];
 	brand: BundleBrand;

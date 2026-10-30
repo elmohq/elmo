@@ -1,9 +1,12 @@
 import type { QuoteText } from "@/lib/brand-data/memory-entity-reads";
 import { createMemoryReader } from "@/lib/brand-data/memory-reader";
+import { MissingChunksError } from "@/lib/brand-data/store";
 import { computations } from "@/lib/brand-data/worker/computations";
-import type { WorkerRequest, WorkerResponse } from "@/lib/brand-data/worker/protocol";
-import { brandDataStatus, removeOtherFormats, setStatusListener, syncBrandData } from "@/lib/brand-data/worker/sync";
+import type { BrandComputation, WorkerRequest, WorkerResponse } from "@/lib/brand-data/worker/protocol";
+import { brandSync, removeOtherFormats, setSyncListener, syncBrand } from "@/lib/brand-data/worker/sync";
 import { clearSharedReads } from "@/lib/shared-read";
+
+const MAX_ATTEMPTS = 50;
 
 const post = (message: WorkerResponse) => self.postMessage(message);
 
@@ -15,39 +18,30 @@ const memoryReader = createMemoryReader(async (brandId, runIds) => {
 	return (await response.json()) as QuoteText[];
 });
 
-const MAX_REMEMBERED = 200;
-const remembered = new Map<string, Promise<unknown>>();
-
-const canonical = (value: unknown) =>
-	JSON.stringify(value, (_key, v) =>
-		v && typeof v === "object" && !Array.isArray(v)
-			? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : 1)))
-			: v,
-	);
-
-function compute(brandId: string, name: keyof typeof computations, input: unknown) {
-	const key = `${brandId}|${brandDataStatus(brandId).version}|${name}|${canonical(input)}`;
-	let result = remembered.get(key);
-	if (!result) {
-		result = computations[name](memoryReader, input as never);
-		if (remembered.size >= MAX_REMEMBERED) remembered.delete(remembered.keys().next().value as string);
-		remembered.set(key, result);
-		result.catch(() => remembered.delete(key));
+/** Computes from whatever has synced, waiting for the chunks the answer needs that haven't yet. */
+async function compute(brandId: string, name: BrandComputation, input: unknown) {
+	for (let attempt = 0; ; attempt++) {
+		try {
+			return await computations[name](memoryReader, input as never);
+		} catch (error) {
+			if (!(error instanceof MissingChunksError) || attempt >= MAX_ATTEMPTS) throw error;
+			await brandSync(brandId).need(error.chunkIds);
+		}
 	}
-	return result;
 }
 
-setStatusListener((brandId, status) => {
-	for (const key of remembered.keys()) if (key.startsWith(`${brandId}|`)) remembered.delete(key);
-	clearSharedReads(memoryReader);
-	post({ type: "status", brandId, status });
+const generations = new Map<string, number>();
+setSyncListener((brandId, state) => {
+	if (generations.get(brandId) !== state.generation) clearSharedReads(memoryReader);
+	generations.set(brandId, state.generation);
+	post({ type: "status", brandId, state });
 });
 
 void removeOtherFormats();
 
 self.onmessage = async ({ data: request }: MessageEvent<WorkerRequest>) => {
 	if (request.type === "sync") {
-		await syncBrandData(request.brandId).catch(() => {});
+		await syncBrand(request.brandId).catch(() => {});
 		return;
 	}
 	try {

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { getBatchChartDataFn } from "@/lib/brand-data/local-first";
+import { computeBrandData } from "@/lib/brand-data/client";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface BatchChartDataFilters {
@@ -25,20 +25,16 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 			filters?.search,
 		],
 		queryFn: () =>
-			getBatchChartDataFn({
-				data: {
-					brandId: resolvedBrandId!,
-					lookback: filters?.lookback || "1m",
-					model: filters?.model,
-					tags: filters?.tags?.join(","),
-					search: filters?.search,
-					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				},
+			computeBrandData("batchChartData", {
+				brandId: resolvedBrandId!,
+				lookback: filters?.lookback || "1m",
+				model: filters?.model,
+				tags: filters?.tags?.join(","),
+				search: filters?.search,
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 60_000,
-		refetchOnWindowFocus: false,
-		refetchOnReconnect: true,
+		staleTime: 5 * 60_000,
 		placeholderData: (prev) => prev,
 	});
 

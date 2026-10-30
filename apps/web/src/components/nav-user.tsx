@@ -30,6 +30,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBranding, useDeploymentFeatures, useDeploymentMode } from "@/hooks/use-deployment-features";
 import { useOrganizations } from "@/hooks/use-organizations";
+import { clearBrandData } from "@/lib/brand-data/client";
 import { resetCrispSession } from "@/lib/crisp";
 import { organizationTree } from "@/lib/organizations/tree";
 import type { OrganizationSummary } from "@/lib/organizations/types";
@@ -172,7 +173,8 @@ export function NavUser({
 								onClick={() => {
 									authClient.signOut({
 										fetchOptions: {
-											onSuccess: () => {
+											onSuccess: async () => {
+												await clearBrandData();
 												resetPostHog();
 												resetCrispSession();
 												window.location.href = "/auth/logout";

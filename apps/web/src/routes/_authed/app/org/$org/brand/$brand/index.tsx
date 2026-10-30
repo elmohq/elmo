@@ -18,13 +18,13 @@ import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
+import type { DashboardSummaryResponse } from "@/lib/analytics/pages/dashboard";
 import { brandRank, LANDSCAPE_METRICS } from "@/lib/landscape";
 import { describeTargetSchedule, type TrackedTarget } from "@/lib/model-filter";
 import { METRIC_META } from "@/lib/overview-metrics";
 import { setPersonProperties } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { BRAND_ROUTE_ID } from "@/lib/route-subject";
-import type { DashboardSummaryResponse } from "@/server/dashboard";
 
 function formatRelativeTime(dateString: string | null): string {
 	if (!dateString) return "Never";

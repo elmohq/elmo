@@ -1,8 +1,7 @@
 /**
- * Mock for @/server/citations used in Storybook stories. The real module
- * imports pg via @workspace/lib/db, which is not browser-safe.
- */
-import { type CitationFlowRow, matchesDomain } from "@/lib/citation-flow";
+ * Citation data for Storybook stories, which the brand-data client mock
+ * answers with.
+ */ import { type CitationFlowRow, matchesDomain } from "@/lib/citation-flow";
 
 interface MockDomain {
 	domain: string;

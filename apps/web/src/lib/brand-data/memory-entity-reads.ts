@@ -16,7 +16,10 @@ export async function getCompetitorRows(brandId: string): Promise<AnalyticsCompe
 }
 
 export async function getPromptRows(brandId: string): Promise<AnalyticsPromptRow[]> {
-	return storeFor(brandId).bundle.prompts.map((prompt) => ({ ...prompt, createdAt: new Date(prompt.createdAt) }));
+	return storeFor(brandId).bundle.prompts.map(({ firstEvaluatedAt: _, ...prompt }) => ({
+		...prompt,
+		createdAt: new Date(prompt.createdAt),
+	}));
 }
 
 export interface QuoteText {
@@ -62,7 +65,7 @@ function pickQuotes(store: BrandStore, scope: PromptListScope, sentiments: reado
 
 /** Picks quotes from the local rollups, then loads only those answers' text. */
 export function sentimentQuoteReader(loadQuoteTexts: QuoteTextLoader) {
-	const quoteTexts = new Map<string, QuoteText>();
+	const texts = new WeakMap<BrandStore, Map<string, QuoteText>>();
 	return async function getSentimentQuotes(
 		scope: PromptListScope,
 		sentiments: readonly Sentiment[],
@@ -71,6 +74,8 @@ export function sentimentQuoteReader(loadQuoteTexts: QuoteTextLoader) {
 		if (scope.promptIds.length === 0 || sentiments.length === 0) return [];
 		const store = storeFor(scope.brandId);
 		const t = store.sentimentQuotes;
+		const quoteTexts = texts.get(store) ?? new Map<string, QuoteText>();
+		texts.set(store, quoteTexts);
 		const picked = pickQuotes(store, scope, sentiments, limit);
 		const missing = picked.map(({ index }) => t.runId[index]).filter((id) => !quoteTexts.has(id));
 		if (missing.length > 0) {

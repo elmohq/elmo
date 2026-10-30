@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { getQueryFanoutFn } from "@/lib/brand-data/local-first";
+import { computeBrandData } from "@/lib/brand-data/client";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface QueryFanoutFilters {
@@ -23,18 +23,16 @@ export function useQueryFanout(brandId?: string, filters?: QueryFanoutFilters) {
 	const query = useQuery({
 		queryKey: queryFanoutKeys.list(resolvedBrandId || "", filters),
 		queryFn: () =>
-			getQueryFanoutFn({
-				data: {
-					brandId: resolvedBrandId!,
-					lookback: filters?.lookback ?? "1m",
-					model: filters?.model,
-					tags: filters?.tags?.join(","),
-					promptId: filters?.promptId,
-					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				},
+			computeBrandData("queryFanout", {
+				brandId: resolvedBrandId!,
+				lookback: filters?.lookback ?? "1m",
+				model: filters?.model,
+				tags: filters?.tags?.join(","),
+				promptId: filters?.promptId,
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 30_000,
+		staleTime: 5 * 60_000,
 		placeholderData: (prev) => prev,
 	});
 

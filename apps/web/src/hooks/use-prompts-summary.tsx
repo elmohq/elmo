@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { getPromptsSummaryFn } from "@/lib/brand-data/local-first";
+import { computeBrandData } from "@/lib/brand-data/client";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface PromptsSummaryFilters {
@@ -21,21 +21,16 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 	const query = useQuery({
 		queryKey: promptsSummaryKeys.list(resolvedBrandId || "", filters),
 		queryFn: () =>
-			getPromptsSummaryFn({
-				data: {
-					brandId: resolvedBrandId!,
-					lookback: filters?.lookback || "1m",
-					webSearchEnabled: filters?.webSearchEnabled?.toString(),
-					model: filters?.model,
-					tags: filters?.tags?.join(","),
-					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				},
+			computeBrandData("promptsSummary", {
+				brandId: resolvedBrandId!,
+				lookback: filters?.lookback || "1m",
+				webSearchEnabled: filters?.webSearchEnabled?.toString(),
+				model: filters?.model,
+				tags: filters?.tags?.join(","),
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 30_000,
-		refetchOnWindowFocus: true,
-		refetchOnReconnect: true,
-		refetchInterval: 60_000,
+		staleTime: 5 * 60_000,
 		placeholderData: (prev) => prev,
 	});
 

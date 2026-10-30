@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { getDashboardSummaryFn } from "@/lib/brand-data/local-first";
+import { computeBrandData } from "@/lib/brand-data/client";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 export interface DashboardFilters {
@@ -20,20 +20,15 @@ export function useDashboardSummary(brandId?: string, filters: DashboardFilters 
 	const query = useQuery({
 		queryKey: dashboardKeys.summary(resolvedBrandId || "", filters),
 		queryFn: () =>
-			getDashboardSummaryFn({
-				data: {
-					brandId: resolvedBrandId!,
-					lookback: filters.lookback,
-					model: filters.model,
-					tags: filters.tags?.join(","),
-					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				},
+			computeBrandData("dashboardSummary", {
+				brandId: resolvedBrandId!,
+				lookback: filters.lookback,
+				model: filters.model,
+				tags: filters.tags?.join(","),
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			}),
 		enabled: !!resolvedBrandId,
-		staleTime: 30_000,
-		refetchOnWindowFocus: true,
-		refetchOnReconnect: true,
-		refetchInterval: 60_000,
+		staleTime: 5 * 60_000,
 		placeholderData: (prev) => prev,
 	});
 

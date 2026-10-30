@@ -2,8 +2,8 @@ import { useState } from "react";
 import { CitationFlowCard } from "@/components/citations/citation-flow-card";
 import { type CitationFilters, useCitationDomains, useCitationFlow } from "@/hooks/use-citations";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import type { CitationDomainListItem } from "@/lib/analytics/pages/citations";
 import { defaultFlowDomain, flowDomainOptions } from "@/lib/citation-flow";
-import type { CitationDomainListItem } from "@/server/citations";
 
 const PICKER_DOMAINS = 50;
 const BRAND_DOMAINS = 10;
