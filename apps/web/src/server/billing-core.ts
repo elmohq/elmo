@@ -3,7 +3,7 @@
  * and no provider identifiers are returned. A deployment without billing
  * answers `billingEnabled: false` rather than erroring.
  */
-import { planDisplayName } from "@workspace/config/plans";
+import { type BillingInterval, planDisplayName } from "@workspace/config/plans";
 import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { organization } from "@workspace/lib/db/schema";
@@ -20,6 +20,12 @@ export class OrganizationNotFoundError extends Error {
 		super(`Organization "${organizationId}" not found.`);
 		this.name = "OrganizationNotFoundError";
 	}
+}
+
+/** The provider stores its own word for the interval, `month` or `year`. */
+function intervalOf(stored: string | null | undefined): BillingInterval | null {
+	if (!stored) return null;
+	return stored === "year" ? "annual" : "monthly";
 }
 
 export async function organizationBilling(organizationId: string) {
@@ -52,7 +58,7 @@ export async function organizationBilling(organizationId: string) {
 						// no subscription row to read it from.
 						standing: entitlements.standing,
 						trackingActive: entitlements.trackingActive,
-						interval: subscription?.billingInterval ?? null,
+						interval: intervalOf(subscription?.billingInterval),
 						periodEnd: subscription?.periodEnd?.toISOString() ?? null,
 						cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
 					}
