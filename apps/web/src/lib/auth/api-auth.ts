@@ -173,6 +173,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 	const key = result?.key;
 	if (!result?.valid || !key) {
 		if (result?.error?.code === "RATE_LIMITED") {
+			// Milliseconds, like the window the plugin is configured with.
 			const tryAgainIn = (result.error as { details?: { tryAgainIn?: unknown } }).details?.tryAgainIn;
 			return {
 				failure: {
@@ -180,7 +181,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 					error: "Too Many Requests",
 					message: "Rate limit exceeded for this API key",
 					code: "rate_limited",
-					retryAfterSeconds: typeof tryAgainIn === "number" ? Math.max(1, Math.ceil(tryAgainIn)) : 60,
+					retryAfterSeconds: typeof tryAgainIn === "number" ? Math.max(1, Math.ceil(tryAgainIn / 1000)) : 60,
 				},
 			};
 		}

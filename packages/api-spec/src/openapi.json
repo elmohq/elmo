@@ -2191,24 +2191,7 @@
 				"headers": {
 					"Retry-After": {
 						"description": "Seconds until the limit resets.",
-						"schema": {
-							"type": "integer"
-						}
-					},
-					"X-RateLimit-Limit": {
-						"description": "Requests allowed per window.",
-						"schema": {
-							"type": "integer"
-						}
-					},
-					"X-RateLimit-Remaining": {
-						"description": "Requests left in the current window. Counted with a read-modify-write per request, so treat it as a guide and back off on 429 rather than riding it to zero. Sent only when the remainder is known.",
-						"schema": {
-							"type": "integer"
-						}
-					},
-					"X-RateLimit-Reset": {
-						"description": "Unix seconds at which the window resets.",
+						"required": true,
 						"schema": {
 							"type": "integer"
 						}
