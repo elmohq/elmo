@@ -3,7 +3,8 @@
  * (quarter-hour buckets, refreshed about a minute behind the raw rows).
  */
 
-import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/citations/page-classification";
+import type { CitationPageType } from "@workspace/lib/citations/domain-categories";
+import { GOOGLE_STATIC_CATEGORY, type StaticCategory } from "@workspace/lib/citations/page-classification";
 import type { CitationUrlRow } from "@workspace/lib/citations/rollup";
 import { sql } from "drizzle-orm";
 import {
@@ -97,7 +98,7 @@ export interface CitationUrlStats extends CitationUrlRow {
 
 export interface PerPromptCitationPageRow {
 	prompt_id: string;
-	url: string | null;
+	url: string;
 	domain: string;
 	title: string | null;
 	count: number;
@@ -120,8 +121,8 @@ export interface PerPromptDailyCitationClassRow {
 	prompt_id: string;
 	date: string;
 	owner: CitationOwner | null;
-	static_category: string;
-	page_type: string;
+	static_category: StaticCategory;
+	page_type: CitationPageType;
 	count: number;
 }
 

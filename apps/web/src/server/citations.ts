@@ -159,7 +159,7 @@ function buildWhatsChanged(
 			domain: url.domain,
 			count: url.count,
 			promptCount: url.prompt_count,
-			category: url.category as CitationCategory,
+			category: url.category,
 		})),
 		droppedUrls: summary.droppedUrls.flatMap((page) => {
 			const resolved = resolvePageClass(page, brandDomains, competitorDomains);
@@ -177,7 +177,7 @@ function buildWhatsChanged(
 		newDomains: summary.newDomains.map((domain) => ({
 			domain: domain.domain,
 			count: domain.count,
-			category: (domain.category ?? categorizeDomain(domain.domain)) as CitationCategory,
+			category: domain.category ?? categorizeDomain(domain.domain),
 		})),
 		droppedDomains: summary.droppedDomains.map((domain) => ({
 			domain: domain.domain,
@@ -192,8 +192,8 @@ function tallyClasses(rows: CitationClassTotalRow[]) {
 	const pageTypeCounts = emptyPageTypeCounts();
 	let totalCitations = 0;
 	for (const row of rows) {
-		categoryCounts[row.category as CitationCategory] += row.count;
-		pageTypeCounts[row.page_type as CitationPageType] += row.count;
+		categoryCounts[row.category] += row.count;
+		pageTypeCounts[row.page_type] += row.count;
 		totalCitations += row.count;
 	}
 	return {
@@ -462,8 +462,8 @@ function toUrlListItem(row: CitationUrlListRow): CitationUrlListItem {
 		title: row.title ?? undefined,
 		domain: row.domain,
 		count: row.count,
-		category: row.category as CitationCategory,
-		pageType: row.page_type as CitationPageType,
+		category: row.category,
+		pageType: row.page_type,
 		avgPosition: row.avg_position,
 		promptCount: row.prompt_count,
 		isNew: row.is_new,
@@ -501,7 +501,7 @@ function toDomainListItem(row: CitationDomainStatsRow): CitationDomainListItem {
 	return {
 		domain: row.domain,
 		count: row.count,
-		category: (row.category ?? "other") as CitationCategory,
+		category: row.category ?? "other",
 		exampleTitle: row.example_title ?? undefined,
 		previousCount: row.previous_count,
 		changePercent:
