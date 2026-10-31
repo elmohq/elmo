@@ -1,0 +1,25 @@
+meta {
+  name: analyze rejects limits over 100
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/tools/analyze
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "website": "acme.com",
+    "maxCompetitors": 101,
+    "maxPrompts": 101
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error: eq Validation Error
+  res.body.message: eq maxCompetitors: maxCompetitors must be at most 100; maxPrompts: maxPrompts must be at most 100
+}
