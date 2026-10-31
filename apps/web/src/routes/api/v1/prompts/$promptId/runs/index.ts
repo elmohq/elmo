@@ -4,7 +4,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { parseAnalyticsWindow, parsePaging } from "@/lib/api/analytics-range";
+import { clampedPaging, parseAnalyticsWindow } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requirePromptBrandInScope } from "@/lib/api/scope";
 import { listPromptRuns } from "@/server/runs-core";
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
 					await requirePromptBrandInScope(auth, promptId);
 
 					const url = new URL(request.url);
-					const { page, limit, offset } = parsePaging(url);
+					const { page, limit, offset } = clampedPaging(url.searchParams);
 					const { data, total } = await listPromptRuns({
 						promptId,
 						window: parseAnalyticsWindow(url),
