@@ -17,12 +17,12 @@ export interface RunSummary {
 	brandId: string;
 	model: string;
 	provider: string | null;
-	webSearchEnabled: boolean | null;
-	brandMentioned: boolean | null;
-	competitorsMentioned: unknown;
+	webSearchEnabled: boolean;
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
 	/** The mention judge's assessments; null for mentions matched by name, before the judge. */
 	assessments: RunAssessments | null;
-	webQueries: unknown;
+	webQueries: string[];
 	citationCount: number;
 	createdAt: Date | string;
 }
@@ -69,7 +69,7 @@ interface RunCitation {
 	url: string;
 	domain: string;
 	title: string | null;
-	citationIndex: number | null;
+	citationIndex: number;
 }
 
 export interface RunDetail extends Omit<RunSummary, "citationCount"> {

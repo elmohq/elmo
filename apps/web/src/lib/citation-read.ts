@@ -1,5 +1,9 @@
-import { CONTENT_PUBLISHER_CATEGORIES } from "@workspace/lib/citations/domain-categories";
-import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/citations/page-classification";
+import {
+	type CitationCategory,
+	type CitationPageType,
+	CONTENT_PUBLISHER_CATEGORIES,
+} from "@workspace/lib/citations/domain-categories";
+import { GOOGLE_STATIC_CATEGORY, type StaticCategory } from "@workspace/lib/citations/page-classification";
 import { type SQL, sql } from "drizzle-orm";
 import { type AnalyticsScope, queryPg, scopeFilter } from "@/lib/analytics-sql";
 import type { CitationFlowRow } from "@/lib/citation-flow";
@@ -21,8 +25,8 @@ export interface CitationUrlListRow {
 	url: string;
 	domain: string;
 	title: string | null;
-	category: string;
-	page_type: string;
+	category: CitationCategory;
+	page_type: CitationPageType;
 	count: number;
 	avg_position: number | null;
 	prompt_count: number;
@@ -32,14 +36,14 @@ export interface CitationUrlListRow {
 export interface CitationDomainStatsRow {
 	domain: string;
 	count: number;
-	category: string | null;
+	category: CitationCategory | null;
 	example_title: string | null;
 	previous_count: number;
 }
 
 export interface CitationClassTotalRow {
-	category: string;
-	page_type: string;
+	category: CitationCategory;
+	page_type: CitationPageType;
 	count: number;
 }
 
@@ -53,8 +57,8 @@ export interface RedditPageRow {
 export interface DroppedCitationPageRow {
 	url: string;
 	domain: string;
-	static_category: string;
-	page_type: string;
+	static_category: StaticCategory;
+	page_type: CitationPageType;
 	previous_count: number;
 	current_count: number;
 }
