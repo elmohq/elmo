@@ -92,8 +92,6 @@ Most AI visibility platforms are closed SaaS. Here is how Elmo compares to the w
 | Peec AI | ✅ | ✅ | ✅ | ✅ | ✅ | Enterprise |
 | Otterly AI | ✅ | Add-on | ✅ | Add-on | ✅ | Add-on |
 
-Elmo also maintains a directory of 100+ Answer Engine Optimization and Generative Engine Optimization tools with feature matrices and head-to-head comparisons: [AI Visibility Tool Directory](https://www.elmohq.com/ai-visibility-tools).
-
 ## Who Elmo Is For
 
 - **Marketing, SEO, and content teams** extending their search strategy to AI search — see which prompts your brand wins or misses, which competitors AI recommends instead, and which cited pages to target next.
