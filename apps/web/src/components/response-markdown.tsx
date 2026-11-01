@@ -70,7 +70,7 @@ export function ResponseMarkdown({
 	markRange?: MarkRange;
 }) {
 	return (
-		<div className="prose prose-sm dark:prose-invert max-w-none break-words">
+		<div className="prose prose-sm max-w-none break-words">
 			<ReactMarkdown
 				remarkPlugins={[remarkGfm]}
 				rehypePlugins={[

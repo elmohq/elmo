@@ -13,12 +13,12 @@ const RANK: Record<Status, number> = { supported: 0, discontinued: 1, unknown: 2
 
 const PILL: Record<Status, { pill: string; status: string }> = {
 	supported: {
-		pill: "bg-emerald-500/15 text-emerald-900 dark:text-emerald-200",
-		status: "text-emerald-700 dark:text-emerald-400",
+		pill: "bg-emerald-500/15 text-emerald-900",
+		status: "text-emerald-700",
 	},
 	discontinued: {
-		pill: "bg-amber-500/15 text-amber-900 dark:text-amber-200",
-		status: "text-amber-700 dark:text-amber-400",
+		pill: "bg-amber-500/15 text-amber-900",
+		status: "text-amber-700",
 	},
 	unknown: { pill: "bg-muted", status: "text-muted-foreground" },
 	never: { pill: "bg-muted", status: "text-muted-foreground" },
