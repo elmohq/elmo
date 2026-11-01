@@ -67,20 +67,20 @@ export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 
 export const GRADE_STYLES: Record<Grade, { card: string; text: string; stroke: string; fill: string }> = {
 	good: {
-		card: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800",
-		text: "text-emerald-700 dark:text-emerald-400",
+		card: "bg-emerald-50 border-emerald-200",
+		text: "text-emerald-700",
 		stroke: "#059669",
 		fill: "#a7f3d0",
 	},
 	fair: {
-		card: "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800",
-		text: "text-amber-700 dark:text-amber-400",
+		card: "bg-amber-50 border-amber-200",
+		text: "text-amber-700",
 		stroke: "#d97706",
 		fill: "#fde68a",
 	},
 	poor: {
-		card: "bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800",
-		text: "text-rose-700 dark:text-rose-400",
+		card: "bg-rose-50 border-rose-200",
+		text: "text-rose-700",
 		stroke: "#e11d48",
 		fill: "#fecdd3",
 	},
