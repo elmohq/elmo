@@ -100,7 +100,7 @@ describe("sumAssessments", () => {
 describe("sentimentSummary", () => {
 	it("counts each sentiment from its own runs", () => {
 		const summary = sentimentSummary(sums({ positive_runs: 1, neutral_runs: 2, mixed_runs: 3, negative_runs: 4 }));
-		expect(summary).toMatchObject({ positive: 1, neutral: 2, mixed: 3, negative: 4 });
+		expect(summary).toEqual({ positive: 1, neutral: 2, mixed: 3, negative: 4, score: 0.35 });
 	});
 
 	it("has no score without an answer that has a sentiment, even when the company was ranked", () => {
@@ -128,10 +128,10 @@ describe("sentimentSummary", () => {
 describe("mentionQuality", () => {
 	it("pairs the sentiment summary with the average position", () => {
 		const input = sums({ positive_runs: 2, neutral_runs: 1, negative_runs: 1, position_sum: 5, positioned_runs: 3 });
-		const quality = mentionQuality(input);
-		expect(quality.sentiment).toEqual(sentimentSummary(input));
-		expect(quality.position.average).toBe(averagePosition(5, 3));
-		expect(quality.position.average).toBe(1.7);
+		expect(mentionQuality(input)).toEqual({
+			sentiment: sentimentSummary(input),
+			position: { average: 1.7 },
+		});
 	});
 
 	it("has no average position when the company was never ranked", () => {
