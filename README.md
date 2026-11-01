@@ -93,10 +93,15 @@ Elmo also maintains a directory of 100+ Answer Engine Optimization and Generativ
 
 ## Who Elmo Is For
 
-- **Self-hosting teams** who want AI visibility data inside their own infrastructure — your prompts, your competitors, and every raw engine response stay in a PostgreSQL database you control.
-- **Agencies** offering Answer Engine Optimization to clients: the white-label deployment adds custom branding, a custom domain, and SSO on top of multi-brand tracking.
+- **Marketing, SEO, and content teams** extending their search strategy to AI search — see which prompts your brand wins or misses, which competitors AI recommends instead, and which cited pages to target next.
+- **Agencies** offering Answer Engine Optimization to clients: track every client brand in one place, and use the white-label deployment for custom branding, a custom domain, and SSO.
+- **B2B SaaS and e-commerce brands** that need to show up when buyers ask AI for "best [category]" shortlists, comparisons, and product recommendations.
+- **Software companies** embedding AI visibility tracking into their own products instead of building and maintaining the scraping and analysis pipeline themselves.
 - **Developers and analysts** who want auditable metrics — a REST API with TypeScript and Python SDKs, an MCP server for AI assistants, a documented methodology, and a database you can query directly instead of a dashboard-only black box.
+- **Self-hosting and regulated teams** who need AI visibility data inside their own infrastructure — your prompts, your competitors, and every raw engine response stay in a PostgreSQL database you control.
 - **Anyone priced out of enterprise AEO platforms** who still needs credible measurement of how ChatGPT, Perplexity, Gemini, and Google AI Overviews talk about their brand.
+
+See how teams in specific industries use Elmo: [AEO by industry](https://www.elmohq.com/aeo-for).
 
 ## Quick Start
 
