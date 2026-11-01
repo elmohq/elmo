@@ -78,16 +78,19 @@ Every step is code in this repo, and every number can be re-derived from the raw
 
 Most AI visibility platforms are closed SaaS. Here is how Elmo compares to the widely used ones:
 
-| Tool | Open Source | Self-Hostable | Auditable Metrics | Data Ownership | Pricing Model | Engine Coverage |
-|---|---|---|---|---|---|---|
-| [**Elmo**](https://www.elmohq.com/) | Yes (MIT) | Yes (Docker Compose) | Yes — scoring code is public | Yours — your own PostgreSQL | Free self-hosted; cloud from $29/mo | ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, Grok, Mistral, and more |
-| [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound) | No | No | No — proprietary scoring | Vendor-hosted | Enterprise, custom pricing | Multiple engines, plus AI crawler analytics |
-| [Peec AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai) | No | No | No | Vendor-hosted | Paid subscription, custom pricing | Multiple engines |
-| [Otterly AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai) | No | No | No | Vendor-hosted | Paid subscription, custom pricing | Multiple engines, plus on-page GEO audits |
+| Tool | Open Source | Auditable Metrics | Self-Hosted | Cloud |
+|---|---|---|---|---|
+| [**Elmo**](https://www.elmohq.com/) | Yes (MIT) | Yes | Free | From $29/mo |
+| [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound) | No | No | No | Enterprise, custom pricing |
+| [Peec AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai) | No | No | No | From $95/mo |
+| [Otterly AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai) | No | No | No | From $29/mo |
 
-To be fair about where the closed tools are genuinely ahead: Profound and Peec AI offer prompt volume estimates; Profound and Otterly analyze AI crawler behavior; and Otterly audits and optimizes on-page content. Elmo doesn't do those things today — see the [roadmap](https://www.elmohq.com/roadmap) for what's planned. What none of them offer is the ability to read the code behind every number, run it on your own infrastructure, and keep the data.
-
-Elmo also maintains a directory of 100+ Answer Engine Optimization and Generative Engine Optimization tools with feature matrices and head-to-head comparisons: [AI Visibility Tool Directory](https://www.elmohq.com/ai-visibility-tools).
+| Tool | ChatGPT | Google AI Mode | Google AI Overviews | Gemini | Copilot | Claude |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Elmo** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Profound | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Peec AI | ✅ | ✅ | ✅ | ✅ | ✅ | Enterprise |
+| Otterly AI | ✅ | Add-on | ✅ | Add-on | ✅ | Add-on |
 
 ## Who Elmo Is For
 
@@ -130,9 +133,9 @@ Or copy [`skills/aeo`](skills/aeo) into your agent's skills directory (for Claud
 
 ## Deployment Options
 
-- **Self-hosted** — free (MIT). The full platform on your own infrastructure with Docker Compose. See [Quick Start](#quick-start).
-- **[Elmo Cloud](https://www.elmohq.com/pricing)** — from $29/mo. Managed hosting with automatic updates, unlimited seats, and API and MCP access on every plan.
-- **[White-label](https://www.elmohq.com/aeo-for/agencies)** — custom pricing. Elmo Cloud plus your own branding, domain, and SSO, built for agencies and software companies.
+- **Self-Hosted** — Run Elmo for free on your own infrastructure using Docker Compose. [Get started →](https://www.elmohq.com/docs/getting-started)
+- **Elmo Cloud** — Managed hosting with automatic updates, unlimited seats, and API and MCP access on every plan. [See plans →](https://www.elmohq.com/pricing)
+- **White-Label** — Elmo Cloud with your own branding, domain, and SSO, built for agencies and software companies. [Book a call →](https://www.elmohq.com/demo)
 
 ## Architecture and Tech Stack
 
