@@ -80,19 +80,19 @@ Most AI visibility platforms are closed SaaS. Here is how Elmo compares to the w
 
 | Tool | Open Source | Auditable Metrics | Self-Hosted | Cloud | Cost per AI Answer |
 |---|---|---|---|---|---|
-| [**Elmo**](https://www.elmohq.com/) | Yes (MIT) | Yes | Free | From $29/mo | ~$0.002 self-hosted, ~$0.004–0.019 on Cloud |
+| [**Elmo**](https://www.elmohq.com/) | Yes (MIT) | Yes | Free | From $29/mo | ~$0.004 (~$0.002 self-hosted) |
 | [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound) | No | No | No | Enterprise, custom pricing | Not published |
-| [Peec AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai) | No | No | No | From $95/mo | ~$0.016–0.021 |
-| [Otterly AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai) | No | No | No | From $29/mo | ~$0.010–0.016 |
+| [Peec AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai) | No | No | No | From $95/mo | ~$0.016 |
+| [Otterly AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai) | No | No | No | From $29/mo | ~$0.010 |
 
-| Tool | ChatGPT | Google AI Mode | Google AI Overviews | Gemini | Perplexity | Copilot | Claude |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Elmo** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Profound | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Peec AI | ✅ | ✅ | ✅ | ✅ | Enterprise | ✅ | Enterprise |
-| Otterly AI | ✅ | Add-on | ✅ | Add-on | ✅ | ✅ | Add-on |
+| Tool | ChatGPT | Google AI Mode | Google AI Overviews | Gemini | Copilot | Claude |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Elmo** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Profound | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Peec AI | ✅ | ✅ | ✅ | ✅ | ✅ | Enterprise |
+| Otterly AI | ✅ | Add-on | ✅ | Add-on | ✅ | Add-on |
 
-Cost per AI answer is the monthly list price divided by the answers a plan collects (prompts × engines × daily runs), using published pricing as of November 2026. Self-hosted Elmo pays only its scraper and model costs, shown here with [Cloro](https://cloro.dev?fpr=elmo&fp_sid=readme). Peec AI's standard plans track three engines at a time.
+Cost per AI answer is the lowest rate across each tool's published plans as of November 2026: monthly price divided by prompts × engines × runs. Elmo Cloud checks every prompt 4× a day on each engine from the Basic plan up, where Peec AI and Otterly run once a day. Self-hosted Elmo pays only its scraper and model costs, shown here with [Cloro](https://cloro.dev?fpr=elmo&fp_sid=readme).
 
 Elmo also maintains a directory of 100+ Answer Engine Optimization and Generative Engine Optimization tools with feature matrices and head-to-head comparisons: [AI Visibility Tool Directory](https://www.elmohq.com/ai-visibility-tools).
 
@@ -137,9 +137,9 @@ Or copy [`skills/aeo`](skills/aeo) into your agent's skills directory (for Claud
 
 ## Deployment Options
 
-- **Self-hosted** — free (MIT). The full platform on your own infrastructure with Docker Compose. See [Quick Start](#quick-start).
-- **[Elmo Cloud](https://www.elmohq.com/pricing)** — from $29/mo. Managed hosting with automatic updates, unlimited seats, and API and MCP access on every plan.
-- **[White-label](https://www.elmohq.com/aeo-for/agencies)** — custom pricing. Elmo Cloud plus your own branding, domain, and SSO, built for agencies and software companies.
+- **Self-Hosted** — Run Elmo for free on your own infrastructure using Docker Compose. [Get started →](https://www.elmohq.com/docs/getting-started)
+- **Elmo Cloud** — Managed hosting with automatic updates, unlimited seats, and API and MCP access on every plan. [See plans →](https://www.elmohq.com/pricing)
+- **White-Label** — Elmo Cloud with your own branding, domain, and SSO, built for agencies and software companies. [Book a call →](https://www.elmohq.com/demo)
 
 ## Architecture and Tech Stack
 
