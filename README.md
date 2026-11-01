@@ -78,12 +78,12 @@ Every step is code in this repo, and every number can be re-derived from the raw
 
 Most AI visibility platforms are closed SaaS. Here is how Elmo compares to the widely used ones:
 
-| Tool | Open Source | Auditable Metrics | Self-Hosted | Cloud | Cost per AI Answer |
-|---|---|---|---|---|---|
-| [**Elmo**](https://www.elmohq.com/) | Yes (MIT) | Yes | Free | From $29/mo | ~$0.004 (~$0.002 self-hosted) |
-| [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound) | No | No | No | Enterprise, custom pricing | Not published |
-| [Peec AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai) | No | No | No | From $95/mo | ~$0.016 |
-| [Otterly AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai) | No | No | No | From $29/mo | ~$0.010 |
+| Tool | Open Source | Auditable Metrics | Self-Hosted | Cloud |
+|---|---|---|---|---|
+| [**Elmo**](https://www.elmohq.com/) | Yes (MIT) | Yes | Free | From $29/mo |
+| [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound) | No | No | No | Enterprise, custom pricing |
+| [Peec AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai) | No | No | No | From $95/mo |
+| [Otterly AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai) | No | No | No | From $29/mo |
 
 | Tool | ChatGPT | Google AI Mode | Google AI Overviews | Gemini | Copilot | Claude |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -91,8 +91,6 @@ Most AI visibility platforms are closed SaaS. Here is how Elmo compares to the w
 | Profound | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Peec AI | ✅ | ✅ | ✅ | ✅ | ✅ | Enterprise |
 | Otterly AI | ✅ | Add-on | ✅ | Add-on | ✅ | Add-on |
-
-Cost per AI answer is the lowest rate across each tool's published plans as of November 2026: monthly price divided by prompts × engines × runs. Elmo Cloud checks every prompt 4× a day on each engine from the Basic plan up, where Peec AI and Otterly run once a day. Self-hosted Elmo pays only its scraper and model costs, shown here with [Cloro](https://cloro.dev?fpr=elmo&fp_sid=readme).
 
 Elmo also maintains a directory of 100+ Answer Engine Optimization and Generative Engine Optimization tools with feature matrices and head-to-head comparisons: [AI Visibility Tool Directory](https://www.elmohq.com/ai-visibility-tools).
 
