@@ -33,7 +33,7 @@ Elmo is an open-source, self-hosted platform for optimizing your AI visibility, 
 * Generative Engine Optimization (GEO)
 * LLM Optimization (LLMO, which is where the name Elmo is from)
 
-Elmo tracks how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention, cite, and describe your brand, so you can benchmark competitors and grow your visibility in AI answers.
+Buyers increasingly ask AI before they search or visit a website. Elmo tracks how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention, cite, and describe your brand, so you can benchmark competitors, uncover citation gaps, and win more recommendations in AI answers.
 
 It's a free alternative to tools like [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound), [Peec](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai), and [Otterly](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai). You can run it on your own infrastructure, own your data, and audit exactly how every metric is calculated.
 
@@ -43,12 +43,12 @@ Try the live demo at **[demo.elmohq.com](https://demo.elmohq.com)** to see how E
 
 ## Screenshots
 
-| Dashboard overview | Visibility tracking |
+| Dashboard Overview | Visibility Tracking |
 |---|---|
 | ![Elmo overview with visibility, share of voice, sentiment, and position cards above a competitive landscape](apps/www/public/screenshots/overview.png) | ![Per-prompt AI visibility scores and trends across answer engines](apps/www/public/screenshots/visibility.png) |
-| **Share of voice** | **Citation analysis** |
+| **Share of Voice** | **Citation Analysis** |
 | ![Competitor share of voice leaderboard and trend over time](apps/www/public/screenshots/share-of-voice.png) | ![Domains and URLs cited by AI answer engines, grouped by category](apps/www/public/screenshots/citations.png) |
-| **Query fan-out** | **Opportunities** |
+| **Query Fan-Out** | **Opportunities** |
 | ![Web searches AI engines ran while grounding answers to tracked prompts](apps/www/public/screenshots/query-fan-out.png) | ![Generated recommendations for earning more AI citations](apps/www/public/screenshots/opportunities.png) |
 | **Sentiment** | **Responses** |
 | ![Sentiment score, trends against competitors, sentiment by model, and the passages behind it](apps/www/public/screenshots/sentiment.png) | ![Every AI answer for a brand, with each company's position and sentiment](apps/www/public/screenshots/responses.png) |
@@ -78,7 +78,7 @@ Every step is code in this repo, and every number can be re-derived from the raw
 
 Most AI visibility platforms are closed SaaS. Here is how Elmo compares to the widely used ones:
 
-| Tool | Open source | Self-hostable | Auditable metrics | Data ownership | Pricing model | Engine coverage |
+| Tool | Open Source | Self-Hostable | Auditable Metrics | Data Ownership | Pricing Model | Engine Coverage |
 |---|---|---|---|---|---|---|
 | [**Elmo**](https://www.elmohq.com/) | Yes (MIT) | Yes (Docker Compose) | Yes — scoring code is public | Yours — your own PostgreSQL | Free self-hosted; cloud from $29/mo | ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, Grok, Mistral, and more |
 | [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound) | No | No | No — proprietary scoring | Vendor-hosted | Enterprise, custom pricing | Multiple engines, plus AI crawler analytics |
@@ -134,15 +134,13 @@ Or copy [`skills/aeo`](skills/aeo) into your agent's skills directory (for Claud
 - **[Elmo Cloud](https://www.elmohq.com/pricing)** — from $29/mo. Managed hosting with automatic updates, unlimited seats, and API and MCP access on every plan.
 - **[White-label](https://www.elmohq.com/aeo-for/agencies)** — custom pricing. Elmo Cloud plus your own branding, domain, and SSO, built for agencies and software companies.
 
-## Architecture
+## Architecture and Tech Stack
 
 <p align="center">
   <img src="apps/www/public/brand/architecture.svg" alt="Elmo system architecture" width="100%">
 </p>
 
 A web app serves the dashboard and REST API, a worker schedules and executes prompt runs against the AI engines, and PostgreSQL stores both the data and the job queue. The [developer guide](https://www.elmohq.com/docs/developer-guide) covers the monorepo layout and how to contribute.
-
-## Tech Stack
 
 - [Docker Compose](https://docs.docker.com/compose/)
 - [PostgreSQL](https://www.postgresql.org/)
@@ -173,7 +171,7 @@ A web app serves the dashboard and REST API, a worker schedules and executes pro
 
 - [Discord](https://discord.gg/s24nubCtKz)
 - [Email](mailto:support@elmohq.com)
-- [Schedule a call](https://www.elmohq.com/demo)
+- [Schedule a Call](https://www.elmohq.com/demo)
 
 ## Contributing
 
