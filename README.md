@@ -103,25 +103,20 @@ See how teams in specific industries use Elmo: [AEO by industry](https://www.elm
 
 ## Quick Start
 
-For local deployments, use Docker Compose as configured with the `@elmohq/cli` package:
+The recommended setup uses two API keys:
+
+- **[Cloro](https://cloro.dev?fpr=elmo&fp_sid=readme)** scrapes the real ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, and Copilot apps.
+- **[OpenRouter](https://openrouter.ai)** runs onboarding, opportunities, and Jev, the model that judges mentions and sentiment.
+
+Then install the CLI, which walks you through configuration, and start the stack with Docker Compose:
 
 ```bash
-# Install the CLI globally
 npm install -g @elmohq/cli
-
-# Initialize configuration (interactive wizard)
 elmo init
-
-# Start the stack
 elmo compose up -d
 ```
 
-You'll need API keys for at least one AI provider or scraper, plus a [TypeSafe](https://console.typesafe.ai) key for Jev, which judges mentions and sentiment (or an OpenRouter key, to call Jev through OpenRouter). Jev costs very roughly $0.15–0.35 per 1,000 answers: about $2–4 a month for 25 prompts on 3 platforms, or $11–26 for 100 prompts on 5. See [mention judging](https://www.elmohq.com/docs/developer-guide/configuration#mention-judging).
-
-Once the services report healthy, open **http://localhost:1515** and create your account. The full walkthrough is in the [getting started guide](https://www.elmohq.com/docs/getting-started).
-
-> [!TIP]
-> **Watch** this repo's **releases** to get notified of major updates.
+See the [getting started guide](https://www.elmohq.com/docs/getting-started) for the full walkthrough and the [providers guide](https://www.elmohq.com/docs/user-guide/providers) for other scrapers and model APIs.
 
 ## Skill
 
