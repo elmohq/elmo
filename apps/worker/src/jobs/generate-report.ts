@@ -1,5 +1,6 @@
 import { db } from "@workspace/lib/db/db";
 import { reports } from "@workspace/lib/db/schema";
+import { describeReportPhase, type ReportPhase, reportProgress } from "@workspace/lib/reports/lifecycle";
 import { eq } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { processReportJob, type ReportJobData } from "../report-worker";
@@ -18,13 +19,13 @@ export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promis
 		console.log(`Generating report ${reportId} for ${brandName}`);
 
 		const log = (message: string) => console.log(`[Report ${reportId}] ${message}`);
-		const updateProgress = async (progress: number) => {
-			console.log(`[Report ${reportId}] Progress: ${progress}%`);
+		const enterPhase = async (phase: ReportPhase) => {
+			const progress = reportProgress(phase);
+			console.log(`[Report ${reportId}] ${describeReportPhase(phase)} (${progress}%)`);
 			try {
-				await db
-					.update(reports)
-					.set({ progress: Math.round(progress) })
-					.where(eq(reports.id, reportId));
+				// Also the report's heartbeat: the maintenance sweep reads updatedAt to
+				// tell a slow report from one whose worker is gone.
+				await db.update(reports).set({ progress, updatedAt: new Date() }).where(eq(reports.id, reportId));
 			} catch (err) {
 				console.error(`[Report ${reportId}] Failed to persist progress:`, err);
 			}
@@ -39,7 +40,7 @@ export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promis
 				manualPrompts,
 			},
 			log,
-			updateProgress,
+			enterPhase,
 		});
 
 		console.log(`Report ${reportId} completed successfully`);

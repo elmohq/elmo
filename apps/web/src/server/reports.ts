@@ -23,6 +23,7 @@ export const getReportsFn = createServerFn({ method: "GET" }).handler(async () =
 			brandAliases: reports.brandAliases,
 			brandWebsite: reports.brandWebsite,
 			status: reports.status,
+			progress: reports.progress,
 			createdAt: reports.createdAt,
 			completedAt: reports.completedAt,
 			updatedAt: reports.updatedAt,

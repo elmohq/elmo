@@ -5,9 +5,10 @@ import { type Brand, brands, reports } from "@workspace/lib/db/schema";
 import type { MentionConfig } from "@workspace/lib/mentions";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getProvider, type ModelConfig } from "@workspace/lib/providers";
+import { canAdvanceReport, type ReportPhase, type ReportStatus } from "@workspace/lib/reports/lifecycle";
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
 import { extractRun } from "@workspace/lib/text-extraction";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { mentionAnalyzer } from "./mention-judge/analyze";
 
 interface CompetitorResult {
@@ -63,7 +64,8 @@ export interface ReportJobData {
 export interface ReportJobContext {
 	data: ReportJobData;
 	log: (message: string) => void;
-	updateProgress: (progress: number) => void | Promise<void>;
+	/** Records which phase the report has reached; progress is derived from it. */
+	enterPhase: (phase: ReportPhase) => void | Promise<void>;
 }
 
 interface PromptRunResult {
@@ -237,6 +239,88 @@ async function runPrompt(
 	};
 }
 
+interface CandidateResult {
+	promptValue: string;
+	brandedPrompt: boolean;
+	runs: PromptRunResult["runs"];
+}
+
+/** Batched so a report doesn't open the whole fan-out against every provider at once. */
+const CANDIDATE_BATCH_SIZE = 20;
+const CANDIDATE_BATCH_PAUSE_MS = 1000;
+
+/**
+ * The expensive phase: every candidate prompt against every scrape target. A
+ * candidate that fails is kept with no runs rather than dropped, so selection
+ * still sees it and the caller can tell "they all failed" from "some did".
+ */
+async function testCandidates(args: {
+	candidatePrompts: { prompt: string; brandedPrompt: boolean }[];
+	brandName: string;
+	brandAliases: string[];
+	brandWebsite: string;
+	competitors: CompetitorResult[];
+	scrapeConfigs: ModelConfig[];
+	job: ReportJobContext;
+}): Promise<CandidateResult[]> {
+	const { candidatePrompts, brandName, brandAliases, brandWebsite, competitors, scrapeConfigs, job } = args;
+	const total = candidatePrompts.length;
+	const results: CandidateResult[] = [];
+	let completed = 0;
+	let failed = 0;
+
+	await job.enterPhase({ kind: "testing-candidates", completed: 0, total });
+
+	const testOne = async (candidate: { prompt: string; brandedPrompt: boolean }): Promise<CandidateResult> => {
+		let runs: PromptRunResult["runs"] = [];
+		try {
+			runs = (await runPrompt(candidate.prompt, brandName, brandAliases, brandWebsite, competitors, scrapeConfigs, job))
+				.runs;
+		} catch (error) {
+			job.log(
+				`Error testing candidate "${candidate.prompt}": ${error instanceof Error ? error.message : "Unknown error"}`,
+			);
+			failed++;
+		}
+		completed++;
+		await job.enterPhase({ kind: "testing-candidates", completed, total });
+		return { promptValue: candidate.prompt, brandedPrompt: candidate.brandedPrompt, runs };
+	};
+
+	for (let i = 0; i < candidatePrompts.length; i += CANDIDATE_BATCH_SIZE) {
+		results.push(...(await Promise.all(candidatePrompts.slice(i, i + CANDIDATE_BATCH_SIZE).map(testOne))));
+		// Avoid sending a new provider burst immediately after the previous batch.
+		if (i + CANDIDATE_BATCH_SIZE < candidatePrompts.length)
+			await new Promise((resolve) => setTimeout(resolve, CANDIDATE_BATCH_PAUSE_MS));
+	}
+
+	// A report built from no answers would read as "never mentioned"; fail it instead.
+	if (total > 0 && failed === total)
+		throw new Error("Every candidate prompt failed: are the providers or the judge (Jev) down?");
+
+	return results;
+}
+
+/**
+ * Moves a report to `next`, and says whether it moved. A report only ever leaves
+ * a terminal status by being replaced, so the status itself is the claim: the
+ * `WHERE` is what makes two workers holding the same report, or a retry of a job
+ * that already failed, cost nothing rather than a second full fan-out.
+ */
+async function advanceReportStatus(
+	reportId: string,
+	next: ReportStatus,
+	extra: Partial<typeof reports.$inferInsert> = {},
+): Promise<boolean> {
+	const claimable = (["pending", "processing"] as ReportStatus[]).filter((from) => canAdvanceReport(from, next));
+	const claimed = await db
+		.update(reports)
+		.set({ status: next, updatedAt: new Date(), ...extra })
+		.where(and(eq(reports.id, reportId), inArray(reports.status, claimable)))
+		.returning({ id: reports.id });
+	return claimed.length > 0;
+}
+
 export async function processReportJob(job: ReportJobContext) {
 	const { reportId, brandName, brandWebsite, manualPrompts } = job.data;
 	const brandAliases = job.data.brandAliases ?? [];
@@ -253,10 +337,16 @@ export async function processReportJob(job: ReportJobContext) {
 	try {
 		// Before anything is spent: the answers a report pays for can't be judged without it.
 		mentionAnalyzer();
-		await db.update(reports).set({ status: "processing", updatedAt: new Date() }).where(eq(reports.id, reportId));
+		// A report that already reached a terminal status is not ours to run. Nothing
+		// here is cheap enough to do on the off chance — the candidate fan-out is the
+		// report's whole cost — so claiming it is what decides whether we spend.
+		if (!(await advanceReportStatus(reportId, "processing"))) {
+			job.log(`Report ${reportId} is already finished; not running it again`);
+			return { success: false, reportId };
+		}
 
 		job.log(`Report ${reportId} marked as processing`);
-		job.updateProgress(5);
+		await job.enterPhase({ kind: "analyzing-brand" });
 
 		// Analyze competitors and candidate prompts in one shared
 		// LLM call (same `analyzeBrand` the onboarding flow uses; provider-
@@ -277,7 +367,6 @@ export async function processReportJob(job: ReportJobContext) {
 		const competitors: CompetitorResult[] = suggestion.competitors
 			.filter((c) => c.domains.length > 0 && !brandNames.has(c.name.trim().toLowerCase()))
 			.map((c) => ({ name: c.name, domain: c.domains[0] }));
-		job.updateProgress(35);
 
 		const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = useManualPrompts
 			? manualPrompts.map((prompt) => ({
@@ -297,84 +386,22 @@ export async function processReportJob(job: ReportJobContext) {
 			`${useManualPrompts ? "Using" : "Generated"} ${candidatePrompts.length} candidate prompts ` +
 				`(${candidatePrompts.filter((p) => p.brandedPrompt).length} branded)`,
 		);
-		job.updateProgress(40);
 
 		job.log(`Testing ${candidatePrompts.length} candidate prompts`);
-		const candidateResults: Array<{
-			promptValue: string;
-			brandedPrompt: boolean;
-			runs: Array<{
-				model: string;
-				version: string;
-				webSearchEnabled: boolean;
-				rawOutput: any;
-				webQueries: string[];
-				textContent: string;
-				brandMentioned: boolean;
-				competitorsMentioned: string[];
-			}>;
-		}> = [];
+		const candidateResults = await testCandidates({
+			candidatePrompts,
+			brandName,
+			brandAliases,
+			brandWebsite,
+			competitors,
+			scrapeConfigs,
+			job,
+		});
 
-		const totalCandidates = candidatePrompts.length;
-		let completedCandidates = 0;
-		let failedCandidates = 0;
-
-		const batchSize = 20;
-		for (let i = 0; i < candidatePrompts.length; i += batchSize) {
-			const batch = candidatePrompts.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (candidate) => {
-				try {
-					const result = await runPrompt(
-						candidate.prompt,
-						brandName,
-						brandAliases,
-						brandWebsite,
-						competitors,
-						scrapeConfigs,
-						job,
-					);
-					completedCandidates++;
-					const progress = 40 + (completedCandidates / totalCandidates) * 30;
-					job.updateProgress(progress);
-					return {
-						promptValue: result.promptValue,
-						brandedPrompt: candidate.brandedPrompt,
-						runs: result.runs,
-					};
-				} catch (error) {
-					job.log(
-						`Error testing candidate "${candidate.prompt}": ${error instanceof Error ? error.message : "Unknown error"}`,
-					);
-					failedCandidates++;
-					completedCandidates++;
-					const progress = 40 + (completedCandidates / totalCandidates) * 30;
-					job.updateProgress(progress);
-					return {
-						promptValue: candidate.prompt,
-						brandedPrompt: candidate.brandedPrompt,
-						runs: [],
-					};
-				}
-			});
-
-			const batchResults = await Promise.all(batchPromises);
-			candidateResults.push(...batchResults);
-
-			// Avoid sending a new provider burst immediately after the previous batch.
-			if (i + batchSize < candidatePrompts.length) {
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-			}
-		}
-
-		// A report built from no answers would read as "never mentioned"; fail it instead.
-		if (failedCandidates === candidatePrompts.length)
-			throw new Error("Every candidate prompt failed: are the providers or the judge (Jev) down?");
-
-		job.updateProgress(70);
+		await job.enterPhase({ kind: "selecting" });
 
 		job.log(`Selecting optimal ${TARGET_PROMPTS_COUNT} prompts from ${candidateResults.length} candidates`);
 		const selectedPromptValues = selectOptimalPrompts(candidateResults, brandName, brandAliases, brandWebsite);
-		job.updateProgress(75);
 
 		job.log(`Running final ${selectedPromptValues.length} selected prompts`);
 		const promptRuns: PromptRunResult[] = [];
@@ -392,11 +419,10 @@ export async function processReportJob(job: ReportJobContext) {
 				runs: result.runs,
 			});
 			completedFinalRuns++;
-			const progress = 75 + (completedFinalRuns / totalFinalRuns) * 20;
-			job.updateProgress(progress);
+			await job.enterPhase({ kind: "assembling", completed: completedFinalRuns, total: totalFinalRuns });
 		}
 
-		job.updateProgress(95);
+		await job.enterPhase({ kind: "finalizing" });
 
 		const prompts: PromptData[] = selectedPromptValues.map((promptValue) => ({
 			brandId: reportId,
@@ -414,23 +440,18 @@ export async function processReportJob(job: ReportJobContext) {
 
 		job.log(`Finalizing report with ${promptRuns.length} prompt run results`);
 
-		await db
-			.update(reports)
-			.set({
-				status: "completed",
-				completedAt: new Date(),
-				updatedAt: new Date(),
-				rawOutput: JSON.stringify(reportData),
-			})
-			.where(eq(reports.id, reportId));
+		await advanceReportStatus(reportId, "completed", {
+			completedAt: new Date(),
+			rawOutput: JSON.stringify(reportData),
+		});
 
-		job.updateProgress(100);
+		await job.enterPhase({ kind: "completed" });
 		job.log(`Successfully completed report ${reportId}`);
 		return { success: true, reportId };
 	} catch (error) {
 		job.log(`Error processing report ${reportId}: ${error instanceof Error ? error.message : "Unknown error"}`);
 
-		await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, reportId));
+		await advanceReportStatus(reportId, "failed");
 
 		throw error;
 	}

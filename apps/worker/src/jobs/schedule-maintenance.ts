@@ -2,8 +2,9 @@ import * as Sentry from "@sentry/node";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { brands, promptRuns, prompts, reports } from "@workspace/lib/db/schema";
 import { getOrgEntitlementsMap } from "@workspace/lib/entitlements";
+import { abandonedReports, REPORT_STALE_AFTER_MS } from "@workspace/lib/reports/lifecycle";
 import {
 	computeMaintenanceDecisions,
 	type LastRunRow,
@@ -14,7 +15,7 @@ import {
 	resolveBrandPromptRunPlans,
 	slowestIntervalHours,
 } from "@workspace/lib/run-policy";
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
 import { requestUnjudgedRuns } from "./derive-runs";
@@ -53,6 +54,10 @@ export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[
 			console.error("[schedule-maintenance] Requesting judging failed:", error);
 			Sentry.captureException(error);
 		});
+		await failAbandonedReports().catch((error) => {
+			console.error("[schedule-maintenance] Failing abandoned reports failed:", error);
+			Sentry.captureException(error);
+		});
 	}
 }
 
@@ -73,6 +78,33 @@ async function requestJudging(): Promise<void> {
 		scope.setTag("scheduler", "unjudged-runs");
 		scope.setFingerprint(["scheduler-unjudged-runs"]);
 		Sentry.captureMessage(`Judging: ${unjudged} answers still unjudged after 10 minutes`, "error");
+	});
+}
+
+/**
+ * A report whose worker died mid-run has no job behind it and nothing that will
+ * ever move it again, so it sits in `processing` claiming to be running for as
+ * long as the row exists. Prompt runs have had a sweep for this since the
+ * scheduler landed; reports never did. Nothing is re-run — the answers a report
+ * had bought are gone with the worker — it is only told the truth about itself.
+ */
+async function failAbandonedReports(): Promise<void> {
+	const cutoff = new Date(Date.now() - REPORT_STALE_AFTER_MS);
+	const candidates = await db
+		.select({ id: reports.id, status: reports.status, updatedAt: reports.updatedAt })
+		.from(reports)
+		.where(and(inArray(reports.status, ["pending", "processing"]), lt(reports.updatedAt, cutoff)));
+
+	const abandoned = abandonedReports(candidates, new Date());
+	if (abandoned.length === 0) return;
+
+	await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(inArray(reports.id, abandoned));
+	console.warn(`[schedule-maintenance] Failed ${abandoned.length} report(s) whose worker never came back`);
+	Sentry.withScope((scope) => {
+		scope.setLevel("error");
+		scope.setTag("scheduler", "abandoned-reports");
+		scope.setFingerprint(["scheduler-abandoned-reports"]);
+		Sentry.captureMessage(`Reports: ${abandoned.length} abandoned by their worker`, "error");
 	});
 }
 
