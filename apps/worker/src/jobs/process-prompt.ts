@@ -8,13 +8,17 @@ import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
+	afterPromptCycle,
 	dailyRunCeiling,
+	decidePromptCycle,
 	lastRunQueryWindowMs,
 	lastRunsByTargetKey,
+	type PromptCycleAction,
+	type PromptCycleState,
 	type PromptRunPlan,
 	resolveBrandPromptRunPlans,
-	selectDueTargets,
 	slowestIntervalHours,
+	type TargetPlan,
 } from "@workspace/lib/run-policy";
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
@@ -289,76 +293,70 @@ async function runModelIteration({
 }
 
 /**
- * One run of a prompt: work out what is due now, run it, and queue the next
- * run. Returning without queueing one stops the prompt until
- * schedule-maintenance starts it again, once the plan produces targets.
+ * Gather everything the decision needs. Looked up fresh every firing so plan
+ * changes, cancellations and platform-pick edits apply on the next cycle
+ * without touching queued jobs.
  */
-async function processPrompt(
-	promptId: string,
+async function gatherCycleState(
+	context: PromptContext,
 	scrapeConfigs: ModelConfig[],
-	consecutiveFailures: number,
-): Promise<void> {
-	console.log(`Processing prompt ${promptId}`);
-
-	const context = await getPromptContext(promptId);
-	if (!context) {
-		// The prompt was deleted: complete the job and queue nothing further.
-		console.log(`Prompt ${promptId} not found, skipping (no reschedule)`);
-		return;
-	}
-
-	const { prompt, brand } = context;
-
-	if (!prompt.enabled || !brand.enabled) {
-		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
-		// Still reschedule at the brand cadence - the prompt might be enabled later
-		await scheduleNextRun(promptId, brand.delayOverrideHours ?? getDefaultDelayHours(), 0);
-		return;
-	}
-
+): Promise<PromptCycleState & { entitlements: Entitlements }> {
 	const { plan, entitlements } = await resolvePlanForPrompt(context, scrapeConfigs);
-	if (plan.targets.length === 0 || plan.rescheduleHours === null) {
-		// Nothing to run and nothing to wait for: unentitled org, no platform
-		// picks, or outside the plan pool. The prompt stops here — it queues no
-		// next run — and schedule-maintenance starts it again within one pass of
-		// the plan producing targets (resubscribe, upgrade, new picks).
-		console.log(`Prompt ${promptId} has no runnable targets (org ${brand.organizationId}); stopping until entitled`);
-		return;
+	const lastRunAtByKey =
+		plan.targets.length > 0
+			? await getLastRunsByTargetKey(context.prompt.id, slowestIntervalHours(plan.targets))
+			: new Map<string, Date>();
+
+	return {
+		prompt: { enabled: context.prompt.enabled },
+		brand: { enabled: context.brand.enabled, delayOverrideHours: context.brand.delayOverrideHours },
+		defaultDelayHours: getDefaultDelayHours(),
+		plan,
+		lastRunAtByKey,
+		dailyRunCeiling: dailyRunCeiling(entitlements),
+		entitlements,
+	};
+}
+
+/** Why the prompt is doing what it's doing, in the log the operator reads. */
+function logAction(promptId: string, organizationId: string, action: PromptCycleAction): void {
+	switch (action.kind) {
+		case "stop":
+			console.log(
+				action.reason === "prompt-gone"
+					? `Prompt ${promptId} not found, skipping (no reschedule)`
+					: `Prompt ${promptId} has no runnable targets (org ${organizationId}); stopping until entitled`,
+			);
+			return;
+		case "reschedule":
+			console.log(`Prompt ${promptId}: ${action.reason}, rescheduling in ${action.delayHours}h`);
+			return;
+		case "run":
+			console.log(`Prompt ${promptId}: running ${action.targets.length} due target(s)`);
 	}
+}
 
-	const lastRuns = await getLastRunsByTargetKey(promptId, slowestIntervalHours(plan.targets));
-	const dueTargets = selectDueTargets(plan.targets, lastRuns, new Date());
+function reportCeilingHit(organizationId: string, ceiling: number): void {
+	console.warn(`Org ${organizationId} is over its daily run ceiling (${ceiling}); skipping this cycle`);
+	Sentry.withScope((scope) => {
+		scope.setLevel("warning");
+		scope.setTag("scheduler", "org-daily-ceiling");
+		scope.setFingerprint(["org-daily-ceiling", organizationId]);
+		Sentry.captureMessage(`Org ${organizationId} hit its daily run ceiling (${ceiling})`, "warning");
+	});
+}
 
-	if (dueTargets.length === 0) {
-		// Fired early (expedite, duplicate send): everything is fresh. Keep the
-		// prompt going without spending anything.
-		console.log(`Prompt ${promptId}: no targets due yet, rescheduling in ${plan.rescheduleHours}h`);
-		await scheduleNextRun(promptId, plan.rescheduleHours, 0);
-		return;
-	}
-
-	const ceiling = dailyRunCeiling(entitlements);
-	if (ceiling !== null && (await isOrgOverDailyCeiling(brand.organizationId, ceiling))) {
-		console.warn(`Org ${brand.organizationId} is over its daily run ceiling (${ceiling}); skipping this cycle`);
-		Sentry.withScope((scope) => {
-			scope.setLevel("warning");
-			scope.setTag("scheduler", "org-daily-ceiling");
-			scope.setFingerprint(["org-daily-ceiling", brand.organizationId]);
-			Sentry.captureMessage(`Org ${brand.organizationId} hit its daily run ceiling (${ceiling})`, "warning");
-		});
-		await scheduleNextRun(promptId, plan.rescheduleHours, 0);
-		return;
-	}
-
-	console.log(
-		`Processing prompt "${prompt.value}" for brand "${brand.name}" — ${dueTargets.length}/${plan.targets.length} targets due`,
-	);
-
-	const runPromises = dueTargets.flatMap((target) => {
+/** Runs the cycle's fan-out, returning how many of its runs produced an answer. */
+async function runCycle(
+	context: PromptContext,
+	targets: TargetPlan[],
+): Promise<{ attempted: number; succeeded: number }> {
+	const { prompt, brand } = context;
+	const runPromises = targets.flatMap((target) => {
 		const providerImpl = getProvider(target.config.provider);
 		return Array.from({ length: target.replication }, (_, i) =>
 			runModelIteration({
-				promptId,
+				promptId: prompt.id,
 				promptValue: prompt.value,
 				brand,
 				config: target.config,
@@ -370,35 +368,69 @@ async function processPrompt(
 
 	const results = await Promise.allSettled(runPromises);
 	const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
-
 	if (failures.length > 0) {
 		const errorMessages = failures
 			.map((f, i) => `Run ${i + 1}: ${f.reason instanceof Error ? f.reason.message : String(f.reason)}`)
 			.join("; ");
-
-		// Log failures but don't throw if some succeeded
-		console.error(`Prompt ${promptId} had ${failures.length}/${runPromises.length} failed runs: ${errorMessages}`);
+		console.error(`Prompt ${prompt.id} had ${failures.length}/${runPromises.length} failed runs: ${errorMessages}`);
 	}
 
-	const successCount = runPromises.length - failures.length;
-	console.log(`Completed prompt ${promptId}: ${successCount}/${runPromises.length} successful runs`);
-
+	const succeeded = runPromises.length - failures.length;
+	console.log(`Completed prompt ${prompt.id}: ${succeeded}/${runPromises.length} successful runs`);
 	trackWorkerEvent("prompt_processed", {
 		brand_id: brand.id,
-		models: [...new Set(dueTargets.map((t) => t.config.model))],
-		providers: [...new Set(dueTargets.map((t) => t.config.provider))],
+		models: [...new Set(targets.map((t) => t.config.model))],
+		providers: [...new Set(targets.map((t) => t.config.provider))],
 		total_runs: runPromises.length,
-		successful_runs: successCount,
+		successful_runs: succeeded,
 		failed_runs: failures.length,
 	});
 
-	// A cycle where nothing came back means the targets themselves are failing,
-	// so the next attempt backs off instead of running on cadence. Anything that
-	// produced a run clears the streak. The cap is how often the prompt runs
-	// (rescheduleHours, its fastest target), so a prompt that stays broken costs
-	// what a healthy one costs rather than more.
-	const failedCycles = runPromises.length > 0 && successCount === 0 ? consecutiveFailures + 1 : 0;
-	await scheduleNextRun(promptId, plan.rescheduleHours, failedCycles);
+	return { attempted: runPromises.length, succeeded };
+}
+
+/**
+ * One run of a prompt: gather what the decision needs, decide, then execute.
+ * The decision itself is `decidePromptCycle`, so what happens to a disabled
+ * prompt, an unentitled org or a prompt that fired early is settled in one
+ * readable place and tested without a database.
+ */
+async function processPrompt(
+	promptId: string,
+	scrapeConfigs: ModelConfig[],
+	consecutiveFailures: number,
+): Promise<void> {
+	console.log(`Processing prompt ${promptId}`);
+
+	const context = await getPromptContext(promptId);
+	if (!context) {
+		logAction(promptId, "unknown", { kind: "stop", reason: "prompt-gone" });
+		return;
+	}
+	const organizationId = context.brand.organizationId;
+
+	const state = await gatherCycleState(context, scrapeConfigs);
+	const action = await decidePromptCycle(state, new Date(), async (ceiling) => {
+		const over = await isOrgOverDailyCeiling(organizationId, ceiling);
+		if (over) reportCeilingHit(organizationId, ceiling);
+		return over;
+	});
+	logAction(promptId, organizationId, action);
+
+	if (action.kind === "stop") return;
+	if (action.kind === "reschedule") {
+		await scheduleNextRun(promptId, action.delayHours, action.consecutiveFailures);
+		return;
+	}
+
+	const { attempted, succeeded } = await runCycle(context, action.targets);
+	const next = afterPromptCycle({
+		attempted,
+		succeeded,
+		rescheduleHours: action.rescheduleHours,
+		consecutiveFailures,
+	});
+	await scheduleNextRun(promptId, next.delayHours, next.consecutiveFailures);
 }
 
 /**
