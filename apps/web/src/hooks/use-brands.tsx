@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { BrandTrackingState } from "@workspace/lib/brand-state";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { TrackedTarget } from "@/lib/model-filter";
@@ -6,6 +7,8 @@ import { getBrand, getCompetitors } from "@/server/brands";
 
 type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;
+	/** What the brand is doing right now, resolved server-side against the org's plan. */
+	trackingState: BrandTrackingState;
 	/**
 	 * What this brand's results can be broken down by, resolved server-side so
 	 * the UI never hardcodes a model list. A model appears twice when the brand
