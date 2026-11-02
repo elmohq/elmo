@@ -1,4 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { GuideSections } from "@/components/directory-guide";
 import {
 	DirectoryBackLink,
 	DirectoryElmoBanner,
@@ -19,6 +20,7 @@ import {
 	getCompetitorBySlug,
 	hasOwnPages,
 } from "@/lib/competitors";
+import { getAlternativesGuide } from "@/lib/directory-guides";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")({
@@ -26,13 +28,17 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 		const c = getCompetitorBySlug(params.slug);
 		if (!c || !hasOwnPages(c)) throw notFound();
 		const alternatives = getAlternatives(c);
-		return { competitor: c, alternatives, faqs: getAlternativesFaqs(c, alternatives) };
+		const faqs = getAlternativesGuide(c.slug)?.faqs ?? getAlternativesFaqs(c, alternatives);
+		return { competitor: c, alternatives, faqs };
 	},
 	head: ({ params, loaderData }) => {
 		if (!loaderData) return {};
 		const { competitor: c, faqs } = loaderData;
-		const title = `${c.name} Alternatives | Open-Source AI Visibility · Elmo`;
-		const description = `The best ${c.name} alternatives for AI visibility tracking, including Elmo — the open-source, self-hosted option you can run for free.`;
+		const guide = getAlternativesGuide(c.slug);
+		const title = guide ? `${guide.metaTitle} · Elmo` : `${c.name} Alternatives | Open-Source AI Visibility · Elmo`;
+		const description =
+			guide?.metaDescription ??
+			`The best ${c.name} alternatives for AI visibility tracking, including Elmo — the open-source, self-hosted option you can run for free.`;
 		const path = `/ai-visibility-tools/alternatives/${params.slug}`;
 		return {
 			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
@@ -51,19 +57,29 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 });
 
 function AlternativesPage() {
-	const { competitor, alternatives } = Route.useLoaderData() as {
+	const { competitor, alternatives, faqs } = Route.useLoaderData() as {
 		competitor: Competitor;
 		alternatives: Competitor[];
+		faqs: ReturnType<typeof getAlternativesFaqs>;
 	};
+	const guide = getAlternativesGuide(competitor.slug);
 	return (
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero title={`${competitor.name} alternatives`} lead={getAlternativesVerdict(competitor)} />
+				<DirectoryHero
+					title={guide?.title ?? `${competitor.name} alternatives`}
+					lead={guide?.lead ?? getAlternativesVerdict(competitor)}
+				/>
+
+				{guide ? <GuideSections guide={guide} /> : null}
 
 				<DirectoryElmoBanner
-					pitch="Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
+					pitch={
+						guide?.elmoPitch ??
+						"Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
+					}
 					comparison={{
 						slug: getComparisonSlug(competitor),
 						name: competitor.name,
@@ -89,11 +105,11 @@ function AlternativesPage() {
 					</DirectorySection>
 				) : null}
 
-				<DirectorySection title={`Other ${competitor.name} alternatives`}>
+				<DirectorySection title={guide?.listTitle ?? `Other ${competitor.name} alternatives`}>
 					<ToolGrid competitors={alternatives} />
 				</DirectorySection>
 
-				<Faq items={getAlternativesFaqs(competitor, alternatives)} />
+				<Faq items={faqs} />
 				<ElmoCta />
 			</main>
 			<Footer />

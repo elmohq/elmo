@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AiVisibilitySoftwareHub } from "@/components/ai-visibility-software-hub";
 import { CompetitorDirectory } from "@/components/competitor-directory";
+import { GuideSections } from "@/components/directory-guide";
+import { ElmoCta } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { competitors, getComparisonSlug, isLowDR, isRetired } from "@/lib/competitors";
-import { DIRECTORY_FAQS } from "@/lib/faqs";
+import { HUB_GUIDE } from "@/lib/directory-guides";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
-const title = "AI Visibility Tools: Compare Every AEO & GEO Platform · Elmo";
-const description =
-	"Compare 100+ AI visibility tools, AEO software, LLM visibility trackers and GEO platforms side by side — engine coverage, pricing, and features, each head-to-head with Elmo.";
+const title = `${HUB_GUIDE.metaTitle} · Elmo`;
+const description = HUB_GUIDE.metaDescription;
 
 // Indexed comparison pages (mirrors the sitemap filter), surfaced as ItemList
 // structured data so AI engines can extract the full directory of tools.
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/ai-visibility-tools/")({
 		],
 		links: [{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools") }],
 		scripts: [
-			faqJsonLd(DIRECTORY_FAQS),
+			faqJsonLd(HUB_GUIDE.faqs),
 			itemListJsonLd(loaderData?.directoryItems ?? []),
 			breadcrumbJsonLd([
 				{ name: "Home", path: "/" },
@@ -79,8 +79,8 @@ function AiVisibilitySoftwarePage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
-				<CompetitorDirectory />
-				<AiVisibilitySoftwareHub />
+				<CompetitorDirectory title={HUB_GUIDE.title} lead={HUB_GUIDE.lead} />
+				<GuideSections guide={HUB_GUIDE} />
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
 						<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">Browse the directory</h2>
@@ -102,7 +102,8 @@ function AiVisibilitySoftwarePage() {
 						</div>
 					</div>
 				</section>
-				<Faq items={DIRECTORY_FAQS} />
+				<Faq items={HUB_GUIDE.faqs} />
+				<ElmoCta />
 			</main>
 			<Footer />
 		</div>

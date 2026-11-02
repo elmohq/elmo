@@ -18,7 +18,7 @@ import { FeatureMark } from "./feature-mark";
 
 const visibleCompetitors = sortedCompetitors.filter((c) => !isRetired(c) && c.category !== "other");
 
-export function CompetitorDirectory() {
+export function CompetitorDirectory({ title, lead }: { title: string; lead: string }) {
 	const [selectedCategory, setSelectedCategory] = useState<CompetitorCategory | "all">("all");
 
 	const filteredCompetitors = visibleCompetitors.filter(
@@ -36,13 +36,8 @@ export function CompetitorDirectory() {
 					className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgb(0_0_0/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(0_0_0/0.04)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
 				/>
 				<div className="relative mx-auto max-w-6xl px-4 md:px-6">
-					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl lg:text-6xl">
-						AI Visibility Tools
-					</h1>
-					<p className="mt-6 max-w-3xl text-lg text-balance text-zinc-600 md:text-xl">
-						Every AI visibility tool, AEO platform, LLM visibility tracker and GEO tool in one place. Compare engine
-						coverage, features and pricing, and find the right platform for your team.
-					</p>
+					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl lg:text-6xl">{title}</h1>
+					<p className="mt-6 max-w-3xl text-lg text-balance text-zinc-600 md:text-xl">{lead}</p>
 				</div>
 			</section>
 
