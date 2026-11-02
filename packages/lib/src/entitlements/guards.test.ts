@@ -4,8 +4,23 @@ import {
 	resolveEntitlements,
 	UNLIMITED_ENTITLEMENTS,
 } from "@workspace/config/entitlements";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_COMPETITORS, MAX_PROMPTS } from "../constants";
+
+// withQuotaLock is the only thing here that touches a database. The fake
+// transaction records when it committed, so a test can say whether a deferred
+// task ran before or after that.
+const txState = vi.hoisted(() => ({ log: [] as string[] }));
+vi.mock("../db/db", () => ({
+	db: {
+		transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => {
+			const value = await fn({ execute: async () => txState.log.push("lock") });
+			txState.log.push("commit");
+			return value;
+		},
+	},
+}));
+
 import {
 	decideBrandCreate,
 	decideCadenceOverride,
@@ -16,6 +31,7 @@ import {
 	decidePromptCap,
 	promptSaveDelta,
 	type WriteDecision,
+	withQuotaLock,
 } from "./guards";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
@@ -362,5 +378,70 @@ describe("grace and paused standings", () => {
 		});
 		expect(paused.standing).toBe("paused");
 		expect(decidePromptAdd(paused, 0, 1).allowed).toBe(true);
+	});
+});
+
+describe("withQuotaLock post-commit tasks", () => {
+	beforeEach(() => {
+		txState.log = [];
+		vi.spyOn(console, "error").mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("runs deferred tasks after the transaction commits, in order", async () => {
+		const value = await withQuotaLock("org_1", async (_tx, afterCommit) => {
+			afterCommit(async () => {
+				txState.log.push("first");
+			});
+			afterCommit(async () => {
+				txState.log.push("second");
+			});
+			txState.log.push("write");
+			return "brand_1";
+		});
+
+		expect(value).toBe("brand_1");
+		expect(txState.log).toEqual(["lock", "write", "commit", "first", "second"]);
+	});
+
+	// The write is durable by then, so answering an error invites a retry that
+	// creates the row twice or collides with the one that exists.
+	it("returns the committed value when a deferred task fails", async () => {
+		const value = await withQuotaLock("org_1", async (_tx, afterCommit) => {
+			afterCommit(async () => {
+				throw new Error("queue unreachable");
+			});
+			return ["prompt_1", "prompt_2"];
+		});
+
+		expect(value).toEqual(["prompt_1", "prompt_2"]);
+	});
+
+	it("still runs the tasks that follow a failing one", async () => {
+		await withQuotaLock("org_1", async (_tx, afterCommit) => {
+			afterCommit(async () => {
+				throw new Error("queue unreachable");
+			});
+			afterCommit(async () => {
+				txState.log.push("later");
+			});
+			return null;
+		});
+
+		expect(txState.log).toContain("later");
+	});
+
+	// Nothing is committed yet, so this one has to reach the caller.
+	it("propagates a failure from inside the transaction", async () => {
+		await expect(
+			withQuotaLock("org_1", async (_tx, afterCommit) => {
+				afterCommit(async () => txState.log.push("scheduled"));
+				throw new Error("over the plan limit");
+			}),
+		).rejects.toThrow("over the plan limit");
+		expect(txState.log).not.toContain("scheduled");
 	});
 });
