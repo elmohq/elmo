@@ -5,6 +5,12 @@ import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import {
+	PROCESS_PROMPT_QUEUE,
+	PROMPT_JOB_OPTIONS,
+	PROMPT_SINGLETON_SECONDS,
+	promptSingletonKey,
+} from "@workspace/lib/queues/prompt-jobs";
+import {
 	computeMaintenanceDecisions,
 	type LastRunRow,
 	lastRunQueryWindowMs,
@@ -18,7 +24,6 @@ import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
 import { requestUnjudgedRuns } from "./derive-runs";
-import { PROMPT_JOB_OPTIONS } from "./process-prompt";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -193,11 +198,11 @@ async function scheduleNewJobs(promptIds: string[]): Promise<void> {
 		const results = await Promise.allSettled(
 			promptIds.slice(i, i + SCHEDULE_BATCH_SIZE).map((promptId) =>
 				getBoss().send(
-					"process-prompt",
+					PROCESS_PROMPT_QUEUE,
 					{ promptId },
 					{
-						singletonKey: `prompt-${promptId}`,
-						singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
+						singletonKey: promptSingletonKey(promptId),
+						singletonSeconds: PROMPT_SINGLETON_SECONDS,
 						...PROMPT_JOB_OPTIONS,
 					},
 				),
@@ -313,7 +318,7 @@ async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 		SELECT id, data->>'promptId' as prompt_id, state,
 		       COALESCE((data->>'consecutiveFailures')::int, 0) as consecutive_failures
 		FROM pgboss.job
-		WHERE name = 'process-prompt'
+		WHERE name = ${PROCESS_PROMPT_QUEUE}
 		  AND state IN ('created', 'active', 'retry')
 		  AND data->>'promptId' IS NOT NULL
 		ORDER BY

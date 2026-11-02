@@ -43,6 +43,7 @@
 		"./providers/types": "./src/providers/types.ts",
 		"./entitlements": "./src/entitlements/index.ts",
 		"./run-policy": "./src/run-policy/index.ts",
+		"./queues/prompt-jobs": "./src/queues/prompt-jobs.ts",
 		"./usage": "./src/usage/cost.ts",
 		"./citations/domain-categories": "./src/citations/domain-categories.ts",
 		"./citations/domain-lists": "./src/citations/domain-lists.ts",

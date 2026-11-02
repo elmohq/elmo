@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { getDeploymentFeatures } from "@workspace/deployment";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
+import { PROCESS_PROMPT_QUEUE } from "@workspace/lib/queues/prompt-jobs";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import type { Job, PgBoss } from "pg-boss";
 import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
@@ -44,11 +45,11 @@ function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promis
  */
 export async function registerHandlers(boss: PgBoss): Promise<void> {
 	await boss.work<ProcessPromptData>(
-		"process-prompt",
+		PROCESS_PROMPT_QUEUE,
 		{ localConcurrency: 10 },
-		withSentry("process-prompt", processPromptJob),
+		withSentry(PROCESS_PROMPT_QUEUE, processPromptJob),
 	);
-	console.log("Registered handler: process-prompt");
+	console.log(`Registered handler: ${PROCESS_PROMPT_QUEUE}`);
 
 	if (getDeploymentFeatures().reportGeneration) {
 		await boss.work<GenerateReportData>(

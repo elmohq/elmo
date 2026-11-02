@@ -4,6 +4,7 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeploymentFeatures } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
+import { PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS } from "@workspace/lib/queues/prompt-jobs";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { startBackfills } from "./backfills";
@@ -59,12 +60,12 @@ async function main() {
 	console.log("pg-boss started");
 
 	// Create queues if they don't exist (required in pg-boss v12)
-	await boss.createQueue("process-prompt", {
-		retryLimit: 3,
-		retryDelay: 60,
-		retryBackoff: true,
-		expireInSeconds: 60 * 15, // 15 minute timeout
-	});
+	// Queue defaults, not just per-send options: a job sent without them (an older
+	// app version, a manual replay) must still not be retried into a second fan-out.
+	// createQueue leaves an existing queue's policy alone, so a deployment created
+	// before these were corrected needs the update to actually converge.
+	await boss.createQueue(PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS);
+	await boss.updateQueue(PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS);
 	if (getDeploymentFeatures().reportGeneration) {
 		await boss.createQueue("generate-report", {
 			retryLimit: 3,
