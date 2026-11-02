@@ -3,7 +3,8 @@ import { getCredential } from "../../secrets";
 import { extractCitationsFromBrightdata } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
-import { type Attempt, nonEmptyStrings, pollDelay, retryTransient, sleep } from "./scrape-shared";
+import { pollTask, type TaskState } from "./poll-task";
+import { type Attempt, nonEmptyStrings, retryTransient } from "./scrape-shared";
 
 // Google AI Overview isn't a Web Scraper dataset — it's the AI summary block on
 // a normal Google results page, fetched through BrightData's SERP API instead of
@@ -258,10 +259,7 @@ async function triggerSnapshot(datasetId: string, model: string, prompt: string,
 	return snapshot_id;
 }
 
-/** Terminal failure statuses from datasets/v3/progress. Anything else —
- *  running, building, "starting", queued, or a status BrightData adds later —
- *  is treated as "still working" so a degraded scraper or an unrecognized
- *  status string doesn't fail the run on the very first poll. */
+/** Terminal failure statuses from datasets/v3/progress. */
 const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
 
 /** BrightData publishes no collection deadline, so this is sized past the
@@ -269,38 +267,41 @@ const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
  *  documented limit. Too low and their reason never reaches us. */
 const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
-async function pollUntilReady(snapshotId: string): Promise<void> {
-	const deadline = Date.now() + POLL_TIMEOUT_MS;
+function snapshotState(status: string): TaskState {
+	if (status === "ready") return "ready";
+	if (TERMINAL_FAILURE.has(status)) return "failed";
+	// Running, building, "starting", queued, or a status BrightData adds later:
+	// a degraded scraper or an unrecognised string must not fail the run on the
+	// very first poll.
+	return "running";
+}
 
-	for (let attempt = 0; Date.now() < deadline; attempt++) {
-		const status = await getSnapshotStatus(snapshotId);
-		if (status === "ready") return;
-		if (TERMINAL_FAILURE.has(status)) {
-			throw new Error(`BrightData snapshot ${snapshotId} ${status}`);
-		}
-
-		await sleep(pollDelay(attempt));
-	}
-
-	throw new Error(`BrightData snapshot ${snapshotId} timed out`);
+function pollUntilReady(snapshotId: string): Promise<string | undefined> {
+	return pollTask<string>({
+		describe: `BrightData snapshot ${snapshotId}`,
+		poll: () => getSnapshotStatus(snapshotId),
+		classify: snapshotState,
+		describeFailure: (status) => ` (${status})`,
+		totalTimeoutMs: POLL_TIMEOUT_MS,
+	});
 }
 
 /** Read snapshot status straight from datasets/v3/progress. We bypass the SDK's
  *  getStatus because its response schema is a strict enum
  *  (running|ready|failed|cancelled|error) that throws on any other value — and the
  *  live API also returns statuses like "starting", which would otherwise fail the
- *  run instantly instead of waiting. A transient HTTP/parse error is reported as a
- *  non-terminal status so we keep polling rather than abandon the snapshot. */
-async function getSnapshotStatus(snapshotId: string): Promise<string> {
+ *  run instantly instead of waiting. A transient HTTP/parse error reads as null —
+ *  it says nothing about the snapshot, so the last known status stands. */
+async function getSnapshotStatus(snapshotId: string): Promise<string | null> {
 	try {
 		const res = await fetch(`https://api.brightdata.com/datasets/v3/progress/${snapshotId}`, {
 			headers: { Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}` },
 		});
-		if (!res.ok) return "pending";
+		if (!res.ok) return null;
 		const body = (await res.json()) as { status?: string };
-		return body.status ?? "pending";
+		return body.status ?? null;
 	} catch {
-		return "pending";
+		return null;
 	}
 }
 
