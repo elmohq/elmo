@@ -700,7 +700,7 @@
 			},
 			"UpdateCompetitorRequest": {
 				"type": "object",
-				"description": "Update a competitor. At least one field must be provided. Provided arrays replace the stored values verbatim.",
+				"description": "Update a competitor. At least one field must be provided. Provided arrays replace the stored values verbatim. A rename keeps the competitor's past mentions under its new name.",
 				"minProperties": 1,
 				"properties": {
 					"name": {

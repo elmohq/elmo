@@ -24,6 +24,7 @@ function saveable(competitors: CompetitorEntry[]) {
 	return competitors
 		.filter((c) => c.name.trim() && c.domains.some((d) => d.trim()))
 		.map((c) => ({
+			id: c.id,
 			name: c.name.trim(),
 			domains: c.domains.map((d) => d.trim()).filter(Boolean),
 			aliases: c.aliases.map((a) => a.trim()).filter(Boolean),
@@ -51,6 +52,7 @@ function CompetitorsSettingsPage() {
 		setCompetitors(
 			existingCompetitors.map((c) => ({
 				_key: uuidv4(),
+				id: c.id,
 				name: c.name,
 				domains: c.domains ?? [],
 				aliases: c.aliases || [],
@@ -62,6 +64,7 @@ function CompetitorsSettingsPage() {
 	const baseline = useMemo(
 		() =>
 			existingCompetitors.map((c) => ({
+				id: c.id,
 				name: c.name,
 				domains: c.domains ?? [],
 				aliases: c.aliases || [],

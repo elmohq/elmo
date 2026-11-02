@@ -22,6 +22,8 @@ import { SiteIcon } from "@/components/site-icon";
 
 export interface CompetitorEntry {
 	_key: string;
+	/** Absent for a competitor added since the list was loaded. */
+	id?: string;
 	name: string;
 	domains: string[];
 	aliases: string[];
@@ -37,6 +39,7 @@ interface CompetitorsEditorProps {
 export function newCompetitorEntry(partial?: Partial<CompetitorEntry>): CompetitorEntry {
 	return {
 		_key: uuidv4(),
+		id: partial?.id,
 		name: partial?.name ?? "",
 		domains: partial?.domains ?? [],
 		aliases: partial?.aliases ?? [],

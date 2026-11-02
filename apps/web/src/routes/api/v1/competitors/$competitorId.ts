@@ -9,6 +9,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-categories";
+import { moveCompetitorHistory } from "@workspace/lib/db/competitors";
 import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -56,7 +57,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 				body: updateCompetitorBody,
 				scopes: ["write"],
 				handle: async ({ params, body, auth }) => {
-					await loadInScope(auth, params.competitorId);
+					const existing = await loadInScope(auth, params.competitorId);
 					const { competitorId } = params;
 
 					const update: Partial<typeof competitors.$inferInsert> = {};
@@ -70,11 +71,19 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 						update.aliases = dedupeAliases(body.aliases);
 					}
 
-					const [updated] = await db
-						.update(competitors)
-						.set(update)
-						.where(eq(competitors.id, competitorId))
-						.returning();
+					const updated = await db.transaction(async (tx) => {
+						// The name before this update, read under its lock: what the history is keyed by.
+						const [before] = await tx
+							.select({ name: competitors.name })
+							.from(competitors)
+							.where(eq(competitors.id, competitorId))
+							.for("update");
+						const [row] = await tx.update(competitors).set(update).where(eq(competitors.id, competitorId)).returning();
+						if (before && row && before.name !== row.name) {
+							await moveCompetitorHistory(tx, existing.brandId, new Map([[before.name, row.name]]));
+						}
+						return row;
+					});
 					// The existence check above can race with a concurrent delete;
 					// the update's returning() is the source of truth.
 					if (!updated) {
