@@ -14,6 +14,8 @@
  */
 import { IconCheck, IconMinus } from "@tabler/icons-react";
 import {
+	costPer1kAnswersUsd,
+	formatCostPer1k,
 	PLAN_KEYS,
 	PLANS,
 	PLATFORM_TIER_LABELS,
@@ -172,6 +174,9 @@ function PlanHeaderCard({
 					</span>
 					<span className="text-sm text-muted-foreground">{annual ? "/yr" : "/mo"}</span>
 				</div>
+				<p className="mt-1 text-center text-xs text-muted-foreground tabular-nums">
+					{formatCostPer1k(costPer1kAnswersUsd(plan))} per 1,000 answers
+				</p>
 			</CardContent>
 			{action && <CardFooter className="px-4">{action}</CardFooter>}
 		</Card>
