@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { pollTask, type TaskState } from "./poll-task";
 
-/**
- * A fake clock that advances only when the task under test sleeps, so a
- * twelve-minute timeout costs nothing to exercise.
- */
 function fakeClock() {
 	let t = 0;
 	return {
@@ -20,7 +16,6 @@ function fakeClock() {
 
 const MINUTE = 60 * 1000;
 
-/** The error a wait rejected with, so its message can be read. */
 async function rejection(promise: Promise<unknown>): Promise<Error> {
 	return promise.then(
 		() => {
@@ -36,7 +31,6 @@ function classifier(map: Record<string, TaskState>) {
 
 const STANDARD = classifier({ done: "ready", broken: "failed", waiting: "queued", working: "running" });
 
-/** Returns each status in turn, then repeats the last one forever. */
 function statusSequence(statuses: (string | null)[]) {
 	let i = 0;
 	return async () => statuses[Math.min(i++, statuses.length - 1)];
@@ -77,8 +71,6 @@ describe("waiting for a vendor's task to settle", () => {
 	});
 
 	it("reads an answer that arrives on the very last poll", async () => {
-		// The task is paid for either way; throwing away an answer that landed in
-		// time because the clock was checked first would pay for nothing.
 		const clock = fakeClock();
 
 		const settled = await pollTask({
@@ -109,7 +101,6 @@ describe("waiting for a vendor's task to settle", () => {
 	});
 
 	it("keeps waiting through a status it has never seen before", async () => {
-		// A vendor adding a status string must not fail every run on its first poll.
 		const clock = fakeClock();
 
 		const settled = await pollTask({
@@ -124,7 +115,6 @@ describe("waiting for a vendor's task to settle", () => {
 	});
 
 	it("keeps the last known status when a status read tells it nothing", async () => {
-		// A flaky status endpoint is not a failed task.
 		const clock = fakeClock();
 
 		const settled = await pollTask({
@@ -153,7 +143,6 @@ describe("waiting for a vendor's task to settle", () => {
 		);
 
 		expect(error.message).toMatch(/Cloro task c1 timed out after 300s in status working/);
-		// The operator needs to know the spend didn't stop with the wait.
 		expect(error.message).toMatch(/billed if it does/);
 	});
 
@@ -175,9 +164,6 @@ describe("waiting for a vendor's task to settle", () => {
 	});
 
 	it("doesn't spend the running budget while the task is still queued", async () => {
-		// A queued task is billed when it completes whether or not anyone waited,
-		// so abandoning one that never started pays full price for nothing — and
-		// the replacement makes the queue it was waiting behind longer.
 		const clock = fakeClock();
 
 		const error = await rejection(

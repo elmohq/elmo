@@ -121,9 +121,8 @@ function cloroTaskState(payload: CloroTaskResponse): TaskState {
 	const status = payload.task?.status?.toUpperCase();
 	if (status === "COMPLETED") return "ready";
 	if (status === "FAILED") return "failed";
-	// An unreported status counts as running: better to hold a task to the
-	// generation budget than to let a status endpoint that answers nothing keep
-	// it alive for the full ceiling.
+	// An unreported status counts as running so a silent status endpoint can't
+	// keep the task alive for the full ceiling.
 	return status && CLORO_QUEUED_STATUSES.has(status) ? "queued" : "running";
 }
 

@@ -259,7 +259,6 @@ async function triggerSnapshot(datasetId: string, model: string, prompt: string,
 	return snapshot_id;
 }
 
-/** Terminal failure statuses from datasets/v3/progress. */
 const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
 
 /** BrightData publishes no collection deadline, so this is sized past the
@@ -270,9 +269,7 @@ const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 function snapshotState(status: string): TaskState {
 	if (status === "ready") return "ready";
 	if (TERMINAL_FAILURE.has(status)) return "failed";
-	// Running, building, "starting", queued, or a status BrightData adds later:
-	// a degraded scraper or an unrecognised string must not fail the run on the
-	// very first poll.
+	// Unrecognised statuses (e.g. "starting") must not fail the run on the first poll.
 	return "running";
 }
 
