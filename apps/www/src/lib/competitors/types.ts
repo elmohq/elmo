@@ -72,6 +72,8 @@ export interface Competitor {
 	ahrefsDR: number;
 	ahrefsTraffic?: number;
 	status: "active" | "beta" | "acquired" | "shutting-down" | "defunct" | "pivoted";
+	/** ISO date this entry was last checked against the tool's own site. Bump it whenever you re-verify, even if nothing changed. */
+	checkedAt: string;
 	/** What happened to a tool that shut down, pivoted, or was acquired. Shown in the AEO Graveyard. */
 	fate?: { date: string; summary: string; source?: string };
 	/** Set when the screenshot is mostly dark, so the graveyard inverts it to read as engraved. */

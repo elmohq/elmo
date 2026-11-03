@@ -1,3 +1,4 @@
+import { GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS } from "@workspace/lib/queues/report-jobs";
 import { PgBoss } from "pg-boss";
 
 let bossInstance: PgBoss | null = null;
@@ -39,12 +40,7 @@ export async function getBoss(): Promise<PgBoss> {
 			retryBackoff: true,
 			expireInSeconds: 60 * 15,
 		});
-		await boss.createQueue("generate-report", {
-			retryLimit: 3,
-			retryDelay: 60,
-			retryBackoff: true,
-			expireInSeconds: 60 * 60,
-		});
+		await boss.createQueue(GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS);
 		await boss.createQueue("analyze-brand", {
 			retryLimit: 1,
 			retryDelay: 10,

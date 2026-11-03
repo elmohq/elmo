@@ -1,6 +1,7 @@
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
+import { GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS } from "@workspace/lib/queues/report-jobs";
 import { eq } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
@@ -163,12 +164,7 @@ export async function sendReportJob(data: {
 	try {
 		const boss = await getBoss();
 
-		await boss.send("generate-report", data, {
-			retryLimit: 3,
-			retryDelay: 60,
-			retryBackoff: true,
-			expireInSeconds: 60 * 60, // 1 hour timeout for reports
-		});
+		await boss.send(GENERATE_REPORT_QUEUE, data, REPORT_JOB_OPTIONS);
 
 		console.log(`Sent report job for report ${reportId}`);
 		return true;
