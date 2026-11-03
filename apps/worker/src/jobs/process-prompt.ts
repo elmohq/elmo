@@ -292,11 +292,7 @@ async function runModelIteration({
 	}
 }
 
-/**
- * Gather everything the decision needs. Looked up fresh every firing so plan
- * changes, cancellations and platform-pick edits apply on the next cycle
- * without touching queued jobs.
- */
+// Read fresh every firing so plan, cancellation and platform-pick changes apply without touching queued jobs.
 async function gatherCycleState(
 	context: PromptContext,
 	scrapeConfigs: ModelConfig[],
@@ -318,7 +314,6 @@ async function gatherCycleState(
 	};
 }
 
-/** Why the prompt is doing what it's doing, in the log the operator reads. */
 function logAction(promptId: string, organizationId: string, action: PromptCycleAction): void {
 	switch (action.kind) {
 		case "stop":
@@ -346,7 +341,6 @@ function reportCeilingHit(organizationId: string, ceiling: number): void {
 	});
 }
 
-/** Runs the cycle's fan-out, returning how many of its runs produced an answer. */
 async function runCycle(
 	context: PromptContext,
 	targets: TargetPlan[],
@@ -389,12 +383,6 @@ async function runCycle(
 	return { attempted: runPromises.length, succeeded };
 }
 
-/**
- * One run of a prompt: gather what the decision needs, decide, then execute.
- * The decision itself is `decidePromptCycle`, so what happens to a disabled
- * prompt, an unentitled org or a prompt that fired early is settled in one
- * readable place and tested without a database.
- */
 async function processPrompt(
 	promptId: string,
 	scrapeConfigs: ModelConfig[],

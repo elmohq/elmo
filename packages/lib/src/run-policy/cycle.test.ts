@@ -59,8 +59,6 @@ describe("what a prompt's firing decides to do", () => {
 	});
 
 	it("keeps a disabled prompt's chain alive, so enabling it again starts it", async () => {
-		// Stopping would leave it waiting on schedule-maintenance; it costs nothing
-		// to keep asking, and the answer changes the moment someone flips the switch.
 		const action = await decidePromptCycle(state({ prompt: { enabled: false } }), NOW, neverOverCeiling);
 
 		expect(action).toEqual({ kind: "reschedule", delayHours: 24, consecutiveFailures: 0, reason: "disabled" });
@@ -77,8 +75,6 @@ describe("what a prompt's firing decides to do", () => {
 	});
 
 	it("parks a prompt whose org is no longer entitled to run it", async () => {
-		// Distinct from a disabled prompt: there is no cadence to wait at, so the
-		// chain ends and schedule-maintenance revives it when the plan changes.
 		const action = await decidePromptCycle(
 			state({ plan: { targets: [], rescheduleHours: null } }),
 			NOW,
@@ -121,8 +117,6 @@ describe("what a prompt's firing decides to do", () => {
 	});
 
 	it("doesn't pay for a usage scan it can't act on", async () => {
-		// The ceiling query is the one piece of evidence that costs something to
-		// gather, so every decision that can be made without it is made first.
 		let asked = false;
 		const countAsk = async () => {
 			asked = true;
