@@ -86,9 +86,9 @@ function fateSoundbite(competitor: Competitor): string | undefined {
 	}
 	if (competitor.status === "acquired") {
 		if (competitor.fate) {
-			return `${name} is gone as a standalone product. ${competitor.fate.summary} Elmo is MIT-licensed, so you keep the code and your data whatever happens to the company behind it.`;
+			return `${name} is gone as a standalone product. ${competitor.fate.summary} Elmo is MIT-licensed, so you keep the code and your data no matter what.`;
 		}
-		return `${name} has been acquired, so its roadmap is now set by its new owner. Elmo is MIT-licensed, so you keep the code and your data whatever happens to the company behind it.`;
+		return `${name} has been acquired, so its roadmap is now set by its new owner. Elmo is MIT-licensed, so you keep the code and your data no matter what.`;
 	}
 	return undefined;
 }
@@ -133,7 +133,7 @@ export function getSoundbite(competitor: Competitor): string {
 	if (isOpenSource(competitor)) {
 		return `${name} and Elmo are both open source, so it comes down to fit: compare the engines and features below.`;
 	}
-	return `Elmo publishes the code behind every metric, so you can see exactly how a visibility score is calculated before you rely on it, and you can self-host it for free.`;
+	return `Elmo publishes the code behind every metric, so you can see exactly how a visibility score is calculated, and you can self-host it for free.`;
 }
 
 /**
