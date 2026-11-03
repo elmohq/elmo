@@ -57,9 +57,6 @@ export function usePolledBrandJob<Done extends { status: "done" }, Started = unk
 		dispatch({ type: "polled", run: state.run, status });
 	}, [polling, status, state]);
 
-	// Everything that leaves the wait does it by settling, so the reporting and
-	// the server-side cancel happen in one place instead of racing each other
-	// from the done, failed, cancel and timeout paths.
 	useEffect(() => {
 		if (state.status !== "settled") return;
 		const { outcome } = state;

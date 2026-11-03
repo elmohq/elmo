@@ -18,7 +18,6 @@ function apply(events: PolledJobEvent<Suggestions>[]): PolledJobState<Suggestion
 	return events.reduce(polledJobReducer<Suggestions>, idlePolledJob<Suggestions>());
 }
 
-/** The happy path, as a prefix other cases build on. */
 const STARTED: PolledJobEvent<Suggestions>[] = [
 	{ type: "run", run: 1 },
 	{ type: "started", run: 1 },
@@ -26,7 +25,6 @@ const STARTED: PolledJobEvent<Suggestions>[] = [
 
 describe("waiting on a job the browser started", () => {
 	it("polls only once the job is known to be queued", () => {
-		// Polling before the enqueue lands would read the previous run's result.
 		expect(apply([{ type: "run", run: 1 }]).status).toBe("starting");
 		expect(apply(STARTED).status).toBe("polling");
 	});
@@ -61,8 +59,6 @@ describe("waiting on a job the browser started", () => {
 
 describe("a run that has been superseded", () => {
 	it("ignores the old run's enqueue landing after a new run started", () => {
-		// The previous run's mutation still resolves; treating it as this run's
-		// would start polling for a job that hasn't been queued yet.
 		const state = apply([
 			{ type: "run", run: 1 },
 			{ type: "run", run: 2 },
@@ -115,7 +111,6 @@ describe("leaving the wait early", () => {
 	});
 
 	it("does nothing when a stale timer fires after the job already finished", () => {
-		// The timeout is a window timer; it can outlive the run it was set for.
 		const done = apply([...STARTED, { type: "polled", run: 1, status: DONE }]);
 
 		expect(polledJobReducer(done, { type: "timeout" })).toBe(done);
