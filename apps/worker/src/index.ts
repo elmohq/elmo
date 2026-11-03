@@ -4,6 +4,7 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeploymentFeatures } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
+import { GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS } from "@workspace/lib/queues/report-jobs";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { startBackfills } from "./backfills";
@@ -66,12 +67,9 @@ async function main() {
 		expireInSeconds: 60 * 15, // 15 minute timeout
 	});
 	if (getDeploymentFeatures().reportGeneration) {
-		await boss.createQueue("generate-report", {
-			retryLimit: 3,
-			retryDelay: 60,
-			retryBackoff: true,
-			expireInSeconds: 60 * 60, // 1 hour timeout for reports
-		});
+		// createQueue leaves an existing queue's policy alone.
+		await boss.createQueue(GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS);
+		await boss.updateQueue(GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS);
 	}
 	await boss.createQueue("analyze-brand", {
 		retryLimit: 1,
