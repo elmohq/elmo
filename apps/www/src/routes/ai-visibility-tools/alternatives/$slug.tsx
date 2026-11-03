@@ -1,4 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { DataProvenance } from "@/components/data-provenance";
 import {
 	DirectoryBackLink,
 	DirectoryElmoBanner,
@@ -86,6 +87,7 @@ function AlternativesPage() {
 								</div>
 							))}
 						</div>
+						<DataProvenance tools={[competitor]} className="mt-8" />
 					</DirectorySection>
 				) : null}
 
