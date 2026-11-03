@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import { getDeploymentFeatures } from "@workspace/deployment";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { PROCESS_PROMPT_QUEUE } from "@workspace/lib/queues/prompt-jobs";
+import { GENERATE_REPORT_QUEUE } from "@workspace/lib/queues/report-jobs";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import type { Job, PgBoss } from "pg-boss";
 import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
@@ -53,9 +54,9 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 
 	if (getDeploymentFeatures().reportGeneration) {
 		await boss.work<GenerateReportData>(
-			"generate-report",
+			GENERATE_REPORT_QUEUE,
 			{ localConcurrency: 2 },
-			withSentry("generate-report", generateReportJob),
+			withSentry(GENERATE_REPORT_QUEUE, generateReportJob),
 		);
 		console.log("Registered handler: generate-report");
 	}

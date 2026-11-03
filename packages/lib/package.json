@@ -38,6 +38,8 @@
 		"./bulk-prompts": "./src/bulk-prompts.ts",
 		"./website-excerpt": "./src/website-excerpt.ts",
 		"./report-metrics": "./src/report-metrics.ts",
+		"./reports/lifecycle": "./src/reports/lifecycle.ts",
+		"./queues/report-jobs": "./src/queues/report-jobs.ts",
 		"./secrets": "./src/secrets/index.ts",
 		"./providers": "./src/providers/index.ts",
 		"./providers/types": "./src/providers/types.ts",
