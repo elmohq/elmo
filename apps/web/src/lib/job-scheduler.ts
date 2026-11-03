@@ -43,11 +43,7 @@ async function getPromptCadenceHours(promptId: string): Promise<number> {
 	}
 }
 
-/**
- * Queue a prompt's first job: now, or one cadence from now for a prompt that
- * shouldn't spend anything until its turn comes round. The worker takes it from
- * there — every cycle queues its own successor.
- */
+// Only the first job is queued here; each cycle in the worker queues its successor.
 type SchedulerOptions = {
 	sendImmediate?: boolean;
 };
@@ -80,8 +76,7 @@ export async function createPromptJobScheduler(promptId: string, options: Schedu
 export async function removePromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
 		const boss = await getBoss();
-		// Nothing cancels the pending job: a prompt disabled between cycles is
-		// handled by the worker, which reschedules it without spending anything.
+		// The pending job is left alone; the worker skips a disabled prompt without spending anything.
 		try {
 			await boss.unschedule(PROCESS_PROMPT_QUEUE, promptId);
 		} catch {
@@ -106,8 +101,7 @@ export async function createMultiplePromptJobSchedulers(
 
 /**
  * Sends an immediate job to process a prompt (outside of the schedule).
- * Useful for manual retries from the admin UI. Deliberately bypasses the
- * singleton key — the point is to run now, even mid-cadence.
+ * Useful for manual retries from the admin UI. Skips the singleton key so it runs even mid-cadence.
  */
 export async function sendImmediatePromptJob(promptId: string): Promise<boolean> {
 	try {

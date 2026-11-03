@@ -60,10 +60,8 @@ async function main() {
 	console.log("pg-boss started");
 
 	// Create queues if they don't exist (required in pg-boss v12)
-	// Queue defaults, not just per-send options: a job sent without them (an older
-	// app version, a manual replay) must still not be retried into a second fan-out.
-	// createQueue leaves an existing queue's policy alone, so a deployment created
-	// before these were corrected needs the update to actually converge.
+	// Set as queue defaults too so a job sent without them is never retried into a second fan-out.
+	// createQueue leaves an existing queue's policy alone, hence the updateQueue.
 	await boss.createQueue(PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS);
 	await boss.updateQueue(PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS);
 	if (getDeploymentFeatures().reportGeneration) {
