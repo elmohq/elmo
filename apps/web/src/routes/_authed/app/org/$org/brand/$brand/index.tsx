@@ -297,7 +297,7 @@ function OverviewFigures({
 	);
 }
 
-/** A brand that failed to load lands here too; the wizard is the safe landing. */
+// A brand that failed to load also lands on the wizard, the safe fallback.
 function showsOnboarding(isLoading: boolean, brand: { trackingState: BrandTrackingState } | undefined): boolean {
 	if (isLoading) return false;
 	return !brand || brand.trackingState === "onboarding";

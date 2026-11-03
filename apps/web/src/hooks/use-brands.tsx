@@ -7,7 +7,6 @@ import { getBrand, getCompetitors } from "@/server/brands";
 
 type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;
-	/** What the brand is doing right now, resolved server-side against the org's plan. */
 	trackingState: BrandTrackingState;
 	/**
 	 * What this brand's results can be broken down by, resolved server-side so

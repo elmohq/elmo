@@ -19,7 +19,6 @@ describe("what a brand is doing right now", () => {
 	});
 
 	it("keeps tracking through the dunning window", () => {
-		// Grace exists so a failed card doesn't silently stop collecting data.
 		expect(brandTrackingState(RUNNING, GRACE)).toBe("tracked");
 	});
 
@@ -46,8 +45,6 @@ describe("what a brand is doing right now", () => {
 
 describe("which answer wins when several apply", () => {
 	it("says unentitled rather than disabled, so the reader is sent somewhere useful", () => {
-		// Pointing at the brand's own toggle would send them to a switch that
-		// cannot start tracking while the org has no plan.
 		expect(brandTrackingState({ enabled: false, onboarded: true }, NO_PLAN_ENTITLEMENTS)).toBe("unentitled");
 	});
 
@@ -62,7 +59,6 @@ describe("which answer wins when several apply", () => {
 
 describe("what each state means for the reader", () => {
 	it("keeps a brand's history readable when tracking stops", () => {
-		// Pausing and disabling stop new runs; they don't take the dashboards away.
 		expect(hasBrandData("paused")).toBe(true);
 		expect(hasBrandData("disabled")).toBe(true);
 	});
