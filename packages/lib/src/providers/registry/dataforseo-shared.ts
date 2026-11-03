@@ -11,10 +11,26 @@ import { type Attempt, nonEmptyStrings } from "./scrape-shared";
 
 const MAX_PROMPT_CHARS = 500;
 
-// Country localization is intentionally not exposed via SCRAPE_TARGETS yet
-// because support differs by DataForSEO surface and underlying model.
-export const DFS_LOCATION_CODE = 2840;
-export const DFS_LANGUAGE_CODE = "en";
+// Country localization is intentionally not exposed per target via
+// SCRAPE_TARGETS because support differs by DataForSEO surface and underlying
+// model. A deployment picks one market for every scraped surface instead.
+export const DFS_LOCATION_CODE_FALLBACK = 2840;
+export const DFS_LANGUAGE_CODE_FALLBACK = "en";
+
+/**
+ * DataForSEO location code for the scraped surfaces (2840 United States, 2826
+ * United Kingdom). Reads DATAFORSEO_LOCATION_CODE; falls back to the US when
+ * unset or not a positive integer, so a typo can't send an invalid code.
+ */
+export function getDfsLocationCode(): number {
+	const parsed = Number(process.env.DATAFORSEO_LOCATION_CODE);
+	return Number.isInteger(parsed) && parsed > 0 ? parsed : DFS_LOCATION_CODE_FALLBACK;
+}
+
+/** Language for the scraped surfaces, from DATAFORSEO_LANGUAGE_CODE (default "en"). */
+export function getDfsLanguageCode(): string {
+	return process.env.DATAFORSEO_LANGUAGE_CODE?.trim() || DFS_LANGUAGE_CODE_FALLBACK;
+}
 
 export const isDataforseoConfigured = configuredWhen("DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD");
 

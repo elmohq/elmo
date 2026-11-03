@@ -63,7 +63,12 @@ const CLORO_GENERATION_TIMEOUT_MS = 10 * 60 * 1000;
 const CLORO_TOTAL_TIMEOUT_MS = 60 * 60 * 1000;
 
 // Cloro localizes every answer; default to a US audience.
-const CLORO_COUNTRY = "US";
+const CLORO_COUNTRY_FALLBACK = "US";
+
+/** The audience Cloro answers for, from CLORO_COUNTRY (default "US"). */
+function getCloroCountry(): string {
+	return process.env.CLORO_COUNTRY?.trim().toUpperCase() || CLORO_COUNTRY_FALLBACK;
+}
 
 /** Statuses meaning "accepted, not started" — see CLORO_GENERATION_TIMEOUT_MS. */
 const CLORO_QUEUED_STATUSES = new Set(["QUEUED", "PENDING", "CREATED", "SCHEDULED"]);
@@ -190,7 +195,7 @@ export const cloro: Provider = {
 
 		const payload: Record<string, any> = {
 			[task.field]: prompt,
-			country: CLORO_COUNTRY,
+			country: getCloroCountry(),
 			include: task.include,
 			...task.params,
 		};

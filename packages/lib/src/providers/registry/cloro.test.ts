@@ -152,6 +152,22 @@ describe("cloro provider", () => {
 		expect(result.modelVersion).toBe("gpt-5-3-mini");
 	});
 
+	it("asks for the audience set by CLORO_COUNTRY", async () => {
+		vi.useFakeTimers();
+		vi.stubEnv("CLORO_COUNTRY", "gb");
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-1", status: "QUEUED" } }))
+			.mockResolvedValueOnce(jsonResponse({ task: { id: "task-1", status: "COMPLETED" }, response: CHATGPT_RESPONSE }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = cloro.run("chatgpt", "best private alcohol rehab in the uk");
+		await vi.runAllTimersAsync();
+		await promise;
+
+		expect(JSON.parse(fetchMock.mock.calls[0][1].body).payload.country).toBe("GB");
+	});
+
 	it("maps Google AI Overview onto the Google Search task and unwraps the overview", async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi

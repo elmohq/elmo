@@ -67,6 +67,7 @@ If you would like to support the project directly, please [sponsor Elmo on GitHu
 
 ```bash
 CLORO_API_KEY=...
+CLORO_COUNTRY=US   # optional: the audience Cloro answers for, default US
 ```
 
 Supported scrape targets:
@@ -205,7 +206,14 @@ That route is much faster and cheaper but doesn't reflect the real ChatGPT or Ge
 
 All DataForSEO targets require `:online`.
 
-DataForSEO prompt text is limited to 500 characters. Country localization is intentionally not exposed in `SCRAPE_TARGETS` yet because support differs by DataForSEO surface and underlying model.
+DataForSEO prompt text is limited to 500 characters. Country localization is intentionally not exposed per target in `SCRAPE_TARGETS` because support differs by DataForSEO surface and underlying model. Instead, one market applies to every scraped surface (ChatGPT, Gemini, Google AI Mode, Google AI Overview):
+
+```bash
+DATAFORSEO_LOCATION_CODE=2826   # United Kingdom; default 2840 (United States)
+DATAFORSEO_LANGUAGE_CODE=en     # default en
+```
+
+Location codes come from DataForSEO's [locations list](https://docs.dataforseo.com/v3/serp/google/locations/). LLM Responses targets (pinned models and Perplexity) don't send a location.
 
 ## Direct model APIs
 

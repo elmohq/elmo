@@ -68,6 +68,7 @@ const stored = (result: { rawOutput: unknown }) => extractRun(result.rawOutput, 
 
 afterEach(() => {
 	vi.clearAllMocks();
+	vi.unstubAllEnvs();
 	vi.unstubAllGlobals();
 	vi.useRealTimers();
 });
@@ -283,6 +284,27 @@ describe("dataforseo provider", () => {
 		expect(stored(result).citations).toHaveLength(1);
 		expect(stored(result).citations[0].domain).toBe("whathifi.com");
 		expect(result.webQueries).toEqual(["unavailable"]);
+	});
+
+	it("sends the market set by DATAFORSEO_LOCATION_CODE and DATAFORSEO_LANGUAGE_CODE", async () => {
+		vi.stubEnv("DATAFORSEO_LOCATION_CODE", "2826");
+		vi.stubEnv("DATAFORSEO_LANGUAGE_CODE", "en");
+		dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValueOnce(AI_OVERVIEW_OK);
+
+		await dataforseo.run("google-ai-overview", "best private alcohol rehab in the uk", { webSearch: true });
+
+		const [payload] = dataforseoClient.googleOrganicLiveAdvanced.mock.calls[0];
+		expect(payload[0]).toMatchObject({ location_code: 2826, language_code: "en" });
+	});
+
+	it("falls back to the US when DATAFORSEO_LOCATION_CODE is not a location code", async () => {
+		vi.stubEnv("DATAFORSEO_LOCATION_CODE", "uk");
+		dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValueOnce(AI_OVERVIEW_OK);
+
+		await dataforseo.run("google-ai-overview", "best private alcohol rehab in the uk", { webSearch: true });
+
+		const [payload] = dataforseoClient.googleOrganicLiveAdvanced.mock.calls[0];
+		expect(payload[0]).toMatchObject({ location_code: 2840 });
 	});
 
 	it("retries the AI Overview request when DataForSEO returns a transient server error", async () => {

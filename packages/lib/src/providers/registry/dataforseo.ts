@@ -10,11 +10,11 @@ import {
 	assertPromptLength,
 	createDfsAiApi,
 	createDfsSerpApi,
-	DFS_LANGUAGE_CODE,
-	DFS_LOCATION_CODE,
 	dfsFirstResult,
 	dfsResultOrError,
 	fanOutQueries,
+	getDfsLanguageCode,
+	getDfsLocationCode,
 	isDataforseoConfigured,
 } from "./dataforseo-shared";
 import { type Attempt, retryTransient, sanitizeForJson } from "./scrape-shared";
@@ -57,8 +57,8 @@ const SCRAPER_CALLS = {
 		api.chatGptLlmScraperLiveAdvanced([
 			new client.AiOptimizationChatGptLlmScraperLiveAdvancedRequestInfo({
 				keyword: prompt,
-				location_code: DFS_LOCATION_CODE,
-				language_code: DFS_LANGUAGE_CODE,
+				location_code: getDfsLocationCode(),
+				language_code: getDfsLanguageCode(),
 				// ChatGPT decides per prompt whether to search; force it so a tracked
 				// run always reflects the browsing experience. Gemini always searches
 				// and has no equivalent flag.
@@ -69,8 +69,8 @@ const SCRAPER_CALLS = {
 		api.geminiLlmScraperLiveAdvanced([
 			new client.AiOptimizationGeminiLlmScraperLiveAdvancedRequestInfo({
 				keyword: prompt,
-				location_code: DFS_LOCATION_CODE,
-				language_code: DFS_LANGUAGE_CODE,
+				location_code: getDfsLocationCode(),
+				language_code: getDfsLanguageCode(),
 			}),
 		]),
 } as const;
@@ -114,8 +114,8 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: DFS_LOCATION_CODE,
-		language_code: DFS_LANGUAGE_CODE,
+		location_code: getDfsLocationCode(),
+		language_code: getDfsLanguageCode(),
 		depth: 10,
 	});
 
@@ -138,8 +138,8 @@ function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleOrganicLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: DFS_LOCATION_CODE,
-		language_code: DFS_LANGUAGE_CODE,
+		location_code: getDfsLocationCode(),
+		language_code: getDfsLanguageCode(),
 		depth: 10,
 		// AI Overviews are generated on demand; without this DataForSEO only
 		// returns whatever it had cached, so most runs would come back empty.
