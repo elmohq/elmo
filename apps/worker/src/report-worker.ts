@@ -64,7 +64,6 @@ export interface ReportJobData {
 export interface ReportJobContext {
 	data: ReportJobData;
 	log: (message: string) => void;
-	/** Records which phase the report has reached; progress is derived from it. */
 	enterPhase: (phase: ReportPhase) => void | Promise<void>;
 }
 
@@ -245,15 +244,10 @@ interface CandidateResult {
 	runs: PromptRunResult["runs"];
 }
 
-/** Batched so a report doesn't open the whole fan-out against every provider at once. */
 const CANDIDATE_BATCH_SIZE = 20;
 const CANDIDATE_BATCH_PAUSE_MS = 1000;
 
-/**
- * The expensive phase: every candidate prompt against every scrape target. A
- * candidate that fails is kept with no runs rather than dropped, so selection
- * still sees it and the caller can tell "they all failed" from "some did".
- */
+// Failed candidates are kept with no runs so "all failed" can be told apart from "some did".
 async function testCandidates(args: {
 	candidatePrompts: { prompt: string; brandedPrompt: boolean }[];
 	brandName: string;
@@ -301,12 +295,7 @@ async function testCandidates(args: {
 	return results;
 }
 
-/**
- * Moves a report to `next`, and says whether it moved. A report only ever leaves
- * a terminal status by being replaced, so the status itself is the claim: the
- * `WHERE` is what makes two workers holding the same report, or a retry of a job
- * that already failed, cost nothing rather than a second full fan-out.
- */
+// The status WHERE is the claim: a duplicate worker or a retry of a finished report becomes a no-op.
 async function advanceReportStatus(
 	reportId: string,
 	next: ReportStatus,
@@ -337,9 +326,6 @@ export async function processReportJob(job: ReportJobContext) {
 	try {
 		// Before anything is spent: the answers a report pays for can't be judged without it.
 		mentionAnalyzer();
-		// A report that already reached a terminal status is not ours to run. Nothing
-		// here is cheap enough to do on the off chance — the candidate fan-out is the
-		// report's whole cost — so claiming it is what decides whether we spend.
 		if (!(await advanceReportStatus(reportId, "processing"))) {
 			job.log(`Report ${reportId} is already finished; not running it again`);
 			return { success: false, reportId };

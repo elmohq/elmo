@@ -23,8 +23,7 @@ export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promis
 			const progress = reportProgress(phase);
 			console.log(`[Report ${reportId}] ${describeReportPhase(phase)} (${progress}%)`);
 			try {
-				// Also the report's heartbeat: the maintenance sweep reads updatedAt to
-				// tell a slow report from one whose worker is gone.
+				// updatedAt is the heartbeat the maintenance sweep uses to detect dead workers.
 				await db.update(reports).set({ progress, updatedAt: new Date() }).where(eq(reports.id, reportId));
 			} catch (err) {
 				console.error(`[Report ${reportId}] Failed to persist progress:`, err);

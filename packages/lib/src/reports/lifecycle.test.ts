@@ -48,8 +48,6 @@ describe("which reports a worker may claim", () => {
 	});
 
 	it("refuses to re-run a report that already finished", () => {
-		// The candidate fan-out is the whole cost of a report, and a retry does not
-		// reuse the previous attempt's answers — it buys them again.
 		for (const terminal of ["completed", "failed"] as ReportStatus[]) {
 			expect(canAdvanceReport(terminal, "processing")).toBe(false);
 		}

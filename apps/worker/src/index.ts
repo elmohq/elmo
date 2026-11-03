@@ -67,8 +67,7 @@ async function main() {
 		expireInSeconds: 60 * 15, // 15 minute timeout
 	});
 	if (getDeploymentFeatures().reportGeneration) {
-		// createQueue leaves an existing queue's policy alone, so a deployment
-		// created under the old retrying policy needs the update to converge.
+		// createQueue leaves an existing queue's policy alone.
 		await boss.createQueue(GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS);
 		await boss.updateQueue(GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS);
 	}

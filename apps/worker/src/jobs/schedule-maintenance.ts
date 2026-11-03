@@ -81,13 +81,6 @@ async function requestJudging(): Promise<void> {
 	});
 }
 
-/**
- * A report whose worker died mid-run has no job behind it and nothing that will
- * ever move it again, so it sits in `processing` claiming to be running for as
- * long as the row exists. Prompt runs have had a sweep for this since the
- * scheduler landed; reports never did. Nothing is re-run — the answers a report
- * had bought are gone with the worker — it is only told the truth about itself.
- */
 async function failAbandonedReports(): Promise<void> {
 	const cutoff = new Date(Date.now() - REPORT_STALE_AFTER_MS);
 	const candidates = await db
