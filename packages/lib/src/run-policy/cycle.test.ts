@@ -64,6 +64,16 @@ describe("what a prompt's firing decides to do", () => {
 		expect(action).toEqual({ kind: "reschedule", delayHours: 24, consecutiveFailures: 0, reason: "disabled" });
 	});
 
+	it("keeps a disabled prompt's chain alive without knowing its plan", async () => {
+		const action = await decidePromptCycle(
+			state({ prompt: { enabled: false }, plan: { targets: [], rescheduleHours: null } }),
+			NOW,
+			neverOverCeiling,
+		);
+
+		expect(action).toMatchObject({ kind: "reschedule", reason: "disabled" });
+	});
+
 	it("waits at the brand's own cadence while it is disabled", async () => {
 		const action = await decidePromptCycle(
 			state({ brand: { enabled: false, delayOverrideHours: 6 } }),

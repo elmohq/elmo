@@ -6,7 +6,6 @@ import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
-import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	afterPromptCycle,
 	dailyRunCeiling,
@@ -61,15 +60,7 @@ interface PromptContext {
 	brand: Brand;
 }
 
-/**
- * Schedule the next run for a prompt.
- *
- * Normally that's one cadence away; after a cycle where every run failed it's
- * the shorter backoff from failureBackoffHours, and `consecutiveFailures` rides
- * along on the job so the next failure can lengthen it again.
- */
-async function scheduleNextRun(promptId: string, cadenceHours: number, consecutiveFailures: number): Promise<void> {
-	const delayHours = failureBackoffHours(consecutiveFailures, cadenceHours);
+async function scheduleNextRun(promptId: string, delayHours: number, consecutiveFailures: number): Promise<void> {
 	const startAfterSeconds = Math.round(delayHours * 60 * 60);
 
 	try {
@@ -293,10 +284,23 @@ async function runModelIteration({
 }
 
 // Read fresh every firing so plan, cancellation and platform-pick changes apply without touching queued jobs.
-async function gatherCycleState(
-	context: PromptContext,
-	scrapeConfigs: ModelConfig[],
-): Promise<PromptCycleState & { entitlements: Entitlements }> {
+async function gatherCycleState(context: PromptContext, scrapeConfigs: ModelConfig[]): Promise<PromptCycleState> {
+	const prompt = { enabled: context.prompt.enabled };
+	const brand = { enabled: context.brand.enabled, delayOverrideHours: context.brand.delayOverrideHours };
+	const defaultDelayHours = getDefaultDelayHours();
+
+	// A disabled prompt is decided before its plan is read, so don't pay for the lookups.
+	if (!prompt.enabled || !brand.enabled) {
+		return {
+			prompt,
+			brand,
+			defaultDelayHours,
+			plan: { targets: [], rescheduleHours: null },
+			lastRunAtByKey: new Map(),
+			dailyRunCeiling: null,
+		};
+	}
+
 	const { plan, entitlements } = await resolvePlanForPrompt(context, scrapeConfigs);
 	const lastRunAtByKey =
 		plan.targets.length > 0
@@ -304,13 +308,12 @@ async function gatherCycleState(
 			: new Map<string, Date>();
 
 	return {
-		prompt: { enabled: context.prompt.enabled },
-		brand: { enabled: context.brand.enabled, delayOverrideHours: context.brand.delayOverrideHours },
-		defaultDelayHours: getDefaultDelayHours(),
+		prompt,
+		brand,
+		defaultDelayHours,
 		plan,
 		lastRunAtByKey,
 		dailyRunCeiling: dailyRunCeiling(entitlements),
-		entitlements,
 	};
 }
 
