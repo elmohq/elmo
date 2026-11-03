@@ -18,6 +18,7 @@ import {
 	isLowDR,
 } from "@/lib/competitors";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
+import { DataProvenance } from "./data-provenance";
 import { Faq } from "./faq";
 import { FeatureMark } from "./feature-mark";
 
@@ -236,6 +237,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 							</tbody>
 						</table>
 					</div>
+					<DataProvenance tools={[competitor]} className="mt-6" />
 				</div>
 			</section>
 
