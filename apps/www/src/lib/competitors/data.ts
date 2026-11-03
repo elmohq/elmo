@@ -549,7 +549,7 @@ export const competitors: Competitor[] = [
 		ahrefsTraffic: 1055,
 		status: "active",
 		soundbite:
-			"Peec AI is a capable hosted tracker, but it's closed: your prompts and history live in its cloud, and you can't check how a number was produced. Elmo gives you the code, the data, and the method, free to self-host.",
+			"Peec AI is a capable hosted tracker. Elmo is the open-source option: your prompts and history can live in your own database, you can read how every number is produced, and it's free to self-host.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
