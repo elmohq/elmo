@@ -108,11 +108,9 @@ function summarizePrompt(
 	firstEvaluatedAt: string | Date | null | undefined,
 ) {
 	const totalRuns = stats?.runs ?? 0;
-	// The API publishes these ratios unrounded; the dashboard renders
-	// percentages, and this is where it rounds.
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
-	const brandMentionRate = Math.round(ratio(stats?.brand_mentioned_runs) * 100);
-	const competitorMentionRate = Math.round(ratio(stats?.competitor_runs) * 100);
+	const brandMentionPct = Math.round(ratio(stats?.brand_mentioned_runs) * 100);
+	const competitorMentionPct = Math.round(ratio(stats?.competitor_runs) * 100);
 	const weightedMentions = (stats?.brand_mentioned_runs ?? 0) * 2 + (stats?.competitor_mentions ?? 0);
 
 	return {
@@ -121,10 +119,10 @@ function summarizePrompt(
 		enabled: prompt.enabled,
 		createdAt: prompt.createdAt,
 		totalRuns,
-		brandMentionRate,
-		competitorMentionRate,
+		brandMentionPct,
+		competitorMentionPct,
 		averageWeightedMentions: totalRuns > 0 ? weightedMentions / totalRuns : 0,
-		hasVisibilityData: totalRuns > 0 && (brandMentionRate > 0 || competitorMentionRate > 0),
+		hasVisibilityData: totalRuns > 0 && (brandMentionPct > 0 || competitorMentionPct > 0),
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
 		tags: effectiveTags(prompt),
