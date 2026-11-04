@@ -1,4 +1,3 @@
-import { CLOUD_APP_URL } from "@workspace/config/referrals";
 import { AD_TAG_CSP } from "@workspace/ui/lib/ad-tags";
 import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
 import { CAL_EMBED_CSP } from "@/lib/cal-embed";
@@ -130,18 +129,9 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
 	"/acceptable-use": "/legal/acceptable-use",
 };
 
-// This origin is not an OAuth issuer, so it points agents that start from the
-// brand domain at the app rather than serving a copy whose issuer would not match.
-const DISCOVERY_REDIRECTS: Record<string, string> = {
-	"/.well-known/oauth-authorization-server": `${CLOUD_APP_URL}/.well-known/oauth-authorization-server`,
-};
-
 function redirectFor(url: URL): Response | undefined {
 	const movedTo = PERMANENT_REDIRECTS[url.pathname.replace(/\/+$/, "") || "/"];
 	if (movedTo) return new Response(null, { status: 308, headers: { Location: `${movedTo}${url.search}` } });
-
-	const servedElsewhere = DISCOVERY_REDIRECTS[url.pathname];
-	if (servedElsewhere) return new Response(null, { status: 307, headers: { Location: servedElsewhere } });
 }
 
 const MARKDOWN_MEDIA_TYPES = ["text/markdown", "text/x-markdown"];

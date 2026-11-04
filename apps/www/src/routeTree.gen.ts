@@ -33,7 +33,6 @@ import { Route as VisionRouteImport } from './routes/vision'
 import { Route as DotwellKnownAiCatalogDotjsonRouteImport } from './routes/[.]well-known/ai-catalog[.]json'
 import { Route as DotwellKnownApiCatalogRouteImport } from './routes/[.]well-known/api-catalog'
 import { Route as DotwellKnownArdDotjsonRouteImport } from './routes/[.]well-known/ard[.]json'
-import { Route as DotwellKnownOauthProtectedResourceRouteImport } from './routes/[.]well-known/oauth-protected-resource'
 import { Route as DotwellKnownPoppyDotjsonRouteImport } from './routes/[.]well-known/poppy[.]json'
 import { Route as AeoForIndexRouteImport } from './routes/aeo-for/index'
 import { Route as AeoForSlugRouteImport } from './routes/aeo-for/$slug'
@@ -198,12 +197,6 @@ const DotwellKnownArdDotjsonRoute = DotwellKnownArdDotjsonRouteImport.update({
   path: '/.well-known/ard.json',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DotwellKnownOauthProtectedResourceRoute =
-  DotwellKnownOauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const DotwellKnownPoppyDotjsonRoute =
   DotwellKnownPoppyDotjsonRouteImport.update({
     id: '/.well-known/poppy.json',
@@ -443,7 +436,6 @@ export interface FileRoutesByFullPath {
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/ard.json': typeof DotwellKnownArdDotjsonRoute
-  '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceRoute
   '/.well-known/poppy.json': typeof DotwellKnownPoppyDotjsonRoute
   '/aeo-for/$slug': typeof AeoForSlugRoute
   '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
@@ -510,7 +502,6 @@ export interface FileRoutesByTo {
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/ard.json': typeof DotwellKnownArdDotjsonRoute
-  '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceRoute
   '/.well-known/poppy.json': typeof DotwellKnownPoppyDotjsonRoute
   '/aeo-for/$slug': typeof AeoForSlugRoute
   '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
@@ -578,7 +569,6 @@ export interface FileRoutesById {
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/ard.json': typeof DotwellKnownArdDotjsonRoute
-  '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceRoute
   '/.well-known/poppy.json': typeof DotwellKnownPoppyDotjsonRoute
   '/aeo-for/$slug': typeof AeoForSlugRoute
   '/aeo-for/profound-users': typeof AeoForProfoundUsersRoute
@@ -647,7 +637,6 @@ export interface FileRouteTypes {
     | '/.well-known/ai-catalog.json'
     | '/.well-known/api-catalog'
     | '/.well-known/ard.json'
-    | '/.well-known/oauth-protected-resource'
     | '/.well-known/poppy.json'
     | '/aeo-for/$slug'
     | '/aeo-for/profound-users'
@@ -714,7 +703,6 @@ export interface FileRouteTypes {
     | '/.well-known/ai-catalog.json'
     | '/.well-known/api-catalog'
     | '/.well-known/ard.json'
-    | '/.well-known/oauth-protected-resource'
     | '/.well-known/poppy.json'
     | '/aeo-for/$slug'
     | '/aeo-for/profound-users'
@@ -781,7 +769,6 @@ export interface FileRouteTypes {
     | '/.well-known/ai-catalog.json'
     | '/.well-known/api-catalog'
     | '/.well-known/ard.json'
-    | '/.well-known/oauth-protected-resource'
     | '/.well-known/poppy.json'
     | '/aeo-for/$slug'
     | '/aeo-for/profound-users'
@@ -849,7 +836,6 @@ export interface RootRouteChildren {
   DotwellKnownAiCatalogDotjsonRoute: typeof DotwellKnownAiCatalogDotjsonRoute
   DotwellKnownApiCatalogRoute: typeof DotwellKnownApiCatalogRoute
   DotwellKnownArdDotjsonRoute: typeof DotwellKnownArdDotjsonRoute
-  DotwellKnownOauthProtectedResourceRoute: typeof DotwellKnownOauthProtectedResourceRoute
   DotwellKnownPoppyDotjsonRoute: typeof DotwellKnownPoppyDotjsonRoute
   AeoForSlugRoute: typeof AeoForSlugRoute
   AeoForProfoundUsersRoute: typeof AeoForProfoundUsersRoute
@@ -1060,13 +1046,6 @@ declare module '@tanstack/react-router' {
       path: '/.well-known/ard.json'
       fullPath: '/.well-known/ard.json'
       preLoaderRoute: typeof DotwellKnownArdDotjsonRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/poppy.json': {
@@ -1377,8 +1356,6 @@ const rootRouteChildren: RootRouteChildren = {
   DotwellKnownAiCatalogDotjsonRoute: DotwellKnownAiCatalogDotjsonRoute,
   DotwellKnownApiCatalogRoute: DotwellKnownApiCatalogRoute,
   DotwellKnownArdDotjsonRoute: DotwellKnownArdDotjsonRoute,
-  DotwellKnownOauthProtectedResourceRoute:
-    DotwellKnownOauthProtectedResourceRoute,
   DotwellKnownPoppyDotjsonRoute: DotwellKnownPoppyDotjsonRoute,
   AeoForSlugRoute: AeoForSlugRoute,
   AeoForProfoundUsersRoute: AeoForProfoundUsersRoute,

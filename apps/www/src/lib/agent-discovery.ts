@@ -1,16 +1,4 @@
-import { CLOUD_APP_URL } from "@workspace/config/referrals";
-import { canonicalUrl, SITE_NAME, SITE_URL } from "@/lib/seo";
-
-// RFC 9728 requires `resource` to match the origin the metadata is served
-// from, so the brand domain describes itself; the MCP server's own metadata
-// stays on the app.
-export const protectedResourceMetadata = {
-	resource: SITE_URL,
-	authorization_servers: [`${CLOUD_APP_URL}/api/auth`],
-	scopes_supported: ["openid", "profile", "email", "offline_access"],
-	bearer_methods_supported: ["header"],
-	resource_documentation: canonicalUrl("/auth.md"),
-};
+import { SITE_NAME } from "@/lib/seo";
 
 export const poppyManifest = {
 	protocol_version: "0.1",
