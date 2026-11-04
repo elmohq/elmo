@@ -34,8 +34,7 @@ interface VisibilityTimeSeriesPoint {
 }
 
 export interface FilteredVisibilityResponse {
-	/** Whole-number percentage. The shared computation answers in ratios. */
-	currentVisibility: number;
+	currentVisibilityPct: number;
 	totalRuns: number;
 	totalPrompts: number;
 	totalCitations: number;
@@ -136,7 +135,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		return {
 			// The hero renders a percentage, so "no runs to plot" has to arrive as a
 			// number rather than the null the shared function returns.
-			currentVisibility: asPercent(result.currentVisibility) ?? 0,
+			currentVisibilityPct: asPercent(result.currentVisibility) ?? 0,
 			totalRuns: result.totalRuns,
 			totalPrompts: result.totalPrompts,
 			totalCitations: result.totalCitations,

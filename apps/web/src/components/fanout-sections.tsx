@@ -153,7 +153,7 @@ export function QueryWordsSection({ terms, wordChanges }: { terms: TermStat[]; w
 	const items = shown.slice(0, 18).map((w) => ({
 		label: w.word,
 		count: w.count,
-		suffix: <span className="text-muted-foreground tabular-nums text-xs">{w.share}%</span>,
+		suffix: <span className="text-muted-foreground tabular-nums text-xs">{w.sharePct}%</span>,
 	}));
 
 	return (

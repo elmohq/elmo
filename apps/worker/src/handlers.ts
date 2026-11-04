@@ -23,10 +23,7 @@ import { type SuggestPromptsData, type SuggestPromptsResult, suggestPromptsJob }
 import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/sync-auth0-memberships";
 import { mentionAnalyzer } from "./mention-judge/analyze";
 
-/**
- * Wraps a pg-boss handler to report errors to Sentry before re-throwing.
- * Preserves the handler's return value (stored by pg-boss as the job output).
- */
+/** Passes the handler's return value through: pg-boss stores it as the job output. */
 function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promise<R>): (jobs: Job<T>[]) => Promise<R> {
 	return async (jobs) => {
 		try {
@@ -41,9 +38,6 @@ function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promis
 	};
 }
 
-/**
- * Register all job handlers with pg-boss.
- */
 export async function registerHandlers(boss: PgBoss): Promise<void> {
 	await boss.work<ProcessPromptData>(
 		PROCESS_PROMPT_QUEUE,

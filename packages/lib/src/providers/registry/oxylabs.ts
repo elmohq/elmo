@@ -3,7 +3,16 @@ import { type Citation, extractCitationsFromOxylabs } from "../../text-extractio
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { pollTask, type TaskState } from "./poll-task";
-import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, responseError, sleep } from "./scrape-shared";
+import {
+	failureDetails,
+	hasWebSearchToggle,
+	isTransientStatus,
+	pollDelay,
+	queriesFromKeys,
+	responseError,
+	searchesWeb,
+	sleep,
+} from "./scrape-shared";
 
 // Oxylabs Web Scraper API sources for AI surfaces.
 // ChatGPT and Perplexity use `prompt`; the Google surfaces use `query` and
@@ -140,8 +149,7 @@ export const oxylabs: Provider = {
 		if (!OXYLABS_SOURCES[config.model]) {
 			return `Oxylabs does not support model "${config.model}". Supported: ${Object.keys(OXYLABS_SOURCES).join(", ")}`;
 		}
-		// ChatGPT has a web search toggle; Perplexity and Google AI Mode always search.
-		if (!config.webSearch && config.model !== "chatgpt") {
+		if (!config.webSearch && !hasWebSearchToggle(config.model)) {
 			return `${config.model}:oxylabs requires :online — this chatbot always uses web search`;
 		}
 		return null;
@@ -161,9 +169,7 @@ export const oxylabs: Provider = {
 			parse: true,
 		};
 		if (sourceConfig.render) body.render = sourceConfig.render;
-		// ChatGPT's `search` flag toggles in-product web search. Other sources
-		// always search, so we don't send the flag for them.
-		if (model === "chatgpt") body.search = options?.webSearch ?? false;
+		if (hasWebSearchToggle(model)) body.search = options?.webSearch ?? false;
 
 		const payload = await runAsyncQuery(body);
 		const content = payload.results?.[0]?.content ?? {};
@@ -173,10 +179,8 @@ export const oxylabs: Provider = {
 
 		return {
 			rawOutput: payload,
-			// Every source but ChatGPT always searches, so only ChatGPT's toggle
-			// can rule out queries entirely.
 			webQueries: reportedWebQueries(webQueries, {
-				webSearch: model !== "chatgpt" || (options?.webSearch ?? false),
+				webSearch: searchesWeb(model, options?.webSearch),
 				searchProven: citations.length > 0,
 			}),
 			modelVersion:

@@ -1,7 +1,3 @@
-/**
- * Mock for @tanstack/react-router used in Storybook stories.
- * Provides stubs for the router hooks and components that the app uses.
- */
 import React, { createContext, type ReactNode, useContext, useSyncExternalStore } from "react";
 
 // This mock is used for Storybook bundling. It intentionally provides a broad
@@ -26,16 +22,13 @@ export function setMockRouteContext(ctx: Record<string, unknown>) {
 	_routeContext = ctx;
 }
 
-/**
- * Wraps story content so that useRouteContext returns the provided value.
- */
 export function MockRouteContextProvider({ value, children }: { value: Record<string, unknown>; children: ReactNode }) {
 	return <RouteCtx.Provider value={value}>{children}</RouteCtx.Provider>;
 }
 
 export function useRouteContext(opts?: { select?: (context: Record<string, unknown>) => unknown }) {
 	const ctx = useContext(RouteCtx);
-	// Merge with module-level context so both approaches work
+	// A story may seed context through setMockRouteContext or the provider.
 	const merged = { ...BASE_ROUTE_CONTEXT, ..._routeContext, ...ctx };
 	return opts?.select ? opts.select(merged) : merged;
 }

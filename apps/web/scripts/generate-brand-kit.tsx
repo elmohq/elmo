@@ -268,7 +268,6 @@ for (const bg of logoBgs) {
 	}
 }
 
-// OG
 console.log("\nOG Images:");
 const ogData = await render(renderOgImage({ appName: DEFAULT_APP_NAME, url: SITE_URL }), OG_WIDTH, OG_HEIGHT);
 files.push({ name: "og/og-default.png", data: ogData });
@@ -293,7 +292,6 @@ await addFile(
 	render(<PatternBanner width={3384} height={573} {...sharedBannerStyle} fontScale={0.18} />, 3384, 573),
 );
 
-// Write zip
 console.log("\nPacking zip…");
 
 const output = createWriteStream(OUTPUT_ZIP);

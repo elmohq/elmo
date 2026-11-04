@@ -1,4 +1,3 @@
-import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ../crisp is the module under test. It cannot be a top-level import: it latches
@@ -90,7 +89,7 @@ describe("the demo next steps", () => {
 		const linked = [...String(nextSteps).matchAll(/\]\((https?:[^)]+)\)/g)].map((match) => match[1]);
 		expect(linked).toEqual([
 			"https://www.elmohq.com/demo?ref=demo-chat",
-			CLOUD_SIGNUP_URL,
+			"https://app.elmohq.com/auth/register?ref=demo-chat",
 			"https://www.elmohq.com/docs/getting-started",
 		]);
 	});

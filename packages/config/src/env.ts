@@ -12,17 +12,11 @@ export interface MissingEnvVar {
 
 export const hasValue = (value: string | undefined): boolean => typeof value === "string" && value.trim().length > 0;
 
-/**
- * Create a requirement checker that requires all specified keys to have values
- */
 export const requireAll =
 	(keys: string[]) =>
 	(env: EnvMap): boolean =>
 		keys.every((key) => hasValue(env[key]));
 
-/**
- * Create a requirement checker that is satisfied when any key has a value.
- */
 export const requireAny =
 	(keys: string[]) =>
 	(env: EnvMap): boolean =>
@@ -37,9 +31,6 @@ export function createEnvRequirement(key: string, description?: string): EnvRequ
 	};
 }
 
-/**
- * Requirements for every registry var hard-required by the given mode.
- */
 function buildStaticRequirements(mode: DeploymentMode): EnvRequirement[] {
 	return ENV_REGISTRY.filter((spec) => Array.isArray(spec.requiredBy) && spec.requiredBy.includes(mode)).map((spec) =>
 		createEnvRequirement(spec.name, spec.description),
@@ -52,17 +43,12 @@ function providerKeys(provider: string): string[] {
 	);
 }
 
-/**
- * Build env requirements for exactly the provider keys referenced by SCRAPE_TARGETS.
- */
 function buildProviderKeyRequirements(env: EnvMap = process.env): EnvRequirement[] {
 	let providers: string[];
 	try {
 		providers = [...new Set(parseScrapeTargets(env.SCRAPE_TARGETS).map((target) => target.provider))];
 	} catch {
-		// A missing or malformed SCRAPE_TARGETS is reported by its own
-		// requirement (and rejected at worker boot); provider keys can't be
-		// derived from it.
+		// A malformed SCRAPE_TARGETS is reported by its own requirement.
 		return [];
 	}
 
@@ -82,9 +68,8 @@ function buildProviderKeyRequirements(env: EnvMap = process.env): EnvRequirement
 }
 
 /**
- * Brand onboarding and the Opportunities report run on a direct LLM API
- * provider whatever SCRAPE_TARGETS tracks, so a deployment that only scrapes
- * would otherwise boot fine and fail the first time either is used.
+ * Onboarding and the Opportunities report need a direct LLM API whatever
+ * SCRAPE_TARGETS tracks; without this, a scrape-only deployment fails on first use.
  */
 function buildResearchProviderRequirement(): EnvRequirement {
 	const candidates = RESEARCH_PROVIDER_PREFERENCE.map(providerKeys);
@@ -117,12 +102,6 @@ export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
 	cloud: buildRequirements("cloud"),
 };
 
-/**
- * Get the deployment mode from environment variables
- *
- * Defaults to "local" for OSS builds. The build system should set
- * DEPLOYMENT_MODE appropriately for each environment.
- */
 const VALID_MODES: DeploymentMode[] = ["local", "demo", "whitelabel", "cloud"];
 
 export function getDeploymentModeFromEnv(env: EnvMap = process.env): DeploymentMode {
@@ -167,10 +146,6 @@ export function getEnvValidationState(env: EnvMap = process.env): {
 	};
 }
 
-/**
- * Validate environment variables against a specific set of requirements
- * Used by deployment packages to validate their specific requirements
- */
 export function validateEnvRequirements(
 	requirements: EnvRequirement[],
 	env: EnvMap = process.env,
@@ -198,10 +173,7 @@ function formatMissingEnvVars(keys: string[]): string {
 		: `Missing required environment variables: ${keys.join(", ")}`;
 }
 
-/**
- * Require one or more environment variables, throwing a single error that names
- * every missing key. Returns the resolved values keyed by the requested names.
- */
+/** Throws one error naming every missing key. */
 export function requireEnvVars<const K extends string>(
 	keys: readonly K[],
 	env: EnvMap = process.env,
