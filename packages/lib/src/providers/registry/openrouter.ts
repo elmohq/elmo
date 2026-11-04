@@ -120,11 +120,8 @@ export const openrouter: Provider = {
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
 		};
 
-		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema
-		// strips annotations from responses, which contain web search citations.
-		// The SDK's Responses API (client.responses.send()) does preserve annotations
-		// via ResponseOutputText, but it's currently in beta. Consider switching to
-		// the Responses API + SDK when it's stable.
+		// Raw fetch: the SDK's ChatAssistantMessage schema strips the annotations
+		// that carry web search citations.
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
 			headers: openrouterHeaders(),

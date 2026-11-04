@@ -247,8 +247,6 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	const response = await LLM_CALLS[spec.call](api, [body]);
 	const result = dfsFirstResult<{ model_name?: string; fan_out_queries?: unknown }>(response);
 	const raw = sanitizeForJson(response);
-	// Replace Gemini's Vertex grounding-redirect citation URLs with the real
-	// source URLs before extraction (no-op for ChatGPT/Perplexity).
 	await resolveGroundingRedirects(raw);
 	const citations = extractCitationsFromDataforseoLlm(raw);
 
@@ -277,7 +275,6 @@ export const dataforseo: Provider = {
 	id: "dataforseo",
 	name: "DataForSEO",
 	access: "scraped",
-	// A pinned version routes to LLM Responses; without one the surface is scraped.
 	accessFor: dataforseoAccess,
 	docsAnchor: "dataforseo",
 
