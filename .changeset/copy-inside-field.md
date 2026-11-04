@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Show the copy button inside the field for the API base URL, MCP endpoint, and newly created API keys.
+Show copy buttons inside the field or code block they copy from, on the API, MCP, Skill, and API Keys settings pages.
