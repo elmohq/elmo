@@ -7,12 +7,7 @@ import { processReportJob, type ReportJobData } from "../report-worker";
 
 export interface GenerateReportData extends ReportJobData {}
 
-/**
- * Generate a report - runs website analysis, competitor research, and prompt testing.
- * This is a pg-boss job handler.
- */
 export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promise<void> {
-	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
 		const { reportId, brandName, brandAliases, brandWebsite, manualPrompts } = job.data;
 

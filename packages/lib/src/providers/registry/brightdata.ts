@@ -4,7 +4,7 @@ import { extractCitationsFromBrightdata } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { pollTask, type TaskState } from "./poll-task";
-import { type Attempt, nonEmptyStrings, retryTransient } from "./scrape-shared";
+import { type Attempt, hasWebSearchToggle, nonEmptyStrings, retryTransient } from "./scrape-shared";
 
 // Google AI Overview isn't a Web Scraper dataset — it's the AI summary block on
 // a normal Google results page, fetched through BrightData's SERP API instead of
@@ -143,7 +143,6 @@ export function readAnswer(record: Record<string, any>, subject: string): string
  * is recorded as reported and left to the read layer.
  */
 export function extractWebQueries(record: Record<string, any>): string[] {
-	// web_search_query is a direct array of strings
 	if (Array.isArray(record.web_search_query)) return nonEmptyStrings(record.web_search_query);
 	// search_model_queries may be nested in metadata (e.g. chatgpt)
 	const smq = record.metadata?.search_model_queries ?? record.search_model_queries;
@@ -159,7 +158,6 @@ export const brightdata: Provider = {
 	isConfigured: configuredWhen("BRIGHTDATA_API_TOKEN"),
 
 	validateTarget(config: ModelConfig) {
-		// Google AI Overview goes through the SERP API, not a dataset collector.
 		if (config.model === AI_OVERVIEW_MODEL) {
 			if (!config.webSearch) {
 				return `${config.model}:brightdata requires :online — AI Overview always uses web search`;
@@ -170,8 +168,7 @@ export const brightdata: Provider = {
 		if (!config.version && !BD_DATASET_IDS[config.model]) {
 			return `BrightData does not support model "${config.model}". Supported: ${[...Object.keys(BD_DATASET_IDS), AI_OVERVIEW_MODEL].join(", ")}`;
 		}
-		// ChatGPT has a web search toggle; all other chatbots always search
-		if (!config.webSearch && config.model !== "chatgpt") {
+		if (!config.webSearch && !hasWebSearchToggle(config.model)) {
 			return `${config.model}:brightdata requires :online — this chatbot always uses web search`;
 		}
 		return null;
@@ -245,8 +242,7 @@ async function triggerSnapshot(datasetId: string, model: string, prompt: string,
 					url: BD_BASE_URL[model] ?? "",
 					prompt,
 					index: 1,
-					// ChatGPT is the only chatbot with a web search toggle.
-					...(model === "chatgpt" ? { web_search: webSearch } : {}),
+					...(hasWebSearchToggle(model) ? { web_search: webSearch } : {}),
 				},
 			]),
 		},

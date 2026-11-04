@@ -71,16 +71,10 @@ export interface Provider {
 	docsAnchor?: string;
 	isConfigured(): boolean;
 	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
-	/** Validate a target config. Returns an error message if invalid, null if valid.
-	 *  Omit for providers that accept any model (runtime validation only). */
+	/** An error message for a target this provider can't serve. Omitted by providers that accept any model. */
 	validateTarget?(config: ModelConfig): string | null;
 
-	/**
-	 * Run a single research call that returns a Zod-validated structured value.
-	 * Each direct API provider implements this using the most idiomatic combo.
-	 * Scraper providers don't implement this, and at least one direct api
-	 * provider is required.
-	 */
+	/** Direct API providers only; a deployment needs at least one. */
 	runStructuredResearch?<T>(options: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>>;
 }
 

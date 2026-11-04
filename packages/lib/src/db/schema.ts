@@ -229,9 +229,8 @@ export const reports = pgTable(
 	}),
 ).enableRLS();
 
-// One row per generated Opportunities report, per brand — append-only history
-// (every generation is kept, not overwritten). The page reads the latest row and
-// regenerates only when it's stale; see apps/web/src/server/opportunities.ts.
+// Every generation is kept; the page reads the latest row and regenerates only
+// when it's stale.
 export const brandOpportunities = pgTable(
 	"brand_opportunities",
 	{
@@ -284,21 +283,17 @@ export const SYSTEM_TAGS = {
 export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];
 
 /**
- * Cloud billing/entitlement state we own per organization (as opposed to the
- * better-auth-managed `subscription` table). One optional row per org:
- * - entitlementOverrides: sparse custom-plan overrides (see
- *   entitlementOverridesSchema in @workspace/config/entitlements) — the
- *   config-only lever for custom plans
- * - premiumAddonQuantity: purchased extra premium slots, synced from Stripe
- *   subscription items by the billing webhook
- * Absent row = no overrides, no add-on. Unused outside cloud.
+ * Cloud billing state Elmo owns, beside the better-auth-managed `subscription`
+ * table. An org without a row has no overrides and no add-on; unused outside cloud.
  */
 export const organizationSettings = pgTable("organization_settings", {
 	organizationId: text("organization_id")
 		.primaryKey()
 		.notNull()
 		.references(() => organization.id),
+	/** Sparse custom-plan overrides, shaped by `entitlementOverridesSchema`. */
 	entitlementOverrides: jsonb("entitlement_overrides"),
+	/** Extra premium slots, synced from Stripe subscription items by the billing webhook. */
 	premiumAddonQuantity: integer("premium_addon_quantity").notNull().default(0),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })

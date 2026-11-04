@@ -91,11 +91,7 @@ export function extractDomain(urlOrDomain: string): string {
 
 const DOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 
-/**
- * Clean and validate a user-entered domain string.
- * Strips protocols, www prefix, and trailing paths. Returns the cleaned domain
- * if valid, or null if the input doesn't look like a valid domain.
- */
+/** Strips protocol, `www.` and path from user input; null when what's left isn't a domain. */
 export function cleanAndValidateDomain(input: string): string | null {
 	const cleaned = extractDomain(input.trim());
 	if (!cleaned || !DOMAIN_REGEX.test(cleaned)) return null;
@@ -363,7 +359,6 @@ export function isForumDomain(host: string): boolean {
 const DEVELOPER_PATH_RE =
 	/\/(docs?|documentation|developers?|api|apis|sdks?|reference|api-reference|changelog|release-notes|openapi|swagger|graphql)(\/|$)/;
 
-/** True when the URL path is technical documentation (see DEVELOPER_PATH_RE). */
 export function hasDeveloperPath(url: string): boolean {
 	try {
 		return DEVELOPER_PATH_RE.test(new URL(url).pathname.toLowerCase());
@@ -538,10 +533,7 @@ export function resolvePageType(
 	return pt;
 }
 
-/**
- * Round category counts to percentages that always sum to exactly 100.
- * Uses largest-remainder method to distribute rounding residuals.
- */
+/** Percentages that sum to exactly 100, by the largest-remainder method. */
 export function toRoundedPercentages(counts: Record<string, number>): Record<string, number> {
 	const entries = Object.entries(counts);
 	const total = entries.reduce((s, [, v]) => s + v, 0);
@@ -551,7 +543,6 @@ export function toRoundedPercentages(counts: Record<string, number>): Record<str
 	const floored = raw.map((r) => ({ ...r, floor: Math.floor(r.exact) }));
 	let remainder = 100 - floored.reduce((s, r) => s + r.floor, 0);
 
-	// Distribute remaining points to entries with largest fractional parts
 	floored.sort((a, b) => b.exact - b.floor - (a.exact - a.floor));
 	for (const entry of floored) {
 		if (remainder <= 0) break;
