@@ -20,7 +20,6 @@ export interface DailyDomainCount {
 	/** ISO day bucket, "YYYY-MM-DD" (lexicographically sortable = chronological). */
 	date: string;
 	domain: string;
-	/** Number of citations to `domain` on `date`. */
 	count: number;
 }
 
@@ -124,9 +123,7 @@ export interface VoiceShare {
 	name: string;
 	/** Run-days (or runs) on which this entity was mentioned. */
 	mentions: number;
-	/** Share of total mentions across the brand + all competitors, 0..1. Exact
-	 * ratio (not pre-rounded) — round once at the display layer so the table,
-	 * donut, and trend never disagree by a point. */
+	/** Ratio of all brand and competitor mentions; see computeShareOfVoice on rounding. */
 	share: number;
 	isBrand: boolean;
 }
@@ -206,7 +203,7 @@ function accumulateCarriedMentions(
  * competitor mention counts are carried across days it didn't run, then summed
  * per day, so staggered prompt schedules do not create artificial dips. The carry is
  * pre-seeded with each prompt's earliest observation to avoid a ramp-up dip.
- * Share = brand / (brand + competitor), as a 0–100 percentage (null = no data).
+ * Share = brand / (brand + competitor), as a ratio (null = no data).
  */
 export function shareOfVoiceTimeSeriesLVCF(
 	perPrompt: PerPromptDailyMentions[],

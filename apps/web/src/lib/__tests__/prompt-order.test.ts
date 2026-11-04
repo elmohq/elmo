@@ -9,8 +9,8 @@ import {
 
 const prompt = (value: string, overrides: Partial<OrderablePrompt> = {}) => ({
 	value,
-	brandMentionRate: 0,
-	competitorMentionRate: 0,
+	brandMentionPct: 0,
+	competitorMentionPct: 0,
 	averageWeightedMentions: 0,
 	...overrides,
 });
@@ -34,18 +34,18 @@ describe("coercePromptOrder", () => {
 
 describe("orderPrompts", () => {
 	const brandList = [
-		prompt("cheap flights", { brandMentionRate: 0.5, averageWeightedMentions: 1 }),
-		prompt("zero waste tips", { brandMentionRate: 0.1, averageWeightedMentions: 9 }),
-		prompt("how to brew coffee", { brandMentionRate: 0.9, averageWeightedMentions: 0 }),
-		prompt("best running shoes", { brandMentionRate: 0.5, averageWeightedMentions: 1 }),
-		prompt("affordable laptops", { brandMentionRate: 0.5, averageWeightedMentions: 3 }),
+		prompt("cheap flights", { brandMentionPct: 50, averageWeightedMentions: 1 }),
+		prompt("zero waste tips", { brandMentionPct: 10, averageWeightedMentions: 9 }),
+		prompt("how to brew coffee", { brandMentionPct: 90, averageWeightedMentions: 0 }),
+		prompt("best running shoes", { brandMentionPct: 50, averageWeightedMentions: 1 }),
+		prompt("affordable laptops", { brandMentionPct: 50, averageWeightedMentions: 3 }),
 	];
 
 	const competitorList = [
-		prompt("cheap flights", { competitorMentionRate: 0.2 }),
-		prompt("zero waste tips", { competitorMentionRate: 0.8 }),
-		prompt("how to brew coffee", { competitorMentionRate: 0.2 }),
-		prompt("affordable laptops", { competitorMentionRate: 0.5 }),
+		prompt("cheap flights", { competitorMentionPct: 20 }),
+		prompt("zero waste tips", { competitorMentionPct: 80 }),
+		prompt("how to brew coffee", { competitorMentionPct: 20 }),
+		prompt("affordable laptops", { competitorMentionPct: 50 }),
 	];
 
 	it("keeps the given order by default", () => {

@@ -33,17 +33,15 @@ export interface FanoutModelTotalRow {
 	total_queries: number;
 }
 
-/** Per-prompt run count (the denominator for avg queries per prompt run). */
 export interface FanoutPromptTotalRow {
 	prompt_id: string;
-	runs: number;
+	fanout_runs: number;
 }
 
 export interface FanoutQueryStat {
 	query: string;
 	count: number;
-	/** % of this query's runs whose answer mentioned the brand (0..100). */
-	brandMentionRate: number;
+	brandMentionPct: number;
 }
 
 /** One prompt's contribution to a fan-out query (the Top Queries drill-down). */
@@ -73,21 +71,16 @@ export interface TermStat {
 /** One word's behavior in the prompt → query transformation. */
 export interface WordChangeStat {
 	word: string;
-	/** Fan-out query instances exhibiting this change. */
 	count: number;
-	/** Share of all fan-out queries (0..100). */
-	share: number;
+	sharePct: number;
 	/** A stop word ("the", "for", …) — hidden by default in the UI. */
 	isStop: boolean;
 }
 
 /** How prompt wording is transformed in the searches engines run. */
 export interface WordChanges {
-	/** Words engines add that weren't in the prompt. */
 	added: WordChangeStat[];
-	/** Prompt words engines leave out of the search. */
 	dropped: WordChangeStat[];
-	/** Prompt words engines keep in the search. */
 	preserved: WordChangeStat[];
 }
 
@@ -96,23 +89,17 @@ export interface ModelFanoutStat {
 	runs: number;
 	fanoutRuns: number;
 	totalQueries: number;
-	/** Mean fan-out queries per run that fanned out (1 decimal). */
-	avgPerExecution: number;
+	avgQueriesPerFanoutRun: number;
 	topQueries: FanoutQueryStat[];
 }
 
 export interface PromptFanoutStat {
 	promptId: string;
 	promptValue: string;
-	/** Total fan-out query instances for this prompt. */
 	totalQueries: number;
-	/** Distinct fan-out queries (variations). */
 	uniqueQueries: number;
-	/** Total runs of this prompt in the window — the denominator for avg/run. */
-	runs: number;
-	/** Mean fan-out queries per prompt run (1 decimal). */
-	avgPerExecution: number;
-	/** The fan-out queries themselves, for the per-prompt list. */
+	fanoutRuns: number;
+	avgQueriesPerFanoutRun: number;
 	variations: FanoutQueryStat[];
 }
 
@@ -121,9 +108,8 @@ export interface FanoutAnalysis {
 	uniqueQueries: number;
 	fanoutRuns: number;
 	totalRuns: number;
-	/** Mean fan-out queries per run that fanned out (1 decimal). */
-	avgPerExecution: number;
-	/** Baseline brand-mention rate across all fan-out query instances. Ratio 0..1. */
+	avgQueriesPerFanoutRun: number;
+	/** Share of fan-out query instances whose answer mentioned the brand. */
 	coverageRate: number;
 	topQueries: FanoutQueryStat[];
 	terms: TermStat[];
@@ -312,7 +298,7 @@ function bump(map: Map<string, Tally>, key: string, count: number, brand: number
 
 function toQueryStats(map: Map<string, Tally>, limit: number): FanoutQueryStat[] {
 	return [...map.entries()]
-		.map(([query, t]) => ({ query, count: t.count, brandMentionRate: pct(t.brand, t.count) }))
+		.map(([query, t]) => ({ query, count: t.count, brandMentionPct: pct(t.brand, t.count) }))
 		.sort((a, b) => b.count - a.count || a.query.localeCompare(b.query))
 		.slice(0, limit);
 }
@@ -405,21 +391,17 @@ export function computeFanoutAnalysis(
 	modelTotals: FanoutModelTotalRow[],
 	promptValueMap: Map<string, string>,
 	opts: {
-		/** prompt id → runs that produced ≥1 web query, for per-prompt avg fan-out per run. */
-		promptRuns?: Map<string, number>;
+		promptFanoutRuns?: Map<string, number>;
 		/** Raise/lower the list caps (e.g. effectively uncapped for a single prompt). */
 		limits?: FanoutLimitOverrides;
 	} = {},
 ): FanoutAnalysis {
-	const { promptRuns } = opts;
+	const { promptFanoutRuns } = opts;
 	const L = { ...LIMITS, ...opts.limits };
 
 	const { overall, promptsPerQuery, perModel, perPrompt, terms, added, dropped, preserved, totalQueries, totalBrand } =
 		tallyBreakdown(breakdown, promptValueMap);
 
-	// A ratio, not a percentage: this one is published over the API, and every
-	// rate there is 0..1. The percentages below stay as they are — nothing
-	// outside the dashboard reads them.
 	const coverageRate = totalQueries > 0 ? totalBrand / totalQueries : 0;
 	const allQueryStats = toQueryStats(overall, overall.size);
 	const topQueries = allQueryStats.slice(0, L.topQueries);
@@ -431,7 +413,7 @@ export function computeFanoutAnalysis(
 
 	const toWordChanges = (map: Map<string, number>): WordChangeStat[] =>
 		[...map.entries()]
-			.map(([word, count]) => ({ word, count, share: pct(count, totalQueries), isStop: STOPWORDS.has(word) }))
+			.map(([word, count]) => ({ word, count, sharePct: pct(count, totalQueries), isStop: STOPWORDS.has(word) }))
 			.sort((a, b) => b.count - a.count || a.word.localeCompare(b.word))
 			.slice(0, L.wordChanges);
 	const wordChanges: WordChanges = {
@@ -447,7 +429,7 @@ export function computeFanoutAnalysis(
 			runs: m.runs,
 			fanoutRuns: m.fanout_runs,
 			totalQueries: m.total_queries,
-			avgPerExecution: m.fanout_runs > 0 ? Math.round((m.total_queries / m.fanout_runs) * 10) / 10 : 0,
+			avgQueriesPerFanoutRun: m.fanout_runs > 0 ? Math.round((m.total_queries / m.fanout_runs) * 10) / 10 : 0,
 			topQueries: perModel.has(m.model) ? toQueryStats(perModel.get(m.model)!, L.perModelTop) : [],
 		}))
 		.sort((a, b) => b.totalQueries - a.totalQueries || b.runs - a.runs || a.model.localeCompare(b.model));
@@ -456,14 +438,14 @@ export function computeFanoutAnalysis(
 	// sorts the full set client-side; `variations` per prompt is still bounded.
 	const byPrompt: PromptFanoutStat[] = [...perPrompt.entries()]
 		.map(([promptId, pp]) => {
-			const runs = promptRuns?.get(promptId) ?? 0;
+			const fanoutRuns = promptFanoutRuns?.get(promptId) ?? 0;
 			return {
 				promptId,
 				promptValue: pp.value,
 				totalQueries: pp.total,
 				uniqueQueries: pp.queries.size,
-				runs,
-				avgPerExecution: runs > 0 ? Math.round((pp.total / runs) * 10) / 10 : 0,
+				fanoutRuns,
+				avgQueriesPerFanoutRun: fanoutRuns > 0 ? Math.round((pp.total / fanoutRuns) * 10) / 10 : 0,
 				variations: toQueryStats(pp.queries, L.variations),
 			};
 		})
@@ -494,7 +476,7 @@ export function computeFanoutAnalysis(
 		uniqueQueries: overall.size,
 		fanoutRuns,
 		totalRuns,
-		avgPerExecution: fanoutRuns > 0 ? Math.round((totalQueries / fanoutRuns) * 10) / 10 : 0,
+		avgQueriesPerFanoutRun: fanoutRuns > 0 ? Math.round((totalQueries / fanoutRuns) * 10) / 10 : 0,
 		coverageRate,
 		topQueries,
 		terms: termStats,

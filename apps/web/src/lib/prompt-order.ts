@@ -29,8 +29,8 @@ export function coercePromptOrder(raw: unknown): PromptOrder {
 /** The fields the comparators read off a prompt summary. */
 export interface OrderablePrompt {
 	value: string;
-	brandMentionRate: number;
-	competitorMentionRate: number;
+	brandMentionPct: number;
+	competitorMentionPct: number;
 	averageWeightedMentions: number;
 }
 
@@ -45,7 +45,7 @@ export function orderPrompts<T extends OrderablePrompt>(prompts: T[], order: Pro
 		case "brand-desc":
 			sorted.sort(
 				(a, b) =>
-					b.brandMentionRate - a.brandMentionRate ||
+					b.brandMentionPct - a.brandMentionPct ||
 					b.averageWeightedMentions - a.averageWeightedMentions ||
 					byValue(a, b),
 			);
@@ -53,16 +53,16 @@ export function orderPrompts<T extends OrderablePrompt>(prompts: T[], order: Pro
 		case "brand-asc":
 			sorted.sort(
 				(a, b) =>
-					a.brandMentionRate - b.brandMentionRate ||
+					a.brandMentionPct - b.brandMentionPct ||
 					a.averageWeightedMentions - b.averageWeightedMentions ||
 					byValue(a, b),
 			);
 			break;
 		case "competitor-desc":
-			sorted.sort((a, b) => b.competitorMentionRate - a.competitorMentionRate || byValue(a, b));
+			sorted.sort((a, b) => b.competitorMentionPct - a.competitorMentionPct || byValue(a, b));
 			break;
 		case "competitor-asc":
-			sorted.sort((a, b) => a.competitorMentionRate - b.competitorMentionRate || byValue(a, b));
+			sorted.sort((a, b) => a.competitorMentionPct - b.competitorMentionPct || byValue(a, b));
 			break;
 		case "prompt-asc":
 			sorted.sort(byValue);
