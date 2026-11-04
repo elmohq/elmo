@@ -35,10 +35,8 @@ const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
 let lastOverdueAlertMs = 0;
 
 /**
- * Gives every enabled prompt a scheduled job: one lost to a worker crash or a
- * failed job, and one that stopped while its org was unentitled or its brand
- * had no platform picks. The decisions are computeMaintenanceDecisions'; this
- * only gathers state and carries them out.
+ * Restarts prompts whose job was lost or that stopped while their org had no
+ * plan. The decisions are computeMaintenanceDecisions'; this carries them out.
  */
 export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[]): Promise<void> {
 	for (const job of jobs) {
@@ -129,11 +127,7 @@ function groupPrompts(
 	return { byOrg, byBrand };
 }
 
-/**
- * Every prompt's plan, brand by brand. A brand with a broken configuration
- * (e.g. enabledModels naming a model no longer in SCRAPE_TARGETS) must not take
- * maintenance down for everyone — contain it and move on.
- */
+/** A brand whose configuration doesn't resolve is skipped, not allowed to stop maintenance for everyone. */
 function resolveRunPlans(args: {
 	promptsByBrand: Map<string, EnabledPrompt[]>;
 	promptsByOrg: Map<string, EnabledPrompt[]>;
@@ -302,13 +296,7 @@ async function runMaintenanceCheck(): Promise<void> {
 	if (decisions.toSchedule.length > 0) await scheduleNewJobs(decisions.toSchedule.map((d) => d.promptId));
 }
 
-/**
- * Report to Sentry (as an error, so it pages) when enabled, entitled prompts
- * are overdue on any of their targets past the grace window. Parked chains
- * (unentitled orgs, no picks) never count — a canceled customer is not an
- * outage. Throttled in-process so a sustained outage doesn't emit a new event
- * on every maintenance tick.
- */
+/** An error so it pages. Parked chains never count: a canceled customer is not an outage. */
 function reportOverduePrompts(overduePrompts: number): void {
 	if (overduePrompts === 0) return;
 	const now = Date.now();
@@ -324,10 +312,6 @@ function reportOverduePrompts(overduePrompts: number): void {
 	});
 }
 
-/**
- * Get pending jobs for each prompt, preferring the most active state.
- * Returns at most one job per prompt: active > retry > created.
- */
 interface PendingJobInfo {
 	jobId: string;
 	state: "created" | "active" | "retry";
@@ -335,6 +319,7 @@ interface PendingJobInfo {
 	consecutiveFailures: number;
 }
 
+/** At most one job per prompt, the most active one. */
 async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	const result = await db.execute(sql`
 		SELECT id, data->>'promptId' as prompt_id, state,
