@@ -9,7 +9,12 @@ export function DemoSignupCta() {
 	if (!useDeploymentFeatures()?.promotesCloud) return null;
 
 	return (
-		<a href={SIGNUP_URL} target="_blank" rel="noopener" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+		<a
+			href={SIGNUP_URL}
+			target="_blank"
+			rel="noopener"
+			className={buttonVariants({ variant: "secondary", size: "sm" })}
+		>
 			<IconCloud />
 			Track Your Brand
 			<IconArrowRight />
