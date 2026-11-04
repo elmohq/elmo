@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { expect, within } from "storybook/test";
-import { DemoSignupBanner } from "@/components/demo-signup-banner";
+import { DemoSignupCta } from "@/components/demo-signup-cta";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { READ_ONLY_REFUSED } from "@/lib/read-only-errors";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
@@ -36,22 +36,22 @@ export default {
 	parameters: { layout: "fullscreen" },
 } satisfies Meta;
 
-export const Banner: StoryObj = {
+export const HeaderCta: StoryObj = {
 	render: () => {
 		applyConfig(demoConfig);
-		return <DemoSignupBanner />;
+		return <DemoSignupCta />;
 	},
 	play: async ({ canvasElement }) => {
 		const link = await within(canvasElement).findByRole("link", { name: /Start with Elmo Cloud/ });
-		await expect(link).toHaveAttribute("href", "https://app.elmohq.com/auth/register?ref=demo-banner");
+		await expect(link).toHaveAttribute("href", "https://app.elmohq.com/auth/register?ref=demo-header");
 		await expect(link).toHaveAttribute("target", "_blank");
 	},
 };
 
-export const NoBannerOutsideDemo: StoryObj = {
+export const NoCtaOutsideDemo: StoryObj = {
 	render: () => {
 		applyConfig(cloudConfig);
-		return <DemoSignupBanner />;
+		return <DemoSignupCta />;
 	},
 	play: async ({ canvasElement }) => {
 		await expect(within(canvasElement).queryByRole("link")).toBeNull();
@@ -98,7 +98,7 @@ export const ReadOnlySelfHost: StoryObj = {
 		applyConfig(readOnlySelfHostConfig);
 		return (
 			<>
-				<DemoSignupBanner />
+				<DemoSignupCta />
 				<UnsavedChangesBar isDirty isSaving={false} error={READ_ONLY_REFUSED} onSave={() => {}} onDiscard={() => {}} />
 			</>
 		);
