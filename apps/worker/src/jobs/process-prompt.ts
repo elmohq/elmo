@@ -6,6 +6,7 @@ import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
+import { PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS, promptSingletonKey } from "@workspace/lib/queues/prompt-jobs";
 import {
 	afterPromptCycle,
 	dailyRunCeiling,
@@ -34,27 +35,6 @@ export interface ProcessPromptData {
 	consecutiveFailures?: number;
 }
 
-/**
- * Queue options for a process-prompt job, wherever it's scheduled from.
- *
- * The expiry has to outlast the whole fan-out. A cycle submits every one of its
- * runs at once and each is bounded by the provider's own task ceiling, so the
- * job runs for about as long as its slowest run — which, behind a provider
- * queue deep enough to matter, is that ceiling. If pg-boss expires the job it
- * cannot cancel the running promises, and a retry would pay for the fan-out a
- * second time.
- *
- * `retryLimit: 0` for the same reason from the other side. By the time this job
- * can fail it has already submitted paid requests, and a queue-level retry
- * re-submits the whole fan-out including the runs that succeeded. Recovery goes
- * through the handler's own backoff reschedule instead, or through
- * schedule-maintenance for a job that died before reaching it.
- */
-export const PROMPT_JOB_OPTIONS = {
-	retryLimit: 0,
-	expireInSeconds: 90 * 60,
-} as const;
-
 interface PromptContext {
 	prompt: typeof prompts.$inferSelect;
 	brand: Brand;
@@ -65,10 +45,10 @@ async function scheduleNextRun(promptId: string, delayHours: number, consecutive
 
 	try {
 		await getBoss().send(
-			"process-prompt",
+			PROCESS_PROMPT_QUEUE,
 			{ promptId, consecutiveFailures },
 			{
-				singletonKey: `prompt-${promptId}`,
+				singletonKey: promptSingletonKey(promptId),
 				singletonSeconds: startAfterSeconds, // Prevent duplicates until the next attempt is due
 				startAfter: startAfterSeconds,
 				...PROMPT_JOB_OPTIONS,
@@ -266,7 +246,7 @@ async function runModelIteration({
 		// A single run's failure doesn't fail the job, so report it here to keep
 		// per-provider failure rates visible.
 		Sentry.withScope((scope) => {
-			scope.setTag("queue", "process-prompt");
+			scope.setTag("queue", PROCESS_PROMPT_QUEUE);
 			scope.setTag("provider", config.provider);
 			scope.setTag("model", config.model);
 			scope.setContext("run", { promptId, brandId: brand.id, runIndex });
