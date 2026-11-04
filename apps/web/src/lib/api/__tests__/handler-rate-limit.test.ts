@@ -1,6 +1,6 @@
-import type { ApiAuth } from "@/lib/auth/api-auth";
 import { resetDeploymentCache } from "@workspace/deployment";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ApiAuth } from "@/lib/auth/api-auth";
 import { createApiHandler } from "../handler";
 
 const resolveApiAuth = vi.hoisted(() => vi.fn());

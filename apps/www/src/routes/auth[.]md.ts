@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MARKDOWN_CONTENT_TYPE } from "@/lib/get-llm-text";
 import { authDocument } from "@/lib/auth-md";
+import { MARKDOWN_CONTENT_TYPE } from "@/lib/get-llm-text";
 
 export const Route = createFileRoute("/auth.md")({
 	server: {
