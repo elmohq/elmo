@@ -52,7 +52,7 @@ export function VisibilityBarSection({ brandId }: { brandId: string | undefined 
 			</div>
 			{hasData && (
 				<VisibilityBar
-					currentVisibility={stable.currentVisibility}
+					currentVisibilityPct={stable.currentVisibilityPct}
 					totalRuns={stable.totalRuns}
 					totalPrompts={stable.totalPrompts}
 					totalCitations={stable.totalCitations}
