@@ -1,4 +1,4 @@
-import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
+import { IconArrowRight } from "@tabler/icons-react";
 import { cloudSignupUrl } from "@workspace/config/referrals";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
@@ -9,13 +9,9 @@ export function DemoSignupCta() {
 	if (!useDeploymentFeatures()?.promotesCloud) return null;
 
 	return (
-		<div className="flex items-center gap-3">
-			<span className="hidden text-sm text-muted-foreground lg:inline">
-				This is a live demo. Track yours from ${CLOUD_ENTRY_PRICE_USD}/mo.
-			</span>
-			<a href={SIGNUP_URL} target="_blank" rel="noopener" className={buttonVariants({ size: "sm" })}>
-				Start with Elmo Cloud
-			</a>
-		</div>
+		<a href={SIGNUP_URL} target="_blank" rel="noopener" className={buttonVariants({ size: "sm" })}>
+			Track Your Brand
+			<IconArrowRight />
+		</a>
 	);
 }

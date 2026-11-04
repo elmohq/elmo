@@ -42,7 +42,7 @@ export const HeaderCta: StoryObj = {
 		return <DemoSignupCta />;
 	},
 	play: async ({ canvasElement }) => {
-		const link = await within(canvasElement).findByRole("link", { name: /Start with Elmo Cloud/ });
+		const link = await within(canvasElement).findByRole("link", { name: "Track Your Brand" });
 		await expect(link).toHaveAttribute("href", "https://app.elmohq.com/auth/register?ref=demo-header");
 		await expect(link).toHaveAttribute("target", "_blank");
 	},
