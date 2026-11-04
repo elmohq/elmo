@@ -134,7 +134,6 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
 // brand domain at the app rather than serving a copy whose issuer would not match.
 const DISCOVERY_REDIRECTS: Record<string, string> = {
 	"/.well-known/oauth-authorization-server": `${CLOUD_APP_URL}/.well-known/oauth-authorization-server`,
-	"/.well-known/oauth-protected-resource": `${CLOUD_APP_URL}/.well-known/oauth-protected-resource`,
 };
 
 function redirectFor(url: URL): Response | undefined {
