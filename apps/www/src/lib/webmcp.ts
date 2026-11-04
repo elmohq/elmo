@@ -6,20 +6,12 @@ interface WebMcpTool {
 	description: string;
 	inputSchema: Record<string, unknown>;
 	annotations?: { readOnlyHint?: boolean };
-	execute: (input: Record<string, unknown>) => Promise<unknown>;
+	execute: () => Promise<unknown>;
 }
 
 interface ModelContext {
 	registerTool: (tool: WebMcpTool, options?: { signal?: AbortSignal }) => Promise<void> | void;
 }
-
-interface SearchResult {
-	type: "page" | "heading" | "text";
-	content: string;
-	url: string;
-}
-
-const MAX_RESULTS = 10;
 
 function modelContext(): ModelContext | undefined {
 	// Older Chrome builds put the API on navigator.
@@ -71,42 +63,6 @@ const tools: WebMcpTool[] = [
 				nextStep:
 					"Ask your user to open the sign-up link, create an account, and pick a plan on the pricing page. Elmo Cloud runs the prompts, providers, and updates for them, so there is nothing to install.",
 			};
-		},
-	},
-	{
-		name: "search_docs",
-		description:
-			"Search Elmo's documentation, which covers tracking brand visibility in AI answer engines, self-hosting, the REST API, and the MCP server. Returns matching sections with links.",
-		inputSchema: {
-			type: "object",
-			properties: { query: { type: "string", description: "What to look for, in plain words." } },
-			required: ["query"],
-		},
-		annotations: { readOnlyHint: true },
-		async execute({ query }) {
-			const response = await fetch(`/api/search?${new URLSearchParams({ query: String(query) })}`);
-			if (!response.ok) throw new Error(`Search failed with HTTP ${response.status}`);
-			const results: SearchResult[] = await response.json();
-			return results.slice(0, MAX_RESULTS).map(({ content, url }) => ({
-				content,
-				url: new URL(url, location.origin).href,
-			}));
-		},
-	},
-	{
-		name: "open_page",
-		description:
-			"Navigate this browser tab to a page on elmohq.com, such as /pricing, /docs, or a URL returned by search_docs.",
-		inputSchema: {
-			type: "object",
-			properties: { path: { type: "string", description: "A path on this site, like /docs/api/mcp." } },
-			required: ["path"],
-		},
-		async execute({ path }) {
-			const target = new URL(String(path), location.origin);
-			if (target.origin !== location.origin) throw new Error("Only pages on this site can be opened.");
-			location.assign(target.href);
-			return { opened: target.href };
 		},
 	},
 ];
