@@ -1,5 +1,4 @@
 import * as Sentry from "@sentry/node";
-import type { PgBoss } from "pg-boss";
 import { assertRequiredEnv } from "@workspace/config/env";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeploymentFeatures } from "@workspace/deployment";
@@ -9,6 +8,7 @@ import { PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS } from "@workspace/lib/queues/
 import { GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS } from "@workspace/lib/queues/report-jobs";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
+import type { PgBoss } from "pg-boss";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
@@ -32,7 +32,11 @@ if (process.env.SENTRY_DSN) {
 }
 
 /** createQueue leaves an existing queue's policy alone, so a changed policy needs updateQueue too. */
-async function createOrUpdateQueue(boss: PgBoss, name: string, options: Parameters<PgBoss["createQueue"]>[1] & Parameters<PgBoss["updateQueue"]>[1]) {
+async function createOrUpdateQueue(
+	boss: PgBoss,
+	name: string,
+	options: Parameters<PgBoss["createQueue"]>[1] & Parameters<PgBoss["updateQueue"]>[1],
+) {
 	await boss.createQueue(name, options);
 	await boss.updateQueue(name, options);
 }
