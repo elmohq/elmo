@@ -47,10 +47,6 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 	};
 }
 
-/**
- * Hook to get an invalidation function for prompts summary cache.
- * Call at the top level of a component, then invoke the returned function in handlers.
- */
 export function useInvalidatePromptsSummary() {
 	const queryClient = useQueryClient();
 

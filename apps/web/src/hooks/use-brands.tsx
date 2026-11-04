@@ -52,9 +52,6 @@ export function useBrand(brandId?: string) {
 	};
 }
 
-/**
- * Get competitors for a brand
- */
 export function useCompetitors(brandId?: string) {
 	const resolvedBrandId = useResolvedBrandId(brandId);
 

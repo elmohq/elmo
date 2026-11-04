@@ -10,9 +10,6 @@ export interface MissingEnvVar {
 	description?: string;
 }
 
-/**
- * Check if an environment variable has a non-empty value
- */
 export const hasValue = (value: string | undefined): boolean => typeof value === "string" && value.trim().length > 0;
 
 /**
@@ -31,9 +28,6 @@ export const requireAny =
 	(env: EnvMap): boolean =>
 		keys.some((key) => hasValue(env[key]));
 
-/**
- * Create a simple env requirement for a single key
- */
 export function createEnvRequirement(key: string, description?: string): EnvRequirement {
 	return {
 		id: key,
@@ -235,9 +229,6 @@ export function assertRequiredEnv(env: EnvMap = process.env): void {
 	}
 }
 
-/**
- * Get an optional environment variable with a default value
- */
 export function getEnv(key: string, defaultValue: string, env: EnvMap = process.env): string {
 	const value = env[key];
 	return hasValue(value) ? value! : defaultValue;

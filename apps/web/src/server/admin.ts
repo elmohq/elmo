@@ -1,7 +1,3 @@
-/**
- * Server functions for admin operations.
- * Replaces apps/web/src/app/api/admin/* API routes.
- */
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { getModelMeta } from "@workspace/config/models";
@@ -127,9 +123,6 @@ async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	}
 }
 
-/**
- * Get admin dashboard statistics (all brands, run counts, time series charts).
- */
 export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
 
@@ -238,9 +231,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	};
 });
 
-/**
- * Update delay override for a brand.
- */
 export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -645,9 +635,6 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
 	return [...columns.values()];
 }
 
-/**
- * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
- */
 interface WorkflowContext {
 	orgSlugs: Map<string, string>;
 	runPlans: Map<string, PromptRunPlan>;
@@ -850,9 +837,6 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	};
 });
 
-/**
- * Retry a prompt job (send immediate job for a prompt).
- */
 export const retryJobFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -881,9 +865,6 @@ export const retryJobFn = createServerFn({ method: "POST" })
 		return { success: true, message: `Triggered immediate job for prompt ${targetPromptId}` };
 	});
 
-/**
- * Get logs for a specific job.
- */
 function formatJobLogs(job: Record<string, any>): string[] {
 	/** JSON columns arrive as text or as parsed objects depending on the driver. */
 	const pretty = (value: unknown) => {

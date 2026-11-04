@@ -48,9 +48,6 @@ import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 import { toResponse } from "@/server/responses";
 
-/**
- * Get metadata for a single prompt
- */
 export const getPromptMetadataFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string(), promptId: z.string() }))
 	.handler(async ({ data }) => {
@@ -393,9 +390,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Get paginated prompt runs
- */
 export const getPromptRunsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
@@ -446,9 +440,6 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Update prompts for a brand (add/edit/delete)
- */
 export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
