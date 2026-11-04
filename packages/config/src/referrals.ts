@@ -28,6 +28,7 @@ export type ReferralSource =
 	| "marketing-vision"
 	| "marketing-about"
 	| "marketing-support"
+	| "marketing-webmcp"
 	| "demo-chat"
 	| "demo-header"
 	| "demo-read-only"
