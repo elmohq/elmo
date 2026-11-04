@@ -88,9 +88,8 @@ async function redeemAiOverviewToken(payload: Record<string, any>): Promise<Reco
 	return { ...payload, ai_overview: answer };
 }
 
-// A shell with no answer in it — a page token that redeemed to nothing — fails rather than storing as a run nobody was
-// mentioned in. The text comes back with it so the run can't be gated on one
-// reading of the payload and then stored from another.
+// A page token that redeemed to nothing fails rather than storing an empty run. The
+// text comes back too, so the gate and the stored run read the payload the same way.
 function readAnswer(
 	payload: Record<string, any>,
 	target: SearchapiTarget,

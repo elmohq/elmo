@@ -91,9 +91,7 @@ export const openrouter: Provider = {
 		}
 		return {
 			object: parseSchemaJson(schema, content),
-			// Report the alias we sent, not OpenRouter's resolved version
-			// (e.g. "openai/gpt-5-mini" vs "openai/gpt-5-mini-2025-08-07") —
-			// matches what openai-api and anthropic-api do.
+			// The alias we sent, not the dated version OpenRouter resolved, as the other direct APIs report.
 			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
 	},
