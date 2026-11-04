@@ -14,24 +14,27 @@ function page(title: string) {
  * routes answer markdown, anything else is the HTML not-found page. */
 function fakeApp() {
 	const seen: Request[] = [];
-	const handle = createRequestHandler(async (request) => {
-		seen.push(request);
-		const { pathname } = new URL(request.url);
-		if (pathname === "/llms.mdx/docs/getting-started") {
-			return new Response("# Quick Start", { headers: { "Content-Type": MARKDOWN } });
-		}
-		if (pathname.startsWith("/llms.mdx/")) return markdownNotFound();
-		if (pathname === "/auth.md") return new Response("# auth.md", { headers: { "Content-Type": MARKDOWN } });
-		if (pathname === "/blog/rss.xml") {
-			return new Response("<rss/>", { headers: { "Content-Type": "application/rss+xml; charset=utf-8" } });
-		}
-		const titles: Record<string, string> = { "/": "Home", "/pricing": "Pricing", "/docs/getting-started": "Docs" };
-		const title = titles[pathname];
-		return new Response(page(title ?? "Not Found"), {
-			status: title ? 200 : 404,
-			headers: { "Content-Type": HTML_TYPE },
-		});
-	});
+	const handle = createRequestHandler(
+		async (request) => {
+			seen.push(request);
+			const { pathname } = new URL(request.url);
+			if (pathname === "/llms.mdx/docs/getting-started") {
+				return new Response("# Quick Start", { headers: { "Content-Type": MARKDOWN } });
+			}
+			if (pathname.startsWith("/llms.mdx/")) return markdownNotFound();
+			if (pathname === "/auth.md") return new Response("# auth.md", { headers: { "Content-Type": MARKDOWN } });
+			if (pathname === "/blog/rss.xml") {
+				return new Response("<rss/>", { headers: { "Content-Type": "application/rss+xml; charset=utf-8" } });
+			}
+			const titles: Record<string, string> = { "/": "Home", "/pricing": "Pricing", "/docs/getting-started": "Docs" };
+			const title = titles[pathname];
+			return new Response(page(title ?? "Not Found"), {
+				status: title ? 200 : 404,
+				headers: { "Content-Type": HTML_TYPE },
+			});
+		},
+		new Set(["/auth.md"]),
+	);
 	return { handle, seen };
 }
 
@@ -104,6 +107,12 @@ describe("markdown for pages without an MDX source", () => {
 		const response = await handle(get("/", "text/markdown", "HEAD"));
 		expect(response.headers.get("Content-Type")).toBe(MARKDOWN);
 		expect(await response.text()).toBe("");
+	});
+
+	it.each(["/pricing.md", "/does-not-exist.md"])("renders the page behind %s only once", async (path) => {
+		const { handle, seen } = fakeApp();
+		await handle(get(path));
+		expect(seen).toHaveLength(1);
 	});
 
 	it("leaves markdown documents that are routes of their own alone", async () => {

@@ -174,28 +174,29 @@ async function renderAsMarkdown(upstream: Upstream, request: Request, path: stri
 	return withoutBodyForHead(request, new Response(markdown, { headers: { "Content-Type": MARKDOWN_CONTENT_TYPE } }));
 }
 
-async function respond(upstream: Upstream, request: Request, path: string, wantsMarkdown: boolean) {
-	const twin = suffixedMarkdownRoute(path) ?? (wantsMarkdown ? negotiableMarkdownRoute(path) : undefined);
-	if (twin) return upstream(at(request, twin));
-	if (wantsMarkdown) return renderAsMarkdown(upstream, request, path);
+/** `routedMarkdown` lists the `.md` paths that are routes of their own; any
+ * other `.md` path is the markdown twin of the page without the suffix. */
+export function createRequestHandler(upstream: Upstream, routedMarkdown: ReadonlySet<string> = new Set()) {
+	function respond(request: Request, path: string, isReadable: boolean, wantsMarkdown: boolean) {
+		const twin = suffixedMarkdownRoute(path) ?? (wantsMarkdown ? negotiableMarkdownRoute(path) : undefined);
+		if (twin) return upstream(at(request, twin));
+		if (wantsMarkdown) return renderAsMarkdown(upstream, request, path);
 
-	const response = await upstream(request);
-	const isReadable = request.method === "GET" || request.method === "HEAD";
-	const page = isReadable && response.status === 404 ? pageBehindMarkdownSuffix(path) : undefined;
-	return page ? renderAsMarkdown(upstream, request, page) : response;
-}
+		const page = isReadable && !routedMarkdown.has(path) ? pageBehindMarkdownSuffix(path) : undefined;
+		return page ? renderAsMarkdown(upstream, request, page) : upstream(request);
+	}
 
-export function createRequestHandler(upstream: Upstream) {
 	return async (request: Request): Promise<Response> => {
 		const url = new URL(request.url);
 		const redirect = redirectFor(url);
 		if (redirect) return addSecurityHeaders(redirect);
 
 		const path = url.pathname;
-		const isPage = (request.method === "GET" || request.method === "HEAD") && !FILE_LIKE.test(path);
+		const isReadable = request.method === "GET" || request.method === "HEAD";
+		const isPage = isReadable && !FILE_LIKE.test(path);
 		const wantsMarkdown = isPage && isMarkdownPreferred(request, { markdownMediaTypes: MARKDOWN_MEDIA_TYPES });
 
-		const response = await respond(upstream, request, path, wantsMarkdown);
+		const response = await respond(request, path, isReadable, wantsMarkdown);
 		if (isPage) response.headers.set("Vary", "Accept");
 		addDiscoveryLinks(response, path);
 		return addSecurityHeaders(response);
