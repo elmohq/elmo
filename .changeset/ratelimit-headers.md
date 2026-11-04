@@ -1,4 +1,5 @@
 ---
+"@workspace/api-spec": patch
 "@workspace/web": patch
 ---
 
