@@ -47,10 +47,6 @@ export interface ClientConfig {
 	hasUsers: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Module-level config that stories can mutate
-// ---------------------------------------------------------------------------
-
 let _config: ClientConfig = {
 	mode: "local",
 	features: {

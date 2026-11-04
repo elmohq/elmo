@@ -1,7 +1,3 @@
-/**
- * Server functions for admin operations.
- * Replaces apps/web/src/app/api/admin/* API routes.
- */
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { getModelMeta } from "@workspace/config/models";
@@ -25,10 +21,6 @@ import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 
-// ============================================================================
-// Admin guard helper
-// ============================================================================
-
 async function requireAdmin() {
 	const session = await requireAuthSession();
 	if (!isAdmin(session)) throw new Error("Unauthorized: Admin access required");
@@ -47,10 +39,6 @@ async function organizationSlugs(organizationIds: string[]): Promise<Map<string,
 function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
 	return slugs.get(organizationId) ?? organizationId;
 }
-
-// ============================================================================
-// Admin analytics queries
-// ============================================================================
 
 interface AdminRunsOverTime {
 	date: string;
@@ -121,10 +109,6 @@ async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime
 	return rows;
 }
 
-// ============================================================================
-// Postgres client helper for pg-boss queries
-// ============================================================================
-
 async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	const connectionString = process.env.DATABASE_URL;
 	if (!connectionString) {
@@ -139,13 +123,6 @@ async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	}
 }
 
-// ============================================================================
-// Admin Dashboard - Brand Stats
-// ============================================================================
-
-/**
- * Get admin dashboard statistics (all brands, run counts, time series charts).
- */
 export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
 
@@ -254,13 +231,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	};
 });
 
-// ============================================================================
-// Admin Dashboard - Delay Override
-// ============================================================================
-
-/**
- * Update delay override for a brand.
- */
 export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -279,10 +249,6 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 		if (!result[0]) throw new Error("Brand not found");
 		return result[0];
 	});
-
-// ============================================================================
-// Admin Tools - Analyze Brand
-// ============================================================================
 
 /**
  * Provider-agnostic brand analysis. Returns brand info, competitors, and
@@ -307,10 +273,6 @@ export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 			maxPrompts: data.maxPrompts,
 		});
 	});
-
-// ============================================================================
-// Admin Workflows - Data Fetching
-// ============================================================================
 
 function parseJobData(data: unknown): { promptId?: string } {
 	if (!data) return {};
@@ -673,9 +635,6 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
 	return [...columns.values()];
 }
 
-/**
- * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
- */
 interface WorkflowContext {
 	orgSlugs: Map<string, string>;
 	runPlans: Map<string, PromptRunPlan>;
@@ -878,13 +837,6 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	};
 });
 
-// ============================================================================
-// Admin Workflows - Retry Job
-// ============================================================================
-
-/**
- * Retry a prompt job (send immediate job for a prompt).
- */
 export const retryJobFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -913,13 +865,6 @@ export const retryJobFn = createServerFn({ method: "POST" })
 		return { success: true, message: `Triggered immediate job for prompt ${targetPromptId}` };
 	});
 
-// ============================================================================
-// Admin Workflows - Job Logs
-// ============================================================================
-
-/**
- * Get logs for a specific job.
- */
 function formatJobLogs(job: Record<string, any>): string[] {
 	/** JSON columns arrive as text or as parsed objects depending on the driver. */
 	const pretty = (value: unknown) => {

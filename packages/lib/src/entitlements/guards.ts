@@ -181,10 +181,6 @@ export function assertAllowed(decision: WriteDecision): void {
 	if (!decision.allowed) throw new WriteDeniedError(decision.code, decision.message);
 }
 
-// ---------------------------------------------------------------------------
-// Usage counts (cloud-only paths; every assert below skips them when unlimited)
-// ---------------------------------------------------------------------------
-
 export async function countBrandsByOrg(orgIds: string[], conn: DbConnection = db): Promise<Map<string, number>> {
 	if (orgIds.length === 0) return new Map();
 	const rows = await conn
@@ -216,10 +212,6 @@ export async function countOrgAssignedPremiumSlots(organizationId: string, conn:
 		.where(and(eq(brands.organizationId, organizationId), eq(prompts.enabled, true)));
 	return Number(row?.value ?? 0);
 }
-
-// ---------------------------------------------------------------------------
-// Asserts wired into write paths
-// ---------------------------------------------------------------------------
 
 /**
  * Load the org's entitlements once, then run `decide` against them. Unlimited

@@ -37,10 +37,6 @@ import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 import { getPromptMetadataFn } from "@/server/prompts";
 
-// -------------------------------------------------------------------
-// Types
-// -------------------------------------------------------------------
-
 type PromptMetadata = {
 	id: string;
 	brandId: string;
@@ -378,10 +374,6 @@ function PromptHistoryPage() {
 		</div>
 	);
 }
-
-// =====================================================================
-// Tab Content Components
-// =====================================================================
 
 function TabLoadingSkeleton({ lines = 3 }: { lines?: number }) {
 	return (

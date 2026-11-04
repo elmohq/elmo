@@ -12,10 +12,6 @@ import type { ChartDataPoint } from "@/lib/chart-utils";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { MockRouteContextProvider, setMockRouteContext } from "./_mocks/tanstack-router";
 
-// ---------------------------------------------------------------------------
-// Colour-vision filters
-// ---------------------------------------------------------------------------
-
 /** Machado et al. (2009) severity-1.0 matrices, applied in linear RGB. */
 const CVD_MATRICES = {
 	deuteranopia: "0.367322 0.860646 -0.227968 0 0 0.280085 0.672501 0.047413 0 0 -0.011820 0.042940 0.968881 0 0",
@@ -50,10 +46,6 @@ function CvdFilterDefs() {
 		</svg>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
 
 const brand = { id: "brand-1", name: "Acme Corp" } as Brand;
 
@@ -102,10 +94,6 @@ function Frame({ children }: { children: React.ReactNode }) {
 		</MockRouteContextProvider>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Stories
-// ---------------------------------------------------------------------------
 
 export default { title: "Chart Accessibility" } satisfies Meta;
 

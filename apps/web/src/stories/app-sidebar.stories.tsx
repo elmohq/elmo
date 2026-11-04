@@ -23,10 +23,6 @@ import { setMockRouteContext } from "./_mocks/tanstack-router";
 import { setMockAuth } from "./_mocks/use-auth";
 import { setMockBrand } from "./_mocks/use-brands";
 
-// ---------------------------------------------------------------------------
-// Shared mock data
-// ---------------------------------------------------------------------------
-
 const onboardedBrand = {
 	id: "brand-1",
 	name: "Acme Corp",
@@ -54,10 +50,6 @@ const newBrand = {
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
 };
-
-// ---------------------------------------------------------------------------
-// Configs per deployment mode
-// ---------------------------------------------------------------------------
 
 const localConfig: ClientConfig = {
 	mode: "local",
@@ -121,10 +113,6 @@ const cloudConfig: ClientConfig = {
 	branding: { name: "Elmo", chartColors: DEFAULT_CHART_COLORS },
 	analytics: {},
 };
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function configureMocks(
 	config: ClientConfig,
@@ -193,10 +181,6 @@ function SidebarFrame({ children, label }: { children: React.ReactNode; label: s
 		</div>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Stories
-// ---------------------------------------------------------------------------
 
 export default {
 	title: "App Sidebar",

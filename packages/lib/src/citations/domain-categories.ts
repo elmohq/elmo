@@ -148,10 +148,6 @@ export function normalizeUrl(url: string): string {
 	}
 }
 
-// ============================================================================
-// Google AI Mode surfaces (Shopping cards + Search links)
-// ============================================================================
-
 const GOOGLE_HOST_RE = /(^|\.)google\.[a-z.]+$/;
 
 function googleHost(url: string): string | null {
@@ -261,10 +257,6 @@ export function attributeProduct(
 	}
 	return { kind: "other" };
 }
-
-// ============================================================================
-// Page-type inference
-// ============================================================================
 
 /**
  * Dedicated forum / community sites (the whole domain is user discussion). Forum

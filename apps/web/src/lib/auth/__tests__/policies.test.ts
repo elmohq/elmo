@@ -22,9 +22,6 @@ const INVALID_API_KEY = "wrong-key";
 const API_KEYS = [VALID_API_KEY, "another-key"];
 
 describe("evaluateDeploymentPolicy", () => {
-	// ────────────────────────────────────────────────────────────
-	// Local mode: readOnly=false
-	// ────────────────────────────────────────────────────────────
 	describe("local mode", () => {
 		const features = LOCAL_FEATURES;
 
@@ -64,9 +61,6 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 	});
 
-	// ────────────────────────────────────────────────────────────
-	// Demo mode: readOnly=true
-	// ────────────────────────────────────────────────────────────
 	describe("demo mode", () => {
 		const features = DEMO_FEATURES;
 
@@ -170,9 +164,6 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 	});
 
-	// ────────────────────────────────────────────────────────────
-	// Whitelabel mode: readOnly=false
-	// ────────────────────────────────────────────────────────────
 	describe("whitelabel mode", () => {
 		const features = WHITELABEL_FEATURES;
 
@@ -239,9 +230,6 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 	});
 
-	// ────────────────────────────────────────────────────────────
-	// Better-auth organization plugin mutations (blocked in all modes)
-	// ────────────────────────────────────────────────────────────
 	describe("org plugin mutations", () => {
 		for (const [name, features] of [
 			["local", LOCAL_FEATURES],
@@ -326,9 +314,6 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 	});
 
-	// ────────────────────────────────────────────────────────────
-	// Custom / edge-case feature combos
-	// ────────────────────────────────────────────────────────────
 	describe("custom feature combinations", () => {
 		it("leaves API v1 authentication to createApiHandler", () => {
 			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, apiReq("GET", "/api/v1/prompts"));

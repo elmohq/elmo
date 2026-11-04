@@ -194,10 +194,6 @@ export const API_KEYS = {
   },
 } as const satisfies Record<string, ApiKeyFixture>;
 
-// ---------------------------------------------------------------------------
-// Deployment modes
-// ---------------------------------------------------------------------------
-
 /**
  * The deployment modes the E2E suite covers. Each one is a Playwright project
  * that runs the shared specs plus its own.

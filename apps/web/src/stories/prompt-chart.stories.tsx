@@ -12,10 +12,6 @@ import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { MockRouteContextProvider, setMockRouteContext } from "./_mocks/tanstack-router";
 import { setMockBrand } from "./_mocks/use-brands";
 
-// ---------------------------------------------------------------------------
-// Shared fixtures
-// ---------------------------------------------------------------------------
-
 const defaultClientConfig: ClientConfig = {
 	mode: "local",
 	features: {
@@ -127,10 +123,6 @@ const baseProps = {
 	hasEverBeenEvaluated: true,
 };
 
-// ---------------------------------------------------------------------------
-// Layout helpers
-// ---------------------------------------------------------------------------
-
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
 	return (
 		<div className="space-y-2">
@@ -148,10 +140,6 @@ function PageFrame({ children }: { children: React.ReactNode }) {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Helper to render a single chart with mocked context data
-// ---------------------------------------------------------------------------
-
 interface ChartConfig {
 	contextData: {
 		chartData?: ProcessedChartData | null;
@@ -164,10 +152,6 @@ function Chart({ contextData, props }: ChartConfig) {
 	setupContext(contextData);
 	return <CachedPromptChart {...baseProps} {...props} />;
 }
-
-// ---------------------------------------------------------------------------
-// Stories
-// ---------------------------------------------------------------------------
 
 export default {
 	title: "Prompt Chart",

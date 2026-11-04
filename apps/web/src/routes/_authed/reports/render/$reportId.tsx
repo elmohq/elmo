@@ -30,8 +30,6 @@ import { PromptChartPrint } from "@/components/prompt-chart-print";
 import { hasReportAccess, requireAuthSession } from "@/lib/auth/helpers";
 import { getReportByIdFn } from "@/server/reports";
 
-// ---------- Types ----------
-
 interface ReportData {
 	competitors: CompetitorResult[];
 	prompts: PromptData[];
@@ -68,8 +66,6 @@ interface MockPrompt {
 	createdAt: Date;
 }
 
-// ---------- Server function ----------
-
 const loadReportData = createServerFn({ method: "GET" })
 	.validator((d: string) => d)
 	.handler(async ({ data: reportId }) => {
@@ -79,8 +75,6 @@ const loadReportData = createServerFn({ method: "GET" })
 	});
 
 type ReportRecord = NonNullable<Awaited<ReturnType<typeof loadReportData>>>;
-
-// ---------- Route ----------
 
 export const Route = createFileRoute("/_authed/reports/render/$reportId")({
 	loader: async ({ params }) => {
@@ -94,16 +88,12 @@ export const Route = createFileRoute("/_authed/reports/render/$reportId")({
 	component: ReportRenderPage,
 });
 
-// ---------- Color helpers ----------
-
 function sovBgColor(sov: number | null): string {
 	if (sov === null) return "bg-slate-300";
 	if (sov >= 40) return "bg-emerald-500";
 	if (sov >= 20) return "bg-amber-500";
 	return "bg-rose-500";
 }
-
-// ---------- Main component ----------
 
 type ChartRun = any;
 
@@ -975,8 +965,6 @@ function ReportRenderPage() {
 		</div>
 	);
 }
-
-// ---------- Sub-components ----------
 
 function RunningHeader({ brand }: { brand: string }) {
 	return (

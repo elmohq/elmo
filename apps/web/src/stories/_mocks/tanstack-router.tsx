@@ -7,10 +7,6 @@ import React, { createContext, type ReactNode, useContext, useSyncExternalStore 
 // This mock is used for Storybook bundling. It intentionally provides a broad
 // surface-area of exports to satisfy app imports without pulling in a real router.
 
-// ---------------------------------------------------------------------------
-// Settable route context — stories call setMockRouteContext() before rendering
-// ---------------------------------------------------------------------------
-
 const RouteCtx = createContext<Record<string, unknown>>({});
 
 const BASE_ROUTE_CONTEXT: Record<string, unknown> = {
@@ -36,10 +32,6 @@ export function setMockRouteContext(ctx: Record<string, unknown>) {
 export function MockRouteContextProvider({ value, children }: { value: Record<string, unknown>; children: ReactNode }) {
 	return <RouteCtx.Provider value={value}>{children}</RouteCtx.Provider>;
 }
-
-// ---------------------------------------------------------------------------
-// Stubs for @tanstack/react-router exports used by app components
-// ---------------------------------------------------------------------------
 
 export function useRouteContext(opts?: { select?: (context: Record<string, unknown>) => unknown }) {
 	const ctx = useContext(RouteCtx);
@@ -69,12 +61,8 @@ export function createFileRoute(_path: string) {
 	});
 }
 
-// ---------------------------------------------------------------------------
-// Settable loader data — for stories that render a route's component directly
-// (Route.options.component) instead of a plain presentational component. The
-// route's loader never runs in Storybook, so the story supplies its result.
-// ---------------------------------------------------------------------------
-
+// Stories that render a route's component directly (Route.options.component)
+// need loader data, and the route's loader never runs in Storybook.
 let _loaderData: unknown;
 
 export function setMockLoaderData(data: unknown) {

@@ -50,10 +50,6 @@ export default {
 	title: "Brand Kit",
 } satisfies Meta;
 
-// ---------------------------------------------------------------------------
-// Section helpers
-// ---------------------------------------------------------------------------
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
 	return (
 		<div className="mb-10">
@@ -72,10 +68,6 @@ function ColorSwatch({ color, label }: { color: string; label: string }) {
 		</div>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Stories
-// ---------------------------------------------------------------------------
 
 /** Full Elmo brand kit — logo, icons, colors, typography */
 export const ElmoBrandKit = () => {

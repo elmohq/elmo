@@ -410,8 +410,6 @@ describe("selectRepresentativePrompts", () => {
 	});
 });
 
-// ---------- Rich Analysis Tests ----------
-
 function makeFullRun(overrides: Partial<FullPromptRun> & { promptId: string }): FullPromptRun {
 	return {
 		promptValue: "test prompt",

@@ -18,11 +18,6 @@
  */
 import { WEB_QUERIES_UNAVAILABLE } from "@workspace/lib/constants";
 
-// ---------------------------------------------------------------------------
-// Input rows (shapes returned by postgres-read; kept here as the single source
-// of truth so the server-only read layer imports these as types).
-// ---------------------------------------------------------------------------
-
 export interface FanoutBreakdownRow {
 	prompt_id: string;
 	model: string;
@@ -43,10 +38,6 @@ export interface FanoutPromptTotalRow {
 	prompt_id: string;
 	runs: number;
 }
-
-// ---------------------------------------------------------------------------
-// Output shapes (rendered by the page).
-// ---------------------------------------------------------------------------
 
 export interface FanoutQueryStat {
 	query: string;
@@ -144,10 +135,6 @@ export interface FanoutAnalysis {
 	/** Queries issued by the most prompt runs. */
 	topByRuns: TopQueryStat[];
 }
-
-// ---------------------------------------------------------------------------
-// Tunables
-// ---------------------------------------------------------------------------
 
 const LIMITS = {
 	topQueries: 25,
@@ -294,10 +281,6 @@ export function promptKeywords(promptValue: string): Set<string> {
 	return out;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 const norm = (s: string) => s.trim().toLowerCase();
 const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 100) : 0);
 
@@ -333,10 +316,6 @@ function toQueryStats(map: Map<string, Tally>, limit: number): FanoutQueryStat[]
 		.sort((a, b) => b.count - a.count || a.query.localeCompare(b.query))
 		.slice(0, limit);
 }
-
-// ---------------------------------------------------------------------------
-// Main aggregation
-// ---------------------------------------------------------------------------
 
 interface FanoutTallies {
 	overall: Map<string, Tally>;

@@ -151,10 +151,6 @@ function getDefaultBrandDomains(): string[] {
 		.filter((d): d is string => d !== null);
 }
 
-// ============================================================================
-// Helper functions (migrated from apps/web/src/lib/metadata.ts)
-// ============================================================================
-
 /**
  * Entitlements come in from the caller rather than being loaded here: the
  * brand-list path fans this out per brand, and resolving them inside would put
@@ -189,13 +185,6 @@ async function getBrandWithPromptsFromDb(
 	}
 }
 
-// ============================================================================
-// Server Functions
-// ============================================================================
-
-/**
- * Get a single brand by ID
- */
 export const getBrand = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
@@ -209,9 +198,6 @@ export const getBrand = createServerFn({ method: "GET" })
 		return brand;
 	});
 
-/**
- * Create a new brand
- */
 export const createBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -338,9 +324,6 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		);
 	});
 
-/**
- * Update a brand
- */
 export const updateBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -394,9 +377,6 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		return result[0];
 	});
 
-/**
- * Get competitors for a brand
- */
 export const getCompetitors = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
@@ -462,9 +442,6 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 		});
 	});
 
-/**
- * Add an additional domain to the brand itself
- */
 export const addDomainToBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -496,9 +473,6 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 		return brand;
 	});
 
-/**
- * Add a domain to an existing competitor
- */
 export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -529,9 +503,6 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 		return result;
 	});
 
-/**
- * Create a new competitor from a domain
- */
 export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({

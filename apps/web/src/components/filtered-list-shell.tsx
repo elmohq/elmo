@@ -27,8 +27,7 @@ interface FilteredListShellProps {
 	errorState?: ReactNode;
 	/** UNFILTERED result count. The "truly empty" vs "no matches" decision
 	 *  keys off this plus `filters.isFiltered` — never off the filtered
-	 *  count, which is the class of bug behind #322 (sections vanishing
-	 *  because a search filtered them to zero). */
+	 *  count, or a search that matches nothing makes the section vanish. */
 	totalCount: number | undefined;
 	/** Count after client-side filtering. Defaults to `totalCount` for pages
 	 *  whose filters are applied server-side. */

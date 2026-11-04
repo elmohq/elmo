@@ -1,10 +1,9 @@
-/** Ordering options for the prompts list (#60). "Default" keeps the server's
+/** Ordering options for the prompts list. "Default" keeps the server's
  *  smart order (visibility priority → weighted mentions → A–Z); the rest
  *  re-sort the already-fetched summaries client-side, each with an ascending
  *  and a descending direction (↑ low→high, ↓ high→low). Ordering never narrows
  *  the list, so it stays out of `useListFilters` / `isFiltered` and lives in
- *  the visibility route's own `validateSearch` (the page-specific search key
- *  pattern from PR #336). The label is used both in the menu and (for a chosen
+ *  the visibility route's own `validateSearch`. The label is used both in the menu and (for a chosen
  *  order) on the bar button. */
 export const PROMPT_ORDER_OPTIONS = [
 	{ value: "default", label: "Default" },
