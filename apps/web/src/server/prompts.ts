@@ -188,7 +188,6 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const summaryMap = new Map(summaryData.map((s) => [s.prompt_id, s]));
 		const firstEvalMap = new Map(firstEvaluatedData.map((f) => [f.prompt_id, f.first_evaluated_at]));
 
-		// Collect all user tags (system tags are added separately)
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
 

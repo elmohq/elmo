@@ -300,7 +300,6 @@ function PromptHistoryPage() {
 		<div className="space-y-0">
 			<PromptHeader promptMeta={promptMeta} isMetaLoading={isMetaLoading} onLookbackChange={handleLookbackChange} />
 
-			{/* TABS */}
 			<div className="border-b border-border">
 				<div className="flex items-end justify-between">
 					<nav className="-mb-px flex gap-6" aria-label="Tabs">
@@ -327,7 +326,6 @@ function PromptHistoryPage() {
 				</div>
 			</div>
 
-			{/* TAB CONTENT */}
 			<div className="pt-6 space-y-6">
 				{activeTab === "mentions" && (
 					<MentionsTab
