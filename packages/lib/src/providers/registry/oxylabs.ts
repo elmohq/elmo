@@ -2,6 +2,7 @@ import { getCredential } from "../../secrets";
 import { type Citation, extractCitationsFromOxylabs } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import { pollTask, type TaskState } from "./poll-task";
 import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, responseError, sleep } from "./scrape-shared";
 
 // Oxylabs Web Scraper API sources for AI surfaces.
@@ -74,22 +75,11 @@ async function getJob(jobId: string): Promise<OxylabsJob | null> {
 	}
 }
 
-async function waitForJob(initialJob: OxylabsJob, deadline: number): Promise<void> {
-	let job = initialJob;
-	let attempt = 0;
-
-	while (Date.now() < deadline) {
-		const status = job.status?.toLowerCase();
-		if (status === "done") return;
-		if (status === "faulted") {
-			throw new Error(`Oxylabs job ${job.id} faulted${failureDetails(job.statuses)}`);
-		}
-
-		await sleep(Math.min(pollDelay(attempt++), deadline - Date.now()));
-		job = (await getJob(job.id!)) ?? job;
-	}
-
-	throw new Error(`Oxylabs job ${initialJob.id} timed out after ${OXYLABS_JOB_TIMEOUT_MS / 1000}s`);
+function oxylabsJobState(job: OxylabsJob): TaskState {
+	const status = job.status?.toLowerCase();
+	if (status === "done") return "ready";
+	if (status === "faulted") return "failed";
+	return "running";
 }
 
 async function fetchResults(jobId: string, deadline: number): Promise<OxylabsPayload> {
@@ -116,7 +106,19 @@ async function fetchResults(jobId: string, deadline: number): Promise<OxylabsPay
 async function runAsyncQuery(body: Record<string, any>): Promise<OxylabsPayload> {
 	const deadline = Date.now() + OXYLABS_JOB_TIMEOUT_MS;
 	const job = await submitJob(body);
-	await waitForJob(job, deadline);
+
+	await pollTask<OxylabsJob>({
+		describe: `Oxylabs job ${job.id}`,
+		initial: job,
+		poll: () => getJob(job.id!),
+		classify: oxylabsJobState,
+		failureVerb: "faulted",
+		describeFailure: (latest) => failureDetails(latest.statuses),
+		totalTimeoutMs: OXYLABS_JOB_TIMEOUT_MS,
+	});
+
+	// Results can lag the job reaching `done`, so they share the job's deadline
+	// rather than getting one of their own.
 	return fetchResults(job.id!, deadline);
 }
 

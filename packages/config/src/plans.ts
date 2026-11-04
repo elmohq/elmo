@@ -37,6 +37,8 @@ export interface CloudPlatform {
 	 * metered per prompt instead of picked per brand.
 	 */
 	premium?: boolean;
+	version?: string;
+	premiumVersion?: string;
 }
 
 /**
@@ -58,17 +60,18 @@ export interface CloudPlatform {
  * deployments change what a new brand starts out tracking.
  */
 export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
-	chatgpt: { access: "scraped", premium: true },
+	chatgpt: { access: "scraped", premium: true, premiumVersion: "GPT-6 Luna" },
 	"google-ai-mode": { access: "scraped" },
 	"google-ai-overview": { access: "scraped" },
 	copilot: { access: "scraped" },
 	perplexity: { access: "scraped" },
 	gemini: { access: "scraped" },
-	qwen: { access: "api" },
-	deepseek: { access: "api" },
-	grok: { premium: true },
-	mistral: { access: "api" },
-	claude: { access: "api", premium: true },
+	qwen: { access: "api", version: "Qwen3 235B A22B 2507" },
+	deepseek: { access: "api", version: "DeepSeek V3.2" },
+	grok: { premium: true, premiumVersion: "Grok 4.5" },
+	mistral: { access: "api", version: "Mistral Medium 3.1" },
+	claude: { access: "api", premium: true, version: "Claude Haiku 5.5", premiumVersion: "Claude Haiku 5.5" },
+	kimi: { access: "api", version: "Kimi K2.5" },
 };
 
 /** The platforms a plan's picks may come from — everything sold as a pick. */
@@ -290,6 +293,21 @@ export interface PlanPlatformMember {
 	label: string;
 	/** Which logo stands for it. Resolved here so the shared tier renderer stays free of the catalog. */
 	iconId: string;
+	tooltip?: string;
+}
+
+function premiumVersionLabel(version: string | undefined): string | undefined {
+	return version && `${version} + native web search`;
+}
+
+function tierMember(model: string, tier: PlanPlatformGroupId): PlanPlatformMember {
+	const premium = tier === "premium";
+	return {
+		model,
+		label: premium ? premiumModelLabel(model) : getModelMeta(model).label,
+		iconId: getModelMeta(model).iconId,
+		tooltip: premium ? premiumVersionLabel(CLOUD_PLATFORMS[model]?.premiumVersion) : CLOUD_PLATFORMS[model]?.version,
+	};
 }
 
 /**
@@ -302,11 +320,7 @@ export function platformTierMembers(tier: PlanPlatformGroupId): PlanPlatformMemb
 		tier === "premium"
 			? PREMIUM_MODELS
 			: STANDARD_PLATFORM_MENU.filter((model) => CLOUD_PLATFORMS[model]?.access === tier);
-	return models.map((model) => ({
-		model,
-		label: tier === "premium" ? premiumModelLabel(model) : getModelMeta(model).label,
-		iconId: getModelMeta(model).iconId,
-	}));
+	return models.map((model) => tierMember(model, tier));
 }
 
 export interface PlanPlatformGroup {
@@ -370,7 +384,7 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 	const inTier = (access: ProviderAccessKind): PlanPlatformMember[] =>
 		plan.platformMenu
 			.filter((model) => CLOUD_PLATFORMS[model]?.access === access)
-			.map((model) => ({ model, label: getModelMeta(model).label, iconId: getModelMeta(model).iconId }));
+			.map((model) => tierMember(model, access));
 
 	const groups: PlanPlatformGroup[] = [
 		{
@@ -401,11 +415,7 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 					id: "premium",
 					label: PLATFORM_TIER_LABELS.premium,
 					runsPerDay: PREMIUM_RUNS_PER_DAY,
-					models: PREMIUM_MODELS.map((model) => ({
-						model,
-						label: premiumModelLabel(model),
-						iconId: getModelMeta(model).iconId,
-					})),
+					models: PREMIUM_MODELS.map((model) => tierMember(model, "premium")),
 					includedSlots: plan.premiumIncluded,
 					addonAvailable: plan.premiumAddonAvailable,
 					summary: premiumSummary(plan),

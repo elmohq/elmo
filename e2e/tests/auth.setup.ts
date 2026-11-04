@@ -15,10 +15,11 @@
  * generator access, so shared specs see the same surface in every mode.
  */
 import type { APIRequestContext, Page } from "@playwright/test";
-import { authStatePath, isDeploymentMode, TEST_USER, type DeploymentMode } from "../fixtures";
+import { authStatePath, DEMO_CREDENTIALS, isDeploymentMode, TEST_USER, type DeploymentMode } from "../fixtures";
 import {
   assertSessionAccepted,
   ensureActiveCloudPlan,
+  ensureDemoAccount,
   ensureOrgMembership,
   ensureUser,
   issueSessionCookie,
@@ -41,6 +42,8 @@ setup("authenticate", async ({ page, baseURL }, testInfo) => {
   } else {
     await authenticateWithPassword(page.request, mode);
   }
+
+  if (mode === "demo") await withDb((client) => ensureDemoAccount(client, DEMO_CREDENTIALS));
 
   await assertSessionAccepted(page.request, TEST_USER.email);
   await page.context().storageState({ path: authStatePath(mode) });

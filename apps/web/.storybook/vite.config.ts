@@ -8,8 +8,33 @@
  */
 import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+
+// Stand-in for the app's /api/site-icon route, which Storybook doesn't serve.
+const siteIconRoute: Plugin = {
+	name: "storybook-site-icon",
+	configureServer(server) {
+		server.middlewares.use("/api/site-icon", async (req, res) => {
+			const params = new URLSearchParams(req.url?.split("?")[1]);
+			const upstream = new URLSearchParams({
+				client: "SOCIAL",
+				type: "FAVICON",
+				fallback_opts: "TYPE,SIZE,URL",
+				url: `https://${params.get("domain")}`,
+				size: params.get("size") ?? "64",
+			});
+			const icon = await fetch(`https://t1.gstatic.com/faviconV2?${upstream.toString()}`);
+			res.statusCode = icon.status;
+			if (!icon.ok) {
+				res.end();
+				return;
+			}
+			res.setHeader("Content-Type", icon.headers.get("content-type") ?? "image/png");
+			res.end(Buffer.from(await icon.arrayBuffer()));
+		});
+	},
+};
 
 export default defineConfig({
-	plugins: [tailwindcss(), viteReact()],
+	plugins: [tailwindcss(), viteReact(), siteIconRoute],
 });

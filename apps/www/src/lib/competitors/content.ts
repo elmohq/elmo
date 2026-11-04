@@ -70,15 +70,6 @@ const RESTRICTIVE_LICENSES: Record<string, string> = {
 	"BUSL-1.1": "source-available under the BSL, which restricts production use",
 };
 
-// Acquired trackers that were absorbed into the buyer's product, the evidence
-// behind the acquisition soundbite.
-const ABSORBED_EXAMPLES = ["XFunnel", "Hall", "Meridian"];
-
-function joinAnd(items: string[]): string {
-	if (items.length <= 2) return items.join(" and ");
-	return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
-}
-
 function joinOr(items: string[]): string {
 	if (items.length <= 2) return items.join(" or ");
 	return `${items.slice(0, -1).join(", ")}, or ${items[items.length - 1]}`;
@@ -95,10 +86,9 @@ function fateSoundbite(competitor: Competitor): string | undefined {
 	}
 	if (competitor.status === "acquired") {
 		if (competitor.fate) {
-			return `${name} is gone as a standalone product. ${competitor.fate.summary} Elmo is open source, so no acquisition can take it away from you.`;
+			return `${name} is gone as a standalone product. ${competitor.fate.summary} Elmo is MIT-licensed, so you keep the code and your data no matter what.`;
 		}
-		const absorbed = ABSORBED_EXAMPLES.filter((example) => example !== name);
-		return `${name} has been acquired, and acquired AI visibility tools rarely stay put: ${joinAnd(absorbed)} were all folded into their buyers' products. Elmo is open source, so no acquisition can take it away from you.`;
+		return `${name} has been acquired, so its roadmap is now set by its new owner. Elmo is MIT-licensed, so you keep the code and your data no matter what.`;
 	}
 	return undefined;
 }
@@ -143,7 +133,7 @@ export function getSoundbite(competitor: Competitor): string {
 	if (isOpenSource(competitor)) {
 		return `${name} and Elmo are both open source, so it comes down to fit: compare the engines and features below.`;
 	}
-	return `${name} is closed source, so you can't check how its numbers are made. Elmo is open source and free to self-host.`;
+	return `Elmo publishes the code behind every metric, so you can see exactly how a visibility score is calculated, and you can self-host it for free.`;
 }
 
 /**
@@ -219,7 +209,7 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 		question: `Is ${name} open source?`,
 		answer: openSource
 			? `Yes, ${name} is open source. Elmo is open source as well and is built specifically for self-hosted, independently verifiable AI visibility tracking, so you can audit exactly how each metric is calculated.`
-			: `No, ${name} is a closed-source, hosted product, so you cannot inspect how its metrics are calculated. Elmo is fully open source — you can audit the code, self-host it on your own infrastructure, and avoid vendor lock-in.`,
+			: `No, ${name} is a hosted product without public source code. Elmo is fully open source, so you can read how each metric is calculated, self-host it on your own infrastructure, and take your data with you.`,
 	});
 
 	faqs.push({

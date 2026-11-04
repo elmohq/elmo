@@ -26,6 +26,7 @@ export type ReferralSource =
 	| "marketing-cta"
 	| "marketing-nav"
 	| "marketing-hero"
+	| "marketing-ai-referral"
 	| "marketing-demo-frame"
 	| "marketing-closing"
 	| "marketing-pricing-closing"
@@ -33,6 +34,8 @@ export type ReferralSource =
 	| "marketing-aeo-for-closing"
 	| "marketing-profound-users-hero"
 	| "marketing-profound-users-closing"
+	| "marketing-features-hero"
+	| "marketing-features-closing"
 	| "marketing-page-cta"
 	| "marketing-vision"
 	| "marketing-about"
@@ -79,6 +82,6 @@ export function bookDemoUrl(ref: ReferralSource): string {
 }
 
 /** The live demo instance, tagged with where the click came from. */
-export function demoSiteUrl(ref: ReferralSource): string {
-	return tagged(DEMO_SITE_URL, ref);
+export function demoSiteUrl(ref: ReferralSource, path = "/"): string {
+	return tagged(new URL(path, DEMO_SITE_URL).toString(), ref);
 }

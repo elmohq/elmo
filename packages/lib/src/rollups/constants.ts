@@ -11,7 +11,7 @@ export const BUCKET_MS = BUCKET_MINUTES * 60 * 1000;
  * that fills them changes what it stores. The worker compares these to
  * `pipeline_state` on startup and enqueues the work that closes the gap.
  */
-export const ROLLUP_VERSION = 2;
+export const ROLLUP_VERSION = 3;
 /** Bumped when the curated domain lists or the URL classifier change. */
 export const CLASSIFIER_VERSION = 1;
 

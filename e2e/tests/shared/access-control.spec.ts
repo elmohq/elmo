@@ -29,6 +29,16 @@ test.describe("Unauthenticated access", () => {
     expect(new URLSearchParams(query).get("returnTo")).toBe(brandUrl());
   });
 
+  test("the login redirect keeps campaign params where analytics reads them", async ({ request }) => {
+    const deepLink = `${brandUrl()}?utm_source=newsletter`;
+    const response = await request.get(deepLink, { maxRedirects: 0, failOnStatusCode: false });
+    expect(response.status()).toBe(307);
+
+    const query = new URLSearchParams((response.headers().location ?? "").split("?")[1]);
+    expect(query.get("utm_source")).toBe("newsletter");
+    expect(query.get("returnTo")).toBe(deepLink);
+  });
+
   test("the public API rejects a request with no key", async ({ request }) => {
     const response = await request.get("/api/v1/brands", { failOnStatusCode: false });
     expect(response.status()).toBe(401);

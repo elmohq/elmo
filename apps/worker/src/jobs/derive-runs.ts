@@ -323,8 +323,11 @@ export async function deriveRuns(
 			.send(REFRESH_ROLLUPS_QUEUE, { source: "derive" }, { singletonKey: REFRESH_ROLLUPS_QUEUE, singletonSeconds: 10 })
 			.catch((error) => console.error("[derive-runs] Couldn't trigger a rollup refresh:", error));
 	}
-	const kept = updates.filter(({ update }) => update.kept.length > 0).length;
-	if (kept > 0) console.warn(`[derive-runs] ${kept} runs kept data their stored payload no longer yields`);
+	const kept = updates
+		.filter(({ update }) => update.kept.length > 0)
+		.map(({ run, update }) => `${run.id} (${update.kept.join(", ")})`);
+	if (kept.length > 0)
+		console.warn(`[derive-runs] runs kept data their stored payload no longer yields: ${kept.join("; ")}`);
 	await sendDeriveRuns(boss, data.brandId, failed, DERIVE_PRIORITY.new, { reextract, chunkSize: 1 });
 }
 
