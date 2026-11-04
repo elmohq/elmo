@@ -1,11 +1,7 @@
 /**
- * Functions for extracting text content and citations from stored rawOutput.
- *
- * Each provider stores rawOutput in a different format. These functions handle
- * re-reading that stored data for display in the UI (prompt detail pages, reports).
- *
- * For new prompt runs, the Provider.run() method normalizes output into ScrapeResult
- * at write time, so these functions are primarily for reading historical data.
+ * Providers read their answers and citations with these at write time, and the
+ * worker replays them over stored `raw_output`, so a parsing fix here reaches
+ * old runs too once EXTRACTOR_VERSION is bumped.
  */
 
 /** Bump to replay a provider parsing fix over stored runs from `raw_output`. */
@@ -596,9 +592,7 @@ function stripAioTitleNoise(title: string): string {
 export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 	return collectCitations((add) => {
 		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
-		// SERP API (Google AI Overview) lists its sources under `ai_overview`, where
-		// each reference carries the URL as `href` and a title suffixed with UI noise
-		// (". Opens in new tab.") that we trim off.
+		// SERP API (Google AI Overview).
 		for (const item of pluck([record?.ai_overview], "references", "source_links", "sources", "links")) {
 			const title = typeof item?.title === "string" ? stripAioTitleNoise(item.title) : item?.name;
 			add(sourceUrl(item, "href", "url", "link"), title);
