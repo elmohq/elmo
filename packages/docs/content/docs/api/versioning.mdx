@@ -1,0 +1,32 @@
+---
+title: Versioning and Deprecation
+description: How the Elmo API is versioned and how deprecations are announced.
+---
+
+The REST API is versioned in its path: every endpoint lives under `/api/v1`. Changes that would break
+existing clients generally go into a new version rather than into `/api/v1`.
+
+## What Can Change Within a Version
+
+Within `/api/v1`, a stable operation usually only gains:
+
+- new endpoints
+- new optional request parameters
+- new fields in responses
+- new values of an error's `code` — treat one you don't recognize as its HTTP status implies
+
+Write clients that ignore fields they don't know.
+
+An operation marked `x-stability: experimental` in the [OpenAPI description](/api/openapi.json) says so
+in the first line of its description too. It may change or be removed without being marked deprecated
+first.
+
+## How a Deprecation Is Signalled
+
+A stable operation is marked `deprecated: true` in the OpenAPI description before it is removed, and the
+deprecation is announced in the [changelog](/changelog).
+
+## Self-Hosted Instances
+
+A self-hosted instance runs the API of the release it was installed from, so a deprecation reaches it
+only when you upgrade. Read the release notes before upgrading.

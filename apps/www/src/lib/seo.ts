@@ -1,3 +1,4 @@
+import { PLAN_KEYS, PLANS } from "@workspace/config/plans";
 import { getMarketingOgImage } from "./og";
 
 export const SITE_URL = "https://www.elmohq.com";
@@ -135,7 +136,9 @@ export function organizationJsonLd() {
 	});
 }
 
+/** The prices the homepage pricing section shows. */
 export function softwareApplicationJsonLd() {
+	const cloudPlans = PLAN_KEYS.map((key) => PLANS[key]);
 	return jsonLd({
 		"@type": "SoftwareApplication",
 		name: SITE_NAME,
@@ -143,9 +146,26 @@ export function softwareApplicationJsonLd() {
 		applicationCategory: "BusinessApplication",
 		operatingSystem: "Any",
 		offers: {
-			"@type": "Offer",
-			price: "0",
+			"@type": "AggregateOffer",
 			priceCurrency: "USD",
+			lowPrice: "0",
+			highPrice: String(Math.max(...cloudPlans.map((plan) => plan.monthlyPriceUsd))),
+			offerCount: cloudPlans.length + 1,
+			offers: [
+				{ "@type": "Offer", name: "Self-hosted", price: "0", priceCurrency: "USD" },
+				...cloudPlans.map((plan) => ({
+					"@type": "Offer",
+					name: `Elmo Cloud ${plan.name}`,
+					price: String(plan.monthlyPriceUsd),
+					priceCurrency: "USD",
+					priceSpecification: {
+						"@type": "UnitPriceSpecification",
+						price: String(plan.monthlyPriceUsd),
+						priceCurrency: "USD",
+						unitText: "MONTH",
+					},
+				})),
+			],
 		},
 		url: SITE_URL,
 	});
