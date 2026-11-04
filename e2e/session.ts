@@ -33,8 +33,8 @@ const SESSION_COOKIE_NAME = "better-auth.session_token";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * The database behind the stack the running project addresses. Modes no longer
- * all share one, so a spec asking whether a write landed has to ask the
+ * The database behind the stack the running project addresses. Modes don't all
+ * share one, so a spec asking whether a write landed has to ask the
  * database its own container writes to. Projects that name no mode — `worker` —
  * get the default, which is the database the local stack and the worker share.
  */
@@ -144,9 +144,8 @@ export async function ensureDemoAccount(
 
 /**
  * The local-mode signup hook creates the "default" org + admin membership on
- * first register (matching TEST_BRAND_ID). The idempotent writes below cover
- * the other modes, DBs populated before the hook existed, and let us tweak
- * TEST_BRAND_NAME without a full reset.
+ * first register (matching TEST_BRAND_ID). These idempotent writes cover the
+ * other modes and pick up a changed TEST_BRAND_NAME without a full reset.
  */
 export async function ensureOrgMembership(client: pg.Client, userId: string): Promise<void> {
   await client.query(
