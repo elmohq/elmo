@@ -37,7 +37,6 @@ import {
 	requireOrgAccess,
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
-import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import type { TrackedTarget } from "@/lib/model-filter";
@@ -281,7 +280,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		const deployment = getDeployment();
 
-		if (evaluateRequireCanCreateBrands(deployment.features.canCreateBrands) === "deny") {
+		if (!deployment.features.canCreateBrands) {
 			throw new Error("Brand creation is not allowed in this deployment");
 		}
 

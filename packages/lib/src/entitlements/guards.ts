@@ -280,7 +280,6 @@ export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, Wr
 	return decisions;
 }
 
-/** Guard adding `adding` competitors to a brand. */
 export async function assertCompetitorCap(brandId: string, adding: number, conn: DbConnection = db): Promise<void> {
 	if (adding <= 0) return;
 	const [row] = await conn.select({ value: count() }).from(competitors).where(eq(competitors.brandId, brandId));
