@@ -2,6 +2,7 @@ import { IconActivity, IconArrowRight, IconClock, IconInfoCircle, IconList, Icon
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { labelForModelFilter } from "@workspace/config/model-filter";
 import type { ClientConfig } from "@workspace/config/types";
+import type { BrandTrackingState } from "@workspace/lib/brand-state";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -296,6 +297,12 @@ function OverviewFigures({
 	);
 }
 
+// A brand that failed to load also lands on the wizard, the safe fallback.
+function showsOnboarding(isLoading: boolean, brand: { trackingState: BrandTrackingState } | undefined): boolean {
+	if (isLoading) return false;
+	return !brand || brand.trackingState === "onboarding";
+}
+
 function DashboardPage() {
 	const brandId = useBrandId();
 	const { data: brand, isLoading: isLoadingBrand } = useBrand();
@@ -319,7 +326,7 @@ function DashboardPage() {
 	const trackedTargets = brand?.trackedTargets ?? [];
 	const loading = isLoadingBrand || isLoadingSummary;
 
-	if (!isLoadingBrand && !brand?.onboarded) {
+	if (showsOnboarding(isLoadingBrand, brand)) {
 		return <ResearchBrandData brandId={brandId} clientConfig={clientConfig} />;
 	}
 
