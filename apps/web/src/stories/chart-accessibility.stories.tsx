@@ -149,8 +149,8 @@ LegendInteraction.play = async ({ canvasElement }: { canvasElement: HTMLElement 
 	// Nothing is singled out until asked.
 	await expect(acme).toHaveAttribute("aria-pressed", "false");
 
-	// The legend lives outside Recharts precisely so these nodes survive a state
-	// change; when it didn't, every hover wiped focus and tabbing went nowhere.
+	// The legend lives outside Recharts so these nodes survive a state change;
+	// otherwise every hover would wipe focus and tabbing would go nowhere.
 	await userEvent.hover(alpha);
 	await expect(document.contains(alpha)).toBe(true);
 

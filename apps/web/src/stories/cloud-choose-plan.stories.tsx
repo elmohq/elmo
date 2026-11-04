@@ -1,7 +1,4 @@
 /**
- * Stories for /choose-plan — the checkout-first paywall a cloud org lands on
- * with no active subscription.
- *
  * The plan cards render straight from the plan catalog, so these stories are
  * also the fastest way to see a pricing or limit change: edit
  * packages/config/src/plans.ts and the cards follow.

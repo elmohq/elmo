@@ -1,9 +1,3 @@
-/**
- * Stories for <CachedPromptChart /> — grouped into two composite pages:
- *  1. Failure States — no visibility, no data, first-eval, loading, etc.
- *  2. Success States — lookback windows with varying visibility levels,
- *     search highlight, and long prompt name edge cases
- */
 import type { Meta } from "@storybook/react";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { CachedPromptChart, type CachedPromptChartProps } from "@/components/cached-prompt-chart";
@@ -157,9 +151,6 @@ export default {
 	title: "Prompt Chart",
 } satisfies Meta;
 
-/**
- * All non-happy-path states: no visibility, no data, first eval, loading.
- */
 export const FailureStates = () => {
 	setupMocks();
 	return (
@@ -218,11 +209,7 @@ export const FailureStates = () => {
 	);
 };
 
-/**
- * Successful charts at different lookback windows, each with a different
- * visibility level so you can compare badge thresholds and axis density
- * in a single view. Includes search highlight and long prompt name edge cases.
- */
+/** Each lookback gets a different visibility level, so badge thresholds and axis density compare in one view. */
 export const SuccessStates = () => {
 	setupMocks();
 	return (
