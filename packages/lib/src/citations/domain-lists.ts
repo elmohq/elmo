@@ -1,7 +1,4 @@
-// Domain classification against the large hardcoded lists (including the
-// ~25k-entry editorial set). Only servers and workers may import it: pulling it
-// into a browser bundle would cost hundreds of kilobytes. Client code imports
-// the types and pure helpers from `./domain-categories`.
+// Server-only: in a browser bundle these lists would cost hundreds of kilobytes.
 
 import {
 	type CitationCategory,

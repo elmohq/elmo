@@ -1,7 +1,5 @@
-// Client-safe citation taxonomy: types, display config, and lightweight URL
-// helpers. The heavy domain lists + `categorizeDomain` live in
-// `domain-lists.ts` (server-only) so the ~25k-entry editorial list
-// never ships in the browser bundle.
+// Client-safe: the domain lists live in server-only `domain-lists.ts` so the
+// ~25k-entry editorial list never ships to the browser.
 
 export type CitationCategory =
 	| "brand"
@@ -16,11 +14,7 @@ export type CitationCategory =
 	| "institutional"
 	| "other";
 
-/**
- * Ordered source of truth for citation source categories. Display order, chart
- * band order, tab order, and total accumulators are all derived from this — add
- * or reorder a category here and the rest follows.
- */
+/** Display, chart band and tab order all derive from this order. */
 export const CITATION_CATEGORIES: CitationCategory[] = [
 	"brand",
 	"competitor",
@@ -38,11 +32,7 @@ export const CITATION_CATEGORIES: CitationCategory[] = [
 export const emptyCategoryCounts = (): Record<CitationCategory, number> =>
 	Object.fromEntries(CITATION_CATEGORIES.map((c) => [c, 0])) as Record<CitationCategory, number>;
 
-/**
- * Page-type axis — orthogonal to the source category. Inferred from the URL path
- * and citation title (see `inferPageType`). A `reviews` domain can be a
- * `comparison` page; a `brand` domain can be a `product`/`pricing` page.
- */
+/** Orthogonal to the source category: a `reviews` domain can be a `comparison` page. */
 export type CitationPageType =
 	| "homepage"
 	| "article"
@@ -255,17 +245,9 @@ export function attributeProduct(
 }
 
 /**
- * Dedicated forum / community sites (the whole domain is user discussion). Forum
- * *threads* are also caught by path markers in inferPageType; this list — plus the
- * subdomain heuristic in isForumDomain — additionally recognizes a forum when the
- * path is ambiguous, and routes the domain to the "social" source category
- * (community / UGC) instead of letting it fall to "other".
- *
- * Seeded from Wikipedia's "List of Internet forums". News/forum hybrids (MacRumors,
- * Tom's Hardware, Ars Technica, Digital Spy, XDA, MoneySavingExpert, …) are
- * deliberately omitted: their forum subdomains/paths are already caught, while the
- * bare domain should stay editorial. Defunct, regional-only, and dark-web/abuse
- * forums are skipped.
+ * Whole-domain forums, for when the path is ambiguous. News/forum hybrids like
+ * MacRumors are omitted: their forum paths are caught anyway, and the bare domain
+ * should stay editorial.
  */
 export const FORUM_DOMAINS = new Set([
 	// general / large (incl. major non-US: zhihu = Chinese Q&A, nairaland = Nigerian)
@@ -319,11 +301,7 @@ export const FORUM_DOMAINS = new Set([
 	"cafemom.com",
 ]);
 
-/**
- * True if `domain` equals, or is a subdomain of, any entry in `set`. Walks the
- * domain's parent suffixes so lookups stay O(labels) regardless of set size —
- * important for the large editorial set.
- */
+/** Walks parent suffixes so lookups stay O(labels) however large the set. */
 export function inDomainSet(domain: string, set: Set<string>): boolean {
 	let d = domain;
 	while (true) {
@@ -334,11 +312,6 @@ export function inDomainSet(domain: string, set: Set<string>): boolean {
 	}
 }
 
-/**
- * True for dedicated forum domains and conventional forum subdomains
- * (forum.X, forums.X, community.X, discuss.X, boards.X) — a generalizable signal
- * that works across niches without enumerating every site.
- */
 export function isForumDomain(host: string): boolean {
 	let d = host.replace(/^www\./, "").toLowerCase();
 	if (/^(forums?|community|discuss|boards?)\./.test(d)) return true;
@@ -479,10 +452,7 @@ function isYear(token: string): boolean {
 	return n >= 1900 && n <= 2099;
 }
 
-/**
- * Infer a page type from the URL path + citation title. Heuristic — "good, not
- * perfect"; the long tail falls through to "other".
- */
+/** Heuristic: the long tail falls through to "other". */
 export function inferPageType(url: string, title?: string | null): CitationPageType {
 	if (isGoogleShoppingUrl(url)) return "shopping";
 	if (isGoogleSearchUrl(url)) return "search";
@@ -517,12 +487,7 @@ export const CONTENT_PUBLISHER_CATEGORIES: ReadonlySet<CitationCategory> = new S
 	"reference",
 ]);
 
-/**
- * Page type for a citation given its resolved source category. Niche-independent:
- * a page from a content publisher (editorial / institutional / reference) that
- * doesn't match a more specific type is treated as an article rather than left in
- * "other" — instead of hardcoding per-industry content paths.
- */
+/** A content publisher's otherwise-unmatched page is an article, without per-industry paths. */
 export function resolvePageType(
 	url: string,
 	title: string | null | undefined,
