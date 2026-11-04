@@ -7,14 +7,9 @@
  * Two halves, both pure:
  *  - resolvePromptRunPlan: the prompt's target set + intervals.
  *  - selectDueTargets: which of those targets are actually due, metered
- *    against real prompt_runs history. Metering against history (rather than
- *    trusting the job cadence) is what makes per-target cadence work with the
- *    existing one-job-per-prompt scheduler, keeps in-flight jobs from before
- *    an upgrade valid, and structurally prevents duplicate-fire oversampling
- *    (a maintenance expedite re-runs only what is due).
- *
- * Non-cloud modes resolve exactly today's behavior: every brand-selected
- * target at the brand cadence, replicated RUNS_PER_PROMPT times.
+ *    against real prompt_runs history rather than the job cadence. That is
+ *    what lets one job per prompt serve targets with different cadences, and
+ *    why a duplicate firing (a maintenance expedite) re-runs only what is due.
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
@@ -107,12 +102,9 @@ function premiumTargets(input: ResolveRunPlanInput, intervalHours: number): Targ
 export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
 	const { entitlements } = input;
 
-	// Read "unmetered" off the entitlements rather than a separately-passed
-	// deployment mode: the two came from different places (one from
-	// @workspace/deployment, one from the environment the entitlement query
-	// read), and a worker whose mode said "not cloud" while the org's
-	// entitlements said otherwise would quietly run a paying customer on every
-	// configured platform instead of the four they bought.
+	// Metering follows the entitlements, never a separately-passed deployment
+	// mode: if the two disagreed, a paying org would run on every configured
+	// platform instead of the ones it bought.
 	if (entitlements.unlimited) return unlimitedRunPlan(input);
 
 	if (!entitlements.trackingActive || input.withinPromptPool === false) {
@@ -145,11 +137,9 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
  * clamped to what the plan sells and to how many it may run at once — or the
  * plan's defaults when it has never chosen.
  *
- * The single answer to "what is this brand tracked on", because three surfaces
- * asked it independently and a brand with no stored picks got a different
- * answer from each: the run policy applied the plan defaults while the LLM
- * settings page and the prompts view both read null as "every configured
- * target", showing ten platforms to a brand running four.
+ * The run policy, the LLM settings page and the prompts view all ask this; any
+ * of them answering on its own would read a brand with no stored picks as
+ * tracking every configured target instead of its plan defaults.
  */
 export function resolveBrandPicks(
 	entitlements: Entitlements,
@@ -184,17 +174,13 @@ export function defaultPlatformPicks(entitlements: Entitlements, scrapeTargets: 
  *
  * The provider is part of the identity, not just the model and its web-search
  * flag: a brand can track ChatGPT scraped off the consumer product *and*
- * grounded through an API, and both are `chatgpt` with web search on. Keyed on
- * model alone the two shared a cadence slot, so the scraped target's four runs
- * a day kept the premium one looking fresh and it never came due.
+ * grounded through an API, and both are `chatgpt` with web search on. Sharing
+ * a cadence slot, the scraped target's frequent runs would keep the premium one
+ * looking fresh so it never came due.
  *
- * Changing this shape costs no reprocessing, because keys are never stored:
- * both sides compute one from (model, provider, web_search_enabled), and
- * prompt_runs has recorded all three since the run was written. A deploy
- * therefore matches existing history rather than treating every target as
- * never-run. The one case that does re-fire once is an operator pointing a
- * model at a different provider — which is a different data source, so
- * restarting its cadence is the right answer.
+ * Keys are never stored — both sides compute them from prompt_runs columns —
+ * so changing this shape needs no reprocessing. Pointing a model at a
+ * different provider restarts its cadence, which is right for a new source.
  */
 export function targetKey(config: Pick<ModelConfig, "model" | "provider" | "webSearch">): string {
 	return `${config.model}::${config.provider}::${config.webSearch ? "web" : "base"}`;

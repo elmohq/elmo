@@ -203,13 +203,13 @@ export const API_KEYS = {
  * phases. The ports and databases here are what that file publishes.
  *
  * Cloud and whitelabel get a database of their own. Cloud signs accounts up and
- * deletes them again, so on one shared database every phase had to re-seed to
- * undo the phase before it, and the order they ran in was load-bearing.
+ * deletes them again, so sharing a database would make every phase re-seed to
+ * undo the one before it, and the order they ran in load-bearing.
  *
  * Local and demo share one on purpose: demo has no signup, so the account its
  * specs sign in with has to be the one the local phase bootstrapped, and demo
  * is READ_ONLY so it cannot write back. That mirrors how the public demo is
- * deployed, and is the one ordering the workflow still keeps.
+ * deployed, and is the one ordering the workflow keeps.
  */
 const MODE_STACKS = {
   local: { port: 1515, database: "elmo" },

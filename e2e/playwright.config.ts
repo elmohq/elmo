@@ -42,11 +42,9 @@ export default defineConfig<ConsoleErrorOptions>({
   testDir: "./tests",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  // A test that needed its retry fails the job. Four had been failing their
-  // first attempt for months behind a silent retry, each costing a whole
-  // timeout; a suite that needs one is telling you something it used to be
-  // able to swallow. The retry still runs, but it no longer forgives the
-  // failure — it is what produces the trace below.
+  // A test that needed its retry fails the job: a silent retry hides a flaky
+  // test and costs a whole timeout each run. The retry still runs because it is
+  // what produces the trace below.
   failOnFlakyTests: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 4,

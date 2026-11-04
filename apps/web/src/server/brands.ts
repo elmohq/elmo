@@ -37,7 +37,6 @@ import {
 	requireOrgAccess,
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
-import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import type { TrackedTarget } from "@/lib/model-filter";
@@ -60,11 +59,9 @@ function computeTrackedTargets(
 	try {
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
-		// Ask the run policy rather than re-deriving it: it already decides which
-		// targets a brand runs, how often, and how many times per firing, and a
-		// second copy of that arithmetic here is how the page and the worker
-		// started disagreeing in the first place. Grounded targets are assigned
-		// per prompt, so the brand's set is the union across its prompts.
+		// Ask the run policy rather than re-deriving it, so the page can't disagree
+		// with what the worker runs. Grounded targets are assigned per prompt, so
+		// the brand's set is the union across its prompts.
 		const plan = resolvePromptRunPlan({
 			scrapeTargets: configs,
 			brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
@@ -281,7 +278,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		const deployment = getDeployment();
 
-		if (evaluateRequireCanCreateBrands(deployment.features.canCreateBrands) === "deny") {
+		if (!deployment.features.canCreateBrands) {
 			throw new Error("Brand creation is not allowed in this deployment");
 		}
 

@@ -6,7 +6,7 @@
  * the whole point.
  */
 import { describe, expect, it } from "vitest";
-import { evaluateDeploymentPolicy, evaluateRequireCanCreateBrands, type RequestInfo } from "@/lib/auth/policies";
+import { evaluateDeploymentPolicy, type RequestInfo } from "@/lib/auth/policies";
 import { DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
 
 function req(method: string, pathname: string, authorizationHeader?: string): RequestInfo {
@@ -338,22 +338,5 @@ describe("evaluateDeploymentPolicy", () => {
 				error: "Demo Mode",
 			});
 		});
-	});
-});
-
-describe("evaluateRequireCanCreateBrands", () => {
-	it("denies when canCreateBrands is false", () => {
-		expect(evaluateRequireCanCreateBrands(false)).toBe("deny");
-	});
-
-	it("allows when canCreateBrands is true", () => {
-		expect(evaluateRequireCanCreateBrands(true)).toBe("allow");
-	});
-
-	it("matches the expected per-mode flag", () => {
-		// Local can create; demo and whitelabel cannot.
-		expect(evaluateRequireCanCreateBrands(LOCAL_FEATURES.canCreateBrands)).toBe("allow");
-		expect(evaluateRequireCanCreateBrands(DEMO_FEATURES.canCreateBrands)).toBe("deny");
-		expect(evaluateRequireCanCreateBrands(WHITELABEL_FEATURES.canCreateBrands)).toBe("deny");
 	});
 });
