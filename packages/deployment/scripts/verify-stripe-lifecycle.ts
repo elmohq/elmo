@@ -1,13 +1,8 @@
 /**
- * Pre-launch billing lifecycle verification against a REAL Stripe test-mode
- * account with test clocks: subscribe → plan upgrade → add-on quantity change
- * → payment failure → recovery → cancel, asserting after each webhook that the
- * local database (subscription + organization_settings) converged to the
- * expected state.
- *
- * Reads subscription state through the production reader (getOrgBillingState /
- * selectRelevantSubscription), so the verification asserts the same logic the
- * app uses — including status-ranked selection for cancel→resubscribe.
+ * Drives a real Stripe test-mode account with test clocks through subscribe →
+ * upgrade → add-on change → payment failure → recovery → cancel, asserting after
+ * each webhook that the database converged. It reads state through the app's own
+ * getOrgBillingState, so it checks the logic the app actually uses.
  *
  * Prerequisites (run all three in parallel):
  *   1. The web app running in cloud mode against your database
