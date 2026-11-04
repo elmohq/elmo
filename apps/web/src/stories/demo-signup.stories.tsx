@@ -68,7 +68,7 @@ export const ReadOnlyRefusal: StoryObj = {
 	play: async ({ canvasElement }) => {
 		const alert = await within(canvasElement).findByRole("alert");
 		await expect(alert).toHaveTextContent("The demo is read-only");
-		const link = within(alert).getByRole("link", { name: /Start with Elmo Cloud/ });
+		const link = within(alert).getByRole("link", { name: "Elmo Cloud" });
 		await expect(link).toHaveAttribute("href", "https://app.elmohq.com/auth/register?ref=demo-read-only");
 	},
 };
