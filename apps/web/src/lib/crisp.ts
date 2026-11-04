@@ -1,7 +1,6 @@
 // Crisp replays anything pushed onto `window.$crisp` once its script loads, so
 // nothing here has to wait for a ready signal.
-import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
-import { bookDemoUrl } from "@workspace/config/referrals";
+import { bookDemoUrl, cloudSignupUrl } from "@workspace/config/referrals";
 import type { DeploymentMode } from "@workspace/config/types";
 
 type CrispCommand = unknown[];
@@ -17,6 +16,7 @@ declare global {
 const CRISP_SCRIPT_URL = "https://client.crisp.chat/l.js";
 
 const DEMO_WALKTHROUGH_URL = bookDemoUrl("demo-chat");
+const DEMO_CLOUD_SIGNUP_URL = cloudSignupUrl("demo-chat");
 const SELF_HOST_DOCS_URL = "https://www.elmohq.com/docs/getting-started";
 
 const DEMO_GREETING =
@@ -27,7 +27,7 @@ const DEMO_GREETING =
 const DEMO_NEXT_STEPS = [
 	"Whenever you're ready:",
 	`• [Book a walkthrough](${DEMO_WALKTHROUGH_URL}) — 30 minutes on your own brand's data`,
-	`• [Start with Elmo Cloud](${CLOUD_SIGNUP_URL}) — the managed version, nothing to deploy`,
+	`• [Start with Elmo Cloud](${DEMO_CLOUD_SIGNUP_URL}) — the managed version, nothing to deploy`,
 	`• [Self-host it free](${SELF_HOST_DOCS_URL}) — open source, running in about five minutes`,
 ].join("\n");
 
@@ -35,7 +35,7 @@ const DEMO_NEXT_STEPS = [
 const DEMO_SESSION_DATA: [string, string][] = [
 	["walkthrough_url", DEMO_WALKTHROUGH_URL],
 	["self_host_docs_url", SELF_HOST_DOCS_URL],
-	["cloud_signup_url", CLOUD_SIGNUP_URL],
+	["cloud_signup_url", DEMO_CLOUD_SIGNUP_URL],
 ];
 
 interface CrispUser {
