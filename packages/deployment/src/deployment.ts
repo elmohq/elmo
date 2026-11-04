@@ -12,6 +12,7 @@ type Env = Record<string, string | undefined>;
 
 export const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 	local: {
+		promotesCloud: false,
 		readOnly: false,
 		showOptimizeButton: false,
 		canCreateBrands: true,
@@ -24,6 +25,7 @@ export const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 		teamInvites: false,
 	},
 	demo: {
+		promotesCloud: true,
 		readOnly: true,
 		showOptimizeButton: false,
 		canCreateBrands: false,
@@ -36,6 +38,7 @@ export const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 		teamInvites: false,
 	},
 	whitelabel: {
+		promotesCloud: false,
 		readOnly: false,
 		showOptimizeButton: true,
 		canCreateBrands: false,
@@ -48,6 +51,7 @@ export const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 		teamInvites: false,
 	},
 	cloud: {
+		promotesCloud: false,
 		readOnly: false,
 		showOptimizeButton: false,
 		canCreateBrands: true,
@@ -119,11 +123,16 @@ function resolveMode(requestedMode: DeploymentMode, env: Env): DeploymentMode {
 	return requestedMode === "local" && env.READ_ONLY === "true" ? "demo" : requestedMode;
 }
 
+function featuresFor(requestedMode: DeploymentMode, env: Env): FeaturesConfig {
+	const features = FEATURES_BY_MODE[resolveMode(requestedMode, env)];
+	return features.promotesCloud && requestedMode !== "demo" ? { ...features, promotesCloud: false } : features;
+}
+
 export function buildDeployment(requestedMode: DeploymentMode, env: Env): Deployment {
 	const mode = resolveMode(requestedMode, env);
 	return {
 		mode,
-		features: FEATURES_BY_MODE[mode],
+		features: featuresFor(requestedMode, env),
 		branding: brandingFor(mode, env),
 	};
 }
@@ -148,7 +157,7 @@ export function getDeployment(options?: GetDeploymentOptions): Deployment {
  */
 export function getDeploymentFeatures(options?: GetDeploymentOptions): FeaturesConfig {
 	const env = options?.env ?? process.env;
-	return FEATURES_BY_MODE[resolveMode(getDeploymentModeFromEnv(env), env)];
+	return featuresFor(getDeploymentModeFromEnv(env), env);
 }
 
 export function resetDeploymentCache(): void {
