@@ -537,7 +537,7 @@ export async function getFanoutQueryTotals(
 
 export async function getFanoutPromptTotals(scope: AnalyticsScope): Promise<FanoutPromptTotalRow[]> {
 	return queryPg<FanoutPromptTotalRow>(sql`
-		SELECT prompt_id, coalesce(sum(fanout_runs), 0)::int AS runs
+		SELECT prompt_id, coalesce(sum(fanout_runs), 0)::int AS fanout_runs
 		FROM rollup_prompt_runs
 		WHERE ${rollupScope(scope)}
 		GROUP BY prompt_id

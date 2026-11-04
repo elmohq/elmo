@@ -233,7 +233,7 @@ function StatRow({ data }: { data: FanoutData }) {
 			/>
 			<StatCard
 				label="Average Fan-Out"
-				value={data.avgPerExecution.toLocaleString()}
+				value={data.avgQueriesPerFanoutRun.toLocaleString()}
 				tip="Average queries per run that had at least one web query."
 			/>
 		</div>
@@ -319,7 +319,7 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 		const list = s ? prompts.filter((p) => p.promptValue.toLowerCase().includes(s)) : prompts;
 		return [...list].sort((a, b) =>
 			sort === "avg"
-				? b.avgPerExecution - a.avgPerExecution || b.totalQueries - a.totalQueries
+				? b.avgQueriesPerFanoutRun - a.avgQueriesPerFanoutRun || b.totalQueries - a.totalQueries
 				: b.totalQueries - a.totalQueries,
 		);
 	}, [prompts, search, sort]);
@@ -391,7 +391,7 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 									</span>
 									<span className="text-right text-sm tabular-nums">{p.totalQueries.toLocaleString()}</span>
 									<span className="text-right text-sm tabular-nums max-sm:hidden">
-										{p.avgPerExecution.toLocaleString()}
+										{p.avgQueriesPerFanoutRun.toLocaleString()}
 									</span>
 								</button>
 								{isOpen && keywords && (
