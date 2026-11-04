@@ -1,4 +1,3 @@
-/** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
@@ -92,9 +91,6 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Get prompts summary for a brand (visibility scores, tags, etc.)
- */
 function summarizePrompt(
 	prompt: {
 		id: string;
@@ -212,13 +208,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Mirrors the brand-wide citations view (server/citations.ts) at the single-
- * prompt level: classify each citation at the URL level, pull Google AI Mode
- * search/shopping surfaces OUT of the source mix into a dedicated Google
- * Shopping module, and rebuild the domain distribution from the URL data.
- * Undefined when the prompt has nothing citable.
- */
+/** The brand-wide citations view (server/citations.ts), for one prompt. */
 function computePromptCitationStats(input: {
 	urlStats: CitationUrlStats[];
 	promptId: string;
@@ -231,9 +221,7 @@ function computePromptCitationStats(input: {
 	const { urlStats } = input;
 	if (urlStats.length === 0) return undefined;
 
-	// Google AI Mode module: Shopping products (brand vs competitor) + search
-	// queries. Built from the raw URL rows (it picks out the Google surfaces);
-	// the rollup below drops those same surfaces from the source mix.
+	// From the raw rows: the rollup below drops these Google surfaces from the source mix.
 	const googleModule = buildGoogleModule(
 		urlStats.map((u) => ({
 			prompt_id: input.promptId,
@@ -264,8 +252,7 @@ function computePromptCitationStats(input: {
 	};
 }
 
-/** Run window for the prompt detail endpoints: the last `days` up to now, or —
- *  for a custom range — the `days` UTC calendar days ending on `endDate`. */
+/** The last `days` up to now, or for a custom range the `days` UTC calendar days ending on `endDate`. */
 function promptRunWindow(days: number, endDate?: string): { fromDate: Date; toDate: Date } {
 	if (!endDate) {
 		const toDate = new Date();
@@ -280,10 +267,6 @@ function promptRunWindow(days: number, endDate?: string): { fromDate: Date; toDa
 	return { fromDate, toDate };
 }
 
-/**
- * Get stats for a single prompt (mentions, web queries, citations)
- * Replicates: apps/web/src/app/api/prompts/[promptId]/stats/route.ts
- */
 export const getPromptStatsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
