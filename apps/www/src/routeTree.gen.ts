@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AnswerEngineOptimizationRouteImport } from './routes/answer-engine-optimization'
+import { Route as AuthDotmdRouteImport } from './routes/auth[.]md'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as DemoRouteImport } from './routes/demo'
@@ -55,6 +56,7 @@ import { Route as LegalIndexRouteImport } from './routes/legal/index'
 import { Route as LegalSplatRouteImport } from './routes/legal/$'
 import { Route as OffSiteAeoBookRouteImport } from './routes/off-site-aeo_.book'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
+import { Route as DotwellKnownMcpServerCardDotjsonRouteImport } from './routes/[.]well-known/mcp/server-card[.]json'
 import { Route as AiVisibilityToolsAlternativesIndexRouteImport } from './routes/ai-visibility-tools/alternatives/index'
 import { Route as AiVisibilityToolsAlternativesSlugRouteImport } from './routes/ai-visibility-tools/alternatives/$slug'
 import { Route as AiVisibilityToolsCategoryIndexRouteImport } from './routes/ai-visibility-tools/category/index'
@@ -87,6 +89,11 @@ const AnswerEngineOptimizationRoute =
     path: '/answer-engine-optimization',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthDotmdRoute = AuthDotmdRouteImport.update({
+  id: '/auth.md',
+  path: '/auth.md',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrandRoute = BrandRouteImport.update({
   id: '/brand',
   path: '/brand',
@@ -305,6 +312,12 @@ const OgStatusDotpngRoute = OgStatusDotpngRouteImport.update({
   path: '/og/status.png',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownMcpServerCardDotjsonRoute =
+  DotwellKnownMcpServerCardDotjsonRouteImport.update({
+    id: '/.well-known/mcp/server-card.json',
+    path: '/.well-known/mcp/server-card.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AiVisibilityToolsAlternativesIndexRoute =
   AiVisibilityToolsAlternativesIndexRouteImport.update({
     id: '/ai-visibility-tools/alternatives/',
@@ -395,6 +408,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
+  '/auth.md': typeof AuthDotmdRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/demo': typeof DemoRoute
@@ -438,6 +452,7 @@ export interface FileRoutesByFullPath {
   '/features/': typeof FeaturesIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
   '/legal/': typeof LegalIndexRoute
+  '/.well-known/mcp/server-card.json': typeof DotwellKnownMcpServerCardDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -458,6 +473,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
+  '/auth.md': typeof AuthDotmdRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/demo': typeof DemoRoute
@@ -501,6 +517,7 @@ export interface FileRoutesByTo {
   '/features': typeof FeaturesIndexRoute
   '/glossary': typeof GlossaryIndexRoute
   '/legal': typeof LegalIndexRoute
+  '/.well-known/mcp/server-card.json': typeof DotwellKnownMcpServerCardDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -522,6 +539,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
+  '/auth.md': typeof AuthDotmdRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/demo': typeof DemoRoute
@@ -565,6 +583,7 @@ export interface FileRoutesById {
   '/features/': typeof FeaturesIndexRoute
   '/glossary/': typeof GlossaryIndexRoute
   '/legal/': typeof LegalIndexRoute
+  '/.well-known/mcp/server-card.json': typeof DotwellKnownMcpServerCardDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -587,6 +606,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/answer-engine-optimization'
+    | '/auth.md'
     | '/brand'
     | '/changelog'
     | '/demo'
@@ -630,6 +650,7 @@ export interface FileRouteTypes {
     | '/features/'
     | '/glossary/'
     | '/legal/'
+    | '/.well-known/mcp/server-card.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -650,6 +671,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/answer-engine-optimization'
+    | '/auth.md'
     | '/brand'
     | '/changelog'
     | '/demo'
@@ -693,6 +715,7 @@ export interface FileRouteTypes {
     | '/features'
     | '/glossary'
     | '/legal'
+    | '/.well-known/mcp/server-card.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -713,6 +736,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/answer-engine-optimization'
+    | '/auth.md'
     | '/brand'
     | '/changelog'
     | '/demo'
@@ -756,6 +780,7 @@ export interface FileRouteTypes {
     | '/features/'
     | '/glossary/'
     | '/legal/'
+    | '/.well-known/mcp/server-card.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -777,6 +802,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AnswerEngineOptimizationRoute: typeof AnswerEngineOptimizationRoute
+  AuthDotmdRoute: typeof AuthDotmdRoute
   BrandRoute: typeof BrandRoute
   ChangelogRoute: typeof ChangelogRoute
   DemoRoute: typeof DemoRoute
@@ -820,6 +846,7 @@ export interface RootRouteChildren {
   FeaturesIndexRoute: typeof FeaturesIndexRoute
   GlossaryIndexRoute: typeof GlossaryIndexRoute
   LegalIndexRoute: typeof LegalIndexRoute
+  DotwellKnownMcpServerCardDotjsonRoute: typeof DotwellKnownMcpServerCardDotjsonRoute
   AiVisibilityToolsAlternativesSlugRoute: typeof AiVisibilityToolsAlternativesSlugRoute
   AiVisibilityToolsCategorySlugRoute: typeof AiVisibilityToolsCategorySlugRoute
   AiVisibilityToolsCategoryOpenSourceRoute: typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -858,6 +885,13 @@ declare module '@tanstack/react-router' {
       path: '/answer-engine-optimization'
       fullPath: '/answer-engine-optimization'
       preLoaderRoute: typeof AnswerEngineOptimizationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth.md': {
+      id: '/auth.md'
+      path: '/auth.md'
+      fullPath: '/auth.md'
+      preLoaderRoute: typeof AuthDotmdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/brand': {
@@ -1161,6 +1195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OgStatusDotpngRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/mcp/server-card.json': {
+      id: '/.well-known/mcp/server-card.json'
+      path: '/.well-known/mcp/server-card.json'
+      fullPath: '/.well-known/mcp/server-card.json'
+      preLoaderRoute: typeof DotwellKnownMcpServerCardDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ai-visibility-tools/alternatives/': {
       id: '/ai-visibility-tools/alternatives/'
       path: '/ai-visibility-tools/alternatives'
@@ -1273,6 +1314,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AnswerEngineOptimizationRoute: AnswerEngineOptimizationRoute,
+  AuthDotmdRoute: AuthDotmdRoute,
   BrandRoute: BrandRoute,
   ChangelogRoute: ChangelogRoute,
   DemoRoute: DemoRoute,
@@ -1316,6 +1358,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeaturesIndexRoute: FeaturesIndexRoute,
   GlossaryIndexRoute: GlossaryIndexRoute,
   LegalIndexRoute: LegalIndexRoute,
+  DotwellKnownMcpServerCardDotjsonRoute: DotwellKnownMcpServerCardDotjsonRoute,
   AiVisibilityToolsAlternativesSlugRoute:
     AiVisibilityToolsAlternativesSlugRoute,
   AiVisibilityToolsCategorySlugRoute: AiVisibilityToolsCategorySlugRoute,

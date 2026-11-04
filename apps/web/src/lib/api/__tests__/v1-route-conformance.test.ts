@@ -100,8 +100,16 @@ describe("/api/v1 route conformance", () => {
 				const operation = (spec.paths as Record<string, Record<string, Record<string, unknown>>>)[route.path]?.[
 					method.toLowerCase()
 				];
+				// Operations that need no scope inherit the top-level requirement.
+				const requirements = (operation?.security ?? spec.security) as Record<string, string[]>[] | undefined;
+				// Exactly one requirement naming only the bearer key: an extra `{}`
+				// alternative or an empty list would advertise anonymous access.
+				expect(
+					requirements?.map((requirement) => Object.keys(requirement)),
+					`${method} ${route.path}`,
+				).toEqual([["BearerAuth"]]);
 				documented[method] = {
-					scopes: [...((operation?.["x-elmo-scopes"] as string[] | undefined) ?? [])].sort(),
+					scopes: [...(requirements?.[0]?.BearerAuth ?? [])].sort(),
 					adminOnly: operation?.["x-elmo-admin-only"] === true,
 				};
 				enforced[method] = { scopes: [...meta.scopes].sort(), adminOnly: meta.adminOnly };

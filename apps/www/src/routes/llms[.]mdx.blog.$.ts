@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getLLMText, markdownNotFound } from "@/lib/get-llm-text";
+import { getLLMText, MARKDOWN_CONTENT_TYPE, markdownNotFound } from "@/lib/get-llm-text";
 
 export const Route = createFileRoute("/llms.mdx/blog/$")({
 	server: {
@@ -11,7 +11,7 @@ export const Route = createFileRoute("/llms.mdx/blog/$")({
 
 				return new Response(await getLLMText(page), {
 					headers: {
-						"Content-Type": "text/markdown",
+						"Content-Type": MARKDOWN_CONTENT_TYPE,
 					},
 				});
 			},
