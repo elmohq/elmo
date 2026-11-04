@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import type { ReactNode } from "react";
 import { CodeBlock, InlineCode } from "@/components/code-block";
-import { CopyButton } from "@/components/copy-button";
+import { CopyField } from "@/components/copy-button";
 import { DemoModeAlert } from "@/components/demo-mode-alert";
 import { useAppOrigin } from "@/hooks/use-app-origin";
 import { useBranding } from "@/hooks/use-deployment-features";
@@ -169,13 +169,7 @@ function McpSettingsPage() {
 
 			<section className="space-y-3">
 				<h2 className="text-lg font-semibold">Endpoint</h2>
-				<div className="flex min-w-0 items-stretch gap-2">
-					<code className="min-w-0 truncate rounded-md border bg-muted/40 px-3 py-1.5 font-mono text-sm">
-						{endpoint}
-					</code>
-					{/* The icon button is square by default and stands taller than the chip beside it. */}
-					<CopyButton value={endpoint} className="h-auto w-9" />
-				</div>
+				<CopyField value={endpoint} label="Endpoint" className="max-w-xl" />
 			</section>
 
 			<section className="space-y-3">
