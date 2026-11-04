@@ -63,7 +63,6 @@ const tools: WebMcpTool[] = [
 	},
 ];
 
-/** Returns a cleanup that unregisters the tools. */
 export function registerWebMcpTools(): () => void {
 	const context = modelContext();
 	if (!context) return () => {};

@@ -1,4 +1,3 @@
-// WebMCP declarative form attributes (https://github.com/webmachinelearning/webmcp).
 import "react";
 
 declare module "react" {
