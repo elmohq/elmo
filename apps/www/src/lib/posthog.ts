@@ -32,6 +32,8 @@ function load(): Promise<void> {
 				capture_pageleave: true,
 				autocapture: false,
 				disable_session_recording: true,
+				// Our own links carry `ref` instead of UTM params; see packages/config/src/referrals.ts.
+				custom_campaign_params: ["ref"],
 				// Prevent PostHog from auto-loading optional feature scripts we don't use.
 				// Without these, /static/{surveys,dead-clicks-autocapture,web-vitals}.js
 				// were being fetched even though the server returns surveys:false etc.

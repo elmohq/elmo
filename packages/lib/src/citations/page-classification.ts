@@ -54,12 +54,21 @@ export function resolvePageClass(
 	brandDomains: Set<string>,
 	competitorDomains: Set<string>,
 ): ResolvedPageClass | null {
-	if (row.static_category === GOOGLE_STATIC_CATEGORY) return null;
-	const category = inDomainSet(row.domain, brandDomains)
+	const owner = inDomainSet(row.domain, brandDomains)
 		? "brand"
 		: inDomainSet(row.domain, competitorDomains)
 			? "competitor"
-			: (row.static_category as CitationCategory);
+			: null;
+	return resolveOwnedPageClass({ ...row, owner });
+}
+
+export function resolveOwnedPageClass(row: {
+	owner: "brand" | "competitor" | null;
+	static_category: string;
+	page_type: string;
+}): ResolvedPageClass | null {
+	if (row.static_category === GOOGLE_STATIC_CATEGORY) return null;
+	const category = row.owner ?? (row.static_category as CitationCategory);
 	const storedPageType = row.page_type as CitationPageType;
 	const pageType =
 		storedPageType === "other" && CONTENT_PUBLISHER_CATEGORIES.has(category) ? "article" : storedPageType;

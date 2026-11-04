@@ -36,7 +36,7 @@ function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 		<CardTitle className="text-sm">
 			{segments.map((segment) =>
 				segment.isMatch ? (
-					<mark key={segment.key} className="bg-yellow-200 dark:bg-yellow-800 rounded-sm">
+					<mark key={segment.key} className="bg-yellow-200 rounded-sm">
 						{segment.part}
 					</mark>
 				) : (

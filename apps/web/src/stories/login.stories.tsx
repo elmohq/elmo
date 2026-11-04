@@ -11,7 +11,7 @@ import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import type { ReactNode } from "react";
 import { expect, within } from "storybook/test";
 import { DemoLogin, EmailPasswordLogin, SSOLogin } from "@/routes/auth/login";
-import { resetMockAuthClient, setMockSsoError } from "./_mocks/auth-client";
+import { resetMockAuthClient, setMockEmailSignIn, setMockLastLoginMethod, setMockSsoError } from "./_mocks/auth-client";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
 
@@ -23,12 +23,6 @@ const elmoConfig: ClientConfig = {
 	defaultDelayHours: 24,
 	canRegister: true,
 	hasUsers: true,
-};
-
-const demoConfig: ClientConfig = {
-	...elmoConfig,
-	mode: "demo",
-	features: { readOnly: true, showOptimizeButton: false, canCreateBrands: false, promotesCloud: true },
 };
 
 /** The same tenant the sidebar, brand kit and export stories use. */
@@ -72,36 +66,79 @@ export default {
 } satisfies Meta;
 
 /** Cloud — Google, password recovery, and the pitch for signing up with us. */
-export const Cloud = () => <EmailPasswordLogin isCloud canRegister />;
+export const Cloud: StoryObj = {
+	render: () => <EmailPasswordLogin isCloud canRegister />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByText("Last Used")).not.toBeInTheDocument();
+		await expect(canvas.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+		await expect(canvas.getByRole("button", { name: "Sign In" })).toBeVisible();
+	},
+};
+
+export const CloudLastUsedGoogle: StoryObj = {
+	render: () => {
+		setMockLastLoginMethod("google");
+		return <EmailPasswordLogin isCloud canRegister />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByRole("button", { name: "Continue with Google Last Used" })).toBeVisible();
+		await expect(canvas.getByRole("button", { name: "Sign In" })).toBeVisible();
+		await expect(canvas.getAllByText("Last Used")).toHaveLength(1);
+	},
+};
+
+export const CloudLastUsedEmail: StoryObj = {
+	render: () => {
+		setMockLastLoginMethod("email");
+		return <EmailPasswordLogin isCloud canRegister />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByRole("button", { name: "Sign In Last Used" })).toBeVisible();
+		await expect(canvas.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+		await expect(canvas.getAllByText("Last Used")).toHaveLength(1);
+	},
+};
+
+export const CloudUnknownLoginMethod: StoryObj = {
+	render: () => {
+		setMockLastLoginMethod("unknown");
+		return <EmailPasswordLogin isCloud canRegister />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByText("Last Used")).not.toBeInTheDocument();
+	},
+};
 
 /**
  * Self-hosted, once the instance has its account. Before that the page
  * redirects to sign-up, so there is no unbootstrapped story to tell.
  */
-export const SelfHosted = () => <EmailPasswordLogin />;
-
-export const Demo: StoryObj = {
+export const SelfHosted: StoryObj = {
 	render: () => {
-		setMockRouteContext({ clientConfig: demoConfig });
-		return <DemoLogin />;
+		setMockLastLoginMethod("email");
+		return <EmailPasswordLogin />;
 	},
 	play: async ({ canvasElement }) => {
-		const link = await within(canvasElement).findByRole("link", { name: "Start with Elmo Cloud" });
-		await expect(link).toHaveAttribute("href", "https://app.elmohq.com/auth/register?ref=demo-signin");
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByText("Last Used")).not.toBeInTheDocument();
+		await expect(canvas.queryByRole("button", { name: /Google/ })).not.toBeInTheDocument();
 	},
 };
 
-export const ReadOnlySelfHost: StoryObj = {
-	render: () => {
-		setMockRouteContext({
-			clientConfig: { ...demoConfig, features: { ...demoConfig.features, promotesCloud: false } },
-		});
-		return <DemoLogin />;
-	},
-	play: async ({ canvasElement }) => {
-		await within(canvasElement).findByRole("button", { name: "Sign in" });
-		await expect(within(canvasElement).queryByRole("link", { name: "Start with Elmo Cloud" })).toBeNull();
-	},
+/** Demo signs in to the shared account on its own; this is what shows meanwhile. */
+export const Demo = () => {
+	setMockEmailSignIn("hang");
+	return <DemoLogin />;
+};
+
+/** Demo when the automatic sign-in fails: the error, and a way to retry. */
+export const DemoError = () => {
+	setMockEmailSignIn({ error: "Invalid email or password" });
+	return <DemoLogin />;
 };
 
 /**

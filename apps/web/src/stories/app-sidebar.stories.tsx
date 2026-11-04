@@ -225,6 +225,7 @@ export const Local: StoryObj = {
 		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
 		await expect(await screen.findByText("Workflows")).toBeInTheDocument();
 		await expect(await screen.findByText("Tools")).toBeInTheDocument();
+		await expect(screen.getByRole("menuitem", { name: "Change Password" })).toBeInTheDocument();
 	},
 };
 
@@ -369,6 +370,7 @@ export const Cloud: StoryObj = {
 		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
 		await expect(await screen.findByText("Workflows")).toBeInTheDocument();
 		await expect(screen.queryByText("Reports")).toBeNull();
+		await expect(screen.getByRole("menuitem", { name: "Change Password" })).toBeInTheDocument();
 	},
 };
 
@@ -411,6 +413,10 @@ export const WhitelabelHasNoBillingOrTeam: StoryObj = {
 		await expect(await canvas.findByText("Brands")).toBeInTheDocument();
 		await expect(canvas.queryByText("Team")).toBeNull();
 		await expect(canvas.queryByText("Billing")).toBeNull();
+
+		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
+		await screen.findByRole("menu");
+		await expect(screen.queryByRole("menuitem", { name: "Change Password" })).toBeNull();
 	},
 };
 
@@ -432,7 +438,7 @@ export const ChoosePlanGate: StoryObj = {
 		await expect(canvas.queryByRole("button", { name: "Account and organizations" })).toBeNull();
 
 		await userEvent.click(await canvas.findByRole("button", { name: "Account" }));
-		await expect(await screen.findByText("Log out")).toBeInTheDocument();
+		await expect(await screen.findByText("Log Out")).toBeInTheDocument();
 	},
 };
 

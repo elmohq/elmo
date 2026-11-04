@@ -1,5 +1,21 @@
 # e2e
 
+## 0.7.7
+
+### Patch Changes
+
+- Updated dependencies [0982452]
+  - @workspace/lib@0.7.7
+
+## 0.7.6
+
+### Patch Changes
+
+- Updated dependencies [dfb4d72]
+- Updated dependencies [925390b]
+- Updated dependencies [98fc42e]
+  - @workspace/lib@0.7.6
+
 ## 0.7.5
 
 ### Patch Changes

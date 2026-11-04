@@ -107,7 +107,7 @@ function StatusMessage({ suggestions }: { suggestions: Suggestions }) {
 	}
 	if (error) {
 		return (
-			<span role="alert" className="flex items-start gap-2 text-red-700 dark:text-red-300">
+			<span role="alert" className="flex items-start gap-2 text-red-700">
 				<AlertCircle className="mt-0.5 size-4 shrink-0" />
 				<span>
 					<WriteErrorMessage message={error} />

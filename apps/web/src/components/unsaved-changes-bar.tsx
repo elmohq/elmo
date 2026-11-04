@@ -57,7 +57,7 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
 									<span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
 								</span>
-								<span className="font-medium text-amber-700 dark:text-amber-400">Unsaved changes</span>
+								<span className="font-medium text-amber-700">Unsaved changes</span>
 								{summary && <span className="text-muted-foreground">{summary}</span>}
 							</div>
 

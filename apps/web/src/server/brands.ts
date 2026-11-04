@@ -5,6 +5,7 @@ import { targetFilterValue } from "@workspace/config/model-filter";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
 import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
+import { type BrandTrackingState, brandTrackingState } from "@workspace/lib/brand-state";
 import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
@@ -162,7 +163,7 @@ function getDefaultBrandDomains(): string[] {
 async function getBrandWithPromptsFromDb(
 	brandId: string,
 	entitlements?: Entitlements,
-): Promise<(BrandWithPrompts & { trackedTargets: TrackedTarget[] }) | undefined> {
+): Promise<(BrandWithPrompts & { trackedTargets: TrackedTarget[]; trackingState: BrandTrackingState }) | undefined> {
 	try {
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, brandId),
@@ -180,6 +181,7 @@ async function getBrandWithPromptsFromDb(
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
 			trackedTargets: computeTrackedTargets(brand, brandPrompts, resolved),
+			trackingState: brandTrackingState(brand, resolved),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);
