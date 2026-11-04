@@ -59,8 +59,6 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 
-		// Resolve the in-scope prompts server-side from the filter criteria so
-		// the client never ships the full prompt-id list (issue #68).
 		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
 			tags: data.tags,
 			search: data.search,
