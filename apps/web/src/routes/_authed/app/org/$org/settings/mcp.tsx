@@ -140,7 +140,7 @@ function clientDocs(id: string, endpoint: string): ClientDocs[] {
 
 function Snippet({ heading, snippet }: { heading: string; snippet: ClientSnippet }) {
 	return (
-		<div className="space-y-2">
+		<div className="space-y-1.5">
 			<h3 className="text-sm font-medium">{heading}</h3>
 			{snippet.note && <p className="text-sm text-muted-foreground">{snippet.note}</p>}
 			<CodeBlock code={snippet.code} />
@@ -183,7 +183,7 @@ function McpSettingsPage() {
 						))}
 					</TabsList>
 					{clients.map((client) => (
-						<TabsContent key={client.value} value={client.value} className="space-y-5 pt-2">
+						<TabsContent key={client.value} value={client.value} className="space-y-6 pt-4">
 							<Snippet heading="Sign in with OAuth" snippet={client.signIn} />
 							<Snippet heading="Sign in with API Key" snippet={client.apiKey} />
 						</TabsContent>
