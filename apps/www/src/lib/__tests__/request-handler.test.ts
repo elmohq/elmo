@@ -115,6 +115,28 @@ describe("markdown for pages without an MDX source", () => {
 		expect(seen).toHaveLength(1);
 	});
 
+	it.each([
+		["/pricing.md", "https://www.elmohq.com/pricing"],
+		["/index.md", "https://www.elmohq.com/"],
+		["/docs/getting-started.md", "https://www.elmohq.com/docs/getting-started"],
+		["/docs/getting-started.mdx", "https://www.elmohq.com/docs/getting-started"],
+	])("points search engines from %s to the HTML page", async (path, canonical) => {
+		const { handle } = fakeApp();
+		const response = await handle(get(path));
+		expect(response.headers.get("Link")).toContain(`<${canonical}>; rel="canonical"`);
+	});
+
+	it.each([
+		["/auth.md", undefined],
+		["/does-not-exist.md", undefined],
+		["/pricing", "text/markdown"],
+		["/pricing", CHROME_ACCEPT],
+	])("sends no canonical for %s (Accept %s), which is not a copy", async (path, accept) => {
+		const { handle } = fakeApp();
+		const response = await handle(get(path, accept));
+		expect(response.headers.get("Link") ?? "").not.toContain('rel="canonical"');
+	});
+
 	it("leaves markdown documents that are routes of their own alone", async () => {
 		const { handle } = fakeApp();
 		expect(await (await handle(get("/auth.md"))).text()).toBe("# auth.md");

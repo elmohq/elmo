@@ -5,6 +5,7 @@ import { CAL_EMBED_CSP } from "@/lib/cal-embed";
 import { MARKDOWN_CONTENT_TYPE, markdownNotFound } from "@/lib/get-llm-text";
 import { htmlToMarkdown } from "@/lib/html-to-markdown";
 import { llmsTxt } from "@/lib/llms-txt";
+import { canonicalUrl } from "@/lib/seo";
 
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
@@ -50,14 +51,17 @@ const DISCOVERY_LINKS = [
 
 const FILE_LIKE = /\.[^/]+$/;
 
-function addDiscoveryLinks(response: Response, path: string): void {
+function addDiscoveryLinks(response: Response, path: string, markdownCopyOf?: string): void {
 	const type = response.headers.get("Content-Type") ?? "";
 	if (!type.startsWith("text/html") && !type.startsWith("text/markdown")) return;
-	const alternate = response.ok && !FILE_LIKE.test(path) ? `${path.replace(/\/+$/, "") || "/index"}.md` : undefined;
-	response.headers.set(
-		"Link",
-		alternate ? `${DISCOVERY_LINKS}, <${alternate}>; rel="alternate"; type="text/markdown"` : DISCOVERY_LINKS,
-	);
+	const links = [DISCOVERY_LINKS];
+	if (response.ok && !FILE_LIKE.test(path)) {
+		links.push(`<${path.replace(/\/+$/, "") || "/index"}.md>; rel="alternate"; type="text/markdown"`);
+	}
+	// Search engines crawl the .md copies (docs pages link to them), so point
+	// them at the HTML page instead of indexing a duplicate.
+	if (response.ok && markdownCopyOf) links.push(`<${canonicalUrl(markdownCopyOf)}>; rel="canonical"`);
+	response.headers.set("Link", links.join(", "));
 }
 
 const MARKDOWN_SOURCES = [
@@ -89,8 +93,8 @@ function negotiableMarkdownRoute(path: string): string | undefined {
 }
 
 function pageBehindMarkdownSuffix(path: string): string | undefined {
-	if (!path.endsWith(".md")) return undefined;
-	const page = path.slice(0, -".md".length);
+	const page = path.match(/^(.*)\.mdx?$/)?.[1];
+	if (page === undefined) return undefined;
 	return page === "/index" ? "/" : page;
 }
 
@@ -182,8 +186,12 @@ export function createRequestHandler(upstream: Upstream, routedMarkdown: Readonl
 		if (twin) return upstream(at(request, twin));
 		if (wantsMarkdown) return renderAsMarkdown(upstream, request, path);
 
-		const page = isReadable && !routedMarkdown.has(path) ? pageBehindMarkdownSuffix(path) : undefined;
+		const page = isReadable ? markdownCopyOf(path) : undefined;
 		return page ? renderAsMarkdown(upstream, request, page) : upstream(request);
+	}
+
+	function markdownCopyOf(path: string): string | undefined {
+		return routedMarkdown.has(path) ? undefined : pageBehindMarkdownSuffix(path);
 	}
 
 	return async (request: Request): Promise<Response> => {
@@ -198,7 +206,7 @@ export function createRequestHandler(upstream: Upstream, routedMarkdown: Readonl
 
 		const response = await respond(request, path, isReadable, wantsMarkdown);
 		if (isPage) response.headers.set("Vary", "Accept");
-		addDiscoveryLinks(response, path);
+		addDiscoveryLinks(response, path, isReadable ? markdownCopyOf(path) : undefined);
 		return addSecurityHeaders(response);
 	};
 }
