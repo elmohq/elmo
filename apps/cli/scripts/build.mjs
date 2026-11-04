@@ -3,9 +3,8 @@ import { build } from "rolldown";
 
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
-// Runtime dependencies stay external — they're installed from npm alongside
-// the published package. Everything else that gets imported (notably the
-// unpublishable @workspace/* devDependencies) is bundled into dist/index.js.
+// Runtime dependencies install from npm with the package; the unpublishable
+// @workspace/* packages have to be bundled.
 await build({
 	input: "src/index.ts",
 	platform: "node",
