@@ -207,8 +207,9 @@ test.describe("Demo features", () => {
     const save = page.getByRole("button", { name: "Save", exact: true });
     await fillUntilSaveable(nameField, "Renamed In Demo", save);
     await save.click();
-    await expect(page.getByText("The demo is read-only")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("link", { name: "start your own workspace" })).toHaveAttribute(
+    const refusal = page.getByText("The demo is read-only").locator("..");
+    await expect(refusal).toBeVisible({ timeout: 30_000 });
+    await expect(refusal.getByRole("link", { name: "Start with Elmo Cloud" })).toHaveAttribute(
       "href",
       /app\.elmohq\.com\/auth\/register\?ref=demo-read-only/,
     );
