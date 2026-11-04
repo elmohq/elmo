@@ -4,9 +4,10 @@
 #   2. Migrations  — apply to an empty DB, seed an existing local install, then
 #                    re-apply to catch migrations that fail on existing data.
 #
-# Runs on every push/PR (no path filter): the job is cheap — one install, an
-# in-process boot smoke, and ~15s of migration checks — so a mode-boot or
-# migration regression is caught regardless of which files changed.
+# Runs on every push and on every PR that touches more than docs: the job is
+# cheap — one install, an in-process boot smoke, and ~15s of migration checks —
+# so a mode-boot or migration regression is caught regardless of which code
+# changed.
 
 name: Deployment Smoke Tests
 
@@ -15,6 +16,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "apps/www/**"
+      - "packages/docs/**"
+      - ".changeset/**"
+      - "**/*.md"
   workflow_dispatch:
 
 permissions:
