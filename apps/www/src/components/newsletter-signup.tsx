@@ -43,13 +43,7 @@ export function NewsletterSignup({
 	}
 
 	return (
-		<form
-			onSubmit={handleSubmit}
-			noValidate
-			className={className}
-			toolname="subscribe_to_product_updates"
-			tooldescription="Subscribe an email address to Elmo's product update emails."
-		>
+		<form onSubmit={handleSubmit} noValidate className={className}>
 			<label htmlFor={id} className={hideLabel ? "sr-only" : "text-sm font-medium text-zinc-950"}>
 				Get product updates by email
 			</label>
@@ -64,8 +58,6 @@ export function NewsletterSignup({
 					value={email}
 					onChange={(e) => setEmail(e.target.value)}
 					placeholder="you@company.com"
-					name="email"
-					toolparamdescription="The email address to subscribe."
 					aria-invalid={error ? true : undefined}
 					aria-describedby={error ? `${id}-error` : undefined}
 					className="h-9 min-w-0 flex-1 rounded-md bg-white px-3 text-sm text-zinc-950 ring-1 ring-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
