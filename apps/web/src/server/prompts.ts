@@ -13,7 +13,7 @@ import {
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
 import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
-import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -44,7 +44,7 @@ import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { parseTagFilter } from "@/server/prompt-resolution";
+import { effectiveTags, matchesTagFilter, parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 import { toResponse } from "@/server/responses";
 
@@ -107,9 +107,6 @@ function summarizePrompt(
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
 ) {
-	const userTags = prompt.tags || [];
-	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
-	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
 	const totalRuns = stats?.runs ?? 0;
 	// The API publishes these ratios unrounded; the dashboard renders
 	// percentages, and this is where it rounds.
@@ -130,9 +127,7 @@ function summarizePrompt(
 		hasVisibilityData: totalRuns > 0 && (brandMentionRate > 0 || competitorMentionRate > 0),
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
-		// Exactly one effective system tag, so branded and unbranded filters use
-		// the same status the UI shows.
-		tags: userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag],
+		tags: effectiveTags(prompt),
 	};
 }
 
@@ -204,8 +199,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
 		});
 
-		const filteredPrompts =
-			tagFilter.length > 0 ? promptSummaries.filter((p) => tagFilter.some((t) => p.tags.includes(t))) : promptSummaries;
+		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));
 		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
 		return {
