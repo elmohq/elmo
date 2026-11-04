@@ -1,5 +1,5 @@
 /**
- * Mode-compatibility boot smoke test (issue #341).
+ * Mode-compatibility boot smoke test.
  *
  * For each DEPLOYMENT_MODE — cloud included — proves the boot path resolves:
  *   1. env validation     — the canonical minimal env satisfies the registry
