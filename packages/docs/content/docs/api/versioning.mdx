@@ -22,10 +22,8 @@ in the first line of its description too. Its response shape may still change.
 
 ## How a Deprecation Is Signalled
 
-When a stable operation is deprecated, it is marked `deprecated: true` in the OpenAPI description and
-announced in the [changelog](/changelog). Its responses may also carry a `Deprecation` header
-([RFC 9745](https://www.rfc-editor.org/rfc/rfc9745)) and, once a removal date is set, a `Sunset` header
-([RFC 8594](https://www.rfc-editor.org/rfc/rfc8594)).
+A stable operation is marked `deprecated: true` in the OpenAPI description before it is removed, and the
+deprecation is announced in the [changelog](/changelog).
 
 ## Self-Hosted Instances
 
