@@ -1,25 +1,12 @@
-/**
- * Access-control invariants every deployment mode must hold.
- *
- * These are the guarantees that don't vary with DEPLOYMENT_MODE: an anonymous
- * visitor can't reach the dashboard, the public API needs a key, org
- * membership scopes what a signed-in user can see, and organizations can't be
- * created over HTTP in any mode. Running them under all three modes is the
- * point — a mode-specific auth or middleware change that quietly opens one of
- * these up fails here.
- */
+/** Shared by every mode, so a mode-specific auth or middleware change that opens one of these fails here. */
 import { expect, failedResource, test } from "../../test";
 import { NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID, brandUrl, organizationUrl } from "../../fixtures";
 
 test.describe("Unauthenticated access", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  // Asserted on the response rather than on where a browser settles: a
-  // whitelabel login page starts SSO the moment it hydrates, so the browser
-  // leaves for the identity provider — a placeholder domain that never resolves
-  // — and whether it is still on /auth/login when the assertion runs is a race.
-  // The redirect is what the guarantee rests on anyway: no anonymous request is
-  // served the dashboard.
+  // Asserted on the response: whitelabel's login page starts SSO as it
+  // hydrates, so where a browser settles is a race.
   test("the dashboard redirects to login", async ({ request }) => {
     const response = await request.get(brandUrl(), { maxRedirects: 0, failOnStatusCode: false });
     expect(response.status()).toBe(307);

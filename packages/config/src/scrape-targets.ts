@@ -1,7 +1,5 @@
 /**
- * The single module that parses and formats the SCRAPE_TARGETS env var.
- *
- * Format: model:provider[:version][:online]
+ * SCRAPE_TARGETS format: model:provider[:version][:online]
  * - model: AI model to track (chatgpt, google-ai-mode, copilot, etc.)
  * - provider: How to reach it (olostep, brightdata, direct, openrouter, dataforseo)
  * - version: Specific version slug, required for direct/openrouter (may contain colons for OpenRouter variants)
@@ -17,13 +15,7 @@ export interface ModelConfig {
 	webSearch: boolean;
 }
 
-/**
- * Parse the SCRAPE_TARGETS env var into structured ModelConfig objects.
- *
- * Parsing: split on ":". First = model, second = provider. If last segment is "online",
- * pop it (websearch = true). Remaining middle segments rejoined with ":" = version slug.
- * This naturally handles OpenRouter variant suffixes like ":free".
- */
+/** Middle segments rejoin with ":", so OpenRouter variant suffixes like ":free" survive. */
 export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 	if (!envValue || !envValue.trim()) {
 		throw new Error(
@@ -47,10 +39,6 @@ export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 	});
 }
 
-/**
- * Inverse of parseScrapeTargets for a single entry: build the
- * model:provider[:version][:online] string from a ModelConfig.
- */
 export function formatScrapeTarget(config: ModelConfig): string {
 	const parts = [config.model, config.provider];
 	if (config.version) parts.push(config.version);
@@ -58,11 +46,7 @@ export function formatScrapeTarget(config: ModelConfig): string {
 	return parts.join(":");
 }
 
-/**
- * The provider:model targets shown on the public status page and exercised by
- * the scheduled test-providers workflow. Both the page and the workflow read
- * this one list so the "what we display" and "what we test" sets can't drift.
- */
+/** One list for the public status page and the scheduled provider tests, so the two can't drift. */
 export const STATUS_TARGETS = [
 	"chatgpt:searchapi",
 	"chatgpt:searchapi:online",
@@ -127,12 +111,7 @@ export const STATUS_TARGETS = [
 	"mistral:mistral-api:mistral-medium-latest:online",
 ];
 
-/**
- * Which providers can serve each trackable model, derived from STATUS_TARGETS so
- * the answer is limited to combinations the scheduled provider workflow actually
- * exercises. Used to tell a self-hosted operator what they would need in order
- * to track a platform they have not configured yet.
- */
+/** Derived from STATUS_TARGETS so it only offers combinations the scheduled provider tests exercise. */
 export function providersByModel(): Map<string, string[]> {
 	const byModel = new Map<string, Set<string>>();
 	for (const target of parseScrapeTargets(STATUS_TARGETS.join(","))) {

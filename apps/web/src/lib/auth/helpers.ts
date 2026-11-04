@@ -1,6 +1,3 @@
-/**
- * Server-side auth helpers backed by better-auth.
- */
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
@@ -26,8 +23,6 @@ export function isAdmin(session: SessionLike): boolean {
 }
 
 export function hasReportAccess(session: SessionLike): boolean {
-	// Report generation is disabled entirely in deployments that don't support
-	// it (cloud), so the per-user flag is ignored there.
 	if (!getDeployment().features.reportGeneration) return false;
 	return session.user.hasReportGeneratorAccess === true;
 }
@@ -57,11 +52,7 @@ export async function requireOrgAccess(userId: string, orgId: string): Promise<v
 	}
 }
 
-/**
- * Whether the user may access a brand, resolved through the brand's owning org
- * (`brands.organizationId`) — the umbrella-org access rule. A single joined
- * query: brand → its org → a membership row for this user.
- */
+/** Access to a brand is membership of the organization that owns it. */
 async function checkBrandAccess(userId: string, brandId: string): Promise<boolean> {
 	const [row] = await db
 		.select({ id: member.id })
@@ -84,14 +75,7 @@ export async function requireBrandSession(brandId: string) {
 	return session;
 }
 
-/**
- * The brand's owning org plus the caller's membership in it — for callers that
- * need the org itself, not just an access verdict. Resolves both in the one
- * query that `requireBrandAccess` would have spent on the check alone.
- *
- * A missing brand and a brand in someone else's org are deliberately the same
- * error: the caller has no business distinguishing them.
- */
+/** A missing brand and one in someone else's org are deliberately the same error. */
 export async function requireBrandOrganization(userId: string, brandId: string): Promise<UserOrganization> {
 	const [row] = await db
 		.select({ id: organization.id, slug: organization.slug, name: organization.name, role: member.role })

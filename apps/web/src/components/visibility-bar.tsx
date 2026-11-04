@@ -90,7 +90,6 @@ export function VisibilityBar({
 	// A week or less is too few points for the sparkline to read as a trend.
 	const showChart = getDaysFromLookback(lookback) > 7;
 
-	// Prepare chart data
 	const chartData = visibilityTimeSeries.map((point) => ({
 		date: point.date,
 		value: point.visibility ?? 0,

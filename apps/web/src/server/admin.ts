@@ -135,7 +135,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 		await Promise.all([
 			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
-			// Cumulative brand count over time (last 30 days)
 			db
 				.select({
 					date: sql<string>`date_series::date`,
@@ -152,7 +151,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 				.groupBy(sql`date_series`)
 				.orderBy(sql`date_series`),
 
-			// Cumulative prompts count over time (enabled vs disabled)
 			db
 				.select({
 					date: sql<string>`date_series::date`,
@@ -250,11 +248,7 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 		return result[0];
 	});
 
-/**
- * Provider-agnostic brand analysis. Returns brand info, competitors, and
- * suggested prompts in a single LLM round-trip — same pipeline that the
- * onboarding wizard and `POST /api/v1/tools/analyze` use.
- */
+/** The same pipeline as onboarding and `POST /api/v1/tools/analyze`. */
 export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -690,8 +684,6 @@ function promptWorkflowStatus(
 			brandId: brand.id,
 			brandName: brand.name,
 			enabled: prompt.enabled,
-			// The chain's own cadence: its fastest target, which is what the
-			// scheduler reschedules on. Zero when the plan parks the prompt.
 			runFrequencyMs: intervalMsOf(targets),
 			lastRunsByTarget,
 			schedulerInfo: scheduleInfo
@@ -720,9 +712,6 @@ function brandWorkflowSummary(
 		enabled: brand.enabled,
 		totalPrompts: brandPrompts.length,
 		enabledPrompts: enabled.length,
-		// Prompts of one brand can run different targets (premium is per prompt),
-		// so the table's columns are the union rather than whatever the first row
-		// happens to have.
 		targetColumns: targetColumnsFor(brandPrompts.map((p) => context.runPlans.get(p.id))),
 		runFrequencyMs: fastestCadenceMs(statuses.map((status) => status.row.runFrequencyMs)),
 		overduePrompts: enabled.filter((status) => status.overdue).length,
@@ -786,10 +775,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		getQueueStats(),
 	]);
 
-	// The dashboard reports against what each prompt is actually supposed to run,
-	// so it resolves the same plans the worker does. Reading every configured
-	// SCRAPE_TARGETS model at the brand cadence instead would mark every platform
-	// a plan doesn't sell as permanently overdue.
+	// The worker's own plans, or every platform a plan doesn't sell would read as overdue.
 	const entitlementsByOrg = await getOrgEntitlementsMap([...new Set(allBrands.map((b) => b.organizationId))]);
 	const runPlans = resolveRunPlansForBrands({
 		brands: allBrands,

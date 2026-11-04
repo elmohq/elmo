@@ -731,7 +731,6 @@ function WorkflowsPage() {
 
 	return (
 		<div className="space-y-8">
-			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="space-y-2">
 					<h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
@@ -745,7 +744,6 @@ function WorkflowsPage() {
 				</div>
 			</div>
 
-			{/* Summary Cards */}
 			<div className="grid gap-4 md:grid-cols-4">
 				<Card>
 					<CardHeader className="pb-2">
@@ -826,10 +824,8 @@ function WorkflowsPage() {
 				</Card>
 			</div>
 
-			{/* Queue Stats */}
 			<QueueStatsCard stats={data.queue} title="Prompt Queue" />
 
-			{/* Brands Table */}
 			<Card>
 				<CardHeader>
 					<CardTitle>Brand Workflow Status</CardTitle>

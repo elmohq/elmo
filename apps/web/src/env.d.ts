@@ -4,8 +4,6 @@
 // (enforced by env-registry.test.ts).
 
 interface ImportMetaEnv {
-	// Deployment mode
-
 	// Branding (whitelabel only - local/demo use server-side defaults)
 	readonly VITE_APP_NAME?: string;
 	readonly VITE_APP_ICON?: string;
@@ -20,15 +18,10 @@ interface ImportMetaEnv {
 	readonly VITE_AUTH0_DOMAIN?: string;
 	readonly VITE_AUTH0_CLIENT_ID?: string;
 
-	// Analytics
 	readonly VITE_PLAUSIBLE_DOMAIN?: string;
 	readonly VITE_CLARITY_PROJECT_ID?: string;
 	readonly VITE_POSTHOG_KEY?: string;
-
-	// Cloudflare Turnstile
 	readonly VITE_TURNSTILE_SITE_KEY?: string;
-
-	// Sentry
 	readonly VITE_SENTRY_DSN?: string;
 }
 
@@ -36,10 +29,8 @@ interface ImportMeta {
 	readonly env: ImportMetaEnv;
 }
 
-// Server-side environment variables (accessed via process.env in server functions)
-// and Vite define globals
 declare global {
-	// App version injected by Vite define
+	// Injected by Vite `define`.
 	const __APP_VERSION__: string;
 	namespace NodeJS {
 		interface ProcessEnv {

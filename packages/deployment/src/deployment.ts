@@ -1,10 +1,7 @@
 /**
- * The singleton is cached at module scope. On Vercel serverless this persists
- * across warm invocations, which is safe because the Deployment object contains
- * no request-scoped state.
- *
- * This module stays Node-safe: branding is assembled from env alone, so server
- * code builds a Deployment without pulling in the React OptimizeButton.
+ * The cached singleton survives warm serverless invocations, which is safe
+ * because a Deployment holds no request state. Branding comes from env alone,
+ * so server code never pulls in the React OptimizeButton.
  */
 
 import { DEFAULT_APP_ICON, DEFAULT_APP_NAME, DEFAULT_APP_URL, DEFAULT_CHART_COLORS } from "@workspace/config/constants";
@@ -102,8 +99,7 @@ function whitelabelBranding(env: Env): BrandingConfig {
 function brandingFor(mode: DeploymentMode, env: Env): BrandingConfig {
 	if (mode === "whitelabel") return whitelabelBranding(env);
 
-	// The localhost URL fallback keeps this total: a missing APP_URL surfaces on
-	// the env-validation page rather than throwing here.
+	// Defaulted, so a missing APP_URL shows on the env-validation page rather than throwing here.
 	if (mode === "cloud") {
 		return {
 			name: DEFAULT_APP_NAME,
@@ -164,10 +160,6 @@ export function getDeploymentFeatures(options?: GetDeploymentOptions): FeaturesC
 	return featuresFor(getDeploymentModeFromEnv(env), env);
 }
 
-/**
- * Reset the cached deployment instance.
- * Only used in tests to switch between deployment modes.
- */
 export function resetDeploymentCache(): void {
 	cached = null;
 }

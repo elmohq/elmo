@@ -1,10 +1,4 @@
-/**
- * Client-safe exports for deployment integration.
- *
- * IMPORTANT: This module must NEVER import server-only code (auth providers,
- * auth0, @tanstack/react-start/server, etc.). It is imported by client
- * components and route files that are bundled for the browser.
- */
+/** Bundled for the browser: never import server-only code here (auth providers, auth0, react-start/server). */
 import type { ClientConfig, OptimizeButtonProps } from "@workspace/config/types";
 import { OptimizeButton, OptimizeButtonStub } from "./optimize-button";
 
@@ -24,9 +18,6 @@ const OPTIMIZE_BUTTON_BY_MODE: Record<ClientConfig["mode"], OptimizeButtonCompon
 	cloud: OptimizeButtonStub,
 };
 
-/**
- * Select the correct OptimizeButton component for the current deployment mode.
- */
 export function getOptimizeButtonForMode(mode: ClientConfig["mode"]): OptimizeButtonComponent {
 	return OPTIMIZE_BUTTON_BY_MODE[mode];
 }

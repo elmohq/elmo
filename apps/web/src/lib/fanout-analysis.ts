@@ -1,20 +1,9 @@
 /**
- * Pure aggregation for the Query Fanout page. No DB or React imports, so it can
- * be unit-tested in isolation and safely imported by both the server fn and the
- * page (for its result types).
+ * Kept free of DB imports so the page can import its result types.
  *
- * "Query fanout" = the sub-queries an AI engine issues to the web while
- * answering a tracked prompt (`prompt_runs.web_queries`) — the single source
- * for every figure on the page, uniformly across providers. Two kinds of
- * entries are excluded as a read-time display rule (in the SQL that reads
- * web_queries, and defensively here): a query identical to the prompt (engines
- * do sometimes search the prompt verbatim — real data, kept in the DB, but a
- * repeat says nothing about how the prompt was *rewritten*, which is what this
- * page shows), and the `"unavailable"` sentinel providers write when a search
- * happened but the real query strings aren't exposed (OpenRouter and
- * DataForSEO always; BrightData/Olostep on extraction failure). So every row
- * that reaches the aggregator is a genuine expansion, and engines that never
- * expose their searches simply contribute none.
+ * Queries identical to the prompt, and the "unavailable" sentinel written when a
+ * provider doesn't expose its searches, are dropped at read time (in SQL, and
+ * again here): neither says how an engine rewrote the prompt. Both stay stored.
  */
 import { WEB_QUERIES_UNAVAILABLE } from "@workspace/lib/constants";
 
@@ -242,7 +231,6 @@ const STOPWORDS = new Set([
 	"m",
 ]);
 
-/** True for stop words; the Word changes view hides these by default. */
 function isStopword(word: string): boolean {
 	return STOPWORDS.has(word.toLowerCase());
 }
@@ -250,12 +238,7 @@ function isStopword(word: string): boolean {
 /** Normalize a display word for keyword matching: lowercase, alphanumerics only. */
 export const normTok = (w: string) => w.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-/**
- * Non-stop-word tokens from the prompt — the page bolds these in each fan-out
- * query. A possessive contributes its base form too ("Acme's" yields "acmes"
- * AND "acme"), since engines search for the bare name, which would otherwise
- * not match the prompt's possessive token.
- */
+/** A possessive yields its base form too ("Acme's" → "acme"), since engines search for the bare name. */
 export function promptKeywords(promptValue: string): Set<string> {
 	const out = new Set<string>();
 	for (const raw of promptValue.split(/\s+/)) {
@@ -270,14 +253,7 @@ export function promptKeywords(promptValue: string): Set<string> {
 const norm = (s: string) => s.trim().toLowerCase();
 const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 100) : 0);
 
-/**
- * Sentinel some providers store in `web_queries` when a web search happened but
- * the actual query strings aren't exposed (OpenRouter always; BrightData/Olostep
- * on extraction failure). It's not a real fan-out query — the SQL filters it, and
- * this guards the pure aggregator against any that slip through. Compare against
- * `norm`-ed (trimmed + lowercased) queries. Aliases the shared constant the
- * provider implementations write, so the two sides can't drift.
- */
+/** Compared against `norm`-ed queries. */
 export const UNAVAILABLE_SENTINEL = WEB_QUERIES_UNAVAILABLE;
 
 /** Lowercase word tokens; keeps alphanumerics (so "2026", "vs", "g2" survive), drops 1-char noise. */
@@ -317,15 +293,15 @@ interface FanoutTallies {
 	totalBrand: number;
 }
 
-function tallyWordChanges(tallies: FanoutTallies, query: string, promptTokens: Set<string>, count: number): void {
-	// Term cloud — unigram frequency across fan-out queries, weighted by count.
+function tallyTerms(tallies: FanoutTallies, query: string, count: number): void {
 	for (const token of tokenize(query)) {
 		if (STOPWORDS.has(token)) continue;
 		tallies.terms.set(token, (tallies.terms.get(token) ?? 0) + count);
 	}
+}
 
-	// Word transformations — how the prompt's wording changes in this query.
-	// Each fan-out query votes once per distinct token (weighted by count).
+/** Each query votes once per distinct token, weighted by how often it ran. */
+function tallyWordChanges(tallies: FanoutTallies, query: string, promptTokens: Set<string>, count: number): void {
 	const queryTokens = new Set(tokenize(query));
 	for (const token of queryTokens) {
 		if (!promptTokens.has(token)) tallies.added.set(token, (tallies.added.get(token) ?? 0) + count);
@@ -380,6 +356,7 @@ function tallyBreakdown(breakdown: FanoutBreakdownRow[], promptValueMap: Map<str
 			promptTokens = new Set(tokenize(promptValue));
 			promptTokensByPrompt.set(row.prompt_id, promptTokens);
 		}
+		tallyTerms(tallies, query, row.count);
 		tallyWordChanges(tallies, query, promptTokens, row.count);
 	}
 
@@ -434,8 +411,7 @@ export function computeFanoutAnalysis(
 		}))
 		.sort((a, b) => b.totalQueries - a.totalQueries || b.runs - a.runs || a.model.localeCompare(b.model));
 
-	// Every prompt that produced fan-out (no cap) — the Prompts tab searches and
-	// sorts the full set client-side; `variations` per prompt is still bounded.
+	// Uncapped: the Prompts tab searches and sorts the full set client-side.
 	const byPrompt: PromptFanoutStat[] = [...perPrompt.entries()]
 		.map(([promptId, pp]) => {
 			const fanoutRuns = promptFanoutRuns?.get(promptId) ?? 0;
@@ -451,9 +427,6 @@ export function computeFanoutAnalysis(
 		})
 		.sort((a, b) => b.totalQueries - a.totalQueries || a.promptValue.localeCompare(b.promptValue));
 
-	// Breadth framing — the searches that matter beyond a single prompt, with
-	// the prompts behind each one so the list can drill down like the
-	// Prompt Fan-Out accordion (just inverted: query → prompts).
 	const breadthStats: TopQueryStat[] = [...overall.entries()].map(([query, t]) => {
 		const per = promptsPerQuery.get(query) ?? new Map<string, number>();
 		const promptRefs: QueryPromptRef[] = [...per.entries()]

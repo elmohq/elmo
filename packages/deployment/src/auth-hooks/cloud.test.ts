@@ -70,11 +70,7 @@ describe("getCloudAuthOptions", () => {
 	});
 });
 
-/**
- * The invite-only gate, exercised through the hook that actually runs it.
- * Entries are exact addresses, "@domain" suffixes, or "*"; an unset allowlist
- * fails closed so a misconfigured cloud deployment cannot be signed up to.
- */
+/** The invite-only gate, exercised through the hook that actually runs it. */
 describe("signup allowlist", () => {
 	async function signUp(email: string, allowlist: string) {
 		vi.stubEnv("CLOUD_SIGNUP_ALLOWLIST", allowlist);

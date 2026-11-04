@@ -1,15 +1,6 @@
 /**
- * What makes a demo deployment different.
- *
- * Demo is local mode with READ_ONLY forced on: a public, shared instance that
- * anyone can look around but nobody can change. It signs every visitor in to
- * one shared account, wears a "Demo" pill, and refuses every write.
- *
- * The read-only policy itself is unit-tested as a pure function
- * (apps/web/src/lib/auth/__tests__/policies.test.ts). What these specs add is
- * that the policy is actually wired into the running server, and that a refused
- * write leaves the database untouched — a 403 that still wrote would pass the
- * unit tests.
+ * The read-only policy is unit-tested; these check it is wired into the running
+ * server and that a refused write leaves the database untouched.
  */
 import type { Page } from "@playwright/test";
 import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
@@ -96,8 +87,6 @@ test.describe("Demo refuses writes", () => {
     await expect(nameInput).toBeVisible({ timeout: 30_000 });
     await nameInput.fill("Renamed From The Settings Page");
 
-    // The save posts to a server function; catching that response is what tells
-    // us the write attempt happened and how the server answered it.
     const writeAttempt = page.waitForResponse(
       (response) => response.request().method() === "POST" && !response.url().includes("/api/plausible"),
     );
@@ -125,8 +114,6 @@ test.describe("Demo auth is sign-in only", () => {
   });
 
   test("changing the shared account's password is refused", async ({ request }) => {
-    // Sign-in and sign-out are the only better-auth writes a demo visitor gets;
-    // everything else that could mutate the shared account is blocked.
     const response = await request.post("/api/auth/change-password", {
       data: { currentPassword: TEST_USER.password, newPassword: "hijacked-password-123" },
       failOnStatusCode: false,

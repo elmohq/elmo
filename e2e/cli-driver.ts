@@ -1,16 +1,9 @@
 /**
- * Drives `elmo init --dev` through a real PTY by wrapping the CLI in
- * script(1). script(1) is preinstalled on Ubuntu (util-linux) and macOS
- * (BSD), so we avoid native addons / node-gyp / prebuild-binary forks.
+ * Answers the `elmo init --dev` wizard through a real PTY. script(1) provides
+ * the PTY because it ships with Ubuntu and macOS, so no native addon is needed.
  *
- * The driver pattern-matches on prompt substrings and writes keystrokes
- * to the child's stdin, so we exercise the same interactive wizard a
- * human user would see.
- *
- * The CLI writes config to `~/.elmo`. To redirect that to a test-local
- * directory without polluting the runner's real home, we set HOME on the
- * child process so `os.homedir()` resolves to the parent of <config-dir>.
- * The supplied <config-dir> must therefore end in `.elmo`.
+ * The CLI writes to `~/.elmo`, so HOME is pointed at the parent of
+ * <config-dir>, which must therefore end in `.elmo`.
  *
  * Usage: tsx cli-driver.ts <config-dir> <repo-root>
  */
@@ -43,7 +36,6 @@ const ENTER = "\r";
 const ARROW_LEFT = "\x1b[D";
 const ARROW_DOWN = "\x1b[B";
 
-// Strip ANSI CSI + OSC sequences so we can substring-match clack's rendered output.
 function stripAnsi(s: string): string {
 	return s
 		.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
@@ -54,8 +46,7 @@ function shEscape(s: string): string {
 	return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
-// Wrap the CLI in script(1). BSD (macOS) and util-linux (Ubuntu) script
-// take different args for running a command, so split on platform.
+// BSD (macOS) and util-linux script(1) take different arguments.
 function spawnViaScript() {
 	const env = {
 		...process.env,
@@ -67,17 +58,14 @@ function spawnViaScript() {
 	const cliArgs = [nodeBin, cliPath, "init", "--dev"];
 
 	if (process.platform === "darwin") {
-		// BSD script: `script [-q] file command...` — propagates child exit code.
 		return spawn("script", ["-q", "/dev/null", ...cliArgs], {
 			cwd: repoRoot,
 			env,
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 	}
-	// util-linux script: `script -q -e -f -c "cmd" file`
-	//   -e returns the child's exit status, -f flushes output on each write.
-	// When script's own stdout is a pipe the PTY gets sized 0x0, which makes
-	// clack wrap every char — `stty rows/cols` inside the PTY fixes that.
+	// -e returns the child's exit status, -f flushes each write. With stdout
+	// piped the PTY is sized 0x0 and clack wraps every character, hence stty.
 	const cmd = `stty rows 40 cols 120; exec ${cliArgs.map(shEscape).join(" ")}`;
 	return spawn(
 		"script",

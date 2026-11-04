@@ -43,13 +43,9 @@ import type { TrackedTarget } from "@/lib/model-filter";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
 /**
- * What this brand's results can be broken down by: the standard platforms it
- * picks, plus the grounded variants its prompts are tracked on.
- *
- * A model can appear twice — scraped and grounded are different answers to
- * different questions — so these are targets rather than model ids. Anything
- * asking "which models is this brand tracking?" reads from here; deployments
- * configure arbitrary sets via `SCRAPE_TARGETS`, so nothing hardcodes a list.
+ * Targets rather than model ids: a model can appear twice, since scraped and
+ * grounded are different answers. Anything asking "which models is this brand
+ * tracking?" reads from here.
  */
 function computeTrackedTargets(
 	brand: Brand,
@@ -76,40 +72,22 @@ function computeTrackedTargets(
 				value: targetFilterValue(target.config.model, premium),
 				model: target.config.model,
 				premium,
-				// Scraped surface, bare API call, or grounded one — the same split the
-				// LLM settings page groups by, resolved from the target rather than
-				// guessed from the model id (a model can be reached either way).
-				tier: premium
-					? ("premium" as const)
-					: resolveProviderAccess(target.config) === "scraped"
-						? ("scraped" as const)
-						: ("api" as const),
+				tier: premium ? ("premium" as const) : resolveProviderAccess(target.config),
 				intervalHours: target.intervalHours,
 				replication: target.replication,
 				...(target.config.webSearch ? { fanout: getFanoutSupport(target.config) } : {}),
 			};
 		});
 	} catch {
-		// A misconfigured SCRAPE_TARGETS would already be surfacing via
-		// `validateScrapeTargets` at boot; here we'd rather degrade to an empty
-		// list than crash the brand fetch.
+		// A bad SCRAPE_TARGETS already fails boot validation; don't also crash the brand fetch.
 		return [];
 	}
 }
 
 /**
- * Cloud brands start with their plan's default platform picks written
- * explicitly, so the run policy, the model filter, and the LLMs settings page
- * all agree from the first run. Outside cloud (or when nothing is pickable
- * yet, e.g. an unsubscribed org via the admin API) brands keep the null
- * "follow deployment configuration" semantics.
- *
- * Note: the defaults written here are a snapshot at creation time. The
- * run policy's `resolvePromptRunPlan` also applies `defaultPlatformPicks` as a
- * fallback when `brand.enabledModels` is null — so a brand that had picks
- * written explicitly follows the creation-time snapshot, while one created
- * via the API without picks always resolves fresh defaults. Both converge for
- * the same plan; the dual path is intentional defense-in-depth.
+ * Cloud brands start with their plan's default picks written explicitly; null
+ * means "follow the deployment configuration". The run policy applies the same
+ * defaults when it finds null, so both paths agree for a given plan.
  */
 async function initialEnabledModels(organizationId: string): Promise<string[] | null> {
 	if (getDeployment().mode !== "cloud") return null;
@@ -119,12 +97,7 @@ async function initialEnabledModels(organizationId: string): Promise<string[] | 
 	return picks.length > 0 ? picks : null;
 }
 
-/**
- * Picks supplied at creation time go through the same checks as a
- * post-creation edit: the same deployment gate, the loud configured-target
- * validation, then plan enforcement. Without picks, creation falls back to the
- * plan defaults.
- */
+/** Picks supplied at creation get the same checks as a later edit. */
 async function resolveCreateEnabledModels(
 	organizationId: string,
 	requested: string[] | undefined,
@@ -148,11 +121,7 @@ function getDefaultBrandDomains(): string[] {
 		.filter((d): d is string => d !== null);
 }
 
-/**
- * Entitlements come in from the caller rather than being loaded here: the
- * brand-list path fans this out per brand, and resolving them inside would put
- * two subscription queries on every brand a whitelabel org owns.
- */
+/** Takes entitlements from the caller so the brand list doesn't query them once per brand. */
 async function getBrandWithPromptsFromDb(
 	brandId: string,
 	entitlements?: Entitlements,
@@ -257,13 +226,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		return { success: true, brand };
 	});
 
-/**
- * Attach a new brand to the current user's existing organization, with a
- * fresh id decoupled from the org id. Used by the multi-brand "create new
- * brand" flow on the brand switcher. Gated by the canCreateBrands deployment
- * feature so whitelabel (brands come from the admin API) and demo (read-only)
- * reject it.
- */
+/** A brand in an existing organization, with an id of its own rather than the org's. */
 export const createBrandInOrgFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -384,9 +347,6 @@ export const getCompetitors = createServerFn({ method: "GET" })
 		});
 	});
 
-/**
- * Update competitors for a brand (bulk replace)
- */
 export const updateCompetitors = createServerFn({ method: "POST" })
 	.validator(
 		z.object({

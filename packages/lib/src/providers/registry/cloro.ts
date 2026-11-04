@@ -5,11 +5,8 @@ import type { ModelConfig, Provider, ScrapeResult } from "../types";
 import { pollTask, type TaskState } from "./poll-task";
 import { failureDetails, isTransientStatus, queriesFromKeys, responseError } from "./scrape-shared";
 
-// Cloro monitors live AI answer engines. Each Elmo model maps to a Cloro task
-// type: the chatbots (ChatGPT, Perplexity, Copilot, Gemini) and Google AI Mode
-// send a `prompt`, while Google AI Overview rides on the Google Search task and
-// sends a `query` with the AI Overview block requested. ChatGPT is the only
-// surface that hides its fan-out queries behind an `include` flag.
+// Google AI Overview rides on the Google Search task, so it sends a `query`
+// rather than a `prompt`.
 type CloroTaskConfig = {
 	taskType: string;
 	field: "prompt" | "query";
@@ -18,10 +15,8 @@ type CloroTaskConfig = {
 };
 
 const CLORO_TASKS: Record<string, CloroTaskConfig> = {
-	// ChatGPT's default mobile-web interface doesn't send its search queries to
-	// the page, so `searchQueries` comes back empty without `legacy`, which asks
-	// for the desktop interface that still streams them. Cloro documents it as
-	// best-effort: OpenAI may stop serving that interface without notice.
+	// Only ChatGPT's `legacy` desktop interface streams its search queries. Cloro
+	// calls it best-effort: OpenAI may stop serving it without notice.
 	chatgpt: {
 		taskType: "CHATGPT",
 		field: "prompt",
@@ -35,32 +30,17 @@ const CLORO_TASKS: Record<string, CloroTaskConfig> = {
 	"google-ai-overview": { taskType: "GOOGLE", field: "query", include: { aioverview: { markdown: true } } },
 };
 
-// Answers can take minutes to generate, so submit through Cloro's async task
-// queue and poll until the task settles rather than holding a connection open.
-// The queue absorbs whatever is submitted past the plan's concurrent-job limit
-// instead of returning the 429s the synchronous endpoints do, so a prompt cycle
-// can put far more work in it than the plan runs at once and every bit of that
-// is eventually run and billed.
+// Answers can take minutes, so tasks go through the async queue. It absorbs work
+// past the plan's concurrency rather than 429ing, and everything queued is billed.
 const CLORO_TASK_URL = "https://api.cloro.dev/v1/async/task";
 
 /**
- * How long a task gets once Cloro has actually started it.
- *
- * Time spent QUEUED is deliberately excluded. A submitted task is billed when it
- * completes whether or not anyone is still waiting for the answer, so giving up
- * on one that hasn't started yet pays full price for nothing — and, because the
- * caller then submits a replacement, makes the queue it was waiting behind
- * longer. Waiting for an answer already paid for is both cheaper and the only
- * behaviour that lets a backlog drain.
+ * Excludes time spent queued: a task is billed whether or not anyone waits for
+ * it, and abandoning one only queues a replacement behind it.
  */
 const CLORO_GENERATION_TIMEOUT_MS = 10 * 60 * 1000;
 
-/**
- * Absolute ceiling per task, so a queue that never drains can't pin a worker
- * forever. Sized well above the deepest backlog a single cycle can create: a
- * cycle submits at most (prompt job concurrency x RUNS_PER_PROMPT x targets)
- * tasks at once, and this has to cover the last of them reaching the front.
- */
+/** Sized past the deepest backlog one cycle can queue, so a queue that never drains can't pin a worker. */
 const CLORO_TOTAL_TIMEOUT_MS = 60 * 60 * 1000;
 
 // Cloro localizes every answer; default to a US audience.
@@ -144,13 +124,9 @@ async function runAsyncTask(taskType: string, payload: Record<string, any>): Pro
 	return settled?.response ?? {};
 }
 
-// Cloro exposes the model's own web-search queries under different keys per
-// surface: ChatGPT/Copilot use `searchQueries`, Perplexity `search_model_queries`.
-// Perplexity's entry is the prompt echoed back verbatim on every request seen so
-// far, which is stored as-is rather than filtered here: web_queries holds what
-// the provider reported, and the fan-out read path drops verbatim repeats. Its
-// `related_queries` is deliberately not read — those are the follow-up questions
-// Perplexity suggests below an answer, not searches it ran.
+// Perplexity echoes the prompt as its query; that is stored as reported and the
+// fan-out read path drops it. Its `related_queries` are suggested follow-ups, not
+// searches it ran.
 const CLORO_QUERY_KEYS = ["searchQueries", "search_model_queries", "mapSearchQueries"] as const;
 
 export const cloro: Provider = {

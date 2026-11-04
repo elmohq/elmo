@@ -20,12 +20,10 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 import type { RunMentionAssessments } from "../mentions";
-// `organization` is referenced by the brands FK below; the re-export makes it
-// (and the rest of the auth schema) visible to `import * as schema` consumers.
 import { organization } from "./schema-auth";
 
-// Better-auth tables & relations — re-exported so `import * as schema` sees everything.
-// Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
+// Re-exported so `import * as schema` sees the auth tables. That file is
+// generated: run `pnpm run generate:auth-schema` to refresh it.
 export * from "./schema-auth";
 
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
@@ -48,10 +46,8 @@ export const brands = pgTable(
 		 * Null for brands that predate stamping until the worker adopts today's stamps.
 		 */
 		analysisVersions: jsonb("analysis_versions").$type<Record<string, string>>().default({}),
-		// Hard tenancy scope. Every brand belongs to exactly one better-auth
-		// organization; org membership (the `member` table) is the access-control
-		// mechanism. Brand and organization ids are independent, so billing and
-		// entitlement joins must use this key.
+		// The tenancy scope. Brand and organization ids are independent, so billing
+		// and entitlement joins must use this key.
 		organizationId: text("organization_id")
 			.references(() => organization.id)
 			.notNull(),
@@ -79,10 +75,7 @@ export const prompts = pgTable(
 			.notNull(),
 		value: text("value").notNull(),
 		enabled: boolean("enabled").default(true).notNull(),
-		/**
-		 * Premium models this prompt is tracked on, grounded: one org premium slot
-		 * per entry (see PREMIUM_MODELS). Empty = standard tracking only.
-		 */
+		/** Tracked grounded, one org premium slot per entry. */
 		premiumModels: text("premium_models").array().notNull().default([]),
 		tags: text("tags").array().notNull().default([]),
 		systemTags: text("system_tags").array().notNull().default([]),
@@ -304,14 +297,7 @@ export const organizationSettings = pgTable("organization_settings", {
 
 export type OrganizationSettings = typeof organizationSettings.$inferSelect;
 
-/**
- * Billing-grade usage attribution: one row per provider call the
- * worker makes, so every run is attributable to an org with an estimated
- * cost. Written in every mode (self-hosted operators get the same spend
- * visibility); estimated costs come from the tunable table in
- * src/usage/cost.ts and are validated against provider invoices, not treated
- * as ground truth.
- */
+/** One row per provider call, in every mode. Costs are estimates (src/usage/cost.ts), not ground truth. */
 export const usageEvents = pgTable(
 	"usage_events",
 	{
@@ -483,11 +469,8 @@ export const rollupCitationUrls = pgTable(
 ).enableRLS();
 
 /**
- * The pages a brand has cited, copied from `cited_pages` so a brand's reads find
- * them together instead of one lookup apiece across every tenant's pages. A
- * rebuild refreshes the copies of the pages its range cites, so a page's change
- * reaches a brand when the brand next cites it; reclassification updates every
- * copy at once.
+ * Copied from `cited_pages` so a brand's reads find its pages together. A page's
+ * change reaches a brand when it next cites it; reclassification updates every copy.
  */
 export const rollupCitationPages = pgTable(
 	"rollup_citation_pages",
