@@ -18,7 +18,7 @@ export interface ReportCompetitor {
 
 export interface PromptSoV {
 	promptId: string;
-	sov: number | null;
+	sovPct: number | null;
 	brandMentionCount: number;
 	totalRuns: number;
 	totalCompetitorMentions: number;
@@ -27,7 +27,7 @@ export interface PromptSoV {
 
 export interface CompetitorSoV {
 	name: string;
-	sov: number;
+	sovPct: number;
 	mentionCount: number;
 }
 
@@ -36,7 +36,7 @@ export type PromptCategory = "strength" | "opportunity";
 export interface SelectedPrompt {
 	promptId: string;
 	category: PromptCategory;
-	sov: number | null;
+	sovPct: number | null;
 }
 
 /**
@@ -55,7 +55,7 @@ export function computePromptSoV(
 	if (totalRuns === 0) {
 		return {
 			promptId,
-			sov: null,
+			sovPct: null,
 			brandMentionCount: 0,
 			totalRuns: 0,
 			totalCompetitorMentions: 0,
@@ -80,9 +80,9 @@ export function computePromptSoV(
 	}
 
 	const denominator = brandMentionCount + totalCompetitorMentions;
-	const sov = denominator === 0 ? null : Math.round((brandMentionCount / denominator) * 100);
+	const sovPct = denominator === 0 ? null : Math.round((brandMentionCount / denominator) * 100);
 
-	return { promptId, sov, brandMentionCount, totalRuns, totalCompetitorMentions, competitorMentions };
+	return { promptId, sovPct, brandMentionCount, totalRuns, totalCompetitorMentions, competitorMentions };
 }
 
 /**
@@ -109,9 +109,6 @@ export function computeOverallSoV(runs: ReportPromptRun[], competitors: ReportCo
 	return Math.round((totalBrandMentions / denominator) * 100);
 }
 
-/**
- * Compute per-competitor Share of Voice.
- */
 export function computeCompetitorSoVs(runs: ReportPromptRun[], competitors: ReportCompetitor[]): CompetitorSoV[] {
 	let totalBrandMentions = 0;
 	const competitorMentionCounts: Record<string, number> = {};
@@ -136,11 +133,11 @@ export function computeCompetitorSoVs(runs: ReportPromptRun[], competitors: Repo
 			const mentionCount = competitorMentionCounts[comp.name] || 0;
 			return {
 				name: comp.name,
-				sov: Math.round((mentionCount / totalAllMentions) * 100),
+				sovPct: Math.round((mentionCount / totalAllMentions) * 100),
 				mentionCount,
 			};
 		})
-		.sort((a, b) => b.sov - a.sov);
+		.sort((a, b) => b.sovPct - a.sovPct);
 }
 
 /** A report shows four prompts: two the brand wins, two it has room to win. */
@@ -150,15 +147,15 @@ const MAX_PER_CATEGORY = 2;
 /** More than one prompt the brand is absent from makes it look invisible. */
 const MAX_ZERO_SOV = 1;
 
-const isZeroSoV = (prompt: PromptSoV): boolean => prompt.sov === null || prompt.sov === 0;
+const isZeroSoV = (prompt: PromptSoV): boolean => prompt.sovPct === null || prompt.sovPct === 0;
 
 /** Winning against nobody isn't compelling, so competitor activity ranks first. */
 const byStrength = (a: PromptSoV, b: PromptSoV): number =>
-	Number(b.totalCompetitorMentions > 0) - Number(a.totalCompetitorMentions > 0) || (b.sov ?? 0) - (a.sov ?? 0);
+	Number(b.totalCompetitorMentions > 0) - Number(a.totalCompetitorMentions > 0) || (b.sovPct ?? 0) - (a.sovPct ?? 0);
 
 /** Lowest brand SoV first (the most room to grow), then most competitor activity. */
 const byOpportunity = (a: PromptSoV, b: PromptSoV): number =>
-	(a.sov ?? 0) - (b.sov ?? 0) || b.totalCompetitorMentions - a.totalCompetitorMentions;
+	(a.sovPct ?? 0) - (b.sovPct ?? 0) || b.totalCompetitorMentions - a.totalCompetitorMentions;
 
 const byCompetitorActivity = (a: PromptSoV, b: PromptSoV): number =>
 	b.totalCompetitorMentions - a.totalCompetitorMentions;
@@ -182,7 +179,7 @@ function take(selection: Selection, candidates: PromptSoV[], slots: number, cate
 		selection.selected.push({
 			promptId: prompt.promptId,
 			category: category ?? (zeroSoV ? "opportunity" : "strength"),
-			sov: prompt.sov,
+			sovPct: prompt.sovPct,
 		});
 		remaining--;
 	}
