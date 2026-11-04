@@ -27,24 +27,37 @@ export interface GoogleModulePageRow {
 	count: number;
 }
 
-type GooglePromptRef = { id: string; value: string; count: number };
+type GooglePromptRef = { id: string; count: number };
 type GoogleProduct = {
 	name: string;
 	count: number;
 	attribution: ProductAttribution["kind"];
 	competitorName?: string;
 	prompts: GooglePromptRef[];
-	urls: { url: string; count: number }[];
 };
 type GoogleQuery = { query: string; count: number; prompts: GooglePromptRef[] };
 export type GoogleModule = {
-	shopping: { totalCitations: number; brandCount: number; competitorCount: number; products: GoogleProduct[] };
-	search: { totalCitations: number; queries: GoogleQuery[] };
+	shopping: {
+		totalCitations: number;
+		brandCount: number;
+		competitorCount: number;
+		productCounts: { all: number; brand: number; competitor: number };
+		products: GoogleProduct[];
+	};
+	search: { totalCitations: number; queryCount: number; queries: GoogleQuery[] };
+	promptValues: Record<string, string>;
 };
 
 export const emptyGoogleModule = (): GoogleModule => ({
-	shopping: { totalCitations: 0, brandCount: 0, competitorCount: 0, products: [] },
-	search: { totalCitations: 0, queries: [] },
+	shopping: {
+		totalCitations: 0,
+		brandCount: 0,
+		competitorCount: 0,
+		productCounts: { all: 0, brand: 0, competitor: 0 },
+		products: [],
+	},
+	search: { totalCitations: 0, queryCount: 0, queries: [] },
+	promptValues: {},
 });
 
 type ProductAgg = {
@@ -52,7 +65,6 @@ type ProductAgg = {
 	count: number;
 	attribution: ProductAttribution;
 	prompts: Map<string, number>;
-	urls: Map<string, number>;
 };
 type QueryAgg = { query: string; count: number; prompts: Map<string, number> };
 
@@ -84,11 +96,9 @@ function tallyGooglePages(
 				count: 0,
 				attribution: attributeProduct(name, brandName, competitors),
 				prompts: new Map(),
-				urls: new Map(),
 			};
 			product.count += count;
 			addPromptCount(product.prompts, row.prompt_id, count);
-			product.urls.set(row.url, (product.urls.get(row.url) ?? 0) + count);
 			productByKey.set(name.toLowerCase(), product);
 			continue;
 		}
@@ -118,43 +128,81 @@ export function buildGoogleModule(
 ): GoogleModule {
 	const { productByKey, queryByKey } = tallyGooglePages(pages, brandName, competitors);
 
+	const promptValues: Record<string, string> = {};
 	const promptRefs = (m: Map<string, number>): GooglePromptRef[] =>
 		[...m.entries()]
-			.map(([id, count]) => {
+			.flatMap(([id, count]) => {
 				const value = promptValue(id);
-				return value ? { id, value, count } : null;
+				if (!value) return [];
+				promptValues[id] = value;
+				return [{ id, count }];
 			})
-			.filter((p): p is GooglePromptRef => p !== null)
 			.sort((a, b) => b.count - a.count);
 
-	const products: GoogleProduct[] = [...productByKey.values()]
-		.map((e) => ({
-			name: e.name,
-			count: e.count,
-			attribution: e.attribution.kind,
-			competitorName: e.attribution.kind === "competitor" ? e.attribution.competitorName : undefined,
-			prompts: promptRefs(e.prompts),
-			urls: [...e.urls.entries()].map(([url, count]) => ({ url, count })).sort((a, b) => b.count - a.count),
-		}))
-		.sort((a, b) => b.count - a.count);
+	const allProducts = [...productByKey.values()].sort((a, b) => b.count - a.count);
+	const allQueries = [...queryByKey.values()].sort((a, b) => b.count - a.count);
+	const attributed = (kind: ProductAttribution["kind"]) => allProducts.filter((p) => p.attribution.kind === kind);
+	const total = (rows: { count: number }[]) => rows.reduce((sum, row) => sum + row.count, 0);
 
-	const queries: GoogleQuery[] = [...queryByKey.values()]
-		.map((e) => ({ query: e.query, count: e.count, prompts: promptRefs(e.prompts) }))
-		.sort((a, b) => b.count - a.count);
+	const products: GoogleProduct[] = allProducts.map((e) => ({
+		name: e.name,
+		count: e.count,
+		attribution: e.attribution.kind,
+		competitorName: e.attribution.kind === "competitor" ? e.attribution.competitorName : undefined,
+		prompts: promptRefs(e.prompts),
+	}));
 
-	const brandCount = products.filter((p) => p.attribution === "brand").reduce((s, p) => s + p.count, 0);
-	const competitorCount = products.filter((p) => p.attribution === "competitor").reduce((s, p) => s + p.count, 0);
+	const queries: GoogleQuery[] = allQueries.map((e) => ({
+		query: e.query,
+		count: e.count,
+		prompts: promptRefs(e.prompts),
+	}));
 
 	return {
 		shopping: {
-			totalCitations: products.reduce((s, p) => s + p.count, 0),
-			brandCount,
-			competitorCount,
+			totalCitations: total(allProducts),
+			brandCount: total(attributed("brand")),
+			competitorCount: total(attributed("competitor")),
+			productCounts: {
+				all: allProducts.length,
+				brand: attributed("brand").length,
+				competitor: attributed("competitor").length,
+			},
 			products,
 		},
 		search: {
-			totalCitations: queries.reduce((s, q) => s + q.count, 0),
+			totalCitations: total(allQueries),
+			queryCount: allQueries.length,
 			queries,
 		},
+		promptValues,
 	};
+}
+
+export function googleModuleTotals(module: GoogleModule): GoogleModule {
+	return {
+		shopping: { ...module.shopping, products: [] },
+		search: { ...module.search, queries: [] },
+		promptValues: {},
+	};
+}
+
+export type GoogleProductFilter = "all" | ProductAttribution["kind"];
+
+export function pageGoogleList(
+	module: GoogleModule,
+	list: { kind: "products"; filter: GoogleProductFilter } | { kind: "queries" },
+	offset: number,
+	limit: number,
+) {
+	const rows: (GoogleProduct | GoogleQuery)[] =
+		list.kind === "queries"
+			? module.search.queries
+			: module.shopping.products.filter((product) => list.filter === "all" || product.attribution === list.filter);
+	const items = rows.slice(offset, offset + limit);
+	const promptValues: Record<string, string> = {};
+	for (const item of items) {
+		for (const prompt of item.prompts) promptValues[prompt.id] = module.promptValues[prompt.id];
+	}
+	return { items, total: rows.length, promptValues };
 }

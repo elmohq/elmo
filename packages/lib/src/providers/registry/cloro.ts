@@ -2,7 +2,8 @@ import { getCredential } from "../../secrets";
 import { type Citation, cloroAnswer, extractCitationsFromCloro } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ScrapeResult } from "../types";
-import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, responseError, sleep } from "./scrape-shared";
+import { pollTask, type TaskState } from "./poll-task";
+import { failureDetails, isTransientStatus, queriesFromKeys, responseError } from "./scrape-shared";
 
 // Cloro monitors live AI answer engines. Each Elmo model maps to a Cloro task
 // type: the chatbots (ChatGPT, Perplexity, Copilot, Gemini) and Google AI Mode
@@ -104,35 +105,29 @@ async function getTask(taskId: string): Promise<CloroTaskResponse | null> {
 	}
 }
 
+function cloroTaskState(payload: CloroTaskResponse): TaskState {
+	const status = payload.task?.status?.toUpperCase();
+	if (status === "COMPLETED") return "ready";
+	if (status === "FAILED") return "failed";
+	return "running";
+}
+
 async function runAsyncTask(taskType: string, payload: Record<string, any>): Promise<Record<string, any>> {
 	const submitted = await submitTask(taskType, payload);
 	const taskId = submitted.id!;
-	const startedAt = Date.now();
-	const hardDeadline = startedAt + CLORO_TOTAL_TIMEOUT_MS;
-	let latest: CloroTaskResponse = { task: submitted };
-	let attempt = 0;
 
-	while (true) {
-		// Settled states are checked before the deadlines, so an answer that
-		// arrives on the last poll is returned rather than thrown away.
-		const status = latest.task?.status?.toUpperCase();
-		if (status === "COMPLETED") return latest.response ?? {};
-		if (status === "FAILED") {
-			// A failed task carries its error in `response`.
-			throw new Error(`Cloro task ${taskId} failed${failureDetails(latest.response?.error ?? latest.task?.error)}`);
-		}
+	const settled = await pollTask<CloroTaskResponse>({
+		describe: `Cloro task ${taskId}`,
+		initial: { task: submitted },
+		poll: () => getTask(taskId),
+		classify: cloroTaskState,
+		// A failed task carries its error in `response`.
+		describeFailure: (latest) => failureDetails(latest.response?.error ?? latest.task?.error),
+		describeStatus: (latest) => latest?.task?.status?.toUpperCase() ?? "unknown",
+		totalTimeoutMs: CLORO_TOTAL_TIMEOUT_MS,
+	});
 
-		const remaining = hardDeadline - Date.now();
-		if (remaining <= 0) {
-			throw new Error(
-				`Cloro task ${taskId} timed out after ${Math.round((Date.now() - startedAt) / 1000)}s ` +
-					`in status ${status ?? "unknown"} (the task may still complete, and is billed if it does)`,
-			);
-		}
-
-		await sleep(Math.min(pollDelay(attempt++), remaining));
-		latest = (await getTask(taskId)) ?? latest;
-	}
+	return settled?.response ?? {};
 }
 
 // Cloro exposes the model's own web-search queries under different keys per

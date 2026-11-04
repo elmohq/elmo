@@ -15,7 +15,7 @@ import { createBrandInOrgFn } from "@/server/brands";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
 export const Route = createFileRoute("/_authed/app/org/$org/new")({
-	staticData: { crumb: "New brand" },
+	staticData: { crumb: "New Brand" },
 	loader: ({ context }) => {
 		const { brandCreation, name, id } = context.organization;
 		if (brandCreation.kind === "not-offered") {

@@ -6,7 +6,6 @@
 
 import { getModelMeta } from "@workspace/config/models";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
-import { rollUpCitationDomains, rollUpCitationUrls } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
@@ -14,20 +13,26 @@ import { eq } from "drizzle-orm";
 import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
 import { generateDateRange } from "@/lib/chart-utils";
+import {
+	getCitationDomainPage,
+	getCitationTotals,
+	getCitationUrlPage,
+	getDomainPromptCounts,
+} from "@/lib/citation-read";
 import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
 import { buildLandscape, type Landscape } from "@/lib/landscape";
 import { assessedPassage } from "@/lib/passage";
 import { getSentimentQuotes, type SentimentQuoteRow } from "@/lib/postgres-read";
 import {
-	getCitationDomainPromptCounts,
 	getCitationsCountByModel,
 	getCitationTotal,
-	getCitationUrlStats,
 	getCompetitorTotals,
 	getDailyAssessments,
 	getFanoutBreakdown,
 	getFanoutModelTotals,
 	getFanoutPromptTotals,
+	getFanoutQueryPage,
+	getFanoutQueryTotals,
 	getMentionTotals,
 	getPerPromptDailyCompetitors,
 	getPerPromptDailyRuns,
@@ -305,64 +310,144 @@ async function citationContext(brandId: string) {
 	return { brandDomains, competitorDomains };
 }
 
-export async function getBrandCitations(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
+export interface CitationListOptions {
+	search?: string;
+	category?: string;
+	limit: number;
+	offset: number;
+}
+
+/** The window's scope and the equal-length one before it, as instants so it lands where the window begins. */
+async function citationWindows(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters) {
 	const { promptIds } = await resolveScope(brandId, filters);
-	if (promptIds.length === 0) {
-		return { urls: [], domains: [], totals: { citations: 0, uniqueDomains: 0, uniqueUrls: 0 } };
-	}
 	const scope = analyticsScope(brandId, window, promptIds, filters);
-
-	// Instants, so it lands where this window begins rather than rounding
-	// outward to whole days.
 	const { start, end } = windowInstants(window);
-	const previousStart = new Date(start.getTime() - (end.getTime() - start.getTime())).toISOString();
-	const previousEnd = start.toISOString();
+	const previous = {
+		...scope,
+		from: new Date(start.getTime() - (end.getTime() - start.getTime())).toISOString(),
+		to: start.toISOString(),
+	};
+	const { brandDomains, competitorDomains } = await citationContext(brandId);
+	return { scope, previous, owned: { brandDomains: [...brandDomains], competitorDomains: [...competitorDomains] } };
+}
 
-	const [{ brandDomains, competitorDomains }, current, previous, promptsByDomain] = await Promise.all([
-		citationContext(brandId),
-		getCitationUrlStats(scope),
-		getCitationUrlStats({ ...scope, from: previousStart, to: previousEnd }),
-		getCitationDomainPromptCounts(scope),
+const EMPTY_CITATION_TOTALS = { citations: 0, uniqueDomains: 0, uniqueUrls: 0 };
+
+async function getBrandCitationTotals(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters) {
+	const { promptIds } = await resolveScope(brandId, filters);
+	if (promptIds.length === 0) return EMPTY_CITATION_TOTALS;
+	return getCitationTotals(analyticsScope(brandId, window, promptIds, filters));
+}
+
+export async function getBrandCitationUrls(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters,
+	options: CitationListOptions & { pageType?: string },
+) {
+	const { scope, previous, owned } = await citationWindows(brandId, window, filters);
+	if (scope.promptIds.length === 0) return { urls: [], total: 0, totals: EMPTY_CITATION_TOTALS };
+	const [page, totals] = await Promise.all([
+		getCitationUrlPage(
+			scope,
+			previous,
+			owned,
+			{ search: options.search, category: options.category, pageType: options.pageType },
+			options.limit,
+			options.offset,
+		),
+		getCitationTotals(scope),
 	]);
-
-	const previousUrls = new Set(previous.map((stat) => stat.url));
-	const previousDomainCounts = new Map<string, number>();
-	for (const stat of previous) {
-		previousDomainCounts.set(stat.domain, (previousDomainCounts.get(stat.domain) ?? 0) + Number(stat.count));
-	}
-
-	const promptCounts = new Map(current.map((stat) => [stat.url, Number(stat.prompt_count)]));
-	const rolled = rollUpCitationUrls(current, brandDomains, competitorDomains);
-	const totalCitations = rolled.reduce((sum, row) => sum + row.count, 0);
-
-	const urls = rolled.map((row) => ({
-		url: row.url,
-		domain: row.domain,
-		title: row.title ?? null,
-		category: row.category,
-		pageType: row.pageType,
-		count: row.count,
-		promptCount: promptCounts.get(row.url) ?? 0,
-		isNew: !previousUrls.has(row.url),
-	}));
-
-	const domains = rollUpCitationDomains(rolled).map((row) => {
-		const previousCount = previousDomainCounts.get(row.domain) ?? 0;
-		return {
-			domain: row.domain,
-			category: row.category,
-			count: row.count,
-			share: totalCitations === 0 ? 0 : row.count / totalCitations,
-			promptCount: promptsByDomain.get(row.domain) ?? 0,
-			previousCount,
-			changeFactor: previousCount > 0 ? row.count / previousCount : null,
-		};
-	});
-
 	return {
-		urls,
-		domains,
-		totals: { citations: totalCitations, uniqueDomains: domains.length, uniqueUrls: urls.length },
+		urls: page.rows.map((row) => ({
+			url: row.url,
+			domain: row.domain,
+			title: row.title,
+			category: row.category,
+			pageType: row.page_type,
+			count: row.count,
+			promptCount: row.prompt_count,
+			isNew: row.is_new,
+		})),
+		total: page.total,
+		totals,
+	};
+}
+
+export async function getBrandCitationDomains(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters,
+	options: CitationListOptions,
+) {
+	const { scope, previous, owned } = await citationWindows(brandId, window, filters);
+	if (scope.promptIds.length === 0) return { domains: [], total: 0, totals: EMPTY_CITATION_TOTALS };
+	const [page, totals] = await Promise.all([
+		getCitationDomainPage(
+			scope,
+			previous,
+			owned,
+			{ search: options.search, category: options.category },
+			options.limit,
+			options.offset,
+		),
+		getCitationTotals(scope),
+	]);
+	const promptCounts = await getDomainPromptCounts(
+		scope,
+		page.rows.map((row) => row.domain),
+	);
+	return {
+		domains: page.rows.map((row) => ({
+			domain: row.domain,
+			category: row.category ?? "other",
+			count: row.count,
+			share: totals.citations === 0 ? 0 : row.count / totals.citations,
+			promptCount: promptCounts.get(row.domain) ?? 0,
+			previousCount: row.previous_count,
+			changeFactor: row.previous_count > 0 ? row.count / row.previous_count : null,
+		})),
+		total: page.total,
+		totals,
+	};
+}
+
+export async function getBrandFanoutQueries(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters,
+	options: { search?: string; limit: number; offset: number },
+) {
+	const { promptIds } = await resolveScope(brandId, filters);
+	const scope = analyticsScope(brandId, window, promptIds, filters);
+	if (promptIds.length === 0) {
+		return {
+			totalQueries: 0,
+			uniqueQueries: 0,
+			fanoutRuns: 0,
+			totalRuns: 0,
+			avgQueriesPerRun: 0,
+			coverageRate: 0,
+			queries: [],
+			total: 0,
+		};
+	}
+	const [page, totals, modelTotals] = await Promise.all([
+		getFanoutQueryPage(scope, options.search, options.limit, options.offset),
+		getFanoutQueryTotals(scope),
+		getFanoutModelTotals(scope),
+	]);
+	const totalRuns = modelTotals.reduce((sum, row) => sum + row.runs, 0);
+	const fanoutRuns = modelTotals.reduce((sum, row) => sum + row.fanout_runs, 0);
+	return {
+		totalQueries: totals.total_queries,
+		uniqueQueries: totals.unique_queries,
+		fanoutRuns,
+		totalRuns,
+		avgQueriesPerRun: fanoutRuns > 0 ? Math.round((totals.total_queries / fanoutRuns) * 10) / 10 : 0,
+		coverageRate: totals.total_queries > 0 ? totals.brand_mentions / totals.total_queries : 0,
+		queries: page.rows.map((row) => ({ query: row.query, runs: row.runs, promptCount: row.prompt_count })),
+		total: page.total,
 	};
 }
 
@@ -370,10 +455,7 @@ export async function getBrandQueryFanout(
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
-	options: {
-		promptId?: string;
-		uncapped?: boolean;
-	} = {},
+	options: { promptId?: string } = {},
 ): Promise<FanoutAnalysis & { brandName: string }> {
 	const [brandRow, resolved] = await Promise.all([
 		db.select({ name: brands.name }).from(brands).where(eq(brands.id, brandId)).limit(1),
@@ -408,15 +490,10 @@ export async function getBrandQueryFanout(
 
 /** Display caps, so a caller that pages one of these lists is not paging a
  * silently truncated one. */
-function fanoutLimits(options: { promptId?: string; uncapped?: boolean }): FanoutLimitOverrides | undefined {
-	if (options.uncapped) {
-		return { topQueries: UNCAPPED, breadth: UNCAPPED, terms: UNCAPPED, perModelTop: UNCAPPED, variations: UNCAPPED };
-	}
+function fanoutLimits(options: { promptId?: string }): FanoutLimitOverrides | undefined {
 	if (options.promptId) return { topQueries: 2000, perModelTop: 2000, variations: 2000 };
 	return undefined;
 }
-
-const UNCAPPED = Number.MAX_SAFE_INTEGER;
 
 function emptyFanout(): FanoutAnalysis {
 	return {
@@ -524,7 +601,7 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 		getBrandVisibility(brandId, window, filters),
 		getBrandShareOfVoice(brandId, window, filters),
 		getBrandModelBreakdown(brandId, window, filters),
-		getBrandCitations(brandId, window, filters),
+		getBrandCitationTotals(brandId, window, filters),
 		getBrandMentionQuality(brandId, window, filters),
 	]);
 
@@ -539,8 +616,8 @@ export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow
 			runs: visibility.totalRuns,
 			prompts: visibility.totalPrompts,
 			citations: visibility.totalCitations,
-			uniqueDomains: citations.totals.uniqueDomains,
-			uniqueUrls: citations.totals.uniqueUrls,
+			uniqueDomains: citations.uniqueDomains,
+			uniqueUrls: citations.uniqueUrls,
 		},
 	};
 }
@@ -610,12 +687,11 @@ export async function getBrandSentiment(
 ): Promise<BrandSentiment> {
 	const resolved = await resolveScope(brandId, filters);
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
-	const [perPrompt, praise, mixed, criticism] = await Promise.all([
+	const [perPrompt, quotes] = await Promise.all([
 		resolved.promptIds.length > 0 ? getPerPromptRunStats(scope) : [],
-		getSentimentQuotes(scope, ["positive"], QUOTES_PER_SIDE),
-		getSentimentQuotes(scope, ["mixed"], QUOTES_PER_SIDE),
-		getSentimentQuotes(scope, ["negative"], QUOTES_PER_SIDE),
+		getSentimentQuotes(scope, ["positive", "mixed", "negative"], QUOTES_PER_SIDE),
 	]);
+	const side = (sentiment: Sentiment) => quotes.filter((row) => row.sentiment === sentiment);
 	const promptsById = new Map(resolved.prompts.map((prompt) => [prompt.id, prompt]));
 	const quote = (row: SentimentQuoteRow): SentimentQuote[] => {
 		const passage = assessedPassage(row.text_content, row.brand);
@@ -643,8 +719,8 @@ export async function getBrandSentiment(
 		.sort((a, b) => (a.sentiment.score ?? 0) - (b.sentiment.score ?? 0));
 	return {
 		prompts,
-		praise: praise.flatMap(quote),
-		mixed: mixed.flatMap(quote),
-		criticism: criticism.flatMap(quote),
+		praise: side("positive").flatMap(quote),
+		mixed: side("mixed").flatMap(quote),
+		criticism: side("negative").flatMap(quote),
 	};
 }

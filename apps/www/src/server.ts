@@ -94,9 +94,23 @@ function withAcceptHtml(request: Request): Request {
 // Keep permanent redirects server-side so backlinks and ranking signals reach
 // the canonical replacement rather than a client-rendered not-found page.
 const PERMANENT_REDIRECTS: Record<string, string> = {
+	"/blog/aeo-agent-skill": "/blog/aeo-skill",
+	"/blog/ai-search-engines": "/blog/best-ai-search-engine",
+	"/blog/ai-search-glossary": "/glossary",
 	"/blog/answer-engine-optimization": "/answer-engine-optimization",
 	"/blog/best-open-source-aeo-tools": "/ai-visibility-tools/category/open-source",
 	"/blog/generative-ai-for-marketing": "/blog/ai-for-seo",
+	"/blog/generative-ai-seo": "/generative-engine-optimization",
+	"/blog/generative-engine-optimization": "/generative-engine-optimization",
+	"/blog/geo-vs-seo": "/blog/aeo-vs-seo",
+	"/blog/google-ai-overviews": "/ai-search/google-ai-overviews",
+	"/blog/how-long-does-it-take-to-get-cited-by-ai": "/blog/how-long-to-get-cited-by-ai",
+	"/blog/how-to-appear-in-chatgpt": "/ai-search/chatgpt",
+	"/blog/how-to-appear-in-google-gemini": "/ai-search/gemini",
+	"/blog/how-to-rank-in-perplexity": "/ai-search/perplexity",
+	"/blog/iab-ai-visibility-framework": "/blog/iab-ai-visibility-metrics",
+	"/blog/llm-optimization": "/glossary/llmo",
+	"/blog/llm-seo": "/glossary/llmo",
 	"/blog/track-brand-ai-search": "/answer-engine-optimization",
 	"/blog/what-is-generative-seo": "/generative-engine-optimization",
 	"/docs/mcp": "/docs/api/mcp",

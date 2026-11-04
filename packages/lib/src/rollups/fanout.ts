@@ -1,8 +1,12 @@
 import { type SQL, sql } from "drizzle-orm";
 import { WEB_QUERIES_UNAVAILABLE } from "../constants";
 
-/** A web query the way fan-out counts it, so casing and stray spaces don't split one query in two. */
-export const normalizedWebQuery = (query: SQL): SQL => sql`lower(btrim(${query}))`;
+/**
+ * A web query the way fan-out counts it, so casing and stray whitespace don't
+ * split one query in two. Trims tabs and newlines too, as the dashboard does.
+ */
+export const normalizedWebQuery = (query: SQL): SQL =>
+	sql`lower(regexp_replace(${query}, '^[[:space:]]+|[[:space:]]+$', '', 'g'))`;
 
 /**
  * Genuine fan-out: non-empty, not the `unavailable` sentinel, and not the prompt

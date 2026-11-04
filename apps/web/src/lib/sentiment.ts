@@ -22,26 +22,26 @@ export const SENTIMENT_STYLES: Record<Sentiment, { label: string; color: string;
 	positive: {
 		label: "Positive",
 		color: "#009E73",
-		text: "text-[#00795a] dark:text-[#3fc79f]",
-		soft: "bg-[#009E73]/15 dark:bg-[#009E73]/30",
+		text: "text-[#00795a]",
+		soft: "bg-[#009E73]/15",
 	},
 	neutral: {
 		label: "Neutral",
 		color: "#cbd5e1",
-		text: "text-slate-500 dark:text-slate-400",
-		soft: "bg-slate-200/70 dark:bg-slate-700/60",
+		text: "text-slate-500",
+		soft: "bg-slate-200/70",
 	},
 	mixed: {
 		label: "Mixed",
 		color: "#E69F00",
-		text: "text-[#a66f00] dark:text-[#f0b840]",
-		soft: "bg-[#E69F00]/20 dark:bg-[#E69F00]/30",
+		text: "text-[#a66f00]",
+		soft: "bg-[#E69F00]/20",
 	},
 	negative: {
 		label: "Negative",
 		color: "#D55E00",
-		text: "text-[#b34d00] dark:text-[#ff8a3d]",
-		soft: "bg-[#D55E00]/15 dark:bg-[#D55E00]/30",
+		text: "text-[#b34d00]",
+		soft: "bg-[#D55E00]/15",
 	},
 };
 

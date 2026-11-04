@@ -1,4 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { DataProvenance } from "@/components/data-provenance";
 import { DirectoryBackLink, DirectoryHero, ElmoCta } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
@@ -61,6 +62,9 @@ function ComparePage() {
 				<DirectoryBackLink />
 				<DirectoryHero title={names} lead={getCompareVerdict(tools)} />
 				{a && b && tools.length === 2 ? <PairComparison a={a} b={b} /> : <MultiComparison tools={tools} />}
+				<div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+					<DataProvenance tools={tools} />
+				</div>
 				<Faq items={getCompareFaqs(tools)} />
 				<ElmoCta />
 			</main>

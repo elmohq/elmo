@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import type { ComponentProps } from "react";
 import { Community } from "@/components/community";
 import { Footer } from "@/components/footer";
 import { Closing } from "@/components/home/closing";
@@ -14,6 +15,7 @@ import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { WhySwitch } from "@/components/home/why-switch";
 import { Navbar } from "@/components/navbar";
 import { getHeroVariant } from "@/data/hero-variants";
+import { useAiReferral } from "@/lib/ai-referral";
 import { HOME_FAQS } from "@/lib/faqs";
 import { canonicalUrl, faqJsonLd, ogMeta, SITE_NAME, softwareApplicationJsonLd } from "@/lib/seo";
 
@@ -44,8 +46,18 @@ export const Route = createFileRoute("/")({
 	component: HomePage,
 });
 
+function aiReferralHero(assistant: string): ComponentProps<typeof Hero> {
+	return {
+		title: `Get Customers from ${assistant}`,
+		lede: `You found us through ${assistant}. That's Elmo at work. See how AI search engines talk about your brand, which sources they trust, and what to change so they recommend you too.`,
+		from: "marketing-ai-referral",
+	};
+}
+
 function HomePage() {
-	const variant = getHeroVariant(Route.useSearch().v);
+	const explicit = getHeroVariant(Route.useSearch().v);
+	const [referral] = useAiReferral();
+	const variant = explicit ?? (referral ? aiReferralHero(referral.assistant) : undefined);
 	return (
 		<div className={`${HOME_FONT_CLASS} min-h-screen bg-white antialiased`}>
 			<HomeStyles />

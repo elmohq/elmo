@@ -1,10 +1,11 @@
+import { EngineIcon } from "./home/engines";
+
 // ---------------------------------------------------------------------------
-// Homepage feature graphics
+// Feature graphics
 //
 // Most sit next to their feature as a real product screenshot (see the
-// Screenshot helper below); the closing trends graphic is a schematic SVG.
-// Both share one language: zinc + blue palette, dotted grid backdrop, mono
-// labels, sharp corners.
+// Screenshot helper below); the rest are schematic. All share one language:
+// zinc + blue palette, dotted grid backdrop, mono labels, sharp corners.
 // ---------------------------------------------------------------------------
 
 function Grid() {
@@ -204,6 +205,24 @@ export function PromptDetailGraphic() {
 	);
 }
 
+export function PromptSettingsGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/prompt-settings.png"
+			alt="Prompt settings listing tracked prompts with their branded or unbranded system tag and topic tags"
+		/>
+	);
+}
+
+export function ResponsesGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/responses.png"
+			alt="Responses page with a sentiment split across every answer and a ChatGPT response showing each brand's position and sentiment"
+		/>
+	);
+}
+
 // ---------------------------------------------------------------------------
 // 10 — Trends: 12-month area chart
 // ---------------------------------------------------------------------------
@@ -324,6 +343,98 @@ export function VisibilityTrendGraphic() {
 					{months.map((m) => (
 						<span key={m}>{m}</span>
 					))}
+				</div>
+			</div>
+		</Frame>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// API and MCP: the two ways in, as terminal snippets
+// ---------------------------------------------------------------------------
+
+const CODE_PANEL =
+	"overflow-hidden rounded-md bg-zinc-950 p-4 font-mono text-[11px] leading-relaxed text-zinc-100 md:text-xs";
+
+export function ApiGraphic() {
+	return (
+		<Frame>
+			<div className="flex size-full flex-col gap-3 p-5 md:p-6">
+				<Mono>CONNECT · MCP</Mono>
+				<pre className={CODE_PANEL}>
+					<span className="select-none text-zinc-500">$ </span>claude mcp add --transport http elmo{"\n"}
+					{"  "}
+					<span className="text-blue-300">https://app.elmohq.com/api/mcp</span>
+				</pre>
+				<Mono className="mt-1">QUERY · TYPESCRIPT SDK</Mono>
+				<pre className={`flex-1 ${CODE_PANEL}`}>
+					<span className="text-blue-300">import</span> {"{ Elmo }"} <span className="text-blue-300">from</span>{" "}
+					<span className="text-emerald-300">"@elmohq/sdk"</span>;{"\n\n"}
+					<span className="text-blue-300">const</span> elmo = <span className="text-blue-300">new</span> Elmo();
+					{"\n"}
+					<span className="text-blue-300">for await</span> (<span className="text-blue-300">const</span> brand{" "}
+					<span className="text-blue-300">of</span> elmo.brands.list()) {"{"}
+					{"\n  "}console.log(brand.name);{"\n"}
+					{"}"}
+				</pre>
+			</div>
+		</Frame>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Engines: what is scraped from the real apps, and what is called by API
+// ---------------------------------------------------------------------------
+
+const SCRAPED_ENGINES = [
+	{ name: "ChatGPT", iconId: "openai" },
+	{ name: "AI Overviews", iconId: "google" },
+	{ name: "AI Mode", iconId: "google" },
+	{ name: "Gemini", iconId: "gemini" },
+	{ name: "Perplexity", iconId: "perplexity" },
+	{ name: "Copilot", iconId: "microsoft" },
+];
+
+const API_ENGINES = [
+	{ name: "Claude", iconId: "anthropic" },
+	{ name: "Grok", iconId: "x" },
+	{ name: "Mistral", iconId: "mistral" },
+	{ name: "DeepSeek", iconId: "deepseek" },
+	{ name: "Qwen", iconId: "qwen" },
+	{ name: "Kimi", iconId: "moonshotai" },
+];
+
+function EngineChip({ name, iconId }: { name: string; iconId: string }) {
+	return (
+		<li className="flex h-10 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900">
+			<EngineIcon iconId={iconId} className="size-4 shrink-0" />
+			<span className="truncate">{name}</span>
+		</li>
+	);
+}
+
+export function EnginesGraphic() {
+	return (
+		<Frame>
+			<div className="flex size-full flex-col justify-center gap-5 p-5 md:p-8">
+				<div>
+					<Mono>SCRAPED FROM THE REAL APPS</Mono>
+					<ul className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+						{SCRAPED_ENGINES.map((e) => (
+							<EngineChip key={e.name} {...e} />
+						))}
+					</ul>
+				</div>
+				<div>
+					<Mono>DIRECT APIS AND OPENROUTER</Mono>
+					<ul className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+						{API_ENGINES.map((e) => (
+							<EngineChip key={e.name} {...e} />
+						))}
+						<li className="flex h-10 items-center rounded-md border border-dashed border-zinc-300 px-3 text-sm font-medium text-zinc-600">
+							+ OpenRouter models
+						</li>
+					</ul>
 				</div>
 			</div>
 		</Frame>
