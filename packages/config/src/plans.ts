@@ -224,6 +224,29 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
 	},
 };
 
+const DAYS_PER_MONTH = 30;
+
+export function monthlyAnswers(plan: PlanDefinition): number {
+	const standard = plan.maxPrompts * plan.platformPicks * plan.standardRunsPerDay;
+	const premium = plan.premiumIncluded * PREMIUM_RUNS_PER_DAY;
+	return (standard + premium) * DAYS_PER_MONTH;
+}
+
+export function costPer1kAnswersUsd(plan: PlanDefinition): number {
+	return (plan.monthlyPriceUsd * 1000) / monthlyAnswers(plan);
+}
+
+const COST_PER_1K_FORMAT = new Intl.NumberFormat("en-US", {
+	style: "currency",
+	currency: "USD",
+	minimumSignificantDigits: 3,
+	maximumSignificantDigits: 3,
+});
+
+export function formatCostPer1k(usd: number): string {
+	return COST_PER_1K_FORMAT.format(usd);
+}
+
 /** The most brands any self-serve plan sells, so a guard can tell a customer
  *  whether upgrading would help or whether they need a custom agreement. */
 export const MAX_SELF_SERVE_BRANDS = Math.max(...Object.values(PLANS).map((plan) => plan.maxBrands));
