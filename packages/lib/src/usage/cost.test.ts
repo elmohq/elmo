@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { estimateRunCostUsd, failedRunCostUsd, projectMonthlyTargetCostUsd, runCostUsd } from "./cost";
 
 describe("estimateRunCostUsd", () => {
@@ -42,13 +42,24 @@ describe("projectMonthlyTargetCostUsd", () => {
 });
 
 describe("runCostUsd", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
 	it("uses the dollars the provider billed over any estimate", () => {
 		expect(runCostUsd({ provider: "openrouter", webSearchEnabled: false, billedUsd: 0.0006 })).toBe(0.0006);
 	});
 
-	it("converts billed credits to dollars at the provider's plan rate", () => {
-		const sevenCredits = runCostUsd({ provider: "cloro", webSearchEnabled: true, billedCredits: 7 });
-		expect(sevenCredits).toBeCloseTo((7 * 500) / 1_350_000, 9);
+	it("converts billed credits to dollars at the configured rate", () => {
+		vi.stubEnv("CLORO_USD_PER_CREDIT", "0.002");
+		expect(runCostUsd({ provider: "cloro", webSearchEnabled: true, billedCredits: 7 })).toBeCloseTo(0.014, 9);
+	});
+
+	it("falls back to the flat estimate for billed credits when no rate is configured", () => {
+		vi.stubEnv("CLORO_USD_PER_CREDIT", "");
+		expect(runCostUsd({ provider: "cloro", webSearchEnabled: true, billedCredits: 7 })).toBe(
+			estimateRunCostUsd("cloro", true),
+		);
 	});
 
 	it("falls back to the flat estimate when the provider reported nothing", () => {

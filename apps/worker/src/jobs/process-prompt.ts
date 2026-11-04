@@ -180,7 +180,7 @@ async function recordUsageEvent(input: {
 			provider,
 			model: input.config.model,
 			webSearchEnabled: webSearch,
-			units: input.billing?.billedCredits ?? 1,
+			units: 1,
 			estimatedCostUsd: cost === null ? null : cost.toFixed(6),
 		});
 	} catch (error) {

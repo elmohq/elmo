@@ -60,6 +60,7 @@ declare global {
 			readonly TYPESAFE_API_KEY?: string;
 			readonly REPROCESS_DAYS?: string;
 			readonly JINA_API_KEY?: string;
+			readonly CLORO_USD_PER_CREDIT?: string;
 			readonly ONBOARDING_LLM_TARGET?: string;
 			readonly ELMO_ENCRYPTION_KEY?: string;
 			readonly ELMO_ENCRYPTION_KEY_OLD?: string;

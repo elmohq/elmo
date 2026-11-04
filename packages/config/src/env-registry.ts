@@ -240,6 +240,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Optional Jina Reader API key for website-excerpt fetching. When set, requests are authenticated (tracked by key, not IP), which raises the rate limit and avoids the anonymous 'bad network reputation' 401 block.",
 	},
 	{
+		name: "CLORO_USD_PER_CREDIT",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"What one Cloro credit costs your account, in dollars. When set, each Cloro run's recorded cost is the credits Cloro charged at this rate instead of a flat estimate.",
+	},
+	{
 		name: "ELMO_ENCRYPTION_KEY",
 		scope: "server",
 		// Local only: `elmo init` generates it and the CLI backfills it on

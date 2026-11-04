@@ -42,14 +42,19 @@ export function estimateRunCostUsd(provider: string | null, webSearchEnabled: bo
 	return base;
 }
 
-/**
- * Dollars per provider credit, for providers that report what they charged in
- * credits. The raw credits are stored in usage_events.units, so the dollars can
- * be recomputed if the rate changes.
- */
-const PROVIDER_USD_PER_CREDIT: Record<string, number> = {
-	cloro: 500 / 1_350_000,
+// A credit's dollar value depends on the account's plan, so it comes from the
+// environment rather than being committed here.
+const USD_PER_CREDIT_ENV: Record<string, string> = {
+	cloro: "CLORO_USD_PER_CREDIT",
 };
+
+function usdPerCredit(provider: string | null): number | undefined {
+	const envVar = provider ? USD_PER_CREDIT_ENV[provider] : undefined;
+	const raw = envVar && typeof process !== "undefined" ? process.env[envVar] : undefined;
+	if (!raw) return undefined;
+	const parsed = Number(raw);
+	return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
 
 /**
  * Providers that only bill calls that return a result: Cloro never charges a
@@ -64,8 +69,8 @@ export function runCostUsd(input: {
 	billedCredits?: number;
 }): number | null {
 	if (input.billedUsd !== undefined) return input.billedUsd;
-	const usdPerCredit = input.provider ? PROVIDER_USD_PER_CREDIT[input.provider] : undefined;
-	if (input.billedCredits !== undefined && usdPerCredit !== undefined) return input.billedCredits * usdPerCredit;
+	const rate = usdPerCredit(input.provider);
+	if (input.billedCredits !== undefined && rate !== undefined) return input.billedCredits * rate;
 	return estimateRunCostUsd(input.provider, input.webSearchEnabled);
 }
 
