@@ -31,8 +31,7 @@ test.describe("API keys", () => {
 
     const name = `Playwright key ${Date.now()}`;
     await openCreateForm(page, name);
-    // A real click, because the failure this guards against was the dialog
-    // painting over the open listbox and swallowing them.
+    // A real click, because the dialog can paint over the open listbox and swallow it.
     await page.locator("#key-expiry").click();
     await waitForMotion(page);
     await page.getByRole("option", { name: "In 30 days", exact: true }).click();
