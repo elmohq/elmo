@@ -170,7 +170,6 @@ const GRID_COLS: Record<string, string> = {
 interface PromptsListEditorProps {
 	prompts: EditablePrompt[];
 	onChange: (next: EditablePrompt[]) => void;
-	/** Show the read-only System Tags column. Default true. */
 	showSystemTags?: boolean;
 	/** `_key`s of rows edited since the last save, flagged with an accent rail
 	 *  so a change is findable in a list of up to {@link MAX_PROMPTS} rows. */
