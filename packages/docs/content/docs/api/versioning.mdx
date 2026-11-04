@@ -18,7 +18,8 @@ Within `/api/v1`, a stable operation usually only gains:
 Write clients that ignore fields they don't know.
 
 An operation marked `x-stability: experimental` in the [OpenAPI description](/api/openapi.json) says so
-in the first line of its description too. Its response shape may still change.
+in the first line of its description too. It may change or be removed without being marked deprecated
+first.
 
 ## How a Deprecation Is Signalled
 
