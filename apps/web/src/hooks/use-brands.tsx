@@ -16,19 +16,11 @@ type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	trackedTargets: TrackedTarget[];
 };
 
-// ============================================================================
-// Query keys
-// ============================================================================
-
 export const brandKeys = {
 	all: ["brands"] as const,
 	detail: (brandId: string) => [...brandKeys.all, "detail", brandId] as const,
 	competitors: (brandId: string) => [...brandKeys.all, "competitors", brandId] as const,
 };
-
-// ============================================================================
-// Hooks
-// ============================================================================
 
 /**
  * Get a single brand by ID.

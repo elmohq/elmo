@@ -124,10 +124,6 @@ export async function countPromptRuns(
 	return rows[0]?.total ?? 0;
 }
 
-// ============================================================================
-// Response search
-// ============================================================================
-
 /** Runs a response search covers. Without a `query` every run in scope matches. */
 export type ResponseSearchScope = PromptListScope & { query?: string; sentiment?: SentimentFilter };
 
@@ -200,10 +196,6 @@ export async function getResponseSentimentCounts(scope: ResponseSearchScope): Pr
 	`);
 	return toSentimentFilterCounts(rows);
 }
-
-// ============================================================================
-// Sentiment quotes
-// ============================================================================
 
 export interface SentimentQuoteRow {
 	id: string;

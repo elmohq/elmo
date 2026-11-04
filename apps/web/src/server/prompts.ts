@@ -47,8 +47,6 @@ import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 import { toResponse } from "@/server/responses";
-// Server Functions
-// ============================================================================
 
 /**
  * Get metadata for a single prompt
@@ -336,7 +334,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			db.select({ name: competitors.name }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
 
-		// ---- Process mention stats ----
 		const mentionStats: { name: string; count: number }[] = [];
 
 		const brandName = brandResult[0]?.name;
@@ -357,7 +354,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 		mentionStats.sort((a, b) => (a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count));
 
-		// ---- Citation stats ----
 		const [brandInfo, competitorsList] = await Promise.all([
 			db
 				.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })

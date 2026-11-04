@@ -11,10 +11,6 @@
 /** Bump to replay a provider parsing fix over stored runs from `raw_output`. */
 export const EXTRACTOR_VERSION = 1;
 
-// ============================================================================
-// Text extraction by provider
-// ============================================================================
-
 /**
  * Stored payloads carry the answer in different places depending on which
  * provider — and which revision of it — produced the run, so a read probes the
@@ -429,10 +425,6 @@ export function storableText(text: unknown): string | null {
 export function tryExtractTextContent(rawOutput: unknown, providerOrEngine: string): string | null {
 	return storableText(extractTextContent(rawOutput, providerOrEngine));
 }
-
-// ============================================================================
-// Citation extraction by provider
-// ============================================================================
 
 export type Citation = {
 	url: string;

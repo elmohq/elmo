@@ -56,10 +56,6 @@ export function UnknownQueriesNote({ byModel }: { byModel: ModelFanoutStat[] }) 
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Variations — fan-out queries with the prompt's keywords bolded + run counts
-// ---------------------------------------------------------------------------
-
 /** Per-model share of one variation's runs, shown inline as "2× ChatGPT". */
 export interface VariationModelCount {
 	model: string;
@@ -139,10 +135,6 @@ export function VariationsList({
 		</div>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Query Words — the term cloud + Added / Preserved / Dropped word changes
-// ---------------------------------------------------------------------------
 
 type WordTab = "added" | "preserved" | "dropped";
 

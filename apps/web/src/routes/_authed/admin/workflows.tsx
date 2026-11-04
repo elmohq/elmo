@@ -35,10 +35,6 @@ import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { getJobLogsFn, getWorkflowDataFn, retryJobFn } from "@/server/admin";
 
-// ============================================================================
-// Types
-// ============================================================================
-
 interface SchedulerInfo {
 	exists: boolean;
 	nextRunAt: number | null;
@@ -122,10 +118,6 @@ interface WorkflowsData {
 	brands: BrandScheduleSummary[];
 }
 
-// ============================================================================
-// Utility functions
-// ============================================================================
-
 function formatDuration(ms: number): string {
 	const seconds = Math.floor(ms / 1000);
 	const minutes = Math.floor(seconds / 60);
@@ -164,10 +156,6 @@ function formatFutureTime(timestamp: number | null): string {
 	if (diffMs < 0) return "Overdue";
 	return `in ${formatDuration(diffMs)}`;
 }
-
-// ============================================================================
-// Sub-components
-// ============================================================================
 
 function QueueStatsCard({ stats, title }: { stats: QueueStats; title: string }) {
 	const hasIssues = stats.failed > 0;
@@ -635,10 +623,6 @@ function BrandRow({
 		</>
 	);
 }
-
-// ============================================================================
-// Route
-// ============================================================================
 
 export const Route = createFileRoute("/_authed/admin/workflows")({
 	staticData: { crumb: "Workflows" },

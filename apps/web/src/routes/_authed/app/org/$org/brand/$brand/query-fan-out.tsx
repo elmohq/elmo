@@ -149,10 +149,6 @@ function QueryFanoutPage() {
 
 type FanoutData = NonNullable<ReturnType<typeof useQueryFanout>["data"]>;
 
-// ---------------------------------------------------------------------------
-// Shared bits
-// ---------------------------------------------------------------------------
-
 function StatCard({ label, value, tip }: { label: string; value: React.ReactNode; tip: React.ReactNode }) {
 	return (
 		<Card className="py-4">
@@ -280,10 +276,6 @@ function EmptyState({ message }: { message: string }) {
 		</Card>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Prompt Fan-Out — per-prompt searches with the prompt's keywords bolded
-// ---------------------------------------------------------------------------
 
 type SortKey = "queries" | "avg";
 
@@ -428,10 +420,6 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 		</Card>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Top Queries — the searches with the widest reach, with the prompts behind them
-// ---------------------------------------------------------------------------
 
 type TopSort = "prompts" | "runs";
 

@@ -28,10 +28,6 @@ import { organization } from "./schema-auth";
 // Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
 export * from "./schema-auth";
 
-// ============================================================================
-// Application tables
-// ============================================================================
-
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 
 export const brands = pgTable(

@@ -121,10 +121,6 @@ export const RemoveUnsavedRow: StoryObj = {
 /** At the cap: both toolbar buttons are hidden and the limit message shows. */
 export const AtCapacity = () => <Harness showSystemTags={false} initial={filler(MAX_PROMPTS)} />;
 
-// ---------------------------------------------------------------------------
-// Web-grounded Claude assignment (cloud plans)
-// ---------------------------------------------------------------------------
-
 /**
  * The stacked mobile block and the desktop grid both render, so every row has
  * two of these. Queries go through the state rather than an index so they don't

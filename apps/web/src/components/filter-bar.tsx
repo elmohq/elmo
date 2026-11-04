@@ -43,10 +43,6 @@ function iconForModel(model: string, className = "size-3.5") {
 	return <ModelIcon iconId={iconIdForModelFilter(model)} className={className} />;
 }
 
-// ------------------------------------------------------------------
-// Trigger button (used by every dropdown)
-// ------------------------------------------------------------------
-
 type FilterTriggerButtonProps = {
 	icon: ReactNode;
 	label: string;
@@ -87,10 +83,6 @@ export function FilterTriggerButton({
 		</Button>
 	);
 }
-
-// ------------------------------------------------------------------
-// Model dropdown — subscribes to only the "model" URL key.
-// ------------------------------------------------------------------
 
 function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) {
 	const availableModels = getAvailableModels(trackedTargets);
@@ -148,10 +140,6 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 	);
 }
 
-// ------------------------------------------------------------------
-// Lookback dropdown — subscribes to only the "lookback" URL key.
-// ------------------------------------------------------------------
-
 function LookbackDropdown() {
 	const { data: brand } = useBrand();
 	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
@@ -178,12 +166,6 @@ function LookbackDropdown() {
 		/>
 	);
 }
-
-// ------------------------------------------------------------------
-// Tags dropdown — subscribes to only the "tags" URL key.
-// Consumer passes `availableTags` (derived from prompts summary) so the
-// dropdown doesn't need to fetch.
-// ------------------------------------------------------------------
 
 function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 	const urlTags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
@@ -255,12 +237,6 @@ function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 		</Popover>
 	);
 }
-
-// ------------------------------------------------------------------
-// Search input — subscribes to only the "q" URL key.
-// Debounces keystrokes and uses an effect-based sync (no render-time
-// setState) to avoid flashing back when the URL echo races with typing.
-// ------------------------------------------------------------------
 
 function SearchInput({
 	placeholder = "Search prompts...",
@@ -335,12 +311,7 @@ function SearchInput({
 	);
 }
 
-// ------------------------------------------------------------------
-// Result count — subscribes only to the two URL keys that gate its
-// visibility (tags + q). Parent passes the count as a prop so the
-// prompts-summary query is read once by a single owner.
-// ------------------------------------------------------------------
-
+// The count comes in as a prop so the prompts-summary query has a single owner.
 function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
 	const tags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
 	const q = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
@@ -354,10 +325,6 @@ function ResultCount({ count, total }: { count: number | undefined; total?: numb
 		</span>
 	);
 }
-
-// ------------------------------------------------------------------
-// Composed FilterBar
-// ------------------------------------------------------------------
 
 export function FilterBar({
 	availableTags,

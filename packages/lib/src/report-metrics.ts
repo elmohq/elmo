@@ -5,8 +5,6 @@
  */
 import { getModelMeta } from "@workspace/config/models";
 
-// ---------- Types ----------
-
 export interface ReportPromptRun {
 	promptId: string;
 	brandMentioned: boolean;
@@ -40,8 +38,6 @@ export interface SelectedPrompt {
 	category: PromptCategory;
 	sov: number | null;
 }
-
-// ---------- SoV Computation ----------
 
 /**
  * Compute Share of Voice for a single prompt.
@@ -147,8 +143,6 @@ export function computeCompetitorSoVs(runs: ReportPromptRun[], competitors: Repo
 		.sort((a, b) => b.sov - a.sov);
 }
 
-// ---------- Prompt Selection ----------
-
 /** A report shows four prompts: two the brand wins, two it has room to win. */
 const MAX_SELECTED = 4;
 const MAX_PER_CATEGORY = 2;
@@ -222,8 +216,6 @@ export function selectRepresentativePrompts(
 
 	return selection.selected;
 }
-
-// ---------- Rich Analysis ----------
 
 /** A prompt run with full response data for deeper analysis. */
 export interface FullPromptRun {
@@ -386,8 +378,6 @@ export function analyzeByEngine(
 		.sort((a, b) => b.mentionRate - a.mentionRate);
 }
 
-// ---------- Report Unstable Stats ----------
-
 /** Input shape for computing unstable report stats from rawOutput. */
 export interface ReportRawPromptRuns {
 	competitors: ReportCompetitor[];
@@ -496,8 +486,6 @@ export function computeReportUnstableStats(raw: ReportRawPromptRuns): ReportUnst
 						.sort((a, b) => b.sov - a.sov),
 	};
 }
-
-// ---------- Display Helpers ----------
 
 export function getSoVColor(sov: number | null): string {
 	if (sov === null) return "text-gray-400";

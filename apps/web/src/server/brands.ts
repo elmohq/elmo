@@ -151,10 +151,6 @@ function getDefaultBrandDomains(): string[] {
 		.filter((d): d is string => d !== null);
 }
 
-// ============================================================================
-// Helper functions (migrated from apps/web/src/lib/metadata.ts)
-// ============================================================================
-
 /**
  * Entitlements come in from the caller rather than being loaded here: the
  * brand-list path fans this out per brand, and resolving them inside would put
@@ -188,10 +184,6 @@ async function getBrandWithPromptsFromDb(
 		return undefined;
 	}
 }
-
-// ============================================================================
-// Server Functions
-// ============================================================================
 
 /**
  * Get a single brand by ID
