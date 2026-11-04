@@ -4,14 +4,8 @@ import { type ConsoleMessage, type Page, expect, test as base } from "@playwrigh
 export type ConsoleErrorPattern = string | RegExp;
 
 /**
- * Crisp, blocked below, and the failure that blocking prints.
- *
- * The widget is configured on the deployments we operate, so cloud and demo
- * load it. Letting the browser fetch it makes the suite depend on which origins
- * Crisp's CDN is willing to serve — it answers localhost:1515 and refuses the
- * ports the other modes run on, which is nothing this suite has an opinion
- * about. support-chat.spec.ts asserts on the loader Elmo installs, and that is
- * in the DOM either way.
+ * Blocked, because Crisp's CDN serves some localhost ports and refuses others.
+ * support-chat.spec.ts asserts on Elmo's loader, which is in the DOM either way.
  */
 export const CRISP_HOSTS = "**://*.crisp.chat/**";
 
@@ -35,17 +29,9 @@ export interface ConsoleErrorCollector {
 }
 
 /**
- * A client address of this test's own, sent as `X-Forwarded-For`.
- *
- * better-auth rate-limits `/sign-in*` and `/sign-up*` to three requests per ten
- * seconds per client IP, and when it cannot resolve one it puts every caller in
- * a single shared bucket. Nothing in front of the container sets the header, so
- * the whole suite counted as one client: four parallel workers signing in spent
- * each other's budget and the loser got a 429 it had no way to report. One
- * address per attempt is what the limiter assumes anyway — separate people sign
- * in from separate places, and a retry is a fresh one.
- *
- * Private space (RFC 1918), and wide enough that the digest does not collide.
+ * better-auth rate-limits sign-in and sign-up per client IP, and puts callers
+ * with no resolvable IP in one shared bucket, so parallel workers would 429
+ * each other. Each test attempt gets its own private (RFC 1918) address.
  */
 function syntheticClientIp(seed: string): string {
 	const [a, b, c] = createHash("sha256").update(seed).digest();
@@ -70,13 +56,9 @@ export const test = base.extend<
 >({
 	allowedConsoleErrors: [[], { option: true }],
 
-	// Exposed so a spec building its own context (see mcp.spec.ts) can present
-	// the same client the fixtures do, rather than falling back to the shared
-	// bucket this fixture exists to escape.
+	// Exposed for specs that build their own context (see mcp.spec.ts).
 	clientHeaders: async ({}, use, testInfo) => {
-		// Keyed on the attempt, not just the test: a retry that reused the address
-		// would inherit a budget the failed attempt had already spent, and ten
-		// seconds is long enough that a retry lands inside it.
+		// Keyed on the retry too, or a retry would inherit the failed attempt's spent budget.
 		await use({ "X-Forwarded-For": syntheticClientIp(`${testInfo.testId}#${testInfo.retry}`) });
 	},
 
@@ -107,11 +89,9 @@ export const test = base.extend<
 		});
 	},
 
-	// Listening here rather than in the auto fixture above keeps a spec that only
-	// takes `request` from building a browser context it never uses.
+	// Here rather than in the auto fixture, so a spec that only takes `request` builds no browser context.
 	context: async ({ context, _consoleErrorLog }, use) => {
-		// A page route still wins over this one, so a spec can watch the requests
-		// it aborts (see support-chat.spec.ts).
+		// A page route still wins over this one (see support-chat.spec.ts).
 		await context.route(CRISP_HOSTS, (route) => route.abort());
 
 		const watch = (page: Page) => {
