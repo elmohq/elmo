@@ -1,11 +1,5 @@
-/**
- * Mock for @/contexts/chart-data-context — provides controllable chart data context for stories.
- *
- * CachedPromptChart reads all its data from this context instead of fetching directly.
- */
 import { createContext, type ReactNode, useContext } from "react";
 
-// Re-export the types that components import from the real module
 export interface ProcessedChartData {
 	chartData: Array<{ date: string; [key: string]: number | string | null }>;
 	totalRuns: number;
@@ -22,7 +16,6 @@ interface ChartDataContextValue {
 	isLoading: boolean;
 }
 
-// Module-level mock state — stories set this before rendering
 let _mockContextValue: ChartDataContextValue | null = null;
 
 export function setMockChartDataContext(value: ChartDataContextValue | null) {
@@ -33,7 +26,6 @@ export function useOptionalChartDataContext() {
 	return _mockContextValue;
 }
 
-// No-op provider for stories (context is controlled via setMockChartDataContext)
 export function ChartDataProvider({ children }: { children: ReactNode }) {
 	return <>{children}</>;
 }
