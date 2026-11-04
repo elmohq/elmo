@@ -68,6 +68,10 @@ overrides:
   "@vercel/cli-config>zod": "^4.6.6" # GHSA-mrhx-c7xc-m3w5; every @vercel/cli-config release pins zod exactly
   # @azure/identity caps msal-node below the fix. Only bruno and unstorage's unused Azure driver pull it in.
   "@azure/identity>@azure/msal-node": "^7.1.0" # GHSA-xcx6-jx8p-x3h5
+  follow-redirects: "^1.16.2" # GHSA-mrwp-f3q8-3g9p; only axios pulls it in
+  # Sentry's bundler plugins, storybook's docgen plugin, and bruno's rimraf all pin older majors.
+  glob: "^14.0.2" # GHSA-3g3m-2fjr-6pw4
+  minimatch: "^11.0.1" # GHSA-g3hv-75wg-m249
 
 allowBuilds:
   "@tailwindcss/oxide": true
