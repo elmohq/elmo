@@ -199,4 +199,11 @@ describe("redirects", () => {
 		expect(response.status).toBe(308);
 		expect(response.headers.get("Location")).toBe("/legal/terms");
 	});
+
+	it("points OAuth discovery at the app, which is the issuer", async () => {
+		const { handle } = fakeApp();
+		const response = await handle(get("/.well-known/oauth-authorization-server"));
+		expect(response.status).toBe(307);
+		expect(response.headers.get("Location")).toBe("https://app.elmohq.com/.well-known/oauth-authorization-server");
+	});
 });
