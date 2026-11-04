@@ -27,6 +27,20 @@ Prefer to drive Elmo from an AI assistant rather than from code? The same data i
 [MCP server](/docs/api/mcp), which speaks the same permissions and the same tenancy, and the
 [skill](/docs/api/skill) teaches that assistant what to do with it.
 
+## Rate Limits
+
+Each organization API key gets 1,000 requests per minute; instance admin keys are not limited. Responses to
+an organization key say where it stands, using the fields of the IETF RateLimit header draft:
+
+```http
+RateLimit-Policy: "per-key";q=1000;w=60
+RateLimit: "per-key";r=998
+```
+
+`q` is the quota, `w` the window in seconds, and `r` the requests left in the current window.
+`X-RateLimit-Limit` and `X-RateLimit-Remaining` carry the same numbers. Over the quota the API answers
+`429` with a `Retry-After` header in seconds; wait that long before retrying.
+
 ## Endpoints
 
 Browse the available endpoints in the sidebar, grouped by resource:
