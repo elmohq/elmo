@@ -61,6 +61,7 @@ vi.mock("dataforseo-client", () => ({
 }));
 
 import { extractCitations, extractTextContent } from "../../text-extraction";
+import { getProvider } from "../index";
 import { dataforseo } from "./dataforseo";
 
 /** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
@@ -351,14 +352,10 @@ describe("dataforseo provider", () => {
 			],
 		});
 
-		// resolveGroundingRedirect uses global fetch with redirect:"manual" and reads
-		// the Location header. The client call itself is mocked separately above.
-		const fetchMock = vi.fn().mockResolvedValue({
-			headers: { get: (k: string) => (k === "location" ? realUrl : null) },
-		});
+		const fetchMock = redirectsTo({ [redirectUrl]: realUrl });
 		vi.stubGlobal("fetch", fetchMock);
 
-		const result = await dataforseo.run("gemini", "What are well-reviewed speakers?", {
+		const result = await getProvider("dataforseo").run("gemini", "What are well-reviewed speakers?", {
 			webSearch: true,
 			version: "gemini-2.5-flash",
 		});
@@ -374,4 +371,128 @@ describe("dataforseo provider", () => {
 		const rawUrl = raw.tasks[0].result[0].items[0].sections[0].annotations[0].url;
 		expect(rawUrl).toBe(realUrl);
 	});
+
+	describe("Google outbound-click redirects", () => {
+		const PROMPT = "What is a well-reviewed speaker released last month?";
+
+		function aiOverview(references: { url: string; title: string }[], markdown = "The Sonos Era 300 reviews well.") {
+			return {
+				tasks: [
+					{
+						status_code: 20000,
+						status_message: "Ok.",
+						result: [{ items: [{ type: "ai_overview", markdown, references }] }],
+					},
+				],
+			};
+		}
+
+		it("credits AI Overview citations to the site Google's /goto link leads to", async () => {
+			const realUrl = "https://www.whathifi.com/reviews/sonos-era-300";
+			const gotoUrl = "https://www.google.com/goto?url=CAESxAEB6zswFdCL92rz";
+			dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValueOnce(
+				aiOverview([{ url: gotoUrl, title: "Sonos Era 300 review" }], `The Sonos Era 300 [reviews well](${gotoUrl}).`),
+			);
+			const fetchMock = redirectsTo({ [gotoUrl]: realUrl });
+			vi.stubGlobal("fetch", fetchMock);
+
+			const result = await getProvider("dataforseo").run("google-ai-overview", PROMPT, { webSearch: true });
+
+			expect(fetchMock).toHaveBeenCalledWith(gotoUrl, expect.objectContaining({ redirect: "manual" }));
+			expect(stored(result).citations.map((c) => [c.url, c.domain])).toEqual([[realUrl, "whathifi.com"]]);
+			// Every copy of the link in the stored answer is rewritten, so replays agree.
+			expect(stored(result).textContent).toContain(realUrl);
+			expect(JSON.stringify(result.rawOutput)).not.toContain(gotoUrl);
+		});
+
+		it("credits AI Mode citations to the real site too", async () => {
+			const gotoUrl = "https://www.google.co.uk/goto?url=CAESfAHrOzAV7Y5Bq0cBdDMz";
+			dataforseoClient.googleAiModeLiveAdvanced.mockResolvedValueOnce(
+				aiOverview([{ url: gotoUrl, title: "Best speakers" }]),
+			);
+			vi.stubGlobal("fetch", redirectsTo({ [gotoUrl]: "https://www.rtings.com/speaker/reviews/best" }));
+
+			const result = await getProvider("dataforseo").run("google-ai-mode", PROMPT, { webSearch: true });
+
+			expect(stored(result).citations.map((c) => c.domain)).toEqual(["rtings.com"]);
+		});
+
+		it("shares one lookup between runs citing the same link at once", async () => {
+			const gotoUrl = "https://www.google.com/goto?url=CAESxAEB6zswFdCL92rz";
+			dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValue(
+				aiOverview([
+					{ url: gotoUrl, title: "Sonos Era 300 review" },
+					{ url: "https://www.techradar.com/sonos", title: "TechRadar" },
+				]),
+			);
+			const fetchMock = vi.fn(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				return { headers: new Headers({ location: "https://www.whathifi.com/reviews/sonos-era-300" }) };
+			});
+			vi.stubGlobal("fetch", fetchMock);
+
+			await Promise.all([
+				getProvider("dataforseo").run("google-ai-overview", PROMPT, { webSearch: true }),
+				getProvider("dataforseo").run("google-ai-overview", PROMPT, { webSearch: true }),
+			]);
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+
+		it("reads the destination straight off a /url link without a request", async () => {
+			dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValueOnce(
+				aiOverview([
+					{
+						url: "https://www.google.com/url?q=https://www.whathifi.com/reviews/sonos-era-300&sa=U&ved=2ahUKEwi",
+						title: "Sonos Era 300 review",
+					},
+				]),
+			);
+			const fetchMock = vi.fn();
+			vi.stubGlobal("fetch", fetchMock);
+
+			const result = await getProvider("dataforseo").run("google-ai-overview", PROMPT, { webSearch: true });
+
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(stored(result).citations.map((c) => c.url)).toEqual(["https://www.whathifi.com/reviews/sonos-era-300"]);
+		});
+
+		it("keeps the original link when it can't be resolved", async () => {
+			const timedOut = "https://www.google.com/goto?url=TIMEDOUT";
+			const consent = "https://www.google.com/goto?url=CONSENT";
+			dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValueOnce(
+				aiOverview([
+					{ url: timedOut, title: "One" },
+					{ url: consent, title: "Two" },
+				]),
+			);
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async (url: string) => {
+					if (url === timedOut) throw new DOMException("The operation timed out.", "TimeoutError");
+					return { headers: new Headers({ location: "https://consent.google.com/ml?continue=x" }) };
+				}),
+			);
+
+			const result = await getProvider("dataforseo").run("google-ai-overview", PROMPT, { webSearch: true });
+
+			expect(stored(result).citations.map((c) => c.url)).toEqual([timedOut, consent]);
+		});
+
+		it("leaves ordinary citation links alone", async () => {
+			dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValueOnce(AI_OVERVIEW_OK);
+			const fetchMock = vi.fn();
+			vi.stubGlobal("fetch", fetchMock);
+
+			const result = await getProvider("dataforseo").run("google-ai-overview", PROMPT, { webSearch: true });
+
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(stored(result).citations[0].url).toBe("https://www.whathifi.com/reviews/sonos-era-300");
+		});
+	});
 });
+
+/** A fetch that answers each redirect with a Location header, as the redirectors do. */
+function redirectsTo(locations: Record<string, string>) {
+	return vi.fn(async (url: string) => ({ status: 302, headers: new Headers({ location: locations[url] ?? "" }) }));
+}

@@ -1,4 +1,6 @@
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
+import { extractorFor } from "../text-extraction";
+import { resolveCitationRedirects } from "./citation-redirects";
 import { anthropicApi } from "./registry/anthropic-api";
 import { brightdata } from "./registry/brightdata";
 import { cloro } from "./registry/cloro";
@@ -25,19 +27,39 @@ export type {
 	TestResult,
 } from "./types";
 
-const providerMap: Record<string, Provider> = {
+/**
+ * Cited redirects are resolved here rather than in each provider: every vendor
+ * that scrapes Google AI Overview or AI Mode hands back the same `/goto` links,
+ * and they have to be followed before they expire.
+ */
+function resolvingCitationRedirects(provider: Provider): Provider {
+	return {
+		...provider,
+		async run(model, prompt, options) {
+			const result = await provider.run(model, prompt, options);
+			await resolveCitationRedirects(result.rawOutput, extractorFor({ provider: provider.id, model }));
+			return result;
+		},
+	};
+}
+
+const registry: Provider[] = [
 	searchapi,
 	olostep,
 	brightdata,
 	oxylabs,
 	cloro,
-	"openai-api": openaiApi,
-	"anthropic-api": anthropicApi,
-	"mistral-api": mistralApi,
+	openaiApi,
+	anthropicApi,
+	mistralApi,
 	dataforseo,
 	openrouter,
 	stub,
-};
+];
+
+const providerMap: Record<string, Provider> = Object.fromEntries(
+	registry.map((provider) => [provider.id, resolvingCitationRedirects(provider)]),
+);
 
 export function getProvider(id: string): Provider {
 	const p = providerMap[id];

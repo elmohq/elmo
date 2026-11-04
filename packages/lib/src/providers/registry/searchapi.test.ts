@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { extractRun } from "../../text-extraction";
+import { getProvider } from "../index";
 import { searchapi } from "./searchapi";
 
 /** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
@@ -133,6 +134,24 @@ describe("searchapi provider", () => {
 		const result = await searchapi.run("google-ai-overview", "best running shoes for beginners", { webSearch: true });
 
 		expect(stored(result).citations.map((c) => c.domain)).toEqual(["runnersworld.com", "google.com"]);
+	});
+
+	it("credits a source Google served as a redirect to the site it leads to", async () => {
+		const gotoUrl = AI_OVERVIEW_SERP.ai_overview.reference_links[1].link;
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (url: string) =>
+				url === gotoUrl
+					? new Response(null, { status: 302, headers: { Location: "https://www.rei.com/learn/running-shoes" } })
+					: jsonResponse(AI_OVERVIEW_SERP),
+			),
+		);
+
+		const result = await getProvider("searchapi").run("google-ai-overview", "best running shoes for beginners", {
+			webSearch: true,
+		});
+
+		expect(stored(result).citations.map((c) => c.domain)).toEqual(["runnersworld.com", "rei.com"]);
 	});
 
 	it("fails a query Google answered without an AI Overview", async () => {
