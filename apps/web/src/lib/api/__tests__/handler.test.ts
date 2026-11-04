@@ -324,51 +324,10 @@ describe("createApiHandler, for a key over its rate limit", () => {
 		const response = await overLimit(tryAgainIn);
 
 		const sent = [...response.headers.keys()].filter((name) => name !== "content-type");
-		expect(sent.sort()).toEqual(
-			Object.keys(RATE_LIMIT_HEADERS)
-				.map((name) => name.toLowerCase())
-				.sort(),
-		);
+		expect(sent).toEqual(Object.keys(RATE_LIMIT_HEADERS).map((name) => name.toLowerCase()));
 		for (const [name, header] of Object.entries(RATE_LIMIT_HEADERS)) {
 			if (header.required) expect(response.headers.has(name)).toBe(true);
 			if (header.schema.type === "integer") expect(response.headers.get(name)).toMatch(/^[1-9]\d*$/);
 		}
-	});
-});
-
-describe("createApiHandler, for a caller without a valid key", () => {
-	beforeEach(() => {
-		vi.stubEnv("ADMIN_API_KEYS", API_KEY);
-		vi.stubEnv("DEPLOYMENT_MODE", "local");
-		resetDeploymentCache();
-	});
-
-	afterEach(() => {
-		vi.unstubAllEnvs();
-		resetDeploymentCache();
-	});
-
-	it.each([
-		["no key", null],
-		["an unrecognized key", "elmo_unknown"],
-	])("advertises the default per-key quota with %s", async (_, apiKey) => {
-		const handler = createApiHandler({ handle: async () => ({ ok: true }) });
-		const response = await handler({ request: makeRequest({ apiKey }), params: {} });
-
-		expect(response.status).toBe(401);
-		expect(response.headers.get("RateLimit-Policy")).toBe('"per-key";q=1000;w=60');
-		expect(response.headers.has("RateLimit")).toBe(false);
-	});
-
-	it("reports the quota as spent with its reset on a 429", async () => {
-		verifyApiKey.mockResolvedValueOnce({
-			valid: false,
-			key: null,
-			error: { code: "RATE_LIMITED", details: { tryAgainIn: 12_000 } },
-		});
-		const handler = createApiHandler({ handle: async () => ({ ok: true }) });
-		const response = await handler({ request: makeRequest({ apiKey: "elmo_spent" }), params: {} });
-
-		expect(response.headers.get("RateLimit")).toBe('"per-key";r=0;t=12');
 	});
 });

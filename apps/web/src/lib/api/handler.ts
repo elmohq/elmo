@@ -7,7 +7,6 @@
  * in `Response.json()`, a `Response` passes through.
  */
 
-import { API_KEY_RATE_LIMIT_PER_MINUTE } from "@workspace/config/constants";
 import { getDeployment } from "@workspace/deployment";
 import { WriteDeniedError } from "@workspace/lib/entitlements";
 import type { z } from "zod";
@@ -210,18 +209,15 @@ export function withMethodGuard<T extends Record<string, unknown>>(handlers: T):
 	return guarded as T;
 }
 
-/**
- * A caller that has not yet presented a key is still told the default per-key
- * policy, so an agent can plan its pacing before it holds one.
- */
 function authFailureResponse(failure: ApiAuthFailure): Response {
 	const { status, error, message, code, retryAfterSeconds } = failure;
-	const headers: Record<string, string> = { "RateLimit-Policy": rateLimitPolicy(API_KEY_RATE_LIMIT_PER_MINUTE) };
-	if (retryAfterSeconds) {
-		headers["Retry-After"] = String(retryAfterSeconds);
-		headers.RateLimit = `"${RATE_LIMIT_POLICY_NAME}";r=0;t=${retryAfterSeconds}`;
-	}
-	return errorResponse(status, error, message, code, headers);
+	return errorResponse(
+		status,
+		error,
+		message,
+		code,
+		retryAfterSeconds ? { "Retry-After": String(retryAfterSeconds) } : undefined,
+	);
 }
 
 function refuseRequest(
@@ -261,28 +257,14 @@ function refuseRequest(
 	return null;
 }
 
-const RATE_LIMIT_POLICY_NAME = "per-key";
-
-/** draft-ietf-httpapi-ratelimit-headers; every key's window is one minute. */
-function rateLimitPolicy(limit: number): string {
-	return `"${RATE_LIMIT_POLICY_NAME}";q=${limit};w=60`;
-}
-
 /**
  * The plugin counts a fixed window with a read-modify-write per request, so
  * `Remaining` is a guide to back off on rather than a ledger to ride to zero.
- * The window's start is not stored, so no reset time is sent.
  */
 function rateLimitHeaders(auth: ApiAuth): Record<string, string> | undefined {
 	if (auth.kind !== "organization") return undefined;
-	const headers: Record<string, string> = {
-		"RateLimit-Policy": rateLimitPolicy(auth.rateLimit.limit),
-		"X-RateLimit-Limit": String(auth.rateLimit.limit),
-	};
-	if (auth.rateLimitRemaining !== null) {
-		headers.RateLimit = `"${RATE_LIMIT_POLICY_NAME}";r=${auth.rateLimitRemaining}`;
-		headers["X-RateLimit-Remaining"] = String(auth.rateLimitRemaining);
-	}
+	const headers: Record<string, string> = { "X-RateLimit-Limit": String(auth.rateLimit.limit) };
+	if (auth.rateLimitRemaining !== null) headers["X-RateLimit-Remaining"] = String(auth.rateLimitRemaining);
 	return headers;
 }
 

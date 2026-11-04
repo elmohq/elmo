@@ -117,7 +117,7 @@ description: ${canonicalUrl("/api/openapi.json")}.
 | --- | --- | --- |
 | \`401\` | REST API, MCP server | Credential missing, malformed, expired, or revoked. Refresh once (Method A); otherwise restart at Step 1. Do not retry the same credential. |
 | \`403\` \`insufficient_scope\` / \`forbidden\` | REST API | The credential is valid but lacks the scope or brand access. Ask the operator for a wider key rather than retrying. |
-| \`429\` | REST API, MCP server | Wait \`Retry-After\` seconds. On the REST API, \`RateLimit-Policy\` and \`RateLimit\` headers describe the quota. |
+| \`429\` | REST API, MCP server | Wait \`Retry-After\` seconds. |
 | \`invalid_grant\` | \`token_endpoint\` | Code or refresh_token expired, reused, or revoked. Restart at Step 4. |
 | \`invalid_client\` | \`token_endpoint\` | \`client_id\` not recognized. Register again (Step 3). |
 | \`invalid_request\` | \`authorization_endpoint\`, \`token_endpoint\` | A required parameter such as the PKCE \`code_challenge\` is missing. Fix the request. |
