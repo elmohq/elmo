@@ -13,7 +13,7 @@ import {
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
 import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
-import { computeSystemTags } from "@workspace/lib/tag-utils";
+import { computeSystemTags, effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -44,7 +44,7 @@ import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { effectiveTags, matchesTagFilter, parseTagFilter } from "@/server/prompt-resolution";
+import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 import { toResponse } from "@/server/responses";
 

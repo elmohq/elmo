@@ -11,8 +11,8 @@
  * Keeping it here, imported only inside server-fn handlers, stays strippable.
  */
 import { db } from "@workspace/lib/db/db";
-import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { prompts } from "@workspace/lib/db/schema";
+import { effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
 import { and, eq } from "drizzle-orm";
 
 export interface ResolvedPrompt {
@@ -63,19 +63,4 @@ export async function resolveFilteredPrompts(
 
 export function parseTagFilter(tags: string | undefined): string[] {
 	return tags?.split(",").filter(Boolean) || [];
-}
-
-/**
- * A prompt's user tags plus exactly one system tag for its effective branded
- * status, so the branded and unbranded filters use the same status the UI shows.
- */
-export function effectiveTags(prompt: { systemTags: string[] | null; tags: string[] | null }): string[] {
-	const userTags = prompt.tags || [];
-	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
-	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
-	return userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag];
-}
-
-export function matchesTagFilter(tags: string[], tagFilter: string[]): boolean {
-	return tagFilter.length === 0 || tagFilter.some((t) => tags.includes(t));
 }
