@@ -1,4 +1,3 @@
-
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 
 export type DeploymentMode = "whitelabel" | "local" | "demo" | "cloud";
