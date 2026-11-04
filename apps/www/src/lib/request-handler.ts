@@ -5,6 +5,7 @@ import { CAL_EMBED_CSP } from "@/lib/cal-embed";
 import { MARKDOWN_CONTENT_TYPE, markdownNotFound } from "@/lib/get-llm-text";
 import { htmlToMarkdown } from "@/lib/html-to-markdown";
 import { llmsTxt } from "@/lib/llms-txt";
+import { markdownCopyPath } from "@/lib/markdown-copy";
 import { canonicalUrl } from "@/lib/seo";
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -56,7 +57,7 @@ function addDiscoveryLinks(response: Response, path: string, markdownCopyOf?: st
 	if (!type.startsWith("text/html") && !type.startsWith("text/markdown")) return;
 	const links = [DISCOVERY_LINKS];
 	if (response.ok && !FILE_LIKE.test(path)) {
-		links.push(`<${path.replace(/\/+$/, "") || "/index"}.md>; rel="alternate"; type="text/markdown"`);
+		links.push(`<${markdownCopyPath(path)}>; rel="alternate"; type="text/markdown"`);
 	}
 	// Search engines crawl the .md copies (docs pages link to them), so point
 	// them at the HTML page instead of indexing a duplicate.
