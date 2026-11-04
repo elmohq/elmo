@@ -20,6 +20,7 @@ import { markdownCopyPath } from "@/lib/markdown-copy";
 import { getMarketingOgImage } from "@/lib/og";
 import { initAnalytics } from "@/lib/posthog";
 import { organizationJsonLd, SITE_DESCRIPTION, SITE_NAME, SITE_URL, websiteJsonLd } from "@/lib/seo";
+import { registerWebMcpTools } from "@/lib/webmcp";
 import appCss from "../styles.css?url";
 
 const ROOT_TITLE = `${SITE_NAME} · Open Source AI Visibility`;
@@ -121,7 +122,7 @@ function RootComponent() {
 		const required = isConsentRequired(consentRegion);
 		setConsentRequired(required);
 		initCrisp();
-		const stops = [initAnalytics(required), initAdTags(required)];
+		const stops = [initAnalytics(required), initAdTags(required), registerWebMcpTools()];
 		return () => {
 			for (const stop of stops) stop();
 		};
