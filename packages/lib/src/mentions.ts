@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import type { Brand, Competitor } from "./db/schema";
 
-export const MENTIONS_VERSION = 1;
+/**
+ * Bump when what's derived around the judge's verdicts changes: history is re-derived under it, but a
+ * subject's fingerprint leaves it out, so verdicts are kept and the judge isn't asked again.
+ */
+export const MENTIONS_VERSION = 2;
 
 /** Malformed input falls back to the raw value: a stored typo shouldn't fail a run. */
 export function normalizeDomain(urlOrDomain: string): string {
@@ -42,6 +46,11 @@ export interface MentionAssessment {
 	reason?: NonMentionReason;
 	sentiment?: Sentiment;
 	sentimentProbabilities?: Record<string, number>;
+	/**
+	 * For a mention: the answer only cites the company (links to its site, a citation chip) and never
+	 * names it in its own words, so it has no sentiment and counts in no sentiment figure.
+	 */
+	citedOnly?: true;
 	/**
 	 * Offsets into the run's stored text of the passage the assessment rests on: the one that most
 	 * carries its sentiment when it has one, otherwise the one that most decided the mention.

@@ -132,11 +132,33 @@ export function quoteOptions(
  * only for a company the answer cites and never names.
  */
 export function mentionOffsets(answer: string, subject: Subject): number[] {
-	const visible = answer
-		.replace(INLINE_DATA, (data) => " ".repeat(data.length))
-		.replace(/\]\([^)\s]{0,2000}\)|https?:\/\/[^\s)\]]+/g, (target) => " ".repeat(target.length));
-	const named = offsetsIn(visible, subject);
+	const named = offsetsIn(withoutTargets(answer.replace(INLINE_DATA, blank)), subject);
 	return named.length ? named : offsetsIn(answer, subject);
+}
+
+/** Blanked rather than removed, so offsets into what's left are offsets into the answer. */
+const blank = (match: string) => " ".repeat(match.length);
+
+const withoutTargets = (text: string) => text.replace(/\]\([^)\s]{0,2000}\)|https?:\/\/[^\s)\]]+/g, blank);
+
+/**
+ * Markup that only points at a source: a link whose text is a site, a URL or a footnote number
+ * ("([rei.com](https://rei.com/p))", "[1](…)"), a favicon with the "+2" chip label beside it, and
+ * citation tokens. Its text is what the answer cites, not what it says.
+ */
+const CITATION =
+	/!?\[\s*(?:\[?\^?\d+\^?\]?|(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}|https?:\/\/[^\s\]]*)?\s*\]\([^)\s]{0,2000}\)(?:(?<=favicons\?domain=[^)\s]*\))[ \t]*[^\n[\]()]{0,80}?\+\d+)?|【[^】\n]{0,200}†[^】\n]{0,200}】|\ue200[^\ue201\n]{0,200}\ue201/giu;
+
+/**
+ * Whether the answer names the subject in its own words, rather than only citing it: a link to its
+ * site, a citation chip or a bare URL. A domain written as prose ("see asana.com") names it.
+ */
+export function namedInProse(answer: string, subject: Subject): boolean {
+	const prose = withoutTargets(answer.replace(INLINE_DATA, blank).replace(CITATION, blank));
+	return termPatterns(subject).some((pattern) => {
+		pattern.lastIndex = 0;
+		return pattern.test(prose);
+	});
 }
 
 function offsetsIn(text: string, subject: Subject): number[] {
