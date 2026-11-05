@@ -147,10 +147,17 @@ async function runPlan(paths: string[], options: PlanOptions): Promise<void> {
 	}
 }
 
+// Only the parent is canonicalized: the selection itself keeps its own name so it's still opened
+// no-follow, and it must be the same entry as the checked path in case either was swapped for a link meanwhile.
 async function contextRoot(p: string): Promise<string | undefined> {
 	const resolved = path.resolve(process.cwd(), p);
 	if (await reachedThroughSymlink(resolved)) return undefined;
-	return fs.realpath(resolved).catch(() => undefined);
+	const parent = await fs.realpath(path.dirname(resolved)).catch(() => undefined);
+	if (!parent) return undefined;
+	const candidate = path.join(parent, path.basename(resolved));
+	const [atCandidate, atSelection] = await Promise.all([fs.lstat(candidate), fs.lstat(resolved)]).catch(() => []);
+	if (!atCandidate || !atSelection || atCandidate.isSymbolicLink() || atSelection.isSymbolicLink()) return undefined;
+	return atCandidate.ino === atSelection.ino && atCandidate.dev === atSelection.dev ? candidate : undefined;
 }
 
 // Whatever is read here is sent to the research provider, so a symlink (even one swapped in after a
@@ -179,8 +186,8 @@ async function readRegularFile(file: string, root: string): Promise<string> {
 
 async function filesFor(p: string): Promise<{ root: string; files: string[] }[]> {
 	const root = await contextRoot(p);
-	const stat = root ? await fs.stat(root).catch(() => null) : null;
-	if (!root || !stat) {
+	const stat = root ? await fs.lstat(root).catch(() => null) : null;
+	if (!root || !stat || stat.isSymbolicLink()) {
 		log.warn(`Skipping ${p}: not found, or reached through a symlink.`);
 		return [];
 	}
