@@ -149,6 +149,9 @@ async function runPlan(paths: string[], options: PlanOptions): Promise<void> {
 // Whatever is read here is sent to the research provider, so a symlink (even one swapped in after a
 // directory listing) is refused rather than followed to a file outside what the user selected.
 async function readRegularFile(file: string): Promise<string> {
+	// O_NOFOLLOW doesn't exist on Windows, so the link itself is checked first as well.
+	const link = await fs.lstat(file).catch(() => undefined);
+	if (!link?.isFile()) return "";
 	const handle = await fs.open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0)).catch(() => undefined);
 	if (!handle) return "";
 	try {
