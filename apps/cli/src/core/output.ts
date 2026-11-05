@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { reachedThroughSymlink } from "./paths.js";
 
 export type DataFormat = "csv" | "jsonl";
 
@@ -11,8 +13,29 @@ export function parseFormat(value: string | undefined): DataFormat {
 	return v;
 }
 
+// Output defaults to the working directory, which may be a checkout someone else wrote, so a planted
+// link there can't redirect artifacts (or the cleanup before them) to somewhere outside it.
 export async function ensureDir(dir: string): Promise<void> {
+	const refuse = () => new Error(`Refusing to write to ${dir}: it is reached through a symlink.`);
+	if (await reachedThroughSymlink(dir, { allowMissing: true })) throw refuse();
 	await fs.mkdir(dir, { recursive: true });
+	if (await reachedThroughSymlink(dir)) throw refuse();
+}
+
+// Written to a fresh file and renamed into place: a rename replaces whatever entry has the artifact's
+// name, so an existing symlink is swapped out rather than followed to the file it points at.
+export async function writeText(dir: string, name: string, content: string): Promise<string> {
+	await ensureDir(dir);
+	const filePath = path.join(dir, name);
+	const tempPath = path.join(dir, `.${name}.${randomUUID()}.tmp`);
+	try {
+		await fs.writeFile(tempPath, content, { encoding: "utf8", flag: "wx" });
+		await fs.rename(tempPath, filePath);
+	} catch (error) {
+		await fs.rm(tempPath, { force: true });
+		throw error;
+	}
+	return filePath;
 }
 
 export function slugify(value: string, maxLen = 48): string {
@@ -82,18 +105,8 @@ export async function writeStructured(
 	columns: string[],
 	format: DataFormat,
 ): Promise<string> {
-	await ensureDir(dir);
 	const ext = format === "csv" ? "csv" : "jsonl";
-	const filePath = path.join(dir, `${baseName}.${ext}`);
-	await fs.writeFile(filePath, `${serialize(rows, columns, format)}\n`, "utf8");
-	return filePath;
-}
-
-export async function writeText(dir: string, name: string, content: string): Promise<string> {
-	await ensureDir(dir);
-	const filePath = path.join(dir, name);
-	await fs.writeFile(filePath, content, "utf8");
-	return filePath;
+	return writeText(dir, `${baseName}.${ext}`, `${serialize(rows, columns, format)}\n`);
 }
 
 export async function writeJson(dir: string, name: string, value: unknown): Promise<string> {
@@ -102,7 +115,7 @@ export async function writeJson(dir: string, name: string, value: unknown): Prom
 
 // Prompts, model answers, and website text are untrusted, so a terminal gets them without control characters:
 // an escape sequence could otherwise rewrite the screen or the clipboard. Pipes get the bytes unchanged.
-function terminalSafe(text: string): string {
+export function terminalSafe(text: string): string {
 	return [...text]
 		.filter((character) => {
 			const code = character.codePointAt(0) ?? 0;

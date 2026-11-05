@@ -8,6 +8,7 @@ import { z } from "zod";
 import { type BrandPack, type PlanSuggestion, readBrandPack } from "../core/brand-pack.js";
 import { loadElmoEnv } from "../core/env.js";
 import { parseFormat, printStdout, type Row, writeJson, writeStructured, writeText } from "../core/output.js";
+import { isWithin, reachedThroughSymlink } from "../core/paths.js";
 import { applyResearchTarget } from "../core/targets.js";
 import { log, routeLibraryLogsToStderr } from "../core/ui.js";
 import { trackCliEvent } from "../telemetry.js";
@@ -146,9 +147,15 @@ async function runPlan(paths: string[], options: PlanOptions): Promise<void> {
 	}
 }
 
+async function contextRoot(p: string): Promise<string | undefined> {
+	const resolved = path.resolve(process.cwd(), p);
+	if (await reachedThroughSymlink(resolved)) return undefined;
+	return fs.realpath(resolved).catch(() => undefined);
+}
+
 // Whatever is read here is sent to the research provider, so a symlink (even one swapped in after a
 // directory listing) is refused rather than followed to a file outside what the user selected.
-async function readRegularFile(file: string): Promise<string> {
+async function readRegularFile(file: string, root: string): Promise<string> {
 	// O_NOFOLLOW doesn't exist on Windows, so the link itself is checked first as well.
 	const link = await fs.lstat(file).catch(() => undefined);
 	if (!link?.isFile()) return "";
@@ -156,7 +163,13 @@ async function readRegularFile(file: string): Promise<string> {
 	if (!handle) return "";
 	try {
 		const stat = await handle.stat();
-		return stat.isFile() ? await handle.readFile("utf8") : "";
+		if (!stat.isFile()) return "";
+		// O_NOFOLLOW only covers the last component, so a directory swapped for a link mid-walk is caught
+		// by checking that the opened file is the one that canonically sits inside the selected root.
+		const canonical = await fs.realpath(file);
+		const atCanonical = await fs.stat(canonical);
+		if (!isWithin(root, canonical) || atCanonical.ino !== stat.ino || atCanonical.dev !== stat.dev) return "";
+		return await handle.readFile("utf8");
 	} catch {
 		return "";
 	} finally {
@@ -164,26 +177,28 @@ async function readRegularFile(file: string): Promise<string> {
 	}
 }
 
-async function filesFor(p: string): Promise<string[]> {
-	const resolved = path.resolve(process.cwd(), p);
-	const stat = await fs.stat(resolved).catch(() => null);
-	if (!stat) {
-		log.warn(`Skipping ${p}: not found.`);
+async function filesFor(p: string): Promise<{ root: string; files: string[] }[]> {
+	const root = await contextRoot(p);
+	const stat = root ? await fs.stat(root).catch(() => null) : null;
+	if (!root || !stat) {
+		log.warn(`Skipping ${p}: not found, or reached through a symlink.`);
 		return [];
 	}
-	return stat.isDirectory() ? walkTextFiles(resolved) : [resolved];
+	return [{ root, files: stat.isDirectory() ? await walkTextFiles(root) : [root] }];
 }
 
 export async function readFilesWithin(paths: string[], maxBytes: number): Promise<string[]> {
 	const parts: string[] = [];
 	let budget = maxBytes;
-	for (const file of (await Promise.all(paths.map(filesFor))).flat()) {
+	const cwd = await fs.realpath(process.cwd());
+	const selections = (await Promise.all(paths.map(filesFor))).flat();
+	for (const { root, file } of selections.flatMap(({ root, files }) => files.map((file) => ({ root, file })))) {
 		if (budget <= 0) break;
-		const content = await readRegularFile(file);
+		const content = await readRegularFile(file, root);
 		if (!content.trim()) continue;
 		const slice = content.slice(0, budget);
 		budget -= slice.length;
-		parts.push(`<<< FILE: ${path.relative(process.cwd(), file)} >>>\n${slice}`);
+		parts.push(`<<< FILE: ${path.relative(cwd, file)} >>>\n${slice}`);
 	}
 	return parts;
 }
@@ -223,10 +238,11 @@ async function walkTextFiles(dir: string, depth = 0): Promise<string[]> {
 }
 
 export async function readEvalContext(evalDir: string): Promise<string> {
-	const dir = path.resolve(process.cwd(), evalDir);
-	const summary = await readRegularFile(path.join(dir, "summary.md"));
+	const dir = await contextRoot(evalDir);
+	if (!dir) return "";
+	const summary = await readRegularFile(path.join(dir, "summary.md"), dir);
 	if (summary.trim()) return summary;
-	const runJson = await readRegularFile(path.join(dir, "run.json"));
+	const runJson = await readRegularFile(path.join(dir, "run.json"), dir);
 	return runJson.trim();
 }
 

@@ -1,4 +1,12 @@
+import { format } from "node:util";
 import pc from "picocolors";
+import { terminalSafe } from "./output.js";
+
+// Messages can carry model- and website-derived text, so they're stripped of control characters
+// before any styling is added; the styling itself is the only escape sequence that reaches the terminal.
+function forStderr(text: string): string {
+	return process.stderr.isTTY ? terminalSafe(text) : text;
+}
 
 /**
  * Human-facing messages for the `lab` commands go to **stderr** so that the
@@ -6,11 +14,11 @@ import pc from "picocolors";
  * clean for piping. Never log progress to stdout in a lab command.
  */
 export const log = {
-	info: (msg: string) => process.stderr.write(`${pc.dim("›")} ${msg}\n`),
-	step: (msg: string) => process.stderr.write(`${pc.cyan("›")} ${msg}\n`),
-	warn: (msg: string) => process.stderr.write(`${pc.yellow("!")} ${msg}\n`),
-	error: (msg: string) => process.stderr.write(`${pc.red("✗")} ${msg}\n`),
-	success: (msg: string) => process.stderr.write(`${pc.green("✓")} ${msg}\n`),
+	info: (msg: string) => process.stderr.write(`${pc.dim("›")} ${forStderr(msg)}\n`),
+	step: (msg: string) => process.stderr.write(`${pc.cyan("›")} ${forStderr(msg)}\n`),
+	warn: (msg: string) => process.stderr.write(`${pc.yellow("!")} ${forStderr(msg)}\n`),
+	error: (msg: string) => process.stderr.write(`${pc.red("✗")} ${forStderr(msg)}\n`),
+	success: (msg: string) => process.stderr.write(`${pc.green("✓")} ${forStderr(msg)}\n`),
 };
 
 /**
@@ -18,13 +26,15 @@ export const log = {
  * `console.log`/`console.info`, which write to **stdout**. The lab commands put
  * their machine-readable result on stdout, so redirect those library logs to
  * stderr to keep piped output clean. `console.error`/`console.warn` already go
- * to stderr.
+ * to stderr, but are routed here too so they get the same terminal filtering.
  */
 export function routeLibraryLogsToStderr(): void {
 	const toErr = (...args: unknown[]) => {
-		process.stderr.write(`${args.map((a) => (typeof a === "string" ? a : String(a))).join(" ")}\n`);
+		process.stderr.write(forStderr(`${format(...args)}\n`));
 	};
-	console.log = toErr as typeof console.log;
-	console.info = toErr as typeof console.info;
-	console.debug = toErr as typeof console.debug;
+	console.log = toErr;
+	console.info = toErr;
+	console.debug = toErr;
+	console.warn = toErr;
+	console.error = toErr;
 }

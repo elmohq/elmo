@@ -62,14 +62,25 @@ function collectJsonLd(document: Document): Record<string, unknown>[] {
 	return out;
 }
 
-// Matched by attribute rather than a `label[for="…"]` selector, so an id never has to be escaped into CSS.
-function labelFor(element: Element, document: Document): Element | undefined {
-	const id = element.getAttribute("id");
-	if (!id) return undefined;
-	return [...document.querySelectorAll("label[for]")].find((label) => label.getAttribute("for") === id);
+type LabelIndex = Map<string, Element>;
+
+// Built once per page so each control's label is a lookup, not another scan of every label on the page.
+// Keyed by attribute rather than queried with a `label[for="…"]` selector, so an id never has to be escaped into CSS.
+function indexLabels(document: Document): LabelIndex {
+	const labels: LabelIndex = new Map();
+	for (const label of document.querySelectorAll("label[for]")) {
+		const target = label.getAttribute("for");
+		if (target && !labels.has(target)) labels.set(target, label);
+	}
+	return labels;
 }
 
-function accessibleName(element: El, document: Document): string {
+function labelFor(element: Element, labels: LabelIndex): Element | undefined {
+	const id = element.getAttribute("id");
+	return id ? labels.get(id) : undefined;
+}
+
+function accessibleName(element: El, document: Document, labels: LabelIndex): string {
 	const labelledBy = element.getAttribute("aria-labelledby");
 	if (labelledBy) {
 		const text = labelledBy
@@ -84,7 +95,7 @@ function accessibleName(element: El, document: Document): string {
 		element.getAttribute("title") ??
 		(element.tagName === "INPUT" ? element.getAttribute("value") : null);
 	if (direct?.trim()) return direct.trim();
-	const label = labelFor(element, document);
+	const label = labelFor(element, labels);
 	if (label?.textContent?.trim()) return label.textContent.trim();
 	if (element.closest("label")?.textContent?.trim()) return element.closest("label")?.textContent?.trim() ?? "";
 	const imageAlt = [...element.querySelectorAll("img[alt], svg[aria-label]")]
@@ -94,37 +105,61 @@ function accessibleName(element: El, document: Document): string {
 	return (element.textContent ?? "").trim() || imageAlt || element.getAttribute("placeholder")?.trim() || "";
 }
 
-function isHidden(element: Element): boolean {
-	for (let node: Element | null = element; node; node = node.parentElement) {
-		if (node.hasAttribute("hidden") || node.getAttribute("aria-hidden") === "true") return true;
-		if (HIDDEN_STYLE.test(node.getAttribute("style") ?? "")) return true;
+type HiddenCache = Map<Element, boolean>;
+
+function hiddenItself(element: Element): boolean {
+	return (
+		element.hasAttribute("hidden") ||
+		element.getAttribute("aria-hidden") === "true" ||
+		HIDDEN_STYLE.test(element.getAttribute("style") ?? "")
+	);
+}
+
+// Memoized per element so deeply nested markup costs one walk up the tree, not one per descendant.
+function isHidden(element: Element, cache: HiddenCache): boolean {
+	const unresolved: Element[] = [];
+	let node: Element | null = element;
+	let hidden = false;
+	while (node) {
+		const cached = cache.get(node);
+		if (cached !== undefined) {
+			hidden = cached;
+			break;
+		}
+		unresolved.push(node);
+		node = node.parentElement;
 	}
-	return false;
+	for (const ancestor of unresolved.reverse()) {
+		hidden ||= hiddenItself(ancestor);
+		cache.set(ancestor, hidden);
+	}
+	return hidden;
 }
 
 const FORM_FIELDS = ["INPUT", "SELECT", "TEXTAREA"];
 const BUTTON_INPUTS = ["submit", "button", "reset", "image"];
 
-function hasLabel(element: Element, document: Document): boolean {
+function hasLabel(element: Element, labels: LabelIndex): boolean {
 	if (element.getAttribute("aria-label") || element.getAttribute("aria-labelledby") || element.closest("label"))
 		return true;
-	return labelFor(element, document) !== undefined;
+	return labelFor(element, labels) !== undefined;
 }
 
-function collectControls(document: Document): ParsedPage["controls"] {
+function collectControls(document: Document, hidden: HiddenCache): ParsedPage["controls"] {
+	const labels = indexLabels(document);
 	const controls = { total: 0, named: 0, nonNative: 0, formControls: 0, labeledFormControls: 0 };
 	const interactive = document.querySelectorAll(
 		'a[href], button, input:not([type="hidden"]), select, textarea, [role="button"], [role="link"]',
 	);
 	for (const element of interactive) {
-		if (isHidden(element)) continue;
+		if (isHidden(element, hidden)) continue;
 		controls.total++;
-		if (accessibleName(element as El, document)) controls.named++;
+		if (accessibleName(element as El, document, labels)) controls.named++;
 		const isField =
 			FORM_FIELDS.includes(element.tagName) && !BUTTON_INPUTS.includes(element.getAttribute("type") ?? "");
 		if (!isField) continue;
 		controls.formControls++;
-		if (hasLabel(element, document)) controls.labeledFormControls++;
+		if (hasLabel(element, labels)) controls.labeledFormControls++;
 	}
 	for (const element of document.querySelectorAll("div[onclick], span[onclick], div[role=button], span[role=button]")) {
 		if (!element.hasAttribute("tabindex")) controls.nonNative++;
@@ -132,11 +167,11 @@ function collectControls(document: Document): ParsedPage["controls"] {
 	return controls;
 }
 
-function collectHiddenInstructions(document: Document): string[] {
+function collectHiddenInstructions(document: Document, hidden: HiddenCache): string[] {
 	const found = new Set<string>();
 	for (const element of document.querySelectorAll("body *")) {
 		const candidates = [element.getAttribute("aria-label"), element.getAttribute("alt"), element.getAttribute("title")];
-		if (isHidden(element) && element.children.length === 0) candidates.push(element.textContent);
+		if (isHidden(element, hidden) && element.children.length === 0) candidates.push(element.textContent);
 		for (const candidate of candidates) {
 			if (candidate && INSTRUCTION_PATTERN.test(candidate)) found.add(candidate.trim().slice(0, 160));
 		}
@@ -174,7 +209,8 @@ export function parsePage(url: string, html: string): ParsedPage {
 
 	// Read before scripts and SVGs are stripped below: JSON-LD lives in script tags, and icon buttons are named by their SVG.
 	const jsonLd = collectJsonLd(document);
-	const controls = collectControls(document);
+	const hidden: HiddenCache = new Map();
+	const controls = collectControls(document, hidden);
 	const inlineScripts = [...document.querySelectorAll("script:not([src])")]
 		.map((script) => script.textContent ?? "")
 		.join("\n");
@@ -209,7 +245,7 @@ export function parsePage(url: string, html: string): ParsedPage {
 			.filter(Boolean),
 		jsonLd,
 		controls,
-		hiddenInstructions: collectHiddenInstructions(document),
+		hiddenInstructions: collectHiddenInstructions(document, hidden),
 		metaDates: [
 			...document.querySelectorAll(
 				'meta[property="article:modified_time" i], meta[property="article:published_time" i], meta[property="og:updated_time" i]',
