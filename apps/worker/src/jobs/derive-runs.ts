@@ -28,7 +28,7 @@ import { type Citation, extractorFor, extractRun } from "@workspace/lib/text-ext
 import { and, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type { Job, PgBoss, QueueOptions } from "pg-boss";
 import { getBoss } from "../boss";
-import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge/analyze";
+import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge";
 
 export const DERIVE_RUNS_QUEUE = "derive-runs";
 

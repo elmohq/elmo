@@ -9,7 +9,7 @@ import { canAdvanceReport, type ReportPhase, type ReportStatus } from "@workspac
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
 import { extractRun } from "@workspace/lib/text-extraction";
 import { and, eq, inArray } from "drizzle-orm";
-import { mentionAnalyzer } from "./mention-judge/analyze";
+import { mentionAnalyzer } from "./mention-judge";
 
 interface CompetitorResult {
 	name: string;

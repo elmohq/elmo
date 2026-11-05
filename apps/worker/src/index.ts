@@ -19,7 +19,7 @@ import {
 	REQUEST_REPROCESSES_QUEUE,
 	requestStaleReprocesses,
 } from "./jobs/reprocess";
-import { configureMentionAnalyzer, mentionAnalyzer } from "./mention-judge/analyze";
+import { configureMentionAnalyzer, mentionAnalyzer } from "./mention-judge";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 

@@ -24,7 +24,7 @@ export interface JevRequest {
 	questions: Record<string, JevChoiceQuestion>;
 }
 
-export interface JevChoice {
+interface JevChoice {
 	choice: string;
 	probabilities: Record<string, number>;
 }
