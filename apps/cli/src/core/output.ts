@@ -109,8 +109,6 @@ export async function writeStructured(
 	return writeText(dir, `${baseName}.${ext}`, `${serialize(rows, columns, format)}\n`);
 }
 
-
-
 export async function writeJson(dir: string, name: string, value: unknown): Promise<string> {
 	return writeText(dir, name, `${JSON.stringify(value, null, 2)}\n`);
 }
