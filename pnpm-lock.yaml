@@ -164,12 +164,24 @@ settings:
 
 catalogs:
   default:
+    '@ai-sdk/anthropic':
+      specifier: ^4.0.94
+      version: 4.0.94
+    '@ai-sdk/openai':
+      specifier: ^4.0.106
+      version: 4.0.106
+    '@anthropic-ai/sdk':
+      specifier: ^1.3.0
+      version: 1.3.0
     '@base-ui/react':
       specifier: ^1.9.0
       version: 1.9.0
     '@better-auth/stripe':
       specifier: ^1.7.14
       version: 1.7.14
+    '@brightdata/sdk':
+      specifier: ^1.2.0
+      version: 1.2.0
     '@fontsource/geist-mono':
       specifier: ^5.3.0
       version: 5.3.0
@@ -212,12 +224,18 @@ catalogs:
     '@vitejs/plugin-react':
       specifier: ^6.1.2
       version: 6.1.2
+    ai:
+      specifier: ^7.0.159
+      version: 7.0.159
     auth0:
       specifier: ^7.6.0
       version: 7.6.0
     better-auth:
       specifier: ^1.7.14
       version: 1.7.14
+    dataforseo-client:
+      specifier: ^2.1.10
+      version: 2.1.10
     drizzle-orm:
       specifier: ^0.45.4
       version: 0.45.4
@@ -230,6 +248,9 @@ catalogs:
     nitro:
       specifier: npm:nitro-nightly@3.0.1-20260223-102354-c0b46421
       version: 3.0.1-20260223-102354-c0b46421
+    olostep:
+      specifier: ^1.2.2
+      version: 1.2.2
     pg:
       specifier: ^8.23.1
       version: 8.23.1
@@ -336,18 +357,42 @@ importers:
 
   apps/cli:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: 'catalog:'
+        version: 4.0.94(zod@4.6.7)
+      '@ai-sdk/openai':
+        specifier: 'catalog:'
+        version: 4.0.106(zod@4.6.7)
+      '@anthropic-ai/sdk':
+        specifier: 'catalog:'
+        version: 1.3.0(zod@4.6.7)
+      '@brightdata/sdk':
+        specifier: 'catalog:'
+        version: 1.2.0
       '@clack/prompts':
         specifier: ^1.8.1
         version: 1.8.1
+      ai:
+        specifier: 'catalog:'
+        version: 7.0.159(zod@4.6.7)
       commander:
         specifier: ^15.0.0
         version: 15.0.0
+      dataforseo-client:
+        specifier: 'catalog:'
+        version: 2.1.10
       dotenv:
         specifier: 18.0.9
         version: 18.0.9
       linkedom:
         specifier: 'catalog:'
         version: 0.18.14
+      marked:
+        specifier: ^14.1.4
+        version: 14.1.4
+      olostep:
+        specifier: 'catalog:'
+        version: 1.2.2
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -360,6 +405,9 @@ importers:
       semver:
         specifier: ^7.8.5
         version: 7.8.5
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -370,6 +418,9 @@ importers:
       '@workspace/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@workspace/lib':
+        specifier: workspace:*
+        version: link:../../packages/lib
       '@workspace/site-audit':
         specifier: workspace:*
         version: link:../../packages/site-audit
@@ -933,13 +984,13 @@ importers:
   packages/lib:
     dependencies:
       '@ai-sdk/anthropic':
-        specifier: ^4.0.94
+        specifier: 'catalog:'
         version: 4.0.94(zod@4.6.7)
       '@ai-sdk/openai':
-        specifier: ^4.0.106
+        specifier: 'catalog:'
         version: 4.0.106(zod@4.6.7)
       '@anthropic-ai/sdk':
-        specifier: ^1.3.0
+        specifier: 'catalog:'
         version: 1.3.0(zod@4.6.7)
       '@better-auth/api-key':
         specifier: 1.7.14
@@ -963,7 +1014,7 @@ importers:
         specifier: 'catalog:'
         version: 1.7.14(@better-auth/core@1.7.14(@better-auth/utils@0.5.1)(@better-fetch/fetch@1.3.3)(@opentelemetry/api@1.9.1)(better-call@1.4.4(zod@4.6.7))(jose@6.2.14)(kysely@0.28.17)(nanostores@1.5.0))(better-auth@1.7.14(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.169.4(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.16)(supports-color@7.2.0)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)))(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.40.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(solid-js@1.9.15)(vitest@5.0.5)(vue@3.5.44(typescript@7.0.2)))(better-call@1.4.4(zod@4.6.7))(stripe@23.1.0(@types/node@26.6.6))
       '@brightdata/sdk':
-        specifier: ^1.2.0
+        specifier: 'catalog:'
         version: 1.2.0
       '@mozilla/readability':
         specifier: ^0.6.0
@@ -972,13 +1023,13 @@ importers:
         specifier: workspace:*
         version: link:../config
       ai:
-        specifier: ^7.0.159
+        specifier: 'catalog:'
         version: 7.0.159(zod@4.6.7)
       better-auth:
         specifier: 'catalog:'
         version: 1.7.14(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.169.4(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.16)(supports-color@7.2.0)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)))(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.40.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(solid-js@1.9.15)(vitest@5.0.5)(vue@3.5.44(typescript@7.0.2))
       dataforseo-client:
-        specifier: ^2.1.10
+        specifier: 'catalog:'
         version: 2.1.10
       drizzle-orm:
         specifier: 'catalog:'
@@ -990,7 +1041,7 @@ importers:
         specifier: 'catalog:'
         version: 0.18.14
       olostep:
-        specifier: ^1.2.2
+        specifier: 'catalog:'
         version: 1.2.2
       pg:
         specifier: 'catalog:'
@@ -7843,6 +7894,11 @@ packages:
 
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
+
+  marked@14.1.4:
+    resolution: {integrity: sha512-vkVZ8ONmUdPnjCKc5uTRvmkRbx4EAi2OkTOXmfTDhZz3OFqMNBM1oTTWwTr4HY4uAEojhzPf+Fy8F1DWa3Sndg==}
+    engines: {node: '>= 18'}
+    hasBin: true
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -17500,6 +17556,8 @@ snapshots:
   markdown-extensions@2.0.0: {}
 
   markdown-table@3.0.4: {}
+
+  marked@14.1.4: {}
 
   math-intrinsics@1.1.0: {}
 

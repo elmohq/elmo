@@ -3,6 +3,7 @@
 	"pages": [
 		"index",
 		"providers",
+		"cli-lab",
 		"registration",
 		"brand-setup",
 		"prompt-wizard",

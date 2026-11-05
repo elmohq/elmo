@@ -21,7 +21,7 @@ import { type RollupCatchUpData, rollupCatchUpJob } from "./jobs/rollup-catch-up
 import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
 import { type SuggestPromptsData, type SuggestPromptsResult, suggestPromptsJob } from "./jobs/suggest-prompts";
 import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/sync-auth0-memberships";
-import { mentionAnalyzer } from "./mention-judge/analyze";
+import { mentionAnalyzer } from "./mention-judge";
 
 /** Passes the handler's return value through: pg-boss stores it as the job output. */
 function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promise<R>): (jobs: Job<T>[]) => Promise<R> {
