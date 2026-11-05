@@ -216,7 +216,7 @@ catalogs:
       specifier: ^7.6.0
       version: 7.6.0
     better-auth:
-      specifier: ^1.7.13
+      specifier: ^1.7.14
       version: 1.7.14
     drizzle-orm:
       specifier: ^0.45.4

@@ -21,7 +21,7 @@ catalog:
   "@types/react-dom": "^19.3.0"
   "@vitejs/plugin-react": "^6.1.2"
   auth0: "^7.6.0"
-  better-auth: "^1.7.13"
+  better-auth: "^1.7.14"
   drizzle-orm: "^0.45.4"
   lucide-react: "^1.66.0"
   nitro: "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421"
