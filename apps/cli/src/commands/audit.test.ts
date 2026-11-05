@@ -27,6 +27,7 @@ function report(evidence: string): SiteAuditReport {
 					},
 				],
 				summary: { pass: 1, warn: 0, fail: 0, notChecked: 0 },
+				blockedAudit: false,
 				score: 100,
 			},
 		],

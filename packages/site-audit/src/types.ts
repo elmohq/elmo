@@ -40,7 +40,9 @@ export interface SiteReport {
 	pages: string[];
 	checks: CheckResult[];
 	summary: { pass: number; warn: number; fail: number; notChecked: number };
-	/** 0–100: a pass counts fully, a warning half, a failure nothing. Optional (`info`) and unchecked results don't count. Null when nothing was scored. */
+	/** The site refused the audit (robots.txt or repeated errors), so its unchecked results count as failures. */
+	blockedAudit: boolean;
+	/** 0–100: a pass counts fully, a warning half, a failure nothing. Optional (`info`) results don't count, nor do unchecked ones unless the site blocked the audit. Null when nothing was scored. */
 	score: number | null;
 }
 

@@ -27,9 +27,13 @@ function summarize(checks: CheckResult[]): SiteReport["summary"] {
 	};
 }
 
-function scoreChecks(checks: CheckResult[]): number | null {
+function scoreChecks(checks: CheckResult[], blockedAudit: boolean): number | null {
 	const scored = checks.filter(
-		(check) => check.status === "pass" || check.status === "warn" || check.status === "fail",
+		(check) =>
+			check.status === "pass" ||
+			check.status === "warn" ||
+			check.status === "fail" ||
+			(blockedAudit && check.status === "not_checked"),
 	);
 	if (scored.length === 0) return null;
 	const earned = scored.reduce(
@@ -88,13 +92,17 @@ export async function auditSites(options: AuditOptions): Promise<SiteAuditReport
 			userAgentToken: fetcher.robotsToken,
 		});
 		const checks = [...reachChecks(artifacts, aliases), ...readChecks(artifacts), ...understandChecks(artifacts)];
+		const blockedAudit =
+			fetcher.stopped(artifacts.origin) ||
+			artifacts.robots?.isAllowed(`${artifacts.origin}/`, fetcher.robotsToken) === false;
 		sites.push({
-			origin,
+			origin: artifacts.origin,
 			aliases: aliases.map(({ homepage: _homepage, ...alias }) => alias),
 			pages: artifacts.pages.map((page) => page.url),
 			checks,
 			summary: summarize(checks),
-			score: scoreChecks(checks),
+			blockedAudit,
+			score: scoreChecks(checks, blockedAudit),
 		});
 	}
 
