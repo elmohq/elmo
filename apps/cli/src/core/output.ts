@@ -102,7 +102,7 @@ export async function writeJson(dir: string, name: string, value: unknown): Prom
 
 // Prompts, model answers, and website text are untrusted, so a terminal gets them without control characters:
 // an escape sequence could otherwise rewrite the screen or the clipboard. Pipes get the bytes unchanged.
-function terminalSafe(text: string): string {
+export function terminalSafe(text: string): string {
 	return [...text]
 		.filter((character) => {
 			const code = character.codePointAt(0) ?? 0;
