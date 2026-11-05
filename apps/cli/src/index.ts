@@ -67,6 +67,7 @@ async function main() {
 		.option("--delay <ms>", "minimum milliseconds between requests to a site", "1000")
 		.option("--max-requests <n>", "total request budget", "50")
 		.option("--format <format>", "text or json", "text")
+		.option("--fail-under <score>", "exit with status 1 when the overall score is below this")
 		.action(async (url: string, opts: AuditOptions) => {
 			await withVersionCheck(version, () => runAudit(url, opts));
 		});

@@ -406,6 +406,45 @@ describe("auditSites", () => {
 		});
 	});
 
+	it("refuses a hostname that resolves to a private address", async () => {
+		const report = await auditSites({ website: "https://localhost/", budget: { delayMs: 0 } });
+
+		expect(report.hosts[0]).toMatchObject({
+			outcome: "unreachable",
+			error: expect.stringMatching(/resolves to a private/),
+		});
+	});
+
+	it("stops at a Crawl-delay longer than it waits, instead of stalling", async () => {
+		const fixture = await serve((origin) => ({
+			"/robots.txt": { type: "text/plain", body: "User-agent: *\nCrawl-delay: 86400\n" },
+			"/": { body: page("Home", `${LONG_TEXT}<a href="${origin}/about">About</a>`) },
+			"/about": { body: page("About", LONG_TEXT) },
+		}));
+
+		const report = await audit(fixture);
+
+		expect(new Set(fixture.requests.map((request) => request.path))).toEqual(new Set(["/", "/robots.txt"]));
+		expect(check(report, "sitemap").evidence).toContain("Crawl-delay");
+	});
+
+	it("survives malformed URLs in redirects, sitemaps, and llms.txt", async () => {
+		const fixture = await serve(() => ({
+			"/": { body: page("Home", LONG_TEXT) },
+			"/sitemap.xml": {
+				type: "application/xml",
+				body: "<sitemapindex><sitemap><loc>http://[</loc></sitemap></sitemapindex>",
+			},
+			"/llms.txt": { type: "text/plain", body: "# Site\n\n- [Broken](http://[)\n" },
+			"/llms-full.txt": { status: 302, headers: { location: "http://[" } },
+		}));
+
+		const report = await audit(fixture);
+
+		expect(report.sites).toHaveLength(1);
+		expect(check(report, "sitemap").status).toBe("fail");
+	});
+
 	it("refuses to audit private addresses unless explicitly allowed", async () => {
 		const fixture = await serve(() => ({ "/": { body: page("Home", LONG_TEXT) } }));
 

@@ -1,4 +1,5 @@
 import { BlockedHostError, type HttpResponse, httpRequest } from "./http";
+import type { ParsedRobots } from "./parse/robots";
 import type { AuditProgress, RedirectHop } from "./types";
 
 export interface FetchedResponse extends HttpResponse {
@@ -8,7 +9,7 @@ export interface FetchedResponse extends HttpResponse {
 	hops: RedirectHop[];
 }
 
-export interface FetchFailure {
+interface FetchFailure {
 	kind: "error";
 	requestedUrl: string;
 	message: string;
@@ -18,7 +19,7 @@ export interface FetchFailure {
 export interface FetchSkipped {
 	kind: "skipped";
 	requestedUrl: string;
-	reason: "budget" | "robots" | "host-stopped";
+	reason: "budget" | "robots" | "crawl-delay" | "host-stopped";
 }
 
 export type Fetched = FetchedResponse | FetchFailure | FetchSkipped;
@@ -32,23 +33,19 @@ export interface FetchOptions {
 	ignoreRobots?: boolean;
 }
 
-export interface RobotsGate {
-	isAllowed(url: string, userAgent: string): boolean | undefined;
-	getCrawlDelay(userAgent: string): number | undefined;
-}
-
 const MAX_REDIRECTS = 5;
 const MAX_RETRY_AFTER_MS = 30_000;
+const MAX_CRAWL_DELAY_MS = 10_000;
 const MAX_CONSECUTIVE_FAILURES = 2;
 
 interface HostState {
 	nextSlotAt: number;
 	consecutiveFailures: number;
 	stopped: boolean;
-	robots?: RobotsGate;
+	robots?: ParsedRobots;
 }
 
-export interface FetcherOptions {
+interface FetcherOptions {
 	requestLimit: number;
 	delayMs: number;
 	userAgent: string;
@@ -58,7 +55,20 @@ export interface FetcherOptions {
 	sleep?: (ms: number) => Promise<void>;
 }
 
-const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+function abortableSleep(signal: AbortSignal | undefined) {
+	return (ms: number) =>
+		new Promise<void>((resolve, reject) => {
+			const timer = setTimeout(resolve, ms);
+			signal?.addEventListener(
+				"abort",
+				() => {
+					clearTimeout(timer);
+					reject(signal.reason);
+				},
+				{ once: true },
+			);
+		});
+}
 
 export class Fetcher {
 	used = 0;
@@ -66,10 +76,10 @@ export class Fetcher {
 	private readonly hosts = new Map<string, HostState>();
 	private readonly cache = new Map<string, Promise<Fetched>>();
 	private readonly sleep: (ms: number) => Promise<void>;
-	private readonly robotsToken: string;
+	readonly robotsToken: string;
 
 	constructor(private readonly options: FetcherOptions) {
-		this.sleep = options.sleep ?? defaultSleep;
+		this.sleep = options.sleep ?? abortableSleep(options.signal);
 		this.robotsToken = options.userAgent.split("/")[0] ?? options.userAgent;
 	}
 
@@ -77,7 +87,7 @@ export class Fetcher {
 		return this.options.requestLimit;
 	}
 
-	setRobots(origin: string, robots: RobotsGate): void {
+	setRobots(origin: string, robots: ParsedRobots): void {
 		this.host(origin).robots = robots;
 	}
 
@@ -92,7 +102,11 @@ export class Fetcher {
 		]);
 		let pending = this.cache.get(key);
 		if (!pending) {
-			pending = this.fetchFollowing(url, options);
+			// A malformed URL from the site (a bad redirect Location, sitemap <loc>, or link) is that page's error, not the audit's.
+			pending = this.fetchFollowing(url, options).catch((error: Error): Fetched => {
+				if (this.options.signal?.aborted) throw error;
+				return { kind: "error", requestedUrl: url, message: error.message, blocked: false };
+			});
 			this.cache.set(key, pending);
 		}
 		return pending;
@@ -170,6 +184,7 @@ export class Fetcher {
 	private skipReason(url: string, state: HostState, options: FetchOptions): FetchSkipped["reason"] | undefined {
 		if (state.stopped) return "host-stopped";
 		if (!options.ignoreRobots && state.robots?.isAllowed(url, this.robotsToken) === false) return "robots";
+		if ((state.robots?.getCrawlDelay(this.robotsToken) ?? 0) * 1000 > MAX_CRAWL_DELAY_MS) return "crawl-delay";
 		if (this.used >= this.options.requestLimit) {
 			this.budgetExhausted = true;
 			return "budget";

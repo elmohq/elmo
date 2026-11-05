@@ -11,6 +11,8 @@ import { samplePages } from "./sample";
 const MARKDOWN_ACCEPT = "text/markdown, text/plain;q=0.9, */*;q=0.1";
 const TEXT_ACCEPT = "text/plain, text/markdown;q=0.9, */*;q=0.1";
 const SMALL_BODY = 256 * 1024;
+// RFC 9309 asks crawlers to parse at least 500 KiB of robots.txt.
+const ROBOTS_BODY = 512 * 1024;
 const SITEMAP_BODY = 5 * 1024 * 1024;
 const LLMS_LINK_PROBES = 3;
 
@@ -64,6 +66,23 @@ export function isHtmlResponse(fetched: Fetched | undefined): boolean {
 	return isResponse(fetched) && (contentType(fetched).includes("html") || looksLikeHtml(fetched.body));
 }
 
+function resolveUrl(href: string, base: string): string | undefined {
+	try {
+		return new URL(href, base).toString();
+	} catch {
+		return undefined;
+	}
+}
+
+// Many robots.txt files still list an http:// sitemap, but only HTTPS is fetched, so the URL takes the site's scheme.
+function sameSchemeAs(url: string, origin: string): string | undefined {
+	const parsed = resolveUrl(url, origin);
+	if (!parsed) return undefined;
+	const target = new URL(parsed);
+	target.protocol = new URL(origin).protocol;
+	return target.toString();
+}
+
 function pagePath(url: string): string {
 	return new URL(url).pathname.replace(/\/+$/, "");
 }
@@ -110,7 +129,7 @@ function readSitemap(fetched: Fetched): ReturnType<typeof parseSitemap> | undefi
 }
 
 async function fetchSitemap(fetcher: Fetcher, robots: ParsedRobots | undefined, origin: string) {
-	const declared = robots?.sitemaps.filter((url) => url.startsWith("http")) ?? [];
+	const declared = robots?.sitemaps.flatMap((url) => sameSchemeAs(url, origin) ?? []) ?? [];
 	const url = declared[0] ?? `${origin}/sitemap.xml`;
 	const fetches: Fetched[] = [];
 	const first = await fetcher.get(url, {
@@ -125,7 +144,9 @@ async function fetchSitemap(fetcher: Fetcher, robots: ParsedRobots | undefined, 
 	// Only the freshest child sitemap: enough pages to sample without walking the whole index.
 	const child = [...parsed.entries].sort((a, b) => (b.lastmod ?? "").localeCompare(a.lastmod ?? ""))[0];
 	if (!child) return { url, fetches, entries: [], valid: true };
-	const childFetch = await fetcher.get(child.loc, {
+	const childUrl = resolveUrl(child.loc, url);
+	if (!childUrl) return { url, fetches, entries: [], valid: false };
+	const childFetch = await fetcher.get(childUrl, {
 		accept: "application/xml, text/xml;q=0.9, */*;q=0.1",
 		maxBytes: SITEMAP_BODY,
 	});
@@ -151,14 +172,16 @@ async function fetchRobots(fetcher: Fetcher, origin: string) {
 	const robotsFetch = await fetcher.get(`${origin}/robots.txt`, {
 		accept: TEXT_ACCEPT,
 		ignoreRobots: true,
-		maxBytes: SMALL_BODY,
+		maxBytes: ROBOTS_BODY,
 	});
 	// Judged by the body rather than Content-Type, so rules served as text/html still bind ElmoBot.
 	const robots =
-		isOk(robotsFetch) && !looksLikeHtml(robotsFetch.body) ? parseRobots(robotsFetch.url, robotsFetch.body) : undefined;
-	// RFC 9309: a robots.txt the server can't deliver means nothing may be crawled.
+		isOk(robotsFetch) && !looksLikeHtml(robotsFetch.body)
+			? parseRobots(`${origin}/robots.txt`, robotsFetch.body)
+			: undefined;
+	// RFC 9309 treats a robots.txt that fails with a 5xx as disallowing everything; a 429 is treated the same way, as Google does.
 	const unavailable = isResponse(robotsFetch) && (robotsFetch.status === 429 || robotsFetch.status >= 500);
-	const crawlRules = unavailable ? parseRobots(robotsFetch.url, "User-agent: *\nDisallow: /") : robots;
+	const crawlRules = unavailable ? parseRobots(`${origin}/robots.txt`, "User-agent: *\nDisallow: /") : robots;
 	if (crawlRules) fetcher.setRobots(origin, crawlRules);
 	return { robotsFetch, robots, crawlRules };
 }
@@ -201,9 +224,10 @@ async function probeBots(
 
 async function probeLlmsLinks(fetcher: Fetcher, llmsTxt: Fetched): Promise<Fetched[]> {
 	if (!isOk(llmsTxt) || isHtmlResponse(llmsTxt)) return [];
+	const { origin } = new URL(llmsTxt.url);
 	const links = markdownLinks(llmsTxt.body)
-		.map((link) => new URL(link.url, llmsTxt.url).toString())
-		.filter((url) => url.startsWith(`${new URL(llmsTxt.url).origin}/`));
+		.map((link) => resolveUrl(link.url, llmsTxt.url))
+		.filter((url): url is string => url?.startsWith(`${origin}/`) === true);
 	const probes: Fetched[] = [];
 	for (const url of [...new Set(links)].slice(0, LLMS_LINK_PROBES)) {
 		probes.push(await fetcher.get(url, { accept: MARKDOWN_ACCEPT, maxBytes: SMALL_BODY }));
@@ -267,7 +291,11 @@ export async function gatherSite(options: GatherOptions): Promise<SiteArtifacts>
 	}
 
 	const notFound = await fetcher.get(`${origin}/elmo-audit-${Date.now().toString(36)}-not-a-page`);
-	const llmsFullTxt = await fetcher.get(`${origin}/llms-full.txt`, { method: "HEAD", accept: TEXT_ACCEPT });
+	const llmsFullHead = await fetcher.get(`${origin}/llms-full.txt`, { method: "HEAD", accept: TEXT_ACCEPT });
+	const headUnsupported = isResponse(llmsFullHead) && (llmsFullHead.status === 405 || llmsFullHead.status === 501);
+	const llmsFullTxt = headUnsupported
+		? await fetcher.get(`${origin}/llms-full.txt`, { accept: TEXT_ACCEPT, maxBytes: SMALL_BODY })
+		: llmsFullHead;
 	const llmsLinkProbes = await probeLlmsLinks(fetcher, llmsTxt);
 	const { trust, pricing } = await fetchLinkedPages(fetcher, origin, pages);
 	const agentView = await fetcher.get(`${origin}/?mode=agent`);

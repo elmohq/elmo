@@ -13,7 +13,7 @@ export function codeFencesBalanced(markdown: string): boolean {
 	return open === undefined;
 }
 
-export interface MarkdownLink {
+interface MarkdownLink {
 	text: string;
 	url: string;
 }

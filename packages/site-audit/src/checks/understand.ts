@@ -114,17 +114,7 @@ function jsonLdSameAs(site: SiteArtifacts): CheckResult {
 	const links = (Array.isArray(sameAs) ? sameAs : sameAs ? [sameAs] : []).filter(
 		(value): value is string => typeof value === "string",
 	);
-	const hosts = [
-		...new Set(
-			links.flatMap((link) => {
-				try {
-					return [normalizeHost(link)];
-				} catch {
-					return [];
-				}
-			}),
-		),
-	];
+	const hosts = [...new Set(links.map(normalizeHost))];
 	if (hosts.length >= 2) return result(JSON_LD_SAMEAS, "pass", `sameAs links to ${list(hosts)}.`);
 	if (hosts.length === 1) return result(JSON_LD_SAMEAS, "warn", `sameAs links only to ${hosts[0]}.`);
 	return result(JSON_LD_SAMEAS, "fail", "The Organization has no sameAs links.");

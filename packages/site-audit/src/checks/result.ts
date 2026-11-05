@@ -32,6 +32,7 @@ export function notFetched(definition: CheckDefinition, fetched: Fetched | undef
 			? {
 					budget: "the request budget ran out",
 					robots: "robots.txt disallows ElmoBot",
+					"crawl-delay": "robots.txt asks for a Crawl-delay longer than the audit waits",
 					"host-stopped": "the site stopped responding normally",
 				}[fetched.reason]
 			: fetched?.kind === "error"
@@ -49,7 +50,7 @@ export function share(part: number, whole: number): string {
 }
 
 export function list(items: string[]): string {
-	return items.length <= 2 ? items.join(" and ") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+	return items.length <= 2 ? items.join(" and ") : `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
 }
 
 export function count(n: number, singular: string, plural = `${singular}s`): string {

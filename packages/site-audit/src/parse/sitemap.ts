@@ -3,7 +3,7 @@ export interface SitemapEntry {
 	lastmod?: string;
 }
 
-export interface ParsedSitemap {
+interface ParsedSitemap {
 	kind: "urlset" | "index" | "invalid";
 	entries: SitemapEntry[];
 }

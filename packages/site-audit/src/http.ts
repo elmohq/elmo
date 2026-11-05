@@ -5,7 +5,7 @@ import { BlockList, isIP, type LookupFunction } from "node:net";
 import { pipeline } from "node:stream";
 import zlib from "node:zlib";
 
-export interface HttpRequest {
+interface HttpRequest {
 	url: string;
 	method?: "GET" | "HEAD";
 	headers?: Record<string, string>;
@@ -64,7 +64,7 @@ for (const [network, prefix] of [
 	BLOCKED.addSubnet(network, prefix, "ipv6");
 }
 
-export function isPublicAddress(ip: string): boolean {
+function isPublicAddress(ip: string): boolean {
 	const family = isIP(ip);
 	if (family === 0) return false;
 	return !BLOCKED.check(ip, family === 4 ? "ipv4" : "ipv6");

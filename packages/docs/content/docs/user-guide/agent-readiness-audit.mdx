@@ -39,9 +39,10 @@ The site you pass first is always audited wherever it lands, even on a domain yo
 | `--max-requests <n>` | `50` | Total request budget across every domain |
 | `--delay <ms>` | `1000` | Minimum gap between requests to the same site |
 | `--format <format>` | `text` | `text`, or `json` for the full report |
+| `--fail-under <score>` | | Exit with status `1` when the overall score is below this |
 
-The command exits with status `1` when any check fails or no site could be audited, so it can gate
-a CI job.
+The command exits with status `1` when no site could be audited. To gate a CI job on the result,
+pass `--fail-under`, for example `--fail-under 80`.
 
 ## What It Checks
 
@@ -83,11 +84,12 @@ sites it checks:
 - It honors `Crawl-delay`, backs off on `429` and `503` responses, and stops after repeated errors.
 - It fetches each domain's homepage once to see where it redirects. After that it reads the site's
   `robots.txt` and skips any page that disallows `ElmoBot`. A site that disallows the homepage for
-  `ElmoBot` gets no requests that use other bots' user agents either, and a `robots.txt` that fails
-  with a server error is treated as disallowing everything.
+  `ElmoBot` gets no requests that use other bots' user agents either. A `robots.txt` that fails with
+  a server error or a `429` is treated as disallowing everything.
+- It stops on a `Crawl-delay` longer than 10 seconds rather than waiting it out.
 - It only fetches public HTTPS URLs.
 
-To keep ElmoBot off your site entirely:
+To stop ElmoBot after its first homepage request:
 
 ```text
 User-agent: ElmoBot

@@ -17,6 +17,7 @@ export interface AuditOptions {
 	delay?: string;
 	maxRequests?: string;
 	format?: string;
+	failUnder?: string;
 }
 
 const GROUP_TITLES: Record<CheckGroup, string> = {
@@ -95,6 +96,12 @@ export async function runAudit(url: string, options: AuditOptions): Promise<void
 	const format = options.format ?? "text";
 	if (format !== "text" && format !== "json") throw new Error("--format must be text or json.");
 	const json = format === "json";
+	const budget = {
+		pages: wholeNumber(options.pages, "--pages", 1),
+		delayMs: wholeNumber(options.delay, "--delay", 0),
+		requests: wholeNumber(options.maxRequests, "--max-requests", 1),
+	};
+	const failUnder = wholeNumber(options.failUnder, "--fail-under", 0);
 
 	const spinner = json || !process.stdout.isTTY ? undefined : p.spinner();
 	spinner?.start(`Auditing ${url}`);
@@ -104,20 +111,15 @@ export async function runAudit(url: string, options: AuditOptions): Promise<void
 		if (event.type === "fetch") spinner?.message(`${event.requestsUsed} requests: ${event.url}`);
 	};
 
-	const report = await auditSites({
-		website: url,
-		additionalDomains: options.domain,
-		budget: {
-			pages: wholeNumber(options.pages, "--pages", 1),
-			delayMs: wholeNumber(options.delay, "--delay", 0),
-			requests: wholeNumber(options.maxRequests, "--max-requests", 1),
-		},
-		onProgress,
-	});
-	spinner?.stop(`Audited ${report.sites.map((site) => site.origin).join(", ") || url}`);
+	let report: SiteAuditReport;
+	try {
+		report = await auditSites({ website: url, additionalDomains: options.domain, budget, onProgress });
+	} finally {
+		spinner?.stop(`Audited ${url}`);
+	}
 
 	console.log(json ? JSON.stringify(report, null, 2) : renderReport(report));
 
-	const failed = report.sites.length === 0 || report.sites.some((site) => site.summary.fail > 0);
-	if (failed) process.exitCode = 1;
+	const belowThreshold = failUnder !== undefined && (report.score ?? 0) < failUnder;
+	if (report.sites.length === 0 || belowThreshold) process.exitCode = 1;
 }

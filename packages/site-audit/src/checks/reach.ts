@@ -87,12 +87,20 @@ function robotsCheck(site: SiteArtifacts): CheckResult {
 	);
 }
 
+function robotsUnavailable(site: SiteArtifacts): string | undefined {
+	const fetched = site.robotsFetch;
+	if (!isResponse(fetched) || (fetched.status !== 429 && fetched.status < 500)) return undefined;
+	return `robots.txt fails with HTTP ${fetched.status}, which crawlers read as the whole site being off-limits.`;
+}
+
 function botRules(
 	site: SiteArtifacts,
 	definition: CheckDefinition,
 	bots: string[],
 	informational = false,
 ): CheckResult {
+	const unavailable = robotsUnavailable(site);
+	if (unavailable) return result(definition, informational ? "info" : "fail", unavailable);
 	if (!site.robots) {
 		if (wasNotFetched(site.robotsFetch)) return notFetched(definition, site.robotsFetch, "robots.txt");
 		return result(definition, informational ? "info" : "pass", `No robots.txt rules, so nothing blocks ${list(bots)}.`);
@@ -119,6 +127,8 @@ function botRules(
 
 function contentSignals(site: SiteArtifacts): CheckResult {
 	if (wasNotFetched(site.robotsFetch)) return notFetched(CONTENT_SIGNALS, site.robotsFetch, "robots.txt");
+	const unavailable = robotsUnavailable(site);
+	if (unavailable) return result(CONTENT_SIGNALS, "warn", unavailable);
 	if (!site.robots)
 		return result(CONTENT_SIGNALS, "warn", "No robots.txt, so there's nowhere to declare Content Signals.");
 	const signals = site.robots.contentSignals;
@@ -161,7 +171,14 @@ function botReachability(site: SiteArtifacts): CheckResult {
 function noindex(site: SiteArtifacts): CheckResult {
 	const hidden = site.pages.filter((page) => {
 		const header = isResponse(page.html) ? (page.html.headers["x-robots-tag"] ?? "") : "";
-		return /\b(noindex|none)\b/i.test(`${header}, ${page.parsed?.robotsMeta ?? ""}`);
+		// Directives are comma-separated and a header may scope them to a bot ("googlebot: noindex"); `none` alone means noindex, nofollow.
+		const directives = `${header},${page.parsed?.robotsMeta ?? ""}`.split(",").map((directive) =>
+			directive
+				.trim()
+				.toLowerCase()
+				.replace(/^[\w-]+:\s*(?=noindex|none)/, ""),
+		);
+		return directives.includes("noindex") || directives.includes("none");
 	});
 	const checked = site.pages.filter((page) => isResponse(page.html));
 	if (checked.length === 0) return notFetched(NOINDEX, site.pages[0]?.html, "the sampled pages");

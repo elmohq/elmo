@@ -102,20 +102,20 @@ function contentNoJs(site: SiteArtifacts): CheckResult {
 	if (pages.length === 0) return notFetched(CONTENT_NO_JS, site.pages[0]?.html, "page content");
 	const thin = pages.filter((page) => (page.parsed?.text.length ?? 0) < MIN_TEXT || page.parsed?.headings.length === 0);
 	const empty = pages.filter((page) => (page.parsed?.text.length ?? 0) < THIN_TEXT);
-	const home = pages[0]?.parsed;
+	const home = site.pages[0]?.parsed;
 	const homeSummary = home
-		? `Homepage: ${home.text.length.toLocaleString("en-US")} characters of text and ${count(home.headings.length, "heading")} in the server HTML.`
+		? `Homepage: ${home.text.length.toLocaleString("en-US")} characters of text and ${count(home.headings.length, "heading")} in the server HTML. `
 		: "";
 	if (thin.length === 0)
 		return result(
 			CONTENT_NO_JS,
 			"pass",
-			`${homeSummary} All ${pages.length} sampled pages have text without JavaScript.`,
+			`${homeSummary}All ${pages.length} sampled pages have text without JavaScript.`,
 		);
 	return result(
 		CONTENT_NO_JS,
 		empty.length > 0 ? "fail" : "warn",
-		`${homeSummary} ${thin.length} of ${pages.length} pages have little or no text or headings without JavaScript.`,
+		`${homeSummary}${thin.length} of ${pages.length} pages have little or no text or headings without JavaScript.`,
 		thin.map((page) => page.url),
 	);
 }
@@ -348,9 +348,13 @@ function linkHeaders(site: SiteArtifacts): CheckResult {
 function agentView(site: SiteArtifacts): CheckResult {
 	const fetched = site.agentView;
 	const home = site.pages[0]?.html;
-	if (!isResponse(fetched) || !isOk(home)) return notFetched(AGENT_VIEW, fetched, "?mode=agent");
-	const distinct =
-		isOk(fetched) && (markdownBody(fetched) !== undefined || fetched.body.length < home.body.length * LEANER_VIEW);
+	if (!isResponse(fetched)) return notFetched(AGENT_VIEW, fetched, "?mode=agent");
+	if (fetched.status < 200 || fetched.status >= 300) {
+		return result(AGENT_VIEW, "info", `\`?mode=agent\` returns HTTP ${fetched.status}.`);
+	}
+	if (!isOk(home))
+		return result(AGENT_VIEW, "not_checked", "The homepage didn't load, so there's nothing to compare against.");
+	const distinct = markdownBody(fetched) !== undefined || fetched.body.length < home.body.length * LEANER_VIEW;
 	return distinct
 		? result(AGENT_VIEW, "pass", "`?mode=agent` returns a leaner view than the homepage.")
 		: result(AGENT_VIEW, "info", "`?mode=agent` returns the same page as the homepage.");

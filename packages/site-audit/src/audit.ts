@@ -83,9 +83,9 @@ export async function auditSites(options: AuditOptions): Promise<SiteAuditReport
 			fetcher,
 			origin,
 			homepage,
-			priorityPages: (options.extraPages ?? []).filter((url) => url.startsWith(origin)),
+			priorityPages: options.extraPages ?? [],
 			pageLimit: options.budget?.pages ?? DEFAULT_PAGES,
-			userAgentToken: userAgent.split("/")[0] ?? userAgent,
+			userAgentToken: fetcher.robotsToken,
 		});
 		const checks = [...reachChecks(artifacts, aliases), ...readChecks(artifacts), ...understandChecks(artifacts)];
 		sites.push({

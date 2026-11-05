@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { parseHTML } from "linkedom";
 
-export interface PageLink {
+interface PageLink {
 	href: string;
 	text: string;
 }
@@ -193,7 +193,7 @@ export function parsePage(url: string, html: string): ParsedPage {
 			.map((meta) => meta.getAttribute("content") ?? "")
 			.join(", ")
 			.toLowerCase(),
-		metaRefresh: document.querySelector('meta[http-equiv="refresh" i]') !== null,
+		metaRefresh: /url\s*=/i.test(attr(document, 'meta[http-equiv="refresh" i]', "content")),
 		jsRedirectStub: hasJsRedirectStub(inlineScripts, text),
 		text,
 		headings: [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
