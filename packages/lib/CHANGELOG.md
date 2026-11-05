@@ -1,5 +1,12 @@
 # @workspace/lib
 
+## 0.7.8
+
+### Patch Changes
+
+- 7a8a3a8: Show the last used sign-in method when returning to Elmo Cloud.
+- @workspace/config@0.7.8
+
 ## 0.7.7
 
 ### Patch Changes
