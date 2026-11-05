@@ -1,0 +1,102 @@
+---
+title: Agent Readiness Audit
+description: Check how well AI agents and crawlers can reach, read, and understand your website, from the Elmo CLI.
+updated: 2026-11-05
+---
+
+`elmo lab audit` checks a website the way AI crawlers and agents see it, then lists what to fix. It runs
+on its own: you don't need an Elmo instance or Docker.
+
+```bash
+npm install -g @elmohq/cli
+elmo lab audit example.com
+```
+
+## Alternate Domains
+
+Pass every other domain your brand uses with `--domain`:
+
+```bash
+elmo lab audit example.com --domain example.co --domain docs.example.com
+```
+
+Each domain is resolved first, then handled by where it lands:
+
+| Lands on | Treated as |
+| --- | --- |
+| One of your other domains | An alias. Checked for a single permanent (301 or 308) redirect over HTTPS. |
+| Its own content | A site of its own, audited in full. |
+| A domain you didn't list | Flagged as redirecting off your domains. |
+| Nowhere | Reported as unreachable. |
+
+The site you pass first is always audited wherever it lands, even on a domain you didn't list.
+
+## Options
+
+| Option | Default | What It Does |
+| --- | --- | --- |
+| `--domain <domain...>` | | Other domains the brand uses |
+| `--pages <n>` | `10` | Pages sampled per site, including the homepage |
+| `--max-requests <n>` | `75` | Total request budget across every domain |
+| `--delay <ms>` | `1000` | Minimum gap between requests to the same site |
+| `--format <format>` | `text` | `text`, or `json` for the full report |
+| `--fail-under <score>` | | Exit with status `1` when the overall score is below this |
+
+The command exits with status `1` when no site could be audited. To gate a CI job on the result,
+pass `--fail-under`, for example `--fail-under 80`.
+
+## What It Checks
+
+Pages are sampled from your sitemap, one from each top-level section, largest sections first, falling
+back to the homepage's links. The sample is the same on every run.
+
+**Reach: Can Agents Get In?** `robots.txt`, rules for AI search crawlers, AI user agents, and AI
+training crawlers, Content Signals, whether bot protection blocks AI user agents, `noindex`, snippet
+restrictions (`nosnippet`, `max-snippet`), pages behind a sign-in, meta-refresh and JavaScript
+redirects, alternate-domain redirects, and real 404s.
+
+**Read: Can Agents Read It?** Text and headings without JavaScript, page size in tokens, markdown via
+`Accept: text/markdown` and at `.md` URLs, markdown alternate links, markdown frontmatter and code
+fences, `llms.txt` and its links, `llms-full.txt`, a section `llms.txt` for docs, the sitemap and its
+`lastmod` dates, discovery Link headers, and an agent view at `?mode=agent`.
+
+**Understand: Can Agents Make Sense of It?** Organization structured data and its `sameAs` links,
+page-level structured data, titles, descriptions, canonical links and Open Graph tags, publish and
+update dates, quotable passages of 40–200 words and named, linked authors in articles (docs, marked
+up as `TechArticle`, aren't held to these two), About,
+Contact, and Privacy pages, a pricing page, document structure, accessible names on controls, hidden
+text addressed to AI, and NLWeb schema feeds.
+
+Checks marked `i` are optional improvements and never count as failures. Checks marked `-` weren't
+run, usually because the request budget ran out.
+
+## Score
+
+Each site gets a score out of 100: a pass counts fully, a warning half, and a failure nothing.
+Optional (`i`) and unchecked (`-`) results are left out, so a site isn't penalized for checks that
+don't apply to it. With more than one site, the overall score is their average.
+
+## ElmoBot
+
+The audit identifies itself as `ElmoBot/1.0` and links to this page. It is built to be cheap for the
+sites it checks:
+
+- At most 75 requests per run by default, made one at a time per site, at least one second apart.
+- It honors `Crawl-delay`, backs off on `429` and `503` responses, and stops after repeated errors.
+- It fetches each domain's homepage once to see where it redirects. After that it reads the site's
+  `robots.txt` and skips any page that disallows `ElmoBot`. A site that disallows the homepage for
+  `ElmoBot` gets no requests that use other bots' user agents either. A `robots.txt` that fails with
+  a server error or a `429` is treated as disallowing everything.
+- It stops on a `Crawl-delay` longer than 10 seconds rather than waiting it out.
+- It only fetches public HTTPS URLs.
+
+To stop ElmoBot after its first homepage request:
+
+```text
+User-agent: ElmoBot
+Disallow: /
+```
+
+To check whether AI user agents get through bot protection, the audit fetches the homepage once each
+with the user agents of ChatGPT-User, OAI-SearchBot, Claude-User, and PerplexityBot. Sites that verify
+those bots by IP address may treat the real bots differently, so that result is approximate.

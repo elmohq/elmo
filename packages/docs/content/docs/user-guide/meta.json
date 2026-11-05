@@ -12,6 +12,7 @@
 		"sentiment",
 		"citations",
 		"settings",
-		"reports"
+		"reports",
+		"agent-readiness-audit"
 	]
 }

@@ -42,10 +42,12 @@
 		"commander": "^15.0.0",
 		"dataforseo-client": "catalog:",
 		"dotenv": "18.0.9",
+		"linkedom": "catalog:",
 		"marked": "^14.1.4",
 		"olostep": "catalog:",
 		"picocolors": "^1.1.1",
 		"posthog-node": "catalog:",
+		"robots-parser": "catalog:",
 		"semver": "^7.8.5",
 		"zod": "catalog:"
 	},
@@ -54,6 +56,7 @@
 		"@types/semver": "^7.8.0",
 		"@workspace/config": "workspace:*",
 		"@workspace/lib": "workspace:*",
+		"@workspace/site-audit": "workspace:*",
 		"rolldown": "^1.2.16",
 		"typescript": "catalog:",
 		"vitest": "catalog:"

@@ -239,6 +239,9 @@ catalogs:
     drizzle-orm:
       specifier: ^0.45.4
       version: 0.45.4
+    linkedom:
+      specifier: ^0.18.14
+      version: 0.18.14
     lucide-react:
       specifier: ^1.66.0
       version: 1.66.0
@@ -281,6 +284,9 @@ catalogs:
     remark-gfm:
       specifier: ^4.0.1
       version: 4.0.1
+    robots-parser:
+      specifier: ^3.0.1
+      version: 3.0.1
     stripe:
       specifier: ^23.1.0
       version: 23.1.0
@@ -378,6 +384,9 @@ importers:
       dotenv:
         specifier: 18.0.9
         version: 18.0.9
+      linkedom:
+        specifier: 'catalog:'
+        version: 0.18.14
       marked:
         specifier: ^14.1.4
         version: 14.1.4
@@ -390,6 +399,9 @@ importers:
       posthog-node:
         specifier: 'catalog:'
         version: 5.61.1(@opentelemetry/api@1.9.1)
+      robots-parser:
+        specifier: 'catalog:'
+        version: 3.0.1
       semver:
         specifier: ^7.8.5
         version: 7.8.5
@@ -409,6 +421,9 @@ importers:
       '@workspace/lib':
         specifier: workspace:*
         version: link:../../packages/lib
+      '@workspace/site-audit':
+        specifier: workspace:*
+        version: link:../../packages/site-audit
       rolldown:
         specifier: ^1.2.16
         version: 1.2.16
@@ -1023,7 +1038,7 @@ importers:
         specifier: 6.2.14
         version: 6.2.14
       linkedom:
-        specifier: ^0.18.14
+        specifier: 'catalog:'
         version: 0.18.14
       olostep:
         specifier: 'catalog:'
@@ -1084,6 +1099,25 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  packages/site-audit:
+    dependencies:
+      linkedom:
+        specifier: 'catalog:'
+        version: 0.18.14
+      robots-parser:
+        specifier: 'catalog:'
+        version: 3.0.1
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/ui:
     dependencies:
@@ -8937,6 +8971,10 @@ packages:
   rimraf@5.0.10:
     resolution: {integrity: sha512-l0OE8wL34P4nJH/H2ffoaniAokM2qSmrtXHmlpvYr5AVVX8msAyW0l8NVJFDxlSK4u3Uh/f41cQheDVdnYijwQ==}
     hasBin: true
+
+  robots-parser@3.0.1:
+    resolution: {integrity: sha512-s+pyvQeIKIZ0dx5iJiQk1tPLJAWln39+MI5jtM8wnyws+G5azk+dMnMX0qfbqNetKKNgcWWOdi0sfm+FbQbgdQ==}
+    engines: {node: '>=10.0.0'}
 
   rolldown@1.2.16:
     resolution: {integrity: sha512-bWvlMpFKiTfDKfnK7FC2MPgPeWCf/Kpwsq49ApdW+FQaBZb6O6dZ4MAPbPUjp7hYQrw/RobqCzn64BRrQecGHw==}
@@ -19107,6 +19145,8 @@ snapshots:
   rimraf@5.0.10:
     dependencies:
       glob: 14.0.3
+
+  robots-parser@3.0.1: {}
 
   rolldown@1.2.16:
     dependencies:
