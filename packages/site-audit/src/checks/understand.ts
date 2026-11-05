@@ -67,7 +67,7 @@ const FRESHNESS = define(
 const CITABLE_PASSAGES = define(
 	"citable-passages",
 	"Quotable Passages",
-	"Write key points as self-contained paragraphs of roughly 40–200 words that answer one question each, so an answer engine can quote them whole.",
+	"In articles, write key points as self-contained paragraphs of roughly 40–200 words that answer one question each, so an answer engine can quote them whole.",
 );
 const AUTHORSHIP = define(
 	"authorship",
@@ -276,7 +276,15 @@ function hiddenInstructions(site: SiteArtifacts): CheckResult {
 }
 
 const STALE_AFTER_MS = 365 * 24 * 60 * 60 * 1000;
-const ARTICLE_TYPES = /^(Article|BlogPosting|NewsArticle|TechArticle|Report|ScholarlyArticle)$/;
+const EDITORIAL_TYPES =
+	/^(Article|BlogPosting|NewsArticle|OpinionNewsArticle|ReportageNewsArticle|AnalysisNewsArticle|Report|ScholarlyArticle)$/;
+
+// Docs are TechArticles: schema.org's type for how-tos and reference, which are judged as docs, not as bylined editorial.
+function isEditorial(page: PageArtifacts): boolean {
+	const types = page.parsed?.jsonLd.flatMap(jsonLdTypes) ?? [];
+	if (types.includes("TechArticle")) return false;
+	return types.some((type) => EDITORIAL_TYPES.test(type)) || page.parsed?.ogType === "article";
+}
 
 function pageDates(page: PageArtifacts): { dates: Date[]; source: "structured" | "header" | "none" } {
 	const meta = page.parsed;
@@ -314,16 +322,14 @@ function freshness(site: SiteArtifacts): CheckResult {
 const MIN_PASSAGES = 3;
 
 function citablePassages(site: SiteArtifacts): CheckResult {
-	const all = parsedPages(site);
-	if (all.length === 0) return notFetched(CITABLE_PASSAGES, site.pages[0]?.html, "page content");
-	// Homepages are mostly navigation and calls to action; judge the inner pages when there are any.
-	const pages = all.length > 1 ? all.slice(1) : all;
-	const counts = pages.map((page) => ({ url: page.url, passages: page.parsed?.citablePassages ?? 0 }));
+	const articles = parsedPages(site).filter(isEditorial);
+	if (articles.length === 0) return result(CITABLE_PASSAGES, "not_checked", "No article pages were in the sample.");
+	const counts = articles.map((page) => ({ url: page.url, passages: page.parsed?.citablePassages ?? 0 }));
 	const strong = counts.filter((page) => page.passages >= MIN_PASSAGES);
 	const total = counts.reduce((sum, page) => sum + page.passages, 0);
-	const evidence = `${strong.length} of ${pages.length} pages have at least ${MIN_PASSAGES} quotable passages of 40–200 words (${total} in all).`;
+	const evidence = `${strong.length} of ${articles.length} article pages have at least ${MIN_PASSAGES} quotable passages of 40–200 words (${total} in all).`;
 	const weak = counts.filter((page) => page.passages < MIN_PASSAGES).map((page) => page.url);
-	if (strong.length >= pages.length / 2) return result(CITABLE_PASSAGES, "pass", evidence);
+	if (strong.length >= articles.length / 2) return result(CITABLE_PASSAGES, "pass", evidence);
 	return result(CITABLE_PASSAGES, total === 0 ? "fail" : "warn", evidence, weak);
 }
 
@@ -343,11 +349,7 @@ function articleAuthor(page: PageArtifacts): "verifiable" | "named" | "none" {
 }
 
 function authorship(site: SiteArtifacts): CheckResult {
-	const articles = parsedPages(site).filter(
-		(page) =>
-			page.parsed?.ogType === "article" ||
-			page.parsed?.jsonLd.some((node) => jsonLdTypes(node).some((type) => ARTICLE_TYPES.test(type))),
-	);
+	const articles = parsedPages(site).filter(isEditorial);
 	if (articles.length === 0) return result(AUTHORSHIP, "not_checked", "No article pages were in the sample.");
 	const states = articles.map((page) => ({ url: page.url, state: articleAuthor(page) }));
 	const anonymous = states.filter((page) => page.state === "none");

@@ -8,7 +8,7 @@ import type { CheckResult, SiteAuditReport } from "./types";
 interface Route {
 	status?: number;
 	type?: string;
-	body?: string;
+	body?: string | Buffer;
 	headers?: Record<string, string>;
 }
 
@@ -260,6 +260,46 @@ describe("auditSites", () => {
 
 		expect(fixture.requests.some((request) => request.path.startsWith("/private"))).toBe(false);
 		expect(fixture.requests.some((request) => request.path === "/public")).toBe(true);
+	});
+
+	it("reads a gzipped sitemap", async () => {
+		const fixture = await serve((origin) => ({
+			"/": { body: page("Home", LONG_TEXT) },
+			"/sitemap.xml.gz": {
+				type: "application/gzip",
+				body: gzipSync(`<urlset><url><loc>${origin}/guide</loc><lastmod>2026-01-01</lastmod></url></urlset>`),
+			},
+			"/robots.txt": { type: "text/plain", body: `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml.gz\n` },
+			"/guide": { body: page("Guide", LONG_TEXT) },
+		}));
+
+		const report = await audit(fixture);
+
+		expect(check(report, "sitemap").status).toBe("pass");
+		expect(fixture.requests.some((request) => request.path === "/guide")).toBe(true);
+	});
+
+	it("doesn't hold docs pages to article standards", async () => {
+		const techArticle = JSON.stringify({
+			"@context": "https://schema.org",
+			"@type": "TechArticle",
+			headline: "Install",
+		});
+		const fixture = await serve((origin) => ({
+			"/": { body: page("Home", `${LONG_TEXT}<a href="${origin}/docs/install">Install</a>`) },
+			"/docs/install": {
+				body: page(
+					"Install",
+					"<p>Run the installer.</p>",
+					`<script type="application/ld+json">${techArticle}</script>`,
+				),
+			},
+		}));
+
+		const report = await audit(fixture, { budget: { pages: 2, delayMs: 0 } });
+
+		expect(check(report, "authorship").status).toBe("not_checked");
+		expect(check(report, "citable-passages").status).toBe("not_checked");
 	});
 
 	it("honors robots.txt rules even when they're served as HTML", async () => {

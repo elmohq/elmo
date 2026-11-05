@@ -1,3 +1,4 @@
+import { gunzipSync } from "node:zlib";
 import { type Bot, PROBE_BOTS } from "./bots";
 import type { Fetched, FetchedResponse, Fetcher } from "./fetcher";
 import { normalizeHost } from "./hosts";
@@ -89,6 +90,25 @@ function findLink(page: ParsedPage | undefined, origin: string, pattern: RegExp)
 	})?.href;
 }
 
+// The sitemaps protocol caps a sitemap at 50 MB uncompressed.
+const SITEMAP_MAX_XML = 50 * 1024 * 1024;
+
+function sitemapXml(fetched: FetchedResponse): string | undefined {
+	const gzipped = fetched.bytes[0] === 0x1f && fetched.bytes[1] === 0x8b;
+	if (!gzipped) return fetched.body;
+	try {
+		return gunzipSync(fetched.bytes, { maxOutputLength: SITEMAP_MAX_XML }).toString("utf8");
+	} catch {
+		return undefined;
+	}
+}
+
+function readSitemap(fetched: Fetched): ReturnType<typeof parseSitemap> | undefined {
+	if (!isOk(fetched)) return undefined;
+	const xml = sitemapXml(fetched);
+	return xml === undefined ? undefined : parseSitemap(xml);
+}
+
 async function fetchSitemap(fetcher: Fetcher, robots: ParsedRobots | undefined, origin: string) {
 	const declared = robots?.sitemaps.filter((url) => url.startsWith("http")) ?? [];
 	const url = declared[0] ?? `${origin}/sitemap.xml`;
@@ -98,8 +118,8 @@ async function fetchSitemap(fetcher: Fetcher, robots: ParsedRobots | undefined, 
 		maxBytes: SITEMAP_BODY,
 	});
 	fetches.push(first);
-	if (!isOk(first)) return { url, fetches, entries: [], valid: false };
-	const parsed = parseSitemap(first.body);
+	const parsed = readSitemap(first);
+	if (!parsed) return { url, fetches, entries: [], valid: false };
 	if (parsed.kind !== "index") return { url, fetches, entries: parsed.entries, valid: parsed.kind === "urlset" };
 
 	// Only the freshest child sitemap: enough pages to sample without walking the whole index.
@@ -110,7 +130,7 @@ async function fetchSitemap(fetcher: Fetcher, robots: ParsedRobots | undefined, 
 		maxBytes: SITEMAP_BODY,
 	});
 	fetches.push(childFetch);
-	const childParsed = isOk(childFetch) ? parseSitemap(childFetch.body) : undefined;
+	const childParsed = readSitemap(childFetch);
 	return { url, fetches, entries: childParsed?.entries ?? [], valid: childParsed?.kind === "urlset" };
 }
 

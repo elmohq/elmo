@@ -20,6 +20,8 @@ export interface HttpResponse {
 	/** Lowercased names; repeated headers joined with ", ". */
 	headers: Record<string, string>;
 	body: string;
+	/** The body as received, for binary payloads such as a gzipped sitemap. */
+	bytes: Buffer;
 }
 
 export class BlockedHostError extends Error {}
@@ -108,7 +110,7 @@ function flattenHeaders(raw: http.IncomingHttpHeaders): Record<string, string> {
 }
 
 // Decompressing as the bytes arrive is what lets `maxBytes` cap a small compressed body that would expand without limit.
-function readBody(res: http.IncomingMessage, request: HttpRequest, headers: Record<string, string>): Promise<string> {
+function readBody(res: http.IncomingMessage, request: HttpRequest, headers: Record<string, string>): Promise<Buffer> {
 	const maxBytes = request.maxBytes ?? DEFAULT_MAX_BYTES;
 	const hasBody = request.method !== "HEAD" && res.statusCode !== 204 && res.statusCode !== 304;
 	const decoder = hasBody ? decoderFor(headers["content-encoding"]) : undefined;
@@ -119,7 +121,7 @@ function readBody(res: http.IncomingMessage, request: HttpRequest, headers: Reco
 		const finish = () => {
 			if (done) return;
 			done = true;
-			resolve(Buffer.concat(chunks).toString("utf8"));
+			resolve(Buffer.concat(chunks));
 		};
 		const fail = (error: Error) => {
 			if (done) return;
@@ -181,7 +183,11 @@ export function httpRequest(request: HttpRequest, allowPrivateNetwork = false): 
 			(res) => {
 				const headers = flattenHeaders(res.headers);
 				readBody(res, request, headers)
-					.then(settle((body: string) => resolve({ url: request.url, status: res.statusCode ?? 0, headers, body })))
+					.then(
+						settle((bytes: Buffer) =>
+							resolve({ url: request.url, status: res.statusCode ?? 0, headers, body: bytes.toString("utf8"), bytes }),
+						),
+					)
 					.catch(settle(reject));
 			},
 		);

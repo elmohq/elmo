@@ -306,8 +306,6 @@ function sitemap(site: SiteArtifacts): CheckResult {
 	if (!site.sitemap.valid) {
 		const failed = site.sitemap.fetches.at(-1);
 		const where = failed?.requestedUrl ?? site.sitemap.url;
-		if (where?.endsWith(".gz"))
-			return result(SITEMAP, "not_checked", `The sitemap at ${where} is gzipped, which the audit doesn't read.`);
 		const status = isResponse(failed)
 			? `HTTP ${failed.status}`
 			: failed?.kind === "error"
