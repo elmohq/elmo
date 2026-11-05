@@ -1,10 +1,47 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readEvalContext, readFilesWithin } from "./plan";
 
 describe("reading context for a plan", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	async function checkoutWithPrivateDir() {
+		const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "elmo-plan-")));
+		const checkout = path.join(root, "checkout");
+		const privateDir = path.join(root, "private");
+		await fs.mkdir(checkout);
+		await fs.mkdir(privateDir);
+		await fs.writeFile(path.join(privateDir, "credentials.json"), '{"token":"do-not-send"}');
+		vi.spyOn(process, "cwd").mockReturnValue(checkout);
+		return { checkout, privateDir };
+	}
+
+	it("won't read a selected directory that's a symlink out of the checkout", async () => {
+		const { checkout, privateDir } = await checkoutWithPrivateDir();
+		await fs.symlink(privateDir, path.join(checkout, "content"));
+
+		expect((await readFilesWithin(["content"], 100_000)).join("\n")).not.toContain("do-not-send");
+	});
+
+	it("won't read through a symlinked directory above the selected one", async () => {
+		const { checkout, privateDir } = await checkoutWithPrivateDir();
+		await fs.symlink(privateDir, path.join(checkout, "docs"));
+
+		expect((await readFilesWithin(["docs/credentials.json"], 100_000)).join("\n")).not.toContain("do-not-send");
+	});
+
+	it("reads a real directory inside the checkout", async () => {
+		const { checkout } = await checkoutWithPrivateDir();
+		await fs.mkdir(path.join(checkout, "content"));
+		await fs.writeFile(path.join(checkout, "content", "page.md"), "# Our pricing");
+
+		expect(await readFilesWithin(["content"], 100_000)).toEqual(["<<< FILE: content/page.md >>>\n# Our pricing"]);
+	});
+
 	it("reads files in the selected tree but not ones symlinked from outside it", async () => {
 		const root = await fs.mkdtemp(path.join(os.tmpdir(), "elmo-plan-"));
 		const content = path.join(root, "content");
