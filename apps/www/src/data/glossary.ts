@@ -1,5 +1,7 @@
 export interface GlossaryTerm {
 	slug: string;
+	/** YYYY-MM-DD of the last substantive edit; the page\'s sitemap lastmod and dateModified. */
+	updated: string;
 	term: string;
 	aka?: string[];
 	group: GlossaryGroup;
@@ -26,6 +28,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	// --- Core disciplines ----------------------------------------------------
 	{
 		slug: "answer-engine-optimization",
+		updated: "2026-09-22",
 		term: "Answer Engine Optimization",
 		aka: ["AEO"],
 		group: "Core disciplines",
@@ -39,6 +42,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "generative-engine-optimization",
+		updated: "2026-09-22",
 		term: "Generative Engine Optimization",
 		aka: ["GEO", "Generative SEO"],
 		group: "Core disciplines",
@@ -52,6 +56,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "llmo",
+		updated: "2026-09-22",
 		term: "LLMO",
 		aka: ["LLM Optimization", "LLM SEO"],
 		group: "Core disciplines",
@@ -68,6 +73,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "ai-visibility",
+		updated: "2026-09-11",
 		term: "AI visibility",
 		group: "Core disciplines",
 		short: "How present your brand is across AI answers: how often it is mentioned, cited, and described accurately.",
@@ -82,6 +88,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	// --- Where AI answers appear ---------------------------------------------
 	{
 		slug: "answer-engine",
+		updated: "2026-09-15",
 		term: "Answer engine",
 		group: "Where AI answers appear",
 		short: "A system that responds to a question with a synthesized answer rather than a page of links.",
@@ -97,6 +104,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "ai-search-engine",
+		updated: "2026-09-11",
 		term: "AI search engine",
 		group: "Where AI answers appear",
 		short: "A search product that returns AI-written answers with citations instead of a ranked list.",
@@ -109,6 +117,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "google-ai-overviews",
+		updated: "2026-07-24",
 		term: "Google AI Overviews",
 		group: "Where AI answers appear",
 		short:
@@ -122,6 +131,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "google-ai-mode",
+		updated: "2026-07-24",
 		term: "Google AI Mode",
 		group: "Where AI answers appear",
 		short: "Google's full conversational search experience, a dedicated AI answer surface separate from AI Overviews.",
@@ -134,6 +144,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "chatgpt-search",
+		updated: "2026-07-24",
 		term: "ChatGPT Search",
 		group: "Where AI answers appear",
 		short: "ChatGPT's web-browsing mode, which retrieves live pages and cites them in its answers.",
@@ -148,6 +159,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	// --- What to measure -----------------------------------------------------
 	{
 		slug: "ai-citation",
+		updated: "2026-06-01",
 		term: "AI citation",
 		group: "What to measure",
 		short:
@@ -161,6 +173,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "brand-mention",
+		updated: "2026-09-22",
 		term: "Brand mention",
 		group: "What to measure",
 		short: "Any time an AI answer names your brand, whether or not it links to you.",
@@ -176,6 +189,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "share-of-voice",
+		updated: "2026-09-11",
 		term: "Share of voice",
 		group: "What to measure",
 		short:
@@ -190,6 +204,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "prompt-volume",
+		updated: "2026-09-15",
 		term: "Prompt volume",
 		group: "What to measure",
 		short: "The number of prompts an engine is queried with when tracking visibility. Tools often meter usage by it.",
@@ -205,6 +220,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "prompt-tracking",
+		updated: "2026-09-11",
 		term: "Prompt tracking",
 		aka: ["Prompt monitoring", "Prompt set"],
 		group: "What to measure",
@@ -219,6 +235,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "visibility-score",
+		updated: "2026-09-15",
 		term: "AI visibility score",
 		group: "What to measure",
 		short: "An aggregate metric rolling mentions, citations, and competitor presence into a single number.",
@@ -234,6 +251,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "ai-brand-sentiment",
+		updated: "2026-09-11",
 		term: "AI brand sentiment",
 		group: "What to measure",
 		short: "How AI engines characterize your brand, not just whether they mention it.",
@@ -248,6 +266,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	// --- How engines work ----------------------------------------------------
 	{
 		slug: "entity",
+		updated: "2026-09-15",
 		term: "Entity",
 		group: "How engines work",
 		short:
@@ -264,6 +283,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "structured-data",
+		updated: "2026-07-24",
 		term: "Structured data",
 		aka: ["Schema markup"],
 		group: "How engines work",
@@ -277,6 +297,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "llms-txt",
+		updated: "2026-09-11",
 		term: "llms.txt",
 		group: "How engines work",
 		short: "A proposed plain-text file that points AI crawlers to your most important content in Markdown.",
@@ -289,6 +310,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "retrieval-augmented-generation",
+		updated: "2026-09-15",
 		term: "Retrieval-augmented generation",
 		aka: ["RAG"],
 		group: "How engines work",
@@ -305,6 +327,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "grounding",
+		updated: "2026-09-15",
 		term: "Grounding",
 		group: "How engines work",
 		short: "Tying a model's answer to specific sources so claims can be traced and checked.",
@@ -320,6 +343,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "hallucination",
+		updated: "2026-09-22",
 		term: "Hallucination",
 		group: "How engines work",
 		short: "When a model states something false or invented with the same confidence as a fact.",
@@ -335,6 +359,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "ai-crawler",
+		updated: "2026-09-15",
 		term: "AI crawler",
 		group: "How engines work",
 		short: "A bot that fetches web pages for AI training or live retrieval, such as GPTBot or PerplexityBot.",
@@ -350,6 +375,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "zero-click-search",
+		updated: "2026-09-15",
 		term: "Zero-click search",
 		group: "How engines work",
 		short: "A search that ends without a click because the answer appears directly on the results surface.",
@@ -365,6 +391,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "knowledge-graph",
+		updated: "2026-09-15",
 		term: "Knowledge graph",
 		group: "How engines work",
 		short: "A structured map of entities and the relationships between them that engines use to ground answers.",
@@ -380,6 +407,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "semantic-search",
+		updated: "2026-09-15",
 		term: "Semantic search",
 		group: "How engines work",
 		short: "Search that matches on meaning rather than exact keywords, usually via embeddings.",
@@ -395,6 +423,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "embedding",
+		updated: "2026-09-15",
 		term: "Embedding",
 		group: "How engines work",
 		short: "A numeric representation of text that lets a model compare meaning and find related content.",
@@ -409,6 +438,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 	},
 	{
 		slug: "large-language-model",
+		updated: "2026-09-22",
 		term: "Large language model",
 		aka: ["LLM"],
 		group: "How engines work",

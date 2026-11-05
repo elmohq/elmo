@@ -11,7 +11,7 @@ import { Navbar } from "@/components/navbar";
 import { type FeatureLink, getProductFeature, type ProductFeature } from "@/data/features";
 import { FEATURE_SLUGS, getFeatureLabel, indexableFeatureKeys } from "@/lib/competitors";
 import { externalRel } from "@/lib/external-link";
-import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta, webPageJsonLd } from "@/lib/seo";
 
 const FROM = "marketing-features-hero";
 
@@ -48,6 +48,7 @@ export const Route = createFileRoute("/features/$slug")({
 			],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
+				webPageJsonLd({ name: f.name, description: f.metaDescription, path, dateModified: f.updated }),
 				breadcrumbJsonLd([
 					{ name: "Home", path: "/" },
 					{ name: "Features", path: "/features" },

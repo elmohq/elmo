@@ -3,6 +3,7 @@ import { aeoVerticals } from "@/data/aeo-verticals";
 import { aiSearchEngines } from "@/data/ai-search-engines";
 import { productFeatures } from "@/data/features";
 import { glossaryTerms } from "@/data/glossary";
+import upcomingData from "@/data/upcoming-features.json";
 import { blogSource } from "@/lib/blog";
 import {
 	CATEGORY_SLUGS,
@@ -25,6 +26,7 @@ import {
 	toolsWithFeature,
 } from "@/lib/competitors";
 import { pageLastUpdated } from "@/lib/get-llm-text";
+import { getGitHubReleases } from "@/lib/github-releases";
 import { listLegalPages } from "@/lib/legal";
 import { source } from "@/lib/source";
 
@@ -45,25 +47,33 @@ interface SitemapEntry {
 // A directory page's data is as fresh as the most recently re-verified tool it covers.
 const directoryLastChecked = lastChecked(indexedCompetitors);
 
+function newest(items: { updated?: string }[]): string | undefined {
+	return items
+		.map((item) => item.updated)
+		.filter(Boolean)
+		.sort()
+		.at(-1);
+}
+
 const staticPages: SitemapEntry[] = [
-	{ path: "/", changefreq: "weekly", priority: 1.0 },
-	{ path: "/answer-engine-optimization", changefreq: "monthly", priority: 0.9 },
-	{ path: "/generative-engine-optimization", changefreq: "monthly", priority: 0.9 },
+	{ path: "/", changefreq: "weekly", priority: 1.0, lastmod: "2026-11-03" },
+	{ path: "/answer-engine-optimization", changefreq: "monthly", priority: 0.9, lastmod: "2026-10-16" },
+	{ path: "/generative-engine-optimization", changefreq: "monthly", priority: 0.9, lastmod: "2026-10-16" },
 	{ path: "/features", changefreq: "monthly", priority: 0.8 },
-	{ path: "/pricing", changefreq: "monthly", priority: 0.8 },
-	{ path: "/off-site-aeo", changefreq: "monthly", priority: 0.8 },
+	{ path: "/pricing", changefreq: "monthly", priority: 0.8, lastmod: "2026-09-24" },
+	{ path: "/off-site-aeo", changefreq: "monthly", priority: 0.8, lastmod: "2026-10-16" },
 	{ path: "/changelog", changefreq: "weekly", priority: 0.7 },
 	{ path: "/roadmap", changefreq: "weekly", priority: 0.7 },
 	{ path: "/docs", changefreq: "weekly", priority: 0.9 },
 	{ path: "/blog", changefreq: "weekly", priority: 0.7 },
-	{ path: "/statistics", changefreq: "weekly", priority: 0.8 },
+	{ path: "/statistics", changefreq: "weekly", priority: 0.8, lastmod: "2026-10-16" },
 	{ path: "/ai-visibility-tools", changefreq: "weekly", priority: 0.8, lastmod: directoryLastChecked },
-	{ path: "/about", changefreq: "monthly", priority: 0.7 },
-	{ path: "/vision", changefreq: "monthly", priority: 0.6 },
-	{ path: "/brand", changefreq: "monthly", priority: 0.5 },
+	{ path: "/about", changefreq: "monthly", priority: 0.7, lastmod: "2026-11-04" },
+	{ path: "/vision", changefreq: "monthly", priority: 0.6, lastmod: "2026-10-16" },
+	{ path: "/brand", changefreq: "monthly", priority: 0.5, lastmod: "2026-10-16" },
 	{ path: "/status", changefreq: "daily", priority: 0.5 },
-	{ path: "/support", changefreq: "monthly", priority: 0.5 },
-	{ path: "/demo", changefreq: "monthly", priority: 0.5 },
+	{ path: "/support", changefreq: "monthly", priority: 0.5, lastmod: "2026-10-16" },
+	{ path: "/demo", changefreq: "monthly", priority: 0.5, lastmod: "2026-10-16" },
 	{ path: "/legal", changefreq: "yearly", priority: 0.3 },
 ];
 
@@ -148,11 +158,12 @@ export const Route = createFileRoute("/sitemap.xml")({
 
 				// Editorial programmatic sections.
 				const glossaryPages: SitemapEntry[] = [
-					{ path: "/glossary", changefreq: "monthly", priority: 0.7 },
+					{ path: "/glossary", changefreq: "monthly", priority: 0.7, lastmod: newest(glossaryTerms) },
 					...glossaryTerms.map((t) => ({
 						path: `/glossary/${t.slug}`,
 						changefreq: "monthly",
 						priority: 0.5,
+						lastmod: t.updated,
 					})),
 				];
 
@@ -160,29 +171,44 @@ export const Route = createFileRoute("/sitemap.xml")({
 					path: `/features/${f.slug}`,
 					changefreq: "monthly",
 					priority: 0.7,
+					lastmod: f.updated,
 				}));
 
 				const aiSearchPages: SitemapEntry[] = [
-					{ path: "/ai-search", changefreq: "monthly", priority: 0.7 },
+					{ path: "/ai-search", changefreq: "monthly", priority: 0.7, lastmod: newest(aiSearchEngines) },
 					...aiSearchEngines.map((e) => ({
 						path: `/ai-search/${e.slug}`,
 						changefreq: "monthly",
 						priority: 0.6,
+						lastmod: e.updated,
 					})),
 				];
 
 				const aeoForPages: SitemapEntry[] = [
-					{ path: "/aeo-for", changefreq: "monthly", priority: 0.7 },
-					{ path: "/aeo-for/profound-users", changefreq: "monthly", priority: 0.6 },
+					{ path: "/aeo-for", changefreq: "monthly", priority: 0.7, lastmod: newest(aeoVerticals) },
+					{ path: "/aeo-for/profound-users", changefreq: "monthly", priority: 0.6, lastmod: "2026-10-08" },
 					...aeoVerticals.map((v) => ({
 						path: `/aeo-for/${v.slug}`,
 						changefreq: "monthly",
 						priority: 0.6,
+						lastmod: v.updated,
 					})),
 				];
 
+				const releases = await getGitHubReleases().catch(() => []);
+				const listingDates: Record<string, string | undefined> = {
+					"/features": newest(productFeatures),
+					"/docs": newest(docsPages.map((page) => ({ updated: page.lastmod }))),
+					"/blog": newest(blogPages.map((page) => ({ updated: page.lastmod }))),
+					"/legal": newest(legalPages.map((page) => ({ updated: page.lastmod }))),
+					"/roadmap": upcomingData.lastUpdated,
+					"/changelog": newest(releases.map((release) => ({ updated: release.published_at.slice(0, 10) }))),
+					// Live uptime data, so it is current whenever it is fetched.
+					"/status": new Date().toISOString().slice(0, 10),
+				};
+
 				const allPages: SitemapEntry[] = [
-					...staticPages,
+					...staticPages.map((page) => ({ ...page, lastmod: page.lastmod ?? listingDates[page.path] })),
 					...featurePages,
 					...docsPages,
 					...legalPages,

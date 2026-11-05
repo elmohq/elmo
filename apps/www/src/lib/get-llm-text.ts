@@ -1,3 +1,4 @@
+import spec from "@workspace/api-spec";
 import type { InferPageType } from "fumadocs-core/source";
 import type { blogSource } from "@/lib/blog";
 import { withFrontmatter } from "@/lib/frontmatter";
@@ -7,6 +8,7 @@ import type { source } from "@/lib/source";
 type MarkdownPage = InferPageType<typeof source> | InferPageType<typeof blogSource>;
 
 export function pageLastUpdated(page: MarkdownPage): string | undefined {
+	if (page.type === "openapi") return spec.info["x-updated"];
 	const data = page.data as { updated?: string; date?: string };
 	return data.updated ?? data.date;
 }
