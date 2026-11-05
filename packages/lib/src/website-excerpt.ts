@@ -4,6 +4,9 @@ import { parseHTML } from "linkedom";
 const MAX_EXCERPT_LINES = 200;
 const JINA_TIMEOUT_MS = 30_000;
 const DIRECT_TIMEOUT_MS = 15_000;
+// Only the first 200 lines are kept, so a larger body is never needed, and an endless or highly compressed one
+// would otherwise exhaust memory before the timeout fires.
+const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 // A browser UA is less likely than a custom one to be treated as bot traffic.
 const BROWSER_UA =
@@ -52,7 +55,7 @@ async function fromJina(url: string): Promise<string | null> {
 	if (!response.ok) {
 		return null;
 	}
-	const content = (await response.text()).trim();
+	const content = (await readBounded(response)).trim();
 	return content || null;
 }
 
@@ -70,7 +73,7 @@ async function fromReadability(url: string): Promise<string | null> {
 	if (!(response.headers.get("content-type") ?? "").includes("html")) {
 		return null;
 	}
-	const html = await response.text();
+	const html = await readBounded(response);
 	if (!html.trim()) {
 		return null;
 	}
@@ -82,6 +85,21 @@ async function fromReadability(url: string): Promise<string | null> {
 	}
 	// Readability couldn't isolate an article; fall back to all visible text.
 	return document.body?.textContent?.trim() || null;
+}
+
+async function readBounded(response: Response): Promise<string> {
+	const reader = response.body?.getReader();
+	if (!reader) return "";
+	const chunks: Uint8Array[] = [];
+	let size = 0;
+	while (size < MAX_RESPONSE_BYTES) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		chunks.push(value);
+		size += value.byteLength;
+	}
+	await reader.cancel();
+	return new TextDecoder().decode(Buffer.concat(chunks).subarray(0, MAX_RESPONSE_BYTES));
 }
 
 /** Bound excerpts by line count without reflowing the extracted text. */
