@@ -159,6 +159,7 @@ interface GatherOptions {
 	fetcher: Fetcher;
 	origin: string;
 	homepage?: FetchedResponse;
+	followedPages?: boolean;
 	priorityPages: string[];
 	pageLimit: number;
 	userAgentToken: string;
@@ -267,11 +268,36 @@ function linksToDocs(origin: string, urls: string[]): boolean {
 	});
 }
 
+function originOf(url: string): string | undefined {
+	try {
+		return new URL(url).origin;
+	} catch {
+		return undefined;
+	}
+}
+
+// Some sites serve their homepage where they were asked but redirect every other page to another host (often www),
+// which is the host their sitemap lists. Only the site's own redirect can move the audit there.
+async function pagesOrigin(fetcher: Fetcher, origin: string, entries: SitemapEntry[]): Promise<string | undefined> {
+	const origins = entries.map((entry) => originOf(entry.loc));
+	if (origins.length === 0 || origins.includes(origin)) return undefined;
+	const counts = new Map<string, number>();
+	for (const other of origins) if (other) counts.set(other, (counts.get(other) ?? 0) + 1);
+	const target = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+	const sample = entries.find((entry) => originOf(entry.loc) === target && new URL(entry.loc).pathname !== "/");
+	if (!target || !sample) return undefined;
+	const probe = await fetcher.get(`${origin}${new URL(sample.loc).pathname}`);
+	return isResponse(probe) && new URL(probe.url).origin === target ? target : undefined;
+}
+
 /** Fetches what the checks look at, most important first, so a budget that runs out costs the least useful checks. */
 export async function gatherSite(options: GatherOptions): Promise<SiteArtifacts> {
 	const { fetcher, origin } = options;
 	const homeUrl = `${origin}/`;
 	const { robotsFetch, robots, crawlRules } = await fetchRobots(fetcher, origin);
+	const sitemap = await fetchSitemap(fetcher, robots, origin);
+	const moved = options.followedPages ? undefined : await pagesOrigin(fetcher, origin, sitemap.entries);
+	if (moved) return gatherSite({ ...options, origin: moved, homepage: undefined, followedPages: true });
 
 	const reused =
 		options.homepage && new URL(options.homepage.url).toString() === homeUrl ? options.homepage : undefined;
@@ -279,7 +305,6 @@ export async function gatherSite(options: GatherOptions): Promise<SiteArtifacts>
 	const home: PageArtifacts = { url: homeUrl, html: homeFetch, parsed: parseHtml(homeFetch) };
 	const homeLinks = home.parsed?.links.map((link) => link.href) ?? [];
 
-	const sitemap = await fetchSitemap(fetcher, robots, origin);
 	const candidates = sitemap.entries.length > 0 ? sitemap.entries.map((entry) => entry.loc) : homeLinks;
 	const pages = await fetchPages(options, crawlRules, candidates, home);
 

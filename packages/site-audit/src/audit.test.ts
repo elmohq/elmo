@@ -258,6 +258,74 @@ describe("auditSites", () => {
 		expect(report.sites[0]?.pages[1]).toMatch(/\/blog\//);
 	});
 
+	it("samples legal, careers, and translated pages only when nothing else is left", async () => {
+		const fixture = await serve((origin) => ({
+			"/": { body: page("Home", LONG_TEXT) },
+			"/sitemap.xml": {
+				type: "application/xml",
+				body: `<urlset>${["/careers/a", "/careers/b", "/careers/c", "/fr/blog/a", "/fr/blog/b", "/xy/pricing", "/acme/payment-terms", "/pricing", "/guides/start"].map((path) => `<url><loc>${origin}${path}</loc></url>`).join("")}</urlset>`,
+			},
+		}));
+
+		const report = await audit(fixture, { budget: { pages: 3, delayMs: 0 } });
+
+		expect(new Set(report.sites[0]?.pages)).toEqual(
+			new Set([`${fixture.origin}/`, `${fixture.origin}/guides/start`, `${fixture.origin}/pricing`]),
+		);
+	});
+
+	it("follows a site's pages to the host its own pages redirect to", async () => {
+		const fixture = await serve((origin) => {
+			const elsewhere = (path: string) => (req: http.IncomingMessage) =>
+				req.headers.host?.startsWith("127.0.0.1")
+					? { status: 308, headers: { location: `${origin}${path}` } }
+					: { body: page("Guide", LONG_TEXT) };
+			return {
+				"/": { body: page("Home", LONG_TEXT) },
+				"/sitemap.xml": {
+					type: "application/xml",
+					body: `<urlset><url><loc>${origin}/</loc></url><url><loc>${origin}/guide</loc></url></urlset>`,
+				},
+				"/guide": elsewhere("/guide"),
+			};
+		});
+
+		const report = await audit(fixture, { website: fixture.origin.replace("localhost", "127.0.0.1") });
+
+		expect(report.sites[0]?.origin).toBe(fixture.origin);
+		expect(report.sites[0]?.pages).toContain(`${fixture.origin}/guide`);
+	});
+
+	it("doesn't follow sitemap pages to a host the site doesn't redirect to", async () => {
+		const fixture = await serve((origin) => ({
+			"/": { body: page("Home", LONG_TEXT) },
+			"/sitemap.xml": { type: "application/xml", body: `<urlset><url><loc>${origin}/guide</loc></url></urlset>` },
+			"/guide": { body: page("Guide", LONG_TEXT) },
+		}));
+		const website = fixture.origin.replace("localhost", "127.0.0.1");
+
+		const report = await audit(fixture, { website });
+
+		expect(report.sites[0]?.origin).toBe(website);
+		expect(fixture.requests.some((request) => request.host.startsWith("localhost"))).toBe(false);
+	});
+
+	it("counts unchecked results as failures when the site blocks the audit", async () => {
+		const routes = () => ({ "/": { body: page("Home", LONG_TEXT) } });
+		const open = await serve(routes);
+		const blocked = await serve(() => ({
+			...routes(),
+			"/robots.txt": { type: "text/plain", body: "User-agent: ElmoBot\nDisallow: /\n" },
+		}));
+
+		const openReport = await audit(open);
+		const blockedReport = await audit(blocked);
+
+		expect(blockedReport.sites[0]?.blockedAudit).toBe(true);
+		expect(openReport.sites[0]?.blockedAudit).toBe(false);
+		expect(blockedReport.score ?? 100).toBeLessThan(50);
+	});
+
 	it("never fetches paths robots.txt disallows for ElmoBot", async () => {
 		const fixture = await serve((origin) => ({
 			"/robots.txt": { type: "text/plain", body: "User-agent: ElmoBot\nDisallow: /private\n" },

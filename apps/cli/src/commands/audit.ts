@@ -88,6 +88,7 @@ function renderSite(site: SiteReport): string[] {
 	const { pass, warn, fail, notChecked } = site.summary;
 	const unchecked = notChecked ? pc.dim(`, ${notChecked} not checked`) : "";
 	lines.push("");
+	if (site.blockedAudit) lines.push(pc.yellow("The site blocked the audit, so unchecked items count as failures."));
 	if (site.score !== null) lines.push(pc.bold(`Score: ${site.score}/100`));
 	lines.push(
 		`${pc.green(`${pass} passed`)}, ${pc.yellow(plural(warn, "warning"))}, ${pc.red(`${fail} failed`)}${unchecked}`,
