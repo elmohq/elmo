@@ -37,7 +37,10 @@ function sections(origin: string, pages: string[]): string[][] {
 		bySection.set(key, (bySection.get(key) ?? new Set()).add(page));
 	}
 	const byRank = (a: string, b: string) => rank(origin, a).localeCompare(rank(origin, b));
-	return [...bySection.keys()].sort(byRank).map((key) => [...(bySection.get(key) ?? [])].sort(byRank));
+	// The largest sections are a site's main pillars, so they're sampled before one-off pages.
+	const bySize = (a: string, b: string) =>
+		(bySection.get(b)?.size ?? 0) - (bySection.get(a)?.size ?? 0) || byRank(a, b);
+	return [...bySection.keys()].sort(bySize).map((key) => [...(bySection.get(key) ?? [])].sort(byRank));
 }
 
 /**

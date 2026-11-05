@@ -35,8 +35,8 @@ The site you pass first is always audited wherever it lands, even on a domain yo
 | Option | Default | What It Does |
 | --- | --- | --- |
 | `--domain <domain...>` | | Other domains the brand uses |
-| `--pages <n>` | `6` | Pages sampled per site, including the homepage |
-| `--max-requests <n>` | `50` | Total request budget across every domain |
+| `--pages <n>` | `10` | Pages sampled per site, including the homepage |
+| `--max-requests <n>` | `75` | Total request budget across every domain |
 | `--delay <ms>` | `1000` | Minimum gap between requests to the same site |
 | `--format <format>` | `text` | `text`, or `json` for the full report |
 | `--fail-under <score>` | | Exit with status `1` when the overall score is below this |
@@ -46,8 +46,8 @@ pass `--fail-under`, for example `--fail-under 80`.
 
 ## What It Checks
 
-Pages are sampled from your sitemap across its top-level sections, falling back to the homepage's
-links. The sample is the same on every run.
+Pages are sampled from your sitemap, one from each top-level section, largest sections first, falling
+back to the homepage's links. The sample is the same on every run.
 
 **Reach: Can Agents Get In?** `robots.txt`, rules for AI search crawlers, AI user agents, and AI
 training crawlers, Content Signals, whether bot protection blocks AI user agents, `noindex`, snippet
@@ -80,7 +80,7 @@ don't apply to it. With more than one site, the overall score is their average.
 The audit identifies itself as `ElmoBot/1.0` and links to this page. It is built to be cheap for the
 sites it checks:
 
-- At most 50 requests per run by default, made one at a time per site, at least one second apart.
+- At most 75 requests per run by default, made one at a time per site, at least one second apart.
 - It honors `Crawl-delay`, backs off on `429` and `503` responses, and stops after repeated errors.
 - It fetches each domain's homepage once to see where it redirects. After that it reads the site's
   `robots.txt` and skips any page that disallows `ElmoBot`. A site that disallows the homepage for

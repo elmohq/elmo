@@ -244,6 +244,20 @@ describe("auditSites", () => {
 		expect(paths).not.toContain("/old.xml");
 	});
 
+	it("samples a site's largest sections before its one-off pages", async () => {
+		const fixture = await serve((origin) => ({
+			"/": { body: page("Home", LONG_TEXT) },
+			"/sitemap.xml": {
+				type: "application/xml",
+				body: `<urlset>${["/about", "/blog/a", "/blog/b", "/blog/c"].map((path) => `<url><loc>${origin}${path}</loc></url>`).join("")}</urlset>`,
+			},
+		}));
+
+		const report = await audit(fixture, { budget: { pages: 2, delayMs: 0 } });
+
+		expect(report.sites[0]?.pages[1]).toMatch(/\/blog\//);
+	});
+
 	it("never fetches paths robots.txt disallows for ElmoBot", async () => {
 		const fixture = await serve((origin) => ({
 			"/robots.txt": { type: "text/plain", body: "User-agent: ElmoBot\nDisallow: /private\n" },

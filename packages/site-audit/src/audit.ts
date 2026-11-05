@@ -14,8 +14,8 @@ import {
 	type SiteReport,
 } from "./types";
 
-const DEFAULT_REQUESTS = 50;
-const DEFAULT_PAGES = 6;
+const DEFAULT_REQUESTS = 75;
+const DEFAULT_PAGES = 10;
 const DEFAULT_DELAY_MS = 1000;
 
 function summarize(checks: CheckResult[]): SiteReport["summary"] {

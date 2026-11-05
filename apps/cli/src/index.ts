@@ -65,9 +65,9 @@ async function main() {
 		.description("check how well AI agents can reach, read, and understand a website")
 		.argument("<url>", "the site to audit, e.g. example.com")
 		.option("--domain <domain...>", "other domains the brand uses, checked as aliases or sites")
-		.option("--pages <n>", "pages to sample per site, including the homepage", "6")
+		.option("--pages <n>", "pages to sample per site, including the homepage", "10")
 		.option("--delay <ms>", "minimum milliseconds between requests to a site", "1000")
-		.option("--max-requests <n>", "total request budget", "50")
+		.option("--max-requests <n>", "total request budget", "75")
 		.option("--format <format>", "text or json", "text")
 		.option("--fail-under <score>", "exit with status 1 when the overall score is below this")
 		.action(async (url: string, opts: AuditOptions) => {
