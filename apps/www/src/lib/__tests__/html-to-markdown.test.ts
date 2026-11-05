@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { htmlToMarkdown } from "@/lib/html-to-markdown";
+import { htmlToMarkdown as convert } from "@/lib/html-to-markdown";
 
 const PAGE_URL = "https://www.elmohq.com/pricing";
+
+function htmlToMarkdown(html: string, url: string): string {
+	return convert(html, url).replace(/^---\n[\s\S]*?\n---\n\n/, "");
+}
 
 function page(body: string, head = "<title>Pricing · Elmo</title>"): string {
 	return `<!DOCTYPE html><html><head>${head}</head><body>${body}</body></html>`;
@@ -76,5 +80,31 @@ describe("htmlToMarkdown", () => {
 		const markdown = htmlToMarkdown(page("<main><h1>Own heading</h1><p>Body.</p></main>"), PAGE_URL);
 
 		expect(markdown).toBe("# Own heading\n\nBody.");
+	});
+
+	it("opens with frontmatter from the page's head", () => {
+		const markdown = convert(
+			page(
+				"<main><h1>Pricing</h1></main>",
+				'<title>Pricing: Plans · Elmo</title><meta name="description" content="Plans and prices."><link rel="canonical" href="https://www.elmohq.com/pricing"><meta property="article:modified_time" content="2026-10-01">',
+			),
+			PAGE_URL,
+		);
+
+		expect(markdown).toMatch(
+			/^---\ntitle: "Pricing: Plans · Elmo"\ndescription: Plans and prices.\ncanonical: https:\/\/www.elmohq.com\/pricing\nupdated: "2026-10-01"\n---\n\n# Pricing/,
+		);
+	});
+
+	it("takes the updated date from JSON-LD when there is no article date", () => {
+		const markdown = convert(
+			page(
+				"<main><h1>Glossary</h1></main>",
+				'<title>Glossary</title><script type="application/ld+json">{"@type":"FAQPage","dateModified":"2026-09-22"}</script>',
+			),
+			PAGE_URL,
+		);
+
+		expect(markdown).toContain('updated: "2026-09-22"');
 	});
 });
