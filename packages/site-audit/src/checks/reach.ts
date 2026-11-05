@@ -40,6 +40,11 @@ const NOINDEX = define(
 	"Pages Not Hidden From Search",
 	"Remove `noindex` from the robots meta tag and X-Robots-Tag header on pages you want AI search to use.",
 );
+const SNIPPET_DIRECTIVES = define(
+	"snippet-directives",
+	"Snippets Allowed",
+	"Remove `nosnippet` and `max-snippet:0` (and raise small `max-snippet` limits) on pages you want quoted. Answer engines such as Google's AI Overviews only use text a page lets them show as a snippet.",
+);
 const CONTENT_PUBLIC = define(
 	"content-public",
 	"Content Without Signing In",
@@ -170,6 +175,40 @@ function noindex(site: SiteArtifacts): CheckResult {
 	);
 }
 
+const SHORT_SNIPPET = 160;
+
+function snippetDirectives(site: SiteArtifacts): CheckResult {
+	const checked = site.pages.filter((page) => isResponse(page.html));
+	if (checked.length === 0) return notFetched(SNIPPET_DIRECTIVES, site.pages[0]?.html, "the sampled pages");
+	const directives = checked.map((page) => {
+		const header = isResponse(page.html) ? (page.html.headers["x-robots-tag"] ?? "") : "";
+		const raw = `${page.parsed?.robotsMeta ?? ""}, ${header}`.toLowerCase();
+		const maxSnippet = raw.match(/max-snippet\s*:\s*(-?\d+)/)?.[1];
+		return { url: page.url, raw, maxSnippet: maxSnippet === undefined ? undefined : Number(maxSnippet) };
+	});
+	const blocked = directives.filter((d) => /\bnosnippet\b/.test(d.raw) || d.maxSnippet === 0);
+	if (blocked.length > 0) {
+		return result(
+			SNIPPET_DIRECTIVES,
+			"fail",
+			`${blocked.length} of ${checked.length} sampled pages forbid snippets (nosnippet or max-snippet:0).`,
+			blocked.map((d) => d.url),
+		);
+	}
+	const limited = directives.filter(
+		(d) => d.maxSnippet !== undefined && d.maxSnippet > 0 && d.maxSnippet < SHORT_SNIPPET,
+	);
+	if (limited.length > 0) {
+		return result(
+			SNIPPET_DIRECTIVES,
+			"warn",
+			`${limited.length} page(s) cap snippets below ${SHORT_SNIPPET} characters with max-snippet.`,
+			limited.map((d) => d.url),
+		);
+	}
+	return result(SNIPPET_DIRECTIVES, "pass", `None of the ${checked.length} sampled pages restricts snippets.`);
+}
+
 const LOGIN_PATH = /\/(login|log-in|signin|sign-in|auth|sso|account\/login)(\/|$|\?)/i;
 
 function contentPublic(site: SiteArtifacts): CheckResult {
@@ -265,6 +304,7 @@ export function reachChecks(site: SiteArtifacts, aliases: HostResolution[]): Che
 		contentSignals(site),
 		botReachability(site),
 		noindex(site),
+		snippetDirectives(site),
 		contentPublic(site),
 		redirectHygiene(site),
 		alternateDomains(aliases),

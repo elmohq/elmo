@@ -68,8 +68,9 @@ function renderSite(site: SiteReport): string[] {
 	}
 	const { pass, warn, fail, notChecked } = site.summary;
 	const unchecked = notChecked ? pc.dim(`, ${notChecked} not checked`) : "";
+	lines.push("");
+	if (site.score !== null) lines.push(pc.bold(`Score: ${site.score}/100`));
 	lines.push(
-		"",
 		`${pc.green(`${pass} passed`)}, ${pc.yellow(`${warn} warnings`)}, ${pc.red(`${fail} failed`)}${unchecked}`,
 	);
 	return lines;
@@ -81,6 +82,7 @@ export function renderReport(report: SiteAuditReport): string {
 	return [
 		...renderHostProblems(report.hosts),
 		...report.sites.flatMap(renderSite),
+		...(report.sites.length > 1 && report.score !== null ? ["", pc.bold(`Overall score: ${report.score}/100`)] : []),
 		pc.dim(`${used} of ${limit} requests used${budgetNote}.`),
 	].join("\n");
 }

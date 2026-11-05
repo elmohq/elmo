@@ -44,6 +44,8 @@ export interface SiteReport {
 	pages: string[];
 	checks: CheckResult[];
 	summary: { pass: number; warn: number; fail: number; notChecked: number };
+	/** 0–100: a pass counts fully, a warning half, a failure nothing. Optional (`info`) and unchecked results don't count. Null when nothing was scored. */
+	score: number | null;
 }
 
 export interface SiteAuditReport {
@@ -52,6 +54,8 @@ export interface SiteAuditReport {
 	userAgent: string;
 	hosts: HostResolution[];
 	sites: SiteReport[];
+	/** The mean of the site scores. */
+	score: number | null;
 	requests: { used: number; limit: number; budgetExhausted: boolean };
 }
 

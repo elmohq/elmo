@@ -171,6 +171,55 @@ describe("auditSites", () => {
 		expect(check(report, "hidden-instructions").status).toBe("fail");
 	});
 
+	it("fails pages that forbid snippets", async () => {
+		const fixture = await serve(() => ({
+			"/": { body: page("Home", LONG_TEXT, '<meta name="robots" content="index, nosnippet">') },
+		}));
+
+		const report = await audit(fixture);
+
+		expect(check(report, "snippet-directives").status).toBe("fail");
+	});
+
+	it("credits dated, authored articles written in quotable passages", async () => {
+		const passage = `<p>${"Answer engines quote self-contained passages that answer one question clearly and completely. ".repeat(5)}</p>`;
+		const article = JSON.stringify({
+			"@context": "https://schema.org",
+			"@type": "BlogPosting",
+			headline: "Post",
+			datePublished: new Date().toISOString(),
+			dateModified: new Date().toISOString(),
+			author: { "@type": "Person", name: "Sam Writer", url: "https://example.com/team/sam" },
+		});
+		const fixture = await serve((origin) => ({
+			"/": { body: page("Home", `${LONG_TEXT}<a href="${origin}/blog/post">Post</a>`) },
+			"/blog/post": {
+				body: page("Post", passage.repeat(4), `<script type="application/ld+json">${article}</script>`),
+			},
+		}));
+
+		const report = await audit(fixture, { budget: { pages: 2, delayMs: 0 } });
+
+		expect(check(report, "content-freshness").status).toBe("pass");
+		expect(check(report, "citable-passages").status).toBe("pass");
+		expect(check(report, "authorship").status).toBe("pass");
+	});
+
+	it("scores each site from its passes and warnings, leaving optional checks out", async () => {
+		const fixture = await serve(() => ({ "/": { body: page("Home", LONG_TEXT) } }));
+
+		const report = await audit(fixture);
+		const site = report.sites[0];
+		const scored = site?.checks.filter((c) => ["pass", "warn", "fail"].includes(c.status)) ?? [];
+		const expected = Math.round(
+			(scored.reduce((sum, c) => sum + (c.status === "pass" ? 1 : c.status === "warn" ? 0.5 : 0), 0) / scored.length) *
+				100,
+		);
+
+		expect(site?.score).toBe(expected);
+		expect(report.score).toBe(expected);
+	});
+
 	it("never fetches paths robots.txt disallows for ElmoBot", async () => {
 		const fixture = await serve((origin) => ({
 			"/robots.txt": { type: "text/plain", body: "User-agent: ElmoBot\nDisallow: /private\n" },

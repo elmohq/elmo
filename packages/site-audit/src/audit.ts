@@ -27,6 +27,23 @@ function summarize(checks: CheckResult[]): SiteReport["summary"] {
 	};
 }
 
+function scoreChecks(checks: CheckResult[]): number | null {
+	const scored = checks.filter(
+		(check) => check.status === "pass" || check.status === "warn" || check.status === "fail",
+	);
+	if (scored.length === 0) return null;
+	const earned = scored.reduce(
+		(sum, check) => sum + (check.status === "pass" ? 1 : check.status === "warn" ? 0.5 : 0),
+		0,
+	);
+	return Math.round((earned / scored.length) * 100);
+}
+
+function meanScore(sites: SiteReport[]): number | null {
+	const scores = sites.map((site) => site.score).filter((score): score is number => score !== null);
+	return scores.length === 0 ? null : Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+}
+
 /**
  * Audits how well AI agents and crawlers can reach, read, and understand a
  * brand's sites. Each alternate domain is resolved first: one that redirects to
@@ -80,6 +97,7 @@ export async function auditSites(options: AuditOptions): Promise<SiteAuditReport
 			pages: artifacts.pages.map((page) => page.url),
 			checks,
 			summary: summarize(checks),
+			score: scoreChecks(checks),
 		});
 	}
 
@@ -89,6 +107,7 @@ export async function auditSites(options: AuditOptions): Promise<SiteAuditReport
 		userAgent,
 		hosts: resolved.map(({ homepage: _homepage, ...host }) => host),
 		sites,
+		score: meanScore(sites),
 		requests: { used: fetcher.used, limit: fetcher.limit, budgetExhausted: fetcher.budgetExhausted },
 	};
 }

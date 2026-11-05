@@ -1,4 +1,4 @@
-import { isHtmlResponse, isOk, type LinkedPage, type PageArtifacts, type SiteArtifacts } from "../gather";
+import { isHtmlResponse, isOk, isResponse, type LinkedPage, type PageArtifacts, type SiteArtifacts } from "../gather";
 import { jsonLdTypes, type ParsedPage } from "../parse/html";
 import type { CheckResult } from "../types";
 import { type CheckDefinition, list, notFetched, result, share } from "./result";
@@ -49,6 +49,21 @@ const HIDDEN_INSTRUCTIONS = define(
 	"hidden-instructions",
 	"No Hidden Instructions to AI",
 	"Remove hidden text or attributes that address AI agents. Models treat it as prompt injection, and it can get a site distrusted.",
+);
+const FRESHNESS = define(
+	"content-freshness",
+	"Content Freshness",
+	"State when each page was published and last updated: `datePublished` and `dateModified` in JSON-LD (or `article:modified_time`), and keep them accurate. Answer engines favor content they can tell is current.",
+);
+const CITABLE_PASSAGES = define(
+	"citable-passages",
+	"Quotable Passages",
+	"Write key points as self-contained paragraphs of roughly 40–200 words that answer one question each, so an answer engine can quote them whole.",
+);
+const AUTHORSHIP = define(
+	"authorship",
+	"Article Authors",
+	"Name the author of each article in JSON-LD (`author` as a Person with `url` or `sameAs`) and on the page, and link to an author page. Named, verifiable authors are an E-E-A-T signal.",
 );
 const SCHEMA_FEEDS = define(
 	"schema-feeds",
@@ -248,6 +263,95 @@ function hiddenInstructions(site: SiteArtifacts): CheckResult {
 	);
 }
 
+const STALE_AFTER_MS = 365 * 24 * 60 * 60 * 1000;
+const ARTICLE_TYPES = /^(Article|BlogPosting|NewsArticle|TechArticle|Report|ScholarlyArticle)$/;
+
+function pageDates(page: PageArtifacts): { dates: Date[]; source: "structured" | "header" | "none" } {
+	const meta = page.parsed;
+	const structured = [
+		...(meta?.jsonLd.flatMap((node) => [node.dateModified, node.datePublished]) ?? []),
+		...(meta?.metaDates ?? []),
+	]
+		.filter((value): value is string => typeof value === "string")
+		.map((value) => new Date(value))
+		.filter((date) => !Number.isNaN(date.getTime()));
+	if (structured.length > 0) return { dates: structured, source: "structured" };
+	const header = isResponse(page.html) ? page.html.headers["last-modified"] : undefined;
+	const fromHeader = header ? new Date(header) : undefined;
+	return fromHeader && !Number.isNaN(fromHeader.getTime())
+		? { dates: [fromHeader], source: "header" }
+		: { dates: [], source: "none" };
+}
+
+function freshness(site: SiteArtifacts): CheckResult {
+	const pages = parsed(site);
+	if (pages.length === 0) return notFetched(FRESHNESS, site.pages[0]?.html, "page markup");
+	const dated = pages.map((page) => ({ url: page.url, ...pageDates(page) })).filter((page) => page.source !== "none");
+	const undated = pages.filter((page) => !dated.some((d) => d.url === page.url)).map((page) => page.url);
+	if (dated.length === 0)
+		return result(FRESHNESS, "warn", "None of the sampled pages says when it was published or updated.", undated);
+	const newest = new Date(Math.max(...dated.flatMap((page) => page.dates.map((date) => date.getTime()))));
+	const structuredCount = dated.filter((page) => page.source === "structured").length;
+	const evidence = `${dated.length} of ${pages.length} pages carry a date (${structuredCount} in structured data or meta tags); the newest is ${newest.toISOString().slice(0, 10)}.`;
+	if (Date.now() - newest.getTime() > STALE_AFTER_MS)
+		return result(FRESHNESS, "warn", `${evidence} Nothing sampled was updated in the past year.`);
+	if (structuredCount < pages.length / 2) return result(FRESHNESS, "warn", evidence, undated);
+	return result(FRESHNESS, "pass", evidence);
+}
+
+const MIN_PASSAGES = 3;
+
+function citablePassages(site: SiteArtifacts): CheckResult {
+	const all = parsed(site);
+	if (all.length === 0) return notFetched(CITABLE_PASSAGES, site.pages[0]?.html, "page content");
+	// Homepages are mostly navigation and calls to action; judge the inner pages when there are any.
+	const pages = all.length > 1 ? all.slice(1) : all;
+	const counts = pages.map((page) => ({ url: page.url, passages: page.parsed?.citablePassages ?? 0 }));
+	const strong = counts.filter((page) => page.passages >= MIN_PASSAGES);
+	const total = counts.reduce((sum, page) => sum + page.passages, 0);
+	const evidence = `${strong.length} of ${pages.length} pages have at least ${MIN_PASSAGES} quotable passages of 40–200 words (${total} in all).`;
+	const weak = counts.filter((page) => page.passages < MIN_PASSAGES).map((page) => page.url);
+	if (strong.length >= pages.length / 2) return result(CITABLE_PASSAGES, "pass", evidence);
+	return result(CITABLE_PASSAGES, total === 0 ? "fail" : "warn", evidence, weak);
+}
+
+function articleAuthor(page: PageArtifacts): "verifiable" | "named" | "none" {
+	const meta = page.parsed;
+	if (!meta) return "none";
+	const authors = meta.jsonLd.flatMap((node) => {
+		const author = node.author;
+		return (Array.isArray(author) ? author : author ? [author] : []) as unknown[];
+	});
+	const verifiable = authors.some(
+		(author) => typeof author === "object" && author !== null && ("url" in author || "sameAs" in author),
+	);
+	if (verifiable || (authors.length > 0 && meta.hasAuthorLink)) return "verifiable";
+	const publisher = meta.jsonLd.some((node) => node.publisher);
+	return authors.length > 0 || publisher || meta.authorMeta || meta.hasAuthorLink ? "named" : "none";
+}
+
+function authorship(site: SiteArtifacts): CheckResult {
+	const articles = parsed(site).filter(
+		(page) =>
+			page.parsed?.ogType === "article" ||
+			page.parsed?.jsonLd.some((node) => jsonLdTypes(node).some((type) => ARTICLE_TYPES.test(type))),
+	);
+	if (articles.length === 0) return result(AUTHORSHIP, "not_checked", "No article pages were in the sample.");
+	const states = articles.map((page) => ({ url: page.url, state: articleAuthor(page) }));
+	const anonymous = states.filter((page) => page.state === "none");
+	const unverified = states.filter((page) => page.state === "named");
+	const evidence = `${articles.length - anonymous.length} of ${articles.length} article pages name an author or publisher; ${states.filter((page) => page.state === "verifiable").length} link the author to a profile.`;
+	if (anonymous.length > 0 || unverified.length > 0) {
+		return result(
+			AUTHORSHIP,
+			"warn",
+			evidence,
+			[...anonymous, ...unverified].map((page) => page.url),
+		);
+	}
+	return result(AUTHORSHIP, "pass", evidence);
+}
+
 function schemaFeeds(site: SiteArtifacts): CheckResult {
 	if (!site.robots) return result(SCHEMA_FEEDS, "not_checked", "There's no robots.txt to check.");
 	if (site.robots.schemamaps.length > 0)
@@ -261,6 +365,9 @@ export function understandChecks(site: SiteArtifacts): CheckResult[] {
 		jsonLdSameAs(site),
 		schemaBreadth(site),
 		metadata(site),
+		freshness(site),
+		citablePassages(site),
+		authorship(site),
 		trustPages(site),
 		pricing(site),
 		documentStructure(site),

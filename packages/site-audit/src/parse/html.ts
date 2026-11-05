@@ -28,6 +28,12 @@ export interface ParsedPage {
 	jsonLd: Record<string, unknown>[];
 	controls: { total: number; named: number; nonNative: number; formControls: number; labeledFormControls: number };
 	hiddenInstructions: string[];
+	/** Dates from `article:modified_time`, `article:published_time`, or `og:updated_time`. */
+	metaDates: string[];
+	authorMeta: string;
+	hasAuthorLink: boolean;
+	/** Paragraphs and list items of 40–200 words: the size of passage an answer engine quotes. */
+	citablePassages: number;
 }
 
 type El = Element & { textContent: string | null };
@@ -145,6 +151,18 @@ function collectHiddenInstructions(document: Document): string[] {
 	return [...found];
 }
 
+const PASSAGE_MIN_WORDS = 40;
+const PASSAGE_MAX_WORDS = 200;
+
+function countCitablePassages(document: Document): number {
+	const scope = document.querySelector("main, [role=main], article") ?? document.body;
+	if (!scope) return 0;
+	return [...scope.querySelectorAll("p, li")].filter((block) => {
+		const words = (block.textContent ?? "").trim().split(/\s+/).filter(Boolean).length;
+		return words >= PASSAGE_MIN_WORDS && words <= PASSAGE_MAX_WORDS;
+	}).length;
+}
+
 function hasJsRedirectStub(inlineScripts: string, text: string): boolean {
 	if (text.length >= 200) return false;
 	return /\b(window\.|document\.)?location(\.href)?\s*=|location\.(replace|assign)\(/.test(inlineScripts);
@@ -202,6 +220,16 @@ export function parsePage(url: string, html: string): ParsedPage {
 		jsonLd,
 		controls: collectControls(document),
 		hiddenInstructions: collectHiddenInstructions(document),
+		metaDates: [
+			...document.querySelectorAll(
+				'meta[property="article:modified_time" i], meta[property="article:published_time" i], meta[property="og:updated_time" i]',
+			),
+		]
+			.map((meta) => meta.getAttribute("content") ?? "")
+			.filter(Boolean),
+		authorMeta: attr(document, 'meta[name="author" i]', "content"),
+		hasAuthorLink: document.querySelector('a[rel~="author" i], link[rel~="author" i]') !== null,
+		citablePassages: countCitablePassages(document),
 	};
 }
 

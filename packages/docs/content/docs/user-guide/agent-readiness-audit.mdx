@@ -45,8 +45,8 @@ Pages are sampled from your sitemap across its top-level sections, falling back 
 links. The sample is the same on every run.
 
 **Reach: Can Agents Get In?** `robots.txt`, rules for AI search crawlers, AI user agents, and AI
-training crawlers, Content Signals, whether bot protection blocks AI user agents, `noindex`, pages
-behind a sign-in, meta-refresh and JavaScript redirects, alternate-domain redirects, and real 404s.
+training crawlers, Content Signals, whether bot protection blocks AI user agents, `noindex`, snippet
+restrictions (`nosnippet`, `max-snippet`), pages behind a sign-in, meta-refresh and JavaScript redirects, alternate-domain redirects, and real 404s.
 
 **Read: Can Agents Read It?** Text and headings without JavaScript, page size in tokens, markdown via
 `Accept: text/markdown` and at `.md` URLs, markdown alternate links, markdown frontmatter and code
@@ -54,12 +54,19 @@ fences, `llms.txt` and its links, `llms-full.txt`, a section `llms.txt` for docs
 `lastmod` dates, discovery Link headers, and an agent view at `?mode=agent`.
 
 **Understand: Can Agents Make Sense of It?** Organization structured data and its `sameAs` links,
-page-level structured data, titles, descriptions, canonical links and Open Graph tags, About,
+page-level structured data, titles, descriptions, canonical links and Open Graph tags, publish and
+update dates, quotable passages of 40–200 words, named and linked article authors, About,
 Contact, and Privacy pages, a pricing page, document structure, accessible names on controls, hidden
 text addressed to AI, and NLWeb schema feeds.
 
 Checks marked `i` are optional improvements and never count as failures. Checks marked `-` weren't
 run, usually because the request budget ran out.
+
+## Score
+
+Each site gets a score out of 100: a pass counts fully, a warning half, and a failure nothing.
+Optional (`i`) and unchecked (`-`) results are left out, so a site isn't penalized for checks that
+don't apply to it. With more than one site, the overall score is their average.
 
 ## ElmoBot
 
