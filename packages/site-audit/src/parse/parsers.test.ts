@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parsePage } from "./html";
 import { markdownLinks } from "./markdown";
 import { parseRobots } from "./robots";
 import { parseSitemap } from "./sitemap";
@@ -61,5 +62,27 @@ describe("parseRobots", () => {
 		expect(robots.schemamaps).toEqual(["https://example.com/feed"]);
 		expect(robots.userAgents).toEqual(["*"]);
 		expect(performance.now() - started).toBeLessThan(2000);
+	});
+});
+
+describe("parsePage", () => {
+	it("counts labeled and unlabeled form controls", () => {
+		const page = parsePage(
+			"https://example.com/",
+			'<label for="email">Email</label><input id="email"><input id="phone"><label><input> Name</label>',
+		);
+		expect(page.controls.formControls).toBe(3);
+		expect(page.controls.labeledFormControls).toBe(2);
+	});
+
+	it("stays fast on a page full of unlabeled controls and unrelated labels", () => {
+		const count = 20_000;
+		const inputs = Array.from({ length: count }, (_, i) => `<input id="i${i}">`).join("");
+		const labels = Array.from({ length: count }, (_, i) => `<label for="x${i}"></label>`).join("");
+		const started = performance.now();
+		const page = parsePage("https://example.com/", `<body>${inputs}${labels}</body>`);
+		expect(page.controls.formControls).toBe(count);
+		expect(page.controls.labeledFormControls).toBe(0);
+		expect(performance.now() - started).toBeLessThan(5000);
 	});
 });
