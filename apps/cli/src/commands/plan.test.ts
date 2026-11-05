@@ -34,6 +34,25 @@ describe("reading context for a plan", () => {
 		expect((await readFilesWithin(["docs/credentials.json"], 100_000)).join("\n")).not.toContain("do-not-send");
 	});
 
+	it("won't read a selected file that's swapped for a symlink after it was checked", async () => {
+		const { checkout, privateDir } = await checkoutWithPrivateDir();
+		const selected = path.join(checkout, "page.md");
+		await fs.writeFile(selected, "# Our pricing");
+		const lstat = fs.lstat;
+		let swapped = false;
+		vi.spyOn(fs, "lstat").mockImplementation(async (target) => {
+			const result = await lstat(target);
+			if (target === selected && !swapped) {
+				swapped = true;
+				await fs.rm(selected);
+				await fs.symlink(path.join(privateDir, "credentials.json"), selected);
+			}
+			return result;
+		});
+
+		expect((await readFilesWithin(["page.md"], 100_000)).join("\n")).not.toContain("do-not-send");
+	});
+
 	it("reads a real directory inside the checkout", async () => {
 		const { checkout } = await checkoutWithPrivateDir();
 		await fs.mkdir(path.join(checkout, "content"));
