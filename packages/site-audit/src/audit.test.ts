@@ -527,6 +527,20 @@ describe("auditSites", () => {
 		expect(check(report, "sitemap").status).toBe("fail");
 	});
 
+	it("survives a sitemap whose locations are all malformed or relative", async () => {
+		const fixture = await serve(() => ({
+			"/": { body: page("Home", LONG_TEXT) },
+			"/sitemap.xml": {
+				type: "application/xml",
+				body: "<urlset><url><loc>http://[</loc></url><url><loc>/guide</loc></url></urlset>",
+			},
+		}));
+
+		const report = await audit(fixture);
+
+		expect(report.sites[0]?.pages).toEqual([`${fixture.origin}/`]);
+	});
+
 	it("refuses to audit private addresses unless explicitly allowed", async () => {
 		const fixture = await serve(() => ({ "/": { body: page("Home", LONG_TEXT) } }));
 

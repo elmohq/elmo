@@ -268,9 +268,9 @@ function linksToDocs(origin: string, urls: string[]): boolean {
 	});
 }
 
-function originOf(url: string): string | undefined {
+function parseUrl(url: string): URL | undefined {
 	try {
-		return new URL(url).origin;
+		return new URL(url);
 	} catch {
 		return undefined;
 	}
@@ -279,14 +279,14 @@ function originOf(url: string): string | undefined {
 // Some sites serve their homepage where they were asked but redirect every other page to another host (often www),
 // which is the host their sitemap lists. Only the site's own redirect can move the audit there.
 async function pagesOrigin(fetcher: Fetcher, origin: string, entries: SitemapEntry[]): Promise<string | undefined> {
-	const origins = entries.map((entry) => originOf(entry.loc));
-	if (origins.length === 0 || origins.includes(origin)) return undefined;
+	const urls = entries.flatMap((entry) => parseUrl(entry.loc) ?? []);
+	if (urls.length === 0 || urls.some((url) => url.origin === origin)) return undefined;
 	const counts = new Map<string, number>();
-	for (const other of origins) if (other) counts.set(other, (counts.get(other) ?? 0) + 1);
+	for (const url of urls) counts.set(url.origin, (counts.get(url.origin) ?? 0) + 1);
 	const target = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
-	const sample = entries.find((entry) => originOf(entry.loc) === target && new URL(entry.loc).pathname !== "/");
+	const sample = urls.find((url) => url.origin === target && url.pathname !== "/");
 	if (!target || !sample) return undefined;
-	const probe = await fetcher.get(`${origin}${new URL(sample.loc).pathname}`);
+	const probe = await fetcher.get(`${origin}${sample.pathname}`);
 	return isResponse(probe) && new URL(probe.url).origin === target ? target : undefined;
 }
 
