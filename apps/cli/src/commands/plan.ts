@@ -8,6 +8,7 @@ import { z } from "zod";
 import { type BrandPack, type PlanSuggestion, readBrandPack } from "../core/brand-pack.js";
 import { loadElmoEnv } from "../core/env.js";
 import { parseFormat, printStdout, type Row, writeJson, writeStructured, writeText } from "../core/output.js";
+import { isWithin, reachedThroughSymlink } from "../core/paths.js";
 import { applyResearchTarget } from "../core/targets.js";
 import { log, routeLibraryLogsToStderr } from "../core/ui.js";
 import { trackCliEvent } from "../telemetry.js";
@@ -146,27 +147,9 @@ async function runPlan(paths: string[], options: PlanOptions): Promise<void> {
 	}
 }
 
-function isWithin(parent: string, child: string): boolean {
-	const relative = path.relative(parent, child);
-	return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
-}
-
-// A path inside the working directory may come from a checkout the user didn't write, so none of its
-// components may be a link. Outside it, only the final component is the user's selection to check.
-async function hasSymlinkedComponent(resolved: string): Promise<boolean> {
-	const cwd = process.cwd();
-	let current = isWithin(cwd, resolved) ? cwd : path.dirname(resolved);
-	for (const part of path.relative(current, resolved).split(path.sep).filter(Boolean)) {
-		current = path.join(current, part);
-		const link = await fs.lstat(current).catch(() => undefined);
-		if (!link || link.isSymbolicLink()) return true;
-	}
-	return false;
-}
-
 async function contextRoot(p: string): Promise<string | undefined> {
 	const resolved = path.resolve(process.cwd(), p);
-	if (await hasSymlinkedComponent(resolved)) return undefined;
+	if (await reachedThroughSymlink(resolved)) return undefined;
 	return fs.realpath(resolved).catch(() => undefined);
 }
 

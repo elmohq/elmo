@@ -1,5 +1,19 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { pad, parseFormat, printCsv, serialize, slugify, toCsv, toJsonl } from "./output";
+import {
+	pad,
+	parseFormat,
+	printCsv,
+	serialize,
+	slugify,
+	toCsv,
+	toJsonl,
+	writeJson,
+	writeStructured,
+	writeText,
+} from "./output";
 
 describe("toCsv", () => {
 	it("renders a header and rows", () => {
@@ -97,5 +111,54 @@ describe("printCsv", () => {
 
 	it("leaves piped output byte for byte", () => {
 		expect(printed(false)).toBe(`prompt\n${prompt}\n`);
+	});
+});
+
+describe("writing artifacts", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	async function checkoutWithOutsideFile() {
+		const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "elmo-output-")));
+		const checkout = path.join(root, "checkout");
+		const outside = path.join(root, "outside");
+		await fs.mkdir(checkout);
+		await fs.mkdir(outside);
+		await fs.writeFile(path.join(outside, "config"), "keep me");
+		vi.spyOn(process, "cwd").mockReturnValue(checkout);
+		return { checkout, outside };
+	}
+
+	it("replaces an artifact planted as a symlink instead of writing through it", async () => {
+		const { checkout, outside } = await checkoutWithOutsideFile();
+		await fs.symlink(path.join(outside, "config"), path.join(checkout, "plan.md"));
+		await fs.symlink(path.join(outside, "config"), path.join(checkout, "competitors.csv"));
+
+		await writeText(checkout, "plan.md", "# Plan");
+		await writeStructured(checkout, "competitors", [{ name: "Acme" }], ["name"], "csv");
+
+		expect(await fs.readFile(path.join(outside, "config"), "utf8")).toBe("keep me");
+		expect((await fs.lstat(path.join(checkout, "plan.md"))).isSymbolicLink()).toBe(false);
+		expect(await fs.readFile(path.join(checkout, "plan.md"), "utf8")).toBe("# Plan");
+		expect(await fs.readFile(path.join(checkout, "competitors.csv"), "utf8")).toBe("name\nAcme\n");
+	});
+
+	it("refuses an output directory that's a symlink out of the checkout", async () => {
+		const { checkout, outside } = await checkoutWithOutsideFile();
+		await fs.symlink(outside, path.join(checkout, "out"));
+
+		await expect(writeJson(path.join(checkout, "out/nested"), "brand.json", {})).rejects.toThrow(/symlink/);
+		await expect(writeText(path.join(checkout, "out"), "config", "overwritten")).rejects.toThrow(/symlink/);
+		expect(await fs.readdir(outside)).toEqual(["config"]);
+	});
+
+	it("creates nested output directories inside the checkout", async () => {
+		const { checkout } = await checkoutWithOutsideFile();
+
+		await writeText(path.join(checkout, "out/responses/001"), "run.md", "answer");
+
+		expect(await fs.readFile(path.join(checkout, "out/responses/001/run.md"), "utf8")).toBe("answer");
+		expect(await fs.readdir(path.join(checkout, "out/responses/001"))).toEqual(["run.md"]);
 	});
 });
