@@ -27,37 +27,62 @@ function localName(tag: string): string {
 	return name.slice(name.indexOf(":") + 1);
 }
 
+interface Tag {
+	name: string;
+	closing: boolean;
+	end: number;
+}
+
+function nextTag(lower: string, from: number): Tag | undefined {
+	const open = lower.indexOf("<", from);
+	const close = open === -1 ? -1 : lower.indexOf(">", open);
+	if (close === -1) return undefined;
+	const raw = lower.slice(open + 1, close).trim();
+	const markup = raw.startsWith("?") || raw.startsWith("!");
+	return { name: markup ? "" : localName(raw), closing: raw.startsWith("/"), end: close + 1 };
+}
+
+function rootKind(tag: Tag): ParsedSitemap["kind"] {
+	if (tag.closing) return "invalid";
+	if (tag.name === "urlset") return "urlset";
+	return tag.name === "sitemapindex" ? "index" : "invalid";
+}
+
+class EntryReader {
+	kind: ParsedSitemap["kind"] = "invalid";
+	readonly entries: SitemapEntry[] = [];
+	private current: Partial<SitemapEntry> | undefined;
+
+	/** Where scanning resumes, or undefined to stop. */
+	accept(tag: Tag, xml: string, lower: string): number | undefined {
+		if (this.kind === "invalid") {
+			this.kind = rootKind(tag);
+			return tag.end;
+		}
+		if (tag.name === (this.kind === "index" ? "sitemap" : "url")) {
+			if (tag.closing && this.current?.loc) this.entries.push({ loc: this.current.loc, lastmod: this.current.lastmod });
+			this.current = tag.closing ? undefined : {};
+			return tag.end;
+		}
+		const field = tag.name === "loc" || tag.name === "lastmod" ? tag.name : undefined;
+		if (!field || tag.closing || !this.current) return tag.end;
+		const end = lower.indexOf("</", tag.end);
+		if (end === -1) return undefined;
+		this.current[field] = decode(xml.slice(tag.end, end));
+		return end;
+	}
+}
+
 // A single forward scan, so a crafted sitemap (say, thousands of unclosed <url> tags) costs linear
 // time rather than the quadratic rescanning a backtracking regex would do.
 export function parseSitemap(xml: string): ParsedSitemap {
 	const lower = xml.toLowerCase();
-	let kind: ParsedSitemap["kind"] = "invalid";
-	const entries: SitemapEntry[] = [];
-	let current: Partial<SitemapEntry> | undefined;
-	let pos = 0;
-	while (entries.length < MAX_ENTRIES) {
-		const open = lower.indexOf("<", pos);
-		const close = open === -1 ? -1 : lower.indexOf(">", open);
-		if (close === -1) break;
-		const tag = lower.slice(open + 1, close).trim();
-		pos = close + 1;
-		if (tag.startsWith("?") || tag.startsWith("!")) continue;
-		const name = localName(tag);
-		const closing = tag.startsWith("/");
-		if (kind === "invalid" && !closing) {
-			if (name === "urlset") kind = "urlset";
-			else if (name === "sitemapindex") kind = "index";
-			continue;
-		}
-		if (name === (kind === "index" ? "sitemap" : "url")) {
-			if (closing && current?.loc) entries.push({ loc: current.loc, lastmod: current.lastmod });
-			current = closing ? undefined : {};
-		} else if ((name === "loc" || name === "lastmod") && !closing && current) {
-			const end = lower.indexOf("</", pos);
-			if (end === -1) break;
-			current[name] = decode(xml.slice(pos, end));
-			pos = end;
-		}
+	const reader = new EntryReader();
+	let tag = nextTag(lower, 0);
+	while (tag && reader.entries.length < MAX_ENTRIES) {
+		const next = reader.accept(tag, xml, lower);
+		if (next === undefined) break;
+		tag = nextTag(lower, next);
 	}
-	return { kind, entries };
+	return { kind: reader.kind, entries: reader.entries };
 }
