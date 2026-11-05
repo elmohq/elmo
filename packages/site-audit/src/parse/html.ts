@@ -17,7 +17,6 @@ export interface ParsedPage {
 	robotsMeta: string;
 	metaRefresh: boolean;
 	jsRedirectStub: boolean;
-	/** Text in the server HTML, with scripts and styles removed. */
 	text: string;
 	headings: { level: number; text: string }[];
 	hasMain: boolean;
@@ -26,11 +25,9 @@ export interface ParsedPage {
 	jsonLd: Record<string, unknown>[];
 	controls: { total: number; named: number; nonNative: number; formControls: number; labeledFormControls: number };
 	hiddenInstructions: string[];
-	/** Dates from `article:modified_time`, `article:published_time`, or `og:updated_time`. */
 	metaDates: string[];
 	authorMeta: string;
 	hasAuthorLink: boolean;
-	/** Paragraphs and list items of 40–200 words: the size of passage an answer engine quotes. */
 	citablePassages: number;
 }
 

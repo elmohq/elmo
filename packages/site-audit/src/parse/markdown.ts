@@ -25,7 +25,6 @@ export function markdownLinks(markdown: string): MarkdownLink[] {
 	}));
 }
 
-/** The llms.txt shape from llmstxt.org: an H1, then optionally a `>` summary, then link lists. */
 export function llmsTxtShape(text: string): { h1: boolean; summary: boolean; linkItems: number } {
 	const lines = text.split(/\r?\n/).filter((line) => line.trim() !== "");
 	return {

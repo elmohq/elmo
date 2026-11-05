@@ -29,7 +29,6 @@ export interface HostResolution {
 	/** Lowercased, without a leading `www.`. */
 	host: string;
 	outcome: HostOutcome;
-	/** Where the host's homepage finally lands; absent when unreachable. */
 	finalOrigin?: string;
 	hops: RedirectHop[];
 	error?: string;
@@ -37,7 +36,6 @@ export interface HostResolution {
 
 export interface SiteReport {
 	origin: string;
-	/** Hosts that redirect to this site, with how they get there. */
 	aliases: HostResolution[];
 	pages: string[];
 	checks: CheckResult[];
@@ -52,7 +50,6 @@ export interface SiteAuditReport {
 	userAgent: string;
 	hosts: HostResolution[];
 	sites: SiteReport[];
-	/** The mean of the site scores. */
 	score: number | null;
 	requests: { used: number; limit: number; budgetExhausted: boolean };
 }

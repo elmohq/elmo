@@ -29,7 +29,6 @@ export interface FetchOptions {
 	method?: "GET" | "HEAD";
 	followRedirects?: boolean;
 	maxBytes?: number;
-	/** For robots.txt itself, and for bot-UA probes, which act as other bots. */
 	ignoreRobots?: boolean;
 }
 
@@ -40,7 +39,6 @@ export interface RobotsGate {
 
 const MAX_REDIRECTS = 5;
 const MAX_RETRY_AFTER_MS = 30_000;
-// Two errors in a row is enough to tell a struggling or hostile host from a one-off blip.
 const MAX_CONSECUTIVE_FAILURES = 2;
 
 interface HostState {

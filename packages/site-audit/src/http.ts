@@ -20,7 +20,6 @@ export interface HttpResponse {
 	/** Lowercased names; repeated headers joined with ", ". */
 	headers: Record<string, string>;
 	body: string;
-	/** The body as received, for binary payloads such as a gzipped sitemap. */
 	bytes: Buffer;
 }
 
@@ -155,7 +154,6 @@ function rejectUnsafe(url: URL, allowPrivateNetwork: boolean): BlockedHostError 
 	return undefined;
 }
 
-/** One request, no redirects followed. */
 export function httpRequest(request: HttpRequest, allowPrivateNetwork = false): Promise<HttpResponse> {
 	const url = new URL(request.url);
 	const unsafe = rejectUnsafe(url, allowPrivateNetwork);

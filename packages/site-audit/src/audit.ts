@@ -44,12 +44,6 @@ function meanScore(sites: SiteReport[]): number | null {
 	return scores.length === 0 ? null : Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
 }
 
-/**
- * Audits how well AI agents and crawlers can reach, read, and understand a
- * brand's sites. Each alternate domain is resolved first: one that redirects to
- * a brand site is checked as an alias of it, and one that serves its own
- * content is audited as a site of its own.
- */
 export async function auditSites(options: AuditOptions): Promise<SiteAuditReport> {
 	const userAgent = options.userAgent ?? DEFAULT_USER_AGENT;
 	const fetcher = new Fetcher({

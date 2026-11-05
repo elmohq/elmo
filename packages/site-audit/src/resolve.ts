@@ -3,7 +3,6 @@ import { homepageUrl, normalizeHost } from "./hosts";
 import type { HostResolution } from "./types";
 
 export interface ResolvedHost extends HostResolution {
-	/** The homepage response, reused as the site's homepage when this host is the site. */
 	homepage?: FetchedResponse;
 }
 

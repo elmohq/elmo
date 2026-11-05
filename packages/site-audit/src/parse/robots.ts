@@ -4,7 +4,6 @@ export interface ParsedRobots {
 	isAllowed(url: string, userAgent: string): boolean | undefined;
 	getCrawlDelay(userAgent: string): number | undefined;
 	sitemaps: string[];
-	/** Raw values of `Content-Signal:` lines, e.g. "search=yes, ai-train=no". */
 	contentSignals: string[];
 	schemamaps: string[];
 	userAgents: string[];
