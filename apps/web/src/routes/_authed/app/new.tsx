@@ -1,82 +1,80 @@
-/**
- * /app/new - Create a new brand (local mode only).
- *
- * Provisions a new organization + admin membership for the current user
- * and seeds the brand row with the supplied name + website. Whitelabel and
- * demo are blocked at both the loader (redirect to /app) and the server
- * function (canCreateBrands policy).
- */
-import { useState } from "react";
-import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
+import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
-import { trackEvent } from "@/lib/posthog";
-import { createBrandWithOrgFn } from "@/server/brands";
-import { getDeployment } from "@/lib/config/server";
-
-const getCanCreateBrands = createServerFn({ method: "GET" }).handler(async () => {
-	return { canCreateBrands: getDeployment().features.canCreateBrands };
-});
+import { WriteErrorMessage } from "@/components/write-error-message";
+import { useOrganizationsChanged } from "@/hooks/use-organizations";
+import { pageHead } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
+import { createOrganizationFn } from "@/server/organizations";
 
 export const Route = createFileRoute("/_authed/app/new")({
-	loader: async () => {
-		const { canCreateBrands } = await getCanCreateBrands();
-		if (!canCreateBrands) {
+	staticData: { crumb: "New Organization" },
+	beforeLoad: ({ context }) => {
+		if (!context.clientConfig?.features.canCreateOrganizations) {
 			throw redirect({ to: "/app" });
 		}
-		return { canCreateBrands };
 	},
-	component: NewBrandPage,
+	head: pageHead({
+		title: "New Organization",
+		description: "Create an organization to hold its own brands, team, and plan.",
+	}),
+	component: NewOrganizationPage,
 });
 
-function NewBrandPage() {
+function NewOrganizationPage() {
+	const organizationsChanged = useOrganizationsChanged();
+	const navigate = useNavigate();
+	const writeError = useWriteErrorMessage();
+	const [name, setName] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
-	const navigate = useNavigate();
-	const router = useRouter();
 
-	const handleSubmit = async (formData: FormData) => {
-		setIsLoading(true);
+	const trimmed = name.trim();
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		if (trimmed.length === 0) return;
 		setError("");
-
+		setIsLoading(true);
 		try {
-			const brandName = (formData.get("brandName") as string)?.trim() ?? "";
-			const website = (formData.get("website") as string)?.trim() ?? "";
-
-			const { brandId } = await createBrandWithOrgFn({
-				data: { brandName, website },
-			});
-			trackEvent("brand_created", { has_website: Boolean(website) });
-
-			await router.invalidate();
-			await navigate({ to: "/app/$brand", params: { brand: brandId } });
+			const { slug } = await createOrganizationFn({ data: { name: trimmed } });
+			await organizationsChanged(() => navigate({ to: "/app/org/$org/settings", params: { org: slug } }));
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
-		} finally {
+			setError(writeError(err, "Could not create the organization."));
 			setIsLoading(false);
 		}
-	};
+	}
 
 	return (
-		<FullPageCard title="Create a new brand" subtitle="Set up a brand to start tracking" showBackButton>
-			<form action={handleSubmit} className="space-y-4">
+		<FullPageCard
+			title="Create an organization"
+			subtitle="An organization holds its own brands, team, and plan."
+			showBackButton
+		>
+			<form onSubmit={handleSubmit} className="space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="brandName">Brand name</Label>
-					<Input id="brandName" name="brandName" type="text" placeholder="Acme" required disabled={isLoading} />
+					<Label htmlFor="organization-name">Organization Name</Label>
+					<Input
+						id="organization-name"
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						placeholder="Acme"
+						required
+						disabled={isLoading}
+					/>
 				</div>
 
-				<div className="space-y-2">
-					<Label htmlFor="website">Website</Label>
-					<Input id="website" name="website" type="text" placeholder="example.com" required disabled={isLoading} />
-				</div>
+				{error && (
+					<p className="text-sm text-destructive">
+						<WriteErrorMessage message={error} />
+					</p>
+				)}
 
-				{error && <p className="text-sm text-destructive">{error}</p>}
-
-				<Button type="submit" className="w-full" disabled={isLoading}>
-					{isLoading ? "Creating..." : "Create brand"}
+				<Button type="submit" className="w-full" disabled={isLoading || trimmed.length === 0}>
+					{isLoading ? "Creating..." : "Create organization"}
 				</Button>
 			</form>
 		</FullPageCard>

@@ -1,428 +1,544 @@
-/**
- * Server functions for citation data.
- * Replaces apps/web/src/app/api/brands/[id]/citations/route.ts
- */
+/** Server functions for citation data. */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
-import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { getCitationUrlStats, getPerPromptDailyCitationPages, getPerPromptCitationPages } from "@/lib/postgres-read";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { citationDateWindow, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
 import {
-	type CitationCategory,
-	type CitationPageType,
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
+	type CitationCategory,
+	type CitationPageType,
+	cleanAndValidateDomain,
 	emptyCategoryCounts,
 	emptyPageTypeCounts,
 	extractDomain,
-	normalizeUrl,
 	toRoundedPercentages,
-	resolvePageType,
-	isGoogleSurfaceUrl,
-} from "@/lib/domain-categories";
-import { categorizeDomain as categorizeDomainShared, classifyUrl as classifyUrlShared } from "@/lib/domain-categories.server";
-import { buildGoogleModule, emptyGoogleModule } from "@/lib/google-module";
+} from "@workspace/lib/citations/domain-categories";
+import { categorizeDomain as categorizeDomainShared } from "@workspace/lib/citations/domain-lists";
+import {
+	type ResolvedPageClass,
+	resolveOwnedPageClass,
+	resolvePageClass,
+} from "@workspace/lib/citations/page-classification";
+import type { CitationUrl } from "@workspace/lib/citations/rollup";
+import { db } from "@workspace/lib/db/db";
+import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
+import type { CitationFlowRow } from "@/lib/citation-flow";
+import {
+	type CitationClassTotalRow,
+	type CitationDomainStatsRow,
+	type CitationSummary,
+	type CitationUrlListRow,
+	getCitationDomainPage,
+	getCitationFlowRows,
+	getCitationSummary,
+	getCitationUrlPage,
+	type OwnedDomains,
+} from "@/lib/citation-read";
+import {
+	buildGoogleModule,
+	emptyGoogleModule,
+	type GoogleModule,
+	googleModuleTotals,
+	pageGoogleList,
+} from "@/lib/google-module";
+import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
+import {
+	getPerPromptCitationDomains,
+	getPerPromptDailyCitationClasses,
+	getPerPromptGooglePages,
+	type PerPromptCitationDomainRow,
+	type PerPromptDailyCitationClassRow,
+} from "@/lib/rollup-read";
+import { isRedditDomain, type Subreddit, summarizeSubreddits } from "@/lib/subreddits";
+import { resolveBrandLookbackDays } from "@/server/brand-window";
+import { parseTagFilter } from "@/server/prompt-resolution";
+
+type WhatsChangedUrl = { url: string; domain: string; count: number; promptCount: number; category: CitationCategory };
+
+interface WhatsChanged {
+	newUrls: WhatsChangedUrl[];
+	droppedUrls: {
+		url: string;
+		domain: string;
+		previousCount: number;
+		currentCount: number;
+		category: CitationCategory;
+	}[];
+	newDomains: { domain: string; count: number; category: CitationCategory }[];
+	droppedDomains: { domain: string; previousCount: number; category: CitationCategory }[];
+}
+
+interface CitationsResult {
+	totalCitations: number;
+	uniqueDomains: number;
+	categoryCounts: Record<CitationCategory, number>;
+	pageTypeDistribution: { pageType: CitationPageType; count: number }[];
+	googleModule: GoogleModule;
+	subreddits: Subreddit[];
+	availableTags: string[];
+	citationTimeSeries: ({ date: string } & Record<CitationCategory, number>)[];
+	pageTypeTimeSeries: ({ date: string } & Record<CitationPageType, number>)[];
+	competitors: { id: string; name: string; domains: string[] }[];
+	competitorOnlyPrompts: { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[];
+	whatsChanged: WhatsChanged;
+	/** How many days the window spans, which "all" only settles on the server. */
+	days: number;
+}
+
+/** A URL or domain needs this many citations before it counts as a real change. */
+const MIN_COUNT_FOR_WHATS_CHANGED = 2;
+
+const WHATS_CHANGED_LIMIT = 10;
+
+const MAX_LIST_PAGE_SIZE = 50;
 
 /**
- * Get citation statistics for a brand
+ * Prompt ids matching the tag filter. Branded/unbranded are derived rather than
+ * stored, so they resolve through getEffectiveBrandedStatus; every other tag
+ * matches against the prompt's own tags or its system tags.
  */
-export const getCitationsFn = createServerFn({ method: "GET" })
-	.validator(
-		z.object({
-			brandId: z.string(),
-			days: z.number().optional().default(7),
-			tags: z.string().optional(),
-			model: z.string().optional(),
-		}),
-	)
-	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+function promptIdsMatchingTags(
+	allPrompts: { id: string; tags: string[] | null; systemTags: string[] | null }[],
+	tagFilter: string[],
+): string[] {
+	const wantsBranded = tagFilter.includes(SYSTEM_TAGS.BRANDED);
+	const wantsUnbranded = tagFilter.includes(SYSTEM_TAGS.UNBRANDED);
+	const userTagFilter = tagFilter.filter((tag) => tag !== SYSTEM_TAGS.BRANDED && tag !== SYSTEM_TAGS.UNBRANDED);
 
-		// Window: `data.days` calendar days ending today (inclusive), plus the
-		// contiguous equal-length previous window — all UTC (server-TZ independent).
-		// `dateRange` is reused for the trend charts so totals + charts span identically.
-		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(new Date(), data.days);
-		const timezone = "UTC";
+	return allPrompts
+		.filter((prompt) => {
+			const systemTags = prompt.systemTags || [];
+			const userTags = prompt.tags || [];
+			if (wantsBranded || wantsUnbranded) {
+				const { isBranded } = getEffectiveBrandedStatus(systemTags, userTags);
+				if (isBranded ? wantsBranded : wantsUnbranded) return true;
+			}
+			const allTags = [...systemTags, ...userTags].map((tag) => tag.toLowerCase());
+			return userTagFilter.some((tag) => allTags.includes(tag));
+		})
+		.map((prompt) => prompt.id);
+}
 
-		// Get brand info, competitors, and all enabled prompts
-		const [brandResult, competitorsList, allPrompts] = await Promise.all([
-			db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
-			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
-			db
-				.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
-				.from(prompts)
-				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
-		]);
+/**
+ * Per-day percentage trends over the window, smoothed per prompt so a
+ * staggered cadence doesn't read as a gap.
+ */
+function buildClassTimeSeries<K extends string>(args: {
+	rows: PerPromptDailyCitationClassRow[];
+	keyFor: (resolved: ResolvedPageClass) => K;
+	dateRange: string[];
+	cadenceHours: number | null | undefined;
+	allKeys: readonly K[];
+	emptyCounts: () => Record<K, number>;
+}): ({ date: string } & Record<K, number>)[] {
+	const keyedRows = args.rows.flatMap((row) => {
+		const resolved = resolveOwnedPageClass(row);
+		if (!resolved) return [];
+		return [{ prompt_id: row.prompt_id, date: String(row.date), key: args.keyFor(resolved), count: Number(row.count) }];
+	});
 
-		const primaryBrandDomain = extractDomain(brandResult[0]?.website || "");
-		const additionalBrandDomains = (brandResult[0]?.additionalDomains || []).map(extractDomain);
-		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
-		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
-		// Defined early so both the empty (no matching prompts) return and the main
-		// return below expose the same shape — `competitors` must be present in both.
-		const competitorSummary = competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains }));
+	const smoothed = applyPerPromptKeyedLVCF(keyedRows, args.dateRange, args.cadenceHours, args.allKeys);
+	return args.dateRange.map((date) => {
+		const counts = smoothed.get(date);
+		return { date, ...(counts ? (toRoundedPercentages(counts) as Record<K, number>) : args.emptyCounts()) };
+	});
+}
 
-		// Collect available tags
-		const allUserTags = new Set<string>();
-		for (const p of allPrompts) {
-			for (const tag of p.tags || []) allUserTags.add(tag);
-		}
-		const userTagsWithoutSystemTags = Array.from(allUserTags)
-			.filter((tag) => tag.toLowerCase() !== SYSTEM_TAGS.BRANDED && tag.toLowerCase() !== SYSTEM_TAGS.UNBRANDED)
-			.sort();
-		const availableTags = [SYSTEM_TAGS.BRANDED, SYSTEM_TAGS.UNBRANDED, ...userTagsWithoutSystemTags];
-
-		// Filter prompt IDs by tags if specified
-		let enabledPromptIds = allPrompts.map((p) => p.id);
-		const tagFilter = data.tags?.split(",").filter(Boolean) || [];
-		if (tagFilter.length > 0) {
-			const filterByBranded = tagFilter.includes(SYSTEM_TAGS.BRANDED);
-			const filterByUnbranded = tagFilter.includes(SYSTEM_TAGS.UNBRANDED);
-			const nonSystemFilterTags = tagFilter.filter(
-				(t) => t !== SYSTEM_TAGS.BRANDED && t !== SYSTEM_TAGS.UNBRANDED,
-			);
-
-			const matchingPrompts = allPrompts.filter((p) => {
-				const systemTags = p.systemTags || [];
-				const userTags = p.tags || [];
-
-				if (filterByBranded || filterByUnbranded) {
-					const effectiveStatus = getEffectiveBrandedStatus(systemTags, userTags);
-					if (filterByBranded && effectiveStatus.isBranded) return true;
-					if (filterByUnbranded && !effectiveStatus.isBranded) return true;
-				}
-
-				if (nonSystemFilterTags.length > 0) {
-					const allTagsLower = [...systemTags, ...userTags].map((t) => t.toLowerCase());
-					if (nonSystemFilterTags.some((ft) => allTagsLower.includes(ft))) return true;
-				}
-
-				if ((filterByBranded || filterByUnbranded) && nonSystemFilterTags.length === 0) return false;
-				return false;
-			});
-
-			enabledPromptIds = matchingPrompts.map((p) => p.id);
-
-			if (enabledPromptIds.length === 0) {
-				return {
-					totalCitations: 0,
-					uniqueDomains: 0,
-					categoryCounts: emptyCategoryCounts(),
-					domainDistribution: [] as { domain: string; count: number; category: CitationCategory; exampleTitle?: string; previousCount: number; changePercent: number | null }[],
-					specificUrls: [] as { url: string; title?: string; domain: string; count: number; category: CitationCategory; pageType: CitationPageType; avgPosition: number | null; promptCount: number; isNew: boolean }[],
-					pageTypeDistribution: [] as { pageType: CitationPageType; count: number }[],
-					googleModule: emptyGoogleModule(),
-					availableTags,
-					citationTimeSeries: [] as ({ date: string } & Record<CitationCategory, number>)[],
-					pageTypeTimeSeries: [] as ({ date: string } & Record<CitationPageType, number>)[],
-					competitors: competitorSummary,
-				competitorOnlyPrompts: [] as { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[],
-				whatsChanged: {
-					newUrls: [] as { url: string; domain: string; count: number; promptCount: number; category: CitationCategory }[],
-					droppedUrls: [] as { url: string; domain: string; previousCount: number; currentCount: number; category: CitationCategory }[],
-					titleChanges: [] as { url: string; domain: string; currentTitle: string; previousTitle: string; category: CitationCategory }[],
-					newDomains: [] as { domain: string; count: number; category: CitationCategory }[],
-					droppedDomains: [] as { domain: string; previousCount: number; category: CitationCategory }[],
+function buildWhatsChanged(
+	summary: CitationSummary,
+	brandDomains: Set<string>,
+	competitorDomains: Set<string>,
+	categorizeDomain: (domain: string) => CitationCategory,
+): WhatsChanged {
+	return {
+		newUrls: summary.newUrls.map((url) => ({
+			url: url.url,
+			domain: url.domain,
+			count: url.count,
+			promptCount: url.prompt_count,
+			category: url.category as CitationCategory,
+		})),
+		droppedUrls: summary.droppedUrls.flatMap((page) => {
+			const resolved = resolvePageClass(page, brandDomains, competitorDomains);
+			if (!resolved) return [];
+			return [
+				{
+					url: page.url,
+					domain: page.domain,
+					previousCount: page.previous_count,
+					currentCount: page.current_count,
+					category: resolved.category,
 				},
-				};
-			}
-		}
+			];
+		}),
+		newDomains: summary.newDomains.map((domain) => ({
+			domain: domain.domain,
+			count: domain.count,
+			category: (domain.category ?? categorizeDomain(domain.domain)) as CitationCategory,
+		})),
+		droppedDomains: summary.droppedDomains.map((domain) => ({
+			domain: domain.domain,
+			previousCount: domain.previous_count,
+			category: categorizeDomain(domain.domain),
+		})),
+	};
+}
 
-		const [urlStats, perPromptDailyPages, perPromptPages, prevUrlStats] = await Promise.all([
-			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
-			getPerPromptDailyCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
-			getPerPromptCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
-			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateStr, timezone, enabledPromptIds, data.model),
+function tallyClasses(rows: CitationClassTotalRow[]) {
+	const categoryCounts = emptyCategoryCounts();
+	const pageTypeCounts = emptyPageTypeCounts();
+	let totalCitations = 0;
+	for (const row of rows) {
+		categoryCounts[row.category as CitationCategory] += row.count;
+		pageTypeCounts[row.page_type as CitationPageType] += row.count;
+		totalCitations += row.count;
+	}
+	return {
+		categoryCounts,
+		totalCitations,
+		pageTypeDistribution: CITATION_PAGE_TYPES.map((pageType) => ({ pageType, count: pageTypeCounts[pageType] })).filter(
+			(entry) => entry.count > 0,
+		),
+	};
+}
+
+/**
+ * Prompts whose answers cite competitors but never the brand — the clearest
+ * "you are missing from this conversation" signal the citation data carries.
+ */
+function buildCompetitorOnlyPrompts(args: {
+	pages: PerPromptCitationDomainRow[];
+	competitorsList: { id: string; domains: string[] }[];
+	promptValue: (promptId: string) => string | undefined;
+	categorizeDomain: (domain: string) => CitationCategory;
+}): CitationsResult["competitorOnlyPrompts"] {
+	const competitorByDomain = args.competitorsList
+		.flatMap((competitor) => competitor.domains.map((domain) => ({ domain: extractDomain(domain), id: competitor.id })))
+		.filter((entry) => entry.domain);
+
+	const competitorFor = (citationDomain: string): string | undefined => {
+		const normalized = extractDomain(citationDomain);
+		return competitorByDomain.find((entry) => normalized === entry.domain || normalized.endsWith(`.${entry.domain}`))
+			?.id;
+	};
+
+	const byPrompt = new Map<string, { hasBrand: boolean; hasCompetitor: boolean; count: number; ids: Set<string> }>();
+	for (const row of args.pages) {
+		const category = args.categorizeDomain(row.domain);
+		let entry = byPrompt.get(row.prompt_id);
+		if (!entry) {
+			entry = { hasBrand: false, hasCompetitor: false, count: 0, ids: new Set() };
+			byPrompt.set(row.prompt_id, entry);
+		}
+		if (category === "brand") entry.hasBrand = true;
+		if (category !== "competitor") continue;
+		entry.hasCompetitor = true;
+		entry.count += Number(row.count);
+		const competitorId = competitorFor(row.domain);
+		if (competitorId) entry.ids.add(competitorId);
+	}
+
+	return [...byPrompt.entries()]
+		.filter(([, entry]) => entry.hasCompetitor && !entry.hasBrand)
+		.map(([promptId, entry]) => ({
+			id: promptId,
+			value: args.promptValue(promptId),
+			competitorCitationCount: entry.count,
+			uniqueCompetitors: entry.ids.size,
+		}))
+		.filter((prompt): prompt is CitationsResult["competitorOnlyPrompts"][number] => prompt.value !== undefined)
+		.sort((a, b) => b.competitorCitationCount - a.competitorCitationCount);
+}
+
+const citationFiltersSchema = z.object({
+	brandId: z.string(),
+	lookback: lookbackSchema.default("1w"),
+	tags: z.string().optional(),
+	model: z.string().optional(),
+});
+
+type CitationFilters = z.infer<typeof citationFiltersSchema>;
+
+/** All UTC, so the server's zone doesn't matter. */
+async function resolveCitationScope(data: CitationFilters) {
+	const days = await resolveBrandLookbackDays(data.brandId, data.lookback);
+	const endDate = customRangeEnd(data.lookback);
+	const window = citationDateWindow(endDate ? new Date(`${endDate}T00:00:00Z`) : new Date(), days);
+
+	const [brandResult, competitorsList, allPrompts] = await Promise.all([
+		db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
+		db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
+		db
+			.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
+			.from(prompts)
+			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+	]);
+	const brand = brandResult[0];
+
+	const brandDomains = new Set(
+		[extractDomain(brand?.website || ""), ...(brand?.additionalDomains || []).map(extractDomain)].filter(Boolean),
+	);
+	const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
+	const owned: OwnedDomains = { brandDomains: [...brandDomains], competitorDomains: [...competitorDomains] };
+
+	const tagFilter = parseTagFilter(data.tags);
+	const promptIds = tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
+	const scope = {
+		brandId: data.brandId,
+		from: window.fromDateStr,
+		to: window.toDateStr,
+		timezone: "UTC",
+		promptIds,
+		model: data.model,
+	};
+	return {
+		days,
+		dateRange: window.dateRange,
+		brand,
+		competitorsList,
+		allPrompts,
+		brandDomains,
+		competitorDomains,
+		owned,
+		scope,
+		previousScope: { ...scope, from: window.prevFromDateStr, to: window.prevToDateStr },
+	};
+}
+
+/**
+ * The response shape when no prompt matches the tag filter. Built here rather
+ * than inline so it cannot drift from the populated response beside it.
+ */
+function emptyCitationsResult(
+	availableTags: string[],
+	competitorSummary: CitationsResult["competitors"],
+	days: number,
+): CitationsResult {
+	return {
+		days,
+		totalCitations: 0,
+		uniqueDomains: 0,
+		categoryCounts: emptyCategoryCounts(),
+		pageTypeDistribution: [],
+		googleModule: emptyGoogleModule(),
+		subreddits: [],
+		availableTags,
+		citationTimeSeries: [],
+		pageTypeTimeSeries: [],
+		competitors: competitorSummary,
+		competitorOnlyPrompts: [],
+		whatsChanged: { newUrls: [], droppedUrls: [], newDomains: [], droppedDomains: [] },
+	};
+}
+
+export const getCitationsFn = createServerFn({ method: "GET" })
+	.validator(citationFiltersSchema)
+	.handler(async ({ data }): Promise<CitationsResult> => {
+		await requireBrandSession(data.brandId);
+		const resolved = await resolveCitationScope(data);
+		const { brand, competitorsList, allPrompts, brandDomains, competitorDomains, owned, scope, previousScope } =
+			resolved;
+
+		const userTags = new Set(allPrompts.flatMap((prompt) => prompt.tags || []));
+		const availableTags = [
+			SYSTEM_TAGS.BRANDED,
+			SYSTEM_TAGS.UNBRANDED,
+			...[...userTags]
+				.filter((tag) => tag.toLowerCase() !== SYSTEM_TAGS.BRANDED && tag.toLowerCase() !== SYSTEM_TAGS.UNBRANDED)
+				.sort(),
+		];
+		const competitorSummary = competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains }));
+		if (scope.promptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, resolved.days);
+
+		const [summary, perPromptDailyClasses, googlePages, promptDomains] = await Promise.all([
+			getCitationSummary(scope, previousScope, owned, {
+				minCount: MIN_COUNT_FOR_WHATS_CHANGED,
+				limit: WHATS_CHANGED_LIMIT,
+			}),
+			getPerPromptDailyCitationClasses(scope, owned),
+			getPerPromptGooglePages(scope),
+			getPerPromptCitationDomains(scope),
 		]);
 
-		function categorizeDomain(domain: string): CitationCategory {
-			return categorizeDomainShared(domain, brandDomains, competitorDomains);
-		}
-		const classify = (domain: string, url: string, title: string | null | undefined): CitationCategory =>
-			classifyUrlShared(domain, url, title, brandDomains, competitorDomains);
-
-		// Google search/shopping surfaces (Google AI Mode) are pulled OUT of the
-		// source mix and surfaced in their own module below. Previous-period domain
-		// counts (surfaces excluded) drive trend deltas + new/dropped detection.
-		const prevDomainMap = new Map<string, number>();
-		for (const { url, domain, count } of prevUrlStats) {
-			if (isGoogleSurfaceUrl(url)) continue;
-			prevDomainMap.set(domain, (prevDomainMap.get(domain) ?? 0) + Number(count));
-		}
-
-		// Build previous period URL map for comparison
-		const prevUrlMap = new Map<string, { count: number; title?: string; domain: string }>();
-		for (const { url, domain, title, count } of prevUrlStats) {
-			if (isGoogleSurfaceUrl(url)) continue;
-			const normalizedUrl = normalizeUrl(url);
-			const existing = prevUrlMap.get(normalizedUrl);
-			if (existing) {
-				existing.count += Number(count);
-				if (!existing.title && title) existing.title = title;
-			} else {
-				prevUrlMap.set(normalizedUrl, { count: Number(count), title: title || undefined, domain });
-			}
-		}
-
-		// Categorize and normalize specific URLs with new fields
-		const urlCounts = new Map<string, { count: number; title?: string; domain: string; positionSum: number; positionCount: number; promptCount: number }>();
-		for (const { url, domain, title, count, avg_position, prompt_count } of urlStats) {
-			if (isGoogleSurfaceUrl(url)) continue;
-			const normalizedUrl = normalizeUrl(url);
-			const c = Number(count);
-			const positionSum = avg_position != null ? Number(avg_position) * c : 0;
-			const positionCount = avg_position != null ? c : 0;
-			const existing = urlCounts.get(normalizedUrl);
-			if (existing) {
-				existing.count += c;
-				existing.positionSum += positionSum;
-				existing.positionCount += positionCount;
-				existing.promptCount = Math.max(existing.promptCount, Number(prompt_count));
-				if (!existing.title && title) existing.title = title;
-			} else {
-				urlCounts.set(normalizedUrl, {
-					count: c,
-					title: title || undefined,
-					domain,
-					positionSum,
-					positionCount,
-					promptCount: Number(prompt_count),
-				});
-			}
-		}
-
-		const specificUrls = Array.from(urlCounts.entries())
-			.map(([url, { count, title, domain, positionSum, positionCount, promptCount }]) => {
-				const category = classify(domain, url, title);
-				return {
-					url,
-					title,
-					domain,
-					count,
-					category,
-					pageType: resolvePageType(url, title, category),
-					avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
-					promptCount,
-					isNew: !prevUrlMap.has(url),
-				};
-			})
-			.sort((a, b) => b.count - a.count);
-
-		// Domain distribution rebuilt from URL-level data: count + a per-domain
-		// category taken from its top-cited URL (so a domain that's mostly review
-		// articles reads as editorial rather than other), sorted by count.
-		const domainAgg = new Map<string, { count: number; category: CitationCategory; topCount: number; exampleTitle?: string }>();
-		for (const u of specificUrls) {
-			const cur = domainAgg.get(u.domain);
-			if (cur) {
-				cur.count += u.count;
-				if (u.count > cur.topCount) {
-					cur.topCount = u.count;
-					cur.category = u.category;
-					cur.exampleTitle = u.title;
-				}
-			} else {
-				domainAgg.set(u.domain, { count: u.count, category: u.category, topCount: u.count, exampleTitle: u.title });
-			}
-		}
-		const domainDistribution = Array.from(domainAgg.entries())
-			.map(([domain, v]) => {
-				const previousCount = prevDomainMap.get(domain) || 0;
-				return {
-					domain,
-					count: v.count,
-					category: v.category,
-					exampleTitle: v.exampleTitle,
-					previousCount,
-					changePercent: previousCount > 0 ? Math.round(((v.count - previousCount) / previousCount) * 100) : null,
-				};
-			})
-			.sort((a, b) => b.count - a.count);
-
-		// Category + page-type totals from the URL-level classification
-		const categoryCounts = emptyCategoryCounts();
-		const pageTypeCounts = emptyPageTypeCounts();
-		for (const u of specificUrls) {
-			categoryCounts[u.category] += u.count;
-			pageTypeCounts[u.pageType] += u.count;
-		}
-		const totalCitations = CITATION_CATEGORIES.reduce((s, c) => s + categoryCounts[c], 0);
-		const pageTypeDistribution = CITATION_PAGE_TYPES
-			.map((pageType) => ({ pageType, count: pageTypeCounts[pageType] }))
-			.filter((d) => d.count > 0);
+		const categorizeDomain = (domain: string): CitationCategory =>
+			categorizeDomainShared(domain, brandDomains, competitorDomains);
+		const { categoryCounts, totalCitations, pageTypeDistribution } = tallyClasses(summary.classes);
+		const whatsChanged = buildWhatsChanged(summary, brandDomains, competitorDomains, categorizeDomain);
 
 		// Google AI Mode module: Shopping products (brand vs competitor) + search
 		// queries, each tied to the prompts that triggered them.
-		const promptLookup = new Map(allPrompts.map((p) => [p.id, p]));
-		const googleModule = buildGoogleModule(
-			perPromptPages,
-			brandResult[0]?.name ?? "",
-			competitorsList.map((c) => ({ id: c.id, name: c.name })),
-			(id) => promptLookup.get(id)?.value,
+		const promptsById = new Map(allPrompts.map((prompt) => [prompt.id, prompt]));
+		const promptValue = (id: string) => promptsById.get(id)?.value;
+		const googleModule = googleModuleTotals(
+			buildGoogleModule(
+				googlePages,
+				brand?.name ?? "",
+				competitorsList.map((c) => ({ id: c.id, name: c.name })),
+				promptValue,
+			),
 		);
 
-		// Citation time series via per-prompt LVCF with cadence normalization. Both
-		// axes are classified at the URL level (surfaces excluded), so the trends
-		// match the breakdown above and show every category / page type. `dateRange`
-		// (the current window) was computed once up top so charts + totals stay aligned.
-		const cadenceHours = brandResult[0]?.delayOverrideHours;
-		// Classify each URL ONCE (from specificUrls) and reuse it here, keyed by the
-		// normalized URL. The per-(prompt,day) rows carry their own title, so
-		// re-classifying them could land an "other"-domain URL in a different category
-		// than categoryCounts/the tabs — which would render a chart band with no tab and
-		// let the stack sum to <100%. Looking up the canonical classification keeps the
-		// trend charts, the totals, and the tab filters provably in sync.
-		const urlCategory = new Map(specificUrls.map((u) => [u.url, u.category] as const));
-		const urlPageType = new Map(specificUrls.map((u) => [u.url, u.pageType] as const));
-		const categoryRows: { prompt_id: string; date: string; key: CitationCategory; count: number }[] = [];
-		const pageTypeRows: { prompt_id: string; date: string; key: CitationPageType; count: number }[] = [];
-		for (const r of perPromptDailyPages) {
-			if (!r.url || isGoogleSurfaceUrl(r.url)) continue;
-			const c = Number(r.count);
-			const date = String(r.date);
-			const nu = normalizeUrl(r.url);
-			const category = urlCategory.get(nu) ?? classify(r.domain, r.url, r.title);
-			const pageType = urlPageType.get(nu) ?? resolvePageType(r.url, r.title, category);
-			categoryRows.push({ prompt_id: r.prompt_id, date, key: category, count: c });
-			pageTypeRows.push({ prompt_id: r.prompt_id, date, key: pageType, count: c });
-		}
-		const smoothedCategories = applyPerPromptKeyedLVCF(categoryRows, dateRange, cadenceHours, CITATION_CATEGORIES);
-		const smoothedPageTypes = applyPerPromptKeyedLVCF(pageTypeRows, dateRange, cadenceHours, CITATION_PAGE_TYPES);
-		const citationTimeSeries = dateRange.map((date) => {
-			const c = smoothedCategories.get(date);
-			if (!c) return { date, ...emptyCategoryCounts() };
-			return { date, ...(toRoundedPercentages(c) as Record<CitationCategory, number>) };
+		const timeSeriesArgs = {
+			rows: perPromptDailyClasses,
+			dateRange: resolved.dateRange,
+			cadenceHours: brand?.delayOverrideHours,
+		};
+		const citationTimeSeries = buildClassTimeSeries({
+			...timeSeriesArgs,
+			keyFor: (resolvedClass) => resolvedClass.category,
+			allKeys: CITATION_CATEGORIES,
+			emptyCounts: emptyCategoryCounts,
 		});
-		const pageTypeTimeSeries = dateRange.map((date) => {
-			const c = smoothedPageTypes.get(date);
-			if (!c) return { date, ...emptyPageTypeCounts() };
-			return { date, ...(toRoundedPercentages(c) as Record<CitationPageType, number>) };
+		const pageTypeTimeSeries = buildClassTimeSeries({
+			...timeSeriesArgs,
+			keyFor: (resolvedClass) => resolvedClass.pageType,
+			allKeys: CITATION_PAGE_TYPES,
+			emptyCounts: emptyPageTypeCounts,
 		});
-
-		// What's Changed: new URLs, dropped URLs, title changes
-		const MIN_COUNT_FOR_WHATS_CHANGED = 2;
-
-		const newUrls = specificUrls
-			.filter((u) => u.isNew && u.count >= MIN_COUNT_FOR_WHATS_CHANGED)
-			.slice(0, 10)
-			.map((u) => ({ url: u.url, domain: u.domain, count: u.count, promptCount: u.promptCount, category: u.category }));
-
-		const droppedUrls: { url: string; domain: string; previousCount: number; currentCount: number; category: CitationCategory }[] = [];
-		for (const [url, prevData] of prevUrlMap.entries()) {
-			if (prevData.count < MIN_COUNT_FOR_WHATS_CHANGED) continue;
-			const current = urlCounts.get(url);
-			const currentCount = current?.count || 0;
-			const dropPercent = ((prevData.count - currentCount) / prevData.count) * 100;
-			if (dropPercent >= 50) {
-				droppedUrls.push({
-					url,
-					domain: prevData.domain,
-					previousCount: prevData.count,
-					currentCount,
-					category: classify(prevData.domain, url, prevData.title),
-				});
-			}
-		}
-		droppedUrls.sort((a, b) => b.previousCount - a.previousCount);
-
-		const titleChanges: { url: string; domain: string; currentTitle: string; previousTitle: string; category: CitationCategory }[] = [];
-		for (const [url, currentData] of urlCounts.entries()) {
-			const prevData = prevUrlMap.get(url);
-			if (!prevData) continue;
-			if (currentData.title && prevData.title && currentData.title !== prevData.title) {
-				titleChanges.push({
-					url,
-					domain: currentData.domain,
-					currentTitle: currentData.title,
-					previousTitle: prevData.title,
-					category: classify(currentData.domain, url, currentData.title),
-				});
-			}
-		}
-
-		// Domain-level changes
-		const currentDomainSet = new Set(domainDistribution.map((d) => d.domain));
-		const newDomains = domainDistribution
-			.filter((d) => d.previousCount === 0 && d.count >= MIN_COUNT_FOR_WHATS_CHANGED)
-			.sort((a, b) => b.count - a.count)
-			.slice(0, 10)
-			.map((d) => ({ domain: d.domain, count: d.count, category: d.category }));
-
-		const droppedDomains: { domain: string; previousCount: number; category: CitationCategory }[] = [];
-		for (const [domain, prevCount] of prevDomainMap.entries()) {
-			if (prevCount < MIN_COUNT_FOR_WHATS_CHANGED) continue;
-			if (!currentDomainSet.has(domain)) {
-				droppedDomains.push({ domain, previousCount: prevCount, category: categorizeDomain(domain) });
-			}
-		}
-		droppedDomains.sort((a, b) => b.previousCount - a.previousCount);
-
-		// Prompts with competitor citations but no brand citations (computed from already-fetched data)
-		const competitorDomainEntries = competitorsList.flatMap((c) =>
-			c.domains.map((d) => ({ domain: extractDomain(d), competitorId: c.id })),
-		).filter((e) => e.domain);
-
-		function resolveCompetitorId(citationDomain: string): string | undefined {
-			const normalized = extractDomain(citationDomain);
-			for (const entry of competitorDomainEntries) {
-				if (normalized === entry.domain || normalized.endsWith(`.${entry.domain}`)) {
-					return entry.competitorId;
-				}
-			}
-			return undefined;
-		}
-
-		const promptCitationFlags = new Map<string, { hasBrand: boolean; hasCompetitor: boolean; competitorCount: number; competitorIds: Set<string> }>();
-		for (const row of perPromptPages) {
-			const cat = categorizeDomain(row.domain);
-			let entry = promptCitationFlags.get(row.prompt_id);
-			if (!entry) {
-				entry = { hasBrand: false, hasCompetitor: false, competitorCount: 0, competitorIds: new Set() };
-				promptCitationFlags.set(row.prompt_id, entry);
-			}
-			if (cat === "brand") entry.hasBrand = true;
-			if (cat === "competitor") {
-				entry.hasCompetitor = true;
-				entry.competitorCount += Number(row.count);
-				const compId = resolveCompetitorId(row.domain);
-				if (compId) entry.competitorIds.add(compId);
-			}
-		}
-
-		const competitorOnlyPrompts = Array.from(promptCitationFlags.entries())
-			.filter(([, data]) => data.hasCompetitor && !data.hasBrand)
-			.map(([id, data]) => {
-				const prompt = promptLookup.get(id);
-				if (!prompt) return null;
-				return { id, value: prompt.value, competitorCitationCount: data.competitorCount, uniqueCompetitors: data.competitorIds.size };
-			})
-			.filter((p): p is NonNullable<typeof p> => p !== null)
-			.sort((a, b) => b.competitorCitationCount - a.competitorCitationCount);
 
 		return {
+			days: resolved.days,
 			totalCitations,
-			uniqueDomains: domainDistribution.length,
+			uniqueDomains: summary.uniqueDomains,
 			categoryCounts,
-			domainDistribution,
-			specificUrls,
 			pageTypeDistribution,
 			googleModule,
+			subreddits: summarizeSubreddits(
+				summary.redditPages.map((page) => ({
+					url: page.url,
+					title: page.title ?? undefined,
+					count: page.count,
+					isNew: page.is_new,
+				})),
+				whatsChanged.droppedUrls.filter((url) => isRedditDomain(url.domain)).map((url) => url.url),
+			),
 			availableTags,
 			citationTimeSeries,
 			pageTypeTimeSeries,
 			competitors: competitorSummary,
-			competitorOnlyPrompts,
-			whatsChanged: {
-				newUrls,
-				droppedUrls: droppedUrls.slice(0, 10),
-				titleChanges: titleChanges.slice(0, 10),
-				newDomains,
-				droppedDomains: droppedDomains.slice(0, 10),
-			},
+			competitorOnlyPrompts: buildCompetitorOnlyPrompts({
+				pages: promptDomains,
+				competitorsList,
+				promptValue,
+				categorizeDomain,
+			}),
+			whatsChanged,
 		};
+	});
+
+const listPageSchema = {
+	search: z.string().max(200).optional(),
+	category: z.string().optional(),
+	page: z.number().int().min(0).default(0),
+	pageSize: z.number().int().min(1).max(MAX_LIST_PAGE_SIZE).default(20),
+};
+
+export type CitationUrlListItem = CitationUrl & { promptCount: number; isNew: boolean };
+
+export const getCitationUrlsFn = createServerFn({ method: "GET" })
+	.validator(citationFiltersSchema.extend({ ...listPageSchema, pageType: z.string().optional() }))
+	.handler(async ({ data }): Promise<{ items: CitationUrlListItem[]; total: number }> => {
+		await requireBrandSession(data.brandId);
+		const { scope, previousScope, owned } = await resolveCitationScope(data);
+		if (scope.promptIds.length === 0) return { items: [], total: 0 };
+
+		const { rows, total } = await getCitationUrlPage(
+			scope,
+			previousScope,
+			owned,
+			{ search: data.search, category: data.category, pageType: data.pageType },
+			data.pageSize,
+			data.page * data.pageSize,
+		);
+		return { items: rows.map(toUrlListItem), total };
+	});
+
+function toUrlListItem(row: CitationUrlListRow): CitationUrlListItem {
+	return {
+		url: row.url,
+		title: row.title ?? undefined,
+		domain: row.domain,
+		count: row.count,
+		category: row.category as CitationCategory,
+		pageType: row.page_type as CitationPageType,
+		avgPosition: row.avg_position,
+		promptCount: row.prompt_count,
+		isNew: row.is_new,
+	};
+}
+
+export interface CitationDomainListItem {
+	domain: string;
+	count: number;
+	category: CitationCategory;
+	exampleTitle?: string;
+	previousCount: number;
+	changePercent: number | null;
+}
+
+export const getCitationDomainsFn = createServerFn({ method: "GET" })
+	.validator(citationFiltersSchema.extend(listPageSchema))
+	.handler(async ({ data }): Promise<{ items: CitationDomainListItem[]; total: number }> => {
+		await requireBrandSession(data.brandId);
+		const { scope, previousScope, owned } = await resolveCitationScope(data);
+		if (scope.promptIds.length === 0) return { items: [], total: 0 };
+
+		const { rows, total } = await getCitationDomainPage(
+			scope,
+			previousScope,
+			owned,
+			{ search: data.search, category: data.category },
+			data.pageSize,
+			data.page * data.pageSize,
+		);
+		return { items: rows.map(toDomainListItem), total };
+	});
+
+function toDomainListItem(row: CitationDomainStatsRow): CitationDomainListItem {
+	return {
+		domain: row.domain,
+		count: row.count,
+		category: (row.category ?? "other") as CitationCategory,
+		exampleTitle: row.example_title ?? undefined,
+		previousCount: row.previous_count,
+		changePercent:
+			row.previous_count > 0 ? Math.round(((row.count - row.previous_count) / row.previous_count) * 100) : null,
+	};
+}
+
+export const getGoogleShoppingFn = createServerFn({ method: "GET" })
+	.validator(
+		citationFiltersSchema.extend({
+			list: z.enum(["products", "queries"]),
+			attribution: z.enum(["all", "brand", "competitor", "other"]).default("all"),
+			page: listPageSchema.page,
+			pageSize: listPageSchema.pageSize,
+		}),
+	)
+	.handler(async ({ data }) => {
+		await requireBrandSession(data.brandId);
+		const { scope, brand, competitorsList, allPrompts } = await resolveCitationScope(data);
+		const promptsById = new Map(allPrompts.map((prompt) => [prompt.id, prompt.value]));
+		const googleModule = buildGoogleModule(
+			scope.promptIds.length > 0 ? await getPerPromptGooglePages(scope) : [],
+			brand?.name ?? "",
+			competitorsList.map((c) => ({ id: c.id, name: c.name })),
+			(id) => promptsById.get(id),
+		);
+		const list =
+			data.list === "products" ? { kind: "products" as const, filter: data.attribution } : { kind: "queries" as const };
+		return pageGoogleList(googleModule, list, data.page * data.pageSize, data.pageSize);
+	});
+
+export const getCitationFlowFn = createServerFn({ method: "GET" })
+	.validator(citationFiltersSchema.extend({ domain: z.string().min(1).max(253) }))
+	.handler(async ({ data }): Promise<CitationFlowRow[]> => {
+		await requireBrandSession(data.brandId);
+		const domain = cleanAndValidateDomain(data.domain);
+		const { scope } = await resolveCitationScope(data);
+		if (scope.promptIds.length === 0 || !domain) return [];
+		return getCitationFlowRows(scope, domain);
 	});

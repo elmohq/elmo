@@ -1,20 +1,35 @@
 {
-  "name": "@workspace/config",
-  "version": "0.2.13",
-  "private": true,
-  "license": "MIT",
-  "scripts": {
-    "test": "vitest run"
-  },
-  "exports": {
-    "./types": "./src/types.ts",
-    "./constants": "./src/constants.ts",
-    "./env": "./src/env.ts",
-    "./scrape-targets": "./src/scrape-targets.ts"
-  },
-  "devDependencies": {
-    "@types/node": "^25.9.2",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
-  }
+	"name": "@workspace/config",
+	"version": "0.7.7",
+	"private": true,
+	"license": "MIT",
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "vitest run",
+		"docs:fanout": "tsx scripts/write-fanout-docs.ts"
+	},
+	"exports": {
+		"./constants": "./src/constants.ts",
+		"./entitlements": "./src/entitlements.ts",
+		"./env": "./src/env.ts",
+		"./env-registry": "./src/env-registry.ts",
+		"./fanout-support": "./src/fanout-support.ts",
+		"./legal": "./src/legal.ts",
+		"./model-filter": "./src/model-filter.ts",
+		"./models": "./src/models.ts",
+		"./plans": "./src/plans.ts",
+		"./ai-referral": "./src/ai-referral.ts",
+		"./referrals": "./src/referrals.ts",
+		"./roles": "./src/roles.ts",
+		"./scrape-targets": "./src/scrape-targets.ts",
+		"./types": "./src/types.ts"
+	},
+	"dependencies": {
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
 }

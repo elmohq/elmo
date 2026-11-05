@@ -7,8 +7,9 @@
  * This is the single source of truth for the server-side auth object.
  * All server functions, middleware, and route handlers import from here.
  */
-import { createAuth, type CreateAuthOptions } from "@workspace/lib/auth/server";
-import { getWhitelabelAuthOptions } from "@workspace/whitelabel/auth-hooks";
+import { getCloudAuthOptions } from "@workspace/deployment/auth-hooks/cloud";
+import { getWhitelabelAuthOptions } from "@workspace/deployment/auth-hooks/whitelabel";
+import { type CreateAuthOptions, createAuth } from "@workspace/lib/auth/server";
 import { countUsers, provisionLocalOrg } from "@workspace/lib/db/provisioning";
 
 /**
@@ -26,9 +27,7 @@ function getLocalAuthOptions(): CreateAuthOptions {
 				create: {
 					before: async () => {
 						if ((await countUsers()) > 0) {
-							throw new Error(
-								"This instance is already bootstrapped. Sign in with the existing account instead.",
-							);
+							throw new Error("This instance is already bootstrapped. Sign in with the existing account instead.");
 						}
 					},
 					after: async (user) => {
@@ -45,13 +44,24 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 		case "whitelabel":
 			return getWhitelabelAuthOptions();
 		case "demo":
-			// Signup is disabled. Demo deployments reuse a database previously
-			// bootstrapped in local mode; visitors can only sign in as that
-			// pre-existing user.
+			// Demo deployments authenticate only the provisioned demo user.
 			return { disableSignUp: true };
+		case "cloud": {
+			// Full cloud auth stack (email verification, Google OAuth, Resend
+			// transactional email, team invitations, disposable-domain blocking,
+			// invite-only allowlist, and umbrella-org provisioning). The cloud
+			// package owns the entire hook chain — this case is a single call.
+			return getCloudAuthOptions();
+		}
 		default:
 			return getLocalAuthOptions();
 	}
 }
 
 export const auth = createAuth(getDeploymentAuthOptions());
+
+// The runtime's unhandled-rejection log drops the error's `cause`.
+auth.$context.catch((error: unknown) => {
+	console.error("[auth] init failed:", error);
+	throw error;
+});

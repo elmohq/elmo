@@ -1,0 +1,28 @@
+meta {
+  name: an unknown /api/v1 path answers JSON, not the app
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/definitely-not-a-route
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+  res.body.code: eq not_found
+}
+
+tests {
+  test("the app never answers for an API path", function() {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+    expect(String(res.getBody())).to.not.contain("<!DOCTYPE");
+  });
+}

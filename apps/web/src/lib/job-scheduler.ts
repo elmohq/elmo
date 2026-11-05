@@ -1,23 +1,19 @@
-import { db } from "@workspace/lib/db/db";
-import { prompts, brands } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { db } from "@workspace/lib/db/db";
+import { brands, prompts } from "@workspace/lib/db/schema";
+import {
+	PROCESS_PROMPT_QUEUE,
+	PROMPT_JOB_OPTIONS,
+	PROMPT_SINGLETON_SECONDS,
+	promptSingletonKey,
+} from "@workspace/lib/queues/prompt-jobs";
+import { GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS } from "@workspace/lib/queues/report-jobs";
+import { eq } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
-/**
- * Convert cadence hours to milliseconds.
- */
-export function hoursToMs(hours: number): number {
-	return hours * 60 * 60 * 1000;
-}
-
-/**
- * Gets the cadence (delay between runs) for a prompt based on its brand's delay override or the default
- */
-export async function getPromptCadenceHours(promptId: string): Promise<number> {
+async function getPromptCadenceHours(promptId: string): Promise<number> {
 	const defaultDelayHours = getDefaultDelayHours();
 	try {
-		// Get the prompt to find its brand
 		const prompt = await db.query.prompts.findFirst({
 			where: eq(prompts.id, promptId),
 		});
@@ -27,7 +23,6 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 			return defaultDelayHours;
 		}
 
-		// Get the brand to check for delay override
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, prompt.brandId),
 		});
@@ -37,7 +32,6 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 			return defaultDelayHours;
 		}
 
-		// Use override if set, otherwise use default
 		if (brand.delayOverrideHours !== null) {
 			console.log(`Using custom cadence for brand ${brand.name}: ${brand.delayOverrideHours}h`);
 			return brand.delayOverrideHours;
@@ -50,64 +44,29 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 	}
 }
 
-/**
- * Creates a scheduled job for a prompt to run after a delay.
- * Uses interval-based scheduling with startAfter instead of cron patterns.
- * The job will self-reschedule after completion via the worker.
- */
+// Only the first job is queued here; each cycle in the worker queues its successor.
 type SchedulerOptions = {
 	sendImmediate?: boolean;
 };
 
-export async function createPromptJobScheduler(
-	promptId: string,
-	options: SchedulerOptions = {},
-): Promise<boolean> {
+export async function createPromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
 		const boss = await getBoss();
-		const cadenceHours = await getPromptCadenceHours(promptId);
 		const sendImmediate = options.sendImmediate ?? true;
+		const startAfterSeconds = sendImmediate ? 0 : (await getPromptCadenceHours(promptId)) * 60 * 60;
 
-		// Remove any old cron-based schedule (migration cleanup)
-		try {
-			await boss.unschedule("process-prompt", promptId);
-		} catch {
-			// Ignore errors - schedule may not exist
-		}
+		await boss.send(
+			PROCESS_PROMPT_QUEUE,
+			{ promptId },
+			{
+				singletonKey: promptSingletonKey(promptId),
+				singletonSeconds: startAfterSeconds || PROMPT_SINGLETON_SECONDS,
+				...(startAfterSeconds ? { startAfter: startAfterSeconds } : {}),
+				...PROMPT_JOB_OPTIONS,
+			},
+		);
 
-		if (sendImmediate) {
-			// Send an immediate job
-			await boss.send(
-				"process-prompt",
-				{ promptId, cadenceHours },
-				{
-					singletonKey: `prompt-${promptId}`,
-					singletonSeconds: 60 * 60, // 1 hour - prevent duplicate jobs
-					retryLimit: 3,
-					retryDelay: 60,
-					retryBackoff: true,
-					expireInSeconds: 60 * 15, // 15 minute timeout
-				},
-			);
-		} else {
-			// Schedule the next run based on cadence
-			const startAfterSeconds = cadenceHours * 60 * 60;
-			await boss.send(
-				"process-prompt",
-				{ promptId, cadenceHours },
-				{
-					singletonKey: `prompt-${promptId}`,
-					singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
-					startAfter: startAfterSeconds,
-					retryLimit: 3,
-					retryDelay: 60,
-					retryBackoff: true,
-					expireInSeconds: 60 * 15,
-				},
-			);
-		}
-
-		console.log(`Created job for prompt ${promptId} with ${cadenceHours}h cadence`);
+		console.log(`Created job for prompt ${promptId}${sendImmediate ? "" : ` in ${startAfterSeconds / 3600}h`}`);
 		return true;
 	} catch (error) {
 		console.error(`Failed to create job for prompt ${promptId}:`, error);
@@ -115,23 +74,15 @@ export async function createPromptJobScheduler(
 	}
 }
 
-/**
- * Removes any scheduled jobs for a prompt.
- */
 export async function removePromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
 		const boss = await getBoss();
-
-		// Remove old cron-based schedule if exists
+		// The pending job is left alone; the worker skips a disabled prompt without spending anything.
 		try {
-			await boss.unschedule("process-prompt", promptId);
+			await boss.unschedule(PROCESS_PROMPT_QUEUE, promptId);
 		} catch {
-			// Ignore - may not exist
+			// Absence is equivalent to a successfully removed schedule.
 		}
-
-		// Cancel any pending jobs for this prompt
-		// Note: pg-boss doesn't have a direct way to cancel by data, 
-		// but the singletonKey prevents duplicates
 		console.log(`Removed schedule for prompt ${promptId}`);
 		return true;
 	} catch (error) {
@@ -140,70 +91,23 @@ export async function removePromptJobScheduler(promptId: string): Promise<boolea
 	}
 }
 
-/**
- * Creates schedules for multiple prompts.
- * Returns an array of results indicating success/failure for each prompt.
- */
 export async function createMultiplePromptJobSchedulers(
 	promptIds: string[],
 	options: SchedulerOptions = {},
 ): Promise<boolean[]> {
-	const results = await Promise.allSettled(
-		promptIds.map((promptId) => createPromptJobScheduler(promptId, options)),
-	);
+	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId, options)));
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
-}
-
-/**
- * Removes schedules for multiple prompts.
- * Returns an array of results indicating success/failure for each prompt.
- */
-export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Promise<boolean[]> {
-	const results = await Promise.allSettled(promptIds.map((promptId) => removePromptJobScheduler(promptId)));
-
-	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
-}
-
-/**
- * Recreates a schedule for a prompt (removes and creates).
- * Useful when cadence has changed or job needs to be reset.
- */
-export async function recreatePromptJobScheduler(
-	promptId: string,
-	options: SchedulerOptions = {},
-): Promise<boolean> {
-	try {
-		// Remove existing schedule if any (ignore errors if it doesn't exist)
-		await removePromptJobScheduler(promptId);
-		// Create new schedule
-		return await createPromptJobScheduler(promptId, options);
-	} catch (error) {
-		console.error(`Failed to recreate job scheduler for prompt ${promptId}:`, error);
-		return false;
-	}
 }
 
 /**
  * Sends an immediate job to process a prompt (outside of the schedule).
- * Useful for manual retries from the admin UI.
+ * Useful for manual retries from the admin UI. Skips the singleton key so it runs even mid-cadence.
  */
 export async function sendImmediatePromptJob(promptId: string): Promise<boolean> {
 	try {
 		const boss = await getBoss();
-		const cadenceHours = await getPromptCadenceHours(promptId);
-
-		await boss.send(
-			"process-prompt",
-			{ promptId, cadenceHours },
-			{
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 15,
-			},
-		);
-
+		await boss.send(PROCESS_PROMPT_QUEUE, { promptId }, PROMPT_JOB_OPTIONS);
 		console.log(`Sent immediate job for prompt ${promptId}`);
 		return true;
 	} catch (error) {
@@ -212,59 +116,18 @@ export async function sendImmediatePromptJob(promptId: string): Promise<boolean>
 	}
 }
 
-/**
- * Schedules the next run for a prompt after a delay.
- * Called by the worker after successful job completion.
- */
-export async function scheduleNextPromptRun(promptId: string, cadenceHours: number): Promise<boolean> {
-	try {
-		const boss = await getBoss();
-		const startAfterSeconds = cadenceHours * 60 * 60;
-
-		await boss.send(
-			"process-prompt",
-			{ promptId, cadenceHours },
-			{
-				singletonKey: `prompt-${promptId}`,
-				singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
-				startAfter: startAfterSeconds,
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 15,
-			},
-		);
-
-		console.log(`Scheduled next run for prompt ${promptId} in ${cadenceHours}h`);
-		return true;
-	} catch (error) {
-		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
-		return false;
-	}
-}
-
-/**
- * Sends a report generation job.
- */
-export async function sendReportJob(
-	reportId: string,
-	brandName: string,
-	brandWebsite: string,
-	manualPrompts?: string[],
-): Promise<boolean> {
+export async function sendReportJob(data: {
+	reportId: string;
+	brandName: string;
+	brandAliases: string[];
+	brandWebsite: string;
+	manualPrompts?: string[];
+}): Promise<boolean> {
+	const { reportId } = data;
 	try {
 		const boss = await getBoss();
 
-		await boss.send(
-			"generate-report",
-			{ reportId, brandName, brandWebsite, manualPrompts },
-			{
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 60, // 1 hour timeout for reports
-			},
-		);
+		await boss.send(GENERATE_REPORT_QUEUE, data, REPORT_JOB_OPTIONS);
 
 		console.log(`Sent report job for report ${reportId}`);
 		return true;

@@ -1,0 +1,33 @@
+meta {
+  name: search prompt text
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}&q=citations
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  brandId: {{brandId}}
+  q: citations
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.total: gte 1
+}
+
+tests {
+  test("every match contains the search term", function() {
+    for (const prompt of res.getBody().prompts) {
+      expect(prompt.value.toLowerCase()).to.contain("citations");
+    }
+  });
+}

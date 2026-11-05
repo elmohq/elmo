@@ -1,13 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { SYSTEM_TAGS } from "./db/schema";
 import {
-	isSystemTag,
-	isPromptBranded,
 	computeSystemTags,
+	effectiveTags,
+	getEffectiveBrandedStatus,
+	isPromptBranded,
+	isSystemTag,
+	matchesTagFilter,
 	normalizeTag,
 	sanitizeUserTags,
-	getEffectiveBrandedStatus,
 } from "./tag-utils";
-import { SYSTEM_TAGS } from "./db/schema";
 
 describe("tag-utils", () => {
 	describe("isSystemTag", () => {
@@ -64,6 +66,22 @@ describe("tag-utils", () => {
 			expect(isPromptBranded("Acme Corp products", brandName, "not-a-valid-url")).toBe(true);
 			expect(isPromptBranded("random products", brandName, "not-a-valid-url")).toBe(false);
 		});
+
+		it("should treat any brand name variant as branded", () => {
+			const aliases = ["ACME", "Acme Inc."];
+			expect(isPromptBranded("is acme any good", brandName, brandWebsite, aliases)).toBe(true);
+			expect(isPromptBranded("acme inc. pricing", brandName, "not-a-valid-url", aliases)).toBe(true);
+			expect(isPromptBranded("best running shoes", brandName, brandWebsite, aliases)).toBe(false);
+		});
+
+		it("should ignore blank variants", () => {
+			expect(isPromptBranded("best running shoes", brandName, brandWebsite, ["", "  "])).toBe(false);
+		});
+
+		it("should not treat every prompt as branded when the website has an empty host or label", () => {
+			expect(isPromptBranded("best running shoes", brandName, "www.")).toBe(false);
+			expect(isPromptBranded("best running shoes", brandName, ".com")).toBe(false);
+		});
 	});
 
 	describe("computeSystemTags", () => {
@@ -82,7 +100,7 @@ describe("tag-utils", () => {
 		it("should return exactly one tag", () => {
 			const brandedTags = computeSystemTags("acme products", "Acme", "https://acme.com");
 			const unbrandedTags = computeSystemTags("generic products", "Acme", "https://acme.com");
-			
+
 			expect(brandedTags).toHaveLength(1);
 			expect(unbrandedTags).toHaveLength(1);
 		});
@@ -253,5 +271,31 @@ describe("tag-utils", () => {
 			expect(result.isOverridden).toBe(false);
 			expect(result.systemIsBranded).toBe(false);
 		});
+	});
+});
+
+describe("prompt tag filtering", () => {
+	const matches = (prompt: { systemTags: string[] | null; tags: string[] | null }, filter: string[]) =>
+		matchesTagFilter(effectiveTags(prompt), filter);
+
+	it("files a prompt under its detected branded status", () => {
+		const prompt = { systemTags: ["branded"], tags: ["pricing"] };
+		expect(matches(prompt, ["branded"])).toBe(true);
+		expect(matches(prompt, ["unbranded"])).toBe(false);
+		expect(matches(prompt, ["pricing"])).toBe(true);
+	});
+
+	it("lets a user tag override the detected branded status", () => {
+		const prompt = { systemTags: ["branded"], tags: ["unbranded"] };
+		expect(matches(prompt, ["unbranded"])).toBe(true);
+		expect(matches(prompt, ["branded"])).toBe(false);
+	});
+
+	it("treats an untagged prompt as unbranded", () => {
+		expect(effectiveTags({ systemTags: null, tags: null })).toEqual(["unbranded"]);
+	});
+
+	it("matches every prompt when no filter is set", () => {
+		expect(matches({ systemTags: null, tags: null }, [])).toBe(true);
 	});
 });

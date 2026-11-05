@@ -1,30 +1,32 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
-import { generateText, Output } from "ai";
-import { extractTextFromAnthropic } from "../../text-extraction";
+import Anthropic from "@anthropic-ai/sdk";
+import { getCredential } from "../../secrets";
+import {
+	ANTHROPIC_WEB_SEARCH_MAX_USES,
+	API_PROVIDER_MAX_OUTPUT_TOKENS,
+	configuredWhen,
+	RESEARCH_WEB_SEARCH_MAX_USES,
+	warnIfOutputCapped,
+} from "../config";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
-import type { Citation } from "../../text-extraction";
+import { structuredResearch } from "./ai-sdk";
+import { nonEmptyStrings, sanitizeForJson, sleep } from "./scrape-shared";
 
-const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-6";
+const DEFAULT_RESEARCH_MODEL = "claude-sonnet-5-5";
 
 function getAnthropicLanguageModel(model: string) {
-	return process.env.ANTHROPIC_API_KEY
-		? createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })(model)
-		: anthropic(model);
-}
-
-function sanitizeForJson(obj: unknown): unknown {
-	return JSON.parse(JSON.stringify(obj));
+	const apiKey = getCredential("ANTHROPIC_API_KEY");
+	return apiKey ? createAnthropic({ apiKey })(model) : anthropic(model);
 }
 
 function getClient(): Anthropic {
-	return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+	return new Anthropic({ apiKey: getCredential("ANTHROPIC_API_KEY")! });
 }
 
 async function runAnthropic(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
@@ -34,116 +36,69 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 		tools.push({
 			type: "web_search_20250305",
 			name: "web_search",
-			max_uses: 1,
+			max_uses: ANTHROPIC_WEB_SEARCH_MAX_USES,
 		});
 	}
 
-	const makeRequest = () => client.messages.create({
-		model,
-		max_tokens: 4000,
-		messages: [{ role: "user", content: prompt }],
-		...(tools.length > 0 ? { tools } : {}),
-	});
+	const makeRequest = () =>
+		client.messages.create({
+			model,
+			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["anthropic-api"],
+			messages: [{ role: "user", content: prompt }],
+			...(tools.length > 0 ? { tools } : {}),
+		});
 
 	let response = await makeRequest();
 
-	// Check for web search errors like max_uses_exceeded and retry once
+	// A web search error such as max_uses_exceeded gets one retry.
 	for (const block of response.content) {
-		const b = block as any;
-		if (b.type === "web_search_tool_result" && b.content?.type === "web_search_tool_result_error") {
-			console.warn(`[anthropic-api] web search error: ${b.content.error_code}, retrying in 10s...`);
-			await new Promise((r) => setTimeout(r, 10_000));
-			response = await makeRequest();
-			break;
-		}
+		if (block.type !== "web_search_tool_result") continue;
+		const error = Array.isArray(block.content) ? undefined : block.content;
+		if (error?.type !== "web_search_tool_result_error") continue;
+		console.warn(`[anthropic-api] web search error: ${error.error_code}, retrying in 10s...`);
+		await sleep(10_000);
+		response = await makeRequest();
+		break;
 	}
 
-	const textContent = extractTextFromAnthropic(response);
+	warnIfOutputCapped("anthropic-api", model, response.stop_reason);
 
-	const webQueries = response.content
-		.filter((block) => block.type === "server_tool_use" && (block as any).name === "web_search")
-		.map((block) => (block as any).input?.query)
-		.filter(Boolean);
+	const webQueries = nonEmptyStrings(
+		response.content.flatMap((block) =>
+			// A tool's input is typed `unknown` because its shape is tool-specific.
+			block.type === "server_tool_use" && block.name === "web_search"
+				? [(block.input as { query?: unknown } | null)?.query]
+				: [],
+		),
+	);
 
-	const citations = extractAnthropicCitations(response.content);
-
-	// Strip full page text from web search results to reduce storage.
-	// Only url/title are used for citation extraction.
-	const trimmedContent = response.content.map((block: any) => {
+	// Citation extraction reads only url and title, so the page text isn't stored.
+	const trimmedContent = response.content.map((block) => {
 		if (block.type !== "web_search_tool_result" || !Array.isArray(block.content)) return block;
 		return {
 			...block,
-			content: block.content.map((r: any) =>
-				r.type === "web_search_result"
-					? { type: r.type, url: r.url, title: r.title }
-					: r,
-			),
+			content: block.content.map((result) => ({
+				type: result.type,
+				url: result.url,
+				title: result.title,
+			})),
 		};
 	});
 
 	return {
 		rawOutput: sanitizeForJson({ ...response, content: trimmedContent }),
 		webQueries,
-		textContent,
-		citations,
 		modelVersion: model,
 	};
-}
-
-function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): Citation[] {
-	const seen = new Set<string>();
-	const citations: Citation[] = [];
-	let idx = 0;
-
-	for (const block of content) {
-		// Citations from text blocks
-		if (block.type === "text") {
-			for (const cit of Array.isArray((block as any).citations) ? (block as any).citations : []) {
-				if (cit.type === "web_search_result_location" && cit.url) {
-					if (seen.has(cit.url)) continue;
-					seen.add(cit.url);
-					try {
-						const parsed = new URL(cit.url);
-						citations.push({
-							url: cit.url,
-							title: cit.title ?? undefined,
-							domain: parsed.hostname.replace(/^www\./, ""),
-							citationIndex: idx++,
-						});
-					} catch (e) { console.warn(`Anthropic: skipping invalid citation URL: ${cit.url}`, e); }
-				}
-			}
-		}
-		// Citations from web search results
-		if (block.type === "web_search_tool_result") {
-			for (const result of Array.isArray((block as any).content) ? (block as any).content : []) {
-				if (result.type === "web_search_result" && result.url) {
-					if (seen.has(result.url)) continue;
-					seen.add(result.url);
-					try {
-						const parsed = new URL(result.url);
-						citations.push({
-							url: result.url,
-							title: result.title ?? undefined,
-							domain: parsed.hostname.replace(/^www\./, ""),
-							citationIndex: idx++,
-						});
-					} catch (e) { console.warn(`Anthropic: skipping invalid search result URL: ${result.url}`, e); }
-				}
-			}
-		}
-	}
-
-	return citations;
 }
 
 export const anthropicApi: Provider = {
 	id: "anthropic-api",
 	name: "Anthropic API",
+	access: "api",
+	docsAnchor: "direct-model-apis",
 
-	isConfigured() {
-		return !!process.env.ANTHROPIC_API_KEY;
-	},
+	isConfigured: configuredWhen("ANTHROPIC_API_KEY"),
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;
@@ -155,16 +110,13 @@ export const anthropicApi: Provider = {
 		schema,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
-		const result = await generateText({
-			model: getAnthropicLanguageModel(DEFAULT_RESEARCH_MODEL),
-			...(webSearch ? { tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: 5 }) } } : {}),
-			experimental_output: Output.object({ schema }),
+		const object = await structuredResearch(getAnthropicLanguageModel(DEFAULT_RESEARCH_MODEL), {
 			prompt,
+			schema,
+			...(webSearch
+				? { tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: RESEARCH_WEB_SEARCH_MAX_USES }) } }
+				: {}),
 		});
-		return {
-			object: result.experimental_output as T,
-			modelVersion: DEFAULT_RESEARCH_MODEL,
-		};
+		return { object, modelVersion: DEFAULT_RESEARCH_MODEL };
 	},
 };
-

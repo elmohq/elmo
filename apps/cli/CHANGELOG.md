@@ -1,5 +1,148 @@
 # @elmohq/cli
 
+## 0.7.7
+
+No changes in this release.
+
+## 0.7.6
+
+No changes in this release.
+
+## 0.7.5
+
+### Patch Changes
+
+- c3884e8: Call Jev through OpenRouter when no TypeSafe key is set: `elmo init` asks which to use, and can reuse your OpenRouter key.
+
+## 0.7.4
+
+No changes in this release.
+
+## 0.7.3
+
+No changes in this release.
+
+## 0.7.2
+
+No changes in this release.
+
+## 0.7.1
+
+No changes in this release.
+
+## 0.7.0
+
+### Minor Changes
+
+- f5b579c: **Jev (TypeSafe) is now a required dependency of Elmo: the worker won't start without `TYPESAFE_API_KEY`.** Jev judges mentions and sentiment, which is far more accurate toward your brand and each competitor. It costs very roughly $0.15–0.35 per 1,000 answers that name a tracked company, more for long answers that name many. Upgrading re-judges the last 90 days of answers once, about three months' worth of that cost; set `REPROCESS_DAYS=all` before upgrading to re-judge your whole history instead.
+
+## 0.6.2
+
+No changes in this release.
+
+## 0.6.1
+
+No changes in this release.
+
+## 0.6.0
+
+### Patch Changes
+
+- 1334ce8: Default the OpenAI and Anthropic model targets to `gpt-6-luna` and `claude-haiku-5-5` (`openai/gpt-6-luna` and `anthropic/claude-haiku-5.5` on OpenRouter); existing installs keep their configured models, so consider updating `SCRAPE_TARGETS` to switch from `gpt-5-mini` and `claude-sonnet-5`.
+
+## 0.5.2
+
+No changes in this release.
+
+## 0.5.1
+
+No changes in this release.
+
+## 0.5.0
+
+No changes in this release.
+
+## 0.4.6
+
+No changes in this release.
+
+## 0.4.5
+
+No changes in this release.
+
+## 0.4.4
+
+No changes in this release.
+
+## 0.4.3
+
+### Patch Changes
+
+- c728281: `elmo init` now asks for the public URL you'll reach Elmo at, so sign-in works when it's served from a domain.
+
+## 0.4.2
+
+### Patch Changes
+
+- 2043438: Add SearchApi.io as a scraper provider for ChatGPT, Perplexity, Copilot, Gemini, Google AI Mode, and Google AI Overview.
+
+## 0.4.1
+
+No changes in this release.
+
+## 0.4.0
+
+### Patch Changes
+
+- 859447d: `elmo init` now checks Docker before the setup wizard and reports whether Docker is missing or not running.
+
+## 0.3.0
+
+### Patch Changes
+
+- 3ba2e5a: `elmo init` now says up front that a managed cloud option exists, and what it costs, before walking through self-hosted setup.
+- 1f46b62: Fix broken docs link in `elmo init` and the LLMs settings page.
+- 5b90bbc: The worker now gets time to finish in-flight jobs when a deployment stops or upgrades, instead of being killed mid-evaluation.
+
+## 0.2.19
+
+### Patch Changes
+
+- dffaae8: New deployments now run Postgres 18. Existing deployments are unaffected and keep the Postgres version they were created with.
+
+## 0.2.18
+
+### Patch Changes
+
+- 4a7c85c: Oxylabs requests now use the asynchronous jobs API instead of the Realtime API, which Oxylabs is deprecating. If you have any `:oxylabs` targets in `SCRAPE_TARGETS`, upgrade before August 31, 2026 to avoid failures.
+- 6788467: Add Cloro as a scraper provider for ChatGPT, Perplexity, Copilot, Gemini, Google AI Mode, and Google AI Overview.
+- bfa6282: BREAKING CHANGE: DataForSEO now scrapes the real ChatGPT and Gemini interfaces instead of calling their model APIs, with no change needed to existing `SCRAPE_TARGETS`. This is more expensive (about $0.004 instead of $0.0006 to run). This could also impact visibility/citations as it switches to better reflect what users see in the actual chat website. If you would prefer to keep the old behavior, you will need to update your `SCRAPE_TARGETS` to pin the specific version of the model (`chatgpt:dataforseo:gpt-5.5:online` or `gemini:dataforseo:gemini-2.5-flash:online`) to keep using the LLM Responses API instead of the LLM Scraper API.
+- c2ae13a: Added an `ELMO_ENCRYPTION_KEY` to new and upgraded deployments, which Elmo now requires to encrypt provider credentials stored in the database.
+
+## 0.2.17
+
+### Patch Changes
+
+- 93a79f2: You can now track Google AI Overviews via the BrightData, DataForSEO, and Oxylabs providers; `SCRAPE_TARGETS` now accepts `google-ai-overview:brightdata:online`, `google-ai-overview:dataforseo:online`, and `google-ai-overview:oxylabs:online`.
+- c2fdd26: Grok is now only supported via OpenRouter, since unauthenticated access has been removed and all Grok scrapers are permanently failing.
+- c2fdd26: Started tracking Kimi K3 on the [provider status page](https://www.elmohq.com/status). You can configure tracking with `SCRAPE_TARGETS`, which accepts `kimi:openrouter:moonshotai/kimi-k3`.
+
+## 0.2.16
+
+## 0.2.15
+
+### Patch Changes
+
+- d89b787: Add an optional `JINA_API_KEY` env var to avoid anonymous rate limits when fetching website content during brand onboarding.
+
+## 0.2.14
+
+### Patch Changes
+
+- 0e90384: Add `elmo upgrade` to move a local deployment to the version supported by the installed CLI: runs any registered migrations, re-pins the Docker image tags, and restarts the stack (only if it was running before). Warns when the CLI itself is behind the latest published release.
+- 8ef5e23: Add ChatGPT, Perplexity, and Gemini support to the DataForSEO provider. `elmo init` now offers them when you enable DataForSEO, and `SCRAPE_TARGETS` accepts `chatgpt:dataforseo:online`, `perplexity:dataforseo:online`, and `gemini:dataforseo:online` (override the underlying model via the version slug, e.g. `chatgpt:dataforseo:gpt-5-mini:online`). Configure via `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`.
+- d64c8fa: Add Oxylabs as a scraper provider. `elmo init` now offers Oxylabs alongside BrightData and Olostep, and `SCRAPE_TARGETS` accepts `chatgpt:oxylabs[:online]`, `perplexity:oxylabs:online`, and `google-ai-mode:oxylabs:online`. Configure via `OXYLABS_USERNAME` + `OXYLABS_PASSWORD`.
+
 ## 0.2.13
 
 ## 0.2.12

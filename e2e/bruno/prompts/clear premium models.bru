@@ -1,0 +1,26 @@
+meta {
+  name: stop tracking a prompt grounded
+  type: http
+  seq: 29
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "premiumModels": []
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.premiumModels: isEmpty
+}

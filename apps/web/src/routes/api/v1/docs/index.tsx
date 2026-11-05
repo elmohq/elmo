@@ -1,6 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-
-const API_DOCS_URL = "https://www.elmohq.com/docs/api";
+import { API_DOCS_URL } from "@workspace/config/constants";
 
 export const Route = createFileRoute("/api/v1/docs/")({
 	beforeLoad: () => {

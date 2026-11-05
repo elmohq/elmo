@@ -1,27 +1,25 @@
-/**
- * Server functions for admin operations.
- * Replaces apps/web/src/app/api/admin/* API routes.
- */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, isAdmin } from "@/lib/auth/helpers";
-import { db } from "@workspace/lib/db/db";
-import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
-import {
-	getAdminRunsOverTime,
-	getAdminBrandRunStats,
-	getAdminActiveBrandsOverTime,
-} from "@/lib/postgres-read";
-import { analyzeBrand } from "@workspace/lib/onboarding";
+import type { Entitlements } from "@workspace/config/entitlements";
+import { getModelMeta } from "@workspace/config/models";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { sendImmediatePromptJob } from "@/lib/job-scheduler";
+import { db } from "@workspace/lib/db/db";
+import { type Brand, brands, organization, type Prompt, prompts, rollupPromptRuns } from "@workspace/lib/db/schema";
+import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
+import { analyzeBrand } from "@workspace/lib/onboarding";
+import type { ModelConfig } from "@workspace/lib/providers";
+import {
+	type PromptRunPlan,
+	resolveBrandPromptRunPlans,
+	type TargetPlan,
+	targetKey,
+	targetOverdueStatus,
+} from "@workspace/lib/run-policy";
+import { desc, eq, inArray, type SQL, sql } from "drizzle-orm";
 import { Client } from "pg";
-import { parseScrapeTargets } from "@workspace/lib/providers";
-
-// ============================================================================
-// Admin guard helper
-// ============================================================================
+import { z } from "zod";
+import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
+import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 
 async function requireAdmin() {
 	const session = await requireAuthSession();
@@ -29,9 +27,87 @@ async function requireAdmin() {
 	return session;
 }
 
-// ============================================================================
-// Postgres client helper for pg-boss queries
-// ============================================================================
+async function organizationSlugs(organizationIds: string[]): Promise<Map<string, string>> {
+	if (organizationIds.length === 0) return new Map();
+	const rows = await db
+		.select({ id: organization.id, slug: organization.slug })
+		.from(organization)
+		.where(inArray(organization.id, [...new Set(organizationIds)]));
+	return new Map(rows.map((row) => [row.id, row.slug]));
+}
+
+function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
+	return slugs.get(organizationId) ?? organizationId;
+}
+
+interface AdminRunsOverTime {
+	date: string;
+	count: number;
+}
+
+interface AdminBrandRunStats {
+	brand_id: string;
+	runs_7d: number;
+	runs_30d: number;
+	last_run_at: string | null;
+}
+
+interface AdminActiveBrandsOverTime {
+	date: string;
+	count: number;
+}
+
+async function adminRows<T>(query: SQL): Promise<T[]> {
+	const result = await db.execute(query);
+	return result.rows as T[];
+}
+
+async function getAdminRunsOverTime(): Promise<AdminRunsOverTime[]> {
+	const rows = await adminRows<AdminRunsOverTime>(sql`
+		SELECT
+			(bucket AT TIME ZONE 'UTC')::date AS date,
+			sum(runs)::int AS count
+		FROM rollup_prompt_runs
+		WHERE bucket >= now() - interval '30 days'
+		GROUP BY date
+		ORDER BY date
+	`);
+	return rows;
+}
+
+async function getAdminBrandRunStats(): Promise<AdminBrandRunStats[]> {
+	const rows = await adminRows<AdminBrandRunStats>(sql`
+		SELECT
+			brand_id,
+			coalesce(sum(runs) FILTER (WHERE bucket >= now() - interval '7 days'), 0)::int AS runs_7d,
+			coalesce(sum(runs) FILTER (WHERE bucket >= now() - interval '30 days'), 0)::int AS runs_30d,
+			to_char(max(last_run_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_run_at
+		FROM rollup_prompt_runs
+		GROUP BY brand_id
+	`);
+	return rows;
+}
+
+async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime[]> {
+	const rows = await adminRows<AdminActiveBrandsOverTime>(sql`
+		SELECT
+			target_date AS date,
+			count(DISTINCT brand_id)::int AS count
+		FROM (
+			SELECT
+				brand_id,
+				(bucket AT TIME ZONE 'UTC')::date + d AS target_date
+			FROM rollup_prompt_runs,
+				generate_series(0, 29) AS d
+			WHERE bucket >= now() - interval '60 days'
+		) expanded
+		WHERE target_date >= current_date - 30
+			AND target_date <= current_date
+		GROUP BY target_date
+		ORDER BY target_date
+	`);
+	return rows;
+}
 
 async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	const connectionString = process.env.DATABASE_URL;
@@ -47,13 +123,6 @@ async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	}
 }
 
-// ============================================================================
-// Admin Dashboard - Brand Stats
-// ============================================================================
-
-/**
- * Get admin dashboard statistics (all brands, run counts, time series charts).
- */
 export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
 
@@ -62,57 +131,50 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-	const [
-		allBrands,
-		brandsOverTime,
-		promptsOverTime,
-		runsOverTimeData,
-		brandRunStats,
-		activeBrandsData,
-	] = await Promise.all([
-		db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
+	const [allBrands, brandsOverTime, promptsOverTime, runsOverTimeData, brandRunStats, activeBrandsData] =
+		await Promise.all([
+			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
-		// Cumulative brand count over time (last 30 days)
-		db
-			.select({
-				date: sql<string>`date_series::date`,
-				count: sql<number>`COUNT(${brands.id})::int`,
-			})
-			.from(
-				sql`generate_series(
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					count: sql<number>`COUNT(${brands.id})::int`,
+				})
+				.from(
+					sql`generate_series(
 					NOW()::date - INTERVAL '30 days',
 					NOW()::date,
 					INTERVAL '1 day'
 				) AS date_series`,
-			)
-			.leftJoin(brands, sql`${brands.createdAt}::date <= date_series::date`)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`),
+				)
+				.leftJoin(brands, sql`${brands.createdAt}::date <= date_series::date`)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		// Cumulative prompts count over time (enabled vs disabled)
-		db
-			.select({
-				date: sql<string>`date_series::date`,
-				enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
-				disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
-			})
-			.from(
-				sql`generate_series(
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
+					disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
+				})
+				.from(
+					sql`generate_series(
 					NOW()::date - INTERVAL '30 days',
 					NOW()::date,
 					INTERVAL '1 day'
 				) AS date_series`,
-			)
-			.leftJoin(prompts, sql`${prompts.createdAt}::date <= date_series::date`)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`),
+				)
+				.leftJoin(prompts, sql`${prompts.createdAt}::date <= date_series::date`)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		getAdminRunsOverTime(),
-		getAdminBrandRunStats(),
-		getAdminActiveBrandsOverTime(),
-	]);
+			getAdminRunsOverTime(),
+			getAdminBrandRunStats(),
+			getAdminActiveBrandsOverTime(),
+		]);
 
 	const brandRunStatsMap = new Map(brandRunStats.map((stat) => [stat.brand_id, stat]));
+	const orgSlugs = await organizationSlugs(allBrands.map((brand) => brand.organizationId));
 
 	const brandStats = await Promise.all(
 		allBrands.map(async (brand) => {
@@ -138,6 +200,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 
 			return {
 				...brand,
+				organizationSlug: organizationSegment(orgSlugs, brand.organizationId),
 				totalPrompts: promptCounts[0]?.total || 0,
 				activePrompts: promptCounts[0]?.active || 0,
 				promptRuns7Days: runStats?.runs_7d || 0,
@@ -166,13 +229,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	};
 });
 
-// ============================================================================
-// Admin Dashboard - Delay Override
-// ============================================================================
-
-/**
- * Update delay override for a brand.
- */
 export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -182,6 +238,7 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		await requireAdmin();
+		await assertCadenceAllowed(await getBrandOrganizationId(data.brandId), data.delayOverrideHours);
 		const result = await db
 			.update(brands)
 			.set({ delayOverrideHours: data.delayOverrideHours, updatedAt: new Date() })
@@ -191,15 +248,7 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 		return result[0];
 	});
 
-// ============================================================================
-// Admin Tools - Analyze Brand
-// ============================================================================
-
-/**
- * Provider-agnostic brand analysis. Returns brand info, competitors, and
- * suggested prompts in a single LLM round-trip — same pipeline that the
- * onboarding wizard and `POST /api/v1/tools/analyze` use.
- */
+/** The same pipeline as onboarding and `POST /api/v1/tools/analyze`. */
 export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -218,10 +267,6 @@ export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 			maxPrompts: data.maxPrompts,
 		});
 	});
-
-// ============================================================================
-// Admin Workflows - Data Fetching
-// ============================================================================
 
 function parseJobData(data: unknown): { promptId?: string } {
 	if (!data) return {};
@@ -302,6 +347,16 @@ async function getQueueStats() {
 	});
 }
 
+function failureReason(state: string, output: unknown): string | null {
+	if (state !== "failed" || !output) return null;
+	try {
+		const parsed = typeof output === "string" ? JSON.parse(output) : (output as Record<string, unknown>);
+		return (parsed?.message as string) || (parsed?.error as string) || "Unknown error";
+	} catch {
+		return "Unknown error";
+	}
+}
+
 async function getRecentJobs(limit = 50) {
 	const jobs = await withPgClient(async (client) => {
 		const [jobCheck, archiveCheck] = await Promise.all([
@@ -357,24 +412,12 @@ async function getRecentJobs(limit = 50) {
 	});
 
 	return sorted.slice(0, limit).map((row) => {
-		const data = parseJobData(row.data);
-		let failedReason: string | null = null;
-
-		if (row.state === "failed" && row.output) {
-			try {
-				const output = typeof row.output === "string" ? JSON.parse(row.output) : row.output;
-				failedReason = output?.message || output?.error || "Unknown error";
-			} catch {
-				failedReason = "Unknown error";
-			}
-		}
-
 		return {
 			id: row.id,
 			name: row.name,
-			data,
+			data: parseJobData(row.data),
 			status: row.state === "completed" ? ("completed" as const) : ("failed" as const),
-			failedReason,
+			failedReason: failureReason(row.state, row.output),
 			attemptsMade: row.retry_count || 0,
 			timestamp: row.created_on ? new Date(row.created_on).getTime() : 0,
 			processedOn: row.started_on ? new Date(row.started_on).getTime() : null,
@@ -383,66 +426,57 @@ async function getRecentJobs(limit = 50) {
 	});
 }
 
-function getNextRunFromCron(cron: string, now: Date): number | null {
-	const hourlyMatch = cron.match(/^0 \*\/(\d+) \* \* \*$/);
-	if (hourlyMatch) {
-		const interval = Number(hourlyMatch[1]);
-		if (!Number.isFinite(interval) || interval <= 0) return null;
+/**
+ * pg-boss schedules this job with one of two cron shapes; nothing here needs a
+ * general cron parser, and reading them in one place keeps the cadence the
+ * dashboard reports and the next-run it computes derived from the same match.
+ */
+type CronSchedule = { unit: "hours" | "days"; interval: number };
 
-		const nowMs = now.getTime();
-		const nowUtc = new Date(nowMs);
-		const year = nowUtc.getUTCFullYear();
-		const month = nowUtc.getUTCMonth();
-		const day = nowUtc.getUTCDate();
-		const hour = nowUtc.getUTCHours();
-		const minute = nowUtc.getUTCMinutes();
-		const second = nowUtc.getUTCSeconds();
-		const ms = nowUtc.getUTCMilliseconds();
-
-		let nextHour = hour;
-		if (minute > 0 || second > 0 || ms > 0) {
-			nextHour += 1;
-		}
-
-		for (let i = 0; i <= 48; i += 1) {
-			const h = nextHour + i;
-			if (h % interval === 0) {
-				const dayOffset = Math.floor(h / 24);
-				const hourOfDay = h % 24;
-				const baseMidnight = Date.UTC(year, month, day, 0, 0, 0, 0);
-				const candidateMs = baseMidnight + dayOffset * 24 * 60 * 60 * 1000 + hourOfDay * 60 * 60 * 1000;
-				if (candidateMs > nowMs) {
-					return candidateMs;
-				}
-			}
-		}
-
-		return null;
+function parseCron(cron: string): CronSchedule | null {
+	const hourly = cron.match(/^0 \*\/(\d+) \* \* \*$/);
+	if (hourly) {
+		const interval = Number(hourly[1]);
+		return Number.isFinite(interval) && interval > 0 ? { unit: "hours", interval } : null;
 	}
-
-	const dailyMatch = cron.match(/^0 0 (?:\*\/(\d+)|\*) \* \*$/);
-	if (dailyMatch) {
-		const dayInterval = dailyMatch[1] ? Number(dailyMatch[1]) : 1;
-		if (!Number.isFinite(dayInterval) || dayInterval <= 0) return null;
-
-		const nowMs = now.getTime();
-		const nowUtc = new Date(nowMs);
-
-		for (let i = 0; i <= 31; i += 1) {
-			const candidate = new Date(
-				Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate() + i, 0, 0, 0, 0),
-			);
-			const dayOfMonth = candidate.getUTCDate();
-			const matches = dayInterval === 1 || (dayOfMonth - 1) % dayInterval === 0;
-			if (matches && candidate.getTime() > nowMs) {
-				return candidate.getTime();
-			}
-		}
-
-		return null;
+	const daily = cron.match(/^0 0 (?:\*\/(\d+)|\*) \* \*$/);
+	if (daily) {
+		const interval = daily[1] ? Number(daily[1]) : 1;
+		return Number.isFinite(interval) && interval > 0 ? { unit: "days", interval } : null;
 	}
-
 	return null;
+}
+
+function nextHourlyRun(interval: number, now: Date): number | null {
+	const nowMs = now.getTime();
+	const midnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0);
+	// Part-way through an hour means that hour has already passed.
+	const startHour =
+		now.getUTCHours() + (now.getUTCMinutes() > 0 || now.getUTCSeconds() > 0 || now.getUTCMilliseconds() > 0 ? 1 : 0);
+
+	for (let hour = startHour; hour <= startHour + 48; hour += 1) {
+		if (hour % interval !== 0) continue;
+		const candidate = midnight + hour * 60 * 60 * 1000;
+		if (candidate > nowMs) return candidate;
+	}
+	return null;
+}
+
+function nextDailyRun(interval: number, now: Date): number | null {
+	const nowMs = now.getTime();
+	for (let offset = 0; offset <= 31; offset += 1) {
+		const candidate = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + offset, 0, 0, 0, 0);
+		const dayOfMonth = new Date(candidate).getUTCDate();
+		const onInterval = interval === 1 || (dayOfMonth - 1) % interval === 0;
+		if (onInterval && candidate > nowMs) return candidate;
+	}
+	return null;
+}
+
+function getNextRunFromCron(cron: string, now: Date): number | null {
+	const schedule = parseCron(cron);
+	if (!schedule) return null;
+	return schedule.unit === "hours" ? nextHourlyRun(schedule.interval, now) : nextDailyRun(schedule.interval, now);
 }
 
 async function getScheduleMap() {
@@ -466,23 +500,13 @@ async function getScheduleMap() {
 
 	for (const row of schedules) {
 		const promptId = row.key;
-		if (promptId) {
-			let cadenceHours: number | null = null;
-			let nextRunAt: number | null = null;
-			if (row.cron) {
-				const hourlyMatch = row.cron.match(/^0 \*\/(\d+) \* \* \*$/);
-				if (hourlyMatch) {
-					cadenceHours = Number(hourlyMatch[1]);
-				} else {
-					const dailyMatch = row.cron.match(/^0 0 (?:\*\/(\d+)|\*) \* \*$/);
-					if (dailyMatch) {
-						cadenceHours = dailyMatch[1] ? Number(dailyMatch[1]) * 24 : 24;
-					}
-				}
-				nextRunAt = getNextRunFromCron(row.cron, now);
-			}
-			map.set(promptId, { promptId, cadenceHours, nextRunAt });
-		}
+		if (!promptId) continue;
+		const schedule = row.cron ? parseCron(row.cron) : null;
+		map.set(promptId, {
+			promptId,
+			cadenceHours: schedule ? schedule.interval * (schedule.unit === "days" ? 24 : 1) : null,
+			nextRunAt: row.cron ? getNextRunFromCron(row.cron, now) : null,
+		});
 	}
 
 	return map;
@@ -531,9 +555,172 @@ async function getActiveJobMap() {
 	return map;
 }
 
+interface TargetRunStatus {
+	lastRunAt: Date | null;
+	isOverdue: boolean;
+	overdueByMs: number | null;
+}
+
 /**
- * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
+ * Every prompt's run plan, resolved the way the worker resolves it: pool
+ * positions across the whole org, run plans per brand. A brand whose
+ * configuration no longer resolves (a pick whose target left SCRAPE_TARGETS)
+ * is skipped rather than taking the whole dashboard down.
  */
+function resolveRunPlansForBrands(input: {
+	brands: Brand[];
+	promptsByBrand: Record<string, Prompt[]>;
+	entitlementsByOrg: Map<string, Entitlements>;
+	scrapeTargets: ModelConfig[];
+	defaultDelayHours: number;
+}): Map<string, PromptRunPlan> {
+	const enabledByOrg = new Map<string, Prompt[]>();
+	for (const brand of input.brands) {
+		const enabled = (input.promptsByBrand[brand.id] ?? []).filter((p) => p.enabled);
+		if (enabled.length === 0) continue;
+		enabledByOrg.set(brand.organizationId, [...(enabledByOrg.get(brand.organizationId) ?? []), ...enabled]);
+	}
+
+	const plans = new Map<string, PromptRunPlan>();
+	for (const brand of input.brands) {
+		const brandPrompts = input.promptsByBrand[brand.id] ?? [];
+		const entitlements = input.entitlementsByOrg.get(brand.organizationId);
+		if (brandPrompts.length === 0 || !entitlements) continue;
+		try {
+			for (const [promptId, plan] of resolveBrandPromptRunPlans({
+				scrapeTargets: input.scrapeTargets,
+				defaultDelayHours: input.defaultDelayHours,
+				entitlements,
+				orgPrompts: enabledByOrg.get(brand.organizationId) ?? [],
+				brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+				prompts: brandPrompts,
+			})) {
+				plans.set(promptId, plan);
+			}
+		} catch (error) {
+			console.error(`[admin] Skipping brand ${brand.id} run plans (invalid target config):`, error);
+		}
+	}
+	return plans;
+}
+
+/** The chain's cadence: its fastest target. Zero when nothing is planned. */
+function intervalMsOf(targets: TargetPlan[]): number {
+	if (targets.length === 0) return 0;
+	return Math.min(...targets.map((t) => t.intervalHours)) * 60 * 60 * 1000;
+}
+
+function fastestCadenceMs(cadences: number[]): number {
+	const running = cadences.filter((ms) => ms > 0);
+	return running.length > 0 ? Math.min(...running) : 0;
+}
+
+/** The union of every target the brand's prompts run, in first-seen order. */
+function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; label: string }[] {
+	const columns = new Map<string, { key: string; label: string }>();
+	for (const plan of plans) {
+		for (const target of plan?.targets ?? []) {
+			const key = targetKey(target.config);
+			if (columns.has(key)) continue;
+			const label = getModelMeta(target.config.model).label;
+			columns.set(key, { key, label: target.config.webSearch ? `${label} (web)` : label });
+		}
+	}
+	return [...columns.values()];
+}
+
+interface WorkflowContext {
+	orgSlugs: Map<string, string>;
+	runPlans: Map<string, PromptRunPlan>;
+	lastRunsByPrompt: Map<string, Map<string, Date>>;
+	scheduleMap: Awaited<ReturnType<typeof getScheduleMap>>;
+	activeJobMap: Awaited<ReturnType<typeof getActiveJobMap>>;
+	failuresByPrompt: Map<string, number>;
+	now: number;
+}
+
+const NO_SCHEDULER = { exists: false, nextRunAt: null as number | null, cadenceHours: null as number | null };
+
+function targetFreshness(
+	prompt: { enabled: boolean; createdAt: Date },
+	targets: TargetPlan[],
+	lastRuns: Map<string, Date>,
+	now: number,
+): Record<string, TargetRunStatus> {
+	const byTarget: Record<string, TargetRunStatus> = {};
+	for (const target of targets) {
+		const key = targetKey(target.config);
+		const lastRunAt = lastRuns.get(key) ?? null;
+		// A disabled prompt is parked on purpose, so it is never overdue.
+		const { isOverdue, overdueByMs } = prompt.enabled
+			? targetOverdueStatus({ intervalHours: target.intervalHours, lastRunAt, promptCreatedAt: prompt.createdAt, now })
+			: { isOverdue: false, overdueByMs: null };
+		byTarget[key] = { lastRunAt, isOverdue, overdueByMs };
+	}
+	return byTarget;
+}
+
+function promptWorkflowStatus(
+	prompt: { id: string; value: string; enabled: boolean; createdAt: Date },
+	brand: { id: string; name: string },
+	context: WorkflowContext,
+) {
+	const targets = context.runPlans.get(prompt.id)?.targets ?? [];
+	const lastRunsByTarget = targetFreshness(
+		prompt,
+		targets,
+		context.lastRunsByPrompt.get(prompt.id) ?? new Map<string, Date>(),
+		context.now,
+	);
+	const scheduleInfo = context.scheduleMap.get(prompt.id);
+	const activeJob = context.activeJobMap.get(prompt.id);
+
+	return {
+		overdue: Object.values(lastRunsByTarget).some((target) => target.isOverdue),
+		scheduled: activeJob !== undefined,
+		row: {
+			promptId: prompt.id,
+			promptValue: prompt.value,
+			brandId: brand.id,
+			brandName: brand.name,
+			enabled: prompt.enabled,
+			runFrequencyMs: intervalMsOf(targets),
+			lastRunsByTarget,
+			schedulerInfo: scheduleInfo
+				? { exists: true, nextRunAt: scheduleInfo.nextRunAt, cadenceHours: scheduleInfo.cadenceHours }
+				: NO_SCHEDULER,
+			recentFailures: context.failuresByPrompt.get(prompt.id) || 0,
+			jobStatus: (activeJob?.state ?? "none") as "active" | "created" | "retry" | "none",
+		},
+	};
+}
+
+function brandWorkflowSummary(
+	brand: { id: string; slug: string | null; organizationId: string; name: string; website: string; enabled: boolean },
+	brandPrompts: { id: string; value: string; enabled: boolean; createdAt: Date }[],
+	context: WorkflowContext,
+) {
+	const statuses = brandPrompts.map((prompt) => promptWorkflowStatus(prompt, brand, context));
+	const enabled = statuses.filter((status) => status.row.enabled);
+
+	return {
+		brandId: brand.id,
+		brandSlug: brand.slug,
+		organizationSlug: organizationSegment(context.orgSlugs, brand.organizationId),
+		brandName: brand.name,
+		website: brand.website,
+		enabled: brand.enabled,
+		totalPrompts: brandPrompts.length,
+		enabledPrompts: enabled.length,
+		targetColumns: targetColumnsFor(brandPrompts.map((p) => context.runPlans.get(p.id))),
+		runFrequencyMs: fastestCadenceMs(statuses.map((status) => status.row.runFrequencyMs)),
+		overduePrompts: enabled.filter((status) => status.overdue).length,
+		onSchedulePrompts: enabled.filter((status) => !status.overdue).length,
+		schedulerCoverage: { scheduled: enabled.filter((status) => status.scheduled).length, total: enabled.length },
+		prompts: statuses.map((status) => status.row),
+	};
+}
+
 export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
 
@@ -550,27 +737,53 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 	const lastRunsQuery = await db
 		.select({
-			promptId: promptRuns.promptId,
-			model: promptRuns.model,
-			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+			promptId: rollupPromptRuns.promptId,
+			model: rollupPromptRuns.model,
+			provider: rollupPromptRuns.provider,
+			webSearchEnabled: rollupPromptRuns.webSearchEnabled,
+			lastRunAt: sql<Date>`max(${rollupPromptRuns.lastRunAt})`.as("last_run_at"),
 		})
-		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.model);
+		.from(rollupPromptRuns)
+		.groupBy(
+			rollupPromptRuns.promptId,
+			rollupPromptRuns.model,
+			rollupPromptRuns.provider,
+			rollupPromptRuns.webSearchEnabled,
+		);
 
-	const lastRunsMap: Record<string, Record<string, Date>> = {};
+	const lastRunsByPrompt = new Map<string, Map<string, Date>>();
 	for (const run of lastRunsQuery) {
-		if (!lastRunsMap[run.promptId]) {
-			lastRunsMap[run.promptId] = {};
+		let byKey = lastRunsByPrompt.get(run.promptId);
+		if (!byKey) {
+			byKey = new Map();
+			lastRunsByPrompt.set(run.promptId, byKey);
 		}
-		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
+		// A run without a provider ('' in the rollups) predates target keying and
+		// can't be matched to a target anyway.
+		if (!run.provider) continue;
+		byKey.set(
+			targetKey({ model: run.model, provider: run.provider, webSearch: run.webSearchEnabled }),
+			new Date(run.lastRunAt),
+		);
 	}
 
-	const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
+	const [orgSlugs, recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
+		organizationSlugs(allBrands.map((brand) => brand.organizationId)),
 		getRecentJobs(5000),
 		getScheduleMap(),
 		getActiveJobMap(),
 		getQueueStats(),
 	]);
+
+	// The worker's own plans, or every platform a plan doesn't sell would read as overdue.
+	const entitlementsByOrg = await getOrgEntitlementsMap([...new Set(allBrands.map((b) => b.organizationId))]);
+	const runPlans = resolveRunPlansForBrands({
+		brands: allBrands,
+		promptsByBrand,
+		entitlementsByOrg,
+		scrapeTargets: parseScrapeTargets(process.env.SCRAPE_TARGETS),
+		defaultDelayHours: getDefaultDelayHours(),
+	});
 
 	const failuresByPrompt = new Map<string, number>();
 	for (const job of recentJobs) {
@@ -579,99 +792,16 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		}
 	}
 
-	const now = Date.now();
-	const defaultDelayHours = getDefaultDelayHours();
-	const defaultSchedulerInfo = { exists: false, nextRunAt: null as number | null, cadenceHours: null as number | null };
-
-	const brandSummaries = allBrands.map((brand) => {
-		const brandPrompts = promptsByBrand[brand.id] || [];
-		const delayHours = brand.delayOverrideHours ?? defaultDelayHours;
-		const runFrequencyMs = delayHours * 60 * 60 * 1000;
-
-		let overduePrompts = 0;
-		let onSchedulePrompts = 0;
-		let scheduledCount = 0;
-
-		const modelList = parseScrapeTargets(process.env.SCRAPE_TARGETS).map((t) => t.model);
-		const promptStatuses = brandPrompts.map((prompt) => {
-			const lastRuns = lastRunsMap[prompt.id] || {};
-			const lastRunsByModel: Record<
-				string,
-				{ lastRunAt: Date | null; isOverdue: boolean; overdueByMs: number | null }
-			> = {};
-
-			let anyOverdue = false;
-
-			for (const model of modelList) {
-				const lastRunAt = lastRuns[model] || null;
-				let isOverdue = false;
-				let overdueByMs: number | null = null;
-
-				if (prompt.enabled) {
-					if (lastRunAt) {
-						const timeSinceRun = now - new Date(lastRunAt).getTime();
-						if (timeSinceRun > runFrequencyMs) {
-							isOverdue = true;
-							overdueByMs = timeSinceRun - runFrequencyMs;
-							anyOverdue = true;
-						}
-					} else {
-						isOverdue = true;
-						anyOverdue = true;
-					}
-				}
-
-				lastRunsByModel[model] = { lastRunAt, isOverdue, overdueByMs };
-			}
-
-			const scheduleInfo = scheduleMap.get(prompt.id);
-			const schedulerInfo = scheduleInfo
-				? { exists: true, nextRunAt: scheduleInfo.nextRunAt, cadenceHours: scheduleInfo.cadenceHours }
-				: defaultSchedulerInfo;
-
-			const activeJob = activeJobMap.get(prompt.id);
-			if (prompt.enabled && activeJob) scheduledCount++;
-
-			if (prompt.enabled) {
-				if (anyOverdue) {
-					overduePrompts++;
-				} else {
-					onSchedulePrompts++;
-				}
-			}
-
-			const jobStatus: "active" | "created" | "retry" | "none" = activeJob?.state ?? "none";
-
-			return {
-				promptId: prompt.id,
-				promptValue: prompt.value,
-				brandId: brand.id,
-				brandName: brand.name,
-				enabled: prompt.enabled,
-				runFrequencyMs,
-				lastRunsByModel,
-				schedulerInfo,
-				recentFailures: failuresByPrompt.get(prompt.id) || 0,
-				jobStatus,
-			};
-		});
-
-		const enabledPrompts = brandPrompts.filter((p) => p.enabled).length;
-
-		return {
-			brandId: brand.id,
-			brandName: brand.name,
-			website: brand.website,
-			enabled: brand.enabled,
-			totalPrompts: brandPrompts.length,
-			enabledPrompts,
-			runFrequencyMs,
-			overduePrompts,
-			onSchedulePrompts,
-			schedulerCoverage: { scheduled: scheduledCount, total: enabledPrompts },
-			prompts: promptStatuses,
-		};
-	});
+	const context: WorkflowContext = {
+		orgSlugs,
+		runPlans,
+		lastRunsByPrompt,
+		scheduleMap,
+		activeJobMap,
+		failuresByPrompt,
+		now: Date.now(),
+	};
+	const brandSummaries = allBrands.map((brand) => brandWorkflowSummary(brand, promptsByBrand[brand.id] || [], context));
 
 	const totalOverdue = brandSummaries.reduce((sum, b) => sum + b.overduePrompts, 0);
 	const totalOnSchedule = brandSummaries.reduce((sum, b) => sum + b.onSchedulePrompts, 0);
@@ -693,13 +823,6 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	};
 });
 
-// ============================================================================
-// Admin Workflows - Retry Job
-// ============================================================================
-
-/**
- * Retry a prompt job (send immediate job for a prompt).
- */
 export const retryJobFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -728,13 +851,32 @@ export const retryJobFn = createServerFn({ method: "POST" })
 		return { success: true, message: `Triggered immediate job for prompt ${targetPromptId}` };
 	});
 
-// ============================================================================
-// Admin Workflows - Job Logs
-// ============================================================================
+function formatJobLogs(job: Record<string, any>): string[] {
+	/** JSON columns arrive as text or as parsed objects depending on the driver. */
+	const pretty = (value: unknown) => {
+		try {
+			return JSON.stringify(typeof value === "string" ? JSON.parse(value) : value, null, 2);
+		} catch {
+			return String(value);
+		}
+	};
+	const timestamps: [string, unknown][] = [
+		["Created", job.created_on],
+		["Started", job.started_on],
+		["Completed", job.completed_on],
+	];
 
-/**
- * Get logs for a specific job.
- */
+	return [
+		`Job ID: ${job.id}`,
+		`Name: ${job.name}`,
+		`State: ${job.state}`,
+		`Retry count: ${job.retry_count || 0}`,
+		...timestamps.filter(([, at]) => at).map(([label, at]) => `${label}: ${new Date(at as string).toISOString()}`),
+		...(job.data ? [`Data: ${pretty(job.data)}`] : []),
+		...(job.output ? [`${job.state === "failed" ? "Error" : "Output"}: ${pretty(job.output)}`] : []),
+	];
+}
+
 export const getJobLogsFn = createServerFn({ method: "GET" })
 	.validator(z.object({ jobId: z.string() }))
 	.handler(async ({ data }) => {
@@ -768,33 +910,6 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 
 		if (!job) throw new Error("Job not found");
 
-		const logs: string[] = [];
-		logs.push(`Job ID: ${job.id}`);
-		logs.push(`Name: ${job.name}`);
-		logs.push(`State: ${job.state}`);
-		logs.push(`Retry count: ${job.retry_count || 0}`);
-
-		if (job.created_on) logs.push(`Created: ${new Date(job.created_on).toISOString()}`);
-		if (job.started_on) logs.push(`Started: ${new Date(job.started_on).toISOString()}`);
-		if (job.completed_on) logs.push(`Completed: ${new Date(job.completed_on).toISOString()}`);
-
-		if (job.data) {
-			try {
-				const d = typeof job.data === "string" ? JSON.parse(job.data) : job.data;
-				logs.push(`Data: ${JSON.stringify(d, null, 2)}`);
-			} catch {
-				logs.push(`Data: ${String(job.data)}`);
-			}
-		}
-
-		if (job.output) {
-			try {
-				const output = typeof job.output === "string" ? JSON.parse(job.output) : job.output;
-				logs.push(job.state === "failed" ? `Error: ${JSON.stringify(output, null, 2)}` : `Output: ${JSON.stringify(output, null, 2)}`);
-			} catch {
-				logs.push(`Output: ${String(job.output)}`);
-			}
-		}
-
+		const logs = formatJobLogs(job);
 		return { jobId: data.jobId, logs, count: logs.length };
 	});

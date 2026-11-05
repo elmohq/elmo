@@ -1,0 +1,33 @@
+meta {
+  name: read the organization's billing state
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/organizations/{{orgId}}/billing
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.organizationId: eq default
+  res.body.billingEnabled: isBoolean
+  res.body.usage.brands: isNumber
+  res.body.usage.enabledPrompts: isNumber
+  res.body.usage.premiumPairingsAssigned: isNumber
+}
+
+tests {
+  test("no payment-provider identifier is exposed", function() {
+    const body = JSON.stringify(res.getBody());
+    expect(body).to.not.match(/stripe/i);
+    expect(body).to.not.match(/\bcus_/);
+    expect(body).to.not.match(/\bsub_/);
+  });
+}

@@ -1,6 +1,79 @@
-import { describe, it, expect } from "vitest";
-import { citationDateWindow, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
-import { toRoundedPercentages } from "@/lib/domain-categories";
+import { toRoundedPercentages } from "@workspace/lib/citations/domain-categories";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	applyPerPromptKeyedLVCF,
+	citationDateWindow,
+	filterAndCompleteChartData,
+	generateDateRange,
+	getDaysFromLookback,
+	getDefaultLookbackPeriod,
+	toBatchChartData,
+} from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
+
+describe("getDaysFromLookback", () => {
+	it.each<[LookbackPeriod, number]>([
+		["1w", 7],
+		["1m", 30],
+		["3m", 90],
+		["6m", 180],
+		["1y", 365],
+		["all", 365 * 2],
+		["2026-03-01..2026-03-01", 1],
+		["2026-02-01..2026-03-01", 29],
+		["2025-12-31..2026-01-01", 2],
+	])("maps %s to %i days", (lookback, days) => {
+		expect(getDaysFromLookback(lookback)).toBe(days);
+	});
+});
+
+describe("getDefaultLookbackPeriod", () => {
+	// Freeze the clock: the 7-day cutoff is exact, so a real clock ticking between
+	// building the input date and reading `now` inside the function flips the boundary case.
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-06-09T12:00:00Z"));
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+	it.each<[string, string | null | undefined]>([
+		["null (not loaded)", null],
+		["undefined (not loaded)", undefined],
+	])("defaults to 1m for %s", (_label, input) => {
+		expect(getDefaultLookbackPeriod(input)).toBe("1m");
+	});
+
+	// The cutoff is exclusive: > 7 days of history defaults to 1m, otherwise 1w.
+	it.each<[number, LookbackPeriod]>([
+		[0, "1w"],
+		[3, "1w"],
+		[7, "1w"],
+		[8, "1m"],
+		[90, "1m"],
+	])("returns %s-period default when earliest data is %i days old", (days, expected) => {
+		expect(getDefaultLookbackPeriod(daysAgo(days))).toBe(expected);
+	});
+});
+
+describe("generateDateRange", () => {
+	it.each<[string, string, string, string[]]>([
+		[
+			"inclusive ascending list of YYYY-MM-DD days",
+			"2026-06-10T00:00:00Z",
+			"2026-06-14T00:00:00Z",
+			["2026-06-10", "2026-06-11", "2026-06-12", "2026-06-13", "2026-06-14"],
+		],
+		["single day when start equals end", "2026-06-10T00:00:00Z", "2026-06-10T00:00:00Z", ["2026-06-10"]],
+		["empty range when end precedes start", "2026-06-14T00:00:00Z", "2026-06-10T00:00:00Z", []],
+	])("produces %s", (_label, start, end, expected) => {
+		expect(generateDateRange(new Date(start), new Date(end))).toEqual(expected);
+	});
+});
 
 describe("citationDateWindow", () => {
 	it("builds a `days`-day current window + contiguous equal-length previous window (UTC)", () => {
@@ -8,7 +81,13 @@ describe("citationDateWindow", () => {
 		expect(w.toDateStr).toBe("2026-06-09");
 		expect(w.fromDateStr).toBe("2026-06-03"); // 7 days inclusive of today
 		expect(w.dateRange).toEqual([
-			"2026-06-03", "2026-06-04", "2026-06-05", "2026-06-06", "2026-06-07", "2026-06-08", "2026-06-09",
+			"2026-06-03",
+			"2026-06-04",
+			"2026-06-05",
+			"2026-06-06",
+			"2026-06-07",
+			"2026-06-08",
+			"2026-06-09",
 		]);
 		expect(w.dateRange).toHaveLength(7);
 		// previous window: same length, ends the day before the current window starts (no gap, no overlap)
@@ -64,5 +143,63 @@ describe("applyPerPromptKeyedLVCF", () => {
 		const daily = applyPerPromptKeyedLVCF(rows, range, 24, keys);
 		expect(toRoundedPercentages(daily.get("2026-06-01")!)).toEqual({ brand: 33, editorial: 67, other: 0 });
 		expect(toRoundedPercentages(daily.get("2026-06-02")!)).toEqual({ brand: 33, editorial: 67, other: 0 });
+	});
+});
+
+describe("filterAndCompleteChartData with a custom range", () => {
+	it("plots exactly the chosen days, filling gaps and dropping points outside", () => {
+		const data = [
+			{ date: "2026-02-27", brand: 10 },
+			{ date: "2026-03-01", brand: 40 },
+			{ date: "2026-03-03", brand: 60 },
+			{ date: "2026-03-05", brand: 90 },
+		];
+
+		expect(filterAndCompleteChartData(data, "2026-03-01..2026-03-04")).toEqual([
+			{ date: "2026-03-01", brand: 40 },
+			{ date: "2026-03-02" },
+			{ date: "2026-03-03", brand: 60 },
+			{ date: "2026-03-04" },
+		]);
+	});
+});
+
+describe("toBatchChartData", () => {
+	const day = (prompt_id: string, date: string, runs: number, brand_mentioned_runs: number) => ({
+		prompt_id,
+		date,
+		runs,
+		brand_mentioned_runs,
+		competitor_runs: 0,
+		competitor_mentions: 0,
+	});
+
+	it("attaches each competitor's runs to the same prompt and day", () => {
+		const points = toBatchChartData(
+			[day("p1", "2026-03-01", 4, 1), day("p1", "2026-03-02", 2, 2), day("p2", "2026-03-01", 3, 0)],
+			[
+				{ prompt_id: "p1", date: "2026-03-01", competitor: "Globex", runs: 2 },
+				{ prompt_id: "p1", date: "2026-03-01", competitor: "Initech", runs: 1 },
+				{ prompt_id: "p2", date: "2026-03-01", competitor: "Globex", runs: 3 },
+			],
+		);
+
+		expect(points).toEqual([
+			{
+				prompt_id: "p1",
+				date: "2026-03-01",
+				total_runs: 4,
+				brand_mentioned_count: 1,
+				competitor_counts: { Globex: 2, Initech: 1 },
+			},
+			{ prompt_id: "p1", date: "2026-03-02", total_runs: 2, brand_mentioned_count: 2, competitor_counts: {} },
+			{
+				prompt_id: "p2",
+				date: "2026-03-01",
+				total_runs: 3,
+				brand_mentioned_count: 0,
+				competitor_counts: { Globex: 3 },
+			},
+		]);
 	});
 });

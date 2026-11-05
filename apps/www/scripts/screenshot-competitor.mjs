@@ -11,14 +11,13 @@
  *   BLOB_READ_WRITE_TOKEN
  */
 
-import { put } from "@vercel/blob";
 import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { put } from "@vercel/blob";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Load .env file
 const envPath = resolve(__dirname, "../.env");
 try {
 	const envContent = readFileSync(envPath, "utf-8");
@@ -28,7 +27,10 @@ try {
 		const eqIdx = trimmed.indexOf("=");
 		if (eqIdx === -1) continue;
 		const key = trimmed.slice(0, eqIdx).trim();
-		const value = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, "");
+		const value = trimmed
+			.slice(eqIdx + 1)
+			.trim()
+			.replace(/^["']|["']$/g, "");
 		if (!process.env[key]) process.env[key] = value;
 	}
 } catch {
@@ -83,6 +85,7 @@ const blob = await put(`screenshots/${slug}.jpg`, Buffer.from(imageBuffer), {
 	access: "public",
 	contentType: "image/jpeg",
 	addRandomSuffix: false,
+	allowOverwrite: true,
 });
 
 console.log(`Uploaded: ${blob.url}`);

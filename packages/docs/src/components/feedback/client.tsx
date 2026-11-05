@@ -1,12 +1,8 @@
-import { useState, type ReactNode } from "react";
-import { ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@workspace/ui/components/popover";
-import type { ActionResponse, PageFeedback, BlockFeedback } from "./schema";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { MessageSquare, ThumbsDown, ThumbsUp } from "lucide-react";
+import { type ReactNode, useRef, useState } from "react";
+import type { ActionResponse, BlockFeedback, PageFeedback } from "./schema";
 
 interface FeedbackProps {
 	onSendAction: (feedback: PageFeedback) => Promise<ActionResponse>;
@@ -37,9 +33,7 @@ export function Feedback({ onSendAction }: FeedbackProps) {
 
 	return (
 		<div className="mt-8 rounded-lg border p-4">
-			<p className="text-sm font-medium text-foreground">
-				Was this page helpful?
-			</p>
+			<p className="text-sm font-medium text-foreground">Was this page helpful?</p>
 			<div className="mt-3 flex items-center gap-2">
 				<Button
 					variant={opinion === "good" ? "default" : "outline"}
@@ -85,15 +79,11 @@ interface FeedbackBlockProps {
 	onSendAction: (feedback: BlockFeedback) => Promise<ActionResponse>;
 }
 
-export function FeedbackBlock({
-	id,
-	body,
-	children,
-	onSendAction,
-}: FeedbackBlockProps) {
+export function FeedbackBlock({ id, body, children, onSendAction }: FeedbackBlockProps) {
 	const [open, setOpen] = useState(false);
 	const [message, setMessage] = useState("");
 	const [submitted, setSubmitted] = useState(false);
+	const messageRef = useRef<HTMLTextAreaElement>(null);
 
 	async function handleSubmit() {
 		await onSendAction({
@@ -110,39 +100,32 @@ export function FeedbackBlock({
 		<div className="group/feedback relative">
 			{children}
 			<Popover open={open} onOpenChange={setOpen}>
-				<PopoverTrigger asChild>
-					<button
-						type="button"
-						className="absolute -right-8 top-0 hidden size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/feedback:flex group-hover/feedback:opacity-100"
-						aria-label="Send feedback about this section"
-					>
-						<MessageSquare className="size-3.5" />
-					</button>
+				<PopoverTrigger
+					render={
+						<button
+							type="button"
+							className="absolute -right-8 top-0 hidden size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/feedback:flex group-hover/feedback:opacity-100"
+							aria-label="Send feedback about this section"
+						/>
+					}
+				>
+					<MessageSquare className="size-3.5" />
 				</PopoverTrigger>
-				<PopoverContent align="end" className="w-72 p-3">
+				<PopoverContent align="end" className="w-72 p-3" initialFocus={messageRef}>
 					{submitted ? (
-						<p className="text-center text-sm text-muted-foreground">
-							Thanks for your feedback!
-						</p>
+						<p className="text-center text-sm text-muted-foreground">Thanks for your feedback!</p>
 					) : (
 						<div className="space-y-2">
-							<p className="text-sm font-medium">
-								Feedback on this section
-							</p>
+							<p className="text-sm font-medium">Feedback on this section</p>
 							<textarea
+								ref={messageRef}
 								value={message}
 								onChange={(e) => setMessage(e.target.value)}
 								placeholder="What could be improved?"
 								className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 								rows={3}
-								autoFocus
 							/>
-							<Button
-								size="sm"
-								onClick={handleSubmit}
-								disabled={message.trim().length === 0}
-								className="w-full"
-							>
+							<Button size="sm" onClick={handleSubmit} disabled={message.trim().length === 0} className="w-full">
 								Send Feedback
 							</Button>
 						</div>

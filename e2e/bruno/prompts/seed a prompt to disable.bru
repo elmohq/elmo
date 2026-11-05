@@ -1,0 +1,32 @@
+meta {
+  name: seed a prompt to disable
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "Bruno fixture for the enabled filter",
+    "tags": ["bruno-enabled-filter"]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.enabled: isTruthy
+}
+
+script:post-response {
+  bru.setVar("disabledPromptId", res.getBody().id);
+}

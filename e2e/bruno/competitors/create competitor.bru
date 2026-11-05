@@ -1,0 +1,29 @@
+meta {
+  name: create competitor
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/competitors
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "name": "Bruno E2E Competitor",
+    "domains": ["bruno-e2e-competitor.com"]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.name: eq Bruno E2E Competitor
+}
+
+script:post-response {
+  bru.setVar("createdCompetitorId", res.getBody().id);
+}

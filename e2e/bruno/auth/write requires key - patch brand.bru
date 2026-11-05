@@ -1,0 +1,20 @@
+meta {
+  name: write requires key - patch brand
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 401
+  res.body.error: eq Unauthorized
+}

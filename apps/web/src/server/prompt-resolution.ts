@@ -9,12 +9,11 @@
  * imported elsewhere, the bundler must keep it, which dragged `db` → pg →
  * `Buffer` into the visibility page's client bundle ("Buffer is not defined").
  * Keeping it here, imported only inside server-fn handlers, stays strippable.
- * See issue #68.
  */
 import { db } from "@workspace/lib/db/db";
-import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { prompts } from "@workspace/lib/db/schema";
+import { effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
+import { and, eq } from "drizzle-orm";
 
 export interface ResolvedPrompt {
 	id: string;
@@ -33,10 +32,7 @@ export interface ResolvedPrompt {
  * list into the GET request URL) keeps the request bounded regardless of how
  * many prompts a brand has. Shipping the id list overflowed the request URL for
  * brands with a few hundred prompts — 414 URI Too Long on Vercel, 431 Request
- * Header Fields Too Large in dev. See issue #68.
- *
- * NOTE: the tag-filter logic here must stay in sync with `getPromptsSummaryFn`
- * (apps/web/src/server/prompts.ts), which produces the displayed list.
+ * Header Fields Too Large in dev.
  */
 export async function resolveFilteredPrompts(
 	brandId: string,
@@ -52,33 +48,19 @@ export async function resolveFilteredPrompts(
 		.from(prompts)
 		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
 
-	const tagFilter = opts.tags?.split(",").filter(Boolean) || [];
-	const search = opts.search;
+	const tagFilter = parseTagFilter(opts.tags);
+	const search = opts.search?.toLowerCase();
 
 	return allPrompts
-		.filter((p) => {
-			const userTags = p.tags || [];
-
-			// Tag filter — match getPromptsSummaryFn: a prompt's effective tags
-			// are its user tags plus exactly one system tag reflecting its
-			// effective branded status.
-			if (tagFilter.length > 0) {
-				const { isBranded } = getEffectiveBrandedStatus(p.systemTags || [], userTags);
-				const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
-				const effectiveTags = userTags.includes(systemTag) ? userTags : [...userTags, systemTag];
-				if (!tagFilter.some((t) => effectiveTags.includes(t))) return false;
-			}
-
-			// Search filter — previously applied in the browser against the
-			// prompt text (case-insensitive substring).
-			if (search && !p.value.toLowerCase().includes(search.toLowerCase())) return false;
-
-			return true;
-		})
+		.filter((p) => matchesTagFilter(effectiveTags(p), tagFilter) && (!search || p.value.toLowerCase().includes(search)))
 		.map((p) => ({
 			id: p.id,
 			value: p.value,
 			systemTags: p.systemTags || [],
 			tags: p.tags || [],
 		}));
+}
+
+export function parseTagFilter(tags: string | undefined): string[] {
+	return tags?.split(",").filter(Boolean) || [];
 }

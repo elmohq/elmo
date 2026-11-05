@@ -1,15 +1,11 @@
 /**
  * /admin/workflows - Monitor prompt scheduling, job execution, and worker health
  */
-import { useEffect, useState } from "react";
+
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { getAppName } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Progress } from "@workspace/ui/components/progress";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import {
 	Dialog,
 	DialogContent,
@@ -18,24 +14,26 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
+import { Progress } from "@workspace/ui/components/progress";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import {
-	CheckCircle2,
-	AlertTriangle,
-	XCircle,
-	Clock,
 	Activity,
-	Server,
-	RefreshCw,
+	AlertTriangle,
+	CheckCircle2,
 	ChevronDown,
 	ChevronRight,
+	Clock,
 	Play,
-	Loader2,
+	RefreshCw,
+	Server,
+	XCircle,
 } from "lucide-react";
-import { getWorkflowDataFn, retryJobFn, getJobLogsFn } from "@/server/admin";
-
-// ============================================================================
-// Types
-// ============================================================================
+import { useCallback, useEffect, useState } from "react";
+import { pageHead } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
+import { getJobLogsFn, getWorkflowDataFn, retryJobFn } from "@/server/admin";
 
 interface SchedulerInfo {
 	exists: boolean;
@@ -43,7 +41,7 @@ interface SchedulerInfo {
 	cadenceHours: number | null;
 }
 
-interface LastRunByModel {
+interface TargetRunStatus {
 	lastRunAt: string | null;
 	isOverdue: boolean;
 	overdueByMs: number | null;
@@ -56,7 +54,8 @@ interface PromptScheduleStatus {
 	brandName: string;
 	enabled: boolean;
 	runFrequencyMs: number;
-	lastRunsByModel: Record<string, LastRunByModel>;
+	/** Keyed by target (model + web search), which is what the plan runs. */
+	lastRunsByTarget: Record<string, TargetRunStatus>;
 	schedulerInfo: SchedulerInfo;
 	recentFailures: number;
 	jobStatus: "active" | "created" | "retry" | "none";
@@ -64,12 +63,19 @@ interface PromptScheduleStatus {
 
 interface BrandScheduleSummary {
 	brandId: string;
+	brandSlug: string | null;
 	brandName: string;
+	organizationSlug: string;
 	website: string;
 	enabled: boolean;
 	totalPrompts: number;
 	enabledPrompts: number;
 	runFrequencyMs: number;
+	/**
+	 * The union of targets across the brand's prompts. Premium targets are
+	 * assigned per prompt, so no single row's targets are the whole column set.
+	 */
+	targetColumns: { key: string; label: string }[];
 	overduePrompts: number;
 	onSchedulePrompts: number;
 	schedulerCoverage: { scheduled: number; total: number };
@@ -112,10 +118,6 @@ interface WorkflowsData {
 	brands: BrandScheduleSummary[];
 }
 
-// ============================================================================
-// Utility functions
-// ============================================================================
-
 function formatDuration(ms: number): string {
 	const seconds = Math.floor(ms / 1000);
 	const minutes = Math.floor(seconds / 60);
@@ -154,10 +156,6 @@ function formatFutureTime(timestamp: number | null): string {
 	if (diffMs < 0) return "Overdue";
 	return `in ${formatDuration(diffMs)}`;
 }
-
-// ============================================================================
-// Sub-components
-// ============================================================================
 
 function QueueStatsCard({ stats, title }: { stats: QueueStats; title: string }) {
 	const hasIssues = stats.failed > 0;
@@ -215,7 +213,12 @@ function SchedulerCell({ info }: { info: SchedulerInfo }) {
 	);
 }
 
-function ModelStatus({ status }: { status?: LastRunByModel }) {
+/** Whether any target of an enabled prompt has missed its cadence. */
+function isPromptStuck(prompt: PromptScheduleStatus): boolean {
+	return prompt.enabled && Object.values(prompt.lastRunsByTarget).some((status) => status?.isOverdue);
+}
+
+function TargetStatus({ status }: { status?: TargetRunStatus }) {
 	if (!status) {
 		return <span className="text-muted-foreground">-</span>;
 	}
@@ -243,6 +246,7 @@ function ModelStatus({ status }: { status?: LastRunByModel }) {
 
 function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: string; onSuccess: () => void }) {
 	const [isLoading, setIsLoading] = useState(false);
+	const writeError = useWriteErrorMessage();
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<"queued" | "recreated" | false>(false);
 
@@ -256,7 +260,7 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 			setSuccess("queued");
 			setTimeout(() => onSuccess(), 1000);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to retry");
+			setError(writeError(err, "Failed to retry"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -274,7 +278,7 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 	return (
 		<div className="flex flex-col gap-1">
 			<Button size="sm" variant="outline" onClick={handleRetry} disabled={isLoading} className="cursor-pointer text-xs">
-				{isLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Play className="h-3 w-3 mr-1" />}
+				{isLoading ? <Spinner className="mr-1 size-3" /> : <Play className="h-3 w-3 mr-1" />}
 				Retry
 			</Button>
 			{error && <span className="text-xs text-red-500">{error}</span>}
@@ -282,61 +286,129 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 	);
 }
 
-function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySuccess?: () => void }) {
-	const isFailed = job.status === "failed";
-	const [isOpen, setIsOpen] = useState(false);
+/** Logs load lazily, only once the dialog has been opened. */
+function useJobLogs(jobId: string, isOpen: boolean) {
 	const [logs, setLogs] = useState<string[]>([]);
-	const [logsLoading, setLogsLoading] = useState(false);
-	const [logsError, setLogsError] = useState<string | null>(null);
-	const [retryLoading, setRetryLoading] = useState(false);
-	const [retryError, setRetryError] = useState<string | null>(null);
-	const [retrySuccess, setRetrySuccess] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (isOpen && job.id) {
-			setLogsLoading(true);
-			setLogsError(null);
-			getJobLogsFn({ data: { jobId: job.id } })
-				.then((data) => setLogs(data.logs || []))
-				.catch((err) => setLogsError(err.message))
-				.finally(() => setLogsLoading(false));
-		}
-	}, [isOpen, job.id]);
+		if (!isOpen || !jobId) return;
+		setLoading(true);
+		setError(null);
+		getJobLogsFn({ data: { jobId } })
+			.then((data) => setLogs(data.logs || []))
+			.catch((err) => setError(err.message))
+			.finally(() => setLoading(false));
+	}, [isOpen, jobId]);
+
+	return { logs, loading, error };
+}
+
+function JobLogsPanel({ logs, loading, error }: { logs: string[]; loading: boolean; error: string | null }) {
+	if (loading) {
+		return (
+			<div className="flex items-center gap-2 text-sm text-muted-foreground">
+				<Spinner />
+				Loading logs...
+			</div>
+		);
+	}
+	if (error) {
+		return (
+			<div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">
+				Error loading logs: {error}
+			</div>
+		);
+	}
+	if (logs.length === 0) return <p className="text-sm text-muted-foreground italic">No logs available</p>;
+
+	return (
+		<pre className="bg-muted rounded p-3 text-xs overflow-x-auto max-h-80 whitespace-pre-wrap">{logs.join("\n")}</pre>
+	);
+}
+
+/** Closes the dialog a beat after a successful retry, so the confirmation is
+ *  visible before the list refreshes underneath it. */
+function RetryJobFooter({
+	job,
+	onClose,
+	onRetrySuccess,
+}: {
+	job: RecentJob;
+	onClose: () => void;
+	onRetrySuccess?: () => void;
+}) {
+	const writeError = useWriteErrorMessage();
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [succeeded, setSucceeded] = useState(false);
 
 	const handleRetry = async () => {
-		setRetryLoading(true);
-		setRetryError(null);
-		setRetrySuccess(false);
+		setIsLoading(true);
+		setError(null);
+		setSucceeded(false);
 
 		try {
 			await retryJobFn({ data: { jobId: job.id, promptId: job.data?.promptId } });
-			setRetrySuccess(true);
+			setSucceeded(true);
 			setTimeout(() => {
-				setIsOpen(false);
+				onClose();
 				onRetrySuccess?.();
 			}, 1000);
 		} catch (err) {
-			setRetryError(err instanceof Error ? err.message : "Unknown error");
+			setError(writeError(err, "Could not retry this job"));
 		} finally {
-			setRetryLoading(false);
+			setIsLoading(false);
 		}
 	};
 
 	return (
+		<div className="flex items-center gap-3 pt-2 border-t">
+			{succeeded ? (
+				<div className="flex items-center gap-2 text-emerald-600">
+					<CheckCircle2 className="h-4 w-4" />
+					<span>Job queued for retry</span>
+				</div>
+			) : (
+				<>
+					<Button onClick={handleRetry} disabled={isLoading} className="cursor-pointer">
+						{isLoading ? <Spinner className="mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+						Retry This Job
+					</Button>
+					{error && <span className="text-sm text-red-600">{error}</span>}
+				</>
+			)}
+		</div>
+	);
+}
+
+function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySuccess?: () => void }) {
+	const isFailed = job.status === "failed";
+	const [isOpen, setIsOpen] = useState(false);
+	const { logs, loading: logsLoading, error: logsError } = useJobLogs(job.id, isOpen);
+
+	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
-			<DialogTrigger asChild>
-				<Button
-					variant="ghost"
-					size="sm"
-					className={`cursor-pointer ${isFailed ? "text-red-600 hover:text-red-700" : "text-muted-foreground hover:text-foreground"}`}
-				>
-					View Logs
-				</Button>
+			<DialogTrigger
+				render={
+					<Button
+						variant="ghost"
+						size="sm"
+						className={`cursor-pointer ${isFailed ? "text-red-600 hover:text-red-700" : "text-muted-foreground hover:text-foreground"}`}
+					/>
+				}
+			>
+				View Logs
 			</DialogTrigger>
 			<DialogContent className="max-w-[90vw] sm:max-w-[90vw] w-full max-h-[80vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
-						{isFailed ? <XCircle className="h-5 w-5 text-red-500" /> : <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+						{isFailed ? (
+							<XCircle className="h-5 w-5 text-red-500" />
+						) : (
+							<CheckCircle2 className="h-5 w-5 text-emerald-500" />
+						)}
 						{isFailed ? "Failed Job Details" : "Completed Job Details"}
 					</DialogTitle>
 					<DialogDescription>Job ID: {job.id}</DialogDescription>
@@ -362,41 +434,11 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 							<div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">{job.failedReason}</div>
 						</div>
 					)}
-					{/* Job Logs Section */}
 					<div>
 						<p className="text-muted-foreground mb-1">Execution Logs</p>
-						{logsLoading ? (
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<Loader2 className="h-4 w-4 animate-spin" />
-								Loading logs...
-							</div>
-						) : logsError ? (
-							<div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">Error loading logs: {logsError}</div>
-						) : logs.length > 0 ? (
-							<pre className="bg-muted rounded p-3 text-xs overflow-x-auto max-h-80 whitespace-pre-wrap">{logs.join("\n")}</pre>
-						) : (
-							<p className="text-sm text-muted-foreground italic">No logs available</p>
-						)}
+						<JobLogsPanel logs={logs} loading={logsLoading} error={logsError} />
 					</div>
-					{/* Retry Button for Failed Jobs */}
-					{isFailed && (
-						<div className="flex items-center gap-3 pt-2 border-t">
-							{retrySuccess ? (
-								<div className="flex items-center gap-2 text-emerald-600">
-									<CheckCircle2 className="h-4 w-4" />
-									<span>Job queued for retry</span>
-								</div>
-							) : (
-								<>
-									<Button onClick={handleRetry} disabled={retryLoading} className="cursor-pointer">
-										{retryLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-										Retry This Job
-									</Button>
-									{retryError && <span className="text-sm text-red-600">{retryError}</span>}
-								</>
-							)}
-						</div>
-					)}
+					{isFailed && <RetryJobFooter job={job} onClose={() => setIsOpen(false)} onRetrySuccess={onRetrySuccess} />}
 				</div>
 			</DialogContent>
 		</Dialog>
@@ -417,18 +459,23 @@ function BrandRow({
 	onRefresh: () => void;
 }) {
 	const hasOverdue = brand.overduePrompts > 0;
-	const scheduleHealth = brand.enabledPrompts > 0 ? Math.round((brand.onSchedulePrompts / brand.enabledPrompts) * 100) : 100;
+	const scheduleHealth =
+		brand.enabledPrompts > 0 ? Math.round((brand.onSchedulePrompts / brand.enabledPrompts) * 100) : 100;
 
 	return (
 		<>
 			<TableRow className={`cursor-pointer hover:bg-muted/50 ${hasOverdue ? "bg-amber-50/50" : ""}`} onClick={onToggle}>
 				<TableCell>
 					<div className="flex items-center gap-2">
-						{isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+						{isExpanded ? (
+							<ChevronDown className="h-4 w-4 text-muted-foreground" />
+						) : (
+							<ChevronRight className="h-4 w-4 text-muted-foreground" />
+						)}
 						<div>
 							<Link
-								to="/app/$brand"
-								params={{ brand: brand.brandId }}
+								to="/app/org/$org/brand/$brand"
+								params={{ org: brand.organizationSlug, brand: brand.brandSlug ?? brand.brandId }}
 								className="font-medium text-primary hover:underline"
 								onClick={(e) => e.stopPropagation()}
 							>
@@ -450,7 +497,9 @@ function BrandRow({
 				<TableCell className="text-center">
 					<div className="flex items-center justify-center gap-2">
 						<Progress value={scheduleHealth} className="w-20 h-2" />
-						<span className={`text-sm font-medium ${scheduleHealth < 80 ? "text-amber-600" : "text-emerald-600"}`}>{scheduleHealth}%</span>
+						<span className={`text-sm font-medium ${scheduleHealth < 80 ? "text-amber-600" : "text-emerald-600"}`}>
+							{scheduleHealth}%
+						</span>
 					</div>
 				</TableCell>
 				<TableCell className="text-center">
@@ -474,8 +523,10 @@ function BrandRow({
 									<TableRow>
 										<TableHead className="w-[250px]">Prompt</TableHead>
 										<TableHead className="text-center">Status</TableHead>
-										{Object.keys(brand.prompts[0]?.lastRunsByModel || {}).map((model) => (
-											<TableHead key={model} className="text-center capitalize">{model}</TableHead>
+										{brand.targetColumns.map((column) => (
+											<TableHead key={column.key} className="text-center">
+												{column.label}
+											</TableHead>
 										))}
 										<TableHead className="text-center">Prod Scheduler</TableHead>
 										<TableHead className="text-center">Last Job</TableHead>
@@ -486,19 +537,14 @@ function BrandRow({
 									{[...brand.prompts]
 										.sort((a, b) => {
 											const getCategory = (p: typeof a) => {
-												const isOverdue =
-													p.enabled &&
-													Object.values(p.lastRunsByModel).some((e) => e?.isOverdue);
-												if (isOverdue) return 0;
+												if (isPromptStuck(p)) return 0;
 												if (p.enabled) return 1;
 												return 2;
 											};
 											return getCategory(a) - getCategory(b);
 										})
 										.map((prompt) => {
-											const isStuck =
-												prompt.enabled &&
-												Object.values(prompt.lastRunsByModel).some((e) => e?.isOverdue);
+											const isStuck = isPromptStuck(prompt);
 											const promptJobs = recentJobs
 												.filter((j) => j.data?.promptId === prompt.promptId)
 												.sort((a, b) => b.timestamp - a.timestamp);
@@ -540,9 +586,11 @@ function BrandRow({
 															</div>
 														)}
 													</TableCell>
-													{Object.entries(prompt.lastRunsByModel).map(([model, status]) => (
-														<TableCell key={model} className="text-center">
-															<ModelStatus status={status} />
+													{brand.targetColumns.map((column) => (
+														<TableCell key={column.key} className="text-center">
+															{/* A prompt need not run every target its brand does —
+															    premium targets are assigned per prompt. */}
+															<TargetStatus status={prompt.lastRunsByTarget[column.key]} />
 														</TableCell>
 													))}
 													<TableCell className="text-center">
@@ -553,9 +601,15 @@ function BrandRow({
 													</TableCell>
 													<TableCell className="text-center">
 														{showRetry && <RetryButton promptId={prompt.promptId} onSuccess={onRefresh} />}
-														{prompt.jobStatus === "active" && <span className="text-xs text-muted-foreground">Processing...</span>}
-														{prompt.jobStatus === "created" && <span className="text-xs text-muted-foreground">In queue</span>}
-														{prompt.jobStatus === "retry" && <span className="text-xs text-muted-foreground">Retrying soon</span>}
+														{prompt.jobStatus === "active" && (
+															<span className="text-xs text-muted-foreground">Processing...</span>
+														)}
+														{prompt.jobStatus === "created" && (
+															<span className="text-xs text-muted-foreground">In queue</span>
+														)}
+														{prompt.jobStatus === "retry" && (
+															<span className="text-xs text-muted-foreground">Retrying soon</span>
+														)}
 													</TableCell>
 												</TableRow>
 											);
@@ -570,22 +624,14 @@ function BrandRow({
 	);
 }
 
-// ============================================================================
-// Route
-// ============================================================================
-
 export const Route = createFileRoute("/_authed/admin/workflows")({
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [
-				{ title: `Workflows · ${appName}` },
-				{ name: "description", content: "Monitor prompt scheduling and job execution." },
-			],
-		};
-	},
+	staticData: { crumb: "Workflows" },
+	head: pageHead({ description: "Monitor prompt scheduling and job execution." }),
 	component: WorkflowsPage,
 });
+
+/** How often the dashboard re-reads the queue while it is open. */
+const REFRESH_INTERVAL_MS = 30_000;
 
 function WorkflowsPage() {
 	const [data, setData] = useState<WorkflowsData | null>(null);
@@ -594,7 +640,7 @@ function WorkflowsPage() {
 	const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set());
 	const [isRefreshing, setIsRefreshing] = useState(false);
 
-	const fetchData = async (showRefreshing = false) => {
+	const fetchData = useCallback(async (showRefreshing = false) => {
 		if (showRefreshing) setIsRefreshing(true);
 
 		try {
@@ -606,13 +652,13 @@ function WorkflowsPage() {
 			setLoading(false);
 			setIsRefreshing(false);
 		}
-	};
+	}, []);
 
 	useEffect(() => {
 		fetchData();
-		const interval = setInterval(() => fetchData(), 30000);
+		const interval = setInterval(() => fetchData(), REFRESH_INTERVAL_MS);
 		return () => clearInterval(interval);
-	}, []);
+	}, [fetchData]);
 
 	const toggleBrand = (brandId: string) => {
 		setExpandedBrands((prev) => {
@@ -634,9 +680,9 @@ function WorkflowsPage() {
 					<Skeleton className="h-4 w-96" />
 				</div>
 				<div className="grid gap-4 md:grid-cols-4">
-				{[0, 1, 2, 3].map((n) => (
-					<Skeleton key={n} className="h-32" />
-				))}
+					{[0, 1, 2, 3].map((n) => (
+						<Skeleton key={n} className="h-32" />
+					))}
 				</div>
 				<Card>
 					<CardHeader>
@@ -644,9 +690,9 @@ function WorkflowsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-4">
-						{[0, 1, 2, 3, 4].map((n) => (
-							<Skeleton key={n} className="h-16 w-full" />
-						))}
+							{[0, 1, 2, 3, 4].map((n) => (
+								<Skeleton key={n} className="h-16 w-full" />
+							))}
 						</div>
 					</CardContent>
 				</Card>
@@ -669,17 +715,14 @@ function WorkflowsPage() {
 
 	if (!data) return null;
 
-	// Compute overdue breakdown
 	const THIRTY_MIN_MS = 30 * 60 * 1000;
 	const overdueBreakdown = data.brands.reduce(
 		(acc, brand) => {
 			for (const prompt of brand.prompts) {
-				if (!prompt.enabled) continue;
-				const models = Object.values(prompt.lastRunsByModel);
-				const isOverdue = models.some((e) => e?.isOverdue);
-				const isSeverelyOverdue = models.some((e) => e?.isOverdue && e.overdueByMs && e.overdueByMs > THIRTY_MIN_MS);
-				if (isOverdue) acc.total++;
-				if (isSeverelyOverdue) acc.severe++;
+				if (!isPromptStuck(prompt)) continue;
+				acc.total++;
+				const targets = Object.values(prompt.lastRunsByTarget);
+				if (targets.some((t) => t?.isOverdue && t.overdueByMs && t.overdueByMs > THIRTY_MIN_MS)) acc.severe++;
 			}
 			return acc;
 		},
@@ -688,7 +731,6 @@ function WorkflowsPage() {
 
 	return (
 		<div className="space-y-8">
-			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="space-y-2">
 					<h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
@@ -702,7 +744,6 @@ function WorkflowsPage() {
 				</div>
 			</div>
 
-			{/* Summary Cards */}
 			<div className="grid gap-4 md:grid-cols-4">
 				<Card>
 					<CardHeader className="pb-2">
@@ -713,7 +754,9 @@ function WorkflowsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="flex items-baseline gap-2">
-							<span className={`text-3xl font-bold ${data.summary.percentOnSchedule >= 80 ? "text-emerald-600" : "text-amber-600"}`}>
+							<span
+								className={`text-3xl font-bold ${data.summary.percentOnSchedule >= 80 ? "text-emerald-600" : "text-amber-600"}`}
+							>
 								{data.summary.percentOnSchedule}%
 							</span>
 							<span className="text-muted-foreground text-sm">on schedule</span>
@@ -738,7 +781,11 @@ function WorkflowsPage() {
 					</CardContent>
 				</Card>
 
-				<Card className={overdueBreakdown.severe > 0 ? "border-red-500/50" : overdueBreakdown.total > 0 ? "border-amber-500/50" : ""}>
+				<Card
+					className={
+						overdueBreakdown.severe > 0 ? "border-red-500/50" : overdueBreakdown.total > 0 ? "border-amber-500/50" : ""
+					}
+				>
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-medium flex items-center gap-2">
 							<AlertTriangle className={`h-4 w-4 ${overdueBreakdown.severe > 0 ? "text-red-500" : "text-amber-500"}`} />
@@ -747,12 +794,16 @@ function WorkflowsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="flex items-baseline gap-2">
-							<span className={`text-3xl font-bold ${overdueBreakdown.severe > 0 ? "text-red-600" : "text-muted-foreground"}`}>
+							<span
+								className={`text-3xl font-bold ${overdueBreakdown.severe > 0 ? "text-red-600" : "text-muted-foreground"}`}
+							>
 								{overdueBreakdown.severe}
 							</span>
 							<span className="text-muted-foreground text-sm">prompts</span>
 						</div>
-						<p className="text-xs text-muted-foreground mt-1">{overdueBreakdown.total - overdueBreakdown.severe} additional recently expired</p>
+						<p className="text-xs text-muted-foreground mt-1">
+							{overdueBreakdown.total - overdueBreakdown.severe} additional recently expired
+						</p>
 					</CardContent>
 				</Card>
 
@@ -773,10 +824,8 @@ function WorkflowsPage() {
 				</Card>
 			</div>
 
-			{/* Queue Stats */}
 			<QueueStatsCard stats={data.queue} title="Prompt Queue" />
 
-			{/* Brands Table */}
 			<Card>
 				<CardHeader>
 					<CardTitle>Brand Workflow Status</CardTitle>

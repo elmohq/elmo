@@ -2,11 +2,13 @@
  * Server functions for providing deployment configuration to the client.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { getEnvValidationState } from "@workspace/config/env";
+import { CRISP_WEBSITE_ID } from "@workspace/config/constants";
+import { getDeploymentModeFromEnv, getEnvValidationState } from "@workspace/config/env";
 import type { ClientConfig } from "@workspace/config/types";
+import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { countUsers } from "@workspace/lib/db/provisioning";
-import { getDeployment } from "@/lib/config/server";
+import { storedCredentialsLoaded, withStoredCredentials } from "@workspace/lib/secrets";
 
 export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
 	branding: Omit<ClientConfig["branding"], "onboardingRedirectUrl">;
@@ -28,6 +30,12 @@ function resolvePosthogKey(): string | undefined {
 	return process.env.VITE_POSTHOG_KEY ?? POSTHOG_PUBLIC_KEY;
 }
 
+export function resolveCrispWebsiteId(): string | undefined {
+	const mode = getDeploymentModeFromEnv();
+	if (mode !== "cloud" && mode !== "demo") return undefined;
+	return CRISP_WEBSITE_ID;
+}
+
 export const getClientConfig = createServerFn({ method: "GET" }).handler(async (): Promise<PublicClientConfig> => {
 	const deployment = getDeployment();
 
@@ -35,9 +43,10 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 
 	const userCount = await countUsers();
 	const hasUsers = userCount > 0;
-	// Register is only reachable in local mode before the first user signs up.
-	// Once the instance is bootstrapped, both the UI and API reject signups.
-	const canRegister = deployment.mode === "local" && !hasUsers;
+	// Cloud is public self-serve, so registration is always open. Otherwise it's
+	// only reachable in local mode before the first user signs up — once the
+	// instance is bootstrapped, both the UI and API reject signups.
+	const canRegister = deployment.features.selfServeSignup || (deployment.mode === "local" && !hasUsers);
 
 	return {
 		mode: deployment.mode,
@@ -47,15 +56,18 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 			plausibleDomain: process.env.VITE_PLAUSIBLE_DOMAIN,
 			clarityProjectId: process.env.VITE_CLARITY_PROJECT_ID,
 			posthogKey: resolvePosthogKey(),
+			crispWebsiteId: resolveCrispWebsiteId(),
 		},
 		defaultDelayHours: getDefaultDelayHours(),
 		canRegister,
 		hasUsers,
+		turnstileSiteKey: deployment.mode === "cloud" ? process.env.VITE_TURNSTILE_SITE_KEY || undefined : undefined,
 	};
 });
 
 export const getEnvValidationStateFn = createServerFn({ method: "GET" }).handler(async () => {
-	const envState = getEnvValidationState();
+	await storedCredentialsLoaded();
+	const envState = getEnvValidationState(withStoredCredentials());
 	return {
 		mode: envState.mode,
 		missing: envState.missing,

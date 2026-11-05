@@ -3,14 +3,10 @@ import { createRequire } from "node:module";
 import type { Plugin } from "vite";
 
 const EMBEDDED_BINARIES: Record<string, string> = {
-	"virtual:takumi-wasm":
-		"@takumi-rs/wasm/takumi_wasm_bg.wasm",
-	"virtual:font/titan-one-400":
-		"@fontsource/titan-one/files/titan-one-latin-400-normal.woff2",
-	"virtual:font/geist-sans-400":
-		"@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2",
-	"virtual:font/geist-sans-500":
-		"@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2",
+	"virtual:font/titan-one-400": "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2",
+	"virtual:font/geist-sans-400": "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2",
+	"virtual:font/geist-sans-500": "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2",
+	"virtual:font/geist-mono-400": "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2",
 };
 
 export function embedBinaries(): Plugin {

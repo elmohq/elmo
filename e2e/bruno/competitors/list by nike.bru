@@ -1,0 +1,20 @@
+meta {
+  name: list by nike
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/competitors?brandId={{nikeBrandId}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  brandId: {{nikeBrandId}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.total: gte 2
+}

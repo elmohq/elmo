@@ -1,0 +1,29 @@
+meta {
+  name: a demo deployment refuses to update a brand
+  type: http
+  seq: 4
+  tags: [
+    demo
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "brandName": "Renamed in demo mode"
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq read_only
+}

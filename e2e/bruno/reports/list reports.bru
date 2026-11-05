@@ -1,0 +1,18 @@
+meta {
+  name: list reports
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reports
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.reports: isArray
+  res.body.pagination: isDefined
+  res.body.pagination.total: gte 4
+}

@@ -1,28 +1,32 @@
 {
-  "name": "@workspace/worker",
-  "version": "0.2.13",
-  "private": true,
-  "license": "MIT",
-  "scripts": {
-    "dev": "tsx --env-file=../web/.env src/index.ts",
-    "start": "tsx src/index.ts",
-    "build": "tsc -p tsconfig.json",
-    "check-types": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@sentry/node": "^10.56.0",
-    "@workspace/lib": "workspace:*",
-    "@workspace/whitelabel": "workspace:*",
-    "auth0": "^5.11.0",
-    "drizzle-orm": "^0.45.2",
-    "pg": "^8.21.0",
-    "pg-boss": "^12.18.2",
-    "posthog-node": "^5.36.4"
-  },
-  "devDependencies": {
-    "@types/node": "^25.9.2",
-    "@types/pg": "^8.20.0",
-    "tsx": "^4.22.4",
-    "typescript": "^6.0.3"
-  }
+	"name": "@workspace/worker",
+	"version": "0.7.7",
+	"private": true,
+	"license": "MIT",
+	"scripts": {
+		"dev": "tsx --env-file=../web/.env src/index.ts",
+		"start": "tsx src/index.ts",
+		"build": "tsc -p tsconfig.json",
+		"check-types": "tsc --noEmit",
+		"test": "vitest run --project=unit",
+		"test:integration": "vitest run --project=integration"
+	},
+	"dependencies": {
+		"@sentry/node": "^11.10.0",
+		"@workspace/config": "workspace:*",
+		"@workspace/deployment": "workspace:*",
+		"@workspace/lib": "workspace:*",
+		"auth0": "catalog:",
+		"drizzle-orm": "catalog:",
+		"pg": "catalog:",
+		"pg-boss": "catalog:",
+		"posthog-node": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"@types/pg": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
 }

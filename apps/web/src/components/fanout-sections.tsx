@@ -4,34 +4,33 @@
  * run counts, a per-model variations breakdown, and the Query Words section
  * (term cloud + Added/Preserved/Dropped word changes).
  */
-import { useState } from "react";
+
+import { IconInfoCircle } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Switch } from "@workspace/ui/components/switch";
 import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle } from "@tabler/icons-react";
-import { getModelDisplayName } from "@/lib/utils";
+import { useState } from "react";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { WordCloud } from "@/components/word-cloud";
 import {
-	normTok,
 	type FanoutQueryStat,
 	type ModelFanoutStat,
+	normTok,
 	type TermStat,
-	type WordChanges,
 	type WordChangeStat,
+	type WordChanges,
 } from "@/lib/fanout-analysis";
+import { getModelDisplayName } from "@/lib/utils";
 
-export const FANOUT_PURPLE = "#8b5cf6";
+const FANOUT_PURPLE = "#8b5cf6";
 
 export function InfoTip({ children }: { children: React.ReactNode }) {
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<span className="cursor-help">
-					<IconInfoCircle className="text-muted-foreground/60 size-3.5" />
-				</span>
+			<TooltipTrigger render={<span className="cursor-help" />}>
+				<IconInfoCircle className="text-muted-foreground/60 size-3.5" />
 			</TooltipTrigger>
 			<TooltipContent className="max-w-xs text-sm font-normal">{children}</TooltipContent>
 		</Tooltip>
@@ -56,10 +55,6 @@ export function UnknownQueriesNote({ byModel }: { byModel: ModelFanoutStat[] }) 
 		</div>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Variations — fan-out queries with the prompt's keywords bolded + run counts
-// ---------------------------------------------------------------------------
 
 /** Per-model share of one variation's runs, shown inline as "2× ChatGPT". */
 export interface VariationModelCount {
@@ -96,7 +91,10 @@ export function VariationLine({
 				))}
 			</div>
 			{modelCounts?.length ? (
-				<span className="text-muted-foreground shrink-0 text-right text-xs tabular-nums leading-6" title="Times each engine ran this search">
+				<span
+					className="text-muted-foreground shrink-0 text-right text-xs tabular-nums leading-6"
+					title="Times each engine ran this search"
+				>
 					{modelCounts.map((mc) => `${mc.count.toLocaleString()}× ${getModelDisplayName(mc.model)}`).join(" · ")}
 				</span>
 			) : (
@@ -138,10 +136,6 @@ export function VariationsList({
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Query Words — the term cloud + Added / Preserved / Dropped word changes
-// ---------------------------------------------------------------------------
-
 type WordTab = "added" | "preserved" | "dropped";
 
 const WORD_TAB_HELP: Record<WordTab, string> = {
@@ -159,7 +153,7 @@ export function QueryWordsSection({ terms, wordChanges }: { terms: TermStat[]; w
 	const items = shown.slice(0, 18).map((w) => ({
 		label: w.word,
 		count: w.count,
-		suffix: <span className="text-muted-foreground tabular-nums text-xs">{w.share}%</span>,
+		suffix: <span className="text-muted-foreground tabular-nums text-xs">{w.sharePct}%</span>,
 	}));
 
 	return (

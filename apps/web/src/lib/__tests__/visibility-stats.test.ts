@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-	computeVolatility,
-	stabilityScore,
 	computeShareOfVoice,
-	shareOfVoiceTimeSeriesLVCF,
-	shareOfVoiceLeaderboardLVCF,
+	computeVolatility,
 	type DailyDomainCount,
+	shareOfVoiceLeaderboardLVCF,
+	shareOfVoiceTimeSeriesLVCF,
+	stabilityScore,
 } from "@/lib/visibility-stats";
 
 /** Helper: build daily rows from a {date: {domain: count}} spec. */
@@ -54,9 +54,7 @@ describe("computeVolatility", () => {
 		// A dominant 'hub' every day (80% of volume) with a fully-rotating tail.
 		// Set churn is high (most distinct domains change) but volume churn is low
 		// (the source that carries the answer is stable).
-		const r = computeVolatility(
-			rows({ "2026-01-01": { hub: 8, x: 1, y: 1 }, "2026-01-02": { hub: 8, z: 1, w: 1 } }),
-		);
+		const r = computeVolatility(rows({ "2026-01-01": { hub: 8, x: 1, y: 1 }, "2026-01-02": { hub: 8, z: 1, w: 1 } }));
 		expect(r.setVolatility).toBe(0.8); // inter {hub}=1, union 5 -> 1 - 1/5
 		expect(r.weightedVolatility).toBeCloseTo(0.2, 5); // overlap = min(hub .8,.8) = .8
 	});
@@ -117,8 +115,8 @@ describe("shareOfVoiceTimeSeriesLVCF", () => {
 			],
 			["2026-01-01", "2026-01-02", "2026-01-03"],
 		);
-		// day2 has no run, so it carries day1 (2/(2+2)=50%); day3 uses its own (1/(1+3)=25%)
-		expect(series.map((s) => s.share)).toEqual([50, 50, 25]);
+		// day2 has no run, so it carries day1 (2/(2+2)); day3 uses its own (1/(1+3))
+		expect(series.map((s) => s.share)).toEqual([0.5, 0.5, 0.25]);
 	});
 
 	it("aggregates across prompts and yields null for days with no data", () => {
@@ -129,9 +127,9 @@ describe("shareOfVoiceTimeSeriesLVCF", () => {
 			],
 			["2026-01-01", "2026-01-02"],
 		);
-		// day1: both prompts carry their earliest (day2) obs -> brand 1 / total 2 = 50
-		expect(series[0]).toEqual({ date: "2026-01-01", share: 50 });
-		expect(series[1]).toEqual({ date: "2026-01-02", share: 50 });
+		// day1: both prompts carry their earliest (day2) obs -> brand 1 / total 2
+		expect(series[0]).toEqual({ date: "2026-01-01", share: 0.5 });
+		expect(series[1]).toEqual({ date: "2026-01-02", share: 0.5 });
 		expect(shareOfVoiceTimeSeriesLVCF([], ["2026-01-01"])).toEqual([{ date: "2026-01-01", share: null }]);
 	});
 });
@@ -167,7 +165,8 @@ describe("shareOfVoiceLeaderboardLVCF", () => {
 			],
 			["2026-01-01", "2026-01-02", "2026-01-03"],
 		);
-		expect(Math.round((fromLeaderboard ?? 0) * 100)).toBe(trend[trend.length - 1].share);
+		// Both are exact ratios, so this is equality rather than agreement after rounding.
+		expect(fromLeaderboard).toBe(trend[trend.length - 1].share);
 	});
 
 	it("returns empty for an empty date range", () => {
@@ -179,7 +178,8 @@ describe("share-of-voice percentage consistency across computation methods", () 
 	it("leaderboard, donut, and trend round the same brand share to the same percent (no double-rounding)", () => {
 		// 235 / 1002 = 23.453% — exactly the band where pre-rounding the share to
 		// 3 decimals first would bump the leaderboard/donut to 24% while the trend,
-		// rounding the exact ratio, shows 23%. All paths must land on 23%.
+		// rounding the exact ratio, shows 23%. Every path carries the exact ratio
+		// and rounds once at the end, so all four must land on 23%.
 		const dateRange = ["2026-01-01"];
 
 		// Trend (per-prompt LVCF time series): rounds brand / (brand + competitor).
@@ -187,7 +187,7 @@ describe("share-of-voice percentage consistency across computation methods", () 
 			[{ promptId: "p1", date: "2026-01-01", brandMentions: 235, competitorMentions: 767 }],
 			dateRange,
 		);
-		const trendPct = trend[trend.length - 1].share;
+		const trendShare = trend[trend.length - 1].share;
 
 		// Leaderboard -> computeShareOfVoice (the source for the table + donut).
 		const standings = shareOfVoiceLeaderboardLVCF(
@@ -202,7 +202,7 @@ describe("share-of-voice percentage consistency across computation methods", () 
 		const brandEntry = entries.find((e) => e.isBrand);
 		const total = entries.reduce((s, e) => s + e.mentions, 0);
 
-		expect(trendPct).toBe(23); // headline / sparkline
+		expect(Math.round((trendShare ?? 0) * 100)).toBe(23); // headline / sparkline
 		expect(Math.round((brandShare ?? 0) * 100)).toBe(23); // headline derived from the leaderboard
 		expect(Math.round((brandEntry?.share ?? 0) * 100)).toBe(23); // leaderboard table cell (formatPct)
 		expect(Math.round((brandEntry!.mentions / total) * 100)).toBe(23); // donut slice

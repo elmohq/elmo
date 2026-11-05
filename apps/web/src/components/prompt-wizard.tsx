@@ -1,26 +1,35 @@
 /**
  * Single-step onboarding wizard.
  *
- * One LLM call returns brand info + competitors + prompts; the user reviews
- * and edits before saving. Replaces the prior 4-step wizard that required
- * DataForSEO + Anthropic in tandem.
+ * One LLM call returns brand info, competitors, and prompts for review before
+ * saving.
  */
-import { useState, useCallback, memo, useMemo } from "react";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { Loader2, AlertCircle, Play, Rocket } from "lucide-react";
-import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
-import { useBrand, brandKeys } from "@/hooks/use-brands";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { TagsInput } from "@workspace/ui/components/tags-input";
+import { AlertCircle, Play, Rocket } from "lucide-react";
+import { memo, useCallback, useMemo, useState } from "react";
+import { type CompetitorEntry, CompetitorsEditor, newCompetitorEntry } from "@/components/competitors-editor";
+import { type EditablePrompt, newPromptEntry, PromptsListEditor } from "@/components/prompts-list-editor";
+import { WriteErrorMessage } from "@/components/write-error-message";
+import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
+import { usePolledBrandJob } from "@/hooks/use-polled-brand-job";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
-import { analyzeBrandFn, updateOnboardedBrandFn } from "@/server/onboarding";
 import { trackEvent } from "@/lib/posthog";
-import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
-import { PromptsListEditor, newPromptEntry, type EditablePrompt } from "@/components/prompts-list-editor";
+import { useWriteErrorMessage } from "@/lib/write-errors";
+import {
+	cancelAnalyzeBrandFn,
+	getAnalyzeBrandStatusFn,
+	startAnalyzeBrandFn,
+	updateOnboardedBrandFn,
+} from "@/server/onboarding";
 
 interface PromptWizardProps {
 	onComplete: () => void;
@@ -67,10 +76,11 @@ const EditableTagsInput = memo(
 EditableTagsInput.displayName = "EditableTagsInput";
 
 export default function PromptWizard({ onComplete }: PromptWizardProps) {
-	const { brand } = useBrand();
+	const { data: brand } = useBrand();
 	const queryClient = useQueryClient();
 	const router = useRouter();
-	const [phase, setPhase] = useState<"idle" | "analyzing" | "review">("idle");
+	const writeError = useWriteErrorMessage();
+	const [reviewing, setReviewing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
@@ -83,17 +93,17 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		prompts: [],
 	});
 
-	const handleAnalyze = useCallback(async () => {
-		if (!brand?.website) return;
-		setError(null);
-		setPhase("analyzing");
-		try {
-			const suggestion = await analyzeBrandFn({
-				data: {
-					website: brand.website,
-					brandName: brand.name,
-				},
-			});
+	const brandId = brand?.id;
+
+	const analysis = usePolledBrandJob({
+		queryKey: ["analyze-brand", brandId],
+		start: () => {
+			if (!brand?.id || !brand.website) throw new Error("Brand isn't loaded yet.");
+			return startAnalyzeBrandFn({ data: { brandId: brand.id, website: brand.website, brandName: brand.name } });
+		},
+		poll: () => getAnalyzeBrandStatusFn({ data: { brandId: brandId! } }),
+		cancel: () => cancelAnalyzeBrandFn({ data: { brandId: brandId! } }),
+		onDone: ({ suggestion }) => {
 			setData({
 				brandName: suggestion.brandName || brand?.name || "",
 				website: brand?.website || suggestion.website || "",
@@ -111,17 +121,22 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					newPromptEntry({ value: p.prompt, tags: p.tags, enabled: true }),
 				),
 			});
-			setPhase("review");
+			setReviewing(true);
 			trackEvent("onboarding_analyzed", {
 				competitor_count: suggestion.competitors.length,
 				prompt_count: suggestion.suggestedPrompts.length,
 			});
-		} catch (err) {
-			const message = err instanceof Error ? err.message : "Analysis failed";
-			setError(message);
-			setPhase("idle");
-		}
-	}, [brand?.website, brand?.name]);
+		},
+		onError: setError,
+		startErrorFallback: "Analysis failed",
+		timeoutMessage: "Brand analysis timed out. Please try again.",
+	});
+
+	const handleAnalyze = () => {
+		if (!brand?.website || !brand?.id) return;
+		setError(null);
+		analysis.run();
+	};
 
 	const updateBrandName = useCallback((brandName: string) => setData((p) => ({ ...p, brandName })), []);
 	const updateWebsite = useCallback((website: string) => setData((p) => ({ ...p, website })), []);
@@ -134,10 +149,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		(competitors: CompetitorEntry[]) => setData((p) => ({ ...p, competitors })),
 		[],
 	);
-	const updatePrompts = useCallback(
-		(prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })),
-		[],
-	);
+	const updatePrompts = useCallback((prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })), []);
 
 	const previewCounts = useMemo(() => {
 		const enabled = data.prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
@@ -189,40 +201,49 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			onComplete();
 		} catch (err) {
-			setSubmitError(err instanceof Error ? err.message : "Failed to save");
+			setSubmitError(writeError(err, "Failed to save"));
 		} finally {
 			setIsSaving(false);
 		}
-	}, [brand, data, queryClient, router, onComplete]);
+	}, [brand, data, queryClient, router, onComplete, writeError]);
 
-	if (phase === "idle" || phase === "analyzing") {
+	if (!reviewing) {
 		return (
 			<div className="max-w-2xl mx-auto space-y-3">
 				<p className="text-sm text-muted-foreground">
-					We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors,
-					additional domains/aliases, and a starter set of AI prompts to track.
+					We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors, additional
+					domains/aliases, and a starter set of AI prompts to track.
 				</p>
 				{error && (
-					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
 						<AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-						<span>{error}</span>
+						<span>
+							<WriteErrorMessage message={error} />
+						</span>
 					</div>
 				)}
-				<Button
-					onClick={handleAnalyze}
-					disabled={phase === "analyzing"}
-					className="flex items-center gap-2 cursor-pointer"
-				>
-					{phase === "analyzing" ? (
-						<>
-							<Loader2 className="h-4 w-4 animate-spin" /> Analyzing brand…
-						</>
-					) : (
-						<>
-							<Play className="h-4 w-4" /> Analyze brand
-						</>
+				<div className="flex items-center gap-2">
+					<Button
+						onClick={handleAnalyze}
+						disabled={analysis.running}
+						className="flex items-center gap-2 cursor-pointer"
+					>
+						{analysis.running ? (
+							<>
+								<Spinner /> Analyzing brand…
+							</>
+						) : (
+							<>
+								<Play className="h-4 w-4" /> Analyze brand
+							</>
+						)}
+					</Button>
+					{analysis.running && (
+						<Button variant="outline" onClick={analysis.cancel} className="cursor-pointer">
+							Cancel
+						</Button>
 					)}
-				</Button>
+				</div>
 			</div>
 		);
 	}
@@ -237,11 +258,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				<div className="space-y-3">
 					<div>
 						<p className="text-xs text-muted-foreground">Brand name</p>
-						<Input
-							value={data.brandName}
-							onChange={(e) => updateBrandName(e.target.value)}
-							placeholder="Brand name"
-						/>
+						<Input value={data.brandName} onChange={(e) => updateBrandName(e.target.value)} placeholder="Brand name" />
 					</div>
 					<div>
 						<p className="text-xs text-muted-foreground">Website URL</p>
@@ -289,16 +306,19 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				<div>
 					<h2 className="text-2xl font-bold">Prompts</h2>
 					<p className="text-muted-foreground">
-						Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the bottom.
+						Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the
+						bottom.
 					</p>
 				</div>
 				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} />
 			</div>
 
 			{submitError && (
-				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
 					<AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-					<div className="text-sm">{submitError}</div>
+					<div className="text-sm">
+						<WriteErrorMessage message={submitError} />
+					</div>
 				</div>
 			)}
 
@@ -309,7 +329,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			>
 				{isSaving ? (
 					<>
-						<Loader2 className="h-4 w-4 animate-spin" /> Saving…
+						<Spinner /> Saving…
 					</>
 				) : (
 					<>

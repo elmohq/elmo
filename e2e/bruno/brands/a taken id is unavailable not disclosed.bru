@@ -1,0 +1,38 @@
+meta {
+  name: a brand id another tenant holds is refused as unavailable
+  type: http
+  seq: 30
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "id": "{{nikeBrandId}}",
+    "name": "Not Nike",
+    "domains": ["not-nike.example.com"]
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+tests {
+  test("the refusal says the id is unavailable, not that a brand exists", function() {
+    const message = String(res.getBody().message || "");
+    expect(message).to.match(/not available/i);
+    // Echoing back the id the caller supplied leaks nothing; confirming that a
+    // brand exists, or naming who holds it, does.
+    expect(message, "an org key must not learn that another tenant holds this id")
+      .to.not.match(/exists|organization|tenant|workspace|owned/i);
+  });
+}

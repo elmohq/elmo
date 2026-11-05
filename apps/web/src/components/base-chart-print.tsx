@@ -1,11 +1,9 @@
-
-import * as React from "react";
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
-import { Badge } from "@workspace/ui/components/badge";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
-import { ChartDataPoint, getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
+import { Badge } from "@workspace/ui/components/badge";
+import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { type ChartDataPoint, type ChartSubject, latestObservedPoint, visibilityBadgeProps } from "@/lib/chart-utils";
 
 interface BaseChartPrintProps {
 	data: ChartDataPoint[];
@@ -13,7 +11,7 @@ interface BaseChartPrintProps {
 	visibility?: number | null;
 	showTitle?: boolean;
 	showBadge?: boolean;
-	brand: Brand;
+	brand: ChartSubject;
 	competitors: Competitor[];
 }
 
@@ -24,9 +22,18 @@ interface BarData {
 	isBrand: boolean;
 }
 
-function CustomXAxisTick(props: any) {
-	const { x, y, payload, brandName } = props;
-	const isCurrentBrand = payload.value === brandName;
+function CustomXAxisTick({
+	x,
+	y,
+	payload,
+	brandName,
+}: {
+	x?: number;
+	y?: number;
+	payload?: { value: string };
+	brandName: string;
+}) {
+	const isCurrentBrand = payload?.value === brandName;
 
 	return (
 		<g transform={`translate(${x},${y})`}>
@@ -39,7 +46,7 @@ function CustomXAxisTick(props: any) {
 				fontSize="10"
 				fontWeight={isCurrentBrand ? "bold" : "normal"}
 			>
-				{payload.value}
+				{payload?.value}
 			</text>
 		</g>
 	);
@@ -55,14 +62,7 @@ export function BaseChartPrint({
 	competitors,
 }: BaseChartPrintProps) {
 	const routeContext = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	// Get the most recent data point that has actual data
-	const latestDataPoint = data
-		.filter((point) => {
-			// Check if any brand or competitor has non-null data
-			const allIds = [brand.id, ...competitors.map((c) => c.id)];
-			return allIds.some((id) => point[id] !== null && point[id] !== undefined);
-		})
-		.pop();
+	const latestDataPoint = latestObservedPoint(data, [brand.id, ...competitors.map((c) => c.id)]);
 
 	if (!latestDataPoint) {
 		return (
@@ -79,11 +79,9 @@ export function BaseChartPrint({
 		);
 	}
 
-	// Create bar data for all entities (brand + competitors)
 	const chartColors = routeContext.clientConfig?.branding.chartColors ?? [];
 	const allEntities: BarData[] = [];
 
-	// Add brand data
 	const brandValue = latestDataPoint[brand.id] as number;
 	if (brandValue !== null && brandValue !== undefined) {
 		allEntities.push({
@@ -94,7 +92,6 @@ export function BaseChartPrint({
 		});
 	}
 
-	// Add competitor data
 	competitors.forEach((competitor, index) => {
 		const competitorValue = latestDataPoint[competitor.id] as number;
 		if (competitorValue !== null && competitorValue !== undefined) {
@@ -108,7 +105,6 @@ export function BaseChartPrint({
 		}
 	});
 
-	// Sort all entities by value (highest first), then limit to top 6 (including brand if present)
 	const sortedEntities = allEntities.sort((a, b) => b.value - a.value).slice(0, 6);
 
 	return (
@@ -116,19 +112,19 @@ export function BaseChartPrint({
 			{showTitle && (
 				<div className="flex items-center justify-center gap-2">
 					{title && <h3 className="text-sm font-medium capitalize print:text-xs">{title}</h3>}
-					{showBadge && visibility !== null && (
+					{showBadge && visibility != null && (
 						<Badge
-							variant={getBadgeVariant(visibility!)}
-							className={`text-xs ${getBadgeClassName(visibility!)} print:text-xs`}
+							variant={visibilityBadgeProps(visibility).variant}
+							className={`text-xs ${visibilityBadgeProps(visibility).className} print:text-xs`}
 						>
 							{visibility}%
 						</Badge>
 					)}
 				</div>
 			)}
-		<div className="h-[300px] w-full">
-			<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
-				<BarChart data={sortedEntities} margin={{ top: 20, right: 15, left: 20, bottom: 0 }} barCategoryGap="20%">
+			<div className="h-[300px] w-full">
+				<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
+					<BarChart data={sortedEntities} margin={{ top: 20, right: 15, left: 20, bottom: 0 }} barCategoryGap="20%">
 						<XAxis
 							dataKey="name"
 							axisLine={false}

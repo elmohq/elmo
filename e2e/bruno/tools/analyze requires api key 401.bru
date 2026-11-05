@@ -1,0 +1,19 @@
+meta {
+  name: analyze requires an api key
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/tools/analyze
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 401
+}

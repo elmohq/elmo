@@ -23,6 +23,18 @@ export default defineConfig({
 				test: {
 					name: "unit",
 					include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+					exclude: ["src/**/*.integration.test.ts"],
+				},
+			},
+			{
+				extends: true,
+				test: {
+					name: "integration",
+					include: ["src/**/*.integration.test.ts"],
+					globalSetup: ["src/test/integration/global-setup.ts"],
+					// Its own variable rather than DATABASE_URL, which in a dev checkout
+					// points at data these tests would write into.
+					env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? "" },
 				},
 			},
 			{

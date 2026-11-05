@@ -1,0 +1,28 @@
+meta {
+  name: a restriction naming another tenant's brand collapses to nothing
+  type: http
+  seq: 27
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgForgedKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.total: eq 0
+  res.body.data: isEmpty
+}
+
+docs {
+  metadata is client-writable, so a brand restriction can name anything. It is
+  intersected with the key's own organization on every request, so naming only
+  another tenant's brands leaves a key that reaches none — the direction a
+  forged value has to fail in.
+}

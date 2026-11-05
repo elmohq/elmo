@@ -1,149 +1,94 @@
-import { Check, ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { WaitlistForm } from "./waitlist-form";
-import { ContactForm } from "./contact-form";
+import { PLAN_KEYS, PLANS, planPlatformBreakdown } from "@workspace/config/plans";
+import { cloudAppUrl } from "@workspace/config/referrals";
+import { PlatformTier } from "@workspace/ui/brand/platform-tier";
+import { ArrowRight } from "lucide-react";
+import { OtherPlans } from "./home/pricing";
 
-interface Plan {
-	id: string;
-	tag: string;
-	name: string;
-	desc: string;
-	price: string;
-	priceLabel: string;
-	features: string[];
-	cta:
-		| { type: "link"; text: string; href: string }
-		| { type: "waitlist" }
-		| { type: "contact" };
-}
-
-const plans: Plan[] = [
-	{
-		id: "self-hosted",
-		tag: "01",
-		name: "Self-Hosted",
-		desc: "Run on your own infra with full access.",
-		price: "$0",
-		priceLabel: "",
-		features: [
-			"Unlimited prompts",
-			"All AI models supported",
-			"Citation analysis",
-			"Competitor tracking",
-			"Full source code access",
-			"Community support",
-		],
-		cta: { type: "link", text: "Get started", href: "/docs" },
-	},
-	{
-		id: "cloud",
-		tag: "02",
-		name: "Cloud",
-		desc: "Managed hosting, no maintenance.",
-		price: "Coming Soon",
-		priceLabel: "",
-		features: [
-			"Everything in Self-Hosted",
-			"Managed hosting",
-			"Automatic updates",
-			"Priority support",
-			"Daily backups",
-			"Usage analytics",
-		],
-		cta: { type: "waitlist" },
-	},
-	{
-		id: "white-label",
-		tag: "03",
-		name: "White Label",
-		desc: "Provide AEO for all of your customers.",
-		price: "Custom",
-		priceLabel: "",
-		features: [
-			"Everything in Cloud",
-			"Custom branding",
-			"Custom domain",
-			"SSO",
-			"Shared Slack channel",
-			"Prioritized features",
-		],
-		cta: { type: "contact" },
-	},
-];
-
-export function Pricing() {
+export function Pricing({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 	return (
 		<section id="pricing" className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
-				<div>
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-						/ PRICING
-					</p>
-					<h2 className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						Self-host it, run it in our cloud, or white-label it for your
-						customers.
-					</h2>
-				</div>
+				<Heading className="max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+					Simple, self-serve pricing.
+				</Heading>
+				<p className="mt-4 text-pretty text-zinc-600 md:text-lg">
+					Unlimited seats and API/MCP access on every plan. Annual billing saves two months.
+				</p>
 
-				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
-					{plans.map((plan) => (
-						<div
-							key={plan.id}
-							className="flex flex-col justify-between bg-white p-6 lg:p-8"
-						>
-							<div>
-								<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
-									{plan.tag}
-								</span>
-								<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">
-									{plan.name}
-								</h3>
-								<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">
-									{plan.desc}
-								</p>
-								<div className="mt-6 flex items-baseline gap-2 border-y border-zinc-200 py-4">
-									<span className="text-4xl font-semibold tracking-tight text-zinc-950 tabular-nums">
-										{plan.price}
-									</span>
-									{plan.priceLabel && (
-										<span className="font-mono text-[11px] uppercase tracking-[0.15em] text-zinc-500">
-											{plan.priceLabel}
-										</span>
-									)}
-								</div>
-								<ul role="list" className="mt-6 space-y-2.5 text-sm text-zinc-700">
-									{plan.features.map((f) => (
-										<li key={f} className="flex items-start gap-2">
-											<Check
-												className="mt-0.5 size-3.5 shrink-0 text-blue-600"
-												strokeWidth={3}
-											/>
-											<span>{f}</span>
-										</li>
-									))}
-								</ul>
-							</div>
-							<div className="mt-8 [&_button]:!h-8 [&_button]:w-full [&_button]:rounded-md [&_button]:bg-blue-600 [&_button]:!px-3 [&_button]:!py-0 [&_button]:!text-sm [&_button]:font-medium [&_button]:!leading-none [&_button]:text-white [&_button]:ring-1 [&_button]:ring-blue-600 [&_button]:hover:bg-blue-700">
-								{plan.cta.type === "link" && (
-									<Link
-										to={plan.cta.href}
-										className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
-									>
-										{plan.cta.text}
-										<ArrowRight className="size-3.5" />
-									</Link>
-								)}
-								{plan.cta.type === "waitlist" && (
-									<WaitlistForm source="pricing" />
-								)}
-								{plan.cta.type === "contact" && (
-									<ContactForm source="pricing" />
-								)}
-							</div>
-						</div>
-					))}
-				</div>
+				<CloudPlans />
+				<OtherPlans className="mt-4" />
 			</div>
 		</section>
+	);
+}
+
+function CloudPlans() {
+	return (
+		<div className="mt-12">
+			<div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-4">
+				{PLAN_KEYS.map((key) => {
+					const plan = PLANS[key];
+					const breakdown = planPlatformBreakdown(plan);
+					return (
+						<div key={key} className="flex flex-col bg-white p-5">
+							<h4 className="text-lg font-semibold tracking-tight text-zinc-950">{plan.name}</h4>
+							<div className="mt-2 flex items-baseline gap-1">
+								<span className="text-2xl font-semibold tracking-tight text-zinc-950 tabular-nums">
+									${plan.monthlyPriceUsd}
+								</span>
+								<span className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ mo</span>
+							</div>
+							<p className="mt-1 text-xs text-zinc-500 tabular-nums">${plan.annualPriceUsd}/yr</p>
+
+							<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
+								<li>
+									{plan.maxBrands} brand{plan.maxBrands === 1 ? "" : "s"}
+								</li>
+								<li>{plan.maxPrompts} tracked prompts</li>
+							</ul>
+
+							{/* The pick tiers all spend the same budget, so they sit together
+							    under what the plan lets you choose. */}
+							<div className="mt-4 space-y-2.5 border-t border-zinc-100 pt-4">
+								<p className="text-xs font-medium text-zinc-900">{breakdown.pickHeading}</p>
+								{breakdown.pickGroups.map((group) => (
+									<PlatformTier
+										key={group.id}
+										label={group.label}
+										runsPerDay={group.runsPerDay}
+										models={group.models}
+									/>
+								))}
+							</div>
+
+							{/* Chosen per prompt and added to the picks above, not swapped for
+							    one of them, and paid out of a metered pool. Omitted entirely on
+							    plans that don't sell it, rather than advertising an absence. */}
+							{breakdown.premium && (
+								<div className="mt-4 border-t border-zinc-100 pt-4">
+									<PlatformTier
+										label={breakdown.premium.label}
+										runsPerDay={breakdown.premium.runsPerDay}
+										models={breakdown.premium.models}
+									/>
+									<p className="mt-1 text-[11px] leading-snug text-zinc-500">{breakdown.premium.summary}</p>
+								</div>
+							)}
+
+							<div className="mt-auto pt-6">
+								<a
+									href={cloudAppUrl(`marketing-pricing-${key}`)}
+									className="inline-flex w-full h-9 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 pt-0 text-sm font-medium leading-none text-white hover:bg-blue-700"
+								>
+									Get {plan.name}
+									<ArrowRight className="size-3.5" />
+								</a>
+							</div>
+						</div>
+					);
+				})}
+			</div>
+		</div>
 	);
 }

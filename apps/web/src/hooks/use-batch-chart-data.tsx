@@ -1,21 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
-import { getBatchChartDataFn, type BatchChartDataResponse } from "@/server/visibility";
-
-export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
+import type { LookbackPeriod } from "@/lib/lookback";
+import { getBatchChartDataFn } from "@/server/visibility";
 
 export interface BatchChartDataFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
-	/** Tag filter (resolved to prompt IDs server-side). */
 	tags?: string[];
-	/** Search term applied to prompt text (resolved server-side). */
 	search?: string;
 }
 
 export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilters) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
 		queryKey: [
@@ -41,14 +37,13 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 		staleTime: 60_000,
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: true,
-		placeholderData: (prev) => prev, // Keep previous data while loading
+		placeholderData: (prev) => prev,
 	});
 
 	return {
-		batchChartData: query.data,
+		data: query.data,
 		isLoading: query.isLoading,
-		isValidating: query.isFetching,
-		isError: query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

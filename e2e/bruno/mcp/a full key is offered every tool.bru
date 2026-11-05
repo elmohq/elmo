@@ -1,0 +1,62 @@
+meta {
+  name: a full key is offered every tool
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  { "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {} }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  const names = res.body.result.tools.map((tool) => tool.name);
+
+  test("the reads are there", function() {
+    expect(names).to.include("list_brands");
+    expect(names).to.include("get_analytics");
+    expect(names).to.include("get_billing");
+    expect(names).to.include("get_run");
+  });
+
+  test("so are the writes this key holds every scope for", function() {
+    expect(names).to.include("create_prompts");
+    expect(names).to.include("update_prompt");
+  });
+
+  test("and nothing that deletes or provisions", function() {
+    for (const name of names) {
+      expect(name, name).to.not.match(/^delete_/);
+    }
+    expect(names).to.not.include("create_brand");
+    expect(names).to.not.include("create_organization");
+  });
+
+  test("every tool says whether it writes, and what it is for", function() {
+    for (const tool of res.body.result.tools) {
+      expect(tool.annotations.readOnlyHint, tool.name).to.be.a("boolean");
+      expect(tool.description, tool.name).to.be.a("string");
+    }
+  });
+}
+
+docs {
+  Deleting a prompt is an instance-key operation on /api/v1 and no dashboard
+  role can do it, so it is absent here rather than scoped: this surface is the
+  product as a workspace member has it.
+}

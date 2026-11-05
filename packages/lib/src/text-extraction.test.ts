@@ -1,13 +1,45 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-	extractTextFromOpenAI,
-	extractTextFromAnthropic,
-	extractTextFromGoogle,
-	extractTextContent,
-	extractCitationsFromOpenAI,
-	extractCitationsFromGoogle,
+	CITATION_TITLE_MAX_LENGTH,
 	extractCitations,
+	extractCitationsFromBrightdata,
+	extractCitationsFromDataforseoLlm,
+	extractCitationsFromGoogle,
+	extractCitationsFromOpenAI,
+	extractCitationsFromOxylabs,
+	extractorFor,
+	extractRun,
+	extractTextContent,
+	extractTextFromAnthropic,
+	extractTextFromBrightdata,
+	extractTextFromDataforseoLlm,
+	extractTextFromDataforseoScraper,
+	extractTextFromGoogle,
+	extractTextFromOpenAI,
+	extractTextFromOxylabs,
+	normalizeCitationTitle,
+	storableText,
+	tryExtractTextContent,
 } from "./text-extraction";
+
+/** A minimal DataForSEO AI Optimization "LLM Responses" payload. */
+function dfsLlmResponse(opts: { reasoning?: boolean; annotations?: { title?: string; url: string }[] }) {
+	const items: any[] = [];
+	if (opts.reasoning) {
+		items.push({ type: "reasoning", sections: [{ type: "summary_text", text: "thinking..." }] });
+	}
+	items.push({
+		type: "message",
+		sections: [
+			{
+				type: "text",
+				text: "The answer text.",
+				annotations: opts.annotations ?? null,
+			},
+		],
+	});
+	return { tasks: [{ status_code: 20000, result: [{ model_name: "gpt-4o", items }] }] };
+}
 
 describe("text-extraction", () => {
 	describe("extractTextFromOpenAI", () => {
@@ -91,9 +123,7 @@ describe("text-extraction", () => {
 	describe("extractTextFromAnthropic", () => {
 		it("should extract text from content array", () => {
 			const rawOutput = {
-				content: [
-					{ type: "text", text: "Anthropic response" },
-				],
+				content: [{ type: "text", text: "Anthropic response" }],
 			};
 
 			expect(extractTextFromAnthropic(rawOutput)).toBe("Anthropic response");
@@ -124,9 +154,7 @@ describe("text-extraction", () => {
 		it("should handle missing content gracefully", () => {
 			expect(extractTextFromAnthropic({})).toBe("No text content found in Anthropic output.");
 			expect(extractTextFromAnthropic(null)).toBe("No text content found in Anthropic output.");
-			expect(extractTextFromAnthropic({ content: "not an array" })).toBe(
-				"No text content found in Anthropic output."
-			);
+			expect(extractTextFromAnthropic({ content: "not an array" })).toBe("No text content found in Anthropic output.");
 		});
 	});
 
@@ -158,9 +186,7 @@ describe("text-extraction", () => {
 					{
 						result: [
 							{
-								items: [
-									{ type: "organic", title: "Not AI overview" },
-								],
+								items: [{ type: "organic", title: "Not AI overview" }],
 							},
 						],
 					},
@@ -177,12 +203,89 @@ describe("text-extraction", () => {
 		});
 	});
 
+	describe("extractTextFromDataforseoLlm", () => {
+		it("extracts message section text and skips reasoning items", () => {
+			const raw = dfsLlmResponse({ reasoning: true });
+			expect(extractTextFromDataforseoLlm(raw)).toBe("The answer text.");
+		});
+
+		it("returns a fallback when no text is present", () => {
+			expect(extractTextFromDataforseoLlm({ tasks: [{ result: [{ items: [] }] }] })).toBe(
+				"No text content found in DataForSEO LLM output.",
+			);
+			expect(extractTextFromDataforseoLlm({})).toBe("No text content found in DataForSEO LLM output.");
+		});
+
+		it("is reachable through the dataforseo dispatch (shape auto-detect)", () => {
+			const raw = dfsLlmResponse({});
+			expect(extractTextFromGoogle(raw)).toBe("The answer text.");
+			expect(extractTextContent(raw, "dataforseo")).toBe("The answer text.");
+		});
+	});
+
+	describe("extractTextFromDataforseoScraper", () => {
+		it("keeps per-item blocks separate when the top-level markdown is missing", () => {
+			const raw = {
+				tasks: [
+					{
+						result: [
+							{
+								sources: [],
+								items: [
+									{ type: "text", markdown: "Here are the top speakers." },
+									{ type: "table", markdown: "| Speaker | Price |\n| --- | --- |\n| Era 300 | $449 |" },
+								],
+							},
+						],
+					},
+				],
+			};
+			expect(extractTextFromDataforseoScraper(raw)).toBe(
+				"Here are the top speakers.\n\n| Speaker | Price |\n| --- | --- |\n| Era 300 | $449 |",
+			);
+		});
+	});
+
+	describe("extractCitationsFromDataforseoLlm", () => {
+		it("extracts annotations as citations", () => {
+			const raw = dfsLlmResponse({
+				annotations: [
+					{ title: "Example", url: "https://www.example.com/a" },
+					{ title: "Other", url: "https://other.org/b" },
+				],
+			});
+			const citations = extractCitationsFromDataforseoLlm(raw);
+			expect(citations).toEqual([
+				{ url: "https://www.example.com/a", title: "Example", domain: "example.com", citationIndex: 0 },
+				{ url: "https://other.org/b", title: "Other", domain: "other.org", citationIndex: 1 },
+			]);
+		});
+
+		it("de-dupes repeated URLs and ignores non-http entries", () => {
+			const raw = dfsLlmResponse({
+				annotations: [{ url: "https://example.com/x" }, { url: "https://example.com/x" }, { url: "not-a-url" }],
+			});
+			const citations = extractCitationsFromDataforseoLlm(raw);
+			expect(citations).toHaveLength(1);
+			expect(citations[0].url).toBe("https://example.com/x");
+		});
+
+		it("returns [] when annotations are null (web search off)", () => {
+			expect(extractCitationsFromDataforseoLlm(dfsLlmResponse({}))).toEqual([]);
+			expect(extractCitationsFromDataforseoLlm({})).toEqual([]);
+		});
+
+		it("is reachable through the dataforseo dispatch (shape auto-detect)", () => {
+			const raw = dfsLlmResponse({ annotations: [{ url: "https://example.com/x" }] });
+			expect(extractCitationsFromGoogle(raw)).toHaveLength(1);
+			expect(extractCitations(raw, "dataforseo")).toHaveLength(1);
+		});
+	});
+
 	describe("extractTextContent", () => {
 		it("should route by provider name", () => {
 			const openaiOutput = {
-				output: [
-					{ type: "message", content: [{ type: "output_text", text: "OpenAI text" }] },
-				],
+				output: [{ type: "message", content: [{ type: "output_text", text: "OpenAI text" }] }],
 			};
 			const anthropicOutput = {
 				content: [{ type: "text", text: "Anthropic text" }],
@@ -198,9 +301,7 @@ describe("text-extraction", () => {
 
 		it("should route by legacy engine names for old data", () => {
 			const openaiOutput = {
-				output: [
-					{ type: "message", content: [{ type: "output_text", text: "OpenAI text" }] },
-				],
+				output: [{ type: "message", content: [{ type: "output_text", text: "OpenAI text" }] }],
 			};
 			expect(extractTextContent(openaiOutput, "openai")).toBe("OpenAI text");
 			expect(extractTextContent(openaiOutput, "chatgpt")).toBe("OpenAI text");
@@ -211,6 +312,84 @@ describe("text-extraction", () => {
 		it("should attempt generic extraction for unknown providers", () => {
 			expect(extractTextContent({ choices: [{ message: { content: "generic" } }] }, "unknown")).toBe("generic");
 			expect(extractTextContent({ answer_markdown: "md content" }, "unknown")).toBe("md content");
+		});
+	});
+
+	describe("tryExtractTextContent", () => {
+		const emptyPayloads: [label: string, providerOrEngine: string, rawOutput: unknown][] = [
+			["openai", "openai-api", {}],
+			["openai by legacy engine", "chatgpt", {}],
+			["anthropic", "anthropic-api", {}],
+			["anthropic by legacy engine", "claude", null],
+			["mistral", "mistral-api", {}],
+			["dataforseo serp", "dataforseo", {}],
+			["dataforseo by legacy engine", "google-ai-overview", {}],
+			["dataforseo llm responses", "dataforseo", { tasks: [{ result: [{ items: [{ sections: [] }] }] }] }],
+			["dataforseo llm scraper", "dataforseo", { tasks: [{ result: [{ sources: [] }] }] }],
+			["openrouter", "openrouter", {}],
+			["searchapi", "searchapi", {}],
+			["olostep", "olostep", {}],
+			["brightdata", "brightdata", {}],
+			["brightdata with no record", "brightdata", null],
+			["oxylabs", "oxylabs", { results: [{ content: {} }] }],
+			["oxylabs with no content", "oxylabs", {}],
+			["cloro", "cloro", {}],
+			["cloro with no answer", "cloro", null],
+			["an unknown provider", "unknown", {}],
+			["an unknown provider with no payload", "unknown", null],
+		];
+
+		it.each(emptyPayloads)("reports no text for %s", (_label, providerOrEngine, rawOutput) => {
+			expect(extractTextContent(rawOutput, providerOrEngine).trim()).not.toBe("");
+			expect(tryExtractTextContent(rawOutput, providerOrEngine)).toBeNull();
+		});
+
+		it("reports no text when a payload cannot be parsed", () => {
+			expect(tryExtractTextContent({ json_content: "{not json" }, "olostep")).toBeNull();
+		});
+
+		it("reports no text for a blank answer", () => {
+			expect(tryExtractTextContent("   ", "unknown")).toBeNull();
+		});
+
+		it("returns the answer when the payload has one", () => {
+			const rawOutput = { output: [{ type: "message", content: [{ type: "output_text", text: "The answer." }] }] };
+			expect(tryExtractTextContent(rawOutput, "openai-api")).toBe("The answer.");
+		});
+	});
+
+	describe("storableText", () => {
+		it("keeps a real answer and drops a provider's placeholder", () => {
+			expect(storableText("Acme leads the pack.")).toBe("Acme leads the pack.");
+			expect(storableText(extractTextFromOpenAI({}))).toBeNull();
+			expect(storableText("")).toBeNull();
+			expect(storableText(undefined)).toBeNull();
+		});
+	});
+
+	describe("extractRun", () => {
+		it("extracts an answer and its citations together", () => {
+			const rawOutput = {
+				output: [
+					{
+						type: "message",
+						content: [
+							{
+								type: "output_text",
+								text: "The answer.",
+								annotations: [{ type: "url_citation", url: "https://example.com/a", title: "A" }],
+							},
+						],
+					},
+				],
+			};
+			const run = extractRun(rawOutput, "openai-api");
+			expect(run.textContent).toBe("The answer.");
+			expect(run.citations.map((citation) => citation.url)).toEqual(["https://example.com/a"]);
+		});
+
+		it("yields nothing to store for an empty payload", () => {
+			expect(extractRun({}, "openai-api")).toEqual({ textContent: null, citations: [] });
 		});
 	});
 
@@ -363,9 +542,7 @@ describe("text-extraction", () => {
 					{
 						result: [
 							{
-								items: [
-									{ type: "ai_overview", markdown: "No refs" },
-								],
+								items: [{ type: "ai_overview", markdown: "No refs" }],
 							},
 						],
 					},
@@ -378,6 +555,286 @@ describe("text-extraction", () => {
 		it("should handle empty output gracefully", () => {
 			expect(extractCitationsFromGoogle({})).toEqual([]);
 			expect(extractCitationsFromGoogle(null)).toEqual([]);
+		});
+	});
+
+	describe("extractCitationsFromOxylabs", () => {
+		it("should extract ChatGPT-style citations with a top-level url", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							citations: [{ url: "https://www.forbes.com/article", title: "Best Speakers" }],
+						},
+					},
+				],
+			};
+
+			const citations = extractCitationsFromOxylabs(rawOutput);
+			expect(citations).toHaveLength(1);
+			expect(citations[0]).toEqual({
+				url: "https://www.forbes.com/article",
+				title: "Best Speakers",
+				domain: "forbes.com",
+				citationIndex: 0,
+			});
+		});
+
+		it("should extract Google AI Mode citations from the nested urls array", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							citations: [
+								{
+									text: "The JBL Xtreme 5 is a newly released option.",
+									urls: ["https://www.bgr.com/best-speakers", "https://www.soundguys.com/jbl-xtreme-5"],
+								},
+								{ text: "Other mentions.", urls: ["https://www.rtings.com/speaker"] },
+							],
+						},
+					},
+				],
+			};
+
+			const citations = extractCitationsFromOxylabs(rawOutput);
+			expect(citations.map((c) => c.domain)).toEqual(["bgr.com", "soundguys.com", "rtings.com"]);
+			expect(citations[0].citationIndex).toBe(0);
+			expect(citations[2].citationIndex).toBe(2);
+		});
+
+		it("should extract Perplexity citations from additional_results.sources_results", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							additional_results: {
+								sources_results: [{ url: "https://www.rtings.com/best", title: "Best Bluetooth Speakers" }],
+							},
+						},
+					},
+				],
+			};
+
+			const citations = extractCitationsFromOxylabs(rawOutput);
+			expect(citations).toHaveLength(1);
+			expect(citations[0].domain).toBe("rtings.com");
+		});
+
+		it("should dedupe URLs that repeat across citation entries", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							citations: [
+								{ text: "a", urls: ["https://example.com/x"] },
+								{ text: "b", urls: ["https://example.com/x", "https://other.com/y"] },
+							],
+						},
+					},
+				],
+			};
+
+			const citations = extractCitationsFromOxylabs(rawOutput);
+			expect(citations.map((c) => c.url)).toEqual(["https://example.com/x", "https://other.com/y"]);
+		});
+
+		it("should skip invalid URLs and handle empty output gracefully", () => {
+			expect(extractCitationsFromOxylabs({})).toEqual([]);
+			expect(extractCitationsFromOxylabs(null)).toEqual([]);
+			const rawOutput = {
+				results: [{ content: { citations: [{ urls: ["not-a-url", "https://valid.com"] }] } }],
+			};
+			expect(extractCitationsFromOxylabs(rawOutput).map((c) => c.domain)).toEqual(["valid.com"]);
+		});
+
+		it("extracts Google AI Overview references from answer fragments and the source panel", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							results: {
+								ai_overviews: [
+									{
+										answer_text: [
+											{
+												fragments: [
+													{
+														text: "a",
+														references: [{ source: "SoundGuys", url: "https://www.soundguys.com/jbl-flip" }],
+													},
+												],
+											},
+										],
+										source_panel: { items: [{ title: "RTINGS", url: "https://www.rtings.com/speaker" }] },
+									},
+								],
+							},
+						},
+					},
+				],
+			};
+			const citations = extractCitationsFromOxylabs(rawOutput);
+			expect(citations.map((c) => c.domain)).toEqual(["soundguys.com", "rtings.com"]);
+		});
+	});
+
+	describe("extractTextFromOxylabs", () => {
+		it("reads the Google AI Overview from nested answer fragments", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							results: {
+								ai_overviews: [
+									{
+										answer_text: [
+											{
+												fragments: [
+													{ text: "The best budget speaker is the JBL Flip." },
+													{ text: "It offers strong bass for the price." },
+												],
+											},
+										],
+									},
+								],
+							},
+						},
+					},
+				],
+			};
+			expect(extractTextFromOxylabs(rawOutput)).toBe(
+				"The best budget speaker is the JBL Flip.\n\nIt offers strong bass for the price.",
+			);
+		});
+
+		it("falls back to SERP text fields when there is no AI Overview", () => {
+			const rawOutput = { results: [{ content: { markdown_text: "Plain answer." } }] };
+			expect(extractTextFromOxylabs(rawOutput)).toBe("Plain answer.");
+		});
+	});
+
+	describe("extractTextFromBrightdata", () => {
+		it("reads the SERP AI Overview from ai_overview.texts, including nested list blocks", () => {
+			const rawOutput = {
+				ai_overview: {
+					texts: [
+						{ type: "paragraph", snippet: "The Sonos Era 300 is a well-reviewed speaker with spatial audio." },
+						{
+							type: "list",
+							snippet: "",
+							list: [
+								{ type: "paragraph", snippet: "Battery Life: 6 hours" },
+								{ type: "paragraph", snippet: "Water resistance: IP55" },
+							],
+						},
+					],
+					references: [
+						{
+							href: "https://www.whathifi.com/reviews/sonos-era-300",
+							title: "What Hi-Fi. Opens in new tab.",
+							index: 0,
+						},
+					],
+				},
+			};
+			expect(extractTextFromBrightdata(rawOutput)).toBe(
+				"The Sonos Era 300 is a well-reviewed speaker with spatial audio.\n\nBattery Life: 6 hours\n\nWater resistance: IP55",
+			);
+		});
+
+		it("falls back to other ai_overview text fields", () => {
+			expect(extractTextFromBrightdata({ ai_overview: { markdown: "Overview markdown." } })).toBe("Overview markdown.");
+		});
+
+		it("still reads chatbot dataset answers and reports missing content", () => {
+			expect(extractTextFromBrightdata({ answer_text_markdown: "Dataset answer." })).toBe("Dataset answer.");
+			expect(extractTextFromBrightdata({})).toBe("No text content found in BrightData output.");
+		});
+	});
+
+	describe("extractTextFromCloro", () => {
+		it("reads the AI Overview's markdown rather than the flattened text beside it", () => {
+			const rawOutput = {
+				aioverview: {
+					text: "The Brooks Ghost is a well-reviewed beginner shoe.",
+					markdown: "The **Brooks Ghost** is a well-reviewed beginner shoe.",
+				},
+			};
+			expect(extractTextContent(rawOutput, "cloro")).toBe("The **Brooks Ghost** is a well-reviewed beginner shoe.");
+		});
+
+		it("falls back to text for the chatbot tasks, which carry no markdown field", () => {
+			expect(extractTextContent({ text: "Chatbot answer." }, "cloro")).toBe("Chatbot answer.");
+		});
+	});
+
+	describe("searchapi", () => {
+		const AI_OVERVIEW = {
+			ai_overview: {
+				markdown: "The **Brooks Ghost** is a well-reviewed beginner shoe.",
+				reference_links: [
+					{ index: 0, title: "Best beginner shoes", link: "https://www.runnersworld.com/beginner-shoes" },
+				],
+			},
+		};
+
+		it("reads a chatbot answer and the pages it cited", () => {
+			const rawOutput = {
+				markdown: "The **Marshall Stockwell III** is a well-reviewed speaker.",
+				reference_links: [{ index: 0, title: "Review", link: "https://www.techradar.com/stockwell-iii" }],
+				web_results: [{ position: 1, title: "Roundup", link: "https://www.whathifi.com/roundup" }],
+			};
+			expect(extractTextContent(rawOutput, "searchapi")).toBe(
+				"The **Marshall Stockwell III** is a well-reviewed speaker.",
+			);
+			// `web_results` is what ChatGPT retrieved, not what it cited.
+			expect(extractCitations(rawOutput, "searchapi").map((c) => c.domain)).toEqual(["techradar.com"]);
+		});
+
+		it("unwraps the AI Overview from the result page around it", () => {
+			expect(extractTextContent(AI_OVERVIEW, "searchapi")).toContain("Brooks Ghost");
+			expect(extractCitations(AI_OVERVIEW, "searchapi").map((c) => c.domain)).toEqual(["runnersworld.com"]);
+		});
+
+		it("falls back to the typed blocks when an answer carries no markdown", () => {
+			const rawOutput = {
+				text_blocks: [
+					{ type: "header", answer: "Blockchain" },
+					{ type: "unordered_list", items: [{ type: "paragraph", answer: "A distributed ledger." }] },
+				],
+			};
+			expect(extractTextContent(rawOutput, "searchapi")).toBe("Blockchain\n\nA distributed ledger.");
+		});
+	});
+
+	describe("extractCitationsFromBrightdata", () => {
+		it("extracts AI Overview references by href, trims title noise, and de-dupes", () => {
+			const rawOutput = {
+				ai_overview: {
+					references: [
+						{
+							href: "https://www.whathifi.com/reviews/sonos-era-300",
+							title: "What Hi-Fi. Opens in new tab.",
+							index: 0,
+						},
+						{
+							href: "https://www.rtings.com/speaker/reviews/sonos/era-300",
+							title: "RTINGS. Opens in new tab.",
+							index: 1,
+						},
+						{ href: "https://www.whathifi.com/reviews/sonos-era-300", title: "dupe", index: 2 },
+					],
+				},
+			};
+			const citations = extractCitationsFromBrightdata(rawOutput);
+			expect(citations.map((c) => c.domain)).toEqual(["whathifi.com", "rtings.com"]);
+			expect(citations[0].title).toBe("What Hi-Fi");
+		});
+
+		it("still extracts chatbot dataset citations", () => {
+			const rawOutput = { citations: [{ url: "https://example.com/a", title: "A" }] };
+			expect(extractCitationsFromBrightdata(rawOutput)).toHaveLength(1);
 		});
 	});
 
@@ -409,5 +866,64 @@ describe("text-extraction", () => {
 		it("should return empty array for unknown model group", () => {
 			expect(extractCitations({}, "unknown")).toEqual([]);
 		});
+	});
+
+	describe("citation titles", () => {
+		it("keeps titles that are already a sensible length", () => {
+			expect(normalizeCitationTitle("A perfectly normal page title")).toBe("A perfectly normal page title");
+		});
+
+		it("treats a missing or empty title as absent", () => {
+			expect(normalizeCitationTitle(undefined)).toBeUndefined();
+			expect(normalizeCitationTitle("")).toBeUndefined();
+			expect(normalizeCitationTitle(12345)).toBeUndefined();
+		});
+
+		it("bounds titles so an oversized one cannot fail the citation insert", () => {
+			const bodyText = "x".repeat(11_325);
+			expect(normalizeCitationTitle(bodyText)).toHaveLength(CITATION_TITLE_MAX_LENGTH);
+		});
+
+		it("truncates on whole characters so multi-byte titles stay valid", () => {
+			const truncated = normalizeCitationTitle("\u{1D518}".repeat(CITATION_TITLE_MAX_LENGTH + 50));
+			expect(truncated).toBe("\u{1D518}".repeat(CITATION_TITLE_MAX_LENGTH));
+		});
+
+		it("bounds titles arriving from a provider payload", () => {
+			const citations = extractCitationsFromOpenAI({
+				output: [
+					{
+						type: "message",
+						content: [
+							{
+								type: "output_text",
+								text: "answer",
+								annotations: [{ type: "url_citation", url: "https://example.com/manual.pdf", title: "y".repeat(8000) }],
+							},
+						],
+					},
+				],
+			});
+			expect(citations).toHaveLength(1);
+			expect(citations[0].title).toHaveLength(CITATION_TITLE_MAX_LENGTH);
+		});
+	});
+});
+
+describe("extractorFor", () => {
+	const openAiPayload = { output: [{ type: "message", content: [{ type: "output_text", text: "Acme is great." }] }] };
+
+	it("reads a run with its provider's extractor", () => {
+		expect(tryExtractTextContent(openAiPayload, extractorFor({ provider: "openai-api", model: "chatgpt" }))).toBe(
+			"Acme is great.",
+		);
+	});
+
+	it("falls back to the engine's extractor when the provider names none, as runs recorded as `direct` do", () => {
+		expect(tryExtractTextContent(openAiPayload, extractorFor({ provider: "direct", model: "chatgpt" }))).toBe(
+			"Acme is great.",
+		);
+		expect(extractorFor({ provider: null, model: "claude" })).toBe("claude");
+		expect(extractorFor({ provider: "constructor", model: "claude" })).toBe("claude");
 	});
 });

@@ -1,0 +1,27 @@
+meta {
+  name: the competitors list carries data alongside its shipped key
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/competitors
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("data and competitors are the same list", function() {
+    const body = res.getBody();
+    expect(body.data).to.be.an("array");
+    expect(body.data).to.eql(body.competitors);
+  });
+}

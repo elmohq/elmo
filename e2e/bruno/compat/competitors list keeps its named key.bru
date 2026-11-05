@@ -1,0 +1,21 @@
+meta {
+  name: the competitor list still answers under `competitors`
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/competitors?brandId={{brandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.competitors: isArray
+  res.body.pagination.total: isNumber
+}

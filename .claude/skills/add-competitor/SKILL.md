@@ -2,6 +2,8 @@
 name: add-competitor
 description: Add a new competitor to the AI Visibility Tool Directory — researches the tool, generates data, takes a screenshot, and inserts into the codebase
 argument-hint: <url>
+metadata:
+  internal: true
 ---
 
 Add a new competitor to the AI visibility tool directory at `apps/www/src/lib/competitors/data.ts`.
@@ -18,7 +20,9 @@ Use WebFetch to read the competitor's website at `$ARGUMENTS`. Gather:
 - What the tool does (tagline + longer description)
 - Which category it fits: `tracking`, `content`, `api-developer`, `ecommerce`, `seo-traditional`, `open-source`, or `other`
 - Pricing info (free tier? starting price? enterprise?)
-- Status: `active`, `shutting-down`, `acquired`, or `beta`
+- Status: `active`, `beta`, `acquired`, `shutting-down`, `defunct`, or `pivoted` (set `fate` for the last four so the tool shows up correctly in the AEO Graveyard)
+- License (SPDX id, e.g. `MIT`, `AGPL-3.0`) if the code is public
+- `checkedAt`: today's date (`YYYY-MM-DD`). Comparison pages show it as "last checked", so bump it on an existing entry whenever you re-verify it, even if nothing else changed
 - 3 highlights (short bullet points about what makes it notable)
 
 ## 2. Determine feature flags
@@ -26,6 +30,10 @@ Use WebFetch to read the competitor's website at `$ARGUMENTS`. Gather:
 Read the feature definitions in `apps/www/src/lib/competitors/types.ts` (the `FEATURE_CATEGORIES` constant). Based on your research, determine which features the competitor supports. Set each to `true` or omit it (defaults to `false`). The features are:
 
 - `multiLlmTracking` — tracks across multiple AI platforms (ChatGPT, Claude, Gemini, etc.)
+- Engines tracked, one flag each: `chatgpt`, `googleAiOverviews`, `googleAiMode`, `gemini`, `perplexity`, `copilot`, `claude`, `grok`, `deepseek`, `metaAi` — check the pricing page too, since engines are often gated by plan (still `true`)
+- `anyModel` — users can add arbitrary models (e.g. any OpenRouter model) rather than a fixed list
+- `uiCapture` — the vendor says it captures answers from the real consumer apps, not only model APIs
+- `byoKeys` — customers can plug in their own scraper or model API keys
 - `visibilityScore` — provides an aggregate AI visibility score
 - `citationAnalytics` — tracks citation sources in AI responses
 - `competitorBenchmarking` — compare visibility against competitors
@@ -43,6 +51,8 @@ Read the feature definitions in `apps/www/src/lib/competitors/types.ts` (the `FE
 - `keywordResearch` — AI keyword/prompt discovery
 - `emailAlerts` — automated alerts
 - `dataExportApi` — CSV export or API access
+- `typescriptSdk` / `pythonSdk` — an official, published client library for their API (not just curl snippets)
+- `mcpServer` — an MCP server for AI assistants
 - `biConnectors` — Looker Studio, NinjaCat, etc.
 - `whiteLabelAgency` — white-label or agency features
 - `openSource` — source code available
@@ -50,14 +60,14 @@ Read the feature definitions in `apps/www/src/lib/competitors/types.ts` (the `FE
 
 Be conservative — only mark features as `true` if you can confirm them from the website.
 
-## 3. Fetch domain metrics
+## 3. Fetch the domain rating
 
 Extract the domain from the URL (e.g. `https://www.example.com/foo` → `example.com`). Then run:
 ```bash
-cd apps/www && node scripts/fetch-domain-metrics.mjs "<domain>"
+cd apps/www && node scripts/fetch-domain-rating.mjs "<domain>"
 ```
 
-This returns JSON with `ahrefsDR` and `ahrefsTraffic`. Use these values in the competitor entry.
+This returns JSON with `ahrefsDR`, from Ahrefs' free public API (no API key required). Use it for the competitor entry.
 
 ## 4. Generate the slug
 
@@ -73,6 +83,14 @@ cd apps/www && node scripts/screenshot-competitor.mjs "<slug>" "<url>"
 This requires `SCREENSHOT_ONE_ACCESS_KEY` and `BLOB_READ_WRITE_TOKEN` in `apps/www/.env`.
 
 If the script fails, inform the user and continue with the data entry — the screenshot can be added later.
+
+**Verify the capture — don't trust it blindly.** ScreenshotOne uploads whatever the site serves, and sites with bot protection (Cloudflare, etc.) frequently return a captcha or block page to the headless browser, which then gets stored as the "screenshot." After a successful upload, download the blob URL the script printed and actually view the image:
+
+```bash
+curl -s -o /tmp/<slug>.jpg "<blob URL printed by the script>"
+```
+
+Open `/tmp/<slug>.jpg` and confirm it's genuinely the competitor's homepage/product — **not** a bot challenge ("Checking your browser…", "Select all squares with…", "verify you are human"), an access-denied / 403 page, or a blank/error page. If it's a challenge or error page, do NOT keep it: tell the user automated capture was blocked and ask them to send a real screenshot to upload manually (the script sets `allowOverwrite: true`, so re-uploading replaces the bad image).
 
 ## 6. Insert into data.ts
 
@@ -91,8 +109,8 @@ Use the same code style as the existing entries. Example entry:
         "Longer 2-3 sentence description of the tool, its approach, and what makes it notable.",
     category: "tracking",
     ahrefsDR: 55,
-    ahrefsTraffic: 1234,
     status: "active",
+    checkedAt: "2026-11-03",
     features: {
         multiLlmTracking: true,
         visibilityScore: true,
@@ -119,11 +137,11 @@ Insert the new tool's slug at the appropriate position based on these criteria (
 4. **General web authority (DR/traffic) is a minor tiebreaker only** — a DR 90 SEO suite with a small AEO add-on should NOT outrank a DR 50 dedicated AEO tracker.
 
 The tiers in the ranking are:
-- **Tier A** (top ~8%): Well-known, established AEO-focused tools with real traction
-- **Tier B** (next ~13%): Known/growing AEO tools
-- **Tier C** (next ~22%): Niche/emerging AEO tools with some traction
-- **Tier D** (next ~27%): Early/small AEO tools
-- **Tier F** (rest): Very new or minimal traction
+- **Tier A** (top ~3%): Category leaders with major funding, customers, and recognition
+- **Tier B** (next ~7%): Well-funded or widely adopted AEO tools
+- **Tier C** (next ~15%): Known/growing AEO tools
+- **Tier D** (next ~25%): Niche/emerging AEO tools with some traction
+- **Tier F** (rest): Early, small, or minimal-traction tools
 
 If the tool is a large platform where AI visibility is NOT the primary product (e.g., a traditional SEO suite, analytics platform, or content tool that added AEO as a secondary feature), do NOT add it to `aeoPopularityRanking`. Instead, add its slug to the `aeoNotApplicable` set. These tools get an "N/A" grade and sort to the bottom of the directory.
 
@@ -140,7 +158,7 @@ pnpm exec tsc --noEmit
 
 After completing all steps, tell the user:
 - The competitor name and slug
-- The category, ahrefsDR, and ahrefsTraffic
+- The category and ahrefsDR
 - Which features you marked as true
 - Whether the screenshot uploaded successfully
 - The URL where the comparison page will be: `/ai-visibility-tools/elmo-vs-<slug>`

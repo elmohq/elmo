@@ -1,7 +1,16 @@
-import { IconBrandGithub, IconWorld } from "@tabler/icons-react";
+import { IconBrandGithub, IconScale, IconWorld } from "@tabler/icons-react";
 import { useRouteContext } from "@tanstack/react-router";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { isElmoHosted, LEGAL_DOCUMENTS, legalUrl, showsLegalLinks } from "@workspace/config/legal";
 import type { ClientConfig } from "@workspace/config/types";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { openCookiePreferences } from "@workspace/ui/lib/cookie-consent";
 
 export function NavAppInfo() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
@@ -25,18 +34,42 @@ export function NavAppInfo() {
 			</a>
 			<div className="flex items-center gap-1">
 				<Tooltip>
-					<TooltipTrigger asChild>
-						<a href="https://www.elmohq.com/" target="_blank" className={linkClass}>
-							<IconWorld className="size-4" />
-						</a>
+					<TooltipTrigger
+						render={<a href="https://www.elmohq.com/" target="_blank" className={linkClass} rel="noopener" />}
+					>
+						<IconWorld className="size-4" />
 					</TooltipTrigger>
 					<TooltipContent>elmohq.com</TooltipContent>
 				</Tooltip>
+				{showsLegalLinks(mode) && (
+					<DropdownMenu>
+						<DropdownMenuTrigger className={linkClass} aria-label="Legal" title="Legal">
+							<IconScale className="size-4" />
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start" side="top" className="w-48">
+							{LEGAL_DOCUMENTS.map((document) => (
+								<DropdownMenuItem
+									key={document.slug}
+									render={<a href={legalUrl(document.slug)} target="_blank" rel="noreferrer" />}
+								>
+									{document.title}
+								</DropdownMenuItem>
+							))}
+							{/* Only Elmo-hosted deployments gate anything on consent, so only they have a choice to revisit. */}
+							{isElmoHosted(mode) && (
+								<>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem onClick={openCookiePreferences}>Cookie Preferences</DropdownMenuItem>
+								</>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
 				<Tooltip>
-					<TooltipTrigger asChild>
-						<a href="https://github.com/elmohq/elmo" target="_blank" rel="noreferrer" className={linkClass}>
-							<IconBrandGithub className="size-4" />
-						</a>
+					<TooltipTrigger
+						render={<a href="https://github.com/elmohq/elmo" target="_blank" rel="noreferrer" className={linkClass} />}
+					>
+						<IconBrandGithub className="size-4" />
 					</TooltipTrigger>
 					<TooltipContent>View on GitHub</TooltipContent>
 				</Tooltip>

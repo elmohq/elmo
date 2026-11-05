@@ -1,42 +1,44 @@
-import { useMemo } from "react";
-import { Card, CardContent, CardFooter, CardHeader } from "@workspace/ui/components/card";
-import { Separator } from "@workspace/ui/components/separator";
-import { Button } from "@workspace/ui/components/button";
-import { Inbox } from "lucide-react";
 import { IconEditCircle } from "@tabler/icons-react";
-import { usePromptsSummary } from "@/hooks/use-prompts-summary";
+import { Link, useSearch } from "@tanstack/react-router";
+import type { Competitor } from "@workspace/lib/db/schema";
+import { buttonVariants } from "@workspace/ui/components/button";
+import { Card } from "@workspace/ui/components/card";
+import { cn } from "@workspace/ui/lib/utils";
+import { Inbox } from "lucide-react";
+import { useMemo } from "react";
+import { PromptChartSkeleton } from "@/components/cached-prompt-chart";
+import { ALL_MODELS_VALUE } from "@/components/filter-bar";
+import { FilteredListShell } from "@/components/filtered-list-shell";
+import { PageHeader } from "@/components/page-header";
+import { PromptOrderDropdown } from "@/components/prompt-order-dropdown";
+import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
+import { VisibilityBarSection } from "@/components/visibility-bar-section";
+import { ChartDataProvider } from "@/contexts/chart-data-context";
 import { useBatchChartData } from "@/hooks/use-batch-chart-data";
 import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
-import { Link, useSearch } from "@tanstack/react-router";
-import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
-import { ChartDataProvider } from "@/contexts/chart-data-context";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { PageHeader } from "@/components/page-header";
-import { getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
-import { FilteredListShell } from "@/components/filtered-list-shell";
-import { PromptOrderDropdown } from "@/components/prompt-order-dropdown";
-import { VisibilityBarSection } from "@/components/visibility-bar-section";
+import { usePromptsSummary } from "@/hooks/use-prompts-summary";
+import { useBrandParams } from "@/hooks/use-route-params";
+import type { ChartSubject } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
-import type { LookbackPeriod } from "@/lib/chart-utils";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import { skeletonRows } from "@/lib/skeleton-rows";
 
 interface PromptsDisplayProps {
 	pageTitle: string;
 	pageDescription: string;
 	pageInfoContent?: React.ReactNode;
-	editLink: string;
 }
 
 /** Host component: renders the page shell (title, sticky bar, content)
  *  and composes independent sub-sections. It doesn't subscribe to any
  *  filter state itself — each section reads the URL keys it cares about
  *  so a filter change only re-renders the sections that depend on it. */
-export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent, editLink }: PromptsDisplayProps) {
-	const { brand } = useBrand();
+export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent }: PromptsDisplayProps) {
+	const { data: brand } = useBrand();
 	return (
 		<PageHeader title={pageTitle} subtitle={pageDescription} infoContent={pageInfoContent}>
-			<PromptsContent brandId={brand?.id} editLink={editLink} />
+			<PromptsContent brandId={brand?.id} />
 		</PageHeader>
 	);
 }
@@ -47,8 +49,9 @@ export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent, ed
  *  components still hold their own subscriptions to whichever URL keys
  *  they need, so a click on "Lookback" only invalidates the data users
  *  and not `FilterBar` itself. */
-function PromptsContent({ brandId, editLink }: { brandId: string | undefined; editLink: string }) {
-	const { brand } = useBrand(brandId);
+function PromptsContent({ brandId }: { brandId: string | undefined }) {
+	const { data: brand } = useBrand(brandId);
+	const brandParams = useBrandParams();
 	const filters = useListFilters();
 	const { model, lookback, tags, search } = filters;
 	// `order` is this route's own search key (not a narrowing filter), so it
@@ -58,19 +61,17 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 		select: (s) => coercePromptOrder((s as { order?: unknown }).order),
 	});
 
-	// Server hands us `effectiveModels` — the deployment-configured model ids
-	// this brand actually runs, after applying `enabledModels`. FilterBar
-	// adds the "all" sentinel on top; per-prompt chart controls only care
-	// about the concrete list.
-	const effectiveModels = brand?.effectiveModels ?? [];
-	const availableModels = useMemo(() => getAvailableModels(effectiveModels), [effectiveModels]);
-	const availableIndividualModels = effectiveModels;
+	// Server hands us the targets this brand actually runs. FilterBar adds the
+	// "all" sentinel on top; per-prompt chart controls only care about the
+	// concrete list.
+	const trackedTargets = brand?.trackedTargets ?? [];
+	const availableIndividualModels = useMemo(() => trackedTargets.map((target) => target.value), [trackedTargets]);
 
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 	const {
-		promptsSummary,
+		data: promptsSummary,
 		isLoading: isLoadingSummary,
-		isError: summaryError,
+		error: summaryError,
 	} = usePromptsSummary(brandId, {
 		lookback,
 		model: modelParam,
@@ -79,10 +80,8 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	// The prompt list is still search-filtered client-side for display, then
-	// re-ordered per the `order` control (#60). The chart/visibility sections
-	// no longer receive this id list — they resolve the same prompts
-	// server-side from the tag + search filters (issue #68).
+	// Only the list uses this; the chart sections resolve the same prompts
+	// server-side from the filters.
 	const sortedPrompts = useMemo(() => {
 		if (!promptsSummary) return [];
 		const allPrompts = promptsSummary.prompts;
@@ -98,7 +97,7 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 		<FilteredListShell
 			filters={filters}
 			availableTags={availableTags}
-			availableModels={availableModels}
+			trackedTargets={trackedTargets}
 			showSearch
 			showModelSelector
 			showResultCount
@@ -124,12 +123,14 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
 						<p className="mb-4">No prompts yet.</p>
-						<Button asChild size="sm" className="h-7 flex cursor-pointer">
-							<Link to={editLink}>
-								<IconEditCircle />
-								<span>Edit</span>
-							</Link>
-						</Button>
+						<Link
+							to="/app/org/$org/brand/$brand/settings/prompts"
+							params={brandParams}
+							className={cn(buttonVariants({ size: "sm" }), "h-7 flex cursor-pointer")}
+						>
+							<IconEditCircle />
+							<span>Edit</span>
+						</Link>
 					</div>
 				</div>
 			}
@@ -171,7 +172,7 @@ function ChartSection({
 	sortedPrompts: { id: string; value: string; firstEvaluatedAt?: Date | string | null }[];
 	availableIndividualModels: string[];
 }) {
-	const { batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {
+	const { data: batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {
 		lookback,
 		model: modelParam,
 		tags: selectedTags.length > 0 ? selectedTags : undefined,
@@ -189,20 +190,8 @@ function ChartSection({
 		};
 	}, [batchChartData?.dateRange]);
 
-	const brandForProvider: Brand | null = batchChartData?.brand
-		? {
-				id: batchChartData.brand.id,
-				name: batchChartData.brand.name,
-				website: "",
-				additionalDomains: [],
-				aliases: [],
-				enabled: true,
-				onboarded: true,
-				delayOverrideHours: null,
-				enabledModels: null,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			}
+	const brandForProvider: ChartSubject | null = batchChartData?.brand
+		? { id: batchChartData.brand.id, name: batchChartData.brand.name }
 		: null;
 
 	const competitorsForProvider: Competitor[] =
@@ -240,34 +229,8 @@ function ChartSection({
 function ContentLoadingSkeleton() {
 	return (
 		<div className="space-y-6">
-			{[...Array(3)].map((_, i) => (
-				<Card key={i} className="py-3 gap-3">
-					<CardHeader className="flex justify-between items-center px-3">
-						<Skeleton className="h-4 w-48" />
-						<Skeleton className="h-5 w-24 rounded-full" />
-					</CardHeader>
-					<Separator className="py-0 my-0" />
-					<CardContent className="pl-0 pr-6">
-						<div className="h-[250px] flex items-center justify-center">
-							<div className="space-y-2">
-								<Skeleton className="h-4 w-32 mx-auto" />
-								<div className="flex justify-center space-x-2">
-									<div className="h-2 w-2 bg-primary/20 rounded-full animate-pulse" />
-									<div className="h-2 w-2 bg-primary/20 rounded-full animate-pulse [animation-delay:0.2s]" />
-									<div className="h-2 w-2 bg-primary/20 rounded-full animate-pulse [animation-delay:0.4s]" />
-								</div>
-							</div>
-						</div>
-					</CardContent>
-					<Separator className="py-0 my-0" />
-					<CardFooter className="flex items-center justify-between px-3 pt-3 pb-0">
-						<div className="flex items-center gap-2">
-							<Skeleton className="h-6 w-16 rounded" />
-							<Skeleton className="h-6 w-24 rounded" />
-						</div>
-						<Skeleton className="h-6 w-20 rounded" />
-					</CardFooter>
-				</Card>
+			{skeletonRows(3).map((row) => (
+				<PromptChartSkeleton key={row} />
 			))}
 		</div>
 	);

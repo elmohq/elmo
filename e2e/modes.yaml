@@ -1,0 +1,125 @@
+# Every deployment mode, up at once: a container holds DEPLOYMENT_MODE for its
+# lifetime, so each mode is its own service on its own port (MODE_STACKS in
+# e2e/fixtures.ts explains which databases they share). Each needs its own
+# APP_URL, because better-auth signs cookies and MCP resource identifiers
+# against it.
+
+x-mode: &mode
+  image: elmo-e2e-web
+  env_file:
+    # Relative to the project directory, which is where the first file in
+    # COMPOSE_FILE lives — the generated .elmo/elmo.yaml, beside this .env.
+    - path: .env
+      required: true
+
+# Reached over the compose network rather than the published port, so these are
+# not the URLs e2e/fixtures.ts hands the specs.
+x-cloud-database: &cloud-database postgres://postgres:postgres@postgres:5432/elmo_cloud
+x-whitelabel-database: &whitelabel-database postgres://postgres:postgres@postgres:5432/elmo_whitelabel
+
+services:
+  # The services below carry no build of their own, so `docker compose build`
+  # still builds each image exactly once; naming them here is what lets the
+  # others run them.
+  web:
+    image: elmo-e2e-web
+
+  db-migrate:
+    image: elmo-e2e-migrate
+
+  # Postgres creates only the database POSTGRES_DB names. The rest are made
+  # here rather than by an entrypoint init script, which runs only when the data
+  # volume is empty and so would skip a run against a warm one.
+  mode-databases:
+    image: postgres:18-alpine
+    environment:
+      PGPASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -e
+        for db in elmo_cloud elmo_whitelabel; do
+          psql -h postgres -U postgres -d postgres -tAc \
+            "SELECT 1 FROM pg_database WHERE datname = '$$db'" | grep -q 1 \
+            || createdb -h postgres -U postgres "$$db"
+        done
+
+  db-migrate-cloud:
+    image: elmo-e2e-migrate
+    environment:
+      DATABASE_URL: *cloud-database
+    depends_on:
+      mode-databases:
+        condition: service_completed_successfully
+
+  db-migrate-whitelabel:
+    image: elmo-e2e-migrate
+    environment:
+      DATABASE_URL: *whitelabel-database
+    depends_on:
+      mode-databases:
+        condition: service_completed_successfully
+
+  # Env validation requires Stripe, Resend and Google OAuth in cloud, but nothing
+  # calls them, so these are placeholders. Verification emails fail and
+  # better-auth completes the signup anyway.
+  web-cloud:
+    <<: *mode
+    ports:
+      - "1516:3000"
+    depends_on:
+      db-migrate-cloud:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: *cloud-database
+      DEPLOYMENT_MODE: cloud
+      APP_URL: http://localhost:1516
+      VITE_APP_URL: http://localhost:1516
+      # The disposable domain is admitted so its own rejection isn't masked by this gate.
+      CLOUD_SIGNUP_ALLOWLIST: "e2e@test.local,@e2e-allowed.test,@mailinator.com"
+      STRIPE_SECRET_KEY: sk_test_e2e_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_e2e_placeholder
+      RESEND_API_KEY: re_e2e_placeholder
+      RESEND_FROM_EMAIL: Elmo E2E <e2e@example.test>
+      GOOGLE_CLIENT_ID: e2e-google-client-id
+      GOOGLE_CLIENT_SECRET: e2e-google-client-secret
+
+  # Auth0 points at a domain that cannot resolve, so no run reaches a real
+  # identity provider. Branding must match WHITELABEL in e2e/fixtures.ts.
+  web-whitelabel:
+    <<: *mode
+    ports:
+      - "1517:3000"
+    depends_on:
+      db-migrate-whitelabel:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: *whitelabel-database
+      DEPLOYMENT_MODE: whitelabel
+      APP_URL: http://localhost:1517
+      VITE_APP_URL: http://localhost:1517
+      VITE_APP_NAME: Acme AI Search
+      VITE_APP_ICON: https://cdn.example.test/acme-icon.png
+      VITE_APP_PARENT_NAME: Acme
+      VITE_APP_PARENT_URL: https://app.example.test/
+      VITE_OPTIMIZATION_URL_TEMPLATE: https://app.example.test/optimize?org_id={brandId}&prompt={prompt}&web_query={webQuery}
+      AUTH0_DOMAIN: e2e-idp.example.test
+      AUTH0_MGMT_API_DOMAIN: e2e-idp.example.test
+      AUTH0_CLIENT_ID: e2e-auth0-client-id
+      AUTH0_CLIENT_SECRET: e2e-auth0-client-secret
+
+  # Demo is local with READ_ONLY forced on, on local's database.
+  web-demo:
+    <<: *mode
+    ports:
+      - "1518:3000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    environment:
+      DEPLOYMENT_MODE: demo
+      APP_URL: http://localhost:1518
+      VITE_APP_URL: http://localhost:1518

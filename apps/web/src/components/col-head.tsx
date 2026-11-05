@@ -7,10 +7,8 @@ export function ColHead({ label, tip, right }: { label: string; tip: string; rig
 		<span className={`inline-flex items-center gap-1 ${right ? "w-full justify-end" : ""}`}>
 			{label}
 			<Tooltip>
-				<TooltipTrigger asChild>
-					<span className="cursor-help text-muted-foreground/60">
-						<IconInfoCircle className="size-3.5" />
-					</span>
+				<TooltipTrigger render={<span className="cursor-help text-muted-foreground/60" />}>
+					<IconInfoCircle className="size-3.5" />
 				</TooltipTrigger>
 				<TooltipContent className="max-w-[240px] text-xs font-normal">{tip}</TooltipContent>
 			</Tooltip>

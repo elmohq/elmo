@@ -1,0 +1,23 @@
+meta {
+  name: create prompt unknown brand 400
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "no-such-brand",
+    "value": "x"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.message: contains not found
+}

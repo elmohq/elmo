@@ -1,50 +1,16 @@
-/**
- * /app - Brand switcher page
- *
- * In single-org mode (local/demo): redirects to the default org
- * In multi-org mode (whitelabel): shows brand switcher
- */
-
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { Button } from "@workspace/ui/components/button";
+import { createFileRoute } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import FullPageCard from "@/components/full-page-card";
-import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
+import { OrganizationDirectory } from "@/components/organization-directory";
+import { invalidateOrganizations, organizationsQuery } from "@/lib/organizations/queries";
+import type { OrganizationSummary } from "@/lib/organizations/types";
+import { pageHead } from "@/lib/route-head";
+import { syncOrganizationMembershipsFn } from "@/server/organizations";
 
-const getOrganizations = createServerFn({ method: "GET" }).handler(
-	async (): Promise<{
-		organizations: { id: string; name: string }[];
-		supportsMultiOrg: boolean;
-		canCreateBrands: boolean;
-	}> => {
-		const session = await requireAuthSession();
-		const deployment = getDeployment();
-
-		if (deployment.mode === "whitelabel") {
-			// Keep /app usable during Auth0 Management API incidents; background sync will reconcile memberships later.
-			try {
-				await syncAuth0UserById(session.user.id);
-			} catch (error) {
-				console.error("[auth0-sync] Failed to sync user on /app load; continuing with cached memberships", error);
-			}
-		}
-
-		const organizations = await listUserOrganizations(session.user.id);
-		return {
-			organizations,
-			supportsMultiOrg: deployment.features.supportsMultiOrg,
-			canCreateBrands: deployment.features.canCreateBrands,
-		};
-	},
-);
-
-function OrgSwitcherSkeleton() {
+function OrganizationPickerSkeleton() {
 	return (
 		<FullPageCard title="" subtitle="">
-			<div className="flex flex-col space-y-3 min-w-[200px]">
+			<div className="flex min-w-[200px] flex-col space-y-3">
 				<Skeleton className="h-10 w-full" />
 				<Skeleton className="h-10 w-full" />
 				<Skeleton className="h-10 w-full" />
@@ -54,43 +20,33 @@ function OrgSwitcherSkeleton() {
 }
 
 export const Route = createFileRoute("/_authed/app/")({
-	pendingComponent: OrgSwitcherSkeleton,
-	loader: async () => {
-		const result = await getOrganizations();
-
-		// Single-org mode: redirect to the user's one org (created on signup).
-		if (!result.supportsMultiOrg && result.organizations.length > 0) {
-			throw redirect({ to: "/app/$brand", params: { brand: result.organizations[0].id } });
+	pendingComponent: OrganizationPickerSkeleton,
+	loader: async ({ context }): Promise<OrganizationSummary[]> => {
+		// Only whitelabel keeps memberships anywhere else, and asking elsewhere is
+		// a round trip that returns false in front of this page's only real read.
+		if (context.clientConfig?.mode === "whitelabel" && (await syncOrganizationMembershipsFn())) {
+			await invalidateOrganizations(context.queryClient);
 		}
-
-		return result;
+		return (await context.queryClient.ensureQueryData(organizationsQuery)).organizations;
 	},
-	component: BrandSwitcherPage,
+	head: pageHead({ title: "Organizations and Brands", description: "Modify organizations or navigate to brands." }),
+	component: OrganizationPickerPage,
 });
 
-function BrandSwitcherPage() {
-	const { organizations, canCreateBrands } = Route.useLoaderData();
+function OrganizationPickerPage() {
+	const organizations = Route.useLoaderData();
+
+	if (organizations.length === 0) {
+		return (
+			<FullPageCard title="No organizations" subtitle="Your account isn't a member of an organization yet.">
+				<p className="text-center text-muted-foreground">Ask an admin to invite you, then reload this page.</p>
+			</FullPageCard>
+		);
+	}
 
 	return (
-		<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">
-			<div className="flex flex-col space-y-3 min-w-[200px]">
-				{organizations.length > 0 ? (
-					organizations.map((org: { id: string; name: string }) => (
-						<Button key={org.id} asChild variant="secondary">
-							<Link to="/app/$brand" params={{ brand: org.id }}>
-								{org.name}
-							</Link>
-						</Button>
-					))
-				) : (
-					<p className="text-muted-foreground text-center">No brands available</p>
-				)}
-				{canCreateBrands && (
-					<Button asChild variant="outline">
-						<Link to="/app/new">+ Create new brand</Link>
-					</Button>
-				)}
-			</div>
+		<FullPageCard title="Organizations and Brands" subtitle="Modify organizations or navigate to brands.">
+			<OrganizationDirectory organizations={organizations} />
 		</FullPageCard>
 	);
 }

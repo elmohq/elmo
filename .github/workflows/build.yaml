@@ -1,0 +1,144 @@
+# Host-side checks: format and lint, type check, unit, Storybook and Postgres
+# integration tests, and a real `pnpm build` that must leave the working tree
+# clean.
+#
+# The clean-tree check is the point of running a host build at all.
+# `routeTree.gen.ts` is committed because `tsc` needs it to resolve routes, so
+# it can go stale in git. e2e.yaml can't catch that: it builds inside Docker,
+# where the file is regenerated in the image and the checked-in copy is never
+# consulted.
+#
+# `schema-auth.ts` is covered the same way. Turbo regenerates it before
+# check-types, so a better-auth bump or a new schema-bearing plugin fails here
+# instead of leaving drizzle-kit to snapshot a stale schema.
+#
+# Keep both excluded from Biome (see biome.json) — their generators format
+# their own output with Prettier, and a formatter fighting them would make every
+# build dirty this job.
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 25
+
+    # For the integration tests only.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: elmo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Frozen, unlike the other workflows: a lockfile that doesn't match the
+      # manifests is a failure in its own right here, and letting pnpm repair
+      # it in place would surface as unexplained churn in the clean-tree check.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Formatting, lint and import order in one pass, repo-wide. Runs first
+      # because it is the cheapest thing that can fail.
+      - name: Format and lint
+        run: pnpm lint
+
+      # The OpenAPI document is written by hand and no compiler reads it, so
+      # this is the only thing that holds it to the spec it claims to be.
+      - name: Lint the OpenAPI document
+        run: pnpm lint:spec
+
+      # Redundant with `pnpm build` (turbo's build depends on check-types), but
+      # it fails in a minute instead of after the whole build, and turbo caches
+      # the result so the build step doesn't repeat it.
+      - name: Type check
+        run: pnpm turbo check-types
+
+      - name: Unit tests
+        run: pnpm turbo test
+
+      # One package at a time: the lib suite truncates tables the others write to.
+      - name: Integration tests
+        run: |
+          pnpm -C apps/web test:integration
+          pnpm -C apps/worker test:integration
+          pnpm -C packages/lib test:integration
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/elmo_test
+          # Off UTC on purpose: a timestamp that loses its zone between Postgres
+          # and JS only reads wrong on a host that isn't in UTC.
+          TZ: America/Los_Angeles
+
+      # scripts/ is outside the workspace, so turbo does not reach it.
+      - name: Release script tests
+        run: pnpm test:scripts
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify the build left the working tree clean
+        run: |
+          if [ -n "$(git status --porcelain=v1 --untracked-files=all)" ]; then
+            echo "::error::The build changed files tracked by git. Run 'pnpm build' locally and commit the result."
+            git status --porcelain=v1 --untracked-files=all
+            git diff --
+            exit 1
+          fi
+
+      # Last, because the browser is only needed by the Storybook suite — it
+      # runs in Vitest browser mode (see apps/web/vitest.config.ts). A broken
+      # build shouldn't pay for the install. The cache key matches e2e.yaml's
+      # so both workflows share one entry.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      # Not `--with-deps`: that runs apt-get update on every job, cache hit or
+      # not, for libraries the runner image already carries. If an image ever
+      # stops carrying them, Playwright fails naming `playwright install-deps`.
+      - name: Install Playwright browsers
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 1
+          max_attempts: 3
+          command: pnpm -C apps/web exec playwright install chromium
+
+      - name: Storybook tests
+        run: pnpm -C apps/web test:storybook

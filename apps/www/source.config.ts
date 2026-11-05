@@ -3,6 +3,10 @@ import { pageSchema } from "fumadocs-core/source/schema";
 import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 import { z } from "zod";
 
+const frontmatterDate = z
+	.union([z.string(), z.date()])
+	.transform((value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value));
+
 export const docs = defineDocs({
 	dir: "../../packages/docs/content/docs",
 	docs: {
@@ -18,14 +22,18 @@ export const docs = defineDocs({
 export const blog = defineDocs({
 	dir: "../../packages/docs/content/blog",
 	docs: {
+		postprocess: {
+			includeProcessedMarkdown: true,
+		},
 		schema: pageSchema.extend({
 			// An unquoted date in YAML frontmatter (date: 2026-05-30) is parsed
 			// into a Date, while a quoted one ("2026-05-30") stays a string.
 			// Accept either and normalize to a YYYY-MM-DD string so downstream
 			// code (byline, JSON-LD, RSS) only ever deals with a string.
-			date: z
-				.union([z.string(), z.date()])
-				.transform((value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value)),
+			date: frontmatterDate,
+			// Set only when an existing post receives a substantive content
+			// refresh. The original publication date remains unchanged.
+			updated: frontmatterDate.optional(),
 			author: z.string(),
 			tags: z.array(z.string()).optional(),
 			// Optional SEO <title> override. The post `title` is the on-page H1;
@@ -53,6 +61,21 @@ export const blog = defineDocs({
 					steps: z.array(z.object({ name: z.string(), text: z.string() })),
 				})
 				.optional(),
+		}),
+	},
+});
+
+// Published legal policies (terms, privacy, cookies, subprocessors, acceptable
+// use). Kept as content rather than route components so every revision shows up
+// as a reviewable diff — which is what the policies themselves promise.
+export const legal = defineDocs({
+	dir: "../../packages/docs/content/legal",
+	docs: {
+		schema: pageSchema.extend({
+			// Drives the "Last updated" line and the sitemap's lastmod.
+			updated: frontmatterDate,
+			// Position on the /legal index; lower sorts first.
+			order: z.number(),
 		}),
 	},
 });

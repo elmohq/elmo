@@ -4,8 +4,8 @@
  * each card leads with a plain-language "why", then three drill-downs — Prompts /
  * Your citations / Competitor citations — to explore the underlying data.
  */
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { BrandPromptLink } from "@/components/brand-prompt-link";
 import type { CitedPage, OpportunitiesReport as OpportunitiesReportData, ReportPrompt } from "@/server/opportunities";
 
 const CATEGORY_META = [
@@ -41,8 +41,8 @@ function Bullet() {
 function BulletList({ items }: { items: string[] }) {
 	return (
 		<ul className="space-y-2.5">
-			{items.map((item, i) => (
-				<li key={`${i}-${item}`} className="flex gap-2.5 text-pretty text-base">
+			{items.map((item) => (
+				<li key={item} className="flex gap-2.5 text-pretty text-base">
 					<Bullet />
 					<span>{item}</span>
 				</li>
@@ -53,12 +53,12 @@ function BulletList({ items }: { items: string[] }) {
 
 const ROW = "block truncate rounded px-1.5 py-1 text-xs hover:bg-muted hover:text-foreground";
 
-function PromptLink({ prompt, brandId }: { prompt: ReportPrompt; brandId: string }) {
+function PromptLink({ prompt }: { prompt: ReportPrompt }) {
 	if (!prompt.promptId) return <span className={`${ROW} text-muted-foreground`}>{prompt.text}</span>;
 	return (
-		<Link to="/app/$brand/prompts/$promptId" params={{ brand: brandId, promptId: prompt.promptId }} className={ROW}>
+		<BrandPromptLink promptId={prompt.promptId} className={ROW}>
 			{prompt.text}
-		</Link>
+		</BrandPromptLink>
 	);
 }
 
@@ -74,7 +74,7 @@ function Panel({ children }: { children: React.ReactNode }) {
 	return <div className="mt-2 rounded-md bg-muted/30 p-1">{children}</div>;
 }
 
-function OpportunityCard({ o, brandId }: { o: Opportunity; brandId: string }) {
+function OpportunityCard({ o }: { o: Opportunity }) {
 	const [open, setOpen] = useState<Tab | null>(null);
 	const tabs: { key: Tab; label: string; count: number }[] = [
 		{ key: "prompts", label: "Prompts", count: o.relatedPrompts.length },
@@ -106,7 +106,7 @@ function OpportunityCard({ o, brandId }: { o: Opportunity; brandId: string }) {
 						{o.relatedPrompts.length === 0 ? (
 							<p className="px-1.5 py-1 text-xs text-muted-foreground">No specific prompts linked.</p>
 						) : (
-							o.relatedPrompts.map((p, i) => <PromptLink key={`${i}-${p.text}`} prompt={p} brandId={brandId} />)
+							o.relatedPrompts.map((p) => <PromptLink key={p.text} prompt={p} />)
 						)}
 					</Panel>
 				)}
@@ -115,7 +115,7 @@ function OpportunityCard({ o, brandId }: { o: Opportunity; brandId: string }) {
 						{o.yourCitations.length === 0 ? (
 							<p className="px-1.5 py-1 text-xs text-muted-foreground">You're not cited for these prompts yet.</p>
 						) : (
-							o.yourCitations.map((c, i) => <CiteLink key={`${i}-${c.url}`} page={c} />)
+							o.yourCitations.map((c) => <CiteLink key={c.url} page={c} />)
 						)}
 					</Panel>
 				)}
@@ -124,7 +124,7 @@ function OpportunityCard({ o, brandId }: { o: Opportunity; brandId: string }) {
 						{o.competitorCitations.length === 0 ? (
 							<p className="px-1.5 py-1 text-xs text-muted-foreground">No competitor pages cited for these prompts.</p>
 						) : (
-							o.competitorCitations.map((c, i) => <CiteLink key={`${i}-${c.url}`} page={c} />)
+							o.competitorCitations.map((c) => <CiteLink key={c.url} page={c} />)
 						)}
 					</Panel>
 				)}
@@ -133,7 +133,7 @@ function OpportunityCard({ o, brandId }: { o: Opportunity; brandId: string }) {
 	);
 }
 
-export function OpportunitiesReport({ report, brandId }: { report: OpportunitiesReportData; brandId: string }) {
+export function OpportunitiesReport({ report }: { report: OpportunitiesReportData }) {
 	return (
 		<div className="space-y-8">
 			{report.summary.length > 0 && (
@@ -157,8 +157,8 @@ export function OpportunitiesReport({ report, brandId }: { report: Opportunities
 							<p className="text-pretty text-sm text-muted-foreground">{c.desc}</p>
 						</div>
 						<div className="space-y-3">
-							{opps.map((o, i) => (
-								<OpportunityCard key={`${i}-${o.title}`} o={o} brandId={brandId} />
+							{opps.map((o) => (
+								<OpportunityCard key={o.title} o={o} />
 							))}
 						</div>
 					</section>

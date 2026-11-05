@@ -1,10 +1,9 @@
-/**
- * @workspace/deployment - Deployment facade package
- *
- * Thin switch that picks the active deployment mode based on DEPLOYMENT_MODE
- * and delegates to the appropriate package (@workspace/local, @workspace/whitelabel).
- */
+/** Node-safe, so the worker loads no React; the OptimizeButton selector lives in "@workspace/deployment/client". */
 
-export { getDeployment, resetDeploymentCache, type GetDeploymentOptions } from "./deployment";
-
-export { getOptimizeButtonForMode, type OptimizeButtonProps } from "./client";
+export {
+	FEATURES_BY_MODE,
+	type GetDeploymentOptions,
+	getDeployment,
+	getDeploymentFeatures,
+	resetDeploymentCache,
+} from "./deployment";

@@ -1,0 +1,15 @@
+meta {
+  name: confirm prompt gone 404
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{createdPromptId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 404
+}

@@ -1,43 +1,21 @@
-/**
- * Brand Kit story — previews all Elmo brand assets in one place.
- *
- * Sections:
- *  1. Logo — text logo ("elmo" in Titan One) and whitelabel variant
- *  2. Icon — the "e" icon at various sizes (16, 32, 64, 128, 256)
- *  3. Maskable Icon — for adaptive/PWA contexts
- *  4. Color Palette — brand color, theme colors, and chart palette
- */
 import type { Meta } from "@storybook/react";
+import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { Logo } from "@/components/logo";
-import { setMockClientConfig, type ClientConfig } from "./_mocks/config-client";
+import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
 
 const BRAND_COLOR = "#2563eb";
-const CHART_COLORS = [
-	"#2563eb",
-	"#efb118",
-	"#3ca951",
-	"#ff725c",
-	"#a463f2",
-	"#ff8ab7",
-	"#38b2ac",
-	"#9c6b4e",
-	"#7cb342",
-	"#b07aa1",
-	"#9498a0",
-];
 
 const elmoConfig: ClientConfig = {
 	mode: "local",
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: true,
 		canCreateBrands: true,
 	},
 	branding: {
 		name: "Elmo",
-		chartColors: CHART_COLORS.map((c) => c),
+		chartColors: DEFAULT_CHART_COLORS.map((c) => c),
 	},
 	analytics: {},
 };
@@ -47,7 +25,6 @@ const whitelabelConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: true,
-		supportsMultiOrg: true,
 		canCreateBrands: false,
 	},
 	branding: {
@@ -55,7 +32,7 @@ const whitelabelConfig: ClientConfig = {
 		icon: "https://api.dicebear.com/9.x/shapes/svg?seed=brand",
 		parentName: "AgencyCo",
 		parentUrl: "https://agency.example.com",
-		chartColors: CHART_COLORS.map((c) => c),
+		chartColors: DEFAULT_CHART_COLORS.map((c) => c),
 	},
 	analytics: {},
 };
@@ -63,10 +40,6 @@ const whitelabelConfig: ClientConfig = {
 export default {
 	title: "Brand Kit",
 } satisfies Meta;
-
-// ---------------------------------------------------------------------------
-// Section helpers
-// ---------------------------------------------------------------------------
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
 	return (
@@ -80,21 +53,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function ColorSwatch({ color, label }: { color: string; label: string }) {
 	return (
 		<div className="flex flex-col items-center gap-1">
-			<div
-				className="w-12 h-12 rounded-lg border shadow-sm"
-				style={{ backgroundColor: color }}
-			/>
+			<div className="w-12 h-12 rounded-lg border shadow-sm" style={{ backgroundColor: color }} />
 			<span className="text-xs text-muted-foreground font-mono">{color}</span>
 			{label && <span className="text-xs text-muted-foreground">{label}</span>}
 		</div>
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Stories
-// ---------------------------------------------------------------------------
-
-/** Full Elmo brand kit — logo, icons, colors, typography */
 export const ElmoBrandKit = () => {
 	setMockClientConfig(elmoConfig);
 	setMockRouteContext({ clientConfig: elmoConfig });
@@ -105,7 +70,6 @@ export const ElmoBrandKit = () => {
 		<div className="p-8 max-w-4xl mx-auto space-y-2">
 			<h1 className="text-2xl font-bold text-foreground mb-8">Elmo Brand Kit</h1>
 
-			{/* Logo */}
 			<Section title="Logo">
 				<div className="flex items-center gap-8">
 					<div className="flex flex-col items-center gap-2">
@@ -123,7 +87,6 @@ export const ElmoBrandKit = () => {
 				</div>
 			</Section>
 
-			{/* Standard Icon */}
 			<Section title="Icon — Standard">
 				<div className="space-y-4">
 					<div>
@@ -131,10 +94,21 @@ export const ElmoBrandKit = () => {
 						<div className="flex items-end gap-6 flex-wrap">
 							{iconSizes.map((size) => (
 								<div key={size} className="flex flex-col items-center gap-2">
-									<div className="border rounded-lg p-2 bg-background flex items-center justify-center" style={{ minWidth: Math.max(size + 16, 48), minHeight: Math.max(size + 16, 48) }}>
-										<img src="/icons/elmo-icon.svg" alt={`Elmo icon ${size}px`} width={size} height={size} style={{ width: size, height: size }} />
+									<div
+										className="border rounded-lg p-2 bg-background flex items-center justify-center"
+										style={{ minWidth: Math.max(size + 16, 48), minHeight: Math.max(size + 16, 48) }}
+									>
+										<img
+											src="/icons/elmo-icon.svg"
+											alt={`Elmo icon ${size}px`}
+											width={size}
+											height={size}
+											style={{ width: size, height: size }}
+										/>
 									</div>
-									<span className="text-xs text-muted-foreground font-mono">{size}×{size}</span>
+									<span className="text-xs text-muted-foreground font-mono">
+										{size}×{size}
+									</span>
 								</div>
 							))}
 						</div>
@@ -144,10 +118,21 @@ export const ElmoBrandKit = () => {
 						<div className="flex items-end gap-6 flex-wrap">
 							{iconSizes.map((size) => (
 								<div key={size} className="flex flex-col items-center gap-2">
-									<div className="rounded-lg p-2 bg-gray-900 flex items-center justify-center" style={{ minWidth: Math.max(size + 16, 48), minHeight: Math.max(size + 16, 48) }}>
-										<img src="/icons/elmo-icon.svg" alt={`Elmo icon ${size}px on dark`} width={size} height={size} style={{ width: size, height: size }} />
+									<div
+										className="rounded-lg p-2 bg-gray-900 flex items-center justify-center"
+										style={{ minWidth: Math.max(size + 16, 48), minHeight: Math.max(size + 16, 48) }}
+									>
+										<img
+											src="/icons/elmo-icon.svg"
+											alt={`Elmo icon ${size}px on dark`}
+											width={size}
+											height={size}
+											style={{ width: size, height: size }}
+										/>
 									</div>
-									<span className="text-xs text-muted-foreground font-mono">{size}×{size}</span>
+									<span className="text-xs text-muted-foreground font-mono">
+										{size}×{size}
+									</span>
 								</div>
 							))}
 						</div>
@@ -155,7 +140,6 @@ export const ElmoBrandKit = () => {
 				</div>
 			</Section>
 
-			{/* Maskable Icon */}
 			<Section title="Icon — Maskable (PWA)">
 				<div className="flex items-end gap-6 flex-wrap">
 					{[64, 128, 256].map((size) => (
@@ -169,11 +153,16 @@ export const ElmoBrandKit = () => {
 									style={{ width: size, height: size }}
 								/>
 							</div>
-							<span className="text-xs text-muted-foreground font-mono">{size}×{size}</span>
+							<span className="text-xs text-muted-foreground font-mono">
+								{size}×{size}
+							</span>
 						</div>
 					))}
 					<div className="flex flex-col items-center gap-2">
-						<div className="border rounded-full overflow-hidden flex items-center justify-center" style={{ width: 128, height: 128 }}>
+						<div
+							className="border rounded-full overflow-hidden flex items-center justify-center"
+							style={{ width: 128, height: 128 }}
+						>
 							<img
 								src="/icons/elmo-icon-maskable.svg"
 								alt="Elmo maskable icon circular crop"
@@ -187,7 +176,6 @@ export const ElmoBrandKit = () => {
 				</div>
 			</Section>
 
-			{/* Colors */}
 			<Section title="Brand Colors">
 				<div className="flex gap-6 flex-wrap">
 					<ColorSwatch color="#2563eb" label="Royal Blue" />
@@ -198,26 +186,20 @@ export const ElmoBrandKit = () => {
 				</div>
 			</Section>
 
-			{/* Chart Palette */}
 			<Section title="Chart Color Palette">
 				<div className="flex flex-wrap gap-2">
-					{CHART_COLORS.map((color, i) => (
+					{DEFAULT_CHART_COLORS.map((color, i) => (
 						<div key={color} className="flex flex-col items-center gap-1">
-							<div
-								className="w-8 h-8 rounded border shadow-sm"
-								style={{ backgroundColor: color }}
-							/>
+							<div className="w-8 h-8 rounded border shadow-sm" style={{ backgroundColor: color }} />
 							<span className="text-[10px] text-muted-foreground font-mono">{i + 1}</span>
 						</div>
 					))}
 				</div>
 			</Section>
-
-			</div>
+		</div>
 	);
 };
 
-/** Whitelabel brand preview — shows how custom branding appears */
 export const WhitelabelBrandPreview = () => {
 	setMockClientConfig(whitelabelConfig);
 	setMockRouteContext({ clientConfig: whitelabelConfig });

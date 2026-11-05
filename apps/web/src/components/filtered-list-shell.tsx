@@ -1,15 +1,16 @@
-import type { ReactNode } from "react";
-import { Inbox } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
+import { Inbox } from "lucide-react";
+import type { ReactNode } from "react";
 import { FilterBar } from "@/components/filter-bar";
 import { FilterSection } from "@/components/page-header";
 import type { ListFilterState } from "@/hooks/use-list-filters";
+import type { TrackedTarget } from "@/lib/model-filter";
 
 interface FilteredListShellProps {
 	/** The page's `useListFilters()` result. */
 	filters: ListFilterState;
 	availableTags: readonly string[];
-	availableModels: string[];
+	trackedTargets: TrackedTarget[];
 	showSearch?: boolean;
 	showModelSelector?: boolean;
 	/** Show "n results" / "n of m results" next to the filter dropdowns. */
@@ -26,8 +27,7 @@ interface FilteredListShellProps {
 	errorState?: ReactNode;
 	/** UNFILTERED result count. The "truly empty" vs "no matches" decision
 	 *  keys off this plus `filters.isFiltered` — never off the filtered
-	 *  count, which is the class of bug behind #322 (sections vanishing
-	 *  because a search filtered them to zero). */
+	 *  count, or a search that matches nothing makes the section vanish. */
 	totalCount: number | undefined;
 	/** Count after client-side filtering. Defaults to `totalCount` for pages
 	 *  whose filters are applied server-side. */
@@ -47,7 +47,7 @@ interface FilteredListShellProps {
 export function FilteredListShell({
 	filters,
 	availableTags,
-	availableModels,
+	trackedTargets,
 	showSearch = false,
 	showModelSelector = true,
 	showResultCount = false,
@@ -79,15 +79,8 @@ export function FilteredListShell({
 				<div className="text-center py-8 text-muted-foreground">
 					<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
 					<p className="mb-2">{noMatchesTitle ?? "No results match your filters."}</p>
-					<p className="text-sm mb-4">
-						{noMatchesDescription ?? "Try adjusting your search or filters."}
-					</p>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={filters.clearFilters}
-						className="cursor-pointer"
-					>
+					<p className="text-sm mb-4">{noMatchesDescription ?? "Try adjusting your search or filters."}</p>
+					<Button variant="outline" size="sm" onClick={filters.clearFilters} className="cursor-pointer">
 						Clear filters
 					</Button>
 				</div>
@@ -102,7 +95,7 @@ export function FilteredListShell({
 			<FilterSection>
 				<FilterBar
 					availableTags={availableTags}
-					availableModels={availableModels}
+					trackedTargets={trackedTargets}
 					showSearch={showSearch}
 					showModelSelector={showModelSelector}
 					resultCount={showResultCount && !isLoading ? effectiveFilteredCount : undefined}

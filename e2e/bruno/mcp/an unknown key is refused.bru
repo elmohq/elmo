@@ -1,0 +1,25 @@
+meta {
+  name: an unknown key is refused
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer elmo_not_a_real_key
+  Accept: application/json, text/event-stream
+}
+
+body:json {
+  { "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {} }
+}
+
+assert {
+  res.status: eq 401
+  res.body.error.message: eq Invalid API key
+}

@@ -29,19 +29,32 @@ function TeamAvatar({ author }: { author: TeamAuthor }) {
 	return <InitialsAvatar name={author.name} />;
 }
 
+function PostDates({ date, updated }: { date: string; updated?: string }) {
+	const publishedLabel = formatPostDate(date);
+
+	if (!updated) return <time dateTime={date}>{publishedLabel}</time>;
+
+	return (
+		<>
+			Updated <time dateTime={updated}>{formatPostDate(updated)}</time>
+			<span className="text-zinc-300"> · </span>
+			Published <time dateTime={date}>{publishedLabel}</time>
+		</>
+	);
+}
+
 /**
  * Byline for a blog post. AI-generated posts (`author: "ai"`) show no author
- * information — just the date. Known team authors get a full byline, and
+ * information — just the post dates. Known team authors get a full byline, and
  * anything else falls back to a plain name. See src/data/authors.ts.
  */
-export function AuthorByline({ author, date }: { author: string; date: string }) {
+export function AuthorByline({ author, date, updated }: { author: string; date: string; updated?: string }) {
 	const resolved = resolveAuthor(author);
-	const dateLabel = formatPostDate(date);
 
 	if (resolved.kind === "ai") {
 		return (
 			<div className="not-prose text-sm text-zinc-500">
-				<time dateTime={date}>{dateLabel}</time>
+				<PostDates date={date} updated={updated} />
 			</div>
 		);
 	}
@@ -69,7 +82,7 @@ export function AuthorByline({ author, date }: { author: string; date: string })
 							{role} <span className="text-zinc-300">·</span>{" "}
 						</>
 					) : null}
-					<time dateTime={date}>{dateLabel}</time>
+					<PostDates date={date} updated={updated} />
 				</div>
 			</div>
 		</div>

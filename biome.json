@@ -1,13 +1,22 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
 	"vcs": {
-		"enabled": false,
+		"enabled": true,
 		"clientKind": "git",
-		"useIgnoreFile": false
+		"useIgnoreFile": true
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["apps/**", "packages/**", "!**/node_modules/**", "!packages/ui/src/components/**"]
+		"includes": [
+			"apps/**",
+			"packages/**",
+			"!**/node_modules",
+			"!packages/ui/src/components",
+			"!**/routeTree.gen.ts",
+			"!packages/lib/src/db/schema-auth.ts",
+			"!**/public",
+			"!packages/lib/src/db/migrations"
+		]
 	},
 	"formatter": {
 		"enabled": true,
@@ -17,12 +26,23 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"preset": "recommended",
+			"complexity": {
+				"noExcessiveCognitiveComplexity": {
+					"level": "error",
+					"options": { "maxAllowedComplexity": 15 }
+				}
+			}
 		}
 	},
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
 		}
 	},
 	"assist": {

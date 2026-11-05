@@ -2,14 +2,12 @@
  * /admin/tools — Admin utility for running the onboarding analysis against an
  * arbitrary website without going through the wizard.
  */
-import { useState } from "react";
+
 import { createFileRoute } from "@tanstack/react-router";
-import { getAppName } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
-import { Label } from "@workspace/ui/components/label";
+import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { Badge } from "@workspace/ui/components/badge";
+import { Button } from "@workspace/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import {
 	Dialog,
 	DialogContent,
@@ -18,9 +16,14 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
-import { Sparkles, Loader2, Copy, Check } from "lucide-react";
+import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { Check, Copy, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { pageHead } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { adminAnalyzeBrandFn } from "@/server/admin";
-import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 
 function AnalyzeBrandDialog() {
 	const [open, setOpen] = useState(false);
@@ -29,7 +32,8 @@ function AnalyzeBrandDialog() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [result, setResult] = useState<OnboardingSuggestion | null>(null);
-	const [copied, setCopied] = useState(false);
+	const [copied, setCopied] = useState<"json" | "prompts" | null>(null);
+	const writeError = useWriteErrorMessage();
 
 	const handleAnalyze = async () => {
 		if (!website.trim()) {
@@ -48,7 +52,7 @@ function AnalyzeBrandDialog() {
 			});
 			setResult(data);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(writeError(err, "An error occurred"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -57,15 +61,15 @@ function AnalyzeBrandDialog() {
 	const handleCopy = async () => {
 		if (!result) return;
 		await navigator.clipboard.writeText(JSON.stringify(result, null, 2));
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
+		setCopied("json");
+		setTimeout(() => setCopied(null), 2000);
 	};
 
 	const handleCopyPrompts = async () => {
 		if (!result) return;
 		await navigator.clipboard.writeText(result.suggestedPrompts.map((p) => p.prompt).join("\n"));
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
+		setCopied("prompts");
+		setTimeout(() => setCopied(null), 2000);
 	};
 
 	const handleClose = () => {
@@ -78,18 +82,14 @@ function AnalyzeBrandDialog() {
 
 	return (
 		<Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : handleClose())}>
-			<DialogTrigger asChild>
-				<Button variant="outline" className="cursor-pointer w-full">
-					<Sparkles className="h-4 w-4 mr-2" />
-					Analyze brand
-				</Button>
+			<DialogTrigger render={<Button variant="outline" className="cursor-pointer w-full" />}>
+				<Sparkles className="h-4 w-4 mr-2" />
+				Analyze brand
 			</DialogTrigger>
 			<DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>Analyze brand</DialogTitle>
-					<DialogDescription>
-						Run the onboarding analysis for any website.
-					</DialogDescription>
+					<DialogDescription>Run the onboarding analysis for any website.</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-4 py-4">
@@ -119,7 +119,7 @@ function AnalyzeBrandDialog() {
 					<Button onClick={handleAnalyze} disabled={isLoading} className="cursor-pointer w-full">
 						{isLoading ? (
 							<>
-								<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+								<Spinner className="mr-2" />
 								Analyzing… (this may take a minute)
 							</>
 						) : (
@@ -135,7 +135,7 @@ function AnalyzeBrandDialog() {
 								<h4 className="font-semibold">{result.brandName}</h4>
 								<div className="flex gap-2">
 									<Button variant="ghost" size="sm" onClick={handleCopyPrompts} className="cursor-pointer">
-										{copied ? (
+										{copied === "prompts" ? (
 											<>
 												<Check className="h-4 w-4 mr-1" /> Copied
 											</>
@@ -146,7 +146,15 @@ function AnalyzeBrandDialog() {
 										)}
 									</Button>
 									<Button variant="ghost" size="sm" onClick={handleCopy} className="cursor-pointer">
-										<Copy className="h-4 w-4 mr-1" /> Copy JSON
+										{copied === "json" ? (
+											<>
+												<Check className="h-4 w-4 mr-1" /> Copied
+											</>
+										) : (
+											<>
+												<Copy className="h-4 w-4 mr-1" /> Copy JSON
+											</>
+										)}
 									</Button>
 								</div>
 							</div>
@@ -228,15 +236,8 @@ function TagSection({ title, items }: { title: string; items: string[] }) {
 }
 
 export const Route = createFileRoute("/_authed/admin/tools")({
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [
-				{ title: `Tools · ${appName}` },
-				{ name: "description", content: "Brand onboarding analysis." },
-			],
-		};
-	},
+	staticData: { crumb: "Tools" },
+	head: pageHead({ description: "Brand onboarding analysis." }),
 	component: ToolsPage,
 });
 
@@ -259,8 +260,8 @@ function ToolsPage() {
 							Brand analysis
 						</CardTitle>
 						<CardDescription>
-							Analyze a website to discover its competitors, additional brand domains, aliases, and
-							suggested AI tracking prompts. Works with any configured LLM provider.
+							Analyze a website to discover its competitors, additional brand domains, aliases, and suggested AI
+							tracking prompts. Works with any configured LLM provider.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

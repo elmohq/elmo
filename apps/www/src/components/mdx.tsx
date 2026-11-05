@@ -1,12 +1,11 @@
-import defaultMdxComponents from "fumadocs-ui/mdx";
-import type { MDXComponents } from "mdx/types";
 import { FeedbackBlock } from "@workspace/docs/components/feedback/client";
 import type { ActionResponse, BlockFeedback } from "@workspace/docs/components/feedback/schema";
+import defaultMdxComponents from "fumadocs-ui/mdx";
+import type { MDXComponents } from "mdx/types";
+import { ProviderCTA } from "@/components/provider-cta";
 import { YouTubeEmbed } from "@/components/youtube-embed";
 
-async function onBlockFeedback(
-	feedback: BlockFeedback,
-): Promise<ActionResponse> {
+async function onBlockFeedback(feedback: BlockFeedback): Promise<ActionResponse> {
 	const { trackEvent } = await import("@/lib/posthog");
 	trackEvent("docs_block_feedback", {
 		block_id: feedback.blockId,
@@ -17,13 +16,16 @@ async function onBlockFeedback(
 	return { success: true };
 }
 
+function TrackedFeedbackBlock(props: { id: string; body?: string; children: React.ReactNode }) {
+	return <FeedbackBlock {...props} onSendAction={onBlockFeedback} />;
+}
+
 export function getMDXComponents(components?: MDXComponents) {
 	return {
 		...defaultMdxComponents,
-		FeedbackBlock: (props: { id: string; body?: string; children: React.ReactNode }) => (
-			<FeedbackBlock {...props} onSendAction={onBlockFeedback} />
-		),
+		FeedbackBlock: TrackedFeedbackBlock,
 		YouTube: YouTubeEmbed,
+		ProviderCTA,
 		...components,
 	} satisfies MDXComponents;
 }

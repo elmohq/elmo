@@ -26,6 +26,7 @@ export interface BlogPostLoaderData {
 	title: string;
 	description: string;
 	date: string;
+	updated?: string;
 	author: string;
 	tags: string[];
 	/** SEO <title> override; falls back to `${title} · Elmo` (see source.config.ts). */
@@ -46,7 +47,7 @@ export const Route = createFileRoute("/blog/$")({
 		const data = loaderData as BlogPostLoaderData | undefined;
 		if (!data) return {};
 
-		const { title, description, date, author, slugs, metaTitle, faq, itemList, definedTerms, howTo } = data;
+		const { title, description, date, updated, author, slugs, metaTitle, faq, itemList, definedTerms, howTo } = data;
 		const pageTitle = metaTitle ?? `${title} · ${SITE_NAME}`;
 		const pageDescription = description || `${title} — from the ${SITE_NAME} blog.`;
 		const path = `/blog/${slugs.join("/")}`;
@@ -58,11 +59,14 @@ export const Route = createFileRoute("/blog/$")({
 			meta: [
 				{ title: pageTitle },
 				{ name: "description", content: pageDescription },
+				{ property: "article:published_time", content: date },
+				...(updated ? [{ property: "article:modified_time", content: updated }] : []),
 				...ogMeta({
 					title: pageTitle,
 					description: pageDescription,
 					path,
 					type: "article",
+					label: "Blog",
 				}),
 			],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
@@ -72,6 +76,7 @@ export const Route = createFileRoute("/blog/$")({
 					description: pageDescription,
 					path,
 					datePublished: date,
+					dateModified: updated,
 					authorName,
 				}),
 				breadcrumbJsonLd([
@@ -103,8 +108,8 @@ export const Route = createFileRoute("/blog/$")({
 	},
 });
 
-export const serverLoader = createServerFn({ method: "GET" })
-	.inputValidator((slugs: string[]) => slugs)
+const serverLoader = createServerFn({ method: "GET" })
+	.validator((slugs: string[]) => slugs)
 	.handler(async ({ data: slugs }): Promise<BlogPostLoaderData> => {
 		// Lazy import keeps the server-only blog source out of the client bundle
 		// (see the note in @/lib/blog and the same pattern in routes/docs/$.tsx).
@@ -118,6 +123,7 @@ export const serverLoader = createServerFn({ method: "GET" })
 			title: page.data.title,
 			description: page.data.description ?? "",
 			date: page.data.date,
+			updated: page.data.updated,
 			author: page.data.author,
 			tags: page.data.tags ?? [],
 			metaTitle: page.data.metaTitle,

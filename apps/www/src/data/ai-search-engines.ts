@@ -19,10 +19,10 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		name: "ChatGPT",
 		vendor: "OpenAI",
 		short:
-			"Get your brand mentioned and cited in ChatGPT, across both its base model and its live web search.",
+			"Get your brand mentioned and cited in OpenAI's ChatGPT, across both its base model and its live web search.",
 		intro: [
 			"ChatGPT answers from two places: what it learned during training, and what it fetches from the web when it browses. The base model reflects how your brand was described across the internet up to its training cutoff. ChatGPT Search, the browsing path, pulls in current pages and cites them.",
-			"That split is the key to working with it. A brand can be missing from the base model yet show up once ChatGPT searches, and the fixes for each are different. Earning durable mentions on trusted sources shapes the trained view, while clear, current, well-structured pages help you get retrieved and cited live.",
+			"The split matters because each path needs a different fix. A brand can be missing from the base model yet show up once ChatGPT searches. Earning durable mentions on trusted sources shapes the trained view, while clear, current, well-structured pages help you get retrieved and cited live.",
 		],
 		steps: [
 			{
@@ -54,11 +54,10 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		slug: "perplexity",
 		name: "Perplexity",
 		vendor: "Perplexity AI",
-		short:
-			"Become a cited source in Perplexity, the AI search engine that shows its citations on every answer.",
+		short: "Become a cited source in Perplexity, the AI search engine that shows its citations on every answer.",
 		intro: [
 			"Perplexity is a retrieval-augmented engine: it searches the web for each query, then writes an answer grounded in what it found and links the sources. Because it shows its citations openly, it is the clearest testbed for measuring whether your AEO work is paying off.",
-			"It selects sources on a few factors: relevance to the exact question, how easy the answer is to extract from your page, how trustworthy the domain looks, and how current the content is. Win on those and you become one of the cited links.",
+			"It selects sources on a few factors: relevance to the exact question, how easy the answer is to extract from your page, how trustworthy the domain looks, and how current the content is. Do well on those and you get cited.",
 		],
 		steps: [
 			{
@@ -79,7 +78,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 			},
 			{
 				name: "Measure which prompts cite you",
-				text: "Track a consistent prompt set and watch which queries cite you and which cite a competitor. The gaps are your roadmap.",
+				text: "Track a consistent prompt set and watch which queries cite you and which cite a competitor. The queries where a competitor wins are where to focus.",
 			},
 		],
 		tracking:
@@ -90,11 +89,10 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		slug: "google-ai-overviews",
 		name: "Google AI Overviews",
 		vendor: "Google",
-		short:
-			"Appear in the AI-generated summaries Google shows above its search results for many queries.",
+		short: "Appear in the AI-generated summaries Google shows above its search results for many queries.",
 		intro: [
-			"AI Overviews are Google's AI summaries, built on its Gemini models, shown at the top of the results page for a growing share of queries. They answer directly and link to a few sources. Their reach is the story: they sit on the surface most people search first.",
-			"They affect traffic in two directions. They lift zero-click answers, but a citation in an Overview can still send qualified visitors. The way in is the same set of fundamentals that drive the rest of AI search, applied to the page Google already crawls.",
+			"AI Overviews are Google's AI summaries, built on its Gemini models, shown at the top of the results page for a growing share of queries. They answer directly and link to a few sources. Because they sit on the surface most people search first, their reach is enormous.",
+			"They affect traffic in two directions: they lift zero-click answers, but a citation in an Overview can still send qualified visitors. Getting into one takes the same fundamentals as the rest of AI search, applied to a page Google already crawls.",
 		],
 		steps: [
 			{
@@ -111,7 +109,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 			},
 			{
 				name: "Keep technical SEO sound",
-				text: "If Google cannot crawl, render, or index a page well, it cannot summarize it. The basics still gate everything.",
+				text: "If Google cannot crawl, render, or index a page well, it cannot summarize it, so the basics still come first.",
 			},
 			{
 				name: "Refresh on a cadence",
@@ -126,8 +124,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		slug: "gemini",
 		name: "Google Gemini",
 		vendor: "Google",
-		short:
-			"Show up in Google's Gemini app and AI Mode, the conversational surfaces powered by its Gemini models.",
+		short: "Show up in Google's Gemini app and AI Mode, the conversational surfaces powered by its Gemini models.",
 		intro: [
 			"Gemini is both a model family and a set of products. The Gemini app and Google's AI Mode are conversational search surfaces that handle follow-up questions and longer reasoning, while AI Overviews are the summary surface on the results page. All three run on Gemini, and they behave a little differently.",
 			"Because these are Google surfaces, your existing search footprint carries weight. Strong fundamentals, clear answers, and topical authority all transfer. Google's AI features also change often, so treat the specifics as current and evolving.",
@@ -162,8 +159,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		slug: "claude",
 		name: "Claude",
 		vendor: "Anthropic",
-		short:
-			"Track how Claude describes and cites your brand, including when it searches the web for an answer.",
+		short: "Track how Claude describes and cites your brand, including when it searches the web for an answer.",
 		intro: [
 			"Claude, from Anthropic, answers from training and can also search the web and cite sources when a question calls for current information. It is widely used directly and inside other products, which makes how it describes your brand worth watching.",
 			"Claude tends to favor careful, well-sourced content and is cautious about unsupported claims. Clear, accurate, well-structured pages give it something solid to ground an answer in, both when it relies on training and when it browses.",
@@ -198,8 +194,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		slug: "copilot",
 		name: "Microsoft Copilot",
 		vendor: "Microsoft",
-		short:
-			"Appear in Microsoft Copilot, which pairs OpenAI models with Bing's web index to answer and cite.",
+		short: "Appear in Microsoft Copilot, which pairs OpenAI models with Bing's web index to answer and cite.",
 		intro: [
 			"Copilot is Microsoft's assistant, built on OpenAI models and grounded in Bing's search index. When it answers a question that needs live information, it retrieves from Bing and cites sources, so your presence in Bing's index feeds directly into Copilot.",
 			"That makes Bing fundamentals unusually relevant here. The general AEO playbook applies, but making sure Bing can crawl, index, and trust your pages is the specific lever that pays off in Copilot.",
@@ -234,8 +229,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		slug: "grok",
 		name: "Grok",
 		vendor: "xAI",
-		short:
-			"Track your brand in Grok, xAI's assistant integrated with X and tuned for real-time information.",
+		short: "Track your brand in Grok, xAI's assistant integrated with X and tuned for real-time information.",
 		intro: [
 			"Grok is xAI's assistant, built into X and oriented toward real-time answers. It draws on the open web and leans heavily on activity from X itself, which gives social presence more weight here than on most other engines.",
 			"The core AEO fundamentals still apply: clear, trustworthy, well-structured content that engines can retrieve and cite. The wrinkle with Grok is that what people say about you on X can meaningfully shape its answers.",

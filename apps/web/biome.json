@@ -1,8 +1,28 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
+	"root": false,
 	"extends": ["../../biome.json"],
 	"files": {
-		"includes": ["**/*"],
+		"includes": ["**/*", "!src/routeTree.gen.ts", "!public"],
 		"ignoreUnknown": true
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["src/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedGlobals": {
+							"level": "error",
+							"options": {
+								"deniedGlobals": {
+									"crypto": "Use v4() from uuid — crypto.randomUUID is absent over plain HTTP. Server-only code must import from node:crypto."
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	]
 }

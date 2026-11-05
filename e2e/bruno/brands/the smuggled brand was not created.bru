@@ -1,0 +1,19 @@
+meta {
+  name: the refused brand was not created
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{smuggledBrandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 404
+}

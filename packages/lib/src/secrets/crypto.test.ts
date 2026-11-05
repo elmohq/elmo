@@ -1,0 +1,200 @@
+import { randomBytes } from "node:crypto";
+import { CompactEncrypt, decodeProtectedHeader } from "jose";
+import { describe, expect, it } from "vitest";
+import {
+	decryptSecret,
+	EncryptionKeyError,
+	encryptSecret,
+	getKeyring,
+	type Keyring,
+	keyId,
+	SecretDecryptError,
+	UnknownKeyError,
+} from "./crypto";
+
+const KEY = Buffer.alloc(32, 7);
+const AAD = "secret:OPENAI_API_KEY";
+
+/** A keyring whose primary is the first key; the rest are accepted for decrypt. */
+function ring(...keys: Buffer[]): Keyring {
+	return { primary: keys[0], byId: new Map(keys.map((key) => [keyId(key), key])) };
+}
+
+const RING = ring(KEY);
+
+describe("encryptSecret / decryptSecret", () => {
+	it("round-trips arbitrary plaintext", async () => {
+		const plaintext = 'sk-abc123-{"nested":true}-🔐';
+		const payload = await encryptSecret(plaintext, { key: KEY, aad: AAD });
+		await expect(decryptSecret(payload, { keyring: RING, aad: AAD })).resolves.toBe(plaintext);
+	});
+
+	it("uses the standard direct A256GCM JWE format with authenticated metadata", async () => {
+		const payload = await encryptSecret("x", { key: KEY, aad: AAD });
+		expect(payload.split(".")).toHaveLength(5);
+		expect(decodeProtectedHeader(payload)).toEqual({ alg: "dir", enc: "A256GCM", kid: keyId(KEY), ctx: AAD });
+	});
+
+	it("uses a fresh IV every call (no GCM nonce reuse)", async () => {
+		const ivs = new Set<string>();
+		for (let i = 0; i < 200; i++) {
+			const payload = await encryptSecret("same-plaintext", { key: KEY, aad: AAD });
+			ivs.add(payload.split(".")[2]);
+		}
+		expect(ivs.size).toBe(200);
+	});
+
+	// A JWE names its own algorithms, so without an allowlist an attacker with
+	// database write access could re-encrypt under a weaker one and have it
+	// honoured. These are valid tokens under the same key — only the allowlist
+	// rejects them.
+	it.each([
+		{ header: { alg: "dir", enc: "A128CBC-HS256" }, key: Buffer.alloc(32, 7) },
+		{ header: { alg: "A256KW", enc: "A256GCM" }, key: Buffer.alloc(32, 7) },
+	])("rejects a payload re-encrypted under $header.alg/$header.enc", async ({ header, key }) => {
+		const payload = await new CompactEncrypt(new TextEncoder().encode("top-secret-value"))
+			.setProtectedHeader({ ...header, kid: keyId(KEY), ctx: AAD } as Parameters<
+				CompactEncrypt["setProtectedHeader"]
+			>[0])
+			.encrypt(key);
+		await expect(decryptSecret(payload, { keyring: RING, aad: AAD })).rejects.toThrow(SecretDecryptError);
+	});
+
+	describe("tamper matrix — every failure throws SecretDecryptError, never garbage", () => {
+		function fresh(): Promise<string> {
+			return encryptSecret("top-secret-value", { key: KEY, aad: AAD });
+		}
+
+		function corruptSegment(payload: string, index: number): string {
+			const segments = payload.split(".");
+			const segment = segments[index];
+			segments[index] = `${segment[0] === "A" ? "B" : "A"}${segment.slice(1)}`;
+			return segments.join(".");
+		}
+
+		function rewriteHeader(payload: string, header: Record<string, string>): string {
+			const segments = payload.split(".");
+			segments[0] = Buffer.from(JSON.stringify(header)).toString("base64url");
+			return segments.join(".");
+		}
+
+		it("flipped tag byte", async () => {
+			await expect(decryptSecret(corruptSegment(await fresh(), 4), { keyring: RING, aad: AAD })).rejects.toThrow(
+				SecretDecryptError,
+			);
+		});
+
+		it("wrong AAD", async () => {
+			await expect(decryptSecret(await fresh(), { keyring: RING, aad: "secret:ANTHROPIC_API_KEY" })).rejects.toThrow(
+				SecretDecryptError,
+			);
+		});
+
+		it("truncated ciphertext", async () => {
+			const segments = (await fresh()).split(".");
+			segments[3] = segments[3].slice(0, 3);
+			await expect(decryptSecret(segments.join("."), { keyring: RING, aad: AAD })).rejects.toThrow(SecretDecryptError);
+		});
+
+		// Someone with DB write access moves this row onto another credential and
+		// relabels the header to match. The header is the AEAD's additional data,
+		// so rewriting it breaks the tag rather than re-homing the credential.
+		it("ctx rewritten to the name it was moved to", async () => {
+			const target = "secret:ANTHROPIC_API_KEY";
+			const payload = rewriteHeader(await fresh(), { alg: "dir", enc: "A256GCM", kid: keyId(KEY), ctx: target });
+			await expect(decryptSecret(payload, { keyring: RING, aad: target })).rejects.toThrow(SecretDecryptError);
+		});
+
+		// `kid` steers key selection before the payload is authenticated, so point
+		// it at another key the ring genuinely holds: the tag still has to fail.
+		it("kid rewritten to a different key the ring holds", async () => {
+			const other = Buffer.alloc(32, 9);
+			const payload = rewriteHeader(await fresh(), { alg: "dir", enc: "A256GCM", kid: keyId(other), ctx: AAD });
+			await expect(decryptSecret(payload, { keyring: ring(KEY, other), aad: AAD })).rejects.toThrow(SecretDecryptError);
+		});
+
+		it("malformed payloads", async () => {
+			for (const bad of [null, undefined, {}, "nope", 42, { v: 1, keyId: "x", iv: "a", ct: "b" }]) {
+				await expect(decryptSecret(bad, { keyring: RING, aad: AAD })).rejects.toThrow(SecretDecryptError);
+			}
+		});
+
+		it("payload naming no key at all", async () => {
+			const payload = rewriteHeader(await fresh(), { alg: "dir", enc: "A256GCM", ctx: AAD });
+			await expect(decryptSecret(payload, { keyring: RING, aad: AAD })).rejects.toThrow(SecretDecryptError);
+		});
+	});
+});
+
+describe("key rotation", () => {
+	const OLD = Buffer.alloc(32, 1);
+	const NEW = Buffer.alloc(32, 2);
+
+	it("reads a payload written under a retired key", async () => {
+		const payload = await encryptSecret("stored-before-rotation", { key: OLD, aad: AAD });
+		await expect(decryptSecret(payload, { keyring: ring(NEW, OLD), aad: AAD })).resolves.toBe("stored-before-rotation");
+	});
+
+	it("reports a key the ring no longer holds instead of blaming the payload", async () => {
+		const payload = await encryptSecret("stranded", { key: OLD, aad: AAD });
+		await expect(decryptSecret(payload, { keyring: ring(NEW), aad: AAD })).rejects.toThrow(UnknownKeyError);
+		await expect(decryptSecret(payload, { keyring: ring(NEW), aad: AAD })).rejects.toThrow(keyId(OLD));
+	});
+
+	it("gives every key a distinct id and never derives it from a bare hash", () => {
+		expect(keyId(OLD)).not.toBe(keyId(NEW));
+		expect(keyId(OLD)).toBe(keyId(Buffer.alloc(32, 1)));
+		expect(keyId(OLD)).toMatch(/^[0-9a-f]{16}$/);
+	});
+});
+
+describe("getKeyring", () => {
+	it("returns null when unset or blank", () => {
+		expect(getKeyring({})).toBeNull();
+		expect(getKeyring({ ELMO_ENCRYPTION_KEY: "" })).toBeNull();
+		expect(getKeyring({ ELMO_ENCRYPTION_KEY: "   " })).toBeNull();
+	});
+
+	it("decodes a valid 32-byte base64 key as the primary", () => {
+		const key = randomBytes(32);
+		const keyring = getKeyring({ ELMO_ENCRYPTION_KEY: key.toString("base64") });
+		expect(keyring).not.toBeNull();
+		expect(keyring?.primary.equals(key)).toBe(true);
+		expect([...(keyring?.byId.keys() ?? [])]).toEqual([keyId(key)]);
+	});
+
+	it("accepts a comma-separated list of retired keys for decryption only", () => {
+		const current = randomBytes(32);
+		const retired = [randomBytes(32), randomBytes(32)];
+		const keyring = getKeyring({
+			ELMO_ENCRYPTION_KEY: current.toString("base64"),
+			ELMO_ENCRYPTION_KEY_OLD: ` ${retired[0].toString("base64")} , ${retired[1].toString("base64")} `,
+		});
+		expect(keyring?.primary.equals(current)).toBe(true);
+		expect(keyring?.byId.size).toBe(3);
+		for (const key of retired) expect(keyring?.byId.get(keyId(key))?.equals(key)).toBe(true);
+	});
+
+	it("tolerates a retired key that is still the current one", () => {
+		const key = randomBytes(32).toString("base64");
+		const keyring = getKeyring({ ELMO_ENCRYPTION_KEY: key, ELMO_ENCRYPTION_KEY_OLD: key });
+		expect(keyring?.byId.size).toBe(1);
+	});
+
+	it("refuses retired keys with no current key, rather than looking rotated", () => {
+		expect(() => getKeyring({ ELMO_ENCRYPTION_KEY_OLD: randomBytes(32).toString("base64") })).toThrow(
+			EncryptionKeyError,
+		);
+	});
+
+	it("throws EncryptionKeyError for the wrong decoded length", () => {
+		expect(() => getKeyring({ ELMO_ENCRYPTION_KEY: randomBytes(16).toString("base64") })).toThrow(EncryptionKeyError);
+		expect(() => getKeyring({ ELMO_ENCRYPTION_KEY: randomBytes(64).toString("base64") })).toThrow(EncryptionKeyError);
+		expect(() =>
+			getKeyring({
+				ELMO_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
+				ELMO_ENCRYPTION_KEY_OLD: randomBytes(16).toString("base64"),
+			}),
+		).toThrow(EncryptionKeyError);
+	});
+});

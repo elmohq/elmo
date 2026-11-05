@@ -1,22 +1,30 @@
 {
 	"name": "@workspace/og",
-	"version": "0.2.13",
+	"version": "0.7.7",
 	"private": true,
 	"license": "MIT",
+	"scripts": {
+		"check-types": "tsc --noEmit"
+	},
 	"type": "module",
 	"exports": {
-		"./render": "./src/render.ts",
+		"./render": "./src/render.tsx",
+		"./fonts": "./src/fonts.ts",
+		"./rasterize": "./src/rasterize.ts",
 		"./vite-plugin": "./src/vite-plugin.ts",
 		"./virtual": "./src/virtual.d.ts"
 	},
 	"dependencies": {
+		"@takumi-rs/core": "catalog:",
+		"@takumi-rs/helpers": "^2.19.0",
 		"@workspace/config": "workspace:*",
-		"react": "^19.2.7"
+		"react": "catalog:"
 	},
 	"devDependencies": {
-		"@types/node": "^25.9.2",
-		"@types/react": "^19.2.17",
-		"typescript": "^6.0.3",
-		"vite": "^8.0.16"
+		"@types/node": "catalog:",
+		"@types/react": "catalog:",
+		"nitro": "catalog:",
+		"typescript": "catalog:",
+		"vite": "catalog:"
 	}
 }

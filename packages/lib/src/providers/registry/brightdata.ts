@@ -1,110 +1,167 @@
 import { bdclient } from "@brightdata/sdk";
-import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import type { Citation } from "../../text-extraction";
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { getCredential } from "../../secrets";
+import { extractCitationsFromBrightdata } from "../../text-extraction";
+import { configuredWhen, reportedWebQueries } from "../config";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import { pollTask, type TaskState } from "./poll-task";
+import { type Attempt, hasWebSearchToggle, nonEmptyStrings, retryTransient } from "./scrape-shared";
+
+const AI_OVERVIEW_MODEL = "google-ai-overview";
 
 const BD_DATASET_IDS: Record<string, string> = {
 	chatgpt: "gd_m7aof0k82r803d5bjm",
 	perplexity: "gd_m7dhdot1vw9a7gc1n",
 	copilot: "gd_m7di5jy6s9geokz8w",
 	gemini: "gd_mbz66arm2mf9cu856y",
-	grok: "gd_m8ve0u141icu75ae74",
 	"google-ai-mode": "gd_mcswdt6z2elth3zqr2",
 };
 
 const BD_BASE_URL: Record<string, string> = {
 	chatgpt: "https://chatgpt.com/",
 	"google-ai-mode": "https://google.com/aimode",
-	"google-ai-overview": "https://www.google.com/",
 	gemini: "https://gemini.google.com/",
 	copilot: "https://copilot.microsoft.com/chats",
 	perplexity: "https://www.perplexity.ai/",
-	grok: "https://grok.com/",
 };
 
 function createClient(): bdclient {
-	return new bdclient({ apiKey: process.env.BRIGHTDATA_API_TOKEN });
+	return new bdclient({ apiKey: getCredential("BRIGHTDATA_API_TOKEN") });
 }
 
-function normalizeAnswer(record: Record<string, any>): string {
+const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
+
+/**
+ * AI Overview isn't a dataset, so it comes through the SERP API. Without
+ * `brd_ai_overview=2` the overview appears in only a fraction of SERPs. The
+ * default `sdk_serp` zone is the one the BrightData SDK auto-provisions.
+ */
+function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+	const zone = process.env.BRIGHTDATA_SERP_ZONE ?? "sdk_serp";
+	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=us&hl=en`;
+
+	return retryTransient(
+		() => attemptGoogleAiOverview(zone, url),
+		(lastError) => `BrightData SERP request failed after 3 attempts — ${lastError}`,
+	);
+}
+
+async function attemptGoogleAiOverview(zone: string, url: string): Promise<Attempt<ScrapeResult>> {
+	const res = await fetch(BRIGHTDATA_REQUEST_URL, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
+			"Content-Type": "application/json",
+		},
+		// Without `method: "GET"` the response comes back empty.
+		body: JSON.stringify({ zone, url, method: "GET", format: "raw" }),
+	});
+	const text = await res.text();
+
+	let parsed: unknown;
+	if (res.ok && text.trim()) {
+		try {
+			parsed = JSON.parse(text);
+		} catch {
+			// fall through to retry — a non-JSON body is a transient edge/error page
+		}
+	}
+	if (parsed === undefined) return { error: `${res.status} ${text.slice(0, 200)}`.trim() };
+
+	const citations = extractCitationsFromBrightdata(parsed);
+	return {
+		result: {
+			rawOutput: parsed,
+			// The SERP API doesn't expose the query expansion behind the overview;
+			// mark it unavailable when sources prove a live result, else empty.
+			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
+			modelVersion: "brightdata-serp",
+		},
+	};
+}
+
+function findAnswer(record: Record<string, any>): string | null {
 	for (const key of ["answer_text_markdown", "answer_text", "answer", "response_raw", "response", "text", "content"]) {
 		if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
 	}
-	return JSON.stringify(record).slice(0, 2000);
+	return null;
 }
 
-function extractSources(record: Record<string, any>): Citation[] {
-	const citations: Citation[] = [];
-	const seen = new Set<string>();
-	let idx = 0;
-
-	for (const field of ["citations", "links_attached", "sources"]) {
-		const arr = record[field];
-		if (!Array.isArray(arr)) continue;
-		for (const item of arr) {
-			const url = typeof item === "string" ? item : item?.url;
-			if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
-			if (seen.has(url)) continue;
-			seen.add(url);
-			try {
-				const parsed = new URL(url);
-				citations.push({
-					url,
-					title: item?.title ?? undefined,
-					domain: parsed.hostname.replace(/^www\./, ""),
-					citationIndex: idx++,
-				});
-			} catch (e) {
-				console.warn(`BrightData: skipping invalid citation URL: ${url}`, e);
-			}
-		}
-	}
-	return citations;
+/** `response_raw` stays when it is the record's only answer, or a replay would find no text. */
+export function storedRecord(record: Record<string, any>): Record<string, any> {
+	const { answer_html, response_raw, answer_section_html, ...trimmed } = record;
+	const answeredElsewhere = findAnswer(trimmed) !== null;
+	return answeredElsewhere || response_raw === undefined ? trimmed : { ...trimmed, response_raw };
 }
 
-function extractWebQueries(record: Record<string, any>): string[] {
-	// web_search_query is a direct array of strings (e.g. grok)
-	if (Array.isArray(record.web_search_query)) {
-		return record.web_search_query.filter((q: any) => typeof q === "string" && q.trim());
-	}
+function rowError(record: Record<string, any>): string | null {
+	const parts = [record.error, record.error_code]
+		.map((value) => (typeof value === "string" ? value.trim() : value ? JSON.stringify(value) : ""))
+		.filter(Boolean);
+	return parts.length > 0 ? parts.join(" — ") : null;
+}
+
+/** Exported for tests. `include_errors=true` means a ready snapshot can carry a
+ *  per-input failure in place of an answer. */
+export function readAnswer(record: Record<string, any>, subject: string): string {
+	const answer = findAnswer(record);
+	if (answer) return answer;
+	const error = rowError(record);
+	throw new Error(
+		error
+			? `BrightData ${subject} returned an error row: ${error}`
+			: `BrightData ${subject} returned a row with no answer`,
+	);
+}
+
+/**
+ * Exported for tests. Don't gate on `web_search_triggered`: most real ChatGPT runs
+ * carry `false` alongside a genuine query. BrightData sometimes attaches another
+ * session's queries too, but nothing in the payload tells those apart, so they
+ * are recorded as reported.
+ */
+export function extractWebQueries(record: Record<string, any>): string[] {
+	if (Array.isArray(record.web_search_query)) return nonEmptyStrings(record.web_search_query);
 	// search_model_queries may be nested in metadata (e.g. chatgpt)
 	const smq = record.metadata?.search_model_queries ?? record.search_model_queries;
-	if (smq?.queries && Array.isArray(smq.queries)) {
-		return smq.queries.filter((q: any) => typeof q === "string" && q.trim());
-	}
-	if (Array.isArray(smq)) {
-		return smq.filter((q: any) => typeof q === "string" && q.trim());
-	}
-	return [];
+	return nonEmptyStrings(smq?.queries ?? smq);
 }
 
 export const brightdata: Provider = {
 	id: "brightdata",
 	name: "BrightData",
+	access: "scraped",
+	docsAnchor: "brightdata",
 
-	isConfigured() {
-		return !!process.env.BRIGHTDATA_API_TOKEN;
-	},
+	isConfigured: configuredWhen("BRIGHTDATA_API_TOKEN"),
 
 	validateTarget(config: ModelConfig) {
+		if (config.model === AI_OVERVIEW_MODEL) {
+			if (!config.webSearch) {
+				return `${config.model}:brightdata requires :online — AI Overview always uses web search`;
+			}
+			return null;
+		}
 		// Allow custom dataset IDs via version slug (e.g. chatgpt:brightdata:gd_abc123)
 		if (!config.version && !BD_DATASET_IDS[config.model]) {
-			return `BrightData does not support model "${config.model}". Supported: ${Object.keys(BD_DATASET_IDS).join(", ")}`;
+			return `BrightData does not support model "${config.model}". Supported: ${[...Object.keys(BD_DATASET_IDS), AI_OVERVIEW_MODEL].join(", ")}`;
 		}
-		// ChatGPT has a web search toggle; all other chatbots always search
-		if (!config.webSearch && config.model !== "chatgpt") {
+		if (!config.webSearch && !hasWebSearchToggle(config.model)) {
 			return `${config.model}:brightdata requires :online — this chatbot always uses web search`;
 		}
 		return null;
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
+		if (model === AI_OVERVIEW_MODEL) {
+			return runGoogleAiOverview(prompt);
+		}
+
 		const datasetId = options?.version ?? BD_DATASET_IDS[model];
 		if (!datasetId) {
 			throw new Error(
 				`BrightData: no dataset ID for model "${model}". ` +
-				`Either use a known model (${Object.keys(BD_DATASET_IDS).join(", ")}) ` +
-				`or pass a dataset ID as the version slug: ${model}:brightdata:gd_abc123`,
+					`Either use a known model (${Object.keys(BD_DATASET_IDS).join(", ")}) ` +
+					`or pass a dataset ID as the version slug: ${model}:brightdata:gd_abc123`,
 			);
 		}
 
@@ -112,115 +169,106 @@ export const brightdata: Provider = {
 		let snapshotId: string | undefined;
 		let consumed = false;
 		try {
-			const triggerRes = await fetch(
-				`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
-				{
-					method: "POST",
-					headers: {
-						Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify([{
-						url: BD_BASE_URL[model] ?? "",
-						prompt,
-						index: 1,
-						...(model === "chatgpt" ? { web_search: options?.webSearch ?? false } : {}),
-					}]),
-				},
-			);
-
-			if (!triggerRes.ok) {
-				throw new Error(`BrightData trigger failed (${triggerRes.status}): ${await triggerRes.text()}`);
-			}
-
-			({ snapshot_id: snapshotId } = (await triggerRes.json()) as { snapshot_id: string });
+			snapshotId = await triggerSnapshot(datasetId, model, prompt, options?.webSearch ?? false);
 			await pollUntilReady(snapshotId);
 			const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
 			consumed = true;
 
 			const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
-			const answer = normalizeAnswer(record);
+			// Refuses a snapshot with no answer, which extraction would store as empty.
+			readAnswer(record, `${model} snapshot ${snapshotId}`);
 
 			const webQueries = extractWebQueries(record);
-			const citations = extractSources(record);
+			const citations = extractCitationsFromBrightdata(record);
 
-			// Drop large HTML fields that aren't used for extraction.
-			// Keeps all structured data (shopping, recommendations, citations, etc.)
-			const { answer_html, response_raw, answer_section_html, ...trimmed } = record;
+			const trimmed = storedRecord(record);
 			const rawOutput = Array.isArray(payload) ? [trimmed] : trimmed;
 
 			return {
 				rawOutput,
-				textContent: answer,
-				// Only mark web queries as "unavailable" when web search was enabled
-				// and citations exist but no query strings were exposed.
-				// When web search is disabled, webQueries is always empty.
-				webQueries: options?.webSearch
-					? (webQueries.length > 0 ? webQueries : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [])
-					: [],
-				citations,
+				webQueries: reportedWebQueries(webQueries, {
+					webSearch: options?.webSearch ?? false,
+					searchProven: citations.length > 0,
+				}),
 				modelVersion: record?.model ?? undefined,
 			};
 		} finally {
-			// A triggered snapshot we never consumed (timeout, terminal failure, an
-			// unknown status we gave up on, or any thrown error) keeps running on
-			// BrightData and counts against the per-dataset concurrency cap — which
-			// eventually 429s even healthy triggers. Best-effort cancel so abandoned
-			// jobs don't accumulate. (Worker SIGTERM mid-poll still leaks; those need
-			// the periodic snapshot sweep.)
+			// An abandoned snapshot keeps running and counts against the per-dataset
+			// concurrency cap, which eventually 429s healthy triggers. A SIGTERM
+			// mid-poll still leaks one; the periodic snapshot sweep catches those.
 			if (snapshotId && !consumed) await cancelSnapshot(client, snapshotId);
 			await client.close();
 		}
 	},
 };
 
-/** Terminal failure statuses from datasets/v3/progress. Anything else —
- *  running, building, "starting", queued, or a status BrightData adds later —
- *  is treated as "still working" so a degraded scraper or an unrecognized
- *  status string doesn't fail the run on the very first poll. */
+async function triggerSnapshot(datasetId: string, model: string, prompt: string, webSearch: boolean): Promise<string> {
+	const response = await fetch(
+		`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
+		{
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify([
+				{
+					url: BD_BASE_URL[model] ?? "",
+					prompt,
+					index: 1,
+					...(hasWebSearchToggle(model) ? { web_search: webSearch } : {}),
+				},
+			]),
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error(`BrightData trigger failed (${response.status}): ${await response.text()}`);
+	}
+	const { snapshot_id } = (await response.json()) as { snapshot_id: string };
+	return snapshot_id;
+}
+
 const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
 
-async function pollUntilReady(snapshotId: string): Promise<void> {
-	const maxAttempts = 60;
-	const BASE_DELAY = 2000;
-	const MAX_DELAY = 10000;
+/** No documented deadline: sized past the slowest error row a stuck input has produced. */
+const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
-	for (let attempt = 0; attempt < maxAttempts; attempt++) {
-		const status = await getSnapshotStatus(snapshotId);
-		if (status === "ready") return;
-		if (TERMINAL_FAILURE.has(status)) {
-			throw new Error(`BrightData snapshot ${snapshotId} ${status}`);
-		}
-
-		const delay = Math.min(BASE_DELAY * Math.pow(2, Math.floor(attempt / 5)), MAX_DELAY);
-		await new Promise((resolve) => setTimeout(resolve, delay));
-	}
-
-	throw new Error(`BrightData snapshot ${snapshotId} timed out`);
+function snapshotState(status: string): TaskState {
+	if (status === "ready") return "ready";
+	if (TERMINAL_FAILURE.has(status)) return "failed";
+	// Unrecognised statuses (e.g. "starting") must not fail the run on the first poll.
+	return "running";
 }
 
-/** Read snapshot status straight from datasets/v3/progress. We bypass the SDK's
- *  getStatus because its response schema is a strict enum
- *  (running|ready|failed|cancelled|error) that throws on any other value — and the
- *  live API also returns statuses like "starting", which would otherwise fail the
- *  run instantly instead of waiting. A transient HTTP/parse error is reported as a
- *  non-terminal status so we keep polling rather than abandon the snapshot. */
-async function getSnapshotStatus(snapshotId: string): Promise<string> {
+function pollUntilReady(snapshotId: string): Promise<string | undefined> {
+	return pollTask<string>({
+		describe: `BrightData snapshot ${snapshotId}`,
+		poll: () => getSnapshotStatus(snapshotId),
+		classify: snapshotState,
+		describeFailure: (status) => ` (${status})`,
+		totalTimeoutMs: POLL_TIMEOUT_MS,
+	});
+}
+
+/**
+ * Bypasses the SDK's getStatus, whose strict enum throws on live statuses like
+ * "starting". A transient error reads as null, so the last known status stands.
+ */
+async function getSnapshotStatus(snapshotId: string): Promise<string | null> {
 	try {
 		const res = await fetch(`https://api.brightdata.com/datasets/v3/progress/${snapshotId}`, {
-			headers: { Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}` },
+			headers: { Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}` },
 		});
-		if (!res.ok) return "pending";
+		if (!res.ok) return null;
 		const body = (await res.json()) as { status?: string };
-		return body.status ?? "pending";
+		return body.status ?? null;
 	} catch {
-		return "pending";
+		return null;
 	}
 }
 
-/** Best-effort cancel of a triggered snapshot we're abandoning, so it stops
- *  counting against BrightData's per-dataset running-jobs cap. Cancellation is
- *  cleanup, not part of the run's success path, so errors are swallowed. */
+/** Cleanup, not part of the run, so errors are swallowed. */
 async function cancelSnapshot(client: bdclient, snapshotId: string): Promise<void> {
 	try {
 		await client.scrape.snapshot.cancel(snapshotId);

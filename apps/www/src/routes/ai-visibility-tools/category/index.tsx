@@ -1,24 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
+import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
 import { Footer } from "@/components/footer";
-import {
-	DirectoryBackLink,
-	DirectoryHero,
-	DirectorySection,
-	ElmoCta,
-} from "@/components/directory-shell";
-import {
-	ogMeta,
-	canonicalUrl,
-	breadcrumbJsonLd,
-	itemListJsonLd,
-} from "@/lib/seo";
-import {
-	indexableCategories,
-	toolsInCategory,
-	CATEGORY_SLUGS,
-	CATEGORY_HEADINGS,
-} from "@/lib/competitors";
+import { Navbar } from "@/components/navbar";
+import { CATEGORY_HEADINGS, CATEGORY_SLUGS, indexableCategories, toolsInCategory } from "@/lib/competitors";
+import { breadcrumbJsonLd, canonicalUrl, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "AI Visibility Tools by Category · Elmo";
 const description =
@@ -30,22 +15,21 @@ const items = indexableCategories.map((category) => ({
 }));
 
 export const Route = createFileRoute("/ai-visibility-tools/category/")({
-	head: () => ({
+	loader: () => ({ items }),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
 			...ogMeta({ title, description, path: "/ai-visibility-tools/category" }),
 		],
-		links: [
-			{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools/category") },
-		],
+		links: [{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools/category") }],
 		scripts: [
 			breadcrumbJsonLd([
 				{ name: "Home", path: "/" },
 				{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 				{ name: "Categories", path: "/ai-visibility-tools/category" },
 			]),
-			itemListJsonLd(items),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: CategoryHub,
@@ -58,7 +42,6 @@ function CategoryHub() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					eyebrow="By category"
 					title="Browse AI visibility tools by category"
 					lead="The market splits into a few distinct groups. Pick the type of tool you're after to compare the options in that category side by side."
 				/>
@@ -71,9 +54,7 @@ function CategoryHub() {
 									className="flex items-center justify-between rounded-md border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-700 transition-colors hover:border-zinc-300 hover:text-zinc-950"
 								>
 									<span>{CATEGORY_HEADINGS[category]}</span>
-									<span className="font-mono text-[11px] text-zinc-400">
-										{toolsInCategory(category).length}
-									</span>
+									<span className="font-mono text-[11px] text-zinc-400">{toolsInCategory(category).length}</span>
 								</a>
 							</li>
 						))}

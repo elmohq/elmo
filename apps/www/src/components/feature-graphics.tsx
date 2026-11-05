@@ -1,9 +1,11 @@
+import { EngineIcon } from "./home/engines";
+
 // ---------------------------------------------------------------------------
-// Homepage feature graphics
+// Feature graphics
 //
-// Each graphic is an abstract, schematic illustration of the feature it sits
-// next to. Style is consistent across the seven: zinc + blue palette, dotted
-// grid backdrop, mono labels, geometric SVG, sharp corners.
+// Most sit next to their feature as a real product screenshot (see the
+// Screenshot helper below); the rest are schematic. All share one language:
+// zinc + blue palette, dotted grid backdrop, mono labels, sharp corners.
 // ---------------------------------------------------------------------------
 
 function Grid() {
@@ -34,19 +36,9 @@ function Frame({
 	);
 }
 
-function Mono({
-	children,
-	className = "",
-}: {
-	children: React.ReactNode;
-	className?: string;
-}) {
+function Mono({ children, className = "" }: { children: React.ReactNode; className?: string }) {
 	return (
-		<span
-			className={`font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 ${className}`}
-		>
-			{children}
-		</span>
+		<span className={`font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 ${className}`}>{children}</span>
 	);
 }
 
@@ -79,9 +71,7 @@ function Screenshot({
 	objectPosition?: string;
 }) {
 	const useOptimized = import.meta.env.PROD;
-	const srcSet = useOptimized
-		? SCREENSHOT_WIDTHS.map((w) => `${optimizedSrc(src, w)} ${w}w`).join(", ")
-		: undefined;
+	const srcSet = useOptimized ? SCREENSHOT_WIDTHS.map((w) => `${optimizedSrc(src, w)} ${w}w`).join(", ") : undefined;
 	return (
 		<Frame aspect={aspect}>
 			<img
@@ -101,13 +91,11 @@ function Screenshot({
 // 01 — Dashboard
 // ---------------------------------------------------------------------------
 
-export function OverviewPageGraphic({
-	wide = false,
-}: { wide?: boolean } = {}) {
+export function OverviewPageGraphic({ wide = false }: { wide?: boolean } = {}) {
 	return (
 		<Screenshot
 			src="/screenshots/overview.png"
-			alt="Elmo dashboard overview showing AI visibility score, trends, and citation breakdown"
+			alt="Elmo dashboard overview with visibility, share of voice, sentiment, and position cards above a competitive landscape chart"
 			aspect={wide ? "aspect-[12/5]" : "aspect-[5/3]"}
 		/>
 	);
@@ -127,20 +115,72 @@ export function VisibilityPageGraphic() {
 }
 
 // ---------------------------------------------------------------------------
-// 03 — Citations
+// 03 — Share of Voice
+// ---------------------------------------------------------------------------
+
+export function ShareOfVoicePageGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/share-of-voice.png"
+			alt="Share of voice donut chart, 30-day trend, and a leaderboard ranking your brand's mention share against competitors"
+		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// 04 — Sentiment
+// ---------------------------------------------------------------------------
+
+export function SentimentPageGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/sentiment.png"
+			alt="Sentiment score donut, sentiment trends against competitors, sentiment by model, and the passages where AI praises the brand"
+		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// 05 — Query Fan-Out
+// ---------------------------------------------------------------------------
+
+export function QueryFanOutPageGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/query-fan-out.png"
+			alt="Query fan-out word cloud of the search terms AI engines generate, with a breakdown of how prompts get rewritten"
+		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// 06 — Citations
 // ---------------------------------------------------------------------------
 
 export function CitationsPageGraphic() {
 	return (
 		<Screenshot
 			src="/screenshots/citations.png"
-			alt="Citation analysis showing brand share, unique domains, total citations, and breakdown by domain type"
+			alt="Citation analysis showing brand citation share, unique domains, total citations, and category and page-type trends"
 		/>
 	);
 }
 
 // ---------------------------------------------------------------------------
-// 04 — Prompts
+// 07 — Opportunities
+// ---------------------------------------------------------------------------
+
+export function OpportunitiesPageGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/opportunities.png"
+			alt="Opportunities page with an AI-generated summary and prioritized recommendations for content to create and sources to pitch"
+		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// 08 — Prompts
 // ---------------------------------------------------------------------------
 
 export function PromptSearchGraphic() {
@@ -153,88 +193,38 @@ export function PromptSearchGraphic() {
 }
 
 // ---------------------------------------------------------------------------
-// 05 — Competition: brand vs competitors stack-rank
-// ---------------------------------------------------------------------------
-
-export function CompetitorGraphic() {
-	const lanes = [
-		{ name: "Nike", initial: "N", pct: 78, isYou: true },
-		{ name: "Adidas", initial: "A", pct: 64 },
-		{ name: "New Balance", initial: "N", pct: 56 },
-		{ name: "Asics", initial: "A", pct: 48 },
-		{ name: "Hoka", initial: "H", pct: 42 },
-		{ name: "Puma", initial: "P", pct: 35 },
-		{ name: "Saucony", initial: "S", pct: 28 },
-		{ name: "Brooks", initial: "B", pct: 21 },
-		{ name: "Reebok", initial: "R", pct: 14 },
-	];
-
-	return (
-		<Frame>
-			<ul
-				role="list"
-				className="flex size-full flex-col justify-center gap-2 p-5 md:p-6"
-			>
-				{lanes.map((l) => (
-					<li
-						key={l.name}
-						className="grid grid-cols-[1.5rem_7rem_1fr_2.5rem] items-center gap-3"
-					>
-						<span
-							className={`flex size-6 items-center justify-center rounded-md font-mono text-[11px] font-medium ${
-								l.isYou
-									? "bg-blue-600 text-white"
-									: "bg-zinc-100 text-zinc-600"
-							}`}
-						>
-							{l.initial}
-						</span>
-						<span
-							className={`truncate text-[13px] ${
-								l.isYou ? "font-medium text-blue-700" : "text-zinc-700"
-							}`}
-						>
-							{l.name}
-						</span>
-						<div className="relative h-2.5 overflow-hidden rounded-sm bg-zinc-100">
-							<div
-								className={`h-full rounded-sm ${
-									l.isYou
-										? "bg-blue-600"
-										: "bg-linear-to-r from-zinc-300 to-zinc-400"
-								}`}
-								style={{ width: `${l.pct}%` }}
-							/>
-						</div>
-						<span
-							className={`text-right text-[13px] tabular-nums ${
-								l.isYou ? "font-medium text-blue-700" : "text-zinc-700"
-							}`}
-						>
-							{l.pct}%
-						</span>
-					</li>
-				))}
-			</ul>
-		</Frame>
-	);
-}
-
-// ---------------------------------------------------------------------------
-// 06 — Deep Dive
+// 09 — Deep Dive
 // ---------------------------------------------------------------------------
 
 export function PromptDetailGraphic() {
 	return (
 		<Screenshot
 			src="/screenshots/prompt-detail.png"
-			alt="Prompt history showing brand mention rates broken down by individual brand competitors"
+			alt="Prompt history detail showing an individual AI response with the brands it mentioned and the sources behind it"
+		/>
+	);
+}
+
+export function PromptSettingsGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/prompt-settings.png"
+			alt="Prompt settings listing tracked prompts with their branded or unbranded system tag and topic tags"
+		/>
+	);
+}
+
+export function ResponsesGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/responses.png"
+			alt="Responses page with a sentiment split across every answer and a ChatGPT response showing each brand's position and sentiment"
 		/>
 	);
 }
 
 // ---------------------------------------------------------------------------
-// 07 — Trends: 12-month area chart
+// 10 — Trends: 12-month area chart
 // ---------------------------------------------------------------------------
 
 export function VisibilityTrendGraphic() {
@@ -266,12 +256,8 @@ export function VisibilityTrendGraphic() {
 					<div className="flex flex-col gap-0.5">
 						<Mono>BRAND VISIBILITY · 12M</Mono>
 						<div className="flex items-baseline gap-2">
-							<span className="text-3xl font-medium tracking-tight text-zinc-950 tabular-nums">
-								72%
-							</span>
-							<span className="font-mono text-[10px] tabular-nums text-emerald-600">
-								↑ 32 PT YoY
-							</span>
+							<span className="text-3xl font-medium tracking-tight text-zinc-950 tabular-nums">72%</span>
+							<span className="font-mono text-[10px] tabular-nums text-emerald-600">↑ 32 PT YoY</span>
 						</div>
 					</div>
 					<div className="flex flex-col items-end gap-1 font-mono text-[9px] uppercase tracking-[0.15em]">
@@ -288,6 +274,7 @@ export function VisibilityTrendGraphic() {
 
 				<div className="relative flex-1">
 					<svg
+						aria-hidden="true"
 						viewBox={`0 0 ${w} ${h}`}
 						className="size-full overflow-visible"
 						preserveAspectRatio="none"
@@ -356,6 +343,98 @@ export function VisibilityTrendGraphic() {
 					{months.map((m) => (
 						<span key={m}>{m}</span>
 					))}
+				</div>
+			</div>
+		</Frame>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// API and MCP: the two ways in, as terminal snippets
+// ---------------------------------------------------------------------------
+
+const CODE_PANEL =
+	"overflow-hidden rounded-md bg-zinc-950 p-4 font-mono text-[11px] leading-relaxed text-zinc-100 md:text-xs";
+
+export function ApiGraphic() {
+	return (
+		<Frame>
+			<div className="flex size-full flex-col gap-3 p-5 md:p-6">
+				<Mono>CONNECT · MCP</Mono>
+				<pre className={CODE_PANEL}>
+					<span className="select-none text-zinc-500">$ </span>claude mcp add --transport http elmo{"\n"}
+					{"  "}
+					<span className="text-blue-300">https://app.elmohq.com/api/mcp</span>
+				</pre>
+				<Mono className="mt-1">QUERY · TYPESCRIPT SDK</Mono>
+				<pre className={`flex-1 ${CODE_PANEL}`}>
+					<span className="text-blue-300">import</span> {"{ Elmo }"} <span className="text-blue-300">from</span>{" "}
+					<span className="text-emerald-300">"@elmohq/sdk"</span>;{"\n\n"}
+					<span className="text-blue-300">const</span> elmo = <span className="text-blue-300">new</span> Elmo();
+					{"\n"}
+					<span className="text-blue-300">for await</span> (<span className="text-blue-300">const</span> brand{" "}
+					<span className="text-blue-300">of</span> elmo.brands.list()) {"{"}
+					{"\n  "}console.log(brand.name);{"\n"}
+					{"}"}
+				</pre>
+			</div>
+		</Frame>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Engines: what is scraped from the real apps, and what is called by API
+// ---------------------------------------------------------------------------
+
+const SCRAPED_ENGINES = [
+	{ name: "ChatGPT", iconId: "openai" },
+	{ name: "AI Overviews", iconId: "google" },
+	{ name: "AI Mode", iconId: "google" },
+	{ name: "Gemini", iconId: "gemini" },
+	{ name: "Perplexity", iconId: "perplexity" },
+	{ name: "Copilot", iconId: "microsoft" },
+];
+
+const API_ENGINES = [
+	{ name: "Claude", iconId: "anthropic" },
+	{ name: "Grok", iconId: "x" },
+	{ name: "Mistral", iconId: "mistral" },
+	{ name: "DeepSeek", iconId: "deepseek" },
+	{ name: "Qwen", iconId: "qwen" },
+	{ name: "Kimi", iconId: "moonshotai" },
+];
+
+function EngineChip({ name, iconId }: { name: string; iconId: string }) {
+	return (
+		<li className="flex h-10 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900">
+			<EngineIcon iconId={iconId} className="size-4 shrink-0" />
+			<span className="truncate">{name}</span>
+		</li>
+	);
+}
+
+export function EnginesGraphic() {
+	return (
+		<Frame>
+			<div className="flex size-full flex-col justify-center gap-5 p-5 md:p-8">
+				<div>
+					<Mono>SCRAPED FROM THE REAL APPS</Mono>
+					<ul className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+						{SCRAPED_ENGINES.map((e) => (
+							<EngineChip key={e.name} {...e} />
+						))}
+					</ul>
+				</div>
+				<div>
+					<Mono>DIRECT APIS AND OPENROUTER</Mono>
+					<ul className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+						{API_ENGINES.map((e) => (
+							<EngineChip key={e.name} {...e} />
+						))}
+						<li className="flex h-10 items-center rounded-md border border-dashed border-zinc-300 px-3 text-sm font-medium text-zinc-600">
+							+ OpenRouter models
+						</li>
+					</ul>
 				</div>
 			</div>
 		</Frame>

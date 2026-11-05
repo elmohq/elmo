@@ -1,8 +1,9 @@
 #!/usr/bin/env tsx
+
 /**
  * Benchmark: Postgres analytics query performance.
  *
- * Imports the production functions from postgres-read.ts and measures
+ * Imports the production functions from rollup-read.ts and measures
  * their latency across the top N brands.
  *
  * Usage:
@@ -12,18 +13,14 @@
  *   pnpm tsx --env-file=../../.env scripts/benchmark-postgres-analytics.ts --brands=3
  */
 
-import * as pgRead from "../src/lib/postgres-read";
-import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
+import * as pgRead from "../src/lib/rollup-read";
 
 const db = drizzle(process.env.DATABASE_URL!);
 
 const ITERATIONS = parseInt(process.argv.find((a) => a.startsWith("--iterations="))?.split("=")[1] || "5");
 const WARMUP = 1;
-
-// ============================================================================
-// Timing
-// ============================================================================
 
 interface BenchResult {
 	name: string;
@@ -61,76 +58,41 @@ async function bench(name: string, pgFn: () => Promise<unknown>): Promise<BenchR
 	return { name, ...timing };
 }
 
-// ============================================================================
-// Main
-// ============================================================================
-
-async function benchBrand(
-	brandId: string,
-	runCount: number,
-	hasCitations: boolean,
-): Promise<BenchResult[]> {
+async function benchBrand(brandId: string, runCount: number, hasCitations: boolean): Promise<BenchResult[]> {
 	const promptResult = await db.execute<{ id: string }>(sql`
 		SELECT id FROM prompts WHERE brand_id = ${brandId} AND enabled = true LIMIT 20
 	`);
 	const promptIds = promptResult.rows.map((r) => r.id);
 	const firstPromptId = promptIds[0];
-	if (!firstPromptId) { console.log(`  Skipping ${brandId} — no enabled prompts`); return []; }
+	if (!firstPromptId) {
+		console.log(`  Skipping ${brandId} — no enabled prompts`);
+		return [];
+	}
 
 	const toDate = new Date().toISOString().split("T")[0];
 	const fromDate = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
 	const tz = "UTC";
-	const brandedPromptIds = promptIds.slice(0, Math.ceil(promptIds.length / 2));
 
 	console.log(`\n### Brand: ${brandId.slice(0, 8)}... (${runCount} runs, ${promptIds.length} prompts)\n`);
 
+	const scope = { brandId, from: fromDate, to: toDate, timezone: tz, promptIds };
+	const promptScope = { ...scope, promptIds: [firstPromptId] };
+
 	const results: BenchResult[] = [];
 
-	results.push(await bench("getDashboardSummary",
-		() => pgRead.getDashboardSummary(brandId, fromDate, toDate, tz, promptIds)));
-
-	results.push(await bench("getVisibilityTimeSeries",
-		() => pgRead.getVisibilityTimeSeries(brandId, fromDate, toDate, tz, brandedPromptIds, promptIds)));
-
-	results.push(await bench("getPromptsSummary",
-		() => pgRead.getPromptsSummary(brandId, fromDate, toDate, tz)));
-
-	results.push(await bench("getPromptsFirstEvaluatedAt",
-		() => pgRead.getPromptsFirstEvaluatedAt(brandId, promptIds)));
-
-	results.push(await bench("getPromptDailyStats",
-		() => pgRead.getPromptDailyStats(firstPromptId, fromDate, toDate, tz)));
-
-	results.push(await bench("getPromptCompetitorDailyStats",
-		() => pgRead.getPromptCompetitorDailyStats(firstPromptId, fromDate, toDate, tz)));
-
-	results.push(await bench("getPromptWebQueriesForMapping",
-		() => pgRead.getPromptWebQueriesForMapping(firstPromptId, fromDate, toDate, tz)));
-
-	results.push(await bench("getPromptMentionSummary",
-		() => pgRead.getPromptMentionSummary(firstPromptId, fromDate, toDate, tz)));
-
-	results.push(await bench("getPromptTopCompetitorMentions",
-		() => pgRead.getPromptTopCompetitorMentions(firstPromptId, fromDate, toDate, tz, 10)));
-
-	results.push(await bench("getBatchChartData",
-		() => pgRead.getBatchChartData(brandId, promptIds, fromDate, toDate, tz)));
-
-	results.push(await bench("getBrandEarliestRunDate",
-		() => pgRead.getBrandEarliestRunDate(brandId)));
+	results.push(await bench("getMentionTotals", () => pgRead.getMentionTotals(scope)));
+	results.push(await bench("getPerPromptRunStats", () => pgRead.getPerPromptRunStats(scope)));
+	results.push(await bench("getPromptsFirstEvaluatedAt", () => pgRead.getPromptsFirstEvaluatedAt(brandId, promptIds)));
+	results.push(await bench("getMentionTotals (one prompt)", () => pgRead.getMentionTotals(promptScope)));
+	results.push(await bench("getCompetitorTotals (one prompt)", () => pgRead.getCompetitorTotals(promptScope, 10)));
+	results.push(await bench("getPerPromptDailyRuns", () => pgRead.getPerPromptDailyRuns(scope)));
+	results.push(await bench("getPerPromptDailyCompetitors", () => pgRead.getPerPromptDailyCompetitors(scope)));
+	results.push(await bench("getBrandEarliestRunDate", () => pgRead.getBrandEarliestRunDate(brandId)));
 
 	if (hasCitations) {
-		results.push(await bench("getCitationDomainStats",
-			() => pgRead.getCitationDomainStats(brandId, fromDate, toDate, tz, promptIds)));
-
-		results.push(await bench("getCitationUrlStats",
-			() => pgRead.getCitationUrlStats(brandId, fromDate, toDate, tz, promptIds)));
-
-		results.push(await bench("getDailyCitationStats",
-			() => pgRead.getDailyCitationStats(brandId, fromDate, toDate, tz, promptIds)));
-
-		results.push(await bench("getPromptCitationUrlStats",
-			() => pgRead.getPromptCitationUrlStats(firstPromptId, fromDate, toDate, tz)));
+		results.push(await bench("getCitationUrlStats", () => pgRead.getCitationUrlStats(scope)));
+		results.push(await bench("getPerPromptDailyCitationDomains", () => pgRead.getPerPromptDailyCitationDomains(scope)));
+		results.push(await bench("getCitationUrlStats (one prompt)", () => pgRead.getCitationUrlStats(promptScope)));
 	}
 
 	return results;
@@ -147,7 +109,10 @@ async function main(): Promise<void> {
 		FROM prompt_runs WHERE brand_id IS NOT NULL
 		GROUP BY brand_id ORDER BY run_count DESC LIMIT ${NUM_BRANDS}
 	`);
-	if (topBrands.rows.length === 0) { console.error("No prompt_runs with brand_id."); process.exit(1); }
+	if (topBrands.rows.length === 0) {
+		console.error("No prompt_runs with brand_id.");
+		process.exit(1);
+	}
 
 	const citResult = await db.execute<{ count: number }>(sql`SELECT count(*)::int AS count FROM citations`);
 	const hasCitations = citResult.rows[0].count > 0;
@@ -159,16 +124,6 @@ async function main(): Promise<void> {
 		const brandResults = await benchBrand(brand.brand_id, brand.run_count, hasCitations);
 		allResults.push(...brandResults);
 	}
-
-	// === Admin queries (run once) ===
-	console.log("\n### Admin queries\n");
-
-	allResults.push(await bench("getAdminRunsOverTime", () => pgRead.getAdminRunsOverTime()));
-	allResults.push(await bench("getAdminBrandRunStats", () => pgRead.getAdminBrandRunStats()));
-
-	// ============================================================================
-	// Output
-	// ============================================================================
 
 	console.log("\n## Summary\n");
 	console.log(`| Query | Avg (ms) | Min (ms) | P95 (ms) | Rows |`);

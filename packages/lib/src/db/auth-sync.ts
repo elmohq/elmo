@@ -1,127 +1,100 @@
-/**
- * Auth data sync helpers.
- *
- * High-level CRUD operations on better-auth tables (organization, member, user, account).
- * These are called by deployment-specific hooks (e.g. whitelabel Auth0 sync)
- * to keep auth state consistent with external identity providers.
- *
- * All drizzle operations are co-located here with the schema to avoid
- * cross-package type mismatches from different drizzle-orm resolutions.
- */
+/** Beside the schema to avoid type mismatches between packages' drizzle-orm resolutions. */
+
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "./db";
-import { eq, and, ne, inArray } from "drizzle-orm";
-import { organization, member, user, account } from "./schema";
+import { account, member, organization, user } from "./schema";
 
-async function uniqueSlug(baseSlug: string, excludeOrgId: string): Promise<string> {
-	let candidate = baseSlug;
-	let suffix = 2;
-	for (;;) {
-		const conflict = await db
-			.select({ id: organization.id })
-			.from(organization)
-			.where(and(eq(organization.slug, candidate), ne(organization.id, excludeOrgId)))
+type AuthSyncTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * The Auth0 sync runs on sign-in and on a schedule, so two runs for one user
+ * could both insert. The member unique index is the backstop.
+ */
+async function lockUserMemberships(tx: AuthSyncTransaction, userId: string): Promise<void> {
+	await tx.execute(sql`select pg_advisory_xact_lock(hashtext('elmo-user-memberships'), hashtext(${userId}))`);
+}
+
+export async function ensureMembership(userId: string, orgId: string, role = "member"): Promise<void> {
+	await db.transaction(async (tx) => {
+		await lockUserMemberships(tx, userId);
+		const existing = await tx
+			.select({ id: member.id })
+			.from(member)
+			.where(and(eq(member.userId, userId), eq(member.organizationId, orgId)))
 			.limit(1);
-		if (conflict.length === 0) return candidate;
-		candidate = `${baseSlug}-${suffix}`;
-		suffix++;
-	}
-}
 
-export async function upsertOrganization(org: {
-	id: string;
-	name: string;
-	slug?: string;
-}): Promise<void> {
-	const baseSlug = org.slug ?? org.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-	const slug = await uniqueSlug(baseSlug, org.id);
+		if (existing.length > 0) return;
 
-	await db
-		.insert(organization)
-		.values({
-			id: org.id,
-			name: org.name,
-			slug,
-			createdAt: new Date(),
-		})
-		.onConflictDoUpdate({
-			target: organization.id,
-			set: { name: org.name, slug },
-		});
-}
-
-export async function ensureMembership(
-	userId: string,
-	orgId: string,
-	role = "member",
-): Promise<void> {
-	const existing = await db
-		.select({ id: member.id })
-		.from(member)
-		.where(and(eq(member.userId, userId), eq(member.organizationId, orgId)))
-		.limit(1);
-
-	if (existing.length > 0) return;
-
-	await db.insert(member).values({
-		id: crypto.randomUUID(),
-		organizationId: orgId,
-		userId,
-		role,
-		createdAt: new Date(),
+		await tx
+			.insert(member)
+			.values({
+				id: crypto.randomUUID(),
+				organizationId: orgId,
+				userId,
+				role,
+				createdAt: new Date(),
+			})
+			.onConflictDoNothing();
 	});
 }
 
 export interface SyncMembershipsResult {
 	added: string[];
 	removed: string[];
+	invalid: string[];
 }
 
-/**
- * Reconciles a user's org memberships to match the given set of org IDs.
- * Adds missing memberships and removes stale ones in a single transaction.
- */
-export async function syncMemberships(
-	userId: string,
-	orgIds: string[],
-): Promise<SyncMembershipsResult> {
+/** Never creates orgs: an unknown id is reported as invalid, or the FK would abort the whole reconciliation. */
+export async function syncMemberships(userId: string, orgIds: string[]): Promise<SyncMembershipsResult> {
 	const added: string[] = [];
 	const removed: string[] = [];
+	const invalid: string[] = [];
 
 	await db.transaction(async (tx) => {
+		await lockUserMemberships(tx, userId);
 		const existing = await tx
 			.select({ id: member.id, organizationId: member.organizationId })
 			.from(member)
 			.where(eq(member.userId, userId));
+		const known = await tx.select({ id: organization.id }).from(organization).where(inArray(organization.id, orgIds));
 
 		const existingOrgIds = new Set(existing.map((m) => m.organizationId));
-		const targetOrgIds = new Set(orgIds);
+		const knownOrgIds = new Set(known.map((o) => o.id));
+		const targetOrgIds = new Set(orgIds.filter((id) => knownOrgIds.has(id)));
+		invalid.push(...orgIds.filter((id) => !knownOrgIds.has(id)));
 
-		for (const orgId of orgIds) {
+		for (const orgId of targetOrgIds) {
 			if (!existingOrgIds.has(orgId)) {
-				await tx.insert(member).values({
-					id: crypto.randomUUID(),
-					organizationId: orgId,
-					userId,
-					role: "member",
-					createdAt: new Date(),
-				});
-				added.push(orgId);
+				const inserted = await tx
+					.insert(member)
+					.values({
+						id: crypto.randomUUID(),
+						organizationId: orgId,
+						userId,
+						role: "member",
+						createdAt: new Date(),
+					})
+					.onConflictDoNothing()
+					.returning({ organizationId: member.organizationId });
+				if (inserted.length > 0) added.push(orgId);
 			}
 		}
 
 		const stale = existing.filter((m) => !targetOrgIds.has(m.organizationId));
 		if (stale.length > 0) {
-			await tx.delete(member).where(inArray(member.id, stale.map((m) => m.id)));
+			await tx.delete(member).where(
+				inArray(
+					member.id,
+					stale.map((m) => m.id),
+				),
+			);
 			removed.push(...stale.map((m) => m.organizationId));
 		}
 	});
 
-	return { added, removed };
+	return { added, removed, invalid };
 }
 
-/**
- * Returns all users that have an Auth0 SSO account linked.
- */
 export async function listAuth0Accounts(): Promise<{ userId: string; accountId: string }[]> {
 	return db
 		.select({ userId: account.userId, accountId: account.accountId })

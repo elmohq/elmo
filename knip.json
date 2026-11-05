@@ -1,27 +1,47 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignoreWorkspaces": ["packages/ui"],
+  "ignoreWorkspaces": [
+    "packages/ui"
+  ],
   "workspaces": {
     ".": {
-      "entry": ["turbo.json"],
-      "ignoreBinaries": ["playwright"]
+      "entry": [
+        "turbo.json"
+      ],
+      "ignoreBinaries": [
+        "playwright",
+        "drizzle-kit"
+      ]
     },
     "apps/web": {
-      "entry": ["src/routes/**/*.{ts,tsx}!", "src/server.ts", "scripts/*.ts"],
-      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
-      "ignore": ["src/stories/_mocks/**"],
+      "entry": [
+        "src/routes/**/*.{ts,tsx}!",
+        "scripts/*.ts"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "scripts/**/*.ts"
+      ],
+      "ignore": [
+        "src/stories/_mocks/**"
+      ],
       "ignoreDependencies": [
         "tailwindcss",
         "tw-animate-css",
         "@tailwindcss/typography",
-        "@takumi-rs/wasm",
-        "@fontsource/geist-sans"
+        "@fontsource/geist-sans",
+        "@base-ui/react",
+        "@takumi-rs/core"
       ]
     },
     "apps/www": {
-      "entry": ["src/server.ts", "scripts/**"],
-      "ignore": [".source/**", "source.generated.ts"],
-      "ignoreDependencies": ["@takumi-rs/wasm", "shiki"]
+      "entry": [
+        "scripts/**"
+      ],
+      "ignoreDependencies": [
+        "shiki",
+        "@takumi-rs/core"
+      ]
     },
     "apps/cli": {
       "ignoreDependencies": [
@@ -34,12 +54,30 @@
         "olostep"
       ]
     },
-    "apps/worker": {
-      "entry": ["scripts/test-provider.ts"]
+    "packages/og": {
+      "ignoreDependencies": [
+        "nitro"
+      ]
+    },
+    "packages/lib": {
+      "entry": [
+        "scripts/*.mjs"
+      ],
+      "ignoreDependencies": [
+        "auth"
+      ]
     },
     "e2e": {
-      "entry": ["*.ts"],
-      "project": ["**/*.ts"]
+      "entry": [
+        "*.ts",
+        "tests/**/*.setup.ts"
+      ],
+      "project": [
+        "**/*.ts"
+      ],
+      "ignoreBinaries": [
+        "script"
+      ]
     }
   }
 }

@@ -8,6 +8,8 @@ const ENV_KEYS = [
 	"OPENROUTER_API_KEY",
 	"OLOSTEP_API_KEY",
 	"BRIGHTDATA_API_TOKEN",
+	"OXYLABS_USERNAME",
+	"OXYLABS_PASSWORD",
 	"MISTRAL_API_KEY",
 ];
 
@@ -101,4 +103,3 @@ describe("resolveResearchProvider", () => {
 		expect(() => resolveResearchProvider({})).toThrow(/at least one direct LLM API/);
 	});
 });
-

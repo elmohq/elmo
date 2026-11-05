@@ -1,0 +1,30 @@
+meta {
+  name: an expired key is refused exactly like an unknown one
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{expiredKey}}
+  Accept: application/json, text/event-stream
+}
+
+body:json {
+  { "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {} }
+}
+
+assert {
+  res.status: eq 401
+  res.body.error.message: eq Invalid API key
+}
+
+docs {
+  Same wording as an unknown key. Telling the two apart would tell an attacker
+  which of their guesses was once real.
+}

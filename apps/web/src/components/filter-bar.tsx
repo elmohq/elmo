@@ -1,93 +1,40 @@
-import { type ReactNode, useEffect, useRef, useState, useMemo } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { SiOpenai, SiGoogle, SiAnthropic, SiPerplexity, SiX, SiGithubcopilot, SiMistralai } from "react-icons/si";
-import { MdSelectAll } from "react-icons/md";
-import { Sparkles } from "lucide-react";
+import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { ChevronDown, Search, Tag as TagIcon, Clock, X } from "lucide-react";
-import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { MdSelectAll } from "react-icons/md";
+import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
 import { useBrand } from "@/hooks/use-brands";
-import { getModelMeta } from "@workspace/lib/providers/models";
-export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
-import { ALL_MODELS_VALUE } from "@/lib/model-filter";
-// Filter state lives in the URL, validated by the `$brand` layout route's
-// search schema (see `validateBrandFilterSearch`). The widgets here keep
-// per-key `useSearch` selectors so one filter's click doesn't re-render the
-// others, and write through `useFilterNavigate` (replace, no scroll reset).
-// The router commits search updates synchronously within the interaction, so
-// no optimistic layer is needed (nuqs throttled URL writes, which is why the
-// old code wrapped every change in `useOptimistic` + `startTransition`).
-import {
-	useFilterNavigate,
-	splitTags,
-	joinTags,
-	coerceLookback,
-} from "@/hooks/use-list-filters";
+import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
+import { type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
+import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
-/** "all" is the no-filter sentinel; any other string is a concrete model id
- *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary
- *  model ids, so we don't constrain this to a literal union. */
-export type ModelFilterValue = string;
+export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 
-/** Map a provider `iconId` (see `getModelMeta`) to the react-icons component
- *  that renders it. `generic` and any unknown id fall through to a sparkle,
- *  so a deployment that configures a new model id we haven't seen still gets
- *  a reasonable trigger glyph. */
-export function iconForModel(model: string, className = "size-3.5") {
+import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@workspace/config/model-filter";
+// Filter state lives only in the URL. Each widget selects just its own search
+// key so one filter's click doesn't re-render the others.
+import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
+import { getAvailableModels, groupTrackedTargets, type TrackedTarget } from "@/lib/model-filter";
+
+function iconForModel(model: string, className = "size-3.5") {
 	if (model === ALL_MODELS_VALUE) return <MdSelectAll className={className} />;
-	const { iconId } = getModelMeta(model);
-	switch (iconId) {
-		case "openai":
-			return <SiOpenai className={className} />;
-		case "anthropic":
-			return <SiAnthropic className={className} />;
-		case "google":
-			return <SiGoogle className={className} />;
-		case "microsoft":
-			return <SiGithubcopilot className={className} />;
-		case "perplexity":
-			return <SiPerplexity className={className} />;
-		case "x":
-			return <SiX className={className} />;
-		case "mistral":
-			return <SiMistralai className={className} />;
-		default:
-			return <Sparkles className={className} />;
-	}
+	return <ModelIcon iconId={iconIdForModelFilter(model)} className={className} />;
 }
-
-export function labelForModel(model: string): string {
-	if (model === ALL_MODELS_VALUE) return "All models";
-	return getModelMeta(model).label;
-}
-
-
-const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
-	{ value: "1w", label: "Last 7 days" },
-	{ value: "1m", label: "Last 30 days" },
-	{ value: "3m", label: "Last 3 months" },
-	{ value: "6m", label: "Last 6 months" },
-	{ value: "1y", label: "Last 12 months" },
-	{ value: "all", label: "All time" },
-];
-
-function getLookbackLabel(lookback: LookbackPeriod): string {
-	return LOOKBACK_OPTIONS.find((o) => o.value === lookback)?.label ?? lookback;
-}
-
-// ------------------------------------------------------------------
-// Trigger button (used by every dropdown)
-// ------------------------------------------------------------------
 
 type FilterTriggerButtonProps = {
 	icon: ReactNode;
@@ -96,11 +43,8 @@ type FilterTriggerButtonProps = {
 	badgeCount?: number;
 } & React.ComponentProps<"button">;
 
-// Props forward to the underlying Button so `<DropdownMenuTrigger asChild>` /
-// `<PopoverTrigger asChild>` can hand their ref + data-state directly to the
-// button element (wrapping in a div would make Slot target the div instead).
-// Exported so page-specific bar controls (e.g. the prompts sort dropdown)
-// share the same trigger look without re-implementing it.
+// Props reach the Button itself so a trigger's `render` prop can hand it the ref;
+// a wrapping div would become the trigger instead.
 export function FilterTriggerButton({
 	icon,
 	label,
@@ -130,19 +74,14 @@ export function FilterTriggerButton({
 	);
 }
 
-// ------------------------------------------------------------------
-// Model dropdown — subscribes to only the "model" URL key.
-// ------------------------------------------------------------------
-
-export function ModelDropdown({ availableModels }: { availableModels: string[] }) {
+function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) {
+	const availableModels = getAvailableModels(trackedTargets);
 	const defaultModel = availableModels.includes(ALL_MODELS_VALUE)
 		? ALL_MODELS_VALUE
 		: (availableModels[0] ?? ALL_MODELS_VALUE);
-	const urlModel = useSearch({ strict: false, select: (s) => s.model });
+	const urlModel = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.model });
 	const setFilters = useFilterNavigate();
-	// If the URL has a model that isn't valid for this brand (e.g. stale deep
-	// link after a deployment change), fall back to the default rather than
-	// showing a trigger with an unknown value.
+	// A stale deep link can name a model this brand no longer tracks.
 	const selected = urlModel && availableModels.includes(urlModel) ? urlModel : defaultModel;
 
 	const handleChange = (next: string) => {
@@ -151,22 +90,35 @@ export function ModelDropdown({ availableModels }: { availableModels: string[] }
 
 	if (availableModels.length <= 1) return null;
 	const isFiltered = selected !== ALL_MODELS_VALUE;
+	// Scraped, API and grounded answer different questions, so they're grouped as on the LLMs page.
+	const groups = groupTrackedTargets(trackedTargets);
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<FilterTriggerButton
-					icon={iconForModel(selected)}
-					label={labelForModel(selected)}
-					active={isFiltered}
-				/>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="w-48">
+			<DropdownMenuTrigger
+				render={
+					<FilterTriggerButton
+						icon={iconForModel(selected)}
+						label={labelForModelFilter(selected)}
+						active={isFiltered}
+					/>
+				}
+			/>
+			<DropdownMenuContent align="start" className="w-56">
 				<DropdownMenuRadioGroup value={selected} onValueChange={handleChange}>
-					{availableModels.map((model) => (
-						<DropdownMenuRadioItem key={model} value={model} className="cursor-pointer gap-2">
-							{iconForModel(model)}
-							{labelForModel(model)}
-						</DropdownMenuRadioItem>
+					<DropdownMenuRadioItem value={ALL_MODELS_VALUE} className="cursor-pointer gap-2">
+						{iconForModel(ALL_MODELS_VALUE)}
+						{labelForModelFilter(ALL_MODELS_VALUE)}
+					</DropdownMenuRadioItem>
+					{groups.map((group) => (
+						<DropdownMenuGroup key={group.tier}>
+							<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">{group.label}</DropdownMenuLabel>
+							{group.values.map((value) => (
+								<DropdownMenuRadioItem key={value} value={value} className="cursor-pointer gap-2">
+									{iconForModel(value)}
+									{labelForModelFilter(value)}
+								</DropdownMenuRadioItem>
+							))}
+						</DropdownMenuGroup>
 					))}
 				</DropdownMenuRadioGroup>
 			</DropdownMenuContent>
@@ -174,17 +126,10 @@ export function ModelDropdown({ availableModels }: { availableModels: string[] }
 	);
 }
 
-// ------------------------------------------------------------------
-// Lookback dropdown — subscribes to only the "lookback" URL key.
-// ------------------------------------------------------------------
-
-export function LookbackDropdown() {
-	const { brand } = useBrand();
-	const defaultLookback = useMemo(
-		() => getDefaultLookbackPeriod(brand?.earliestDataDate),
-		[brand?.earliestDataDate],
-	);
-	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
+function LookbackDropdown() {
+	const { data: brand } = useBrand();
+	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
+	const urlLookback = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.lookback });
 	const setFilters = useFilterNavigate();
 	const selected = coerceLookback(urlLookback, defaultLookback);
 
@@ -193,37 +138,23 @@ export function LookbackDropdown() {
 	};
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
+		<LookbackPicker
+			value={selected}
+			defaultValue={defaultLookback}
+			onChange={handleChange}
+			trigger={
 				<FilterTriggerButton
 					icon={<Clock className="size-3.5" />}
-					label={getLookbackLabel(selected)}
+					label={formatLookbackLabel(selected)}
+					active={parseCustomLookback(selected) !== null}
 				/>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="w-48">
-				<DropdownMenuRadioGroup
-					value={selected}
-					onValueChange={(v) => handleChange(v as LookbackPeriod)}
-				>
-					{LOOKBACK_OPTIONS.map((opt) => (
-						<DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">
-							{opt.label}
-						</DropdownMenuRadioItem>
-					))}
-				</DropdownMenuRadioGroup>
-			</DropdownMenuContent>
-		</DropdownMenu>
+			}
+		/>
 	);
 }
 
-// ------------------------------------------------------------------
-// Tags dropdown — subscribes to only the "tags" URL key.
-// Consumer passes `availableTags` (derived from prompts summary) so the
-// dropdown doesn't need to fetch.
-// ------------------------------------------------------------------
-
-export function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
-	const urlTags = useSearch({ strict: false, select: (s) => s.tags });
+function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
+	const urlTags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
 	const setFilters = useFilterNavigate();
 	const selected = useMemo(() => splitTags(urlTags), [urlTags]);
 
@@ -238,15 +169,17 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 
 	return (
 		<Popover open={open} onOpenChange={setOpen} modal={false}>
-			<PopoverTrigger asChild>
-				<FilterTriggerButton
-					icon={<TagIcon className="size-3.5" />}
-					label="Tags"
-					active={selected.length > 0}
-					badgeCount={selected.length > 0 ? selected.length : undefined}
-				/>
-			</PopoverTrigger>
-			<PopoverContent align="start" className="w-64 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+			<PopoverTrigger
+				render={
+					<FilterTriggerButton
+						icon={<TagIcon className="size-3.5" />}
+						label="Tags"
+						active={selected.length > 0}
+						badgeCount={selected.length > 0 ? selected.length : undefined}
+					/>
+				}
+			/>
+			<PopoverContent align="start" className="w-64 p-0" initialFocus={false}>
 				<div className="flex items-center justify-between px-3 h-10 border-b">
 					<span className="font-medium text-sm">Tags</span>
 					{selected.length > 0 && (
@@ -266,28 +199,22 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 						{availableTags.map((tag) => {
 							const checked = selected.includes(tag);
 							return (
-								<div
+								<button
 									key={tag}
-									role="button"
-									tabIndex={0}
+									type="button"
 									onClick={(e) => {
+										// Keep the popover open so several tags can be picked at once.
 										e.preventDefault();
 										e.stopPropagation();
 										toggle(tag);
 									}}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
-											toggle(tag);
-										}
-									}}
-									className={`flex items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
+									className={`flex w-full items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
 										checked ? "bg-accent" : "hover:bg-muted"
 									}`}
 								>
 									<Checkbox checked={checked} className="pointer-events-none" />
 									<span className="capitalize flex-1">{tag}</span>
-								</div>
+								</button>
 							);
 						})}
 					</div>
@@ -297,24 +224,20 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 	);
 }
 
-// ------------------------------------------------------------------
-// Search input — subscribes to only the "q" URL key.
-// Debounces keystrokes and uses an effect-based sync (no render-time
-// setState) to avoid flashing back when the URL echo races with typing.
-// ------------------------------------------------------------------
-
-export function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: string }) {
-	const urlValue = useSearch({ strict: false, select: (s) => s.q });
+function SearchInput({
+	placeholder = "Search prompts...",
+	searching = false,
+}: {
+	placeholder?: string;
+	searching?: boolean;
+}) {
+	const urlValue = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
 	const setFilters = useFilterNavigate();
 	const value = urlValue ?? "";
 
 	const [local, setLocal] = useState(value);
-	// `pendingTargetRef` holds the value we're currently pushing to the URL
-	// while the navigation commits. While set, the sync effect ignores the
-	// stale `value` — without this, a re-render that fires after
-	// `setLocal("")` but before the router commits would see `value='abc'`
-	// and snap `local` back to 'abc'. That's what caused the
-	// "empty → abc → empty" flash when clicking the X.
+	// Ignore the URL echo while a local value is being committed; otherwise an
+	// intervening render can restore stale text and make the input flash.
 	const pendingTargetRef = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -329,8 +252,8 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 			setLocal(value);
 			return;
 		}
-		if (value !== local) setLocal(value);
-	}, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+		setLocal(value);
+	}, [value]);
 
 	useEffect(() => {
 		if (local === value) return;
@@ -353,37 +276,31 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 	};
 
 	return (
-		<div className="relative w-full sm:w-64">
-			<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-			<Input
+		<InputGroup className="h-8 sm:w-64">
+			<InputGroupInput
 				value={local}
 				onChange={(e) => setLocal(e.target.value)}
 				placeholder={placeholder}
-				className="h-8 pl-8 pr-8 text-sm"
+				className="h-8 text-sm"
 			/>
+			<InputGroupAddon className="pl-2.5">
+				{searching ? <Spinner className="size-3.5" aria-label="Searching" /> : <Search className="size-3.5" />}
+			</InputGroupAddon>
 			{local && (
-				<button
-					type="button"
-					onClick={clear}
-					className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-					aria-label="Clear search"
-				>
-					<X className="h-3.5 w-3.5" />
-				</button>
+				<InputGroupAddon align="inline-end" className="pr-1.5">
+					<InputGroupButton size="icon-xs" onClick={clear} className="cursor-pointer" aria-label="Clear search">
+						<X className="size-3.5" />
+					</InputGroupButton>
+				</InputGroupAddon>
 			)}
-		</div>
+		</InputGroup>
 	);
 }
 
-// ------------------------------------------------------------------
-// Result count — subscribes only to the two URL keys that gate its
-// visibility (tags + q). Parent passes the count as a prop so the
-// prompts-summary query is read once by a single owner.
-// ------------------------------------------------------------------
-
-export function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
-	const tags = useSearch({ strict: false, select: (s) => s.tags });
-	const q = useSearch({ strict: false, select: (s) => s.q });
+// The count comes in as a prop so the prompts-summary query has a single owner.
+function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
+	const tags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
+	const q = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
 	const active = Boolean(tags) || Boolean(q);
 	if (!active || count === undefined) return null;
 	const showTotal = total !== undefined && total !== count;
@@ -395,27 +312,28 @@ export function ResultCount({ count, total }: { count: number | undefined; total
 	);
 }
 
-// ------------------------------------------------------------------
-// Composed FilterBar
-// ------------------------------------------------------------------
-
 export function FilterBar({
 	availableTags,
-	availableModels,
+	trackedTargets,
 	showSearch,
+	searchPlaceholder,
 	showModelSelector,
 	resultCount,
 	resultTotal,
+	searching,
 	extraControls,
 }: {
 	availableTags: readonly string[];
-	availableModels: string[];
+	trackedTargets: TrackedTarget[];
 	showSearch: boolean;
+	searchPlaceholder?: string;
 	showModelSelector: boolean;
 	/** Only passed by pages that filter a list; omit on pages with a single aggregate view (e.g. Citations). */
 	resultCount?: number;
 	/** Unfiltered count — when it differs from `resultCount` the line reads "n of m results". */
 	resultTotal?: number;
+	/** For searches slow enough that the input should show they're still running. */
+	searching?: boolean;
 	/** Page-specific controls rendered inline with the dropdown group
 	 *  (e.g. the prompts list's sort dropdown). */
 	extraControls?: ReactNode;
@@ -423,13 +341,13 @@ export function FilterBar({
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-2">
 			<div className="flex flex-wrap items-center gap-1.5">
-				{showModelSelector && <ModelDropdown availableModels={availableModels} />}
+				{showModelSelector && <ModelDropdown trackedTargets={trackedTargets} />}
 				<TagsDropdown availableTags={availableTags} />
 				<LookbackDropdown />
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />
 			</div>
-			{showSearch && <SearchInput />}
+			{showSearch && <SearchInput placeholder={searchPlaceholder} searching={searching} />}
 		</div>
 	);
 }

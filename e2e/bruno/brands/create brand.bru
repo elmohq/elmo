@@ -1,0 +1,30 @@
+meta {
+  name: create brand
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: inherit
+}
+
+script:pre-request {
+  bru.setVar("newBrandId", "e2e-bruno-brand-" + Date.now());
+}
+
+body:json {
+  {
+    "id": "{{newBrandId}}",
+    "name": "Bruno E2E Brand",
+    "domains": ["{{newBrandId}}.example.com"]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: eq {{newBrandId}}
+  res.body.domains: isArray
+  res.body.enabled: isTruthy
+}

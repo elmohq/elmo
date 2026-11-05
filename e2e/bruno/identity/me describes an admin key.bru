@@ -1,0 +1,22 @@
+meta {
+  name: me describes an admin key
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.keyType: eq admin
+  res.body.organizationId: isNull
+  res.body.scopes: isArray
+}

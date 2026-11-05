@@ -1,12 +1,7 @@
-/**
- * Stories for the Opportunities page (/app/$brand/opportunities). Renders the
- * real page with mocked brand + opportunities data. The page reads filters from
- * the URL search params via the mocked router hooks (empty search = defaults).
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
-import { Route } from "@/routes/_authed/app/$brand/opportunities";
+import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/opportunities";
 
 // The route file exports only `Route` (route files must, for code-splitting).
 // Render its component via the route options — the mock exposes `options`.

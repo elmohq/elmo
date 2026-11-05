@@ -1,0 +1,20 @@
+meta {
+  name: update prompt empty body 400
+  type: http
+  seq: 13
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 400
+  res.body.message: contains At least one of
+}

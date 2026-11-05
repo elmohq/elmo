@@ -1,16 +1,18 @@
 import type { FaqItem } from "@/lib/faqs";
-import { competitors, getComparisonSlug, getPopularityRank } from "./data";
 import { CATEGORY_NOUN, indefiniteArticle, isOpenSource } from "./content";
+import { competitors, getComparisonSlug, getPopularityRank, graveyardRanking } from "./data";
 import {
-	ELMO_FEATURES,
-	FEATURE_CATEGORIES,
 	CATEGORY_LABELS,
-	getFeatureLabel,
-	getFeatureDescription,
-	isLowDR,
 	type Competitor,
 	type CompetitorCategory,
+	ELMO_FEATURES,
+	FEATURE_CATEGORIES,
 	type FeatureKey,
+	getFeatureDescription,
+	getFeatureLabel,
+	getFeaturePhrase,
+	isLowDR,
+	isRetired,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -23,15 +25,38 @@ import {
  * decided not to index (shutting down, off-topic, or no real market presence).
  */
 export function isIndexed(c: Competitor): boolean {
-	return (
-		c.status !== "shutting-down" && c.category !== "other" && !isLowDR(c)
-	);
+	return !isRetired(c) && c.category !== "other" && !isLowDR(c);
 }
 
 export const indexedCompetitors: Competitor[] = competitors.filter(isIndexed);
 
-const byPopularity = (a: Competitor, b: Competitor) =>
-	getPopularityRank(a) - getPopularityRank(b);
+// Retired tools whose comparison or alternatives pages were earning Search
+// Console impressions (October 2026). "{tool} alternatives" is exactly what a
+// stranded customer searches, so these keep their pages; the rest only live on
+// in the graveyard.
+const RETIRED_WITH_SEARCH_DEMAND = new Set([
+	"meridian",
+	"ai-rank-checker",
+	"xfunnel",
+	"bear-ai",
+	"anvil",
+	"hall",
+	"peasy",
+]);
+
+/** Whether a tool has its own comparison page. */
+export function hasComparisonPage(c: Competitor): boolean {
+	return !graveyardFate(c) || RETIRED_WITH_SEARCH_DEMAND.has(c.slug);
+}
+
+/** Whether a tool's pages are indexed: comparison, plus alternatives. */
+export function hasOwnPages(c: Competitor): boolean {
+	return c.category !== "other" && !isLowDR(c) && hasComparisonPage(c);
+}
+
+export const competitorsWithOwnPages: Competitor[] = competitors.filter(hasOwnPages);
+
+const byPopularity = (a: Competitor, b: Competitor) => getPopularityRank(a) - getPopularityRank(b);
 
 /**
  * Up to `limit` alternatives to `competitor`: same category first (sorted by
@@ -50,8 +75,11 @@ export function getAlternatives(competitor: Competitor, limit = 6): Competitor[]
 	return [...sameCategory, ...backfill].slice(0, limit);
 }
 
-// --- Competitor-vs-competitor pairs (allowlisted to six funded leaders) ------
+// --- Competitor-vs-competitor pairs ------------------------------------------
 
+// The tools searchers most often pit against each other in AI answer engines:
+// the funded AEO leaders plus the big SEO suites that added AI search tracking.
+// Every unordered pair below becomes a generated /compare/{a}-vs-{b} page.
 const COMPARE_SLUGS = [
 	"profound",
 	"peec-ai",
@@ -59,9 +87,13 @@ const COMPARE_SLUGS = [
 	"scrunch",
 	"otterly-ai",
 	"athenahq",
+	"ahrefs-brand-radar",
+	"hubspot-aeo-grader",
+	"semrush-ai-toolkit",
+	"rankshift",
 ] as const;
 
-export const comparePairCompetitors: Competitor[] = COMPARE_SLUGS.map((slug) =>
+const comparePairCompetitors: Competitor[] = COMPARE_SLUGS.map((slug) =>
 	competitors.find((c) => c.slug === slug),
 ).filter((c): c is Competitor => Boolean(c));
 
@@ -85,7 +117,7 @@ const pairBySlug = new Map<string, [Competitor, Competitor]>(
 	comparePairs.map((pair) => [comparePairSlug(pair[0], pair[1]), pair]),
 );
 
-export function getComparePair(slug: string): [Competitor, Competitor] | undefined {
+function getComparePair(slug: string): [Competitor, Competitor] | undefined {
 	return pairBySlug.get(slug);
 }
 
@@ -94,12 +126,26 @@ export function getComparePair(slug: string): [Competitor, Competitor] | undefin
 /** Clean URL slugs for each feature key. */
 export const FEATURE_SLUGS: Record<FeatureKey, string> = {
 	multiLlmTracking: "multi-llm-tracking",
+	chatgpt: "chatgpt",
+	googleAiOverviews: "google-ai-overviews",
+	googleAiMode: "google-ai-mode",
+	gemini: "gemini",
+	perplexity: "perplexity",
+	copilot: "microsoft-copilot",
+	claude: "claude",
+	grok: "grok",
+	deepseek: "deepseek",
+	metaAi: "meta-ai",
+	anyModel: "any-model",
+	uiCapture: "real-ui-answers",
+	byoKeys: "bring-your-own-keys",
 	visibilityScore: "visibility-score",
 	citationAnalytics: "citation-analytics",
 	competitorBenchmarking: "competitor-benchmarking",
 	brandMentionTracking: "brand-mention-tracking",
 	promptVolumeEstimates: "prompt-volume-estimates",
 	sentimentAnalysis: "sentiment-analysis",
+	queryFanOut: "query-fan-out",
 	crawlerAnalytics: "ai-crawler-analytics",
 	geographicTracking: "geographic-tracking",
 	socialMediaTracking: "social-media-tracking",
@@ -111,6 +157,9 @@ export const FEATURE_SLUGS: Record<FeatureKey, string> = {
 	keywordResearch: "ai-keyword-research",
 	emailAlerts: "email-alerts",
 	dataExportApi: "data-export-api",
+	typescriptSdk: "typescript-sdk",
+	pythonSdk: "python-sdk",
+	mcpServer: "mcp-server",
 	biConnectors: "bi-connectors",
 	whiteLabelAgency: "white-label",
 	openSource: "open-source",
@@ -118,10 +167,7 @@ export const FEATURE_SLUGS: Record<FeatureKey, string> = {
 };
 
 const featureKeyBySlug = new Map<string, FeatureKey>(
-	(Object.entries(FEATURE_SLUGS) as [FeatureKey, string][]).map(([key, slug]) => [
-		slug,
-		key,
-	]),
+	(Object.entries(FEATURE_SLUGS) as [FeatureKey, string][]).map(([key, slug]) => [slug, key]),
 );
 
 export function getFeatureKeyBySlug(slug: string): FeatureKey | undefined {
@@ -130,9 +176,7 @@ export function getFeatureKeyBySlug(slug: string): FeatureKey | undefined {
 
 /** Indexed tools that have a given feature, most popular first. */
 export function toolsWithFeature(key: FeatureKey): Competitor[] {
-	return indexedCompetitors
-		.filter((c) => c.features[key] === true)
-		.sort(byPopularity);
+	return indexedCompetitors.filter((c) => c.features[key] === true).sort(byPopularity);
 }
 
 /**
@@ -145,6 +189,40 @@ export function indexableFeatureKeys(): FeatureKey[] {
 	return (Object.keys(FEATURE_SLUGS) as FeatureKey[]).filter(
 		(key) => toolsWithFeature(key).length >= MIN_TOOLS_FOR_FEATURE_PAGE,
 	);
+}
+
+// --- Graveyard ---------------------------------------------------------------
+
+export type GraveyardFate = "shut-down" | "pivoted" | "acquired";
+
+export function graveyardFate(c: Competitor): GraveyardFate | undefined {
+	if (c.status === "defunct" || c.status === "shutting-down") return "shut-down";
+	if (c.status === "pivoted") return "pivoted";
+	if (c.status === "acquired" && c.fate) return "acquired";
+	return undefined;
+}
+
+/** Tools that shut down, pivoted, or were bought, best known first. */
+export const graveyardTools: Competitor[] = competitors
+	.filter((c) => graveyardFate(c) && c.category !== "other")
+	// Tools with no surviving screenshot go last, since their tombstones are bare.
+	.sort(
+		(a, b) => Number(a.noScreenshot ?? false) - Number(b.noScreenshot ?? false) || graveyardRank(a) - graveyardRank(b),
+	);
+
+function graveyardRank(c: Competitor): number {
+	const rank = graveyardRanking.indexOf(c.slug);
+	return rank === -1 ? graveyardRanking.length : rank;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Fate dates are as precise as the evidence: a year, a month, or a day. */
+export function formatFateDate(date: string): string {
+	const [year, month, day] = date.split("-");
+	if (!month) return year;
+	const name = MONTHS[Number(month) - 1];
+	return day ? `${name} ${Number(day)}, ${year}` : `${name} ${year}`;
 }
 
 // --- Category slices ---------------------------------------------------------
@@ -170,9 +248,7 @@ export const CATEGORY_HEADINGS: Record<CompetitorCategory, string> = {
 };
 
 const categoryBySlug = new Map<string, CompetitorCategory>(
-	(Object.entries(CATEGORY_SLUGS) as [CompetitorCategory, string][]).map(
-		([cat, slug]) => [slug, cat],
-	),
+	(Object.entries(CATEGORY_SLUGS) as [CompetitorCategory, string][]).map(([cat, slug]) => [slug, cat]),
 );
 
 export function getCategoryBySlug(slug: string): CompetitorCategory | undefined {
@@ -180,14 +256,12 @@ export function getCategoryBySlug(slug: string): CompetitorCategory | undefined 
 }
 
 export function toolsInCategory(category: CompetitorCategory): Competitor[] {
-	return indexedCompetitors
-		.filter((c) => c.category === category)
-		.sort(byPopularity);
+	return indexedCompetitors.filter((c) => c.category === category).sort(byPopularity);
 }
 
-export const indexableCategories = (
-	Object.keys(CATEGORY_SLUGS) as CompetitorCategory[]
-).filter((cat) => toolsInCategory(cat).length >= 2);
+export const indexableCategories = (Object.keys(CATEGORY_SLUGS) as CompetitorCategory[]).filter(
+	(cat) => toolsInCategory(cat).length >= 2,
+);
 
 /**
  * Every open-source tool we track, most popular first. Unlike the other slices
@@ -197,9 +271,7 @@ export const indexableCategories = (
  * still excluded.
  */
 export function openSourceTools(): Competitor[] {
-	return competitors
-		.filter((c) => c.status !== "shutting-down" && isOpenSource(c))
-		.sort(byPopularity);
+	return competitors.filter((c) => !isRetired(c) && isOpenSource(c)).sort(byPopularity);
 }
 
 // ---------------------------------------------------------------------------
@@ -229,9 +301,7 @@ function featuresOf(c: Competitor): Set<FeatureKey> {
 /** Labels a has that b lacks. */
 function featureGap(a: Competitor, b: Competitor): string[] {
 	const bs = featuresOf(b);
-	return [...featuresOf(a)]
-		.filter((k) => !bs.has(k))
-		.map((k) => getFeatureLabel(k));
+	return [...featuresOf(a)].filter((k) => !bs.has(k)).map((k) => getFeatureLabel(k));
 }
 
 const CATEGORY_BLURB: Record<CompetitorCategory, string> = {
@@ -241,12 +311,10 @@ const CATEGORY_BLURB: Record<CompetitorCategory, string> = {
 		"These lead with content. They generate or rewrite pages for AI consumption, and most layer visibility tracking on top.",
 	"api-developer":
 		"These are API-first. You pull AI search and citation data into your own product or dashboards instead of logging into theirs.",
-	ecommerce:
-		"These focus on products: whether AI shopping answers and buying-guide queries surface your catalog.",
+	ecommerce: "These focus on products: whether AI shopping answers and buying-guide queries surface your catalog.",
 	"seo-traditional":
 		"These are established SEO platforms that added AI search tracking to an existing rank-tracking suite.",
-	"open-source":
-		"These are open source. You can read the code, self-host, and check how each number is produced.",
+	"open-source": "These are open source. You can read the code, self-host, and check how each number is produced.",
 	other: "These tools sit adjacent to AI visibility tracking.",
 };
 
@@ -254,12 +322,17 @@ const CATEGORY_BLURB: Record<CompetitorCategory, string> = {
 
 export function getAlternativesVerdict(c: Competitor): string {
 	const noun = CATEGORY_NOUN[c.category];
-	const article = indefiniteArticle(noun);
+	const fate = graveyardFate(c);
+	if (fate && c.fate) {
+		const gone =
+			fate === "acquired" ? "is no longer sold on its own" : "is no longer available as an AI visibility tool";
+		return `${c.name} ${gone}. ${c.fate.summary} If you are moving off it, Elmo is the open-source alternative: a free, self-hostable AI visibility platform that can't be shut down or sold out from under you, because the code is yours to keep running.`;
+	}
 	const open = isOpenSource(c);
 	if (open) {
-		return `${c.name} is ${article} open-source ${noun} tool, so you can already self-host and read the code. If you also want transparent, independently verifiable tracking across ChatGPT, Claude, Perplexity, and Google AI Overviews, with white-label support for agencies, Elmo is the closest open-source alternative.`;
+		return `The best open-source alternative to ${c.name} is Elmo: a free, self-hostable AI visibility platform you can read, run, and audit. Like ${c.name} it is open source, and it focuses on transparent, independently verifiable tracking of how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand, with white-label support for agencies.`;
 	}
-	return `${c.name} is ${article} ${noun} tool, and like most of the field it is closed-source and hosted. The strongest alternative depends on the engines you track and your budget, but if you want to own your data, Elmo is the open-source option: self-host it for free and audit exactly how every metric is built.`;
+	return `The best free, open-source alternative to ${c.name} is Elmo. ${c.name} is ${indefiniteArticle(noun)} ${noun} tool, and like most of the field it is closed-source and hosted. Elmo you self-host for free: no license fee and no per-seat pricing, and you can audit exactly how every visibility metric is built while keeping your prompts and data in-house.`;
 }
 
 export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[] {
@@ -282,22 +355,20 @@ export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[
 		},
 		{
 			question: `Why switch from ${c.name} to Elmo?`,
-			answer: `The main reasons are ownership and transparency. With Elmo you keep your prompts and visibility history in-house, avoid vendor lock-in, and can see exactly how scores are computed. The self-hosted core is free, with a managed cloud option on the way.`,
+			answer: `The main reasons are ownership and transparency. With Elmo you keep your prompts and visibility history in-house, avoid vendor lock-in, and can see exactly how scores are computed. The self-hosted core is free and managed cloud hosting starts at $29 a month.`,
 		},
 	];
 }
 
 // --- Competitor-vs-competitor pairs ------------------------------------------
 
-export function getPairVerdict(a: Competitor, b: Competitor): string {
+function getPairVerdict(a: Competitor, b: Competitor): string {
 	const sameCat = a.category === b.category;
-	const clause = sameCat
-		? `${CATEGORY_NOUN[a.category]} tools`
-		: "AI visibility tools";
+	const clause = sameCat ? `${CATEGORY_NOUN[a.category]} tools` : "AI visibility tools";
 	return `${a.name} and ${b.name} are both ${clause} that measure how AI answer engines describe your brand. ${a.name} is pitched as "${a.tagline}". ${b.name} leans on "${b.tagline}". Both are closed and hosted, so neither lets you see how its scores are built. Elmo tracks the same engines as an open-source tool you run yourself, which makes it the third option worth weighing here.`;
 }
 
-export function getPairFaqs(a: Competitor, b: Competitor): FaqItem[] {
+function getPairFaqs(a: Competitor, b: Competitor): FaqItem[] {
 	const aGap = featureGap(a, b);
 	const bGap = featureGap(b, a);
 
@@ -309,12 +380,9 @@ export function getPairFaqs(a: Competitor, b: Competitor): FaqItem[] {
 	// Name a couple of distinguishing capabilities per side, drawn from the
 	// feature matrix. No pricing: we don't track reliable current prices.
 	const featureBits: string[] = [];
-	if (aGap.length)
-		featureBits.push(`${a.name} stands out for ${formatList(aGap, 2, false)}`);
+	if (aGap.length) featureBits.push(`${a.name} stands out for ${formatList(aGap, 2, false)}`);
 	if (bGap.length) featureBits.push(`${b.name} adds ${formatList(bGap, 2, false)}`);
-	const featureSentence = featureBits.length
-		? ` On features, ${featureBits.join(", while ")}.`
-		: "";
+	const featureSentence = featureBits.length ? ` On features, ${featureBits.join(", while ")}.` : "";
 
 	return [
 		{
@@ -332,10 +400,98 @@ export function getPairFaqs(a: Competitor, b: Competitor): FaqItem[] {
 	];
 }
 
+// --- Multi-way comparison sets -----------------------------------------------
+
+// Curated 3+ tool comparisons, seeded from real multi-way demand in AI answer
+// engines (grounding queries that pit several named tools against each other,
+// e.g. "Profound vs Ahrefs Brand Radar vs HubSpot AEO vs Rankshift vs Scrunch").
+// Authored order is preserved so the H1 and slug track how people phrase the
+// query. Each set resolves through the same /compare/{slug} route as the pairs.
+const COMPARE_SET_SLUGS: string[][] = [
+	["profound", "ahrefs-brand-radar", "hubspot-aeo-grader", "rankshift", "scrunch"],
+	["peec-ai", "hubspot-aeo-grader", "profound", "ahrefs-brand-radar", "semrush-ai-toolkit"],
+	["scrunch", "hubspot-aeo-grader", "profound", "semrush-ai-toolkit", "otterly-ai"],
+];
+
+export const compareSets: Competitor[][] = COMPARE_SET_SLUGS.map((slugs) =>
+	slugs.map((slug) => competitors.find((c) => c.slug === slug)).filter((c): c is Competitor => Boolean(c)),
+).filter((set) => set.length >= 3);
+
+export function compareSetSlug(tools: Competitor[]): string {
+	return tools.map((t) => t.slug).join("-vs-");
+}
+
+const setBySlug = new Map<string, Competitor[]>(compareSets.map((set) => [compareSetSlug(set), set]));
+
+function getCompareSet(slug: string): Competitor[] | undefined {
+	return setBySlug.get(slug);
+}
+
+function getSetVerdict(tools: Competitor[]): string {
+	const list = formatList(
+		tools.map((t) => t.name),
+		tools.length,
+		false,
+	);
+	const cats = new Set(tools.map((t) => t.category));
+	const angle =
+		cats.has("seo-traditional") && cats.has("tracking")
+			? " They come at it from different angles: some are dedicated AI visibility trackers, others are established SEO suites that added AI search monitoring."
+			: "";
+	return `${list} all measure how AI answer engines mention and cite your brand.${angle} Every one of them is closed-source and hosted, so you cannot audit how its scores are built. Elmo tracks the same engines as an open-source tool you run yourself, so it belongs in this comparison as the transparent, self-hostable option.`;
+}
+
+function getSetFaqs(tools: Competitor[]): FaqItem[] {
+	const names = tools.map((t) => t.name);
+	const list = formatList(names, names.length, false);
+	const free = tools.filter((t) => t.pricing?.hasFree).map((t) => t.name);
+	return [
+		{
+			question: `Which is the best tool for AI visibility among ${list}?`,
+			answer: `There is no single best pick; it depends on the answer engines you track, your budget, and whether you want a dedicated tracker or an add-on to an SEO suite. All of them are closed and hosted, so it is worth also trying Elmo, an open-source alternative you can self-host for free and audit before you commit.`,
+		},
+		{
+			question: `Which of these AI visibility tools is free or open source?`,
+			answer: free.length
+				? `Among ${list}, ${formatList(free, free.length, false)} offer a free option, though free tiers are usually limited in the engines or history they cover. For a fully free, open-source option, Elmo is self-hostable at no license cost and every metric is auditable in the code.`
+				: `Most of these (${list}) are paid, hosted products. Elmo is the free, open-source option: self-host it at no license cost, with no per-seat pricing, and audit exactly how each metric is built.`,
+		},
+		{
+			question: `How do ${list} differ?`,
+			answer: `They differ mainly in focus and delivery: dedicated AI visibility trackers versus SEO suites that bolted on AI search monitoring, plus which answer engines, languages, and analytics each one covers. The feature table on this page compares them side by side, with Elmo, the open-source option, included as a reference point.`,
+		},
+	];
+}
+
+// --- Compare route dispatch (pairs and sets share one /compare/{slug} route) --
+
+export function getCompareEntry(slug: string): Competitor[] | undefined {
+	const pair = getComparePair(slug);
+	if (pair) return pair;
+	return getCompareSet(slug);
+}
+
+export function getCompareVerdict(tools: Competitor[]): string {
+	const [a, b] = tools;
+	return a && b && tools.length === 2 ? getPairVerdict(a, b) : getSetVerdict(tools);
+}
+
+export function getCompareFaqs(tools: Competitor[]): FaqItem[] {
+	const [a, b] = tools;
+	return a && b && tools.length === 2 ? getPairFaqs(a, b) : getSetFaqs(tools);
+}
+
 // --- Feature slices ----------------------------------------------------------
 
+/** A feature label for mid-sentence use: lowercased, but acronyms like AI and MCP keep their case. */
+export function featurePhrase(key: FeatureKey): string {
+	const phrase = getFeaturePhrase(key);
+	if (phrase) return phrase;
+	return getFeatureLabel(key).replace(/\b[A-Z][a-z]+\b/g, (word) => word.toLowerCase());
+}
+
 export function getFeatureVerdict(key: FeatureKey, tools: Competitor[]): string {
-	const label = getFeatureLabel(key).toLowerCase();
+	const label = featurePhrase(key);
 	const desc = getFeatureDescription(key);
 	const names = tools.map((t) => t.name);
 	const elmoHas = ELMO_FEATURES[key] === true;
@@ -346,41 +502,35 @@ export function getFeatureVerdict(key: FeatureKey, tools: Competitor[]): string 
 }
 
 export function getFeatureFaqs(key: FeatureKey, tools: Competitor[]): FaqItem[] {
-	const label = getFeatureLabel(key);
+	const label = featurePhrase(key);
 	const names = tools.map((t) => t.name);
 	const elmoHas = ELMO_FEATURES[key] === true;
 	return [
 		{
-			question: `Which AI visibility tools offer ${label.toLowerCase()}?`,
-			answer: `${formatList(names, 5)} all offer ${label.toLowerCase()}. The full feature matrix on this page shows how each one compares.`,
+			question: `Which AI visibility tools offer ${label}?`,
+			answer: `${formatList(names, 5)} all offer ${label}. The full feature matrix on this page shows how each one compares.`,
 		},
 		{
-			question: `What is ${label.toLowerCase()} in AI visibility tools?`,
+			question: `What is ${label} in AI visibility tools?`,
 			answer: `${getFeatureDescription(key)}. It is one of the capabilities buyers weigh when choosing an AI visibility or answer engine optimization tool.`,
 		},
 		{
-			question: `Does Elmo support ${label.toLowerCase()}?`,
+			question: `Does Elmo support ${label}?`,
 			answer: elmoHas
-				? `Yes. Elmo supports ${label.toLowerCase()}, and because it is open source you can verify exactly how it works and self-host it for free.`
-				: `Not currently. Elmo focuses on transparent, independently verifiable tracking of mentions, citations, and competitor share. If ${label.toLowerCase()} is a hard requirement, the tools listed here cover it.`,
+				? `Yes. Elmo supports ${label}, and because it is open source you can verify exactly how it works and self-host it for free.`
+				: `Not currently. Elmo focuses on transparent, independently verifiable tracking of mentions, citations, and competitor share. If ${label} is a hard requirement, the tools listed here cover it.`,
 		},
 	];
 }
 
 // --- Category slices ---------------------------------------------------------
 
-export function getCategoryVerdict(
-	category: CompetitorCategory,
-	tools: Competitor[],
-): string {
+export function getCategoryVerdict(category: CompetitorCategory, tools: Competitor[]): string {
 	const names = tools.map((t) => t.name);
 	return `The ${CATEGORY_LABELS[category].toLowerCase()} category covers ${tools.length} of the tools we track, including ${formatList(names)}. ${CATEGORY_BLURB[category]} Elmo is the open-source option in this space: self-host it for free and audit how every number is built.`;
 }
 
-export function getCategoryFaqs(
-	category: CompetitorCategory,
-	tools: Competitor[],
-): FaqItem[] {
+export function getCategoryFaqs(category: CompetitorCategory, tools: Competitor[]): FaqItem[] {
 	const names = tools.map((t) => t.name);
 	const label = CATEGORY_LABELS[category].toLowerCase();
 	return [

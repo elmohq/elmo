@@ -1,44 +1,28 @@
-import { z } from "zod";
+import { getCredential } from "../../secrets";
+import { type Citation, normalizeCitationTitle } from "../../text-extraction";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, configuredWhen, reportedWebQueries, warnIfOutputCapped } from "../config";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
-import type { Citation } from "../../text-extraction";
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { jsonSchemaResponseFormat, parseSchemaJson } from "./ai-sdk";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
-// Default to GPT-5 Mini via OpenRouter — supports OpenRouter's *native*
-// web-search plugin (vs the Exa fallback) and produced the best brand-info
-// recall + cheapest cost in our compare-onboarding runs. Other families that
-// support native search per the docs: Anthropic, Perplexity, xAI.
-const DEFAULT_RESEARCH_MODEL = "openai/gpt-5-mini";
+// Must be a family with OpenRouter's *native* web-search plugin (vs the Exa
+// fallback); per the docs that's OpenAI, Anthropic, Perplexity, and xAI.
+const DEFAULT_RESEARCH_MODEL = "anthropic/claude-sonnet-5.5";
 
 function openrouterHeaders(): Record<string, string> {
 	return {
-		Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+		Authorization: `Bearer ${getCredential("OPENROUTER_API_KEY")}`,
 		"Content-Type": "application/json",
 		"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
 		"X-Title": "Elmo AEO",
 	};
-}
-
-function extractTextFromOpenRouterResponse(data: any): string {
-	if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
-	if (data?.output) {
-		const msgs = Array.isArray(data.output) ? data.output.filter((i: any) => i.type === "message") : [];
-		const texts: string[] = [];
-		for (const msg of msgs) {
-			for (const c of msg.content ?? []) {
-				if (c.type === "output_text" && c.text) texts.push(c.text);
-			}
-		}
-		if (texts.length) return texts.join("\n");
-	}
-	return "No text content found in OpenRouter response.";
 }
 
 function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
@@ -58,7 +42,7 @@ function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 			const parsed = new URL(url);
 			citations.push({
 				url,
-				title: cite.title ?? undefined,
+				title: normalizeCitationTitle(cite.title),
 				domain: parsed.hostname.replace(/^www\./, ""),
 				citationIndex: idx++,
 			});
@@ -72,10 +56,10 @@ function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 export const openrouter: Provider = {
 	id: "openrouter",
 	name: "OpenRouter",
+	access: "api",
+	docsAnchor: "direct-model-apis",
 
-	isConfigured() {
-		return !!process.env.OPENROUTER_API_KEY;
-	},
+	isConfigured: configuredWhen("OPENROUTER_API_KEY"),
 
 	async runStructuredResearch<T>({
 		prompt,
@@ -84,14 +68,10 @@ export const openrouter: Provider = {
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		// Raw fetch (no AI SDK) so we can attach the OpenRouter `plugins` field
 		// — the AI SDK's OpenAI-compat path doesn't pass it through.
-		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
 		const body: Record<string, unknown> = {
 			model: DEFAULT_RESEARCH_MODEL,
 			messages: [{ role: "user", content: prompt }],
-			response_format: {
-				type: "json_schema",
-				json_schema: { name: "research_output", strict: true, schema: jsonSchema },
-			},
+			response_format: jsonSchemaResponseFormat(schema),
 		};
 		// `engine: "native"` runs the underlying provider's real web-search tool
 		// (e.g. Anthropic's web_search_20250305) instead of the Exa fallback.
@@ -109,12 +89,9 @@ export const openrouter: Provider = {
 		if (typeof content !== "string") {
 			throw new Error(`OpenRouter returned no JSON content (model=${DEFAULT_RESEARCH_MODEL})`);
 		}
-		const parsed = (schema as z.ZodType).parse(JSON.parse(content));
 		return {
-			object: parsed as T,
-			// Report the alias we sent, not OpenRouter's resolved version
-			// (e.g. "openai/gpt-5-mini" vs "openai/gpt-5-mini-2025-08-07") —
-			// matches what openai-api and anthropic-api do.
+			object: parseSchemaJson(schema, content),
+			// The alias we sent, not the dated version OpenRouter resolved, as the other direct APIs report.
 			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
 	},
@@ -124,31 +101,29 @@ export const openrouter: Provider = {
 		if (!modelSlug) {
 			throw new Error(
 				`OpenRouter requires a version slug in SCRAPE_TARGETS. ` +
-				`Example: ${model}:openrouter:openai/gpt-5-mini:online`,
+					`Example: ${model}:openrouter:openai/gpt-5-mini:online`,
 			);
 		}
 
+		// ":online" is exactly equivalent to plugins: [{ id: "web" }], and with the
+		// engine unset OpenRouter routes to the model provider's native web search
+		// (Exa only as a fallback) — which is the consumer surface Elmo tracks.
 		if (options?.webSearch && !modelSlug.includes(":online")) {
 			modelSlug = `${modelSlug}:online`;
 		}
 
-		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema
-		// strips annotations from responses, which contain web search citations.
-		// The SDK's Responses API (client.responses.send()) does preserve annotations
-		// via ResponseOutputText, but it's currently in beta. Consider switching to
-		// the Responses API + SDK when it's stable.
+		const body: Record<string, unknown> = {
+			model: modelSlug,
+			messages: [{ role: "user", content: prompt }],
+			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
+		};
+
+		// Raw fetch: the SDK's ChatAssistantMessage schema strips the annotations
+		// that carry web search citations.
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
-			headers: {
-				Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-				"Content-Type": "application/json",
-				"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
-				"X-Title": "Elmo AEO",
-			},
-			body: JSON.stringify({
-				model: modelSlug,
-				messages: [{ role: "user", content: prompt }],
-			}),
+			headers: openrouterHeaders(),
+			body: JSON.stringify(body),
 		});
 
 		if (!res.ok) {
@@ -157,16 +132,14 @@ export const openrouter: Provider = {
 
 		const data: any = await res.json();
 
+		warnIfOutputCapped("openrouter", modelSlug, data?.choices?.[0]?.finish_reason);
+
 		const citations = extractCitationsFromOpenRouterResponse(data);
-		// OpenRouter doesn't expose what search queries the model made internally.
-		// Only mark as "unavailable" when citations prove a web search happened.
-		const webQueries = citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [];
 
 		return {
 			rawOutput: data,
-			textContent: extractTextFromOpenRouterResponse(data),
-			webQueries,
-			citations,
+			// OpenRouter doesn't expose the search queries the model made internally.
+			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
 			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
 		};
 	},

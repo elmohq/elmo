@@ -26,23 +26,38 @@ function isElmoHref(href: string): boolean {
 	}
 }
 
+// Outbound hosts we intentionally pass SEO equity to (dofollow), e.g. partners
+// we've agreed to link to. An explicit allowlist keeps the default nofollow.
+const DOFOLLOW_HOSTS = ["semrush.com", "seranking.com", "xseek.io", "evatype.com", "listbrew.ai"];
+
+function isDofollowHref(href: string): boolean {
+	try {
+		const { hostname } = new URL(href);
+		return DOFOLLOW_HOSTS.some((host) => hostname === host || hostname.endsWith(`.${host}`));
+	} catch {
+		return false;
+	}
+}
+
 // Links inside post content: outbound links are nofollow and open in a new
 // tab, so blog posts don't pass SEO equity to external sites (e.g. competitors
 // we reference). Internal / elmohq-owned links stay followed; noopener keeps
-// the referrer for analytics on owned domains.
+// the referrer for analytics on owned domains. Hosts in DOFOLLOW_HOSTS are the
+// exception — followed outbound links for agreed partners.
 function BlogLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
 	if (isElmoHref(href)) {
 		const rel = /^https?:\/\//.test(href) ? "noopener" : undefined;
 		return <a {...props} href={href} rel={rel} />;
 	}
-	return <a {...props} href={href} target="_blank" rel="nofollow noopener noreferrer" />;
+	const rel = isDofollowHref(href) ? "noopener noreferrer" : "nofollow noopener noreferrer";
+	return <a {...props} href={href} target="_blank" rel={rel} />;
 }
 
 // getMDXComponents is a plain factory (no React hooks), so the components map
 // is built once at module scope rather than per render.
 const mdxComponents = getMDXComponents({ a: BlogLink });
 
-export const clientLoader = browserCollections.blog.createClientLoader({
+const clientLoader = browserCollections.blog.createClientLoader({
 	component({ default: MDX }, _props: undefined) {
 		return <MDX components={mdxComponents} />;
 	},
@@ -67,7 +82,7 @@ function PostFaq({ items }: { items: BlogPostFaqItem[] }) {
 
 export function BlogPostLayout({ data }: { data: BlogPostLoaderData }) {
 	return (
-		<RootProvider theme={{ defaultTheme: "light", forcedTheme: "light" }}>
+		<RootProvider theme={{ defaultTheme: "light", forcedTheme: "light" }} search={{ enabled: false }}>
 			<div className="min-h-screen">
 				<Navbar />
 				<main className="mx-auto max-w-3xl px-4 py-12 md:px-6 lg:py-16">
@@ -78,11 +93,11 @@ export function BlogPostLayout({ data }: { data: BlogPostLoaderData }) {
 						<ArrowLeft className="size-3" />
 						Blog
 					</a>
-					<article className="prose mt-8 max-w-none">
+					<article className="prose prose-zinc mt-8 max-w-none">
 						<h1 className="mb-3 text-balance">{data.title}</h1>
 						{data.description && <p className="lead mt-0 text-zinc-600">{data.description}</p>}
 						<div className="not-prose mb-10 mt-6 border-b border-zinc-200 pb-8">
-							<AuthorByline author={data.author} date={data.date} />
+							<AuthorByline author={data.author} date={data.date} updated={data.updated} />
 						</div>
 						<Suspense>{clientLoader.useContent(data.path)}</Suspense>
 						{data.faq && data.faq.length > 0 && <PostFaq items={data.faq} />}

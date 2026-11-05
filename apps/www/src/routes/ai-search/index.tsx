@@ -1,20 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import {
-	ogMeta,
-	canonicalUrl,
-	breadcrumbJsonLd,
-	itemListJsonLd,
-} from "@/lib/seo";
+import { Navbar } from "@/components/navbar";
 import { aiSearchEngines } from "@/data/ai-search-engines";
+import { breadcrumbJsonLd, canonicalUrl, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "How to Show Up in AI Search Engines · Elmo";
 const description =
-	"Practical guides to appearing in AI search: how ChatGPT, Perplexity, Google AI Overviews, Gemini, Claude, Copilot, and Grok choose what to cite, and how to become one of their sources.";
+	"Practical guides to appearing in AI search: how engines like ChatGPT, Perplexity, and Google AI Overviews choose what to cite — and how to become one of their sources.";
 
 export const Route = createFileRoute("/ai-search/")({
-	head: () => ({
+	loader: () => ({
+		items: aiSearchEngines.map((e) => ({ name: `How to appear in ${e.name}`, path: `/ai-search/${e.slug}` })),
+	}),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -26,12 +24,7 @@ export const Route = createFileRoute("/ai-search/")({
 				{ name: "Home", path: "/" },
 				{ name: "AI Search", path: "/ai-search" },
 			]),
-			itemListJsonLd(
-				aiSearchEngines.map((e) => ({
-					name: `How to appear in ${e.name}`,
-					path: `/ai-search/${e.slug}`,
-				})),
-			),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: AiSearchIndex,
@@ -44,16 +37,12 @@ function AiSearchIndex() {
 			<main>
 				<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-							/ AI Search
-						</p>
-						<h1 className="font-heading mt-2 text-4xl text-balance text-zinc-950 md:text-5xl">
+						<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">
 							How to show up in AI search
 						</h1>
 						<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">
-							Each AI engine chooses its sources a little differently. These
-							guides break down how the major ones decide what to cite, and the
-							practical steps to become one of them.
+							Each AI engine chooses its sources a little differently. These guides break down how the major ones decide
+							what to cite, and the practical steps to become one of them.
 						</p>
 					</div>
 				</section>
@@ -71,9 +60,7 @@ function AiSearchIndex() {
 										<h2 className="font-semibold text-zinc-950">{e.name}</h2>
 										<span className="text-xs text-zinc-400">{e.vendor}</span>
 									</div>
-									<p className="mt-2 text-sm leading-relaxed text-zinc-600">
-										{e.short}
-									</p>
+									<p className="mt-2 text-sm leading-relaxed text-zinc-600">{e.short}</p>
 								</a>
 							))}
 						</div>

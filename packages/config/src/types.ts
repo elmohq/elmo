@@ -1,133 +1,82 @@
-/**
- * Core types and interfaces for deployment configuration
- *
- * This package defines the contracts that all deployment mode implementations must follow.
- * Actual implementations live in local, whitelabel, etc.
- *
- * Auth-related runtime methods (getSession, isAdmin, organizations, etc.) have been
- * removed — those are now handled by better-auth. The Deployment interface only carries
- * static configuration used by middleware and the client.
- */
-
-/**
- * Deployment modes supported by the application
- */
 export type DeploymentMode = "whitelabel" | "local" | "demo" | "cloud";
 
-/**
- * Feature flags for deployment modes
- */
 export interface FeaturesConfig {
-	/** Block all write operations (demo mode) */
 	readOnly: boolean;
-	/** Whether the optimize button should be shown */
+	/** Elmo's hosted demo, not a self-hosted install made read-only with READ_ONLY=true. */
+	promotesCloud: boolean;
 	showOptimizeButton: boolean;
-	/** Whether multi-org brand switching is supported */
-	supportsMultiOrg: boolean;
-	/**
-	 * Whether the user can create new brands from the UI. True only in local mode —
-	 * whitelabel orgs come from Auth0, demo is read-only.
-	 */
+	/** Off in whitelabel, whose brands come from the admin API, and in demo. */
 	canCreateBrands: boolean;
+	canCreateOrganizations: boolean;
+	canEditOrganizations: boolean;
+	/** Cloud only; local allows just the bootstrap signup (see ClientConfig.canRegister). */
+	selfServeSignup: boolean;
+	/** Cloud only. Gates the billing surfaces and plan enforcement. */
+	billing: boolean;
+	/** Off in cloud, where even the per-user hasReportGeneratorAccess flag is ignored. */
+	reportGeneration: boolean;
+	/** Cloud only: local is single-user and whitelabel memberships come from Auth0. */
+	teamInvites: boolean;
+	/**
+	 * Off in whitelabel, where the agency picks and pays the provider bills. Kept
+	 * apart from `canCreateBrands` because the two are sold as different things.
+	 */
+	platformPicksEditable: boolean;
 }
 
-/**
- * Analytics configuration
- */
 export interface AnalyticsConfig {
-	/** Plausible analytics domain (optional) */
 	plausibleDomain?: string;
-	/** Microsoft Clarity project ID (optional) */
 	clarityProjectId?: string;
-	/** PostHog project API key (optional) */
 	posthogKey?: string;
+	/** Only set on deployments we operate (cloud and demo). */
+	crispWebsiteId?: string;
 }
 
-/**
- * Branding configuration
- */
 export interface BrandingConfig {
-	/** Application name */
 	name: string;
-	/** Path to the application icon */
 	icon: string;
-	/** Application URL */
 	url: string;
-	/** Parent company name (optional) */
 	parentName?: string;
-	/** Parent company URL (optional) */
 	parentUrl?: string;
-	/** Callback to generate onboarding redirect URL with brandId (optional, redirects after PromptWizard completion) */
 	onboardingRedirectUrl?: (brandId: string) => string | undefined;
-	/** Raw URL template for onboarding redirect with {brandId} placeholder (serializable, for client use) */
+	/** Serializable form of the onboarding redirect, with a `{brandId}` placeholder. */
 	onboardingRedirectUrlTemplate?: string;
-	/** URL template for optimization links with placeholders: {brandId}, {prompt}, {webQuery} (optional, whitelabel only) */
+	/** Supports `{brandId}`, `{prompt}`, and `{webQuery}` placeholders. */
 	optimizationUrlTemplate?: string;
-	/** Chart color palette */
 	chartColors: string[];
 }
 
-// ============================================================================
-// Deployment Interface
-// ============================================================================
-
-/**
- * The main deployment interface. Each deployment mode implements this.
- *
- * This is now a pure configuration object — all auth-related runtime
- * behaviour (sessions, org access, admin checks) lives in better-auth.
- */
 export interface Deployment {
-	/** Current deployment mode */
 	mode: DeploymentMode;
-	/** Feature flags */
 	features: FeaturesConfig;
-	/** Branding configuration */
 	branding: BrandingConfig;
 }
 
-// ============================================================================
-// Client Config (Browser-Safe)
-// ============================================================================
-
-/**
- * Client-safe configuration that can be used in browser code.
- * Does NOT include runtime methods or server-side dependencies.
- */
+/** Serializable deployment configuration exposed to browser code. */
 export interface ClientConfig {
-	/** Current deployment mode */
 	mode: DeploymentMode;
-	/** Feature flags */
 	features: FeaturesConfig;
-	/** Branding configuration */
 	branding: BrandingConfig;
-	/** Analytics configuration */
 	analytics: AnalyticsConfig;
-	/** Resolved default prompt cadence (hours) for brands without a delayOverrideHours */
+	/** Prompt cadence in hours when a brand has no override. */
 	defaultDelayHours: number;
-	/**
-	 * Whether /auth/register should be reachable. True only in local mode
-	 * when no user exists yet. Demo/whitelabel always false.
-	 */
+	/** Cloud, and local until the first user is bootstrapped. */
 	canRegister: boolean;
-	/** Whether any user account exists. */
 	hasUsers: boolean;
+	turnstileSiteKey?: string;
 }
-
-// ============================================================================
-// OptimizeButton Shared Types
-// ============================================================================
 
 export interface WebQueryResult {
+	/** Top web query over the requested window, for the requested model. */
 	webQuery: string | null;
-	modelWebQueries: Record<string, string>;
 }
 
 export interface OptimizeButtonProps {
 	brandId?: string;
 	selectedModel?: string;
-	availableModels?: string[];
-	lookback?: "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+	availableModels: string[];
+	/** A lookback preset or a `YYYY-MM-DD..YYYY-MM-DD` custom range. */
+	lookback?: string;
 	promptName?: string;
 	promptId?: string;
 	parentName?: string;
@@ -135,20 +84,9 @@ export interface OptimizeButtonProps {
 	fetchWebQuery?: (promptId: string, lookback: string, model?: string) => Promise<WebQueryResult>;
 }
 
-// ============================================================================
-// Environment Requirements
-// ============================================================================
-
-/**
- * Environment variable requirement
- */
 export interface EnvRequirement {
-	/** Unique identifier */
 	id: string;
-	/** Human-readable label */
 	label: string;
-	/** Description of what this env var is for */
 	description?: string;
-	/** Check if the requirement is satisfied */
 	isSatisfied: (env: Record<string, string | undefined>) => boolean;
 }

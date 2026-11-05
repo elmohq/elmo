@@ -1,26 +1,11 @@
 #!/usr/bin/env node
 
-/**
- * License compliance checker for the Elmo monorepo.
- *
- * Ensures every dependency uses a license compatible with distributing
- * Elmo itself under MIT. Runs `pnpm licenses list --json` and validates
- * the output against an allow-list of SPDX identifiers plus a set of
- * per-package exceptions for known-safe outliers. The allow-list is
- * limited to permissive licenses so that nothing we ship pulls in
- * copyleft terms that would conflict with MIT redistribution.
- *
- * Exit codes:
- *   0 – all packages pass
- *   1 – one or more packages have disallowed licenses
- */
+/** Fails when a dependency's license would conflict with distributing Elmo under MIT. */
 
 import { execSync } from "node:child_process";
 
-// ── Allowed SPDX license identifiers ────────────────────────────────
-// These are all permissive licenses, compatible with MIT redistribution.
-// GPL/LGPL/AGPL and other copyleft licenses are intentionally NOT added
-// here — their terms would conflict with shipping Elmo under MIT.
+// MPL-2.0 is file-level copyleft, so as an unmodified dependency it puts no
+// obligations on Elmo's code. GPL, LGPL and AGPL stay out: they conflict with MIT.
 const ALLOWED_LICENSES = new Set([
   "MIT",
   "MIT-0",
@@ -33,24 +18,29 @@ const ALLOWED_LICENSES = new Set([
   "BlueOak-1.0.0",
   "CC0-1.0",
   "Unlicense",
-  // Compound expressions where every component is permissive
+  "MPL-2.0",
   "(MIT OR Apache-2.0)",
   "MIT OR Apache-2.0",
   "(MIT OR CC0-1.0)",
   "(MIT AND Zlib)",
   "MIT AND ISC",
+  "(Apache-2.0 AND MIT)",
   "(AFL-2.1 OR BSD-3-Clause)",
   "(BSD-3-Clause OR GPL-2.0)", // dual-licensed – we use BSD-3-Clause
   "(MPL-2.0 OR Apache-2.0)", // dual-licensed – we use Apache-2.0
+  // Via @usebruno/cli (e2e API tests).
+  "(BSD-3-Clause AND Apache-2.0)", // google-protobuf
+  "(Public Domain OR MIT)", // tv4 – we use MIT
+  "(MIT OR WTFPL)", // expand-template
+  "(BSD-2-Clause OR MIT OR Apache-2.0)", // rc
 ]);
 
-// ── Per-package exceptions ───────────────────────────────────────────
-// Packages whose licenses are NOT in the allow-list above but are
-// acceptable for documented reasons. Keep this list small and justified.
+// Each one needs its reason beside it.
 const PACKAGE_EXCEPTIONS = new Map([
   // Sentry CLI – build-time tooling only, never distributed with Elmo.
   // FSL-1.1-MIT converts to MIT after two years.
   ["@sentry/cli", "FSL-1.1-MIT"],
+  ["@sentry/cli-darwin", "FSL-1.1-MIT"],
   ["@sentry/cli-darwin-arm64", "FSL-1.1-MIT"],
   ["@sentry/cli-darwin-x64", "FSL-1.1-MIT"],
   ["@sentry/cli-linux-arm", "FSL-1.1-MIT"],
@@ -59,18 +49,7 @@ const PACKAGE_EXCEPTIONS = new Map([
   ["@sentry/cli-win32-i686", "FSL-1.1-MIT"],
   ["@sentry/cli-win32-x64", "FSL-1.1-MIT"],
 
-  // lightningcss – build-time CSS compiler. MPL-2.0 is file-level copyleft;
-  // we don't modify it, and it's a build tool whose output is not covered.
-  ["lightningcss", "MPL-2.0"],
-  ["lightningcss-darwin-arm64", "MPL-2.0"],
-  ["lightningcss-darwin-x64", "MPL-2.0"],
-  ["lightningcss-linux-arm-gnueabihf", "MPL-2.0"],
-  ["lightningcss-linux-arm64-gnu", "MPL-2.0"],
-  ["lightningcss-linux-arm64-musl", "MPL-2.0"],
-  ["lightningcss-linux-x64-gnu", "MPL-2.0"],
-  ["lightningcss-linux-x64-musl", "MPL-2.0"],
-  ["lightningcss-win32-arm64-msvc", "MPL-2.0"],
-  ["lightningcss-win32-x64-msvc", "MPL-2.0"],
+  ["sentry", "FSL-1.1-Apache-2.0"],
 
   // Web fonts – OFL-1.1 permits bundling in web applications.
   ["@fontsource/geist-mono", "OFL-1.1"],
@@ -86,9 +65,24 @@ const PACKAGE_EXCEPTIONS = new Map([
   // Packages with "Unknown" in pnpm but verified MIT via LICENSE file.
   ["khroma", "Unknown"],
   ["spawndamnit", "Unknown"],
-]);
+  ["json-query", "Unknown"],
 
-// ─────────────────────────────────────────────────────────────────────
+  // yuku-analyzer native bindings (transitive via knip). The 0.6.x platform
+  // binding packages ship only a .node binary and omit the `license` field, so
+  // pnpm reports "Unknown". The yuku-toolchain repository and parent packages
+  // declare MIT. All platform variants are listed so the check passes on any host.
+  ["@yuku-analyzer/binding-darwin-arm64", "Unknown"],
+  ["@yuku-analyzer/binding-darwin-x64", "Unknown"],
+  ["@yuku-analyzer/binding-freebsd-x64", "Unknown"],
+  ["@yuku-analyzer/binding-linux-arm-gnu", "Unknown"],
+  ["@yuku-analyzer/binding-linux-arm-musl", "Unknown"],
+  ["@yuku-analyzer/binding-linux-arm64-gnu", "Unknown"],
+  ["@yuku-analyzer/binding-linux-arm64-musl", "Unknown"],
+  ["@yuku-analyzer/binding-linux-x64-gnu", "Unknown"],
+  ["@yuku-analyzer/binding-linux-x64-musl", "Unknown"],
+  ["@yuku-analyzer/binding-win32-arm64", "Unknown"],
+  ["@yuku-analyzer/binding-win32-x64", "Unknown"],
+]);
 
 function run() {
   console.log("Running pnpm licenses list --json ...\n");
@@ -100,7 +94,11 @@ function run() {
       maxBuffer: 50 * 1024 * 1024,
     });
   } catch (err) {
+    // pnpm reports its own failures (e.g. ERR_PNPM_MISSING_PACKAGE_INDEX_FILE)
+    // as JSON on stdout, which execSync captures rather than forwards.
     console.error("Failed to run pnpm licenses list:", err.message);
+    if (err.stdout) console.error(err.stdout.toString().trim());
+    if (err.stderr) console.error(err.stderr.toString().trim());
     process.exit(1);
   }
 
@@ -116,6 +114,14 @@ function run() {
 
       if (ALLOWED_LICENSES.has(license)) {
         continue;
+      }
+
+      // An OR-expression passes when every alternative is allowed.
+      if (/^(\w[\w.-]*)(?: OR (\w[\w.-]*))+$/.test(license)) {
+        const parts = license.split(/\s+OR\s+/);
+        if (parts.every((p) => ALLOWED_LICENSES.has(p))) {
+          continue;
+        }
       }
 
       const exception = PACKAGE_EXCEPTIONS.get(name);

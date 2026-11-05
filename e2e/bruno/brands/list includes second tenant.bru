@@ -1,0 +1,25 @@
+meta {
+  name: list includes second tenant
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands?limit=100
+  body: none
+  auth: inherit
+}
+
+params:query {
+  limit: 100
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("admin key sees the Nike tenant", function() {
+    expect(res.getBody().brands.map(b => b.id)).to.include("nike");
+  });
+}

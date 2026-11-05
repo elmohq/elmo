@@ -16,7 +16,7 @@ export interface TeamAuthor {
  * an entry here and (optionally) drop a square photo at
  * apps/www/public/authors/<key>.png and set `avatar`.
  */
-export const teamAuthors = {
+const teamAuthors = {
 	jared: {
 		name: "Jared Rhizor",
 		role: "Founder",
@@ -24,10 +24,10 @@ export const teamAuthors = {
 	},
 } satisfies Record<string, TeamAuthor>;
 
-export type TeamAuthorKey = keyof typeof teamAuthors;
+type TeamAuthorKey = keyof typeof teamAuthors;
 
 /** Reserved frontmatter `author` value marking a post as AI-generated. */
-export const AI_AUTHOR = "ai";
+const AI_AUTHOR = "ai";
 
 export type ResolvedAuthor =
 	| { kind: "team"; key: TeamAuthorKey; author: TeamAuthor }

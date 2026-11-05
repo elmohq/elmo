@@ -1,0 +1,215 @@
+/**
+ * The read-only policy is unit-tested; these check it is wired into the running
+ * server and that a refused write leaves the database untouched.
+ */
+import type { Page } from "@playwright/test";
+import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
+import {
+  COMPETITOR_IDS,
+  DEMO_CREDENTIALS,
+  PROMPT_IDS,
+  TEST_API_KEY,
+  TEST_BRAND_ID,
+  TEST_BRAND_NAME,
+  TEST_USER,
+  brandUrl,
+  organizationUrl,
+} from "../../fixtures";
+import { withDb } from "../../session";
+import { fillUntilSaveable, openAccountMenu } from "../../interactions";
+
+const authed = { Authorization: `Bearer ${TEST_API_KEY}` };
+
+async function expectSignedInAsDemo(page: Page): Promise<void> {
+  const session = await (await page.request.get("/api/auth/get-session")).json();
+  expect(session?.user?.email).toBe(DEMO_CREDENTIALS.email);
+}
+
+async function countRows(table: string, where: string, params: unknown[]): Promise<number> {
+  return withDb(async (client) => {
+    const { rows } = await client.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM ${table} WHERE ${where}`,
+      params,
+    );
+    return Number(rows[0].count);
+  });
+}
+
+test.describe("Demo refuses writes", () => {
+  test("creating a prompt is refused, with a key that would otherwise work", async ({ request }) => {
+    const value = "demo mode should never persist this prompt";
+
+    const response = await request.post("/api/v1/prompts", {
+      headers: authed,
+      data: { brandId: TEST_BRAND_ID, value },
+      failOnStatusCode: false,
+    });
+
+    expect(response.status()).toBe(403);
+    expect(await response.json()).toMatchObject({ error: "Demo Mode" });
+    expect(await countRows("prompts", "value = $1", [value])).toBe(0);
+  });
+
+  test("updating a brand is refused and leaves it unchanged", async ({ request }) => {
+    const response = await request.patch(`/api/v1/brands/${TEST_BRAND_ID}`, {
+      headers: authed,
+      data: { name: "Renamed By A Demo Visitor" },
+      failOnStatusCode: false,
+    });
+
+    expect(response.status()).toBe(403);
+    expect(await countRows("brands", "id = $1 AND name = $2", [TEST_BRAND_ID, TEST_BRAND_NAME])).toBe(1);
+  });
+
+  test("deleting a competitor is refused and it survives", async ({ request }) => {
+    const response = await request.delete(`/api/v1/competitors/${COMPETITOR_IDS.competitorA}`, {
+      headers: authed,
+      failOnStatusCode: false,
+    });
+
+    expect(response.status()).toBe(403);
+    expect(await countRows("competitors", "id = $1", [COMPETITOR_IDS.competitorA])).toBe(1);
+  });
+
+  test("reads still work", async ({ request }) => {
+    const brands = await request.get("/api/v1/brands", { headers: authed });
+    expect(brands.status()).toBe(200);
+
+    const prompt = await request.get(`/api/v1/prompts/${PROMPT_IDS.branded1}`, { headers: authed });
+    expect(prompt.status()).toBe(200);
+  });
+
+  test("saving brand settings from the UI fails and writes nothing", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(403, "/_serverFn/"));
+    await page.goto(`${brandUrl()}/settings/brand`);
+
+    const nameInput = page.getByLabel("Brand Name");
+    await expect(nameInput).toBeVisible({ timeout: 30_000 });
+    await nameInput.fill("Renamed From The Settings Page");
+
+    const writeAttempt = page.waitForResponse(
+      (response) => response.request().method() === "POST" && !response.url().includes("/api/plausible"),
+    );
+    await page.getByRole("button", { name: "Save Changes" }).click();
+    expect((await writeAttempt).status()).toBe(403);
+
+    await expect(page.getByText("Brand details updated successfully!")).toHaveCount(0);
+    await expect(page.getByText("The demo is read-only")).toBeVisible();
+    expect(await countRows("brands", "id = $1 AND name = $2", [TEST_BRAND_ID, TEST_BRAND_NAME])).toBe(1);
+  });
+});
+
+test.describe("Demo auth is sign-in only", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("signup is refused as a write, before better-auth even sees it", async ({ request }) => {
+    const response = await request.post("/api/auth/sign-up/email", {
+      data: { email: "visitor@test.local", password: "some-password-123", name: "Visitor" },
+      failOnStatusCode: false,
+    });
+
+    expect(response.status()).toBe(403);
+    expect(await response.json()).toMatchObject({ error: "Demo Mode" });
+    expect(await countRows(`"user"`, "email = $1", ["visitor@test.local"])).toBe(0);
+  });
+
+  test("changing the shared account's password is refused", async ({ request }) => {
+    const response = await request.post("/api/auth/change-password", {
+      data: { currentPassword: TEST_USER.password, newPassword: "hijacked-password-123" },
+      failOnStatusCode: false,
+    });
+
+    expect(response.status()).toBe(403);
+    expect(await response.json()).toMatchObject({ error: "Demo Mode" });
+  });
+
+  test("sign-in is allowed through", async ({ request }) => {
+    const response = await request.post("/api/auth/sign-in/email", {
+      data: { email: TEST_USER.email, password: TEST_USER.password },
+      failOnStatusCode: false,
+    });
+
+    expect(response.status()).toBe(200);
+  });
+
+  test("the login page signs you in to the shared demo account", async ({ page }) => {
+    await page.goto("/auth/login");
+
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
+  });
+
+  test("signing in lands on the page you were sent from", async ({ page }) => {
+    await page.goto(brandUrl());
+
+    await page.waitForURL((url) => url.pathname === brandUrl(), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
+  });
+
+  test("the register page signs you in instead", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(ABORTED_SSR_STREAM);
+    await page.goto("/auth/register");
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
+  });
+
+  test("the bare app URL opens on the demo account", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForURL((url) => url.pathname.startsWith("/app"), { timeout: 30_000 });
+    await expectSignedInAsDemo(page);
+  });
+});
+
+test.describe("Demo features", () => {
+  test("log out is not offered, since the login page would sign you straight back in", async ({ page }) => {
+    await page.goto(brandUrl());
+
+    const menu = await openAccountMenu(page);
+    await expect(menu.getByRole("menuitem").first()).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Log Out" })).toHaveCount(0);
+    await expect(menu.locator('[role="separator"]:last-child')).toHaveCount(0);
+  });
+
+  test("the demo pill is shown", async ({ page }) => {
+    await page.goto(`${brandUrl()}`);
+    await expect(page.getByText("Demo", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  });
+
+  test("nothing can be created", async ({ page }) => {
+    await page.goto("/app");
+    await expect(page.getByRole("link", { name: /create new brand|new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /new organization/i })).toHaveCount(0);
+
+    await page.goto(`${organizationUrl()}/new`);
+    await page.waitForURL(new RegExp(`${organizationUrl()}/settings$`), { timeout: 30_000 });
+  });
+
+  test("saving organization settings fails and says why", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(403, "/_serverFn/"));
+    await page.goto(`${organizationUrl()}/settings`);
+
+    const nameField = page.getByLabel("Organization Name", { exact: true });
+    await expect(nameField).toBeEnabled({ timeout: 30_000 });
+
+    const save = page.getByRole("button", { name: "Save", exact: true });
+    await fillUntilSaveable(nameField, "Renamed In Demo", save);
+    await save.click();
+    const refusal = page.getByText("The demo is read-only").locator("..");
+    await expect(refusal).toBeVisible({ timeout: 30_000 });
+    await expect(refusal.getByRole("link", { name: "Elmo Cloud" })).toHaveAttribute(
+      "href",
+      /app\.elmohq\.com\/auth\/register\?ref=demo-read-only/,
+    );
+  });
+
+  test("the team page is not offered and not reachable", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(404, `${organizationUrl()}/settings/members`));
+    await page.goto(`${organizationUrl()}/settings`);
+    await expect(
+      page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
+    ).toHaveCount(0);
+
+    await page.goto(`${organizationUrl()}/settings/members`);
+    await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
+  });
+});

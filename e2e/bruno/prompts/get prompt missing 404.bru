@@ -1,0 +1,15 @@
+meta {
+  name: get prompt missing 404
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{missingUuid}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 404
+}

@@ -1,50 +1,113 @@
-/**
- * Server functions for brand operations.
- * Replaces apps/web/src/app/api/brands/* API routes.
- */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, requireOrgAccess, listUserOrganizations } from "@/lib/auth/helpers";
-import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
-import { getDeployment } from "@/lib/config/server";
+import type { Entitlements } from "@workspace/config/entitlements";
+import { getFanoutSupport } from "@workspace/config/fanout-support";
+import { targetFilterValue } from "@workspace/config/model-filter";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
+import { getDeployment } from "@workspace/deployment";
+import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
+import { type BrandTrackingState, brandTrackingState } from "@workspace/lib/brand-state";
+import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
-import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
-import { eq, and, count, sql } from "drizzle-orm";
-import { MAX_COMPETITORS } from "@workspace/lib/constants";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
+import {
+	claimBrandSlug,
+	claimNewBrandSlug,
+	findUnusedBrandId,
+	findUnusedBrandSlug,
+	isBrandSlugAvailable,
+} from "@workspace/lib/db/unique-names";
+import {
+	assertAllowed,
+	assertCanCreateBrand,
+	assertCompetitorCap,
+	assertEnabledModelsAllowed,
+	decideCompetitorCap,
+	getOrgEntitlements,
+	withQuotaLock,
+} from "@workspace/lib/entitlements";
+import { isGroundedApiTarget, resolveProviderAccess, selectTargetsForBrand } from "@workspace/lib/providers";
+import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
+import { and, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+import {
+	requireAuthSession,
+	requireBrandOrganization,
+	requireBrandSession,
+	requireOrgAccess,
+	requirePlatformPicksEditable,
+} from "@/lib/auth/helpers";
+import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
-import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
-import type { ModelConfig } from "@workspace/lib/providers";
+import type { TrackedTarget } from "@/lib/model-filter";
+import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
 /**
- * Deployment-configured models this brand actually runs, after applying
- * the brand's `enabledModels` override. The filter bar + LLMs info page +
- * any other UI that shows "which models is this brand tracking?" should
- * read from here instead of hardcoding a list — different deployments can
- * configure any arbitrary set of models via `SCRAPE_TARGETS`.
- *
- * `effectiveModels` is the flat id list that most callers want; the full
- * `ModelConfig[]` (with provider, version, webSearch) is kept on the same
- * object for pages that render per-model metadata (e.g. settings/llms).
+ * Targets rather than model ids: a model can appear twice, since scraped and
+ * grounded are different answers. Anything asking "which models is this brand
+ * tracking?" reads from here.
  */
-function computeEffectiveModels(brand: Brand): {
-	effectiveModels: string[];
-	effectiveModelConfigs: ModelConfig[];
-} {
+function computeTrackedTargets(
+	brand: Brand,
+	brandPrompts: { premiumModels: string[] }[],
+	entitlements: Entitlements,
+): TrackedTarget[] {
 	try {
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-		const effective = selectTargetsForBrand(configs, brand.enabledModels);
-		return {
-			effectiveModels: effective.map((c) => c.model),
-			effectiveModelConfigs: effective,
-		};
+
+		// Ask the run policy rather than re-deriving it, so the page can't disagree
+		// with what the worker runs. Grounded targets are assigned per prompt, so
+		// the brand's set is the union across its prompts.
+		const plan = resolvePromptRunPlan({
+			scrapeTargets: configs,
+			brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+			prompt: { premiumModels: [...new Set(brandPrompts.flatMap((prompt) => prompt.premiumModels))] },
+			entitlements,
+			defaultDelayHours: getDefaultDelayHours(),
+		});
+
+		return plan.targets.map((target) => {
+			const premium = isGroundedApiTarget(target.config);
+			return {
+				value: targetFilterValue(target.config.model, premium),
+				model: target.config.model,
+				premium,
+				tier: premium ? ("premium" as const) : resolveProviderAccess(target.config),
+				intervalHours: target.intervalHours,
+				replication: target.replication,
+				...(target.config.webSearch ? { fanout: getFanoutSupport(target.config) } : {}),
+			};
+		});
 	} catch {
-		// A misconfigured SCRAPE_TARGETS would already be surfacing via
-		// `validateScrapeTargets` at boot; here we'd rather degrade to empty
-		// lists than crash the brand fetch.
-		return { effectiveModels: [], effectiveModelConfigs: [] };
+		// A bad SCRAPE_TARGETS already fails boot validation; don't also crash the brand fetch.
+		return [];
 	}
+}
+
+/**
+ * Cloud brands start with their plan's default picks written explicitly; null
+ * means "follow the deployment configuration". The run policy applies the same
+ * defaults when it finds null, so both paths agree for a given plan.
+ */
+async function initialEnabledModels(organizationId: string): Promise<string[] | null> {
+	if (getDeployment().mode !== "cloud") return null;
+	const entitlements = await getOrgEntitlements(organizationId);
+	if (entitlements.unlimited) return null;
+	const picks = defaultPlatformPicks(entitlements, parseScrapeTargets(process.env.SCRAPE_TARGETS));
+	return picks.length > 0 ? picks : null;
+}
+
+/** Picks supplied at creation get the same checks as a later edit. */
+async function resolveCreateEnabledModels(
+	organizationId: string,
+	requested: string[] | undefined,
+): Promise<string[] | null> {
+	if (!requested || requested.length === 0) return initialEnabledModels(organizationId);
+	requirePlatformPicksEditable();
+	const models = [...new Set(requested)];
+	selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), models);
+	await assertEnabledModelsAllowed(organizationId, models);
+	return models;
 }
 
 function getDefaultBrandDomains(): string[] {
@@ -58,34 +121,29 @@ function getDefaultBrandDomains(): string[] {
 		.filter((d): d is string => d !== null);
 }
 
-// ============================================================================
-// Helper functions (migrated from apps/web/src/lib/metadata.ts)
-// ============================================================================
-
+/** Takes entitlements from the caller so the brand list doesn't query them once per brand. */
 async function getBrandWithPromptsFromDb(
 	brandId: string,
-): Promise<
-	| (BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] })
-	| undefined
-> {
+	entitlements?: Entitlements,
+): Promise<(BrandWithPrompts & { trackedTargets: TrackedTarget[]; trackingState: BrandTrackingState }) | undefined> {
 	try {
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, brandId),
 		});
 		if (!brand) return undefined;
 
-		const brandPrompts = await db.query.prompts.findMany({
-			where: eq(prompts.brandId, brandId),
-		});
-		const brandCompetitors = await db.query.competitors.findMany({
-			where: eq(competitors.brandId, brandId),
-		});
+		const [brandPrompts, brandCompetitors, resolved] = await Promise.all([
+			db.query.prompts.findMany({ where: eq(prompts.brandId, brandId) }),
+			db.query.competitors.findMany({ where: eq(competitors.brandId, brandId) }),
+			entitlements ?? getOrgEntitlements(brand.organizationId),
+		]);
 
 		return {
 			...brand,
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
-			...computeEffectiveModels(brand),
+			trackedTargets: computeTrackedTargets(brand, brandPrompts, resolved),
+			trackingState: brandTrackingState(brand, resolved),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);
@@ -93,42 +151,10 @@ async function getBrandWithPromptsFromDb(
 	}
 }
 
-// ============================================================================
-// Server Functions
-// ============================================================================
-
-/**
- * Get all brands the current user has access to
- */
-export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
-	const session = await requireAuthSession();
-	const userBrands = await listUserOrganizations(session.user.id);
-
-	if (!userBrands || userBrands.length === 0) {
-		return [];
-	}
-
-	const brandsData = await Promise.all(
-		userBrands.map(async (userBrand) => {
-			const dbBrand = await getBrandWithPromptsFromDb(userBrand.id);
-			return dbBrand ? { ...dbBrand, name: dbBrand.name } : null;
-		}),
-	);
-
-	return brandsData.filter(
-		(brand): brand is BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] } =>
-			brand !== null,
-	);
-});
-
-/**
- * Get a single brand by ID
- */
 export const getBrand = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const brand = await getBrandWithPromptsFromDb(data.brandId);
 		if (!brand) {
@@ -138,20 +164,22 @@ export const getBrand = createServerFn({ method: "GET" })
 		return brand;
 	});
 
-/**
- * Create a new brand
- */
 export const createBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
 			brandName: z.string(),
 			website: z.string(),
+			/** Platform picks from the onboarding wizard; omitted → plan defaults. */
+			enabledModels: z.array(z.string().min(1)).max(50).optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
+		// This legacy path fills an empty org's first brand (brandId here IS the
+		// org id), so the brand count gate applies to that org.
+		await assertCanCreateBrand(data.brandId);
 
 		const urlValidation = validateWebsiteUrl(data.website);
 		if (!urlValidation.isValid) {
@@ -159,21 +187,34 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		}
 
 		const defaultDomains = getDefaultBrandDomains();
-
-		const result = await db
-			.insert(brands)
-			.values({
-				id: data.brandId,
-				name: data.brandName,
-				website: urlValidation.formattedUrl,
-				enabled: true,
-				...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
-			})
-			.onConflictDoNothing()
-			.returning();
+		const enabledModels = await resolveCreateEnabledModels(data.brandId, data.enabledModels);
+		const created = await claimNewBrandSlug(() =>
+			db.transaction(async (tx) => {
+				const slug = await findUnusedBrandSlug(data.brandId, slugify(data.brandName, "brand"), tx);
+				return (
+					tx
+						.insert(brands)
+						.values({
+							id: data.brandId,
+							organizationId: data.brandId,
+							name: data.brandName,
+							slug,
+							website: urlValidation.formattedUrl,
+							enabled: true,
+							...(enabledModels && { enabledModels }),
+							...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+						})
+						// Targeted at the id: the fallback below reads back by id, so
+						// swallowing a slug conflict would find nothing and report a failure
+						// that isn't one.
+						.onConflictDoNothing({ target: brands.id })
+						.returning()
+				);
+			}),
+		);
 
 		const brand =
-			result[0] ??
+			created[0] ??
 			(await db.query.brands.findFirst({
 				where: eq(brands.id, data.brandId),
 			}));
@@ -185,24 +226,22 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		return { success: true, brand };
 	});
 
-/**
- * Create a new organization + admin membership + brand in one shot for the
- * current user. Used by the local-mode multi-brand "create new brand" flow on
- * the brand switcher. Gated by the canCreateBrands deployment feature so
- * whitelabel (orgs come from Auth0) and demo (read-only) reject it.
- */
-export const createBrandWithOrgFn = createServerFn({ method: "POST" })
+/** A brand in an existing organization, with an id of its own rather than the org's. */
+export const createBrandInOrgFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandName: z.string().min(1).max(100),
 			website: z.string().min(1),
+			organizationId: z.string(),
+			/** Platform picks from the creation wizard; omitted → plan defaults. */
+			enabledModels: z.array(z.string().min(1)).max(50).optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		const deployment = getDeployment();
 
-		if (evaluateRequireCanCreateBrands(deployment.features.canCreateBrands) === "deny") {
+		if (!deployment.features.canCreateBrands) {
 			throw new Error("Brand creation is not allowed in this deployment");
 		}
 
@@ -216,76 +255,80 @@ export const createBrandWithOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		const { orgId } = await provisionAdditionalLocalOrg({
-			userId: session.user.id,
-			name: trimmedName,
-		});
+		const orgId = data.organizationId;
+		await requireOrgAccess(session.user.id, orgId);
+		await assertCanCreateBrand(orgId);
 
+		const baseSlug = slugify(trimmedName, "brand");
 		const defaultDomains = getDefaultBrandDomains();
+		const enabledModels = await resolveCreateEnabledModels(orgId, data.enabledModels);
 
-		await db.insert(brands).values({
-			id: orgId,
-			name: trimmedName,
-			website: urlValidation.formattedUrl,
-			enabled: true,
-			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
-		});
+		return claimNewBrandSlug(() =>
+			db.transaction(async (tx) => {
+				const brandId = await findUnusedBrandId(baseSlug, tx);
+				const slug = await findUnusedBrandSlug(orgId, baseSlug, tx);
 
-		return { brandId: orgId };
+				await tx.insert(brands).values({
+					id: brandId,
+					organizationId: orgId,
+					name: trimmedName,
+					slug,
+					website: urlValidation.formattedUrl,
+					enabled: true,
+					...(enabledModels && { enabledModels }),
+					...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+				});
+
+				return { brandId, brandSlug: slug };
+			}),
+		);
 	});
 
-/**
- * Update a brand
- */
 export const updateBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
 			name: z.string().optional(),
 			website: z.string().optional(),
+			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH).optional(),
 			additionalDomains: z.array(z.string()).optional(),
 			aliases: z.array(z.string()).optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
-		const updateData: Partial<Pick<Brand, "name" | "website" | "additionalDomains" | "aliases">> = {};
+		if (data.slug !== undefined && !isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
 
-		if (data.name !== undefined) {
-			if (!data.name.trim()) {
-				throw new Error("Brand name must be a non-empty string");
-			}
-			updateData.name = data.name.trim();
+		const normalized = normalizeBrandUpdate({
+			name: data.name,
+			website: data.website,
+			additionalDomains: data.additionalDomains,
+			aliases: data.aliases,
+		});
+		if (!normalized.ok) {
+			throw new Error(normalized.error);
 		}
+		const updateData = normalized.updates;
 
-		if (data.website !== undefined) {
-			const urlValidation = validateWebsiteUrl(data.website);
-			if (!urlValidation.isValid) {
-				throw new Error(urlValidation.error);
-			}
-			updateData.website = urlValidation.formattedUrl;
-		}
-
-		if (data.additionalDomains !== undefined) {
-			const cleaned = data.additionalDomains.map((d) => cleanAndValidateDomain(d));
-			const invalid = data.additionalDomains.filter((_, i) => !cleaned[i]);
-			if (invalid.length > 0) {
-				throw new Error(`Invalid domain(s): ${invalid.join(", ")}`);
-			}
-			updateData.additionalDomains = [...new Set(cleaned.filter(Boolean) as string[])];
-		}
-
-		if (data.aliases !== undefined) {
-			updateData.aliases = [...new Set(data.aliases.map((a) => a.trim()).filter(Boolean))];
-		}
-
-		const result = await db
-			.update(brands)
-			.set({ ...updateData, updatedAt: new Date() })
-			.where(eq(brands.id, data.brandId))
-			.returning();
+		const result = await claimBrandSlug(
+			() =>
+				db.transaction(async (tx) => {
+					if (
+						data.slug !== undefined &&
+						!(await isBrandSlugAvailable(org.id, data.slug, { excludeBrandId: data.brandId, conn: tx }))
+					) {
+						throw new Error(TAKEN_SLUG);
+					}
+					return tx
+						.update(brands)
+						.set({ ...updateData, ...(data.slug !== undefined && { slug: data.slug }), updatedAt: new Date() })
+						.where(eq(brands.id, data.brandId))
+						.returning();
+				}),
+			TAKEN_SLUG,
+		);
 
 		if (!result[0]) {
 			throw new Error("Failed to update brand");
@@ -294,23 +337,16 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		return result[0];
 	});
 
-/**
- * Get competitors for a brand
- */
 export const getCompetitors = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		return db.query.competitors.findMany({
 			where: eq(competitors.brandId, data.brandId),
 		});
 	});
 
-/**
- * Update competitors for a brand (bulk replace)
- */
 export const updateCompetitors = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -325,10 +361,11 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
-		// Validate and clean domains
+		// A bulk replace, so the list submitted is the list the brand ends up with.
+		assertAllowed(decideCompetitorCap(data.competitors.length));
+
 		const cleanedCompetitors = data.competitors.map((c) => {
 			const cleanedDomains = c.domains.map((d) => cleanAndValidateDomain(d));
 			const invalid = c.domains.filter((_, i) => !cleanedDomains[i]);
@@ -362,9 +399,6 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 		});
 	});
 
-/**
- * Add an additional domain to the brand itself
- */
 export const addDomainToBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -373,8 +407,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
@@ -385,12 +418,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 				additionalDomains: sql`array_append(${brands.additionalDomains}, ${domain})`,
 				updatedAt: new Date(),
 			})
-			.where(
-				and(
-					eq(brands.id, data.brandId),
-					sql`NOT (${domain} = ANY(${brands.additionalDomains}))`,
-				),
-			)
+			.where(and(eq(brands.id, data.brandId), sql`NOT (${domain} = ANY(${brands.additionalDomains}))`))
 			.returning();
 
 		if (result) return result;
@@ -402,9 +430,6 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 		return brand;
 	});
 
-/**
- * Add a domain to an existing competitor
- */
 export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -414,8 +439,7 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const existing = await db.query.competitors.findFirst({
 			where: and(eq(competitors.id, data.competitorId), eq(competitors.brandId, data.brandId)),
@@ -436,9 +460,6 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 		return result;
 	});
 
-/**
- * Create a new competitor from a domain
- */
 export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -449,28 +470,25 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
 
-		const [currentCount] = await db
-			.select({ count: count() })
-			.from(competitors)
-			.where(eq(competitors.brandId, data.brandId));
+		// Check and insert under one lock: otherwise two requests on a brand's
+		// last competitor slot both pass the check.
+		return await withQuotaLock(org.id, async (tx) => {
+			await assertCompetitorCap(data.brandId, 1, tx);
 
-		if ((currentCount?.count || 0) >= MAX_COMPETITORS) {
-			throw new Error(`Cannot add competitor. Maximum of ${MAX_COMPETITORS} competitors reached.`);
-		}
+			const [result] = await tx
+				.insert(competitors)
+				.values({
+					brandId: data.brandId,
+					name: data.name.trim(),
+					domains: [domain],
+				})
+				.returning();
 
-		const [result] = await db
-			.insert(competitors)
-			.values({
-				brandId: data.brandId,
-				name: data.name.trim(),
-				domains: [domain],
-			})
-			.returning();
-
-		return result;
+			return result;
+		});
 	});

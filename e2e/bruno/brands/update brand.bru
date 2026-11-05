@@ -1,0 +1,22 @@
+meta {
+  name: update brand
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "aliases": ["Bruno Alias"]
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.aliases: contains Bruno Alias
+}

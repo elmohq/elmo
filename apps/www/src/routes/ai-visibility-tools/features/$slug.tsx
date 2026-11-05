@@ -1,42 +1,50 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
+import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
 import { ToolGrid } from "@/components/tool-list";
 import {
-	DirectoryBackLink,
-	DirectoryHero,
-	DirectorySection,
-	ElmoCta,
-} from "@/components/directory-shell";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
-import {
-	getFeatureKeyBySlug,
-	toolsWithFeature,
-	getFeatureLabel,
-	getFeatureVerdict,
-	getFeatureFaqs,
-	MIN_TOOLS_FOR_FEATURE_PAGE,
 	type Competitor,
 	type FeatureKey,
+	featurePhrase,
+	getFeatureFaqs,
+	getFeatureKeyBySlug,
+	getFeatureLabel,
+	getFeatureSearchTerm,
+	getFeatureVerdict,
+	MIN_TOOLS_FOR_FEATURE_PAGE,
+	toolsWithFeature,
 } from "@/lib/competitors";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const key = getFeatureKeyBySlug(params.slug);
-		if (!key) return {};
+		if (!key) throw notFound();
 		const tools = toolsWithFeature(key);
-		if (tools.length < MIN_TOOLS_FOR_FEATURE_PAGE) return {};
-		const label = getFeatureLabel(key);
-		const title = `AI Visibility Tools with ${label} · Elmo`;
-		const description = `See which AI visibility tools offer ${label.toLowerCase()} and how they compare, including the open-source option, Elmo.`;
+		if (tools.length < MIN_TOOLS_FOR_FEATURE_PAGE) throw notFound();
+		return {
+			featureKey: key,
+			tools,
+			label: getFeatureLabel(key),
+			phrase: featurePhrase(key),
+			term: getFeatureSearchTerm(key),
+			faqs: getFeatureFaqs(key, tools),
+		};
+	},
+	head: ({ params, loaderData }) => {
+		if (!loaderData) return {};
+		const { tools, label, phrase, term, faqs } = loaderData;
+		const title = !term
+			? `AI Visibility Tools with ${label} · Elmo`
+			: tools.length <= 25
+				? `${tools.length} Best ${term} (2026) · Elmo`
+				: `${term} Compared: ${tools.length} Tools (2026) · Elmo`;
+		const description = `${tools.length} AI visibility tools with ${phrase}, compared on engine coverage, pricing, and export — including Elmo, the open-source option.`;
 		const path = `/ai-visibility-tools/features/${params.slug}`;
 		return {
-			meta: [
-				{ title },
-				{ name: "description", content: description },
-				...ogMeta({ title, description, path }),
-			],
+			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
 				breadcrumbJsonLd([
@@ -44,16 +52,9 @@ export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: label, path },
 				]),
-				faqJsonLd(getFeatureFaqs(key, tools)),
+				faqJsonLd(faqs),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const key = getFeatureKeyBySlug(params.slug);
-		if (!key) throw notFound();
-		const tools = toolsWithFeature(key);
-		if (tools.length < MIN_TOOLS_FOR_FEATURE_PAGE) throw notFound();
-		return { featureKey: key, tools };
 	},
 	component: FeaturePage,
 });
@@ -63,21 +64,19 @@ function FeaturePage() {
 		featureKey: FeatureKey;
 		tools: Competitor[];
 	};
-	const label = getFeatureLabel(featureKey);
 	return (
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					eyebrow="Feature"
-					title={`AI visibility tools with ${label}`}
+					title={`AI visibility tools with ${featurePhrase(featureKey)}`}
 					lead={getFeatureVerdict(featureKey, tools)}
 				/>
 				<DirectorySection title="Tools that offer this feature">
 					<ToolGrid competitors={tools} />
 				</DirectorySection>
-				<Faq items={getFeatureFaqs(featureKey, tools)} eyebrow="/ FAQ" />
+				<Faq items={getFeatureFaqs(featureKey, tools)} />
 				<ElmoCta />
 			</main>
 			<Footer />

@@ -1,0 +1,22 @@
+meta {
+  name: update competitor
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/competitors/{{createdCompetitorId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Bruno E2E Competitor Renamed"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.name: eq Bruno E2E Competitor Renamed
+}

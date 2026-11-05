@@ -10,6 +10,10 @@
 # - NPM_TOKEN: npm access token with publish permissions
 # - DOCKERHUB_USERNAME: Docker Hub username
 # - DOCKERHUB_TOKEN: Docker Hub access token
+#
+# Optional secrets:
+# - DISCORD_WEBHOOK_URL: when set, the new release is announced to this Discord
+#   webhook (e.g. the #releases channel). Skipped when unset.
 
 name: Release
 
@@ -30,13 +34,13 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
@@ -54,14 +58,15 @@ jobs:
 
       - name: Publish packages
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
-          publish: pnpm release
-          createGithubReleases: false
+          publish-script: pnpm release
+          create-github-releases: false
+          # Tags are not gated on create-github-releases anymore, and the only
+          # tag we want is the aggregated v$VERSION one cut below.
+          push-git-tags: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create aggregated GitHub release
         if: steps.changesets.outputs.published == 'true'
@@ -71,6 +76,26 @@ jobs:
         run: |
           node scripts/generate-release-notes.mjs "$VERSION" > release-notes.md
           gh release create "v$VERSION" --title "v$VERSION" --notes-file release-notes.md
+
+      - name: Announce release on Discord
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          VERSION: ${{ steps.version.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "${DISCORD_WEBHOOK_URL}" ]; then
+            echo "DISCORD_WEBHOOK_URL not set; skipping Discord announcement."
+            exit 0
+          fi
+          # Reuses release-notes.md from the step above so the announcement cannot
+          # drift from the GitHub release. Non-fatal throughout: the packages are
+          # published by now, so nothing here may fail the job and strand the
+          # Docker builds that depend on it.
+          node scripts/discord-release-payload.mjs "$VERSION" release-notes.md > discord-payload.json \
+            || { echo "Discord payload build failed (non-fatal)."; exit 0; }
+          curl -sS -X POST -H "Content-Type: application/json" -d @discord-payload.json "$DISCORD_WEBHOOK_URL" \
+            || echo "Discord announcement failed (non-fatal)."
 
   docker-build:
     name: Build images (${{ matrix.arch }})
@@ -88,10 +113,14 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Blacksmith Builder
-        uses: useblacksmith/setup-docker-builder@v1
+        uses: useblacksmith/setup-docker-builder@v2
+        with:
+          # Scoped per arch: the two matrix jobs share no layers and commit
+          # concurrently, and cache commits are last-write-wins.
+          cache-key: docker/Dockerfile-${{ matrix.arch }}
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v4

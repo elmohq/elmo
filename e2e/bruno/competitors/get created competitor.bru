@@ -1,0 +1,16 @@
+meta {
+  name: get created competitor
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/competitors/{{createdCompetitorId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{createdCompetitorId}}
+}

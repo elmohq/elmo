@@ -1,28 +1,22 @@
 import * as Sentry from "@sentry/tanstackstart-react";
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
+import { NotFoundPage } from "./components/not-found-page";
 import * as TanstackQuery from "./integrations/tanstack-query/root-provider";
+import { DefaultErrorComponent, DefaultPendingComponent } from "./router-default-components";
 import { routeTree } from "./routeTree.gen";
-import { DefaultErrorComponent, DefaultPendingComponent, NotFound } from "./router-default-components";
 
 export const getRouter = () => {
 	const rqContext = TanstackQuery.getContext();
 
 	const router = createRouter({
 		routeTree,
-		context: {
-			...rqContext,
-			// clientConfig is provided by __root.tsx's beforeLoad
-			clientConfig: undefined!,
-			// envValidation is provided by __root.tsx's beforeLoad
-			envValidation: undefined!,
-		},
+		// clientConfig and envValidation are provided by __root.tsx's beforeLoad
+		context: rqContext,
 		defaultPreload: "intent",
-		defaultNotFoundComponent: NotFound,
+		defaultNotFoundComponent: NotFoundPage,
 		defaultErrorComponent: DefaultErrorComponent,
 		defaultPendingComponent: DefaultPendingComponent,
-		defaultPendingMs: 0,
-		defaultPendingMinMs: 200,
 		defaultStaleTime: 30_000, // Cache loader data for 30s to avoid re-fetching on navigations
 	});
 
@@ -30,7 +24,6 @@ export const getRouter = () => {
 		Sentry.init({
 			dsn: import.meta.env.VITE_SENTRY_DSN,
 			environment: import.meta.env.MODE,
-			sendDefaultPii: true,
 			integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
 			tracesSampleRate: 1.0,
 		});

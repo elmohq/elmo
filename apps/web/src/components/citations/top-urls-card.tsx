@@ -1,61 +1,40 @@
-import { useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Separator } from "@workspace/ui/components/separator";
-import { Input } from "@workspace/ui/components/input";
-import { Badge } from "@workspace/ui/components/badge";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconExternalLink, IconInfoCircle, IconSearch } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { Badge } from "@workspace/ui/components/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
+import { Separator } from "@workspace/ui/components/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import {
-	UnderlineTabs,
-	formatUrlForDisplay,
 	extractFilenameFromUrl,
-	getCategoryLabel,
+	formatUrlForDisplay,
 	getCategoryColorClass,
+	getCategoryLabel,
+	UnderlineTabs,
 } from "@/components/citations/shared";
-import type { CitationData } from "@/components/citations/types";
+import type { CitationListControls, CitationUrlItem } from "@/components/citations/types";
+import { ListPagination } from "@/components/list-pagination";
+import { SiteIcon } from "@/components/site-icon";
+import { useBrandParams } from "@/hooks/use-route-params";
 
 export function TopUrlsCard({
-	urls,
+	list,
 	sourceTabs,
 	pageTypeTabs,
 	maxUrls,
-	brandId,
 	brandName,
 	brandShare,
 	brandIsCited,
 }: {
-	urls: CitationData["specificUrls"];
+	list: CitationListControls<CitationUrlItem>;
 	sourceTabs: { key: string; label: string }[];
 	pageTypeTabs: { key: string; label: string }[];
 	maxUrls: number;
-	brandId?: string;
 	brandName?: string;
 	brandShare: number;
 	brandIsCited: boolean;
 }) {
-	const [urlSearch, setUrlSearch] = useState("");
-	const [selectedCategory, setSelectedCategory] = useState<string>("all");
-	const [selectedPageType, setSelectedPageType] = useState<string>("all");
-
-	const filteredUrls = useMemo(() => {
-		let result = urls;
-		if (selectedCategory !== "all") {
-			result = result.filter((u) => u.category === selectedCategory);
-		}
-		if (selectedPageType !== "all") {
-			result = result.filter((u) => u.pageType === selectedPageType);
-		}
-		if (urlSearch) {
-			const q = urlSearch.toLowerCase();
-			result = result.filter((u) =>
-				u.url.toLowerCase().includes(q) ||
-				(u.title?.toLowerCase().includes(q)) ||
-				u.domain.toLowerCase().includes(q)
-			);
-		}
-		return result.slice(0, maxUrls);
-	}, [urls, selectedCategory, selectedPageType, urlSearch, maxUrls]);
+	const brandParams = useBrandParams();
 
 	return (
 		<Card className="gap-4">
@@ -65,40 +44,53 @@ export function TopUrlsCard({
 						<CardTitle className="flex items-center gap-1.5">
 							Top Cited URLs
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-sm font-normal">
-									<p className="mb-2">The specific pages most frequently cited by AI models. Filter by category to focus on brand, competitor, or other sources.</p>
-									<p><strong>Competitor</strong> domains are only those in your {brandId ? <Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">tracked competitors list</Link> : "tracked competitors list"}.</p>
+									<p className="mb-2">
+										The specific pages most frequently cited by AI models. Filter by category to focus on brand,
+										competitor, or other sources.
+									</p>
+									<p>
+										<strong>Competitor</strong> domains are only those in your{" "}
+										<Link
+											to="/app/org/$org/brand/$brand/settings/competitors"
+											params={brandParams}
+											className="underline"
+										>
+											tracked competitors list
+										</Link>
+										.
+									</p>
 								</TooltipContent>
 							</Tooltip>
 						</CardTitle>
 						<CardDescription>
-							Individual pages cited by LLMs{brandIsCited && brandName && (
-								<> &mdash; {brandName} accounts for <strong>{brandShare}%</strong> of all citations</>
+							Individual pages cited by LLMs
+							{brandIsCited && brandName && (
+								<>
+									{" "}
+									&mdash; {brandName} accounts for <strong>{brandShare}%</strong> of all citations
+								</>
 							)}
 						</CardDescription>
 					</div>
-					<div className="relative w-full sm:w-48 shrink-0">
-						<IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-						<Input
+					<InputGroup className="h-8 shrink-0 sm:w-48">
+						<InputGroupInput
 							placeholder="Search URLs..."
-							value={urlSearch}
-							onChange={(e) => setUrlSearch(e.target.value)}
-							className="h-8 pl-8 text-xs"
+							value={list.search}
+							onChange={(e) => list.setSearch(e.target.value)}
+							className="h-8 text-xs"
 						/>
-					</div>
+						<InputGroupAddon className="pl-2.5">
+							<IconSearch className="size-3.5" />
+						</InputGroupAddon>
+					</InputGroup>
 				</div>
 			</CardHeader>
 			<Separator />
 			<CardContent>
 				{sourceTabs.length > 2 && (
-					<UnderlineTabs
-						tabs={sourceTabs}
-						activeKey={selectedCategory}
-						onSelect={setSelectedCategory}
-					/>
+					<UnderlineTabs tabs={sourceTabs} activeKey={list.category} onSelect={list.setCategory} />
 				)}
 				{pageTypeTabs.length > 2 && (
 					<div className="flex items-center flex-wrap gap-1.5 mt-3">
@@ -106,16 +98,16 @@ export function TopUrlsCard({
 							<button
 								key={t.key}
 								type="button"
-								onClick={() => setSelectedPageType(t.key)}
-								className={`px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${selectedPageType === t.key ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
+								onClick={() => list.setPageType(t.key)}
+								className={`px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${list.pageType === t.key ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
 							>
 								{t.label}
 							</button>
 						))}
 					</div>
 				)}
-				<div className="divide-y divide-border mt-1">
-					{filteredUrls.map((citation) => {
+				<div className={`divide-y divide-border mt-1 transition-opacity ${list.isFetching ? "opacity-60" : ""}`}>
+					{list.items.map((citation) => {
 						const displayUrl = formatUrlForDisplay(citation.url);
 						const domainEndIndex = displayUrl.indexOf("/");
 						const domainPart = domainEndIndex > 0 ? displayUrl.substring(0, domainEndIndex) : displayUrl;
@@ -129,15 +121,20 @@ export function TopUrlsCard({
 								rel="noopener noreferrer"
 								className="flex items-start justify-between gap-3 py-3 group"
 							>
+								<SiteIcon domain={citation.domain} size="lg" className="mt-0.5" />
 								<div className="min-w-0 flex-1">
-									<div className="flex items-center gap-2 mb-0.5">
-										<Badge className={`text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none ${getCategoryColorClass(citation.category)}`}>
+									<div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-0.5 sm:flex-nowrap">
+										<Badge
+											className={`shrink-0 text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none ${getCategoryColorClass(citation.category)}`}
+										>
 											{getCategoryLabel(citation.category)}
 										</Badge>
 										{citation.isNew && (
-											<Badge className="text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none bg-green-100 text-green-700">NEW</Badge>
+											<Badge className="shrink-0 text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none bg-green-100 text-green-700">
+												NEW
+											</Badge>
 										)}
-										<span className="text-sm font-medium truncate group-hover:underline">
+										<span className="min-w-0 basis-full text-sm font-medium truncate group-hover:underline sm:basis-auto">
 											{citation.title || extractFilenameFromUrl(citation.url)}
 										</span>
 									</div>
@@ -149,8 +146,10 @@ export function TopUrlsCard({
 								<div className="flex items-center gap-3 shrink-0 pt-0.5">
 									{citation.avgPosition != null && (
 										<Tooltip>
-											<TooltipTrigger asChild>
-												<span className="text-[11px] text-muted-foreground tabular-nums">avg {citation.avgPosition.toFixed(1)}</span>
+											<TooltipTrigger
+												render={<span className="text-[11px] text-muted-foreground tabular-nums max-sm:hidden" />}
+											>
+												avg {citation.avgPosition.toFixed(1)}
 											</TooltipTrigger>
 											<TooltipContent className="text-xs">
 												Average citation position (lower = cited earlier in the response)
@@ -158,26 +157,25 @@ export function TopUrlsCard({
 										</Tooltip>
 									)}
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<span className="text-sm font-semibold tabular-nums min-w-[2rem] text-right">
-												{citation.count.toLocaleString()}
-											</span>
+										<TooltipTrigger
+											render={<span className="text-sm font-semibold tabular-nums min-w-[2rem] text-right" />}
+										>
+											{citation.count.toLocaleString()}
 										</TooltipTrigger>
 										<TooltipContent className="text-xs">
 											Total times this URL was cited across all prompt evaluations
 										</TooltipContent>
 									</Tooltip>
-									<IconExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+									<IconExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity max-sm:hidden" />
 								</div>
 							</a>
 						);
 					})}
-					{filteredUrls.length === 0 && (
-						<p className="text-sm text-muted-foreground text-center pt-8 pb-4">
-							No URLs match the current filters.
-						</p>
+					{list.totalItems === 0 && !list.isFetching && (
+						<p className="text-sm text-muted-foreground text-center pt-8 pb-4">No URLs match the current filters.</p>
 					)}
 				</div>
+				<ListPagination page={list.page} pageSize={maxUrls} totalItems={list.totalItems} onPageChange={list.setPage} />
 			</CardContent>
 		</Card>
 	);

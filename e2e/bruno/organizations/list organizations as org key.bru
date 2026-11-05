@@ -1,0 +1,21 @@
+meta {
+  name: an org key lists only its own organization
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/organizations
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.total: eq 1
+  res.body.data[0].id: eq default
+}

@@ -1,16 +1,10 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getPageImage } from "@/lib/og";
-import {
-	SITE_NAME,
-	ogMeta,
-	canonicalUrl,
-	articleJsonLd,
-	breadcrumbJsonLd,
-} from "@/lib/seo";
-import { DocsPageLayout } from "@/components/docs-page-layout";
-import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
 import type { SerializedPageTree } from "fumadocs-core/source/client";
+import type { OpenAPIPageProps } from "fumadocs-openapi/ui";
+import { DocsPageLayout } from "@/components/docs-page-layout";
+import { getPageImage } from "@/lib/og";
+import { articleJsonLd, breadcrumbJsonLd, canonicalUrl, ogMeta, SITE_NAME } from "@/lib/seo";
 
 const DOCS_DIR = "packages/docs/content/docs";
 
@@ -30,12 +24,12 @@ interface OpenApiLoaderData {
 	title: string;
 	description: string;
 	pageTree: SerializedPageTree;
-	apiProps: ClientApiPageProps;
+	apiProps: OpenAPIPageProps;
 }
 
 type LoaderData = DocsLoaderData | OpenApiLoaderData;
 
-export type { DocsLoaderData, OpenApiLoaderData, LoaderData };
+export type { LoaderData };
 
 export const Route = createFileRoute("/docs/$")({
 	component: Page,
@@ -81,7 +75,7 @@ export const Route = createFileRoute("/docs/$")({
 export const serverLoader = createServerFn({
 	method: "GET",
 })
-	.inputValidator((slugs: string[]) => slugs)
+	.validator((slugs: string[]) => slugs)
 	.handler(async ({ data: slugs }): Promise<LoaderData> => {
 		// Lazy import keeps fumadocs-core/source + fumadocs-openapi (and their
 		// transitive deps) out of the client bundle. The handler body is stripped
@@ -100,7 +94,7 @@ export const serverLoader = createServerFn({
 				title: page.data.title ?? "",
 				description: page.data.description ?? "",
 				pageTree,
-				apiProps: await page.data.getClientAPIPageProps(),
+				apiProps: page.data.getOpenAPIPageProps(),
 			};
 		}
 
@@ -109,9 +103,7 @@ export const serverLoader = createServerFn({
 		const slugPath = slugs.join("/");
 		const docsRoot = resolve(`../../${DOCS_DIR}`);
 		const indexPath = resolve(docsRoot, `${slugPath}/index.mdx`);
-		const filePath = existsSync(indexPath)
-			? `${DOCS_DIR}/${slugPath}/index.mdx`
-			: `${DOCS_DIR}/${slugPath}.mdx`;
+		const filePath = existsSync(indexPath) ? `${DOCS_DIR}/${slugPath}/index.mdx` : `${DOCS_DIR}/${slugPath}.mdx`;
 
 		return {
 			type: "docs",

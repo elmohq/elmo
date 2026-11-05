@@ -1,0 +1,33 @@
+meta {
+  name: an admin key lists every organization
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/organizations?limit=100
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+params:query {
+  limit: 100
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+  res.body.pagination.total: gte 2
+}
+
+tests {
+  test("both seeded tenants are listed", function() {
+    const ids = res.getBody().data.map((o) => o.id);
+    expect(ids).to.include("default");
+    expect(ids).to.include("nike");
+  });
+}

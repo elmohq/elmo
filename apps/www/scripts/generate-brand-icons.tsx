@@ -1,4 +1,11 @@
 #!/usr/bin/env tsx
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { renderOgPng } from "@workspace/og/rasterize";
+import pngToIco from "png-to-ico";
+
 /**
  * Generates favicon + PWA icon assets for the apps/www marketing site.
  *
@@ -21,14 +28,6 @@
  * Usage:
  *   pnpm -F @workspace/www generate-icons
  */
-// biome-ignore lint/correctness/noUnusedImports: classic JSX transform needs React in scope
-import React from "react";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { ImageResponse } from "@takumi-rs/image-response";
-import pngToIco from "png-to-ico";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -41,12 +40,7 @@ const ICONS_DIR = resolve(PUBLIC_DIR, "icons");
 // SVG icons — hand-built with Titan One embedded as base64
 // ---------------------------------------------------------------------------
 
-function loadFontBase64(): string {
-	const fontPath = require.resolve(
-		"@fontsource/titan-one/files/titan-one-latin-400-normal.woff2",
-	);
-	return readFileSync(fontPath).toString("base64");
-}
+const TITAN_ONE = readFileSync(require.resolve("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"));
 
 function fontFaceRule(base64: string): string {
 	return `@font-face { font-family: 'Titan One'; src: url(data:font/woff2;base64,${base64}) format('woff2'); }`;
@@ -71,35 +65,15 @@ function buildMaskableSvg(fontBase64: string): string {
 // PNG icons — rendered via Takumi (JSX → image)
 // ---------------------------------------------------------------------------
 
-function loadFont(path: string): ArrayBuffer {
-	const buf = readFileSync(require.resolve(path));
-	return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-}
-
-const takumiFonts = [
-	{
-		name: "Titan One",
-		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"),
-		style: "normal" as const,
-		weight: 400 as const,
-	},
-];
+const fonts = [{ name: "Titan One", data: TITAN_ONE, style: "normal" as const, weight: 400 as const }];
 
 async function renderPng(element: React.ReactElement, size: number): Promise<Buffer> {
-	const response = new ImageResponse(element, {
-		width: size,
-		height: size,
-		fonts: takumiFonts,
-	});
-	return Buffer.from(await response.arrayBuffer());
+	return renderOgPng(element, { width: size, height: size, fonts });
 }
 
 function StandardIcon({ bg, size }: { bg?: string; size: number }) {
 	return (
-		<div
-			tw="flex items-center justify-center w-full h-full"
-			style={{ backgroundColor: bg || "transparent" }}
-		>
+		<div tw="flex items-center justify-center w-full h-full" style={{ backgroundColor: bg || "transparent" }}>
 			<div
 				style={{
 					fontFamily: "Titan One",
@@ -140,7 +114,7 @@ function MaskableIcon({ size }: { size: number }) {
 
 mkdirSync(ICONS_DIR, { recursive: true });
 
-const fontBase64 = loadFontBase64();
+const fontBase64 = TITAN_ONE.toString("base64");
 
 const svgIcons = [
 	{ name: "elmo-icon.svg", build: buildStandardSvg },

@@ -1,12 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ArrowUpRight, Home } from "lucide-react";
-import { Navbar } from "./navbar";
 import { Footer } from "./footer";
+import { Navbar } from "./navbar";
 
 const suggestedLinks = [
 	{ label: "Documentation", href: "/docs", description: "Get started and learn the API" },
 	{ label: "Features", href: "/features", description: "What Elmo can do for your brand" },
-	{ label: "Pricing", href: "/pricing", description: "Plans for every team size" },
+	{ label: "Pricing", href: "/pricing", description: "Free to self-host; cloud from $29/mo" },
 	{ label: "Roadmap", href: "/roadmap", description: "What we're building next" },
 ];
 
@@ -22,15 +22,11 @@ export function NotFound() {
 					/>
 					<div className="relative mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
 						<div className="mx-auto max-w-2xl text-center">
-							<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
-								404 — <span className="text-zinc-500">PAGE NOT FOUND</span>
-							</p>
-							<h1 className="font-heading mt-5 text-balance text-5xl leading-[1.05] tracking-tight text-zinc-950 sm:text-6xl lg:text-[4.25rem] lg:leading-[1.0]">
+							<h1 className="font-heading text-balance text-5xl leading-[1.05] tracking-tight text-zinc-950 sm:text-6xl lg:text-[4.25rem] lg:leading-[1.0]">
 								This page doesn't exist
 							</h1>
 							<p className="mx-auto mt-6 max-w-[58ch] text-pretty text-base text-zinc-600 md:text-lg">
-								The page you're looking for may have moved, been renamed, or
-								never existed.
+								The page you're looking for may have moved, or it may never have existed.
 							</p>
 							<div className="mt-8 flex flex-wrap items-center justify-center gap-2">
 								<Link
@@ -54,10 +50,8 @@ export function NotFound() {
 
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-16">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-							/ POPULAR DESTINATIONS
-						</p>
-						<ul role="list" className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+						<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">Popular destinations</h2>
+						<ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 							{suggestedLinks.map((link) => (
 								<li key={link.href}>
 									<a
@@ -68,9 +62,7 @@ export function NotFound() {
 											{link.label}
 											<ArrowUpRight className="size-3.5 text-zinc-400 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-zinc-700" />
 										</span>
-										<span className="mt-1 text-sm text-zinc-600">
-											{link.description}
-										</span>
+										<span className="mt-1 text-sm text-zinc-600">{link.description}</span>
 									</a>
 								</li>
 							))}

@@ -1,7 +1,9 @@
 import Olostep from "olostep";
-import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import type { Citation } from "../../text-extraction";
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { getCredential } from "../../secrets";
+import { type Citation, normalizeCitationTitle } from "../../text-extraction";
+import { configuredWhen, reportedWebQueries } from "../config";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import { nonEmptyStrings } from "./scrape-shared";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
@@ -34,27 +36,19 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 		urlTemplate: (q) => `https://www.perplexity.ai/?q=${encodeURIComponent(q)}`,
 		credits: 3,
 	},
-	grok: {
-		parserId: "@olostep/grok-results",
-		urlTemplate: (q) => `https://grok.com/?q=${encodeURIComponent(q)}`,
-		credits: 3,
-	},
 };
 
 let _client: Olostep | null = null;
+let _clientApiKey: string | undefined;
 function getClient(): Olostep {
-	if (!_client) {
-		_client = new Olostep({ apiKey: process.env.OLOSTEP_API_KEY, retry: { maxRetries: 3, initialDelayMs: 2000 } });
+	// Re-key the memoized client on the credential so a refreshed overlay
+	// (DB-stored key) takes effect without a process restart.
+	const apiKey = getCredential("OLOSTEP_API_KEY");
+	if (!_client || _clientApiKey !== apiKey) {
+		_client = new Olostep({ apiKey, retry: { maxRetries: 3, initialDelayMs: 2000 } });
+		_clientApiKey = apiKey;
 	}
 	return _client;
-}
-
-function extractTextFromOlostep(data: any): string {
-	if (data?.result?.markdown_content) return data.result.markdown_content;
-	if (data?.answer_markdown) return data.answer_markdown;
-	if (data?.result?.text_content) return data.result.text_content;
-	if (typeof data?.answer === "string") return data.answer;
-	return "No text content found in Olostep response.";
 }
 
 function extractCitationsFromOlostep(data: any): Citation[] {
@@ -68,7 +62,7 @@ function extractCitationsFromOlostep(data: any): Citation[] {
 			const parsed = new URL(url);
 			citations.push({
 				url,
-				title: source?.title ?? source?.label ?? undefined,
+				title: normalizeCitationTitle(source?.title ?? source?.label),
 				domain: parsed.hostname.replace(/^www\./, ""),
 				citationIndex: idx++,
 			});
@@ -80,36 +74,25 @@ function extractCitationsFromOlostep(data: any): Citation[] {
 }
 
 function extractWebQueries(data: any): string[] {
-	const queries: string[] = [];
+	// Batch API returns a flat string array at data.search_queries.
+	const flat = nonEmptyStrings(data?.search_queries);
+	if (flat.length > 0) return flat;
 
-	// Batch API returns a flat string array at data.search_queries
-	const flat = data?.search_queries;
-	if (Array.isArray(flat)) {
-		for (const q of flat) {
-			if (typeof q === "string" && q.trim()) queries.push(q);
-		}
-	}
-
-	// Scrape API nests queries under network_search_calls or search_model_queries
-	if (queries.length === 0) {
-		const searchCalls = data?.network_search_calls?.search_queries ?? data?.search_model_queries ?? [];
-		for (const call of Array.isArray(searchCalls) ? searchCalls : []) {
-			// May be a string (flat array) or an object with .query
-			if (typeof call === "string" && call.trim()) queries.push(call);
-			else if (call?.query) queries.push(call.query);
-		}
-	}
-
-	return queries;
+	// Scrape API nests them under network_search_calls or search_model_queries,
+	// as either bare strings or objects carrying the query.
+	const calls = data?.network_search_calls?.search_queries ?? data?.search_model_queries;
+	return nonEmptyStrings(
+		(Array.isArray(calls) ? calls : []).map((call) => (typeof call === "string" ? call : call?.query)),
+	);
 }
 
 export const olostep: Provider = {
 	id: "olostep",
 	name: "Olostep",
+	access: "scraped",
+	docsAnchor: "olostep",
 
-	isConfigured() {
-		return !!process.env.OLOSTEP_API_KEY;
-	},
+	isConfigured: configuredWhen("OLOSTEP_API_KEY"),
 
 	validateTarget(config: ModelConfig) {
 		if (!OLOSTEP_PARSERS[config.model]) {
@@ -129,10 +112,7 @@ export const olostep: Provider = {
 		const url = parserConfig.urlTemplate(prompt);
 
 		// Use batch API — the /scrapes endpoint doesn't support all parsers
-		const batch = await client.batches.create(
-			[{ url, customId: "1" }],
-			{ parser: { id: parserConfig.parserId } },
-		);
+		const batch = await client.batches.create([{ url, customId: "1" }], { parser: { id: parserConfig.parserId } });
 
 		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 1200 });
 
@@ -149,8 +129,7 @@ export const olostep: Provider = {
 		const retrieved = await client.retrieve(retrieveId, ["json" as any]);
 
 		const jsonContent = retrieved.json_content;
-		const parsed =
-			typeof jsonContent === "string" ? JSON.parse(jsonContent) : (jsonContent ?? retrieved);
+		const parsed = typeof jsonContent === "string" ? JSON.parse(jsonContent) : (jsonContent ?? retrieved);
 
 		const webQueries = extractWebQueries(parsed);
 		const citations = extractCitationsFromOlostep(parsed);
@@ -159,11 +138,7 @@ export const olostep: Provider = {
 			// Store the parsed content directly instead of the full retrieved
 			// wrapper (which double-encodes json_content as a string).
 			rawOutput: parsed,
-			textContent: extractTextFromOlostep(parsed),
-			// Mark as "unavailable" only when citations prove a search happened
-			// but the API didn't expose the query strings
-			webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
-			citations,
+			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
 			modelVersion: parsed?.model ?? undefined,
 		};
 	},

@@ -1,44 +1,23 @@
-/**
- * Stories for <CachedPromptChart /> — grouped into two composite pages:
- *  1. Failure States — no visibility, no data, first-eval, loading, etc.
- *  2. Success States — lookback windows with varying visibility levels,
- *     search highlight, and long prompt name edge cases
- */
 import type { Meta } from "@storybook/react";
+import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { CachedPromptChart, type CachedPromptChartProps } from "@/components/cached-prompt-chart";
-import { setMockChartDataContext, type ProcessedChartData } from "./_mocks/chart-data-context";
-import { setMockClientConfig, type ClientConfig } from "./_mocks/config-client";
-import { setMockRouteContext, MockRouteContextProvider } from "./_mocks/tanstack-router";
+import { type ProcessedChartData, setMockChartDataContext } from "./_mocks/chart-data-context";
+import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
+import { MockRouteContextProvider, setMockRouteContext } from "./_mocks/tanstack-router";
 import { setMockBrand } from "./_mocks/use-brands";
-
-// ---------------------------------------------------------------------------
-// Shared fixtures
-// ---------------------------------------------------------------------------
-
-const CHART_COLORS = [
-	"#2563eb",
-	"#efb118",
-	"#3ca951",
-	"#ff725c",
-	"#a463f2",
-	"#ff8ab7",
-	"#38b2ac",
-	"#9c6b4e",
-];
 
 const defaultClientConfig: ClientConfig = {
 	mode: "local",
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: true,
 		canCreateBrands: true,
 	},
 	branding: {
 		name: "Elmo",
 		parentName: "",
 		optimizationUrlTemplate: "",
-		chartColors: CHART_COLORS,
+		chartColors: DEFAULT_CHART_COLORS,
 	},
 	analytics: {},
 };
@@ -54,12 +33,32 @@ const mockBrand = {
 };
 
 const mockCompetitors = [
-	{ id: "comp-1", name: "Competitor Alpha", domain: "alpha.com", brandId: "brand-1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-	{ id: "comp-2", name: "Competitor Beta", domain: "beta.com", brandId: "brand-1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-	{ id: "comp-3", name: "Competitor Gamma", domain: "gamma.com", brandId: "brand-1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+	{
+		id: "comp-1",
+		name: "Competitor Alpha",
+		domain: "alpha.com",
+		brandId: "brand-1",
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	},
+	{
+		id: "comp-2",
+		name: "Competitor Beta",
+		domain: "beta.com",
+		brandId: "brand-1",
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	},
+	{
+		id: "comp-3",
+		name: "Competitor Gamma",
+		domain: "gamma.com",
+		brandId: "brand-1",
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	},
 ];
 
-/** Deterministic chart data for N days */
 function generateChartData(days: number) {
 	const data: Array<{ date: string; [key: string]: number | string | null }> = [];
 	const now = new Date();
@@ -91,18 +90,13 @@ function successChartData(days: number, visibility: number): ProcessedChartData 
 	};
 }
 
-/** Set up all module-level mocks */
 function setupMocks() {
 	setMockClientConfig(defaultClientConfig);
 	setMockRouteContext({ clientConfig: defaultClientConfig });
 	setMockBrand(mockBrand);
 }
 
-/** Configure the chart data context mock */
-function setupContext(opts: {
-	chartData?: ProcessedChartData | null;
-	isLoading?: boolean;
-}) {
+function setupContext(opts: { chartData?: ProcessedChartData | null; isLoading?: boolean }) {
 	setMockChartDataContext({
 		brand: mockBrand,
 		competitors: mockCompetitors,
@@ -123,10 +117,6 @@ const baseProps = {
 	hasEverBeenEvaluated: true,
 };
 
-// ---------------------------------------------------------------------------
-// Layout helpers
-// ---------------------------------------------------------------------------
-
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
 	return (
 		<div className="space-y-2">
@@ -144,10 +134,6 @@ function PageFrame({ children }: { children: React.ReactNode }) {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Helper to render a single chart with mocked context data
-// ---------------------------------------------------------------------------
-
 interface ChartConfig {
 	contextData: {
 		chartData?: ProcessedChartData | null;
@@ -161,17 +147,10 @@ function Chart({ contextData, props }: ChartConfig) {
 	return <CachedPromptChart {...baseProps} {...props} />;
 }
 
-// ---------------------------------------------------------------------------
-// Stories
-// ---------------------------------------------------------------------------
-
 export default {
 	title: "Prompt Chart",
 } satisfies Meta;
 
-/**
- * All non-happy-path states: no visibility, no data, first eval, loading.
- */
 export const FailureStates = () => {
 	setupMocks();
 	return (
@@ -230,41 +209,25 @@ export const FailureStates = () => {
 	);
 };
 
-/**
- * Successful charts at different lookback windows, each with a different
- * visibility level so you can compare badge thresholds and axis density
- * in a single view. Includes search highlight and long prompt name edge cases.
- */
+/** Each lookback gets a different visibility level, so badge thresholds and axis density compare in one view. */
 export const SuccessStates = () => {
 	setupMocks();
 	return (
 		<PageFrame>
 			<Section label="1 week — high visibility (>75%) green badge">
-				<Chart
-					contextData={{ chartData: successChartData(7, 80) }}
-					props={{ lookback: "1w" }}
-				/>
+				<Chart contextData={{ chartData: successChartData(7, 80) }} props={{ lookback: "1w" }} />
 			</Section>
 
 			<Section label="1 month — medium visibility (45–75%) amber badge">
-				<Chart
-					contextData={{ chartData: successChartData(30, 60) }}
-					props={{ lookback: "1m" }}
-				/>
+				<Chart contextData={{ chartData: successChartData(30, 60) }} props={{ lookback: "1m" }} />
 			</Section>
 
 			<Section label="3 months — low visibility (<45%) red badge">
-				<Chart
-					contextData={{ chartData: successChartData(90, 20) }}
-					props={{ lookback: "3m" }}
-				/>
+				<Chart contextData={{ chartData: successChartData(90, 20) }} props={{ lookback: "3m" }} />
 			</Section>
 
 			<Section label="With search highlight">
-				<Chart
-					contextData={{ chartData: successChartData(30, 80) }}
-					props={{ searchHighlight: "remote teams" }}
-				/>
+				<Chart contextData={{ chartData: successChartData(30, 80) }} props={{ searchHighlight: "remote teams" }} />
 			</Section>
 
 			<Section label="Long prompt name — overflow handling">

@@ -1,23 +1,14 @@
-/**
- * Home page - / route
- *
- * Redirects authenticated users to /app.
- * In demo mode, auto-redirects unauthenticated users to /auth/login
- * (the login page pre-fills the demo credentials, so the bare home page
- * is just a redundant extra click).
- * On a fresh deployment that needs bootstrapping (registration is open
- * AND no users exist yet), redirects to /auth/register so the first
- * visitor sees the signup screen instead of an empty-database login form.
- * Shows sign-in for unauthenticated users in other modes.
- */
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import FullPageCard from "@/components/full-page-card";
+import { attributionParams } from "@/lib/attribution";
 import { getSession } from "@/lib/auth/session";
+import { entryRouteForVisitor } from "@/lib/entry-route";
 
 export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>) => ({
 		redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+		...attributionParams(search),
 	}),
 	beforeLoad: async ({ context, search }) => {
 		const session = await getSession();
@@ -26,17 +17,14 @@ export const Route = createFileRoute("/")({
 			throw redirect({ to: "/app" });
 		}
 
-		if (context.clientConfig?.mode === "demo") {
+		const entryRoute = entryRouteForVisitor(context.clientConfig);
+		if (entryRoute) {
 			throw redirect({
-				to: "/auth/login",
-				search: search.redirect ? { returnTo: search.redirect } : {},
-			});
-		}
-
-		if (context.clientConfig?.canRegister && !context.clientConfig?.hasUsers) {
-			throw redirect({
-				to: "/auth/register",
-				search: search.redirect ? { returnTo: search.redirect } : {},
+				to: entryRoute,
+				search: {
+					...(search.redirect ? { returnTo: search.redirect } : {}),
+					...attributionParams(search),
+				},
 			});
 		}
 
@@ -49,15 +37,13 @@ function HomePage() {
 	const { redirect: redirectParam } = Route.useSearch();
 
 	const loginUrl = "/auth/login";
-	const signInUrl = redirectParam
-		? `${loginUrl}?returnTo=${encodeURIComponent(redirectParam)}`
-		: loginUrl;
+	const signInUrl = redirectParam ? `${loginUrl}?returnTo=${encodeURIComponent(redirectParam)}` : loginUrl;
 
 	return (
 		<FullPageCard className="">
-			<Button asChild>
-				<a href={signInUrl}>Sign In</a>
-			</Button>
+			<a href={signInUrl} className={buttonVariants({})}>
+				Sign In
+			</a>
 		</FullPageCard>
 	);
 }

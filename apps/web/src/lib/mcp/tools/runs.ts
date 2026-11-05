@@ -1,0 +1,55 @@
+/** The answers the models actually gave, and what they cited. */
+import { z } from "zod";
+import { ApiError } from "@/lib/api/handler";
+import { requirePromptBrandInScope } from "@/lib/api/scope";
+import { findRunDetail, listPromptRuns } from "@/server/runs-core";
+import { defineTool, modelArg, promptIdArg, windowArgs, windowFor } from "./define";
+
+export const listRuns = defineTool({
+	name: "list_runs",
+	title: "List answers recorded for a prompt",
+	description:
+		"Metadata for the answers recorded for one prompt, newest first, including the mention judge's assessment, sentiment and position (experimental) for the brand and each competitor named. The answer text lives on get_run, which keeps this list small enough to page through.",
+	scopes: ["read"],
+	readOnly: true,
+	input: {
+		promptId: promptIdArg,
+		start: windowArgs.start,
+		end: windowArgs.end,
+		model: modelArg,
+		page: z.number().int().min(1).optional().describe("1-based page number. Defaults to 1."),
+		limit: z.number().int().min(1).max(100).optional().describe("Runs per page. Defaults to 20."),
+	},
+	run: async ({ auth }, args) => {
+		await requirePromptBrandInScope(auth, args.promptId);
+		const page = args.page ?? 1;
+		const limit = args.limit ?? 20;
+		const { data, total } = await listPromptRuns({
+			promptId: args.promptId,
+			window: windowFor({ start: args.start, end: args.end }),
+			limit,
+			offset: (page - 1) * limit,
+			model: args.model,
+		});
+		return { data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+	},
+});
+
+export const getRun = defineTool({
+	name: "get_run",
+	title: "Get one answer in full",
+	description:
+		"One recorded answer: the model's reply as text, every page it cited, and for the brand and each competitor named, whether it counts as a mention, the sentiment toward it, and its position among the tracked companies named (experimental). Read this when you need to know *how* a model described the brand, not just whether it did.",
+	scopes: ["read"],
+	readOnly: true,
+	input: {
+		promptId: promptIdArg,
+		runId: z.string().describe("Run id, from list_runs."),
+	},
+	run: async ({ auth }, args) => {
+		await requirePromptBrandInScope(auth, args.promptId);
+		const run = await findRunDetail(args.promptId, args.runId);
+		if (!run) throw new ApiError(404, "Not Found", `Run with ID '${args.runId}' not found`);
+		return run;
+	},
+});

@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { Check, Copy, Terminal } from "lucide-react";
+import { useState } from "react";
 
 const COMMANDS = ["npm install -g @elmohq/cli", "elmo init"];
 
-export function QuickstartBlock() {
+/** `lg` is for when the terminal is the centerpiece of a section rather than a sidebar. */
+export function QuickstartBlock({ size = "md" }: { size?: "md" | "lg" }) {
+	const lg = size === "lg";
 	const [copied, setCopied] = useState(false);
 
 	async function handleCopy() {
@@ -19,13 +21,13 @@ export function QuickstartBlock() {
 	}
 
 	return (
-		<div className="overflow-hidden rounded-md border border-zinc-200 bg-zinc-950 font-mono text-sm">
+		<div
+			className={`overflow-hidden border border-zinc-200 bg-zinc-950 font-mono ${lg ? "rounded-xl text-base shadow-[0_24px_60px_-24px_rgb(24_24_27/0.45)] md:text-lg" : "rounded-md text-sm"}`}
+		>
 			<div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
 				<div className="flex items-center gap-2 text-zinc-400">
 					<Terminal className="size-3.5" />
-					<span className="text-[11px] uppercase tracking-[0.15em]">
-						Quickstart
-					</span>
+					<span className="text-[11px] uppercase tracking-[0.15em]">Quickstart</span>
 				</div>
 				<button
 					type="button"
@@ -37,12 +39,11 @@ export function QuickstartBlock() {
 					{copied ? "Copied" : "Copy"}
 				</button>
 			</div>
-			<div className="space-y-1 px-4 py-4 text-zinc-100">
+			<div className={`space-y-1 text-zinc-100 ${lg ? "px-6 py-7 md:px-8" : "px-4 py-4"}`}>
 				<div className="flex gap-3">
 					<span className="text-zinc-500 select-none">$</span>
 					<span>
-						npm install -g{" "}
-						<span className="text-blue-400">@elmohq/cli</span>
+						npm install -g <span className="text-blue-400">@elmohq/cli</span>
 					</span>
 				</div>
 				<div className="flex gap-3">

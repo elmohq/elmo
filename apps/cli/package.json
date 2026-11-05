@@ -1,61 +1,61 @@
 {
-  "name": "@elmohq/cli",
-  "version": "0.2.13",
-  "license": "MIT",
-  "keywords": [
-    "marketing",
-    "typescript",
-    "tools",
-    "aio",
-    "seo",
-    "geo",
-    "gemini",
-    "copilot",
-    "grok",
-    "aso",
-    "perplexity",
-    "aeo",
-    "llmo",
-    "chatgpt",
-    "ai-visibility"
-  ],
-  "bin": {
-    "elmo": "dist/index.js"
-  },
-  "files": [
-    "dist",
-    "templates"
-  ],
-  "type": "module",
-  "scripts": {
-    "build": "node scripts/build.mjs",
-    "check-types": "tsc -p tsconfig.json",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.81",
-    "@ai-sdk/openai": "^3.0.68",
-    "@anthropic-ai/sdk": "^0.102.0",
-    "@brightdata/sdk": "^1.1.0",
-    "@clack/prompts": "^1.5.1",
-    "ai": "^6.0.197",
-    "commander": "^15.0.0",
-    "dataforseo-client": "^2.0.25",
-    "dotenv": "17.4.2",
-    "marked": "^14.1.4",
-    "olostep": "^1.1.0",
-    "picocolors": "^1.1.1",
-    "posthog-node": "^5.36.4",
-    "semver": "^7.8.2",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@types/node": "^25.9.2",
-    "@types/semver": "^7.7.1",
-    "@workspace/config": "workspace:*",
-    "@workspace/lib": "workspace:*",
-    "rolldown": "^1.1.0",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
-  }
+	"name": "@elmohq/cli",
+	"version": "0.7.7",
+	"license": "MIT",
+	"keywords": [
+		"marketing",
+		"typescript",
+		"tools",
+		"aio",
+		"seo",
+		"geo",
+		"gemini",
+		"copilot",
+		"grok",
+		"aso",
+		"perplexity",
+		"aeo",
+		"llmo",
+		"chatgpt",
+		"ai-visibility"
+	],
+	"bin": {
+		"elmo": "dist/index.js"
+	},
+	"files": [
+		"dist",
+		"templates"
+	],
+	"type": "module",
+	"scripts": {
+		"build": "node scripts/build.mjs",
+		"check-types": "tsc -p tsconfig.json",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@ai-sdk/anthropic": "catalog:",
+		"@ai-sdk/openai": "catalog:",
+		"@anthropic-ai/sdk": "catalog:",
+		"@brightdata/sdk": "catalog:",
+		"@clack/prompts": "^1.8.1",
+		"ai": "catalog:",
+		"commander": "^15.0.0",
+		"dataforseo-client": "catalog:",
+		"dotenv": "18.0.9",
+		"marked": "^14.1.4",
+		"olostep": "catalog:",
+		"picocolors": "^1.1.1",
+		"posthog-node": "catalog:",
+		"semver": "^7.8.5",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"@types/semver": "^7.8.0",
+		"@workspace/config": "workspace:*",
+		"@workspace/lib": "workspace:*",
+		"rolldown": "^1.2.16",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
 }

@@ -7,27 +7,24 @@
  *      Consumers are responsible for computing SoV and other derived metrics.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { db } from "@workspace/lib/db/db";
-import { reports } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
 import { computeReportUnstableStats } from "@workspace/lib/report-metrics";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { z } from "zod";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { findReport } from "@/server/reports-core";
 
 export const Route = createFileRoute("/api/v1/reports/$reportId")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
+				adminOnly: true,
 				params: z.object({ reportId: z.guid("Invalid report ID format") }),
 				handle: async ({ params, request }) => {
 					const { reportId } = params;
 
-					const result = await db.select().from(reports).where(eq(reports.id, reportId)).limit(1);
-					if (result.length === 0) {
+					const report = await findReport(reportId);
+					if (!report) {
 						throw new ApiError(404, "Not Found", `Report with ID '${reportId}' not found`);
 					}
-
-					const report = result[0];
 
 					// For non-completed reports, return status with progress
 					if (report.status !== "completed" || !report.rawOutput) {
@@ -36,6 +33,7 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 							status: report.status,
 							progress: report.progress,
 							brandName: report.brandName,
+							brandAliases: report.brandAliases,
 							brandWebsite: report.brandWebsite,
 							createdAt: report.createdAt,
 							completedAt: report.completedAt,
@@ -48,7 +46,6 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 					const kMentionsParam = Number.parseInt(searchParams.get("kMentions") || "5", 10);
 					const kMentions = Number.isNaN(kMentionsParam) ? 5 : Math.max(1, Math.min(50, kMentionsParam));
 
-					// Parse raw output
 					const rawOutput = report.rawOutput as {
 						competitors: Array<{ name: string; domain: string }>;
 						prompts: Array<{ value: string }>;
@@ -62,7 +59,6 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 						}>;
 					};
 
-					// Build per-prompt snapshot data
 					const allPromptSnapshots = rawOutput.promptRuns.map((pr) => {
 						const totalRuns = pr.runs.length;
 						let brandMentionsTotal = 0;
@@ -77,7 +73,6 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 							}
 						}
 
-						// Sort competitors by count descending, take top K
 						const mentionsTopK = Object.entries(competitorCounts)
 							.map(([entity, count]) => ({ entity, count }))
 							.sort((a, b) => b.count - a.count)
@@ -95,13 +90,13 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 						};
 					});
 
-					// Compute unstable derived stats
 					const unstable = computeReportUnstableStats(rawOutput);
 
 					return {
 						reportId: report.id,
 						status: report.status,
 						brandName: report.brandName,
+						brandAliases: report.brandAliases,
 						brandWebsite: report.brandWebsite,
 						createdAt: report.createdAt,
 						completedAt: report.completedAt,
@@ -110,6 +105,6 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

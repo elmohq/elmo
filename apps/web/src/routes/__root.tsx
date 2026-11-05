@@ -1,51 +1,55 @@
 /// <reference types="vite/client" />
-import { useEffect } from "react";
-import { HeadContent, Outlet, ScriptOnce, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
-import { NotFound } from "@/router-default-components";
+
+// Preloaded so the wordmark font downloads in parallel with the CSS rather than
+// after it. Must resolve to the same emitted asset as the @font-face src.
+import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useLocation } from "@tanstack/react-router";
 import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants";
-import type { DeploymentMode } from "@workspace/config/types";
 import type { MissingEnvVar } from "@workspace/config/env";
-import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
+import { isElmoHosted, legalUrl } from "@workspace/config/legal";
+import type { DeploymentMode } from "@workspace/config/types";
+import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
+import { initAdTags, trackAdPageView } from "@workspace/ui/lib/ad-tags";
+import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
+import { useEffect, useState } from "react";
+import { usesWordmarkFont } from "@/components/logo";
 import MissingEnvPage from "@/components/missing-env-page";
+import { NotFoundPage } from "@/components/not-found-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
-import { initPostHog } from "@/lib/posthog";
+import { initClarity } from "@/lib/clarity";
+import { rootConfigQuery } from "@/lib/config/queries";
+import { initCrisp } from "@/lib/crisp";
+import { initAnalytics } from "@/lib/posthog";
+import type { PublicClientConfig } from "@/server/config";
 import appCss from "../styles.css?url";
 
+// clientConfig and envValidation are optional because the router renders against
+// its base context — which has neither — until this route's beforeLoad resolves.
 interface RouterContext {
 	queryClient: QueryClient;
-	clientConfig: PublicClientConfig;
-	envValidation: {
+	clientConfig?: PublicClientConfig;
+	envValidation?: {
 		mode: DeploymentMode;
 		missing: MissingEnvVar[];
 		isValid: boolean;
 	};
+	/** Whether the request came from a country that requires prior cookie consent. */
+	consentRegion?: boolean | null;
 }
 
-// Client-side cache for config data — avoids HTTP round-trips on every SPA navigation.
-// Server-side (SSR) always fetches fresh (cachedRootData is reset per request).
-let cachedRootData: { clientConfig: PublicClientConfig; envValidation: { mode: DeploymentMode; missing: MissingEnvVar[]; isValid: boolean } } | null =
-	typeof window === "undefined" ? null : null;
+// Inside Elmo Cloud only the signup funnel counts as a page view for ads: the
+// rest of the app's URLs name customers' organizations and brands.
+const CLOUD_AD_PAGE_VIEW_PATHS = new Set(["/auth/register", "/choose-plan"]);
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-	notFoundComponent: NotFound,
-	beforeLoad: async () => {
-		if (cachedRootData) return cachedRootData;
-		const [clientConfig, envValidation] = await Promise.all([getClientConfig(), getEnvValidationStateFn()]);
-		cachedRootData = { clientConfig, envValidation };
-		return cachedRootData;
-	},
+	notFoundComponent: NotFoundPage,
+	beforeLoad: ({ context }) => context.queryClient.ensureQueryData(rootConfigQuery),
 	head: ({ match }) => {
 		const branding = match.context?.clientConfig?.branding;
 		const analytics = match.context?.clientConfig?.analytics;
 		const scripts = [];
-		if (analytics?.clarityProjectId) {
-			scripts.push({
-				src: `https://www.clarity.ms/tag/${analytics.clarityProjectId}`,
-				async: true,
-			});
-		}
 		if (analytics?.plausibleDomain) {
 			scripts.push({
 				src: "/api/plausible/js/script",
@@ -101,6 +105,21 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 				{ name: "twitter:image", content: ogImage },
 			],
 			links: [
+				// Whitelabel deployments render an icon + system-font name instead,
+				// so the wordmark font is never used there.
+				...(usesWordmarkFont(branding)
+					? [
+							{
+								rel: "preload",
+								as: "font",
+								type: "font/woff2",
+								href: titanOneFont,
+								// Inside a conditional spread the literal widens to `string`,
+								// which doesn't satisfy React's `CrossOrigin` union.
+								crossOrigin: "anonymous" as const,
+							},
+						]
+					: []),
 				{ rel: "stylesheet", href: appCss },
 				{ rel: "manifest", href: "/api/manifest" },
 				// Whitelabel uses its own icon URL for both favicon and iOS touch;
@@ -127,17 +146,42 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootComponent() {
-	const { envValidation, clientConfig } = Route.useRouteContext();
+	const { envValidation, clientConfig, consentRegion } = Route.useRouteContext();
 	const clarityProjectId = clientConfig?.analytics?.clarityProjectId;
+	const posthogKey = clientConfig?.analytics?.posthogKey;
+	const mode = clientConfig?.mode;
+	const asksForConsent = isElmoHosted(mode);
+	// Null until the browser resolves it — the time-zone fallback would read the
+	// server's own zone during SSR.
+	const [consentRequired, setConsentRequired] = useState<boolean | null>(null);
 
 	useEffect(() => {
-		const key = clientConfig?.analytics?.posthogKey;
-		if (key) initPostHog(key);
-	}, [clientConfig?.analytics?.posthogKey]);
+		const required = asksForConsent ? isConsentRequired(consentRegion ?? null) : false;
+		if (asksForConsent) setConsentRequired(required);
 
-	const clarityQueueScript = `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};`;
+		const stops = [
+			posthogKey ? initAnalytics(posthogKey, required) : undefined,
+			clarityProjectId ? initClarity(clarityProjectId, required) : undefined,
+			asksForConsent ? initAdTags(required) : undefined,
+		];
+		return () => {
+			for (const stop of stops) stop?.();
+		};
+	}, [posthogKey, clarityProjectId, asksForConsent, consentRegion]);
 
-	if (!envValidation.isValid) {
+	const pathname = useLocation({ select: (location) => location.pathname });
+	useEffect(() => {
+		if (mode === "demo" || (mode === "cloud" && CLOUD_AD_PAGE_VIEW_PATHS.has(pathname))) trackAdPageView(pathname);
+	}, [mode, pathname]);
+
+	useEffect(() => {
+		if (!clientConfig) return;
+		initCrisp(clientConfig.analytics?.crispWebsiteId, clientConfig.mode);
+	}, [clientConfig]);
+
+	// Only swap in the missing-env page once we actually know env is invalid —
+	// envValidation is absent while a navigation's root beforeLoad is in flight.
+	if (envValidation && !envValidation.isValid) {
 		return (
 			<html lang="en">
 				<head>
@@ -154,11 +198,13 @@ function RootComponent() {
 	return (
 		<html lang="en">
 			<head>
-				{clarityProjectId && <ScriptOnce>{clarityQueueScript}</ScriptOnce>}
 				<HeadContent />
 			</head>
 			<body className="font-sans antialiased">
 				<Outlet />
+				{asksForConsent && consentRequired !== null && (
+					<CookieConsentBanner consentRequired={consentRequired} policyHref={legalUrl("cookies")} />
+				)}
 				<TanStackDevtools plugins={[queryDevtools]} />
 				<Scripts />
 			</body>

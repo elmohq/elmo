@@ -8,27 +8,35 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { analyzeBrand, cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { z } from "zod";
-import { analyzeBrand, cleanOnboardingDomain } from "@workspace/lib/onboarding";
-import { createApiHandler } from "@/lib/api/handler";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 
 const analyzeBody = z.object({
-	// Mirrors the cleanDomain() check inside analyzeBrand so an unparseable
-	// website is a 400 here instead of an opaque 500 from the analyzer.
+	// Mirrors the checks inside analyzeBrand so an unparseable or unfetchable
+	// website is a 400 here instead of an opaque 500 from the analyzer. A full
+	// page URL is analyzed as given; the returned `website` is its domain.
 	website: z
 		.string("website is required")
 		.trim()
 		.min(1, "website is required")
-		.refine((website) => cleanOnboardingDomain(website) !== "", "website must be a valid domain or URL"),
+		.refine((website) => cleanOnboardingUrl(website) !== "", "website must be a valid domain or http(s) URL"),
 	brandName: z.string().trim().optional(),
-	maxCompetitors: z.int("maxCompetitors must be a non-negative integer").min(0, "maxCompetitors must be a non-negative integer").optional(),
-	maxPrompts: z.int("maxPrompts must be a non-negative integer").min(0, "maxPrompts must be a non-negative integer").optional(),
+	maxCompetitors: z
+		.int("maxCompetitors must be a non-negative integer")
+		.min(0, "maxCompetitors must be a non-negative integer")
+		.optional(),
+	maxPrompts: z
+		.int("maxPrompts must be a non-negative integer")
+		.min(0, "maxPrompts must be a non-negative integer")
+		.optional(),
 });
 
 export const Route = createFileRoute("/api/v1/tools/analyze")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			POST: createApiHandler({
+				adminOnly: true,
 				body: analyzeBody,
 				handle: async ({ body }) => {
 					return await analyzeBrand({
@@ -39,6 +47,6 @@ export const Route = createFileRoute("/api/v1/tools/analyze")({
 					});
 				},
 			}),
-		},
+		}),
 	},
 });

@@ -28,6 +28,8 @@ export interface TagsInputProps {
   emptyText?: string;
   allowCustomValues?: boolean;
   normalizeValue?: (raw: string) => string;
+  /** Splits clipboard text into values. Providing this also handles single-value pastes. */
+  pasteSplitter?: RegExp;
   /** Return `true` to accept the value, or an error string to reject it and show inline. */
   onValidate?: (value: string) => true | string;
   maxItems?: number;
@@ -47,6 +49,7 @@ export function TagsInput({
   emptyText = "No results.",
   allowCustomValues = true,
   normalizeValue,
+  pasteSplitter,
   onValidate,
   maxItems,
   minItems = 0,
@@ -147,54 +150,57 @@ export function TagsInput({
   return (
     <div className={cn("flex w-full flex-col", className)}>
       <Popover open={open} onOpenChange={handleOpenChange}>
-        <PopoverTrigger asChild>
-          <div
-            role="combobox"
-            aria-expanded={open}
-            aria-disabled={disabled || undefined}
-            tabIndex={disabled ? -1 : 0}
-            onClick={() => !disabled && setOpen(true)}
-            onKeyDown={(e) => {
-              if (disabled) return;
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setOpen(true);
-              }
-            }}
-            className={cn(
-              "border-input focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-9 w-full items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]",
-              disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
-            )}
-          >
-            <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1 min-h-[22px]">
-              {value.length === 0 ? (
-                <span className="text-muted-foreground text-xs">{placeholder}</span>
-              ) : (
-                value.map((v) => (
-                  <Badge key={v} variant="secondary" className={cn("gap-1", canRemove && "pr-1")}>
-                    <span className="max-w-[14rem] truncate">{v}</span>
-                    {canRemove && (
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        aria-label={`Remove ${v}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          remove(v);
-                        }}
-                        onKeyDown={(e) => e.stopPropagation()}
-                        className="rounded-sm p-0.5 hover:bg-muted-foreground/20"
-                      >
-                        <RemoveIcon className="size-3" />
-                      </button>
-                    )}
-                  </Badge>
-                ))
+        <PopoverTrigger
+          nativeButton={false}
+          render={
+            <div
+              role="combobox"
+              aria-expanded={open}
+              aria-disabled={disabled || undefined}
+              tabIndex={disabled ? -1 : 0}
+              onClick={() => !disabled && setOpen(true)}
+              onKeyDown={(e) => {
+                if (disabled) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setOpen(true);
+                }
+              }}
+              className={cn(
+                "border-input focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-9 w-full items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]",
+                disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
               )}
-            </span>
-          </div>
+            />
+          }
+        >
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1 min-h-[22px]">
+            {value.length === 0 ? (
+              <span className="text-muted-foreground text-xs">{placeholder}</span>
+            ) : (
+              value.map((v) => (
+                <Badge key={v} variant="secondary" className={cn("gap-1", canRemove && "pr-1")}>
+                  <span className="max-w-[14rem] truncate">{v}</span>
+                  {canRemove && (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      aria-label={`Remove ${v}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        remove(v);
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="rounded-sm p-0.5 hover:bg-muted-foreground/20"
+                    >
+                      <RemoveIcon className="size-3" />
+                    </button>
+                  )}
+                </Badge>
+              ))
+            )}
+          </span>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-0">
+        <PopoverContent align="start" className="w-(--anchor-width) p-0">
           <Command shouldFilter={false}>
             <CommandInput
               value={query}
@@ -205,10 +211,6 @@ export function TagsInput({
               placeholder={atMax ? "Maximum reached" : searchPlaceholder}
               disabled={disabled || atMax}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && showCreate) {
-                  e.preventDefault();
-                  handleCreate();
-                }
                 if (e.key === "Backspace" && query === "" && value.length > 0 && canRemove) {
                   e.preventDefault();
                   onValueChange(value.slice(0, -1));
@@ -217,9 +219,9 @@ export function TagsInput({
               onPaste={(e) => {
                 if (disabled || atMax) return;
                 const text = e.clipboardData.getData("text");
-                if (!PASTE_SPLITTER.test(text)) return;
+                if (!pasteSplitter && !PASTE_SPLITTER.test(text)) return;
                 e.preventDefault();
-                addMany(text.split(PASTE_SPLITTER));
+                addMany(text.split(pasteSplitter ?? PASTE_SPLITTER));
                 setQuery("");
               }}
             />
@@ -229,7 +231,7 @@ export function TagsInput({
               )}
               {showHint && (
                 <div className="px-3 py-3 text-center text-xs text-muted-foreground">
-                  Type to add a value
+                  Type or paste to add a value
                 </div>
               )}
               {(showCreate || filteredOptions.length > 0) && (
