@@ -20,7 +20,7 @@
     "@workspace/lib": "workspace:*"
   },
   "devDependencies": {
-    "@better-auth/utils": "0.5.0",
+    "@better-auth/utils": "0.5.1",
     "@modelcontextprotocol/sdk": "catalog:",
     "@playwright/test": "^1.64.1",
     "@types/node": "catalog:",
