@@ -72,24 +72,27 @@ function jsonLdDateModified(json: string): string | undefined {
 	}
 }
 
-function headMeta(head: Element | undefined): Record<string, string> {
-	const meta: Record<string, string> = {};
+function headField(element: Element): Record<string, string | undefined> {
+	const { name, property, content, rel, href, type } = element.properties;
+	const value = typeof content === "string" ? content : undefined;
+	if (element.tagName === "meta" && name === "description") return { description: value };
+	if (element.tagName === "meta" && property === "article:modified_time") return { articleDate: value };
+	if (element.tagName === "link" && Array.isArray(rel) && rel.includes("canonical")) {
+		return { canonical: typeof href === "string" ? href : undefined };
+	}
+	if (element.tagName === "script" && type === "application/ld+json")
+		return { jsonLdDate: jsonLdDateModified(textOf(element)) };
+	return {};
+}
+
+function headMeta(head: Element | undefined): Record<string, string | undefined> {
+	const fields: Record<string, string | undefined> = {};
 	for (const child of head?.children ?? []) {
 		if (!isElement(child)) continue;
-		const { name, property, content, rel, href } = child.properties;
-		if (child.tagName === "meta" && name === "description" && typeof content === "string") meta.description = content;
-		if (child.tagName === "meta" && property === "article:modified_time" && typeof content === "string") {
-			meta.updated = content;
-		}
-		if (child.tagName === "link" && Array.isArray(rel) && rel.includes("canonical") && typeof href === "string") {
-			meta.canonical = href;
-		}
-		if (child.tagName === "script" && child.properties.type === "application/ld+json" && !meta.updated) {
-			const dateModified = jsonLdDateModified(textOf(child));
-			if (dateModified) meta.updated = dateModified;
-		}
+		for (const [key, value] of Object.entries(headField(child))) fields[key] ??= value;
 	}
-	return meta;
+	const { articleDate, jsonLdDate, ...meta } = fields;
+	return { ...meta, updated: articleDate ?? jsonLdDate };
 }
 
 export function htmlToMarkdown(html: string, pageUrl: string): string {
