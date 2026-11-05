@@ -44,7 +44,7 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: `${c.name} alternatives`, path },
 				]),
-				faqJsonLd(faqs),
+				faqJsonLd(faqs, { path, dateModified: c.checkedAt }),
 			],
 		};
 	},

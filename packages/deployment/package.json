@@ -26,7 +26,7 @@
 		"better-auth": "catalog:",
 		"disposable-email-domains": "^1.0.62",
 		"drizzle-orm": "catalog:",
-		"resend": "^6.34.1",
+		"resend": "^6.37.0",
 		"stripe": "catalog:",
 		"zod": "catalog:"
 	},

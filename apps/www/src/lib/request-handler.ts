@@ -2,11 +2,12 @@ import { CLOUD_APP_URL } from "@workspace/config/referrals";
 import { AD_TAG_CSP } from "@workspace/ui/lib/ad-tags";
 import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
 import { CAL_EMBED_CSP } from "@/lib/cal-embed";
+import { withFrontmatter } from "@/lib/frontmatter";
 import { MARKDOWN_CONTENT_TYPE, markdownNotFound } from "@/lib/get-llm-text";
 import { htmlToMarkdown } from "@/lib/html-to-markdown";
 import { llmsTxt } from "@/lib/llms-txt";
 import { markdownCopyPath } from "@/lib/markdown-copy";
-import { canonicalUrl } from "@/lib/seo";
+import { canonicalUrl, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
@@ -163,7 +164,12 @@ function withoutBodyForHead(request: Request, response: Response): Response {
 async function renderAsMarkdown(upstream: Upstream, request: Request, path: string): Promise<Response> {
 	// llms.txt is the site overview the homepage's marketing layout converts poorly into.
 	if (path === "/") {
-		return withoutBodyForHead(request, new Response(llmsTxt, { headers: { "Content-Type": MARKDOWN_CONTENT_TYPE } }));
+		const markdown = withFrontmatter(llmsTxt, {
+			title: SITE_NAME,
+			description: SITE_DESCRIPTION,
+			canonical: `${SITE_URL}/`,
+		});
+		return withoutBodyForHead(request, new Response(markdown, { headers: { "Content-Type": MARKDOWN_CONTENT_TYPE } }));
 	}
 
 	const headers = new Headers(request.headers);

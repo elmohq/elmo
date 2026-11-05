@@ -47,7 +47,7 @@
 		"@types/semver": "^7.8.0",
 		"@workspace/config": "workspace:*",
 		"@workspace/site-audit": "workspace:*",
-		"rolldown": "^1.2.15",
+		"rolldown": "^1.2.16",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	}
