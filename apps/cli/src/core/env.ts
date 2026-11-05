@@ -2,19 +2,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { parse as parseDotenv } from "dotenv";
+import { CONFIG_HOME, fileExists } from "../config.js";
 import { log } from "./ui.js";
-
-/** Default config directory written by `elmo init`. */
-const CONFIG_HOME = path.join(os.homedir(), ".elmo");
-
-async function fileExists(target: string): Promise<boolean> {
-	try {
-		await fs.access(target);
-		return true;
-	} catch {
-		return false;
-	}
-}
 
 export interface LoadedEnv {
 	/**
@@ -23,7 +12,6 @@ export interface LoadedEnv {
 	 * environment.
 	 */
 	configDir?: string;
-	/** Whether an Elmo-managed `.env` file was found and loaded. */
 	loaded: boolean;
 }
 

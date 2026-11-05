@@ -15,7 +15,6 @@ export async function ensureDir(dir: string): Promise<void> {
 	await fs.mkdir(dir, { recursive: true });
 }
 
-/** filesystem-safe, readable slug for prompt directories (e.g. 001-best-shoes). */
 export function slugify(value: string, maxLen = 48): string {
 	const slug = value
 		.toLowerCase()
@@ -27,12 +26,9 @@ export function slugify(value: string, maxLen = 48): string {
 	return slug || "prompt";
 }
 
-/** Zero-pad an index for stable directory ordering (1 -> "001"). */
 export function pad(n: number, width = 3): string {
 	return String(n).padStart(width, "0");
 }
-
-// ── CSV ──────────────────────────────────────────────────────────────────────
 
 function csvCell(value: unknown): string {
 	let str: string;
@@ -75,15 +71,10 @@ export function toJsonl(rows: Row[]): string {
 	return rows.map((row) => JSON.stringify(row)).join("\n");
 }
 
-/** Serialize structured rows in the requested format (string only — no I/O). */
 export function serialize(rows: Row[], columns: string[], format: DataFormat): string {
 	return format === "csv" ? toCsv(rows, columns) : toJsonl(rows);
 }
 
-/**
- * Write structured rows to `<dir>/<baseName>.<ext>` in the chosen format and
- * return the path written.
- */
 export async function writeStructured(
 	dir: string,
 	baseName: string,
@@ -108,8 +99,6 @@ export async function writeText(dir: string, name: string, content: string): Pro
 export async function writeJson(dir: string, name: string, value: unknown): Promise<string> {
 	return writeText(dir, name, `${JSON.stringify(value, null, 2)}\n`);
 }
-
-// ── stdout printers ──────────────────────────────────────────────────────────
 
 export function printStdout(content: string): void {
 	process.stdout.write(content.endsWith("\n") ? content : `${content}\n`);

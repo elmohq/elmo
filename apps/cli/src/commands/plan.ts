@@ -23,7 +23,6 @@ interface PlanOptions {
 	dir?: string;
 }
 
-// Text-ish files we'll read when a directory is passed.
 const TEXT_EXTENSIONS = new Set([
 	".md",
 	".mdx",
@@ -146,27 +145,32 @@ async function runPlan(paths: string[], options: PlanOptions): Promise<void> {
 	}
 }
 
-async function assembleContext(paths: string[], options: PlanOptions, maxBytes: number): Promise<string> {
+async function filesFor(p: string): Promise<string[]> {
+	const resolved = path.resolve(process.cwd(), p);
+	const stat = await fs.stat(resolved).catch(() => null);
+	if (!stat) {
+		log.warn(`Skipping ${p}: not found.`);
+		return [];
+	}
+	return stat.isDirectory() ? walkTextFiles(resolved) : [resolved];
+}
+
+async function readFilesWithin(paths: string[], maxBytes: number): Promise<string[]> {
 	const parts: string[] = [];
 	let budget = maxBytes;
-
-	for (const p of paths) {
-		const resolved = path.resolve(process.cwd(), p);
-		const stat = await fs.stat(resolved).catch(() => null);
-		if (!stat) {
-			log.warn(`Skipping ${p}: not found.`);
-			continue;
-		}
-		const files = stat.isDirectory() ? await walkTextFiles(resolved) : [resolved];
-		for (const file of files) {
-			if (budget <= 0) break;
-			const content = await fs.readFile(file, "utf8").catch(() => "");
-			if (!content.trim()) continue;
-			const slice = content.slice(0, budget);
-			budget -= slice.length;
-			parts.push(`<<< FILE: ${path.relative(process.cwd(), file)} >>>\n${slice}`);
-		}
+	for (const file of (await Promise.all(paths.map(filesFor))).flat()) {
+		if (budget <= 0) break;
+		const content = await fs.readFile(file, "utf8").catch(() => "");
+		if (!content.trim()) continue;
+		const slice = content.slice(0, budget);
+		budget -= slice.length;
+		parts.push(`<<< FILE: ${path.relative(process.cwd(), file)} >>>\n${slice}`);
 	}
+	return parts;
+}
+
+async function assembleContext(paths: string[], options: PlanOptions, maxBytes: number): Promise<string> {
+	const parts = await readFilesWithin(paths, maxBytes);
 
 	if (options.website) {
 		const excerpt = await getWebsiteExcerpt(options.website).catch(() => "");
@@ -197,7 +201,6 @@ async function walkTextFiles(dir: string, depth = 0): Promise<string[]> {
 	return out.sort();
 }
 
-/** Pull the human-readable rollup from a prior eval to ground the plan. */
 async function readEvalContext(evalDir: string): Promise<string> {
 	const dir = path.resolve(process.cwd(), evalDir);
 	const summary = await fs.readFile(path.join(dir, "summary.md"), "utf8").catch(() => "");
@@ -260,7 +263,6 @@ function augmentBrandPack(pack: BrandPack | undefined, result: PlanResult, optio
 		competitors: [],
 		prompts: [],
 	};
-	// Merge competitors by name, preferring existing entries.
 	const byName = new Map(base.competitors.map((c) => [c.name.toLowerCase(), c]));
 	for (const c of result.competitors) {
 		if (!byName.has(c.name.toLowerCase())) {

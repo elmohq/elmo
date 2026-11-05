@@ -1,31 +1,6 @@
 import pc from "picocolors";
 
 /**
- * OSC 8 hyperlink: clickable in iTerm2, Windows Terminal, GNOME Terminal, etc.
- * Falls back to plain text in unsupported terminals.
- */
-export function link(text: string, url: string): string {
-	return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
-}
-
-const ELMO_ASCII = [
-	"",
-	"      ▄▄                ",
-	"      ██                ",
-	"▄█▀█▄ ██ ███▄███▄ ▄███▄ ",
-	"██▄█▀ ██ ██ ██ ██ ██ ██ ",
-	"▀█▄▄▄ ██ ██ ██ ██ ▀███▀ ",
-	"",
-].join("\n");
-
-export function printBanner(): void {
-	// text-blue-600 ≈ #2563EB → RGB(37, 99, 235)
-	const blue = "\x1b[38;2;37;99;235m";
-	const reset = "\x1b[0m";
-	console.log(`${blue}${ELMO_ASCII}${reset}`);
-}
-
-/**
  * Human-facing messages for the `lab` commands go to **stderr** so that the
  * machine-readable result (CSV / markdown / JSON) printed to **stdout** stays
  * clean for piping. Never log progress to stdout in a lab command.

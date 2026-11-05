@@ -63,7 +63,6 @@ async function runBrainstorm(website: string, options: BrainstormOptions): Promi
 		aliases: c.aliases,
 	}));
 
-	// Machine-readable summary always goes to stdout.
 	printCsv(promptRows, PROMPT_COLUMNS);
 
 	if (!options.stdout) {

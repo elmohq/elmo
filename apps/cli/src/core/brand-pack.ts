@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { MentionBrand, MentionCompetitor } from "@workspace/lib/mentions";
+import type { MentionConfig } from "@workspace/lib/mentions";
 import type { OnboardingCompetitor, OnboardingPrompt, OnboardingSuggestion } from "@workspace/lib/onboarding";
 import type { ReportCompetitor } from "@workspace/lib/report-metrics";
 
@@ -65,23 +65,20 @@ export async function readBrandPack(filePath: string): Promise<BrandPack> {
 	};
 }
 
-/** Adapt a brand pack to the shared mention-detection brand shape. */
 export function toMentionBrand(
 	pack: Pick<BrandPack, "brandName" | "website" | "aliases" | "additionalDomains">,
-): MentionBrand {
+): MentionConfig["brand"] {
 	return {
 		name: pack.brandName,
-		website: pack.website || undefined,
-		aliases: pack.aliases,
-		additionalDomains: pack.additionalDomains,
+		aliases: pack.aliases ?? [],
+		domains: [pack.website, ...(pack.additionalDomains ?? [])].filter((domain): domain is string => Boolean(domain)),
 	};
 }
 
-export function toMentionCompetitors(competitors: OnboardingCompetitor[]): MentionCompetitor[] {
-	return competitors.map((c) => ({ name: c.name, domains: c.domains, aliases: c.aliases }));
+export function toMentionCompetitors(competitors: OnboardingCompetitor[]): MentionConfig["competitors"] {
+	return competitors.map((c) => ({ name: c.name, aliases: c.aliases ?? [], domains: c.domains ?? [] }));
 }
 
-/** Adapt to the report-metrics competitor shape (single primary domain). */
 export function toReportCompetitors(competitors: OnboardingCompetitor[]): ReportCompetitor[] {
 	return competitors.map((c) => ({ name: c.name, domain: c.domains[0] ?? "" }));
 }

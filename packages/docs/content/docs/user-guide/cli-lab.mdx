@@ -21,7 +21,9 @@ These commands call real provider APIs and cost money per run, just like schedul
 
 Run [`elmo init`](/docs/getting-started) once to configure providers and write `~/.elmo/.env`. The lab commands read that file for provider keys and your `SCRAPE_TARGETS`. If you keep config elsewhere, point any command at it with `--dir <path>`, or just export the keys (`OPENAI_API_KEY`, `BRIGHTDATA_API_TOKEN`, `SCRAPE_TARGETS`, …) in your shell.
 
-## Selecting a model & provider
+`eval` judges brand and competitor mentions with Jev, the same model scheduled tracking uses, so its mention rates and share of voice match what Elmo reports. It needs `TYPESAFE_API_KEY`, or `OPENROUTER_API_KEY` to call Jev through OpenRouter, whenever you give it a brand. `elmo init` already sets one of these up for the worker.
+
+## Selecting a Model and Provider
 
 Every command targets models with the same `model:provider[:version][:online]` nomenclature used by [`SCRAPE_TARGETS`](/docs/user-guide/providers):
 
@@ -46,11 +48,11 @@ By default every command writes its artifacts to the **current directory** and p
 
 Structured data is written as `--format csv` (default) or `--format jsonl`; model responses are written as Markdown; and the **brand pack** is always `brand.json`.
 
-### The brand pack
+### The Brand Pack
 
 `brand.json` is the artifact that ties the commands together. `brainstorm` and `plan` produce it (brand name, aliases, domains, competitors, prompts); `eval` consumes it with `--brand-file` to get the brand and competitor context it needs for mentions and share-of-voice.
 
-## 1. Brainstorm prompts
+## 1. Brainstorm Prompts
 
 Generate a set of AI tracking prompts (mostly unbranded category/persona queries) and the brand's direct competitors:
 
@@ -66,7 +68,7 @@ Writes `brand.json`, `prompts.csv`, and `competitors.csv` to `./nike`.
 | `--competitors <n>` | Number of competitors (default 10) |
 | `-m, --model <target>` | Research provider (direct API) |
 
-## 2. Evaluate prompts
+## 2. Evaluate Prompts
 
 Run each prompt N times against each target and capture everything:
 
@@ -110,7 +112,7 @@ nike-eval/
 | `--competitor <name:domain>` | Add a competitor (repeatable) |
 | `--concurrency <n>` | Max concurrent provider calls (default 4) |
 
-## 3. Plan improvements
+## 3. Plan Improvements
 
 Turn your own content (and, optionally, a prior eval) into a prioritized set of AEO recommendations:
 
@@ -122,7 +124,7 @@ elmo lab plan ./content --website nike.com \
 
 `plan` reads the files/directories you pass (plus an optional `--website` excerpt and `--eval-dir` to ground the advice in real results), then writes `plan.md`, `suggestions.csv`, a refreshed `competitors.csv`, and an augmented `brand.json`. Because it also surfaces competitors, its `brand.json` can feed straight back into `eval`.
 
-## End-to-end
+## End-to-End
 
 ```bash
 # discover → evaluate → plan

@@ -33,13 +33,12 @@ describe("toReportCompetitors", () => {
 });
 
 describe("toMentionBrand", () => {
-	it("maps brand pack fields to the mention shape", () => {
+	it("gives the judge the brand's name, aliases, and every domain it owns", () => {
 		const pack = suggestionToBrandPack(suggestion);
 		expect(toMentionBrand(pack)).toEqual({
 			name: "Nike",
-			website: "nike.com",
 			aliases: ["Nike Inc"],
-			additionalDomains: ["nike.co.uk"],
+			domains: ["nike.com", "nike.co.uk"],
 		});
 	});
 });

@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import pc from "picocolors";
+import { registerBrainstorm } from "./commands/brainstorm.js";
 import { runCompose } from "./commands/compose.js";
 import { runEdit } from "./commands/edit.js";
+import { registerEval } from "./commands/eval.js";
 import { type InitOptions, runInit } from "./commands/init.js";
+import { registerPlan } from "./commands/plan.js";
 import { runUpgrade, type UpgradeOptions } from "./commands/upgrade.js";
 import type { DirOption } from "./config.js";
 import { printBanner } from "./util.js";
@@ -56,6 +59,11 @@ async function main() {
 		.action(async (_opts: object, cmd: Command) => {
 			await runUpgrade(cmd.optsWithGlobals<UpgradeOptions>(), version);
 		});
+
+	const lab = program.command("lab").description("one-off AEO tools that don't need a running Elmo instance");
+	registerBrainstorm(lab);
+	registerEval(lab);
+	registerPlan(lab);
 
 	await program.parseAsync(process.argv);
 }

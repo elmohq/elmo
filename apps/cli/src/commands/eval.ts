@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { RUNS_PER_PROMPT, WEB_QUERIES_UNAVAILABLE } from "@workspace/lib/constants";
-import { analyzeMentions, type MentionBrand, type MentionCompetitor } from "@workspace/lib/mentions";
+import { getRunsPerPrompt, WEB_QUERIES_UNAVAILABLE } from "@workspace/lib/constants";
+import { createMentionAnalyzer, type MentionAnalyzer } from "@workspace/lib/mention-judge";
+import type { MentionConfig } from "@workspace/lib/mentions";
 import type { OnboardingCompetitor } from "@workspace/lib/onboarding";
 import {
 	computeCompetitorSoVs,
@@ -12,6 +13,7 @@ import {
 	type ReportCompetitor,
 	type ReportPromptRun,
 } from "@workspace/lib/report-metrics";
+import { extractorFor, extractRun } from "@workspace/lib/text-extraction";
 import type { Command } from "commander";
 import {
 	type BrandPack,
@@ -73,7 +75,7 @@ export function registerEval(lab: Command): void {
 		.description("run prompts across providers → responses, citations, mentions, share-of-voice, fan-out")
 		.argument("[prompts...]", "prompts to evaluate (or use --prompt / --prompts-file / --brand-file / stdin)")
 		.option("-m, --model <target>", "model:provider[:version][:online] (repeatable; default: SCRAPE_TARGETS)", collect)
-		.option("-n, --runs <count>", "replications per prompt per target", String(RUNS_PER_PROMPT))
+		.option("-n, --runs <count>", "replications per prompt per target", String(getRunsPerPrompt()))
 		.option("--prompt <text>", "a prompt to evaluate (repeatable)", collect)
 		.option("--prompts-file <path>", "file with one prompt per line ('-' for stdin)")
 		.option("--brand-file <path>", "brand pack JSON (from `elmo lab brainstorm`) for prompts + mention context")
@@ -93,7 +95,7 @@ export function registerEval(lab: Command): void {
 
 interface BrandContext {
 	name?: string;
-	mentionBrand?: MentionBrand;
+	mentionBrand?: MentionConfig["brand"];
 	competitors: OnboardingCompetitor[];
 }
 
@@ -117,15 +119,18 @@ async function runEval(positionalPrompts: string[], options: EvalOptions): Promi
 		log.warn("--brand-domain/--alias were ignored: no brand name was provided (pass --brand or --brand-file).");
 	}
 
-	const mentionBrand = brand.mentionBrand;
-	const mentionCompetitors: MentionCompetitor[] = toMentionCompetitors(brand.competitors);
+	const judge = brand.mentionBrand
+		? {
+				config: { brand: brand.mentionBrand, competitors: toMentionCompetitors(brand.competitors) },
+				analyzer: createMentionAnalyzer(process.env.TYPESAFE_API_KEY, () => process.env.OPENROUTER_API_KEY),
+			}
+		: undefined;
 	const reportCompetitors: ReportCompetitor[] = toReportCompetitors(brand.competitors);
 
 	log.step(
 		`Evaluating ${prompts.length} prompt(s) × ${targets.length} target(s) × ${runsPerTarget} run(s) = ${prompts.length * targets.length * runsPerTarget} calls…`,
 	);
 
-	// Flatten every (prompt, target, run) into one task list for the pool.
 	interface Task {
 		promptIndex: number;
 		prompt: string;
@@ -143,7 +148,7 @@ async function runEval(positionalPrompts: string[], options: EvalOptions): Promi
 
 	let completed = 0;
 	const taskResults = await mapPool(tasks, concurrency, async (task) => {
-		const run = await runOne(task.prompt, task.target, task.runIndex, mentionBrand, mentionCompetitors);
+		const run = await runOne(task.prompt, task.target, task.runIndex, judge);
 		completed++;
 		process.stderr.write(`\r${" ".repeat(40)}\r`);
 		process.stderr.write(`  ${completed}/${tasks.length} done`);
@@ -151,7 +156,6 @@ async function runEval(positionalPrompts: string[], options: EvalOptions): Promi
 	});
 	process.stderr.write("\n");
 
-	// Re-assemble nested prompt → target → runs structure.
 	const promptResults: EvalPromptResult[] = prompts.map((prompt, index) => {
 		const targetResults: EvalTargetResult[] = targets.map((target) => {
 			const runs = taskResults
@@ -161,7 +165,6 @@ async function runEval(positionalPrompts: string[], options: EvalOptions): Promi
 			return { label: target.label, model: target.config.model, provider: target.config.provider, runs };
 		});
 
-		// Per-prompt SoV across every run of every target.
 		const reportRuns: ReportPromptRun[] = targetResults.flatMap((t) =>
 			t.runs
 				.filter((r) => !r.error && r.brandMentioned !== null)
@@ -171,7 +174,7 @@ async function runEval(positionalPrompts: string[], options: EvalOptions): Promi
 					competitorsMentioned: r.competitorsMentioned,
 				})),
 		);
-		const sov = reportRuns.length ? computePromptSoV(String(index), reportRuns, reportCompetitors).sov : null;
+		const sov = reportRuns.length ? computePromptSoV(String(index), reportRuns, reportCompetitors).sovPct : null;
 
 		return { index: index + 1, prompt, tags: [], targets: targetResults, sov };
 	});
@@ -184,10 +187,8 @@ async function runEval(positionalPrompts: string[], options: EvalOptions): Promi
 		reportCompetitors,
 	);
 
-	// ── stdout summary ──────────────────────────────────────────────────────
 	printSummary(report);
 
-	// ── files ────────────────────────────────────────────────────────────────
 	if (!options.stdout) {
 		await writeArtifacts(options.output, report, format, brand);
 		log.success(
@@ -201,7 +202,7 @@ async function runEval(positionalPrompts: string[], options: EvalOptions): Promi
 			prompt_count: prompts.length,
 			target_count: targets.length,
 			runs_per_target: runsPerTarget,
-			has_brand: Boolean(mentionBrand),
+			has_brand: Boolean(judge),
 			competitor_count: brand.competitors.length,
 			to_stdout: Boolean(options.stdout),
 			format,
@@ -213,23 +214,23 @@ async function runOne(
 	prompt: string,
 	target: ResolvedTarget,
 	runIndex: number,
-	mentionBrand: MentionBrand | undefined,
-	mentionCompetitors: MentionCompetitor[],
+	judge: { config: MentionConfig; analyzer: MentionAnalyzer } | undefined,
 ): Promise<EvalRun> {
 	try {
 		const result = await target.provider.run(target.config.model, prompt, {
 			webSearch: target.config.webSearch,
 			version: target.config.version,
 		});
-		const text = result.textContent ?? "";
-		const mentions = mentionBrand ? analyzeMentions(text, mentionBrand, mentionCompetitors) : null;
+		const extracted = extractRun(result.rawOutput, extractorFor(target.config));
+		const text = extracted.textContent ?? "";
+		const mentions = judge ? await judge.analyzer.analyze(text, judge.config, null, prompt) : null;
 		const webQueries = dedupeFanout(result.webQueries ?? [], prompt);
 		return {
 			runIndex,
 			responseMarkdown: text,
 			brandMentioned: mentions ? mentions.brandMentioned : null,
 			competitorsMentioned: mentions ? mentions.competitorsMentioned : [],
-			citations: (result.citations ?? []).map((c) => ({
+			citations: extracted.citations.map((c) => ({
 				url: c.url,
 				title: c.title,
 				domain: c.domain,
@@ -286,7 +287,13 @@ function buildReport(
 		),
 	);
 	const overallSov = brand.mentionBrand ? computeOverallSoV(allRuns, reportCompetitors) : null;
-	const competitorSov = brand.mentionBrand ? computeCompetitorSoVs(allRuns, reportCompetitors) : [];
+	const competitorSov = brand.mentionBrand
+		? computeCompetitorSoVs(allRuns, reportCompetitors).map((c) => ({
+				name: c.name,
+				sov: c.sovPct,
+				mentionCount: c.mentionCount,
+			}))
+		: [];
 
 	let responses = 0;
 	let citations = 0;
@@ -313,8 +320,6 @@ function buildReport(
 	};
 }
 
-// ── Output ────────────────────────────────────────────────────────────────────
-
 function printSummary(report: EvalReport): void {
 	const rows: Row[] = [];
 	for (const p of report.prompts) {
@@ -336,32 +341,92 @@ function printSummary(report: EvalReport): void {
 	}
 	printStdout(toCsv(rows, ["n", "prompt", "target", "runs", "brand_mention_rate", "sov", "citations", "fanout"]));
 
-	// Fan-out as multiple lines of output, grouped by target.
 	const fanoutLines = formatFanoutLines(report);
 	if (fanoutLines) {
 		printStdout(`\n# query fan-out\n${fanoutLines}`);
 	}
 }
 
-function formatFanoutLines(report: EvalReport): string {
+function fanoutCountsByTarget(report: EvalReport): Map<string, Map<string, number>> {
 	const byTarget = new Map<string, Map<string, number>>();
-	for (const p of report.prompts) {
-		for (const t of p.targets) {
-			const counts = byTarget.get(t.label) ?? new Map<string, number>();
-			for (const r of t.runs) {
-				for (const q of r.webQueries) counts.set(q, (counts.get(q) ?? 0) + 1);
-			}
-			if (counts.size) byTarget.set(t.label, counts);
-		}
+	for (const { t, r } of everyRun(report)) {
+		const counts = byTarget.get(t.label) ?? new Map<string, number>();
+		for (const q of r.webQueries) counts.set(q, (counts.get(q) ?? 0) + 1);
+		if (counts.size) byTarget.set(t.label, counts);
 	}
+	return byTarget;
+}
+
+function formatFanoutLines(report: EvalReport): string {
 	const blocks: string[] = [];
-	for (const [label, counts] of byTarget) {
+	for (const [label, counts] of fanoutCountsByTarget(report)) {
 		const lines = [...counts.entries()]
 			.sort((a, b) => b[1] - a[1])
 			.map(([q, n]) => `  ${q}${n > 1 ? `  (×${n})` : ""}`);
 		blocks.push(`# ${label}\n${lines.join("\n")}`);
 	}
 	return blocks.join("\n");
+}
+
+type PromptReport = EvalReport["prompts"][number];
+type TargetReport = PromptReport["targets"][number];
+interface RunInReport {
+	p: PromptReport;
+	t: TargetReport;
+	r: EvalRun;
+}
+
+function everyRun(report: EvalReport): RunInReport[] {
+	return report.prompts.flatMap((p) => p.targets.flatMap((t) => t.runs.map((r) => ({ p, t, r }))));
+}
+
+function responseFile({ p, t, r }: RunInReport): { dir: string; name: string; content: string } {
+	const header = [
+		`# ${p.prompt}`,
+		"",
+		`- target: \`${t.label}\``,
+		`- run: ${r.runIndex}`,
+		r.brandMentioned === null ? "" : `- brand mentioned: ${r.brandMentioned ? "yes" : "no"}`,
+		r.competitorsMentioned.length ? `- competitors mentioned: ${r.competitorsMentioned.join(", ")}` : "",
+		"",
+		"---",
+		"",
+	]
+		.filter((l) => l !== "")
+		.join("\n");
+	const body = r.error ? `> Run failed: ${r.error}` : r.responseMarkdown || "_(empty response)_";
+	return {
+		dir: `${pad(p.index)}-${slugify(p.prompt)}`,
+		name: `${t.model}__${t.provider}__run-${r.runIndex}.md`,
+		content: `${header}\n${body}\n`,
+	};
+}
+
+function citationRowsFor({ p, t, r }: RunInReport): Row[] {
+	return r.citations.map((c) => ({
+		prompt_n: p.index,
+		prompt: p.prompt,
+		model: t.model,
+		provider: t.provider,
+		run: r.runIndex,
+		citation_index: c.citationIndex,
+		url: c.url,
+		domain: c.domain,
+		title: c.title ?? "",
+	}));
+}
+
+function mentionRowFor({ p, t, r }: RunInReport): Row {
+	return {
+		prompt_n: p.index,
+		prompt: p.prompt,
+		model: t.model,
+		provider: t.provider,
+		run: r.runIndex,
+		brand_mentioned: r.brandMentioned === null ? "" : r.brandMentioned,
+		competitors_mentioned: r.competitorsMentioned,
+		error: r.error ?? "",
+	};
 }
 
 async function writeArtifacts(dir: string, report: EvalReport, format: DataFormat, brand: BrandContext): Promise<void> {
@@ -374,72 +439,27 @@ async function writeArtifacts(dir: string, report: EvalReport, format: DataForma
 	const responsesDir = path.join(dir, "responses");
 	await fs.rm(responsesDir, { recursive: true, force: true });
 
-	const citationRows: Row[] = [];
-	const mentionRows: Row[] = [];
-	const fanoutRows: Row[] = [];
-	const fullRuns: FullPromptRun[] = [];
-
-	for (const p of report.prompts) {
-		const promptDir = path.join(responsesDir, `${pad(p.index)}-${slugify(p.prompt)}`);
-		for (const t of p.targets) {
-			for (const r of t.runs) {
-				const base = `${t.model}__${t.provider}__run-${r.runIndex}`;
-				const header = [
-					`# ${p.prompt}`,
-					"",
-					`- target: \`${t.label}\``,
-					`- run: ${r.runIndex}`,
-					r.brandMentioned === null ? "" : `- brand mentioned: ${r.brandMentioned ? "yes" : "no"}`,
-					r.competitorsMentioned.length ? `- competitors mentioned: ${r.competitorsMentioned.join(", ")}` : "",
-					"",
-					"---",
-					"",
-				]
-					.filter((l) => l !== "")
-					.join("\n");
-				const body = r.error ? `> Run failed: ${r.error}` : r.responseMarkdown || "_(empty response)_";
-				await writeText(promptDir, `${base}.md`, `${header}\n${body}\n`);
-
-				for (const c of r.citations) {
-					citationRows.push({
-						prompt_n: p.index,
-						prompt: p.prompt,
-						model: t.model,
-						provider: t.provider,
-						run: r.runIndex,
-						citation_index: c.citationIndex,
-						url: c.url,
-						domain: c.domain,
-						title: c.title ?? "",
-					});
-				}
-				mentionRows.push({
-					prompt_n: p.index,
-					prompt: p.prompt,
-					model: t.model,
-					provider: t.provider,
-					run: r.runIndex,
-					brand_mentioned: r.brandMentioned === null ? "" : r.brandMentioned,
-					competitors_mentioned: r.competitorsMentioned,
-					error: r.error ?? "",
-				});
-				for (const q of r.webQueries) {
-					fanoutRows.push({ prompt_n: p.index, prompt: p.prompt, model: t.model, provider: t.provider, query: q });
-				}
-				if (!r.error && r.brandMentioned !== null) {
-					fullRuns.push({
-						promptId: String(p.index),
-						promptValue: p.prompt,
-						brandMentioned: r.brandMentioned,
-						competitorsMentioned: r.competitorsMentioned,
-						webQueries: r.webQueries,
-						textContent: r.responseMarkdown,
-						model: t.model,
-					});
-				}
-			}
-		}
+	const runs = everyRun(report);
+	for (const run of runs) {
+		const file = responseFile(run);
+		await writeText(path.join(responsesDir, file.dir), file.name, file.content);
 	}
+	const citationRows = runs.flatMap(citationRowsFor);
+	const mentionRows = runs.map(mentionRowFor);
+	const fanoutRows = runs.flatMap(({ p, t, r }) =>
+		r.webQueries.map((query) => ({ prompt_n: p.index, prompt: p.prompt, model: t.model, provider: t.provider, query })),
+	);
+	const fullRuns: FullPromptRun[] = runs
+		.filter(({ r }) => !r.error && r.brandMentioned !== null)
+		.map(({ p, t, r }) => ({
+			promptId: String(p.index),
+			promptValue: p.prompt,
+			brandMentioned: Boolean(r.brandMentioned),
+			competitorsMentioned: r.competitorsMentioned,
+			webQueries: r.webQueries,
+			textContent: r.responseMarkdown,
+			model: t.model,
+		}));
 
 	await writeStructured(
 		dir,
@@ -510,8 +530,6 @@ function buildSummaryMarkdown(
 	return lines.join("\n");
 }
 
-// ── Input gathering ────────────────────────────────────────────────────────────
-
 async function gatherInputs(
 	positional: string[],
 	options: EvalOptions,
@@ -557,7 +575,11 @@ function buildBrandContext(pack: BrandPack | undefined, options: EvalOptions): B
 		return {
 			name: options.brand,
 			mentionBrand: options.brand
-				? { name: options.brand, website: options.brandDomain, aliases: options.alias }
+				? {
+						name: options.brand,
+						aliases: options.alias ?? [],
+						domains: options.brandDomain ? [options.brandDomain] : [],
+					}
 				: undefined,
 			competitors: flagCompetitors,
 		};

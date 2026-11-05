@@ -1,7 +1,5 @@
 import { Marked, type Tokens } from "marked";
 
-// ── Eval data model (shared by eval.ts, the report, and the CSV writers) ──────
-
 interface EvalCitation {
 	url: string;
 	title?: string;
@@ -52,8 +50,6 @@ export interface EvalReport {
 		fanoutQueries: number;
 	};
 }
-
-// ── Rendering ─────────────────────────────────────────────────────────────────
 
 function escapeHtml(value: string): string {
 	return value
@@ -231,7 +227,6 @@ f.addEventListener('input', () => {
 });
 `;
 
-/** Build a single self-contained HTML document for browsing an eval run. */
 export function buildEvalReportHtml(report: EvalReport): string {
 	const t = report.totals;
 	const stats = [
