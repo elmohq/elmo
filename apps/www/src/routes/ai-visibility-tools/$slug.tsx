@@ -18,6 +18,7 @@ import {
 	faqJsonLd,
 	ogMeta,
 	softwareApplicationJsonLd,
+	webPageJsonLd,
 } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/$slug")({
@@ -48,6 +49,7 @@ export const Route = createFileRoute("/ai-visibility-tools/$slug")({
 				faqJsonLd(faqs),
 				comparisonJsonLd([ELMO_LISTING, { name: competitor.name, url: competitor.url }]),
 				softwareApplicationJsonLd(),
+				webPageJsonLd({ name: `Elmo vs ${competitor.name}`, description, path, dateModified: competitor.checkedAt }),
 			],
 		};
 	},

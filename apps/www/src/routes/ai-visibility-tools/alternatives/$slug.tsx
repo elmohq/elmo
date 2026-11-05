@@ -20,7 +20,7 @@ import {
 	getCompetitorBySlug,
 	hasOwnPages,
 } from "@/lib/competitors";
-import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta, webPageJsonLd } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")({
 	loader: ({ params }) => {
@@ -45,6 +45,7 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 					{ name: `${c.name} alternatives`, path },
 				]),
 				faqJsonLd(faqs),
+				webPageJsonLd({ name: `${c.name} Alternatives`, description, path, dateModified: c.checkedAt }),
 			],
 		};
 	},

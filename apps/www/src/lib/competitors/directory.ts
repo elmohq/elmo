@@ -56,6 +56,14 @@ export function hasOwnPages(c: Competitor): boolean {
 
 export const competitorsWithOwnPages: Competitor[] = competitors.filter(hasOwnPages);
 
+/** The most recent date any of these tools was re-verified: the date the page's data was last refreshed. */
+export function lastChecked(tools: Competitor[]): string | undefined {
+	return tools
+		.map((tool) => tool.checkedAt)
+		.sort()
+		.at(-1);
+}
+
 const byPopularity = (a: Competitor, b: Competitor) => getPopularityRank(a) - getPopularityRank(b);
 
 /**

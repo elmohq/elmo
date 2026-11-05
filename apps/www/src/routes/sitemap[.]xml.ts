@@ -14,10 +14,17 @@ import {
 	competitorsWithOwnPages,
 	FEATURE_SLUGS,
 	getComparisonSlug,
+	graveyardTools,
 	hasOwnPages,
 	indexableCategories,
 	indexableFeatureKeys,
+	indexedCompetitors,
+	lastChecked,
+	openSourceTools,
+	toolsInCategory,
+	toolsWithFeature,
 } from "@/lib/competitors";
+import { pageLastUpdated } from "@/lib/get-llm-text";
 import { listLegalPages } from "@/lib/legal";
 import { source } from "@/lib/source";
 
@@ -35,6 +42,9 @@ interface SitemapEntry {
 	lastmod?: string;
 }
 
+// A directory page's data is as fresh as the most recently re-verified tool it covers.
+const directoryLastChecked = lastChecked(indexedCompetitors);
+
 const staticPages: SitemapEntry[] = [
 	{ path: "/", changefreq: "weekly", priority: 1.0 },
 	{ path: "/answer-engine-optimization", changefreq: "monthly", priority: 0.9 },
@@ -47,7 +57,7 @@ const staticPages: SitemapEntry[] = [
 	{ path: "/docs", changefreq: "weekly", priority: 0.9 },
 	{ path: "/blog", changefreq: "weekly", priority: 0.7 },
 	{ path: "/statistics", changefreq: "weekly", priority: 0.8 },
-	{ path: "/ai-visibility-tools", changefreq: "weekly", priority: 0.8 },
+	{ path: "/ai-visibility-tools", changefreq: "weekly", priority: 0.8, lastmod: directoryLastChecked },
 	{ path: "/about", changefreq: "monthly", priority: 0.7 },
 	{ path: "/vision", changefreq: "monthly", priority: 0.6 },
 	{ path: "/brand", changefreq: "monthly", priority: 0.5 },
@@ -65,6 +75,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 					path: page.url,
 					changefreq: "weekly",
 					priority: 0.7,
+					lastmod: pageLastUpdated(page),
 				}));
 
 				const legalPages: SitemapEntry[] = listLegalPages().map((page) => ({
@@ -86,39 +97,52 @@ export const Route = createFileRoute("/sitemap.xml")({
 					path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
 					changefreq: "monthly",
 					priority: 0.6,
+					lastmod: c.checkedAt,
 				}));
 
 				// Programmatic directory sub-pages (hubs + generated pages).
 				const directorySubPages: SitemapEntry[] = [
-					{ path: "/ai-visibility-tools/compare", changefreq: "monthly", priority: 0.5 },
-					{ path: "/ai-visibility-tools/alternatives", changefreq: "monthly", priority: 0.5 },
-					{ path: "/ai-visibility-tools/features", changefreq: "monthly", priority: 0.5 },
-					{ path: "/ai-visibility-tools/category", changefreq: "monthly", priority: 0.5 },
-					{ path: "/ai-visibility-tools/graveyard", changefreq: "monthly", priority: 0.5 },
+					...["compare", "alternatives", "features", "category"].map((hub) => ({
+						path: `/ai-visibility-tools/${hub}`,
+						changefreq: "monthly",
+						priority: 0.5,
+						lastmod: directoryLastChecked,
+					})),
+					{
+						path: "/ai-visibility-tools/graveyard",
+						changefreq: "monthly",
+						priority: 0.5,
+						lastmod: lastChecked(graveyardTools),
+					},
 					...comparePairs.map(([a, b]) => ({
 						path: `/ai-visibility-tools/compare/${comparePairSlug(a, b)}`,
 						changefreq: "monthly",
 						priority: 0.6,
+						lastmod: lastChecked([a, b]),
 					})),
 					...compareSets.map((tools) => ({
 						path: `/ai-visibility-tools/compare/${compareSetSlug(tools)}`,
 						changefreq: "monthly",
 						priority: 0.6,
+						lastmod: lastChecked(tools),
 					})),
 					...competitorsWithOwnPages.map((c) => ({
 						path: `/ai-visibility-tools/alternatives/${c.slug}`,
 						changefreq: "monthly",
 						priority: 0.6,
+						lastmod: c.checkedAt,
 					})),
 					...indexableFeatureKeys().map((key) => ({
 						path: `/ai-visibility-tools/features/${FEATURE_SLUGS[key]}`,
 						changefreq: "monthly",
 						priority: 0.5,
+						lastmod: lastChecked(toolsWithFeature(key)),
 					})),
 					...indexableCategories.map((cat) => ({
 						path: `/ai-visibility-tools/category/${CATEGORY_SLUGS[cat]}`,
 						changefreq: "monthly",
 						priority: CATEGORY_SLUGS[cat] === "open-source" ? 0.9 : 0.5,
+						lastmod: lastChecked(CATEGORY_SLUGS[cat] === "open-source" ? openSourceTools() : toolsInCategory(cat)),
 					})),
 				];
 

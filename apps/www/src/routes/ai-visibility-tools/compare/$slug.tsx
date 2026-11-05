@@ -6,7 +6,7 @@ import { Footer } from "@/components/footer";
 import { MultiComparison } from "@/components/multi-comparison";
 import { Navbar } from "@/components/navbar";
 import { PairComparison } from "@/components/pair-comparison";
-import { type Competitor, getCompareEntry, getCompareFaqs, getCompareVerdict } from "@/lib/competitors";
+import { type Competitor, getCompareEntry, getCompareFaqs, getCompareVerdict, lastChecked } from "@/lib/competitors";
 import {
 	breadcrumbJsonLd,
 	canonicalUrl,
@@ -15,6 +15,7 @@ import {
 	faqJsonLd,
 	ogMeta,
 	softwareApplicationJsonLd,
+	webPageJsonLd,
 } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
@@ -45,6 +46,7 @@ export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
 				faqJsonLd(faqs),
 				comparisonJsonLd([...tools.map((t) => ({ name: t.name, url: t.url })), ELMO_LISTING]),
 				softwareApplicationJsonLd(),
+				webPageJsonLd({ name: names, description, path, dateModified: lastChecked(tools) }),
 			],
 		};
 	},

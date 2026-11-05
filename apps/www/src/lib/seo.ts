@@ -171,17 +171,48 @@ export function softwareApplicationJsonLd() {
 	});
 }
 
-export function articleJsonLd({ title, description, path }: { title: string; description: string; path: string }) {
+export function articleJsonLd({
+	title,
+	description,
+	path,
+	dateModified,
+}: {
+	title: string;
+	description: string;
+	path: string;
+	dateModified?: string;
+}) {
 	return jsonLd({
 		"@type": "TechArticle",
 		headline: title,
 		description,
 		url: canonicalUrl(path),
+		...(dateModified && { dateModified }),
 		publisher: {
 			"@type": "Organization",
 			name: SITE_NAME,
 			url: SITE_URL,
 		},
+	});
+}
+
+export function webPageJsonLd({
+	name,
+	description,
+	path,
+	dateModified,
+}: {
+	name: string;
+	description: string;
+	path: string;
+	dateModified?: string;
+}) {
+	return jsonLd({
+		"@type": "WebPage",
+		name,
+		description,
+		url: canonicalUrl(path),
+		...(dateModified && { dateModified }),
 	});
 }
 

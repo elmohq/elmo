@@ -2,6 +2,7 @@ import { remarkFeedbackBlock } from "fumadocs-core/mdx-plugins/remark-feedback-b
 import { pageSchema } from "fumadocs-core/source/schema";
 import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 import { z } from "zod";
+import { lastCommitDate } from "./git-dates";
 
 const frontmatterDate = z
 	.union([z.string(), z.date()])
@@ -10,6 +11,7 @@ const frontmatterDate = z
 export const docs = defineDocs({
 	dir: "../../packages/docs/content/docs",
 	docs: {
+		lastModified: async (filePath) => lastCommitDate(filePath),
 		postprocess: {
 			includeProcessedMarkdown: true,
 		},
