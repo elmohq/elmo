@@ -26,7 +26,6 @@ export function result(
 	};
 }
 
-/** Why something wasn't fetched, as evidence for a `not_checked` result. */
 export function notFetched(definition: CheckDefinition, fetched: Fetched | undefined, what: string): CheckResult {
 	const reason =
 		fetched?.kind === "skipped"
@@ -51,4 +50,8 @@ export function share(part: number, whole: number): string {
 
 export function list(items: string[]): string {
 	return items.length <= 2 ? items.join(" and ") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+}
+
+export function count(n: number, singular: string, plural = `${singular}s`): string {
+	return `${n.toLocaleString("en-US")} ${n === 1 ? singular : plural}`;
 }

@@ -11,11 +11,9 @@ export interface CheckResult {
 	group: CheckGroup;
 	title: string;
 	status: CheckStatus;
-	/** What was observed, in one or two sentences. */
 	evidence: string;
-	/** How to fix it. Present on anything that didn't pass. */
+	/** Present when the check warned or failed, or (`info`) suggests an optional improvement. */
 	fix?: string;
-	/** Pages the finding applies to, when it is page-scoped. */
 	pages?: string[];
 }
 
@@ -28,7 +26,7 @@ export interface RedirectHop {
 }
 
 export interface HostResolution {
-	/** The host as given, normalized. */
+	/** Lowercased, without a leading `www.`. */
 	host: string;
 	outcome: HostOutcome;
 	/** Where the host's homepage finally lands; absent when unreachable. */

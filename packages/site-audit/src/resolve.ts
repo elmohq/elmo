@@ -7,15 +7,11 @@ export interface ResolvedHost extends HostResolution {
 	homepage?: FetchedResponse;
 }
 
-/**
- * Where each brand host lands decides what it is: a site of its own, an alias
- * redirecting to one of the brand's sites, a redirect off the brand's domains,
- * or unreachable.
- */
+/** The first input is the brand's primary site, audited wherever it lands. */
 export async function resolveHosts(fetcher: Fetcher, inputs: string[]): Promise<ResolvedHost[]> {
 	const brandHosts = new Set(inputs.map(normalizeHost));
 	const resolved: ResolvedHost[] = [];
-	for (const input of inputs) {
+	for (const [index, input] of inputs.entries()) {
 		const host = normalizeHost(input);
 		const fetched = await fetcher.get(homepageUrl(input), { ignoreRobots: true });
 		if (fetched.kind !== "response") {
@@ -30,7 +26,7 @@ export async function resolveHosts(fetcher: Fetcher, inputs: string[]): Promise<
 		const finalOrigin = new URL(fetched.url).origin;
 		const finalHost = normalizeHost(finalOrigin);
 		const ownedByBrand = [...brandHosts].some((brand) => finalHost === brand || finalHost.endsWith(`.${brand}`));
-		const outcome = finalHost === host ? "site" : ownedByBrand ? "alias" : "external";
+		const outcome = finalHost === host || index === 0 ? "site" : ownedByBrand ? "alias" : "external";
 		resolved.push({ host, outcome, finalOrigin, hops: fetched.hops, homepage: fetched });
 	}
 	return resolved;

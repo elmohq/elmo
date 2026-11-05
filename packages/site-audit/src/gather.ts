@@ -1,5 +1,6 @@
 import { type Bot, PROBE_BOTS } from "./bots";
 import type { Fetched, FetchedResponse, Fetcher } from "./fetcher";
+import { normalizeHost } from "./hosts";
 import { type ParsedPage, parsePage } from "./parse/html";
 import { looksLikeHtml, markdownLinks } from "./parse/markdown";
 import { type ParsedRobots, parseRobots } from "./parse/robots";
@@ -50,6 +51,10 @@ export function isOk(fetched: Fetched | undefined): fetched is FetchedResponse {
 	return isResponse(fetched) && fetched.status >= 200 && fetched.status < 300;
 }
 
+export function parsedPages(site: SiteArtifacts): PageArtifacts[] {
+	return site.pages.filter((page) => page.parsed);
+}
+
 export function contentType(fetched: Fetched | undefined): string {
 	return isResponse(fetched) ? (fetched.headers["content-type"] ?? "").toLowerCase() : "";
 }
@@ -79,7 +84,7 @@ const TRUST_PATTERNS = {
 function findLink(page: ParsedPage | undefined, origin: string, pattern: RegExp): string | undefined {
 	return page?.links.find((link) => {
 		const url = new URL(link.href);
-		const sameSite = url.hostname.replace(/^www\./, "") === new URL(origin).hostname.replace(/^www\./, "");
+		const sameSite = normalizeHost(url.hostname) === normalizeHost(origin);
 		return sameSite && (pattern.test(url.pathname) || pattern.test(link.text));
 	})?.href;
 }
@@ -128,10 +133,14 @@ async function fetchRobots(fetcher: Fetcher, origin: string) {
 		ignoreRobots: true,
 		maxBytes: SMALL_BODY,
 	});
+	// Judged by the body rather than Content-Type, so rules served as text/html still bind ElmoBot.
 	const robots =
-		isOk(robotsFetch) && !isHtmlResponse(robotsFetch) ? parseRobots(robotsFetch.url, robotsFetch.body) : undefined;
-	if (robots) fetcher.setRobots(origin, robots);
-	return { robotsFetch, robots };
+		isOk(robotsFetch) && !looksLikeHtml(robotsFetch.body) ? parseRobots(robotsFetch.url, robotsFetch.body) : undefined;
+	// RFC 9309: a robots.txt the server can't deliver means nothing may be crawled.
+	const unavailable = isResponse(robotsFetch) && (robotsFetch.status === 429 || robotsFetch.status >= 500);
+	const crawlRules = unavailable ? parseRobots(robotsFetch.url, "User-agent: *\nDisallow: /") : robots;
+	if (crawlRules) fetcher.setRobots(origin, crawlRules);
+	return { robotsFetch, robots, crawlRules };
 }
 
 async function fetchPages(
@@ -174,7 +183,7 @@ async function probeLlmsLinks(fetcher: Fetcher, llmsTxt: Fetched): Promise<Fetch
 	if (!isOk(llmsTxt) || isHtmlResponse(llmsTxt)) return [];
 	const links = markdownLinks(llmsTxt.body)
 		.map((link) => new URL(link.url, llmsTxt.url).toString())
-		.filter((url) => url.startsWith("http"));
+		.filter((url) => url.startsWith(`${new URL(llmsTxt.url).origin}/`));
 	const probes: Fetched[] = [];
 	for (const url of [...new Set(links)].slice(0, LLMS_LINK_PROBES)) {
 		probes.push(await fetcher.get(url, { accept: MARKDOWN_ACCEPT, maxBytes: SMALL_BODY }));
@@ -214,11 +223,11 @@ function linksToDocs(origin: string, urls: string[]): boolean {
 	});
 }
 
-/** Fetches, in priority order, everything the checks look at. What the budget can't cover stays undefined. */
+/** Fetches what the checks look at, most important first, so a budget that runs out costs the least useful checks. */
 export async function gatherSite(options: GatherOptions): Promise<SiteArtifacts> {
 	const { fetcher, origin } = options;
 	const homeUrl = `${origin}/`;
-	const { robotsFetch, robots } = await fetchRobots(fetcher, origin);
+	const { robotsFetch, robots, crawlRules } = await fetchRobots(fetcher, origin);
 
 	const reused =
 		options.homepage && new URL(options.homepage.url).toString() === homeUrl ? options.homepage : undefined;
@@ -228,11 +237,11 @@ export async function gatherSite(options: GatherOptions): Promise<SiteArtifacts>
 
 	const sitemap = await fetchSitemap(fetcher, robots, origin);
 	const candidates = sitemap.entries.length > 0 ? sitemap.entries.map((entry) => entry.loc) : homeLinks;
-	const pages = await fetchPages(options, robots, candidates, home);
+	const pages = await fetchPages(options, crawlRules, candidates, home);
 
 	const llmsTxt = await fetcher.get(`${origin}/llms.txt`, { accept: TEXT_ACCEPT, maxBytes: SMALL_BODY });
 	for (const page of pages) page.markdownAccept = await fetcher.get(page.url, { accept: MARKDOWN_ACCEPT });
-	const botProbes = await probeBots(options, robots);
+	const botProbes = await probeBots(options, crawlRules);
 	for (const page of pages) {
 		page.markdownSuffix = await fetcher.get(markdownSuffixUrl(page.url), { accept: MARKDOWN_ACCEPT });
 	}

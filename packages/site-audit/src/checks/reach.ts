@@ -1,7 +1,7 @@
 import { AI_SEARCH_CRAWLERS, AI_TRAINING_CRAWLERS, AI_USER_AGENTS } from "../bots";
 import { contentType, isHtmlResponse, isOk, isResponse, type SiteArtifacts } from "../gather";
 import type { CheckResult, HostResolution } from "../types";
-import { type CheckDefinition, list, notFetched, result, wasNotFetched } from "./result";
+import { type CheckDefinition, count, list, notFetched, result, wasNotFetched } from "./result";
 
 const define = (id: string, title: string, fix: string): CheckDefinition => ({ id, group: "reach", title, fix });
 
@@ -83,7 +83,7 @@ function robotsCheck(site: SiteArtifacts): CheckResult {
 	return result(
 		ROBOTS_VALID,
 		sitemapNote ? "warn" : "pass",
-		`robots.txt has ${site.robots.userAgents.length} User-agent group(s).${sitemapNote}`,
+		`robots.txt has rules for ${count(site.robots.userAgents.length, "user agent")}.${sitemapNote}`,
 	);
 }
 
@@ -106,7 +106,7 @@ function botRules(
 		return result(
 			definition,
 			informational ? "info" : "pass",
-			`${list(bots)} are allowed on all ${urls.length} sampled pages.`,
+			`${list(bots)} are allowed on every sampled page (${count(urls.length, "page")}).`,
 		);
 	}
 	const evidence = blocked
@@ -118,6 +118,7 @@ function botRules(
 }
 
 function contentSignals(site: SiteArtifacts): CheckResult {
+	if (wasNotFetched(site.robotsFetch)) return notFetched(CONTENT_SIGNALS, site.robotsFetch, "robots.txt");
 	if (!site.robots)
 		return result(CONTENT_SIGNALS, "warn", "No robots.txt, so there's nowhere to declare Content Signals.");
 	const signals = site.robots.contentSignals;
@@ -160,12 +161,12 @@ function botReachability(site: SiteArtifacts): CheckResult {
 function noindex(site: SiteArtifacts): CheckResult {
 	const hidden = site.pages.filter((page) => {
 		const header = isResponse(page.html) ? (page.html.headers["x-robots-tag"] ?? "") : "";
-		return /noindex/i.test(header) || /noindex/.test(page.parsed?.robotsMeta ?? "");
+		return /\b(noindex|none)\b/i.test(`${header}, ${page.parsed?.robotsMeta ?? ""}`);
 	});
 	const checked = site.pages.filter((page) => isResponse(page.html));
 	if (checked.length === 0) return notFetched(NOINDEX, site.pages[0]?.html, "the sampled pages");
 	if (hidden.length === 0)
-		return result(NOINDEX, "pass", `None of the ${checked.length} sampled pages is marked noindex.`);
+		return result(NOINDEX, "pass", `No sampled page is marked noindex (${count(checked.length, "page")} checked).`);
 	const homeHidden = hidden.some((page) => page === site.pages[0]);
 	return result(
 		NOINDEX,
@@ -202,11 +203,15 @@ function snippetDirectives(site: SiteArtifacts): CheckResult {
 		return result(
 			SNIPPET_DIRECTIVES,
 			"warn",
-			`${limited.length} page(s) cap snippets below ${SHORT_SNIPPET} characters with max-snippet.`,
+			`max-snippet caps snippets below ${SHORT_SNIPPET} characters on ${count(limited.length, "page")}.`,
 			limited.map((d) => d.url),
 		);
 	}
-	return result(SNIPPET_DIRECTIVES, "pass", `None of the ${checked.length} sampled pages restricts snippets.`);
+	return result(
+		SNIPPET_DIRECTIVES,
+		"pass",
+		`No sampled page restricts snippets (${count(checked.length, "page")} checked).`,
+	);
 }
 
 const LOGIN_PATH = /\/(login|log-in|signin|sign-in|auth|sso|account\/login)(\/|$|\?)/i;
@@ -239,7 +244,7 @@ function redirectHygiene(site: SiteArtifacts): CheckResult {
 		return result(
 			REDIRECT_HYGIENE,
 			"fail",
-			`${stubs.length} page(s) redirect with meta-refresh or JavaScript, which many agents don't follow.`,
+			`Meta-refresh or JavaScript redirects on ${count(stubs.length, "page")}, which many agents don't follow.`,
 			stubs.map((page) => page.url),
 		);
 	}
@@ -247,25 +252,24 @@ function redirectHygiene(site: SiteArtifacts): CheckResult {
 		return result(
 			REDIRECT_HYGIENE,
 			"warn",
-			`${longChains.length} page(s) take more than two redirects to load.`,
+			`More than two redirects to load: ${count(longChains.length, "page")}.`,
 			longChains.map((page) => page.url),
 		);
 	}
 	return result(
 		REDIRECT_HYGIENE,
 		"pass",
-		`No meta-refresh, JavaScript redirects, or long chains across ${checked.length} pages.`,
+		`No meta-refresh, JavaScript redirects, or long chains across ${count(checked.length, "page")}.`,
 	);
 }
 
-export function alternateDomains(aliases: HostResolution[]): CheckResult | undefined {
+function alternateDomains(aliases: HostResolution[]): CheckResult | undefined {
 	if (aliases.length === 0) return undefined;
 	const problems = aliases.flatMap((alias) => {
 		const statuses = alias.hops.map((hop) => hop.status);
 		const issues: string[] = [];
 		if (alias.hops.length > 1) issues.push(`${alias.hops.length} hops`);
-		if (statuses.some((status) => status === 302 || status === 307)) issues.push("a temporary redirect");
-		if (!alias.finalOrigin?.startsWith("https:")) issues.push("it ends on HTTP");
+		if (statuses.some((status) => status !== 301 && status !== 308)) issues.push("a non-permanent redirect");
 		return issues.length > 0 ? [`${alias.host} (${list(issues)})`] : [];
 	});
 	if (problems.length === 0) {

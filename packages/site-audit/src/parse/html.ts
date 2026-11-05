@@ -17,12 +17,10 @@ export interface ParsedPage {
 	robotsMeta: string;
 	metaRefresh: boolean;
 	jsRedirectStub: boolean;
-	/** Visible text from the server HTML, scripts and styles removed. */
+	/** Text in the server HTML, with scripts and styles removed. */
 	text: string;
-	htmlLength: number;
 	headings: { level: number; text: string }[];
 	hasMain: boolean;
-	landmarks: string[];
 	links: PageLink[];
 	markdownAlternates: string[];
 	jsonLd: Record<string, unknown>[];
@@ -39,12 +37,10 @@ export interface ParsedPage {
 type El = Element & { textContent: string | null };
 
 const INSTRUCTION_PATTERN =
-	/\b(ignore (all |any )?(previous|prior|above) (instructions|prompts)|you are (an? )?(ai|assistant|language model|llm|chatbot)|(ai|llm|language model|assistant|agent)s?,? (must|should|always|never) |system prompt|disregard (the|all|any) |when (summari[sz]ing|asked about) this)/i;
+	/\b(ignore (all |any )?(previous|prior|above) (instructions|prompts)|you are (an? )?(ai|assistant|language model|llm|chatbot)|\b(ai|llm|language model)s?( assistants?| agents?| models?)?,? (must|should|always|never) |system prompt|disregard (the|all|any) |when (summari[sz]ing|asked about) this)/i;
 
 const HIDDEN_STYLE =
 	/display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0(?![.\d])|(left|top)\s*:\s*-\d{3,}px|opacity\s*:\s*0(?![.\d])/i;
-
-const LANDMARK_ROLES = { header: "banner", nav: "navigation", main: "main", footer: "contentinfo" };
 
 function attr(document: Document, selector: string, name: string): string {
 	return document.querySelector(selector)?.getAttribute(name)?.trim() ?? "";
@@ -171,6 +167,7 @@ function hasJsRedirectStub(inlineScripts: string, text: string): boolean {
 export function parsePage(url: string, html: string): ParsedPage {
 	const { document } = parseHTML(html);
 	const absolute = (href: string) => {
+		if (!href) return "";
 		try {
 			return new URL(href, url).toString();
 		} catch {
@@ -178,16 +175,14 @@ export function parsePage(url: string, html: string): ParsedPage {
 		}
 	};
 
-	// Read before scripts are stripped below: JSON-LD lives in script tags.
+	// Read before scripts and SVGs are stripped below: JSON-LD lives in script tags, and icon buttons are named by their SVG.
 	const jsonLd = collectJsonLd(document);
+	const controls = collectControls(document);
 	const inlineScripts = [...document.querySelectorAll("script:not([src])")]
 		.map((script) => script.textContent ?? "")
 		.join("\n");
 	for (const node of document.querySelectorAll("script, style, noscript, template, svg")) node.remove();
 	const text = ((document.body as El | null)?.textContent ?? "").replace(/\s+/g, " ").trim();
-	const landmarks = Object.entries(LANDMARK_ROLES)
-		.filter(([tag, role]) => document.querySelector(`${tag}, [role="${role}"]`) !== null)
-		.map(([tag]) => tag);
 
 	return {
 		url,
@@ -204,13 +199,11 @@ export function parsePage(url: string, html: string): ParsedPage {
 		metaRefresh: document.querySelector('meta[http-equiv="refresh" i]') !== null,
 		jsRedirectStub: hasJsRedirectStub(inlineScripts, text),
 		text,
-		htmlLength: html.length,
 		headings: [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
 			level: Number(heading.tagName.slice(1)),
 			text: (heading.textContent ?? "").trim(),
 		})),
-		hasMain: landmarks.includes("main"),
-		landmarks,
+		hasMain: document.querySelector('main, [role="main"]') !== null,
 		links: [...document.querySelectorAll("a[href]")]
 			.map((anchor) => ({ href: absolute(anchor.getAttribute("href") ?? ""), text: (anchor.textContent ?? "").trim() }))
 			.filter((link) => link.href.startsWith("http")),
@@ -218,7 +211,7 @@ export function parsePage(url: string, html: string): ParsedPage {
 			.map((link) => absolute(link.getAttribute("href") ?? ""))
 			.filter(Boolean),
 		jsonLd,
-		controls: collectControls(document),
+		controls,
 		hiddenInstructions: collectHiddenInstructions(document),
 		metaDates: [
 			...document.querySelectorAll(

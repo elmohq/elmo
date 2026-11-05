@@ -29,7 +29,7 @@ export interface FetchOptions {
 	method?: "GET" | "HEAD";
 	followRedirects?: boolean;
 	maxBytes?: number;
-	/** Robots checks fetch robots.txt itself, and bot-UA probes act as other bots. */
+	/** For robots.txt itself, and for bot-UA probes, which act as other bots. */
 	ignoreRobots?: boolean;
 }
 
@@ -40,6 +40,7 @@ export interface RobotsGate {
 
 const MAX_REDIRECTS = 5;
 const MAX_RETRY_AFTER_MS = 30_000;
+// Two errors in a row is enough to tell a struggling or hostile host from a one-off blip.
 const MAX_CONSECUTIVE_FAILURES = 2;
 
 interface HostState {
@@ -61,7 +62,6 @@ export interface FetcherOptions {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-/** Every request the audit makes goes through here: one budget, sequential per host, polite. */
 export class Fetcher {
 	used = 0;
 	budgetExhausted = false;
@@ -84,7 +84,14 @@ export class Fetcher {
 	}
 
 	get(url: string, options: FetchOptions = {}): Promise<Fetched> {
-		const key = JSON.stringify([url, options.accept, options.userAgent, options.method, options.followRedirects]);
+		const key = JSON.stringify([
+			url,
+			options.accept,
+			options.userAgent,
+			options.method,
+			options.followRedirects,
+			options.maxBytes,
+		]);
 		let pending = this.cache.get(key);
 		if (!pending) {
 			pending = this.fetchFollowing(url, options);
@@ -124,14 +131,8 @@ export class Fetcher {
 		const { origin } = new URL(url);
 		const state = this.host(origin);
 		const userAgent = options.userAgent ?? this.options.userAgent;
-		if (state.stopped) return { kind: "skipped", requestedUrl: url, reason: "host-stopped" };
-		if (!options.ignoreRobots && state.robots?.isAllowed(url, this.robotsToken) === false) {
-			return { kind: "skipped", requestedUrl: url, reason: "robots" };
-		}
-		if (this.used >= this.options.requestLimit) {
-			this.budgetExhausted = true;
-			return { kind: "skipped", requestedUrl: url, reason: "budget" };
-		}
+		const skip = this.skipReason(url, state, options);
+		if (skip) return { kind: "skipped", requestedUrl: url, reason: skip };
 		this.used++;
 
 		const crawlDelayMs = (state.robots?.getCrawlDelay(this.robotsToken) ?? 0) * 1000;
@@ -157,24 +158,38 @@ export class Fetcher {
 				},
 				this.options.allowPrivateNetwork,
 			);
-			// A bot-UA probe being refused is the finding, not a sign the host is struggling.
-			if (!options.userAgent) this.noteStatus(state, response);
+			this.noteStatus(state, response, Boolean(options.userAgent));
 			return { kind: "response", requestedUrl: url, hops: [], ...response };
 		} catch (error) {
 			if (this.options.signal?.aborted) throw error;
 			const blocked = error instanceof BlockedHostError;
-			if (blocked || ++state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) state.stopped = true;
+			if (blocked) state.stopped = true;
+			else if (!options.userAgent && ++state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) state.stopped = true;
 			return { kind: "error", requestedUrl: url, message: (error as Error).message, blocked };
 		}
 	}
 
-	private noteStatus(state: HostState, response: HttpResponse): void {
-		if (response.status === 429 || response.status === 503) {
+	private skipReason(url: string, state: HostState, options: FetchOptions): FetchSkipped["reason"] | undefined {
+		if (state.stopped) return "host-stopped";
+		if (!options.ignoreRobots && state.robots?.isAllowed(url, this.robotsToken) === false) return "robots";
+		if (this.used >= this.options.requestLimit) {
+			this.budgetExhausted = true;
+			return "budget";
+		}
+		return undefined;
+	}
+
+	// A bot-UA probe being refused (403, or a 503 challenge page) is the finding, not a
+	// sign the host is struggling, so only a 429 aimed at it slows the audit down.
+	private noteStatus(state: HostState, response: HttpResponse, isProbe: boolean): void {
+		const throttled = response.status === 429 || (response.status === 503 && !isProbe);
+		if (throttled) {
 			const retryAfter = Number(response.headers["retry-after"]);
 			const waitMs = Number.isFinite(retryAfter) ? retryAfter * 1000 : Number.POSITIVE_INFINITY;
 			if (waitMs > MAX_RETRY_AFTER_MS) state.stopped = true;
 			else state.nextSlotAt = Math.max(state.nextSlotAt, Date.now() + waitMs);
 		}
+		if (isProbe) return;
 		if (response.status === 403 || response.status >= 500) {
 			if (++state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) state.stopped = true;
 		} else {

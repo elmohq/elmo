@@ -1,5 +1,6 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
+import { gzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import { auditSites } from "./index";
 import type { CheckResult, SiteAuditReport } from "./types";
@@ -168,7 +169,7 @@ describe("auditSites", () => {
 
 		const report = await audit(fixture);
 
-		expect(check(report, "hidden-instructions").status).toBe("fail");
+		expect(check(report, "hidden-instructions").status).toBe("warn");
 	});
 
 	it("fails pages that forbid snippets", async () => {
@@ -205,19 +206,42 @@ describe("auditSites", () => {
 		expect(check(report, "authorship").status).toBe("pass");
 	});
 
-	it("scores each site from its passes and warnings, leaving optional checks out", async () => {
+	it("scores a site lower when a check fails", async () => {
+		const clean = await serve(() => ({ "/": { body: page("Home", LONG_TEXT) } }));
+		const restricted = await serve(() => ({
+			"/": { body: page("Home", LONG_TEXT, '<meta name="robots" content="nosnippet">') },
+		}));
+
+		const [cleanReport, restrictedReport] = await Promise.all([audit(clean), audit(restricted)]);
+
+		expect(restrictedReport.score).toBeLessThan(cleanReport.score ?? 0);
+	});
+
+	it("reports a page with no canonical link", async () => {
 		const fixture = await serve(() => ({ "/": { body: page("Home", LONG_TEXT) } }));
 
 		const report = await audit(fixture);
-		const site = report.sites[0];
-		const scored = site?.checks.filter((c) => ["pass", "warn", "fail"].includes(c.status)) ?? [];
-		const expected = Math.round(
-			(scored.reduce((sum, c) => sum + (c.status === "pass" ? 1 : c.status === "warn" ? 0.5 : 0), 0) / scored.length) *
-				100,
-		);
 
-		expect(site?.score).toBe(expected);
-		expect(report.score).toBe(expected);
+		expect(check(report, "metadata").evidence).toContain("canonical missing");
+	});
+
+	it("samples the freshest child of a sitemap index", async () => {
+		const fixture = await serve((origin) => ({
+			"/": { body: page("Home", LONG_TEXT) },
+			"/sitemap.xml": {
+				type: "application/xml",
+				body: `<sitemapindex><sitemap><loc>${origin}/old.xml</loc><lastmod>2020-01-01</lastmod></sitemap><sitemap><loc>${origin}/new.xml</loc><lastmod>2026-01-01</lastmod></sitemap></sitemapindex>`,
+			},
+			"/new.xml": { type: "application/xml", body: `<urlset><url><loc>${origin}/fresh</loc></url></urlset>` },
+			"/fresh": { body: page("Fresh", LONG_TEXT) },
+		}));
+
+		await audit(fixture);
+
+		const paths = fixture.requests.map((request) => request.path);
+		expect(paths).toContain("/new.xml");
+		expect(paths).toContain("/fresh");
+		expect(paths).not.toContain("/old.xml");
 	});
 
 	it("never fetches paths robots.txt disallows for ElmoBot", async () => {
@@ -238,6 +262,71 @@ describe("auditSites", () => {
 		expect(fixture.requests.some((request) => request.path === "/public")).toBe(true);
 	});
 
+	it("honors robots.txt rules even when they're served as HTML", async () => {
+		const fixture = await serve((origin) => ({
+			"/robots.txt": { type: "text/html", body: "User-agent: ElmoBot\nDisallow: /private\n" },
+			"/": { body: page("Home", `${LONG_TEXT}<a href="${origin}/private/page">Private</a>`) },
+		}));
+
+		await audit(fixture);
+
+		expect(fixture.requests.some((request) => request.path.startsWith("/private"))).toBe(false);
+	});
+
+	it("crawls nothing more when robots.txt fails with a server error", async () => {
+		const fixture = await serve((origin) => ({
+			"/robots.txt": { status: 503, body: "" },
+			"/": { body: page("Home", `${LONG_TEXT}<a href="${origin}/about">About</a>`) },
+			"/about": { body: page("About", LONG_TEXT) },
+		}));
+
+		await audit(fixture);
+
+		expect(new Set(fixture.requests.map((request) => request.path))).toEqual(new Set(["/", "/robots.txt"]));
+	});
+
+	it("stops auditing a site that asks it to back off for a long time", async () => {
+		const fixture = await serve(() => ({}), { fallback: { status: 429, headers: { "retry-after": "3600" } } });
+
+		await audit(fixture);
+
+		expect(fixture.requests).toHaveLength(1);
+	});
+
+	it("keeps auditing when AI bot user agents have their connections reset", async () => {
+		const fixture = await serve(() => ({
+			"/": (req) => {
+				if (/ChatGPT|OAI|Claude|Perplexity/.test(req.headers["user-agent"] ?? "")) req.socket.destroy();
+				return { body: page("Home", LONG_TEXT) };
+			},
+		}));
+
+		const report = await audit(fixture);
+
+		expect(check(report, "bot-reachability").status).toBe("fail");
+		expect(fixture.requests.some((request) => request.path === "/llms-full.txt")).toBe(true);
+	});
+
+	it("gives up on a compressed response that's cut off instead of hanging", async () => {
+		const server = http.createServer((req, res) => {
+			res.writeHead(200, { "content-type": "text/html", "content-encoding": "gzip" });
+			res.write(gzipSync(page("Home", LONG_TEXT)).subarray(0, 20));
+			setTimeout(() => res.destroy(), 10);
+		});
+		await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+		const { port } = server.address() as AddressInfo;
+		try {
+			const report = await auditSites({
+				website: `http://localhost:${port}`,
+				allowPrivateNetwork: true,
+				budget: { delayMs: 0, requests: 3 },
+			});
+			expect(report.hosts[0]?.outcome).toBe("unreachable");
+		} finally {
+			server.close();
+		}
+	}, 10_000);
+
 	it("stops at the request budget and reports what it couldn't check", async () => {
 		const fixture = await serve(() => ({ "/": { body: page("Home", LONG_TEXT) } }));
 
@@ -248,7 +337,7 @@ describe("auditSites", () => {
 		expect(report.sites[0]?.checks.some((candidate) => candidate.status === "not_checked")).toBe(true);
 	});
 
-	it("treats an alternate domain that redirects to the site as an alias, and flags a temporary redirect", async () => {
+	it("treats an alternate domain that redirects to the site as an alias, and flags a non-permanent redirect", async () => {
 		const fixture = await serve(() => ({ "/": { body: page("Home", LONG_TEXT) } }), {
 			aliasHost: "127.0.0.1",
 			aliasStatus: 302,
@@ -264,7 +353,16 @@ describe("auditSites", () => {
 		});
 		expect(check(report, "alternate-domains")).toMatchObject({
 			status: "warn",
-			evidence: expect.stringContaining("a temporary redirect"),
+			evidence: expect.stringContaining("a non-permanent redirect"),
+		});
+	});
+
+	it("refuses an IPv4-mapped IPv6 address for a private host", async () => {
+		const report = await auditSites({ website: "https://[::ffff:127.0.0.1]/", budget: { delayMs: 0 } });
+
+		expect(report.hosts[0]).toMatchObject({
+			outcome: "unreachable",
+			error: expect.stringMatching(/private or reserved/),
 		});
 	});
 

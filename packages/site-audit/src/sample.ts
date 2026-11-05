@@ -30,7 +30,6 @@ function eligibility(origin: string, isAllowed: (url: string) => boolean) {
 	};
 }
 
-/** Candidates grouped by top-level section, each group and its pages in a stable hashed order. */
 function sections(origin: string, pages: string[]): string[][] {
 	const bySection = new Map<string, Set<string>>();
 	for (const page of pages) {

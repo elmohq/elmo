@@ -1,8 +1,16 @@
 import type { Fetched } from "../fetcher";
-import { contentType, isHtmlResponse, isOk, isResponse, type PageArtifacts, type SiteArtifacts } from "../gather";
+import {
+	contentType,
+	isHtmlResponse,
+	isOk,
+	isResponse,
+	type PageArtifacts,
+	parsedPages,
+	type SiteArtifacts,
+} from "../gather";
 import { codeFencesBalanced, estimateTokens, hasFrontmatter, llmsTxtShape, looksLikeHtml } from "../parse/markdown";
 import type { CheckResult } from "../types";
-import { type CheckDefinition, notFetched, result, share, wasNotFetched } from "./result";
+import { type CheckDefinition, count, notFetched, result, share, wasNotFetched } from "./result";
 
 const define = (id: string, title: string, fix: string): CheckDefinition => ({ id, group: "read", title, fix });
 
@@ -58,7 +66,7 @@ const LLMS_FULL_TXT = define(
 );
 const LLMS_TXT_SECTIONS = define(
 	"llms-txt-sections",
-	"Section llms.txt",
+	"Docs Section llms.txt",
 	"For a large docs section, publish its own llms.txt (for example /docs/llms.txt), so agents can load just that area.",
 );
 const SITEMAP = define(
@@ -82,23 +90,21 @@ const AGENT_VIEW = define(
 	"Optionally serve a leaner agent-oriented view of the homepage (for example at `?mode=agent`), without navigation and marketing chrome.",
 );
 
+// Well under the homepage's size means a deliberately trimmed view, not the same page with a little dynamic noise.
+const LEANER_VIEW = 0.7;
 const MIN_TEXT = 500;
 const THIN_TEXT = 100;
 const TOKEN_LIMIT = 30_000;
 const TOKEN_HARD_LIMIT = 100_000;
 
-function fetchedPages(site: SiteArtifacts): PageArtifacts[] {
-	return site.pages.filter((page) => page.parsed);
-}
-
 function contentNoJs(site: SiteArtifacts): CheckResult {
-	const pages = fetchedPages(site);
+	const pages = parsedPages(site);
 	if (pages.length === 0) return notFetched(CONTENT_NO_JS, site.pages[0]?.html, "page content");
 	const thin = pages.filter((page) => (page.parsed?.text.length ?? 0) < MIN_TEXT || page.parsed?.headings.length === 0);
 	const empty = pages.filter((page) => (page.parsed?.text.length ?? 0) < THIN_TEXT);
 	const home = pages[0]?.parsed;
 	const homeSummary = home
-		? `Homepage: ${home.text.length.toLocaleString("en-US")} characters of text and ${home.headings.length} heading(s) in the server HTML.`
+		? `Homepage: ${home.text.length.toLocaleString("en-US")} characters of text and ${count(home.headings.length, "heading")} in the server HTML.`
 		: "";
 	if (thin.length === 0)
 		return result(
@@ -120,7 +126,7 @@ function markdownBody(fetched: Fetched | undefined): string | undefined {
 }
 
 function tokenBudget(site: SiteArtifacts): CheckResult {
-	const pages = fetchedPages(site);
+	const pages = parsedPages(site);
 	if (pages.length === 0) return notFetched(TOKEN_BUDGET, site.pages[0]?.html, "page size");
 	const sizes = pages.map((page) => ({
 		url: page.url,
@@ -135,7 +141,7 @@ function tokenBudget(site: SiteArtifacts): CheckResult {
 	return result(
 		TOKEN_BUDGET,
 		largest > TOKEN_HARD_LIMIT ? "fail" : "warn",
-		`${evidence} ${over.length} page(s) exceed about ${TOKEN_LIMIT.toLocaleString("en-US")} tokens.`,
+		`${evidence} Over about ${TOKEN_LIMIT.toLocaleString("en-US")} tokens: ${count(over.length, "page")}.`,
 		over.map((size) => size.url),
 	);
 }
@@ -145,16 +151,17 @@ function perPageMarkdown(
 	definition: CheckDefinition,
 	pick: (page: PageArtifacts) => Fetched | undefined,
 	what: string,
+	requireVary = false,
 ): CheckResult {
 	const attempted = site.pages.filter((page) => !wasNotFetched(pick(page)));
 	if (attempted.length === 0) return notFetched(definition, pick(site.pages[0] as PageArtifacts), what);
 	const serving = attempted.filter((page) => markdownBody(pick(page)) !== undefined);
 	const missingVary = serving.filter((page) => {
 		const fetched = pick(page);
-		return definition === MARKDOWN_ACCEPT && isResponse(fetched) && !/accept/i.test(fetched.headers.vary ?? "");
+		return requireVary && isResponse(fetched) && !/accept/i.test(fetched.headers.vary ?? "");
 	});
 	if (serving.length === 0)
-		return result(definition, "fail", `None of the ${attempted.length} sampled pages serve ${what}.`);
+		return result(definition, "fail", `No sampled page serves ${what} (${count(attempted.length, "page")} checked).`);
 	if (missingVary.length > 0) {
 		return result(
 			definition,
@@ -173,7 +180,7 @@ function perPageMarkdown(
 }
 
 function markdownAlternate(site: SiteArtifacts): CheckResult {
-	const pages = fetchedPages(site);
+	const pages = parsedPages(site);
 	if (pages.length === 0) return notFetched(MARKDOWN_ALTERNATE, site.pages[0]?.html, "page markup");
 	const advertising = pages.filter((page) => (page.parsed?.markdownAlternates.length ?? 0) > 0);
 	if (advertising.length === 0) return result(MARKDOWN_ALTERNATE, "info", "No page advertises a markdown alternate.");
@@ -209,7 +216,7 @@ function markdownQuality(site: SiteArtifacts): CheckResult {
 		return result(
 			MARKDOWN_QUALITY,
 			"fail",
-			`${unbalanced.length} markdown document(s) have an unclosed code fence.`,
+			`Unclosed code fence in ${count(unbalanced.length, "markdown document")}.`,
 			unbalanced.map((doc) => doc.url),
 		);
 	}
@@ -229,7 +236,7 @@ function markdownQuality(site: SiteArtifacts): CheckResult {
 }
 
 function textFile(fetched: Fetched | undefined): string | undefined {
-	return isOk(fetched) && !isHtmlResponse(fetched) && !looksLikeHtml(fetched.body) ? fetched.body : undefined;
+	return isOk(fetched) && !isHtmlResponse(fetched) ? fetched.body : undefined;
 }
 
 function llmsTxt(site: SiteArtifacts): CheckResult {
@@ -238,7 +245,7 @@ function llmsTxt(site: SiteArtifacts): CheckResult {
 	if (body === undefined) {
 		const status = isResponse(site.llmsTxt)
 			? `HTTP ${site.llmsTxt.status}${isHtmlResponse(site.llmsTxt) ? " with an HTML page" : ""}`
-			: "an error";
+			: `an error (${site.llmsTxt.message})`;
 		return result(LLMS_TXT, "fail", `/llms.txt returned ${status}.`);
 	}
 	const shape = llmsTxtShape(body);
@@ -256,11 +263,15 @@ function llmsTxt(site: SiteArtifacts): CheckResult {
 function llmsTxtLinks(site: SiteArtifacts): CheckResult {
 	if (textFile(site.llmsTxt) === undefined)
 		return result(LLMS_TXT_LINKS, "not_checked", "There's no llms.txt to check.");
+	if (site.llmsLinkProbes.length === 0) {
+		return result(LLMS_TXT_LINKS, "not_checked", "llms.txt has no links to this site to probe.");
+	}
 	const probes = site.llmsLinkProbes.filter((probe) => !wasNotFetched(probe));
-	if (probes.length === 0)
-		return result(LLMS_TXT_LINKS, "not_checked", "llms.txt has no links to probe, or the budget ran out.");
+	if (probes.length === 0) return notFetched(LLMS_TXT_LINKS, site.llmsLinkProbes[0], "llms.txt links");
 	const broken = probes.filter((probe) => !isOk(probe));
-	if (broken.length === 0) return result(LLMS_TXT_LINKS, "pass", `All ${probes.length} probed llms.txt links resolve.`);
+	if (broken.length === 0) {
+		return result(LLMS_TXT_LINKS, "pass", `Every probed llms.txt link resolves (${count(probes.length, "link")}).`);
+	}
 	return result(
 		LLMS_TXT_LINKS,
 		broken.length === probes.length ? "fail" : "warn",
@@ -293,8 +304,16 @@ function sitemap(site: SiteArtifacts): CheckResult {
 	const first = site.sitemap.fetches[0];
 	if (wasNotFetched(first)) return notFetched(SITEMAP, first, "the sitemap");
 	if (!site.sitemap.valid) {
-		const status = isResponse(first) ? `HTTP ${first.status}` : "an error";
-		return result(SITEMAP, "fail", `No valid sitemap at ${site.sitemap.url} (${status}).`);
+		const failed = site.sitemap.fetches.at(-1);
+		const where = failed?.requestedUrl ?? site.sitemap.url;
+		if (where?.endsWith(".gz"))
+			return result(SITEMAP, "not_checked", `The sitemap at ${where} is gzipped, which the audit doesn't read.`);
+		const status = isResponse(failed)
+			? `HTTP ${failed.status}`
+			: failed?.kind === "error"
+				? failed.message
+				: "not fetched";
+		return result(SITEMAP, "fail", `No valid sitemap at ${where} (${status}).`);
 	}
 	return result(
 		SITEMAP,
@@ -317,7 +336,12 @@ function linkHeaders(site: SiteArtifacts): CheckResult {
 	const home = site.pages[0]?.html;
 	if (!isResponse(home)) return notFetched(LINK_HEADERS, home, "the homepage headers");
 	const header = home.headers.link ?? "";
-	const rels = [...header.matchAll(/rel="?([^";,]+)"?/g)].flatMap((match) => (match[1] as string).split(/\s+/));
+	const rels = header.split(/,(?=\s*<)/).flatMap((entry) => {
+		const names = entry.match(/rel="?([^";]+)"?/)?.[1]?.split(/\s+/) ?? [];
+		// rel=alternate also carries hreflang translations; only a markdown alternate helps agents.
+		const isMarkdown = /type="?text\/markdown/i.test(entry);
+		return names.filter((rel) => rel !== "alternate" || isMarkdown);
+	});
 	const discovery = [...new Set(rels.filter((rel) => DISCOVERY_RELS.includes(rel)))];
 	if (discovery.length === 0) return result(LINK_HEADERS, "warn", "The homepage sends no discovery Link header.");
 	return result(LINK_HEADERS, "pass", `The homepage Link header advertises ${discovery.join(", ")}.`);
@@ -328,7 +352,7 @@ function agentView(site: SiteArtifacts): CheckResult {
 	const home = site.pages[0]?.html;
 	if (!isResponse(fetched) || !isOk(home)) return notFetched(AGENT_VIEW, fetched, "?mode=agent");
 	const distinct =
-		isOk(fetched) && (markdownBody(fetched) !== undefined || fetched.body.length < home.body.length * 0.7);
+		isOk(fetched) && (markdownBody(fetched) !== undefined || fetched.body.length < home.body.length * LEANER_VIEW);
 	return distinct
 		? result(AGENT_VIEW, "pass", "`?mode=agent` returns a leaner view than the homepage.")
 		: result(AGENT_VIEW, "info", "`?mode=agent` returns the same page as the homepage.");
@@ -343,6 +367,7 @@ export function readChecks(site: SiteArtifacts): CheckResult[] {
 			MARKDOWN_ACCEPT,
 			(page) => page.markdownAccept,
 			"markdown when asked with `Accept: text/markdown`",
+			true,
 		),
 		perPageMarkdown(site, MARKDOWN_SUFFIX, (page) => page.markdownSuffix, "markdown at a `.md` URL"),
 		markdownAlternate(site),

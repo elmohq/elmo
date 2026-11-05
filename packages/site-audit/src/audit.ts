@@ -62,7 +62,10 @@ export async function auditSites(options: AuditOptions): Promise<SiteAuditReport
 	});
 
 	const byHost = new Map<string, string>();
-	for (const host of [options.website, ...(options.additionalDomains ?? [])]) {
+	// Only HTTPS is fetched, so an http:// address is audited as its HTTPS site.
+	const upgrade = (host: string) =>
+		options.allowPrivateNetwork ? host : host.trim().replace(/^http:\/\//i, "https://");
+	for (const host of [options.website, ...(options.additionalDomains ?? [])].map(upgrade)) {
 		if (!byHost.has(normalizeHost(host))) byHost.set(normalizeHost(host), host);
 	}
 	const inputs = [...byHost.values()];

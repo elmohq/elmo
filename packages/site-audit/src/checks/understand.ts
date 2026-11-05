@@ -1,7 +1,16 @@
-import { isHtmlResponse, isOk, isResponse, type LinkedPage, type PageArtifacts, type SiteArtifacts } from "../gather";
+import {
+	isHtmlResponse,
+	isOk,
+	isResponse,
+	type LinkedPage,
+	type PageArtifacts,
+	parsedPages,
+	type SiteArtifacts,
+} from "../gather";
+import { normalizeHost } from "../hosts";
 import { jsonLdTypes, type ParsedPage } from "../parse/html";
 import type { CheckResult } from "../types";
-import { type CheckDefinition, list, notFetched, result, share } from "./result";
+import { type CheckDefinition, count, list, notFetched, result, share } from "./result";
 
 const define = (id: string, title: string, fix: string): CheckDefinition => ({ id, group: "understand", title, fix });
 
@@ -76,10 +85,6 @@ const ORGANIZATION_TYPES =
 const IDENTITY_TYPES =
 	/^(Organization|Corporation|OnlineBusiness|WebSite|WebPage|Person|ImageObject|SearchAction|EntryPoint)$/;
 
-function parsed(site: SiteArtifacts): PageArtifacts[] {
-	return site.pages.filter((page) => page.parsed);
-}
-
 function organization(site: SiteArtifacts): Record<string, unknown> | undefined {
 	return site.pages[0]?.parsed?.jsonLd.find((node) => jsonLdTypes(node).some((type) => ORGANIZATION_TYPES.test(type)));
 }
@@ -113,7 +118,7 @@ function jsonLdSameAs(site: SiteArtifacts): CheckResult {
 		...new Set(
 			links.flatMap((link) => {
 				try {
-					return [new URL(link).hostname.replace(/^www\./, "")];
+					return [normalizeHost(link)];
 				} catch {
 					return [];
 				}
@@ -126,7 +131,7 @@ function jsonLdSameAs(site: SiteArtifacts): CheckResult {
 }
 
 function schemaBreadth(site: SiteArtifacts): CheckResult {
-	const pages = parsed(site);
+	const pages = parsedPages(site);
 	if (pages.length === 0) return notFetched(SCHEMA_BREADTH, site.pages[0]?.html, "page markup");
 	const types = new Set(
 		pages
@@ -148,7 +153,7 @@ const METADATA_FIELDS: [string, (page: ParsedPage) => string][] = [
 ];
 
 function metadata(site: SiteArtifacts): CheckResult {
-	const pages = parsed(site).flatMap((page) => (page.parsed ? [page.parsed] : []));
+	const pages = parsedPages(site).flatMap((page) => (page.parsed ? [page.parsed] : []));
 	if (pages.length === 0) return notFetched(METADATA, site.pages[0]?.html, "page markup");
 	const gaps = METADATA_FIELDS.map(([field, read]) => ({
 		field,
@@ -159,7 +164,7 @@ function metadata(site: SiteArtifacts): CheckResult {
 	if (gaps.length === 0 && !duplicated) {
 		return result(METADATA, "pass", `All ${pages.length} sampled pages have unique titles and complete metadata.`);
 	}
-	const parts = gaps.map((gap) => `${gap.field} missing on ${gap.urls.length} page(s)`);
+	const parts = gaps.map((gap) => `${gap.field} missing on ${count(gap.urls.length, "page")}`);
 	if (duplicated) parts.push("duplicate titles");
 	const critical = gaps.some((gap) => gap.field === "title" || gap.field === "meta description");
 	return result(METADATA, critical ? "fail" : "warn", `${list(parts)}.`, [...new Set(gaps.flatMap((gap) => gap.urls))]);
@@ -174,6 +179,8 @@ function linkedPageState(page: LinkedPage): "missing" | "broken" | "ok" | "unche
 function trustPages(site: SiteArtifacts): CheckResult {
 	if (!site.pages[0]?.parsed) return notFetched(TRUST_PAGES, site.pages[0]?.html, "the homepage");
 	const states = Object.entries(site.trust).map(([name, page]) => ({ name, state: linkedPageState(page) }));
+	if (states.every((entry) => entry.state === "unchecked"))
+		return notFetched(TRUST_PAGES, site.trust.about.fetched, "the linked pages");
 	const bad = states.filter((entry) => entry.state === "missing" || entry.state === "broken");
 	if (bad.length === 0)
 		return result(TRUST_PAGES, "pass", "About, Contact, and Privacy pages are linked from the homepage.");
@@ -186,13 +193,14 @@ function pricing(site: SiteArtifacts): CheckResult {
 	const state = linkedPageState(site.pricing);
 	if (state === "missing") return result(PRICING, "info", "No pricing page is linked from the homepage.");
 	if (state === "broken") return result(PRICING, "warn", `The pricing link (${site.pricing.href}) doesn't load.`);
+	if (state === "unchecked") return notFetched(PRICING, site.pricing.fetched, "the pricing page");
 	const markdown =
 		isOk(site.pricing.markdown) && !isHtmlResponse(site.pricing.markdown) ? " It's also published as markdown." : "";
 	return result(PRICING, "pass", `A pricing page is linked from the homepage.${markdown}`);
 }
 
 function documentStructure(site: SiteArtifacts): CheckResult {
-	const pages = parsed(site);
+	const pages = parsedPages(site);
 	if (pages.length === 0) return notFetched(DOCUMENT_STRUCTURE, site.pages[0]?.html, "page markup");
 	const issues = pages.flatMap((page) => {
 		const meta = page.parsed;
@@ -223,7 +231,7 @@ function documentStructure(site: SiteArtifacts): CheckResult {
 }
 
 function accessibleControls(site: SiteArtifacts): CheckResult {
-	const pages = parsed(site);
+	const pages = parsedPages(site);
 	if (pages.length === 0) return notFetched(ACCESSIBLE_CONTROLS, site.pages[0]?.html, "page markup");
 	const totals = pages.reduce(
 		(sum, page) => {
@@ -242,23 +250,27 @@ function accessibleControls(site: SiteArtifacts): CheckResult {
 	if (totals.total === 0) return result(ACCESSIBLE_CONTROLS, "pass", "The sampled pages have no interactive controls.");
 	const namedShare = totals.named / totals.total;
 	const unlabeled = totals.formControls - totals.labeled;
-	const evidence = `${totals.named} of ${totals.total} controls have an accessible name (${share(totals.named, totals.total)}); ${unlabeled} unlabeled form field(s); ${totals.nonNative} clickable non-native element(s).`;
+	const evidence = `${totals.named} of ${totals.total} controls have an accessible name (${share(totals.named, totals.total)}); ${count(unlabeled, "unlabeled form field")}; ${count(totals.nonNative, "clickable non-native element")}.`;
 	if (namedShare >= 0.95 && unlabeled === 0 && totals.nonNative === 0)
 		return result(ACCESSIBLE_CONTROLS, "pass", evidence);
 	return result(ACCESSIBLE_CONTROLS, namedShare >= 0.8 ? "warn" : "fail", evidence);
 }
 
 function hiddenInstructions(site: SiteArtifacts): CheckResult {
-	const pages = parsed(site);
+	const pages = parsedPages(site);
 	if (pages.length === 0) return notFetched(HIDDEN_INSTRUCTIONS, site.pages[0]?.html, "page markup");
 	const flagged = pages.filter((page) => (page.parsed?.hiddenInstructions.length ?? 0) > 0);
 	if (flagged.length === 0)
-		return result(HIDDEN_INSTRUCTIONS, "pass", `No hidden instructions to AI found across ${pages.length} pages.`);
+		return result(
+			HIDDEN_INSTRUCTIONS,
+			"pass",
+			`No hidden instructions to AI found across ${count(pages.length, "page")}.`,
+		);
 	const sample = flagged[0]?.parsed?.hiddenInstructions[0] ?? "";
 	return result(
 		HIDDEN_INSTRUCTIONS,
-		"fail",
-		`${flagged.length} page(s) contain hidden text addressed to AI, for example "${sample}".`,
+		"warn",
+		`Hidden text addressed to AI on ${count(flagged.length, "page")}, for example "${sample}".`,
 		flagged.map((page) => page.url),
 	);
 }
@@ -284,7 +296,7 @@ function pageDates(page: PageArtifacts): { dates: Date[]; source: "structured" |
 }
 
 function freshness(site: SiteArtifacts): CheckResult {
-	const pages = parsed(site);
+	const pages = parsedPages(site);
 	if (pages.length === 0) return notFetched(FRESHNESS, site.pages[0]?.html, "page markup");
 	const dated = pages.map((page) => ({ url: page.url, ...pageDates(page) })).filter((page) => page.source !== "none");
 	const undated = pages.filter((page) => !dated.some((d) => d.url === page.url)).map((page) => page.url);
@@ -302,7 +314,7 @@ function freshness(site: SiteArtifacts): CheckResult {
 const MIN_PASSAGES = 3;
 
 function citablePassages(site: SiteArtifacts): CheckResult {
-	const all = parsed(site);
+	const all = parsedPages(site);
 	if (all.length === 0) return notFetched(CITABLE_PASSAGES, site.pages[0]?.html, "page content");
 	// Homepages are mostly navigation and calls to action; judge the inner pages when there are any.
 	const pages = all.length > 1 ? all.slice(1) : all;
@@ -331,7 +343,7 @@ function articleAuthor(page: PageArtifacts): "verifiable" | "named" | "none" {
 }
 
 function authorship(site: SiteArtifacts): CheckResult {
-	const articles = parsed(site).filter(
+	const articles = parsedPages(site).filter(
 		(page) =>
 			page.parsed?.ogType === "article" ||
 			page.parsed?.jsonLd.some((node) => jsonLdTypes(node).some((type) => ARTICLE_TYPES.test(type))),
