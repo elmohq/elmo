@@ -1,3 +1,4 @@
+import { constants } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { runStructuredResearchPrompt } from "@workspace/lib/onboarding";
@@ -145,6 +146,21 @@ async function runPlan(paths: string[], options: PlanOptions): Promise<void> {
 	}
 }
 
+// Whatever is read here is sent to the research provider, so a symlink (even one swapped in after a
+// directory listing) is refused rather than followed to a file outside what the user selected.
+async function readRegularFile(file: string): Promise<string> {
+	const handle = await fs.open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0)).catch(() => undefined);
+	if (!handle) return "";
+	try {
+		const stat = await handle.stat();
+		return stat.isFile() ? await handle.readFile("utf8") : "";
+	} catch {
+		return "";
+	} finally {
+		await handle.close();
+	}
+}
+
 async function filesFor(p: string): Promise<string[]> {
 	const resolved = path.resolve(process.cwd(), p);
 	const stat = await fs.stat(resolved).catch(() => null);
@@ -160,7 +176,7 @@ export async function readFilesWithin(paths: string[], maxBytes: number): Promis
 	let budget = maxBytes;
 	for (const file of (await Promise.all(paths.map(filesFor))).flat()) {
 		if (budget <= 0) break;
-		const content = await fs.readFile(file, "utf8").catch(() => "");
+		const content = await readRegularFile(file);
 		if (!content.trim()) continue;
 		const slice = content.slice(0, budget);
 		budget -= slice.length;
@@ -203,11 +219,11 @@ async function walkTextFiles(dir: string, depth = 0): Promise<string[]> {
 	return out.sort();
 }
 
-async function readEvalContext(evalDir: string): Promise<string> {
+export async function readEvalContext(evalDir: string): Promise<string> {
 	const dir = path.resolve(process.cwd(), evalDir);
-	const summary = await fs.readFile(path.join(dir, "summary.md"), "utf8").catch(() => "");
+	const summary = await readRegularFile(path.join(dir, "summary.md"));
 	if (summary.trim()) return summary;
-	const runJson = await fs.readFile(path.join(dir, "run.json"), "utf8").catch(() => "");
+	const runJson = await readRegularFile(path.join(dir, "run.json"));
 	return runJson.trim();
 }
 
