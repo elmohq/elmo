@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { markdownLinks } from "./markdown";
+import { parseRobots } from "./robots";
 import { parseSitemap } from "./sitemap";
 
 describe("parseSitemap", () => {
@@ -46,6 +47,19 @@ describe("markdownLinks", () => {
 		const links = markdownLinks(`${"[".repeat(200_000)}[Docs](https://example.com/docs)`);
 
 		expect(links.at(-1)?.url).toBe("https://example.com/docs");
+		expect(performance.now() - started).toBeLessThan(2000);
+	});
+});
+
+describe("parseRobots", () => {
+	it("reads directives quickly even from a very long line", () => {
+		const text = `User-agent: *\nContent-Signal: search=yes${" ".repeat(400_000)}x\nSchemamap: https://example.com/feed\n`;
+		const started = performance.now();
+
+		const robots = parseRobots("https://example.com/robots.txt", text);
+
+		expect(robots.schemamaps).toEqual(["https://example.com/feed"]);
+		expect(robots.userAgents).toEqual(["*"]);
 		expect(performance.now() - started).toBeLessThan(2000);
 	});
 });

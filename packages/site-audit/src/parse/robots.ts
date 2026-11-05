@@ -9,9 +9,14 @@ export interface ParsedRobots {
 	userAgents: string[];
 }
 
+// Split by line and trimmed in code, so a long line can't make a lazy pattern backtrack.
 function directiveValues(text: string, name: string): string[] {
-	const pattern = new RegExp(`^\\s*${name}\\s*:\\s*(.+?)\\s*$`, "gim");
-	return [...text.matchAll(pattern)].map((match) => match[1] as string);
+	return text.split(/\r?\n/).flatMap((line) => {
+		const colon = line.indexOf(":");
+		if (colon === -1 || line.slice(0, colon).trim().toLowerCase() !== name) return [];
+		const value = line.slice(colon + 1).trim();
+		return value ? [value] : [];
+	});
 }
 
 export function parseRobots(robotsUrl: string, text: string): ParsedRobots {
