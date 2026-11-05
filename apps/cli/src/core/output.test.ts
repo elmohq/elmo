@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { pad, parseFormat, serialize, slugify, toCsv, toJsonl } from "./output";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { pad, parseFormat, printCsv, serialize, slugify, toCsv, toJsonl } from "./output";
 
 describe("toCsv", () => {
 	it("renders a header and rows", () => {
@@ -71,5 +71,31 @@ describe("pad", () => {
 	it("zero-pads to width 3", () => {
 		expect(pad(1)).toBe("001");
 		expect(pad(42)).toBe("042");
+	});
+});
+
+describe("printCsv", () => {
+	const ESC = "\u001b";
+	const prompt = `best crm${ESC}]52;c;ZXZpbA==\u0007 for startups`;
+	const isTTY = process.stdout.isTTY;
+
+	afterEach(() => {
+		process.stdout.isTTY = isTTY;
+		vi.restoreAllMocks();
+	});
+
+	function printed(terminal: boolean): string {
+		process.stdout.isTTY = terminal;
+		const write = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+		printCsv([{ prompt }], ["prompt"]);
+		return String(write.mock.calls[0]?.[0]);
+	}
+
+	it("drops terminal control sequences from untrusted text shown in a terminal", () => {
+		expect(printed(true)).toBe("prompt\nbest crm]52;c;ZXZpbA== for startups\n");
+	});
+
+	it("leaves piped output byte for byte", () => {
+		expect(printed(false)).toBe(`prompt\n${prompt}\n`);
 	});
 });
