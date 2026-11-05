@@ -4,7 +4,7 @@ import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { type GlossaryTerm, getGlossaryTerm, glossaryTerms } from "@/data/glossary";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
-import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta, webPageJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/glossary/$slug")({
 	loader: ({ params }) => {
@@ -25,18 +25,20 @@ export const Route = createFileRoute("/glossary/$slug")({
 			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
-				webPageJsonLd({ name: t.term, description, path, dateModified: t.updated }),
 				breadcrumbJsonLd([
 					{ name: "Home", path: "/" },
 					{ name: "Glossary", path: "/glossary" },
 					{ name: t.term, path },
 				]),
-				faqJsonLd([
-					{
-						question: `What is ${t.term}?`,
-						answer: `${t.short} ${t.body[0]}`,
-					},
-				]),
+				faqJsonLd(
+					[
+						{
+							question: `What is ${t.term}?`,
+							answer: `${t.short} ${t.body[0]}`,
+						},
+					],
+					{ path, dateModified: t.updated },
+				),
 			],
 		};
 	},

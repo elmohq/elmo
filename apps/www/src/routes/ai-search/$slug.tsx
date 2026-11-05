@@ -7,7 +7,7 @@ import { Navbar } from "@/components/navbar";
 import { type AiSearchEngine, aiSearchEngines, getAiSearchEngine } from "@/data/ai-search-engines";
 import type { FaqItem } from "@/lib/faqs";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
-import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, howToJsonLd, ogMeta, webPageJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, howToJsonLd, ogMeta } from "@/lib/seo";
 
 function engineFaqs(e: AiSearchEngine): FaqItem[] {
 	return [
@@ -41,7 +41,6 @@ export const Route = createFileRoute("/ai-search/$slug")({
 			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
-				webPageJsonLd({ name: e.name, description, path, dateModified: e.updated }),
 				breadcrumbJsonLd([
 					{ name: "Home", path: "/" },
 					{ name: "AI Search", path: "/ai-search" },
@@ -52,7 +51,7 @@ export const Route = createFileRoute("/ai-search/$slug")({
 					description: e.short,
 					steps: e.steps,
 				}),
-				faqJsonLd(engineFaqs(e)),
+				faqJsonLd(engineFaqs(e), { path, dateModified: e.updated }),
 			],
 		};
 	},

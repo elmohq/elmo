@@ -19,15 +19,7 @@ import { WhySwitch } from "@/components/home/why-switch";
 import { Navbar } from "@/components/navbar";
 import { type AeoVertical, aeoHeadline, aeoVerticals, getAeoVertical } from "@/data/aeo-verticals";
 import { externalRel } from "@/lib/external-link";
-import {
-	breadcrumbJsonLd,
-	canonicalUrl,
-	faqJsonLd,
-	howToJsonLd,
-	itemListJsonLd,
-	ogMeta,
-	webPageJsonLd,
-} from "@/lib/seo";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, howToJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/aeo-for/$slug")({
 	loader: ({ params }) => {
@@ -46,13 +38,12 @@ export const Route = createFileRoute("/aeo-for/$slug")({
 			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
-				webPageJsonLd({ name: aeoHeadline(v), description, path, dateModified: v.updated }),
 				breadcrumbJsonLd([
 					{ name: "Home", path: "/" },
 					{ name: "AEO by industry", path: "/aeo-for" },
 					{ name: aeoHeadline(v), path },
 				]),
-				faqJsonLd(v.faqs),
+				faqJsonLd(v.faqs, { path, dateModified: v.updated }),
 				howToJsonLd({
 					name: `How to improve AI visibility for ${v.audience}`,
 					description: v.short,

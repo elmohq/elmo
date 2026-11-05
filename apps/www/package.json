@@ -51,7 +51,7 @@
 		"tslib": "catalog:",
 		"tw-animate-css": "catalog:",
 		"unified": "^11.0.5",
-		"yaml": "^2.9.1",
+		"yaml": "^2.8.3",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

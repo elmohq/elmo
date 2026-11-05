@@ -61,6 +61,17 @@ function clean(parent: Parents, origin: string): void {
 	}
 }
 
+function jsonLdDateModified(json: string): string | undefined {
+	try {
+		const data = JSON.parse(json) as { dateModified?: unknown; "@graph"?: { dateModified?: unknown }[] };
+		const nodes = [data, ...(data["@graph"] ?? [])];
+		const found = nodes.map((node) => node.dateModified).find((value) => typeof value === "string");
+		return found as string | undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 function headMeta(head: Element | undefined): Record<string, string> {
 	const meta: Record<string, string> = {};
 	for (const child of head?.children ?? []) {
@@ -72,6 +83,10 @@ function headMeta(head: Element | undefined): Record<string, string> {
 		}
 		if (child.tagName === "link" && Array.isArray(rel) && rel.includes("canonical") && typeof href === "string") {
 			meta.canonical = href;
+		}
+		if (child.tagName === "script" && child.properties.type === "application/ld+json" && !meta.updated) {
+			const dateModified = jsonLdDateModified(textOf(child));
+			if (dateModified) meta.updated = dateModified;
 		}
 	}
 	return meta;

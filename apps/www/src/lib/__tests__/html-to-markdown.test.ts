@@ -86,13 +86,25 @@ describe("htmlToMarkdown", () => {
 		const markdown = convert(
 			page(
 				"<main><h1>Pricing</h1></main>",
-				'<title>Pricing · Elmo</title><meta name="description" content="Plans and prices."><link rel="canonical" href="https://www.elmohq.com/pricing"><meta property="article:modified_time" content="2026-10-01">',
+				'<title>Pricing: Plans · Elmo</title><meta name="description" content="Plans and prices."><link rel="canonical" href="https://www.elmohq.com/pricing"><meta property="article:modified_time" content="2026-10-01">',
 			),
 			PAGE_URL,
 		);
 
 		expect(markdown).toMatch(
-			/^---\ntitle: Pricing · Elmo\ndescription: Plans and prices.\ncanonical: https:\/\/www.elmohq.com\/pricing\nupdated: 2026-10-01\n---\n\n# Pricing/,
+			/^---\ntitle: "Pricing: Plans · Elmo"\ndescription: Plans and prices.\ncanonical: https:\/\/www.elmohq.com\/pricing\nupdated: "2026-10-01"\n---\n\n# Pricing/,
 		);
+	});
+
+	it("takes the updated date from JSON-LD when there is no article date", () => {
+		const markdown = convert(
+			page(
+				"<main><h1>Glossary</h1></main>",
+				'<title>Glossary</title><script type="application/ld+json">{"@type":"FAQPage","dateModified":"2026-09-22"}</script>',
+			),
+			PAGE_URL,
+		);
+
+		expect(markdown).toContain('updated: "2026-09-22"');
 	});
 });

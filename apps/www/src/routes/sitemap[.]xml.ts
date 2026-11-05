@@ -25,9 +25,9 @@ import {
 	toolsInCategory,
 	toolsWithFeature,
 } from "@/lib/competitors";
-import { pageLastUpdated } from "@/lib/get-llm-text";
 import { getGitHubReleases } from "@/lib/github-releases";
 import { listLegalPages } from "@/lib/legal";
+import { newest, pageLastUpdated } from "@/lib/page-dates";
 import { source } from "@/lib/source";
 
 const SITE_URL = "https://www.elmohq.com";
@@ -46,14 +46,6 @@ interface SitemapEntry {
 
 // A directory page's data is as fresh as the most recently re-verified tool it covers.
 const directoryLastChecked = lastChecked(indexedCompetitors);
-
-function newest(items: { updated?: string }[]): string | undefined {
-	return items
-		.map((item) => item.updated)
-		.filter(Boolean)
-		.sort()
-		.at(-1);
-}
 
 const staticPages: SitemapEntry[] = [
 	{ path: "/", changefreq: "weekly", priority: 1.0, lastmod: "2026-11-03" },
@@ -100,7 +92,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 					changefreq: "monthly",
 					priority: 0.7,
 					// Real content date from frontmatter (schema normalizes to YYYY-MM-DD).
-					lastmod: page.data.updated ?? page.data.date,
+					lastmod: pageLastUpdated(page),
 				}));
 
 				const comparisonPages: SitemapEntry[] = competitors.filter(hasOwnPages).map((c) => ({
@@ -158,7 +150,12 @@ export const Route = createFileRoute("/sitemap.xml")({
 
 				// Editorial programmatic sections.
 				const glossaryPages: SitemapEntry[] = [
-					{ path: "/glossary", changefreq: "monthly", priority: 0.7, lastmod: newest(glossaryTerms) },
+					{
+						path: "/glossary",
+						changefreq: "monthly",
+						priority: 0.7,
+						lastmod: newest(glossaryTerms.map((item) => item.updated)),
+					},
 					...glossaryTerms.map((t) => ({
 						path: `/glossary/${t.slug}`,
 						changefreq: "monthly",
@@ -175,7 +172,12 @@ export const Route = createFileRoute("/sitemap.xml")({
 				}));
 
 				const aiSearchPages: SitemapEntry[] = [
-					{ path: "/ai-search", changefreq: "monthly", priority: 0.7, lastmod: newest(aiSearchEngines) },
+					{
+						path: "/ai-search",
+						changefreq: "monthly",
+						priority: 0.7,
+						lastmod: newest(aiSearchEngines.map((item) => item.updated)),
+					},
 					...aiSearchEngines.map((e) => ({
 						path: `/ai-search/${e.slug}`,
 						changefreq: "monthly",
@@ -185,7 +187,12 @@ export const Route = createFileRoute("/sitemap.xml")({
 				];
 
 				const aeoForPages: SitemapEntry[] = [
-					{ path: "/aeo-for", changefreq: "monthly", priority: 0.7, lastmod: newest(aeoVerticals) },
+					{
+						path: "/aeo-for",
+						changefreq: "monthly",
+						priority: 0.7,
+						lastmod: newest(aeoVerticals.map((item) => item.updated)),
+					},
 					{ path: "/aeo-for/profound-users", changefreq: "monthly", priority: 0.6, lastmod: "2026-10-08" },
 					...aeoVerticals.map((v) => ({
 						path: `/aeo-for/${v.slug}`,
@@ -195,16 +202,14 @@ export const Route = createFileRoute("/sitemap.xml")({
 					})),
 				];
 
-				const releases = await getGitHubReleases().catch(() => []);
+				const releases = await getGitHubReleases();
 				const listingDates: Record<string, string | undefined> = {
-					"/features": newest(productFeatures),
-					"/docs": newest(docsPages.map((page) => ({ updated: page.lastmod }))),
-					"/blog": newest(blogPages.map((page) => ({ updated: page.lastmod }))),
-					"/legal": newest(legalPages.map((page) => ({ updated: page.lastmod }))),
+					"/features": newest(productFeatures.map((item) => item.updated)),
+					"/docs": newest(docsPages.map((page) => page.lastmod)),
+					"/blog": newest(blogPages.map((page) => page.lastmod)),
+					"/legal": newest(legalPages.map((page) => page.lastmod)),
 					"/roadmap": upcomingData.lastUpdated,
-					"/changelog": newest(releases.map((release) => ({ updated: release.published_at.slice(0, 10) }))),
-					// Live uptime data, so it is current whenever it is fetched.
-					"/status": new Date().toISOString().slice(0, 10),
+					"/changelog": newest(releases.map((release) => release.published_at.slice(0, 10))),
 				};
 
 				const allPages: SitemapEntry[] = [

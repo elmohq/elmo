@@ -196,26 +196,6 @@ export function articleJsonLd({
 	});
 }
 
-export function webPageJsonLd({
-	name,
-	description,
-	path,
-	dateModified,
-}: {
-	name: string;
-	description: string;
-	path: string;
-	dateModified?: string;
-}) {
-	return jsonLd({
-		"@type": "WebPage",
-		name,
-		description,
-		url: canonicalUrl(path),
-		...(dateModified && { dateModified }),
-	});
-}
-
 export function blogPostingJsonLd({
 	title,
 	description,
@@ -268,9 +248,14 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
  * lift verbatim. Pair it with a visibly rendered FAQ (the <Faq> component, or
  * the blog FAQ block) so the markup and the content stay in sync.
  */
-export function faqJsonLd(items: { question: string; answer: string }[]) {
+export function faqJsonLd(
+	items: { question: string; answer: string }[],
+	page?: { path: string; dateModified?: string },
+) {
 	return jsonLd({
 		"@type": "FAQPage",
+		...(page && { url: canonicalUrl(page.path) }),
+		...(page?.dateModified && { dateModified: page.dateModified }),
 		mainEntity: items.map((item) => ({
 			"@type": "Question",
 			name: item.question,

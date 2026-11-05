@@ -88,7 +88,7 @@ export const serverLoader = createServerFn({
 		// from the client by createServerFn but the static import at the top of
 		// the file would still pull source.ts in via its top-level await.
 		const { source } = await import("@/lib/source");
-		const { pageLastUpdated } = await import("@/lib/get-llm-text");
+		const { pageLastUpdated } = await import("@/lib/page-dates");
 		const page = source.getPage(slugs);
 		if (!page) throw notFound();
 

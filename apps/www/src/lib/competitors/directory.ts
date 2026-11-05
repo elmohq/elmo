@@ -1,4 +1,5 @@
 import type { FaqItem } from "@/lib/faqs";
+import { newest } from "@/lib/page-dates";
 import { CATEGORY_NOUN, indefiniteArticle, isOpenSource } from "./content";
 import { competitors, getComparisonSlug, getPopularityRank, graveyardRanking } from "./data";
 import {
@@ -57,10 +58,7 @@ export function hasOwnPages(c: Competitor): boolean {
 export const competitorsWithOwnPages: Competitor[] = competitors.filter(hasOwnPages);
 
 export function lastChecked(tools: Competitor[]): string | undefined {
-	return tools
-		.map((tool) => tool.checkedAt)
-		.sort()
-		.at(-1);
+	return newest(tools.map((tool) => tool.checkedAt));
 }
 
 const byPopularity = (a: Competitor, b: Competitor) => getPopularityRank(a) - getPopularityRank(b);
