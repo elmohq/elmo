@@ -20,7 +20,7 @@ interface MarkdownLink {
 
 // Bounded repeats keep a crafted llms.txt (say, a long run of unclosed "[") from forcing quadratic backtracking.
 export function markdownLinks(markdown: string): MarkdownLink[] {
-	return [...markdown.matchAll(/\[([^\]\n]{1,500})\]\(([^)\s]{1,2000})(?:\s+"[^"\n]{0,500}")?\)/g)].map((match) => ({
+	return [...markdown.matchAll(/\[([^[\]\n]{1,500})\]\(([^)\s]{1,2000})(?:\s+"[^"\n]{0,500}")?\)/g)].map((match) => ({
 		text: match[1] as string,
 		url: match[2] as string,
 	}));
