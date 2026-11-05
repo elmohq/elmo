@@ -87,6 +87,10 @@ export class Fetcher {
 		return this.options.requestLimit;
 	}
 
+	stopped(origin: string): boolean {
+		return this.hosts.get(origin)?.stopped === true;
+	}
+
 	setRobots(origin: string, robots: ParsedRobots): void {
 		this.host(origin).robots = robots;
 	}

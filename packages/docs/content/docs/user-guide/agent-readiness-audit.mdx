@@ -48,7 +48,9 @@ pass `--fail-under`, for example `--fail-under 80`.
 ## What It Checks
 
 Pages are sampled from your sitemap, one from each top-level section, largest sections first, falling
-back to the homepage's links. The sample is the same on every run.
+back to the homepage's links. Legal, careers, and translated pages are only sampled when nothing else
+is left. If your homepage answers on one host but every other page redirects to another (such as
+`www`), the audit follows your pages there. The sample is the same on every run.
 
 **Reach: Can Agents Get In?** `robots.txt`, rules for AI search crawlers, AI user agents, and AI
 training crawlers, Content Signals, whether bot protection blocks AI user agents, `noindex`, snippet
@@ -74,7 +76,9 @@ run, usually because the request budget ran out.
 
 Each site gets a score out of 100: a pass counts fully, a warning half, and a failure nothing.
 Optional (`i`) and unchecked (`-`) results are left out, so a site isn't penalized for checks that
-don't apply to it. With more than one site, the overall score is their average.
+don't apply to it. The exception is a site that blocks the audit, through robots.txt or by refusing
+requests: agents hit the same wall, so its unchecked results count as failures. With more than one
+site, the overall score is their average.
 
 ## ElmoBot
 
