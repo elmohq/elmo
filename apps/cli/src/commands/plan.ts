@@ -155,7 +155,7 @@ async function filesFor(p: string): Promise<string[]> {
 	return stat.isDirectory() ? walkTextFiles(resolved) : [resolved];
 }
 
-async function readFilesWithin(paths: string[], maxBytes: number): Promise<string[]> {
+export async function readFilesWithin(paths: string[], maxBytes: number): Promise<string[]> {
 	const parts: string[] = [];
 	let budget = maxBytes;
 	for (const file of (await Promise.all(paths.map(filesFor))).flat()) {
@@ -185,6 +185,8 @@ async function assembleContext(paths: string[], options: PlanOptions, maxBytes: 
 	return parts.join("\n\n");
 }
 
+// Dirents describe the link itself, so symlinked files and directories are skipped rather than
+// followed: a link inside the selected tree could otherwise send a file from outside it to the provider.
 async function walkTextFiles(dir: string, depth = 0): Promise<string[]> {
 	if (depth > 6) return [];
 	const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
@@ -194,7 +196,7 @@ async function walkTextFiles(dir: string, depth = 0): Promise<string[]> {
 		const full = path.join(dir, entry.name);
 		if (entry.isDirectory()) {
 			out.push(...(await walkTextFiles(full, depth + 1)));
-		} else if (TEXT_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+		} else if (entry.isFile() && TEXT_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
 			out.push(full);
 		}
 	}
