@@ -56,14 +56,14 @@ describe("markdown for pages without an MDX source", () => {
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Content-Type")).toBe(MARKDOWN);
 		expect(response.headers.get("Vary")).toBe("Accept");
-		expect(await response.text()).toBe("# Pricing\n\n[Docs](https://www.elmohq.com/docs)");
+		expect(await response.text()).toMatch(/\n---\n\n# Pricing\n\n\[Docs\]\(https:\/\/www.elmohq.com\/docs\)$/);
 	});
 
 	it("serves the same markdown under a .md suffix, ignoring Accept", async () => {
 		const { handle } = fakeApp();
 		const response = await handle(get("/pricing.md", CHROME_ACCEPT));
 		expect(response.headers.get("Content-Type")).toBe(MARKDOWN);
-		expect(await response.text()).toMatch(/^# Pricing/);
+		expect(await response.text()).toMatch(/^---\ntitle: "Pricing"[\s\S]*\n# Pricing/);
 	});
 
 	it.each([
@@ -74,7 +74,9 @@ describe("markdown for pages without an MDX source", () => {
 		const response = await handle(get(path, accept));
 
 		expect(response.headers.get("Content-Type")).toBe(MARKDOWN);
-		expect(await response.text()).toBe(llmsTxt);
+		const markdown = await response.text();
+		expect(markdown.startsWith("---\n")).toBe(true);
+		expect(markdown.endsWith(llmsTxt)).toBe(true);
 		expect(seen.every((request) => new URL(request.url).pathname !== "/")).toBe(true);
 	});
 

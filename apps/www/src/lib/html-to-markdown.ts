@@ -4,6 +4,7 @@ import rehypeRemark from "rehype-remark";
 import remarkGfm from "remark-gfm";
 import remarkStringify from "remark-stringify";
 import { unified } from "unified";
+import { type MarkdownMeta, withFrontmatter } from "@/lib/frontmatter";
 
 const DROPPED_TAGS = new Set(["script", "style", "noscript", "template", "svg", "canvas", "iframe", "dialog"]);
 
@@ -60,9 +61,26 @@ function clean(parent: Parents, origin: string): void {
 	}
 }
 
+function headMeta(head: Element | undefined): Omit<MarkdownMeta, "title"> {
+	const meta: Omit<MarkdownMeta, "title"> = {};
+	for (const child of head?.children ?? []) {
+		if (!isElement(child)) continue;
+		const { name, property, content, rel, href } = child.properties;
+		if (child.tagName === "meta" && name === "description" && typeof content === "string") meta.description = content;
+		if (child.tagName === "meta" && property === "article:modified_time" && typeof content === "string") {
+			meta.lastUpdated = content;
+		}
+		if (child.tagName === "link" && Array.isArray(rel) && rel.includes("canonical") && typeof href === "string") {
+			meta.canonical = href;
+		}
+	}
+	return meta;
+}
+
 export function htmlToMarkdown(html: string, pageUrl: string): string {
 	const document = parser.parse(html) as Root;
 	const title = findFirst(document, "title");
+	const meta = { title: title ? textOf(title) : undefined, ...headMeta(findFirst(document, "head")) };
 	const content = findFirst(document, "main") ?? findFirst(document, "body") ?? document;
 
 	clean(content, new URL(pageUrl).origin);
@@ -70,5 +88,5 @@ export function htmlToMarkdown(html: string, pageUrl: string): string {
 	const heading = title && !findFirst(content, "h1") ? `# ${textOf(title)}\n\n` : "";
 	const body = renderer.stringify(renderer.runSync({ type: "root", children: content.children }));
 
-	return `${heading}${body}`.replace(/\n{3,}/g, "\n\n").trim();
+	return withFrontmatter(`${heading}${body}`.replace(/\n{3,}/g, "\n\n").trim(), meta);
 }
