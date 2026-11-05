@@ -417,11 +417,11 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 	}));
 
 	const citationsByPrompt = groupByPrompt(
-		pages30.filter((row) => row.url),
+		pages30,
 		(row): DigestCitation => ({
 			title: row.title,
 			domain: row.domain,
-			url: row.url as string,
+			url: row.url,
 			count: row.count,
 			owner: ownerOf(row.domain),
 		}),
