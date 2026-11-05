@@ -45,10 +45,23 @@ function plural(n: number, noun: string): string {
 	return `${n} ${n === 1 ? noun : `${noun}s`}`;
 }
 
+// Evidence, URLs, and errors come from the audited site, so control characters are dropped before
+// printing: an escape sequence in a robots.txt could otherwise rewrite the terminal or its clipboard.
+function isControl(character: string): boolean {
+	const code = character.codePointAt(0) ?? 0;
+	return code < 0x20 || (code >= 0x7f && code <= 0x9f);
+}
+
+function inert(text: string | undefined): string {
+	return [...(text ?? "")]
+		.map((character) => (isControl(character) ? (character === "\n" ? " " : "") : character))
+		.join("");
+}
+
 function renderCheck(check: CheckResult): string[] {
-	const lines = [`  ${STATUS_MARKS[check.status]} ${pc.bold(check.title)}  ${pc.dim(check.evidence)}`];
+	const lines = [`  ${STATUS_MARKS[check.status]} ${pc.bold(check.title)}  ${pc.dim(inert(check.evidence))}`];
 	if (check.fix) lines.push(`      ${pc.cyan("Fix:")} ${check.fix}`);
-	for (const url of check.pages?.slice(0, 3) ?? []) lines.push(`      ${pc.dim(url)}`);
+	for (const url of check.pages?.slice(0, 3) ?? []) lines.push(`      ${pc.dim(inert(url))}`);
 	if ((check.pages?.length ?? 0) > 3) lines.push(`      ${pc.dim(`…and ${(check.pages?.length ?? 0) - 3} more`)}`);
 	return lines;
 }
@@ -56,16 +69,17 @@ function renderCheck(check: CheckResult): string[] {
 function renderHostProblems(hosts: HostResolution[]): string[] {
 	return hosts.flatMap((host) => {
 		if (host.outcome === "external")
-			return [`${pc.yellow("!")} ${host.host} redirects off your domains, to ${host.finalOrigin}.`];
-		if (host.outcome === "unreachable") return [`${pc.red("✗")} ${host.host} couldn't be reached: ${host.error}`];
+			return [`${pc.yellow("!")} ${inert(host.host)} redirects off your domains, to ${inert(host.finalOrigin)}.`];
+		if (host.outcome === "unreachable")
+			return [`${pc.red("✗")} ${inert(host.host)} couldn't be reached: ${inert(host.error)}`];
 		return [];
 	});
 }
 
 function renderSite(site: SiteReport): string[] {
-	const lines = ["", pc.bold(pc.underline(site.origin))];
+	const lines = ["", pc.bold(pc.underline(inert(site.origin)))];
 	if (site.aliases.length > 0)
-		lines.push(pc.dim(`Also reached from ${site.aliases.map((alias) => alias.host).join(", ")}`));
+		lines.push(pc.dim(`Also reached from ${site.aliases.map((alias) => inert(alias.host)).join(", ")}`));
 	lines.push(pc.dim(`Sampled ${plural(site.pages.length, "page")}`));
 	for (const group of Object.keys(GROUP_TITLES) as CheckGroup[]) {
 		const checks = site.checks.filter((check) => check.group === group);
@@ -106,9 +120,9 @@ export async function runAudit(url: string, options: AuditOptions): Promise<void
 	const spinner = json || !process.stdout.isTTY ? undefined : p.spinner();
 	spinner?.start(`Auditing ${url}`);
 	const onProgress = (event: AuditProgress) => {
-		if (event.type === "resolving") spinner?.message(`Resolving ${event.host}`);
-		if (event.type === "auditing") spinner?.message(`Auditing ${event.origin}`);
-		if (event.type === "fetch") spinner?.message(`${event.requestsUsed} requests: ${event.url}`);
+		if (event.type === "resolving") spinner?.message(`Resolving ${inert(event.host)}`);
+		if (event.type === "auditing") spinner?.message(`Auditing ${inert(event.origin)}`);
+		if (event.type === "fetch") spinner?.message(`${event.requestsUsed} requests: ${inert(event.url)}`);
 	};
 
 	let report: SiteAuditReport;
