@@ -1,5 +1,7 @@
 import type { InferPageType } from "fumadocs-core/source";
 import type { blogSource } from "@/lib/blog";
+import { withFrontmatter } from "@/lib/frontmatter";
+import { pageLastUpdated } from "@/lib/page-dates";
 import { canonicalUrl } from "@/lib/seo";
 import type { source } from "@/lib/source";
 
@@ -15,6 +17,17 @@ export async function getLLMText(page: MarkdownPage) {
 	return `# ${page.data.title} (${page.url})
 
 ${processed}`;
+}
+
+export async function getPageMarkdown(page: MarkdownPage) {
+	const text = await getLLMText(page);
+	if (page.type === "openapi") return text;
+	return withFrontmatter(text, {
+		title: page.data.title,
+		description: page.data.description,
+		canonical: canonicalUrl(page.url),
+		updated: pageLastUpdated(page),
+	});
 }
 
 export const MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8";

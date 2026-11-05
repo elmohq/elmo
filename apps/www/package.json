@@ -8,7 +8,7 @@
 		"postinstall": "fumadocs-mdx",
 		"codegen": "fumadocs-mdx",
 		"dev": "node scripts/build-agent-skills.mjs && vite dev --port 3001",
-		"build": "node scripts/build-agent-skills.mjs && vite build && node ../../scripts/check-server-bundle.mjs .",
+		"build": "node scripts/build-agent-skills.mjs && vite build && node ../../scripts/check-server-bundle.mjs . && node scripts/check-sitemap.mjs",
 		"start": "node .output/server/index.mjs",
 		"check-types": "tsc --noEmit",
 		"test": "vitest run",
@@ -51,6 +51,7 @@
 		"tslib": "catalog:",
 		"tw-animate-css": "catalog:",
 		"unified": "^11.0.5",
+		"yaml": "^2.8.3",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

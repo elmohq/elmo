@@ -717,6 +717,9 @@ importers:
       unified:
         specifier: ^11.0.5
         version: 11.0.5
+      yaml:
+        specifier: ^2.8.3
+        version: 2.9.1
       zod:
         specifier: 'catalog:'
         version: 4.6.7
