@@ -32,7 +32,7 @@ interface ServeOptions {
 type RouteTable = Record<string, Route | ((req: http.IncomingMessage) => Route)>;
 
 function lookup(table: RouteTable, req: http.IncomingMessage, fallback?: Route): Route | undefined {
-	const entry = table[(req.url ?? "/").split("?")[0] as string];
+	const entry = new Map(Object.entries(table)).get((req.url ?? "/").split("?")[0] as string);
 	return (typeof entry === "function" ? entry(req) : entry) ?? fallback;
 }
 

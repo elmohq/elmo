@@ -63,6 +63,13 @@ function collectJsonLd(document: Document): Record<string, unknown>[] {
 	return out;
 }
 
+// Matched by attribute rather than a `label[for="…"]` selector, so an id never has to be escaped into CSS.
+function labelFor(element: Element, document: Document): Element | undefined {
+	const id = element.getAttribute("id");
+	if (!id) return undefined;
+	return [...document.querySelectorAll("label[for]")].find((label) => label.getAttribute("for") === id);
+}
+
 function accessibleName(element: El, document: Document): string {
 	const labelledBy = element.getAttribute("aria-labelledby");
 	if (labelledBy) {
@@ -78,11 +85,8 @@ function accessibleName(element: El, document: Document): string {
 		element.getAttribute("title") ??
 		(element.tagName === "INPUT" ? element.getAttribute("value") : null);
 	if (direct?.trim()) return direct.trim();
-	const id = element.getAttribute("id");
-	if (id) {
-		const label = document.querySelector(`label[for="${id.replace(/"/g, '\\"')}"]`);
-		if (label?.textContent?.trim()) return label.textContent.trim();
-	}
+	const label = labelFor(element, document);
+	if (label?.textContent?.trim()) return label.textContent.trim();
 	if (element.closest("label")?.textContent?.trim()) return element.closest("label")?.textContent?.trim() ?? "";
 	const imageAlt = [...element.querySelectorAll("img[alt], svg[aria-label]")]
 		.map((img) => img.getAttribute("alt") ?? img.getAttribute("aria-label") ?? "")
@@ -105,7 +109,7 @@ const BUTTON_INPUTS = ["submit", "button", "reset", "image"];
 function hasLabel(element: Element, document: Document): boolean {
 	if (element.getAttribute("aria-label") || element.getAttribute("aria-labelledby") || element.closest("label"))
 		return true;
-	return Boolean(element.id && document.querySelector(`label[for="${element.id.replace(/"/g, '\\"')}"]`));
+	return labelFor(element, document) !== undefined;
 }
 
 function collectControls(document: Document): ParsedPage["controls"] {
@@ -141,10 +145,9 @@ function collectHiddenInstructions(document: Document): string[] {
 	return [...found];
 }
 
-function hasJsRedirectStub(html: string, text: string): boolean {
+function hasJsRedirectStub(inlineScripts: string, text: string): boolean {
 	if (text.length >= 200) return false;
-	const scripts = html.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi)?.join("\n") ?? "";
-	return /\b(window\.|document\.)?location(\.href)?\s*=|location\.(replace|assign)\(/.test(scripts);
+	return /\b(window\.|document\.)?location(\.href)?\s*=|location\.(replace|assign)\(/.test(inlineScripts);
 }
 
 export function parsePage(url: string, html: string): ParsedPage {
@@ -159,6 +162,9 @@ export function parsePage(url: string, html: string): ParsedPage {
 
 	// Read before scripts are stripped below: JSON-LD lives in script tags.
 	const jsonLd = collectJsonLd(document);
+	const inlineScripts = [...document.querySelectorAll("script:not([src])")]
+		.map((script) => script.textContent ?? "")
+		.join("\n");
 	for (const node of document.querySelectorAll("script, style, noscript, template, svg")) node.remove();
 	const text = ((document.body as El | null)?.textContent ?? "").replace(/\s+/g, " ").trim();
 	const landmarks = Object.entries(LANDMARK_ROLES)
@@ -178,7 +184,7 @@ export function parsePage(url: string, html: string): ParsedPage {
 			.join(", ")
 			.toLowerCase(),
 		metaRefresh: document.querySelector('meta[http-equiv="refresh" i]') !== null,
-		jsRedirectStub: hasJsRedirectStub(html, text),
+		jsRedirectStub: hasJsRedirectStub(inlineScripts, text),
 		text,
 		htmlLength: html.length,
 		headings: [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
