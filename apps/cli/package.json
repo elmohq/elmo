@@ -36,14 +36,17 @@
 		"@clack/prompts": "^1.8.1",
 		"commander": "^15.0.0",
 		"dotenv": "18.0.9",
+		"linkedom": "catalog:",
 		"picocolors": "^1.1.1",
 		"posthog-node": "catalog:",
+		"robots-parser": "catalog:",
 		"semver": "^7.8.5"
 	},
 	"devDependencies": {
 		"@types/node": "catalog:",
 		"@types/semver": "^7.8.0",
 		"@workspace/config": "workspace:*",
+		"@workspace/site-audit": "workspace:*",
 		"rolldown": "^1.2.16",
 		"typescript": "catalog:",
 		"vitest": "catalog:"

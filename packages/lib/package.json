@@ -77,7 +77,7 @@
 		"dataforseo-client": "^2.1.10",
 		"drizzle-orm": "catalog:",
 		"jose": "6.2.14",
-		"linkedom": "^0.18.14",
+		"linkedom": "catalog:",
 		"olostep": "^1.2.2",
 		"pg": "catalog:",
 		"zod": "catalog:"
