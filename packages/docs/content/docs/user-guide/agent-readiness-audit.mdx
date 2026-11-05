@@ -7,7 +7,8 @@ description: Check how well AI agents and crawlers can reach, read, and understa
 on its own: you don't need an Elmo instance or Docker.
 
 ```bash
-npx @elmohq/cli audit example.com
+npm install -g @elmohq/cli
+elmo audit example.com
 ```
 
 ## Alternate Domains
@@ -15,17 +16,19 @@ npx @elmohq/cli audit example.com
 Pass every other domain your brand uses with `--domain`:
 
 ```bash
-npx @elmohq/cli audit example.com --domain example.co --domain docs.example.com
+elmo audit example.com --domain example.co --domain docs.example.com
 ```
 
 Each domain is resolved first, then handled by where it lands:
 
-| Lands on | Treated As |
+| Lands on | Treated as |
 | --- | --- |
 | One of your other domains | An alias. Checked for a single permanent (301 or 308) redirect over HTTPS. |
 | Its own content | A site of its own, audited in full. |
 | A domain you didn't list | Flagged as redirecting off your domains. |
 | Nowhere | Reported as unreachable. |
+
+The site you pass first is always audited wherever it lands, even on a domain you didn't list.
 
 ## Options
 
@@ -37,7 +40,8 @@ Each domain is resolved first, then handled by where it lands:
 | `--delay <ms>` | `1000` | Minimum gap between requests to the same site |
 | `--format <format>` | `text` | `text`, or `json` for the full report |
 
-The command exits with status `1` when any check fails, so it can gate a CI job.
+The command exits with status `1` when any check fails or no site could be audited, so it can gate
+a CI job.
 
 ## What It Checks
 
@@ -46,7 +50,8 @@ links. The sample is the same on every run.
 
 **Reach: Can Agents Get In?** `robots.txt`, rules for AI search crawlers, AI user agents, and AI
 training crawlers, Content Signals, whether bot protection blocks AI user agents, `noindex`, snippet
-restrictions (`nosnippet`, `max-snippet`), pages behind a sign-in, meta-refresh and JavaScript redirects, alternate-domain redirects, and real 404s.
+restrictions (`nosnippet`, `max-snippet`), pages behind a sign-in, meta-refresh and JavaScript
+redirects, alternate-domain redirects, and real 404s.
 
 **Read: Can Agents Read It?** Text and headings without JavaScript, page size in tokens, markdown via
 `Accept: text/markdown` and at `.md` URLs, markdown alternate links, markdown frontmatter and code
@@ -75,8 +80,10 @@ sites it checks:
 
 - At most 50 requests per run by default, made one at a time per site, at least one second apart.
 - It honors `Crawl-delay`, backs off on `429` and `503` responses, and stops after repeated errors.
-- It reads `robots.txt` and skips anything that disallows `ElmoBot`. A site that disallows the
-  homepage for `ElmoBot` gets no requests that use other bots' user agents either.
+- It fetches each domain's homepage once to see where it redirects. After that it reads the site's
+  `robots.txt` and skips any page that disallows `ElmoBot`. A site that disallows the homepage for
+  `ElmoBot` gets no requests that use other bots' user agents either, and a `robots.txt` that fails
+  with a server error is treated as disallowing everything.
 - It only fetches public HTTPS URLs.
 
 To keep ElmoBot off your site entirely:

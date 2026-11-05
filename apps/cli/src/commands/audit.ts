@@ -33,16 +33,20 @@ const STATUS_MARKS: Record<CheckStatus, string> = {
 	not_checked: pc.dim("-"),
 };
 
-function positiveInt(value: string | undefined, flag: string): number | undefined {
+function wholeNumber(value: string | undefined, flag: string, min: number): number | undefined {
 	if (value === undefined) return undefined;
 	const parsed = Number(value);
-	if (!Number.isInteger(parsed) || parsed < 0) throw new Error(`${flag} must be a non-negative whole number.`);
+	if (!Number.isInteger(parsed) || parsed < min) throw new Error(`${flag} must be a whole number of at least ${min}.`);
 	return parsed;
+}
+
+function plural(n: number, noun: string): string {
+	return `${n} ${n === 1 ? noun : `${noun}s`}`;
 }
 
 function renderCheck(check: CheckResult): string[] {
 	const lines = [`  ${STATUS_MARKS[check.status]} ${pc.bold(check.title)}  ${pc.dim(check.evidence)}`];
-	if (check.fix && check.status !== "pass") lines.push(`      ${pc.cyan("Fix:")} ${check.fix}`);
+	if (check.fix) lines.push(`      ${pc.cyan("Fix:")} ${check.fix}`);
 	for (const url of check.pages?.slice(0, 3) ?? []) lines.push(`      ${pc.dim(url)}`);
 	if ((check.pages?.length ?? 0) > 3) lines.push(`      ${pc.dim(`…and ${(check.pages?.length ?? 0) - 3} more`)}`);
 	return lines;
@@ -61,7 +65,7 @@ function renderSite(site: SiteReport): string[] {
 	const lines = ["", pc.bold(pc.underline(site.origin))];
 	if (site.aliases.length > 0)
 		lines.push(pc.dim(`Also reached from ${site.aliases.map((alias) => alias.host).join(", ")}`));
-	lines.push(pc.dim(`Sampled ${site.pages.length} page(s)`));
+	lines.push(pc.dim(`Sampled ${plural(site.pages.length, "page")}`));
 	for (const group of Object.keys(GROUP_TITLES) as CheckGroup[]) {
 		const checks = site.checks.filter((check) => check.group === group);
 		if (checks.length > 0) lines.push("", pc.bold(GROUP_TITLES[group]), ...checks.flatMap(renderCheck));
@@ -71,7 +75,7 @@ function renderSite(site: SiteReport): string[] {
 	lines.push("");
 	if (site.score !== null) lines.push(pc.bold(`Score: ${site.score}/100`));
 	lines.push(
-		`${pc.green(`${pass} passed`)}, ${pc.yellow(`${warn} warnings`)}, ${pc.red(`${fail} failed`)}${unchecked}`,
+		`${pc.green(`${pass} passed`)}, ${pc.yellow(plural(warn, "warning"))}, ${pc.red(`${fail} failed`)}${unchecked}`,
 	);
 	return lines;
 }
@@ -104,9 +108,9 @@ export async function runAudit(url: string, options: AuditOptions): Promise<void
 		website: url,
 		additionalDomains: options.domain,
 		budget: {
-			pages: positiveInt(options.pages, "--pages"),
-			delayMs: positiveInt(options.delay, "--delay"),
-			requests: positiveInt(options.maxRequests, "--max-requests"),
+			pages: wholeNumber(options.pages, "--pages", 1),
+			delayMs: wholeNumber(options.delay, "--delay", 0),
+			requests: wholeNumber(options.maxRequests, "--max-requests", 1),
 		},
 		onProgress,
 	});
