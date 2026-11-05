@@ -58,7 +58,9 @@ async function main() {
 			await runUpgrade(cmd.optsWithGlobals<UpgradeOptions>(), version);
 		});
 
-	program
+	const lab = program.command("lab").description("one-off AEO tools that don't need a running Elmo instance");
+
+	lab
 		.command("audit")
 		.description("check how well AI agents can reach, read, and understand a website")
 		.argument("<url>", "the site to audit, e.g. example.com")

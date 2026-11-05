@@ -3,12 +3,12 @@ title: Agent Readiness Audit
 description: Check how well AI agents and crawlers can reach, read, and understand your website, from the Elmo CLI.
 ---
 
-`elmo audit` checks a website the way AI crawlers and agents see it, then lists what to fix. It runs
+`elmo lab audit` checks a website the way AI crawlers and agents see it, then lists what to fix. It runs
 on its own: you don't need an Elmo instance or Docker.
 
 ```bash
 npm install -g @elmohq/cli
-elmo audit example.com
+elmo lab audit example.com
 ```
 
 ## Alternate Domains
@@ -16,7 +16,7 @@ elmo audit example.com
 Pass every other domain your brand uses with `--domain`:
 
 ```bash
-elmo audit example.com --domain example.co --domain docs.example.com
+elmo lab audit example.com --domain example.co --domain docs.example.com
 ```
 
 Each domain is resolved first, then handled by where it lands:
