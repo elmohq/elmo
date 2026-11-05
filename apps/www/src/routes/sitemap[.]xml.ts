@@ -209,6 +209,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 					"/blog": newest(blogPages.map((page) => page.lastmod)),
 					"/legal": newest(legalPages.map((page) => page.lastmod)),
 					"/roadmap": upcomingData.lastUpdated,
+					"/status": new Date().toISOString().slice(0, 10),
 					"/changelog": newest(releases.map((release) => release.published_at.slice(0, 10))),
 				};
 

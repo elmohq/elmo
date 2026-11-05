@@ -11,11 +11,8 @@ import { fileURLToPath } from "node:url";
 
 const SERVER = fileURLToPath(new URL("../.output/server/index.mjs", import.meta.url));
 
-// Dated at request time from live data a build can't reach, or deliberately undated.
-const EXEMPT = new Map([
-	["/status", "live uptime data"],
-	["/changelog", "dated from GitHub releases when served"],
-]);
+// Dated from GitHub releases when served, which a build can't reach.
+const EXEMPT = new Set(["/changelog"]);
 
 function freePort() {
 	return new Promise((resolve, reject) => {
