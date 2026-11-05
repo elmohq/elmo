@@ -63,7 +63,7 @@ describe("markdown for pages without an MDX source", () => {
 		const { handle } = fakeApp();
 		const response = await handle(get("/pricing.md", CHROME_ACCEPT));
 		expect(response.headers.get("Content-Type")).toBe(MARKDOWN);
-		expect(await response.text()).toMatch(/^---\ntitle: "Pricing"[\s\S]*\n# Pricing/);
+		expect(await response.text()).toMatch(/^---\ntitle: Pricing\n[\s\S]*\n# Pricing/);
 	});
 
 	it.each([

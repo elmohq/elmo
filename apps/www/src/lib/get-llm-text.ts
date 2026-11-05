@@ -6,11 +6,9 @@ import type { source } from "@/lib/source";
 
 type MarkdownPage = InferPageType<typeof source> | InferPageType<typeof blogSource>;
 
-/** A real per-page date: a blog post's `updated` or `date`, a doc's last commit, or the API spec's for API pages. */
 export function pageLastUpdated(page: MarkdownPage): string | undefined {
-	if (page.type === "openapi") return __API_SPEC_UPDATED__ ?? undefined;
-	const data = page.data as { updated?: string; date?: string; lastModified?: Date };
-	return data.updated ?? data.date ?? data.lastModified?.toISOString().slice(0, 10);
+	const data = page.data as { updated?: string; date?: string };
+	return data.updated ?? data.date;
 }
 
 export async function getLLMText(page: MarkdownPage) {
@@ -25,7 +23,6 @@ export async function getLLMText(page: MarkdownPage) {
 ${processed}`;
 }
 
-/** One page served on its own, so unlike an llms-full.txt entry it opens with frontmatter. */
 export async function getPageMarkdown(page: MarkdownPage) {
 	const text = await getLLMText(page);
 	if (page.type === "openapi") return text;
@@ -33,7 +30,7 @@ export async function getPageMarkdown(page: MarkdownPage) {
 		title: page.data.title,
 		description: page.data.description,
 		canonical: canonicalUrl(page.url),
-		lastUpdated: pageLastUpdated(page),
+		updated: pageLastUpdated(page),
 	});
 }
 

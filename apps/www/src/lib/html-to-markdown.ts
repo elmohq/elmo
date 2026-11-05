@@ -4,7 +4,7 @@ import rehypeRemark from "rehype-remark";
 import remarkGfm from "remark-gfm";
 import remarkStringify from "remark-stringify";
 import { unified } from "unified";
-import { type MarkdownMeta, withFrontmatter } from "@/lib/frontmatter";
+import { withFrontmatter } from "@/lib/frontmatter";
 
 const DROPPED_TAGS = new Set(["script", "style", "noscript", "template", "svg", "canvas", "iframe", "dialog"]);
 
@@ -61,14 +61,14 @@ function clean(parent: Parents, origin: string): void {
 	}
 }
 
-function headMeta(head: Element | undefined): Omit<MarkdownMeta, "title"> {
-	const meta: Omit<MarkdownMeta, "title"> = {};
+function headMeta(head: Element | undefined): Record<string, string> {
+	const meta: Record<string, string> = {};
 	for (const child of head?.children ?? []) {
 		if (!isElement(child)) continue;
 		const { name, property, content, rel, href } = child.properties;
 		if (child.tagName === "meta" && name === "description" && typeof content === "string") meta.description = content;
 		if (child.tagName === "meta" && property === "article:modified_time" && typeof content === "string") {
-			meta.lastUpdated = content;
+			meta.updated = content;
 		}
 		if (child.tagName === "link" && Array.isArray(rel) && rel.includes("canonical") && typeof href === "string") {
 			meta.canonical = href;

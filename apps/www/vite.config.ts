@@ -6,7 +6,6 @@ import { embedBinaries } from "@workspace/og/vite-plugin";
 import mdx from "fumadocs-mdx/vite";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
-import { lastCommitDate } from "./git-dates";
 import pkg from "./package.json" with { type: "json" };
 import * as MdxConfig from "./source.config";
 
@@ -20,12 +19,6 @@ export default defineConfig({
 		// Injected from this package's manifest, which shares the fixed
 		// workspace release version, so version badges auto-update on release.
 		__APP_VERSION__: JSON.stringify(pkg.version),
-		// The API reference pages are generated from this spec, so its last change dates them.
-		__API_SPEC_UPDATED__: JSON.stringify(
-			lastCommitDate(fileURLToPath(new URL("../../packages/api-spec/src/openapi.json", import.meta.url)))
-				?.toISOString()
-				.slice(0, 10) ?? null,
-		),
 	},
 	resolve: {
 		tsconfigPaths: true,

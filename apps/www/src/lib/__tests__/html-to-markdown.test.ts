@@ -3,7 +3,6 @@ import { htmlToMarkdown as convert } from "@/lib/html-to-markdown";
 
 const PAGE_URL = "https://www.elmohq.com/pricing";
 
-/** The converted body, without the frontmatter every document opens with. */
 function htmlToMarkdown(html: string, url: string): string {
 	return convert(html, url).replace(/^---\n[\s\S]*?\n---\n\n/, "");
 }
@@ -93,7 +92,7 @@ describe("htmlToMarkdown", () => {
 		);
 
 		expect(markdown).toMatch(
-			/^---\ntitle: "Pricing · Elmo"\ndescription: "Plans and prices."\ncanonical: "https:\/\/www.elmohq.com\/pricing"\nlast_updated: "2026-10-01"\n---\n\n# Pricing/,
+			/^---\ntitle: Pricing · Elmo\ndescription: Plans and prices.\ncanonical: https:\/\/www.elmohq.com\/pricing\nupdated: 2026-10-01\n---\n\n# Pricing/,
 		);
 	});
 });
