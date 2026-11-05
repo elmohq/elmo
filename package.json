@@ -2,7 +2,7 @@
   "name": "elmo",
   "private": true,
   "license": "MIT",
-  "packageManager": "pnpm@12.4.1",
+  "packageManager": "pnpm@12.16.1",
   "engines": {
     "node": "24.x"
   },
