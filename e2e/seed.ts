@@ -1,12 +1,6 @@
 /**
- * E2E Test Database Seeder
- *
- * Seeds realistic fixture data into every database the E2E stack stands up, or
- * into the one a DATABASE_URL names.
- *
- * SAFETY: the database URLs (see fixtures.ts) are built against localhost to
- * prevent accidentally running this against a production database (it DELETEs
- * all data).
+ * Wipes and reseeds the E2E databases. Their URLs are built against localhost
+ * (see fixtures.ts) so this can never reach production.
  *
  * Usage: tsx seed.ts
  */
@@ -55,7 +49,6 @@ const RUN_IDS = [
   "00000000-0000-0000-0000-200000000008",
 ];
 
-
 /** Reproduced from better-auth so keys can be seeded without a running app. */
 function hashApiKey(token: string): string {
   return createHash("sha256").update(token).digest("base64url");
@@ -66,10 +59,9 @@ function toPermissions(scopes: readonly string[]): Record<string, string[]> {
 }
 
 /**
- * The rate limit is production's rather than an inflated test value, so the
- * suite exercises the ceiling callers actually get. Only the brand narrowing
- * lives in metadata, which anyone with a session can write and so may never
- * grant anything.
+ * Production's rate limit, so the suite exercises the real ceiling. Only the
+ * brand narrowing lives in metadata: anyone with a session can write it, so it
+ * may never grant anything.
  */
 async function seedApiKeys(client: pg.Client): Promise<void> {
   const [{ exists }] = (
@@ -108,9 +100,7 @@ async function seedApiKeys(client: pg.Client): Promise<void> {
   console.log(`  Created ${keys.length} API keys`);
 }
 
-
-/** Inert outside cloud mode, where entitlements resolve to unlimited whatever
- * is stored here. */
+/** Inert outside cloud, where entitlements are unlimited whatever is stored. */
 async function seedBillingTenants(client: pg.Client): Promise<void> {
   for (const [orgId, brandId, name, website] of [
     [CAPPED_ORG_ID, CAPPED_BRAND_ID, "Capped Co", "https://capped.example.com"],
@@ -149,8 +139,7 @@ async function seedBillingTenants(client: pg.Client): Promise<void> {
   );
 }
 
-/** So the API test exercises the populated path, not only "nothing generated
- * yet". Shaped like what the generator persists. */
+/** So the API test covers a populated report, shaped like what the generator persists. */
 async function seedOpportunities(client: pg.Client): Promise<void> {
   const report = {
     summary: [
@@ -245,8 +234,7 @@ async function seed(connectionString: string) {
     await client.query("DELETE FROM rollup_dirty");
     await client.query("DELETE FROM cited_pages");
 
-    // Signup provisions the "default" org as well, but the seed re-creates the
-    // brand independently — ensure the org exists for the NOT NULL FK.
+    // Signup provisions this org too, but the brand's foreign key needs it first.
     await client.query(
       `INSERT INTO organization (id, name, slug, created_at)
        VALUES ($1, $2, $1, NOW()) ON CONFLICT (id) DO NOTHING`,
@@ -588,8 +576,7 @@ async function seed(connectionString: string) {
     }
     console.log("  Created 4 reports (1 completed, 1 pending, 1 processing, 1 failed)");
 
-    // The E2E user is not a member of this tenant. It must remain hidden from
-    // org-scoped views while still being visible through the admin API key.
+    // Hidden from the E2E user's org-scoped views, visible to the admin API key.
     await client.query(
       `INSERT INTO organization (id, name, slug, created_at)
        VALUES ($1, 'Nike', $1, NOW()) ON CONFLICT (id) DO NOTHING`,
@@ -667,12 +654,7 @@ async function seed(connectionString: string) {
   }
 }
 
-/**
- * A run that names a database seeds that one — which is what the scheduling and
- * mode-compat jobs do, each against a postgres of its own. A run that names
- * none seeds every database the E2E stack stands up, so no caller has to keep
- * its own list of them in step with MODE_STACKS.
- */
+// CI jobs with a postgres of their own name it; otherwise every database the stack stands up.
 const targets = process.env.DATABASE_URL ? [process.env.DATABASE_URL] : seededDatabaseUrls();
 
 async function seedAll() {

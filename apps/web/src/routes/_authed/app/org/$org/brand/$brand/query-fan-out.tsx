@@ -149,10 +149,6 @@ function QueryFanoutPage() {
 
 type FanoutData = NonNullable<ReturnType<typeof useQueryFanout>["data"]>;
 
-// ---------------------------------------------------------------------------
-// Shared bits
-// ---------------------------------------------------------------------------
-
 function StatCard({ label, value, tip }: { label: string; value: React.ReactNode; tip: React.ReactNode }) {
 	return (
 		<Card className="py-4">
@@ -237,7 +233,7 @@ function StatRow({ data }: { data: FanoutData }) {
 			/>
 			<StatCard
 				label="Average Fan-Out"
-				value={data.avgPerExecution.toLocaleString()}
+				value={data.avgQueriesPerFanoutRun.toLocaleString()}
 				tip="Average queries per run that had at least one web query."
 			/>
 		</div>
@@ -281,10 +277,6 @@ function EmptyState({ message }: { message: string }) {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Prompt Fan-Out — per-prompt searches with the prompt's keywords bolded
-// ---------------------------------------------------------------------------
-
 type SortKey = "queries" | "avg";
 
 function SortHead<K extends string>({
@@ -327,7 +319,7 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 		const list = s ? prompts.filter((p) => p.promptValue.toLowerCase().includes(s)) : prompts;
 		return [...list].sort((a, b) =>
 			sort === "avg"
-				? b.avgPerExecution - a.avgPerExecution || b.totalQueries - a.totalQueries
+				? b.avgQueriesPerFanoutRun - a.avgQueriesPerFanoutRun || b.totalQueries - a.totalQueries
 				: b.totalQueries - a.totalQueries,
 		);
 	}, [prompts, search, sort]);
@@ -399,7 +391,7 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 									</span>
 									<span className="text-right text-sm tabular-nums">{p.totalQueries.toLocaleString()}</span>
 									<span className="text-right text-sm tabular-nums max-sm:hidden">
-										{p.avgPerExecution.toLocaleString()}
+										{p.avgQueriesPerFanoutRun.toLocaleString()}
 									</span>
 								</button>
 								{isOpen && keywords && (
@@ -428,10 +420,6 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 		</Card>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Top Queries — the searches with the widest reach, with the prompts behind them
-// ---------------------------------------------------------------------------
 
 type TopSort = "prompts" | "runs";
 

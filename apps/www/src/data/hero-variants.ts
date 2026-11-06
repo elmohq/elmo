@@ -56,6 +56,9 @@ export const heroVariants: Record<string, HeroVariant> = {
 	"win-ai-search": {
 		title: "Win AI Search",
 	},
+	"open-source-tracker": {
+		title: "The Open-Source AI Visibility Tracker",
+	},
 	"open-source": {
 		title: "Open-Source AI Visibility Tracking",
 		lede: "Elmo is MIT-licensed AEO software. Track your brand across ChatGPT, Claude, Gemini, and more on Elmo Cloud, or self-host it for free.",

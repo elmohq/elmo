@@ -19,20 +19,12 @@ import {
 } from "./dataforseo-shared";
 import { type Attempt, retryTransient, sanitizeForJson } from "./scrape-shared";
 
-/**
- * Models served via the SERP Google AI Mode endpoint (SerpApi). These always
- * use web search and have a SERP-shaped response (items[].type "ai_overview").
- */
+/** Always search, and answer SERP-shaped (items[].type "ai_overview"). */
 const SERP_MODELS = new Set(["google-ai-mode"]);
 
 /**
- * Models served via the AI Optimization "LLM Responses" API
- * (chat_gpt / perplexity / gemini), mapping each Elmo model id to the
- * AiOptimizationApi live method plus a sensible default DataForSEO model_name.
- *
- * ChatGPT and Gemini only take this route when a target pins a model_name via
- * the version slug (`chatgpt:dataforseo:gpt-4.1:online`); with no pin they go
- * to the LLM Scraper below. Perplexity has no scraper, so it always lands here.
+ * LLM Responses API. ChatGPT and Gemini only come here when a target pins a
+ * version slug; Perplexity has no scraper, so it always does.
  */
 const LLM_MODELS: Record<string, { defaultModelName: string; call: keyof typeof LLM_CALLS }> = {
 	// gpt-5.5 is the model behind ChatGPT's current default ("GPT-5.5 Instant").
@@ -43,15 +35,7 @@ const LLM_MODELS: Record<string, { defaultModelName: string; call: keyof typeof 
 	gemini: { defaultModelName: "gemini-2.5-flash", call: "gemini" },
 };
 
-/**
- * Models served via the AI Optimization "LLM Scraper" API, which drives the
- * real chatgpt.com / gemini.google.com interfaces rather than the vendors'
- * model APIs. This is the default route for these two models: it's what a
- * consumer actually sees. The served model is whatever the live product picks,
- * so pinning a version slug routes to LLM Responses instead.
- *
- * DataForSEO has no Perplexity scraper.
- */
+/** LLM Scraper API: the default route, since it drives the real consumer products. */
 const SCRAPER_CALLS = {
 	chatgpt: (api: client.AiOptimizationApi, prompt: string) =>
 		api.chatGptLlmScraperLiveAdvanced([
@@ -75,19 +59,11 @@ const SCRAPER_CALLS = {
 		]),
 } as const;
 
-// Google AI Overview is the AI summary block on a standard Google results page.
-// It comes from the Organic SERP endpoint (not AI Mode's dedicated SERP), so it
-// gets its own runner rather than joining SERP_MODELS.
+// AI Overview comes from the Organic SERP endpoint, not AI Mode's, so it has its own runner.
 const AI_OVERVIEW_MODEL = "google-ai-overview";
 const SUPPORTED_MODELS = new Set([...SERP_MODELS, AI_OVERVIEW_MODEL, ...Object.keys(LLM_MODELS)]);
 
-/**
- * Which route a target takes, mirroring `run()`'s dispatch below: the Google
- * surfaces are always scraped, the LLM Scraper serves the rest until a target
- * pins a model version, which only the LLM Responses API can honor. Read by the
- * settings page, so it has to agree with `run()` — a target labelled "Scraped"
- * that actually asks the model directly describes the wrong thing entirely.
- */
+/** Must agree with `run()`'s dispatch: the settings page labels targets from it. */
 function dataforseoAccess({ model, version }: ModelConfig): ProviderAccess {
 	if (SERP_MODELS.has(model) || model === AI_OVERVIEW_MODEL) return "scraped";
 	return !version && model in SCRAPER_CALLS ? "scraped" : "api";
@@ -99,7 +75,6 @@ interface DataForSeoLlmRequest {
 	web_search: boolean;
 }
 
-/** Live LLM Responses call dispatch, keyed by Elmo model id. */
 const LLM_CALLS = {
 	chatgpt: (api: client.AiOptimizationApi, body: DataForSeoLlmRequest[]) =>
 		api.chatGptLlmResponsesLive(body.map((b) => new client.AiOptimizationChatGptLlmResponsesLiveRequestInfo(b))),
@@ -146,10 +121,8 @@ function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 		load_async_ai_overview: true,
 	});
 
-	// Loading the AI Overview asynchronously intermittently fails on DataForSEO's
-	// side with a task-level "Internal SE Server Error"; a couple of retries clear
-	// it, so a transient blip doesn't fail the run (matches the BrightData AI
-	// Overview runner).
+	// Async AI Overview loads intermittently fail with "Internal SE Server Error";
+	// a couple of retries clear it.
 	return retryTransient(
 		() => attemptGoogleAiOverview(api, requestInfo),
 		(lastError) => `DataForSEO API Error: ${lastError}`,
@@ -165,8 +138,6 @@ async function attemptGoogleAiOverview(
 		const outcome = dfsResultOrError(response);
 		if ("error" in outcome) return outcome;
 
-		// The SERP response carries the AI Overview as an items[].type
-		// "ai_overview" element, which the shared Google extractors understand.
 		const citations = extractCitationsFromGoogle(response);
 		return {
 			result: {
@@ -181,15 +152,9 @@ async function attemptGoogleAiOverview(
 }
 
 /**
- * Gemini (via DataForSEO) returns each citation `url` as a Google Vertex AI
- * "grounding-api-redirect" link; the real source only appears as a bare domain
- * in the annotation `title`. There is no DataForSEO setting or field that
- * exposes the underlying URL (confirmed against their docs), so we resolve the
- * redirect to its destination. These links are short-lived, so we do it at
- * fetch time and rewrite the raw output in place — both the stored output and
- * the extracted citations then carry the real source URL/domain. ChatGPT and
- * Perplexity already return real URLs and are left untouched; resolution
- * failures fall back to the original redirect URL.
+ * Gemini's citation URLs are short-lived Vertex AI redirects, and DataForSEO
+ * exposes no real URL, so they are resolved at fetch time and rewritten in the
+ * raw output. A failed resolution keeps the redirect.
  */
 const GROUNDING_REDIRECT_PREFIX = "https://vertexaisearch.cloud.google.com/grounding-api-redirect/";
 
@@ -247,8 +212,6 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	const response = await LLM_CALLS[spec.call](api, [body]);
 	const result = dfsFirstResult<{ model_name?: string; fan_out_queries?: unknown }>(response);
 	const raw = sanitizeForJson(response);
-	// Replace Gemini's Vertex grounding-redirect citation URLs with the real
-	// source URLs before extraction (no-op for ChatGPT/Perplexity).
 	await resolveGroundingRedirects(raw);
 	const citations = extractCitationsFromDataforseoLlm(raw);
 
@@ -277,7 +240,6 @@ export const dataforseo: Provider = {
 	id: "dataforseo",
 	name: "DataForSEO",
 	access: "scraped",
-	// A pinned version routes to LLM Responses; without one the surface is scraped.
 	accessFor: dataforseoAccess,
 	docsAnchor: "dataforseo",
 
@@ -287,15 +249,9 @@ export const dataforseo: Provider = {
 		if (!SUPPORTED_MODELS.has(config.model)) {
 			return `DataForSEO only supports: ${[...SUPPORTED_MODELS].join(", ")}`;
 		}
-		// A version slug pins the LLM Responses model_name, which only that route
-		// accepts — the SERP and scraper endpoints serve whatever the live surface
-		// returns, so a pin there would silently do nothing.
 		if (config.version && !LLM_MODELS[config.model]) {
 			return `${config.model}:dataforseo does not accept a version slug — that surface is scraped, not requested by model (got "${config.version}")`;
 		}
-		// Google AI Mode is search-only. The chatbot engines model the UX where web
-		// search is always on, so :online is required there too (matches the
-		// BrightData provider for these engines).
 		if (!config.webSearch) {
 			return `${config.model}:dataforseo requires :online — this engine always uses web search`;
 		}
@@ -310,8 +266,6 @@ export const dataforseo: Provider = {
 		if (model === AI_OVERVIEW_MODEL) {
 			return runGoogleAiOverview(prompt);
 		}
-		// Prefer the scraped consumer UI. Pinning a model_name is the opt-in to the
-		// LLM Responses API, which is the only route that can honor one.
 		if (!options?.version && model in SCRAPER_CALLS) {
 			return runLlmScraper(model as keyof typeof SCRAPER_CALLS, prompt);
 		}

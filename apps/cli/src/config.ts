@@ -69,7 +69,6 @@ function formatEnvValue(value: string): string {
 	return value;
 }
 
-// Reads the version recorded in a `# Rendered by elmo <version> on ...` header.
 export async function readRenderedVersion(filePath: string): Promise<string | null> {
 	try {
 		return parseRenderedVersion(await fs.readFile(filePath, "utf8"));

@@ -86,7 +86,7 @@ export function LogoStrip() {
 						id="social-proof"
 						className="max-w-[24ch] text-2xl font-semibold tracking-[-0.025em] text-balance text-zinc-950 md:text-3xl"
 					>
-						Used by 200+ brands to optimize their AI visibility
+						Used by 250+ brands to optimize their AI visibility
 					</h2>
 				</div>
 				<ul className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-6 md:gap-x-14">

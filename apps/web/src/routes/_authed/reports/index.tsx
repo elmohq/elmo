@@ -253,6 +253,7 @@ function ReportsPage() {
 												) : (
 													<Badge variant={getStatusBadgeVariant(report.status)} className="text-xs">
 														{report.status.charAt(0).toUpperCase() + report.status.slice(1)}
+														{report.status === "processing" && ` · ${report.progress}%`}
 													</Badge>
 												)}
 											</div>

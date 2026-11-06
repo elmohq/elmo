@@ -25,6 +25,8 @@ export interface FeatureLink {
 
 export interface ProductFeature {
 	slug: string;
+	/** YYYY-MM-DD of the last substantive edit; the page\'s sitemap lastmod and dateModified. */
+	updated: string;
 	/** Short name for cards, breadcrumbs, and related-feature links. */
 	name: string;
 	/** H1. Written in the phrasing people search with. */
@@ -56,6 +58,7 @@ export interface ProductFeature {
 export const productFeatures: ProductFeature[] = [
 	{
 		slug: "ai-visibility-tracking",
+		updated: "2026-10-27",
 		name: "AI visibility tracking",
 		title: "AI visibility tracking",
 		metaTitle: "AI Visibility Tracking: Monitor Your Brand in ChatGPT & AI Search · Elmo",
@@ -164,6 +167,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "share-of-voice",
+		updated: "2026-10-27",
 		name: "Share of voice",
 		title: "AI share of voice and competitor tracking",
 		metaTitle: "AI Share of Voice & Competitor Analysis for AI Search · Elmo",
@@ -264,6 +268,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "sentiment-analysis",
+		updated: "2026-10-27",
 		name: "Sentiment analysis",
 		title: "AI sentiment analysis and brand mention tracking",
 		metaTitle: "AI Sentiment Analysis & Brand Mention Tracking · Elmo",
@@ -372,6 +377,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "citation-tracking",
+		updated: "2026-10-27",
 		name: "Citation tracking",
 		title: "AI citation tracking",
 		metaTitle: "AI Citation Tracking: See Which Sources AI Engines Cite · Elmo",
@@ -416,7 +422,7 @@ export const productFeatures: ProductFeature[] = [
 			},
 			{
 				term: "Recent changes",
-				definition: "New and dropped pages, new and dropped domains, and title changes on cited pages.",
+				definition: "New and dropped pages, and new and dropped domains.",
 			},
 			{
 				term: "Content gaps",
@@ -483,6 +489,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "query-fan-out",
+		updated: "2026-10-27",
 		name: "Query fan-out",
 		title: "Query fan-out tracking",
 		metaTitle: "Query Fan-Out Tracking: See the Searches Behind AI Answers · Elmo",
@@ -580,6 +587,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "prompt-tracking",
+		updated: "2026-10-27",
 		name: "Prompt tracking",
 		title: "AI prompt tracking",
 		metaTitle: "AI Prompt Tracking: Monitor the Questions Buyers Ask AI · Elmo",
@@ -680,6 +688,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "aeo-recommendations",
+		updated: "2026-10-27",
 		name: "Opportunities",
 		title: "AEO recommendations",
 		metaTitle: "AEO Recommendations: What to Do Next to Get Cited by AI · Elmo",
@@ -781,6 +790,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "ai-visibility-reporting",
+		updated: "2026-10-27",
 		name: "Reporting",
 		title: "AI visibility reporting and dashboards",
 		metaTitle: "AI Visibility Reporting & Dashboards for AI Search · Elmo",
@@ -875,6 +885,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "api-and-mcp",
+		updated: "2026-10-27",
 		name: "API and MCP",
 		title: "AI visibility API, SDKs, and MCP server",
 		metaTitle: "AI Visibility API, SDKs & MCP Server · Elmo",
@@ -969,6 +980,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "multi-engine-tracking",
+		updated: "2026-10-27",
 		name: "AI engines",
 		title: "Track your brand across every AI engine",
 		metaTitle: "Multi-Engine AI Visibility Tracking: ChatGPT, AI Overviews, Gemini & More · Elmo",

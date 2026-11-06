@@ -1,26 +1,13 @@
 /**
- * Pure, dependency-free statistics for AI-visibility analysis.
- *
- * These power the Share of Voice page and the Opportunities digest's stability
- * scores. They take plain aggregated rows (produced by the
- * postgres read layer) and never touch IO, so they are unit-testable in
- * isolation.
- *
- * Two notions of "how much do the cited sources move over time" live here and
- * are deliberately kept distinct — in practice they are near-orthogonal:
- *   - set volatility:      churn in the *set* of cited domains (Jaccard distance).
- *   - weighted volatility: churn weighted by citation *volume* (Bray–Curtis on
- *     the daily citation-share vectors). A prompt with one dominant source every
- *     day but a noisy long tail looks volatile by set yet stable by volume —
- *     weighted is the truer "do the sources that carry the answer move?" signal,
- *     so it's the one we surface as the Stability score.
+ * Set and weighted volatility are kept distinct because they barely correlate: a
+ * prompt with one dominant source and a noisy long tail churns by set but not by
+ * volume. Weighted is the one surfaced as the Stability score.
  */
 
 export interface DailyDomainCount {
-	/** ISO day bucket, "YYYY-MM-DD" (lexicographically sortable = chronological). */
+	/** "YYYY-MM-DD", so string order is date order. */
 	date: string;
 	domain: string;
-	/** Number of citations to `domain` on `date`. */
 	count: number;
 }
 
@@ -43,7 +30,6 @@ const round3 = (x: number): number => Math.round(x * 1000) / 1000;
 
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
 
-/** Collapse raw rows into one bucket per day (summing duplicate domains), sorted chronologically. */
 function bucketByDay(daily: DailyDomainCount[]): DayBucket[] {
 	const byDate = new Map<string, Map<string, number>>();
 	for (const { date, domain, count } of daily) {
@@ -64,11 +50,6 @@ function bucketByDay(daily: DailyDomainCount[]): DayBucket[] {
 		});
 }
 
-/**
- * Citation volatility: how much the cited-domain set churns from one day to the next.
- * Returns both the unweighted (set) and volume-weighted distances, averaged over
- * every consecutive-day transition.
- */
 export function computeVolatility(daily: DailyDomainCount[]): VolatilityResult {
 	const days = bucketByDay(daily);
 	if (days.length < 2) {
@@ -92,8 +73,7 @@ export function computeVolatility(daily: DailyDomainCount[]): VolatilityResult {
 		const setDist = union === 0 ? 0 : 1 - inter / union;
 
 		// Bray–Curtis distance on the citation-share vectors: 1 - Σ min(shareCur, sharePrev).
-		// Domains present on only one of the two days contribute min(x, 0) = 0, so we only
-		// need to walk the shared domains.
+		// A domain cited on only one of the two days adds min(x, 0) = 0, so only shared ones are walked.
 		let overlap = 0;
 		for (const [d, c] of cur.counts) {
 			const prevC = prev.counts.get(d);
@@ -114,7 +94,7 @@ export function computeVolatility(daily: DailyDomainCount[]): VolatilityResult {
 	};
 }
 
-/** Product-facing Stability score: 0 (churns daily) → 100 (rock stable). null if not enough data. */
+/** 0 churns daily, 100 never moves. */
 export function stabilityScore(weightedVolatility: number | null): number | null {
 	if (weightedVolatility === null) return null;
 	return Math.round((1 - clamp01(weightedVolatility)) * 100);
@@ -124,22 +104,15 @@ export interface VoiceShare {
 	name: string;
 	/** Run-days (or runs) on which this entity was mentioned. */
 	mentions: number;
-	/** Share of total mentions across the brand + all competitors, 0..1. Exact
-	 * ratio (not pre-rounded) — round once at the display layer so the table,
-	 * donut, and trend never disagree by a point. */
+	/** Ratio of all brand and competitor mentions; see computeShareOfVoice on rounding. */
 	share: number;
 	isBrand: boolean;
 }
 
 /**
- * Share of voice across the brand and its competitors. Inputs must be in a
- * consistent unit (e.g. "# of runs that mentioned this entity"), so the brand's
- * mention count and each competitor's are directly comparable.
- *
- * `share`/`brandShare` are exact ratios, deliberately NOT pre-rounded: the
- * leaderboard, the donut, and the trend each render `round(share * 100)` — the
- * same single round of the same ratio. Pre-rounding here would double-round and
- * let the table read a point off the headline.
+ * Mentions must share one unit across entities (e.g. runs that named them).
+ * Shares stay unrounded: every view rounds the same ratio once, so the table
+ * can't read a point off the headline.
  */
 export function computeShareOfVoice(
 	brand: { name: string; mentions: number },
@@ -181,7 +154,6 @@ function groupMentionsByPromptAndDate(perPrompt: PerPromptDailyMentions[]): Map<
 	return byPrompt;
 }
 
-/** Folds one prompt's carried-forward counts into the shared daily totals. */
 function accumulateCarriedMentions(
 	dateMap: Map<string, MentionCounts>,
 	dateRange: string[],
@@ -201,12 +173,8 @@ function accumulateCarriedMentions(
 }
 
 /**
- * Brand share of voice over time, smoothed with per-prompt Last-Value-Carried-
- * Forward (mirrors the visibility trend): each prompt's last-known brand and
- * competitor mention counts are carried across days it didn't run, then summed
- * per day, so staggered prompt schedules do not create artificial dips. The carry is
- * pre-seeded with each prompt's earliest observation to avoid a ramp-up dip.
- * Share = brand / (brand + competitor), as a 0–100 percentage (null = no data).
+ * Each prompt's last counts carry across days it didn't run (seeded with its
+ * earliest), so staggered schedules don't read as dips. Share is a ratio.
  */
 export function shareOfVoiceTimeSeriesLVCF(
 	perPrompt: PerPromptDailyMentions[],
@@ -268,13 +236,8 @@ function latestObservation(dateMap: Map<string, DailyObservation>, lastDate: str
 }
 
 /**
- * "Current standings" leaderboard: carry each prompt's most recent (brand +
- * per-competitor) mention counts forward to the last day, then sum across
- * prompts. This is the per-competitor companion to shareOfVoiceTimeSeriesLVCF
- * and uses the same per-prompt last-observation carry-forward, so the brand
- * share it implies equals that trend's final point — keeping the headline,
- * donut, and table consistent with the line (rather than a whole-window
- * aggregate that wouldn't match it).
+ * Same carry-forward as shareOfVoiceTimeSeriesLVCF, so the brand share it
+ * implies equals that trend's final point rather than a whole-window aggregate.
  */
 export function shareOfVoiceLeaderboardLVCF(
 	brandDaily: Array<{ promptId: string; date: string; brand: number }>,

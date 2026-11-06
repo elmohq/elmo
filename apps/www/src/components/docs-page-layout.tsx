@@ -24,7 +24,7 @@ const REPO = "elmohq/elmo";
 const BRANCH = "main";
 
 // /docs/foo → /docs/foo.md  (/docs index → /docs.md). The same markdown the
-// .md/.mdx routes and the Accept-header negotiation serve (see server.ts).
+// .md/.mdx routes and the Accept-header negotiation serve (see request-handler.ts).
 function docsMarkdownPath(slugs: string[]): string {
 	return slugs.length ? `/docs/${slugs.join("/")}.md` : "/docs.md";
 }

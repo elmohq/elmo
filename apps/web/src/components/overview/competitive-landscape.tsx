@@ -204,7 +204,7 @@ export function ModelGrid({ landscape, metric }: { landscape: Landscape; metric:
 					<tr
 						key={company.name}
 						ref={company.isBrand ? brandRow : undefined}
-						className={cn("border-b last:border-0", company.isBrand && "bg-blue-50/70 dark:bg-blue-950/30")}
+						className={cn("border-b last:border-0", company.isBrand && "bg-blue-50/70")}
 					>
 						{/* Counts the rows in whatever order the grid is sorted, so it always reads top to bottom. */}
 						<td className="py-1.5 pl-4 text-right text-xs tabular-nums text-muted-foreground">{i + 1}</td>
@@ -256,7 +256,7 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 	const meta = METRIC_META[metric];
 	return (
 		// On wide screens the page fits the viewport, so the card takes what's left and the grid scrolls within it.
-		<Card className="gap-0 xl:min-h-0 xl:flex-1 border-slate-200 bg-slate-50/70 py-0 shadow-none dark:border-slate-800 dark:bg-slate-900/40">
+		<Card className="gap-0 xl:min-h-0 xl:flex-1 border-slate-200 bg-slate-50/70 py-0 shadow-none">
 			<CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 px-5 pt-4 pb-0">
 				<div className="flex items-center gap-2">
 					<CardTitle className="text-base">Competitive Landscape</CardTitle>

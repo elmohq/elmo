@@ -4,8 +4,11 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeploymentFeatures } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
+import { PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS } from "@workspace/lib/queues/prompt-jobs";
+import { GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS } from "@workspace/lib/queues/report-jobs";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
+import type { PgBoss } from "pg-boss";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
 import { registerHandlers } from "./handlers";
@@ -16,7 +19,7 @@ import {
 	REQUEST_REPROCESSES_QUEUE,
 	requestStaleReprocesses,
 } from "./jobs/reprocess";
-import { configureMentionAnalyzer, mentionAnalyzer } from "./mention-judge/analyze";
+import { configureMentionAnalyzer, mentionAnalyzer } from "./mention-judge";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 
@@ -26,6 +29,16 @@ if (process.env.SENTRY_DSN) {
 		environment: process.env.ENVIRONMENT || "development",
 		tracesSampleRate: 1.0,
 	});
+}
+
+/** createQueue leaves an existing queue's policy alone, so a changed policy needs updateQueue too. */
+async function createOrUpdateQueue(
+	boss: PgBoss,
+	name: string,
+	options: Parameters<PgBoss["createQueue"]>[1] & Parameters<PgBoss["updateQueue"]>[1],
+) {
+	await boss.createQueue(name, options);
+	await boss.updateQueue(name, options);
 }
 
 async function main() {
@@ -54,24 +67,13 @@ async function main() {
 		});
 	});
 
-	// Start pg-boss (creates schema if needed)
 	await boss.start();
 	console.log("pg-boss started");
 
-	// Create queues if they don't exist (required in pg-boss v12)
-	await boss.createQueue("process-prompt", {
-		retryLimit: 3,
-		retryDelay: 60,
-		retryBackoff: true,
-		expireInSeconds: 60 * 15, // 15 minute timeout
-	});
+	// Queue defaults too, so a job sent without them is never retried into a second fan-out.
+	await createOrUpdateQueue(boss, PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS);
 	if (getDeploymentFeatures().reportGeneration) {
-		await boss.createQueue("generate-report", {
-			retryLimit: 3,
-			retryDelay: 60,
-			retryBackoff: true,
-			expireInSeconds: 60 * 60, // 1 hour timeout for reports
-		});
+		await createOrUpdateQueue(boss, GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS);
 	}
 	await boss.createQueue("analyze-brand", {
 		retryLimit: 1,
@@ -157,7 +159,6 @@ async function main() {
 
 	await initializePipeline(boss);
 
-	// Register job handlers
 	await registerHandlers(boss);
 	console.log("All handlers registered, worker is ready");
 
@@ -179,19 +180,13 @@ main().catch(async (error) => {
 	process.exit(1);
 });
 
-// Graceful shutdown
-process.on("SIGTERM", async () => {
-	console.log("Received SIGTERM, shutting down gracefully...");
+async function shutDownGracefully(signal: NodeJS.Signals): Promise<void> {
+	console.log(`Received ${signal}, shutting down gracefully...`);
 	await getBoss().stop({ graceful: true, timeout: 30000 });
 	await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
 	console.log("Worker stopped");
 	process.exit(0);
-});
+}
 
-process.on("SIGINT", async () => {
-	console.log("Received SIGINT, shutting down gracefully...");
-	await getBoss().stop({ graceful: true, timeout: 30000 });
-	await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
-	console.log("Worker stopped");
-	process.exit(0);
-});
+process.on("SIGTERM", shutDownGracefully);
+process.on("SIGINT", shutDownGracefully);

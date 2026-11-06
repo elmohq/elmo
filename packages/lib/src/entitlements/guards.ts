@@ -24,8 +24,7 @@ export type WriteDenialCode =
 	| "prompt-cap"
 	| "competitor-cap";
 
-/** No plan at all is a payment problem; every other denial is satisfiable by
- * asking for less. */
+/** No plan is a payment problem; every other denial is satisfiable by asking for less. */
 export class WriteDeniedError extends Error {
 	readonly code: WriteDenialCode;
 	readonly status: number;
@@ -71,8 +70,7 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
 	return ALLOWED;
 }
 
-/** Blocks adding, not the current size: the editor resubmits every row on save,
- * and a brand can already be over the cap. */
+/** The editor resubmits every row on save, and a brand can already be over the cap. */
 export function decidePromptCap(existing: number, adding: number): WriteDecision {
 	if (adding <= 0 || existing + adding <= MAX_PROMPTS) return ALLOWED;
 	return deny("prompt-cap", `A brand may have at most ${MAX_PROMPTS} prompts (this one has ${existing}).`);
@@ -123,11 +121,7 @@ export function decideEnabledModels(entitlements: Entitlements, requestedModels:
 	return ALLOWED;
 }
 
-/**
- * Tracking a prompt on a premium model spends one pairing from the org's pool,
- * and a prompt tracked on two premium models spends two — so `adding` counts
- * pairings rather than prompts.
- */
+/** `adding` counts prompt/model pairings, not prompts. */
 export function decidePremiumAssign(
 	entitlements: Entitlements,
 	currentAssignedEnabled: number,
@@ -152,12 +146,7 @@ export function decidePremiumAssign(
 	return ALLOWED;
 }
 
-/**
- * A cadence override may slow sampling down, never speed it past the plan
- * rate — so the floor moves with the plan (custom plans with higher
- * standardRunsPerDay allow proportionally faster overrides). Null clears the
- * override back to the plan cadence.
- */
+/** An override may slow sampling but never speed it past the plan rate. Null clears it. */
 export function decideCadenceOverride(entitlements: Entitlements, requestedDelayHours: number | null): WriteDecision {
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
@@ -172,18 +161,10 @@ export function decideCadenceOverride(entitlements: Entitlements, requestedDelay
 	);
 }
 
-/**
- * Turn a decision into the thrown form. Exported so a caller that already holds
- * entitlements can use the pure decide* functions directly and still raise the
- * same error every other write path raises.
- */
+/** For callers that already hold entitlements and run a decide* function directly. */
 export function assertAllowed(decision: WriteDecision): void {
 	if (!decision.allowed) throw new WriteDeniedError(decision.code, decision.message);
 }
-
-// ---------------------------------------------------------------------------
-// Usage counts (cloud-only paths; every assert below skips them when unlimited)
-// ---------------------------------------------------------------------------
 
 export async function countBrandsByOrg(orgIds: string[], conn: DbConnection = db): Promise<Map<string, number>> {
 	if (orgIds.length === 0) return new Map();
@@ -217,15 +198,7 @@ export async function countOrgAssignedPremiumSlots(organizationId: string, conn:
 	return Number(row?.value ?? 0);
 }
 
-// ---------------------------------------------------------------------------
-// Asserts wired into write paths
-// ---------------------------------------------------------------------------
-
-/**
- * Load the org's entitlements once, then run `decide` against them. Unlimited
- * entitlements return before `decide` runs, so the usage counts a decision needs
- * are never queried outside cloud.
- */
+/** Unlimited entitlements return before `decide`, so usage is never counted outside cloud. */
 async function withEntitlements(
 	organizationId: string,
 	decide: (entitlements: Entitlements) => WriteDecision[] | Promise<WriteDecision[]>,
@@ -236,17 +209,12 @@ async function withEntitlements(
 	for (const decision of await decide(entitlements)) assertAllowed(decision);
 }
 
-/** Advisory locks share one namespace per database; the first argument keeps
- * quota locks off any other use of the same org id. */
+/** Advisory locks share one namespace per database; this keeps quota locks off other uses of the org id. */
 const QUOTA_LOCK_CLASS = 0x656c6d6f;
 
 /**
- * Serialize one organization's quota-consuming writes, so two requests cannot
- * both see the last free slot and both take it.
- *
- * `run` must do all of its work on the `tx` it is handed, checks included.
- * Reaching for the pooled `db` holds this transaction open while waiting for a
- * second connection, which deadlocks the pool under enough concurrent callers.
+ * So two requests can't both take the last free slot. `run` must do all its work,
+ * checks included, on `tx`: reaching for the pooled `db` can deadlock the pool.
  */
 export async function withQuotaLock<T>(
 	organizationId: string,
@@ -269,12 +237,7 @@ export async function assertCanCreateBrand(organizationId: string, conn?: DbConn
 	);
 }
 
-/**
- * The same verdict assertCanCreateBrand raises, returned instead of thrown, for
- * any number of orgs at once. UI that offers brand creation asks this first so a
- * customer meets the limit before filling in a form, rather than as an error on
- * the last step of one.
- */
+/** assertCanCreateBrand's verdict, returned, so UI can show the limit before the customer fills in a form. */
 export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, WriteDecision>> {
 	const entitlementsByOrg = await getOrgEntitlementsMap(orgIds);
 	const limited = orgIds.filter((orgId) => !entitlementsByOrg.get(orgId)?.unlimited);
@@ -288,7 +251,6 @@ export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, Wr
 	return decisions;
 }
 
-/** Guard adding `adding` competitors to a brand. */
 export async function assertCompetitorCap(brandId: string, adding: number, conn: DbConnection = db): Promise<void> {
 	if (adding <= 0) return;
 	const [row] = await conn.select({ value: count() }).from(competitors).where(eq(competitors.brandId, brandId));
@@ -314,11 +276,7 @@ export async function assertCadenceAllowed(organizationId: string, requestedDela
 	await withEntitlements(organizationId, (entitlements) => [decideCadenceOverride(entitlements, requestedDelayHours)]);
 }
 
-/**
- * What a prompts save adds to the org's pools: enabled prompts and premium
- * prompt/model pairings. Both are net figures — a save that disables as many
- * prompts as it enables adds nothing and needs no permission.
- */
+/** Net figures: a save that disables as many prompts as it enables adds nothing. */
 export interface PromptSaveDelta {
 	prompts: number;
 	premiumPairings: number;
@@ -329,7 +287,6 @@ export interface PromptPoolState {
 	premiumModels: readonly string[];
 }
 
-/** The pool-relevant shape of a planned save: an update knows what it replaces. */
 export interface PromptSavePools {
 	updates: readonly { before: PromptPoolState; after: PromptPoolState }[];
 	inserts: readonly { after: PromptPoolState }[];
@@ -345,10 +302,7 @@ export function promptSaveDelta(plan: PromptSavePools): PromptSaveDelta {
 	};
 }
 
-/**
- * Both pools against one snapshot, so a save cannot pass one limit against a
- * plan the other was denied under.
- */
+/** One snapshot for both pools, so a save can't pass each limit under a different plan. */
 export async function assertPromptSaveAllowed(
 	organizationId: string,
 	delta: PromptSaveDelta,

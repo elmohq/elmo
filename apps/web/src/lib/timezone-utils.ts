@@ -50,7 +50,6 @@ export function shiftDateStr(dateStr: string, delta: DateShift): string {
 	let targetYear = year + (delta.years ?? 0);
 	let targetMonthIndex = monthIndex + (delta.months ?? 0);
 
-	// Normalize month overflow/underflow
 	if (targetMonthIndex < 0 || targetMonthIndex > 11) {
 		const yearDelta = Math.floor(targetMonthIndex / 12);
 		targetYear += yearDelta;

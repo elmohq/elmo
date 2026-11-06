@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import pc from "picocolors";
+import { type AuditOptions, runAudit } from "./commands/audit.js";
+import { registerBrainstorm } from "./commands/brainstorm.js";
 import { runCompose } from "./commands/compose.js";
 import { runEdit } from "./commands/edit.js";
+import { registerEval } from "./commands/eval.js";
 import { type InitOptions, runInit } from "./commands/init.js";
+import { registerPlan } from "./commands/plan.js";
 import { runUpgrade, type UpgradeOptions } from "./commands/upgrade.js";
 import type { DirOption } from "./config.js";
 import { printBanner } from "./util.js";
@@ -55,6 +59,25 @@ async function main() {
 		.option("--yes", "skip confirmation prompts")
 		.action(async (_opts: object, cmd: Command) => {
 			await runUpgrade(cmd.optsWithGlobals<UpgradeOptions>(), version);
+		});
+
+	const lab = program.command("lab").description("one-off AEO tools that don't need a running Elmo instance");
+	registerBrainstorm(lab);
+	registerEval(lab);
+	registerPlan(lab);
+
+	lab
+		.command("audit")
+		.description("check how well AI agents can reach, read, and understand a website")
+		.argument("<url>", "the site to audit, e.g. example.com")
+		.option("--domain <domain...>", "other domains the brand uses, checked as aliases or sites")
+		.option("--pages <n>", "pages to sample per site, including the homepage", "10")
+		.option("--delay <ms>", "minimum milliseconds between requests to a site", "1000")
+		.option("--max-requests <n>", "total request budget", "75")
+		.option("--format <format>", "text or json", "text")
+		.option("--fail-under <score>", "exit with status 1 when the overall score is below this")
+		.action(async (url: string, opts: AuditOptions) => {
+			await withVersionCheck(version, () => runAudit(url, opts));
 		});
 
 	await program.parseAsync(process.argv);

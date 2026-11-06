@@ -1,23 +1,9 @@
-/**
- * Shared constants used across all deployment configurations
- */
-
-/**
- * Default branding values for local/demo modes
- * These are used when environment variables are not set
- *
- * NOTE: Whitelabel mode does NOT use these defaults - all values must be
- * provided via environment variables.
- */
+/** Whitelabel never falls back to these; it must set its own branding. */
 export const DEFAULT_APP_NAME = "Elmo";
 export const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 export const DEFAULT_APP_URL = "http://localhost:3000/";
 
-/**
- * Provider setup guide, linked from SCRAPE_TARGETS errors and the LLMs page.
- * Per-provider anchors are appended to it, so it has to stay the page itself
- * rather than the docs index.
- */
+/** Per-provider anchors are appended, so this must stay the page itself, not the docs index. */
 export const PROVIDERS_DOCS_URL = "https://www.elmohq.com/docs/user-guide/providers";
 
 /** The public docs, for the hosted product. In the app itself the API and MCP
@@ -27,27 +13,15 @@ export const API_DOCS_URL = "https://www.elmohq.com/docs/api";
 /** Public identifier for the support chat, shared by the app and the marketing site. */
 export const CRISP_WEBSITE_ID = "2f79a110-4e29-41a8-b45d-4993df6ff487";
 
-/**
- * Elmo brand constants — used for icon generation, manifest, and the brand kit.
- */
 export const ELMO_BRAND_COLOR = "#2563eb"; // blue-600
 export const ELMO_BRAND_FONT = "Titan One";
 export const ELMO_THEME_COLOR = "#2563eb";
 export const ELMO_BACKGROUND_COLOR = "#ffffff";
 
 /**
- * Default chart colors for the Elmo product.
- *
- * 11 base hues (Observable + Tableau, anchored to brand blue) expanded
- * into 55 colors across five lightness tiers: base → dark → light →
- * muted → deep. This keeps harmony (same hue families throughout) while
- * supporting charts with many series. Whitelabel deployments override
- * via VITE_CHART_COLORS.
- *
- * Hue order is load-bearing, not decorative. Charts assign colors by slot,
- * so the earliest slots are the ones that end up side by side most often;
- * the order below is the one that keeps the first four furthest apart under
- * protanopia and deuteranopia. Reordering these is a visible change.
+ * Whitelabel overrides these via VITE_CHART_COLORS. Hue order is load-bearing:
+ * charts assign colors by slot, and this order keeps the first four furthest
+ * apart under protanopia and deuteranopia.
  */
 export const DEFAULT_CHART_COLORS = [
 	// Base
