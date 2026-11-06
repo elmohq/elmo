@@ -99,7 +99,7 @@ const UNAUTHORIZED: ApiAuthFailure = {
 };
 
 /** One message for every failure, so a guess cannot be told from a real key. */
-const INVALID_KEY: ApiAuthFailure = {
+export const INVALID_KEY: ApiAuthFailure = {
 	status: 401,
 	error: "Unauthorized",
 	message: "Invalid API key",

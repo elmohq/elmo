@@ -163,6 +163,24 @@ describe("resolveMcpAuth", () => {
 		});
 	});
 
+	it("does not try an access token as an API key", async () => {
+		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
+		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
+		selectClient.mockResolvedValue([{ disabled: false }]);
+		listUserOrganizations.mockResolvedValue([{ id: "org_1" }, { id: "org_2" }]);
+
+		await expect(resolveMcpAuth(bearer("header.payload.signature"))).resolves.toEqual({
+			auth: { ...oauthSession, expiresAt: new Date(TOKEN_CLAIMS.exp * 1000) },
+		});
+		expect(resolveApiAuth).not.toHaveBeenCalled();
+	});
+
+	it("refuses an expired access token without trying it as an API key", async () => {
+		verifyMcpAccessToken.mockRejectedValue(new Error("token expired"));
+		await expect(resolveMcpAuth(bearer("header.payload.signature"))).resolves.toEqual(INVALID_KEY);
+		expect(resolveApiAuth).not.toHaveBeenCalled();
+	});
+
 	it("re-reads membership on every call rather than trusting the token", async () => {
 		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);

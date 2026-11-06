@@ -4,7 +4,7 @@ import { verifyMcpAccessToken } from "@workspace/lib/auth/server";
 import { db } from "@workspace/lib/db/db";
 import { oauthClient, user } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { type ApiAuthFailure, type Principal, resolveApiAuth, type UserAuth } from "@/lib/auth/api-auth";
+import { type ApiAuthFailure, INVALID_KEY, type Principal, resolveApiAuth, type UserAuth } from "@/lib/auth/api-auth";
 
 export type McpAuthResult = { auth: Principal } | { failure: ApiAuthFailure };
 
@@ -59,7 +59,19 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 	};
 }
 
+/** API keys are opaque, so a compact JWS can only be an access token. Trying it
+ * as a key first would log a failed key verification on every OAuth call. */
+function carriesJwt(request: Request): boolean {
+	const token = request.headers.get("authorization")?.split(" ")[1];
+	return token?.split(".").length === 3;
+}
+
 export async function resolveMcpAuth(request: Request): Promise<McpAuthResult> {
+	if (carriesJwt(request)) {
+		const asUser = await resolveOAuthPrincipal(request);
+		return asUser ? { auth: asUser } : { failure: INVALID_KEY };
+	}
+
 	const asKey = await resolveApiAuth(request);
 	if ("auth" in asKey) return { auth: asKey.auth };
 	// A spent key is a different answer from one that was never a key.
