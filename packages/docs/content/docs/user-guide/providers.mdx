@@ -1,6 +1,7 @@
 ---
 title: Providers
 description: Choose how Elmo tracks each AI answer engine — scrapers, direct APIs, or both.
+updated: 2026-10-26
 ---
 
 Elmo tracks which AI answer engines mention your brand. Most AI search traffic comes from **ChatGPT** and **Google AI Mode**, and neither exposes a public API. You can approximate their responses by calling the underlying model APIs (OpenAI, Anthropic, Mistral, OpenRouter) with web search enabled, but that's not the real consumer UI — scraping the actual surface is usually closer to what your customers see.
@@ -229,7 +230,7 @@ chatgpt:openai-api:gpt-6-luna:online
 mistral:mistral-api:mistral-medium-latest:online
 claude:openrouter:anthropic/claude-haiku-5.5
 grok:openrouter:x-ai/grok-4.5:online
-kimi:openrouter:moonshotai/kimi-k3
+kimi:openrouter:moonshotai/kimi-k2.5
 perplexity:openrouter:perplexity/sonar:online
 ```
 

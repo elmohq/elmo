@@ -3,7 +3,6 @@ import { MCP_PATH } from "@workspace/config/constants";
 import type { FeaturesConfig } from "@workspace/config/types";
 import { READ_ONLY_ERROR, READ_ONLY_MESSAGE } from "@/lib/read-only-errors";
 
-/** HTTP methods that mutate state */
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /** Blocked outright: issuance goes through the server function that validates
@@ -19,15 +18,8 @@ const API_KEY_PLUGIN_MUTATIONS = new Set([
 const MCP_OAUTH_PREFIX = "/api/auth/oauth2/";
 
 /**
- * Exact better-auth endpoints that remain writable in read-only mode.
- *
- * Whitelist rather than blacklist: every other `/api/auth/**` write is
- * rejected in demo, so new better-auth endpoints (from plugins we add or
- * library upgrades) are blocked by default instead of silently becoming
- * reachable. Only sign-in and sign-out need to work for a demo visitor
- * — everything else (change-password, change-email, update-user,
- * delete-user, forget-password, admin plugin endpoints, etc.) has no
- * business mutating the shared demo account.
+ * An allowlist, so an auth endpoint added by a plugin or upgrade is blocked in
+ * read-only mode by default. A demo visitor only needs to sign in and out.
  */
 const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
 	"/api/auth/sign-in/email",
@@ -163,10 +155,6 @@ export function evaluateDeploymentPolicy(features: FeaturesConfig, request: Requ
 	return refuseUnauthenticatedApiV1(pathname, authorizationHeader) ?? { action: "allow" };
 }
 
-/**
- * Constant-time string comparison to prevent timing attacks on API keys.
- * Returns true if the strings are equal, false otherwise.
- */
 export function timingSafeStringEqual(a: string, b: string): boolean {
 	const bufA = Buffer.from(a);
 	const bufB = Buffer.from(b);
@@ -186,23 +174,9 @@ function hasBearerToken(header: string | null | undefined): boolean {
 	return typeof header === "string" && header.startsWith("Bearer ") && header.slice(7).trim().length > 0;
 }
 
-/**
- * Parse comma-separated ADMIN_API_KEYS env var into a trimmed, non-empty array.
- * Single source of truth — use this everywhere instead of inline parsing.
- */
 export function getAdminApiKeys(): string[] {
 	return (process.env.ADMIN_API_KEYS || "")
 		.split(",")
 		.map((key) => key.trim())
 		.filter(Boolean);
-}
-
-/**
- * Evaluate whether the deployment allows the user to create brands from the UI.
- * Used by the create-brand server function. True in local and cloud, which sells
- * brands by the plan — whitelabel brands are provisioned through the admin API,
- * demo is read-only.
- */
-export function evaluateRequireCanCreateBrands(canCreateBrands: boolean): "allow" | "deny" {
-	return canCreateBrands ? "allow" : "deny";
 }

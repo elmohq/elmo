@@ -25,6 +25,8 @@ env:
 jobs:
   install:
     name: Install
+    # Private copies of this repo inherit the schedule; it only needs to run here.
+    if: github.repository == 'elmohq/elmo'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 10
 

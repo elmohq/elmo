@@ -34,6 +34,8 @@ function load(apiKey: string): Promise<void> {
 			capture_pageleave: true,
 			autocapture: true,
 			disable_session_recording: true,
+			// Our own links carry `ref` instead of UTM params; see packages/config/src/referrals.ts.
+			custom_campaign_params: ["ref"],
 			// Opting out then also deletes PostHog's cookie and localStorage
 			// entries, rather than leaving the identifier behind.
 			opt_out_persistence_by_default: true,

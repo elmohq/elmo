@@ -1,10 +1,4 @@
-/**
- * The only module that talks to Resend.
- *
- * The client is constructed lazily so importing this module (e.g. from the
- * mode smoke test, which builds cloud auth options with dummy env) never
- * requires a real API key.
- */
+/** The Resend client is built lazily, so importing this with dummy env (the mode smoke test) needs no key. */
 import { Resend } from "resend";
 import type { EmailContent } from "./email-templates";
 

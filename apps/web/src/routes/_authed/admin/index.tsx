@@ -427,7 +427,6 @@ function AdminDashboard() {
 				</div>
 			</div>
 
-			{/* Summary Cards with Charts */}
 			<div className="grid gap-4 sm:grid-cols-2">
 				<Card>
 					<CardHeader>
@@ -625,7 +624,6 @@ function AdminDashboard() {
 				</Card>
 			</div>
 
-			{/* Brand Statistics Table */}
 			<Card>
 				<CardHeader>
 					<CardTitle>Brand Statistics</CardTitle>

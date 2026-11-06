@@ -1,3 +1,5 @@
+import { getModelMeta } from "@workspace/config/models";
+
 export interface StatusEntry {
 	ts: string;
 	status: "pass" | "fail";
@@ -30,20 +32,7 @@ export function parseTarget(target: string) {
 }
 
 export function formatModel(model: string) {
-	const names: Record<string, string> = {
-		chatgpt: "ChatGPT",
-		claude: "Claude",
-		gemini: "Gemini",
-		grok: "Grok",
-		perplexity: "Perplexity",
-		copilot: "Copilot",
-		deepseek: "DeepSeek",
-		kimi: "Kimi",
-		mistral: "Mistral",
-		"google-ai-mode": "Google AI Mode",
-		"google-ai-overview": "Google AI Overview",
-	};
-	return names[model] || model;
+	return getModelMeta(model).label;
 }
 
 export function formatProvider(provider: string) {

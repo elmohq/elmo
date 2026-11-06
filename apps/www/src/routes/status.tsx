@@ -677,7 +677,7 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 function filterPillClass(active: boolean) {
-	return `rounded-full border px-3 py-1 text-xs transition-colors ${
+	return `rounded-full border px-2.5 py-1 text-xs transition-colors ${
 		active ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
 	}`;
 }
@@ -696,8 +696,8 @@ function FilterRow({
 	onClear: () => void;
 }) {
 	return (
-		<div className="flex flex-wrap items-center gap-1.5">
-			<span className="w-20 shrink-0 text-xs font-medium text-zinc-500">{label}</span>
+		<div className="flex flex-wrap items-center gap-1">
+			<span className="w-16 shrink-0 text-xs font-medium text-zinc-500">{label}</span>
 			<button type="button" onClick={onClear} className={filterPillClass(selected.size === 0)}>
 				All
 			</button>

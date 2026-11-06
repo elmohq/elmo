@@ -4,20 +4,21 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createOrganizationFn } from "@/server/organizations";
 
 export const Route = createFileRoute("/_authed/app/new")({
-	staticData: { crumb: "New organization" },
+	staticData: { crumb: "New Organization" },
 	beforeLoad: ({ context }) => {
 		if (!context.clientConfig?.features.canCreateOrganizations) {
 			throw redirect({ to: "/app" });
 		}
 	},
 	head: pageHead({
-		title: "New organization",
+		title: "New Organization",
 		description: "Create an organization to hold its own brands, team, and plan.",
 	}),
 	component: NewOrganizationPage,
@@ -66,7 +67,11 @@ function NewOrganizationPage() {
 					/>
 				</div>
 
-				{error && <p className="text-sm text-destructive">{error}</p>}
+				{error && (
+					<p className="text-sm text-destructive">
+						<WriteErrorMessage message={error} />
+					</p>
+				)}
 
 				<Button type="submit" className="w-full" disabled={isLoading || trimmed.length === 0}>
 					{isLoading ? "Creating..." : "Create organization"}
