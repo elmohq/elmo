@@ -50,7 +50,9 @@ const fetchMock = vi.fn(async (input: string | URL | Request, _init?: RequestIni
 
 /** The generateContent request the SDK sent to Google. */
 function sentRequest(): { url: string; headers: Headers; body: Record<string, any> } {
-	const call = fetchMock.mock.calls.find(([input]) => String(input).includes("generativelanguage.googleapis.com"));
+	const call = fetchMock.mock.calls.find(
+		([input]) => new URL(String(input)).hostname === "generativelanguage.googleapis.com",
+	);
 	if (!call) throw new Error("no Gemini request was sent");
 	const [input, init] = call;
 	return { url: String(input), headers: new Headers(init?.headers), body: JSON.parse(String(init?.body)) };
