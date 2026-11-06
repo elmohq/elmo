@@ -96,6 +96,7 @@ function buildPostgresService(): string {
 	return [
 		"postgres:",
 		"  image: postgres:18-alpine",
+		"  restart: unless-stopped",
 		"  environment:",
 		"    POSTGRES_USER: postgres",
 		"    POSTGRES_PASSWORD: postgres",
@@ -153,7 +154,7 @@ function buildWebService(options: {
 	port: number;
 	version: string;
 }): string {
-	const lines = ["web:"];
+	const lines = ["web:", "  restart: unless-stopped"];
 	if (options.dev) {
 		lines.push(
 			"  build:",
@@ -186,7 +187,7 @@ function buildWorkerService(options: {
 	dockerfilePath: string;
 	version: string;
 }): string {
-	const lines = ["worker:"];
+	const lines = ["worker:", "  restart: unless-stopped"];
 	if (options.dev) {
 		lines.push(
 			"  build:",
