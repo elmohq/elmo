@@ -49,7 +49,7 @@ describe("what grounded models a row ends up carrying", () => {
 	});
 
 	it("ignores a model the premium tier does not sell", () => {
-		const plan = planPromptSave([submitted({ premiumModels: ["perplexity", "claude"] })], []);
+		const plan = planPromptSave([submitted({ premiumModels: ["mistral", "claude"] })], []);
 
 		expect(plan.inserts[0].after.premiumModels).toEqual(["claude"]);
 	});

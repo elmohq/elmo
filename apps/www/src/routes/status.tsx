@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Tombstone } from "lucide-react";
 import { type CSSProperties, Fragment, type ReactNode, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { Footer } from "@/components/footer";
@@ -19,6 +19,7 @@ import {
 	formatModel,
 	formatProvider,
 	getLatest,
+	isRetiredTarget,
 	type MatrixCell,
 	type MetricStats,
 	MODEL_API_CATEGORIES,
@@ -33,6 +34,7 @@ import {
 	type RateTier,
 	type RunStats,
 	rateTier,
+	retiredSurfaceReason,
 	runStats,
 	type StatusEntry,
 	type TargetStatus,
@@ -620,8 +622,56 @@ function ProviderName({
 	);
 }
 
+function RetiredNotice({ reason, compact }: { reason: string; compact?: boolean }) {
+	return (
+		<span
+			className={`flex items-center gap-2 rounded-sm bg-zinc-100 text-left text-zinc-500 ${compact ? "h-9 px-3 text-[11px]" : "px-3 py-2.5 text-xs"}`}
+		>
+			<Tombstone className="size-4 shrink-0 text-zinc-400" aria-hidden />
+			<span className={compact ? "truncate" : undefined}>
+				<span className="font-medium text-zinc-600">Login-walled.</span>{" "}
+				{compact ? "Scrapers can no longer reach it." : reason}
+			</span>
+		</span>
+	);
+}
+
+function ProviderTitle({ provider, rest }: { provider: string; rest: string }) {
+	return (
+		<div>
+			<ProviderName provider={provider} className="font-medium text-zinc-950">
+				{formatProvider(provider)}
+			</ProviderName>
+			{rest && (
+				<span className="text-zinc-500">
+					{" "}
+					(
+					{["openrouter", "openai-api", "anthropic-api", "mistral-api"].includes(provider)
+						? rest
+						: rest.replace(/online/g, "web search")}
+					)
+				</span>
+			)}
+		</div>
+	);
+}
+
 function ProviderRow({ data }: { data: TargetStatus }) {
 	const { model, provider, rest } = parseTarget(data.target);
+	const retiredReason = isRetiredTarget(data.target) ? retiredSurfaceReason(model) : undefined;
+	if (retiredReason) {
+		return (
+			<div className="space-y-2 rounded-md border border-zinc-200 bg-zinc-50 p-4">
+				<ProviderTitle provider={provider} rest={rest} />
+				<RetiredNotice reason={retiredReason} />
+			</div>
+		);
+	}
+	return <LiveProviderRow data={data} />;
+}
+
+function LiveProviderRow({ data }: { data: TargetStatus }) {
+	const { provider, rest } = parseTarget(data.target);
 	const deduped = dedupeEntries(data.entries);
 	const latest = getLatest(deduped);
 	const uptime = passRate([data]);
@@ -635,21 +685,7 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 	return (
 		<div className="space-y-2 rounded-md border border-zinc-200 bg-white p-4">
 			<div className="flex items-center justify-between">
-				<div>
-					<ProviderName provider={provider} className="font-medium text-zinc-950">
-						{formatProvider(provider)}
-					</ProviderName>
-					{rest && (
-						<span className="text-zinc-500">
-							{" "}
-							(
-							{["openrouter", "openai-api", "anthropic-api", "mistral-api"].includes(provider)
-								? rest
-								: rest.replace(/online/g, "web search")}
-							)
-						</span>
-					)}
-				</div>
+				<ProviderTitle provider={provider} rest={rest} />
 				<UptimeBadge entries={deduped} />
 			</div>
 			<UptimeBar entries={deduped} />
@@ -939,6 +975,10 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 						<span className="size-3 rounded-sm bg-zinc-100" style={{ backgroundImage: HATCH_BG }} />
 						not available
 					</span>
+					<span className="flex items-center gap-1.5">
+						<Tombstone className="size-3 text-zinc-400" aria-hidden />
+						login-walled
+					</span>
 				</div>
 			</CardHeader>
 			<CardContent>
@@ -972,22 +1012,52 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 						))}
 						<div />
 						<div />
-						{matrix.models.map((model) => (
-							<Fragment key={model}>
-								<div className="flex items-center pr-2 text-sm font-medium text-zinc-700">{formatModel(model)}</div>
-								{renderProviderCells((p) => (
-									<MatrixCellView
-										key={p}
-										model={model}
-										provider={p}
-										cell={matrix.cell(model, p)}
-										availability={matrix.availability(model, p)}
+						{matrix.models.map((model) => {
+							const cellView = (p: string) => (
+								<MatrixCellView
+									key={p}
+									model={model}
+									provider={p}
+									cell={matrix.cell(model, p)}
+									availability={matrix.availability(model, p)}
+								/>
+							);
+							const retiredReason = retiredSurfaceReason(model);
+							return (
+								<Fragment key={model}>
+									<div className="flex items-center pr-2 text-sm font-medium text-zinc-700">{formatModel(model)}</div>
+									{retiredReason ? (
+										<>
+											{apiProviders.map(cellView)}
+											{grouped && <div />}
+											<div style={{ gridColumn: `span ${scraperProviders.length}` }}>
+												<HoverTip
+													tip={
+														<>
+															<TipHeader
+																title="No Longer Available"
+																subtitle={`${formatModel(model)} · AI Search Scrapers`}
+															/>
+															<div className="text-zinc-600">{retiredReason}</div>
+														</>
+													}
+													className="block"
+												>
+													<RetiredNotice reason={retiredReason} compact />
+												</HoverTip>
+											</div>
+										</>
+									) : (
+										renderProviderCells(cellView)
+									)}
+									<div />
+									<MatrixSummaryCell
+										title={`${formatModel(model)} · All Providers`}
+										targets={matrix.rowTargets(model)}
 									/>
-								))}
-								<div />
-								<MatrixSummaryCell title={`${formatModel(model)} · All Providers`} targets={matrix.rowTargets(model)} />
-							</Fragment>
-						))}
+								</Fragment>
+							);
+						})}
 						<div className="col-span-full h-2" />
 						<div />
 						{renderProviderCells((p) => (
@@ -998,7 +1068,7 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 							/>
 						))}
 						<div />
-						<MatrixSummaryCell title="All Models and Providers" targets={data} solid />
+						<MatrixSummaryCell title="All Models and Providers" targets={matrix.liveTargets} solid />
 					</div>
 				</div>
 			</CardContent>

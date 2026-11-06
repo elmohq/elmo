@@ -61,7 +61,7 @@ const ELMO_LINKS = [
 const services = [
 	{
 		title: "AI search visibility tracking",
-		body: "Elmo runs the prompts your buyers ask across ChatGPT, Google AI Overviews, Google AI Mode, Perplexity, Gemini, Copilot, Claude, and more on a schedule. Each prompt gets a visibility score for how often your brand appears, so you can see where you show up and where you don't.",
+		body: "Elmo runs the prompts your buyers ask across ChatGPT, Google AI Overviews, Google AI Mode, Perplexity, Gemini, Claude, and more on a schedule. Each prompt gets a visibility score for how often your brand appears, so you can see where you show up and where you don't.",
 	},
 	{
 		title: "Citation analysis",
@@ -104,7 +104,7 @@ const differentiators = [
 	},
 	{
 		title: "Real interfaces, not API approximations",
-		body: "Consumer products like ChatGPT, Google AI Mode, and Perplexity are scraped from the same interface your buyers use. API-only tools measure a different model configuration than the one people actually see.",
+		body: "Consumer products like ChatGPT, Google AI Mode, and Gemini are scraped from the same interface your buyers use. API-only tools measure a different model configuration than the one people actually see.",
 	},
 	{
 		title: "Unlimited seats, API, and MCP on every plan",
@@ -230,7 +230,7 @@ function AboutPage() {
 		{
 			term: "Platforms Tracked",
 			detail:
-				"ChatGPT, Google AI Overviews, Google AI Mode, Gemini, Perplexity, Microsoft Copilot, Claude, Grok, Mistral, DeepSeek, Qwen, Kimi",
+				"ChatGPT, Google AI Overviews, Google AI Mode, Gemini, Perplexity, Claude, Grok, Mistral, DeepSeek, Qwen, Kimi",
 		},
 		{ term: "Competitors", detail: "Profound, Peec AI, Otterly.AI, Scrunch, Semrush AI Toolkit" },
 		{ term: "Social", detail: <LinkList links={ELMO_LINKS} /> },

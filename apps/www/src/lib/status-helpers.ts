@@ -116,6 +116,24 @@ const PROVIDER_MODELS: Record<string, Set<string>> = {
 	"dataforseo-api": new Set(["chatgpt", "perplexity", "gemini", "claude"]),
 };
 
+// Consumer surfaces that went behind a login, so no scraper can reach them any
+// more. The model APIs that still serve them keep reporting as usual.
+const RETIRED_SURFACES: Record<string, string> = {
+	copilot: "Copilot now requires a Microsoft sign-in, so scrapers can no longer reach it. Elmo no longer tracks it.",
+	perplexity:
+		"Perplexity now requires a sign-in, so scrapers can no longer reach it. Elmo tracks Perplexity through its Sonar API instead.",
+};
+
+/** Why a model's scraped surface is no longer tracked, if it isn't. */
+export function retiredSurfaceReason(model: string): string | undefined {
+	return RETIRED_SURFACES[model];
+}
+
+export function isRetiredTarget(target: string): boolean {
+	const { model, provider, version } = parseTarget(target);
+	return model in RETIRED_SURFACES && !MODEL_API_CATEGORIES.includes(providerCategory(provider, model, version));
+}
+
 export type CellAvailability = "tracked" | "untracked" | "unavailable";
 
 // Classify a model × provider-category combination independent of run data:
@@ -342,6 +360,8 @@ export interface StatusMatrix {
 	availability: (model: string, provider: string) => CellAvailability;
 	rowTargets: (model: string) => TargetStatus[];
 	colTargets: (provider: string) => TargetStatus[];
+	/** Every target except the retired ones, for the overall health cell. */
+	liveTargets: TargetStatus[];
 }
 
 // A model (rows) by provider-category (columns) grid of uptime, with a `down`
@@ -349,12 +369,15 @@ export interface StatusMatrix {
 // return null so the grid can render a blank. Each cell carries the targets
 // behind it, and rows and columns expose theirs, so the aggregate health cells
 // and every tooltip re-derive their numbers from one grouping.
-export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
-	const models = [...new Set(data.map((d) => parseTarget(d.target).model))].sort((a, b) =>
+// Retired targets keep their rows and columns but stay out of every rate, so a
+// login wall doesn't read as a provider outage.
+export function buildStatusMatrix(allData: TargetStatus[]): StatusMatrix {
+	const data = allData.filter((d) => !isRetiredTarget(d.target));
+	const models = [...new Set(allData.map((d) => parseTarget(d.target).model))].sort((a, b) =>
 		formatModel(a).localeCompare(formatModel(b)),
 	);
 	const providers = PROVIDER_FILTER_ORDER.filter((c) =>
-		data.some((d) => {
+		allData.some((d) => {
 			const { model, provider, version } = parseTarget(d.target);
 			return providerCategory(provider, model, version) === c;
 		}),
@@ -395,5 +418,6 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 		},
 		rowTargets: (model) => byModel.get(model) ?? [],
 		colTargets: (provider) => byProvider.get(provider) ?? [],
+		liveTargets: data,
 	};
 }
