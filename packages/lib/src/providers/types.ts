@@ -8,6 +8,9 @@ export interface ScrapeResult {
 	rawOutput: unknown;
 	webQueries: string[];
 	modelVersion?: string;
+	billedUsd?: number;
+	/** In the provider's own credits, not dollars. */
+	billedCredits?: number;
 }
 
 export interface ProviderOptions {

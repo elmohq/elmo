@@ -33,6 +33,43 @@ export function estimateRunCostUsd(provider: string | null, webSearchEnabled: bo
 	return base;
 }
 
+// A credit's dollar value depends on the account's plan, so it comes from the
+// environment rather than being committed here.
+const USD_PER_CREDIT_ENV: Record<string, string> = {
+	cloro: "CLORO_USD_PER_CREDIT",
+};
+
+function usdPerCredit(provider: string | null): number | undefined {
+	const envVar = provider ? USD_PER_CREDIT_ENV[provider] : undefined;
+	const raw = envVar && typeof process !== "undefined" ? process.env[envVar] : undefined;
+	if (!raw) return undefined;
+	const parsed = Number(raw);
+	return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+/**
+ * Providers that only bill calls that return a result: Cloro never charges a
+ * FAILED task, and OpenRouter doesn't charge a request that errors.
+ */
+const BILLS_ONLY_RESULTS = new Set(["cloro", "openrouter"]);
+
+export function runCostUsd(input: {
+	provider: string | null;
+	webSearchEnabled: boolean;
+	billedUsd?: number;
+	billedCredits?: number;
+}): number | null {
+	if (input.billedUsd !== undefined) return input.billedUsd;
+	const rate = usdPerCredit(input.provider);
+	if (input.billedCredits !== undefined && rate !== undefined) return input.billedCredits * rate;
+	return estimateRunCostUsd(input.provider, input.webSearchEnabled);
+}
+
+export function failedRunCostUsd(provider: string | null, webSearchEnabled: boolean): number | null {
+	if (provider && BILLS_ONLY_RESULTS.has(provider)) return 0;
+	return estimateRunCostUsd(provider, webSearchEnabled);
+}
+
 export const PROJECTION_DAYS_PER_MONTH = 30;
 
 /** Self-hosted only, and as coarse as the estimates above, so present it as an estimate. */
