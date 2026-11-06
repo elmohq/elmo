@@ -60,23 +60,12 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 }
 
 function carriesJwt(request: Request): boolean {
-	const token = request.headers.get("authorization")?.split(" ")[1];
+	const token = request.headers.get("authorization")?.trim().split(/\s+/)[1];
 	return token?.split(".").length === 3;
 }
 
 export async function resolveMcpAuth(request: Request): Promise<McpAuthResult> {
-	if (carriesJwt(request)) {
-		const asUser = await resolveOAuthPrincipal(request);
-		return asUser ? { auth: asUser } : { failure: INVALID_KEY };
-	}
-
-	const asKey = await resolveApiAuth(request);
-	if ("auth" in asKey) return { auth: asKey.auth };
-	// A spent key is a different answer from one that was never a key.
-	if (asKey.failure.code === "rate_limited") return asKey;
-
+	if (!carriesJwt(request)) return resolveApiAuth(request);
 	const asUser = await resolveOAuthPrincipal(request);
-	if (asUser) return { auth: asUser };
-
-	return asKey;
+	return asUser ? { auth: asUser } : { failure: INVALID_KEY };
 }

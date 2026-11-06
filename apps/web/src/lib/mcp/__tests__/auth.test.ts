@@ -1,7 +1,6 @@
 /**
- * Two credentials arrive in the same header, so the order they are tried in is a
- * behaviour: a rate-limited key must be reported as such rather than falling
- * through to the OAuth path and coming back as "invalid".
+ * Two credentials arrive in the same header and are told apart by shape: only a
+ * signed JWT can be an access token, so nothing else is tried as one.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { API_SCOPES } from "@/lib/api/scopes";
@@ -69,6 +68,7 @@ const oauthSession: UserAuth = {
 	expiresAt: null,
 };
 
+const ACCESS_TOKEN = "header.payload.signature";
 const TOKEN_CLAIMS = { sub: "user_1", client_id: "client_1", exp: 1_800_000_000, scope: "openid" };
 
 function bearer(token: string): Request {
@@ -151,25 +151,13 @@ describe("resolveMcpAuth", () => {
 		expect(verifyMcpAccessToken).not.toHaveBeenCalled();
 	});
 
-	it("falls back to the OAuth token when the bearer is not a key", async () => {
-		resolveApiAuth.mockResolvedValue(INVALID_KEY);
+	it("accepts an OAuth access token without trying it as an API key", async () => {
 		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
 		selectClient.mockResolvedValue([{ disabled: false }]);
 		listUserOrganizations.mockResolvedValue([{ id: "org_1" }, { id: "org_2" }]);
 
-		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual({
-			auth: { ...oauthSession, expiresAt: new Date(TOKEN_CLAIMS.exp * 1000) },
-		});
-	});
-
-	it("does not try an access token as an API key", async () => {
-		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
-		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
-		selectClient.mockResolvedValue([{ disabled: false }]);
-		listUserOrganizations.mockResolvedValue([{ id: "org_1" }, { id: "org_2" }]);
-
-		await expect(resolveMcpAuth(bearer("header.payload.signature"))).resolves.toEqual({
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual({
 			auth: { ...oauthSession, expiresAt: new Date(TOKEN_CLAIMS.exp * 1000) },
 		});
 		expect(resolveApiAuth).not.toHaveBeenCalled();
@@ -177,74 +165,67 @@ describe("resolveMcpAuth", () => {
 
 	it("refuses an expired access token without trying it as an API key", async () => {
 		verifyMcpAccessToken.mockRejectedValue(new Error("token expired"));
-		await expect(resolveMcpAuth(bearer("header.payload.signature"))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
 		expect(resolveApiAuth).not.toHaveBeenCalled();
 	});
 
 	it("re-reads membership on every call rather than trusting the token", async () => {
-		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
 		selectClient.mockResolvedValue([{ disabled: false }]);
 		listUserOrganizations.mockResolvedValue([]);
 
-		const resolved = await resolveMcpAuth(bearer("oauth-token"));
+		const resolved = await resolveMcpAuth(bearer(ACCESS_TOKEN));
 		expect(resolved).toMatchObject({ auth: { organizationIds: [] } });
 	});
 
 	it("refuses a token whose user is gone", async () => {
-		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockResolvedValue({ ...TOKEN_CLAIMS, sub: "deleted" });
 		selectUser.mockResolvedValue([]);
 		selectClient.mockResolvedValue([{ disabled: false }]);
 
-		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
 	});
 
 	it("refuses a banned person, whose signature is still perfectly good", async () => {
-		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone", banned: true }]);
 		selectClient.mockResolvedValue([{ disabled: false }]);
 
-		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
 	});
 
 	it("refuses a token whose client has been disabled", async () => {
-		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
 		selectClient.mockResolvedValue([{ disabled: true }]);
 
-		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
 	});
 
 	it("refuses a token whose client is gone", async () => {
-		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
 		selectClient.mockResolvedValue([]);
 
-		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
 	});
 
 	it("fails closed when verification throws", async () => {
-		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockRejectedValue(new Error("key set unreachable"));
 
-		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
 	});
 
 	it("refuses a token that names no client, since nothing holds it", async () => {
-		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockResolvedValue({ sub: "user_1", exp: TOKEN_CLAIMS.exp });
-		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
 		expect(selectUser).not.toHaveBeenCalled();
 	});
 
 	it("answers a credential that is neither with the key resolver's own wording", async () => {
 		resolveApiAuth.mockResolvedValue(INVALID_KEY);
-		verifyMcpAccessToken.mockRejectedValue(new Error("invalid access token"));
 		await expect(resolveMcpAuth(bearer("nonsense"))).resolves.toEqual(INVALID_KEY);
+		expect(verifyMcpAccessToken).not.toHaveBeenCalled();
 	});
 });
