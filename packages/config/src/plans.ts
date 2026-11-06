@@ -44,7 +44,7 @@ export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
 	mistral: { access: "api", version: "Mistral Medium 3.1" },
 	claude: { access: "api", premium: true, version: "Claude Haiku 5.5", premiumVersion: "Claude Haiku 5.5" },
 	kimi: { access: "api", version: "Kimi K2.5" },
-	perplexity: { premium: true, premiumVersion: "Sonar Pro" },
+	perplexity: { premium: true, premiumVersion: "Sonar" },
 };
 
 export const STANDARD_PLATFORM_MENU: readonly string[] = Object.entries(CLOUD_PLATFORMS)
