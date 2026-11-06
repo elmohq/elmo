@@ -625,7 +625,7 @@ function ProviderName({
 function RetiredNotice({ reason, compact }: { reason: string; compact?: boolean }) {
 	return (
 		<span
-			className={`flex items-center gap-2 rounded-sm bg-zinc-100 text-left text-zinc-500 ${compact ? "h-9 px-3 text-[11px]" : "px-3 py-2.5 text-xs"}`}
+			className={`flex items-center gap-2 rounded-sm bg-zinc-100 text-left text-zinc-500 ${compact ? "h-9 justify-center px-3 text-[11px]" : "px-3 py-2.5 text-xs"}`}
 		>
 			<Tombstone className="size-4 shrink-0 text-zinc-400" aria-hidden />
 			<span className={compact ? "truncate" : undefined}>
