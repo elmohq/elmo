@@ -47,6 +47,13 @@ export {
 	toolsWithFeature,
 } from "./directory";
 export {
+	type CompetitorPricing,
+	type CompetitorProfile,
+	competitorProfiles,
+	getCompetitorProfile,
+	type ProfileSection,
+} from "./profiles";
+export {
 	CATEGORY_LABELS,
 	type Competitor,
 	type CompetitorCategory,

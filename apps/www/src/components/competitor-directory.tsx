@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
 	CATEGORY_LABELS,
 	type Competitor,
@@ -18,7 +18,7 @@ import { FeatureMark } from "./feature-mark";
 
 const visibleCompetitors = sortedCompetitors.filter((c) => !isRetired(c) && c.category !== "other");
 
-export function CompetitorDirectory() {
+export function CompetitorDirectory({ afterHero }: { afterHero?: ReactNode }) {
 	const [selectedCategory, setSelectedCategory] = useState<CompetitorCategory | "all">("all");
 
 	const filteredCompetitors = visibleCompetitors.filter(
@@ -37,14 +37,16 @@ export function CompetitorDirectory() {
 				/>
 				<div className="relative mx-auto max-w-6xl px-4 md:px-6">
 					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl lg:text-6xl">
-						AI Visibility Tools
+						AI Visibility Tools & LLM Visibility Trackers
 					</h1>
 					<p className="mt-6 max-w-3xl text-lg text-balance text-zinc-600 md:text-xl">
-						Every AI visibility tool, AEO platform, LLM visibility tracker and GEO tool in one place. Compare engine
-						coverage, features and pricing, and find the right platform for your team.
+						Every AI visibility tracking tool, AEO platform, LLM visibility tracker and GEO tool in one place. Compare
+						engine coverage, features and pricing, and find the right AI visibility software for your team.
 					</p>
 				</div>
 			</section>
+
+			{afterHero}
 
 			{/* Category Filters */}
 			<section className="border-b border-zinc-200 bg-white pb-6 pt-6">
