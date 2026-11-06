@@ -1999,15 +1999,15 @@
 				"type": ["object", "null"],
 				"properties": {
 					"brand": {
-						"oneOf": [
+						"description": "Null when the answer never names the brand.",
+						"anyOf": [
 							{
 								"$ref": "#/components/schemas/MentionAssessment"
 							},
 							{
 								"type": "null"
 							}
-						],
-						"description": "Null when the answer never names the brand."
+						]
 					},
 					"competitors": {
 						"type": "object",
@@ -2230,7 +2230,6 @@
 				"name": "page",
 				"in": "query",
 				"description": "Page number, 1-based.",
-				"required": false,
 				"schema": {
 					"type": "integer",
 					"minimum": 1,
@@ -2241,7 +2240,6 @@
 				"name": "limit",
 				"in": "query",
 				"description": "Items per page. Values above the maximum are clamped, not rejected.",
-				"required": false,
 				"schema": {
 					"type": "integer",
 					"minimum": 1,
@@ -2273,7 +2271,6 @@
 				"name": "model",
 				"in": "query",
 				"description": "Restrict to one model, e.g. `chatgpt`. See `GET /models`.",
-				"required": false,
 				"schema": {
 					"type": "string"
 				}
@@ -2282,7 +2279,6 @@
 				"name": "tags",
 				"in": "query",
 				"description": "Comma-separated prompt tags. Only prompts carrying at least one of them are counted.",
-				"required": false,
 				"schema": {
 					"type": "string"
 				}
@@ -2291,7 +2287,6 @@
 				"name": "limit",
 				"in": "query",
 				"description": "Items per page. Values above the maximum are clamped, not rejected. The default is large enough that most windows fit on the first page.",
-				"required": false,
 				"schema": {
 					"type": "integer",
 					"minimum": 1,
@@ -2303,7 +2298,6 @@
 				"name": "category",
 				"in": "query",
 				"description": "Only rows in this category, as the dashboard classifies them for this brand: `brand`, `competitor`, `editorial`, `reviews`, `ecommerce`, `social`, `developer`, `pr`, `reference`, `institutional` or `other`.",
-				"required": false,
 				"schema": {
 					"type": "string"
 				}
@@ -2396,6 +2390,7 @@
 		"/brands": {
 			"get": {
 				"summary": "List brands",
+				"description": "The brands this key can reach, newest first.",
 				"operationId": "listBrands",
 				"tags": ["Brands"],
 				"parameters": [
@@ -2434,11 +2429,11 @@
 					{
 						"BearerAuth": ["read"]
 					}
-				],
-				"description": ""
+				]
 			},
 			"post": {
 				"summary": "Create a brand",
+				"description": "A brand, its competitors and its prompts, created in one request. They are written together, so a request that fails leaves none of them behind, and the prompts are scheduled for execution as soon as the brand exists.\n\nBrand ids are chosen by the caller and unique across the instance: an id that is already taken answers `409`, without saying who holds it. A competitor with no domain other than the brand's own website is skipped.",
 				"operationId": "createBrand",
 				"tags": ["Brands"],
 				"requestBody": {
@@ -2484,13 +2479,13 @@
 					{
 						"BearerAuth": ["write"]
 					}
-				],
-				"description": ""
+				]
 			}
 		},
 		"/brands/{brandId}": {
 			"get": {
 				"summary": "Get a brand",
+				"description": "A brand outside the key's reach answers `404`, identically to one that does not exist.",
 				"operationId": "getBrand",
 				"tags": ["Brands"],
 				"parameters": [
@@ -2536,11 +2531,11 @@
 					{
 						"BearerAuth": ["read"]
 					}
-				],
-				"description": ""
+				]
 			},
 			"patch": {
 				"summary": "Update a brand",
+				"description": "Change a brand's name, domains or aliases. A brand outside the key's reach answers `404`, identically to one that does not exist.",
 				"operationId": "updateBrand",
 				"tags": ["Brands"],
 				"parameters": [
@@ -2598,8 +2593,7 @@
 					{
 						"BearerAuth": ["write"]
 					}
-				],
-				"description": ""
+				]
 			}
 		},
 		"/brands/{brandId}/analytics": {
@@ -2699,7 +2693,6 @@
 						"name": "q",
 						"in": "query",
 						"description": "Case-insensitive substring match on the domain, across every domain cited in the window.",
-						"required": false,
 						"schema": {
 							"type": "string"
 						}
@@ -2777,7 +2770,6 @@
 						"name": "q",
 						"in": "query",
 						"description": "Case-insensitive substring match on the URL or page title, across every URL cited in the window.",
-						"required": false,
 						"schema": {
 							"type": "string"
 						}
@@ -2789,7 +2781,6 @@
 						"name": "pageType",
 						"in": "query",
 						"description": "Only pages of this type, e.g. `article`, `review` or `product`.",
-						"required": false,
 						"schema": {
 							"type": "string"
 						}
@@ -2970,7 +2961,6 @@
 						"name": "q",
 						"in": "query",
 						"description": "Case-insensitive substring match on the search, across every search run in the window.",
-						"required": false,
 						"schema": {
 							"type": "string"
 						}
@@ -3056,13 +3046,13 @@
 		"/competitors": {
 			"get": {
 				"summary": "List competitors",
+				"description": "The competitors of the brands this key can reach, newest first. Pass `brandId` for one brand's.",
 				"operationId": "listCompetitors",
 				"tags": ["Competitors"],
 				"parameters": [
 					{
 						"name": "brandId",
 						"in": "query",
-						"required": false,
 						"schema": {
 							"type": "string"
 						}
@@ -3102,11 +3092,11 @@
 					{
 						"BearerAuth": ["read"]
 					}
-				],
-				"description": ""
+				]
 			},
 			"post": {
 				"summary": "Add a competitor",
+				"description": "A `brandId` outside the key's reach answers `400`, identically to one that does not exist. A brand tracks at most 500 competitors; adding one past that answers `409`.",
 				"operationId": "createCompetitor",
 				"tags": ["Competitors"],
 				"requestBody": {
@@ -3149,13 +3139,13 @@
 					{
 						"BearerAuth": ["write"]
 					}
-				],
-				"description": ""
+				]
 			}
 		},
 		"/competitors/{competitorId}": {
 			"get": {
 				"summary": "Get a competitor",
+				"description": "A competitor outside the key's reach answers `404`, identically to one that does not exist.",
 				"operationId": "getCompetitor",
 				"tags": ["Competitors"],
 				"parameters": [
@@ -3204,11 +3194,11 @@
 					{
 						"BearerAuth": ["read"]
 					}
-				],
-				"description": ""
+				]
 			},
 			"patch": {
 				"summary": "Update a competitor",
+				"description": "Rename a competitor, or replace its domains or aliases. A competitor outside the key's reach answers `404`, identically to one that does not exist.",
 				"operationId": "updateCompetitor",
 				"tags": ["Competitors"],
 				"parameters": [
@@ -3266,11 +3256,11 @@
 					{
 						"BearerAuth": ["write"]
 					}
-				],
-				"description": ""
+				]
 			},
 			"delete": {
 				"summary": "Delete a competitor",
+				"description": "Permanently delete a competitor. The response is the deleted competitor.",
 				"operationId": "deleteCompetitor",
 				"tags": ["Competitors"],
 				"parameters": [
@@ -3325,8 +3315,7 @@
 					{
 						"BearerAuth": ["write"]
 					}
-				],
-				"description": ""
+				]
 			}
 		},
 		"/me": {
@@ -3539,7 +3528,6 @@
 						"name": "brandId",
 						"in": "query",
 						"description": "Filter prompts by brand ID",
-						"required": false,
 						"schema": {
 							"type": "string"
 						}
@@ -3551,7 +3539,6 @@
 						"name": "limit",
 						"in": "query",
 						"description": "Items per page. Values above the maximum are clamped, not rejected. This list had no ceiling before, so the maximum is set to bound a runaway query rather than to change what an existing caller gets back.",
-						"required": false,
 						"schema": {
 							"type": "integer",
 							"minimum": 1,
@@ -3563,7 +3550,6 @@
 						"name": "enabled",
 						"in": "query",
 						"description": "Only prompts with this tracking state.",
-						"required": false,
 						"schema": {
 							"type": "boolean"
 						}
@@ -3572,7 +3558,6 @@
 						"name": "tags",
 						"in": "query",
 						"description": "Comma-separated tags. A prompt matches if it carries any of them.",
-						"required": false,
 						"schema": {
 							"type": "string"
 						}
@@ -3581,7 +3566,6 @@
 						"name": "q",
 						"in": "query",
 						"description": "Case-insensitive substring match on prompt text.",
-						"required": false,
 						"schema": {
 							"type": "string"
 						}
@@ -4061,7 +4045,6 @@
 					{
 						"name": "kMentions",
 						"in": "query",
-						"required": false,
 						"description": "Number of top competitor entities to return in mentionsTopK",
 						"schema": {
 							"type": "integer",
@@ -4073,7 +4056,6 @@
 					{
 						"name": "kCitations",
 						"in": "query",
-						"required": false,
 						"description": "Number of top cited URLs to return in citedUrlsTopK",
 						"schema": {
 							"type": "integer",
@@ -4342,7 +4324,6 @@
 					{
 						"name": "kMentions",
 						"in": "query",
-						"required": false,
 						"description": "Number of top competitor entities to return in each prompt's mentionsTopK",
 						"schema": {
 							"type": "integer",
