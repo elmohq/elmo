@@ -6,6 +6,7 @@ import type { OnboardingPrompt } from "@workspace/lib/onboarding";
 import { eq } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 import { type BrandJob, brandJobs, cancelLatestBrandJob, IN_FLIGHT_STATES, readBrandJob } from "@/lib/brand-jobs";
+import { describeWait } from "@/lib/describe-wait";
 
 const SUGGEST_PROMPTS_QUEUE = "suggest-prompts";
 const SUGGESTIONS_PER_RUN = 5;
@@ -27,13 +28,6 @@ function runsInWindow(jobs: BrandJob[]): { used: number; oldest: Date | null } {
 	const since = Date.now() - WINDOW_MS;
 	const counted = jobs.filter((job) => job.state !== "failed" && job.createdOn.getTime() > since);
 	return { used: counted.length, oldest: counted.at(-1)?.createdOn ?? null };
-}
-
-function describeWait(until: Date): string {
-	const minutes = Math.max(1, Math.ceil((until.getTime() - Date.now()) / 60_000));
-	if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
-	const hours = Math.ceil(minutes / 60);
-	return `${hours} hour${hours === 1 ? "" : "s"}`;
 }
 
 export async function enqueuePromptSuggestions(input: PromptSuggestionsInput): Promise<{ remaining: number }> {
