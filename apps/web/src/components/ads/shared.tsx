@@ -1,10 +1,10 @@
 import { IconInfoCircle } from "@tabler/icons-react";
+import { CATEGORY_CONFIG } from "@workspace/lib/citations/domain-categories";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import type { ReactNode } from "react";
 import type { AdAttribution } from "@/components/ads/types";
 import { SiteIcon } from "@/components/site-icon";
-import { CATEGORY_CONFIG } from "@/lib/domain-categories";
 
 /**
  * Attribution reuses the Citations palette so an advertiser reads the same
