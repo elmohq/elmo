@@ -49,10 +49,10 @@ function CompareHub() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					title="AI visibility tools, head-to-head"
+					title="AI Visibility Tools, Head-to-Head"
 					lead="Weighing the AI visibility tools against each other? These side-by-side breakdowns compare tracking, analytics, and pricing across the funded AEO platforms and the SEO suites that added AI search monitoring, and show where an open-source tool like Elmo fits in."
 				/>
-				<DirectorySection title="Compare several at once">
+				<DirectorySection title="Compare Several at Once">
 					<ul className="grid gap-3 sm:grid-cols-2">
 						{setItems.map((item) => (
 							<li key={item.path}>
@@ -66,7 +66,7 @@ function CompareHub() {
 						))}
 					</ul>
 				</DirectorySection>
-				<DirectorySection title="Pick a matchup">
+				<DirectorySection title="Pick a Matchup">
 					<ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{pairItems.map((item) => (
 							<li key={item.path}>

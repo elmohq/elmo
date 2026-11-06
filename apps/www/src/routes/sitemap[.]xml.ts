@@ -15,6 +15,7 @@ import {
 	competitorsWithOwnPages,
 	FEATURE_SLUGS,
 	getComparisonSlug,
+	getCompetitorProfile,
 	graveyardTools,
 	hasOwnPages,
 	indexableCategories,
@@ -22,6 +23,7 @@ import {
 	indexedCompetitors,
 	lastChecked,
 	openSourceTools,
+	reviewedSlugs,
 	toolsInCategory,
 	toolsWithFeature,
 } from "@/lib/competitors";
@@ -134,6 +136,13 @@ export const Route = createFileRoute("/sitemap.xml")({
 						priority: 0.6,
 						lastmod: c.checkedAt,
 					})),
+					...reviewedSlugs.flatMap((slug) => {
+						const lastmod = getCompetitorProfile(slug)?.review?.verified;
+						return [
+							{ path: `/ai-visibility-tools/pricing/${slug}`, changefreq: "monthly", priority: 0.7, lastmod },
+							{ path: `/ai-visibility-tools/reviews/${slug}`, changefreq: "monthly", priority: 0.7, lastmod },
+						];
+					}),
 					...indexableFeatureKeys().map((key) => ({
 						path: `/ai-visibility-tools/features/${FEATURE_SLUGS[key]}`,
 						changefreq: "monthly",
