@@ -8,9 +8,17 @@ import { type GlossaryTerm, getGlossaryTerm, glossaryTerms } from "@/data/glossa
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/glossary/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const t = getGlossaryTerm(params.slug);
-		if (!t) return {};
+		if (!t) throw notFound();
+		const related = (t.related ?? [])
+			.map((slug) => glossaryTerms.find((x) => x.slug === slug))
+			.filter((x): x is GlossaryTerm => Boolean(x));
+		return { term: t, related };
+	},
+	head: ({ loaderData }) => {
+		if (!loaderData) return {};
+		const t = loaderData.term;
 		const title = `What is ${t.term}? · Elmo`;
 		const description = t.short;
 		const path = `/glossary/${t.slug}`;
@@ -23,22 +31,17 @@ export const Route = createFileRoute("/glossary/$slug")({
 					{ name: "Glossary", path: "/glossary" },
 					{ name: t.term, path },
 				]),
-				faqJsonLd([
-					{
-						question: `What is ${t.term}?`,
-						answer: `${t.short} ${t.body[0]}`,
-					},
-				]),
+				faqJsonLd(
+					[
+						{
+							question: `What is ${t.term}?`,
+							answer: `${t.short} ${t.body[0]}`,
+						},
+					],
+					{ path, dateModified: t.updated },
+				),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const t = getGlossaryTerm(params.slug);
-		if (!t) throw notFound();
-		const related = (t.related ?? [])
-			.map((slug) => glossaryTerms.find((x) => x.slug === slug))
-			.filter((x): x is GlossaryTerm => Boolean(x));
-		return { term: t, related };
 	},
 	component: GlossaryTermPage,
 });
@@ -121,8 +124,8 @@ function GlossaryTermPage() {
 							self-host it for free, and track how AI answer engines mention and cite your brand.
 						</p>
 						<div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-							<CloudSignupCTA source="marketing-glossary" />
-							<SelfHostCTA source="marketing-glossary" />
+							<CloudSignupCTA from="marketing-glossary" />
+							<SelfHostCTA from="marketing-glossary" />
 							<a
 								href="/ai-visibility-tools"
 								className="inline-flex h-8 items-center px-1 text-sm font-medium text-zinc-600 hover:text-zinc-950"

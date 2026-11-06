@@ -2,7 +2,15 @@ import { getCredential } from "../../secrets";
 import { type Citation, extractCitationsFromSearchapi, searchapiText } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
-import { type Attempt, failureDetails, isTransientStatus, nonEmptyStrings, retryTransient } from "./scrape-shared";
+import {
+	type Attempt,
+	failureDetails,
+	hasWebSearchToggle,
+	isTransientStatus,
+	nonEmptyStrings,
+	retryTransient,
+	searchesWeb,
+} from "./scrape-shared";
 
 const SEARCHAPI_URL = "https://www.searchapi.io/api/v1/search";
 
@@ -17,8 +25,9 @@ type SearchapiTarget = {
 	nested?: "ai_overview";
 };
 
-// AI Overview rides on the SERP engine because the dedicated one needs a
-// page_token that only a SERP call mints, making it two searches instead of one.
+// AI Overview rides on the SERP engine: Google inlines the overview on some
+// result pages, and on the rest hands back an ai_overview.page_token that only
+// the dedicated engine can redeem.
 const SEARCHAPI_TARGETS: Record<string, SearchapiTarget> = {
 	chatgpt: { engine: "chatgpt" },
 	perplexity: { engine: "perplexity" },
@@ -27,6 +36,8 @@ const SEARCHAPI_TARGETS: Record<string, SearchapiTarget> = {
 	"google-ai-mode": { engine: "google_ai_mode", params: { ...GOOGLE_LOCALE } },
 	"google-ai-overview": { engine: "google", params: { ...GOOGLE_LOCALE, link: "resolved" }, nested: "ai_overview" },
 };
+
+const AI_OVERVIEW_ENGINE = "google_ai_overview";
 
 async function attemptSearch(params: URLSearchParams): Promise<Attempt<Record<string, any>>> {
 	let res: Response;
@@ -57,10 +68,28 @@ async function attemptSearch(params: URLSearchParams): Promise<Attempt<Record<st
 	return { result: body };
 }
 
-// A shell with no answer in it — Google handing back an ai_overview.page_token
-// instead of the overview — fails rather than storing as a run nobody was
-// mentioned in. The text comes back with it so the run can't be gated on one
-// reading of the payload and then stored from another.
+async function search(params: URLSearchParams): Promise<Record<string, any>> {
+	return retryTransient(
+		() => attemptSearch(params),
+		(lastError) => `SearchApi request failed after retries (${lastError})`,
+	);
+}
+
+// Tokens expire in under a minute, so this runs straight after the SERP call.
+async function redeemAiOverviewToken(payload: Record<string, any>): Promise<Record<string, any>> {
+	const overview = payload.ai_overview;
+	const pageToken = overview?.page_token;
+	if (typeof pageToken !== "string" || !pageToken || searchapiText(overview)) return payload;
+
+	const followUp = await search(
+		new URLSearchParams({ engine: AI_OVERVIEW_ENGINE, page_token: pageToken, link: "resolved" }),
+	);
+	const answer = followUp.ai_overview && typeof followUp.ai_overview === "object" ? followUp.ai_overview : followUp;
+	return { ...payload, ai_overview: answer };
+}
+
+// A page token that redeemed to nothing fails rather than storing an empty run. The
+// text comes back too, so the gate and the stored run read the payload the same way.
 function readAnswer(
 	payload: Record<string, any>,
 	target: SearchapiTarget,
@@ -100,8 +129,7 @@ export const searchapi: Provider = {
 		if (!SEARCHAPI_TARGETS[config.model]) {
 			return `SearchApi does not support model "${config.model}". Supported: ${Object.keys(SEARCHAPI_TARGETS).join(", ")}`;
 		}
-		// ChatGPT is the one surface with a toggle; the rest always search.
-		if (config.model !== "chatgpt" && !config.webSearch) {
+		if (!hasWebSearchToggle(config.model) && !config.webSearch) {
 			return `${config.model}:searchapi requires :online — SearchApi reads the live web-search UIs`;
 		}
 		return null;
@@ -116,25 +144,21 @@ export const searchapi: Provider = {
 		}
 
 		const params = new URLSearchParams({ engine: target.engine, q: prompt, ...target.params });
-		if (model === "chatgpt") params.set("web_search", String(options?.webSearch ?? false));
+		if (hasWebSearchToggle(model)) params.set("web_search", String(options?.webSearch ?? false));
 
-		const payload = await retryTransient(
-			() => attemptSearch(params),
-			(lastError) => `SearchApi request failed after retries (${lastError})`,
-		);
+		const serp = await search(params);
+		const payload = target.nested === "ai_overview" ? await redeemAiOverviewToken(serp) : serp;
 
-		const { answer, text } = readAnswer(payload, target);
+		const { answer } = readAnswer(payload, target);
 		const stored = storedOutput(payload, target);
 		const citations: Citation[] = extractCitationsFromSearchapi(stored);
 
 		return {
 			rawOutput: stored,
-			textContent: text,
 			webQueries: reportedWebQueries(nonEmptyStrings(answer.search_queries), {
-				webSearch: model !== "chatgpt" || (options?.webSearch ?? false),
+				webSearch: searchesWeb(model, options?.webSearch),
 				searchProven: citations.length > 0,
 			}),
-			citations,
 			modelVersion: typeof answer.response_metadata?.model === "string" ? answer.response_metadata.model : undefined,
 		};
 	},

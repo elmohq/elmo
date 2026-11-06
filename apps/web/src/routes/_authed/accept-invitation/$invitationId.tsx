@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { buildTitle, getAppName } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -87,7 +88,9 @@ function AcceptInvitationPage() {
 			<div className="space-y-4 w-full">
 				{acceptError && (
 					<Alert variant="destructive">
-						<AlertDescription>{acceptError}</AlertDescription>
+						<AlertDescription>
+							<WriteErrorMessage message={acceptError} />
+						</AlertDescription>
 					</Alert>
 				)}
 				<Button className="w-full" onClick={handleAccept} disabled={accepting}>

@@ -3,6 +3,13 @@ export {
 	resolveBrandPromptRunPlans,
 } from "./brand-plans";
 export {
+	afterPromptCycle,
+	decidePromptCycle,
+	type PromptCycleAction,
+	type PromptCycleState,
+	type RescheduleReason,
+} from "./cycle";
+export {
 	computeMaintenanceDecisions,
 	computePoolPositions,
 	EXPEDITE_MIN_INTERVAL_MS,

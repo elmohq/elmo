@@ -9,7 +9,10 @@ const description =
 	"A plain-English glossary of AI search and answer engine optimization terms: AEO, GEO, LLMO, AI Overviews, citations, share of voice, RAG, and more.";
 
 export const Route = createFileRoute("/glossary/")({
-	head: () => ({
+	loader: () => ({
+		terms: glossaryTerms.map((t) => ({ term: t.term, definition: t.short, url: `/glossary/${t.slug}` })),
+	}),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -25,11 +28,7 @@ export const Route = createFileRoute("/glossary/")({
 				name: "AI Search & AEO Glossary",
 				description,
 				path: "/glossary",
-				terms: glossaryTerms.map((t) => ({
-					term: t.term,
-					definition: t.short,
-					url: `/glossary/${t.slug}`,
-				})),
+				terms: loaderData?.terms ?? [],
 			}),
 		],
 	}),
@@ -43,10 +42,7 @@ function GlossaryIndex() {
 			<main>
 				<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ Glossary</p>
-						<h1 className="font-heading mt-2 text-4xl text-balance text-zinc-950 md:text-5xl">
-							The AI search glossary
-						</h1>
+						<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">The AI search glossary</h1>
 						<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">
 							The vocabulary of AI search and answer engine optimization, defined in plain English and cross-linked.
 							Start anywhere.

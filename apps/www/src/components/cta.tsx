@@ -1,7 +1,6 @@
 import { CLOUD_ENTRY_PRICE_USD, MONEY_BACK_GUARANTEE_DAYS } from "@workspace/config/plans";
 import { bookDemoUrl } from "@workspace/config/referrals";
 import { trackCta } from "@/lib/analytics";
-import { externalRel } from "@/lib/external-link";
 import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
 import { QuickstartBlock } from "./quickstart-block";
 
@@ -17,8 +16,7 @@ export function CTA() {
 			<div className="relative mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<div className="grid items-center gap-10 lg:grid-cols-12">
 					<div className="lg:col-span-7">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ GET STARTED</p>
-						<h2 className="mt-4 max-w-[18ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+						<h2 className="max-w-[18ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 							Start tracking AI answers today.
 						</h2>
 						<p className="mt-5 max-w-[52ch] text-pretty text-zinc-600 md:text-lg">
@@ -27,9 +25,9 @@ export function CTA() {
 							infra for free.
 						</p>
 						<div className="mt-7 flex flex-wrap items-center gap-2">
-							<CloudSignupCTA source="marketing-cta" />
-							<SelfHostCTA source="marketing-cta" />
-							<QuietCTA href="https://github.com/elmohq/elmo" source="marketing-cta" destination="github">
+							<CloudSignupCTA from="marketing-cta" />
+							<SelfHostCTA from="marketing-cta" />
+							<QuietCTA href="https://github.com/elmohq/elmo" from="marketing-cta" destination="github">
 								View source
 							</QuietCTA>
 						</div>
@@ -39,8 +37,6 @@ export function CTA() {
 							Would you rather be shown around?{" "}
 							<a
 								href={DEMO_URL}
-								target="_blank"
-								rel={externalRel(DEMO_URL)}
 								onClick={() => trackCta("book-demo", "marketing-cta")}
 								className="font-medium text-zinc-700 underline underline-offset-2 hover:text-zinc-950"
 							>

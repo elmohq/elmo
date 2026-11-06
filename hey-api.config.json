@@ -1,0 +1,41 @@
+{
+  "$schema": "./.hey-api/_config.schema.json",
+  "input": {
+    "path": "./packages/api-spec/src/openapi.json",
+    "declare": [
+      { "scheme": "BearerAuth", "startsWith": "elmo_" },
+      {
+        "include": {
+          "openapi": {
+            "operations": [
+              "GET /brands/{brandId}/opportunities",
+              "POST /tools/analyze"
+            ]
+          }
+        },
+        "timeout": 600000
+      }
+    ]
+  },
+  "targets": {
+    "typescript": {
+      "package": {
+        "name": "@elmohq/sdk",
+        "destination": ["github", "npm"],
+        "repository": "https://github.com/elmohq/elmo-sdk-typescript",
+        "homepage": "https://www.elmohq.com"
+      }
+    },
+    "python": {
+      "package": {
+        "name": "elmo-sdk",
+        "destination": ["github", "pypi"],
+        "repository": "https://github.com/elmohq/elmo-sdk-python",
+        "homepage": "https://www.elmohq.com"
+      }
+    }
+  },
+  "plugins": [
+    { "name": "@hey-api/client", "baseURL": "https://app.elmohq.com/api/v1" }
+  ]
+}

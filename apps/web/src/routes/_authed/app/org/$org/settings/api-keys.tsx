@@ -40,7 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/componen
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
-import { CopyButton } from "@/components/copy-button";
+import { CopyField } from "@/components/copy-button";
 import { DemoModeAlert } from "@/components/demo-mode-alert";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { useIsTruncated } from "@/hooks/use-is-truncated";
@@ -486,10 +486,7 @@ function IssuedKeyCard({ value }: { value: string }) {
 				<IconCircleCheck className="size-5" />
 				Key Created
 			</CardTitle>
-			<div className="flex min-w-0 items-center gap-2">
-				<code className="truncate rounded-md border bg-background px-3 py-1.5 font-mono text-sm">{value}</code>
-				<CopyButton value={value} />
-			</div>
+			<CopyField value={value} label="API Key" className="max-w-md flex-1" />
 		</Card>
 	);
 }

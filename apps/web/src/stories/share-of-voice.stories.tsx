@@ -7,9 +7,9 @@ import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/share-of-voice
 // Render its component via the route options — the mock exposes `options`.
 const ShareOfVoicePage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
-import { setMockShareOfVoice } from "./_mocks/server-analysis";
+import { setMockLandscape, setMockShareOfVoice } from "./_mocks/server-analysis";
 import { setMockBrand } from "./_mocks/use-brands";
-import { mockShareOfVoice } from "./analytics-fixtures";
+import { mockLandscape, mockShareOfVoice } from "./analytics-fixtures";
 
 const onboardedBrand = {
 	id: "brand-1",
@@ -45,6 +45,7 @@ const meta = {
 		(Story) => {
 			setMockBrand(onboardedBrand);
 			setMockShareOfVoice(mockShareOfVoice);
+			setMockLandscape(mockLandscape);
 			return (
 				<Shell>
 					<Story />

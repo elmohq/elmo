@@ -16,7 +16,13 @@ vi.mock("../db/db", () => ({
 	},
 }));
 
-import { clearCredentialOverlay, encryptCredential, getCredential, refreshCredentialOverlay } from "./store";
+import {
+	clearCredentialOverlay,
+	encryptCredential,
+	getCredential,
+	refreshCredentialOverlay,
+	withStoredCredentials,
+} from "./store";
 
 const KEY = Buffer.alloc(32, 7);
 const KEY_B64 = KEY.toString("base64");
@@ -60,6 +66,19 @@ describe("getCredential", () => {
 
 		clearCredentialOverlay();
 		expect(getCredential("OPENAI_API_KEY")).toBe("env-value");
+	});
+});
+
+describe("withStoredCredentials", () => {
+	it("counts a credential stored in the database as set", async () => {
+		vi.stubEnv("ELMO_ENCRYPTION_KEY", KEY_B64);
+		dbState.rows = [await encryptedRow("OLOSTEP_API_KEY", "db-value")];
+		await refreshCredentialOverlay();
+
+		expect(withStoredCredentials({ DATABASE_URL: "postgres://x" })).toMatchObject({
+			DATABASE_URL: "postgres://x",
+			OLOSTEP_API_KEY: "db-value",
+		});
 	});
 });
 

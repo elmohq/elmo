@@ -1,11 +1,12 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { DataProvenance } from "@/components/data-provenance";
 import { DirectoryBackLink, DirectoryHero, ElmoCta } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
 import { MultiComparison } from "@/components/multi-comparison";
 import { Navbar } from "@/components/navbar";
 import { PairComparison } from "@/components/pair-comparison";
-import { type Competitor, getCompareEntry, getCompareFaqs, getCompareVerdict } from "@/lib/competitors";
+import { type Competitor, getCompareEntry, getCompareFaqs, getCompareVerdict, lastChecked } from "@/lib/competitors";
 import {
 	breadcrumbJsonLd,
 	canonicalUrl,
@@ -17,9 +18,14 @@ import {
 } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
-	head: ({ params }) => {
+	loader: ({ params }) => {
 		const tools = getCompareEntry(params.slug);
-		if (!tools) return {};
+		if (!tools) throw notFound();
+		return { tools, faqs: getCompareFaqs(tools) };
+	},
+	head: ({ params, loaderData }) => {
+		if (!loaderData) return {};
+		const { tools, faqs } = loaderData;
 		const names = tools.map((t) => t.name).join(" vs ");
 		const isPair = tools.length === 2;
 		const title = isPair ? `${names} | AI Visibility Tool Comparison · Elmo` : `${names} · Elmo`;
@@ -36,16 +42,11 @@ export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: names, path },
 				]),
-				faqJsonLd(getCompareFaqs(tools)),
+				faqJsonLd(faqs, { path, dateModified: lastChecked(tools) }),
 				comparisonJsonLd([...tools.map((t) => ({ name: t.name, url: t.url })), ELMO_LISTING]),
 				softwareApplicationJsonLd(),
 			],
 		};
-	},
-	loader: ({ params }) => {
-		const tools = getCompareEntry(params.slug);
-		if (!tools) throw notFound();
-		return { tools };
 	},
 	component: ComparePage,
 });
@@ -59,9 +60,12 @@ function ComparePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero eyebrow="Comparison" title={names} lead={getCompareVerdict(tools)} />
+				<DirectoryHero title={names} lead={getCompareVerdict(tools)} />
 				{a && b && tools.length === 2 ? <PairComparison a={a} b={b} /> : <MultiComparison tools={tools} />}
-				<Faq items={getCompareFaqs(tools)} eyebrow="/ FAQ" />
+				<div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+					<DataProvenance tools={tools} />
+				</div>
+				<Faq items={getCompareFaqs(tools)} />
 				<ElmoCta />
 			</main>
 			<Footer />

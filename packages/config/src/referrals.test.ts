@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { bookDemoUrl, cloudLoginUrl, cloudPricingUrl, cloudSignupUrl, demoSiteUrl, marketingUrl } from "./referrals";
+import {
+	bookDemoUrl,
+	cloudAppUrl,
+	cloudLoginUrl,
+	cloudPricingUrl,
+	cloudSignupUrl,
+	demoSiteUrl,
+	marketingUrl,
+} from "./referrals";
 
 /**
  * The contract every one of these has to keep: land on the right page, and say
@@ -9,6 +17,7 @@ import { bookDemoUrl, cloudLoginUrl, cloudPricingUrl, cloudSignupUrl, demoSiteUr
 describe("referral links", () => {
 	const builders = {
 		marketing: () => marketingUrl("/docs", "cli"),
+		app: () => cloudAppUrl("cli"),
 		signup: () => cloudSignupUrl("cli"),
 		login: () => cloudLoginUrl("cli"),
 		pricing: () => cloudPricingUrl("cli"),
@@ -22,10 +31,14 @@ describe("referral links", () => {
 
 	it("points each destination at its own page", () => {
 		expect(marketingUrl("/docs", "cloud-signin")).toBe("https://www.elmohq.com/docs?ref=cloud-signin");
+		expect(cloudAppUrl("marketing-cta")).toBe("https://app.elmohq.com/?ref=marketing-cta");
 		expect(cloudSignupUrl("cloud-signin")).toBe("https://app.elmohq.com/auth/register?ref=cloud-signin");
-		expect(cloudLoginUrl("marketing-navbar")).toBe("https://app.elmohq.com/auth/login?ref=marketing-navbar");
+		expect(cloudLoginUrl("marketing-nav")).toBe("https://app.elmohq.com/auth/login?ref=marketing-nav");
 		expect(cloudPricingUrl("cloud-signin")).toBe("https://www.elmohq.com/pricing?ref=cloud-signin");
-		expect(bookDemoUrl("cloud-signin")).toBe("https://cal.com/jrhizor/elmo?ref=cloud-signin");
+		expect(bookDemoUrl("cloud-signin")).toBe("https://www.elmohq.com/demo?ref=cloud-signin");
 		expect(demoSiteUrl("cloud-signin")).toBe("https://demo.elmohq.com/?ref=cloud-signin");
+		expect(demoSiteUrl("marketing-demo-frame", "/app/org/acme/brand/acme/citations")).toBe(
+			"https://demo.elmohq.com/app/org/acme/brand/acme/citations?ref=marketing-demo-frame",
+		);
 	});
 });

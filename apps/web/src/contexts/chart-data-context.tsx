@@ -1,9 +1,12 @@
 import type { Competitor } from "@workspace/lib/db/schema";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
-import { type ChartSubject, generateDateRange, latestVisibility } from "@/lib/chart-utils";
-import type { ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
+import {
+	type ChartSubject,
+	generateDateRange,
+	latestVisibility,
+	type ProcessedBatchChartDataPoint,
+} from "@/lib/chart-utils";
 
-// Chart data for a single prompt (pre-processed for rendering)
 export interface ProcessedChartData {
 	chartData: Array<{
 		date: string;
@@ -14,7 +17,6 @@ export interface ProcessedChartData {
 	lastBrandVisibility: number | null;
 }
 
-// Context value
 interface ChartDataContextValue {
 	batchData: ProcessedBatchChartDataPoint[] | null;
 	brand: ChartSubject | null;

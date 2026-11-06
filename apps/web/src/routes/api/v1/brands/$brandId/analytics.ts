@@ -1,6 +1,6 @@
 /**
- * One endpoint rather than four: visibility, share of voice, the per-model
- * breakdown and the citation totals come off the same resolved prompt scope.
+ * One endpoint rather than several: visibility, share of voice, the per-model
+ * breakdown, the citation totals, and sentiment and position cover the same prompts.
  * No `include` parameter — the lists that can grow without bound have their own
  * paginated endpoints, and what is left is small enough to always send.
  */

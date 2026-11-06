@@ -1,5 +1,5 @@
 import { Link, useLoaderData } from "@tanstack/react-router";
-import { cloudLoginUrl, cloudSignupUrl } from "@workspace/config/referrals";
+import { cloudAppUrl, cloudLoginUrl } from "@workspace/config/referrals";
 import { Button } from "@workspace/ui/components/button";
 import {
 	NavigationMenu,
@@ -13,19 +13,17 @@ import { trackCta } from "@/lib/analytics";
 import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
 
+const CLOUD_URL = cloudAppUrl("marketing-nav");
+const LOGIN_URL = cloudLoginUrl("marketing-nav");
+
 const navigationLinks = [
 	{ href: "/features", label: "Features" },
-	{ href: "/ai-visibility-tools/category/open-source", label: "Open Source Tools" },
 	{ href: "/pricing", label: "Pricing" },
 	{ href: "/changelog", label: "Changelog" },
 	{ href: "/roadmap", label: "Roadmap" },
 	{ href: "/vision", label: "Vision" },
 	{ href: "/docs", label: "Docs" },
 ];
-
-const SIGNUP_URL = cloudSignupUrl("marketing-navbar");
-// A customer coming back had no way in from the site short of the sign-up page.
-const LOGIN_URL = cloudLoginUrl("marketing-navbar");
 
 export function Navbar() {
 	const rootData = useLoaderData({ from: "__root__" });
@@ -79,17 +77,17 @@ export function Navbar() {
 									<NavigationMenuItem className="w-full border-t border-zinc-200 pt-1">
 										<NavigationMenuLink
 											href={LOGIN_URL}
-											onClick={() => trackCta("cloud-login", "marketing-navbar")}
+											onClick={() => trackCta("cloud-login", "marketing-nav")}
 											className="py-1.5"
 										>
-											Log in
+											Log In
 										</NavigationMenuLink>
 									</NavigationMenuItem>
 								</NavigationMenuList>
 							</PopoverContent>
 						</Popover>
 					</NavigationMenu>
-					<Link to="/" aria-label="Homepage" className="flex items-center">
+					<Link to="/" className="flex items-center">
 						<Logo className="text-2xl" />
 					</Link>
 					<NavigationMenu className="mx-auto max-md:hidden">
@@ -140,14 +138,14 @@ export function Navbar() {
 					</a>
 					<a
 						href={LOGIN_URL}
-						onClick={() => trackCta("cloud-login", "marketing-navbar")}
+						onClick={() => trackCta("cloud-login", "marketing-nav")}
 						className="hidden h-8 items-center px-2 text-sm font-medium text-zinc-600 hover:text-zinc-950 md:inline-flex"
 					>
-						Log in
+						Log In
 					</a>
 					<a
-						href={SIGNUP_URL}
-						onClick={() => trackCta("cloud-signup", "marketing-navbar")}
+						href={CLOUD_URL}
+						onClick={() => trackCta("cloud-signup", "marketing-nav")}
 						className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
 					>
 						Get started

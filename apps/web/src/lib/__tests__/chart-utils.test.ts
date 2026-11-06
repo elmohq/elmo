@@ -1,12 +1,14 @@
+import { toRoundedPercentages } from "@workspace/lib/citations/domain-categories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	applyPerPromptKeyedLVCF,
 	citationDateWindow,
+	filterAndCompleteChartData,
 	generateDateRange,
 	getDaysFromLookback,
 	getDefaultLookbackPeriod,
+	toBatchChartData,
 } from "@/lib/chart-utils";
-import { toRoundedPercentages } from "@/lib/domain-categories";
 import type { LookbackPeriod } from "@/lib/lookback";
 
 describe("getDaysFromLookback", () => {
@@ -17,6 +19,9 @@ describe("getDaysFromLookback", () => {
 		["6m", 180],
 		["1y", 365],
 		["all", 365 * 2],
+		["2026-03-01..2026-03-01", 1],
+		["2026-02-01..2026-03-01", 29],
+		["2025-12-31..2026-01-01", 2],
 	])("maps %s to %i days", (lookback, days) => {
 		expect(getDaysFromLookback(lookback)).toBe(days);
 	});
@@ -138,5 +143,63 @@ describe("applyPerPromptKeyedLVCF", () => {
 		const daily = applyPerPromptKeyedLVCF(rows, range, 24, keys);
 		expect(toRoundedPercentages(daily.get("2026-06-01")!)).toEqual({ brand: 33, editorial: 67, other: 0 });
 		expect(toRoundedPercentages(daily.get("2026-06-02")!)).toEqual({ brand: 33, editorial: 67, other: 0 });
+	});
+});
+
+describe("filterAndCompleteChartData with a custom range", () => {
+	it("plots exactly the chosen days, filling gaps and dropping points outside", () => {
+		const data = [
+			{ date: "2026-02-27", brand: 10 },
+			{ date: "2026-03-01", brand: 40 },
+			{ date: "2026-03-03", brand: 60 },
+			{ date: "2026-03-05", brand: 90 },
+		];
+
+		expect(filterAndCompleteChartData(data, "2026-03-01..2026-03-04")).toEqual([
+			{ date: "2026-03-01", brand: 40 },
+			{ date: "2026-03-02" },
+			{ date: "2026-03-03", brand: 60 },
+			{ date: "2026-03-04" },
+		]);
+	});
+});
+
+describe("toBatchChartData", () => {
+	const day = (prompt_id: string, date: string, runs: number, brand_mentioned_runs: number) => ({
+		prompt_id,
+		date,
+		runs,
+		brand_mentioned_runs,
+		competitor_runs: 0,
+		competitor_mentions: 0,
+	});
+
+	it("attaches each competitor's runs to the same prompt and day", () => {
+		const points = toBatchChartData(
+			[day("p1", "2026-03-01", 4, 1), day("p1", "2026-03-02", 2, 2), day("p2", "2026-03-01", 3, 0)],
+			[
+				{ prompt_id: "p1", date: "2026-03-01", competitor: "Globex", runs: 2 },
+				{ prompt_id: "p1", date: "2026-03-01", competitor: "Initech", runs: 1 },
+				{ prompt_id: "p2", date: "2026-03-01", competitor: "Globex", runs: 3 },
+			],
+		);
+
+		expect(points).toEqual([
+			{
+				prompt_id: "p1",
+				date: "2026-03-01",
+				total_runs: 4,
+				brand_mentioned_count: 1,
+				competitor_counts: { Globex: 2, Initech: 1 },
+			},
+			{ prompt_id: "p1", date: "2026-03-02", total_runs: 2, brand_mentioned_count: 2, competitor_counts: {} },
+			{
+				prompt_id: "p2",
+				date: "2026-03-01",
+				total_runs: 3,
+				brand_mentioned_count: 0,
+				competitor_counts: { Globex: 3 },
+			},
+		]);
 	});
 });

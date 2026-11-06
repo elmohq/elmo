@@ -1,14 +1,10 @@
-/**
- * Server functions for admin operations.
- * Replaces apps/web/src/app/api/admin/* API routes.
- */
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { getModelMeta } from "@workspace/config/models";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, brands, organization, type Prompt, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { type Brand, brands, organization, type Prompt, prompts, rollupPromptRuns } from "@workspace/lib/db/schema";
 import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import type { ModelConfig } from "@workspace/lib/providers";
@@ -24,10 +20,6 @@ import { Client } from "pg";
 import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
-
-// ============================================================================
-// Admin guard helper
-// ============================================================================
 
 async function requireAdmin() {
 	const session = await requireAuthSession();
@@ -47,10 +39,6 @@ async function organizationSlugs(organizationIds: string[]): Promise<Map<string,
 function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
 	return slugs.get(organizationId) ?? organizationId;
 }
-
-// ============================================================================
-// Admin analytics queries
-// ============================================================================
 
 interface AdminRunsOverTime {
 	date: string;
@@ -77,10 +65,10 @@ async function adminRows<T>(query: SQL): Promise<T[]> {
 async function getAdminRunsOverTime(): Promise<AdminRunsOverTime[]> {
 	const rows = await adminRows<AdminRunsOverTime>(sql`
 		SELECT
-			(created_at AT TIME ZONE 'UTC')::date AS date,
-			count(*)::int AS count
-		FROM prompt_runs
-		WHERE created_at >= now() - interval '30 days'
+			(bucket AT TIME ZONE 'UTC')::date AS date,
+			sum(runs)::int AS count
+		FROM rollup_prompt_runs
+		WHERE bucket >= now() - interval '30 days'
 		GROUP BY date
 		ORDER BY date
 	`);
@@ -91,10 +79,10 @@ async function getAdminBrandRunStats(): Promise<AdminBrandRunStats[]> {
 	const rows = await adminRows<AdminBrandRunStats>(sql`
 		SELECT
 			brand_id,
-			count(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS runs_7d,
-			count(*) FILTER (WHERE created_at >= now() - interval '30 days')::int AS runs_30d,
-			to_char(max(created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_run_at
-		FROM prompt_runs
+			coalesce(sum(runs) FILTER (WHERE bucket >= now() - interval '7 days'), 0)::int AS runs_7d,
+			coalesce(sum(runs) FILTER (WHERE bucket >= now() - interval '30 days'), 0)::int AS runs_30d,
+			to_char(max(last_run_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_run_at
+		FROM rollup_prompt_runs
 		GROUP BY brand_id
 	`);
 	return rows;
@@ -108,10 +96,10 @@ async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime
 		FROM (
 			SELECT
 				brand_id,
-				(created_at AT TIME ZONE 'UTC')::date + d AS target_date
-			FROM prompt_runs,
+				(bucket AT TIME ZONE 'UTC')::date + d AS target_date
+			FROM rollup_prompt_runs,
 				generate_series(0, 29) AS d
-			WHERE created_at >= now() - interval '60 days'
+			WHERE bucket >= now() - interval '60 days'
 		) expanded
 		WHERE target_date >= current_date - 30
 			AND target_date <= current_date
@@ -120,10 +108,6 @@ async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Postgres client helper for pg-boss queries
-// ============================================================================
 
 async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	const connectionString = process.env.DATABASE_URL;
@@ -139,13 +123,6 @@ async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	}
 }
 
-// ============================================================================
-// Admin Dashboard - Brand Stats
-// ============================================================================
-
-/**
- * Get admin dashboard statistics (all brands, run counts, time series charts).
- */
 export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
 
@@ -158,7 +135,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 		await Promise.all([
 			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
-			// Cumulative brand count over time (last 30 days)
 			db
 				.select({
 					date: sql<string>`date_series::date`,
@@ -175,7 +151,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 				.groupBy(sql`date_series`)
 				.orderBy(sql`date_series`),
 
-			// Cumulative prompts count over time (enabled vs disabled)
 			db
 				.select({
 					date: sql<string>`date_series::date`,
@@ -254,13 +229,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	};
 });
 
-// ============================================================================
-// Admin Dashboard - Delay Override
-// ============================================================================
-
-/**
- * Update delay override for a brand.
- */
 export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -280,15 +248,7 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 		return result[0];
 	});
 
-// ============================================================================
-// Admin Tools - Analyze Brand
-// ============================================================================
-
-/**
- * Provider-agnostic brand analysis. Returns brand info, competitors, and
- * suggested prompts in a single LLM round-trip — same pipeline that the
- * onboarding wizard and `POST /api/v1/tools/analyze` use.
- */
+/** The same pipeline as onboarding and `POST /api/v1/tools/analyze`. */
 export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -307,10 +267,6 @@ export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 			maxPrompts: data.maxPrompts,
 		});
 	});
-
-// ============================================================================
-// Admin Workflows - Data Fetching
-// ============================================================================
 
 function parseJobData(data: unknown): { promptId?: string } {
 	if (!data) return {};
@@ -673,9 +629,6 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
 	return [...columns.values()];
 }
 
-/**
- * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
- */
 interface WorkflowContext {
 	orgSlugs: Map<string, string>;
 	runPlans: Map<string, PromptRunPlan>;
@@ -731,8 +684,6 @@ function promptWorkflowStatus(
 			brandId: brand.id,
 			brandName: brand.name,
 			enabled: prompt.enabled,
-			// The chain's own cadence: its fastest target, which is what the
-			// scheduler reschedules on. Zero when the plan parks the prompt.
 			runFrequencyMs: intervalMsOf(targets),
 			lastRunsByTarget,
 			schedulerInfo: scheduleInfo
@@ -761,9 +712,6 @@ function brandWorkflowSummary(
 		enabled: brand.enabled,
 		totalPrompts: brandPrompts.length,
 		enabledPrompts: enabled.length,
-		// Prompts of one brand can run different targets (premium is per prompt),
-		// so the table's columns are the union rather than whatever the first row
-		// happens to have.
 		targetColumns: targetColumnsFor(brandPrompts.map((p) => context.runPlans.get(p.id))),
 		runFrequencyMs: fastestCadenceMs(statuses.map((status) => status.row.runFrequencyMs)),
 		overduePrompts: enabled.filter((status) => status.overdue).length,
@@ -789,14 +737,19 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 	const lastRunsQuery = await db
 		.select({
-			promptId: promptRuns.promptId,
-			model: promptRuns.model,
-			provider: promptRuns.provider,
-			webSearchEnabled: promptRuns.webSearchEnabled,
-			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+			promptId: rollupPromptRuns.promptId,
+			model: rollupPromptRuns.model,
+			provider: rollupPromptRuns.provider,
+			webSearchEnabled: rollupPromptRuns.webSearchEnabled,
+			lastRunAt: sql<Date>`max(${rollupPromptRuns.lastRunAt})`.as("last_run_at"),
 		})
-		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
+		.from(rollupPromptRuns)
+		.groupBy(
+			rollupPromptRuns.promptId,
+			rollupPromptRuns.model,
+			rollupPromptRuns.provider,
+			rollupPromptRuns.webSearchEnabled,
+		);
 
 	const lastRunsByPrompt = new Map<string, Map<string, Date>>();
 	for (const run of lastRunsQuery) {
@@ -805,8 +758,8 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 			byKey = new Map();
 			lastRunsByPrompt.set(run.promptId, byKey);
 		}
-		// provider is nullable on the column; a row without one predates target
-		// keying and can't be matched to a target anyway.
+		// A run without a provider ('' in the rollups) predates target keying and
+		// can't be matched to a target anyway.
 		if (!run.provider) continue;
 		byKey.set(
 			targetKey({ model: run.model, provider: run.provider, webSearch: run.webSearchEnabled }),
@@ -822,10 +775,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		getQueueStats(),
 	]);
 
-	// The dashboard reports against what each prompt is actually supposed to run,
-	// so it resolves the same plans the worker does. Reading every configured
-	// SCRAPE_TARGETS model at the brand cadence instead would mark every platform
-	// a plan doesn't sell as permanently overdue.
+	// The worker's own plans, or every platform a plan doesn't sell would read as overdue.
 	const entitlementsByOrg = await getOrgEntitlementsMap([...new Set(allBrands.map((b) => b.organizationId))]);
 	const runPlans = resolveRunPlansForBrands({
 		brands: allBrands,
@@ -873,13 +823,6 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	};
 });
 
-// ============================================================================
-// Admin Workflows - Retry Job
-// ============================================================================
-
-/**
- * Retry a prompt job (send immediate job for a prompt).
- */
 export const retryJobFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -908,13 +851,6 @@ export const retryJobFn = createServerFn({ method: "POST" })
 		return { success: true, message: `Triggered immediate job for prompt ${targetPromptId}` };
 	});
 
-// ============================================================================
-// Admin Workflows - Job Logs
-// ============================================================================
-
-/**
- * Get logs for a specific job.
- */
 function formatJobLogs(job: Record<string, any>): string[] {
 	/** JSON columns arrive as text or as parsed objects depending on the driver. */
 	const pretty = (value: unknown) => {

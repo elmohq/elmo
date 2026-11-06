@@ -23,21 +23,19 @@ describe("resolveTimezone", () => {
 	});
 
 	describe("without a resolved fallback", () => {
-		afterEach(() => vi.unstubAllGlobals());
+		afterEach(() => vi.restoreAllMocks());
 
 		it("uses the system timezone", () => {
-			vi.stubGlobal("Intl", {
-				DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone: "Australia/Sydney" }) }),
-			});
+			vi.spyOn(Intl, "DateTimeFormat").mockReturnValue({
+				resolvedOptions: () => ({ timeZone: "Australia/Sydney" }),
+			} as Intl.DateTimeFormat);
 
 			expect(resolveTimezone(undefined, undefined)).toBe("Australia/Sydney");
 		});
 
 		it("uses UTC when the system timezone cannot be resolved", () => {
-			vi.stubGlobal("Intl", {
-				DateTimeFormat: () => {
-					throw new Error("timezone data unavailable");
-				},
+			vi.spyOn(Intl, "DateTimeFormat").mockImplementation(() => {
+				throw new Error("timezone data unavailable");
 			});
 
 			expect(resolveTimezone(undefined, undefined)).toBe("UTC");
@@ -98,14 +96,18 @@ describe("getTimezoneLookbackRange", () => {
 		expect(getTimezoneLookbackRange(lookback, "UTC", { now })).toEqual({ fromDateStr, toDateStr });
 	});
 
-	it.each<["none" | "1y", string | null, string | null]>([
-		["none", null, null],
-		["1y", "2023-03-31", "2024-03-31"],
-	])("applies the %s strategy to the all lookback", (allStrategy, fromDateStr, toDateStr) => {
-		expect(getTimezoneLookbackRange("all", "UTC", { now, allStrategy })).toEqual({
-			fromDateStr,
-			toDateStr,
+	it("returns a custom range as-is, whatever the timezone or today", () => {
+		expect(getTimezoneLookbackRange("2023-11-02..2024-01-15", "Asia/Tokyo", { now })).toEqual({
+			fromDateStr: "2023-11-02",
+			toDateStr: "2024-01-15",
 		});
+	});
+
+	it.each<[string, string | null, string]>([
+		["2024-01-15..", "2024-01-15", "2024-03-31"],
+		["..2024-01-15", null, "2024-01-15"],
+	])("resolves the open-ended range %s", (lookback, fromDateStr, toDateStr) => {
+		expect(getTimezoneLookbackRange(lookback as LookbackPeriod, "UTC", { now })).toEqual({ fromDateStr, toDateStr });
 	});
 
 	it.each<[string, string, string]>([

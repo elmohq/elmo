@@ -1,14 +1,3 @@
-/**
- * Shared prompts table — used by the settings/prompts page (manages a brand's
- * full prompt list) and the prompt wizard's Review step (picks from
- * AI-suggested prompts + custom additions).
- *
- * Controlled component: the caller owns the `prompts` array and the change
- * callback. The settings page wraps it with save/server logic; the wizard
- * keeps it inline. The `showSystemTags` prop hides the System Tags column
- * in the wizard since onboarding hasn't yet computed any system tags.
- */
-
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import { getModelMeta } from "@workspace/config/models";
@@ -26,12 +15,13 @@ import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Input } from "@workspace/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Switch } from "@workspace/ui/components/switch";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { Inbox, ListPlus, Plus } from "lucide-react";
+import { Inbox, ListPlus, Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useOrganizationParams } from "@/hooks/use-route-params";
@@ -44,6 +34,7 @@ export interface EditablePrompt {
 	tags: string[];
 	systemTags: string[];
 	premiumModels: string[];
+	suggested?: boolean;
 }
 
 export interface PremiumAllowance {
@@ -60,6 +51,7 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		systemTags: partial?.systemTags ?? [],
 		premiumModels: partial?.premiumModels ?? [],
 		...(partial?.id ? { id: partial.id } : {}),
+		...(partial?.suggested ? { suggested: true } : {}),
 	};
 }
 
@@ -167,20 +159,16 @@ const GRID_COLS: Record<string, string> = {
 interface PromptsListEditorProps {
 	prompts: EditablePrompt[];
 	onChange: (next: EditablePrompt[]) => void;
-	/** Show the read-only System Tags column. Default true. */
 	showSystemTags?: boolean;
 	/** `_key`s of rows edited since the last save, flagged with an accent rail
 	 *  so a change is findable in a list of up to {@link MAX_PROMPTS} rows. */
 	changedKeys?: ReadonlySet<string>;
 	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
 	premium?: PremiumAllowance;
+	leading?: ReactNode;
+	pendingRows?: number;
 }
 
-/**
- * The bulk-paste box's state. The parse is pure and lives in @workspace/lib so
- * the rules (trim, dedupe, cap) are tested without a DOM; it runs on every
- * keystroke only to label the button and warn about what will be dropped.
- */
 function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void) {
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
@@ -218,10 +206,7 @@ function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void)
 	};
 }
 
-/**
- * Which rows are ticked. Counted against the current prompts so stale keys
- * (e.g. after the wizard regenerates suggestions) don't linger in the tally.
- */
+/** Counted against the current prompts, so keys from regenerated suggestions don't linger. */
 function useRowSelection(prompts: EditablePrompt[]) {
 	const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 	const liveSelectedCount = prompts.reduce((count, p) => (selectedKeys.has(p._key) ? count + 1 : count), 0);
@@ -322,11 +307,73 @@ function ColumnHeader({
 	);
 }
 
+function PromptTextField({
+	prompt,
+	onValueChange,
+	onRemove,
+	className,
+}: {
+	prompt: EditablePrompt;
+	onValueChange: (value: string) => void;
+	onRemove: () => void;
+	className?: string;
+}) {
+	const removable = !prompt.id;
+	return (
+		<div className={cn("relative", className)}>
+			{prompt.suggested && (
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
+								<Sparkles className="size-3.5" aria-label="Suggested" />
+							</span>
+						}
+					/>
+					<TooltipContent>Suggested. Save to start tracking it, or remove it.</TooltipContent>
+				</Tooltip>
+			)}
+			<Input
+				value={prompt.value}
+				onChange={(e) => onValueChange(e.target.value)}
+				placeholder="Enter prompt text..."
+				className={cn("min-w-0", prompt.suggested && "pl-8", removable && "pr-8")}
+			/>
+			{removable && (
+				<button
+					type="button"
+					onClick={onRemove}
+					aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
+					className="absolute inset-y-0 right-1.5 my-auto flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+				>
+					<X className="size-3.5" />
+				</button>
+			)}
+		</div>
+	);
+}
+
+const PENDING_WIDTHS = ["70%", "52%", "63%", "46%", "58%"];
+
+function PendingRows({ count, gridCols }: { count: number; gridCols: string }) {
+	return (
+		<>
+			{PENDING_WIDTHS.slice(0, count).map((width) => (
+				<div key={width} aria-hidden className={`grid grid-cols-1 ${gridCols} gap-2 items-center py-2`}>
+					<Skeleton className="hidden md:block mx-auto size-4 rounded-[4px]" />
+					<Skeleton className="h-4" style={{ width }} />
+				</div>
+			))}
+		</>
+	);
+}
+
 function PromptRow({
 	prompt,
 	index,
 	total,
 	update,
+	remove,
 	allTagOptions,
 	showSystemTags,
 	changedKeys,
@@ -340,6 +387,7 @@ function PromptRow({
 	index: number;
 	total: number;
 	update: (index: number, patch: Partial<EditablePrompt>) => void;
+	remove: (index: number) => void;
 	allTagOptions: { value: string }[];
 	showSystemTags: boolean;
 	changedKeys?: ReadonlySet<string>;
@@ -358,13 +406,12 @@ function PromptRow({
 			)}
 		>
 			{changedKeys?.has(prompt._key) && <span className="sr-only">Has unsaved changes</span>}
-			{/* Mobile: stacked, no selection/bulk */}
 			<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < total - 1 ? "border-b" : ""}`}>
 				<div className="flex items-start gap-2">
-					<Input
-						value={prompt.value}
-						onChange={(e) => update(index, { value: e.target.value })}
-						placeholder="Enter prompt text..."
+					<PromptTextField
+						prompt={prompt}
+						onValueChange={(value) => update(index, { value })}
+						onRemove={() => remove(index)}
 						className="min-w-0 flex-1"
 					/>
 					<div className="pt-2">
@@ -394,16 +441,14 @@ function PromptRow({
 				)}
 			</div>
 
-			{/* Desktop (md+): single-line grid */}
 			<div className={`hidden md:grid ${gridCols} gap-2 items-start`}>
 				<div className="flex justify-center pt-2">
 					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
 				</div>
-				<Input
-					value={prompt.value}
-					onChange={(e) => update(index, { value: e.target.value })}
-					placeholder="Enter prompt text..."
-					className="min-w-0"
+				<PromptTextField
+					prompt={prompt}
+					onValueChange={(value) => update(index, { value })}
+					onRemove={() => remove(index)}
 				/>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
 				<TagsInput
@@ -476,6 +521,8 @@ export function PromptsListEditor({
 	showSystemTags = true,
 	changedKeys,
 	premium,
+	leading,
+	pendingRows = 0,
 }: PromptsListEditorProps) {
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
@@ -486,6 +533,7 @@ export function PromptsListEditor({
 	const update = (index: number, patch: Partial<EditablePrompt>) => {
 		onChange(prompts.map((p, i) => (i === index ? { ...p, ...patch } : p)));
 	};
+	const remove = (index: number) => onChange(prompts.filter((_, i) => i !== index));
 	const add = () => {
 		if (prompts.length >= MAX_PROMPTS) return;
 		onChange([...prompts, newPromptEntry()]);
@@ -516,9 +564,7 @@ export function PromptsListEditor({
 	const premiumUsed = premium ? premium.assignedElsewhere + premiumSlotsUsed(prompts) : 0;
 	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
 
-	// Desktop layout only — column order is
-	// [select] [text] [system?] [tags] [premium?] [switch]. Mobile renders a
-	// stacked per-prompt block instead (no selection, no bulk).
+	// Columns: [select] [text] [system?] [tags] [premium?] [switch].
 	const gridCols = GRID_COLS[`${showSystemTags ? "system" : "plain"}-${premium ? "premium" : "basic"}`];
 
 	return (
@@ -579,7 +625,11 @@ export function PromptsListEditor({
 				disabled={prompts.length === 0}
 			/>
 
-			{prompts.length === 0 ? (
+			{leading}
+
+			{pendingRows > 0 && <PendingRows count={pendingRows} gridCols={gridCols} />}
+
+			{prompts.length === 0 && pendingRows === 0 ? (
 				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -595,6 +645,7 @@ export function PromptsListEditor({
 							index={index}
 							total={prompts.length}
 							update={update}
+							remove={remove}
 							allTagOptions={allTagOptions}
 							showSystemTags={showSystemTags}
 							changedKeys={changedKeys}

@@ -27,14 +27,6 @@ export const Route = createFileRoute("/vision")({
 	component: VisionPage,
 });
 
-function SectionEyebrow({ num, label }: { num: string; label: string }) {
-	return (
-		<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
-			{num} <span className="text-zinc-500">— {label}</span>
-		</p>
-	);
-}
-
 function VisionPage() {
 	return (
 		<div className="min-h-screen">
@@ -48,7 +40,6 @@ function VisionPage() {
 					/>
 					<div className="relative mx-auto max-w-6xl px-4 md:px-6">
 						<div className="max-w-3xl">
-							<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ OUR VISION</p>
 							<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl lg:text-6xl">
 								AI visibility monitoring should be a commodity, not a luxury.
 							</h1>
@@ -64,8 +55,7 @@ function VisionPage() {
 				<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
 						<div className="max-w-3xl">
-							<SectionEyebrow num="01" label="THE PROBLEM" />
-							<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">The market is broken</h2>
+							<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">The market is broken</h2>
 							<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 								<p>
 									A wave of VC-funded startups has flooded the "AI Engine Optimization" space, charging premium prices
@@ -93,8 +83,7 @@ function VisionPage() {
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
 						<div className="max-w-3xl">
-							<SectionEyebrow num="02" label="OUR APPROACH" />
-							<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">Bootstrapped and built to last</h2>
+							<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Bootstrapped and built to last</h2>
 							<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 								<p>
 									Elmo is bootstrapped. We don't have investors demanding hyper-growth or a board pushing us toward
@@ -138,8 +127,7 @@ function VisionPage() {
 				<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
 						<div className="max-w-3xl">
-							<SectionEyebrow num="03" label="TRANSPARENCY" />
-							<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">Transparent by default</h2>
+							<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Transparent by default</h2>
 							<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 								<p>
 									Too much of the AEO industry operates like a black box. Vendors show you scores and rankings without
@@ -159,10 +147,7 @@ function VisionPage() {
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
 						<div className="max-w-3xl">
-							<SectionEyebrow num="04" label="OUR FOCUS" />
-							<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">
-								Understanding how LLMs see the web
-							</h2>
+							<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Understanding how LLMs see the web</h2>
 							<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 								<p>
 									We are less interested in "optimizing" your content for AI than in a more basic question: how do large
@@ -212,9 +197,9 @@ function VisionPage() {
 							come build with us.
 						</p>
 						<div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-							<CloudSignupCTA source="marketing-vision" />
-							<SelfHostCTA source="marketing-vision" />
-							<QuietCTA href="https://github.com/elmohq/elmo" source="marketing-vision" destination="github">
+							<CloudSignupCTA from="marketing-vision" />
+							<SelfHostCTA from="marketing-vision" />
+							<QuietCTA href="https://github.com/elmohq/elmo" from="marketing-vision" destination="github">
 								Star on GitHub
 							</QuietCTA>
 						</div>

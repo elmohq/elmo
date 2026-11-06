@@ -5,19 +5,18 @@ import pc from "picocolors";
 import type { EnvMap } from "./config.js";
 import { assertNotCancelled, link } from "./util.js";
 
-// The PartnerStack links forward `sid` to the signup, so referrals are attributable
+// The affiliate links carry a sub-ID (`fp_sid` for Cloro, `sid` for BrightData), so referrals are attributable
 // per surface: `cli` here, `docs` and `blog` on the links in packages/docs.
-const CLORO_AFFILIATE = "https://affiliate.cloro.dev/elmo?sid=cli";
+const CLORO_AFFILIATE = "https://cloro.dev?fpr=elmo&fp_sid=cli";
 const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/elmo?sid=cli";
 const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32";
 const SEARCHAPI_AFFILIATE = "https://www.searchapi.io/?via=elmo";
 const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
-const DATAFORSEO_AFFILIATE = "https://dataforseo.com/?aff=184966";
+const DATAFORSEO_AFFILIATE = "https://try.dataforseo.com/elmo";
 
 export type RecommendedScraper = "cloro" | "brightdata" | "oxylabs" | "searchapi" | "olostep" | "dataforseo";
 export type DirectApiProvider = "openrouter" | "anthropic" | "openai" | "mistral";
 
-// Surfaces each scraper can track — the first two are the "recommended starter" set.
 const BRIGHTDATA_MODELS = [
 	"chatgpt",
 	"google-ai-mode",
@@ -43,9 +42,8 @@ const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perp
 const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity", "copilot", "gemini"] as const;
 
 export const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
-// DataForSEO scrapes wherever it can — the two Google SERP surfaces plus the
-// LLM Scraper's ChatGPT and Gemini. Perplexity has no scraper, so it's the one
-// surface that goes through the LLM Responses API.
+
+// DataForSEO has no Perplexity scraper, so Perplexity goes through its LLM Responses API.
 const DATAFORSEO_TARGETS = [
 	{ model: "google-ai-mode", kind: "scraper" },
 	{ model: "google-ai-overview", kind: "scraper" },
@@ -54,9 +52,9 @@ const DATAFORSEO_TARGETS = [
 	{ model: "perplexity", kind: "api" },
 ] as const;
 
-const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
-const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-5";
+const DEFAULT_OPENAI_MODEL = "gpt-6-luna";
+const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-5-5";
+const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-haiku-5.5";
 const DEFAULT_MISTRAL_MODEL = "mistral-medium-latest";
 
 type Credential = {
@@ -77,7 +75,6 @@ type TargetPicker = {
 export type ProviderSpec = {
 	id: string;
 	kind: "direct" | "scraper";
-	/** Bolded in the "Configure X?" question. */
 	label: string;
 	costHint: string;
 	confirmDefault: boolean;
@@ -106,10 +103,8 @@ function scraperPicker(label: string, provider: string, models: readonly string[
 	};
 }
 
-// Order here is the order they're offered everywhere in the wizard, ranked the
-// same way the providers doc ranks them. Direct APIs come first: the wizard
-// requires one before it will move on to scrapers, and the order within them
-// matches the auto-pick preference in onboarding/llm.ts.
+// The order the wizard offers them in. Direct APIs come first because the wizard
+// requires one before scrapers, ordered like the auto-pick preference in onboarding/llm.ts.
 export const PROVIDER_PROMPTS: ProviderSpec[] = [
 	{
 		id: "openrouter",
@@ -292,12 +287,12 @@ export async function collectProvider(spec: ProviderSpec, env: EnvMap, targets: 
 	}
 
 	if (spec.picker) {
-		const selected = (await p.multiselect({
+		const selected = await p.multiselect({
 			message: spec.picker.message,
 			options: spec.picker.options,
 			required: spec.picker.required,
 			initialValues: [...spec.picker.initialValues],
-		})) as string[] | symbol;
+		});
 		assertNotCancelled(selected);
 		targets.push(...selected);
 	}

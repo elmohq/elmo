@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractRun } from "../../text-extraction";
 import { cloro } from "./cloro";
+
+/** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
+const stored = (result: { rawOutput: unknown }) => extractRun(result.rawOutput, "cloro");
 
 // A completed ChatGPT task `response`: the answer text plus the two source
 // arrays (the `sources` reference panel and the inline `citationPills`), which
@@ -133,16 +137,17 @@ describe("cloro provider", () => {
 				prompt: "What is a well-reviewed speaker?",
 				country: "US",
 				include: { markdown: true, searchQueries: true },
+				legacy: true,
 			},
 		});
 		expect(fetchMock.mock.calls[1][0]).toBe("https://api.cloro.dev/v1/async/task/task-1");
 
 		// The markdown the task asked for, not the flattened `text` beside it.
-		expect(result.textContent).toContain("**Sonos Era 300**");
+		expect(stored(result).textContent).toContain("**Sonos Era 300**");
 		// whathifi appears in both `sources` and `citationPills`; techradar only in
 		// the pills — so two distinct citations after de-duplication.
-		expect(result.citations).toHaveLength(2);
-		expect(result.citations.map((c) => c.domain)).toEqual(["whathifi.com", "techradar.com"]);
+		expect(stored(result).citations).toHaveLength(2);
+		expect(stored(result).citations.map((c) => c.domain)).toEqual(["whathifi.com", "techradar.com"]);
 		expect(result.webQueries).toEqual(["recent speaker reviews"]);
 		expect(result.modelVersion).toBe("gpt-5-3-mini");
 	});
@@ -170,9 +175,9 @@ describe("cloro provider", () => {
 			},
 		});
 		// The markdown the task asked for, not the flattened `text` beside it.
-		expect(result.textContent).toContain("**Brooks Ghost**");
-		expect(result.citations).toHaveLength(1);
-		expect(result.citations[0].domain).toBe("runnersworld.com");
+		expect(stored(result).textContent).toContain("**Brooks Ghost**");
+		expect(stored(result).citations).toHaveLength(1);
+		expect(stored(result).citations[0].domain).toBe("runnersworld.com");
 		// The overview exposes no query strings, but its citations prove a search ran.
 		expect(result.webQueries).toEqual(["unavailable"]);
 	});
@@ -210,7 +215,7 @@ describe("cloro provider", () => {
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
-		expect(result.citations.map((c) => c.domain)).toEqual(["wired.com"]);
+		expect(stored(result).citations.map((c) => c.domain)).toEqual(["wired.com"]);
 	});
 
 	it("keeps the Shopping link AI Mode files under sources", async () => {
@@ -227,7 +232,7 @@ describe("cloro provider", () => {
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
-		expect(result.citations.map((c) => c.domain)).toEqual(["cnet.com", "google.com"]);
+		expect(stored(result).citations.map((c) => c.domain)).toEqual(["cnet.com", "google.com"]);
 	});
 
 	// Markdown is opt-in per task, and a surface left out of the request silently
@@ -275,7 +280,7 @@ describe("cloro provider", () => {
 			taskType: "PERPLEXITY",
 			payload: { prompt: "What is a well-reviewed speaker?", country: "US", include: { markdown: true } },
 		});
-		expect(result.textContent).toContain("Sonos Era 300");
+		expect(stored(result).textContent).toContain("Sonos Era 300");
 	});
 
 	it("fails a task whose status settles on FAILED", async () => {
@@ -326,7 +331,7 @@ describe("cloro provider", () => {
 		const result = await promise;
 
 		expect(Date.now() - startedAt).toBeGreaterThan(10 * 60 * 1000);
-		expect(result.textContent).toContain("Sonos Era 300");
+		expect(stored(result).textContent).toContain("Sonos Era 300");
 	});
 
 	it("gives up on a running task at the generation budget rather than the ceiling", async () => {
@@ -407,6 +412,6 @@ describe("cloro provider", () => {
 		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
 		await vi.runAllTimersAsync();
 
-		await expect(promise).resolves.toMatchObject({ textContent: expect.stringContaining("Sonos Era 300") });
+		expect(stored(await promise).textContent).toContain("Sonos Era 300");
 	});
 });

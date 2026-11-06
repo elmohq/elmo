@@ -2,21 +2,28 @@ import { IconChevronDown, IconInfoCircle, IconSearch } from "@tabler/icons-react
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { attributionDotClass } from "@/components/citations/shared";
 import type { GoogleModuleData } from "@/components/citations/types";
-import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { ListPagination } from "@/components/list-pagination";
 
-const PRODUCTS_PAGE_SIZE = 10;
+export const PRODUCTS_PAGE_SIZE = 10;
+export const QUERIES_PAGE_SIZE = 5;
 
-function PromptCountList({ prompts }: { prompts: { id: string; value: string; count: number }[] }) {
+function PromptCountList({
+	prompts,
+	promptValues,
+}: {
+	prompts: { id: string; count: number }[];
+	promptValues: Record<string, string>;
+}) {
 	return (
 		<div className="pl-5 pb-2 space-y-0.5">
 			{prompts.map((p) => (
 				<BrandPromptLink key={p.id} promptId={p.id} className="flex items-center justify-between py-1 group text-xs">
 					<span className="text-muted-foreground group-hover:text-foreground group-hover:underline truncate min-w-0">
-						{p.value}
+						{promptValues[p.id]}
 					</span>
 					<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
 				</BrandPromptLink>
@@ -25,26 +32,37 @@ function PromptCountList({ prompts }: { prompts: { id: string; value: string; co
 	);
 }
 
-export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModuleData }) {
+type GoogleProduct = GoogleModuleData["shopping"]["products"][number];
+type GoogleQuery = GoogleModuleData["search"]["queries"][number];
+type ProductFilter = "all" | "brand" | "competitor";
+
+interface GoogleList<T> {
+	items: T[];
+	total: number;
+	page: number;
+	setPage: (page: number) => void;
+	isFetching?: boolean;
+}
+
+export function GoogleShoppingCard({
+	totals,
+	products,
+	productFilter,
+	setProductFilter,
+	queries,
+	promptValues,
+}: {
+	totals: GoogleModuleData;
+	products: GoogleList<GoogleProduct>;
+	productFilter: ProductFilter;
+	setProductFilter: (filter: ProductFilter) => void;
+	queries: GoogleList<GoogleQuery>;
+	promptValues: Record<string, string>;
+}) {
 	const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
-	const [productFilter, setProductFilter] = useState<"all" | "brand" | "competitor">("all");
 	const [expandedQuery, setExpandedQuery] = useState<string | null>(null);
-	const [showAllQueries, setShowAllQueries] = useState(false);
-
-	const filteredProducts = useMemo(() => {
-		const ps = googleModule.shopping.products;
-		return productFilter === "all" ? ps : ps.filter((p) => p.attribution === productFilter);
-	}, [googleModule, productFilter]);
-	const productCounts = useMemo(() => {
-		const ps = googleModule.shopping.products;
-		return {
-			all: ps.length,
-			brand: ps.filter((p) => p.attribution === "brand").length,
-			competitor: ps.filter((p) => p.attribution === "competitor").length,
-		};
-	}, [googleModule]);
-
-	const { page, setPage, pageItems, totalItems } = usePagedList(filteredProducts, PRODUCTS_PAGE_SIZE);
+	const googleModule = totals;
+	const productCounts = totals.shopping.productCounts;
 
 	return (
 		<Card>
@@ -70,7 +88,7 @@ export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModul
 			</CardHeader>
 			<Separator />
 			<CardContent className="space-y-6">
-				{googleModule.shopping.products.length > 0 && (
+				{productCounts.all > 0 && (
 					<div>
 						<div className="flex items-center justify-between mb-2 gap-2">
 							<h4 className="text-sm font-medium shrink-0">Products</h4>
@@ -85,10 +103,7 @@ export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModul
 									<button
 										key={key}
 										type="button"
-										onClick={() => {
-											setProductFilter(key);
-											setPage(0);
-										}}
+										onClick={() => setProductFilter(key)}
 										className={`px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${productFilter === key ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
 									>
 										{label} ({productCounts[key].toLocaleString()})
@@ -96,8 +111,8 @@ export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModul
 								))}
 							</div>
 						</div>
-						<div className="divide-y divide-border/50">
-							{pageItems.map((product) => {
+						<div className={`divide-y divide-border/50 transition-opacity ${products.isFetching ? "opacity-60" : ""}`}>
+							{products.items.map((product) => {
 								const isExpanded = expandedProduct === product.name;
 								return (
 									<div key={product.name}>
@@ -124,20 +139,27 @@ export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModul
 												{product.count.toLocaleString()}
 											</span>
 										</div>
-										{isExpanded && product.prompts.length > 0 && <PromptCountList prompts={product.prompts} />}
+										{isExpanded && product.prompts.length > 0 && (
+											<PromptCountList prompts={product.prompts} promptValues={promptValues} />
+										)}
 									</div>
 								);
 							})}
 						</div>
-						<ListPagination page={page} pageSize={PRODUCTS_PAGE_SIZE} totalItems={totalItems} onPageChange={setPage} />
+						<ListPagination
+							page={products.page}
+							pageSize={PRODUCTS_PAGE_SIZE}
+							totalItems={products.total}
+							onPageChange={products.setPage}
+						/>
 					</div>
 				)}
 
-				{googleModule.search.queries.length > 0 && (
+				{googleModule.search.queryCount > 0 && (
 					<div>
 						<h4 className="text-sm font-medium mb-2">Search queries</h4>
-						<div className="divide-y divide-border/50">
-							{(showAllQueries ? googleModule.search.queries : googleModule.search.queries.slice(0, 5)).map((q) => {
+						<div className={`divide-y divide-border/50 transition-opacity ${queries.isFetching ? "opacity-60" : ""}`}>
+							{queries.items.map((q) => {
 								const isExpanded = expandedQuery === q.query;
 								return (
 									<div key={q.query}>
@@ -157,20 +179,19 @@ export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModul
 											</button>
 											<span className="text-sm font-semibold tabular-nums shrink-0">{q.count.toLocaleString()}</span>
 										</div>
-										{isExpanded && q.prompts.length > 0 && <PromptCountList prompts={q.prompts} />}
+										{isExpanded && q.prompts.length > 0 && (
+											<PromptCountList prompts={q.prompts} promptValues={promptValues} />
+										)}
 									</div>
 								);
 							})}
 						</div>
-						{googleModule.search.queries.length > 5 && !showAllQueries && (
-							<button
-								type="button"
-								onClick={() => setShowAllQueries(true)}
-								className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
-							>
-								Show {googleModule.search.queries.length - 5} more
-							</button>
-						)}
+						<ListPagination
+							page={queries.page}
+							pageSize={QUERIES_PAGE_SIZE}
+							totalItems={queries.total}
+							onPageChange={queries.setPage}
+						/>
 					</div>
 				)}
 			</CardContent>

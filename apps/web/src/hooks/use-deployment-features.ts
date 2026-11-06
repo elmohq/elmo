@@ -8,3 +8,7 @@ export function useDeploymentFeatures(): PublicClientConfig["features"] | undefi
 export function useBranding(): PublicClientConfig["branding"] | undefined {
 	return useLooseRouteContext().clientConfig?.branding;
 }
+
+export function useDeploymentMode(): PublicClientConfig["mode"] | undefined {
+	return useLooseRouteContext().clientConfig?.mode;
+}

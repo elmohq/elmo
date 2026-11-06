@@ -54,25 +54,35 @@ export function getEffectiveBrandedStatus(systemTags: string[], userTags: string
 	};
 }
 
-export function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
+export function isPromptBranded(
+	promptValue: string,
+	brandName: string,
+	brandWebsite: string,
+	aliases: readonly string[] = [],
+): boolean {
 	const promptLower = promptValue.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
+	const names = [brandName, ...aliases].map((name) => name.trim().toLowerCase()).filter(Boolean);
+	if (names.some((name) => promptLower.includes(name))) return true;
 
 	try {
 		const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
 		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
 		const domainWithoutTld = domain.split(".")[0];
 
-		return (
-			promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld)
-		);
+		// A malformed website like "www." or ".com" leaves an empty host or label, which every prompt contains.
+		return [domain, domainWithoutTld].some((term) => term && promptLower.includes(term));
 	} catch {
-		return promptLower.includes(brandNameLower);
+		return false;
 	}
 }
 
-export function computeSystemTags(promptValue: string, brandName: string, brandWebsite: string): string[] {
-	const isBranded = isPromptBranded(promptValue, brandName, brandWebsite);
+export function computeSystemTags(
+	promptValue: string,
+	brandName: string,
+	brandWebsite: string,
+	aliases: readonly string[] = [],
+): string[] {
+	const isBranded = isPromptBranded(promptValue, brandName, brandWebsite, aliases);
 	return [isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED];
 }
 
@@ -89,4 +99,19 @@ export function sanitizeUserTags(tags: string[]): string[] {
 		.map(normalizeTag)
 		.filter((tag) => tag.length > 0)
 		.filter((tag, index, self) => self.indexOf(tag) === index);
+}
+
+/**
+ * A prompt's user tags plus exactly one system tag for its effective branded
+ * status, so the branded and unbranded filters use the same status the UI shows.
+ */
+export function effectiveTags(prompt: { systemTags: string[] | null; tags: string[] | null }): string[] {
+	const userTags = prompt.tags || [];
+	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
+	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
+	return userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag];
+}
+
+export function matchesTagFilter(tags: string[], tagFilter: string[]): boolean {
+	return tagFilter.length === 0 || tagFilter.some((t) => tags.includes(t));
 }

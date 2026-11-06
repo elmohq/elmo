@@ -1,3 +1,4 @@
+import { API_KEY_RATE_LIMIT_PER_MINUTE } from "@workspace/config/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -172,6 +173,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 	const key = result?.key;
 	if (!result?.valid || !key) {
 		if (result?.error?.code === "RATE_LIMITED") {
+			// Milliseconds, like the window the plugin is configured with.
 			const tryAgainIn = (result.error as { details?: { tryAgainIn?: unknown } }).details?.tryAgainIn;
 			return {
 				failure: {
@@ -179,7 +181,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 					error: "Too Many Requests",
 					message: "Rate limit exceeded for this API key",
 					code: "rate_limited",
-					retryAfterSeconds: typeof tryAgainIn === "number" ? Math.max(1, Math.ceil(tryAgainIn)) : 60,
+					retryAfterSeconds: typeof tryAgainIn === "number" ? Math.max(1, Math.ceil(tryAgainIn / 1000)) : 60,
 				},
 			};
 		}
@@ -210,7 +212,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 			createdAt: asDate(key.createdAt),
 			lastUsedAt: asDate(key.lastRequest),
 			expiresAt: asDate(key.expiresAt),
-			rateLimit: { limit: key.rateLimitMax ?? 120, window: "minute" },
+			rateLimit: { limit: key.rateLimitMax ?? API_KEY_RATE_LIMIT_PER_MINUTE, window: "minute" },
 			// The fixed-window counter has already consumed this request by the time
 			// the row is in hand, so this is the honest remainder. Null, and no
 			// header, beats inventing a full window.

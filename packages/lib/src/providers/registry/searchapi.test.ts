@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractRun } from "../../text-extraction";
 import { searchapi } from "./searchapi";
+
+/** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
+const stored = (result: { rawOutput: unknown }) => extractRun(result.rawOutput, "searchapi");
 
 const CHATGPT_RESPONSE = {
 	markdown: "The **Marshall Stockwell III** is a well-reviewed portable speaker.",
@@ -72,12 +76,15 @@ describe("searchapi provider", () => {
 		expect(url.searchParams.get("web_search")).toBe("true");
 		expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe("Bearer test-key");
 
-		expect(result.textContent).toContain("Marshall Stockwell III");
+		expect(stored(result).textContent).toContain("Marshall Stockwell III");
 		expect(result.webQueries).toEqual(["best speakers released August 2026"]);
 		expect(result.modelVersion).toBe("gpt-5-6");
 		// `web_results` is what ChatGPT retrieved, not what it cited.
-		expect(result.citations.map((c) => c.url)).toEqual(["https://www.techradar.com/stockwell-iii"]);
-		expect(result.citations[0]).toMatchObject({ domain: "techradar.com", title: "Marshall Stockwell III review" });
+		expect(stored(result).citations.map((c) => c.url)).toEqual(["https://www.techradar.com/stockwell-iii"]);
+		expect(stored(result).citations[0]).toMatchObject({
+			domain: "techradar.com",
+			title: "Marshall Stockwell III review",
+		});
 	});
 
 	it("leaves ChatGPT's web search off unless the target asks for it", async () => {
@@ -101,7 +108,7 @@ describe("searchapi provider", () => {
 		const result = await searchapi.run("chatgpt", "What is a well-reviewed speaker?", { webSearch: false });
 
 		expect(result.webQueries).toEqual([]);
-		expect(result.citations).toHaveLength(1);
+		expect(stored(result).citations).toHaveLength(1);
 	});
 
 	it("reads Google AI Overview off the result page and stores only the overview", async () => {
@@ -113,7 +120,7 @@ describe("searchapi provider", () => {
 		expect(requestedUrl(fetchMock).searchParams.get("engine")).toBe("google");
 		expect(requestedUrl(fetchMock).searchParams.get("link")).toBe("resolved");
 
-		expect(result.textContent).toContain("Brooks Ghost");
+		expect(stored(result).textContent).toContain("Brooks Ghost");
 		expect(Object.keys(result.rawOutput as object)).not.toContain("organic_results");
 		expect((result.rawOutput as any).ai_overview.markdown).toContain("Brooks Ghost");
 		// Google searched, but the overview never reports the queries behind it.
@@ -125,7 +132,7 @@ describe("searchapi provider", () => {
 
 		const result = await searchapi.run("google-ai-overview", "best running shoes for beginners", { webSearch: true });
 
-		expect(result.citations.map((c) => c.domain)).toEqual(["runnersworld.com", "google.com"]);
+		expect(stored(result).citations.map((c) => c.domain)).toEqual(["runnersworld.com", "google.com"]);
 	});
 
 	it("fails a query Google answered without an AI Overview", async () => {
@@ -139,19 +146,61 @@ describe("searchapi provider", () => {
 		);
 	});
 
-	it("fails a run Google answered with a page token instead of the overview", async () => {
-		vi.stubGlobal(
-			"fetch",
-			vi.fn().mockResolvedValue(
+	it("redeems the page token Google hands back in place of the overview", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
 				jsonResponse({
 					search_metadata: { id: "search_2" },
-					ai_overview: { error: "An AI Overview is not available for this search", page_token: "L2FzeW5jL2Zv" },
+					ai_overview: { page_token: "L2FzeW5jL2Zv" },
+					organic_results: [{ position: 1, title: "EV guide", link: "https://example.com/ev" }],
 				}),
-			),
+			)
+			.mockResolvedValueOnce(
+				jsonResponse({
+					search_metadata: { id: "search_3" },
+					markdown: "The **Tesla Model 3** and **Hyundai Ioniq 6** lead the list.",
+					reference_links: [{ index: 0, title: "Best EVs", link: "https://www.caranddriver.com/best-evs" }],
+				}),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const result = await searchapi.run("google-ai-overview", "best electric cars 2026", { webSearch: true });
+
+		const followUp = requestedUrl(fetchMock, 1).searchParams;
+		expect(followUp.get("engine")).toBe("google_ai_overview");
+		expect(followUp.get("page_token")).toBe("L2FzeW5jL2Zv");
+		expect(followUp.get("link")).toBe("resolved");
+
+		expect(stored(result).textContent).toContain("Tesla Model 3");
+		expect(stored(result).citations.map((c) => c.domain)).toEqual(["caranddriver.com"]);
+		expect(Object.keys(result.rawOutput as object)).not.toContain("organic_results");
+	});
+
+	it("skips the follow-up search when the overview is already on the result page", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(
+				jsonResponse({ ...AI_OVERVIEW_SERP, ai_overview: { ...AI_OVERVIEW_SERP.ai_overview, page_token: "L2FzeW5j" } }),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+
+		await searchapi.run("google-ai-overview", "best running shoes for beginners", { webSearch: true });
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it("fails a run whose page token redeems to no overview", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockResolvedValueOnce(jsonResponse({ ai_overview: { page_token: "L2FzeW5jL2Zv" } }))
+				.mockResolvedValueOnce(jsonResponse({ error: "An AI Overview is not available for this search" })),
 		);
 
 		await expect(searchapi.run("google-ai-overview", "best electric cars 2026", { webSearch: true })).rejects.toThrow(
-			/no google answer \(An AI Overview is not available/i,
+			/An AI Overview is not available/i,
 		);
 	});
 

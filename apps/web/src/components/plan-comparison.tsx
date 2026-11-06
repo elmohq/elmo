@@ -1,16 +1,7 @@
 /**
- * The cloud plan ladder: a centred row of price cards, and one detail table
- * beneath.
- *
- * Shared facts appear once in aligned rows so differences between plans remain
- * scannable without repeating the platform catalog in every card.
- *
- * Every section of the table names the plans again, so a reader deep in the
- * premium rows still knows which column is which. That is what frees the cards
- * from the table's columns: they carry no data a row has to line up with, so
- * they centre on the page and stack on a narrow one, while the table keeps a
- * minimum width and scrolls sideways rather than reflowing — a comparison
- * whose columns don't line up isn't one.
+ * The table scrolls sideways rather than reflowing, since a comparison whose
+ * columns don't line up isn't one. Every table section names the plans again,
+ * which frees the cards above to centre and stack on their own.
  */
 import { IconCheck, IconMinus } from "@tabler/icons-react";
 import {
@@ -41,11 +32,7 @@ interface PlanComparisonProps {
 	activePlan?: PlanKey | "custom" | null;
 	/** Called out as the recommended plan; ignored once one is active. */
 	highlightPlan?: PlanKey;
-	/**
-	 * Where the cards sit. Centred suits a page that is only about choosing —
-	 * the paywall — while a settings page is left-aligned throughout and centred
-	 * cards read as belonging to something else.
-	 */
+	/** Centred suits the paywall; on a left-aligned settings page centred cards look detached. */
 	align?: "center" | "start";
 	/** Subscribe, switch, or nothing at all for a read-only viewer. */
 	renderAction?: (plan: PlanDefinition) => ReactNode;
@@ -60,9 +47,6 @@ export function PlanComparison({
 }: PlanComparisonProps) {
 	return (
 		<div className="space-y-8">
-			{/* Free of the table's columns, since every section below names the
-			    plans itself — so the cards can centre on the page and stack on a
-			    narrow one instead of inheriting the table's minimum width. */}
 			<div
 				className={cn(
 					"grid gap-3 sm:grid-cols-2 lg:grid-cols-4",
@@ -81,51 +65,53 @@ export function PlanComparison({
 				))}
 			</div>
 
-			<div className="overflow-x-auto pb-2">
-				<div className={GRID}>
-					<SectionHeading>Limits</SectionHeading>
-					<Row label="Brands" cell={(plan) => plan.maxBrands} />
-					<Row label="Tracked prompts" cell={(plan) => plan.maxPrompts} />
-					<Row label="Platforms per brand" cell={(plan) => plan.platformPicks} />
-					<Row label="Sampling" cell={(plan) => `${plan.standardRunsPerDay}×/day`} />
-					<Row label="Seats" cell={() => "Unlimited"} />
-					<Row label="API access" cell={() => true} />
+			<PlanFeatureTable />
+		</div>
+	);
+}
 
-					<PlatformSection tier="scraped" />
-					<PlatformSection tier="api" />
+export function PlanFeatureTable() {
+	return (
+		<div className="overflow-x-auto pb-2">
+			<div className={GRID}>
+				<SectionHeading>Limits</SectionHeading>
+				<Row label="Brands" cell={(plan) => plan.maxBrands} />
+				<Row label="Tracked prompts" cell={(plan) => plan.maxPrompts} />
+				<Row label="Platforms per brand" cell={(plan) => plan.platformPicks} />
+				<Row label="Sampling" cell={(plan) => `${plan.standardRunsPerDay}×/day`} />
+				<Row label="Seats" cell={() => "Unlimited"} />
+				<Row label="API access" cell={() => true} />
 
-					<SectionHeading>
-						{PLATFORM_TIER_LABELS.premium}
-						<span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground tabular-nums">
-							{PREMIUM_RUNS_PER_DAY}×/day
-						</span>
-					</SectionHeading>
+				<PlatformSection tier="scraped" />
+				<PlatformSection tier="api" />
+
+				<SectionHeading>
+					{PLATFORM_TIER_LABELS.premium}
+					<span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground tabular-nums">
+						{PREMIUM_RUNS_PER_DAY}×/day
+					</span>
+				</SectionHeading>
+				<Row
+					label="Included"
+					cell={(plan) => (plan.premiumIncluded > 0 ? premiumPairings(plan.premiumIncluded) : false)}
+				/>
+				<Row
+					label="Buy more"
+					cell={(plan) => (plan.premiumAddonAvailable ? `$${PREMIUM_ADDON_MONTHLY_USD}/mo each` : false)}
+				/>
+				{platformTierMembers("premium").map((member) => (
 					<Row
-						label="Included"
-						cell={(plan) => (plan.premiumIncluded > 0 ? premiumPairings(plan.premiumIncluded) : false)}
+						key={member.model}
+						label={<ModelLabel iconId={member.iconId} label={member.label} />}
+						cell={(plan) => plan.premiumIncluded > 0 || plan.premiumAddonAvailable}
 					/>
-					<Row
-						label="Buy more"
-						cell={(plan) => (plan.premiumAddonAvailable ? `$${PREMIUM_ADDON_MONTHLY_USD}/mo each` : false)}
-					/>
-					{platformTierMembers("premium").map((member) => (
-						<Row
-							key={member.model}
-							label={<ModelLabel iconId={member.iconId} label={member.label} />}
-							cell={(plan) => plan.premiumIncluded > 0 || plan.premiumAddonAvailable}
-						/>
-					))}
-				</div>
+				))}
 			</div>
 		</div>
 	);
 }
 
-/**
- * Name, price and call to action. Everything a plan and its neighbours disagree
- * about lives in the table below, so this stays short enough that four of them
- * fit above the fold.
- */
+/** Differences live in the table, so four of these fit above the fold. */
 function PlanHeaderCard({
 	plan,
 	annual,
@@ -154,8 +140,6 @@ function PlanHeaderCard({
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="px-4">
-				{/* Centred with the name above it and the column of cells below, all
-				    of which are centred on the same axis. */}
 				<div className="flex items-baseline justify-center gap-1">
 					<span className="text-2xl font-bold tabular-nums">
 						${(annual ? plan.annualPriceUsd : plan.monthlyPriceUsd).toLocaleString()}
@@ -169,13 +153,9 @@ function PlanHeaderCard({
 }
 
 /**
- * A section title, and the plan names again beneath it.
- *
- * The names repeat here rather than sitting in one row at the top because the
- * cards are long gone by the time you reach the premium rows, and a column of
- * ticks says nothing without the plan it belongs to. Sticky headers can't do
- * this job: the horizontal scroll container is the containing block for
- * `position: sticky`, so a vertical offset never engages.
+ * Repeats the plan names because the cards are out of view by the lower rows.
+ * A sticky header can't: the horizontal scroll container is the sticky
+ * containing block, so a vertical offset never engages.
  */
 function SectionHeading({ children }: { children: ReactNode }) {
 	return (
@@ -193,7 +173,6 @@ function SectionHeading({ children }: { children: ReactNode }) {
 	);
 }
 
-/** One platform tier: its models as rows, ticked on the plans that sell them. */
 function PlatformSection({ tier }: { tier: Extract<PlanPlatformGroupId, "scraped" | "api"> }) {
 	return (
 		<>
@@ -218,11 +197,7 @@ function ModelLabel({ iconId, label }: { iconId: string; label: string }) {
 	);
 }
 
-/**
- * A boolean cell renders as a tick or a dash; anything else renders as itself.
- * `false` and "not sold here" are the same statement, so a plan that omits a
- * feature reads the same whether the row counts something or merely has it.
- */
+/** `false` renders as a dash, so "not sold here" looks the same on counted and ticked rows. */
 function Row({ label, cell }: { label: ReactNode; cell: (plan: PlanDefinition) => ReactNode | boolean }) {
 	return (
 		<>

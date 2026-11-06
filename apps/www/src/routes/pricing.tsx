@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CTA } from "@/components/cta";
-import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
+import { Closing } from "@/components/home/closing";
+import { Faq } from "@/components/home/faq";
+import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { Navbar } from "@/components/navbar";
 import { Pricing } from "@/components/pricing";
 import { PRICING_FAQS } from "@/lib/faqs";
@@ -32,12 +33,13 @@ export const Route = createFileRoute("/pricing")({
 
 function PricingPage() {
 	return (
-		<div className="min-h-screen">
+		<div className={`${HOME_FONT_CLASS} min-h-screen`}>
+			<HomeStyles />
 			<Navbar />
 			<main>
 				<Pricing as="h1" />
-				<Faq items={PRICING_FAQS} eyebrow="/ FAQ" />
-				<CTA />
+				<Faq items={PRICING_FAQS} />
+				<Closing from="marketing-pricing-closing" />
 			</main>
 			<Footer />
 		</div>

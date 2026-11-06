@@ -59,3 +59,9 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 }
 
 export const auth = createAuth(getDeploymentAuthOptions());
+
+// The runtime's unhandled-rejection log drops the error's `cause`.
+auth.$context.catch((error: unknown) => {
+	console.error("[auth] init failed:", error);
+	throw error;
+});

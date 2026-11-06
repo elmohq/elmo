@@ -4,7 +4,7 @@ import {
 	CITATION_PAGE_TYPES,
 	type CitationCategory,
 	PAGE_TYPE_CONFIG,
-} from "@/lib/domain-categories";
+} from "@workspace/lib/citations/domain-categories";
 
 export const getCategoryLabel = (category: string) => CATEGORY_CONFIG[category as CitationCategory]?.label ?? category;
 
@@ -32,15 +32,6 @@ export function formatPeriodLabel(days: number): string {
 	if (days === 90) return "3 months";
 	return `${days} days`;
 }
-
-export const extractSubreddit = (url: string): string | null => {
-	try {
-		const match = url.match(/reddit\.com\/r\/([^/?#]+)/i);
-		return match ? `r/${match[1]}` : null;
-	} catch {
-		return null;
-	}
-};
 
 export const extractFilenameFromUrl = (url: string) => {
 	try {
