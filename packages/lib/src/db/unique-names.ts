@@ -83,12 +83,7 @@ export function isUniqueViolation(error: unknown, constraint?: string): boolean 
 	return false;
 }
 
-/**
- * An availability check and the write it guards can race under READ COMMITTED,
- * so the unique index is the real guarantee: the check gives the friendly path,
- * and this maps the loser's violation to the error that check would have
- * produced. Every slug write goes through here rather than repeating the pair.
- */
+/** The check and write can race, so the unique index is the guarantee; this maps the loser's violation to the check's error. */
 async function claimSlug<T>(write: () => Promise<T>, constraint: string, takenMessage: string): Promise<T> {
 	try {
 		return await write();

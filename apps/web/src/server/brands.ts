@@ -5,6 +5,7 @@ import { targetFilterValue } from "@workspace/config/model-filter";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
 import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
+import { type BrandTrackingState, brandTrackingState } from "@workspace/lib/brand-state";
 import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
@@ -36,20 +37,15 @@ import {
 	requireOrgAccess,
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
-import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import type { TrackedTarget } from "@/lib/model-filter";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
 /**
- * What this brand's results can be broken down by: the standard platforms it
- * picks, plus the grounded variants its prompts are tracked on.
- *
- * A model can appear twice — scraped and grounded are different answers to
- * different questions — so these are targets rather than model ids. Anything
- * asking "which models is this brand tracking?" reads from here; deployments
- * configure arbitrary sets via `SCRAPE_TARGETS`, so nothing hardcodes a list.
+ * Targets rather than model ids: a model can appear twice, since scraped and
+ * grounded are different answers. Anything asking "which models is this brand
+ * tracking?" reads from here.
  */
 function computeTrackedTargets(
 	brand: Brand,
@@ -59,11 +55,9 @@ function computeTrackedTargets(
 	try {
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
-		// Ask the run policy rather than re-deriving it: it already decides which
-		// targets a brand runs, how often, and how many times per firing, and a
-		// second copy of that arithmetic here is how the page and the worker
-		// started disagreeing in the first place. Grounded targets are assigned
-		// per prompt, so the brand's set is the union across its prompts.
+		// Ask the run policy rather than re-deriving it, so the page can't disagree
+		// with what the worker runs. Grounded targets are assigned per prompt, so
+		// the brand's set is the union across its prompts.
 		const plan = resolvePromptRunPlan({
 			scrapeTargets: configs,
 			brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
@@ -78,40 +72,22 @@ function computeTrackedTargets(
 				value: targetFilterValue(target.config.model, premium),
 				model: target.config.model,
 				premium,
-				// Scraped surface, bare API call, or grounded one — the same split the
-				// LLM settings page groups by, resolved from the target rather than
-				// guessed from the model id (a model can be reached either way).
-				tier: premium
-					? ("premium" as const)
-					: resolveProviderAccess(target.config) === "scraped"
-						? ("scraped" as const)
-						: ("api" as const),
+				tier: premium ? ("premium" as const) : resolveProviderAccess(target.config),
 				intervalHours: target.intervalHours,
 				replication: target.replication,
 				...(target.config.webSearch ? { fanout: getFanoutSupport(target.config) } : {}),
 			};
 		});
 	} catch {
-		// A misconfigured SCRAPE_TARGETS would already be surfacing via
-		// `validateScrapeTargets` at boot; here we'd rather degrade to an empty
-		// list than crash the brand fetch.
+		// A bad SCRAPE_TARGETS already fails boot validation; don't also crash the brand fetch.
 		return [];
 	}
 }
 
 /**
- * Cloud brands start with their plan's default platform picks written
- * explicitly, so the run policy, the model filter, and the LLMs settings page
- * all agree from the first run. Outside cloud (or when nothing is pickable
- * yet, e.g. an unsubscribed org via the admin API) brands keep the null
- * "follow deployment configuration" semantics.
- *
- * Note: the defaults written here are a snapshot at creation time. The
- * run policy's `resolvePromptRunPlan` also applies `defaultPlatformPicks` as a
- * fallback when `brand.enabledModels` is null — so a brand that had picks
- * written explicitly follows the creation-time snapshot, while one created
- * via the API without picks always resolves fresh defaults. Both converge for
- * the same plan; the dual path is intentional defense-in-depth.
+ * Cloud brands start with their plan's default picks written explicitly; null
+ * means "follow the deployment configuration". The run policy applies the same
+ * defaults when it finds null, so both paths agree for a given plan.
  */
 async function initialEnabledModels(organizationId: string): Promise<string[] | null> {
 	if (getDeployment().mode !== "cloud") return null;
@@ -121,12 +97,7 @@ async function initialEnabledModels(organizationId: string): Promise<string[] | 
 	return picks.length > 0 ? picks : null;
 }
 
-/**
- * Picks supplied at creation time go through the same checks as a
- * post-creation edit: the same deployment gate, the loud configured-target
- * validation, then plan enforcement. Without picks, creation falls back to the
- * plan defaults.
- */
+/** Picks supplied at creation get the same checks as a later edit. */
 async function resolveCreateEnabledModels(
 	organizationId: string,
 	requested: string[] | undefined,
@@ -150,19 +121,11 @@ function getDefaultBrandDomains(): string[] {
 		.filter((d): d is string => d !== null);
 }
 
-// ============================================================================
-// Helper functions (migrated from apps/web/src/lib/metadata.ts)
-// ============================================================================
-
-/**
- * Entitlements come in from the caller rather than being loaded here: the
- * brand-list path fans this out per brand, and resolving them inside would put
- * two subscription queries on every brand a whitelabel org owns.
- */
+/** Takes entitlements from the caller so the brand list doesn't query them once per brand. */
 async function getBrandWithPromptsFromDb(
 	brandId: string,
 	entitlements?: Entitlements,
-): Promise<(BrandWithPrompts & { trackedTargets: TrackedTarget[] }) | undefined> {
+): Promise<(BrandWithPrompts & { trackedTargets: TrackedTarget[]; trackingState: BrandTrackingState }) | undefined> {
 	try {
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, brandId),
@@ -180,6 +143,7 @@ async function getBrandWithPromptsFromDb(
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
 			trackedTargets: computeTrackedTargets(brand, brandPrompts, resolved),
+			trackingState: brandTrackingState(brand, resolved),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);
@@ -187,13 +151,6 @@ async function getBrandWithPromptsFromDb(
 	}
 }
 
-// ============================================================================
-// Server Functions
-// ============================================================================
-
-/**
- * Get a single brand by ID
- */
 export const getBrand = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
@@ -207,9 +164,6 @@ export const getBrand = createServerFn({ method: "GET" })
 		return brand;
 	});
 
-/**
- * Create a new brand
- */
 export const createBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -272,13 +226,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		return { success: true, brand };
 	});
 
-/**
- * Attach a new brand to the current user's existing organization, with a
- * fresh id decoupled from the org id. Used by the multi-brand "create new
- * brand" flow on the brand switcher. Gated by the canCreateBrands deployment
- * feature so whitelabel (brands come from the admin API) and demo (read-only)
- * reject it.
- */
+/** A brand in an existing organization, with an id of its own rather than the org's. */
 export const createBrandInOrgFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -293,7 +241,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		const deployment = getDeployment();
 
-		if (evaluateRequireCanCreateBrands(deployment.features.canCreateBrands) === "deny") {
+		if (!deployment.features.canCreateBrands) {
 			throw new Error("Brand creation is not allowed in this deployment");
 		}
 
@@ -336,9 +284,6 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		);
 	});
 
-/**
- * Update a brand
- */
 export const updateBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -392,9 +337,6 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		return result[0];
 	});
 
-/**
- * Get competitors for a brand
- */
 export const getCompetitors = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
@@ -405,9 +347,6 @@ export const getCompetitors = createServerFn({ method: "GET" })
 		});
 	});
 
-/**
- * Update competitors for a brand (bulk replace)
- */
 export const updateCompetitors = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -460,9 +399,6 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 		});
 	});
 
-/**
- * Add an additional domain to the brand itself
- */
 export const addDomainToBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -494,9 +430,6 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 		return brand;
 	});
 
-/**
- * Add a domain to an existing competitor
- */
 export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -527,9 +460,6 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 		return result;
 	});
 
-/**
- * Create a new competitor from a domain
- */
 export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({

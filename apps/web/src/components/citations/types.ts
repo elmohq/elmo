@@ -1,4 +1,5 @@
 import type { CitationCategory, CitationPageType } from "@workspace/lib/citations/domain-categories";
+import type { Subreddit } from "@/lib/subreddits";
 
 interface GoogleProductRow {
 	name: string;
@@ -6,7 +7,6 @@ interface GoogleProductRow {
 	attribution: "brand" | "competitor" | "other";
 	competitorName?: string;
 	prompts: { id: string; count: number }[];
-	urls: { url: string; count: number }[];
 }
 interface GoogleQueryRow {
 	query: string;
@@ -14,34 +14,59 @@ interface GoogleQueryRow {
 	prompts: { id: string; count: number }[];
 }
 export interface GoogleModuleData {
-	shopping: { totalCitations: number; brandCount: number; competitorCount: number; products: GoogleProductRow[] };
-	search: { totalCitations: number; queries: GoogleQueryRow[] };
+	shopping: {
+		totalCitations: number;
+		brandCount: number;
+		competitorCount: number;
+		productCounts: { all: number; brand: number; competitor: number };
+		products: GoogleProductRow[];
+	};
+	search: { totalCitations: number; queryCount: number; queries: GoogleQueryRow[] };
 	promptValues: Record<string, string>;
+}
+
+export interface CitationDomainItem {
+	domain: string;
+	count: number;
+	category: CitationCategory;
+	exampleTitle?: string;
+	previousCount?: number;
+	changePercent?: number | null;
+}
+
+export interface CitationUrlItem {
+	url: string;
+	title?: string;
+	domain: string;
+	count: number;
+	category: CitationCategory;
+	pageType?: CitationPageType;
+	avgPosition?: number | null;
+	promptCount?: number;
+	isNew?: boolean;
+}
+
+export interface CitationListControls<T> {
+	items: T[];
+	totalItems: number;
+	page: number;
+	setPage: (page: number) => void;
+	search: string;
+	setSearch: (search: string) => void;
+	category: string;
+	setCategory: (category: string) => void;
+	pageType: string;
+	setPageType: (pageType: string) => void;
+	isFetching?: boolean;
 }
 
 export interface CitationData {
 	totalCitations: number;
 	uniqueDomains: number;
 	categoryCounts: Record<CitationCategory, number>;
-	domainDistribution: {
-		domain: string;
-		count: number;
-		category: CitationCategory;
-		exampleTitle?: string;
-		previousCount?: number;
-		changePercent?: number | null;
-	}[];
-	specificUrls: {
-		url: string;
-		title?: string;
-		domain: string;
-		count: number;
-		category: CitationCategory;
-		pageType?: CitationPageType;
-		avgPosition?: number | null;
-		promptCount?: number;
-		isNew?: boolean;
-	}[];
+	domainDistribution?: CitationDomainItem[];
+	specificUrls?: CitationUrlItem[];
+	subreddits: Subreddit[];
 	pageTypeDistribution?: { pageType: CitationPageType; count: number }[];
 	googleModule?: GoogleModuleData;
 	citationTimeSeries?: Array<{ date: string } & Partial<Record<CitationCategory, number>>>;

@@ -10,9 +10,7 @@ test.describe("Citations Page", () => {
   });
 
   test("page loads without crashing", async ({ page }) => {
-    // Wait for the page to actually finish loading by checking for a terminal state:
-    // either citation content, an empty state, or an error message.
-    // Use .first() because multiple elements may match when citation data loads.
+    // Any terminal state: content, the empty state, or an error.
     await expect(
       page.getByText(/no citations found|failed to load|citations are only|total citations|cited/i).first()
     ).toBeVisible({ timeout: 30_000 });

@@ -23,6 +23,9 @@
 
 <br />
 
+> [!TIP]
+> **Don't want to self-host?** Elmo Cloud runs the same open-source platform for you, with managed hosting and automatic updates, from $29/mo. [Start with Cloud →](https://www.elmohq.com/pricing)
+
 ## About
 
 Elmo is an open-source, self-hosted platform for optimizing your AI visibility, which is also known as:
@@ -30,7 +33,7 @@ Elmo is an open-source, self-hosted platform for optimizing your AI visibility, 
 * Generative Engine Optimization (GEO)
 * LLM Optimization (LLMO, which is where the name Elmo is from)
 
-Elmo tracks how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention, cite, and describe your brand, so you can benchmark competitors and grow your visibility in AI answers.
+Buyers increasingly ask AI before they search or visit a website. Elmo tracks how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention, cite, and describe your brand, so you can benchmark competitors, uncover citation gaps, and win more recommendations in AI answers.
 
 It's a free alternative to tools like [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound), [Peec](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai), and [Otterly](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai). You can run it on your own infrastructure, own your data, and audit exactly how every metric is calculated.
 
@@ -40,92 +43,83 @@ Try the live demo at **[demo.elmohq.com](https://demo.elmohq.com)** to see how E
 
 ## Screenshots
 
-| Dashboard overview | Visibility tracking |
+| Dashboard Overview | Visibility Tracking |
 |---|---|
 | ![Elmo overview with visibility, share of voice, sentiment, and position cards above a competitive landscape](apps/www/public/screenshots/overview.png) | ![Per-prompt AI visibility scores and trends across answer engines](apps/www/public/screenshots/visibility.png) |
-| **Share of voice** | **Citation analysis** |
+| **Share of Voice** | **Citation Analysis** |
 | ![Competitor share of voice leaderboard and trend over time](apps/www/public/screenshots/share-of-voice.png) | ![Domains and URLs cited by AI answer engines, grouped by category](apps/www/public/screenshots/citations.png) |
-| **Query fan-out** | **Opportunities** |
+| **Query Fan-Out** | **Opportunities** |
 | ![Web searches AI engines ran while grounding answers to tracked prompts](apps/www/public/screenshots/query-fan-out.png) | ![Generated recommendations for earning more AI citations](apps/www/public/screenshots/opportunities.png) |
 | **Sentiment** | **Responses** |
 | ![Sentiment score, trends against competitors, sentiment by model, and the passages behind it](apps/www/public/screenshots/sentiment.png) | ![Every AI answer for a brand, with each company's position and sentiment](apps/www/public/screenshots/responses.png) |
 
 ## What Elmo Tracks
 
-- **Visibility scoring** — For every tracked prompt, Elmo measures how often each AI answer engine mentions your brand and trends the score over time, per prompt and per model.
-- **Brand mention tracking** — Each answer is checked for your brand name, aliases, and domains, so mentions are counted the same way every time, across every engine.
-- **Sentiment and position** — Every answer that names your brand or a competitor is read for its sentiment toward that company (positive, neutral, mixed, or negative) and where it ranks among the tracked companies named. Sentiment rolls up into a 0–100 score per prompt, per model, and against each competitor, with the exact passages behind it.
-- **Responses** — Search every AI answer for your brand, filter by model, tag, prompt, or sentiment, and click a company's badge to highlight the passage its sentiment was read from.
-- **Citation analysis** — Every URL an engine cites is stored with its domain and position, then categorized: your own domains, competitor domains, social media, Google properties, and institutional sources. You see which pages AI models actually trust for your industry.
-- **Competitor benchmarking and share of voice** — A leaderboard of competitor mention rates next to your own, with your overall share of voice and how it moves over time.
-- **Query fan-out analysis** — When an answer engine grounds a response, it often runs several web searches first. Elmo records those searches, shows how engines rewrite your wording (which words they add, drop, or keep), and which searches your content wins or misses.
-- **Prompt management** — An onboarding wizard analyzes your website, then suggests keywords, competitors, buyer personas, and tracking prompts. You can also add prompts manually, tag them, and enable or disable them individually.
-- **Opportunities** — Elmo turns your tracked visibility and citation data into a prioritized, regularly refreshed list of what to create, pitch, and seed to earn more AI citations.
-- **Reports** — Shareable AI visibility reports (visibility summary, per-prompt breakdown, citation analysis, competitor comparison) viewable by stakeholders without an Elmo account.
-- **API, SDKs, and MCP** — A REST API (with TypeScript and Python SDKs) for brands, prompts, competitors, analytics, sentiment, citations, runs, opportunities, and reports, plus an MCP server so Claude Code, Cursor, Codex, and VS Code can query your data and manage prompts. See the [API reference](https://www.elmohq.com/docs/api) and [MCP docs](https://www.elmohq.com/docs/api/mcp).
+- **[Visibility](https://www.elmohq.com/features/ai-visibility-tracking)** — how often each AI engine mentions your brand for every tracked prompt, per prompt and per model, trended over time. Mentions are matched on your name, aliases, and domains, then confirmed by a judge model.
+- **[Share of voice](https://www.elmohq.com/features/share-of-voice)** — a competitor leaderboard and how your share of mentions moves over time.
+- **[Sentiment and position](https://www.elmohq.com/features/sentiment-analysis)** — whether each answer is positive, neutral, mixed, or negative toward you and each competitor, where you rank among the companies named, and the exact passage behind every judgment.
+- **[Citations](https://www.elmohq.com/features/citation-tracking)** — every URL an engine cites, grouped by domain and category (yours, competitors', social, Google, institutional), so you know which pages AI trusts in your category.
+- **[Query fan-out](https://www.elmohq.com/features/query-fan-out)** — the web searches engines run before answering, how they rewrite your prompts, and which searches your content wins or misses.
+- **[Prompt tracking](https://www.elmohq.com/features/prompt-tracking)** — an onboarding wizard that suggests prompts, competitors, and personas from your website, plus manual prompts and tags.
+- **[Opportunities](https://www.elmohq.com/features/aeo-recommendations)** — a prioritized list of what to create, pitch, and seed to earn more AI citations.
+- **[Reports](https://www.elmohq.com/features/ai-visibility-reporting)** — shareable visibility reports stakeholders can open without an Elmo account.
+- **[API, SDKs, and MCP](https://www.elmohq.com/features/api-and-mcp)** — a REST API with TypeScript and Python SDKs, and an MCP server for Claude Code, Cursor, Codex, and VS Code.
 
 ## How Elmo Measures AI Visibility
 
-Elmo's methodology is simple and fully inspectable in this repository:
+1. **Prompts** — the questions your buyers ask AI, generated from your website or written by hand.
+2. **Runs** — a worker runs every prompt several times a day on each engine you track. [Multi-engine tracking](https://www.elmohq.com/features/multi-engine-tracking) scrapes the real consumer apps (ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot) and calls model APIs for Claude, Grok, and others; the [providers guide](https://www.elmohq.com/docs/user-guide/providers) compares the options.
+3. **Analysis** — each answer is stored raw in PostgreSQL with its citations and fan-out searches, then [Jev](https://typesafe.ai) judges which companies it really mentions, the sentiment toward each, and the passage that shows it.
+4. **Metrics** — visibility is the share of runs that mention you; sentiment scores positive 100, neutral and mixed 50, negative 0; position averages your rank among companies named. Everything filters by prompt, tag, engine, and date.
 
-1. **Prompts are defined per brand** — either generated by the onboarding wizard from your website or written by hand. Each prompt is a question a potential customer might ask an AI assistant.
-2. **A background worker runs each prompt on a schedule** (several times a day by default) against every engine you configure. Scraping providers capture the real consumer surfaces — ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, and Microsoft Copilot — while direct model APIs (OpenAI, Anthropic, Mistral, OpenRouter) add coverage for Claude, Grok, and other models with web search enabled. The [providers guide](https://www.elmohq.com/docs/user-guide/providers) compares both approaches and their costs.
-3. **Every answer is normalized and parsed.** Each run produces the answer text, the list of cited URLs, the web searches the engine ran while grounding (its query fan-out), and the model version. The text is scanned for your brand's name, aliases, and domains, and for each competitor's, and [Jev](https://typesafe.ai) reads each answer that names one to decide whether it really means that company, its sentiment toward it, and the passage that shows it.
-4. **Everything is stored in PostgreSQL**, including the raw engine output, so any metric can be re-derived and audited later. Nothing is a black box: the mention detection, scoring, and aggregation code is all in this repo, and every judgment keeps the passage it rests on.
-5. **Metrics are aggregated into trends.** Visibility is the share of runs that mention your brand; share of voice compares your mention rate against competitors; sentiment scores positive answers 100, neutral and mixed 50, and negative 0; position averages where you rank among the tracked companies an answer names; citation counts roll up by URL, domain, and category — each filterable by prompt, tag, engine, and time range.
-
-Because Elmo is open source, this loop is the part you never have to take on faith. Answer Engine Optimization (AEO) tooling lives or dies on measurement quality, and Elmo's measurements are ones you can read, run, and verify.
+Every step is code in this repo, and every number can be re-derived from the raw answers it came from.
 
 ## Elmo vs. Closed-Source Alternatives
 
 Most AI visibility platforms are closed SaaS. Here is how Elmo compares to the widely used ones:
 
-| Tool | Open source | Self-hostable | Auditable metrics | Data ownership | Pricing model | Engine coverage |
-|---|---|---|---|---|---|---|
-| [**Elmo**](https://www.elmohq.com/) | Yes (MIT) | Yes (Docker Compose) | Yes — scoring code is public | Yours — your own PostgreSQL | Free self-hosted; cloud from $29/mo | ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, Grok, Mistral, and more |
-| [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound) | No | No | No — proprietary scoring | Vendor-hosted | Enterprise, custom pricing | Multiple engines, plus AI crawler analytics |
-| [Peec AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai) | No | No | No | Vendor-hosted | Paid subscription, custom pricing | Multiple engines |
-| [Otterly AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai) | No | No | No | Vendor-hosted | Paid subscription, custom pricing | Multiple engines, plus on-page GEO audits |
-| [Scrunch](https://www.elmohq.com/ai-visibility-tools/elmo-vs-scrunch) | No | No | No | Vendor-hosted | Enterprise, custom pricing | Multiple engines; content-optimization focus |
-| [Ahrefs Brand Radar](https://www.elmohq.com/ai-visibility-tools/elmo-vs-ahrefs-brand-radar) | No | No | No | Vendor-hosted | From $129/mo | Multiple engines, tied to Ahrefs' SEO dataset |
-| [Semrush AI Toolkit](https://www.elmohq.com/ai-visibility-tools/elmo-vs-semrush-ai-toolkit) | No | No | No | Vendor-hosted | From $139.95/mo | Multiple engines, tied to Semrush's SEO platform |
-| [HubSpot AEO Grader](https://www.elmohq.com/ai-visibility-tools/elmo-vs-hubspot-aeo-grader) | No | No | No | Vendor-hosted | Free | One-time website audit, not continuous tracking |
+| Tool | Open Source | Auditable Metrics | Self-Hosted | Cloud |
+|---|---|---|---|---|
+| [**Elmo**](https://www.elmohq.com/) | Yes (MIT) | Yes | Free | From $29/mo |
+| [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound) | No | No | No | Enterprise, custom pricing |
+| [Peec AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai) | No | No | No | From $95/mo |
+| [Otterly AI](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai) | No | No | No | From $29/mo |
 
-To be fair about where the closed tools are genuinely ahead: Profound, Peec AI, Ahrefs, and Semrush offer prompt volume estimates; Profound, Otterly, and Scrunch analyze AI crawler behavior; Otterly, Scrunch, and HubSpot audit and optimize on-page content; and Ahrefs and Semrush integrate AI tracking with established SEO datasets. Elmo doesn't do those things today — see the [roadmap](https://www.elmohq.com/roadmap) for what's planned. What none of them offer is the ability to read the code behind every number, run it on your own infrastructure, and keep the data.
-
-Elmo also maintains a directory of 100+ Answer Engine Optimization and Generative Engine Optimization tools with feature matrices and head-to-head comparisons: [AI Visibility Tool Directory](https://www.elmohq.com/ai-visibility-tools).
+| Tool | ChatGPT | Google AI Mode | Google AI Overviews | Gemini | Copilot | Claude |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Elmo** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Profound | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Peec AI | ✅ | ✅ | ✅ | ✅ | ✅ | Enterprise |
+| Otterly AI | ✅ | Add-on | ✅ | Add-on | ✅ | Add-on |
 
 ## Who Elmo Is For
 
-- **Self-hosting teams** who want AI visibility data inside their own infrastructure — your prompts, your competitors, and every raw engine response stay in a PostgreSQL database you control.
-- **Agencies** offering Answer Engine Optimization to clients: the white-label deployment adds custom branding, a custom domain, and SSO on top of multi-brand tracking.
+- **Marketing, SEO, and content teams** extending their search strategy to AI search — see which prompts your brand wins or misses, which competitors AI recommends instead, and which cited pages to target next.
+- **Agencies** offering Answer Engine Optimization to clients: track every client brand in one place, and use the white-label deployment for custom branding, a custom domain, and SSO.
+- **B2B SaaS and e-commerce brands** that need to show up when buyers ask AI for "best [category]" shortlists, comparisons, and product recommendations.
+- **Software companies** embedding AI visibility tracking into their own products instead of building and maintaining the scraping and analysis pipeline themselves.
 - **Developers and analysts** who want auditable metrics — a REST API with TypeScript and Python SDKs, an MCP server for AI assistants, a documented methodology, and a database you can query directly instead of a dashboard-only black box.
+- **Self-hosting and regulated teams** who need AI visibility data inside their own infrastructure — your prompts, your competitors, and every raw engine response stay in a PostgreSQL database you control.
 - **Anyone priced out of enterprise AEO platforms** who still needs credible measurement of how ChatGPT, Perplexity, Gemini, and Google AI Overviews talk about their brand.
+
+See how teams in specific industries use Elmo: [AEO by industry](https://www.elmohq.com/aeo-for).
 
 ## Quick Start
 
-> [!TIP]
-> **Would rather not self-host?** Elmo Cloud runs the same open-source platform for you, with managed hosting and automatic updates, from $29/mo. [Start with Cloud →](https://www.elmohq.com/pricing)
+The recommended setup uses two API keys:
 
-For local deployments, use Docker Compose as configured with the `@elmohq/cli` package:
+- **[Cloro](https://cloro.dev?fpr=elmo&fp_sid=readme)** scrapes the real ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, and Copilot apps.
+- **[OpenRouter](https://openrouter.ai)** runs onboarding, opportunities, and Jev, the model that judges mentions and sentiment.
+
+Then install the CLI, which walks you through configuration, and start the stack with Docker Compose:
 
 ```bash
-# Install the CLI globally
 npm install -g @elmohq/cli
-
-# Initialize configuration (interactive wizard)
 elmo init
-
-# Start the stack
 elmo compose up -d
 ```
 
-You'll need API keys for at least one AI provider or scraper, plus a [TypeSafe](https://console.typesafe.ai) key for Jev, which judges mentions and sentiment (or an OpenRouter key, to call Jev through OpenRouter). Jev costs very roughly $0.15–0.35 per 1,000 answers: about $2–4 a month for 25 prompts on 3 platforms, or $11–26 for 100 prompts on 5. See [mention judging](https://www.elmohq.com/docs/developer-guide/configuration#mention-judging).
-
-Once the services report healthy, open **http://localhost:1515** and create your account. The full walkthrough is in the [getting started guide](https://www.elmohq.com/docs/getting-started).
-
-> [!TIP]
-> **Watch** this repo's **releases** to get notified of major updates.
+See the [getting started guide](https://www.elmohq.com/docs/getting-started) for the full walkthrough and the [providers guide](https://www.elmohq.com/docs/user-guide/providers) for other scrapers and model APIs.
 
 ## Skill
 
@@ -139,23 +133,17 @@ Or copy [`skills/aeo`](skills/aeo) into your agent's skills directory (for Claud
 
 ## Deployment Options
 
-| Option | What you get | Price |
-|---|---|---|
-| **Self-hosted** | The full platform on your own infrastructure via Docker Compose, unlimited prompts, every supported engine and provider | Free (MIT) |
-| **Elmo Cloud** | Managed hosting with automatic updates, unlimited seats, and API access on every plan | From $29/mo |
-| **White-label** | Everything in Cloud plus custom branding, a custom domain, and SSO — built for agencies serving multiple clients | Custom |
+- **Self-Hosted** — Run Elmo for free on your own infrastructure using Docker Compose. [Get started →](https://www.elmohq.com/docs/getting-started)
+- **Elmo Cloud** — Managed hosting with automatic updates, unlimited seats, and API and MCP access on every plan. [See plans →](https://www.elmohq.com/pricing)
+- **White-Label** — Elmo Cloud with your own branding, domain, and SSO, built for agencies and software companies. [Book a call →](https://www.elmohq.com/demo)
 
-Details and plan limits are on the [pricing page](https://www.elmohq.com/pricing).
-
-## Architecture
+## Architecture and Tech Stack
 
 <p align="center">
   <img src="apps/www/public/brand/architecture.svg" alt="Elmo system architecture" width="100%">
 </p>
 
 A web app serves the dashboard and REST API, a worker schedules and executes prompt runs against the AI engines, and PostgreSQL stores both the data and the job queue. The [developer guide](https://www.elmohq.com/docs/developer-guide) covers the monorepo layout and how to contribute.
-
-## Tech Stack
 
 - [Docker Compose](https://docs.docker.com/compose/)
 - [PostgreSQL](https://www.postgresql.org/)
@@ -177,6 +165,7 @@ A web app serves the dashboard and REST API, a worker schedules and executes pro
 <p align="left">
   <a href="https://www.searchapi.io/?utm_source=github&utm_medium=sponsorship&utm_campaign=google_search_api&utm_content=elmohq_elmo"><img src="https://nynjceth7hnajxhe.public.blob.vercel-storage.com/sponsors/searchapi-card.png" alt="SearchApi" width="210"></a>
   <a href="https://www.llumohq.com/?ref=elmo"><img src="https://nynjceth7hnajxhe.public.blob.vercel-storage.com/sponsors/llumo-card.png" alt="Llumo" width="210"></a>
+  <a href="https://scavio.dev/aeo?via=elmo"><img src="https://nynjceth7hnajxhe.public.blob.vercel-storage.com/sponsors/scavio-card.png" alt="Scavio" width="210"></a>
 </p>
 
 <a href="https://github.com/sponsors/elmohq"><strong>Become a sponsor →</strong></a>
@@ -185,11 +174,11 @@ A web app serves the dashboard and REST API, a worker schedules and executes pro
 
 - [Discord](https://discord.gg/s24nubCtKz)
 - [Email](mailto:support@elmohq.com)
-- [Schedule a call](https://www.elmohq.com/demo)
+- [Schedule a Call](https://www.elmohq.com/demo)
 
 ## Contributing
 
-Interested in contributing? See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and CLA process, the [developer guide](https://www.elmohq.com/docs/developer-guide) for setup and architecture, and browse [good first issues](https://github.com/elmohq/elmo/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) to get started.
+See [CONTRIBUTING.md](CONTRIBUTING.md), the [developer guide](https://www.elmohq.com/docs/developer-guide), and [good first issues](https://github.com/elmohq/elmo/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 ## License
 

@@ -1,5 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { CompetitorPricingDetails } from "@/components/competitor-pricing";
+import { DataProvenance } from "@/components/data-provenance";
 import {
 	DirectoryBackLink,
 	DirectoryElmoBanner,
@@ -52,7 +53,7 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: `${c.name} alternatives`, path },
 				]),
-				faqJsonLd(faqs),
+				faqJsonLd(faqs, { path, dateModified: c.checkedAt }),
 			],
 		};
 	},
@@ -161,6 +162,7 @@ function AlternativesPage() {
 								</div>
 							))}
 						</div>
+						<DataProvenance tools={[competitor]} className="mt-8" />
 					</DirectorySection>
 				) : null}
 

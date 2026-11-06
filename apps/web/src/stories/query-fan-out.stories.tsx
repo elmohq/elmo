@@ -60,13 +60,13 @@ function response(runs: { model: string; runs: number }[], breakdown: FanoutBrea
 			["p2", "best b2b email finder tools for sales teams"],
 		]),
 		{
-			promptRuns: new Map([
+			promptFanoutRuns: new Map([
 				["p1", 40],
 				["p2", 36],
 			]),
 		},
 	);
-	return { ...analysis, brandName: "Acme", model: null, coverageRate: Math.round(analysis.coverageRate * 100) };
+	return { ...analysis, brandName: "Acme", model: null };
 }
 
 function Shell({ children }: { children: ReactNode }) {

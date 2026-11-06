@@ -31,8 +31,7 @@ test.describe("API keys", () => {
 
     const name = `Playwright key ${Date.now()}`;
     await openCreateForm(page, name);
-    // A real click, because the failure this guards against was the dialog
-    // painting over the open listbox and swallowing them.
+    // A real click, because the dialog can paint over the open listbox and swallow it.
     await page.locator("#key-expiry").click();
     await waitForMotion(page);
     await page.getByRole("option", { name: "In 30 days", exact: true }).click();
@@ -49,7 +48,7 @@ test.describe("API keys", () => {
 
     const issued = page.locator("[data-slot=card]").filter({ hasText: "Key Created" });
     await expect(issued).toBeVisible({ timeout: 30_000 });
-    const key = (await issued.locator("code").innerText()).trim();
+    const key = await issued.getByRole("textbox", { name: "API Key" }).inputValue();
     expect(key).toMatch(/^elmo_[A-Za-z]+$/);
     await expect(page.getByText(name)).toBeVisible();
 

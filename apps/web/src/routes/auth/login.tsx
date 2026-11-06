@@ -13,6 +13,7 @@ import { MCP_AUTHORIZE_ENDPOINT } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -23,6 +24,8 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
+import { CAPTCHA_FAILED_MESSAGE, CaptchaError, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
+import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
@@ -43,9 +46,8 @@ function postSignInDestination(search: LoginSearch): string {
 
 /** A passthrough: the plugin signs the whole query, so a dropped parameter is a
  * signature that no longer verifies. */
-interface LoginSearch {
+interface LoginSearch extends AttributionParams {
 	returnTo?: string;
-	ref?: string;
 	sig?: string;
 }
 
@@ -65,7 +67,7 @@ export const Route = createFileRoute("/auth/login")({
 
 function LoginPage() {
 	const search = Route.useSearch();
-	const { returnTo, ref: incomingRef } = search;
+	const { returnTo } = search;
 	const destination = postSignInDestination(search);
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const mode = context.clientConfig?.mode;
@@ -89,7 +91,7 @@ function LoginPage() {
 		<EmailPasswordLogin
 			destination={destination}
 			returnTo={returnTo}
-			incomingRef={incomingRef}
+			attribution={attributionParams(search)}
 			isCloud={mode === "cloud"}
 			canRegister={canRegister}
 		/>
@@ -171,16 +173,36 @@ function SignInFailed({ error }: { error: string }) {
 	);
 }
 
+function signInErrorMessage(error: { code?: string; message?: string }, isCloud?: boolean) {
+	if (isCloud && error.code === "EMAIL_NOT_VERIFIED") {
+		return "Please verify your email first — we just sent you a new verification link.";
+	}
+	if (isCaptchaRejection(error)) return CAPTCHA_FAILED_MESSAGE;
+	return error.message ?? "Invalid email or password";
+}
+
+function LastUsedBadge() {
+	// The leading space keeps the button's accessible name "Sign In Last Used" rather than "Sign InLast Used".
+	return (
+		<>
+			{" "}
+			<Badge variant="secondary" className="pointer-events-none absolute -top-3 right-3">
+				Last Used
+			</Badge>
+		</>
+	);
+}
+
 export function EmailPasswordLogin({
 	destination = "/app",
 	returnTo,
-	incomingRef,
+	attribution,
 	isCloud,
 	canRegister,
 }: {
 	destination?: string;
 	returnTo?: string;
-	incomingRef?: string;
+	attribution?: AttributionParams;
 	isCloud?: boolean;
 	canRegister?: boolean;
 }) {
@@ -189,7 +211,13 @@ export function EmailPasswordLogin({
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [lastLoginMethod, setLastLoginMethod] = useState<string | null>(null);
 	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
+	const turnstile = useTurnstile();
+
+	useEffect(() => {
+		setLastLoginMethod(isCloud ? authClient.getLastUsedLoginMethod() : null);
+	}, [isCloud]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -200,6 +228,7 @@ export function EmailPasswordLogin({
 			const result = await authClient.signIn.email({
 				email,
 				password,
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
 			});
 
 			if (result.error) {
@@ -212,18 +241,14 @@ export function EmailPasswordLogin({
 					setLoading(false);
 					return;
 				}
-				if (isCloud && result.error.status === 403) {
-					setError("Please verify your email first — we just sent you a new verification link.");
-				} else {
-					setError(result.error.message ?? "Invalid email or password");
-				}
+				setError(signInErrorMessage(result.error, isCloud));
 				setLoading(false);
 				return;
 			}
 
 			window.location.href = destination;
-		} catch {
-			setError("Something went wrong. Please try again.");
+		} catch (err) {
+			setError(err instanceof CaptchaError ? err.message : "Something went wrong. Please try again.");
 			setLoading(false);
 		}
 	}
@@ -240,11 +265,12 @@ export function EmailPasswordLogin({
 					<Button
 						type="button"
 						variant="outline"
-						className="w-full"
+						className="relative w-full"
 						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: destination })}
 					>
 						<IconBrandGoogle className="size-4" />
 						Continue with Google
+						{lastLoginMethod === "google" && <LastUsedBadge />}
 					</Button>
 					<LegalConsentNotice action="continuing with Google" />
 					<div className="flex items-center gap-3">
@@ -292,8 +318,10 @@ export function EmailPasswordLogin({
 						autoComplete="current-password"
 					/>
 				</div>
-				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Signing in..." : "Sign in"}
+				{turnstile.widget}
+				<Button type="submit" className="relative w-full" disabled={loading}>
+					{loading ? "Signing in..." : "Sign In"}
+					{lastLoginMethod === "email" && <LastUsedBadge />}
 				</Button>
 			</form>
 			{canRegister && (
@@ -301,7 +329,7 @@ export function EmailPasswordLogin({
 					Don't have an account?{" "}
 					<Link
 						to="/auth/register"
-						search={{ ...(returnTo ? { returnTo } : {}), ...(incomingRef ? { ref: incomingRef } : {}) }}
+						search={{ ...(returnTo ? { returnTo } : {}), ...attribution }}
 						className="text-primary hover:underline font-medium"
 					>
 						Create one

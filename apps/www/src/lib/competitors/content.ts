@@ -41,6 +41,7 @@ function integrationSummary(competitor: Competitor): string {
 }
 
 const GETCITO_FORK_DATE = "July 10, 2026";
+const GETCITO_REWRITE_DATE = "November 4, 2026";
 
 // Engines in rough order of how much AI search traffic they carry, so the
 // soundbite names the gaps a buyer is most likely to care about first.
@@ -70,15 +71,6 @@ const RESTRICTIVE_LICENSES: Record<string, string> = {
 	"BUSL-1.1": "source-available under the BSL, which restricts production use",
 };
 
-// Acquired trackers that were absorbed into the buyer's product, the evidence
-// behind the acquisition soundbite.
-const ABSORBED_EXAMPLES = ["XFunnel", "Hall", "Meridian"];
-
-function joinAnd(items: string[]): string {
-	if (items.length <= 2) return items.join(" and ");
-	return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
-}
-
 function joinOr(items: string[]): string {
 	if (items.length <= 2) return items.join(" or ");
 	return `${items.slice(0, -1).join(", ")}, or ${items[items.length - 1]}`;
@@ -95,10 +87,9 @@ function fateSoundbite(competitor: Competitor): string | undefined {
 	}
 	if (competitor.status === "acquired") {
 		if (competitor.fate) {
-			return `${name} is gone as a standalone product. ${competitor.fate.summary} Elmo is open source, so no acquisition can take it away from you.`;
+			return `${name} is gone as a standalone product. ${competitor.fate.summary} Elmo is MIT-licensed, so you keep the code and your data no matter what.`;
 		}
-		const absorbed = ABSORBED_EXAMPLES.filter((example) => example !== name);
-		return `${name} has been acquired, and acquired AI visibility tools rarely stay put: ${joinAnd(absorbed)} were all folded into their buyers' products. Elmo is open source, so no acquisition can take it away from you.`;
+		return `${name} has been acquired, so its roadmap is now set by its new owner. Elmo is MIT-licensed, so you keep the code and your data no matter what.`;
 	}
 	return undefined;
 }
@@ -143,7 +134,7 @@ export function getSoundbite(competitor: Competitor): string {
 	if (isOpenSource(competitor)) {
 		return `${name} and Elmo are both open source, so it comes down to fit: compare the engines and features below.`;
 	}
-	return `${name} is closed source, so you can't check how its numbers are made. Elmo is open source and free to self-host.`;
+	return `Elmo publishes the code behind every metric, so you can see exactly how a visibility score is calculated, and you can self-host it for free.`;
 }
 
 /**
@@ -155,7 +146,7 @@ export function getComparisonVerdict(competitor: Competitor): string {
 	const name = competitor.name;
 
 	if (competitor.slug === "getcito") {
-		return `If you are considering ${name}, use Elmo instead. ${name} is a fork of Elmo's codebase since ${GETCITO_FORK_DATE}. Everything it offers today it inherited from Elmo, and it has shipped less since — 17 commits to Elmo's 98 in the month after the fork. Elmo is the original, and it is free to self-host.`;
+		return `If you are considering ${name}, use Elmo instead. ${name} has never had a mature codebase: it started as a minimal vibe-coded tracker, switched to a fork of Elmo, and on ${GETCITO_REWRITE_DATE} replaced that with a new vibe-coded project dumped in as one 923,787-line commit. Elmo is mature, actively maintained, and free to self-host.`;
 	}
 
 	if (isOpenSource(competitor)) {
@@ -182,23 +173,23 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 		return [
 			{
 				question: `Should I use ${name} or Elmo?`,
-				answer: `Use Elmo. If you are considering ${name}, Elmo is the tool you actually want, because ${name} is a fork of it. On ${GETCITO_FORK_DATE}, ${name} replaced its codebase with Elmo's in a single pull request of 847 files. Running ${name} means running an older snapshot of Elmo.`,
+				answer: `Use Elmo. ${name} has never had a mature codebase. It started as a minimal vibe-coded tracker, switched to a fork of Elmo on ${GETCITO_FORK_DATE}, and on ${GETCITO_REWRITE_DATE} threw the fork away for a new vibe-coded project that landed as a single, unreviewed 923,787-line commit. Elmo is mature and actively maintained.`,
 			},
 			{
 				question: `What is the difference between Elmo and ${name}?`,
-				answer: `Elmo is the original codebase and ${name} is a fork of it, taken on ${GETCITO_FORK_DATE}. Everything ${name} offers today it inherited from Elmo. A fork is free to diverge from there, but ${name} has shipped less than the project it forked — 98 commits to its 17 in the month after — so the gap is widening rather than closing.`,
+				answer: `Elmo is a mature codebase built in the open since July 2025, one reviewed change at a time. ${name}'s current code is a from-scratch, vibe-coded Next.js, Express, and Supabase project that replaced its Elmo fork on ${GETCITO_REWRITE_DATE} in one 4,354-file commit with no description and no review. Its original codebase was a minimal vibe-coded tracker, so neither of its own attempts has a track record.`,
 			},
 			{
 				question: `Is ${name} a fork of Elmo?`,
-				answer: `Yes, ${name} is a fork of Elmo since ${GETCITO_FORK_DATE}. Its codebase is based on Elmo's, which is MIT-licensed and freely available to self-host.`,
+				answer: `Not anymore. ${name} ran a fork of Elmo from ${GETCITO_FORK_DATE} until ${GETCITO_REWRITE_DATE}, when it replaced it with a new, vibe-coded codebase. Before the fork it was a minimal vibe-coded tracker, so this is its third codebase in a year.`,
 			},
 			{
 				question: `Is ${name} open source?`,
-				answer: `Yes, ${name} is an MIT licensed fork of Elmo.`,
+				answer: `Yes, ${name} is MIT licensed. Its current code is a from-scratch rewrite merged on ${GETCITO_REWRITE_DATE}.`,
 			},
 			{
 				question: `Is Elmo a free, open-source alternative to ${name}?`,
-				answer: `${name} is actually a fork of Elmo, which is free to self-host and developing faster than ${name}. If you want to self-host under MIT, with unlimited prompts and every model, covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews, you should use Elmo instead of a fork.`,
+				answer: `Yes. Elmo is free to self-host under MIT, with unlimited prompts and every model, covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. Unlike ${name}, it has not been thrown out and rewritten twice in a year.`,
 			},
 		];
 	}
@@ -219,7 +210,7 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 		question: `Is ${name} open source?`,
 		answer: openSource
 			? `Yes, ${name} is open source. Elmo is open source as well and is built specifically for self-hosted, independently verifiable AI visibility tracking, so you can audit exactly how each metric is calculated.`
-			: `No, ${name} is a closed-source, hosted product, so you cannot inspect how its metrics are calculated. Elmo is fully open source — you can audit the code, self-host it on your own infrastructure, and avoid vendor lock-in.`,
+			: `No, ${name} is a hosted product without public source code. Elmo is fully open source, so you can read how each metric is calculated, self-host it on your own infrastructure, and take your data with you.`,
 	});
 
 	faqs.push({

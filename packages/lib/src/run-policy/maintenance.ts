@@ -1,10 +1,4 @@
-/**
- * Pure decision core for the worker's schedule-maintenance job. The worker
- * gathers state (prompts, resolved run plans, last runs, pending pg-boss
- * jobs); this decides which chains to revive, which future jobs to expedite,
- * and how many prompts are overdue enough to alert on. Keeping it pure makes
- * the scheduler's self-healing behavior exhaustively unit-testable.
- */
+/** Pure so the scheduler's self-healing is unit-testable; the worker gathers the state. */
 
 import { shouldExpediteJob } from "../expedite";
 import { dueToleranceMs, type PromptRunPlan, targetKey, targetOverdueStatus } from "./policy";
@@ -58,11 +52,8 @@ function actionForPrompt(state: MaintenancePromptState, nowMs: number): Maintena
 	// A job that is running or retrying is already being handled.
 	if (state.pendingJob && state.pendingJob.state !== "created") return { kind: "none" };
 
-	// A prompt with no recorded runs is inherently overdue: there is nothing
-	// fresh. This covers brand-new prompts and revived chains whose history
-	// (shifted or cleaned) fell outside the maintenance query window — the
-	// isPromptOverdue path alone would compare against promptCreatedAt and
-	// wrongly deem a just-created prompt "not overdue".
+	// No recorded runs counts as overdue, including history outside the query
+	// window; isPromptOverdue alone would call a just-created prompt fresh.
 	const hasAnyRun = state.lastRunAtByKey.size > 0;
 	if (hasAnyRun && !isPromptOverdue(state, nowMs, 0)) return { kind: "none" };
 
@@ -71,9 +62,7 @@ function actionForPrompt(state: MaintenancePromptState, nowMs: number): Maintena
 		return { kind: "schedule", cadenceHours: state.plan.rescheduleHours as number };
 	}
 
-	// A future job exists — drag it forward only if the prompt has genuinely
-	// stalled. `rescheduleHours` is how often the prompt runs (its fastest
-	// target), which is the interval the pending job was scheduled against.
+	// Drag a future job forward only if the prompt has genuinely stalled.
 	const runTimes = [...state.lastRunAtByKey.values()].map((d) => d.getTime());
 	const expedite = shouldExpediteJob({
 		jobConsecutiveFailures: state.pendingJob.consecutiveFailures,
@@ -90,8 +79,7 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
 	const decisions: MaintenanceDecisions = { toSchedule: [], toExpedite: [], alertOverdueCount: 0 };
 
 	for (const state of promptStates) {
-		// No targets (unentitled org, no picks, outside the pool): the prompt is
-		// meant to be stopped. Not overdue, nothing to start, no alert noise.
+		// No targets means the prompt is meant to be stopped, so it raises no alert.
 		if (state.plan.targets.length === 0 || state.plan.rescheduleHours === null) continue;
 		if (isPromptOverdue(state, nowMs, OVERDUE_ALERT_GRACE_MS)) decisions.alertOverdueCount++;
 
@@ -107,14 +95,9 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
 }
 
 /**
- * Pool positions for downgrade handling: which enabled prompts are inside the
- * org's tracked-prompt pool, and which of their premium models the premium pool
- * still covers. Oldest first (creation order, id tiebreak) so a new prompt can
- * never displace an old one's tracking.
- *
- * The premium pool is spent per prompt/model pair, so a prompt asking for two
- * models with one slot left keeps the first — admitting neither would strand a
- * slot the org is paying for.
+ * Oldest first, so a new prompt never displaces an old one after a downgrade. A
+ * prompt asking for two premium models with one slot left keeps the first rather
+ * than stranding a slot the org pays for.
  */
 export function computePoolPositions(
 	prompts: { id: string; createdAt: Date; premiumModels: string[] }[],
@@ -145,12 +128,7 @@ export function computePoolPositions(
 	return { withinPromptPool, premiumByPrompt };
 }
 
-/**
- * Window for the maintenance last-run query: wide enough that the slowest
- * cadence in play still sees its last run (otherwise a long-cadence brand
- * looks never-run and gets expedite-stormed), bounded so the aggregate stops
- * scanning all of prompt_runs on every tick.
- */
+/** Wide enough that the slowest cadence still sees its last run, bounded so it doesn't scan all of prompt_runs. */
 export function lastRunQueryWindowMs(maxIntervalHours: number): number {
 	const maxIntervalMs = maxIntervalHours * 3600 * 1000;
 	return 2 * maxIntervalMs + OVERDUE_ALERT_GRACE_MS + dueToleranceMs(maxIntervalHours);

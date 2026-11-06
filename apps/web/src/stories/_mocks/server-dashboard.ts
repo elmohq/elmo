@@ -3,9 +3,6 @@
  * imports pg via @workspace/lib/db, which is not browser-safe. The types come
  * from it all the same — `import type` is erased before Storybook's alias
  * redirects the module, so a story can't drift from the real response shape.
- *
- * Stories set the summary via setMockDashboardSummary(); getDashboardSummaryFn
- * (called by the real useDashboardSummary hook through react-query) returns it.
  */
 import type { DashboardSummaryResponse } from "@/server/dashboard";
 

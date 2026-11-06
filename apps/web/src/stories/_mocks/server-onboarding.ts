@@ -2,9 +2,6 @@
  * Mock for @/server/onboarding — lets stories drive the wizard's analyze and
  * save calls without hitting the real server functions (which transitively
  * pull in DB + provider clients).
- *
- * Stories call `setMockOnboardingSuggestion()` to control what the analyze
- * step returns, and `setMockOnboardingDelay()` to simulate slow analyses.
  */
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 
