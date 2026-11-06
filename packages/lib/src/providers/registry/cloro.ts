@@ -35,19 +35,14 @@ const CLORO_TASKS: Record<string, CloroTaskConfig> = {
 const CLORO_TASK_URL = "https://api.cloro.dev/v1/async/task";
 
 /**
- * Excludes time spent queued: a task is billed whether or not anyone waits for
- * it, and abandoning one only queues a replacement behind it.
+ * One deadline covers queued and running time, since Cloro retries a failing
+ * attempt by re-queueing it. Sized past the deepest backlog one cycle can queue,
+ * so a task that never settles can't pin a worker.
  */
-const CLORO_GENERATION_TIMEOUT_MS = 10 * 60 * 1000;
-
-/** Sized past the deepest backlog one cycle can queue, so a queue that never drains can't pin a worker. */
 const CLORO_TOTAL_TIMEOUT_MS = 60 * 60 * 1000;
 
 // Cloro localizes every answer; default to a US audience.
 const CLORO_COUNTRY = "US";
-
-/** Statuses meaning "accepted, not started" — see CLORO_GENERATION_TIMEOUT_MS. */
-const CLORO_QUEUED_STATUSES = new Set(["QUEUED", "PENDING", "CREATED", "SCHEDULED"]);
 
 interface CloroTask {
 	id?: string;
@@ -101,9 +96,7 @@ function cloroTaskState(payload: CloroTaskResponse): TaskState {
 	const status = payload.task?.status?.toUpperCase();
 	if (status === "COMPLETED") return "ready";
 	if (status === "FAILED") return "failed";
-	// An unreported status counts as running so a silent status endpoint can't
-	// keep the task alive for the full ceiling.
-	return status && CLORO_QUEUED_STATUSES.has(status) ? "queued" : "running";
+	return "running";
 }
 
 async function runAsyncTask(taskType: string, payload: Record<string, any>): Promise<Record<string, any>> {
@@ -115,10 +108,10 @@ async function runAsyncTask(taskType: string, payload: Record<string, any>): Pro
 		initial: { task: submitted },
 		poll: () => getTask(taskId),
 		classify: cloroTaskState,
-		describeFailure: (latest) => failureDetails(latest.task?.error),
+		// A failed task carries its error in `response`.
+		describeFailure: (latest) => failureDetails(latest.response?.error ?? latest.task?.error),
 		describeStatus: (latest) => latest?.task?.status?.toUpperCase() ?? "unknown",
 		totalTimeoutMs: CLORO_TOTAL_TIMEOUT_MS,
-		runningTimeoutMs: CLORO_GENERATION_TIMEOUT_MS,
 	});
 
 	return settled?.response ?? {};
