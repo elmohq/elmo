@@ -44,9 +44,9 @@ function PillarPage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
-				<DirectoryHero eyebrow={pillar.eyebrow} title={pillar.h1} lead={pillar.lead} />
+				<DirectoryHero title={pillar.h1} lead={pillar.lead} />
 				<PillarBody pillar={pillar} />
-				<Faq items={pillar.faqs} eyebrow="/ FAQ" />
+				<Faq items={pillar.faqs} />
 				<ElmoCta />
 			</main>
 			<Footer />

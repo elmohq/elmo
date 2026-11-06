@@ -7,7 +7,6 @@ import {
 	type ProcessedBatchChartDataPoint,
 } from "@/lib/chart-utils";
 
-// Chart data for a single prompt (pre-processed for rendering)
 export interface ProcessedChartData {
 	chartData: Array<{
 		date: string;
@@ -18,7 +17,6 @@ export interface ProcessedChartData {
 	lastBrandVisibility: number | null;
 }
 
-// Context value
 interface ChartDataContextValue {
 	batchData: ProcessedBatchChartDataPoint[] | null;
 	brand: ChartSubject | null;

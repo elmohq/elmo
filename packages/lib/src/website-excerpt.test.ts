@@ -1,21 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getWebsiteExcerpt } from "./website-excerpt";
 
-type FakeResponse = {
-	ok: boolean;
-	status: number;
-	headers: { get: (key: string) => string | null };
-	text: () => Promise<string>;
-};
+type FakeResponse = Response;
 
-function response(opts: { ok?: boolean; status?: number; contentType?: string; body?: string }): FakeResponse {
-	const { ok = true, status = 200, contentType = "text/plain", body = "" } = opts;
-	return {
-		ok,
-		status,
-		headers: { get: (key) => (key.toLowerCase() === "content-type" ? contentType : null) },
-		text: async () => body,
-	};
+function response(opts: { status?: number; contentType?: string; body?: string | ReadableStream }): FakeResponse {
+	const { status = 200, contentType = "text/plain", body = "" } = opts;
+	return new Response(body, { status, headers: { "content-type": contentType } });
 }
 
 /**
@@ -88,7 +78,7 @@ describe("getWebsiteExcerpt", () => {
 	it("preserves an absolute page URL through both excerpt sources", async () => {
 		const pageUrl = "https://www.nike.com/golf?category=clubs#featured";
 		const fetchMock = stubFetch({
-			jina: response({ ok: false, status: 401 }),
+			jina: response({ status: 401 }),
 			direct: response({ contentType: "text/html; charset=utf-8", body: ARTICLE_HTML }),
 		});
 
@@ -118,7 +108,7 @@ describe("getWebsiteExcerpt", () => {
 
 	it("falls back to backend fetch + Readability when Jina is blocked (401)", async () => {
 		const fetchMock = stubFetch({
-			jina: response({ ok: false, status: 401 }),
+			jina: response({ status: 401 }),
 			direct: response({ contentType: "text/html; charset=utf-8", body: ARTICLE_HTML }),
 		});
 
@@ -135,7 +125,7 @@ describe("getWebsiteExcerpt", () => {
 		const fetchMock = vi.fn(async (input: unknown) => {
 			const url = String(input);
 			if (url.startsWith("https://r.jina.ai/")) throw new Error("network down");
-			return response({ contentType: "text/html", body: ARTICLE_HTML }) as unknown;
+			return response({ contentType: "text/html", body: ARTICLE_HTML });
 		});
 		vi.stubGlobal("fetch", fetchMock);
 
@@ -145,8 +135,8 @@ describe("getWebsiteExcerpt", () => {
 
 	it("returns an empty string when both tiers fail", async () => {
 		stubFetch({
-			jina: response({ ok: false, status: 401 }),
-			direct: response({ ok: false, status: 500 }),
+			jina: response({ status: 401 }),
+			direct: response({ status: 500 }),
 		});
 
 		expect(await getWebsiteExcerpt("acme.com")).toBe("");
@@ -161,6 +151,27 @@ describe("getWebsiteExcerpt", () => {
 		expect(excerpt.split("\n")).toHaveLength(200);
 		expect(excerpt).toContain("line 199");
 		expect(excerpt).not.toContain("line 200");
+	});
+
+	it("stops reading a site that sends an endless body", async () => {
+		let sent = 0;
+		const chunk = new TextEncoder().encode(`<p>${"Acme builds warehouse robots. ".repeat(2000)}</p>\n`);
+		const endless = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode("<!DOCTYPE html><html><body><article>"));
+			},
+			pull(controller) {
+				sent += chunk.byteLength;
+				controller.enqueue(chunk);
+			},
+		});
+		stubFetch({
+			jina: response({ status: 401 }),
+			direct: response({ contentType: "text/html", body: endless }),
+		});
+
+		expect(await getWebsiteExcerpt("acme.com")).toContain("warehouse robots");
+		expect(sent).toBeLessThan(4 * 1024 * 1024);
 	});
 
 	it("returns an empty string for an empty URL without fetching", async () => {

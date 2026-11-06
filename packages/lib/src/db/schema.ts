@@ -4,6 +4,7 @@ import {
 	bigint,
 	boolean,
 	check,
+	doublePrecision,
 	index,
 	integer,
 	json,
@@ -19,17 +20,11 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 import type { RunMentionAssessments } from "../mentions";
-// `organization` is referenced by the brands FK below; the re-export makes it
-// (and the rest of the auth schema) visible to `import * as schema` consumers.
 import { organization } from "./schema-auth";
 
-// Better-auth tables & relations — re-exported so `import * as schema` sees everything.
-// Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
+// Re-exported so `import * as schema` sees the auth tables. That file is
+// generated: run `pnpm run generate:auth-schema` to refresh it.
 export * from "./schema-auth";
-
-// ============================================================================
-// Application tables
-// ============================================================================
 
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 
@@ -51,10 +46,8 @@ export const brands = pgTable(
 		 * Null for brands that predate stamping until the worker adopts today's stamps.
 		 */
 		analysisVersions: jsonb("analysis_versions").$type<Record<string, string>>().default({}),
-		// Hard tenancy scope. Every brand belongs to exactly one better-auth
-		// organization; org membership (the `member` table) is the access-control
-		// mechanism. Brand and organization ids are independent, so billing and
-		// entitlement joins must use this key.
+		// The tenancy scope. Brand and organization ids are independent, so billing
+		// and entitlement joins must use this key.
 		organizationId: text("organization_id")
 			.references(() => organization.id)
 			.notNull(),
@@ -82,10 +75,7 @@ export const prompts = pgTable(
 			.notNull(),
 		value: text("value").notNull(),
 		enabled: boolean("enabled").default(true).notNull(),
-		/**
-		 * Premium models this prompt is tracked on, grounded: one org premium slot
-		 * per entry (see PREMIUM_MODELS). Empty = standard tracking only.
-		 */
+		/** Tracked grounded, one org premium slot per entry. */
 		premiumModels: text("premium_models").array().notNull().default([]),
 		tags: text("tags").array().notNull().default([]),
 		systemTags: text("system_tags").array().notNull().default([]),
@@ -101,20 +91,24 @@ export const prompts = pgTable(
 	}),
 ).enableRLS();
 
-export const competitors = pgTable("competitors", {
-	id: uuid("id").defaultRandom().primaryKey().notNull(),
-	brandId: text("brand_id")
-		.references(() => brands.id)
-		.notNull(),
-	name: text("name").notNull(),
-	domains: text("domains").array().notNull().default([]),
-	aliases: text("aliases").array().notNull().default([]),
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.defaultNow()
-		.$onUpdate(() => new Date())
-		.notNull(),
-}).enableRLS();
+export const competitors = pgTable(
+	"competitors",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		brandId: text("brand_id")
+			.references(() => brands.id)
+			.notNull(),
+		name: text("name").notNull(),
+		domains: text("domains").array().notNull().default([]),
+		aliases: text("aliases").array().notNull().default([]),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [index("competitors_brand_id_idx").on(table.brandId)],
+).enableRLS();
 
 /**
  * Append-only: what was asked and what the provider returned, never rewritten (a
@@ -146,14 +140,6 @@ export const promptRuns = pgTable(
 	(table) => ({
 		promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		createdAtIdx: index("prompt_runs_created_at_idx").on(table.createdAt),
-		webSearchCreatedAtIdx: index("prompt_runs_web_search_created_at_idx").on(table.webSearchEnabled, table.createdAt),
-		webSearchModelCreatedAtIdx: index("prompt_runs_web_search_model_created_at_idx").on(
-			table.webSearchEnabled,
-			table.model,
-			table.createdAt,
-		),
-		providerIdx: index("prompt_runs_provider_idx").on(table.provider),
-		modelCreatedAtIdx: index("prompt_runs_model_created_at_idx").on(table.model, table.createdAt),
 	}),
 ).enableRLS();
 
@@ -207,20 +193,9 @@ export const citations = pgTable(
 		pageId: bigint("page_id", { mode: "number" }).references((): AnyPgColumn => citedPages.id),
 	},
 	(table) => ({
-		brandAnalyticsIdx: index("citations_brand_created_analytics_idx").on(
-			table.brandId,
-			table.createdAt,
-			table.url,
-			table.domain,
-			table.title,
-			table.promptId,
-			table.model,
-			table.citationIndex,
-		),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		// Replay, run detail and rollup rebuilds all reach a run's citations by its id.
 		runIdx: index("citations_prompt_run_id_idx").on(table.promptRunId),
-		domainIdx: index("citations_domain_idx").on(table.domain),
 	}),
 ).enableRLS();
 
@@ -247,9 +222,8 @@ export const reports = pgTable(
 	}),
 ).enableRLS();
 
-// One row per generated Opportunities report, per brand — append-only history
-// (every generation is kept, not overwritten). The page reads the latest row and
-// regenerates only when it's stale; see apps/web/src/server/opportunities.ts.
+// Every generation is kept; the page reads the latest row and regenerates only
+// when it's stale.
 export const brandOpportunities = pgTable(
 	"brand_opportunities",
 	{
@@ -302,21 +276,17 @@ export const SYSTEM_TAGS = {
 export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];
 
 /**
- * Cloud billing/entitlement state we own per organization (as opposed to the
- * better-auth-managed `subscription` table). One optional row per org:
- * - entitlementOverrides: sparse custom-plan overrides (see
- *   entitlementOverridesSchema in @workspace/config/entitlements) — the
- *   config-only lever for custom plans
- * - premiumAddonQuantity: purchased extra premium slots, synced from Stripe
- *   subscription items by the billing webhook
- * Absent row = no overrides, no add-on. Unused outside cloud.
+ * Cloud billing state Elmo owns, beside the better-auth-managed `subscription`
+ * table. An org without a row has no overrides and no add-on; unused outside cloud.
  */
 export const organizationSettings = pgTable("organization_settings", {
 	organizationId: text("organization_id")
 		.primaryKey()
 		.notNull()
 		.references(() => organization.id),
+	/** Sparse custom-plan overrides, shaped by `entitlementOverridesSchema`. */
 	entitlementOverrides: jsonb("entitlement_overrides"),
+	/** Extra premium slots, synced from Stripe subscription items by the billing webhook. */
 	premiumAddonQuantity: integer("premium_addon_quantity").notNull().default(0),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -327,14 +297,7 @@ export const organizationSettings = pgTable("organization_settings", {
 
 export type OrganizationSettings = typeof organizationSettings.$inferSelect;
 
-/**
- * Billing-grade usage attribution: one row per provider call the
- * worker makes, so every run is attributable to an org with an estimated
- * cost. Written in every mode (self-hosted operators get the same spend
- * visibility); estimated costs come from the tunable table in
- * src/usage/cost.ts and are validated against provider invoices, not treated
- * as ground truth.
- */
+/** One row per provider call, in every mode. Costs are estimates (src/usage/cost.ts), not ground truth. */
 export const usageEvents = pgTable(
 	"usage_events",
 	{
@@ -462,22 +425,18 @@ export const rollupCompetitorMentions = pgTable(
  * Shared by every tenant, so classification here is the tenant-independent half;
  * brand and competitor domains are applied at read time.
  */
-export const citedPages = pgTable(
-	"cited_pages",
-	{
-		id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey().notNull(),
-		url: text("url").notNull().unique(),
-		domain: text("domain").notNull(),
-		/** Most recently seen non-null title. */
-		title: text("title"),
-		pageType: text("page_type").notNull(),
-		staticCategory: text("static_category").notNull(),
-		classifierVersion: integer("classifier_version").notNull(),
-		firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),
-		lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
-	},
-	(table) => [index("cited_pages_domain_idx").on(table.domain)],
-).enableRLS();
+export const citedPages = pgTable("cited_pages", {
+	id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey().notNull(),
+	url: text("url").notNull().unique(),
+	domain: text("domain").notNull(),
+	/** Most recently seen non-null title. */
+	title: text("title"),
+	pageType: text("page_type").notNull(),
+	staticCategory: text("static_category").notNull(),
+	classifierVersion: integer("classifier_version").notNull(),
+	firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),
+	lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+}).enableRLS();
 
 export const rollupCitationUrls = pgTable(
 	"rollup_citation_urls",
@@ -509,6 +468,29 @@ export const rollupCitationUrls = pgTable(
 	],
 ).enableRLS();
 
+/**
+ * Copied from `cited_pages` so a brand's reads find its pages together. A page's
+ * change reaches a brand when it next cites it; reclassification updates every copy.
+ */
+export const rollupCitationPages = pgTable(
+	"rollup_citation_pages",
+	{
+		brandId: text("brand_id")
+			.notNull()
+			.references(() => brands.id, { onDelete: "cascade" }),
+		pageId: bigint("page_id", { mode: "number" }).notNull(),
+		url: text("url").notNull(),
+		domain: text("domain").notNull(),
+		title: text("title"),
+		pageType: text("page_type").notNull(),
+		staticCategory: text("static_category").notNull(),
+	},
+	(table) => [
+		primaryKey({ name: "rollup_citation_pages_pk", columns: [table.brandId, table.pageId] }),
+		index("rollup_citation_pages_page_id_idx").on(table.pageId),
+	],
+).enableRLS();
+
 /** Genuine fan-out queries, each counted once per run that searched it. */
 export const rollupWebQueries = pgTable(
 	"rollup_web_queries",
@@ -533,6 +515,36 @@ export const rollupWebQueries = pgTable(
 			],
 		}),
 		index("rollup_web_queries_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/**
+ * For each sentiment, the run that best shows it: the one the judge is most
+ * confident about, with a passage and answer text to quote from.
+ */
+export const rollupSentimentQuotes = pgTable(
+	"rollup_sentiment_quotes",
+	{
+		...rollupKeyColumns(),
+		sentiment: text("sentiment").notNull(),
+		runId: uuid("run_id").notNull(),
+		confidence: doublePrecision("confidence").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_sentiment_quotes_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.sentiment,
+			],
+		}),
+		index("rollup_sentiment_quotes_prompt_id_bucket_idx").on(table.promptId, table.bucket),
 	],
 ).enableRLS();
 

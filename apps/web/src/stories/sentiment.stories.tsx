@@ -99,3 +99,22 @@ export const SortByModel: Story = {
 		await expect(header.closest("th")).toHaveAttribute("aria-sort", "ascending");
 	},
 };
+
+/** Quotes open on praise, with mixed and criticism a tab away. */
+export const QuotesBySide: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const tabs = await canvas.findAllByRole("tab");
+		await expect(tabs.map((tab) => tab.textContent)).toEqual(["praise", "mixed", "criticism"]);
+		await expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+		await expect(canvas.getByText(/easiest CRM to get running/)).toBeInTheDocument();
+
+		await userEvent.click(tabs[1]);
+		await waitFor(() => expect(canvas.getByText(/easier to learn/)).toBeInTheDocument());
+		await expect(canvas.queryByText(/raised prices twice/)).not.toBeInTheDocument();
+
+		await userEvent.click(tabs[2]);
+		await waitFor(() => expect(canvas.getByText(/raised prices twice/)).toBeInTheDocument());
+		await expect(canvas.queryByText(/easier to learn/)).not.toBeInTheDocument();
+	},
+};

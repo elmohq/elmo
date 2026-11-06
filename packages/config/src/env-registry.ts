@@ -1,44 +1,26 @@
 import type { DeploymentMode } from "./types";
 
 /**
- * Canonical registry of every environment variable the apps read.
- *
- * This is the single source of truth for env var declarations. Tests in
- * env-registry.test.ts enforce that the two other declaration sites stay in
- * sync with it:
- * - turbo.json `globalEnv` (cache invalidation) must list exactly these names
- * - apps/web/src/env.d.ts must declare every entry (client vars in
- *   ImportMetaEnv, server vars in NodeJS.ProcessEnv)
- *
- * Adding or renaming a var = edit this file (+ the env.d.ts line and
- * turbo.json entry the failing test asks for).
+ * Every env var the apps read. env-registry.test.ts keeps turbo.json `globalEnv`
+ * and apps/web/src/env.d.ts in sync with it.
  */
 
 /** Where an env var is consumed. Client vars are baked into the browser bundle by Vite. */
 type EnvVarScope = "server" | "client";
 
 export interface EnvVarSpec {
-	/** Variable name. `client` scope names must be VITE_-prefixed (enforced by test). */
+	/** `client` scope names must be VITE_-prefixed. */
 	name: string;
 	scope: EnvVarScope;
-	/**
-	 * - DeploymentMode[]: hard-required in those modes (startup validation reports it when missing)
-	 * - "dynamic-scrape-targets": required only when SCRAPE_TARGETS references `provider`
-	 * - "optional": never required at startup
-	 */
+	/** "dynamic-scrape-targets": required only when SCRAPE_TARGETS references `provider`. */
 	requiredBy: DeploymentMode[] | "dynamic-scrape-targets" | "optional";
-	/** Only for requiredBy: "dynamic-scrape-targets" — the SCRAPE_TARGETS provider id that needs this key. */
+	/** For requiredBy: "dynamic-scrape-targets". */
 	provider?: string;
-	/**
-	 * Set for vars read only by the marketing site (apps/www). They stay in
-	 * turbo.json globalEnv but are excluded from the apps/web env.d.ts check,
-	 * and must never be required by the product (enforced by test).
-	 */
+	/** Read only by apps/www: in turbo.json, but never in apps/web's env.d.ts or required by the product. */
 	wwwOnly?: boolean;
 	description: string;
 }
 
-/** Modes with startup env validation. */
 const VALIDATED_MODES: DeploymentMode[] = ["local", "demo", "whitelabel", "cloud"];
 
 export const ENV_REGISTRY: EnvVarSpec[] = [
@@ -214,7 +196,8 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
 		provider: "openrouter",
-		description: "OpenRouter API key.",
+		description:
+			"OpenRouter API key. Without TYPESAFE_API_KEY, the worker also calls Jev through OpenRouter with it to judge mentions and sentiment.",
 	},
 	{
 		name: "ONBOARDING_LLM_TARGET",
@@ -226,10 +209,10 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "TYPESAFE_API_KEY",
 		scope: "server",
-		// The worker refuses to start without it; the web app never uses it.
+		// The worker refuses to start without it or OPENROUTER_API_KEY; the web app never uses it.
 		requiredBy: "optional",
 		description:
-			"API key for Jev (typesafe.ai), which judges which answers mention a brand or competitor, and the sentiment toward each. Required by the worker.",
+			"API key for Jev (typesafe.ai), which judges which answers mention a brand or competitor, and the sentiment toward each. The worker needs this or OPENROUTER_API_KEY, and calls TypeSafe directly when both are set.",
 	},
 	{
 		name: "REPROCESS_DAYS",
@@ -248,9 +231,8 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "ELMO_ENCRYPTION_KEY",
 		scope: "server",
-		// Local only: `elmo init` generates it and the CLI backfills it on
-		// upgrade, so every self-hosted deployment has one. The hosted modes are
-		// provisioned out of band and store no credentials of their own.
+		// Local only: the CLI generates it on init and backfills it on upgrade. The
+		// hosted modes store no credentials of their own.
 		requiredBy: ["local"],
 		description:
 			"Base64-encoded 32-byte key used to encrypt provider credentials stored in the database. Generate one with: openssl rand -base64 32",
@@ -423,9 +405,8 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		requiredBy: "optional",
 		description: "Set to any value to disable telemetry.",
 	},
-	// Cloud-only service credentials. Consumed by the Stripe billing and
-	// Resend transactional-email integrations (implemented in follow-up work);
-	// required here so a cloud deployment fails startup validation without them.
+	// Required so a cloud deployment fails startup validation without its Stripe
+	// and Resend credentials.
 	{
 		name: "STRIPE_SECRET_KEY",
 		scope: "server",
@@ -463,16 +444,24 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description:
 			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
 	},
+	{
+		name: "TURNSTILE_SECRET_KEY",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Cloud only: Cloudflare Turnstile secret key. When set, email sign-up, sign-in, password reset, and verification resend require a Turnstile token.",
+	},
+	{
+		name: "VITE_TURNSTILE_SITE_KEY",
+		scope: "client",
+		requiredBy: "optional",
+		description: "Cloud only: Cloudflare Turnstile site key for the widget on the email auth forms.",
+	},
 ];
 
 /**
- * Direct-API providers in the order onboarding prefers them. GPT-5 Mini was
- * the cheapest + best-recall in compare-onboarding runs, so we go OpenAI
- * direct first, then OpenAI via OpenRouter as a fallback (same model, just
- * different key), then Anthropic, then Mistral, then Gemini.
- *
- * Lives here, not with the onboarding code, so startup validation can require
- * one of them.
+ * OpenAI first, as the cheapest with the best recall in compare-onboarding runs,
+ * then the same model via OpenRouter. Here so startup validation can require one.
  */
 export const RESEARCH_PROVIDER_PREFERENCE = [
 	"openai-api",

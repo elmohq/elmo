@@ -1,8 +1,3 @@
-/**
- * Mock for @/hooks/use-brands — provides controllable brand data for stories.
- */
-
-// Module-level state that stories can set before rendering
 let _mockBrand: any = null;
 let _mockCompetitors: any[] = [];
 
@@ -14,7 +9,6 @@ export function setMockCompetitors(competitors: any[]) {
 	_mockCompetitors = competitors;
 }
 
-// Re-export types used by consumers
 export type BrandWithPromptsAndDataInfo = any;
 
 export const brandKeys = {

@@ -12,7 +12,7 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "What is Elmo?",
 		answer:
-			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO) — an alternative to tools like Profound, Peec, and Otterly that you can self-host for free or run on Elmo Cloud. It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Claude, and Copilot — mention your brand, which competitors appear alongside you, and which sources each model cites.",
+			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO) — an alternative to tools like Profound, Peec, and Otterly that you can self-host for free or run on Elmo Cloud. It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Claude, and Copilot — mention and describe your brand, which competitors appear alongside you, and which sources each model cites.",
 	},
 	{
 		question: "What is Answer Engine Optimization (AEO)?",
@@ -27,12 +27,12 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "Which AI models does Elmo track?",
 		answer:
-			"Elmo tracks ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, and Claude, plus models like Grok, Mistral, DeepSeek, and Qwen. Consumer products like ChatGPT and Google AI Mode are scraped from the real interface your customers see, not approximated through an API. For each answer, Elmo records whether your brand appears, which competitors show up alongside it, and which sources the model cites.",
+			"Elmo tracks ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, and Claude, plus models like Grok, Mistral, DeepSeek, Qwen, and Kimi. Consumer products like ChatGPT and Google AI Mode are scraped from the real interface your customers see, not approximated through an API. For each answer, Elmo records whether your brand appears, which competitors show up alongside it, and which sources the model cites.",
 	},
 	{
 		question: "How is AI visibility measured?",
 		answer:
-			"Elmo runs a fixed set of prompts across AI engines on a schedule and scores each prompt by how often your brand appears in the answers, from 0 to 100%. It also calculates share of voice — your share of brand mentions versus your competitors — and breaks down which domains and URLs the models cite. Because AI answers vary from run to run, Elmo samples repeatedly and reports trends, not single results.",
+			"Elmo runs a fixed set of prompts across AI engines on a schedule and scores each prompt by how often your brand appears in the answers, from 0 to 100%. It also calculates share of voice (your share of brand mentions versus your competitors), sentiment (whether the answers that mention you praise or criticize you, scored 0 to 100), and position (where you rank among the brands an answer names), and breaks down which domains and URLs the models cite. Because AI answers vary from run to run, Elmo samples repeatedly and reports trends, not single results.",
 	},
 	{
 		question: "How do I track my brand in ChatGPT?",
@@ -91,7 +91,7 @@ export const PRICING_FAQS: FaqItem[] = [
 	{
 		question: "Does Elmo have an API or MCP server?",
 		answer:
-			"Yes. Elmo has a REST API for brands, prompts, competitors, analytics, citations, runs, and reports, and an MCP server so AI assistants like Claude Code, Codex, Cursor, and VS Code can query your visibility data and manage prompts directly. Both are included on every Elmo Cloud plan and in every self-hosted instance. API keys can be read-only or read-write and limited to specific brands.",
+			"Yes. Elmo has a REST API for brands, prompts, competitors, analytics, sentiment, citations, runs, opportunities, and reports, with TypeScript and Python SDKs, and an MCP server so AI assistants like Claude Code, Codex, Cursor, and VS Code can query your visibility data and manage prompts directly. Both are included on every Elmo Cloud plan and in every self-hosted instance. API keys can be read-only or read-write and limited to specific brands.",
 	},
 	{
 		question: "Is my data private if I self-host Elmo?",
@@ -186,7 +186,7 @@ export const DIRECTORY_FAQS: FaqItem[] = [
 	{
 		question: "How do I choose the best AI visibility tool?",
 		answer:
-			"The right tool depends on which AI engines you need to track, whether you want self-hosting and data ownership, your budget, and any agency or white-label needs. This directory compares 100+ tools feature-by-feature so you can match a tool to your requirements.",
+			"The right tool depends on which AI engines you need to track, whether you want self-hosting and data ownership, your budget, and any agency or white-label needs. This directory compares 100+ tools feature-by-feature. If you want every major engine, auditable metrics, and no lock-in, Elmo is open source: self-host it for free or use Elmo Cloud.",
 	},
 	{
 		question: "Is there an open-source AI visibility tool?",
@@ -201,6 +201,6 @@ export const DIRECTORY_FAQS: FaqItem[] = [
 	{
 		question: "Can you track brand mentions in ChatGPT?",
 		answer:
-			"Yes. AI visibility software queries ChatGPT with your prompts and records whether it mentions or cites your brand. Because answers vary between runs, tracking a consistent prompt set on a schedule gives a far more reliable read than a single manual check.",
+			"Yes. AI visibility software queries ChatGPT with your prompts and records whether it mentions or cites your brand. Because answers vary between runs, tracking a consistent prompt set on a schedule gives a far more reliable read than a single manual check. Elmo does this for ChatGPT on every plan, capturing answers from the real ChatGPT app rather than only the API.",
 	},
 ];

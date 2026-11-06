@@ -161,11 +161,9 @@ describe("brand sentiment", () => {
 	});
 
 	it("quotes the passage behind the surest assessment on each side, one per prompt", async () => {
-		const { criticism, praise } = await getBrandSentiment(brandId, window);
-		expect(criticism.map((q) => [q.sentiment, q.passage])).toEqual([
-			["negative", "Acme raised prices twice last year."],
-			["mixed", "Acme is easy, though pricey."],
-		]);
+		const { criticism, mixed, praise } = await getBrandSentiment(brandId, window);
+		expect(criticism.map((q) => q.passage)).toEqual(["Acme raised prices twice last year."]);
+		expect(mixed.map((q) => q.passage)).toEqual(["Acme is easy, though pricey."]);
 		// A prompt whose surest assessment has no passage to quote falls back to its next one.
 		expect(praise.map((q) => [q.prompt, q.passage])).toEqual([
 			["easiest crm to set up", "Acme is the easiest CRM to set up."],

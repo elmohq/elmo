@@ -1,14 +1,3 @@
-/**
- * Shared prompts table — used by the settings/prompts page (manages a brand's
- * full prompt list) and the prompt wizard's Review step (picks from
- * AI-suggested prompts + custom additions).
- *
- * Controlled component: the caller owns the `prompts` array and the change
- * callback. The settings page wraps it with save/server logic; the wizard
- * keeps it inline. The `showSystemTags` prop hides the System Tags column
- * in the wizard since onboarding hasn't yet computed any system tags.
- */
-
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import { getModelMeta } from "@workspace/config/models";
@@ -170,7 +159,6 @@ const GRID_COLS: Record<string, string> = {
 interface PromptsListEditorProps {
 	prompts: EditablePrompt[];
 	onChange: (next: EditablePrompt[]) => void;
-	/** Show the read-only System Tags column. Default true. */
 	showSystemTags?: boolean;
 	/** `_key`s of rows edited since the last save, flagged with an accent rail
 	 *  so a change is findable in a list of up to {@link MAX_PROMPTS} rows. */
@@ -181,11 +169,6 @@ interface PromptsListEditorProps {
 	pendingRows?: number;
 }
 
-/**
- * The bulk-paste box's state. The parse is pure and lives in @workspace/lib so
- * the rules (trim, dedupe, cap) are tested without a DOM; it runs on every
- * keystroke only to label the button and warn about what will be dropped.
- */
 function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void) {
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
@@ -223,10 +206,7 @@ function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void)
 	};
 }
 
-/**
- * Which rows are ticked. Counted against the current prompts so stale keys
- * (e.g. after the wizard regenerates suggestions) don't linger in the tally.
- */
+/** Counted against the current prompts, so keys from regenerated suggestions don't linger. */
 function useRowSelection(prompts: EditablePrompt[]) {
 	const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 	const liveSelectedCount = prompts.reduce((count, p) => (selectedKeys.has(p._key) ? count + 1 : count), 0);
@@ -426,7 +406,6 @@ function PromptRow({
 			)}
 		>
 			{changedKeys?.has(prompt._key) && <span className="sr-only">Has unsaved changes</span>}
-			{/* Mobile: stacked, no selection/bulk */}
 			<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < total - 1 ? "border-b" : ""}`}>
 				<div className="flex items-start gap-2">
 					<PromptTextField
@@ -462,7 +441,6 @@ function PromptRow({
 				)}
 			</div>
 
-			{/* Desktop (md+): single-line grid */}
 			<div className={`hidden md:grid ${gridCols} gap-2 items-start`}>
 				<div className="flex justify-center pt-2">
 					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
@@ -586,9 +564,7 @@ export function PromptsListEditor({
 	const premiumUsed = premium ? premium.assignedElsewhere + premiumSlotsUsed(prompts) : 0;
 	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
 
-	// Desktop layout only — column order is
-	// [select] [text] [system?] [tags] [premium?] [switch]. Mobile renders a
-	// stacked per-prompt block instead (no selection, no bulk).
+	// Columns: [select] [text] [system?] [tags] [premium?] [switch].
 	const gridCols = GRID_COLS[`${showSystemTags ? "system" : "plain"}-${premium ? "premium" : "basic"}`];
 
 	return (

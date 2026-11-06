@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
+import type { ComponentProps } from "react";
 import { Community } from "@/components/community";
 import { Footer } from "@/components/footer";
 import { Closing } from "@/components/home/closing";
 import { Faq } from "@/components/home/faq";
 import { Hero } from "@/components/home/hero";
-import { HowItWorks } from "@/components/home/how-it-works";
+import { HOW_IT_WORKS_STEPS, HowItWorks } from "@/components/home/how-it-works";
 import { LogoStrip } from "@/components/home/logos";
-import { ModelCoverage } from "@/components/home/models";
+import { ModelCoverage, TRACKED_ENGINES } from "@/components/home/models";
 import { Pricing } from "@/components/home/pricing";
 import { Reviews } from "@/components/home/reviews";
 import { SelfHost } from "@/components/home/self-host";
@@ -14,8 +15,17 @@ import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { WhySwitch } from "@/components/home/why-switch";
 import { Navbar } from "@/components/navbar";
 import { getHeroVariant } from "@/data/hero-variants";
+import { useAiReferral } from "@/lib/ai-referral";
 import { HOME_FAQS } from "@/lib/faqs";
-import { canonicalUrl, faqJsonLd, ogMeta, SITE_NAME, softwareApplicationJsonLd } from "@/lib/seo";
+import {
+	canonicalUrl,
+	faqJsonLd,
+	howToJsonLd,
+	itemListJsonLd,
+	ogMeta,
+	SITE_NAME,
+	softwareApplicationJsonLd,
+} from "@/lib/seo";
 
 const title = `${SITE_NAME} · Open Source AEO & AI Visibility Tracker`;
 // The shared SITE_DESCRIPTION is a terse fallback for pages without their own
@@ -39,13 +49,31 @@ export const Route = createFileRoute("/")({
 			}),
 		],
 		links: [{ rel: "canonical", href: canonicalUrl("/") }],
-		scripts: [softwareApplicationJsonLd(), faqJsonLd(HOME_FAQS)],
+		scripts: [
+			softwareApplicationJsonLd(),
+			howToJsonLd({
+				name: "Track your brand's AI visibility with Elmo",
+				steps: HOW_IT_WORKS_STEPS.map((step) => ({ name: step.title, text: step.body })),
+			}),
+			itemListJsonLd(TRACKED_ENGINES.map((engine) => ({ name: engine.name }))),
+			faqJsonLd(HOME_FAQS),
+		],
 	}),
 	component: HomePage,
 });
 
+function aiReferralHero(assistant: string): ComponentProps<typeof Hero> {
+	return {
+		title: `Get Customers from ${assistant}`,
+		lede: `You found us through ${assistant}. That's Elmo at work. See how AI search engines talk about your brand, which sources they trust, and what to change so they recommend you too.`,
+		from: "marketing-ai-referral",
+	};
+}
+
 function HomePage() {
-	const variant = getHeroVariant(Route.useSearch().v);
+	const explicit = getHeroVariant(Route.useSearch().v);
+	const [referral] = useAiReferral();
+	const variant = explicit ?? (referral ? aiReferralHero(referral.assistant) : undefined);
 	return (
 		<div className={`${HOME_FONT_CLASS} min-h-screen bg-white antialiased`}>
 			<HomeStyles />

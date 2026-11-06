@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { useMemo, useState } from "react";
 import {
 	extractFilenameFromUrl,
 	formatUrlForDisplay,
@@ -13,13 +12,13 @@ import {
 	getCategoryLabel,
 	UnderlineTabs,
 } from "@/components/citations/shared";
-import type { CitationData } from "@/components/citations/types";
-import { ListPagination, usePagedList } from "@/components/list-pagination";
+import type { CitationListControls, CitationUrlItem } from "@/components/citations/types";
+import { ListPagination } from "@/components/list-pagination";
 import { SiteIcon } from "@/components/site-icon";
 import { useBrandParams } from "@/hooks/use-route-params";
 
 export function TopUrlsCard({
-	urls,
+	list,
 	sourceTabs,
 	pageTypeTabs,
 	maxUrls,
@@ -27,7 +26,7 @@ export function TopUrlsCard({
 	brandShare,
 	brandIsCited,
 }: {
-	urls: CitationData["specificUrls"];
+	list: CitationListControls<CitationUrlItem>;
 	sourceTabs: { key: string; label: string }[];
 	pageTypeTabs: { key: string; label: string }[];
 	maxUrls: number;
@@ -36,29 +35,6 @@ export function TopUrlsCard({
 	brandIsCited: boolean;
 }) {
 	const brandParams = useBrandParams();
-	const [urlSearch, setUrlSearch] = useState("");
-	const [selectedCategory, setSelectedCategory] = useState<string>("all");
-	const [selectedPageType, setSelectedPageType] = useState<string>("all");
-
-	const filteredUrls = useMemo(() => {
-		let result = urls;
-		if (selectedCategory !== "all") {
-			result = result.filter((u) => u.category === selectedCategory);
-		}
-		if (selectedPageType !== "all") {
-			result = result.filter((u) => u.pageType === selectedPageType);
-		}
-		if (urlSearch) {
-			const q = urlSearch.toLowerCase();
-			result = result.filter(
-				(u) =>
-					u.url.toLowerCase().includes(q) || u.title?.toLowerCase().includes(q) || u.domain.toLowerCase().includes(q),
-			);
-		}
-		return result;
-	}, [urls, selectedCategory, selectedPageType, urlSearch]);
-
-	const { page, setPage, pageItems, totalItems } = usePagedList(filteredUrls, maxUrls);
 
 	return (
 		<Card className="gap-4">
@@ -101,11 +77,8 @@ export function TopUrlsCard({
 					<InputGroup className="h-8 shrink-0 sm:w-48">
 						<InputGroupInput
 							placeholder="Search URLs..."
-							value={urlSearch}
-							onChange={(e) => {
-								setUrlSearch(e.target.value);
-								setPage(0);
-							}}
+							value={list.search}
+							onChange={(e) => list.setSearch(e.target.value)}
 							className="h-8 text-xs"
 						/>
 						<InputGroupAddon className="pl-2.5">
@@ -117,14 +90,7 @@ export function TopUrlsCard({
 			<Separator />
 			<CardContent>
 				{sourceTabs.length > 2 && (
-					<UnderlineTabs
-						tabs={sourceTabs}
-						activeKey={selectedCategory}
-						onSelect={(key) => {
-							setSelectedCategory(key);
-							setPage(0);
-						}}
-					/>
+					<UnderlineTabs tabs={sourceTabs} activeKey={list.category} onSelect={list.setCategory} />
 				)}
 				{pageTypeTabs.length > 2 && (
 					<div className="flex items-center flex-wrap gap-1.5 mt-3">
@@ -132,19 +98,16 @@ export function TopUrlsCard({
 							<button
 								key={t.key}
 								type="button"
-								onClick={() => {
-									setSelectedPageType(t.key);
-									setPage(0);
-								}}
-								className={`px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${selectedPageType === t.key ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
+								onClick={() => list.setPageType(t.key)}
+								className={`px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${list.pageType === t.key ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
 							>
 								{t.label}
 							</button>
 						))}
 					</div>
 				)}
-				<div className="divide-y divide-border mt-1">
-					{pageItems.map((citation) => {
+				<div className={`divide-y divide-border mt-1 transition-opacity ${list.isFetching ? "opacity-60" : ""}`}>
+					{list.items.map((citation) => {
 						const displayUrl = formatUrlForDisplay(citation.url);
 						const domainEndIndex = displayUrl.indexOf("/");
 						const domainPart = domainEndIndex > 0 ? displayUrl.substring(0, domainEndIndex) : displayUrl;
@@ -208,11 +171,11 @@ export function TopUrlsCard({
 							</a>
 						);
 					})}
-					{filteredUrls.length === 0 && (
+					{list.totalItems === 0 && !list.isFetching && (
 						<p className="text-sm text-muted-foreground text-center pt-8 pb-4">No URLs match the current filters.</p>
 					)}
 				</div>
-				<ListPagination page={page} pageSize={maxUrls} totalItems={totalItems} onPageChange={setPage} />
+				<ListPagination page={list.page} pageSize={maxUrls} totalItems={list.totalItems} onPageChange={list.setPage} />
 			</CardContent>
 		</Card>
 	);

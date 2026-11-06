@@ -6,10 +6,7 @@ let boss: PgBoss | undefined;
 export function getBoss(): PgBoss {
 	boss ??= new PgBoss({
 		connectionString: process.env.DATABASE_URL,
-		// Use same DB as app, pg-boss creates its own schema
 		schema: "pgboss",
-
-		// How often pg-boss runs maintenance tasks
 		maintenanceIntervalSeconds: 30,
 	});
 	return boss;

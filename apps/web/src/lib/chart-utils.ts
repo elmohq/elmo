@@ -77,12 +77,8 @@ export function generateDateRange(startDate: Date, endDate: Date): string[] {
 }
 
 /**
- * Citation comparison window for a lookback of `days` days — computed entirely in
- * UTC so it's independent of server timezone. The current window is `days` calendar
- * days ending on `today` (inclusive): [today-(days-1), today]. The previous window
- * is the contiguous equal-length window ending the day before the current one
- * starts. `dateRange` is the current window as one YYYY-MM-DD per day (what the
- * trend charts iterate) so totals and charts cover exactly the same span.
+ * In UTC so the server's timezone can't shift it. `dateRange` is the current
+ * window day by day, so totals and charts cover exactly the same span.
  */
 export function citationDateWindow(
 	today: Date,
@@ -141,10 +137,8 @@ export function toBatchChartData(
 }
 
 /**
- * Walk each prompt's series across `dateRange`, carrying its last observation
- * forward over the days it didn't run. Pre-seeded with the prompt's earliest
- * observation so days before its first run still contribute — otherwise a
- * staggered schedule reads as a ramp-up rather than steady coverage.
+ * Seeded with each prompt's earliest observation so days before its first run
+ * still count; otherwise a staggered schedule reads as a ramp-up.
  */
 export function carryForward<V>(
 	byPrompt: Map<string, Map<string, V>>,
@@ -163,13 +157,7 @@ export function carryForward<V>(
 	}
 }
 
-/**
- * Generalized per-prompt LVCF with cadence normalization over arbitrary string
- * keys (citation category, page type, …). For each prompt, carries forward its
- * last known per-key counts, normalized by the brand's cadence so daily totals
- * reflect a steady rate rather than spiking on run days. Pre-seeds each prompt
- * with its earliest observation to avoid ramp-up artifacts.
- */
+/** Divided by the brand's cadence so daily totals read as a steady rate, not spikes on run days. */
 export function applyPerPromptKeyedLVCF<K extends string>(
 	rows: { prompt_id: string; date: string | Date; key: K; count: number }[],
 	dateRange: string[],
@@ -196,10 +184,8 @@ export function applyPerPromptKeyedLVCF<K extends string>(
 		daily.set(date, day);
 	});
 
-	// Values are intentionally left fractional: both consumers
-	// convert to percentages via toRoundedPercentages, where the 1/cadenceDays factor
-	// cancels exactly — so cadence can't shift the chart, and a tiny category isn't
-	// rounded to zero before the percentage is taken.
+	// Left fractional: consumers take percentages, where the cadence factor cancels,
+	// and rounding first would zero out a tiny category.
 	return daily;
 }
 
@@ -384,15 +370,9 @@ export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback
 }
 
 /**
- * Extends line chart data to the edges of the time frame.
- * For each entity (brand/competitor), extends the first non-null value backward
- * to fill the start of the chart, and extends the last non-null value forward
- * to fill the end of the chart. This prevents gaps at the edges of the chart
- * when data collection started mid-period or hasn't been collected yet for recent dates.
- *
- * Extended points are marked with `_extended_{key}: true` so the chart can:
- * - Skip rendering dots for extended points
- * - Skip showing extended values in tooltips
+ * Fills the edges where collection started mid-period or hasn't caught up yet.
+ * Filled points carry `_extended_{key}: true` so the chart draws no dot or
+ * tooltip value for them.
  */
 export function extendLinesToChartEdges(chartData: ChartDataPoint[], dataKeys: string[]): ChartDataPoint[] {
 	if (chartData.length === 0) return chartData;

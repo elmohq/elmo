@@ -51,7 +51,6 @@ function AlternativesHub() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					eyebrow="Alternatives"
 					title="Alternatives to every AI visibility tool"
 					lead="Shopping for a replacement, or just want to know your options? Pick a tool to see its closest alternatives, including the open-source, self-hosted option you can run for free."
 				/>

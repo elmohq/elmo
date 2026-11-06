@@ -4,7 +4,7 @@ import { CompetitorDirectory } from "@/components/competitor-directory";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
-import { competitors, getComparisonSlug, isLowDR } from "@/lib/competitors";
+import { competitors, getComparisonSlug, isLowDR, isRetired } from "@/lib/competitors";
 import { DIRECTORY_FAQS } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
@@ -15,7 +15,7 @@ const description =
 // Indexed comparison pages (mirrors the sitemap filter), surfaced as ItemList
 // structured data so AI engines can extract the full directory of tools.
 const directoryItems = competitors
-	.filter((c) => c.status !== "shutting-down" && c.category !== "other" && !isLowDR(c))
+	.filter((c) => !isRetired(c) && c.category !== "other" && !isLowDR(c))
 	.map((c) => ({
 		name: c.name,
 		path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
@@ -67,6 +67,11 @@ const browseLinks = [
 		description: "Trackers, content platforms, APIs, SEO suites, and open source.",
 		href: "/ai-visibility-tools/category",
 	},
+	{
+		title: "AEO Graveyard",
+		description: "Tools that shut down, pivoted, or were acquired, and what to do next.",
+		href: "/ai-visibility-tools/graveyard",
+	},
 ];
 
 function AiVisibilitySoftwarePage() {
@@ -81,9 +86,9 @@ function AiVisibilitySoftwarePage() {
 						<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">Browse the directory</h2>
 						<p className="mt-3 max-w-3xl text-zinc-600">
 							Compare tools head-to-head, find alternatives to one you're evaluating, or filter the field by feature and
-							category.
+							category. Tools that didn't make it are in the AEO Graveyard.
 						</p>
-						<div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+						<div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
 							{browseLinks.map((link) => (
 								<a
 									key={link.href}
@@ -97,7 +102,7 @@ function AiVisibilitySoftwarePage() {
 						</div>
 					</div>
 				</section>
-				<Faq items={DIRECTORY_FAQS} eyebrow="/ FAQ" />
+				<Faq items={DIRECTORY_FAQS} />
 			</main>
 			<Footer />
 		</div>

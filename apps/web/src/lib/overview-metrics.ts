@@ -47,7 +47,7 @@ export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 	sentiment: {
 		label: "Sentiment",
 		short: "Sentiment",
-		info: "How AI answers that mention your brand speak of it, from 0 to 100: positive answers count 100, neutral and mixed 50, negative 0. Above 50, praise outweighs criticism. Like visibility, it counts each prompt's latest answers.",
+		info: "How favorably AI talks about your brand when it mentions you, from 0 to 100. 50 is neutral; higher means more praise than criticism, lower means more criticism than praise.",
 		format: score,
 		formatChange: (change) => `${Math.abs(Math.round(change * 100))}`,
 		// Neutral answers alone score 50: fair, since only criticism outweighing praise is poor.
@@ -67,20 +67,20 @@ export const METRIC_META: Record<LandscapeMetric, MetricMeta> = {
 
 export const GRADE_STYLES: Record<Grade, { card: string; text: string; stroke: string; fill: string }> = {
 	good: {
-		card: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800",
-		text: "text-emerald-700 dark:text-emerald-400",
+		card: "bg-emerald-50 border-emerald-200",
+		text: "text-emerald-700",
 		stroke: "#059669",
 		fill: "#a7f3d0",
 	},
 	fair: {
-		card: "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800",
-		text: "text-amber-700 dark:text-amber-400",
+		card: "bg-amber-50 border-amber-200",
+		text: "text-amber-700",
 		stroke: "#d97706",
 		fill: "#fde68a",
 	},
 	poor: {
-		card: "bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800",
-		text: "text-rose-700 dark:text-rose-400",
+		card: "bg-rose-50 border-rose-200",
+		text: "text-rose-700",
 		stroke: "#e11d48",
 		fill: "#fecdd3",
 	},

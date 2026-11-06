@@ -1,5 +1,41 @@
 # @workspace/api-spec
 
+## 0.7.8
+
+### Patch Changes
+
+- c82f25f: A rate-limited API request's `Retry-After` header now gives the wait in seconds instead of milliseconds, and the API reference lists it as the only header a `429` carries.
+
+## 0.7.7
+
+### Patch Changes
+
+- e139254: The API's cited URLs, cited domains and query fan-out lists are paginated and searchable, so large brands no longer get responses too big to return.
+
+## 0.7.6
+
+No changes in this release.
+
+## 0.7.5
+
+No changes in this release.
+
+## 0.7.4
+
+No changes in this release.
+
+## 0.7.3
+
+No changes in this release.
+
+## 0.7.2
+
+No changes in this release.
+
+## 0.7.1
+
+No changes in this release.
+
 ## 0.7.0
 
 No changes in this release.

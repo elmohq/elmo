@@ -1,6 +1,13 @@
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
+import {
+	PROCESS_PROMPT_QUEUE,
+	PROMPT_JOB_OPTIONS,
+	PROMPT_SINGLETON_SECONDS,
+	promptSingletonKey,
+} from "@workspace/lib/queues/prompt-jobs";
+import { GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS } from "@workspace/lib/queues/report-jobs";
 import { eq } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
@@ -37,11 +44,7 @@ async function getPromptCadenceHours(promptId: string): Promise<number> {
 	}
 }
 
-/**
- * Creates a scheduled job for a prompt to run after a delay.
- * Uses interval-based scheduling with startAfter instead of cron patterns.
- * The job will self-reschedule after completion via the worker.
- */
+// Only the first job is queued here; each cycle in the worker queues its successor.
 type SchedulerOptions = {
 	sendImmediate?: boolean;
 };
@@ -49,47 +52,21 @@ type SchedulerOptions = {
 export async function createPromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
 		const boss = await getBoss();
-		const cadenceHours = await getPromptCadenceHours(promptId);
 		const sendImmediate = options.sendImmediate ?? true;
+		const startAfterSeconds = sendImmediate ? 0 : (await getPromptCadenceHours(promptId)) * 60 * 60;
 
-		// Clear a cron schedule when converting the prompt to self-rescheduling jobs.
-		try {
-			await boss.unschedule("process-prompt", promptId);
-		} catch {
-			// Absence is equivalent to a successfully cleared schedule.
-		}
+		await boss.send(
+			PROCESS_PROMPT_QUEUE,
+			{ promptId },
+			{
+				singletonKey: promptSingletonKey(promptId),
+				singletonSeconds: startAfterSeconds || PROMPT_SINGLETON_SECONDS,
+				...(startAfterSeconds ? { startAfter: startAfterSeconds } : {}),
+				...PROMPT_JOB_OPTIONS,
+			},
+		);
 
-		if (sendImmediate) {
-			await boss.send(
-				"process-prompt",
-				{ promptId, cadenceHours },
-				{
-					singletonKey: `prompt-${promptId}`,
-					singletonSeconds: 60 * 60, // 1 hour - prevent duplicate jobs
-					retryLimit: 3,
-					retryDelay: 60,
-					retryBackoff: true,
-					expireInSeconds: 60 * 15, // 15 minute timeout
-				},
-			);
-		} else {
-			const startAfterSeconds = cadenceHours * 60 * 60;
-			await boss.send(
-				"process-prompt",
-				{ promptId, cadenceHours },
-				{
-					singletonKey: `prompt-${promptId}`,
-					singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
-					startAfter: startAfterSeconds,
-					retryLimit: 3,
-					retryDelay: 60,
-					retryBackoff: true,
-					expireInSeconds: 60 * 15,
-				},
-			);
-		}
-
-		console.log(`Created job for prompt ${promptId} with ${cadenceHours}h cadence`);
+		console.log(`Created job for prompt ${promptId}${sendImmediate ? "" : ` in ${startAfterSeconds / 3600}h`}`);
 		return true;
 	} catch (error) {
 		console.error(`Failed to create job for prompt ${promptId}:`, error);
@@ -100,13 +77,12 @@ export async function createPromptJobScheduler(promptId: string, options: Schedu
 export async function removePromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
 		const boss = await getBoss();
-
+		// The pending job is left alone; the worker skips a disabled prompt without spending anything.
 		try {
-			await boss.unschedule("process-prompt", promptId);
+			await boss.unschedule(PROCESS_PROMPT_QUEUE, promptId);
 		} catch {
 			// Absence is equivalent to a successfully removed schedule.
 		}
-
 		console.log(`Removed schedule for prompt ${promptId}`);
 		return true;
 	} catch (error) {
@@ -126,24 +102,12 @@ export async function createMultiplePromptJobSchedulers(
 
 /**
  * Sends an immediate job to process a prompt (outside of the schedule).
- * Useful for manual retries from the admin UI.
+ * Useful for manual retries from the admin UI. Skips the singleton key so it runs even mid-cadence.
  */
 export async function sendImmediatePromptJob(promptId: string): Promise<boolean> {
 	try {
 		const boss = await getBoss();
-		const cadenceHours = await getPromptCadenceHours(promptId);
-
-		await boss.send(
-			"process-prompt",
-			{ promptId, cadenceHours },
-			{
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 15,
-			},
-		);
-
+		await boss.send(PROCESS_PROMPT_QUEUE, { promptId }, PROMPT_JOB_OPTIONS);
 		console.log(`Sent immediate job for prompt ${promptId}`);
 		return true;
 	} catch (error) {
@@ -163,12 +127,7 @@ export async function sendReportJob(data: {
 	try {
 		const boss = await getBoss();
 
-		await boss.send("generate-report", data, {
-			retryLimit: 3,
-			retryDelay: 60,
-			retryBackoff: true,
-			expireInSeconds: 60 * 60, // 1 hour timeout for reports
-		});
+		await boss.send(GENERATE_REPORT_QUEUE, data, REPORT_JOB_OPTIONS);
 
 		console.log(`Sent report job for report ${reportId}`);
 		return true;

@@ -8,6 +8,7 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
+import { FanoutEngineStatusCard, fanoutByModel } from "@/components/fanout-engine-status";
 import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-sections";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { HistoryButton } from "@/components/history-button";
@@ -78,7 +79,12 @@ function QueryFanoutPage() {
 		// totalRuns counts only web-search-enabled runs — a brand whose models all
 		// run without web search lands here even with plenty of runs.
 		content = (
-			<EmptyState message="No runs with web search enabled for the selected filters. Fan-out appears once your prompts have been run by an engine with web search." />
+			<TooltipProvider delay={150}>
+				<div className="space-y-6">
+					<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
+					<EmptyState message="No runs with web search enabled for the selected filters. Fan-out appears once your prompts have been run by an engine with web search." />
+				</div>
+			</TooltipProvider>
 		);
 	} else if (data.totalQueries === 0) {
 		// Runs happened but none exposed fan-out — still show the KPIs (run counts)
@@ -87,6 +93,7 @@ function QueryFanoutPage() {
 			<TooltipProvider delay={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
+					<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
 					<EmptyState message="No web queries in this period — the engines you track didn't expose any searches for these prompts and filters." />
 				</div>
 			</TooltipProvider>
@@ -96,6 +103,9 @@ function QueryFanoutPage() {
 			<TooltipProvider delay={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
+					{fanoutByModel(trackedTargets).some((e) => e.support.status !== "supported") && (
+						<FanoutEngineStatusCard targets={trackedTargets} model={modelParam} />
+					)}
 					<Tabs value={tab} onValueChange={(v) => setTab(v as FanoutTab)} className="gap-4">
 						<TabsList className="max-w-full">
 							<TabsTrigger value="fanout" className="max-[380px]:text-xs">
@@ -138,10 +148,6 @@ function QueryFanoutPage() {
 }
 
 type FanoutData = NonNullable<ReturnType<typeof useQueryFanout>["data"]>;
-
-// ---------------------------------------------------------------------------
-// Shared bits
-// ---------------------------------------------------------------------------
 
 function StatCard({ label, value, tip }: { label: string; value: React.ReactNode; tip: React.ReactNode }) {
 	return (
@@ -227,7 +233,7 @@ function StatRow({ data }: { data: FanoutData }) {
 			/>
 			<StatCard
 				label="Average Fan-Out"
-				value={data.avgPerExecution.toLocaleString()}
+				value={data.avgQueriesPerFanoutRun.toLocaleString()}
 				tip="Average queries per run that had at least one web query."
 			/>
 		</div>
@@ -271,10 +277,6 @@ function EmptyState({ message }: { message: string }) {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Prompt Fan-Out — per-prompt searches with the prompt's keywords bolded
-// ---------------------------------------------------------------------------
-
 type SortKey = "queries" | "avg";
 
 function SortHead<K extends string>({
@@ -317,7 +319,7 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 		const list = s ? prompts.filter((p) => p.promptValue.toLowerCase().includes(s)) : prompts;
 		return [...list].sort((a, b) =>
 			sort === "avg"
-				? b.avgPerExecution - a.avgPerExecution || b.totalQueries - a.totalQueries
+				? b.avgQueriesPerFanoutRun - a.avgQueriesPerFanoutRun || b.totalQueries - a.totalQueries
 				: b.totalQueries - a.totalQueries,
 		);
 	}, [prompts, search, sort]);
@@ -389,7 +391,7 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 									</span>
 									<span className="text-right text-sm tabular-nums">{p.totalQueries.toLocaleString()}</span>
 									<span className="text-right text-sm tabular-nums max-sm:hidden">
-										{p.avgPerExecution.toLocaleString()}
+										{p.avgQueriesPerFanoutRun.toLocaleString()}
 									</span>
 								</button>
 								{isOpen && keywords && (
@@ -418,10 +420,6 @@ function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 		</Card>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Top Queries — the searches with the widest reach, with the prompts behind them
-// ---------------------------------------------------------------------------
 
 type TopSort = "prompts" | "runs";
 
