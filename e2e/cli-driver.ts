@@ -164,6 +164,7 @@ async function main(): Promise<void> {
 	await acceptDefault("OpenAI model");
 	await confirm("Enable web search?", true, { defaultAnswer: true });
 	await confirm("Configure Mistral API?", false, { defaultAnswer: false });
+	await confirm("Configure Gemini API?", false, { defaultAnswer: false });
 
 	await confirm("Configure Cloro?", false, { defaultAnswer: true });
 	await confirm("Configure BrightData?", false, { defaultAnswer: false });
