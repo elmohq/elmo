@@ -1,7 +1,7 @@
 ---
 title: Subprocessors
 description: The third parties that process data on Elmo Cloud's behalf, what each one does, and where it operates.
-updated: 2026-09-25
+updated: 2026-10-27
 order: 4
 ---
 
@@ -30,6 +30,7 @@ This page lists them. It applies to **Elmo Cloud only**. If you self-host Elmo, 
 | [Stripe](https://stripe.com/privacy) | Payment processing, subscriptions, and invoicing | United States |
 | [Resend](https://resend.com/legal/privacy-policy) | Transactional email — verification, invitations, billing notices | United States |
 | [Google](https://policies.google.com/privacy) | "Sign in with Google" authentication, and icons for the domains shown in the product | United States |
+| [Cloudflare](https://www.cloudflare.com/privacypolicy/) | Bot protection (Turnstile) on email sign-up, sign-in, and password reset | United States |
 | [Mux](https://www.mux.com/privacy) | Video hosting and playback on our website | United States |
 | [Sentry](https://sentry.io/privacy/) | Application error monitoring | United States |
 | [PostHog](https://posthog.com/privacy) | Product analytics | United States |
@@ -43,7 +44,7 @@ This page lists them. It applies to **Elmo Cloud only**. If you self-host Elmo, 
 
 ## Advertising
 
-We may load advertising and conversion-measurement tags from these platforms on our marketing site, subject to your [cookie choices](/legal/cookies). These platforms receive information about ad clicks and signups, not the contents of your Elmo account.
+We may load advertising and conversion-measurement tags from these platforms on our marketing site, our public demo, and the signup and plan-selection pages of Elmo Cloud, subject to your [cookie choices](/legal/cookies). These platforms receive information about ad clicks and signups, along with a hashed copy of your email address when you sign up or subscribe, not the contents of your Elmo account.
 
 | Platform | Purpose | Location |
 | --- | --- | --- |
@@ -55,7 +56,7 @@ We may load advertising and conversion-measurement tags from these platforms on 
 
 ## AI and search data providers
 
-This is the part that makes Elmo work: to measure how answer engines describe a brand, Elmo has to ask them. Prompts you configure are sent to these providers, either directly through their APIs or through a scraping provider that queries the consumer product on our behalf. The answers come back to us and are stored in your account.
+This is the part that makes Elmo work: to measure how answer engines describe a brand, Elmo has to ask them. Prompts you configure are sent to these providers, either directly through their APIs or through a scraping provider that queries the consumer product on our behalf. The answers come back to us, are stored in your account, and are analyzed to see how they describe the brands you track.
 
 **What they receive is what you've configured in Elmo** — your prompts, which are market-research queries like "best project management software for agencies", and for some features your brands, competitors, tracked domains, and text from your website — rather than your name, email address, or billing details. Do not put personal data into a prompt.
 
@@ -66,6 +67,7 @@ Which of these is used depends on the platforms your plan tracks and how Elmo Cl
 | [OpenAI](https://openai.com/policies/privacy-policy/) | Model API, and analysis of collected answers | United States |
 | [Anthropic](https://www.anthropic.com/legal/privacy) | Model API, and analysis of collected answers | United States |
 | [Mistral](https://mistral.ai/terms#privacy-policy) | Model API | France |
+| [TypeSafe](https://typesafe.ai/legal/privacy-policy) | Analysis of collected answers: which brands they mention, and the sentiment toward each | United States |
 | [OpenRouter](https://openrouter.ai/privacy) | Model API gateway | United States |
 | [Bright Data](https://brightdata.com/privacy) | Answer-engine and search result collection | Israel |
 | [Olostep](https://www.olostep.com/privacy) | Answer-engine and search result collection | United States |

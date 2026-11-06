@@ -5,12 +5,13 @@
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useLocation } from "@tanstack/react-router";
 import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants";
 import type { MissingEnvVar } from "@workspace/config/env";
-import { legalUrl } from "@workspace/config/legal";
+import { isElmoHosted, legalUrl } from "@workspace/config/legal";
 import type { DeploymentMode } from "@workspace/config/types";
 import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
+import { initAdTags, trackAdPageView } from "@workspace/ui/lib/ad-tags";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
 import { useEffect, useState } from "react";
 import { usesWordmarkFont } from "@/components/logo";
@@ -37,6 +38,10 @@ interface RouterContext {
 	/** Whether the request came from a country that requires prior cookie consent. */
 	consentRegion?: boolean | null;
 }
+
+// Inside Elmo Cloud only the signup funnel counts as a page view for ads: the
+// rest of the app's URLs name customers' organizations and brands.
+const CLOUD_AD_PAGE_VIEW_PATHS = new Set(["/auth/register", "/choose-plan"]);
 
 export const Route = createRootRouteWithContext<RouterContext>()({
 	notFoundComponent: NotFoundPage,
@@ -144,9 +149,8 @@ function RootComponent() {
 	const { envValidation, clientConfig, consentRegion } = Route.useRouteContext();
 	const clarityProjectId = clientConfig?.analytics?.clarityProjectId;
 	const posthogKey = clientConfig?.analytics?.posthogKey;
-	// Only Elmo Cloud asks: a self-hosted deployment is governed by whoever runs
-	// it, and its telemetry already has an operator-level opt-out.
-	const asksForConsent = clientConfig?.mode === "cloud";
+	const mode = clientConfig?.mode;
+	const asksForConsent = isElmoHosted(mode);
 	// Null until the browser resolves it — the time-zone fallback would read the
 	// server's own zone during SSR.
 	const [consentRequired, setConsentRequired] = useState<boolean | null>(null);
@@ -158,11 +162,17 @@ function RootComponent() {
 		const stops = [
 			posthogKey ? initAnalytics(posthogKey, required) : undefined,
 			clarityProjectId ? initClarity(clarityProjectId, required) : undefined,
+			asksForConsent ? initAdTags(required) : undefined,
 		];
 		return () => {
 			for (const stop of stops) stop?.();
 		};
 	}, [posthogKey, clarityProjectId, asksForConsent, consentRegion]);
+
+	const pathname = useLocation({ select: (location) => location.pathname });
+	useEffect(() => {
+		if (mode === "demo" || (mode === "cloud" && CLOUD_AD_PAGE_VIEW_PATHS.has(pathname))) trackAdPageView(pathname);
+	}, [mode, pathname]);
 
 	useEffect(() => {
 		if (!clientConfig) return;

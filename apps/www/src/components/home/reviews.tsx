@@ -191,10 +191,9 @@ function ReviewCard({ review }: { review: Review }) {
 						href={review.askUrl}
 						target="_blank"
 						rel="noopener noreferrer"
-						aria-label={`Ask ${review.name} yourself`}
 						className="group inline-flex shrink-0 items-center gap-0.5 text-sm font-medium text-blue-600 hover:text-blue-700"
 					>
-						Ask it
+						Ask it<span className="sr-only"> ({review.name})</span>
 						<ArrowUpRight className="size-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
 					</a>
 				) : null}

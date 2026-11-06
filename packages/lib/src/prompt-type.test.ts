@@ -34,6 +34,12 @@ describe("mentionsBrand", () => {
 		expect(mentionsBrand("acme corp pricing", { name: "Acme Corp", website: "" })).toBe(true);
 		expect(mentionsBrand("random products", { name: "Acme Corp", website: "" })).toBe(false);
 	});
+
+	it("does not treat every prompt as branded when an alias is blank or the website has an empty host or label", () => {
+		expect(mentionsBrand("best running shoes", { ...acme, aliases: ["", "  "] })).toBe(false);
+		expect(mentionsBrand("best running shoes", { name: "Acme Corp", website: "www." })).toBe(false);
+		expect(mentionsBrand("best running shoes", { name: "Acme Corp", website: ".com" })).toBe(false);
+	});
 });
 
 describe("parsePromptFilter", () => {

@@ -37,6 +37,8 @@ const customers: Customer[] = [
 		render: () => (
 			<img
 				src="/recordranks-logo.svg"
+				width={106}
+				height={24}
 				alt=""
 				aria-hidden="true"
 				className="block h-6 w-auto grayscale transition-[filter] duration-150 group-hover/rr:grayscale-0"
@@ -50,6 +52,8 @@ const customers: Customer[] = [
 		render: () => (
 			<img
 				src="/askhotel-logo.png"
+				width={95}
+				height={24}
 				alt=""
 				aria-hidden="true"
 				className="block h-6 w-auto grayscale transition-[filter] duration-150 group-hover/ah:grayscale-0"
@@ -63,6 +67,8 @@ const customers: Customer[] = [
 		render: () => (
 			<img
 				src="/aisearch-global-logo.svg"
+				width={81}
+				height={24}
 				alt=""
 				aria-hidden="true"
 				className="block h-6 w-auto opacity-60 grayscale transition-[filter,opacity] duration-150 group-hover/asg:opacity-100 group-hover/asg:grayscale-0"
@@ -80,7 +86,7 @@ export function LogoStrip() {
 						id="social-proof"
 						className="max-w-[24ch] text-2xl font-semibold tracking-[-0.025em] text-balance text-zinc-950 md:text-3xl"
 					>
-						Used by 200+ brands to optimize their AI visibility
+						Used by 250+ brands to optimize their AI visibility
 					</h2>
 				</div>
 				<ul className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-6 md:gap-x-14">

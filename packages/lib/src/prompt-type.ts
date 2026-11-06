@@ -4,7 +4,7 @@
  * stored, so renaming a brand or adding an alias reclassifies every prompt at
  * once. A misclassified prompt is fixed by adding the alias it uses.
  */
-import { mentionsSubject, normalizeDomain } from "./mentions";
+import { normalizeDomain } from "./mentions";
 
 export const PROMPT_TYPES = ["branded", "unbranded"] as const;
 export type PromptType = (typeof PROMPT_TYPES)[number];
@@ -17,16 +17,21 @@ export interface BrandIdentity {
 }
 
 /**
- * The same rule that counts a brand mention in an answer, plus the website's
- * bare label ("acmecorp" from acmecorp.com), since people type a product name
- * run together far more often than they type its domain.
+ * A case-insensitive substring match over the brand's names and domains, plus
+ * the website's bare label ("acmecorp" from acmecorp.com), since people type a
+ * product name run together far more often than they type its domain.
  */
 export function mentionsBrand(promptValue: string, brand: BrandIdentity): boolean {
-	const label = normalizeDomain(brand.website).split(".")[0];
-	return mentionsSubject(promptValue.toLowerCase(), {
-		name: brand.name,
-		aliases: [...(brand.aliases ?? []), label],
-		domains: [brand.website, ...(brand.additionalDomains ?? [])],
+	const promptLower = promptValue.toLowerCase();
+	const domains = [brand.website, ...(brand.additionalDomains ?? [])]
+		.map((domain) => domain.trim())
+		.filter(Boolean)
+		.map(normalizeDomain);
+	const terms = [brand.name, ...(brand.aliases ?? []), ...domains, normalizeDomain(brand.website).split(".")[0]];
+	// A blank alias or a malformed website like "www." leaves an empty term, which every prompt contains.
+	return terms.some((term) => {
+		const needle = term.trim().toLowerCase();
+		return needle.length > 0 && promptLower.includes(needle);
 	});
 }
 

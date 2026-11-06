@@ -7,7 +7,6 @@ import { getQueryFanoutFn } from "@/server/query-fanout";
 export interface QueryFanoutFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
-	/** Tag filter (resolved to prompt IDs server-side, like Share of Voice). */
 	tags?: string[];
 	type?: PromptType;
 	/** Scope to one prompt (prompt-details Web Queries tab) — lists come back uncapped. */

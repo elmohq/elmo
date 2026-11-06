@@ -7,10 +7,8 @@ import { getBatchChartDataFn } from "@/server/visibility";
 export interface BatchChartDataFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
-	/** Tag filter (resolved to prompt IDs server-side). */
 	tags?: string[];
 	type?: PromptType;
-	/** Search term applied to prompt text (resolved server-side). */
 	search?: string;
 }
 

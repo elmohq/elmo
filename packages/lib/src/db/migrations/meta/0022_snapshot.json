@@ -1,5 +1,5 @@
 {
-  "id": "dc305d76-72f9-4459-a5cf-d169056e51f9",
+  "id": "2e0f0fdf-5258-4024-9308-726f6405df7f",
   "prevId": "71a6f7ef-3f21-46f6-9c6e-f12aae25d56d",
   "version": "7",
   "dialect": "postgresql",
@@ -856,6 +856,13 @@
           "notNull": true,
           "default": "'{}'"
         },
+        "system_tags": {
+          "name": "system_tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -946,6 +953,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "brand_aliases": {
+          "name": "brand_aliases",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
         },
         "brand_website": {
           "name": "brand_website",

@@ -1,25 +1,8 @@
 /**
- * Live scheduling-policy verification (run by the scheduling-policy CI job in
- * .github/workflows/e2e.yaml, or locally against any disposable database).
- *
- * Drives a REAL worker over a REAL database with the no-network stub provider
- * and asserts the run policy's externally observable behavior:
- *
- *   local scenario (worker booted with DEPLOYMENT_MODE=local, stub target):
- *     - one firing records exactly RUNS_PER_PROMPT runs
- *     - an immediate duplicate firing records nothing new
- *     - the chain stays scheduled
- *
- *   cloud scenario (DEPLOYMENT_MODE=cloud, menu models on the stub provider):
- *     - a Pro org's picked platforms run once each (replication 1) and the
- *       prompt's Claude web assignment runs once
- *     - duplicate fire records nothing new
- *     - canceling the subscription stops due targets from running
- *     - resubscribing revives tracking via schedule-maintenance
- *
- * Scenario is argv[2]: local | cloud. DATABASE_URL env overrides the default
- * local connection string. The worker must already be running in the matching
- * mode — see the workflow for the exact env.
+ * Checks the run policy against a real worker and database, using the stub
+ * provider so nothing leaves the machine. Scenario is argv[2] (local | cloud);
+ * the worker must already be running in that mode, with the env the
+ * scheduling-policy job in .github/workflows/e2e.yaml sets.
  */
 import pg from "pg";
 import { PgBoss } from "pg-boss";
@@ -135,7 +118,12 @@ if (scenario === "local") {
   assert((await runCount(prompt.id)) === 3, "cloud cadence: an immediate duplicate adds nothing");
 
   await client.query("UPDATE subscription SET status = 'canceled' WHERE id = 'sub-verify-1'");
+  // prompt_runs is append-only (a trigger rejects updates); a replica session skips
+  // triggers, which is the one way to age runs for the cadence check.
+  await client.query("BEGIN");
+  await client.query("SET LOCAL session_replication_role = replica");
   await client.query("UPDATE prompt_runs SET created_at = created_at - interval '2 days' WHERE prompt_id = $1", [prompt.id]);
+  await client.query("COMMIT");
   await sendJob(prompt.id);
   await new Promise((r) => setTimeout(r, 8000));
   assert((await runCount(prompt.id)) === 3, "canceled org: due targets do not run");

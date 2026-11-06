@@ -1,6 +1,6 @@
 {
 	"name": "@elmohq/cli",
-	"version": "0.4.2",
+	"version": "0.7.8",
 	"license": "MIT",
 	"keywords": [
 		"marketing",
@@ -33,19 +33,32 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@clack/prompts": "^1.7.0",
+		"@ai-sdk/anthropic": "catalog:",
+		"@ai-sdk/openai": "catalog:",
+		"@anthropic-ai/sdk": "catalog:",
+		"@brightdata/sdk": "catalog:",
+		"@clack/prompts": "^1.8.1",
+		"ai": "catalog:",
 		"commander": "^15.0.0",
-		"dotenv": "17.4.2",
+		"dataforseo-client": "catalog:",
+		"dotenv": "18.0.9",
+		"linkedom": "catalog:",
+		"marked": "^14.1.4",
+		"olostep": "catalog:",
 		"picocolors": "^1.1.1",
-		"posthog-node": "^5.51.6",
-		"semver": "^7.8.5"
+		"posthog-node": "catalog:",
+		"robots-parser": "catalog:",
+		"semver": "^7.8.5",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@types/node": "^26.4.1",
+		"@types/node": "catalog:",
 		"@types/semver": "^7.8.0",
 		"@workspace/config": "workspace:*",
-		"rolldown": "^1.2.7",
-		"typescript": "^7.0.2",
-		"vitest": "^4.1.11"
+		"@workspace/lib": "workspace:*",
+		"@workspace/site-audit": "workspace:*",
+		"rolldown": "^1.2.16",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	}
 }

@@ -9,7 +9,6 @@
  * imported elsewhere, the bundler must keep it, which dragged `db` → pg →
  * `Buffer` into the visibility page's client bundle ("Buffer is not defined").
  * Keeping it here, imported only inside server-fn handlers, stays strippable.
- * See issue #68.
  */
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
@@ -61,7 +60,7 @@ export async function loadTypedPrompts(brandId: string): Promise<ResolvedPrompt[
  * list into the GET request URL) keeps the request bounded regardless of how
  * many prompts a brand has. Shipping the id list overflowed the request URL for
  * brands with a few hundred prompts — 414 URI Too Long on Vercel, 431 Request
- * Header Fields Too Large in dev. See issue #68.
+ * Header Fields Too Large in dev.
  */
 export async function resolveFilteredPrompts(
 	brandId: string,

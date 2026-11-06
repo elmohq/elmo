@@ -1,10 +1,4 @@
-/**
- * Cookie consent state, shared by the marketing site and the product app.
- *
- * The answer lives in localStorage rather than a cookie: it is strictly
- * necessary storage either way, and localStorage costs nothing on the wire.
- * Nothing here touches a third-party CMP — the whole model is two booleans.
- */
+/** In localStorage rather than a cookie: strictly necessary either way, and free on the wire. */
 
 export interface CookieConsent {
 	analytics: boolean;
@@ -120,10 +114,8 @@ export function countryRequiresConsent(country: string): boolean {
 }
 
 /**
- * Fallback for when the server can't tell where the request came from (no geo
- * header — local dev, or www served from somewhere other than Vercel).
- * Deliberately over-inclusive: `Europe/*` covers more than the EEA, and showing
- * the banner to someone who didn't need it is the harmless direction to err.
+ * For requests with no geo header. Over-inclusive on purpose: showing the banner
+ * to someone who didn't need it is the harmless direction to err.
  */
 const CONSENT_TIME_ZONES = [
 	"Asia/Famagusta",
@@ -152,15 +144,23 @@ export function isConsentRequired(fromEdge: boolean | null): boolean {
 	return fromEdge ?? consentRequiredByTimeZone();
 }
 
-/**
- * Call `apply` with the visitor's current analytics answer, and again whenever
- * it changes. Returns an unsubscribe. Every analytics tool goes through this,
- * so they can't drift apart on what the same answer means.
- */
-export function onAnalyticsConsent(consentRequired: boolean, apply: (allowed: boolean) => void): () => void {
+function onCategoryConsent(
+	category: keyof CookieConsent,
+	consentRequired: boolean,
+	apply: (allowed: boolean) => void,
+): () => void {
 	if (typeof window === "undefined") return () => {};
-	apply(resolveConsent(readConsent(), consentRequired).analytics);
-	return onConsentChange((consent) => apply(consent.analytics));
+	apply(resolveConsent(readConsent(), consentRequired)[category]);
+	return onConsentChange((consent) => apply(consent[category]));
+}
+
+/** Every analytics tool goes through this, so they can't disagree on what an answer means. */
+export function onAnalyticsConsent(consentRequired: boolean, apply: (allowed: boolean) => void): () => void {
+	return onCategoryConsent("analytics", consentRequired, apply);
+}
+
+export function onMarketingConsent(consentRequired: boolean, apply: (allowed: boolean) => void): () => void {
+	return onCategoryConsent("marketing", consentRequired, apply);
 }
 
 /**

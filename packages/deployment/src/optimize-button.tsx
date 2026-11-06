@@ -72,7 +72,6 @@ export function OptimizeButton({
 		return loadingKey === `${model || "all"}-${promptId}`;
 	};
 
-	// Simple button for single model selection
 	if (selectedModel !== "all") {
 		const loading = isLoading(selectedModel);
 		return (
@@ -89,7 +88,6 @@ export function OptimizeButton({
 		);
 	}
 
-	// Dropdown for "all" model selection - shows options for each model
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger render={<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6" />}>

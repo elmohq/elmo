@@ -1,13 +1,8 @@
 /**
- * Pre-launch billing lifecycle verification against a REAL Stripe test-mode
- * account with test clocks: subscribe → plan upgrade → add-on quantity change
- * → payment failure → recovery → cancel, asserting after each webhook that the
- * local database (subscription + organization_settings) converged to the
- * expected state.
- *
- * Reads subscription state through the production reader (getOrgBillingState /
- * selectRelevantSubscription), so the verification asserts the same logic the
- * app uses — including status-ranked selection for cancel→resubscribe.
+ * Drives a real Stripe test-mode account with test clocks through subscribe →
+ * upgrade → add-on change → payment failure → recovery → cancel, asserting after
+ * each webhook that the database converged. It reads state through the app's own
+ * getOrgBillingState, so it checks the logic the app actually uses.
  *
  * Prerequisites (run all three in parallel):
  *   1. The web app running in cloud mode against your database
@@ -79,7 +74,6 @@ async function expectPlanAndStatus(
 	});
 }
 
-// --- 1. Test-clock customer wired to the org --------------------------------
 const clock = await stripe.testHelpers.testClocks.create({ frozen_time: Math.floor(Date.now() / 1000) });
 const customer = await stripe.customers.create({
 	email: `lifecycle+${Date.now()}@example.com`,
@@ -90,7 +84,6 @@ const customer = await stripe.customers.create({
 await db.execute(sql`UPDATE organization SET stripe_customer_id = ${customer.id} WHERE id = ${orgId}`);
 console.log(`✓ test-clock customer ${customer.id} attached to org ${orgId}`);
 
-// --- 2. Subscribe (basic monthly) -------------------------------------------
 const basicPrice = await priceByLookupKey(stripePlanLookupKey("basic", "monthly"));
 const subscription = await stripe.subscriptions.create({
 	customer: customer.id,
@@ -98,7 +91,6 @@ const subscription = await stripe.subscriptions.create({
 });
 await expectPlanAndStatus("subscribe: webhook recorded the subscription", "basic", "active");
 
-// --- 3. Plan upgrade (basic → pro) ------------------------------------------
 const proPrice = await priceByLookupKey(stripePlanLookupKey("pro", "monthly"));
 await stripe.subscriptions.update(subscription.id, {
 	items: [{ id: subscription.items.data[0].id, price: proPrice }],
@@ -117,7 +109,6 @@ if (entitlements.maxPrompts !== PLANS.pro.maxPrompts || entitlements.premiumPool
 }
 console.log("✓ upgrade: resolved entitlements follow the new plan");
 
-// --- 4. Add-on quantity ------------------------------------------------------
 const addonPrice = await priceByLookupKey(PREMIUM_ADDON_LOOKUP_KEYS.monthly);
 await stripe.subscriptionItems.create({ subscription: subscription.id, price: addonPrice, quantity: 7 });
 await waitForDb("add-on: organization_settings.premium_addon_quantity = 7", async () => {
@@ -129,7 +120,6 @@ await waitForDb("add-on: organization_settings.premium_addon_quantity = 7", asyn
 	return row?.premiumAddonQuantity === 7 ? row : null;
 });
 
-// --- 5. Payment failure at renewal ------------------------------------------
 await stripe.customers.update(customer.id, {
 	invoice_settings: { default_payment_method: undefined },
 });
@@ -140,14 +130,12 @@ await stripe.testHelpers.testClocks.advance(clock.id, {
 });
 await expectStatus("renewal failure: subscription past_due", "past_due");
 
-// --- 6. Recovery -------------------------------------------------------------
 const goodCard = await stripe.paymentMethods.attach("pm_card_visa", { customer: customer.id });
 await stripe.customers.update(customer.id, { invoice_settings: { default_payment_method: goodCard.id } });
 const invoices = await stripe.invoices.list({ customer: customer.id, status: "open", limit: 1 });
 if (invoices.data[0]?.id) await stripe.invoices.pay(invoices.data[0].id, { payment_method: goodCard.id });
 await expectStatus("recovery: subscription active again", "active");
 
-// --- 7. Cancel ---------------------------------------------------------------
 await stripe.subscriptions.cancel(subscription.id);
 await expectStatus("cancel: subscription canceled", "canceled");
 await waitForDb("cancel: add-on quantity reset to 0", async () => {

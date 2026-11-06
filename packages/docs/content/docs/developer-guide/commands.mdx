@@ -1,6 +1,7 @@
 ---
 title: Commands Reference
 description: All development scripts and commands for working on Elmo.
+updated: 2026-09-24
 ---
 
 ## Development
@@ -45,6 +46,16 @@ they need a browser installed before the first run:
 ```bash
 pnpm --filter @workspace/web exec playwright install chromium
 pnpm --filter @workspace/web test:storybook
+```
+
+The analytics stats are checked against a real Postgres. These tests migrate the
+database in `TEST_DATABASE_URL` and write to it, so they refuse to run unless it
+points at a local database whose name ends in `_test`:
+
+```bash
+createdb elmo_test
+TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/elmo_test \
+  pnpm --filter @workspace/web test:integration
 ```
 
 ### End-to-End Tests
