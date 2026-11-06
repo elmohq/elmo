@@ -102,7 +102,8 @@
 				"properties": {
 					"brandId": {
 						"type": "string",
-						"description": "Brand identifier this prompt belongs to"
+						"description": "Brand identifier this prompt belongs to",
+						"minLength": 1
 					},
 					"value": {
 						"type": "string",
@@ -447,12 +448,14 @@
 								},
 								"domains": {
 									"type": "array",
+									"default": [],
 									"items": {
 										"type": "string"
 									}
 								},
 								"aliases": {
 									"type": "array",
+									"default": [],
 									"items": {
 										"type": "string"
 									}
@@ -472,6 +475,7 @@
 								},
 								"tags": {
 									"type": "array",
+									"default": [],
 									"items": {
 										"type": "string"
 									}
@@ -486,7 +490,8 @@
 					},
 					"organizationId": {
 						"type": "string",
-						"description": "Organization to create the brand in.\n\n| | Omitted | Present |\n| --- | --- | --- |\n| **Organization key** | creates in the key's own organization | must name the key's own organization; any other value is a `400` |\n| **Admin key** | provisions a new organization named after the brand id | creates in the named organization, which must already exist — `404` if it does not |\n\nAn admin key omitting this field is currently the only way to create an organization over the API."
+						"description": "Organization to create the brand in.\n\n| | Omitted | Present |\n| --- | --- | --- |\n| **Organization key** | creates in the key's own organization | must name the key's own organization; any other value is a `400` |\n| **Admin key** | provisions a new organization named after the brand id | creates in the named organization, which must already exist — `404` if it does not |\n\nAn admin key omitting this field is currently the only way to create an organization over the API.",
+						"minLength": 1
 					}
 				},
 				"required": ["id", "name", "domains"]

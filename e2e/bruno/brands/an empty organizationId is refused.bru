@@ -1,0 +1,35 @@
+meta {
+  name: an empty organizationId is refused
+  type: http
+  seq: 31
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "id": "e2e-empty-org-brand",
+    "name": "Empty Org Brand",
+    "domains": ["empty-org.example.com"],
+    "organizationId": ""
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error: eq Validation Error
+  res.body.message: startsWith organizationId:
+}
+
+docs {
+  An admin key that omits organizationId provisions a new organization. An
+  empty string has to be refused rather than read as omitted.
+}
