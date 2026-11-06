@@ -109,6 +109,8 @@ export const STATUS_TARGETS = [
 	"perplexity:openrouter:perplexity/sonar:online",
 	"mistral:mistral-api:mistral-medium-latest",
 	"mistral:mistral-api:mistral-medium-latest:online",
+	"gemini:gemini-api:gemini-3.8-flash",
+	"gemini:gemini-api:gemini-3.8-flash:online",
 ];
 
 /** Derived from STATUS_TARGETS so it only offers combinations the scheduled provider tests exercise. */

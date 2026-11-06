@@ -25,6 +25,7 @@ const SURFACES: [name: string, provider: string, rawOutput: unknown][] = [
 	["openai-api", "openai-api", { output: [{ type: "message", content: [{ type: "output_text", text: ANSWER }] }] }],
 	["anthropic-api", "anthropic-api", { content: [{ type: "text", text: ANSWER }] }],
 	["mistral-api", "mistral-api", { outputs: [{ content: [{ type: "text", text: ANSWER }] }] }],
+	["gemini-api", "gemini-api", { candidates: [{ content: { parts: [{ text: ANSWER }] } }] }],
 	["openrouter", "openrouter", { choices: [{ message: { content: ANSWER } }] }],
 	["olostep", "olostep", { json_content: JSON.stringify({ result: { markdown_content: ANSWER } }) }],
 	["brightdata chatbot", "brightdata", [{ answer_text_markdown: ANSWER, answer_text: "flattened" }]],

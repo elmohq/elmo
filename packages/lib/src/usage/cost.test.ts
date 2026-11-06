@@ -14,6 +14,13 @@ describe("estimateRunCostUsd", () => {
 		expect(grounded).toBeGreaterThan(base as number);
 	});
 
+	it("adds Gemini's per-query grounding charge only when grounded", () => {
+		const base = estimateRunCostUsd("gemini-api", false);
+		const grounded = estimateRunCostUsd("gemini-api", true);
+		expect(base).not.toBeNull();
+		expect(grounded).toBeGreaterThan(base as number);
+	});
+
 	it("reports nothing for an unpriced or missing provider", () => {
 		expect(estimateRunCostUsd("some-new-provider", false)).toBeNull();
 		expect(estimateRunCostUsd(null, false)).toBeNull();

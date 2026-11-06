@@ -136,6 +136,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Mistral API key.",
 	},
 	{
+		name: "GEMINI_API_KEY",
+		scope: "server",
+		requiredBy: "dynamic-scrape-targets",
+		provider: "gemini-api",
+		description: "Google Gemini API key (from Google AI Studio).",
+	},
+	{
 		name: "SCRAPE_TARGETS",
 		scope: "server",
 		requiredBy: VALIDATED_MODES,
@@ -456,7 +463,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
  * OpenAI first, as the cheapest with the best recall in compare-onboarding runs,
  * then the same model via OpenRouter. Here so startup validation can require one.
  */
-export const RESEARCH_PROVIDER_PREFERENCE = ["openai-api", "openrouter", "anthropic-api", "mistral-api"] as const;
+export const RESEARCH_PROVIDER_PREFERENCE = [
+	"openai-api",
+	"openrouter",
+	"anthropic-api",
+	"mistral-api",
+	"gemini-api",
+] as const;
 
 export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set(
 	ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider).map((spec) => spec.name),

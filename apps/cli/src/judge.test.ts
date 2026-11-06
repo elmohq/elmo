@@ -58,6 +58,13 @@ describe("collectJudgeKey", () => {
 		});
 	});
 
+	it("keeps onboarding on Gemini when an OpenRouter key is added for Jev", async () => {
+		answers.push("openrouter", "or-key");
+		const env: Record<string, string> = { GEMINI_API_KEY: "gm-key" };
+		await collectJudgeKey(env);
+		expect(env.ONBOARDING_LLM_TARGET).toBe("gemini:gemini-api");
+	});
+
 	it("leaves onboarding alone when OpenAI already outranks OpenRouter for it", async () => {
 		answers.push("openrouter", "or-key");
 		const env: Record<string, string> = { OPENAI_API_KEY: "sk-oai", MISTRAL_API_KEY: "mi" };

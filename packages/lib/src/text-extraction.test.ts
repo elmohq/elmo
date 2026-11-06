@@ -322,6 +322,12 @@ describe("text-extraction", () => {
 			["anthropic", "anthropic-api", {}],
 			["anthropic by legacy engine", "claude", null],
 			["mistral", "mistral-api", {}],
+			["gemini", "gemini-api", {}],
+			[
+				"gemini with only a thought summary",
+				"gemini-api",
+				{ candidates: [{ content: { parts: [{ text: "hmm", thought: true }] } }] },
+			],
 			["dataforseo serp", "dataforseo", {}],
 			["dataforseo by legacy engine", "google-ai-overview", {}],
 			["dataforseo llm responses", "dataforseo", { tasks: [{ result: [{ items: [{ sections: [] }] }] }] }],
