@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { CLOUD_ENTRY_PRICE_USD, MONEY_BACK_GUARANTEE_DAYS } from "@workspace/config/plans";
 import { Badge } from "@workspace/ui/components/badge";
-import { buttonVariants } from "@workspace/ui/components/button";
 import { AlertTriangle, ArrowLeft, Check, ExternalLink } from "lucide-react";
 import {
 	CATEGORY_LABELS,
@@ -18,6 +18,7 @@ import {
 	isLowDR,
 } from "@/lib/competitors";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
+import { CloudSignupCTA, SelfHostCTA } from "./cta-buttons";
 import { DataProvenance } from "./data-provenance";
 import { Faq } from "./faq";
 import { FeatureMark } from "./feature-mark";
@@ -131,10 +132,11 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 							<Badge variant="secondary">Open Source</Badge>
 							<Badge variant="secondary">Self-Hosted</Badge>
 							<Badge variant="secondary">White-Label</Badge>
+							<Badge variant="secondary">Cloud from ${CLOUD_ENTRY_PRICE_USD}/mo</Badge>
 						</div>
 						<p className="mt-3 text-sm text-zinc-600">
-							Open-source AEO platform. Self-host for free, forever. Track AI visibility across ChatGPT, Claude, and
-							Google AI Overviews with full transparency.
+							Open-source AEO platform. Self-host for free, forever, or let us run it from ${CLOUD_ENTRY_PRICE_USD}
+							/mo. Track AI visibility across ChatGPT, Claude, and Google AI Overviews with full transparency.
 						</p>
 					</div>
 					<div>
@@ -338,23 +340,15 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			{/* CTA */}
 			<section className="border-b border-zinc-200 bg-white py-16 lg:py-24">
 				<div className="mx-auto max-w-3xl px-4 text-center md:px-6">
-					<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Ready to track your AI visibility?</h2>
+					<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Switching From {competitor.name}?</h2>
 					<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
-						Deploy Elmo in minutes and start monitoring how ChatGPT, Claude, and Google AI Overviews talk about your
-						brand.
+						Elmo Cloud runs the same open-source product from ${CLOUD_ENTRY_PRICE_USD}/mo with a{" "}
+						{MONEY_BACK_GUARANTEE_DAYS}-day money-back guarantee, or self-host it for free. Either way, every export is
+						yours.
 					</p>
-					<div className="mt-8 flex flex-wrap justify-center gap-3">
-						<Link {...SELF_HOST_LINK} className={buttonVariants({ size: "sm" })}>
-							Deploy Elmo
-						</Link>
-						<a
-							href="https://github.com/elmohq/elmo"
-							target="_blank"
-							rel="noopener noreferrer"
-							className={buttonVariants({ variant: "outline", size: "sm" })}
-						>
-							View on GitHub
-						</a>
+					<div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+						<CloudSignupCTA from="marketing-comparison" />
+						<SelfHostCTA from="marketing-comparison" />
 					</div>
 				</div>
 			</section>

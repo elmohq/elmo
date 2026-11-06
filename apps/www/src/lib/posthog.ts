@@ -96,6 +96,17 @@ export function trackEvent(
 	else if (loading && allowed) queuedEvents.push(call);
 }
 
+/**
+ * For an event fired by a click that immediately leaves the page: sent as a
+ * beacon at once, so the navigation cannot cancel it.
+ */
+export function trackEventBeforeNavigation(
+	eventName: string,
+	properties?: Record<string, string | number | boolean | undefined>,
+): void {
+	instance?.capture(eventName, properties, { send_instantly: true, transport: "sendBeacon" });
+}
+
 export function identifyByEmail(email: string): void {
 	identity = (posthog) => posthog.identify(email, { email });
 	if (instance && allowed) identity(instance);

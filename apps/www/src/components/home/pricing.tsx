@@ -3,6 +3,7 @@ import { PLAN_KEYS, PLANS, type PlanDefinition, type PlanKey } from "@workspace/
 import { cloudAppUrl } from "@workspace/config/referrals";
 import { ArrowRight, Check, Minus } from "lucide-react";
 import { ContactForm } from "@/components/contact-form";
+import { trackCta } from "@/lib/analytics";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { CARD, SectionHeading } from "./ui";
 
@@ -24,6 +25,7 @@ function TierCard({ planKey, badge }: { planKey: PlanKey; badge?: string }) {
 	return (
 		<a
 			href={cloudAppUrl(`marketing-plan-${planKey}`)}
+			onClick={() => trackCta("cloud-signup", `marketing-plan-${planKey}`)}
 			className={`group relative flex flex-col p-6 transition hover:shadow-[0_0_0_1px_rgb(37_99_235/0.45),0_16px_40px_-20px_rgb(37_99_235/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${CARD} ${badge ? "ring-2 ring-blue-600" : ""}`}
 		>
 			{badge ? (

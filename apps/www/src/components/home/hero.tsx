@@ -3,6 +3,7 @@ import { bookDemoUrl, cloudAppUrl, demoSiteUrl, type ReferralSource } from "@wor
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { ArrowRight, ArrowUpRight, Play } from "lucide-react";
 import { Fragment, lazy, type ReactNode, Suspense, useState } from "react";
+import { trackCta } from "@/lib/analytics";
 import { externalRel } from "@/lib/external-link";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { ProductDemo } from "./product-demo";
@@ -124,12 +125,17 @@ export function Hero({
 					</h1>
 					<p className="mt-6 max-w-[60ch] text-balance text-[17px]/7 text-zinc-600 md:text-xl/8">{lede}</p>
 					<div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-						<a href={cloudUrl} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
+						<a
+							href={cloudUrl}
+							onClick={() => trackCta("cloud-signup", from)}
+							className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}
+						>
 							Get started
 							<ArrowRight className="size-4" aria-hidden="true" />
 						</a>
 						<a
 							href={demoUrl}
+							onClick={() => trackCta("live-demo", from)}
 							target="_blank"
 							rel={externalRel(demoUrl)}
 							className={`${BUTTON} bg-white text-zinc-950 ring-1 ring-inset ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300`}
@@ -140,11 +146,11 @@ export function Hero({
 					</div>
 					<p className="mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-zinc-500">
 						{selfHost ? (
-							<Link {...SELF_HOST_LINK} className={QUIET}>
+							<Link {...SELF_HOST_LINK} onClick={() => trackCta("self-host", from)} className={QUIET}>
 								Self-host for free
 							</Link>
 						) : (
-							<a href={bookDemoUrl(from)} className={QUIET}>
+							<a href={bookDemoUrl(from)} onClick={() => trackCta("book-demo", from)} className={QUIET}>
 								Book a 30-minute tour
 							</a>
 						)}
