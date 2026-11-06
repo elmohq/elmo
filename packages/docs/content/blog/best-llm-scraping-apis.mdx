@@ -2,7 +2,7 @@
 title: "The Best LLM Scraping APIs, Compared"
 description: "Cloro, SearchApi, Olostep, DataForSEO, Oxylabs, and BrightData compared on cost, coverage, and measured success rates from a tool that runs all six in production."
 date: "2026-08-06"
-updated: "2026-11-04"
+updated: "2026-11-06"
 author: ai
 metaTitle: "Best LLM Scraping APIs: 6 Compared (2026)"
 tags:
@@ -12,10 +12,10 @@ tags:
 itemList:
   - name: Cloro
     url: "https://cloro.dev"
-    description: "Credit-based scraping API covering all five AI surfaces, from $30/mo. Used by Ahrefs, Scrunch, Evertune, and Elmo Cloud."
+    description: "Credit-based scraping API covering all four AI surfaces, from $30/mo. Used by Ahrefs, Scrunch, Evertune, and Elmo Cloud."
   - name: SearchApi
     url: "https://www.searchapi.io"
-    description: "Synchronous scraping API covering all five AI surfaces at one flat price per search, from $40/mo."
+    description: "Synchronous scraping API covering all four AI surfaces at one flat price per search, from $40/mo."
   - name: Olostep
     url: "https://www.olostep.com"
     description: "Credit-based scraping API built for high-volume workloads, from $9/mo. Used by Profound, Athena, and AirOps."
@@ -24,7 +24,7 @@ itemList:
     description: "Pay-as-you-go API fronting both AI scrapers and direct model APIs."
   - name: Oxylabs
     url: "https://oxylabs.io"
-    description: "One subscription across Oxylabs products, from $30/mo, with no Copilot scraper."
+    description: "One subscription across Oxylabs products, from $30/mo."
   - name: BrightData
     url: "https://brightdata.com"
     description: "Pay-as-you-go dataset collectors for each major AI surface, with a free monthly allowance."
@@ -32,7 +32,7 @@ definedTerms:
   - term: LLM scraping API
     definition: "An LLM scraping API is a hosted service that submits a prompt to a consumer AI product such as ChatGPT, Gemini, or Google AI Mode and returns the generated answer, its citations, and often its web-search queries as structured JSON. It exists because those products have no public API for the interface real users see."
   - term: AI surface
-    definition: "An AI surface is one consumer-facing answer product: ChatGPT, Google AI Mode, Google AI Overview, Gemini, or Microsoft Copilot. Each has its own retrieval stack and citation behaviour, so visibility on one says little about visibility on another."
+    definition: "An AI surface is one consumer-facing answer product: ChatGPT, Google AI Mode, Google AI Overview, or Gemini. Each has its own retrieval stack and citation behaviour, so visibility on one says little about visibility on another."
 faq:
   - question: What is an LLM scraping API?
     answer: "An LLM scraping API submits a prompt to a consumer AI product such as ChatGPT, Gemini, or Google AI Mode and returns the answer, its citations, and often its web-search queries as structured JSON. It exists because none of those products expose a public API for the interface real users see, so the only way to observe what a user would get is to drive the product itself."
@@ -43,20 +43,20 @@ faq:
   - question: How much does it cost to track one prompt for a month?
     answer: "At five runs a day across ChatGPT and Google AI Mode, one prompt is about 300 evaluations a month. On each provider's entry plan that comes to roughly $0.45 on Oxylabs or BrightData, $1.20 on SearchApi or DataForSEO, $1.30 on Cloro, and $2.15 on Olostep. Larger plans or slower queues bring every provider down to between $0.30 and $0.65."
   - question: Which AI surfaces can be scraped?
-    answer: "ChatGPT, Google AI Mode, Google AI Overview, Gemini, and Microsoft Copilot all have working scrapers from at least one provider. Coverage is not uniform: Cloro, SearchApi, Olostep, and BrightData reach all five, while Oxylabs and DataForSEO have no Copilot scraper."
+    answer: "ChatGPT, Google AI Mode, Google AI Overview, and Gemini all have working scrapers. Cloro, SearchApi, Olostep, DataForSEO, and BrightData reach all four, and Oxylabs reaches every one but Gemini in Elmo. Perplexity and Microsoft Copilot now require a sign-in, so no provider scrapes them; Perplexity can still be tracked through its Sonar model API."
   - question: Which LLM scraping API is the most reliable?
     answer: "Cloro and SearchApi, both at 97% of runs in Elmo's October 2026 monitoring, with Olostep close behind at 96%. DataForSEO managed 85%, Oxylabs 69%, and BrightData 61%. Google AI Overview separates them most: SearchApi, Olostep, and Cloro all cleared 97% there, against 58% for DataForSEO, 28% for BrightData, and 26% for Oxylabs."
   - question: Do I need more than one scraping provider?
     answer: "Most teams do not. One provider covering ChatGPT and Google AI Mode captures the bulk of AI referral traffic. A second provider is worth it mainly as a failover, since a single provider's outage otherwise leaves a gap in your history that cannot be backfilled."
 ---
 
-**Every AI visibility tool is built on top of a scraping API, and which one it sits on decides what the numbers mean.** ChatGPT, Google AI Mode, Gemini, and Copilot have no public API for the interface real users see, so tracking what an answer engine says about your brand means driving the product itself. We build [Elmo](https://github.com/elmohq/elmo), an open-source AI visibility tracker, and we run six of these scraping providers side by side in production. This is what we've learned about the trade-offs.
+**Every AI visibility tool is built on top of a scraping API, and which one it sits on decides what the numbers mean.** ChatGPT, Google AI Mode, and Gemini have no public API for the interface real users see, so tracking what an answer engine says about your brand means driving the product itself. We build [Elmo](https://github.com/elmohq/elmo), an open-source AI visibility tracker, and we run six of these scraping providers side by side in production. This is what we've learned about the trade-offs.
 
 **Key takeaways**
 
 - Entry pricing spans about 5x for identical work. Tracking one prompt across ChatGPT and Google AI Mode for a month costs roughly $0.45 on [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) or [BrightData](https://get.brightdata.com/elmo?sid=blog) and $2.15 on [Olostep](https://olostep.com/?ref=elmo)'s smallest plan.
 - Headline per-run pricing is the wrong number to compare. If you're only tracking a handful of prompts, a free tier or a provider without a monthly minimum might be better. At scale, volume pricing reshuffles the order: [SearchApi](https://www.searchapi.io/?via=elmo)'s largest plan is the cheapest per run here.
-- Coverage is not uniform. [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog), [SearchApi](https://www.searchapi.io/?via=elmo), [Olostep](https://olostep.com/?ref=elmo), and [BrightData](https://get.brightdata.com/elmo?sid=blog) reach all five surfaces; [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) and [DataForSEO](https://try.dataforseo.com/elmo) have no Copilot scraper.
+- Coverage is not uniform. [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog), [SearchApi](https://www.searchapi.io/?via=elmo), [Olostep](https://olostep.com/?ref=elmo), [DataForSEO](https://try.dataforseo.com/elmo), and [BrightData](https://get.brightdata.com/elmo?sid=blog) reach all four surfaces; Elmo doesn't use [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32)' Gemini scraper yet. Perplexity and Copilot now sit behind a sign-in, so no provider scrapes either.
 - Reliability varies more than price does, and it is the variable nobody publishes. A failed scrape is a hole in your prompt's history that you cannot backfill. In October, success rates ranged from 97% to 61%.
 - Google AI Overview is where providers split. [SearchApi](https://www.searchapi.io/?via=elmo), [Olostep](https://olostep.com/?ref=elmo), and [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog) all cleared 97% on it; the other three were at 58% or below.
 - Median latency ranges from 11 seconds to over a minute, and individual runs took up to nearly 20 minutes. It rarely matters for scheduled tracking but matters enormously for anything a user is waiting on.
@@ -79,7 +79,8 @@ Not every provider reaches every surface. This is the first filter, because no a
 | Google AI Mode | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Google AI Overview | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Gemini | ✅ | ✅ | ✅ | ✅ | Not tested | ✅ |
-| Copilot | ✅ | ✅ | ✅ | – | – | ✅ |
+
+<Callout title="Update, November 2026">Perplexity and Microsoft Copilot now require a sign-in, so no provider can scrape them and Elmo has stopped tracking either through a scraper. Perplexity can still be tracked through its Sonar model on OpenRouter or DataForSEO. The October Copilot results below are kept as measured.</Callout>
 
 Oxylabs now sells a Gemini scraper, but Elmo doesn't integrate it yet, so it has no reliability data below.
 
@@ -102,7 +103,7 @@ Two things this table hides, both of which change the answer at small scale.
 
 **Plan minimums beat unit prices.** [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) has no pay-as-you-go option, so the entry price is its $30/mo [Starter plan](https://oxylabs.io/pricing/web-scraper-api), which covers about 20,000 LLM scraper results, or around 66 tracked prompts. If you are tracking ten prompts, you are paying $30 for $4.50 of scraping. [BrightData](https://get.brightdata.com/elmo?sid=blog) bills per record with no monthly commitment, and its free 5,000 records a month cover about 16 prompts on this workload. [DataForSEO](https://try.dataforseo.com/elmo) is also pay-as-you-go, but you have to put at least $50 in up front, though the balance never expires.
 
-**Credits are not requests.** [Cloro prices per credit](https://cloro.dev/pricing/), and each surface costs a different number: Gemini and Google AI Mode 4, Copilot and Google AI Overview 5, ChatGPT 7. One prompt on ChatGPT plus Google AI Mode is 11 credits a day, or about 1,650 a month. The $30 Lite plan's 37,500 credits therefore covers about 22 prompts, at about $1.30 each; the rate halves to $0.65 from the $100 Hobby plan up. [Olostep](https://olostep.com/?ref=elmo) works the same way, at 5 credits for ChatGPT and 3 for every other surface, so its $9 Starter plan's 5,000 credits cover about four prompts.
+**Credits are not requests.** [Cloro prices per credit](https://cloro.dev/pricing/), and each surface costs a different number: Gemini and Google AI Mode 4, Google AI Overview 5, ChatGPT 7. One prompt on ChatGPT plus Google AI Mode is 11 credits a day, or about 1,650 a month. The $30 Lite plan's 37,500 credits therefore covers about 22 prompts, at about $1.30 each; the rate halves to $0.65 from the $100 Hobby plan up. [Olostep](https://olostep.com/?ref=elmo) works the same way, at 5 credits for ChatGPT and 3 for every other surface, so its $9 Starter plan's 5,000 credits cover about four prompts.
 
 ## The variable nobody publishes: reliability
 
@@ -135,7 +136,7 @@ The aggregate hides the more useful finding. Broken out by surface:
 
 ### Cloro (Recommended)
 
-The most consistent provider across all five surfaces: 97% overall, and at least 97% everywhere except Copilot, where it managed 92%. It has good documentation and an API that is pleasant to integrate against. Requests go through an [asynchronous task API](https://cloro.dev/docs/) that you poll, which also lets Cloro meter concurrency rather than holding a connection open. Failed requests are not charged.
+The most consistent provider across every surface we ran in October: 97% overall, and at least 97% everywhere except Copilot, where it managed 92%. It has good documentation and an API that is pleasant to integrate against. Requests go through an [asynchronous task API](https://cloro.dev/docs/) that you poll, which also lets Cloro meter concurrency rather than holding a connection open. Failed requests are not charged.
 
 It is plan-based rather than pay-as-you-go, and the $30 Lite plan works out to about $1.30 per prompt, so it stings on very small projects. From the $100 Hobby plan up, the rate halves to about $0.65. There is also a free tier of 500 credits a month for testing.
 
@@ -159,7 +160,7 @@ It is also one of the simplest integrations here. One bearer API key and one syn
 
 ### Olostep
 
-The provider behind Profound, Athena, and AirOps, and genuinely good at high-volume scraping with a well-designed API. It covers all five surfaces and hit 96% in October, including 99% on ChatGPT and Google AI Overview.
+The provider behind Profound, Athena, and AirOps, and genuinely good at high-volume scraping with a well-designed API. It covers all four surfaces and hit 96% in October, including 99% on ChatGPT and Google AI Overview.
 
 [Pricing](https://www.olostep.com/pricing) is credit-based, from a $9/mo Starter plan that covers only about four prompts at $2.15 each. The per-credit rate drops sharply on larger plans: the $99/mo Standard plan works out to about $0.60 per prompt.
 
@@ -171,7 +172,7 @@ Its 32-second median is competitive, but the tail is long. Individual runs appro
 
 ### DataForSEO
 
-The most flexible of the six, and the only one that fronts both scrapers and direct model APIs behind a single account. ChatGPT and Gemini come from its [LLM Scraper](https://docs.dataforseo.com/v3/ai_optimization-chat_gpt-llm_scraper-live-advanced/) and the two Google surfaces from SERP endpoints. It has no Copilot scraper.
+The most flexible of the six, and the only one that fronts both scrapers and direct model APIs behind a single account. ChatGPT and Gemini come from its [LLM Scraper](https://docs.dataforseo.com/v3/ai_optimization-chat_gpt-llm_scraper-live-advanced/) and the two Google surfaces from SERP endpoints.
 
 ChatGPT and Gemini were near-perfect in October at 98% and 99%, with an overall median of 19 seconds. Google AI Overview pulled it down to 85% overall: only 58% of those runs succeeded, most failing with an internal error from DataForSEO's search backend.
 
@@ -185,7 +186,7 @@ Pay-as-you-go with a $50 minimum top-up and no subscription. Its queues give you
 
 Tied with [BrightData](https://get.brightdata.com/elmo?sid=blog) for the cheapest entry price, at about $0.45 per prompt. Oxylabs sells one subscription across all its products, from the $30/mo Starter plan, and new accounts get $5 of free credits. Requests go through an asynchronous Push-Pull API that avoids the connection timeouts of their realtime endpoint.
 
-Three real limitations. It has no Copilot scraper, and its Gemini scraper is new enough that Elmo doesn't support it yet. There is no pay-as-you-go tier. And it was the second-least reliable provider we ran in October at 69%, with ChatGPT at 82% and Google AI Overview at 26%, where most jobs faulted on Oxylabs' side.
+Three real limitations. Its Gemini scraper is new enough that Elmo doesn't support it yet. There is no pay-as-you-go tier. And it was the second-least reliable provider we ran in October at 69%, with ChatGPT at 82% and Google AI Overview at 26%, where most jobs faulted on Oxylabs' side.
 
 <Callout title="Best for">High volume on ChatGPT and Google AI Mode, where the per-run saving compounds and you can tolerate gaps.</Callout>
 
@@ -195,7 +196,7 @@ Three real limitations. It has no Copilot scraper, and its Gemini scraper is new
 
 A common default for web scraping in general. Pay-as-you-go at $1.50 per 1,000 records with no monthly commitment, tied with [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) for the cheapest entry price, and a free tier of 5,000 records a month, which covers about 16 prompts on ChatGPT and Google AI Mode.
 
-October was rough. It was the least reliable provider we ran at 61% and the slowest, with a 65-second median. ChatGPT and Gemini held up at 89% and 88%, but Google AI Mode fell to 71% and Google AI Overview to 28%. Copilot didn't return a single successful run: requests first hit a sign-in wall, then BrightData's dataset began rejecting collection requests entirely.
+October was rough. It was the least reliable provider we ran at 61% and the slowest, with a 65-second median. ChatGPT and Gemini held up at 89% and 88%, but Google AI Mode fell to 71% and Google AI Overview to 28%. Copilot didn't return a single successful run: requests first hit a sign-in wall, then BrightData's dataset began rejecting collection requests entirely. Copilot has since gone behind a sign-in for every provider.
 
 <Callout title="Best for">Trying out ChatGPT and Gemini scraping on the free tier before committing to a plan.</Callout>
 
@@ -206,7 +207,7 @@ October was rough. It was the least reliable provider we ran at 61% and the slow
 - **What's the best overall?** [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog). It covers everything at a reasonable price and rarely fails. It's what we use for Elmo Cloud.
 - **Need speed, or a low per-run price at volume?** [SearchApi](https://www.searchapi.io/?via=elmo). It matched Cloro's reliability with the fastest median we measured, and its largest plans are the cheapest per run here.
 - **Only tracking a handful of prompts?** [BrightData](https://get.brightdata.com/elmo?sid=blog)'s free tier covers about 16 prompts a month, and [DataForSEO](https://try.dataforseo.com/elmo)'s pay-as-you-go balance never expires.
-- **Need Copilot?** Use [SearchApi](https://www.searchapi.io/?via=elmo), [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog), or [Olostep](https://olostep.com/?ref=elmo). [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) and [DataForSEO](https://try.dataforseo.com/elmo) don't scrape it, and [BrightData](https://get.brightdata.com/elmo?sid=blog)'s Copilot scraper didn't succeed once in October.
+- **Need Perplexity or Copilot?** No scraper reaches either now that both require a sign-in. Track Perplexity through its Sonar model on OpenRouter or [DataForSEO](https://try.dataforseo.com/elmo) instead.
 - **Need Google AI Overview?** Use [SearchApi](https://www.searchapi.io/?via=elmo), [Olostep](https://olostep.com/?ref=elmo), or [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog). Everyone else was at 58% or below.
 
 ## How we measured this

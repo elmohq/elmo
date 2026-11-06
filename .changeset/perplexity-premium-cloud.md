@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Elmo Cloud now offers Perplexity as a premium model through Sonar, and no longer sells Copilot or scraped Perplexity as platform picks.
+Elmo Cloud now offers Perplexity, tracked through its Sonar model, as a premium model.
