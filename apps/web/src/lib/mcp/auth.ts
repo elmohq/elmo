@@ -59,8 +59,6 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 	};
 }
 
-/** API keys are opaque, so a compact JWS can only be an access token. Trying it
- * as a key first would log a failed key verification on every OAuth call. */
 function carriesJwt(request: Request): boolean {
 	const token = request.headers.get("authorization")?.split(" ")[1];
 	return token?.split(".").length === 3;
