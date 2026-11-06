@@ -1,4 +1,5 @@
 import { getModelMeta } from "@workspace/config/models";
+import { RETIRED_STATUS_TARGETS } from "@workspace/config/scrape-targets";
 
 export interface StatusEntry {
 	ts: string;
@@ -116,8 +117,7 @@ const PROVIDER_MODELS: Record<string, Set<string>> = {
 	"dataforseo-api": new Set(["chatgpt", "perplexity", "gemini", "claude"]),
 };
 
-// Consumer surfaces that went behind a login, so no scraper can reach them any
-// more. The model APIs that still serve them keep reporting as usual.
+// The model APIs that still serve these surfaces keep reporting as usual.
 const RETIRED_SURFACES: Record<string, string> = {
 	copilot: "Copilot now requires a Microsoft sign-in, so scrapers can no longer reach it. Elmo no longer tracks it.",
 	perplexity:
@@ -130,8 +130,7 @@ export function retiredSurfaceReason(model: string): string | undefined {
 }
 
 export function isRetiredTarget(target: string): boolean {
-	const { model, provider, version } = parseTarget(target);
-	return model in RETIRED_SURFACES && !MODEL_API_CATEGORIES.includes(providerCategory(provider, model, version));
+	return RETIRED_STATUS_TARGETS.includes(target);
 }
 
 export type CellAvailability = "tracked" | "untracked" | "unavailable";

@@ -92,7 +92,7 @@ if (scenario === "local") {
      VALUES ('sub-verify-1', 'pro', 'cloudorg-1', 'active', NOW() - interval '1 day', NOW() + interval '29 days')`);
   await client.query(
     `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, enabled_models, created_at, updated_at)
-     VALUES ('cloudbrand-1', 'cloudorg-1', 'Cloud Verify Brand', 'https://verify.example', true, true, '{chatgpt,perplexity}', NOW(), NOW())`);
+     VALUES ('cloudbrand-1', 'cloudorg-1', 'Cloud Verify Brand', 'https://verify.example', true, true, '{chatgpt,gemini}', NOW(), NOW())`);
   const { rows: [prompt] } = await client.query(
     "INSERT INTO prompts (brand_id, value, enabled, premium_models) VALUES ('cloudbrand-1', 'scheduling e2e — cloud policy', true, '{claude}') RETURNING id");
 
@@ -104,7 +104,7 @@ if (scenario === "local") {
     [prompt.id]);
   const shape = runs.map((r: { model: string; web_search_enabled: boolean; n: number }) => `${r.model}:${r.web_search_enabled ? "web" : "base"}=${r.n}`).join(",");
   assert(
-    shape === "chatgpt:base=1,claude:web=1,perplexity:base=1",
+    shape === "chatgpt:base=1,claude:web=1,gemini:base=1",
     `cloud volume: picked platforms + one premium slot, replication 1 (got ${shape})`,
   );
 
