@@ -1,7 +1,3 @@
-/**
- * Two credentials arrive in the same header and are told apart by shape: only a
- * signed JWT can be an access token, so nothing else is tried as one.
- */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { API_SCOPES } from "@/lib/api/scopes";
 import type { AdminAuth, ApiAuthResult, OrganizationAuth, UserAuth } from "@/lib/auth/api-auth";
@@ -78,12 +74,8 @@ function bearer(token: string): Request {
 	});
 }
 
-const INVALID_KEY: ApiAuthResult = {
-	failure: { status: 401, error: "Unauthorized", message: "Invalid API key", code: "unauthorized" },
-};
-
 const INVALID_TOKEN: ApiAuthResult = {
-	failure: { status: 401, error: "Unauthorized", message: "Invalid or expired access token", code: "unauthorized" },
+	failure: { status: 401, error: "Unauthorized", message: "Invalid or missing access token", code: "unauthorized" },
 };
 
 afterEach(() => {
@@ -143,7 +135,7 @@ describe("resolveMcpAuth", () => {
 		expect(verifyMcpAccessToken).not.toHaveBeenCalled();
 	});
 
-	it("reports a rate-limited key as rate-limited rather than trying it as a token", async () => {
+	it("reports a rate-limited key as rate-limited", async () => {
 		const rateLimited: ApiAuthResult = {
 			failure: {
 				status: 429,
@@ -213,7 +205,7 @@ describe("resolveMcpAuth", () => {
 	});
 
 	it("fails closed when verification throws, without trying the token as an API key", async () => {
-		verifyMcpAccessToken.mockRejectedValue(new Error("token expired"));
+		verifyMcpAccessToken.mockRejectedValue(new Error("key set unreachable"));
 
 		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_TOKEN);
 		expect(resolveApiAuth).not.toHaveBeenCalled();
@@ -233,7 +225,7 @@ describe("resolveMcpAuth", () => {
 		expect(resolveApiAuth).not.toHaveBeenCalled();
 	});
 
-	it("treats an admin key shaped like a token as a key", async () => {
+	it("treats a configured admin key as a key, whatever it looks like", async () => {
 		vi.stubEnv("ADMIN_API_KEYS", "ops.prod.key");
 		resolveApiAuth.mockResolvedValue({ auth: adminKey });
 
@@ -247,9 +239,9 @@ describe("resolveMcpAuth", () => {
 		expect(selectUser).not.toHaveBeenCalled();
 	});
 
-	it("answers a credential that is neither with the key resolver's own wording", async () => {
-		resolveApiAuth.mockResolvedValue(INVALID_KEY);
-		await expect(resolveMcpAuth(bearer("nonsense"))).resolves.toEqual(INVALID_KEY);
-		expect(verifyMcpAccessToken).not.toHaveBeenCalled();
+	it("tries anything that is not an API key as an access token", async () => {
+		verifyMcpAccessToken.mockRejectedValue(new Error("invalid access token"));
+		await expect(resolveMcpAuth(bearer("nonsense"))).resolves.toEqual(INVALID_TOKEN);
+		expect(resolveApiAuth).not.toHaveBeenCalled();
 	});
 });

@@ -1,4 +1,4 @@
-import { API_KEY_RATE_LIMIT_PER_MINUTE } from "@workspace/config/constants";
+import { API_KEY_PREFIX, API_KEY_RATE_LIMIT_PER_MINUTE } from "@workspace/config/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -113,9 +113,14 @@ function bearerToken(request: Request): string | null {
 	return token.length > 0 ? token : null;
 }
 
-export function isAdminKey(token: string): boolean {
+function isAdminKey(token: string): boolean {
 	const keys = getAdminApiKeys();
 	return keys.length > 0 && keys.some((key) => timingSafeStringEqual(key, token));
+}
+
+export function presentsApiKey(request: Request): boolean {
+	const token = bearerToken(request);
+	return token !== null && (token.startsWith(API_KEY_PREFIX) || isAdminKey(token));
 }
 
 /**

@@ -4,7 +4,7 @@ import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
 import { type SSOOptions, sso } from "@better-auth/sso";
-import { API_KEY_RATE_LIMIT_PER_MINUTE, MCP_PATH } from "@workspace/config/constants";
+import { API_KEY_PREFIX, API_KEY_RATE_LIMIT_PER_MINUTE, MCP_PATH } from "@workspace/config/constants";
 import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
@@ -163,7 +163,7 @@ export function createAuth(options?: CreateAuthOptions) {
 			// from a browser.
 			apiKey({
 				references: "organization",
-				defaultPrefix: "elmo_",
+				defaultPrefix: API_KEY_PREFIX,
 				enableMetadata: true,
 				// Stamped onto each key at creation, so raising it does nothing for
 				// keys already issued.
@@ -215,12 +215,6 @@ export type Auth = ReturnType<typeof createAuth>;
 
 /** Cache identity, so the key set is read once every few minutes. */
 const jwksCacheKey = {};
-
-export function accessTokenIn(request: Request): string | null {
-	const authorization = parseAccessTokenAuthorization(request.headers.get("authorization"));
-	if (!authorization?.token || authorization.scheme === "Unknown") return null;
-	return authorization.token.split(".").length === 3 ? authorization.token : null;
-}
 
 /**
  * `verifyAccessTokenRequest`, but reading the keys through `auth.api`: it only
