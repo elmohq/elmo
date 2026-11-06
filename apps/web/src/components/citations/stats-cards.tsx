@@ -1,10 +1,21 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { cn } from "@workspace/ui/lib/utils";
 
-function StatCard({ title, tooltip, value }: { title: string; tooltip: React.ReactNode; value: React.ReactNode }) {
+function StatCard({
+	title,
+	tooltip,
+	value,
+	className,
+}: {
+	title: string;
+	tooltip: React.ReactNode;
+	value: React.ReactNode;
+	className?: string;
+}) {
 	return (
-		<Card className="flex flex-col">
+		<Card className={cn("flex flex-col", className)}>
 			<CardHeader className="gap-0">
 				<CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
 					{title}
@@ -31,9 +42,10 @@ export function CitationStatsCards({
 	totalCitations: number;
 }) {
 	return (
-		<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+		<div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
 			<StatCard
 				title="Brand Citation Share"
+				className="col-span-2 sm:col-span-1"
 				tooltip="The percentage of all citations that link to your brand's domain. A higher share means AI models are more likely to reference your content."
 				value={`${brandShare}%`}
 			/>

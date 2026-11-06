@@ -106,8 +106,4 @@ HEADER
 cat "$TMP_OUTPUT"
 } > "$OUTPUT"
 
-# The CLI formats with Prettier and emits imports unsorted, both of which fail
-# `pnpm lint`. Run Biome so the generated file is committable as-is.
-pnpm exec biome check --write "$OUTPUT" >/dev/null
-
 echo "[generate-auth-schema] Written $(wc -l < "$OUTPUT") lines to $OUTPUT"

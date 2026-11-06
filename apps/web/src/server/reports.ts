@@ -20,8 +20,10 @@ export const getReportsFn = createServerFn({ method: "GET" }).handler(async () =
 		.select({
 			id: reports.id,
 			brandName: reports.brandName,
+			brandAliases: reports.brandAliases,
 			brandWebsite: reports.brandWebsite,
 			status: reports.status,
+			progress: reports.progress,
 			createdAt: reports.createdAt,
 			completedAt: reports.completedAt,
 			updatedAt: reports.updatedAt,
@@ -44,6 +46,7 @@ export const createReportFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandName: z.string().min(1),
+			brandAliases: z.array(z.string()).max(10).optional(),
 			// The report worker fetches this page, so reject anything it can't
 			// fetch (non-http(s) schemes) here rather than after the row exists.
 			brandWebsite: z
@@ -63,6 +66,7 @@ export const createReportFn = createServerFn({ method: "POST" })
 
 		const createdReport = await createReport({
 			brandName: data.brandName,
+			brandAliases: data.brandAliases,
 			brandWebsite: data.brandWebsite,
 			manualPrompts,
 		});

@@ -22,7 +22,8 @@ const pairItems = comparePairs.map(([a, b]) => ({
 const items = [...setItems, ...pairItems];
 
 export const Route = createFileRoute("/ai-visibility-tools/compare/")({
-	head: () => ({
+	loader: () => ({ items }),
+	head: ({ loaderData }) => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/ai-visibility-tools/compare/")({
 				{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 				{ name: "Compare", path: "/ai-visibility-tools/compare" },
 			]),
-			itemListJsonLd(items),
+			itemListJsonLd(loaderData?.items ?? []),
 		],
 	}),
 	component: CompareHub,
@@ -48,7 +49,6 @@ function CompareHub() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					eyebrow="Compare"
 					title="AI visibility tools, head-to-head"
 					lead="Weighing the AI visibility tools against each other? These side-by-side breakdowns compare tracking, analytics, and pricing across the funded AEO platforms and the SEO suites that added AI search monitoring, and show where an open-source tool like Elmo fits in."
 				/>

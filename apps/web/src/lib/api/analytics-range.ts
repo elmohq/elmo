@@ -3,6 +3,7 @@
  * beside them. `/prompts/{promptId}/snapshot` keeps the calendar days it
  * shipped with, being a published contract.
  */
+import { bucketStart } from "@workspace/lib/rollups";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 import { ApiError } from "./handler";
 
@@ -29,16 +30,29 @@ function parseInstant(name: string, raw: string): string {
 	return parsed.toISOString();
 }
 
+// Analytics are aggregated per quarter-hour bucket, which can't be split; flooring
+// lets the response echo the window that was actually answered.
+function alignToBucket(instant: string): string {
+	return bucketStart(new Date(instant)).toISOString();
+}
+
 /** Over plain values, so the MCP tools and the URL parser refuse a bad window
  * the same way. */
 export function resolveAnalyticsWindow(rawStart: string | null, rawEnd: string | null): AnalyticsWindow {
 	if (!rawStart || !rawEnd) {
 		invalid("A window is required: both start and end, as ISO 8601 timestamps");
 	}
-	const start = parseInstant("start", rawStart);
-	const end = parseInstant("end", rawEnd);
+	const requestedStart = parseInstant("start", rawStart);
+	const requestedEnd = parseInstant("end", rawEnd);
+	const start = alignToBucket(requestedStart);
+	const end = alignToBucket(requestedEnd);
+	// Must run after alignment so a sub-bucket window is refused, not answered empty.
 	if (start >= end) {
-		invalid("start must be before end");
+		invalid(
+			requestedStart < requestedEnd
+				? "start and end fall in the same quarter-hour bucket, which leaves an empty window"
+				: "start must be before end",
+		);
 	}
 	return { from: start, to: end, timezone: BUCKET_ZONE };
 }
@@ -56,28 +70,29 @@ export function parseAnalyticsFilters(url: URL): { model?: string; tags?: string
 	};
 }
 
-export function parsePaging(url: URL, defaultLimit = 20): { page: number; limit: number; offset: number } {
-	const rawPage = url.searchParams.get("page") ?? "1";
-	const rawLimit = url.searchParams.get("limit") ?? String(defaultLimit);
-	if (!/^\d+$/.test(rawPage) || Number(rawPage) < 1) invalid("page must be a positive integer");
-	if (!/^\d+$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 100) {
-		invalid("limit must be an integer between 1 and 100");
-	}
-	const page = Number(rawPage);
-	const limit = Number(rawLimit);
-	return { page, limit, offset: (page - 1) * limit };
-}
-
 /**
- * Clamped rather than rejected, unlike `parsePaging`: on the list endpoints
- * that predate the spec the cap is there to bound a runaway query, not to
- * change what an existing caller gets back.
+ * Clamped rather than rejected, as the shared `Limit` parameter documents: the
+ * cap is there to bound a runaway query, not to refuse a caller who asked for more.
  */
 export function clampedPaging(
 	searchParams: URLSearchParams,
 	maxLimit = 100,
+	defaultLimit = 20,
 ): { page: number; limit: number; offset: number } {
-	const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-	const limit = Math.max(1, Math.min(maxLimit, parseInt(searchParams.get("limit") || "20")));
+	const parsed = (name: string, fallback: number) => {
+		const value = parseInt(searchParams.get(name) ?? "", 10);
+		return Number.isNaN(value) ? fallback : value;
+	};
+	const page = Math.max(1, parsed("page", 1));
+	const limit = Math.max(1, Math.min(maxLimit, parsed("limit", defaultLimit)));
 	return { page, limit, offset: (page - 1) * limit };
+}
+
+/** Most brands get every row on the first page, and a page stays well inside a response a function can return. */
+export function analyticsListPaging(searchParams: URLSearchParams) {
+	return clampedPaging(searchParams, 1000, 1000);
+}
+
+export function pagination(page: number, limit: number, total: number) {
+	return { page, limit, total, totalPages: Math.ceil(total / limit) };
 }

@@ -39,10 +39,6 @@ const require = createRequire(import.meta.url);
 const BRAND_COLOR = "#2563eb";
 const OUTPUT_DIR = resolve(__dirname, "../public/icons");
 
-// ---------------------------------------------------------------------------
-// SVG icons — hand-built strings with Titan One embedded as base64
-// ---------------------------------------------------------------------------
-
 const TITAN_ONE = readFileSync(require.resolve("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"));
 
 function fontFaceRule(base64: string): string {
@@ -75,10 +71,6 @@ function buildMaskableSvg(fontBase64: string): string {
   <text x="50%" y="78%" font-family="'Titan One', sans-serif" font-size="120" font-weight="400" fill="${BRAND_COLOR}" text-anchor="middle">e</text>
 </svg>`;
 }
-
-// ---------------------------------------------------------------------------
-// PNG icons — rendered via Takumi (JSX → image), matches brand-kit sizing
-// ---------------------------------------------------------------------------
 
 const fonts = [{ name: "Titan One", data: TITAN_ONE, style: "normal" as const, weight: 400 as const }];
 
@@ -123,10 +115,6 @@ function MaskableIcon({ size }: { size: number }) {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
-
 mkdirSync(OUTPUT_DIR, { recursive: true });
 
 const fontBase64 = TITAN_ONE.toString("base64");
@@ -157,11 +145,9 @@ for (const { name, element, size } of pngIcons) {
 	console.log(`  ✓ ${name}`);
 }
 
-// ---------------------------------------------------------------------------
 // ICO — multi-resolution PNG-in-ICO built from the rendered PNGs.
 // Kept at /icons/favicon.ico (not /favicon.ico at the root) so whitelabel
 // deployments don't end up serving Elmo's ICO for default browser requests.
-// ---------------------------------------------------------------------------
 
 // Transparent background — browsers rasterize this onto the tab strip, which
 // is often dark-themed. apple-touch-icon above keeps its white bg because iOS

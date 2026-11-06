@@ -3,13 +3,16 @@
 	"pages": [
 		"index",
 		"providers",
+		"cli-lab",
 		"registration",
 		"brand-setup",
 		"prompt-wizard",
 		"dashboard",
 		"visibility",
+		"sentiment",
 		"citations",
 		"settings",
-		"reports"
+		"reports",
+		"agent-readiness-audit"
 	]
 }

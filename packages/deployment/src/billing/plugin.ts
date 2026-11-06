@@ -1,16 +1,9 @@
 /**
- * The @better-auth/stripe server plugin, configured for org-scoped
- * subscriptions on the Elmo Cloud plan catalog.
+ * Only cloud constructs this, so no Stripe routes exist in other modes. The
+ * webhook is the single writer of subscription status.
  *
- * Injected into the shared auth factory via CreateAuthOptions.extraPlugins in
- * cloud mode only — no other deployment mode constructs it, so no Stripe
- * routes or behavior exist outside cloud. The webhook
- * (POST /api/auth/stripe/webhook) is the single writer of subscription status;
- * web and worker read the resulting rows through getOrgBillingState.
- *
- * Schema note: the schema-relevant options here (subscription.enabled,
- * organization.enabled) are mirrored in the schema-generation helper in
- * packages/lib/scripts/generate-auth-schema.sh — keep them in sync.
+ * subscription.enabled and organization.enabled are mirrored in
+ * packages/lib/scripts/generate-auth-schema.sh; keep them in sync.
  */
 
 import { stripe } from "@better-auth/stripe";
@@ -23,10 +16,7 @@ import { savePremiumAddonQuantity, syncPremiumAddonFromSubscription } from "./ad
 import { dunningNoticeForStatusChange, sendDunningNotice } from "./dunning";
 import { getStripeClient } from "./stripe-client";
 
-/**
- * Plans handed to the plugin: named by plan key, priced by lookup key so the
- * same build runs against any bootstrapped Stripe account (test or live).
- */
+/** Priced by lookup key, so one build runs against any bootstrapped Stripe account. */
 export function buildStripePlans() {
 	return PLAN_KEYS.map((key) => ({
 		name: key,
@@ -46,20 +36,10 @@ export async function isOrgBillingAdmin(userId: string, organizationId: string):
 }
 
 /**
- * Extra Checkout Session settings for every plan purchase.
- *
- * `allow_promotion_codes` is what puts the "Add promotion code" field on
- * Stripe's checkout page; without it a customer holding a launch or partner
- * code has nowhere to type it. The codes themselves are created in the Stripe
- * dashboard, per campaign — nothing here needs to know they exist.
- *
- * Only initial checkout goes through a Session. A customer already on a plan
- * switches through the subscription API, which takes no promotion code, so a
- * discount for an existing subscriber is applied to their subscription in
- * Stripe rather than typed in here.
- *
- * Stripe rejects `allow_promotion_codes` alongside a pre-applied `discounts`
- * array, so this must stay the only discount mechanism on the session.
+ * Puts the promotion code field on Stripe Checkout; the codes live in the Stripe
+ * dashboard. Only first checkout uses a Session, so an existing subscriber's
+ * discount is applied to their subscription in Stripe instead. Stripe rejects
+ * this alongside a pre-applied `discounts`, so it must stay the only discount here.
  */
 const CHECKOUT_SESSION_PARAMS = { allow_promotion_codes: true } as const;
 
@@ -67,8 +47,7 @@ export function createStripeBillingPlugin() {
 	return stripe({
 		stripeClient: getStripeClient(),
 		stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
-		// Customers are created lazily for the org at first checkout; user-level
-		// customers are never needed (billing is org-scoped).
+		// Billing is per org, so the customer is created at the org's first checkout.
 		createCustomerOnSignUp: false,
 		organization: { enabled: true },
 		subscription: {
@@ -77,10 +56,8 @@ export function createStripeBillingPlugin() {
 			requireEmailVerification: true,
 			authorizeReference: async ({ user, referenceId }) => isOrgBillingAdmin(user.id, referenceId),
 			getCheckoutSessionParams: () => ({ params: CHECKOUT_SESSION_PARAMS }),
-			// Fires on every subscription webhook update — the point where
-			// add-on quantity changes (from this app, the customer portal, or
-			// the Stripe dashboard) converge into organization_settings, and
-			// where status transitions surface for dunning email.
+			// Add-on changes from the app, the customer portal or the Stripe dashboard
+			// all arrive here, so this is where they reach organization_settings.
 			onSubscriptionUpdate: async ({ event, subscription, stripeSubscription }) => {
 				await syncPremiumAddonFromSubscription(subscription.referenceId, stripeSubscription);
 				if (event.type === "customer.subscription.updated") {

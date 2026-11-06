@@ -1,10 +1,4 @@
-import {
-	IconArrowDownRight,
-	IconExternalLink,
-	IconInfoCircle,
-	IconPlus,
-	IconSwitchHorizontal,
-} from "@tabler/icons-react";
+import { IconArrowDownRight, IconExternalLink, IconInfoCircle, IconPlus } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -15,19 +9,17 @@ import type { CitationData } from "@/components/citations/types";
 
 type WhatsChanged = NonNullable<CitationData["whatsChanged"]>;
 
-type ChangeType = "new_pages" | "dropped_pages" | "title" | "new_domains" | "dropped_domains";
+type ChangeType = "new_pages" | "dropped_pages" | "new_domains" | "dropped_domains";
 
 type Change =
 	| ({ type: "new_pages" } & WhatsChanged["newUrls"][number])
 	| ({ type: "dropped_pages" } & WhatsChanged["droppedUrls"][number])
-	| ({ type: "title" } & WhatsChanged["titleChanges"][number])
 	| ({ type: "new_domains" } & WhatsChanged["newDomains"][number])
 	| ({ type: "dropped_domains" } & WhatsChanged["droppedDomains"][number]);
 
 const CHANGE_TYPE_TABS: { key: ChangeType; label: string }[] = [
 	{ key: "new_pages", label: "New Pages" },
 	{ key: "dropped_pages", label: "Dropped Pages" },
-	{ key: "title", label: "Title Changes" },
 	{ key: "new_domains", label: "New Domains" },
 	{ key: "dropped_domains", label: "Dropped Domains" },
 ];
@@ -37,7 +29,6 @@ const CHANGE_ICONS: Record<ChangeType, ReactNode> = {
 	new_domains: <IconPlus className="h-3.5 w-3.5 text-green-600" />,
 	dropped_pages: <IconArrowDownRight className="h-3.5 w-3.5 text-red-600" />,
 	dropped_domains: <IconArrowDownRight className="h-3.5 w-3.5 text-red-600" />,
-	title: <IconSwitchHorizontal className="h-3.5 w-3.5 text-amber-600" />,
 };
 
 const MAX_VISIBLE_CHANGES = 6;
@@ -59,19 +50,6 @@ function describeChange(change: Change): { id: string; label: string; url: strin
 				label: formatUrlForDisplay(change.url),
 				url: change.url,
 				description: `${change.previousCount} → ${change.currentCount} citations`,
-			};
-		case "title":
-			return {
-				id: change.url,
-				label: formatUrlForDisplay(change.url),
-				url: change.url,
-				description: (
-					<>
-						<span className="line-through opacity-60">{change.previousTitle}</span>
-						{" → "}
-						<span className="font-medium text-foreground">{change.currentTitle}</span>
-					</>
-				),
 			};
 		case "new_domains":
 			return {
@@ -112,7 +90,6 @@ export function RecentChangesCard({ whatsChanged, days }: { whatsChanged: WhatsC
 		const byType: Record<ChangeType, Change[]> = {
 			new_pages: whatsChanged.newUrls.map((u) => ({ type: "new_pages", ...u })),
 			dropped_pages: whatsChanged.droppedUrls.map((u) => ({ type: "dropped_pages", ...u })),
-			title: whatsChanged.titleChanges.map((u) => ({ type: "title", ...u })),
 			new_domains: whatsChanged.newDomains.map((d) => ({ type: "new_domains", ...d })),
 			dropped_domains: whatsChanged.droppedDomains.map((d) => ({ type: "dropped_domains", ...d })),
 		};
@@ -130,7 +107,7 @@ export function RecentChangesCard({ whatsChanged, days }: { whatsChanged: WhatsC
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							Compares this {formatPeriodLabel(days)} with the {formatPeriodLabel(days)} before it. Shows new and
-							dropped pages, title changes, and new and dropped domains.
+							dropped pages and domains.
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>

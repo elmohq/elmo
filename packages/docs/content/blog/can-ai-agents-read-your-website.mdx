@@ -1,0 +1,147 @@
+---
+title: "Can AI Agents Read Your Website? What Changes When They Can't"
+description: "When a buyer asks ChatGPT or Claude about your pricing, the agent tries to open your site. New data on what happens when it can't, and how to test yours."
+date: "2026-09-29"
+author: ai
+metaTitle: "Can AI Agents Read Your Website? (2026 Data)"
+tags:
+  - aeo
+  - technical-seo
+  - ai-crawlers
+  - ai-agents
+definedTerms:
+  - term: Agent experience (AX)
+    definition: "Agent experience is how easily an AI agent, fetching pages on a person's behalf, can reach and read a business's own website: whether the content survives without JavaScript, whether bot controls let user-triggered fetchers through, and whether facts like pricing sit on a reachable page."
+  - term: User-triggered fetcher
+    definition: "A user-triggered fetcher is a bot that loads a specific page in real time because a person asked an AI assistant a question, such as ChatGPT-User, Claude-User, or Perplexity-User. It builds no index; it reads the page for one answer."
+howTo:
+  name: "How to check whether AI agents can read your key pages"
+  description: "A short audit of the pages AI agents open when a buyer asks about your pricing, features, or setup."
+  steps:
+    - name: List the pages agents will look for
+      text: "Write down the URLs that answer your three most common buyer questions: pricing, the feature or comparison page, and setup or onboarding docs. Pricing goes first; it is where readability changed answer accuracy the most."
+    - name: Fetch each page without JavaScript
+      text: "Run curl on each URL, or load it with JavaScript disabled, and search the raw HTML for the facts a buyer would ask about: plan names, prices, limits, key features. If they only appear after scripts run, most AI fetchers will not see them."
+    - name: Check your CDN and WAF bot rules
+      text: "Look for rules that block or challenge AI traffic, including categories labelled Agent or AI Assistant. On Cloudflare, domains onboarded from 15 September 2026 block Agent traffic by default on pages that display ads."
+    - name: Separate training from answering
+      text: "Keep training crawlers blocked if that is your policy, but confirm that user-triggered fetchers such as ChatGPT-User, Claude-User, and Perplexity-User can reach public pages. They are the ones reading your site while a buyer waits."
+    - name: Ask the engines directly
+      text: "Ask ChatGPT, Claude, and Perplexity what your plans cost and what a specific feature does, naming your domain. Note whether the answer quotes your site, cites third parties instead, says it could not access the page, or leaves the fact out."
+faq:
+  - question: Can ChatGPT read my website?
+    answer: "Usually, if your content is in the HTML the server sends. When a user asks about a page, ChatGPT fetches it with the ChatGPT-User agent. Crawl-log analysis by Vercel and MERJ found that none of the major AI crawlers, OpenAI's included, executed JavaScript, so content that only appears after client-side rendering is often invisible to them. Firewall or CDN rules that block AI agents will also stop the fetch."
+  - question: Do AI agents render JavaScript?
+    answer: "Mostly not. Vercel and MERJ's December 2024 analysis of crawler traffic found that OpenAI, Anthropic, Meta, ByteDance, and Perplexity crawlers did not render JavaScript. ChatGPT's crawler requested JavaScript files in 11.5% of fetches and Claude's in 23.8%, but neither ran them. Google's Gemini was the exception, because it uses Googlebot's rendering infrastructure."
+  - question: Does robots.txt block ChatGPT-User?
+    answer: "Not reliably. OpenAI's crawler documentation says that because ChatGPT-User actions are initiated by a user, 'robots.txt rules may not apply.' Blocking OAI-SearchBot keeps a site out of ChatGPT search answers, and blocking GPTBot opts out of training. A CDN or firewall rule is what actually stops a user-triggered fetch."
+  - question: Does my own website matter for AI visibility if most citations are third-party?
+    answer: "Yes, at a different step. Third-party sources dominate when an AI engine is building a shortlist from a category question. Once a buyer asks about your business specifically, agents try to read your own pages. In a 2026 preprint covering 37,927 agent journeys, answers about agent-readable businesses were built from the business's own pages 78% of the time, against 58% for businesses whose sites agents struggled to read."
+  - question: What happens when an AI agent can't read my site?
+    answer: "It mostly leaves things out rather than making them up. In the same preprint, facts the user asked for went unmentioned 45% of the time in answers built from the wider web, against 29% in answers built from the business's own site. Facts stated wrongly barely moved, from 4% to 6%. Answers about hard-to-read sites were also four times more likely to say the agent could not access the site."
+---
+
+**When a buyer asks an AI assistant what your plans cost, the assistant usually tries to open your pricing page.** If it can't, because the prices render in JavaScript or a firewall turns the fetcher away, the answer gets built from whatever else it finds: review sites, old comparison posts, a Reddit thread. A [preprint posted on 28 September 2026](https://arxiv.org/abs/2609.34951) put numbers on that swap. Across 37,927 agent journeys about 1,056 real businesses, answers about sites agents could read were built from those sites' own pages 78% of the time, compared with 58% for sites they couldn't. The readable businesses were also clearly recommended 1.9 times as often.
+
+That is one study, from a company that sells the score it measures with. It lines up with two older, independent datasets on how AI fetchers behave, and it has a gap in how it was designed that changes what you should do with it. Both are covered below.
+
+**Key takeaways**
+
+- Most AI fetchers don't run JavaScript. Crawl logs from [Vercel and MERJ](https://vercel.com/blog/the-rise-of-the-ai-crawler) found none of the major AI crawlers rendering it. Google's Gemini is the exception, because it uses Googlebot.
+- The answer-time fetchers (ChatGPT-User, Claude-User, Perplexity-User) are not controlled by robots.txt the way you might assume. [OpenAI says](https://developers.openai.com/api/docs/bots) robots.txt "may not apply" to ChatGPT-User. CDN rules are what actually block them, and Cloudflare now [blocks that category by default](https://blog.cloudflare.com/content-independence-day-ai-options/) on ad-displaying pages of new domains.
+- When agents can't read a site, they mostly **omit** facts rather than invent them: 45% of requested facts went unmentioned, against 29%. Wrong facts rose only from 4% to 6%.
+- Readability mattered most for pricing (+64% accuracy), less for features (+18%), and not measurably for setup questions.
+- Every test prompt named the business's domain. The study measures what happens *after* a buyer already has you in mind. It says nothing about whether you make the shortlist in the first place.
+
+## What an AI agent does when someone asks about your business
+
+There are three kinds of AI bots, and only one of them is reading your site while a buyer waits. Cloudflare's [current classification](https://blog.cloudflare.com/content-independence-day-ai-options/) calls them Training ("a crawler taking your content to train or fine-tune a model"), Search ("any behavior that collects or indexes your content, so it can answer questions about it later"), and Agent ("automated behavior that is acting, usually in real time, on a person's behalf, to get something done right now").
+
+Our [robots.txt guide](/blog/robots-txt-ai-crawlers) covers the first two. This post is about the third. When someone asks Claude "what subscription options does example.com offer?", the assistant runs a search, picks results, and fetches pages, often your own. How much of your site survives that fetch decides whether the answer quotes you or quotes someone writing about you.
+
+These fetchers are a small share of AI bot traffic. Cloudflare's [breakdown of AI crawling by purpose](https://blog.cloudflare.com/ai-crawler-traffic-by-purpose-and-industry/) for July 2025 put training at nearly 80% of AI bot requests, with search, user action, and undeclared together under 5%. ChatGPT-User made up nearly three-quarters of the user-action group. So they are rare, but each request is tied to a live question, and often a commercial one.
+
+## Two things stop an agent reading your pages
+
+### JavaScript it won't run
+
+Vercel and MERJ looked at crawler traffic across Vercel's network and published the results in [December 2024](https://vercel.com/blog/the-rise-of-the-ai-crawler). Their headline: "None of the major AI crawlers currently render JavaScript". That covered OpenAI, Anthropic, Meta, ByteDance, and Perplexity. ChatGPT's crawler requested JavaScript files in 11.5% of its fetches and Claude's in 23.8%, but neither ran them. Gemini was the exception, because it rides on Googlebot's rendering. AppleBot also rendered pages.
+
+The same logs show how often these bots miss. ChatGPT's crawler spent 34.8% of its fetches on 404 pages and Claude's spent 34.2%, against 8.2% for Googlebot. AI fetchers guess URLs, follow stale links, and give up faster than Google does.
+
+The data is almost two years old, and crawler behavior changes. Test your own pages rather than rely on it (the steps are below). Still, the practical point holds: if your plan names, prices, or feature list only show up after client-side rendering, assume most assistants other than Gemini can't see them.
+
+### Bot controls that turn them away
+
+The second failure is a closed door. OpenAI's [crawler documentation](https://developers.openai.com/api/docs/bots) is explicit that its answer-time fetcher is a different case from its indexer: "Because these actions are initiated by a user, robots.txt rules may not apply" to ChatGPT-User. Blocking OAI-SearchBot keeps you out of ChatGPT search answers. Blocking GPTBot opts you out of training. Neither controls the live fetch.
+
+What does control it is your CDN or firewall. From 15 September 2026, Cloudflare blocks the Agent category by default on pages that display ads, for all newly onboarded domains, alongside Training bots. Search bots stay allowed. Existing domains keep their settings. But anyone who launched a site on Cloudflare this month, or copied a template bot policy, may be turning away the fetchers that answer buyer questions without having decided to.
+
+In the preprint's data, agents were blocked on-site in 33.5% of runs about hard-to-read businesses, against 15.8% for readable ones.
+
+## What the 37,927-journey study found
+
+The preprint, "[AX is the New AEO](https://arxiv.org/abs/2609.34951)" by Ido Finder, Assaf Elovic, and Gad Shalev of ora, scored sites on what it calls agent experience: whether content survives a fetch without JavaScript, whether bot controls admit user-triggered agents, whether pricing and docs are reachable, and whether machine-readable entry points such as llms.txt or per-page Markdown exist. It compared 528 sites scoring 0.65 or higher with 528 scoring 0.50 or lower. Each pair was matched within an industry on Tranco rank, prior presence in model training data, and two proxies for third-party presence (review and "vs" pages, Wikipedia, Reddit).
+
+Each business got three questions (pricing, features, setup), each run three times through four agent setups: the Claude Agent SDK on Sonnet 4.6, Claude Code on Haiku 4.5, and two Tavily-backed agents on GPT-5.4 and GPT-5.4 mini. Two blind judges scored the answers. The authors released [code and a 10% sample of the data](https://github.com/ora/research/tree/main/ax-is-the-new-aeo).
+
+| Measure | Readable sites | Hard-to-read sites |
+|---|---|---|
+| Answer built from the business's own pages | 78% | 58% |
+| Answer built from web search results | 12% | 25% |
+| Answer from model training knowledge | 7% | 10% |
+| Clearly recommended (both judges' top score) | 20% | 11% |
+| Agent blocked on-site | 15.8% | 33.5% |
+| Answer says it could not access the site | 4% | 16% |
+| Answer vouches from secondhand sources | 5% | 15% |
+
+Agents also worked harder on hard-to-read sites: 23% more turns, and 64% more cost per grounded answer on average. Web searches per run ranged from 1.8 on the most readable sites to 4.5 on the least readable, and fell steadily as readability rose.
+
+### Omission, not hallucination
+
+The accuracy result is the one to show a skeptical stakeholder. For 131 businesses with checkable ground truth, the authors graded 31,127 individual facts and compared answers built from the site with answers built from the wider web, *about the same business*. That within-business comparison rules out the objection that readable sites simply belong to better companies.
+
+| What happened to each fact the user asked for | Built from the site | Built from the web |
+|---|---|---|
+| Stated correctly | 40% | 28% |
+| Half right | 27% | 21% |
+| Stated wrong | 4% | 6% |
+| Never mentioned | 29% | 45% |
+
+Wrong answers barely moved. Missing ones jumped. A quarter of web-built answers (25.0%) contained none of the facts the user asked for, against 6.7% of site-built answers. For a business with an ordinary footprint on the web, the usual risk of an unreadable site isn't a confident falsehood. It's a vague answer that sends the buyer to check for themselves, or to a competitor whose pricing the agent *could* read. The exception is when the web holds claims about you that are wrong. Agents lean on secondhand sources three times as often for hard-to-read sites, and [they rarely check those sources](/blog/ai-search-fact-checking).
+
+The gain was uneven by question type:
+
+- **Pricing:** +23.5 points of graded accuracy (+64%)
+- **Features:** +6.8 points (+18%)
+- **Setup:** +0.4 points, not significant
+
+It was also uneven by agent. Claude Code, the smallest model, gained the most (+38.3 points). The GPT-5.4 agent showed no gain (−2.3 points, not significant). Clear-recommendation rates varied sevenfold between the four setups, from 2–5% on Claude Code to 20–36% on the GPT-5.4 agent. That is the same spread you see in [why AI visibility tools disagree](/blog/why-ai-visibility-scores-differ): the harness is part of the measurement.
+
+## What the study doesn't show
+
+**It only tests questions that already name you.** Every prompt was anchored to a domain. The pricing template reads: "Can you find out what subscription options are available at {domain}?" That is the drill-down step, after a buyer has you in mind. The paper's claim that third-party presence had "no confirmed effect" once readability was held fixed should be read in that light. If the user types your URL, of course the agent's first move is your site. For category questions like "best invoicing tool for freelancers", where the answer is a shortlist built from other people's pages, this design tells you nothing. It doesn't overturn what's known about how engines pick sources for open questions, from [search rankings](/blog/rankings-and-ai-citations) to third-party coverage. It covers the step after.
+
+**The measuring stick belongs to the authors.** Readability is scored by ora's own production ranker, which is a commercial product. The authors disclose this. The score also bundles several things together (no-JavaScript fetchability, bot admission, structured data, llms.txt, Markdown fallbacks), so the study can't tell you which one did the work. It doesn't settle the [llms.txt debate](/blog/do-llms-txt-files-matter-for-aeo). Given the Vercel data, fetchability and bot admission are the likelier drivers, but that's an inference, not a finding.
+
+**Content depth wasn't matched.** Sites that block agents may also just publish less. The authors say so and note that only a before-and-after intervention would settle it. The accuracy result survives this objection because it compares answers about the same business. The grounding and recommendation results don't.
+
+**The absolute numbers are small.** Doubling from 11% to 20% "clearly recommended" is a real lift. It also means four out of five answers about even the most readable businesses stopped short of a clear recommendation. Readability gets the agent to your facts. It doesn't make the case for you.
+
+## How to check whether agents can read your site
+
+The study's clearest finding points to a clear priority: start where the accuracy gap was largest. This is a working-session audit, not a replatforming project.
+
+1. **List the pages behind your three most common buyer questions**: pricing, your main feature or comparison page, and setup docs. Do them in that order.
+2. **Fetch each without JavaScript.** Run `curl -s https://yourdomain.com/pricing | grep -i "per month"`, or whatever wording your plans use. Or load the page with JavaScript disabled. If the prices, plan limits, and feature names aren't in the raw HTML, move them into server-rendered markup. A pricing table filled in by a script after load is the most common failure.
+3. **Check the door, not just robots.txt.** In your CDN or WAF, look for rules that block or challenge AI traffic, and for categories labelled Agent or AI Assistant. On Cloudflare domains added since 15 September 2026, check the default on any page that carries ads.
+4. **Keep training and answering separate.** Blocking training crawlers is a legitimate policy. Blocking ChatGPT-User, Claude-User, and Perplexity-User on public pricing and product pages is rarely one anyone chose on purpose.
+5. **Ask the engines, naming your domain.** Ask ChatGPT, Claude, and Perplexity what your plans cost and what one specific feature does. Classify each answer: quotes your site, cites third parties, says it couldn't access the page, or leaves the fact out. The last two are the failures this study says readability fixes.
+
+Then keep doing step 5 on a schedule. A single check tells you where you stand today. A site redesign, a CDN migration, or a new bot rule can silently undo it, and the first sign is usually a sales call where the prospect quotes last year's pricing.
+
+## Where this fits
+
+AI visibility has two questions that are easy to blur. Does the engine put you on the shortlist? And when a buyer asks about you by name, does the answer reflect what's on your site? The first is mostly decided by other people's pages: reviews, comparisons, [Reddit](/blog/reddit-ai-citations), [press coverage](/blog/press-releases-ai-visibility). The second, on this evidence, is decided largely by whether the agent can open your pages and read them. It's the rare part of AI visibility that's entirely under your control.
+
+[Elmo](https://www.elmohq.com/) is an open-source AI visibility platform that runs your prompts across ChatGPT, Claude, Perplexity, Gemini, and Google's AI Overviews and records every mention, citation, and cited URL. Add branded, domain-named prompts about pricing and features next to your category prompts. You can then see which answers cite your own pages and which fall back to third parties, and spot the week that changes. For the broader method, see [how to track your brand in AI search](/answer-engine-optimization) and [how to earn AI citations](/blog/ai-citations).

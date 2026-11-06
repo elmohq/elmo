@@ -5,7 +5,7 @@
  * saving.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -13,12 +13,14 @@ import { Separator } from "@workspace/ui/components/separator";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { AlertCircle, Play, Rocket } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { type CompetitorEntry, CompetitorsEditor, newCompetitorEntry } from "@/components/competitors-editor";
 import { type EditablePrompt, newPromptEntry, PromptsListEditor } from "@/components/prompts-list-editor";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
+import { usePolledBrandJob } from "@/hooks/use-polled-brand-job";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -32,12 +34,6 @@ import {
 interface PromptWizardProps {
 	onComplete: () => void;
 }
-
-/** Brand analysis runs in the worker (LLM + web search, ~1 min); the client polls for the result. */
-const POLL_INTERVAL_MS = 2000;
-const ANALYZE_TIMEOUT_MS = 6 * 60 * 1000; // give up after ~6 minutes
-
-const analyzeStatusKey = (brandId: string) => ["analyze-brand", "status", brandId] as const;
 
 interface WizardData {
 	brandName: string;
@@ -84,7 +80,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const queryClient = useQueryClient();
 	const router = useRouter();
 	const writeError = useWriteErrorMessage();
-	const [phase, setPhase] = useState<"idle" | "analyzing" | "review">("idle");
+	const [reviewing, setReviewing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
@@ -99,64 +95,15 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 	const brandId = brand?.id;
 
-	// Stop polling, drop the cached status so the next run starts clean, and
-	// (best-effort) cancel the worker job. `errorMessage` surfaces a reason
-	// (timeout); a bare cancel passes null.
-	const stopAnalyzing = useCallback(
-		(errorMessage: string | null) => {
-			setPhase("idle");
-			setError(errorMessage);
-			if (brandId) {
-				queryClient.removeQueries({ queryKey: analyzeStatusKey(brandId) });
-				cancelAnalyzeBrandFn({ data: { brandId } }).catch(() => {});
-			}
+	const analysis = usePolledBrandJob({
+		queryKey: ["analyze-brand", brandId],
+		start: () => {
+			if (!brand?.id || !brand.website) throw new Error("Brand isn't loaded yet.");
+			return startAnalyzeBrandFn({ data: { brandId: brand.id, website: brand.website, brandName: brand.name } });
 		},
-		[brandId, queryClient],
-	);
-
-	const { mutate: enqueueAnalysis, isSuccess: analysisEnqueued } = useMutation({
-		mutationFn: (vars: { brandId: string; website: string; brandName?: string }) => startAnalyzeBrandFn({ data: vars }),
-		onError: (err) => {
-			setError(writeError(err, "Analysis failed"));
-			setPhase("idle");
-		},
-	});
-
-	// Poll the job status while analyzing. The query stops itself once the job
-	// reaches a terminal state (refetchInterval returns false), and is disabled
-	// the moment we leave the analyzing phase.
-	const statusQuery = useQuery({
-		queryKey: analyzeStatusKey(brandId ?? "none"),
-		queryFn: () => getAnalyzeBrandStatusFn({ data: { brandId: brandId! } }),
-		// Only poll once the job is actually enqueued.
-		enabled: phase === "analyzing" && analysisEnqueued && !!brandId,
-		staleTime: 0,
-		gcTime: 0,
-		refetchInterval: (query) => (query.state.data?.status === "pending" ? POLL_INTERVAL_MS : false),
-		refetchIntervalInBackground: true,
-	});
-
-	const handleAnalyze = useCallback(() => {
-		if (!brand?.website || !brand?.id) return;
-		setError(null);
-		// Clear any stale status from a previous run before we start polling.
-		queryClient.removeQueries({ queryKey: analyzeStatusKey(brand.id) });
-		setPhase("analyzing");
-		enqueueAnalysis({ brandId: brand.id, website: brand.website, brandName: brand.name });
-	}, [brand?.website, brand?.id, brand?.name, queryClient, enqueueAnalysis]);
-
-	// React to status transitions while analyzing.
-	const statusData = statusQuery.data;
-	useEffect(() => {
-		if (phase !== "analyzing" || !statusData) return;
-		if (statusData.status === "failed") {
-			setError(statusData.error);
-			setPhase("idle");
-			if (brandId) queryClient.removeQueries({ queryKey: analyzeStatusKey(brandId) });
-			return;
-		}
-		if (statusData.status === "done") {
-			const suggestion = statusData.suggestion;
+		poll: () => getAnalyzeBrandStatusFn({ data: { brandId: brandId! } }),
+		cancel: () => cancelAnalyzeBrandFn({ data: { brandId: brandId! } }),
+		onDone: ({ suggestion }) => {
 			setData({
 				brandName: suggestion.brandName || brand?.name || "",
 				website: brand?.website || suggestion.website || "",
@@ -174,24 +121,22 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					newPromptEntry({ value: p.prompt, tags: p.tags, enabled: true }),
 				),
 			});
-			setPhase("review");
+			setReviewing(true);
 			trackEvent("onboarding_analyzed", {
 				competitor_count: suggestion.competitors.length,
 				prompt_count: suggestion.suggestedPrompts.length,
 			});
-			if (brandId) queryClient.removeQueries({ queryKey: analyzeStatusKey(brandId) });
-		}
-	}, [phase, statusData, brandId, brand?.name, brand?.website, queryClient]);
+		},
+		onError: setError,
+		startErrorFallback: "Analysis failed",
+		timeoutMessage: "Brand analysis timed out. Please try again.",
+	});
 
-	// Give up on a stuck analysis instead of polling forever.
-	useEffect(() => {
-		if (phase !== "analyzing") return;
-		const timer = window.setTimeout(
-			() => stopAnalyzing("Brand analysis timed out. Please try again."),
-			ANALYZE_TIMEOUT_MS,
-		);
-		return () => window.clearTimeout(timer);
-	}, [phase, stopAnalyzing]);
+	const handleAnalyze = () => {
+		if (!brand?.website || !brand?.id) return;
+		setError(null);
+		analysis.run();
+	};
 
 	const updateBrandName = useCallback((brandName: string) => setData((p) => ({ ...p, brandName })), []);
 	const updateWebsite = useCallback((website: string) => setData((p) => ({ ...p, website })), []);
@@ -262,7 +207,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		}
 	}, [brand, data, queryClient, router, onComplete, writeError]);
 
-	if (phase === "idle" || phase === "analyzing") {
+	if (!reviewing) {
 		return (
 			<div className="max-w-2xl mx-auto space-y-3">
 				<p className="text-sm text-muted-foreground">
@@ -270,18 +215,20 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					domains/aliases, and a starter set of AI prompts to track.
 				</p>
 				{error && (
-					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
 						<AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-						<span>{error}</span>
+						<span>
+							<WriteErrorMessage message={error} />
+						</span>
 					</div>
 				)}
 				<div className="flex items-center gap-2">
 					<Button
 						onClick={handleAnalyze}
-						disabled={phase === "analyzing"}
+						disabled={analysis.running}
 						className="flex items-center gap-2 cursor-pointer"
 					>
-						{phase === "analyzing" ? (
+						{analysis.running ? (
 							<>
 								<Spinner /> Analyzing brand…
 							</>
@@ -291,8 +238,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							</>
 						)}
 					</Button>
-					{phase === "analyzing" && (
-						<Button variant="outline" onClick={() => stopAnalyzing(null)} className="cursor-pointer">
+					{analysis.running && (
+						<Button variant="outline" onClick={analysis.cancel} className="cursor-pointer">
 							Cancel
 						</Button>
 					)}
@@ -367,9 +314,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			</div>
 
 			{submitError && (
-				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
 					<AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-					<div className="text-sm">{submitError}</div>
+					<div className="text-sm">
+						<WriteErrorMessage message={submitError} />
+					</div>
 				</div>
 			)}
 

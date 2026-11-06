@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
 import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
+import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
 /** The shared dashboard filter params. Validated once at the `$brand` layout
  *  route (`validateSearch: validateBrandFilterSearch`) so every child route
@@ -78,7 +79,7 @@ export function useListFilters() {
 	const { data: brand } = useBrand();
 	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
 
-	const urlFilters: BrandFilterSearch = useSearch({ strict: false });
+	const urlFilters: BrandFilterSearch = useSearch({ from: BRAND_ROUTE_ID });
 	const setFilters = useFilterNavigate();
 
 	const model = urlFilters.model ?? ALL_MODELS_VALUE;

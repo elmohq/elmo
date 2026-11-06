@@ -1,17 +1,6 @@
-/**
- * Provider-agnostic brand analysis. One direct-API LLM call (with web search
- * where the provider supports it) returns:
- *   - canonical brand name
- *   - additional brand domains (regional ccTLDs, alt spellings)
- *   - aliases (abbreviations, parent company names)
- *   - direct competitors (with their own domains/aliases)
- *   - suggested AI tracking prompts (with default tags)
- *
- * The Zod schema is the source of truth — `generateObject` derives a JSON
- * schema from it and hands it to the model, so the prompt itself only needs
- * to communicate context + quality guidelines, not field-by-field shape.
- */
+/** The model gets a JSON schema derived from the Zod schema, so the prompt carries only context and guidelines. */
 import { z } from "zod";
+import { wholeWordPattern } from "../mentions";
 import { getWebsiteExcerpt } from "../website-excerpt";
 import { runStructuredResearchPrompt } from "./llm";
 import {
@@ -23,12 +12,17 @@ import {
 	uniqueTrim,
 } from "./utils";
 
-// Tags are free-form and brand-tailored: the LLM invents a small vocabulary
-// (≤5 distinct values) that's actually useful for filtering THIS brand's
-// prompts. No tag values are hardcoded here — the LLM picks the entire
-// vocabulary from the brand context.
-const TAG_GUIDANCE =
+// The model invents a small tag vocabulary for this brand; none is hardcoded.
+export const TAG_GUIDANCE =
 	"Tags should be tailored to this specific brand and the prompt set you're producing. Aim for tags that describe WHAT a prompt is about (a product category, audience segment, sub-feature, competitor name) — not WHAT the user wants to do with the answer (compare, evaluate, buy). Goal-style intent tags tend to apply to most prompts in the set and don't discriminate. Prefer single-word tags; only use multi-word tags (lowercase, single hyphens between words) when no single word captures the concept. Each tag should describe ONE axis — don't fuse two ideas into a compound hyphenated label. Don't use 'branded' or 'unbranded' as tag values; the system computes that classification automatically from the prompt text. Pick a small shared vocabulary (no more than 5 distinct values across all prompts), and only attach a tag to a prompt if it actually discriminates that prompt from others — if the same tag would apply to most prompts, don't use it.";
+
+export function promptMixGuidance(brandedShare: string): string {
+	return `IMPORTANT: the MAJORITY must be UNBRANDED — generic category/persona queries that do NOT contain the brand name (e.g. "best [category]", "best [category] for [persona]", "[category] vs alternatives", "where to buy [category]"). ${brandedShare} should be branded (contain the brand name, e.g. "[brand] alternative", "is [brand] worth it"). The goal is to test whether AI models mention the brand organically in response to unbranded queries.`;
+}
+
+export function websiteExcerptBlock(url: string, excerpt: string): string {
+	return excerpt ? `\nText from ${url}:\n---\n${excerpt}\n---\n` : "";
+}
 
 const ALIAS_GUIDANCE =
 	'Skip variants that contain the canonical name as a substring (e.g. don\'t add "Asics America" for "Asics" — substring matching catches it already). DO include genuinely distinct names like parent companies or sub-brands the company owns (e.g. "Converse" for Nike).';
@@ -43,7 +37,7 @@ const competitorSchema = z.object({
 	aliases: z.array(z.string()).describe(`Other names the company is commonly known by. ${ALIAS_GUIDANCE}`),
 });
 
-const promptSchema = z.object({
+export const promptSchema = z.object({
 	prompt: z
 		.string()
 		.describe(
@@ -79,7 +73,7 @@ function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
 		suggestedPrompts: z
 			.array(promptSchema)
 			.describe(
-				`Up to ${args.maxPrompts} suggested AI tracking prompts. IMPORTANT: the MAJORITY must be UNBRANDED — generic category/persona queries that do NOT contain the brand name (e.g. "best [category]", "best [category] for [persona]", "[category] vs alternatives", "where to buy [category]"). Only 3-5 should be branded (contain the brand name, e.g. "[brand] alternative", "is [brand] worth it"). The goal is to test whether AI models mention the brand organically in response to unbranded queries. ${TAG_GUIDANCE}`,
+				`Up to ${args.maxPrompts} suggested AI tracking prompts. ${promptMixGuidance("Only 3-5")} ${TAG_GUIDANCE}`,
 			),
 	});
 }
@@ -107,12 +101,7 @@ export interface OnboardingSuggestion {
 }
 
 export interface AnalyzeBrandOptions {
-	/**
-	 * Brand website — a domain or a full URL. A URL with a path (e.g.
-	 * `https://www.nike.com/golf`) is researched as given, so a sub-brand can be
-	 * analyzed from its own section of a larger site; the identity mentions are
-	 * tracked against is always its hostname.
-	 */
+	/** A URL with a path is researched as given, for sub-brands; mentions always match the hostname. */
 	website: string;
 	brandName?: string;
 	/** 0 disables competitor generation entirely. */
@@ -124,14 +113,8 @@ export interface AnalyzeBrandOptions {
 const DEFAULT_MAX_COMPETITORS = 10;
 const DEFAULT_MAX_PROMPTS = 30;
 
-/**
- * Resolved inputs for one analysis run: the prompt the LLM sees, the schema
- * its output is validated against, and the post-processing inputs the
- * normalizer needs. Built once and reused across providers in the
- * compare-onboarding script so every provider sees identical input.
- */
+/** Built once so compare-onboarding gives every provider identical input. */
 export interface AnalysisContext {
-	/** Host-only identity used by downstream mention and citation matching. */
 	website: string;
 	/** Full URL the excerpt was read from and the prompt is written about. */
 	analysisUrl: string;
@@ -204,7 +187,6 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 	return result;
 }
 
-/** Normalize an LLM-supplied tag to lowercase kebab-case. */
 function toKebabCase(tag: string): string {
 	return tag
 		.trim()
@@ -213,19 +195,15 @@ function toKebabCase(tag: string): string {
 		.replace(/^-+|-+$/g, "");
 }
 
-/**
- * Drop aliases that contain the canonical name as a substring — mention
- * detection is case-insensitive substring matching, so any text matching
- * such an alias also matches the canonical name. Keeping them just bloats
- * the alias list. (See worker/src/jobs/process-prompt.ts: analyzeMentions.)
- */
+/** An alias containing the canonical name as a whole word can never match anything the name doesn't. */
 function filterRedundantAliases(aliases: string[], canonicalName: string): string[] {
-	const canonical = canonicalName.trim().toLowerCase();
+	const canonical = canonicalName.trim();
 	if (!canonical) return aliases;
-	return aliases.filter((a) => !a.toLowerCase().includes(canonical));
+	// A fresh pattern per alias: it's global, so a shared one would carry `lastIndex` between tests.
+	return aliases.filter((a) => !wholeWordPattern(canonical).test(a));
 }
 
-async function safeGetExcerpt(website: string): Promise<string> {
+export async function safeGetExcerpt(website: string): Promise<string> {
 	try {
 		return await getWebsiteExcerpt(website);
 	} catch (err) {
@@ -253,17 +231,13 @@ function buildPrompt(args: {
 	includeCompetitors: boolean;
 	includePrompts: boolean;
 }): string {
-	const excerptBlock = args.websiteExcerpt
-		? `\nText from ${args.analysisUrl}:\n---\n${args.websiteExcerpt}\n---\n`
-		: "\n";
+	const excerptBlock = websiteExcerptBlock(args.analysisUrl, args.websiteExcerpt) || "\n";
 
 	const nameLine = args.brandNameWasProvided
 		? `Brand name (given by the user — keep it; correct only formatting): ${args.brandNameHint}`
 		: `Likely brand name (from domain): ${args.brandNameHint}`;
 
-	// A page below the site root is usually a sub-brand, product line, or
-	// regional arm. Everything should describe that, not the company that
-	// happens to own the domain — the domain only sets what mentions match.
+	// A page below the root is usually a sub-brand; describe it, not the domain's owner.
 	const scopeNote = isSubPage(args.analysisUrl)
 		? `\nThis is one page on ${args.trackedDomain}, not the site root. If it covers a sub-brand, product line, or regional arm, scope the brand name, competitors, and prompts to THAT rather than to the parent company.\n`
 		: "";
@@ -302,9 +276,8 @@ function normalize(args: {
 		maxPrompts,
 	} = args;
 
-	// A caller-supplied name wins: it's what the user asked to track, and for a
-	// sub-brand the model tends to answer with the parent it recognises
-	// ("Nike Golf" → "Nike"), which would silently widen every match.
+	// For a sub-brand the model tends to answer with the parent ("Nike Golf" →
+	// "Nike"), which would silently widen every match.
 	const brandName = providedBrandName ?? ((raw.brandName || brandNameHint).trim() || brandNameHint);
 
 	const ownedDomains = new Set([website]);
@@ -329,11 +302,7 @@ function normalize(args: {
 /** At most this many topic tags survive per suggested prompt. */
 const MAX_PROMPT_TAGS = 3;
 
-/**
- * Competitors the model named, keeping only those with a domain that is neither
- * the brand's own nor already claimed by a competitor above them: two entries
- * sharing a domain are the same company under two names.
- */
+/** Two entries sharing a domain are the same company under two names. */
 function normalizeCompetitors(
 	raw: RawSuggestion["competitors"],
 	ownedDomains: Set<string>,
@@ -359,7 +328,10 @@ function normalizeCompetitors(
 	return competitors;
 }
 
-function normalizePrompts(raw: RawSuggestion["suggestedPrompts"], maxPrompts: number): OnboardingPrompt[] {
+export function normalizePrompts(
+	raw: z.infer<typeof promptSchema>[] | undefined,
+	maxPrompts: number,
+): OnboardingPrompt[] {
 	const prompts: OnboardingPrompt[] = [];
 	const seen = new Set<string>();
 

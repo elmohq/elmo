@@ -1,13 +1,10 @@
 /**
- * Mode-compatibility boot smoke test (issue #341).
+ * Mode-compatibility boot smoke test.
  *
  * For each DEPLOYMENT_MODE — cloud included — proves the boot path resolves:
  *   1. env validation     — the canonical minimal env satisfies the registry
  *   2. factory resolution — getDeployment() returns the expected mode
  *   3. auth initialization — createAuth() constructs with the mode's options
- *
- * This guards the elmo-cloud build-out: open-source, demo, and whitelabel
- * deployments must keep booting unchanged while cloud lands (issue #8).
  *
  * Runs the real shared-package boot path via tsx — no build, no live DB.
  * createAuth() returns as soon as the instance is constructed, so a dummy
@@ -41,13 +38,15 @@ const SMOKE_MODES: SmokeMode[] = ["local", "demo", "whitelabel", "cloud"];
  * DATABASE_URL is never connected; APP_URL / VITE_APP_URL are read by
  * createAuth(); the AUTH0_* vars are read by getWhitelabelAuthOptions() and the
  * whitelabel env requirements. SCRAPE_TARGETS=chatgpt:olostep:online pulls in
- * the OLOSTEP_API_KEY provider-key requirement.
+ * the OLOSTEP_API_KEY provider-key requirement; OPENAI_API_KEY is the direct
+ * LLM key onboarding needs.
  */
 const SHARED_ENV: Record<string, string> = {
 	DATABASE_URL: "postgres://smoke:smoke@127.0.0.1:5432/smoke",
 	BETTER_AUTH_SECRET: "smoke-test-better-auth-secret-0000000000",
 	SCRAPE_TARGETS: "chatgpt:olostep:online",
 	OLOSTEP_API_KEY: "smoke-olostep-key",
+	OPENAI_API_KEY: "smoke-openai-key",
 };
 
 const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
@@ -72,8 +71,6 @@ const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
 		VITE_APP_NAME: "Smoke App",
 		VITE_APP_ICON: "https://example.com/icon.png",
 		VITE_APP_URL: "https://smoke.example.com/",
-		VITE_APP_PARENT_NAME: "Smoke Parent",
-		VITE_APP_PARENT_URL: "https://parent.example.com/",
 		VITE_OPTIMIZATION_URL_TEMPLATE: "https://parent.example.com/optimize?org_id={brandId}&prompt={prompt}",
 	},
 	cloud: {
@@ -126,19 +123,19 @@ function getAuthOptions(
 	}
 }
 
-async function smokeMode(mode: SmokeMode): Promise<string[]> {
-	const failures: string[] = [];
-	const env = applyEnv(mode);
-
-	// 1. env validation
+function checkEnv(mode: SmokeMode, env: Record<string, string>): string[] {
 	const validation = getEnvValidationState(env);
 	if (!validation.isValid) {
-		failures.push(`env invalid — missing: ${validation.missing.map((m) => m.id).join(", ")}`);
-	} else if (validation.mode !== mode) {
-		failures.push(`env validated as mode "${validation.mode}", expected "${mode}"`);
+		return [`env invalid — missing: ${validation.missing.map((m) => m.id).join(", ")}`];
 	}
+	if (validation.mode !== mode) {
+		return [`env validated as mode "${validation.mode}", expected "${mode}"`];
+	}
+	return [];
+}
 
-	// 2. deployment factory resolution
+function checkDeploymentFactory(mode: SmokeMode, env: Record<string, string>): string[] {
+	const failures: string[] = [];
 	try {
 		resetDeploymentCache();
 		const deployment = getDeployment({ env });
@@ -151,9 +148,12 @@ async function smokeMode(mode: SmokeMode): Promise<string[]> {
 	} catch (error) {
 		failures.push(`factory threw: ${(error as Error).message}`);
 	}
+	return failures;
+}
 
-	// 3. auth initialization — dynamic import so DATABASE_URL is live before db.ts runs
+async function checkAuthInit(mode: SmokeMode): Promise<string[]> {
 	try {
+		// Imported only now so DATABASE_URL is already set when db.ts runs.
 		const { createAuth } = await import("@workspace/lib/auth/server");
 		const { getWhitelabelAuthOptions } = await import("@workspace/deployment/auth-hooks/whitelabel");
 		const { getCloudAuthOptions } = await import("@workspace/deployment/auth-hooks/cloud");
@@ -163,13 +163,17 @@ async function smokeMode(mode: SmokeMode): Promise<string[]> {
 		// an unhandled rejection and takes the runner down mid-sweep.
 		auth.$context.catch(() => {});
 		if (typeof auth.handler !== "function" || typeof auth.api !== "object") {
-			failures.push("auth initialized without a handler/api");
+			return ["auth initialized without a handler/api"];
 		}
+		return [];
 	} catch (error) {
-		failures.push(`auth init threw: ${(error as Error).message}`);
+		return [`auth init threw: ${(error as Error).message}`];
 	}
+}
 
-	return failures;
+async function smokeMode(mode: SmokeMode): Promise<string[]> {
+	const env = applyEnv(mode);
+	return [...checkEnv(mode, env), ...checkDeploymentFactory(mode, env), ...(await checkAuthInit(mode))];
 }
 
 async function main(): Promise<void> {

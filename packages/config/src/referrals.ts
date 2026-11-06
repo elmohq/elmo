@@ -1,31 +1,45 @@
-/**
- * Links from the product and the CLI back to our own sites.
- *
- * Each one carries a `ref` naming the surface it was clicked from, so the
- * marketing site can tell a self-hosted operator who arrived from the sign-in
- * page apart from one who arrived from `elmo init` — the two want different
- * things and convert at very different rates.
- */
+/** Links back to our sites carry a `ref` naming the surface clicked, since each wants different things. */
 
 export const MARKETING_SITE_URL = "https://www.elmohq.com";
 export const CLOUD_APP_URL = "https://app.elmohq.com";
-/** Where a demo is booked. Not on our domain, but ours, and tagged the same way. */
-const BOOK_DEMO_URL = "https://cal.com/jrhizor/elmo";
-/** The read-only instance anyone can poke at without an account. */
 const DEMO_SITE_URL = "https://demo.elmohq.com";
 
-/**
- * Where a link back to us was clicked. A closed set rather than free-form
- * strings: these end up in analytics, where a typo is indistinguishable from a
- * real source.
- */
+/** A closed set: in analytics a typo is indistinguishable from a real source. */
 export type ReferralSource =
 	| "cli"
 	| "self-hosted-signin"
 	| "self-hosted-signup"
 	| "cloud-signin"
 	| "cloud-signup"
-	| "marketing-cta";
+	| "marketing-cta"
+	| "marketing-nav"
+	| "marketing-hero"
+	| "marketing-ai-referral"
+	| "marketing-demo-frame"
+	| "marketing-closing"
+	| "marketing-pricing-closing"
+	| "marketing-aeo-for-hero"
+	| "marketing-aeo-for-closing"
+	| "marketing-profound-users-hero"
+	| "marketing-profound-users-closing"
+	| "marketing-features-hero"
+	| "marketing-features-closing"
+	| "marketing-page-cta"
+	| "marketing-vision"
+	| "marketing-about"
+	| "marketing-support"
+	| "marketing-webmcp"
+	| "demo-chat"
+	| "demo-header"
+	| "demo-read-only"
+	| "marketing-plan-starter"
+	| "marketing-plan-basic"
+	| "marketing-plan-pro"
+	| "marketing-plan-business"
+	| "marketing-pricing-starter"
+	| "marketing-pricing-basic"
+	| "marketing-pricing-pro"
+	| "marketing-pricing-business";
 
 function tagged(url: string, ref: ReferralSource): string {
 	const link = new URL(url);
@@ -33,27 +47,27 @@ function tagged(url: string, ref: ReferralSource): string {
 	return link.toString();
 }
 
-/** A marketing-site page, tagged with where the click came from. */
 export function marketingUrl(path: string, ref: ReferralSource): string {
 	return tagged(new URL(path, MARKETING_SITE_URL).toString(), ref);
 }
 
-/** Cloud registration, tagged with where the click came from. */
+/** Routes new visitors to sign-up on its own. */
+export function cloudAppUrl(ref: ReferralSource): string {
+	return tagged(`${CLOUD_APP_URL}/`, ref);
+}
+
 export function cloudSignupUrl(ref: ReferralSource): string {
 	return tagged(`${CLOUD_APP_URL}/auth/register`, ref);
 }
 
-/** The cloud pricing table, tagged with where the click came from. */
 export function cloudPricingUrl(ref: ReferralSource): string {
 	return marketingUrl("/pricing", ref);
 }
 
-/** The demo booking page, tagged with where the click came from. */
 export function bookDemoUrl(ref: ReferralSource): string {
-	return tagged(BOOK_DEMO_URL, ref);
+	return marketingUrl("/demo", ref);
 }
 
-/** The live demo instance, tagged with where the click came from. */
-export function demoSiteUrl(ref: ReferralSource): string {
-	return tagged(DEMO_SITE_URL, ref);
+export function demoSiteUrl(ref: ReferralSource, path = "/"): string {
+	return tagged(new URL(path, DEMO_SITE_URL).toString(), ref);
 }

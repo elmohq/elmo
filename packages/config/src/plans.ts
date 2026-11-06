@@ -1,15 +1,7 @@
 /**
- * The Elmo Cloud plan catalog.
- *
- * This file is the single source of truth for what each cloud plan includes.
- * Billing (Stripe products/prices), write-time enforcement, the worker's run
- * policy, and the pricing/billing UI all consume these definitions — change a
- * number here and every layer follows.
- *
- * Stripe prices are referenced by lookup key (stripePlanLookupKey /
- * PREMIUM_ADDON_LOOKUP_KEYS) rather than per-environment price-ID env vars;
- * packages/deployment/scripts/bootstrap-stripe.ts provisions any Stripe account (test or live)
- * with these exact keys.
+ * The Elmo Cloud plan catalog: billing, write-time enforcement, the run policy
+ * and the pricing UI all read it. Stripe prices are found by lookup key, which
+ * packages/deployment/scripts/bootstrap-stripe.ts provisions in any account.
  */
 
 import { getModelMeta } from "./models";
@@ -23,109 +15,72 @@ export type BillingInterval = "monthly" | "annual";
 export type ProviderAccessKind = "scraped" | "api";
 
 export interface CloudPlatform {
-	/**
-	 * How a standard pick of this platform is served. Omitted when the platform
-	 * is only sold grounded: Grok's own answers cost several times a scrape per
-	 * run, so it earns its keep as a premium call and not as one of four picks
-	 * sampled four times a day.
-	 */
+	/** Omitted when only sold grounded, like Grok, whose answers cost too much to sample as a pick. */
 	access?: ProviderAccessKind;
 	/**
-	 * Also sold grounded: the model called directly with its own web search on,
-	 * paid for out of the org's premium pool rather than the pick budget. A
-	 * grounded call costs roughly ten times an ungrounded one, which is why it is
-	 * metered per prompt instead of picked per brand.
+	 * Also sold grounded (its own web search on), from the premium pool. A grounded
+	 * call costs roughly ten times an ungrounded one, so it is metered per prompt.
 	 */
 	premium?: boolean;
+	version?: string;
+	premiumVersion?: string;
 }
 
 /**
- * Everything Elmo Cloud sells, and how. An entry with `access` is pickable as a
- * standard platform, which decides its sampling rate and which tier the pricing
- * tables group it under; an entry with `premium` is sold grounded from the pool.
- * Most are both. A platform cannot be listed without being one or the other.
+ * What Elmo Cloud sells, not what Elmo can track; an entry is only offered when
+ * SCRAPE_TARGETS configures a matching target.
  *
- * A self-hosted operator can wire the same model differently — this describes
- * the cloud offering the plans are priced against, not what Elmo can track.
- *
- * A menu entry is only offerable when the operator's SCRAPE_TARGETS actually
- * configures a matching target; the UI and run policy intersect with the
- * instance's configured targets.
- *
- * Order matters: defaultPlatformPicks takes the plan's pick count off the front
- * of this list, so a brand created without an explicit choice tracks the first
- * entries. Append new platforms rather than inserting them, or existing
- * deployments change what a new brand starts out tracking.
+ * Order matters: defaultPlatformPicks takes a new brand's picks off the front, so
+ * append new platforms rather than inserting them.
  */
 export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
-	chatgpt: { access: "scraped", premium: true },
+	chatgpt: { access: "scraped", premium: true, premiumVersion: "GPT-6 Luna" },
 	"google-ai-mode": { access: "scraped" },
 	"google-ai-overview": { access: "scraped" },
 	copilot: { access: "scraped" },
 	perplexity: { access: "scraped" },
 	gemini: { access: "scraped" },
-	qwen: { access: "api" },
-	deepseek: { access: "api" },
-	grok: { premium: true },
-	mistral: { access: "api" },
-	claude: { access: "api", premium: true },
+	qwen: { access: "api", version: "Qwen3 235B A22B 2507" },
+	deepseek: { access: "api", version: "DeepSeek V3.2" },
+	grok: { premium: true, premiumVersion: "Grok 4.5" },
+	mistral: { access: "api", version: "Mistral Medium 3.1" },
+	claude: { access: "api", premium: true, version: "Claude Haiku 5.5", premiumVersion: "Claude Haiku 5.5" },
+	kimi: { access: "api", version: "Kimi K2.5" },
 };
 
-/** The platforms a plan's picks may come from — everything sold as a pick. */
 export const STANDARD_PLATFORM_MENU: readonly string[] = Object.entries(CLOUD_PLATFORMS)
 	.filter(([, platform]) => platform.access !== undefined)
 	.map(([model]) => model);
 
-/**
- * The models sellable as premium — grounded, cited answers from the model's own
- * web search. A prompt spends one pool slot per model it is tracked on, so an org
- * can spread its allowance across prompts or across models as it likes.
- *
- * Not a subset of the pick menu: a model whose answers are too dear to sample
- * four times a day can still be worth one grounded call, which is exactly what
- * the pool is for.
- */
+/** Not a subset of the pick menu: a model too dear to sample as a pick can still be worth one grounded call. */
 export const PREMIUM_MODELS: readonly string[] = ["claude", "chatgpt", "grok"];
 
-/**
- * What a premium model is called where it is sold, which is not what it is called
- * as a pick: the premium tier sells the grounded variant, and "ChatGPT" and
- * "GPT-5 Search" are different products to a customer comparing them.
- */
+/** The premium tier sells the grounded variant, which customers know by a different name. */
 const PREMIUM_LABELS: Record<string, string> = {
-	claude: "Claude Sonnet 5 (web)",
-	chatgpt: "GPT-5 Search",
+	claude: "Claude (web)",
+	chatgpt: "GPT Search",
 	grok: "Grok (web)",
 };
 
-/** What to call a premium model, wherever the grounded variant is shown. */
 export function premiumModelLabel(model: string): string {
 	return PREMIUM_LABELS[model] ?? getModelMeta(model).label;
 }
 
-/**
- * The premium models in a requested list, deduped and in catalog order. Anything
- * not sellable as premium is dropped rather than rejected: the list names paid
- * tracking, so an unknown entry should cost nothing, not fail a whole save.
- */
+/** Unknown entries are dropped rather than rejected: they should cost nothing, not fail a save. */
 export function selectPremiumModels(requested: readonly string[] | undefined): string[] {
 	if (!requested || requested.length === 0) return [];
 	return PREMIUM_MODELS.filter((model) => requested.includes(model));
 }
 
 /**
- * Premium slots a set of prompts spends: one per model it is tracked on, and
- * none at all while it is disabled, since a disabled prompt runs nothing.
- *
- * The rule is here rather than at each call site because the write guard, the
- * prompts editor's live counter and the org-wide total all have to agree — and
- * a customer is charged on the difference.
+ * One slot per premium model on each enabled prompt. The write guard, the
+ * editor's live counter and the org total must agree, since customers are billed on it.
  */
 export function premiumSlotsUsed(prompts: readonly { enabled: boolean; premiumModels: readonly string[] }[]): number {
 	return prompts.reduce((total, prompt) => total + (prompt.enabled ? prompt.premiumModels.length : 0), 0);
 }
 
-/** Grounded calls sample once a day on every plan: each one is metered. */
+/** Every grounded call is metered, so it samples once a day on every plan. */
 export const PREMIUM_RUNS_PER_DAY = 1;
 
 /** Ceiling for custom-plan sampling overrides (research-grade). */
@@ -137,32 +92,22 @@ export const PAST_DUE_GRACE_DAYS = 7;
 /** Extra premium prompt/model slots, on the plans that sell the tier. */
 export const PREMIUM_ADDON_MONTHLY_USD = 5;
 
-/** Annual = 10× monthly (two months free). */
 export const PREMIUM_ADDON_ANNUAL_USD = PREMIUM_ADDON_MONTHLY_USD * 10;
 
 export interface PlanDefinition {
 	key: PlanKey;
 	name: string;
 	monthlyPriceUsd: number;
-	/** Annual = 10× monthly (two months free). */
 	annualPriceUsd: number;
-	/** Brands per organization. Every limit below is org-wide, not per brand. */
 	maxBrands: number;
-	/** Organization-wide pool of enabled (tracked) prompts. */
+	/** Enabled prompts, across all of the org's brands. */
 	maxPrompts: number;
-	/** Which standard platforms this plan may choose from. */
 	platformMenu: readonly string[];
-	/** How many platforms a brand may have enabled at once. */
+	/** Per brand. */
 	platformPicks: number;
-	/** Sampling frequency for standard platforms. */
 	standardRunsPerDay: number;
-	/**
-	 * Premium slots included: one slot tracks one prompt on one premium model
-	 * (prompts.premium_models). Picking a premium model ungrounded costs nothing
-	 * from this pool — it is only the grounded call that is metered.
-	 */
+	/** Org-wide; one slot tracks one prompt on one premium model, grounded. */
 	premiumIncluded: number;
-	/** Whether more premium slots can be purchased. */
 	premiumAddonAvailable: boolean;
 }
 
@@ -221,8 +166,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
 	},
 };
 
-/** The most brands any self-serve plan sells, so a guard can tell a customer
- *  whether upgrading would help or whether they need a custom agreement. */
+/** Lets a guard tell a customer whether upgrading helps or they need a custom agreement. */
 export const MAX_SELF_SERVE_BRANDS = Math.max(...Object.values(PLANS).map((plan) => plan.maxBrands));
 
 export const PLAN_KEYS = Object.keys(PLANS) as PlanKey[];
@@ -242,26 +186,17 @@ export function premiumPlanNames(): string {
 	return new Intl.ListFormat("en", { type: "conjunction" }).format(names);
 }
 
-/**
- * Whether extra premium slots can be purchased for a resolved plan key. Custom
- * plans always may; no plan means nothing to attach the add-on to.
- */
 export function isPremiumAddonAvailable(planKey: PlanKey | "custom" | null): boolean {
 	if (planKey === "custom") return true;
 	return planKey !== null && PLANS[planKey].premiumAddonAvailable;
 }
 
-/** Human-readable name for a resolved plan key. */
 export function planDisplayName(planKey: PlanKey | "custom" | null): string {
 	if (planKey === "custom") return "Custom";
 	return planKey === null ? "None" : PLANS[planKey].name;
 }
 
-/**
- * Stripe price lookup key for a plan/interval. The @better-auth/stripe plugin
- * resolves these to price IDs at checkout time, so the same code works against
- * any Stripe account bootstrapped with packages/deployment/scripts/bootstrap-stripe.ts.
- */
+/** Resolved to a price ID at checkout, so one key works in any bootstrapped Stripe account. */
 export function stripePlanLookupKey(plan: PlanKey, interval: BillingInterval): string {
 	return `elmo_cloud_${plan}_${interval}`;
 }
@@ -273,11 +208,6 @@ export const PREMIUM_ADDON_LOOKUP_KEYS: Record<BillingInterval, string> = {
 
 export type PlanPlatformGroupId = "scraped" | "api" | "premium";
 
-/**
- * What each tier is called, wherever it is shown. One place, because the
- * pricing table, the paywall and the LLM settings page all name them and had
- * each kept their own copy.
- */
 export const PLATFORM_TIER_LABELS: Record<PlanPlatformGroupId, string> = {
 	scraped: "Scraped Engines",
 	api: "LLM APIs",
@@ -286,91 +216,69 @@ export const PLATFORM_TIER_LABELS: Record<PlanPlatformGroupId, string> = {
 
 export interface PlanPlatformMember {
 	model: string;
-	/** What to call it in this tier; the premium tier names the grounded variant. */
+	/** The premium tier names the grounded variant. */
 	label: string;
-	/** Which logo stands for it. Resolved here so the shared tier renderer stays free of the catalog. */
+	/** Resolved here so the shared tier renderer stays free of the catalog. */
 	iconId: string;
+	tooltip?: string;
 }
 
-/**
- * Everything sold in a tier, across all plans — for prose that names the
- * platforms rather than tabulating them. Derived rather than written out so a
- * new entry in CLOUD_PLATFORMS can't leave a paragraph quietly out of date.
- */
+function premiumVersionLabel(version: string | undefined): string | undefined {
+	return version && `${version} + native web search`;
+}
+
+function tierMember(model: string, tier: PlanPlatformGroupId): PlanPlatformMember {
+	const premium = tier === "premium";
+	return {
+		model,
+		label: premium ? premiumModelLabel(model) : getModelMeta(model).label,
+		iconId: getModelMeta(model).iconId,
+		tooltip: premium ? premiumVersionLabel(CLOUD_PLATFORMS[model]?.premiumVersion) : CLOUD_PLATFORMS[model]?.version,
+	};
+}
+
+/** Across all plans, for prose that names a tier's platforms, so new entries can't leave it stale. */
 export function platformTierMembers(tier: PlanPlatformGroupId): PlanPlatformMember[] {
 	const models =
 		tier === "premium"
 			? PREMIUM_MODELS
 			: STANDARD_PLATFORM_MENU.filter((model) => CLOUD_PLATFORMS[model]?.access === tier);
-	return models.map((model) => ({
-		model,
-		label: tier === "premium" ? premiumModelLabel(model) : getModelMeta(model).label,
-		iconId: getModelMeta(model).iconId,
-	}));
+	return models.map((model) => tierMember(model, tier));
 }
 
 export interface PlanPlatformGroup {
 	id: PlanPlatformGroupId;
-	/** How this group is reached, for a pricing card's sub-heading. */
 	label: string;
-	/** The rate every platform in this group runs at. */
 	runsPerDay: number;
 	models: PlanPlatformMember[];
 }
 
 export interface PlanPlatformBreakdown {
-	/**
-	 * What the plan lets you choose, in one line. Derived here because both the
-	 * paywall and the marketing table need it and had each written their own,
-	 * which promptly diverged.
-	 */
 	pickHeading: string;
-	/**
-	 * Every group a plan's picks may come from. All of them spend the same
-	 * `platformPicks` budget — including Claude, which is why a pricing table
-	 * that lists it outside the budget reads as though it were extra.
-	 */
+	/** All spend the same `platformPicks` budget, so a table shouldn't list any as extra. */
 	pickGroups: PlanPlatformGroup[];
 	/**
-	 * The premium tier: grounded, cited answers chosen per prompt, on top of
-	 * whatever the brand picks. A prompt can be tracked on one premium model,
-	 * several, or none, and each costs a slot — it neither replaces nor upgrades a
-	 * pick, and the picks keep running on every prompt regardless.
-	 *
-	 * Shaped like a pick group so a table can render all three tiers the same way,
-	 * but it spends the premium pool rather than the pick budget. Null when the
-	 * plan sells none, so a table can omit it rather than advertising an absence.
+	 * Chosen per prompt on top of the brand's picks, spending the premium pool.
+	 * Shaped like a pick group so tables render all tiers alike; null when not sold.
 	 */
 	premium:
 		| (PlanPlatformGroup & {
-				/** Slots included, each one prompt tracked on one of these models. */
 				includedSlots: number;
 				addonAvailable: boolean;
-				/** How the allowance is sold, in one line, for the same reason. */
 				summary: string;
 		  })
 		| null;
 }
 
 /**
- * A plan's platforms split into the two tiers a customer picks between, plus the
- * premium tier that is metered rather than picked.
- *
- * The first two tiers are the brand's picks and run on every one of its prompts.
- * The premium tier is chosen per prompt instead, and adds to those picks rather
- * than standing in for them. Some models appear in both, which is not a
- * relationship between the two — a pick and a premium slot buy different answers
- * (what a model already believes, versus what it finds and cites), and either can
- * be bought without the other.
- *
- * Members carry their own rate because the priciest models sample less often than
- * the group, so the group's rate is a default rather than a promise.
+ * A model can be both a pick and premium: the two buy different answers (what it
+ * already believes versus what it finds and cites), and either sells alone.
  */
 export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdown {
 	const inTier = (access: ProviderAccessKind): PlanPlatformMember[] =>
 		plan.platformMenu
 			.filter((model) => CLOUD_PLATFORMS[model]?.access === access)
-			.map((model) => ({ model, label: getModelMeta(model).label, iconId: getModelMeta(model).iconId }));
+			.map((model) => tierMember(model, access));
 
 	const groups: PlanPlatformGroup[] = [
 		{
@@ -384,9 +292,8 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 
 	const pickGroups = groups.filter((group) => group.models.length > 0);
 	const pickable = pickGroups.flatMap((group) => group.models);
-	// A plan either sells the premium tier or it doesn't; when it does, the whole
-	// tier comes with it. Narrowing it to the plan's pick menu would drop the
-	// models that are premium precisely because they are too dear to pick.
+	// The whole premium tier, not narrowed to the pick menu: some models are
+	// premium precisely because they are too dear to pick.
 	const hasPremium = sellsPremium(plan);
 
 	return {
@@ -401,11 +308,7 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 					id: "premium",
 					label: PLATFORM_TIER_LABELS.premium,
 					runsPerDay: PREMIUM_RUNS_PER_DAY,
-					models: PREMIUM_MODELS.map((model) => ({
-						model,
-						label: premiumModelLabel(model),
-						iconId: getModelMeta(model).iconId,
-					})),
+					models: PREMIUM_MODELS.map((model) => tierMember(model, "premium")),
 					includedSlots: plan.premiumIncluded,
 					addonAvailable: plan.premiumAddonAvailable,
 					summary: premiumSummary(plan),
@@ -414,16 +317,9 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 	};
 }
 
-/**
- * What the premium allowance buys, in one sentence. It is spent on pairings of a
- * prompt with a model, so the count is neither prompts nor models — 20 buys one
- * prompt on twenty models, twenty prompts on one, or anything between. This
- * sentence is the only place the plan grid quotes the add-on, so it carries the
- * price whenever the plan sells one.
- */
+/** The only place the plan grid quotes the add-on, so it carries the price. */
 function premiumSummary(plan: PlanDefinition): string {
-	// Only called for a plan that sells the tier at all, so including none means
-	// the add-on is the whole offer.
+	// Only called for plans that sell the tier, so none included means add-on only.
 	if (plan.premiumIncluded === 0) {
 		return `Grounded and cited. Available as an add-on at $${PREMIUM_ADDON_MONTHLY_USD}/mo per pairing.`;
 	}
@@ -431,7 +327,6 @@ function premiumSummary(plan: PlanDefinition): string {
 	return plan.premiumAddonAvailable ? `${included} $${PREMIUM_ADDON_MONTHLY_USD}/mo for each extra pairing.` : included;
 }
 
-/** The premium allowance's unit, named the same way wherever it is counted. */
 export function premiumPairings(count: number): string {
 	return `${count} prompt/model pairing${count === 1 ? "" : "s"}`;
 }
@@ -443,17 +338,11 @@ export interface SubscriptionCostLine {
 
 export interface SubscriptionCost {
 	interval: BillingInterval;
-	/** What the total is made of, so a bill can be read rather than trusted. */
 	lines: SubscriptionCostLine[];
 	totalUsd: number;
 }
 
-/**
- * What an org is billed each period: the plan plus any add-on quantity, at the
- * interval it actually pays on. Annual is quoted annually rather than divided by
- * twelve — a customer on annual billing is charged the annual figure, and showing
- * a monthly equivalent invites them to look for a charge that never appears.
- */
+/** Annual is quoted annually, not divided by twelve, so it matches the charge the customer sees. */
 export function summarizeSubscriptionCost(input: {
 	plan: PlanKey;
 	interval: BillingInterval;
@@ -483,5 +372,4 @@ export function summarizeSubscriptionCost(input: {
 
 export const CLOUD_SIGNUP_URL = `${CLOUD_APP_URL}/auth/register`;
 
-/** Lowest self-serve monthly price among all plans. */
 export const CLOUD_ENTRY_PRICE_USD = Math.min(...PLAN_KEYS.map((key) => PLANS[key].monthlyPriceUsd));

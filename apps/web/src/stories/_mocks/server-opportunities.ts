@@ -5,8 +5,6 @@
  * The types come from it all the same — `import type` is erased before
  * Storybook's alias redirects the module, so a story can't drift from the real
  * response shape.
- *
- * Stories set the response via setMockOpportunities().
  */
 import type { OpportunitiesResponse } from "@/server/opportunities";
 

@@ -1,3 +1,5 @@
+import { getModelMeta } from "@workspace/config/models";
+
 export interface StatusEntry {
 	ts: string;
 	status: "pass" | "fail";
@@ -30,20 +32,7 @@ export function parseTarget(target: string) {
 }
 
 export function formatModel(model: string) {
-	const names: Record<string, string> = {
-		chatgpt: "ChatGPT",
-		claude: "Claude",
-		gemini: "Gemini",
-		grok: "Grok",
-		perplexity: "Perplexity",
-		copilot: "Copilot",
-		deepseek: "DeepSeek",
-		kimi: "Kimi",
-		mistral: "Mistral",
-		"google-ai-mode": "Google AI Mode",
-		"google-ai-overview": "Google AI Overview",
-	};
-	return names[model] || model;
+	return getModelMeta(model).label;
 }
 
 export function formatProvider(provider: string) {
@@ -60,6 +49,23 @@ export function formatProvider(provider: string) {
 		openrouter: "OpenRouter",
 	};
 	return names[provider] || provider;
+}
+
+// Affiliate sign-up links for the third-party providers, keyed by provider id
+// or matrix category. `sid` tags the source for the programs that support it.
+const PROVIDER_AFFILIATE_URLS: Record<string, string> = {
+	cloro: "https://cloro.dev?fpr=elmo&fp_sid=status",
+	brightdata: "https://get.brightdata.com/elmo?sid=status",
+	oxylabs: "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32",
+	searchapi: "https://www.searchapi.io/?via=elmo",
+	olostep: "https://olostep.com/?ref=elmo",
+	dataforseo: "https://try.dataforseo.com/elmo",
+	"dataforseo-api": "https://try.dataforseo.com/elmo",
+	"dataforseo-scraper": "https://try.dataforseo.com/elmo",
+};
+
+export function providerAffiliateUrl(provider: string): string | undefined {
+	return PROVIDER_AFFILIATE_URLS[provider];
 }
 
 // Surfaces the one `dataforseo` provider reaches by scraping — the two Google

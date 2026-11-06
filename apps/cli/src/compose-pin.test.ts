@@ -44,8 +44,6 @@ describe("repinImages", () => {
 		expect(out).not.toContain(":latest");
 	});
 
-	// A Postgres major bump needs a dump/restore, so an upgrade must never roll
-	// the tag underneath a running deployment.
 	it("leaves third-party images untouched", () => {
 		const out = repinImages(LEGACY_COMPOSE, "0.2.13");
 		expect(out).toContain("postgres:16-alpine");
@@ -63,14 +61,11 @@ describe("refreshHeaderVersion", () => {
 		expect(parseRenderedVersion(LEGACY_COMPOSE)).toBeNull();
 		const out = refreshHeaderVersion(LEGACY_COMPOSE, "0.2.13");
 		expect(parseRenderedVersion(out)).toBe("0.2.13");
-		// Original content is preserved below the new header.
 		expect(out).toContain("name: elmo");
 	});
 });
 
-// Regression: a legacy install (no header, :latest tags) must come out fully
-// re-pinned AND with a detectable version header, so `elmo upgrade` doesn't
-// treat it as "already current" and skip the re-pin on the next run.
+// Without a detectable header afterwards, the next upgrade would skip the re-pin.
 describe("legacy install re-pin round-trip", () => {
 	it("pins images and records the version", () => {
 		const out = refreshHeaderVersion(repinImages(LEGACY_COMPOSE, "0.2.13"), "0.2.13");

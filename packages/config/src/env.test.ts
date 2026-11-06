@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getEnvRequirements, requireEnvVars, validateEnvRequirements } from "./env";
+import { assertRequiredEnv, getEnvRequirements, requireEnvVars, validateEnvRequirements } from "./env";
+
+function missingIds(mode: Parameters<typeof getEnvRequirements>[0], env: Record<string, string>): Set<string> {
+	return new Set(validateEnvRequirements(getEnvRequirements(mode), env).missing.map((entry) => entry.id));
+}
 
 // Vars required specifically because the deployment is cloud.
 const CLOUD_ONLY_VARS = [
@@ -75,6 +79,43 @@ describe("ELMO_ENCRYPTION_KEY", () => {
 	});
 });
 
+describe("whitelabel env requirements", () => {
+	it("requires AUTH0_DOMAIN, which SSO is built on", () => {
+		expect(missingIds("whitelabel", {}).has("AUTH0_DOMAIN")).toBe(true);
+	});
+
+	it("does not require the optional parent-app link", () => {
+		const missing = missingIds("whitelabel", {});
+		expect(missing.has("VITE_APP_PARENT_NAME")).toBe(false);
+		expect(missing.has("VITE_APP_PARENT_URL")).toBe(false);
+	});
+});
+
+describe("research provider requirement", () => {
+	it("is missing when no direct LLM key is set, in every mode", () => {
+		for (const mode of ["local", "demo", "whitelabel", "cloud"] as const) {
+			expect(missingIds(mode, {}).has("RESEARCH_PROVIDER"), mode).toBe(true);
+		}
+	});
+
+	it("is satisfied by any one direct LLM key", () => {
+		for (const key of ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "MISTRAL_API_KEY"]) {
+			expect(missingIds("local", { [key]: "x" }).has("RESEARCH_PROVIDER"), key).toBe(false);
+		}
+	});
+
+	it("is not satisfied by scraper keys alone", () => {
+		expect(missingIds("local", { OLOSTEP_API_KEY: "x", CLORO_API_KEY: "x" }).has("RESEARCH_PROVIDER")).toBe(true);
+	});
+
+	it("follows ONBOARDING_LLM_TARGET to that provider's keys", () => {
+		const target = { ONBOARDING_LLM_TARGET: "claude:anthropic-api" };
+		expect(missingIds("local", { ...target, OPENAI_API_KEY: "x" }).has("RESEARCH_PROVIDER")).toBe(true);
+		expect(missingIds("local", { ...target, ANTHROPIC_API_KEY: "x" }).has("RESEARCH_PROVIDER")).toBe(false);
+		expect(missingIds("local", { ONBOARDING_LLM_TARGET: "stub:stub" }).has("RESEARCH_PROVIDER")).toBe(false);
+	});
+});
+
 describe("requireEnvVars", () => {
 	it("reports every missing required env var at once", () => {
 		expect(() =>
@@ -89,5 +130,31 @@ describe("requireEnvVars", () => {
 	it("returns the resolved values when every var is present", () => {
 		const env = { VITE_APP_NAME: "Acme", VITE_APP_URL: "https://app.elmo.com" };
 		expect(requireEnvVars(["VITE_APP_NAME", "VITE_APP_URL"], env)).toEqual(env);
+	});
+});
+
+describe("assertRequiredEnv", () => {
+	it("names every missing var for the mode in one error", () => {
+		expect(() =>
+			assertRequiredEnv({ DEPLOYMENT_MODE: "whitelabel", SCRAPE_TARGETS: "chatgpt:olostep:online" }),
+		).toThrow(/DATABASE_URL.*BETTER_AUTH_SECRET.*AUTH0_CLIENT_ID.*VITE_APP_ICON/);
+	});
+
+	it("still lists the shared vars when DEPLOYMENT_MODE is unset", () => {
+		expect(() => assertRequiredEnv({})).toThrow(
+			/^Missing required environment variables: .*DATABASE_URL.*SCRAPE_TARGETS.*DEPLOYMENT_MODE/,
+		);
+	});
+
+	it("leaves provider keys to SCRAPE_TARGETS validation", () => {
+		expect(() =>
+			assertRequiredEnv({
+				DEPLOYMENT_MODE: "local",
+				DATABASE_URL: "postgres://localhost/elmo",
+				BETTER_AUTH_SECRET: "secret",
+				ELMO_ENCRYPTION_KEY: "key",
+				SCRAPE_TARGETS: "chatgpt:olostep:online",
+			}),
+		).not.toThrow();
 	});
 });

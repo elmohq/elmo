@@ -1,13 +1,4 @@
-/**
- * DB-aware entitlement resolution: loads the org's subscription row
- * (maintained by the @better-auth/stripe webhook) and organization_settings
- * (custom-plan overrides + premium add-on quantity), then delegates to the pure
- * resolver in @workspace/config/entitlements.
- *
- * Outside cloud mode this never touches the database — the first line resolves
- * to UNLIMITED_ENTITLEMENTS, which is what keeps local/demo/whitelabel
- * provably unaffected by everything built on top of this.
- */
+/** Outside cloud this never touches the database: it resolves straight to UNLIMITED_ENTITLEMENTS. */
 
 import {
 	type Entitlements,
@@ -25,11 +16,7 @@ import { brands, organizationSettings, subscription } from "../db/schema";
 type SubscriptionRow = typeof subscription.$inferSelect;
 type SettingsRow = typeof organizationSettings.$inferSelect;
 
-/**
- * Statuses ranked from most to least relevant when an org has accumulated
- * several subscription rows (e.g. canceled once, resubscribed). Unknown
- * statuses rank last.
- */
+/** For orgs with several subscription rows (canceled once, resubscribed). Unknown statuses rank last. */
 const STATUS_RANK: Record<string, number> = {
 	active: 0,
 	trialing: 1,
@@ -41,10 +28,7 @@ const STATUS_RANK: Record<string, number> = {
 	canceled: 7,
 };
 
-/**
- * Pick the row that best represents the org's current subscription: the
- * healthiest status wins; among equals, the latest billing period.
- */
+/** The healthiest status wins; among equals, the latest billing period. */
 export function selectRelevantSubscription(rows: SubscriptionRow[]): SubscriptionRow | null {
 	if (rows.length === 0) return null;
 	return [...rows].sort((a, b) => {
@@ -76,11 +60,7 @@ function toEntitlements(
 	});
 }
 
-/**
- * The org a brand belongs to, for callers that hold only a brand id and no
- * user context (the admin surface, /api/v1 key auth, the worker). Access
- * control is the caller's concern; this is pure tenancy resolution.
- */
+/** Access control is the caller's concern. */
 export async function getBrandOrganizationId(brandId: string): Promise<string> {
 	const [row] = await db
 		.select({ organizationId: brands.organizationId })
@@ -93,7 +73,6 @@ export async function getBrandOrganizationId(brandId: string): Promise<string> {
 
 export interface OrgBillingState {
 	entitlements: Entitlements;
-	/** The row entitlements were derived from (null when none / non-cloud). */
 	subscription: SubscriptionRow | null;
 	settings: SettingsRow | null;
 }
@@ -105,17 +84,8 @@ const UNLIMITED_STATE: OrgBillingState = {
 };
 
 /**
- * Billing state for any number of orgs in two queries. Every requested org gets
- * an entry, so callers never have to distinguish "no row" from "not asked for".
- *
- * The single-org accessors below all funnel through here rather than issuing
- * their own one-row variants of the same two queries — one query shape, one
- * place that decides which subscription row wins.
- */
-/**
- * `conn` runs the read on a transaction the caller already opened. Quota
- * decisions need it: checking usage on a second pooled connection while
- * holding a transaction open can exhaust the pool and deadlock.
+ * Every requested org gets an entry. Pass `conn` to read on the caller's open
+ * transaction: a second pooled connection while one is held can deadlock the pool.
  */
 export interface EntitlementReadOptions {
 	mode?: DeploymentMode;
@@ -164,8 +134,7 @@ export async function getOrgBillingStates(
 
 export async function getOrgBillingState(orgId: string, options?: EntitlementReadOptions): Promise<OrgBillingState> {
 	const states = await getOrgBillingStates([orgId], options);
-	// getOrgBillingStates always populates every requested id; the fallback is a
-	// type narrowing, not a case that happens.
+	// getOrgBillingStates populates every requested id; the fallback only narrows.
 	return states.get(orgId) ?? UNLIMITED_STATE;
 }
 
@@ -173,7 +142,6 @@ export async function getOrgEntitlements(orgId: string, options?: EntitlementRea
 	return (await getOrgBillingState(orgId, options)).entitlements;
 }
 
-/** Entitlements only, for callers (the worker sweep, the paywall) with no use for the rows. */
 export async function getOrgEntitlementsMap(
 	orgIds: string[],
 	options?: EntitlementReadOptions,
