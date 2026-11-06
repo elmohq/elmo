@@ -1,17 +1,4 @@
-/**
- * What makes a whitelabel deployment different.
- *
- * A whitelabel instance is embedded in a partner's product: it wears their
- * branding, sends every sign-in to their Auth0 tenant, has its brands
- * provisioned through the admin API rather than letting users create them, and
- * adds an "Optimize with <parent>" hand-off from each prompt chart back to the
- * parent app.
- *
- * The identity provider is a non-resolvable placeholder domain, so these specs
- * assert that the app hands off to it correctly rather than completing a real
- * SSO round trip (the authenticated session is minted directly — see
- * e2e/session.ts).
- */
+/** The identity provider is a placeholder domain, so these assert the hand-off to it rather than a real SSO round trip. */
 import { expect, failedResource, test } from "../../test";
 import { TEST_BRAND_ID, WHITELABEL, brandUrl, organizationUrl } from "../../fixtures";
 import { fillUntilSaveable } from "../../interactions";
@@ -28,8 +15,7 @@ test.describe("Whitelabel sign-in is SSO only", () => {
   });
 
   test("the login page hands off to the identity provider", async ({ page }) => {
-    // Stub the IdP so the browser doesn't chase a domain that never resolves;
-    // the assertion is on the authorize URL the app builds.
+    // The IdP's domain never resolves, so it is stubbed and the authorize URL asserted.
     const authorizeRequests: string[] = [];
     await page.route(isIdpRequest, async (route) => {
       authorizeRequests.push(route.request().url());
@@ -141,7 +127,7 @@ test.describe("Whitelabel features", () => {
     const optimize = page.getByRole("button", { name: `Optimize with ${WHITELABEL.parentName}` }).first();
     await expect(optimize).toBeVisible({ timeout: 30_000 });
 
-    // "All models" renders a per-model menu; each entry opens the parent app.
+    // With "All models" selected the button opens a per-model menu.
     await optimize.click();
     const popupPromise = context.waitForEvent("page");
     await page.getByRole("menuitem").first().click();

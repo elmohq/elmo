@@ -35,13 +35,8 @@ const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
 let lastOverdueAlertMs = 0;
 
 /**
- * Maintenance job that ensures all enabled prompts have scheduled jobs.
- * This is a self-healing mechanism that catches any prompts that fell through
- * the cracks (e.g., due to worker crashes, failed jobs, etc.) — and, since the
- * run policy landed, also what starts a prompt again after it stopped while an
- * org was unentitled (canceled → resubscribed) or a brand had no platform
- * picks. The decision logic itself is pure (computeMaintenanceDecisions);
- * this job only gathers state and executes the decisions.
+ * Restarts prompts whose job was lost or that stopped while their org had no
+ * plan. The decisions are computeMaintenanceDecisions'; this carries them out.
  */
 export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[]): Promise<void> {
 	for (const job of jobs) {
@@ -132,11 +127,7 @@ function groupPrompts(
 	return { byOrg, byBrand };
 }
 
-/**
- * Every prompt's plan, brand by brand. A brand with a broken configuration
- * (e.g. enabledModels naming a model no longer in SCRAPE_TARGETS) must not take
- * maintenance down for everyone — contain it and move on.
- */
+/** A brand whose configuration doesn't resolve is skipped, not allowed to stop maintenance for everyone. */
 function resolveRunPlans(args: {
 	promptsByBrand: Map<string, EnabledPrompt[]>;
 	promptsByOrg: Map<string, EnabledPrompt[]>;
@@ -305,13 +296,7 @@ async function runMaintenanceCheck(): Promise<void> {
 	if (decisions.toSchedule.length > 0) await scheduleNewJobs(decisions.toSchedule.map((d) => d.promptId));
 }
 
-/**
- * Report to Sentry (as an error, so it pages) when enabled, entitled prompts
- * are overdue on any of their targets past the grace window. Parked chains
- * (unentitled orgs, no picks) never count — a canceled customer is not an
- * outage. Throttled in-process so a sustained outage doesn't emit a new event
- * on every maintenance tick.
- */
+/** An error so it pages. Parked chains never count: a canceled customer is not an outage. */
 function reportOverduePrompts(overduePrompts: number): void {
 	if (overduePrompts === 0) return;
 	const now = Date.now();
@@ -327,10 +312,6 @@ function reportOverduePrompts(overduePrompts: number): void {
 	});
 }
 
-/**
- * Get pending jobs for each prompt, preferring the most active state.
- * Returns at most one job per prompt: active > retry > created.
- */
 interface PendingJobInfo {
 	jobId: string;
 	state: "created" | "active" | "retry";
@@ -338,6 +319,7 @@ interface PendingJobInfo {
 	consecutiveFailures: number;
 }
 
+/** At most one job per prompt, the most active one. */
 async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	const result = await db.execute(sql`
 		SELECT id, data->>'promptId' as prompt_id, state,

@@ -9,7 +9,7 @@ import { canAdvanceReport, type ReportPhase, type ReportStatus } from "@workspac
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
 import { extractRun } from "@workspace/lib/text-extraction";
 import { and, eq, inArray } from "drizzle-orm";
-import { mentionAnalyzer } from "./mention-judge/analyze";
+import { mentionAnalyzer } from "./mention-judge";
 
 interface CompetitorResult {
 	name: string;
@@ -181,8 +181,6 @@ async function judgeWithRetries(text: string, config: MentionConfig, question: s
 	}
 }
 
-// Whitelabel uses its fixed 2+1+1 mapping; other modes match day-to-day
-// tracking frequency.
 async function runPrompt(
 	promptValue: string,
 	brandName: string,
@@ -334,21 +332,15 @@ export async function processReportJob(job: ReportJobContext) {
 		job.log(`Report ${reportId} marked as processing`);
 		await job.enterPhase({ kind: "analyzing-brand" });
 
-		// Analyze competitors and candidate prompts in one shared
-		// LLM call (same `analyzeBrand` the onboarding flow uses; provider-
-		// agnostic with native web search wired in). Manual-prompt path skips
-		// the prompt generation but still needs competitors.
+		// Manual prompts skip prompt generation but still need competitors.
 		job.log(`Analyzing brand: ${brandWebsite}`);
 		const suggestion = await analyzeBrand({
 			website: brandWebsite,
 			brandName,
 			maxPrompts: useManualPrompts ? 0 : CANDIDATE_PROMPTS_COUNT,
 		});
-		// The report renderer's CompetitorResult expects a single primary domain;
-		// analyzeBrand returns the full list now. Take the first as the canonical
-		// one for the report's UI (which doesn't display the rest anyway).
-		// A brand name variant listed as a competitor would count the brand's own
-		// mentions against it.
+		// The report shows one domain per competitor. A brand name variant listed as
+		// a competitor would count the brand's own mentions against it.
 		const brandNames = new Set([brandName, ...brandAliases].map((name) => name.trim().toLowerCase()));
 		const competitors: CompetitorResult[] = suggestion.competitors
 			.filter((c) => c.domains.length > 0 && !brandNames.has(c.name.trim().toLowerCase()))

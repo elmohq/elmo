@@ -30,12 +30,15 @@ export const Route = createFileRoute("/glossary/$slug")({
 					{ name: "Glossary", path: "/glossary" },
 					{ name: t.term, path },
 				]),
-				faqJsonLd([
-					{
-						question: `What is ${t.term}?`,
-						answer: `${t.short} ${t.body[0]}`,
-					},
-				]),
+				faqJsonLd(
+					[
+						{
+							question: `What is ${t.term}?`,
+							answer: `${t.short} ${t.body[0]}`,
+						},
+					],
+					{ path, dateModified: t.updated },
+				),
 			],
 		};
 	},

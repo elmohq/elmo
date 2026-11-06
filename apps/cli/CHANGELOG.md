@@ -1,5 +1,12 @@
 # @elmohq/cli
 
+## 0.7.8
+
+### Patch Changes
+
+- 034c475: Add `elmo lab audit`, which checks how well AI agents and crawlers can reach, read, and understand a website.
+- 1e7b8db: Add `elmo lab` commands that generate tracking prompts, evaluate them across providers, and suggest AEO improvements as one-off runs.
+
 ## 0.7.7
 
 No changes in this release.

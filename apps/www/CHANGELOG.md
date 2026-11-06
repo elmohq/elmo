@@ -1,5 +1,16 @@
 # @workspace/www
 
+## 0.7.8
+
+### Patch Changes
+
+- Updated dependencies [c82f25f]
+  - @workspace/api-spec@0.7.8
+  - @workspace/config@0.7.8
+  - @workspace/docs@0.7.8
+  - @workspace/og@0.7.8
+  - @workspace/ui@0.7.8
+
 ## 0.7.7
 
 ### Patch Changes

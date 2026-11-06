@@ -80,10 +80,8 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	// The prompt list is still search-filtered client-side for display, then
-	// re-ordered per the `order` control (#60). The chart/visibility sections
-	// no longer receive this id list — they resolve the same prompts
-	// server-side from the tag + search filters (issue #68).
+	// Only the list uses this; the chart sections resolve the same prompts
+	// server-side from the filters.
 	const sortedPrompts = useMemo(() => {
 		if (!promptsSummary) return [];
 		const allPrompts = promptsSummary.prompts;

@@ -1,15 +1,6 @@
 /**
- * What makes a demo deployment different.
- *
- * Demo is local mode with READ_ONLY forced on: a public, shared instance that
- * anyone can look around but nobody can change. It signs every visitor in to
- * one shared account, wears a "Demo" pill, and refuses every write.
- *
- * The read-only policy itself is unit-tested as a pure function
- * (apps/web/src/lib/auth/__tests__/policies.test.ts). What these specs add is
- * that the policy is actually wired into the running server, and that a refused
- * write leaves the database untouched — a 403 that still wrote would pass the
- * unit tests.
+ * The read-only policy is unit-tested; these check it is wired into the running
+ * server and that a refused write leaves the database untouched.
  */
 import type { Page } from "@playwright/test";
 import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
@@ -96,8 +87,6 @@ test.describe("Demo refuses writes", () => {
     await expect(nameInput).toBeVisible({ timeout: 30_000 });
     await nameInput.fill("Renamed From The Settings Page");
 
-    // The save posts to a server function; catching that response is what tells
-    // us the write attempt happened and how the server answered it.
     const writeAttempt = page.waitForResponse(
       (response) => response.request().method() === "POST" && !response.url().includes("/api/plausible"),
     );
@@ -105,7 +94,7 @@ test.describe("Demo refuses writes", () => {
     expect((await writeAttempt).status()).toBe(403);
 
     await expect(page.getByText("Brand details updated successfully!")).toHaveCount(0);
-    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible();
+    await expect(page.getByText("The demo is read-only")).toBeVisible();
     expect(await countRows("brands", "id = $1 AND name = $2", [TEST_BRAND_ID, TEST_BRAND_NAME])).toBe(1);
   });
 });
@@ -125,8 +114,6 @@ test.describe("Demo auth is sign-in only", () => {
   });
 
   test("changing the shared account's password is refused", async ({ request }) => {
-    // Sign-in and sign-out are the only better-auth writes a demo visitor gets;
-    // everything else that could mutate the shared account is blocked.
     const response = await request.post("/api/auth/change-password", {
       data: { currentPassword: TEST_USER.password, newPassword: "hijacked-password-123" },
       failOnStatusCode: false,
@@ -207,7 +194,12 @@ test.describe("Demo features", () => {
     const save = page.getByRole("button", { name: "Save", exact: true });
     await fillUntilSaveable(nameField, "Renamed In Demo", save);
     await save.click();
-    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible({ timeout: 30_000 });
+    const refusal = page.getByText("The demo is read-only").locator("..");
+    await expect(refusal).toBeVisible({ timeout: 30_000 });
+    await expect(refusal.getByRole("link", { name: "Elmo Cloud" })).toHaveAttribute(
+      "href",
+      /app\.elmohq\.com\/auth\/register\?ref=demo-read-only/,
+    );
   });
 
   test("the team page is not offered and not reachable", async ({ page, consoleErrors }) => {

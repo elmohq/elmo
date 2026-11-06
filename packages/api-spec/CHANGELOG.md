@@ -1,5 +1,11 @@
 # @workspace/api-spec
 
+## 0.7.8
+
+### Patch Changes
+
+- c82f25f: A rate-limited API request's `Retry-After` header now gives the wait in seconds instead of milliseconds, and the API reference lists it as the only header a `429` carries.
+
 ## 0.7.7
 
 ### Patch Changes

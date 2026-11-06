@@ -248,7 +248,6 @@ export function CitationsDisplay({
 					)
 				: listSource && <RemoteTopUrlsCard source={listSource} {...urlCardProps} />}
 
-			{/* Google Shopping */}
 			{googleModule &&
 				googleModule.shopping.productCounts.all > 0 &&
 				(citationData.specificUrls ? (
@@ -257,7 +256,6 @@ export function CitationsDisplay({
 					listSource && <RemoteGoogleShoppingCard totals={googleModule} source={listSource} />
 				))}
 
-			{/* Top Cited Subreddits */}
 			{citationData.subreddits.length > 0 && <RedditCard subreddits={citationData.subreddits} />}
 		</>
 	);

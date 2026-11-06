@@ -11,7 +11,7 @@ interface VisibilityTimeSeriesPoint {
 }
 
 interface VisibilityBarProps {
-	currentVisibility: number;
+	currentVisibilityPct: number;
 	totalRuns: number;
 	totalPrompts: number;
 	totalCitations: number;
@@ -69,7 +69,7 @@ function PointTooltip({
 }
 
 export function VisibilityBar({
-	currentVisibility,
+	currentVisibilityPct,
 	totalRuns,
 	totalPrompts,
 	totalCitations,
@@ -86,11 +86,10 @@ export function VisibilityBar({
 		return null;
 	}
 
-	const colors = getVisibilityColors(currentVisibility);
+	const colors = getVisibilityColors(currentVisibilityPct);
 	// A week or less is too few points for the sparkline to read as a trend.
 	const showChart = getDaysFromLookback(lookback) > 7;
 
-	// Prepare chart data
 	const chartData = visibilityTimeSeries.map((point) => ({
 		date: point.date,
 		value: point.visibility ?? 0,
@@ -104,7 +103,7 @@ export function VisibilityBar({
 			{/* Left side: visibility + chart + info */}
 			<div className="flex items-center gap-2 min-w-0 shrink-0">
 				<span className={`text-base sm:text-lg font-semibold whitespace-nowrap ${colors.text}`}>
-					{currentVisibility}% <span className="font-normal">Visibility</span>
+					{currentVisibilityPct}% <span className="font-normal">Visibility</span>
 				</span>
 
 				{showChart && (

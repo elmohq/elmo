@@ -1,5 +1,16 @@
 # @workspace/worker
 
+## 0.7.8
+
+### Patch Changes
+
+- 0a7cd97: Stop a prompt's scheduled run being charged twice when its job outlives a 15-minute expiry.
+- a6c87c2: Reports now show how far along they are, and one whose worker died is marked failed instead of appearing to run forever.
+- Updated dependencies [7a8a3a8]
+  - @workspace/deployment@0.7.8
+  - @workspace/lib@0.7.8
+  - @workspace/config@0.7.8
+
 ## 0.7.7
 
 ### Patch Changes

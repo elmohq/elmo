@@ -1,5 +1,28 @@
 # @workspace/web
 
+## 0.7.8
+
+### Patch Changes
+
+- 4a4ec93: Fixed the brand analysis API accepting a `maxCompetitors` or `maxPrompts` above the documented maximum of 100.
+- be639cb: Fixed the API and MCP tools reporting a plan's billing interval as `month` or `year` instead of the documented `monthly` or `annual`.
+- b504e08: The citation flow chart counts a page once even when AI engines tag its links with UTM parameters.
+- aa55138: The demo now invites visitors to start their own Elmo Cloud workspace, including when they try to save a change.
+- 0a7cd97: Stop a prompt's scheduled run being charged twice when its job outlives a 15-minute expiry.
+- 7a8a3a8: Show the last used sign-in method when returning to Elmo Cloud.
+- a6c87c2: Reports now show how far along they are, and one whose worker died is marked failed instead of appearing to run forever.
+- c82f25f: A rate-limited API request's `Retry-After` header now gives the wait in seconds instead of milliseconds, and the API reference lists it as the only header a `429` carries.
+- 94b01f8: Fixed the API's prompt runs list rejecting an out-of-range `page` or `limit` with a `400` instead of clamping it as documented.
+- d59eee3: Remove the stray divider and empty space at the bottom of the account menu in the demo.
+- Updated dependencies [7a8a3a8]
+- Updated dependencies [c82f25f]
+  - @workspace/deployment@0.7.8
+  - @workspace/lib@0.7.8
+  - @workspace/api-spec@0.7.8
+  - @workspace/config@0.7.8
+  - @workspace/og@0.7.8
+  - @workspace/ui@0.7.8
+
 ## 0.7.7
 
 ### Patch Changes

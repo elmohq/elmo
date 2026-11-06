@@ -1,13 +1,4 @@
 /**
- * Stories for <AppSidebar /> across deployment environments.
- *
- * One story per real deployment scenario:
- *  - Local (self-hosted, no auth)
- *  - Demo (read-only preview)
- *  - Whitelabel, plus admin, report-only and pre-onboarding variants
- *  - Cloud, the only mode whose settings nav carries Billing
- *  - Admin routes, where the admin links move from the account menu to the rail
- *
  * Every story passes `brand`, because the Settings group is gated on
  * `brand.onboarded` and the sidebar takes it as a prop from the route loader
  * rather than reading the useBrand hook.
@@ -22,10 +13,6 @@ import { setMockOrganizations, setMockOrganizationsFailures } from "./_mocks/ser
 import { setMockRouteContext } from "./_mocks/tanstack-router";
 import { setMockAuth } from "./_mocks/use-auth";
 import { setMockBrand } from "./_mocks/use-brands";
-
-// ---------------------------------------------------------------------------
-// Shared mock data
-// ---------------------------------------------------------------------------
 
 const onboardedBrand = {
 	id: "brand-1",
@@ -54,10 +41,6 @@ const newBrand = {
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
 };
-
-// ---------------------------------------------------------------------------
-// Configs per deployment mode
-// ---------------------------------------------------------------------------
 
 const localConfig: ClientConfig = {
 	mode: "local",
@@ -122,10 +105,6 @@ const cloudConfig: ClientConfig = {
 	analytics: {},
 };
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function configureMocks(
 	config: ClientConfig,
 	brand: any,
@@ -156,17 +135,10 @@ const authedUser = (name: string, email: string, seed: string) => ({
 });
 
 /**
- * Wrapper that contains the sidebar within a bounded box.
- *
- * The shadcn Sidebar uses `position: fixed` and `h-svh` / `min-h-svh` which
- * would otherwise break out of the story frame and overlap Ladle's own UI.
- *
- * Two constraints keep it bounded:
- *  1. `transform: translate(0)` on the outer div creates a new CSS containing
- *     block so that `position: fixed` children are positioned relative to this
- *     container instead of the viewport.
- *  2. Scoped style overrides swap `h-svh` / `min-h-svh` for `h-full` /
- *     `min-h-full` so the sidebar fits the container's height.
+ * The shadcn Sidebar is `position: fixed` and viewport-tall, so it would break
+ * out of the story frame. `transform` makes this box the containing block for
+ * fixed children, and the scoped styles make the sidebar fill it instead of the
+ * viewport.
  */
 function SidebarFrame({ children, label }: { children: React.ReactNode; label: string }) {
 	return (
@@ -193,10 +165,6 @@ function SidebarFrame({ children, label }: { children: React.ReactNode; label: s
 		</div>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Stories
-// ---------------------------------------------------------------------------
 
 export default {
 	title: "App Sidebar",

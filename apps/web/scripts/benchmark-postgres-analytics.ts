@@ -22,10 +22,6 @@ const db = drizzle(process.env.DATABASE_URL!);
 const ITERATIONS = parseInt(process.argv.find((a) => a.startsWith("--iterations="))?.split("=")[1] || "5");
 const WARMUP = 1;
 
-// ============================================================================
-// Timing
-// ============================================================================
-
 interface BenchResult {
 	name: string;
 	avg: number;
@@ -61,10 +57,6 @@ async function bench(name: string, pgFn: () => Promise<unknown>): Promise<BenchR
 	console.log(`${timing.avg}ms (min ${timing.min}ms, p95 ${timing.p95}ms, ${timing.rows} rows)`);
 	return { name, ...timing };
 }
-
-// ============================================================================
-// Main
-// ============================================================================
 
 async function benchBrand(brandId: string, runCount: number, hasCitations: boolean): Promise<BenchResult[]> {
 	const promptResult = await db.execute<{ id: string }>(sql`
@@ -132,10 +124,6 @@ async function main(): Promise<void> {
 		const brandResults = await benchBrand(brand.brand_id, brand.run_count, hasCitations);
 		allResults.push(...brandResults);
 	}
-
-	// ============================================================================
-	// Output
-	// ============================================================================
 
 	console.log("\n## Summary\n");
 	console.log(`| Query | Avg (ms) | Min (ms) | P95 (ms) | Rows |`);
