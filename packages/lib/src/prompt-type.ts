@@ -4,7 +4,7 @@
  * stored, so renaming a brand or adding an alias reclassifies every prompt at
  * once. A misclassified prompt is fixed by adding the alias it uses.
  */
-import { normalizeDomain } from "./mentions";
+import { extractDomain } from "./citations/domain-categories";
 
 export const PROMPT_TYPES = ["branded", "unbranded"] as const;
 export type PromptType = (typeof PROMPT_TYPES)[number];
@@ -26,8 +26,8 @@ export function mentionsBrand(promptValue: string, brand: BrandIdentity): boolea
 	const domains = [brand.website, ...(brand.additionalDomains ?? [])]
 		.map((domain) => domain.trim())
 		.filter(Boolean)
-		.map(normalizeDomain);
-	const terms = [brand.name, ...(brand.aliases ?? []), ...domains, normalizeDomain(brand.website).split(".")[0]];
+		.map(extractDomain);
+	const terms = [brand.name, ...(brand.aliases ?? []), ...domains, extractDomain(brand.website).split(".")[0]];
 	// A blank alias or a malformed website like "www." leaves an empty term, which every prompt contains.
 	return terms.some((term) => {
 		const needle = term.trim().toLowerCase();
