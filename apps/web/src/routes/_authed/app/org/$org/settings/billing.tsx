@@ -24,7 +24,7 @@ import { useState } from "react";
 import { PlanFeatureTable } from "@/components/plan-comparison";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
-import { type BillingState, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
+import { type BillingState, changePlanFn, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/billing")({
 	staticData: { crumb: "Billing" },
@@ -50,6 +50,7 @@ function BillingSettingsPage() {
 	const { entitlements } = state;
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const writeError = useWriteErrorMessage();
 
 	const openPortal = async () => {
 		setBusy("portal");
@@ -68,25 +69,17 @@ function BillingSettingsPage() {
 	const changePlan = async (plan: string) => {
 		setBusy(`plan-${plan}`);
 		setError(null);
-		const { error: upgradeError } = await authClient.subscription.upgrade({
-			plan,
-			annual: state.subscription?.billingInterval === "year",
-			referenceId: state.organization.id,
-			customerType: "organization",
-			...(state.subscription?.stripeSubscriptionId && { subscriptionId: state.subscription.stripeSubscriptionId }),
-			successUrl: window.location.href,
-			cancelUrl: window.location.href,
-			returnUrl: window.location.href,
-			disableRedirect: false,
-		});
-		if (upgradeError) {
-			setError(upgradeError.message ?? "Could not change the plan");
+		try {
+			await changePlanFn({ data: { organizationId: state.organization.id, plan } });
+			router.invalidate();
+		} catch (err) {
+			setError(writeError(err, "Could not change the plan"));
+		} finally {
+			setBusy(null);
 		}
-		setBusy(null);
-		router.invalidate();
 	};
 
-	// A past-due subscription can't be switched in place; the plugin would open a second checkout beside it.
+	// A past-due subscription has to be paid before its plan can change.
 	const showPlans = isAdmin && (state.subscription?.status === "active" || state.subscription?.status === "trialing");
 	const meters = showMeters(entitlements);
 

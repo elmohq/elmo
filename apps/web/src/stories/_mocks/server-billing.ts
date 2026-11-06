@@ -25,3 +25,5 @@ export const setPremiumAddonQuantityFn = async (args: { data: { quantity: number
 	if (_addonError) throw new Error(_addonError);
 	return { quantity: args.data.quantity };
 };
+
+export const changePlanFn = async (_args: { data: { organizationId: string; plan: string } }) => undefined;
