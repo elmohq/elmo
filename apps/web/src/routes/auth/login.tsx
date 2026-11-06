@@ -26,6 +26,7 @@ import FullPageCard from "@/components/full-page-card";
 import { LegalConsentNotice } from "@/components/legal-consent-notice";
 import { CAPTCHA_FAILED_MESSAGE, CaptchaError, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
 import { type AttributionParams, attributionParams } from "@/lib/attribution";
+import { trackEventBeforeNavigation } from "@/lib/posthog";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
@@ -246,6 +247,7 @@ export function EmailPasswordLogin({
 				return;
 			}
 
+			trackEventBeforeNavigation("login_completed", { method: "email" });
 			window.location.href = destination;
 		} catch (err) {
 			setError(err instanceof CaptchaError ? err.message : "Something went wrong. Please try again.");
@@ -266,7 +268,10 @@ export function EmailPasswordLogin({
 						type="button"
 						variant="outline"
 						className="relative w-full"
-						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: destination })}
+						onClick={() => {
+							trackEventBeforeNavigation("login_started", { method: "google" });
+							authClient.signIn.social({ provider: "google", callbackURL: destination });
+						}}
 					>
 						<IconBrandGoogle className="size-4" />
 						Continue with Google

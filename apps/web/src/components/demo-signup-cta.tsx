@@ -2,6 +2,7 @@ import { IconArrowRight, IconCloud } from "@tabler/icons-react";
 import { cloudSignupUrl } from "@workspace/config/referrals";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { trackEvent } from "@/lib/posthog";
 
 const SIGNUP_URL = cloudSignupUrl("demo-header");
 
@@ -11,6 +12,7 @@ export function DemoSignupCta() {
 	return (
 		<a
 			href={SIGNUP_URL}
+			onClick={() => trackEvent("cta_click", { destination: "cloud-signup", source: "demo-header" })}
 			target="_blank"
 			rel="noopener"
 			className={buttonVariants({ variant: "secondary", size: "sm" })}
