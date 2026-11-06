@@ -23,8 +23,6 @@ const CLOUD_TARGETS = parseScrapeTargets(
 		"chatgpt:brightdata:online",
 		"google-ai-mode:brightdata:online",
 		"google-ai-overview:dataforseo:online",
-		"copilot:brightdata:online",
-		"perplexity:brightdata:online",
 		"gemini:brightdata:online",
 		"qwen:openrouter:qwen/qwen3-235b-a22b-2507",
 		"deepseek:openrouter:deepseek/deepseek-v3.2",
@@ -114,7 +112,7 @@ function standardPicker(overrides: Partial<ModelPickerState> = {}): ModelPickerS
 	return {
 		available: menuOptions(STANDARD_PLATFORM_MENU),
 		editable: true,
-		enabledModels: ["chatgpt", "google-ai-mode", "perplexity", "claude"],
+		enabledModels: ["chatgpt", "google-ai-mode", "gemini", "claude"],
 		planLimits: { platformPicks: 4, platformMenu: [...STANDARD_PLATFORM_MENU] },
 		upgradeOptions: [],
 		costBasis: null,
@@ -255,7 +253,7 @@ export const StarterSinglePlatform: Story = {
 /** A mid-tier plan keeps the picker but still names what a higher plan adds. */
 export const UpgradeableMidPlan: Story = {
 	render: () => {
-		const menu = ["chatgpt", "google-ai-mode", "perplexity", "claude"];
+		const menu = ["chatgpt", "google-ai-mode", "gemini", "claude"];
 		loader({
 			available: menuOptions(menu),
 			editable: true,
@@ -396,8 +394,8 @@ export const SelfHostedTotalFollowsTheSelection: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		// BrightData at $0.01/run over 40 prompts x 1/day x 5 calls x 30 days is $60,
-		// so dropping Copilot should quote a smaller bill than the page total.
-		await userEvent.click(await canvas.findByRole("checkbox", { name: /copilot/i }));
+		// so dropping Gemini should quote a smaller bill than the page total.
+		await userEvent.click(await canvas.findByRole("checkbox", { name: /gemini/i }));
 		const bar = await canvas.findByText(/platforms selected · ≈\$[\d,.]+\/mo, down from \$[\d,.]+/);
 		await expect(bar).toBeVisible();
 
@@ -438,7 +436,7 @@ export const SelfHostedSuggestsMorePlatforms: Story = {
 					unconfiguredPlatforms: [
 						{
 							// Reachable either way, and the two are not equivalent.
-							model: "perplexity",
+							model: "gemini",
 							providers: [
 								{
 									id: "brightdata",
@@ -446,7 +444,6 @@ export const SelfHostedSuggestsMorePlatforms: Story = {
 									access: "scraped",
 									docsUrl: `${PROVIDERS_DOCS_URL}#brightdata`,
 								},
-								{ id: "oxylabs", name: "Oxylabs", access: "scraped", docsUrl: `${PROVIDERS_DOCS_URL}#oxylabs` },
 								{
 									id: "openrouter",
 									name: "OpenRouter",
@@ -467,13 +464,14 @@ export const SelfHostedSuggestsMorePlatforms: Story = {
 							],
 						},
 						{
-							model: "copilot",
+							// Behind a login, so only its model API is left.
+							model: "perplexity",
 							providers: [
 								{
-									id: "brightdata",
-									name: "BrightData",
-									access: "scraped",
-									docsUrl: `${PROVIDERS_DOCS_URL}#brightdata`,
+									id: "openrouter",
+									name: "OpenRouter",
+									access: "api",
+									docsUrl: `${PROVIDERS_DOCS_URL}#direct-model-apis`,
 								},
 							],
 						},
@@ -489,7 +487,7 @@ export const SelfHostedSuggestsMorePlatforms: Story = {
 		// Scrapers and APIs are separate columns, since they return different data.
 		await expect(await canvas.findByText("Scrapers")).toBeVisible();
 		await expect(await canvas.findByText("Direct APIs")).toBeVisible();
-		// Claude has no scraper and Copilot has no API, so each shows a gap.
+		// Neither Claude nor Perplexity has a scraper, so each shows a gap.
 		await expect((await canvas.findAllByText("—")).length).toBe(2);
 
 		// Provider names link into their own section of the setup guide.
@@ -531,7 +529,7 @@ export const Whitelabel: Story = {
 		loader({
 			available: optionsByModel(false, { excludePremium: false }),
 			editable: false,
-			enabledModels: ["chatgpt", "perplexity", "claude"],
+			enabledModels: ["chatgpt", "gemini", "claude"],
 			planLimits: null,
 			upgradeOptions: [],
 			costBasis: null,
@@ -562,7 +560,7 @@ export const DemoIsNotEditable: Story = {
 		loader({
 			available: optionsByModel(false, { excludePremium: false }),
 			editable: false,
-			enabledModels: ["chatgpt", "perplexity"],
+			enabledModels: ["chatgpt", "gemini"],
 			planLimits: null,
 			upgradeOptions: [],
 			costBasis: null,
@@ -574,7 +572,7 @@ export const DemoIsNotEditable: Story = {
 		const canvas = within(canvasElement);
 		await expect(canvas.queryByRole("checkbox")).toBeNull();
 		await expect(await canvas.findByText("ChatGPT")).toBeVisible();
-		await expect(await canvas.findByText("Perplexity")).toBeVisible();
+		await expect(await canvas.findByText("Gemini")).toBeVisible();
 		// Configured but not tracked — listing it would imply it could be turned on.
 		await expect(canvas.queryByText("Grok")).toBeNull();
 	},

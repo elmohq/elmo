@@ -1,6 +1,7 @@
 import { DEFAULT_APP_NAME } from "@workspace/config/constants";
 import { ACCENT_COLORS, OgFrame, OgHeader } from "@workspace/og/render";
 import {
+	isRetiredTarget,
 	overallStatus,
 	PROVIDER_FILTER_LABELS,
 	PROVIDER_FILTER_ORDER,
@@ -34,7 +35,8 @@ const MIN_TILE_COLUMNS = 4;
 const TILE_GAP = 12;
 const CONTENT_WIDTH = 1200 - 2 * 64;
 
-export function renderStatusOgImage(data: TargetStatus[]) {
+export function renderStatusOgImage(allData: TargetStatus[]) {
+	const data = allData.filter((d) => !isRetiredTarget(d.target));
 	const overall = overallStatus(data);
 	const categoryOf = (target: string) => {
 		const { model, provider, version } = parseTarget(target);

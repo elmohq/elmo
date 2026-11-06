@@ -227,11 +227,11 @@ describe("promptSaveDelta", () => {
 
 describe("decideEnabledModels", () => {
 	it("allows picks from the standard menu within the pick count", () => {
-		expect(decideEnabledModels(PRO, ["chatgpt", "perplexity", "gemini", "copilot"]).allowed).toBe(true);
+		expect(decideEnabledModels(PRO, ["chatgpt", "google-ai-mode", "gemini", "mistral"]).allowed).toBe(true);
 	});
 
 	it("denies a fifth pick", () => {
-		expect(decideEnabledModels(PRO, ["chatgpt", "perplexity", "gemini", "copilot", "deepseek"])).toMatchObject({
+		expect(decideEnabledModels(PRO, ["chatgpt", "google-ai-mode", "gemini", "mistral", "deepseek"])).toMatchObject({
 			allowed: false,
 			code: "platform-picks-exceeded",
 		});
@@ -265,9 +265,9 @@ describe("decideEnabledModels", () => {
 			overrides: { extraPlatforms: ["gpt-5-search"], platformPicks: 5 },
 			now: NOW,
 		});
-		expect(decideEnabledModels(custom, ["chatgpt", "perplexity", "gemini", "copilot", "gpt-5-search"]).allowed).toBe(
-			true,
-		);
+		expect(
+			decideEnabledModels(custom, ["chatgpt", "google-ai-mode", "gemini", "mistral", "gpt-5-search"]).allowed,
+		).toBe(true);
 	});
 });
 

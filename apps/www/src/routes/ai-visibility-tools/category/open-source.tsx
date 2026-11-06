@@ -27,12 +27,12 @@ const FAQS: FaqItem[] = [
 	{
 		question: "What are the best open-source AEO tools?",
 		answer:
-			"Elmo is the best open-source answer engine optimization tool for most teams. It is MIT-licensed, has the essential AEO features, the best UX, and the best agent experience, and covers ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, and any OpenRouter model. You can self-host it for free or use Elmo Cloud. Other open-source projects exist, but each makes a significant tradeoff: browser-only storage, scrapers you maintain yourself, workflows built for agents rather than people, features paywalled behind a cloud, or citation-only tracking. GetCito went from a minimal vibe-coded tracker to a fork of Elmo to a from-scratch vibe-coded rewrite within a year.",
+			"Elmo is the best open-source answer engine optimization tool for most teams. It is MIT-licensed, has the essential AEO features, the best UX, and the best agent experience, and covers ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Claude, and any OpenRouter model. You can self-host it for free or use Elmo Cloud. Other open-source projects exist, but each makes a significant tradeoff: browser-only storage, scrapers you maintain yourself, workflows built for agents rather than people, features paywalled behind a cloud, or citation-only tracking. GetCito went from a minimal vibe-coded tracker to a fork of Elmo to a from-scratch vibe-coded rewrite within a year.",
 	},
 	{
 		question: "What are the best free tools to track brand mentions in ChatGPT?",
 		answer:
-			"Self-host Elmo. It is MIT-licensed and free, tracks ChatGPT alongside Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, and Claude, and has no license fee or per-seat charge. Free trials of hosted tools work for a one-off check but stop when the trial does. You supply your own scraper or model API keys, which carry usage costs, so free means no software license rather than no spend.",
+			"Self-host Elmo. It is MIT-licensed and free, tracks ChatGPT alongside Google AI Mode, Google AI Overviews, Gemini, Perplexity, and Claude, and has no license fee or per-seat charge. Free trials of hosted tools work for a one-off check but stop when the trial does. You supply your own scraper or model API keys, which carry usage costs, so free means no software license rather than no spend.",
 	},
 	{
 		question: "Is there a free AI visibility tool?",
@@ -313,7 +313,7 @@ function OpenSourcePage() {
 						<li>
 							Elmo is the longest-running open-source answer engine optimization platform, MIT-licensed and free to
 							self-host, with 36 releases since July 2025 and coverage of ChatGPT, Google AI Mode, Google AI Overviews,
-							Gemini, Perplexity, Copilot, Claude, and any OpenRouter model.
+							Gemini, Perplexity, Claude, and any OpenRouter model.
 						</li>
 						<li>
 							On public GitHub data as of {STATS_AS_OF}, Elmo leads this list on stars, releases, and length of
@@ -434,9 +434,9 @@ function OpenSourcePage() {
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">Elmo</h3>
 							<p>
 								Elmo covers the essential AEO workflow end to end. It tracks how ChatGPT, Google AI Mode, Google AI
-								Overviews, Gemini, Perplexity, Copilot, Claude, and any OpenRouter model mention and cite your brand,
-								and turns that into visibility, share of voice, sentiment, and position scores, citation and query
-								fan-out analytics, and ranked recommendations for what to fix. It has the most polished interface of the
+								Overviews, Gemini, Perplexity, Claude, and any OpenRouter model mention and cite your brand, and turns
+								that into visibility, share of voice, sentiment, and position scores, citation and query fan-out
+								analytics, and ranked recommendations for what to fix. It has the most polished interface of the
 								projects here and the best agent experience: a REST API with TypeScript and Python SDKs, an MCP server,
 								and an agent skill let Claude Code, Cursor, and Codex query your data and manage prompts directly.
 								Agencies can white-label it, and it is MIT-licensed.
@@ -470,7 +470,7 @@ function OpenSourcePage() {
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">GEO/AEO Tracker</h3>
 							<p>
 								GEO/AEO Tracker runs entirely in the browser and stores its data there, so there is nothing to deploy.
-								It covers ChatGPT, Perplexity, Gemini, Copilot, and Google AI Mode with your own keys.
+								It covers ChatGPT, Perplexity, Gemini, Claude, and Google AI Mode with your own keys.
 							</p>
 							<p className="mt-4">
 								That also limits it. Your history lives in one browser on one computer, so sharing it across machines or
@@ -518,8 +518,8 @@ function OpenSourcePage() {
 							<p>
 								Cited tracks one thing: whether your verified domain is cited, mentioned, or missed for the prompts you
 								choose. There is no sentiment, visibility scoring, share of voice, or recommendations, and it doesn't
-								cover Copilot or Grok. Self-hosting needs DataForSEO credentials, and it is AGPL-3.0, so offering a
-								modified version as a service means publishing your changes.
+								cover Grok. Self-hosting needs DataForSEO credentials, and it is AGPL-3.0, so offering a modified
+								version as a service means publishing your changes.
 							</p>
 						</div>
 

@@ -230,7 +230,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 			},
 		],
 		tracking:
-			"Elmo tracks how Microsoft Copilot mentions and cites your brand across your prompts, so you can see the payoff from Bing-side improvements over time.",
+			"Copilot's answers now sit behind a Microsoft sign-in, so no scraper can collect them and Elmo no longer tracks Copilot. Bing improvements still pay off across the engines that search the web, which Elmo does track.",
 		related: ["chatgpt", "google-ai-overviews"],
 	},
 	{

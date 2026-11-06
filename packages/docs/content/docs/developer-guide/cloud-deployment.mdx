@@ -107,7 +107,7 @@ standard platform** (the run policy uses the first match per model), plus a grou
 model sold in the premium tier:
 
 ```
-chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online
+chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online,perplexity:openrouter:perplexity/sonar:online
 ```
 
 Platforms are offered to customers only when they appear in both the plan menu
@@ -124,8 +124,6 @@ whatever the live product serves its users that day.
 | ChatGPT | Premium | `gpt-6-luna` with web search, via the OpenAI API |
 | Google AI Mode | Pick (scraped) | Live product |
 | Google AI Overviews | Pick (scraped) | Live product |
-| Copilot | Pick (scraped) | Live product |
-| Perplexity | Pick (scraped) | Live product |
 | Gemini | Pick (scraped) | Live gemini.google.com |
 | Qwen | Pick (API) | `qwen/qwen3-235b-a22b-2507`, via OpenRouter |
 | DeepSeek | Pick (API) | `deepseek/deepseek-v3.2`, via OpenRouter |
@@ -134,6 +132,7 @@ whatever the live product serves its users that day.
 | Claude | Premium | `claude-haiku-5-5` with web search, via the Anthropic API |
 | Grok | Premium | `x-ai/grok-4.5` with web search, via OpenRouter |
 | Kimi | Pick (API) | `moonshotai/kimi-k2.5`, via OpenRouter |
+| Perplexity | Premium | `perplexity/sonar` with Perplexity's own search, via OpenRouter |
 
 API picks are priced against a design point of roughly **$0.004 per run**, which is why Kimi runs
 K2.5 rather than K3: K3's output tokens cost several times that per answer. Check a new model's
@@ -173,12 +172,17 @@ OpenRouter would fall back to Exa, whose results are not a surface a consumer wo
 report mentions but no citations, since a run with no web search returns no source annotations — as
 does any ungrounded pick.
 
-Grok is sold **only** as a premium target, grounded — it is the one model on this list with no
-ungrounded entry in the cloud menu. Its own answers run about **$0.004 per call** against a plan
+Grok is sold **only** as a premium target, grounded, with no ungrounded entry in the cloud menu. Its own answers run about **$0.004 per call** against a plan
 design point near **$0.004 per run**, because OpenRouter prices Grok's output at several times a
 scrape and Elmo pays for output tokens, not queries. One of four picks devoted to it, sampled four
 times a day, would cost more than the scraped surface it displaced. Metered once daily out of the
 paid pool, it prices the same way grounded Claude does.
+
+Perplexity is also premium only. Its consumer product sits behind a login, so no scraper reaches it, and
+Copilot is not sold at all for the same reason. Every Sonar call searches, so there is no ungrounded
+variant to sell as a pick. Base Sonar is the model Perplexity trained for its default search mode,
+so it is the closest an API gets to what most visitors to perplexity.ai see; Sonar Pro does a
+single-step search that matches neither that nor the web app's multi-step Pro Search.
 
 The customer-facing version of this distinction is how the LLM settings page is laid out: three cards
 — **Scraped Engines**, **LLM APIs** and **Premium** — each explaining in its own

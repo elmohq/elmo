@@ -37,8 +37,6 @@ export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
 	chatgpt: { access: "scraped", premium: true, premiumVersion: "GPT-6 Luna" },
 	"google-ai-mode": { access: "scraped" },
 	"google-ai-overview": { access: "scraped" },
-	copilot: { access: "scraped" },
-	perplexity: { access: "scraped" },
 	gemini: { access: "scraped" },
 	qwen: { access: "api", version: "Qwen3 235B A22B 2507" },
 	deepseek: { access: "api", version: "DeepSeek V3.2" },
@@ -46,6 +44,7 @@ export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
 	mistral: { access: "api", version: "Mistral Medium 3.1" },
 	claude: { access: "api", premium: true, version: "Claude Haiku 5.5", premiumVersion: "Claude Haiku 5.5" },
 	kimi: { access: "api", version: "Kimi K2.5" },
+	perplexity: { premium: true, premiumVersion: "Sonar" },
 };
 
 export const STANDARD_PLATFORM_MENU: readonly string[] = Object.entries(CLOUD_PLATFORMS)
@@ -53,13 +52,14 @@ export const STANDARD_PLATFORM_MENU: readonly string[] = Object.entries(CLOUD_PL
 	.map(([model]) => model);
 
 /** Not a subset of the pick menu: a model too dear to sample as a pick can still be worth one grounded call. */
-export const PREMIUM_MODELS: readonly string[] = ["claude", "chatgpt", "grok"];
+export const PREMIUM_MODELS: readonly string[] = ["claude", "chatgpt", "grok", "perplexity"];
 
 /** The premium tier sells the grounded variant, which customers know by a different name. */
 const PREMIUM_LABELS: Record<string, string> = {
 	claude: "Claude (web)",
 	chatgpt: "GPT Search",
 	grok: "Grok (web)",
+	perplexity: "Perplexity Sonar",
 };
 
 export function premiumModelLabel(model: string): string {

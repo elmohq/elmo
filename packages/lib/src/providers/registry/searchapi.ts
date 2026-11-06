@@ -30,8 +30,6 @@ type SearchapiTarget = {
 // the dedicated engine can redeem.
 const SEARCHAPI_TARGETS: Record<string, SearchapiTarget> = {
 	chatgpt: { engine: "chatgpt" },
-	perplexity: { engine: "perplexity" },
-	copilot: { engine: "bing_copilot" },
 	gemini: { engine: "gemini" },
 	"google-ai-mode": { engine: "google_ai_mode", params: { ...GOOGLE_LOCALE } },
 	"google-ai-overview": { engine: "google", params: { ...GOOGLE_LOCALE, link: "resolved" }, nested: "ai_overview" },

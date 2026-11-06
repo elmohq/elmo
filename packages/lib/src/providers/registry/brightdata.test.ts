@@ -119,7 +119,7 @@ describe("brightdata polling", () => {
 				),
 		);
 
-		const promise = brightdata.run("perplexity", "What is a well-reviewed speaker?", { webSearch: true });
+		const promise = brightdata.run("gemini", "What is a well-reviewed speaker?", { webSearch: true });
 		const settled: Promise<Error> = promise.then(
 			() => {
 				throw new Error("expected the run to reject");

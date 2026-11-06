@@ -7,7 +7,7 @@ const LINK = "font-medium text-blue-700 underline underline-offset-2 hover:text-
 const FEATURES = [
 	{
 		title: "Cross-platform tracking",
-		body: "Monitors your brand across the engines that matter — ChatGPT, Perplexity, Gemini, Copilot, and Google AI Overviews — not just one.",
+		body: "Monitors your brand across the engines that matter — ChatGPT, Perplexity, Gemini, Claude, and Google AI Overviews — not just one.",
 	},
 	{
 		title: "Mention & citation analysis",
@@ -119,9 +119,9 @@ export function AiVisibilitySoftwareHub() {
 						<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							<p>
 								Elmo is open-source AI visibility software you can self-host. It tracks mentions, citations, and
-								competitor share across ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, and Google AI Mode and AI
-								Overviews — and because it's released under the MIT license, you can read exactly how every metric is
-								collected and computed.
+								competitor share across ChatGPT, Claude, Gemini, Grok, Perplexity, and Google AI Mode and AI Overviews —
+								and because it's released under the MIT license, you can read exactly how every metric is collected and
+								computed.
 							</p>
 							<p>
 								That matters in a market full of opaque scoring and inflated pricing. With Elmo you own your data and
