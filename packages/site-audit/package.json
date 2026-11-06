@@ -1,0 +1,23 @@
+{
+	"name": "@workspace/site-audit",
+	"version": "0.7.8",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"linkedom": "catalog:",
+		"robots-parser": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

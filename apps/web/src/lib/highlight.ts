@@ -1,4 +1,4 @@
-export const HIGHLIGHT_CLASS = "rounded-sm bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/40";
+export const HIGHLIGHT_CLASS = "rounded-sm bg-yellow-200 px-0.5 text-inherit";
 
 export interface HighlightPart {
 	text: string;

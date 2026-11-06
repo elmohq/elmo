@@ -1,18 +1,9 @@
 /**
- * CLI Driver for E2E Tests
+ * Answers the `elmo init --dev` wizard through a real PTY. script(1) provides
+ * the PTY because it ships with Ubuntu and macOS, so no native addon is needed.
  *
- * Drives `elmo init --dev` through a real PTY by wrapping the CLI in
- * script(1). script(1) is preinstalled on Ubuntu (util-linux) and macOS
- * (BSD), so we avoid native addons / node-gyp / prebuild-binary forks.
- *
- * The driver pattern-matches on prompt substrings and writes keystrokes
- * to the child's stdin, so we exercise the same interactive wizard a
- * human user would see.
- *
- * The CLI writes config to `~/.elmo`. To redirect that to a test-local
- * directory without polluting the runner's real home, we set HOME on the
- * child process so `os.homedir()` resolves to the parent of <config-dir>.
- * The supplied <config-dir> must therefore end in `.elmo`.
+ * The CLI writes to `~/.elmo`, so HOME is pointed at the parent of
+ * <config-dir>, which must therefore end in `.elmo`.
  *
  * Usage: tsx cli-driver.ts <config-dir> <repo-root>
  */
@@ -45,7 +36,6 @@ const ENTER = "\r";
 const ARROW_LEFT = "\x1b[D";
 const ARROW_DOWN = "\x1b[B";
 
-// Strip ANSI CSI + OSC sequences so we can substring-match clack's rendered output.
 function stripAnsi(s: string): string {
 	return s
 		.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
@@ -56,8 +46,7 @@ function shEscape(s: string): string {
 	return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
-// Wrap the CLI in script(1). BSD (macOS) and util-linux (Ubuntu) script
-// take different args for running a command, so split on platform.
+// BSD (macOS) and util-linux script(1) take different arguments.
 function spawnViaScript() {
 	const env = {
 		...process.env,
@@ -69,17 +58,14 @@ function spawnViaScript() {
 	const cliArgs = [nodeBin, cliPath, "init", "--dev"];
 
 	if (process.platform === "darwin") {
-		// BSD script: `script [-q] file command...` — propagates child exit code.
 		return spawn("script", ["-q", "/dev/null", ...cliArgs], {
 			cwd: repoRoot,
 			env,
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 	}
-	// util-linux script: `script -q -e -f -c "cmd" file`
-	//   -e returns the child's exit status, -f flushes output on each write.
-	// When script's own stdout is a pipe the PTY gets sized 0x0, which makes
-	// clack wrap every char — `stty rows/cols` inside the PTY fixes that.
+	// -e returns the child's exit status, -f flushes each write. With stdout
+	// piped the PTY is sized 0x0 and clack wraps every character, hence stty.
 	const cmd = `stty rows 40 cols 120; exec ${cliArgs.map(shEscape).join(" ")}`;
 	return spawn(
 		"script",
@@ -141,125 +127,70 @@ async function waitForExit(timeoutMs = 30_000): Promise<number> {
 	throw new Error("CLI did not exit within timeout");
 }
 
+async function acceptDefault(prompt: string): Promise<void> {
+	await waitFor(prompt);
+	await send(ENTER);
+}
+
+async function answer(prompt: string, text: string): Promise<void> {
+	await waitFor(prompt);
+	await send(`${text}${ENTER}`);
+}
+
+async function confirm(prompt: string, choice: boolean, { defaultAnswer }: { defaultAnswer: boolean }): Promise<void> {
+	await waitFor(prompt);
+	if (choice !== defaultAnswer) await send(ARROW_LEFT);
+	await send(ENTER);
+}
+
 async function main(): Promise<void> {
-	// Dev mode → docker dir prompt (default "docker")
-	await waitFor("Path to docker directory");
-	await send(ENTER);
+	await acceptDefault("Path to docker directory");
+	await acceptDefault("PostgreSQL connection");
 
-	// Postgres mode select — default "Run Postgres in Docker"
-	await waitFor("PostgreSQL connection");
-	await send(ENTER);
-
-	// Setup mode select — default is "Recommended"; arrow-down to "Custom" so
-	// we exercise the multi-provider path with placeholder keys.
+	// "Custom" rather than "Recommended", to exercise the multi-provider path
+	// with placeholder keys.
 	await waitFor("Setup mode");
 	await send(ARROW_DOWN);
 	await send(ENTER);
 
-	// ── Step 1: Direct LLM APIs (loops until at least one is configured) ──
-	// The loop asks providers in the same order as the auto-pick preference:
-	// OpenRouter → Anthropic → OpenAI → Mistral. We say Yes to Anthropic and
-	// OpenAI to exercise multiple direct-provider credentials.
+	// Two direct providers, to exercise multiple direct-provider credentials.
+	await confirm("Configure OpenRouter?", false, { defaultAnswer: false });
+	await confirm("Configure Anthropic API?", true, { defaultAnswer: false });
+	await answer("Anthropic API key", "sk-ant-placeholder-not-used");
+	await acceptDefault("Claude model");
+	await confirm("Enable web search?", false, { defaultAnswer: true });
+	await confirm("Configure OpenAI API?", true, { defaultAnswer: false });
+	await answer("OpenAI API key", "sk-placeholder-not-used");
+	await acceptDefault("OpenAI model");
+	await confirm("Enable web search?", true, { defaultAnswer: true });
+	await confirm("Configure Mistral API?", false, { defaultAnswer: false });
 
-	// OpenRouter confirm (default No) → No
-	await waitFor("Configure OpenRouter?");
-	await send(ENTER);
+	await confirm("Configure Cloro?", false, { defaultAnswer: true });
+	await confirm("Configure BrightData?", false, { defaultAnswer: false });
+	await confirm("Configure Oxylabs?", false, { defaultAnswer: false });
+	await confirm("Configure SearchApi?", false, { defaultAnswer: false });
+	await confirm("Configure Olostep?", false, { defaultAnswer: false });
 
-	// Anthropic confirm (default No) → Yes
-	await waitFor("Configure Anthropic API?");
-	await send(ARROW_LEFT);
-	await send(ENTER);
-	await waitFor("Anthropic API key");
-	await send(`sk-ant-placeholder-not-used${ENTER}`);
-	await waitFor("Claude model");
-	await send(ENTER); // accept default slug
-	await waitFor("Enable web search?");
-	await send(ARROW_LEFT);
-	await send(ENTER); // No — target becomes claude:anthropic-api:<slug> without :online
-
-	// OpenAI confirm (default No) → Yes
-	await waitFor("Configure OpenAI API?");
-	await send(ARROW_LEFT);
-	await send(ENTER);
-	await waitFor("OpenAI API key");
-	await send(`sk-placeholder-not-used${ENTER}`);
-	await waitFor("OpenAI model");
-	await send(ENTER); // accept default gpt-6-luna
-	await waitFor("Enable web search?");
-	await send(ENTER); // Yes — chatgpt:openai-api:gpt-6-luna:online
-
-	// Mistral confirm (default No) → No
-	await waitFor("Configure Mistral API?");
-	await send(ENTER);
-
-	// ── Step 2: Scrapers + DataForSEO (optional) ──────────────────────────
-
-	// Cloro confirm (default Yes) → No
-	await waitFor("Configure Cloro?");
-	await send(ARROW_LEFT);
-	await send(ENTER);
-
-	// BrightData confirm (default No) → No
-	await waitFor("Configure BrightData?");
-	await send(ENTER);
-
-	// Oxylabs confirm (default No) → No
-	await waitFor("Configure Oxylabs?");
-	await send(ENTER);
-
-	// SearchApi confirm (default No) → No
-	await waitFor("Configure SearchApi?");
-	await send(ENTER);
-
-	// Olostep confirm (default No) → No
-	await waitFor("Configure Olostep?");
-	await send(ENTER);
-
-	// DataForSEO confirm (default No) → Yes (placeholder creds, no extra target)
-	await waitFor("Configure DataForSEO?");
-	await send(ARROW_LEFT);
-	await send(ENTER);
-	await waitFor("DataForSEO login");
-	await send(`placeholder@e2e.test${ENTER}`);
-	await waitFor("DataForSEO password");
-	await send(`placeholder-not-used${ENTER}`);
-	// DataForSEO engine multiselect (google-ai-mode pre-selected). Toggle it off
-	// and submit an empty selection to keep this run's targets unchanged.
+	// DataForSEO credentials without a DataForSEO target, so this run's targets
+	// stay the direct providers above.
+	await confirm("Configure DataForSEO?", true, { defaultAnswer: false });
+	await answer("DataForSEO login", "placeholder@e2e.test");
+	await answer("DataForSEO password", "placeholder-not-used");
 	await waitFor("LLM Providers to track via DataForSEO");
-	await send(" "); // deselect the pre-selected google-ai-mode
-	await send(ENTER); // submit with nothing selected → no DataForSEO target
-
-	// SCRAPE_TARGETS edit confirm (default No)
-	await waitFor("Edit SCRAPE_TARGETS before saving?");
+	await send(" ");
 	await send(ENTER);
 
-	// Jev key: the stub judges locally, so the e2e stack calls no one.
-	await waitFor("How should Elmo call Jev?");
-	await send(ENTER); // TypeSafe directly, the default without an OpenRouter key
-	await waitFor("TypeSafe API key");
-	await send(`stub${ENTER}`);
+	await confirm("Edit SCRAPE_TARGETS before saving?", false, { defaultAnswer: false });
 
-	// Telemetry opt-in (default Yes) → No
-	await waitFor("Share telemetry?");
-	await send(ARROW_LEFT);
-	await send(ENTER);
+	// The stub judges locally, so the e2e stack calls no one.
+	await acceptDefault("How should Elmo call Jev?");
+	await answer("TypeSafe API key", "stub");
 
-	// Product updates email (optional)
-	await waitFor("email to receive product updates");
-	await send(ENTER);
-
-	// Access mode select — default "On this machine (localhost)"
-	await waitFor("How will you access Elmo?");
-	await send(ENTER);
-
-	// Web app port (default 1515) → accept default
-	await waitFor("Web app port");
-	await send(ENTER);
-
-	// Start the stack now? (default Yes) → No
-	await waitFor("Start the stack now?");
-	await send(ARROW_LEFT);
-	await send(ENTER);
+	await confirm("Share telemetry?", false, { defaultAnswer: true });
+	await acceptDefault("email to receive product updates");
+	await acceptDefault("How will you access Elmo?");
+	await acceptDefault("Web app port");
+	await confirm("Start the stack now?", false, { defaultAnswer: true });
 
 	const code = await waitForExit();
 	if (code !== 0) {

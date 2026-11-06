@@ -1,17 +1,11 @@
 #!/usr/bin/env node
-// Generate a GitHub release body for a given version in the style of
-// https://github.com/calcom/cal.diy/releases — a flat "What's Changed" list of
-// PRs with author attribution, followed by a Full Changelog compare link.
-//
 // Usage:
 //   node scripts/generate-release-notes.mjs [version]
 //   node scripts/generate-release-notes.mjs 0.2.1 > /tmp/notes.md
 //
 // Defaults to the version in apps/cli/package.json.
 //
-// Requires `gh` (authenticated) for PR author lookup. Falls back gracefully
-// when a commit can't be resolved — the entry still appears, just without
-// author attribution.
+// Needs an authenticated `gh` for PR authors; an unresolved commit is listed without one.
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -104,8 +98,6 @@ function collectChanges(v) {
         if (!bySha.has(sha)) bySha.set(sha, { sha, message });
         continue;
       }
-      // Manual changeset bullet with no sha prefix — keep if it's not a
-      // dependency-bump artifact.
       if (
         line.startsWith('- ') &&
         !line.startsWith('- Updated dependencies') &&

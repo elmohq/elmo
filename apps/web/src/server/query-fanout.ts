@@ -19,8 +19,6 @@ import { resolveBrandWindow } from "@/server/brand-window";
 export interface QueryFanoutResponse extends FanoutAnalysis {
 	brandName: string;
 	model: string | null;
-	/** Whole-number percentage 0-100, unlike the ratio `FanoutAnalysis` carries. */
-	coverageRate: number;
 }
 
 function _emptyResponse(brandName: string, model: string | null): QueryFanoutResponse {
@@ -31,7 +29,7 @@ function _emptyResponse(brandName: string, model: string | null): QueryFanoutRes
 		uniqueQueries: 0,
 		fanoutRuns: 0,
 		totalRuns: 0,
-		avgPerExecution: 0,
+		avgQueriesPerFanoutRun: 0,
 		coverageRate: 0,
 		topQueries: [],
 		terms: [],
@@ -67,7 +65,5 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 			{ promptId: data.promptId },
 		);
 
-		// coverageRate is a ratio in the shared analysis so the API can publish it
-		// unrounded; the dashboard reads a percentage.
-		return { ...analysis, coverageRate: Math.round(analysis.coverageRate * 100), model: data.model ?? null };
+		return { ...analysis, model: data.model ?? null };
 	});

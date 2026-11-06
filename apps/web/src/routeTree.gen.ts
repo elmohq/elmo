@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as DotwellKnownChangePasswordRouteImport } from './routes/[.]well-known/change-password'
 import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as AuthedAppRouteImport } from './routes/_authed/app'
+import { Route as AuthedChangePasswordRouteImport } from './routes/_authed/change-password'
 import { Route as AuthedChoosePlanRouteImport } from './routes/_authed/choose-plan'
 import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
 import { Route as AuthAuthorizeRouteImport } from './routes/auth/authorize'
@@ -38,6 +40,7 @@ import { Route as ApiManifestIndexRouteImport } from './routes/api/manifest/inde
 import { Route as ApiMcpSplatRouteImport } from './routes/api/mcp/$'
 import { Route as ApiOgIndexRouteImport } from './routes/api/og/index'
 import { Route as ApiSetupStatusIndexRouteImport } from './routes/api/setup-status/index'
+import { Route as ApiSiteIconIndexRouteImport } from './routes/api/site-icon/index'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
 import { Route as ApiV1MeRouteImport } from './routes/api/v1/me'
 import { Route as ApiV1ModelsRouteImport } from './routes/api/v1/models'
@@ -107,6 +110,12 @@ const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownChangePasswordRoute =
+  DotwellKnownChangePasswordRouteImport.update({
+    id: '/.well-known/change-password',
+    path: '/.well-known/change-password',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthedAdminRoute = AuthedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -115,6 +124,11 @@ const AuthedAdminRoute = AuthedAdminRouteImport.update({
 const AuthedAppRoute = AuthedAppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedChangePasswordRoute = AuthedChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedChoosePlanRoute = AuthedChoosePlanRouteImport.update({
@@ -245,6 +259,11 @@ const ApiOgIndexRoute = ApiOgIndexRouteImport.update({
 const ApiSetupStatusIndexRoute = ApiSetupStatusIndexRouteImport.update({
   id: '/api/setup-status/',
   path: '/api/setup-status/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSiteIconIndexRoute = ApiSiteIconIndexRouteImport.update({
+  id: '/api/site-icon/',
+  path: '/api/site-icon/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1SplatRoute = ApiV1SplatRouteImport.update({
@@ -586,8 +605,10 @@ const AuthedAppOrgOrgBrandBrandSettingsPromptsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/.well-known/change-password': typeof DotwellKnownChangePasswordRoute
   '/admin': typeof AuthedAdminRouteWithChildren
   '/app': typeof AuthedAppRouteWithChildren
+  '/change-password': typeof AuthedChangePasswordRoute
   '/choose-plan': typeof AuthedChoosePlanRoute
   '/reports': typeof AuthedReportsRouteWithChildren
   '/auth/authorize': typeof AuthAuthorizeRoute
@@ -616,6 +637,7 @@ export interface FileRoutesByFullPath {
   '/api/manifest/': typeof ApiManifestIndexRoute
   '/api/og/': typeof ApiOgIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
+  '/api/site-icon/': typeof ApiSiteIconIndexRoute
   '/app/org/$org': typeof AuthedAppOrgOrgRouteWithChildren
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
@@ -675,6 +697,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/.well-known/change-password': typeof DotwellKnownChangePasswordRoute
+  '/change-password': typeof AuthedChangePasswordRoute
   '/choose-plan': typeof AuthedChoosePlanRoute
   '/auth/authorize': typeof AuthAuthorizeRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -702,6 +726,7 @@ export interface FileRoutesByTo {
   '/api/manifest': typeof ApiManifestIndexRoute
   '/api/og': typeof ApiOgIndexRoute
   '/api/setup-status': typeof ApiSetupStatusIndexRoute
+  '/api/site-icon': typeof ApiSiteIconIndexRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
@@ -760,8 +785,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/.well-known/change-password': typeof DotwellKnownChangePasswordRoute
   '/_authed/admin': typeof AuthedAdminRouteWithChildren
   '/_authed/app': typeof AuthedAppRouteWithChildren
+  '/_authed/change-password': typeof AuthedChangePasswordRoute
   '/_authed/choose-plan': typeof AuthedChoosePlanRoute
   '/_authed/reports': typeof AuthedReportsRouteWithChildren
   '/auth/authorize': typeof AuthAuthorizeRoute
@@ -790,6 +817,7 @@ export interface FileRoutesById {
   '/api/manifest/': typeof ApiManifestIndexRoute
   '/api/og/': typeof ApiOgIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
+  '/api/site-icon/': typeof ApiSiteIconIndexRoute
   '/_authed/app/org/$org': typeof AuthedAppOrgOrgRouteWithChildren
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
@@ -851,8 +879,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/.well-known/change-password'
     | '/admin'
     | '/app'
+    | '/change-password'
     | '/choose-plan'
     | '/reports'
     | '/auth/authorize'
@@ -881,6 +911,7 @@ export interface FileRouteTypes {
     | '/api/manifest/'
     | '/api/og/'
     | '/api/setup-status/'
+    | '/api/site-icon/'
     | '/app/org/$org'
     | '/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
@@ -940,6 +971,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/.well-known/change-password'
+    | '/change-password'
     | '/choose-plan'
     | '/auth/authorize'
     | '/auth/forgot-password'
@@ -967,6 +1000,7 @@ export interface FileRouteTypes {
     | '/api/manifest'
     | '/api/og'
     | '/api/setup-status'
+    | '/api/site-icon'
     | '/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
     | '/api/v1/competitors/$competitorId'
@@ -1024,8 +1058,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authed'
+    | '/.well-known/change-password'
     | '/_authed/admin'
     | '/_authed/app'
+    | '/_authed/change-password'
     | '/_authed/choose-plan'
     | '/_authed/reports'
     | '/auth/authorize'
@@ -1054,6 +1090,7 @@ export interface FileRouteTypes {
     | '/api/manifest/'
     | '/api/og/'
     | '/api/setup-status/'
+    | '/api/site-icon/'
     | '/_authed/app/org/$org'
     | '/_authed/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
@@ -1115,6 +1152,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
+  DotwellKnownChangePasswordRoute: typeof DotwellKnownChangePasswordRoute
   AuthAuthorizeRoute: typeof AuthAuthorizeRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
@@ -1134,6 +1172,7 @@ export interface RootRouteChildren {
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
+  ApiSiteIconIndexRoute: typeof ApiSiteIconIndexRoute
   ApiV1BrandsBrandIdRoute: typeof ApiV1BrandsBrandIdRouteWithChildren
   ApiV1CompetitorsCompetitorIdRoute: typeof ApiV1CompetitorsCompetitorIdRoute
   ApiV1OrganizationsOrganizationIdRoute: typeof ApiV1OrganizationsOrganizationIdRouteWithChildren
@@ -1166,6 +1205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/change-password': {
+      id: '/.well-known/change-password'
+      path: '/.well-known/change-password'
+      fullPath: '/.well-known/change-password'
+      preLoaderRoute: typeof DotwellKnownChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/admin': {
       id: '/_authed/admin'
       path: '/admin'
@@ -1178,6 +1224,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AuthedAppRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/change-password': {
+      id: '/_authed/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof AuthedChangePasswordRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/choose-plan': {
@@ -1353,6 +1406,13 @@ declare module '@tanstack/react-router' {
       path: '/api/setup-status'
       fullPath: '/api/setup-status/'
       preLoaderRoute: typeof ApiSetupStatusIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/site-icon/': {
+      id: '/api/site-icon/'
+      path: '/api/site-icon'
+      fullPath: '/api/site-icon/'
+      preLoaderRoute: typeof ApiSiteIconIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/$': {
@@ -1927,6 +1987,7 @@ const AuthedReportsRouteWithChildren = AuthedReportsRoute._addFileChildren(
 interface AuthedRouteChildren {
   AuthedAdminRoute: typeof AuthedAdminRouteWithChildren
   AuthedAppRoute: typeof AuthedAppRouteWithChildren
+  AuthedChangePasswordRoute: typeof AuthedChangePasswordRoute
   AuthedChoosePlanRoute: typeof AuthedChoosePlanRoute
   AuthedReportsRoute: typeof AuthedReportsRouteWithChildren
   AuthedAcceptInvitationInvitationIdRoute: typeof AuthedAcceptInvitationInvitationIdRoute
@@ -1935,6 +1996,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAdminRoute: AuthedAdminRouteWithChildren,
   AuthedAppRoute: AuthedAppRouteWithChildren,
+  AuthedChangePasswordRoute: AuthedChangePasswordRoute,
   AuthedChoosePlanRoute: AuthedChoosePlanRoute,
   AuthedReportsRoute: AuthedReportsRouteWithChildren,
   AuthedAcceptInvitationInvitationIdRoute:
@@ -2002,6 +2064,7 @@ const ApiV1PromptsPromptIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
+  DotwellKnownChangePasswordRoute: DotwellKnownChangePasswordRoute,
   AuthAuthorizeRoute: AuthAuthorizeRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
@@ -2025,6 +2088,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiManifestIndexRoute: ApiManifestIndexRoute,
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
+  ApiSiteIconIndexRoute: ApiSiteIconIndexRoute,
   ApiV1BrandsBrandIdRoute: ApiV1BrandsBrandIdRouteWithChildren,
   ApiV1CompetitorsCompetitorIdRoute: ApiV1CompetitorsCompetitorIdRoute,
   ApiV1OrganizationsOrganizationIdRoute:

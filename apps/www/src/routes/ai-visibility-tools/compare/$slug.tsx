@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
 import { ComparePricing } from "@/components/competitor-pricing";
+import { DataProvenance } from "@/components/data-provenance";
 import { DirectoryBackLink, DirectoryElmoBanner, DirectoryHero, ElmoCta } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
@@ -13,6 +14,7 @@ import {
 	getCompareFaqs,
 	getCompareVerdict,
 	getCompetitorProfile,
+	lastChecked,
 } from "@/lib/competitors";
 import {
 	breadcrumbJsonLd,
@@ -56,7 +58,7 @@ export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: names, path },
 				]),
-				faqJsonLd(faqs),
+				faqJsonLd(faqs, { path, dateModified: lastChecked(tools) }),
 				comparisonJsonLd([...tools.map((t) => ({ name: t.name, url: t.url })), ELMO_LISTING]),
 				softwareApplicationJsonLd(),
 			],
@@ -85,6 +87,9 @@ function ComparePage() {
 				/>
 				{a && b && tools.length === 2 ? <PairComparison a={a} b={b} /> : <MultiComparison tools={tools} />}
 				{priced.length === tools.length ? <ComparePricing tools={priced} /> : null}
+				<div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+					<DataProvenance tools={tools} />
+				</div>
 				<Faq items={getCompareFaqs(tools)} />
 				<ElmoCta />
 			</main>

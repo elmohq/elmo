@@ -23,6 +23,7 @@ import {
 	ElmoComparisonTable,
 	ProsCons,
 } from "@/components/competitor-review";
+import { DataProvenance } from "@/components/data-provenance";
 import { DirectoryBackLink, DirectorySection, ElmoCta } from "@/components/directory-shell";
 import { Faq } from "@/components/faq";
 import { Footer } from "@/components/footer";
@@ -72,7 +73,7 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: `${c.name} alternatives`, path },
 				]),
-				faqJsonLd(faqs),
+				faqJsonLd(faqs, { path, dateModified: c.checkedAt }),
 			],
 		};
 	},
@@ -161,6 +162,7 @@ function SwitchingReasons({ competitor }: { competitor: Competitor }) {
 					</article>
 				))}
 			</div>
+			<DataProvenance tools={[competitor]} className="mt-8" />
 		</DirectorySection>
 	);
 }

@@ -14,6 +14,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 93,
 		ahrefsTraffic: 3636335,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -46,6 +47,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 92,
 		ahrefsTraffic: 8834233,
 		status: "active",
+		checkedAt: "2026-10-20",
 		soundbite:
 			"Semrush's AI tracking is one toolkit inside a large SEO suite. Elmo is built only for AI visibility, and it's free to self-host.",
 		features: {
@@ -94,6 +96,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 91,
 		ahrefsTraffic: 4382530,
 		status: "active",
+		checkedAt: "2026-10-20",
 		soundbite:
 			"Brand Radar is one tool inside Ahrefs' SEO suite, starting at $129/mo. Elmo is built only for AI visibility, and it's free to self-host.",
 		features: {
@@ -142,6 +145,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 86,
 		ahrefsTraffic: 197332,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -178,6 +182,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 85,
 		ahrefsTraffic: 809093,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -219,6 +224,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 84,
 		ahrefsTraffic: 129581,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -267,6 +273,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 80,
 		ahrefsTraffic: 15355,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -311,6 +318,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 80,
 		ahrefsTraffic: 1457,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -342,6 +350,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 79,
 		ahrefsTraffic: 23237,
 		status: "active",
+		checkedAt: "2026-10-20",
 		soundbite:
 			"Profound has grown into a sprawling enterprise suite — agents, content, shopping, ads — with enterprise pricing to match. If what you need is AI visibility tracking you can trust, Elmo does that one job well and is free to self-host.",
 		features: {
@@ -421,6 +430,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 75,
 		ahrefsTraffic: 39908,
 		status: "active",
+		checkedAt: "2026-10-20",
 		soundbite:
 			"DataForSEO is a raw data API you build on, not a tracker. Elmo can use DataForSEO as its data source and turns it into tracking, reporting, and recommendations.",
 		features: {
@@ -463,6 +473,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 74,
 		ahrefsTraffic: 39532,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -505,6 +516,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 76,
 		ahrefsTraffic: 10127,
 		status: "active",
+		checkedAt: "2026-10-20",
 		soundbite:
 			"AirOps is a content-operations platform first, and visibility tracking is one piece of it. Elmo is built only for AI visibility, and it's free to self-host.",
 		features: {
@@ -548,8 +560,9 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 74,
 		ahrefsTraffic: 1055,
 		status: "active",
+		checkedAt: "2026-10-20",
 		soundbite:
-			"Peec AI is a capable hosted tracker, but it's closed: your prompts and history live in its cloud, and you can't check how a number was produced. Elmo gives you the code, the data, and the method, free to self-host.",
+			"Peec AI is a capable hosted tracker. Elmo is the open-source option: your prompts and history can live in your own database, you can read how every number is produced, and it's free to self-host.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -599,6 +612,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 72,
 		ahrefsTraffic: 75823,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -641,6 +655,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 72,
 		ahrefsTraffic: 10792,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -679,6 +694,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 75,
 		ahrefsTraffic: 1726,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -724,6 +740,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 72,
 		ahrefsTraffic: 1513,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -772,6 +789,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 67,
 		ahrefsTraffic: 464,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -820,6 +838,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 59,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -869,6 +888,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 63,
 		ahrefsTraffic: 9988,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -915,6 +935,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 56,
 		ahrefsTraffic: 155,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -946,6 +967,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 67,
 		ahrefsTraffic: 4149,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -969,6 +991,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 61,
 		ahrefsTraffic: 1030,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1016,6 +1039,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 64,
 		ahrefsTraffic: 4766,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1047,6 +1071,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 55,
 		ahrefsTraffic: 254,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1081,6 +1106,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 58,
 		ahrefsTraffic: 37,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1123,6 +1149,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 52,
 		ahrefsTraffic: 213,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1156,6 +1183,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 39,
 		ahrefsTraffic: 19,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1197,6 +1225,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 48,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1225,6 +1254,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 52,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1260,6 +1290,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 48,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1295,6 +1326,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 51,
 		ahrefsTraffic: 14,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1333,6 +1365,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 49,
 		ahrefsTraffic: 792,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "Pivoted away from AI visibility to building workflow datasets for AI labs and agent builders.",
@@ -1360,6 +1393,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 51,
 		ahrefsTraffic: 165,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1406,6 +1440,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 38,
 		ahrefsTraffic: 96,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1443,6 +1478,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 49,
 		ahrefsTraffic: 5718,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1478,6 +1514,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 46,
 		ahrefsTraffic: 5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1514,6 +1551,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 53,
 		ahrefsTraffic: 420,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1555,6 +1593,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 48,
 		ahrefsTraffic: 3587,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1601,6 +1640,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 45,
 		ahrefsTraffic: 567,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1636,6 +1676,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 60,
 		ahrefsTraffic: 5139,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1669,6 +1710,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 46,
 		ahrefsTraffic: 445,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1693,6 +1735,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 39,
 		ahrefsTraffic: 213,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1723,6 +1766,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 37,
 		ahrefsTraffic: 2,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1758,6 +1802,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 33,
 		ahrefsTraffic: 814,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-10-31",
 			summary:
@@ -1784,6 +1829,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 40,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			siteAudits: true,
 		},
@@ -1806,6 +1852,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 45,
 		ahrefsTraffic: 1162,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1844,15 +1891,17 @@ export const competitors: Competitor[] = [
 		name: "GetCito",
 		domain: "getcito.com",
 		url: "https://getcito.com/",
-		tagline: "A fork of Elmo — if you are considering GetCito, use Elmo instead",
+		tagline: "Two vibe-coded codebases with an Elmo fork in between — use Elmo instead",
 		description:
-			"If you are considering GetCito, use Elmo instead: GetCito is a fork of Elmo. It launched in November 2025 as its own Next.js and Firebase application, then on July 10, 2026 replaced that codebase with Elmo's — 847 files, +131,716/-50,931 lines — in a single pull request. Its feature set was Elmo's as of the fork date, and it has shipped less since — 17 commits to Elmo's 98 in the following month — so it is falling further behind rather than diverging into something competitive.",
+			"If you are considering GetCito, use Elmo instead. GetCito has never had a mature codebase. It launched in November 2025 as a minimal vibe-coded tracker, dumped into the repository in one commit with leftover backup files and test endpoints. On July 10, 2026 it replaced that with a fork of Elmo, and on November 4, 2026 it threw the fork away for another vibe-coded project built from scratch: a single commit of 4,354 files and 923,787 added lines, with no description and no review. What GetCito ships today is a new Next.js, Express, and Supabase codebase with no track record.",
 		category: "open-source",
 		ahrefsDR: 34,
 		ahrefsTraffic: 34,
 		status: "active",
+		checkedAt: "2026-11-04",
 		license: "MIT",
-		soundbite: "GetCito is a fork of Elmo. Elmo is the original, and it's shipping faster.",
+		soundbite:
+			"GetCito went from a vibe-coded tracker to an Elmo fork to a vibe-coded rewrite. Elmo is the mature one.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1878,11 +1927,12 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: true, startingPrice: "$599/mo", hasEnterprise: true },
 		highlights: [
-			"If you are considering GetCito, use Elmo instead — GetCito is a fork of it",
-			"Codebase replaced with Elmo's on July 10, 2026",
-			"Ships less than the project it forked — 17 commits to Elmo's 98 in the first month after",
+			"If you are considering GetCito, use Elmo instead",
+			"Third codebase in a year: a minimal vibe-coded tracker, then a fork of Elmo, now a vibe-coded rewrite",
+			"Current code landed on November 4, 2026 as one unreviewed 923,787-line commit",
 		],
-		notes: "Fork of Elmo's codebase since July 2026.",
+		notes:
+			"Started as a minimal vibe-coded tracker, forked Elmo, then replaced the fork with a from-scratch vibe-coded rewrite in November 2026.",
 	},
 	{
 		slug: "meridian",
@@ -1896,6 +1946,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 28,
 		ahrefsTraffic: 194,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-09",
 			summary: "Acquired by Searchable; customers are being moved to Searchable.",
@@ -1937,6 +1988,7 @@ export const competitors: Competitor[] = [
 		ahrefsTraffic: 1,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The domain registration expired and the site shows a parking page.",
@@ -1965,6 +2017,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 17,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1994,6 +2047,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 27,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2036,6 +2090,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 11,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLanguage: true,
 			siteAudits: true,
@@ -2061,6 +2116,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 39,
 		ahrefsTraffic: 13,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The website is gone and returns a 'Site not found' page.",
@@ -2090,6 +2146,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 16,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-08-12",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -2118,6 +2175,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.1,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2148,6 +2206,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 6,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			chatgpt: true,
 			visibilityScore: true,
@@ -2170,6 +2229,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.3,
 		ahrefsTraffic: 21,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2193,6 +2253,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 37,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2229,6 +2290,7 @@ export const competitors: Competitor[] = [
 		ahrefsTraffic: 0,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The website is gone and returns a 'Site not found' page.",
@@ -2263,6 +2325,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 2.6,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2298,6 +2361,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.2,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -2320,6 +2384,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.8,
 		ahrefsTraffic: 1,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2354,6 +2419,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.7,
 		ahrefsTraffic: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The domain now shows a parked, for-sale page.",
@@ -2380,6 +2446,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.1,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2410,6 +2477,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 42,
 		ahrefsTraffic: 1,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2439,6 +2507,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0,
 		ahrefsTraffic: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The app's deployment no longer exists and the site returns a 404.",
@@ -2466,6 +2535,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 1,
 		ahrefsTraffic: 1,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The hosted app has been paused and the product has no remaining web presence.",
@@ -2493,6 +2563,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 4.5,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2522,6 +2593,7 @@ export const competitors: Competitor[] = [
 		ahrefsTraffic: 6,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The application is offline and the site returns a 404.",
@@ -2548,6 +2620,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 1.5,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2581,6 +2654,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 2.4,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "GPL-3.0",
 		features: {
 			multiLlmTracking: true,
@@ -2616,6 +2690,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -2650,6 +2725,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 7,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2693,6 +2769,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2731,6 +2808,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 24,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2770,6 +2848,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 22,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2808,6 +2887,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 96,
 		ahrefsTraffic: 23238,
 		status: "active",
+		checkedAt: "2026-08-12",
 		features: {},
 		highlights: ["Official Microsoft guidance for Copilot/Bing AI", "Not a standalone product"],
 		notes: "Blog post with official optimization guidance, not a competitor product",
@@ -2824,6 +2904,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 97,
 		ahrefsTraffic: 37615600,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -2866,6 +2947,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 59,
 		ahrefsTraffic: 784,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2912,6 +2994,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 65,
 		ahrefsTraffic: 6412,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2951,6 +3034,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 64,
 		ahrefsTraffic: 9919,
 		status: "active",
+		checkedAt: "2026-08-12",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -2984,6 +3068,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 41,
 		ahrefsTraffic: 58,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3027,6 +3112,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 35,
 		ahrefsTraffic: 8,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3070,6 +3156,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 58,
 		ahrefsTraffic: 3889,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3115,6 +3202,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 29,
 		ahrefsTraffic: 4926,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3156,6 +3244,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 29,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3192,6 +3281,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 26,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3236,6 +3326,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 27,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3276,6 +3367,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 49,
 		ahrefsTraffic: 7221,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3313,6 +3405,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 43,
 		ahrefsTraffic: 3627,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3358,6 +3451,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 7,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3392,6 +3486,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 40,
 		ahrefsTraffic: 2,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3436,6 +3531,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 1.5,
 		ahrefsTraffic: 607,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The domain now shows a parked, for-sale page.",
@@ -3466,6 +3562,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 37,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3509,6 +3606,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 50,
 		ahrefsTraffic: 333,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3554,6 +3652,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 29,
 		ahrefsTraffic: 449,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3599,6 +3698,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 28,
 		ahrefsTraffic: 13,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3647,6 +3747,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 30,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3690,6 +3791,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 7,
 		ahrefsTraffic: 5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3727,6 +3829,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 2.4,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3757,6 +3860,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 2.3,
 		ahrefsTraffic: 1659,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3797,6 +3901,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 35,
 		ahrefsTraffic: 45,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3840,6 +3945,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 26,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3876,6 +3982,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.2,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -3912,6 +4019,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.4,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3949,6 +4057,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 17,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3988,6 +4097,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 30,
 		ahrefsTraffic: 202,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4026,6 +4136,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.6,
 		ahrefsTraffic: 0,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "Pivoted to analytics for how AI coding agents move through a company's docs, API, and checkout.",
@@ -4051,6 +4162,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 59,
 		ahrefsTraffic: 649,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4095,6 +4207,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 29,
 		ahrefsTraffic: 33,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4141,6 +4254,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.3,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4175,6 +4289,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 34,
 		ahrefsTraffic: 47619730,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -4218,6 +4333,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "beta",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4264,6 +4380,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 18,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4304,6 +4421,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.9,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary:
@@ -4343,6 +4461,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -4378,6 +4497,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 39,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4420,6 +4540,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 13,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4460,6 +4581,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 18,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4497,6 +4619,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 35,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4536,6 +4659,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 3.2,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4574,6 +4698,7 @@ export const competitors: Competitor[] = [
 		category: "ecommerce",
 		ahrefsDR: 33,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4613,6 +4738,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 46,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4645,6 +4771,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 40,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4686,6 +4813,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 33,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4726,6 +4854,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 41,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4766,6 +4895,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 38,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4804,6 +4934,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 36,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "Acquired by Cognizo; its pay-as-you-go wallet was retired in favor of Cognizo's plans.",
@@ -4848,6 +4979,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 9,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4892,6 +5024,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 9,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4929,6 +5062,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.8,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4972,6 +5106,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.1,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5002,6 +5137,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 53,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5043,6 +5179,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 44,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5082,6 +5219,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 40,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5130,6 +5268,7 @@ export const competitors: Competitor[] = [
 		category: "ecommerce",
 		ahrefsDR: 37,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5167,6 +5306,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 35,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5207,6 +5347,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 31,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5246,6 +5387,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 13,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5279,6 +5421,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 27,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5315,6 +5458,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 10,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5344,6 +5488,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 10,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5386,6 +5531,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 52,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5419,6 +5565,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 31,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5469,6 +5616,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 38,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5511,6 +5659,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 27,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5549,6 +5698,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 28,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5582,6 +5732,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 14,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5618,6 +5769,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 27,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5658,6 +5810,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 8,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5690,6 +5843,7 @@ export const competitors: Competitor[] = [
 		category: "content",
 		ahrefsDR: 22,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5721,6 +5875,7 @@ export const competitors: Competitor[] = [
 		category: "other",
 		ahrefsDR: 15,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5751,6 +5906,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 47,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-07-21",
 			summary: "Acquired by Tracksuit; new signups go to Tracksuit's waitlist.",
@@ -5783,6 +5939,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 39,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5817,6 +5974,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5861,6 +6019,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 39,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5903,6 +6062,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 34,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5937,6 +6097,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5966,6 +6127,7 @@ export const competitors: Competitor[] = [
 		category: "ecommerce",
 		ahrefsDR: 31,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6002,6 +6164,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 22,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6041,6 +6204,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 14,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6069,6 +6233,7 @@ export const competitors: Competitor[] = [
 		category: "api-developer",
 		ahrefsDR: 25,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6105,6 +6270,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 5,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-05-04",
 			summary: "Acquired by AI Trust Signals, then shut down; the operating company went into liquidation.",
@@ -6136,6 +6302,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 33,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6175,6 +6342,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 34,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6213,6 +6381,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 25,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6250,6 +6419,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 11,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6291,6 +6461,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 21,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6336,6 +6507,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 20,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6372,6 +6544,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 16,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6404,6 +6577,7 @@ export const competitors: Competitor[] = [
 		category: "seo-traditional",
 		ahrefsDR: 21,
 		status: "beta",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6435,6 +6609,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 3.3,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6470,6 +6645,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 6,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6500,6 +6676,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 4.7,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6532,6 +6709,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 2.4,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6567,6 +6745,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 1.4,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6598,6 +6777,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.4,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6628,6 +6808,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 63,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6679,6 +6860,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 45,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6714,6 +6896,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 43,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6764,6 +6947,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 36,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6800,6 +6984,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 37,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6837,6 +7022,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 53,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6869,6 +7055,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 23,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6904,6 +7091,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 22,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6935,6 +7123,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 27,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6963,6 +7152,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 17,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6996,6 +7186,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 1,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7028,6 +7219,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 5,
 		status: "beta",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7062,6 +7254,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 61,
 		darkScreenshot: true,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-10-30",
 			summary:
@@ -7106,6 +7299,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 59,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7141,6 +7335,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 55,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7183,6 +7378,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 46,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7219,6 +7415,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 53,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7257,6 +7454,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7291,6 +7489,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7330,6 +7529,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 30,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7367,6 +7567,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 28,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7411,6 +7612,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 18,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7446,6 +7648,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 17,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7490,6 +7693,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 11,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7535,6 +7739,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 17,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7569,6 +7774,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7606,6 +7812,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7640,6 +7847,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 24,
 		status: "active",
+		checkedAt: "2026-08-12",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -7667,6 +7875,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 33,
 		status: "active",
+		checkedAt: "2026-08-12",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -7694,6 +7903,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.2,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7729,6 +7939,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7766,6 +7977,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.1,
 		status: "active",
+		checkedAt: "2026-08-12",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -7792,6 +8004,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.7,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7818,6 +8031,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 14,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -7867,6 +8081,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 1.6,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "Apache-2.0",
 		features: {
 			multiLlmTracking: true,
@@ -7913,6 +8128,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 1.5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "AGPL-3.0",
 		features: {
 			multiLlmTracking: true,
@@ -7949,6 +8165,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 2.8,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -7989,6 +8206,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 51,
 		status: "active",
+		checkedAt: "2026-10-20",
 		soundbite:
 			"Notra was open source until October 2026, then took its code private. Elmo is MIT-licensed, so that can't happen to you.",
 		features: {
@@ -8033,6 +8251,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 42,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10-01",
 			summary:
@@ -8053,6 +8272,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 26,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-12-11",
 			summary:
@@ -8073,6 +8293,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.7,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary:
@@ -8092,6 +8313,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.6,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2025",
@@ -8112,6 +8334,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 1.8,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "Went offline after February 2026; the domain no longer resolves.",
@@ -8130,6 +8353,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 2.7,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "Went offline after April 2026; the site now returns a 404 page.",
@@ -8148,6 +8372,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.3,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026",
@@ -8167,6 +8392,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025",
 			summary: "Went offline after July 2025, and the domain registration has lapsed.",
@@ -8185,6 +8411,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2025",
@@ -8206,6 +8433,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026",
@@ -8227,6 +8455,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 15,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-09-01",
 			summary:
@@ -8247,6 +8476,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 17,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2025-11",
@@ -8265,6 +8495,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 18,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-05",
 			summary:
@@ -8284,6 +8515,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 33,
 		darkScreenshot: true,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-04",
 			summary:
@@ -8302,6 +8534,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 13,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026-10",
@@ -8322,6 +8555,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 1.4,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary:
@@ -8340,6 +8574,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 8,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2025-09",
@@ -8360,6 +8595,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.2,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-11",
 			summary:
@@ -8379,6 +8615,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.1,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-08",
 			summary: "The tool launched on Show HN in May 2025, and its site now no longer loads.",
@@ -8397,6 +8634,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-12",
 			summary:
@@ -8416,6 +8654,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2025-12",
@@ -8437,6 +8676,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 1.6,
 		darkScreenshot: true,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-12",
 			summary:
@@ -8456,6 +8696,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-04",
 			summary:
@@ -8475,6 +8716,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 4.2,
 		darkScreenshot: true,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary:
@@ -8494,6 +8736,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.1,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025",
 			summary: "The domain no longer resolves; the site was last archived live in April 2025.",
@@ -8512,6 +8755,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.2,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "The site no longer loads; it was last archived live in December 2025.",
@@ -8529,6 +8773,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.4,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026",
@@ -8548,6 +8793,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 7,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "The site now returns Framer's 'Site Not Found' page; it was last archived live in January 2026.",
@@ -8565,6 +8811,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.7,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026",
@@ -8584,6 +8831,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 6,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026",
@@ -8603,6 +8851,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0,
 		darkScreenshot: true,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary:
@@ -8621,6 +8870,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-02",
 			summary:
@@ -8813,7 +9063,7 @@ const aeoPopularityRanking: string[] = [
 	"seen-by-ai", // Pay-per-report UK checker from £4.99; narrow scope, DR 1
 	"sorn", // Sales-led audit into a managed engagement; DR 5
 	"llmwatcher", // Polish-language tracker with full response history; DR 2.4
-	"getcito", // Fork of Elmo's codebase since Jul 2026
+	"getcito", // Third codebase in a year; vibe-coded rewrite landed Nov 2026
 	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, ~295 GitHub stars
 	"canonry", // MIT self-hosted AEO platform, server-log ingestion + MCP, ~186 stars
 	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, ~106 stars

@@ -27,7 +27,7 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "Which AI models does Elmo track?",
 		answer:
-			"Elmo tracks ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, and Claude, plus models like Grok, Mistral, DeepSeek, and Qwen. Consumer products like ChatGPT and Google AI Mode are scraped from the real interface your customers see, not approximated through an API. For each answer, Elmo records whether your brand appears, which competitors show up alongside it, and which sources the model cites.",
+			"Elmo tracks ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, and Claude, plus models like Grok, Mistral, DeepSeek, Qwen, and Kimi. Consumer products like ChatGPT and Google AI Mode are scraped from the real interface your customers see, not approximated through an API. For each answer, Elmo records whether your brand appears, which competitors show up alongside it, and which sources the model cites.",
 	},
 	{
 		question: "How is AI visibility measured?",

@@ -1,20 +1,10 @@
 /**
- * Whitelabel auth hooks for better-auth.
- *
- * Syncs Auth0 app_metadata to better-auth's member/user tables on SSO login
- * via the provisionUser callback.
- *
  * Auth0 is authoritative over who belongs where, not over which orgs exist:
  * orgs are created by the admin API (`POST /api/v1/brands`) before their users
  * sign in, so an `elmo_orgs` entry with no row here is skipped.
  *
- * Data flow:
- * 1. User logs in via Auth0 SSO -> better-auth creates user + session
- * 2. provisionUser fires (before session cookie is set)
- * 3. Fetches app_metadata from Auth0 Management API
- * 4. Reconciles memberships against elmo_orgs
- * 5. Sets user admin role and report generator access flags
- * 6. Mutates the user object so the session cookie has correct data
+ * The sync runs in provisionUser, before the session cookie is set, so the
+ * cookie already carries the synced role and flags.
  */
 
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
@@ -93,15 +83,7 @@ async function syncOrganizations(userId: string, orgs: Array<{ id: string; name:
 	}
 }
 
-/**
- * Syncs Auth0 app_metadata for a user on login.
- *
- * Fetches metadata from Auth0 Management API, reconciles the user's org
- * memberships, and updates user flags (admin role, report generator access).
- *
- * Returns the resolved flags so the caller can apply them to the user
- * object before the session cookie is set.
- */
+/** Returns the flags so the caller can apply them to the user before the session cookie is set. */
 export async function syncAuth0User(
 	userId: string,
 	auth0UserId: string,
@@ -120,10 +102,7 @@ export async function syncAuth0User(
 	return flags;
 }
 
-/**
- * Syncs a user's Auth0 memberships by looking up their linked Auth0 account.
- * Returns null if the user has no Auth0 account (non-SSO user).
- */
+/** Null for a user with no linked Auth0 account. */
 export async function syncAuth0UserById(
 	userId: string,
 ): Promise<{ role: string; hasReportGeneratorAccess: boolean } | null> {
@@ -132,12 +111,6 @@ export async function syncAuth0UserById(
 	return syncAuth0User(userId, acc.accountId);
 }
 
-/**
- * Returns the CreateAuthOptions for whitelabel deployments.
- *
- * Wires up Auth0 OIDC SSO and the provisionUser callback that syncs
- * Auth0 app_metadata into better-auth's user/member tables on login.
- */
 export function getWhitelabelAuthOptions(): CreateAuthOptions {
 	const domain = process.env.AUTH0_DOMAIN!;
 	return {

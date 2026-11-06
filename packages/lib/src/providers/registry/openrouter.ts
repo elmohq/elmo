@@ -91,9 +91,7 @@ export const openrouter: Provider = {
 		}
 		return {
 			object: parseSchemaJson(schema, content),
-			// Report the alias we sent, not OpenRouter's resolved version
-			// (e.g. "openai/gpt-5-mini" vs "openai/gpt-5-mini-2025-08-07") —
-			// matches what openai-api and anthropic-api do.
+			// The alias we sent, not the dated version OpenRouter resolved, as the other direct APIs report.
 			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
 	},
@@ -120,11 +118,8 @@ export const openrouter: Provider = {
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
 		};
 
-		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema
-		// strips annotations from responses, which contain web search citations.
-		// The SDK's Responses API (client.responses.send()) does preserve annotations
-		// via ResponseOutputText, but it's currently in beta. Consider switching to
-		// the Responses API + SDK when it's stable.
+		// Raw fetch: the SDK's ChatAssistantMessage schema strips the annotations
+		// that carry web search citations.
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
 			headers: openrouterHeaders(),

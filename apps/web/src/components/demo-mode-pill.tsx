@@ -13,7 +13,7 @@ export function DemoModePill() {
 		<Tooltip>
 			<TooltipTrigger
 				render={
-					<span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-700 dark:text-amber-400" />
+					<span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-700" />
 				}
 			>
 				<IconInfoCircle className="size-3" />

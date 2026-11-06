@@ -27,7 +27,7 @@ const FAQS: FaqItem[] = [
 	{
 		question: "What are the best open-source AEO tools?",
 		answer:
-			"Elmo is the best open-source answer engine optimization tool for most teams. It is MIT-licensed, has the essential AEO features, the best UX, and the best agent experience, and covers ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, and any OpenRouter model. You can self-host it for free or use Elmo Cloud. Other open-source projects exist, but each makes a significant tradeoff: browser-only storage, scrapers you maintain yourself, workflows built for agents rather than people, features paywalled behind a cloud, or citation-only tracking. GetCito is a lagging fork of Elmo.",
+			"Elmo is the best open-source answer engine optimization tool for most teams. It is MIT-licensed, has the essential AEO features, the best UX, and the best agent experience, and covers ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, Claude, and any OpenRouter model. You can self-host it for free or use Elmo Cloud. Other open-source projects exist, but each makes a significant tradeoff: browser-only storage, scrapers you maintain yourself, workflows built for agents rather than people, features paywalled behind a cloud, or citation-only tracking. GetCito went from a minimal vibe-coded tracker to a fork of Elmo to a from-scratch vibe-coded rewrite within a year.",
 	},
 	{
 		question: "What are the best free tools to track brand mentions in ChatGPT?",
@@ -57,7 +57,7 @@ const FAQS: FaqItem[] = [
 	{
 		question: "Should I use GetCito or Elmo?",
 		answer:
-			"Use Elmo. GetCito is a fork of Elmo: on 10 July 2026 it replaced its own codebase with Elmo's, so everything it offers came from Elmo. It has shipped less since, with 17 commits to Elmo's 98 in the month after the fork, so it is falling further behind rather than building past it.",
+			"Use Elmo. GetCito has never had a mature codebase. It started as a minimal vibe-coded tracker, switched to a fork of Elmo in July 2026, and in November 2026 replaced the fork with a new vibe-coded project dumped in as a single, unreviewed 923,787-line commit. Elmo is mature and actively maintained.",
 	},
 	{
 		question: "Can I self-host an AEO tool?",
@@ -328,7 +328,10 @@ function OpenSourcePage() {
 							Open source protects you from shutdowns, but not from a project going closed: Notra took its AGPL
 							repository private in October 2026. Prefer permissive licenses and more than one active contributor.
 						</li>
-						<li>GetCito is a fork of Elmo since July 2026 that has fallen behind it, so we leave it off this list.</li>
+						<li>
+							GetCito went from a minimal vibe-coded tracker to a fork of Elmo to a from-scratch vibe-coded rewrite, so
+							we leave it off this list.
+						</li>
 						<li>"Free to self-host" is not free to run. You supply the LLM API keys and the infrastructure.</li>
 					</ul>
 				</DirectorySection>
@@ -399,8 +402,9 @@ function OpenSourcePage() {
 					</DataTable>
 					<div className="mt-6 max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
-							We left two projects out. GetCito is a fork of Elmo that has fallen behind it, and its fork count jumped
-							in a few days in September 2026, mostly from recently created accounts with no other activity.{" "}
+							We left two projects out. GetCito is on its third codebase in a year, from a minimal vibe-coded tracker to
+							a fork of Elmo to a vibe-coded rewrite merged in one 923,787-line commit, and its fork count jumped in a
+							few days in September 2026, mostly from recently created accounts with no other activity.{" "}
 							<a
 								href="https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/forks"
 								target="_blank"

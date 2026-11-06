@@ -1,7 +1,3 @@
-/**
- * Server functions for admin operations.
- * Replaces apps/web/src/app/api/admin/* API routes.
- */
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { getModelMeta } from "@workspace/config/models";
@@ -25,10 +21,6 @@ import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 
-// ============================================================================
-// Admin guard helper
-// ============================================================================
-
 async function requireAdmin() {
 	const session = await requireAuthSession();
 	if (!isAdmin(session)) throw new Error("Unauthorized: Admin access required");
@@ -47,10 +39,6 @@ async function organizationSlugs(organizationIds: string[]): Promise<Map<string,
 function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
 	return slugs.get(organizationId) ?? organizationId;
 }
-
-// ============================================================================
-// Admin analytics queries
-// ============================================================================
 
 interface AdminRunsOverTime {
 	date: string;
@@ -121,10 +109,6 @@ async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime
 	return rows;
 }
 
-// ============================================================================
-// Postgres client helper for pg-boss queries
-// ============================================================================
-
 async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	const connectionString = process.env.DATABASE_URL;
 	if (!connectionString) {
@@ -139,13 +123,6 @@ async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	}
 }
 
-// ============================================================================
-// Admin Dashboard - Brand Stats
-// ============================================================================
-
-/**
- * Get admin dashboard statistics (all brands, run counts, time series charts).
- */
 export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
 
@@ -158,7 +135,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 		await Promise.all([
 			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
-			// Cumulative brand count over time (last 30 days)
 			db
 				.select({
 					date: sql<string>`date_series::date`,
@@ -175,7 +151,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 				.groupBy(sql`date_series`)
 				.orderBy(sql`date_series`),
 
-			// Cumulative prompts count over time (enabled vs disabled)
 			db
 				.select({
 					date: sql<string>`date_series::date`,
@@ -254,13 +229,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	};
 });
 
-// ============================================================================
-// Admin Dashboard - Delay Override
-// ============================================================================
-
-/**
- * Update delay override for a brand.
- */
 export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -280,15 +248,7 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 		return result[0];
 	});
 
-// ============================================================================
-// Admin Tools - Analyze Brand
-// ============================================================================
-
-/**
- * Provider-agnostic brand analysis. Returns brand info, competitors, and
- * suggested prompts in a single LLM round-trip — same pipeline that the
- * onboarding wizard and `POST /api/v1/tools/analyze` use.
- */
+/** The same pipeline as onboarding and `POST /api/v1/tools/analyze`. */
 export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -307,10 +267,6 @@ export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 			maxPrompts: data.maxPrompts,
 		});
 	});
-
-// ============================================================================
-// Admin Workflows - Data Fetching
-// ============================================================================
 
 function parseJobData(data: unknown): { promptId?: string } {
 	if (!data) return {};
@@ -673,9 +629,6 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
 	return [...columns.values()];
 }
 
-/**
- * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
- */
 interface WorkflowContext {
 	orgSlugs: Map<string, string>;
 	runPlans: Map<string, PromptRunPlan>;
@@ -731,8 +684,6 @@ function promptWorkflowStatus(
 			brandId: brand.id,
 			brandName: brand.name,
 			enabled: prompt.enabled,
-			// The chain's own cadence: its fastest target, which is what the
-			// scheduler reschedules on. Zero when the plan parks the prompt.
 			runFrequencyMs: intervalMsOf(targets),
 			lastRunsByTarget,
 			schedulerInfo: scheduleInfo
@@ -761,9 +712,6 @@ function brandWorkflowSummary(
 		enabled: brand.enabled,
 		totalPrompts: brandPrompts.length,
 		enabledPrompts: enabled.length,
-		// Prompts of one brand can run different targets (premium is per prompt),
-		// so the table's columns are the union rather than whatever the first row
-		// happens to have.
 		targetColumns: targetColumnsFor(brandPrompts.map((p) => context.runPlans.get(p.id))),
 		runFrequencyMs: fastestCadenceMs(statuses.map((status) => status.row.runFrequencyMs)),
 		overduePrompts: enabled.filter((status) => status.overdue).length,
@@ -827,10 +775,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		getQueueStats(),
 	]);
 
-	// The dashboard reports against what each prompt is actually supposed to run,
-	// so it resolves the same plans the worker does. Reading every configured
-	// SCRAPE_TARGETS model at the brand cadence instead would mark every platform
-	// a plan doesn't sell as permanently overdue.
+	// The worker's own plans, or every platform a plan doesn't sell would read as overdue.
 	const entitlementsByOrg = await getOrgEntitlementsMap([...new Set(allBrands.map((b) => b.organizationId))]);
 	const runPlans = resolveRunPlansForBrands({
 		brands: allBrands,
@@ -878,13 +823,6 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	};
 });
 
-// ============================================================================
-// Admin Workflows - Retry Job
-// ============================================================================
-
-/**
- * Retry a prompt job (send immediate job for a prompt).
- */
 export const retryJobFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -913,13 +851,6 @@ export const retryJobFn = createServerFn({ method: "POST" })
 		return { success: true, message: `Triggered immediate job for prompt ${targetPromptId}` };
 	});
 
-// ============================================================================
-// Admin Workflows - Job Logs
-// ============================================================================
-
-/**
- * Get logs for a specific job.
- */
 function formatJobLogs(job: Record<string, any>): string[] {
 	/** JSON columns arrive as text or as parsed objects depending on the driver. */
 	const pretty = (value: unknown) => {
