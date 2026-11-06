@@ -4,7 +4,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { auth } from "@/lib/auth/server";
-import { MCP_RESOURCE_METADATA_PATH, resolveMcpAuth } from "@/lib/mcp/auth";
+import { MCP_RESOURCE_METADATA_PATH, type McpAuthFailure, resolveMcpAuth } from "@/lib/mcp/auth";
 import { handleMcpRequest } from "@/lib/mcp/server";
 
 /** From the auth config, not the request: a strict client refuses a challenge
@@ -14,11 +14,13 @@ function mcpResourceMetadataUrl(): string {
 	return new URL(MCP_RESOURCE_METADATA_PATH, baseURL ?? "http://localhost:3000").toString();
 }
 
-/** Tells a client with no token where to sign in (RFC 9728). */
-function unauthorized(message: string): Response {
-	const challenge = `Bearer resource_metadata="${mcpResourceMetadataUrl()}"`;
+/** Tells a client with no token where to sign in (RFC 9728), and one with a
+ * spent token to refresh it (RFC 6750). */
+function unauthorized(failure: McpAuthFailure): Response {
+	const error = failure.invalidToken ? ', error="invalid_token"' : "";
+	const challenge = `Bearer resource_metadata="${mcpResourceMetadataUrl()}"${error}`;
 	return Response.json(
-		{ jsonrpc: "2.0", id: null, error: { code: -32001, message } },
+		{ jsonrpc: "2.0", id: null, error: { code: -32001, message: failure.message } },
 		{ status: 401, headers: { "WWW-Authenticate": challenge } },
 	);
 }
@@ -37,7 +39,7 @@ async function handleMcp({ request }: { request: Request }): Promise<Response> {
 				},
 			);
 		}
-		return unauthorized(resolved.failure.message);
+		return unauthorized(resolved.failure);
 	}
 
 	// The transport answers the methods the protocol defines and refuses the rest.
