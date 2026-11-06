@@ -1,67 +1,65 @@
 ---
 title: "GetCito vs Elmo"
-description: "GetCito is a fork of Elmo's codebase since July 10, 2026. Here is the comparison."
+description: "GetCito started as a minimal vibe-coded tracker, switched to a fork of Elmo, then replaced that with a from-scratch vibe-coded rewrite. Here is the comparison."
 date: "2026-06-02"
-updated: "2026-08-11"
+updated: "2026-11-04"
 author: ai
-metaTitle: "GetCito vs Elmo: GetCito Is a Fork of Elmo (2026)"
+metaTitle: "GetCito vs Elmo: A Vibe-Coded Rewrite vs a Mature Codebase (2026)"
 tags:
   - ai-visibility
   - tools
   - open-source
 faq:
   - question: Should I use GetCito or Elmo?
-    answer: "Use Elmo. If you are considering GetCito, Elmo is the tool you actually want, because GetCito is a fork of it. On July 10, 2026, GetCito replaced its codebase with Elmo's in a single pull request of 847 files. Everything it offers today it inherited from Elmo, and it has shipped less since — 98 commits to GetCito's 17 in the month after."
+    answer: "Use Elmo. GetCito has never had a mature codebase. It started in November 2025 as a minimal vibe-coded tracker, swapped that for a fork of Elmo in July 2026, and in November 2026 threw the fork away for a new vibe-coded project built from scratch, dumped in as a single 923,787-line commit. Elmo is mature, built in the open since July 2025, and actively maintained."
   - question: Is GetCito a fork of Elmo?
-    answer: "Yes. On July 10, 2026, GetCito replaced its codebase with Elmo's in a single pull request that changed 847 files. Its feature set was Elmo's as of that date."
-  - question: Did GetCito credit Elmo?
-    answer: "GetCito's LICENSE.md replaced the copyright holder from Blue Whale Software, LLC to GetCito. The MIT license permits anyone to fork, modify, and sell the software; the condition it sets is that the original copyright notice be retained in copies and substantial portions."
+    answer: "Not anymore. GetCito ran a fork of Elmo from July 10, 2026 until November 4, 2026, when it replaced it with a new, from-scratch vibe-coded codebase. Before the fork it was a minimal vibe-coded tracker."
+  - question: How mature is GetCito's current codebase?
+    answer: "It is not. It arrived on November 4, 2026 as one commit touching 4,354 files, in a pull request with no description and no review. It is GetCito's second vibe-coded codebase, after the minimal tracker it launched with in November 2025, and neither has a track record in production."
   - question: What is the best open-source AI visibility tool?
     answer: "Elmo. It is MIT-licensed, self-hostable, and covers ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, and Google's AI Mode and AI Overviews."
 ---
 
-**If you are considering GetCito, use Elmo instead — GetCito is a fork of Elmo.** On July 10, 2026, GetCito replaced its entire codebase with Elmo's in [a single pull request](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) that changed 847 files, added 131,716 lines, and deleted 50,931. Everything GetCito offers today it inherited from [Elmo](https://www.elmohq.com/), which is free and under active development, and GetCito has shipped less since: 98 commits to its 17 in the following month.
+**If you are considering GetCito, use Elmo instead.** GetCito has never had a mature codebase. It launched as a minimal vibe-coded tracker, swapped that for a fork of Elmo, and on November 4, 2026 threw the fork away for another vibe-coded project built from scratch, landed in [a single pull request](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/62): one commit, 4,354 files, 923,787 lines added and 120,964 deleted, no description, no review. [Elmo](https://www.elmohq.com/) is a mature codebase built in the open since July 2025, one change at a time.
 
 **Key takeaways**
 
-- If you are considering GetCito, use Elmo instead. There is no scenario where the fork is the better pick.
-- GetCito launched in November 2025 as its own Next.js and Firebase application. On July 10, 2026, it replaced that with Elmo's codebase.
-- A fork can diverge, but this one is not keeping up: in the month after the swap, Elmo landed 98 commits to GetCito's 17.
+- If you are considering GetCito, use Elmo instead. There is no scenario where an unproven, vibe-coded rewrite is the better pick.
+- GetCito has replaced its entire codebase twice: a minimal vibe-coded tracker (November 2025), then a fork of Elmo (July 2026), then a from-scratch vibe-coded rewrite (November 2026).
+- Both of GetCito's own codebases were dumped into the repository as single commits. The current one is nearly a million lines.
 - This is a comparison published by Elmo, and we are an interested party. Every claim in it points at a public URL you can open and check for yourself.
 
 ## GetCito vs Elmo at a glance
 
 | | GetCito | Elmo |
 |---|---|---|
-| Codebase | Elmo's, forked July 10, 2026 | Original |
-| First commit | Nov 2025 | Jul 2025 |
-| Commits since Jul 10, 2026 | 17 | 98 |
-| GitHub stars | 161 | 233 |
-| Engines tracked | Elmo's set as of July 2026, inherited with the fork | ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, Mistral, Google AI Mode and AI Overviews |
-| Best for | Nothing we can identify — run Elmo | Owning your AI visibility data long term |
+| Current codebase since | November 4, 2026 | July 2025 |
+| Codebases since November 2025 | 3 | 1 |
+| How the current code landed | One unreviewed 923,787-line commit | 1,269 commits, built up incrementally |
+| Stack | Next.js, Express, and Supabase | TanStack Start, pg-boss, and PostgreSQL |
+| Maturity | Vibe-coded rewrite with no track record | In production since 2025 |
+| Best for | Nothing we can identify — use Elmo | Owning your AI visibility data long term |
 
-Figures reflect the public GitHub repositories as of August 11, 2026.
+Figures reflect the public GitHub repositories as of November 4, 2026.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcSet="https://api.star-history.com/chart?repos=ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool%2Celmohq/elmo&type=date&theme=dark&legend=top-left" />
-  <source media="(prefers-color-scheme: light)" srcSet="https://api.star-history.com/chart?repos=ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool%2Celmohq/elmo&type=date&legend=top-left" />
-  <img alt="Star history chart comparing GetCito and Elmo GitHub stars over time" src="https://api.star-history.com/chart?repos=ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool%2Celmohq/elmo&type=date&legend=top-left" />
-</picture>
+## Three codebases in a year
 
-## What happened on July 10, 2026
+**A minimal vibe-coded tracker.** GetCito launched in November 2025 as a small Next.js app on Firebase with Azure OpenAI behind it. It arrived as a single 51,487-line initial commit, complete with leftover `page copy.tsx` and `.bak` files and a handful of `test-*` API routes. For eight months after that the repository saw only automated dependency bumps and a few README edits.
 
-GetCito shipped in November 2025 as its own Next.js application on Firebase with Azure OpenAI behind it. For eight months after that the repository saw only automated dependency bumps and a few README edits.
+**A fork of Elmo.** On July 10, 2026, a pull request titled ["Getcito v9"](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) replaced that app with Elmo's codebase: the same pnpm and Turborepo monorepo, the same `apps/web` and `apps/worker` split, the same packages, with Elmo's copyright notice swapped for GetCito's.
 
-On July 10, 2026, a pull request titled ["Getcito v9"](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) landed, replacing the entire codebase with Elmo's: the same pnpm and Turborepo monorepo structure, the same `apps/web` and `apps/worker` split, the same packages. Four directories did not make the trip — Elmo's marketing site, docs, CLI, and cloud package.
+**A from-scratch vibe-coded rewrite.** On November 4, 2026, [pull request #62](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/62), "replace GetCito codebase with new AI visibility platform," threw the fork away too. In its place is a new `frontend`, `backend`, and `supabase` layout, nearly a million lines added in one commit.
 
-## Why a fork is the worse tool
+## Why a vibe-coded rewrite is the worse tool
 
-**It started from behind, and it is not closing the gap.** GetCito's feature set on the day of the swap was Elmo's, minus the pieces they dropped. A fork is free to diverge from there, but the commit log shows 27 commits from humans across the repository's entire lifetime, against Elmo's 862.
+**It has no track record.** Mature software earns trust by running in production, breaking, and getting fixed, over and over. GetCito's current code has done none of that. Every bug the Elmo fork had already shaken out is gone with it, and the new code starts the process over from zero.
 
-**The gap widens on its own.** In the month after July 10, Elmo landed 98 commits. GetCito landed 17. AI search changes constantly — models get renamed, APIs shift, new answer surfaces appear every few months. Keeping pace is the entire job, and a fork that starts from behind falls further back.
+**Nobody reviewed it.** A pull request with no description, a single commit, and nearly a million added lines is the signature of generated code dumped in wholesale, not engineered. It is the same pattern as GetCito's first version, nearly twenty times larger.
+
+**It may not last.** GetCito has thrown out its entire codebase twice in twelve months. Anything you build on, configure, or integrate with today has a track record of being replaced.
 
 ## Which should you choose?
 
-Use Elmo. It is the original implementation, it is further along than the fork and pulling away, and it is maintained by the people who wrote it.
+Use Elmo. It is a mature, actively maintained codebase built by the people who run it, not a vibe-coded rewrite with no history.
 
 For the wider field, see our roundup of the [best AI visibility tools](/blog/best-ai-visibility-tools) and the [best open-source AEO tools](/ai-visibility-tools/category/open-source) in our directory. To go deeper on the practice itself, start with our guide to [answer engine optimization](/answer-engine-optimization), then see [how to track your brand in AI search](/answer-engine-optimization).

@@ -1,12 +1,3 @@
-/**
- * Brand Kit story — previews all Elmo brand assets in one place.
- *
- * Sections:
- *  1. Logo — text logo ("elmo" in Titan One) and whitelabel variant
- *  2. Icon — the "e" icon at various sizes (16, 32, 64, 128, 256)
- *  3. Maskable Icon — for adaptive/PWA contexts
- *  4. Color Palette — brand color, theme colors, and chart palette
- */
 import type { Meta } from "@storybook/react";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { Logo } from "@/components/logo";
@@ -50,10 +41,6 @@ export default {
 	title: "Brand Kit",
 } satisfies Meta;
 
-// ---------------------------------------------------------------------------
-// Section helpers
-// ---------------------------------------------------------------------------
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
 	return (
 		<div className="mb-10">
@@ -73,11 +60,6 @@ function ColorSwatch({ color, label }: { color: string; label: string }) {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Stories
-// ---------------------------------------------------------------------------
-
-/** Full Elmo brand kit — logo, icons, colors, typography */
 export const ElmoBrandKit = () => {
 	setMockClientConfig(elmoConfig);
 	setMockRouteContext({ clientConfig: elmoConfig });
@@ -88,7 +70,6 @@ export const ElmoBrandKit = () => {
 		<div className="p-8 max-w-4xl mx-auto space-y-2">
 			<h1 className="text-2xl font-bold text-foreground mb-8">Elmo Brand Kit</h1>
 
-			{/* Logo */}
 			<Section title="Logo">
 				<div className="flex items-center gap-8">
 					<div className="flex flex-col items-center gap-2">
@@ -106,7 +87,6 @@ export const ElmoBrandKit = () => {
 				</div>
 			</Section>
 
-			{/* Standard Icon */}
 			<Section title="Icon — Standard">
 				<div className="space-y-4">
 					<div>
@@ -160,7 +140,6 @@ export const ElmoBrandKit = () => {
 				</div>
 			</Section>
 
-			{/* Maskable Icon */}
 			<Section title="Icon — Maskable (PWA)">
 				<div className="flex items-end gap-6 flex-wrap">
 					{[64, 128, 256].map((size) => (
@@ -197,7 +176,6 @@ export const ElmoBrandKit = () => {
 				</div>
 			</Section>
 
-			{/* Colors */}
 			<Section title="Brand Colors">
 				<div className="flex gap-6 flex-wrap">
 					<ColorSwatch color="#2563eb" label="Royal Blue" />
@@ -208,7 +186,6 @@ export const ElmoBrandKit = () => {
 				</div>
 			</Section>
 
-			{/* Chart Palette */}
 			<Section title="Chart Color Palette">
 				<div className="flex flex-wrap gap-2">
 					{DEFAULT_CHART_COLORS.map((color, i) => (
@@ -223,7 +200,6 @@ export const ElmoBrandKit = () => {
 	);
 };
 
-/** Whitelabel brand preview — shows how custom branding appears */
 export const WhitelabelBrandPreview = () => {
 	setMockClientConfig(whitelabelConfig);
 	setMockRouteContext({ clientConfig: whitelabelConfig });

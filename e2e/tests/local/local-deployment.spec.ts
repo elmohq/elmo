@@ -1,11 +1,3 @@
-/**
- * What makes a local (self-hosted) deployment different.
- *
- * A local instance is single-user by design: exactly one account is ever
- * created, there is no public signup, no team invitations, and no billing. It
- * ships the full report generator and the stock Elmo branding, and it lets the
- * operator create as many brands as they like.
- */
 import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
 import { TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { userExists } from "../../session";
@@ -27,8 +19,7 @@ test.describe("Local signup is closed after bootstrap", () => {
     });
 
     expect(response.ok()).toBe(false);
-    // The hook that refuses the signup runs before the row is written, so a
-    // direct POST can't slip a second account past the UI's register guard.
+    // A direct POST, past the register page's own guard.
     expect(await userExists(SECOND_USER.email)).toBe(false);
   });
 

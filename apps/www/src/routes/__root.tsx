@@ -6,7 +6,7 @@
 import geistMonoFont from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url";
 import geistSansFont from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
-import { Asset, createRootRoute, Outlet, Scripts, useLocation, useTags } from "@tanstack/react-router";
+import { Asset, createRootRoute, Outlet, rootRouteId, Scripts, useLocation, useTags } from "@tanstack/react-router";
 import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
 import { initAdTags, trackAdPageView } from "@workspace/ui/lib/ad-tags";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
@@ -16,9 +16,11 @@ import { NotFound } from "@/components/not-found";
 import { getConsentRegion } from "@/lib/consent-region";
 import { initCrisp } from "@/lib/crisp";
 import { getGitHubStars } from "@/lib/github-stars";
+import { markdownCopyPath } from "@/lib/markdown-copy";
 import { getMarketingOgImage } from "@/lib/og";
 import { initAnalytics } from "@/lib/posthog";
 import { organizationJsonLd, SITE_DESCRIPTION, SITE_NAME, SITE_URL, websiteJsonLd } from "@/lib/seo";
+import { registerWebMcpTools } from "@/lib/webmcp";
 import appCss from "../styles.css?url";
 
 const ROOT_TITLE = `${SITE_NAME} · Open Source AI Visibility`;
@@ -26,7 +28,7 @@ const ROOT_OG_IMAGE = `${SITE_URL}${getMarketingOgImage({ title: ROOT_TITLE, des
 
 export const Route = createRootRoute({
 	notFoundComponent: NotFound,
-	head: () => ({
+	head: ({ matches }) => ({
 		meta: [
 			{ charSet: "utf-8" },
 			{
@@ -81,6 +83,7 @@ export const Route = createRootRoute({
 			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 			{ rel: "manifest", href: "/site.webmanifest" },
 			{ rel: "stylesheet", href: appCss },
+			...markdownAlternate(matches),
 		],
 		scripts: [
 			websiteJsonLd(),
@@ -100,6 +103,15 @@ export const Route = createRootRoute({
 	component: RootComponent,
 });
 
+// Agents whose browse tools hide response headers still see this tag. Not-found
+// pages have no markdown copy: a bad path matches only the root, and a loader's
+// notFound() leaves its error on a match.
+function markdownAlternate(matches: { routeId: string; pathname: string; error?: unknown }[]) {
+	const page = matches.at(-1);
+	if (!page || page.routeId === rootRouteId || matches.some((match) => match.error)) return [];
+	return [{ rel: "alternate", type: "text/markdown", href: markdownCopyPath(page.pathname) }];
+}
+
 function RootComponent() {
 	const { consentRegion } = Route.useLoaderData();
 	// Null until the browser resolves it — the time-zone fallback would read the
@@ -110,7 +122,7 @@ function RootComponent() {
 		const required = isConsentRequired(consentRegion);
 		setConsentRequired(required);
 		initCrisp();
-		const stops = [initAnalytics(required), initAdTags(required)];
+		const stops = [initAnalytics(required), initAdTags(required), registerWebMcpTools()];
 		return () => {
 			for (const stop of stops) stop();
 		};

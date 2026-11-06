@@ -6,7 +6,7 @@ import { Footer } from "@/components/footer";
 import { MultiComparison } from "@/components/multi-comparison";
 import { Navbar } from "@/components/navbar";
 import { PairComparison } from "@/components/pair-comparison";
-import { type Competitor, getCompareEntry, getCompareFaqs, getCompareVerdict } from "@/lib/competitors";
+import { type Competitor, getCompareEntry, getCompareFaqs, getCompareVerdict, lastChecked } from "@/lib/competitors";
 import {
 	breadcrumbJsonLd,
 	canonicalUrl,
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: names, path },
 				]),
-				faqJsonLd(faqs),
+				faqJsonLd(faqs, { path, dateModified: lastChecked(tools) }),
 				comparisonJsonLd([...tools.map((t) => ({ name: t.name, url: t.url })), ELMO_LISTING]),
 				softwareApplicationJsonLd(),
 			],

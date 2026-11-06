@@ -73,8 +73,7 @@ test("passes a require of a package that is only probed optionally", () => {
   assert.equal(status, 0);
 });
 
-// The Vercel preset writes function directories and no .output at all, which is
-// the layout that actually shipped the broken bundle.
+// The Vercel preset writes function directories and no .output at all.
 test("checks the vercel preset's function directories", () => {
   const { status, stderr } = check({
     ".vercel/output/functions/__server.func/_ssr/footer.mjs": 'var React = __require("react");\n',

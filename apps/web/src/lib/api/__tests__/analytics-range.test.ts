@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyticsListPaging, parseAnalyticsWindow, parsePaging, publicRange } from "../analytics-range";
+import { analyticsListPaging, clampedPaging, parseAnalyticsWindow, publicRange } from "../analytics-range";
 
 const WINDOW = "start=2026-01-01T00:00:00Z&end=2026-02-01T00:00:00Z";
 
@@ -12,11 +12,11 @@ describe("analytics API query parsing", () => {
 		expect(paging("page=x&limit=abc")).toEqual({ page: 1, limit: 1000, offset: 0 });
 	});
 
-	it("rejects malformed pagination instead of silently coercing it", () => {
-		expect(() => parsePaging(new URL("https://example.com?page=abc"))).toThrow("page must be a positive integer");
-		expect(() => parsePaging(new URL("https://example.com?limit=101"))).toThrow(
-			"limit must be an integer between 1 and 100",
-		);
+	it("pages the other lists 20 at a time by default, clamping out-of-range and unreadable values", () => {
+		const paging = (query: string) => clampedPaging(new URLSearchParams(query));
+		expect(paging("")).toEqual({ page: 1, limit: 20, offset: 0 });
+		expect(paging("page=0&limit=101")).toEqual({ page: 1, limit: 100, offset: 0 });
+		expect(paging("page=abc&limit=abc")).toEqual({ page: 1, limit: 20, offset: 0 });
 	});
 
 	it("requires both bounds of the window", () => {

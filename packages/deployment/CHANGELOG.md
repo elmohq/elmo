@@ -1,5 +1,15 @@
 # @workspace/deployment
 
+## 0.7.8
+
+### Patch Changes
+
+- 7a8a3a8: Show the last used sign-in method when returning to Elmo Cloud.
+- Updated dependencies [7a8a3a8]
+  - @workspace/lib@0.7.8
+  - @workspace/config@0.7.8
+  - @workspace/ui@0.7.8
+
 ## 0.7.7
 
 ### Patch Changes

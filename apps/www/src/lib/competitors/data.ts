@@ -1891,16 +1891,17 @@ export const competitors: Competitor[] = [
 		name: "GetCito",
 		domain: "getcito.com",
 		url: "https://getcito.com/",
-		tagline: "A fork of Elmo — if you are considering GetCito, use Elmo instead",
+		tagline: "Two vibe-coded codebases with an Elmo fork in between — use Elmo instead",
 		description:
-			"If you are considering GetCito, use Elmo instead: GetCito is a fork of Elmo. It launched in November 2025 as its own Next.js and Firebase application, then on July 10, 2026 replaced that codebase with Elmo's — 847 files, +131,716/-50,931 lines — in a single pull request. Its feature set was Elmo's as of the fork date, and it has shipped less since — 17 commits to Elmo's 98 in the following month — so it is falling further behind rather than diverging into something competitive.",
+			"If you are considering GetCito, use Elmo instead. GetCito has never had a mature codebase. It launched in November 2025 as a minimal vibe-coded tracker, dumped into the repository in one commit with leftover backup files and test endpoints. On July 10, 2026 it replaced that with a fork of Elmo, and on November 4, 2026 it threw the fork away for another vibe-coded project built from scratch: a single commit of 4,354 files and 923,787 added lines, with no description and no review. What GetCito ships today is a new Next.js, Express, and Supabase codebase with no track record.",
 		category: "open-source",
 		ahrefsDR: 34,
 		ahrefsTraffic: 34,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-04",
 		license: "MIT",
-		soundbite: "GetCito is a fork of Elmo. Elmo is the original, and it's shipping faster.",
+		soundbite:
+			"GetCito went from a vibe-coded tracker to an Elmo fork to a vibe-coded rewrite. Elmo is the mature one.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1926,11 +1927,12 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: true, startingPrice: "$599/mo", hasEnterprise: true },
 		highlights: [
-			"If you are considering GetCito, use Elmo instead — GetCito is a fork of it",
-			"Codebase replaced with Elmo's on July 10, 2026",
-			"Ships less than the project it forked — 17 commits to Elmo's 98 in the first month after",
+			"If you are considering GetCito, use Elmo instead",
+			"Third codebase in a year: a minimal vibe-coded tracker, then a fork of Elmo, now a vibe-coded rewrite",
+			"Current code landed on November 4, 2026 as one unreviewed 923,787-line commit",
 		],
-		notes: "Fork of Elmo's codebase since July 2026.",
+		notes:
+			"Started as a minimal vibe-coded tracker, forked Elmo, then replaced the fork with a from-scratch vibe-coded rewrite in November 2026.",
 	},
 	{
 		slug: "meridian",
@@ -9061,7 +9063,7 @@ const aeoPopularityRanking: string[] = [
 	"seen-by-ai", // Pay-per-report UK checker from £4.99; narrow scope, DR 1
 	"sorn", // Sales-led audit into a managed engagement; DR 5
 	"llmwatcher", // Polish-language tracker with full response history; DR 2.4
-	"getcito", // Fork of Elmo's codebase since Jul 2026
+	"getcito", // Third codebase in a year; vibe-coded rewrite landed Nov 2026
 	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, ~295 GitHub stars
 	"canonry", // MIT self-hosted AEO platform, server-log ingestion + MCP, ~186 stars
 	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, ~106 stars

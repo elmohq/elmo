@@ -126,7 +126,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			<section className="border-b border-zinc-200 bg-zinc-50 py-8">
 				<div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-4 md:px-6">
 					<div>
-						<h3 className="mb-1 text-lg font-semibold text-zinc-950">Elmo</h3>
+						<h2 className="mb-1 text-lg font-semibold text-zinc-950">Elmo</h2>
 						<div className="mt-2 flex flex-wrap gap-2">
 							<Badge variant="secondary">Open Source</Badge>
 							<Badge variant="secondary">Self-Hosted</Badge>
@@ -138,7 +138,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						</p>
 					</div>
 					<div>
-						<h3 className="mb-1 text-lg font-semibold text-zinc-950">{competitor.name}</h3>
+						<h2 className="mb-1 text-lg font-semibold text-zinc-950">{competitor.name}</h2>
 						<div className="mt-2 flex flex-wrap gap-2">
 							<Badge variant="secondary">{CATEGORY_LABELS[competitor.category]}</Badge>
 							{competitor.pricing?.hasFree && <Badge variant="secondary">Free Tier</Badge>}

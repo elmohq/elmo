@@ -5,8 +5,7 @@ import {
 	type RunMentionAssessments,
 	type Sentiment,
 	subjectFingerprint,
-} from "@workspace/lib/mentions";
-import { getCredential } from "@workspace/lib/secrets";
+} from "../mentions";
 import { type Cleaned, cleanAnswer, originalSpan } from "./clean";
 import {
 	adaptivePool,
@@ -266,38 +265,32 @@ export function jevAnalyzer(
 	};
 }
 
-let current: MentionAnalyzer | undefined;
-
 /**
  * A TypeSafe key wins over an OpenRouter one, so setting OPENROUTER_API_KEY for scraping never
  * moves an existing deployment's judge or its bill. The choice is made once: a failing gateway
  * never falls back to the other, which would bill an account the operator didn't pick.
  */
-export function configureMentionAnalyzer(
-	apiKey = process.env.TYPESAFE_API_KEY,
-	openRouterKey: () => string | undefined = () => getCredential("OPENROUTER_API_KEY"),
+export function createMentionAnalyzer(
+	apiKey: string | undefined,
+	openRouterKey: () => string | undefined,
 ): MentionAnalyzer {
 	if (apiKey?.trim() === "stub") {
 		console.warn(
 			"[mention-judge] TYPESAFE_API_KEY=stub: judging from cue words, not Jev. For tests and development only.",
 		);
-		current = jevAnalyzer(stubTransport, 8, "stub");
-	} else if (apiKey?.trim()) current = jevAnalyzer(adaptivePool(typesafeTransport(apiKey.trim())), MAX_IN_FLIGHT);
-	else if (openRouterKey()?.trim()) {
+		return jevAnalyzer(stubTransport, 8, "stub");
+	}
+	if (apiKey?.trim()) return jevAnalyzer(adaptivePool(typesafeTransport(apiKey.trim())), MAX_IN_FLIGHT);
+	if (openRouterKey()?.trim()) {
 		console.log("[mention-judge] No TYPESAFE_API_KEY: calling Jev through OpenRouter, billed to OPENROUTER_API_KEY.");
-		current = jevAnalyzer(
+		return jevAnalyzer(
 			adaptivePool(openRouterTransport(() => openRouterKey()?.trim())),
 			MAX_IN_FLIGHT,
 			OPENROUTER_JEV_MODEL,
 			JEV_MODEL,
 		);
-	} else
-		throw new Error(
-			"Elmo judges mentions and sentiment with Jev: set TYPESAFE_API_KEY, or OPENROUTER_API_KEY to call Jev through OpenRouter",
-		);
-	return current;
-}
-
-export function mentionAnalyzer(): MentionAnalyzer {
-	return current ?? configureMentionAnalyzer();
+	}
+	throw new Error(
+		"Elmo judges mentions and sentiment with Jev: set TYPESAFE_API_KEY, or OPENROUTER_API_KEY to call Jev through OpenRouter",
+	);
 }

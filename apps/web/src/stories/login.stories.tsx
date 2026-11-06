@@ -1,6 +1,4 @@
 /**
- * Stories for the sign-in page, one per deployment mode.
- *
  * The mode components are rendered directly rather than through the file route,
  * because Route.useSearch() isn't modeled by the router mock. Everything the
  * sales panel shows — engine coverage, the runs-per-day comparison — comes from

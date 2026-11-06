@@ -219,7 +219,7 @@ function AboutPage() {
 			detail: `Live chat, email (${SUPPORT_EMAIL}), video calls, Discord, and GitHub issues`,
 		},
 		{ term: "Notable Users", detail: NOTABLE_USERS.join(", ") },
-		{ term: "Organizations Served", detail: "200+" },
+		{ term: "Organizations Served", detail: "250+" },
 		{
 			term: "Open-Source Adoption",
 			detail:

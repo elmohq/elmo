@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/www",
-	"version": "0.7.7",
+	"version": "0.7.8",
 	"private": true,
 	"license": "MIT",
 	"type": "module",
@@ -8,9 +8,10 @@
 		"postinstall": "fumadocs-mdx",
 		"codegen": "fumadocs-mdx",
 		"dev": "node scripts/build-agent-skills.mjs && vite dev --port 3001",
-		"build": "node scripts/build-agent-skills.mjs && vite build && node ../../scripts/check-server-bundle.mjs .",
+		"build": "node scripts/build-agent-skills.mjs && vite build && node ../../scripts/check-server-bundle.mjs . && node scripts/check-sitemap.mjs",
 		"start": "node .output/server/index.mjs",
 		"check-types": "tsc --noEmit",
+		"test": "vitest run",
 		"generate-icons": "tsx scripts/generate-brand-icons.tsx"
 	},
 	"dependencies": {
@@ -24,16 +25,16 @@
 		"@takumi-rs/core": "catalog:",
 		"@tanstack/react-router": "catalog:",
 		"@tanstack/react-start": "catalog:",
-		"@upstash/redis": "^1.39.0",
+		"@upstash/redis": "^1.40.0",
 		"@workspace/api-spec": "workspace:*",
 		"@workspace/config": "workspace:*",
 		"@workspace/docs": "workspace:*",
 		"@workspace/og": "workspace:*",
 		"@workspace/ui": "workspace:*",
-		"fumadocs-core": "^16.17.8",
+		"fumadocs-core": "^16.17.9",
 		"fumadocs-mdx": "^15.4.10",
-		"fumadocs-openapi": "^12.5.5",
-		"fumadocs-ui": "^16.17.8",
+		"fumadocs-openapi": "^12.5.7",
+		"fumadocs-ui": "^16.17.9",
 		"lucide-react": "catalog:",
 		"nitro": "catalog:",
 		"posthog-js": "catalog:",
@@ -41,14 +42,20 @@
 		"react-dom": "catalog:",
 		"react-markdown": "catalog:",
 		"recharts": "catalog:",
+		"rehype-parse": "^9.0.1",
+		"rehype-remark": "^10.0.1",
 		"remark-gfm": "catalog:",
+		"remark-stringify": "^11.0.0",
 		"shiki": "^4.5.0",
 		"tailwindcss": "catalog:",
 		"tslib": "catalog:",
 		"tw-animate-css": "catalog:",
+		"unified": "^11.0.5",
+		"yaml": "^2.8.3",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
+		"@types/hast": "^3.0.5",
 		"@types/mdx": "^2.0.14",
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
@@ -58,6 +65,7 @@
 		"png-to-ico": "catalog:",
 		"tar-stream": "3.2.2",
 		"typescript": "catalog:",
-		"vite": "catalog:"
+		"vite": "catalog:",
+		"vitest": "catalog:"
 	}
 }

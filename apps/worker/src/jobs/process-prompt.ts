@@ -58,7 +58,7 @@ async function scheduleNextRun(promptId: string, delayHours: number, consecutive
 		console.log(`Scheduled next run for prompt ${promptId} in ${delayHours}h${reason}`);
 	} catch (error) {
 		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
-		// Don't throw - we don't want to fail the job just because rescheduling failed
+		// The cycle's runs are already saved; a failed reschedule shouldn't fail the job.
 	}
 }
 
@@ -84,13 +84,7 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 	return { prompt, brand };
 }
 
-/**
- * Resolve the prompt's run plan for this firing: entitlements + pool
- * positions + per-target cadence. Everything is looked up fresh so plan
- * changes, cancellations, and platform-pick edits apply on the next firing
- * without touching queued jobs. Outside cloud this reads nothing extra and
- * uses the deployment's fixed run settings.
- */
+/** Outside cloud this reads nothing extra and uses the deployment's fixed run settings. */
 async function resolvePlanForPrompt(
 	context: PromptContext,
 	scrapeTargets: ModelConfig[],
@@ -404,16 +398,10 @@ async function processPrompt(
 	await scheduleNextRun(promptId, next.delayHours, next.consecutiveFailures);
 }
 
-/**
- * Process a prompt - runs AI models and saves results.
- * This is a pg-boss job handler, called when a scheduled job fires.
- * After a cycle it schedules the next run: on cadence when anything came back,
- * on a backoff when nothing did.
- */
+/** After a cycle it schedules the next run: on cadence when anything came back, on a backoff when nothing did. */
 export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
 	const scrapeConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
-	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
 		await processPrompt(job.data.promptId, scrapeConfigs, job.data.consecutiveFailures ?? 0);
 	}

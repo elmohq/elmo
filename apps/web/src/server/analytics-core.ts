@@ -477,12 +477,12 @@ export async function getBrandQueryFanout(
 		resolved.prompts.filter((prompt) => promptIds.includes(prompt.id)).map((prompt) => [prompt.id, prompt.value]),
 	);
 	// Without this every byPrompt row reports zero runs and a zero average.
-	const promptRuns = new Map(promptTotals.map((row) => [row.prompt_id, row.runs]));
+	const promptFanoutRuns = new Map(promptTotals.map((row) => [row.prompt_id, row.fanout_runs]));
 
 	return {
 		brandName,
 		...computeFanoutAnalysis(breakdown, modelTotals, promptValues, {
-			promptRuns,
+			promptFanoutRuns,
 			limits: fanoutLimits(options),
 		}),
 	};
@@ -501,7 +501,7 @@ function emptyFanout(): FanoutAnalysis {
 		uniqueQueries: 0,
 		fanoutRuns: 0,
 		totalRuns: 0,
-		avgPerExecution: 0,
+		avgQueriesPerFanoutRun: 0,
 		coverageRate: 0,
 		topQueries: [],
 		terms: [],

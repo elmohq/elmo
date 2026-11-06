@@ -1,6 +1,4 @@
 /**
- * Stories for <ResponseMarkdown />, the answer body on the prompt detail page.
- *
  * The fixtures are shaped after real answers captured from BrightData's
  * ChatGPT and Google AI Mode collectors: a comparison table, source links,
  * and the favicon chips the engines splice into their prose — including the
