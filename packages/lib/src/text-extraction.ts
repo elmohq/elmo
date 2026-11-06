@@ -1,22 +1,7 @@
-/**
- * Functions for extracting text content and citations from stored rawOutput.
- *
- * Each provider stores rawOutput in a different format. These functions handle
- * re-reading that stored data for display in the UI (prompt detail pages, reports).
- *
- * For new prompt runs, the Provider.run() method normalizes output into ScrapeResult
- * at write time, so these functions are primarily for reading historical data.
- */
+/** Providers extract with these at write time; bump to replay a parsing fix over stored `raw_output`. */
+export const EXTRACTOR_VERSION = 1;
 
-// ============================================================================
-// Text extraction by provider
-// ============================================================================
-
-/**
- * Stored payloads carry the answer in different places depending on which
- * provider — and which revision of it — produced the run, so a read probes the
- * known locations in order. A probe returns null when its shape isn't present.
- */
+/** Payload shapes vary by provider and revision, so a read probes known locations in order. */
 function firstText(emptyMessage: string, probes: Array<() => string | null>): string {
 	try {
 		for (const probe of probes) {
@@ -66,15 +51,13 @@ export function extractTextFromGoogle(rawOutput: any): string {
 	return extractTextFromDataforseo(rawOutput);
 }
 
-/**
- * The `dataforseo` provider routes to three different DataForSEO products, so
- * stored rows under that one provider id carry three shapes. The LLM Scraper is
- * the one that renders its answer as top-level `markdown` and cites through
- * top-level `sources`; neither the LLM Responses nor the SERP results have
- * either field.
- */
+/** The `dataforseo` provider routes to three DataForSEO products, so its rows carry three shapes. */
 function isDataforseoScraperResult(result: any): boolean {
 	return typeof result?.markdown === "string" || Array.isArray(result?.sources);
+}
+
+function isDataforseoLlmResponsesResult(items: any[]): boolean {
+	return items.some((item: any) => Array.isArray(item?.sections));
 }
 
 export function extractTextFromDataforseo(rawOutput: any): string {
@@ -85,10 +68,7 @@ export function extractTextFromDataforseo(rawOutput: any): string {
 				return extractTextFromDataforseoScraper(rawOutput);
 			}
 			const items = result.items || [];
-			// AI Optimization LLM Responses (chatgpt/perplexity/gemini) use
-			// items[].sections[].text; the SERP Google AI Mode shape below uses
-			// items[].type === "ai_overview". Detect and delegate.
-			if (items.some((item: any) => Array.isArray(item?.sections))) {
+			if (isDataforseoLlmResponsesResult(items)) {
 				return extractTextFromDataforseoLlm(rawOutput);
 			}
 			const aiOverviewItems = items.filter((item: any) => item.type === "ai_overview");
@@ -103,13 +83,7 @@ export function extractTextFromDataforseo(rawOutput: any): string {
 	}
 }
 
-/**
- * Text extraction for DataForSEO's AI Optimization "LLM Responses" API
- * (chatgpt / perplexity / gemini), which has a different shape from the SERP
- * Google AI Mode response handled by extractTextFromDataforseo:
- *   tasks[].result[].items[].sections[].{type:"text", text}
- * The reasoning items (type "reasoning") are skipped; only message text is kept.
- */
+/** LLM Responses API: tasks[].result[].items[].sections[].{type:"text", text}; reasoning items are skipped. */
 export function extractTextFromDataforseoLlm(rawOutput: any): string {
 	try {
 		const result = rawOutput?.tasks?.[0]?.result?.[0];
@@ -131,21 +105,14 @@ export function extractTextFromDataforseoLlm(rawOutput: any): string {
 	}
 }
 
-/**
- * Text extraction for DataForSEO's AI Optimization "LLM Scraper" API
- * (chatgpt / gemini). The scraped answer arrives pre-rendered as markdown at
- * tasks[].result[].markdown; items[] carries the same content split into typed
- * blocks (text, tables, product cards), so the top-level field is preferred.
- */
+/** LLM Scraper API: prefers the pre-rendered tasks[].result[].markdown over the same content split into items[]. */
 export function extractTextFromDataforseoScraper(rawOutput: any): string {
 	try {
 		const result = rawOutput?.tasks?.[0]?.result?.[0];
 		const markdown = result?.markdown;
 		if (typeof markdown === "string" && markdown.trim()) return markdown;
-		// Older or partial responses may only populate the per-item blocks. They
-		// are separate markdown blocks, so they are joined by a blank line; a
-		// single newline is a soft break, which would render consecutive blocks
-		// as one run-on paragraph.
+		// Older or partial responses only have the per-item blocks. A blank line
+		// keeps them apart: a single newline is a markdown soft break.
 		const texts: string[] = [];
 		for (const item of result?.items ?? []) {
 			if (typeof item?.markdown === "string" && item.markdown.trim()) texts.push(item.markdown.trim());
@@ -158,13 +125,7 @@ export function extractTextFromDataforseoScraper(rawOutput: any): string {
 	}
 }
 
-/**
- * Citation extraction for DataForSEO's AI Optimization "LLM Scraper" API.
- * tasks[].result[].sources is the deduplicated set the answer actually cited;
- * items[].sources repeats those same entries. ChatGPT's `search_results` is
- * deliberately ignored — those are results the model was shown, not sources it
- * cited.
- */
+/** ChatGPT's `search_results` are what the model was shown, not what it cited, so they are ignored. */
 export function extractCitationsFromDataforseoScraper(rawOutput: any): Citation[] {
 	return collectCitations((add) => {
 		const result = rawOutput?.tasks?.[0]?.result?.[0];
@@ -237,9 +198,7 @@ function extractBrightdataAiOverviewText(record: any): string | null {
 		if (!Array.isArray(aio[listKey])) continue;
 		const snippets: string[] = [];
 		collectAioSnippets(aio[listKey], snippets);
-		// Each snippet is its own block in the overview, so they are separated by
-		// a blank line; a single newline is a markdown soft break and would render
-		// the whole overview as one run-on paragraph.
+		// A blank line between snippets: a single newline is a markdown soft break.
 		if (snippets.length) return snippets.join("\n\n");
 	}
 	return null;
@@ -268,10 +227,8 @@ export function extractTextFromBrightdata(rawOutput: any): string {
 	}
 }
 
-// Google AI Overview via Oxylabs' google_search source. The overview sits in the
-// parsed SERP as one or more blocks, each a list of answer fragments that may
-// carry reference URLs. The wrapping has shifted across Oxylabs revisions, so
-// probe both the nested-results and top-level shapes.
+// The wrapping has shifted across Oxylabs revisions, so probe both the
+// nested-results and top-level shapes.
 function oxylabsAiOverviews(content: any): any[] {
 	const aio = content?.results?.ai_overviews ?? content?.ai_overviews;
 	return Array.isArray(aio) ? aio : [];
@@ -296,8 +253,6 @@ export function extractTextFromOxylabs(rawOutput: any): string {
 	try {
 		const content = rawOutput?.results?.[0]?.content;
 		if (!content) return "No content in Oxylabs output.";
-		// Google AI Overview (google_search source): prefer the overview block
-		// over the SERP's other text fields.
 		const aiOverview = extractOxylabsAiOverviewText(content);
 		if (aiOverview) return aiOverview;
 		for (const key of [
@@ -331,9 +286,7 @@ export function extractTextFromCloro(rawOutput: any): string {
 	try {
 		const answer = cloroAnswer(rawOutput);
 		if (!answer) return "No content in Cloro output.";
-		// `markdown` carries the answer's inline citations; `text` is the same
-		// answer with those and its formatting flattened away. Runs stored before
-		// the request asked for markdown only have `text`.
+		// `markdown` keeps the inline citations `text` flattens away; some stored runs only have `text`.
 		for (const key of ["markdown", "text"]) {
 			if (typeof answer[key] === "string" && answer[key].trim()) return answer[key].trim();
 		}
@@ -358,11 +311,7 @@ function collectSearchapiBlocks(node: any, out: string[], depth = 0): void {
 	}
 }
 
-/**
- * The answer a payload actually carries, or null when it carries none. The
- * provider gates a run on this so its "is there an answer?" check can't drift
- * from what the extractor reads.
- */
+/** Providers gate a run on this, so "is there an answer?" can't drift from what the extractor reads. */
 export function searchapiText(rawOutput: any): string | null {
 	const answer = searchapiAnswer(rawOutput);
 	if (!answer) return null;
@@ -377,43 +326,8 @@ export function extractTextFromSearchapi(rawOutput: any): string {
 	return firstText("No text content found in SearchApi output.", [() => searchapiText(rawOutput)]);
 }
 
-/**
- * Extract text content from stored rawOutput.
- * Dispatches based on provider (how data was fetched), falling back to engine
- * because persisted runs may not identify a provider.
- */
 export function extractTextContent(rawOutput: any, providerOrEngine: string): string {
-	switch (providerOrEngine) {
-		case "openai-api":
-		case "openai":
-		case "chatgpt":
-			return extractTextFromOpenAI(rawOutput);
-		case "anthropic-api":
-		case "anthropic":
-		case "claude":
-			return extractTextFromAnthropic(rawOutput);
-		case "mistral-api":
-			return extractTextFromMistral(rawOutput);
-		case "dataforseo":
-		case "google":
-		case "google-ai-mode":
-		case "google-ai-overview":
-			return extractTextFromDataforseo(rawOutput);
-		case "openrouter":
-			return extractTextFromOpenRouter(rawOutput);
-		case "searchapi":
-			return extractTextFromSearchapi(rawOutput);
-		case "olostep":
-			return extractTextFromOlostep(rawOutput);
-		case "brightdata":
-			return extractTextFromBrightdata(rawOutput);
-		case "oxylabs":
-			return extractTextFromOxylabs(rawOutput);
-		case "cloro":
-			return extractTextFromCloro(rawOutput);
-		default:
-			return tryGenericExtraction(rawOutput);
-	}
+	return (extractor(providerOrEngine)?.text ?? tryGenericExtraction)(rawOutput);
 }
 
 function tryGenericExtraction(rawOutput: any): string {
@@ -426,9 +340,37 @@ function tryGenericExtraction(rawOutput: any): string {
 	return "Unknown provider format - cannot extract text content.";
 }
 
-// ============================================================================
-// Citation extraction by provider
-// ============================================================================
+/** Stored as a run's text, a placeholder would be treated as the answer by every later layer. */
+const EXTRACTION_FAILURE_SENTINELS: ReadonlySet<string> = new Set([
+	"Error extracting text content.",
+	"No AI overview content found.",
+	"No content.",
+	"No content in BrightData output.",
+	"No content in Cloro output.",
+	"No content in Oxylabs output.",
+	"No text content found in Anthropic output.",
+	"No text content found in BrightData output.",
+	"No text content found in Cloro output.",
+	"No text content found in DataForSEO LLM output.",
+	"No text content found in DataForSEO Scraper output.",
+	"No text content found in Mistral output.",
+	"No text content found in Olostep output.",
+	"No text content found in OpenAI output.",
+	"No text content found in OpenRouter output.",
+	"No text content found in Oxylabs output.",
+	"No text content found in SearchApi output.",
+	"Unknown provider format - cannot extract text content.",
+]);
+
+/** An answer worth storing, or null for a blank answer or an extraction placeholder. */
+export function storableText(text: unknown): string | null {
+	if (typeof text !== "string" || !text.trim() || EXTRACTION_FAILURE_SENTINELS.has(text)) return null;
+	return text;
+}
+
+export function tryExtractTextContent(rawOutput: unknown, providerOrEngine: string): string | null {
+	return storableText(extractTextContent(rawOutput, providerOrEngine));
+}
 
 export type Citation = {
 	url: string;
@@ -480,13 +422,7 @@ function sourceUrl(item: any, ...fields: string[]): unknown {
 	return fields.map((field) => item?.[field]).find((value) => typeof value === "string");
 }
 
-/**
- * The provider extractors below differ only in where the URLs sit inside their
- * payload — validating, de-duplicating and indexing them is the same work every
- * time, so it lives here. `traverse` walks the payload and hands each candidate
- * to `add`; a payload malformed enough to throw yields no citations rather than
- * failing the run that produced it.
- */
+/** A payload malformed enough to throw yields no citations rather than failing its run. */
 function collectCitations(traverse: (add: AddCitation) => void): Citation[] {
 	const citations: Citation[] = [];
 	const seen = new Set<string>();
@@ -522,20 +458,13 @@ export function extractCitationsFromDataforseo(rawOutput: any): Citation[] {
 	const result = rawOutput?.tasks?.[0]?.result?.[0];
 	if (isDataforseoScraperResult(result)) return extractCitationsFromDataforseoScraper(rawOutput);
 	const items = asArray(result?.items);
-	// AI Optimization LLM Responses (chatgpt/perplexity/gemini) carry
-	// citations in items[].sections[].annotations[]; delegate when present.
-	if (items.some((item: any) => Array.isArray(item?.sections))) return extractCitationsFromDataforseoLlm(rawOutput);
+	if (isDataforseoLlmResponsesResult(items)) return extractCitationsFromDataforseoLlm(rawOutput);
 	return collectCitations((add) => {
 		for (const reference of pluck(byType(items, "ai_overview"), "references")) add(reference?.url, reference?.title);
 	});
 }
 
-/**
- * Citation extraction for DataForSEO's AI Optimization "LLM Responses" API.
- * Sources live at tasks[].result[].items[].sections[].annotations[].{title,url}.
- * annotations is null when web_search was disabled, and may be empty when web
- * search ran but cited nothing. Duplicate URLs are de-duped.
- */
+/** `annotations` is null when web search was off, and may be empty when it cited nothing. */
 export function extractCitationsFromDataforseoLlm(rawOutput: any): Citation[] {
 	return collectCitations((add) => {
 		const items = asArray(rawOutput?.tasks?.[0]?.result?.[0]?.items);
@@ -585,9 +514,8 @@ export function extractCitationsFromAnthropic(rawOutput: any): Citation[] {
 	});
 }
 
-// BrightData suffixes AI Overview reference titles with UI noise like
-// ". Opens in new tab." Cut it at a plain indexOf and trim the trailing
-// punctuation — no backtracking regex over the (uncontrolled) title.
+// BrightData suffixes AI Overview titles with ". Opens in new tab." Cut with
+// indexOf rather than a backtracking regex over an uncontrolled title.
 function stripAioTitleNoise(title: string): string {
 	const marker = title.toLowerCase().indexOf("opens in new tab");
 	if (marker === -1) return title.trim();
@@ -600,9 +528,7 @@ function stripAioTitleNoise(title: string): string {
 export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 	return collectCitations((add) => {
 		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
-		// SERP API (Google AI Overview) lists its sources under `ai_overview`, where
-		// each reference carries the URL as `href` and a title suffixed with UI noise
-		// (". Opens in new tab.") that we trim off.
+		// SERP API (Google AI Overview).
 		for (const item of pluck([record?.ai_overview], "references", "source_links", "sources", "links")) {
 			const title = typeof item?.title === "string" ? stripAioTitleNoise(item.title) : item?.name;
 			add(sourceUrl(item, "href", "url", "link"), title);
@@ -645,15 +571,9 @@ export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
 
 export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 	return collectCitations((add) => {
-		// `sources` is the answer's reference panel and `citationPills` are the
-		// inline citations (a denormalized subset). Each entry exposes the source
-		// URL as `url` and its title as `label`. AI Overview's `relatedLinks` is
-		// the block of links Google offers alongside the answer, not sources it
-		// drew on, so it is not read.
-		//
-		// Google's own Shopping deep links do turn up inside these two fields, and
-		// they stay: the citations page splits them out of the source mix by URL
-		// and builds the Google Shopping module from them.
+		// AI Overview's `relatedLinks` are links Google offers alongside the answer,
+		// not sources it drew on. Google Shopping links in these fields stay: the
+		// citations page builds its Shopping module from them.
 		for (const item of pluck([cloroAnswer(rawOutput)], "sources", "citationPills")) {
 			add(sourceUrl(item, "url", "link"), item?.label ?? item?.title);
 		}
@@ -669,41 +589,58 @@ export function extractCitationsFromSearchapi(rawOutput: any): Citation[] {
 	});
 }
 
-/**
- * Extract citations from stored rawOutput.
- * Dispatches based on provider (how data was fetched), falling back to engine
- * because persisted runs may not identify a provider.
- */
 export function extractCitations(rawOutput: any, providerOrEngine: string): Citation[] {
-	switch (providerOrEngine) {
-		case "openai-api":
-		case "openai":
-		case "chatgpt":
-			return extractCitationsFromOpenAI(rawOutput);
-		case "dataforseo":
-		case "google":
-		case "google-ai-mode":
-		case "google-ai-overview":
-			return extractCitationsFromDataforseo(rawOutput);
-		case "openrouter":
-			return extractCitationsFromOpenRouter(rawOutput);
-		case "searchapi":
-			return extractCitationsFromSearchapi(rawOutput);
-		case "olostep":
-			return extractCitationsFromOlostep(rawOutput);
-		case "brightdata":
-			return extractCitationsFromBrightdata(rawOutput);
-		case "oxylabs":
-			return extractCitationsFromOxylabs(rawOutput);
-		case "cloro":
-			return extractCitationsFromCloro(rawOutput);
-		case "anthropic-api":
-		case "anthropic":
-		case "claude":
-			return extractCitationsFromAnthropic(rawOutput);
-		case "mistral-api":
-			return extractCitationsFromMistral(rawOutput);
-		default:
-			return [];
-	}
+	return extractor(providerOrEngine)?.citations(rawOutput) ?? [];
+}
+
+export function extractRun(
+	rawOutput: unknown,
+	providerOrEngine: string,
+): { textContent: string | null; citations: Citation[] } {
+	return {
+		textContent: tryExtractTextContent(rawOutput, providerOrEngine),
+		citations: extractCitations(rawOutput, providerOrEngine),
+	};
+}
+
+interface Extractor {
+	text: (rawOutput: any) => string;
+	citations: (rawOutput: any) => Citation[];
+}
+
+const OPENAI: Extractor = { text: extractTextFromOpenAI, citations: extractCitationsFromOpenAI };
+const ANTHROPIC: Extractor = { text: extractTextFromAnthropic, citations: extractCitationsFromAnthropic };
+const DATAFORSEO: Extractor = { text: extractTextFromDataforseo, citations: extractCitationsFromDataforseo };
+
+/** By provider (how the data was fetched), or by engine for runs that don't name one. */
+const EXTRACTORS: Record<string, Extractor> = {
+	"openai-api": OPENAI,
+	openai: OPENAI,
+	chatgpt: OPENAI,
+	"anthropic-api": ANTHROPIC,
+	anthropic: ANTHROPIC,
+	claude: ANTHROPIC,
+	"mistral-api": { text: extractTextFromMistral, citations: extractCitationsFromMistral },
+	dataforseo: DATAFORSEO,
+	google: DATAFORSEO,
+	"google-ai-mode": DATAFORSEO,
+	"google-ai-overview": DATAFORSEO,
+	openrouter: { text: extractTextFromOpenRouter, citations: extractCitationsFromOpenRouter },
+	searchapi: { text: extractTextFromSearchapi, citations: extractCitationsFromSearchapi },
+	olostep: { text: extractTextFromOlostep, citations: extractCitationsFromOlostep },
+	brightdata: { text: extractTextFromBrightdata, citations: extractCitationsFromBrightdata },
+	oxylabs: { text: extractTextFromOxylabs, citations: extractCitationsFromOxylabs },
+	cloro: { text: extractTextFromCloro, citations: extractCitationsFromCloro },
+};
+
+/**
+ * Which extractor reads a stored run: its provider's, or, when the provider names none (runs
+ * recorded as `direct`, or before the provider column), its engine's.
+ */
+export function extractorFor(run: { provider: string | null; model: string }): string {
+	return run.provider && extractor(run.provider) ? run.provider : run.model;
+}
+
+function extractor(key: string): Extractor | undefined {
+	return Object.hasOwn(EXTRACTORS, key) ? EXTRACTORS[key] : undefined;
 }

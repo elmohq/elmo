@@ -1,5 +1,5 @@
 import { Badge } from "@workspace/ui/components/badge";
-import { Check, ExternalLink, X } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import {
 	CATEGORY_LABELS,
 	type Competitor,
@@ -7,11 +7,12 @@ import {
 	FEATURE_CATEGORIES,
 	type FeatureKey,
 } from "@/lib/competitors";
+import { FeatureMark } from "./feature-mark";
 
 function Cell({ on, highlight }: { on: boolean; highlight?: boolean }) {
 	return (
 		<td className={`px-3 py-3 text-center ${highlight ? "bg-blue-50" : ""}`}>
-			{on ? <Check className="mx-auto h-4 w-4 text-blue-600" /> : <X className="mx-auto h-4 w-4 text-zinc-300" />}
+			<FeatureMark has={on} />
 		</td>
 	);
 }
@@ -19,7 +20,7 @@ function Cell({ on, highlight }: { on: boolean; highlight?: boolean }) {
 function ToolSummary({ tool }: { tool: Competitor }) {
 	return (
 		<div>
-			<h3 className="mb-1 text-lg font-semibold text-zinc-950">{tool.name}</h3>
+			<h2 className="mb-1 text-lg font-semibold text-zinc-950">{tool.name}</h2>
 			<div className="mt-2 flex flex-wrap gap-2">
 				<Badge variant="secondary">{CATEGORY_LABELS[tool.category]}</Badge>
 				{tool.pricing?.hasFree && <Badge variant="secondary">Free tier</Badge>}
@@ -54,7 +55,7 @@ export function MultiComparison({ tools }: { tools: Competitor[] }) {
 						<ToolSummary key={tool.slug} tool={tool} />
 					))}
 					<div>
-						<h3 className="mb-1 text-lg font-semibold text-zinc-950">Elmo</h3>
+						<h2 className="mb-1 text-lg font-semibold text-zinc-950">Elmo</h2>
 						<div className="mt-2 flex flex-wrap gap-2">
 							<Badge variant="secondary">Open Source</Badge>
 							<Badge variant="secondary">Self-Hosted</Badge>

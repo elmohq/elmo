@@ -10,7 +10,13 @@ import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 const pillar = getPillar("answer-engine-optimization");
 
 export const Route = createFileRoute("/answer-engine-optimization")({
-	head: () => {
+	loader: () => {
+		if (!pillar) return;
+		const { slug, metaTitle, description, h1, faqs } = pillar;
+		return { seo: { slug, metaTitle, description, h1, faqs } };
+	},
+	head: ({ loaderData }) => {
+		const pillar = loaderData?.seo;
 		if (!pillar) return {};
 		const path = `/${pillar.slug}`;
 		return {
@@ -38,9 +44,9 @@ function PillarPage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
-				<DirectoryHero eyebrow={pillar.eyebrow} title={pillar.h1} lead={pillar.lead} />
+				<DirectoryHero title={pillar.h1} lead={pillar.lead} />
 				<PillarBody pillar={pillar} />
-				<Faq items={pillar.faqs} eyebrow="/ FAQ" />
+				<Faq items={pillar.faqs} />
 				<ElmoCta />
 			</main>
 			<Footer />

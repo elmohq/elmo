@@ -7,6 +7,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { PromptsEditor } from "@/components/prompts-editor";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { pageHead } from "@/lib/route-head";
 import { getPremiumPoolFn } from "@/server/premium-tracking";
@@ -74,7 +75,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 
 function PromptsSettingsPage() {
 	const { prompts: brandPrompts, premium } = Route.useLoaderData();
-	const { brandId } = Route.useRouteContext();
+	const brandId = useBrandId();
 
 	return (
 		<PromptsEditor

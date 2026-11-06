@@ -1,7 +1,6 @@
 import { createOpenAI, openai } from "@ai-sdk/openai";
 import { generateText, type InferToolOutput } from "ai";
 import { getCredential } from "../../secrets";
-import { extractCitationsFromOpenAI, extractTextFromOpenAI } from "../../text-extraction";
 import {
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
 	configuredWhen,
@@ -22,7 +21,7 @@ import type {
 import { structuredResearch } from "./ai-sdk";
 import { nonEmptyStrings } from "./scrape-shared";
 
-const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
+const DEFAULT_RESEARCH_MODEL = "gpt-6-luna";
 
 function getOpenAIResponsesModel(model: string) {
 	const apiKey = getCredential("OPENAI_API_KEY");
@@ -33,19 +32,27 @@ function getOpenAIResponsesModel(model: string) {
 type WebSearchOutput = InferToolOutput<ReturnType<typeof openai.tools.webSearch>>;
 
 /**
- * The web-search tool runs on OpenAI's side, so the query it actually issued
- * comes back on the tool *result*, not the call — the call's input is empty.
- * A single search reports `query`; a fanned-out one reports `queries`.
- *
- * `tools` is only passed when web search is on, so the compiler can't tie a
- * result back to the tool that produced it and types `output` as `unknown`;
- * callers establish that link by matching `toolName` first. The shape itself is
- * the SDK's, so a renamed field still fails the build here.
+ * The query comes back on the tool result, not the call, whose input is empty.
+ * `output` is `unknown` because `tools` is conditional, so callers match `toolName`
+ * first; the SDK's shape still catches a renamed field.
  */
 function webSearchQueries(output: unknown): string[] {
 	const action = (output as WebSearchOutput).action;
 	if (action?.type !== "search") return [];
 	return nonEmptyStrings([action.query, ...(action.queries ?? [])]);
+}
+
+function isResponsesPayload(body: unknown): body is { output: unknown[] } {
+	return Array.isArray((body as { output?: unknown } | null | undefined)?.output);
+}
+
+function rebuildRawOutput(result: { text: string; sources: readonly { sourceType: string }[] }) {
+	const annotations = result.sources
+		.filter((source): source is typeof source & { url: string; title?: string } => source.sourceType === "url")
+		.map((source) => ({ type: "url_citation", url: source.url, title: source.title }));
+	return {
+		output: [{ type: "message", content: [{ type: "output_text", text: result.text, annotations }] }],
+	};
 }
 
 async function runOpenAI(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
@@ -68,20 +75,10 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 
 	warnIfOutputCapped("openai-api", model, result.finishReason);
 
-	// The AI SDK doesn't populate result.response.body for the Responses API, so
-	// rebuild the raw output from the parsed result (text + web-search sources)
-	// in the "output" shape the OpenAI extractors expect.
-	const annotations = result.sources
-		.filter((source) => source.sourceType === "url")
-		.map((source) => ({ type: "url_citation", url: source.url, title: source.title }));
-	const rawOutput = {
-		output: [
-			{
-				type: "message",
-				content: [{ type: "output_text", text: result.text, annotations }],
-			},
-		],
-	};
+	// The payload's web_search_call items are the only record of what the model
+	// searched; the rebuilt fallback carries the answer and citations but none.
+	const body = result.response?.body;
+	const rawOutput = isResponsesPayload(body) ? body : rebuildRawOutput(result);
 
 	const webQueries = result.content.flatMap((part) =>
 		part.type === "tool-result" && part.toolName === "web_search" ? webSearchQueries(part.output) : [],
@@ -90,8 +87,6 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 	return {
 		rawOutput,
 		webQueries: reportedWebQueries(webQueries, { webSearch: options?.webSearch ?? false }),
-		textContent: extractTextFromOpenAI(rawOutput),
-		citations: extractCitationsFromOpenAI(rawOutput),
 		modelVersion: model,
 	};
 }

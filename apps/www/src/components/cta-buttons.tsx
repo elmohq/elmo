@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { cloudSignupUrl, type ReferralSource } from "@workspace/config/referrals";
+import { cloudAppUrl, type ReferralSource } from "@workspace/config/referrals";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { type CtaDestination, trackCta } from "@/lib/analytics";
 import { externalRel } from "@/lib/external-link";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 
 const PRIMARY_CLS =
 	"inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700";
@@ -14,23 +15,23 @@ const GHOST_CLS =
  * what we sell, self-hosting is what makes it trustworthy. Signup opens in the
  * same tab — a conversion click should navigate, not spawn a background tab.
  *
- * Every button names the surface it sits on. The signup link carries it as
- * `ref` so the app can attribute the account, and the click event carries it so
- * the funnel can be read per button rather than per site.
+ * Every button names the surface it sits on as `from`. The signup link carries
+ * it as `ref` so the app can attribute the account, and the click event carries
+ * it so the funnel can be read per button rather than per site.
  */
 export function CloudSignupCTA({
-	source,
+	from,
 	label = "Start with Cloud",
 	className = "",
 }: {
-	source: ReferralSource;
+	from: ReferralSource;
 	label?: string;
 	className?: string;
 }) {
 	return (
 		<a
-			href={cloudSignupUrl(source)}
-			onClick={() => trackCta("cloud-signup", source)}
+			href={cloudAppUrl(from)}
+			onClick={() => trackCta("cloud-signup", from)}
 			className={`${PRIMARY_CLS} ${className}`}
 		>
 			{label}
@@ -40,16 +41,16 @@ export function CloudSignupCTA({
 }
 
 export function SelfHostCTA({
-	source,
+	from,
 	label = "Self-host free",
 	className = "",
 }: {
-	source: ReferralSource;
+	from: ReferralSource;
 	label?: string;
 	className?: string;
 }) {
 	return (
-		<Link to="/docs" onClick={() => trackCta("self-host", source)} className={`${GHOST_CLS} ${className}`}>
+		<Link {...SELF_HOST_LINK} onClick={() => trackCta("self-host", from)} className={`${GHOST_CLS} ${className}`}>
 			{label}
 		</Link>
 	);
@@ -58,12 +59,12 @@ export function SelfHostCTA({
 /** Third-tier link for the option that supports a CTA without competing with it. */
 export function QuietCTA({
 	href,
-	source,
+	from,
 	destination,
 	children,
 }: {
 	href: string;
-	source: ReferralSource;
+	from: ReferralSource;
 	destination: CtaDestination;
 	children: React.ReactNode;
 }) {
@@ -72,7 +73,7 @@ export function QuietCTA({
 			href={href}
 			target="_blank"
 			rel={externalRel(href)}
-			onClick={() => trackCta(destination, source)}
+			onClick={() => trackCta(destination, from)}
 			className="group inline-flex items-center gap-1 px-1 text-sm font-medium text-zinc-600 hover:text-zinc-950"
 		>
 			{children}

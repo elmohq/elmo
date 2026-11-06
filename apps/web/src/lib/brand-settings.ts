@@ -1,10 +1,10 @@
+import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 import { validateWebsiteUrl } from "@/lib/brand-website";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 /**
- * Pure normalization/validation for the "edit brand settings" flow, extracted
- * from the updateBrand server function so the rules can be unit-tested without a
- * database or auth session (issue #107). The server function applies auth and
+ * Pure normalization/validation for the "edit brand settings" flow, kept out of
+ * the updateBrand server function so the rules can be unit-tested without a
+ * database or auth session. The server function applies auth and
  * persistence; this owns the field-level rules:
  *
  *  - name: trimmed; must be non-empty when provided

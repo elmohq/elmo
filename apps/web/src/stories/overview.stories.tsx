@@ -7,11 +7,11 @@ import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/index";
 // Render its component via the route options — the mock exposes `options`.
 const DashboardPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
-import { setMockShareOfVoice } from "./_mocks/server-analysis";
+import { setMockLandscape, setMockShareOfVoice } from "./_mocks/server-analysis";
 import { setMockDashboardSummary } from "./_mocks/server-dashboard";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
 import { setMockBrand } from "./_mocks/use-brands";
-import { mockDashboardSummary, mockShareOfVoice } from "./analytics-fixtures";
+import { mockDashboardSummary, mockLandscape, mockShareOfVoice } from "./analytics-fixtures";
 
 const onboardedBrand = {
 	id: "brand-1",
@@ -49,6 +49,7 @@ const meta = {
 			setMockRouteContext({ clientConfig: { defaultDelayHours: 24 } });
 			setMockDashboardSummary(mockDashboardSummary);
 			setMockShareOfVoice(mockShareOfVoice);
+			setMockLandscape(mockLandscape);
 			return (
 				<Shell>
 					<Story />
@@ -62,3 +63,39 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+/** Without the mention judge there is no sentiment or position, so those cards show a dash. */
+export const WithoutMentionJudge: Story = {
+	decorators: [
+		(Story) => {
+			const empty = {
+				value: null,
+				change: null,
+				series: mockDashboardSummary.cards.sentiment.series.map((p) => ({ ...p, value: null })),
+			};
+			setMockDashboardSummary({
+				...mockDashboardSummary,
+				cards: { ...mockDashboardSummary.cards, sentiment: empty, position: empty },
+			});
+			return <Story />;
+		},
+	],
+};
+
+/** A long field of competitors scrolls within the landscape rather than stretching the page. */
+export const ManyCompetitors: Story = {
+	decorators: [
+		(Story) => {
+			const [brand, ...competitors] = mockDashboardSummary.landscape.companies;
+			const filler = Array.from({ length: 60 }, (_, i) => {
+				const template = competitors[i % competitors.length];
+				return { ...template, name: `${template.name} ${Math.floor(i / competitors.length) + 2}` };
+			});
+			setMockDashboardSummary({
+				...mockDashboardSummary,
+				landscape: { ...mockDashboardSummary.landscape, companies: [brand, ...competitors, ...filler] },
+			});
+			return <Story />;
+		},
+	],
+};

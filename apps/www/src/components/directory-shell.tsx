@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { CLOUD_ENTRY_PRICE_USD, MONEY_BACK_GUARANTEE_DAYS } from "@workspace/config/plans";
-import { Badge } from "@workspace/ui/components/badge";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { CloudSignupCTA, SelfHostCTA } from "./cta-buttons";
 
 export function DirectoryBackLink({ label = "AI Visibility Tool Directory" }: { label?: string }) {
@@ -21,18 +21,16 @@ export function DirectoryBackLink({ label = "AI Visibility Tool Directory" }: { 
 }
 
 /**
- * Page hero with an eyebrow badge, H1, and a lead "answer block" written to be
+ * Page hero with an H1 and a lead "answer block" written to be
  * lifted verbatim into an AI answer. Mirrors the comparison page hero.
  */
-export function DirectoryHero({ eyebrow, title, lead }: { eyebrow: string; title: string; lead: string }) {
+export function DirectoryHero({ title, lead, children }: { title: string; lead: string; children?: ReactNode }) {
 	return (
 		<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 			<div className="mx-auto max-w-6xl px-4 md:px-6">
-				<Badge variant="outline" className="mb-4">
-					{eyebrow}
-				</Badge>
 				<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">{title}</h1>
 				<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">{lead}</p>
+				{children ? <div className="mt-8">{children}</div> : null}
 			</div>
 		</section>
 	);
@@ -57,8 +55,8 @@ export function DirectoryElmoBanner({
 					<h2 className="font-heading text-xl text-zinc-950">Elmo: the open-source alternative</h2>
 					<p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">{pitch}</p>
 					<div className="mt-4 flex flex-wrap items-center gap-2">
-						<CloudSignupCTA source="marketing-directory" />
-						<SelfHostCTA source="marketing-directory" />
+						<CloudSignupCTA from="marketing-directory" />
+						<SelfHostCTA from="marketing-directory" />
 						<Link
 							to="/ai-visibility-tools/$slug"
 							params={{ slug: comparison.slug }}
@@ -84,8 +82,8 @@ export function ElmoCta() {
 					guarantee, or self-host the same open-source product for free.
 				</p>
 				<div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-					<CloudSignupCTA source="marketing-directory" />
-					<SelfHostCTA source="marketing-directory" />
+					<CloudSignupCTA from="marketing-directory" />
+					<SelfHostCTA from="marketing-directory" />
 				</div>
 			</div>
 		</section>

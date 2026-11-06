@@ -22,10 +22,7 @@ export function NotFound() {
 					/>
 					<div className="relative mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
 						<div className="mx-auto max-w-2xl text-center">
-							<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
-								404 — <span className="text-zinc-500">PAGE NOT FOUND</span>
-							</p>
-							<h1 className="font-heading mt-5 text-balance text-5xl leading-[1.05] tracking-tight text-zinc-950 sm:text-6xl lg:text-[4.25rem] lg:leading-[1.0]">
+							<h1 className="font-heading text-balance text-5xl leading-[1.05] tracking-tight text-zinc-950 sm:text-6xl lg:text-[4.25rem] lg:leading-[1.0]">
 								This page doesn't exist
 							</h1>
 							<p className="mx-auto mt-6 max-w-[58ch] text-pretty text-base text-zinc-600 md:text-lg">
@@ -53,7 +50,7 @@ export function NotFound() {
 
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-16">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ POPULAR DESTINATIONS</p>
+						<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">Popular destinations</h2>
 						<ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 							{suggestedLinks.map((link) => (
 								<li key={link.href}>

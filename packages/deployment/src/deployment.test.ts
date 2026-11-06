@@ -1,6 +1,6 @@
 import { DEFAULT_APP_ICON, DEFAULT_APP_NAME, DEFAULT_APP_URL, DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { beforeEach, describe, expect, it } from "vitest";
-import { buildDeployment, getDeployment, resetDeploymentCache } from "./deployment";
+import { buildDeployment, getDeployment, getDeploymentFeatures, resetDeploymentCache } from "./deployment";
 
 const WHITELABEL_ENV = {
 	VITE_APP_NAME: "Agency",
@@ -93,10 +93,27 @@ describe("getDeployment", () => {
 		expect(deployment.features.readOnly).toBe(true);
 	});
 
+	it("promotes Elmo Cloud only on Elmo's own demo, not a read-only self-hosted install", () => {
+		expect(getDeployment({ env: { DEPLOYMENT_MODE: "demo" } }).features.promotesCloud).toBe(true);
+		resetDeploymentCache();
+		expect(getDeployment({ env: { DEPLOYMENT_MODE: "local", READ_ONLY: "true" } }).features.promotesCloud).toBe(false);
+		expect(getDeploymentFeatures({ env: { DEPLOYMENT_MODE: "local", READ_ONLY: "true" } }).promotesCloud).toBe(false);
+	});
+
 	it("caches the first resolution, so later env changes are ignored", () => {
 		const first = getDeployment({ env: { DEPLOYMENT_MODE: "cloud" } });
 		expect(getDeployment({ env: { DEPLOYMENT_MODE: "local" } })).toBe(first);
 		resetDeploymentCache();
 		expect(getDeployment({ env: { DEPLOYMENT_MODE: "local" } }).mode).toBe("local");
+	});
+});
+
+describe("getDeploymentFeatures", () => {
+	it("resolves whitelabel features without the branding vars", () => {
+		expect(getDeploymentFeatures({ env: { DEPLOYMENT_MODE: "whitelabel" } }).reportGeneration).toBe(true);
+	});
+
+	it("turns a read-only local install into demo features", () => {
+		expect(getDeploymentFeatures({ env: { DEPLOYMENT_MODE: "local", READ_ONLY: "true" } }).readOnly).toBe(true);
 	});
 });

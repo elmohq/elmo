@@ -23,13 +23,12 @@ import {
 	type ReportPromptRun,
 	selectRepresentativePrompts,
 } from "@workspace/lib/report-metrics";
+import { isPromptBranded } from "@workspace/lib/tag-utils";
 import { BarChart3, Rocket, Target } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { PromptChartPrint } from "@/components/prompt-chart-print";
 import { hasReportAccess, requireAuthSession } from "@/lib/auth/helpers";
 import { getReportByIdFn } from "@/server/reports";
-
-// ---------- Types ----------
 
 interface ReportData {
 	competitors: CompetitorResult[];
@@ -67,8 +66,6 @@ interface MockPrompt {
 	createdAt: Date;
 }
 
-// ---------- Server function ----------
-
 const loadReportData = createServerFn({ method: "GET" })
 	.validator((d: string) => d)
 	.handler(async ({ data: reportId }) => {
@@ -77,24 +74,7 @@ const loadReportData = createServerFn({ method: "GET" })
 		return getReportByIdFn({ data: { reportId } });
 	});
 
-function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
-	const promptLower = promptValue.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
-	try {
-		const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
-		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
-		const domainWithoutTld = domain.split(".")[0];
-		return (
-			promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld)
-		);
-	} catch {
-		return promptLower.includes(brandNameLower);
-	}
-}
-
 type ReportRecord = NonNullable<Awaited<ReturnType<typeof loadReportData>>>;
-
-// ---------- Route ----------
 
 export const Route = createFileRoute("/_authed/reports/render/$reportId")({
 	loader: async ({ params }) => {
@@ -108,16 +88,12 @@ export const Route = createFileRoute("/_authed/reports/render/$reportId")({
 	component: ReportRenderPage,
 });
 
-// ---------- Color helpers ----------
-
 function sovBgColor(sov: number | null): string {
 	if (sov === null) return "bg-slate-300";
 	if (sov >= 40) return "bg-emerald-500";
 	if (sov >= 20) return "bg-amber-500";
 	return "bg-rose-500";
 }
-
-// ---------- Main component ----------
 
 type ChartRun = any;
 
@@ -269,11 +245,10 @@ function buildReportModel(report: ReportRecord) {
 
 	const { simpleRuns, fullRuns, chartRuns } = flattenPromptRuns(data.promptRuns);
 
-	const brandNameLower = report.brandName.toLowerCase().trim();
-	const isBrandName = (name: string) => name.toLowerCase().trim() === brandNameLower;
+	const brandNames = new Set([report.brandName, ...report.brandAliases].map((name) => name.toLowerCase().trim()));
+	const isBrandName = (name: string) => brandNames.has(name.toLowerCase().trim());
 	const filteredCompetitors = dedupeCompetitors(data.competitors, isBrandName);
 
-	// Core metrics
 	const overallSoV = computeOverallSoV(simpleRuns, filteredCompetitors);
 	const competitorSoVs = computeCompetitorSoVs(simpleRuns, filteredCompetitors);
 	const promptSoVs = mockPrompts.map((p) => computePromptSoV(p.id, simpleRuns, filteredCompetitors));
@@ -281,10 +256,9 @@ function buildReportModel(report: ReportRecord) {
 
 	const selectedPrompts = selectRepresentativePrompts(promptSoVs, (id: string) => {
 		const p = promptMap.get(id);
-		return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite) : false;
+		return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite, report.brandAliases) : false;
 	});
 
-	// Rich analysis
 	const contentGaps = findContentGaps(fullRuns, 5);
 	const allWebQueries = analyzeWebQueries(fullRuns, 1000);
 	const competitorFreq = analyzeCompetitorFrequency(fullRuns, filteredCompetitors);
@@ -297,7 +271,6 @@ function buildReportModel(report: ReportRecord) {
 	const totalPrompts = mockPrompts.length;
 	const promptsWithMentions = promptSoVs.filter((p) => p.brandMentionCount > 0).length;
 
-	// Charts: 2 per page
 	const chartPairs: Array<typeof selectedPrompts> = [];
 	for (let i = 0; i < selectedPrompts.length; i += 2) {
 		chartPairs.push(selectedPrompts.slice(i, i + 2));
@@ -348,7 +321,7 @@ function buildOpportunities(promptSoVs: PromptSoV[], promptMap: Map<string, Mock
 		promptSoVs
 			.filter((p) => p.totalCompetitorMentions > 0)
 			.map((p) => {
-				const brandSoV = p.sov ?? 0;
+				const brandSoV = p.sovPct ?? 0;
 				const topCompetitorMentions = Math.max(...Object.values(p.competitorMentions), 0);
 				const totalMentions = p.brandMentionCount + p.totalCompetitorMentions;
 				const maxCompSoV = totalMentions > 0 ? Math.round((topCompetitorMentions / totalMentions) * 100) : 0;
@@ -556,7 +529,7 @@ function CompetitiveOverviewPage({
 								...competitorSoVs
 									.filter((c) => !isBrandName(c.name))
 									.slice(0, 3)
-									.map((c) => ({ name: c.name, sov: c.sov, isBrand: false })),
+									.map((c) => ({ name: c.name, sov: c.sovPct, isBrand: false })),
 							]
 								.sort((a, b) => b.sov - a.sov)
 								.map((row) => (
@@ -989,8 +962,6 @@ function ReportRenderPage() {
 		</div>
 	);
 }
-
-// ---------- Sub-components ----------
 
 function RunningHeader({ brand }: { brand: string }) {
 	return (

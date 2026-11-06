@@ -17,22 +17,19 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Separator } from "@workspace/ui/components/separator";
 import { useState } from "react";
-import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
+import { LegalConsentNotice } from "@/components/legal-consent-notice";
+import { CAPTCHA_FAILED_MESSAGE, CaptchaError, isCaptchaRejection, useTurnstile } from "@/hooks/use-turnstile";
+import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/register")({
-	validateSearch: z.object({
-		returnTo: z.string().optional(),
-		/**
-		 * Attribution tag carried by links back to us (see
-		 * @workspace/config/referrals). Declared so the router keeps it in the URL
-		 * long enough for analytics to record the pageview it arrived on.
-		 */
-		ref: z.string().optional(),
+	validateSearch: (search: Record<string, unknown>): { returnTo?: string } & AttributionParams => ({
+		...(typeof search.returnTo === "string" ? { returnTo: search.returnTo } : {}),
+		...attributionParams(search),
 	}),
 	head: ({ match }) => {
 		const appName = getAppName(match);
@@ -44,7 +41,8 @@ export const Route = createFileRoute("/auth/register")({
 });
 
 function RegisterPage() {
-	const { returnTo, ref: incomingRef } = Route.useSearch();
+	const search = Route.useSearch();
+	const { returnTo } = search;
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const canRegister = context.clientConfig?.canRegister ?? false;
 
@@ -56,7 +54,7 @@ function RegisterPage() {
 	return (
 		<RegisterForm
 			returnTo={returnTo}
-			incomingRef={incomingRef}
+			attribution={attributionParams(search)}
 			isCloud={context.clientConfig?.mode === "cloud"}
 			hasUsers={context.clientConfig?.hasUsers ?? false}
 		/>
@@ -65,13 +63,12 @@ function RegisterPage() {
 
 export function RegisterForm({
 	returnTo,
-	incomingRef,
+	attribution,
 	isCloud,
 	hasUsers,
 }: {
 	returnTo?: string;
-	/** The `ref` this page was reached with, kept on links that stay inside auth. */
-	incomingRef?: string;
+	attribution?: AttributionParams;
 	isCloud?: boolean;
 	/** A local instance before its bootstrap signup has nowhere to send an existing account. */
 	hasUsers?: boolean;
@@ -83,7 +80,7 @@ export function RegisterForm({
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [pendingVerification, setPendingVerification] = useState(false);
-	const [resending, setResending] = useState(false);
+	const turnstile = useTurnstile();
 	const source = isCloud ? "cloud-signup" : "self-hosted-signup";
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -97,10 +94,13 @@ export function RegisterForm({
 				password,
 				name,
 				...(isCloud && { callbackURL: safeReturnTo(returnTo) }),
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
 			});
 
 			if (result.error) {
-				setError(result.error.message ?? "Registration failed");
+				setError(
+					isCaptchaRejection(result.error) ? CAPTCHA_FAILED_MESSAGE : (result.error.message ?? "Registration failed"),
+				);
 				setLoading(false);
 				return;
 			}
@@ -112,34 +112,14 @@ export function RegisterForm({
 			}
 
 			navigate({ to: returnTo ?? "/app" });
-		} catch {
-			setError("Something went wrong. Please try again.");
+		} catch (err) {
+			setError(err instanceof CaptchaError ? err.message : "Something went wrong. Please try again.");
 			setLoading(false);
 		}
 	}
 
-	async function handleResend() {
-		setResending(true);
-		try {
-			await authClient.sendVerificationEmail({ email, callbackURL: safeReturnTo(returnTo) });
-		} finally {
-			setResending(false);
-		}
-	}
-
 	if (pendingVerification) {
-		return (
-			<FullPageCard title="Check your email" subtitle={`We sent a verification link to ${email}`}>
-				<div className="space-y-4 w-full">
-					<p className="text-sm text-muted-foreground text-center">
-						Click the link in the email to verify your address and get started. The link expires, so verify soon.
-					</p>
-					<Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resending}>
-						{resending ? "Sending..." : "Resend verification email"}
-					</Button>
-				</div>
-			</FullPageCard>
-		);
+		return <CheckYourEmail email={email} returnTo={returnTo} />;
 	}
 
 	return (
@@ -164,6 +144,7 @@ export function RegisterForm({
 						<IconBrandGoogle className="size-4" />
 						Continue with Google
 					</Button>
+					<LegalConsentNotice action="continuing with Google" />
 					<div className="flex items-center gap-3">
 						<Separator className="flex-1" />
 						<span className="text-xs text-muted-foreground">or</span>
@@ -215,16 +196,18 @@ export function RegisterForm({
 						minLength={isCloud ? 8 : 6}
 					/>
 				</div>
+				{turnstile.widget}
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Creating account..." : "Create account"}
 				</Button>
+				<LegalConsentNotice action="creating an account" />
 			</form>
 			{hasUsers && (
 				<p className="text-sm text-muted-foreground pt-4">
 					Already have an account?{" "}
 					<Link
 						to="/auth/login"
-						search={{ ...(returnTo ? { returnTo } : {}), ...(incomingRef ? { ref: incomingRef } : {}) }}
+						search={{ ...(returnTo ? { returnTo } : {}), ...attribution }}
 						className="text-primary hover:underline font-medium"
 					>
 						Sign in
@@ -232,5 +215,48 @@ export function RegisterForm({
 				</p>
 			)}
 		</AuthSplitLayout>
+	);
+}
+
+function CheckYourEmail({ email, returnTo }: { email: string; returnTo?: string }) {
+	const [resending, setResending] = useState(false);
+	const [resendError, setResendError] = useState<string | null>(null);
+	const turnstile = useTurnstile();
+
+	async function handleResend() {
+		setResending(true);
+		setResendError(null);
+		try {
+			const result = await authClient.sendVerificationEmail({
+				email,
+				callbackURL: safeReturnTo(returnTo),
+				fetchOptions: { headers: await turnstile.getCaptchaHeaders() },
+			});
+			if (isCaptchaRejection(result.error)) setResendError(CAPTCHA_FAILED_MESSAGE);
+			else if (result.error) setResendError(result.error.message ?? "Couldn't resend the email. Please try again.");
+		} catch (err) {
+			setResendError(err instanceof CaptchaError ? err.message : "Something went wrong. Please try again.");
+		} finally {
+			setResending(false);
+		}
+	}
+
+	return (
+		<FullPageCard title="Check your email" subtitle={`We sent a verification link to ${email}`}>
+			<div className="space-y-4 w-full">
+				<p className="text-sm text-muted-foreground text-center">
+					Click the link in the email to verify your address and get started. The link expires, so verify soon.
+				</p>
+				{resendError && (
+					<Alert variant="destructive">
+						<AlertDescription>{resendError}</AlertDescription>
+					</Alert>
+				)}
+				{turnstile.widget}
+				<Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resending}>
+					{resending ? "Sending..." : "Resend verification email"}
+				</Button>
+			</div>
+		</FullPageCard>
 	);
 }

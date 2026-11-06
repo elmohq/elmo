@@ -1,5 +1,5 @@
 import { MAX_SLUG_LENGTH } from "@workspace/lib/app-urls";
-import { Input } from "@workspace/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Label } from "@workspace/ui/components/label";
 import { cn } from "@workspace/ui/lib/utils";
 
@@ -23,20 +23,17 @@ export function SlugField({
 	return (
 		<div className="space-y-2">
 			<Label htmlFor={id}>{label}</Label>
-			<div className={cn("flex w-full items-center overflow-hidden rounded-md border font-mono text-sm", className)}>
-				<span className="shrink-0 whitespace-nowrap pl-3 text-muted-foreground">{prefix}</span>
-				<Input
+			<InputGroup className={cn("font-mono", className)}>
+				<InputGroupAddon className="pr-0 font-mono font-normal">{prefix}</InputGroupAddon>
+				<InputGroupInput
 					id={id}
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
 					disabled={disabled}
 					maxLength={MAX_SLUG_LENGTH}
-					className={cn(
-						"border-0 pl-0 font-mono text-sm shadow-none focus-visible:ring-0",
-						disabled && "text-muted-foreground disabled:opacity-100",
-					)}
+					className={cn("pl-0! font-mono text-sm", disabled && "text-muted-foreground disabled:opacity-100")}
 				/>
-			</div>
+			</InputGroup>
 		</div>
 	);
 }

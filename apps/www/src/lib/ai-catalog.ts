@@ -1,7 +1,7 @@
 import { CLOUD_APP_URL } from "@workspace/config/referrals";
 import { canonicalUrl, SITE_NAME } from "@/lib/seo";
 
-const mcpServerCard = {
+export const mcpServerCard = {
 	$schema: "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
 	name: "com.elmohq/elmo",
 	version: __APP_VERSION__,
@@ -41,31 +41,6 @@ export const aiCatalog = {
 				"which sources do AI answer engines cite about us",
 				"compare my brand's AI visibility against a competitor",
 				"add a prompt to track in AI search",
-			],
-		},
-		{
-			identifier: "urn:air:elmohq.com:api:elmo",
-			displayName: `${SITE_NAME} REST API`,
-			type: "application/vnd.oai.openapi+json;version=3.1",
-			url: canonicalUrl("/api/openapi.json"),
-			description:
-				"Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.",
-			representativeQueries: [
-				"pull AI visibility metrics into a report",
-				"export the domains cited in AI answers about a brand",
-				"create prompts for AI answer engine tracking programmatically",
-			],
-		},
-		{
-			identifier: "urn:air:elmohq.com:docs:llms-txt",
-			displayName: `${SITE_NAME} documentation index for LLMs`,
-			type: "text/plain",
-			url: canonicalUrl("/llms.txt"),
-			description: "Annotated index of Elmo's documentation, product pages, and open source resources.",
-			representativeQueries: [
-				"what is answer engine optimization",
-				"how do I self-host an AI visibility tracker",
-				"open source alternative to AI brand monitoring tools",
 			],
 		},
 	],
