@@ -314,6 +314,8 @@ export const mockBrandSentiment: BrandSentiment = {
 			passage:
 				"Several reviewers note that Acme raised prices twice last year, which pushed some small teams elsewhere.",
 		},
+	],
+	mixed: [
 		{
 			runId: "r3",
 			promptId: "p2",

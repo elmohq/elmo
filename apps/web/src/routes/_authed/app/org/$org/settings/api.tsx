@@ -9,7 +9,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { CodeBlock } from "@/components/code-block";
-import { CopyButton } from "@/components/copy-button";
+import { CopyField } from "@/components/copy-button";
 import { DemoModeAlert } from "@/components/demo-mode-alert";
 import { useAppOrigin } from "@/hooks/use-app-origin";
 import { useBranding, useDeploymentMode } from "@/hooks/use-deployment-features";
@@ -40,10 +40,9 @@ function ApiSettingsPage() {
 
 			<DemoModeAlert>API access is disabled in demo mode.</DemoModeAlert>
 
-			<div className="flex flex-wrap items-center gap-2">
-				<span className="text-sm text-muted-foreground">Base URL</span>
-				<code className="rounded-md border bg-muted/40 px-2 py-1 font-mono text-sm">{baseUrl}</code>
-				<CopyButton value={baseUrl} />
+			<div className="max-w-xl space-y-2">
+				<span className="text-sm font-medium">Base URL</span>
+				<CopyField value={baseUrl} label="Base URL" />
 			</div>
 
 			{/* The SDKs are published under Elmo's name, so a whitelabel deployment doesn't advertise them. */}

@@ -141,7 +141,7 @@ export function Footer() {
 								</a>
 							))}
 							<button type="button" onClick={openCookiePreferences} className="hover:text-zinc-950">
-								Cookie preferences
+								Cookie Preferences
 							</button>
 						</nav>
 					</div>

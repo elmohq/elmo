@@ -50,8 +50,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Docs-only PRs skip the jobs below through `if:` rather than a `paths:`
+  # filter: "E2E Integration Tests" is a required check, and a skipped job
+  # satisfies it where a workflow that never starts leaves it pending. Both
+  # jobs gate on `!= 'false'` so they still run if this one fails.
+  changes:
+    name: Detect Code Changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Check for files outside the docs
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[].filename')
+          if grep -qvE '^(apps/www/|packages/docs/|\.changeset/)|\.md$' <<< "$files"; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   e2e:
     name: E2E Integration Tests
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 45
 
@@ -65,6 +94,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      # The image build needs nothing but the checkout, so it runs in the
+      # background through the host setup below rather than after it. Its exit
+      # status lands in a file because a later step can't `wait` on it.
+      - name: Start building images
+        run: |
+          (docker buildx bake -f e2e/docker-bake.hcl --progress=plain > "$RUNNER_TEMP/build.log" 2>&1
+           echo $? > "$RUNNER_TEMP/build.exit") &
 
       # NB: no free-disk-space step here — it predated the Blacksmith migration
       # and is unnecessary on these runners (publish.yaml builds the same
@@ -130,12 +167,15 @@ jobs:
           echo "=== elmo.yaml (services) ==="
           grep -E '^\s{2}\w' e2e/.elmo/elmo.yaml || true
 
-      # Build all images so a broken worker (or db-migrate) Dockerfile fails CI
+      # All three images, so a broken worker (or db-migrate) Dockerfile fails CI
       # here. web/worker/migrate share the base/deps/builder stages, so BuildKit
       # builds those once — building all three costs little more than building
-      # web alone. postgres is an image pull, so `build` skips it.
+      # web alone.
       - name: Build images
-        run: docker compose build
+        run: |
+          while [ ! -f "$RUNNER_TEMP/build.exit" ]; do sleep 1; done
+          cat "$RUNNER_TEMP/build.log"
+          exit "$(cat "$RUNNER_TEMP/build.exit")"
 
       # Every mode at once, so the four cold starts overlap instead of costing a
       # recreate-and-wait between phases. Their deps come up with them: postgres,
@@ -267,7 +307,9 @@ jobs:
   # whitelabel deployments run.
   scheduling-policy:
     name: Scheduling Policy Verification
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     timeout-minutes: 15
 
     services:

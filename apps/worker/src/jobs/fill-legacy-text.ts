@@ -4,6 +4,7 @@ import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { type HeapWalkOptions, onPages, walkHeap } from "@workspace/lib/db/heap-walk";
 import { loadRawOutputs, updateExtractions } from "@workspace/lib/db/runs";
 import { promptRuns, runExtractions } from "@workspace/lib/db/schema";
+import { markWritesDirty } from "@workspace/lib/rollups";
 import { extractorFor, tryExtractTextContent } from "@workspace/lib/text-extraction";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 
@@ -25,7 +26,13 @@ export function fillLegacyText(
 		pagesPerStep,
 		async (from, to) => {
 			const runs = await conn
-				.select({ id: promptRuns.id, provider: promptRuns.provider, model: promptRuns.model })
+				.select({
+					id: promptRuns.id,
+					provider: promptRuns.provider,
+					model: promptRuns.model,
+					brandId: promptRuns.brandId,
+					createdAt: promptRuns.createdAt,
+				})
 				.from(promptRuns)
 				.innerJoin(runExtractions, eq(runExtractions.runId, promptRuns.id))
 				.where(
@@ -48,6 +55,11 @@ export function fillLegacyText(
 					stamp: LEGACY_EXTRACTION_STAMP,
 				})),
 				{ onlyLegacyWithoutText: true },
+			);
+			// Rollups only quote runs that have text.
+			await markWritesDirty(
+				conn,
+				runs.map((run) => ({ brandId: run.brandId, at: run.createdAt })),
 			);
 			return runs.length;
 		},

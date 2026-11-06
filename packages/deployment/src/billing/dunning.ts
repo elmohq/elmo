@@ -1,13 +1,7 @@
 /**
- * Billing lifecycle notices for org-scoped subscriptions, sent from the
- * Stripe webhook hooks in plugin.ts.
- *
- * Duplicate-send protection is the status transition itself: a notice is only
- * derived when the webhook's previous_attributes carries a prior status, which
- * Stripe includes only when the status actually changed. Routine subscription
- * updates (renewals, item changes, retry bookkeeping) therefore send nothing;
- * a re-delivered event repeats at most one notice, so no per-event send log is
- * kept.
+ * No send log is kept: Stripe includes a previous status only when the status
+ * changed, so routine updates send nothing and a re-delivered event repeats at
+ * most one notice.
  */
 
 import { DEFAULT_APP_URL } from "@workspace/config/constants";
@@ -28,11 +22,7 @@ import {
 
 export type DunningNotice = "payment-failed" | "payment-recovered" | "subscription-ended";
 
-/**
- * Which notice a webhook status change warrants. `previousStatus` comes from
- * the event's previous_attributes and is undefined when the status did not
- * change.
- */
+/** `previousStatus` is undefined when the status did not change. */
 export function dunningNoticeForStatusChange(previousStatus: string | undefined, status: string): DunningNotice | null {
 	if (!previousStatus || previousStatus === status) return null;
 	if (status === "past_due") return "payment-failed";
@@ -56,8 +46,7 @@ async function billingRecipients(organizationId: string): Promise<string[]> {
 }
 
 export async function sendDunningNotice(organizationId: string, notice: DunningNotice): Promise<void> {
-	// Same total accessor createCloudDeployment uses, so a missing APP_URL
-	// surfaces on the env-validation page instead of emailing "undefined/app/…".
+	// Defaulted, so a missing APP_URL shows on the env-validation page, not as broken emailed links.
 	const appUrl = getEnv("APP_URL", DEFAULT_APP_URL).replace(/\/+$/, "");
 	const [[org], recipients] = await Promise.all([
 		db

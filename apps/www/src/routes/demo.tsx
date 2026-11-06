@@ -20,7 +20,6 @@ function DemoPage() {
 	const { ref } = Route.useSearch();
 	return (
 		<BookingPage
-			eyebrow="/ DEMO"
 			heading="Book a demo"
 			intro="30 minutes on your own brand's data: where AI answer engines mention you, what they cite, and how they describe you next to your competitors."
 			calLink="jrhizor/elmo"
