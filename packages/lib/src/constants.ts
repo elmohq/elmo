@@ -29,5 +29,8 @@ export const MAX_PROMPTS = 100;
 
 export const PROMPT_SUGGESTION_RUNS_PER_DAY = 5;
 
+/** Every stored generation counts, scheduled or manual, so a refresh can't add more than this in a day. */
+export const OPPORTUNITIES_GENERATIONS_PER_DAY = 3;
+
 /** For a search that happened but whose query strings the provider withholds. Fan-out reads filter it out. */
 export const WEB_QUERIES_UNAVAILABLE = "unavailable";
