@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractRun } from "../../text-extraction";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } from "../config";
 
 const aiMock = vi.hoisted(() => ({ generateText: vi.fn() }));
@@ -9,6 +10,9 @@ vi.mock("ai", () => ({
 }));
 
 import { openaiApi } from "./openai-api";
+
+/** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
+const stored = (result: { rawOutput: unknown }) => extractRun(result.rawOutput, "openai-api");
 
 const CAP = API_PROVIDER_MAX_OUTPUT_TOKENS["openai-api"];
 
@@ -74,9 +78,71 @@ describe("openai-api citations", () => {
 
 		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
 
-		expect(res.citations).toEqual([
+		expect(stored(res).citations).toEqual([
 			{ url: "https://example.com/a", title: "A", domain: "example.com", citationIndex: 0 },
 		]);
+	});
+});
+
+describe("openai-api stored payload", () => {
+	const body = {
+		id: "resp_1",
+		object: "response",
+		output: [
+			{ id: "rs_1", type: "reasoning", summary: [] },
+			{
+				id: "ws_1",
+				type: "web_search_call",
+				status: "completed",
+				action: { type: "search", query: "elmo aeo", queries: ["elmo aeo", "elmo pricing"] },
+			},
+			{
+				id: "msg_1",
+				type: "message",
+				content: [
+					{
+						type: "output_text",
+						text: "answer",
+						annotations: [{ type: "url_citation", url: "https://example.com/a", title: "A" }],
+					},
+				],
+			},
+		],
+	};
+
+	it("stores the payload the searches came from", async () => {
+		aiMock.generateText.mockResolvedValue(generated({ response: { body } }));
+
+		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+
+		expect(res.rawOutput).toBe(body);
+		expect(stored(res).textContent).toBe("answer");
+		expect(stored(res).citations.map((c) => c.url)).toEqual(["https://example.com/a"]);
+	});
+
+	it("rebuilds an answer-and-citations payload when the SDK reports no body", async () => {
+		aiMock.generateText.mockResolvedValue(
+			generated({
+				sources: [{ type: "source", sourceType: "url", id: "1", url: "https://example.com/a", title: "A" }],
+			}),
+		);
+
+		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
+
+		expect(res.rawOutput).toEqual({
+			output: [
+				{
+					type: "message",
+					content: [
+						{
+							type: "output_text",
+							text: "answer",
+							annotations: [{ type: "url_citation", url: "https://example.com/a", title: "A" }],
+						},
+					],
+				},
+			],
+		});
 	});
 });
 

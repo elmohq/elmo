@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useBrandParams } from "@/hooks/use-route-params";
+import type { SentimentSearch } from "@/hooks/use-sentiment-search";
 import type { PromptDetailTab } from "@/lib/prompt-detail-tabs";
 
-export type PromptDetailSearch = { tab: PromptDetailTab };
+export type PromptDetailSearch = { tab: PromptDetailTab } & SentimentSearch;
 
 export function BrandPromptLink({
 	promptId,

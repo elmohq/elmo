@@ -1,6 +1,4 @@
-// Pure helpers for the Docker image tags + version header that elmo writes into
-// the generated compose / env files. Kept side-effect-free (no fs) so the
-// upgrade re-pin path stays unit-testable; index.ts wraps these with file I/O.
+// No file I/O here, so the upgrade re-pin path stays unit-testable.
 
 export function renderedByHeader(version: string): string {
 	return [
@@ -9,16 +7,13 @@ export function renderedByHeader(version: string): string {
 	].join("\n");
 }
 
-// Reads the version recorded in a `# Rendered by elmo <version> on ...` header,
-// or null when the file has no such header (e.g. a legacy, pre-header install).
+// Null for an install rendered before the header existed.
 export function parseRenderedVersion(contents: string): string | null {
 	const match = contents.match(/^# Rendered by elmo (\S+) on /m);
 	return match ? match[1] : null;
 }
 
-// Refreshes the `# Rendered by elmo <version> on ...` header, adding one at the
-// top if the file doesn't have it yet (e.g. a legacy install rendered before
-// the header existed) so future `elmo upgrade` runs can detect the version.
+// Adds the header when it is missing, so later upgrades can detect the version.
 export function refreshHeaderVersion(contents: string, version: string): string {
 	if (!/^# Rendered by elmo \S+ on /m.test(contents)) {
 		return `${renderedByHeader(version)}\n${contents}`;
@@ -29,10 +24,8 @@ export function refreshHeaderVersion(contents: string, version: string): string 
 	);
 }
 
-// Re-pins `elmohq/elmo-*:<tag>` image tags to `version`, leaving third-party
-// images untouched. Postgres especially: a major bump needs the cluster dumped
-// and restored, so rolling the tag here would break a deployment rather than
-// upgrade it.
+// Only Elmo's own images: a Postgres major bump needs a dump and restore, so
+// rolling its tag would break the deployment.
 export function repinImages(contents: string, version: string): string {
 	return contents.replace(/(image:\s*elmohq\/elmo-[a-z-]+):\S+/g, `$1:${version}`);
 }

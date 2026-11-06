@@ -10,6 +10,7 @@ import pc from "picocolors";
 import { buildComposeYaml } from "../compose.js";
 import { CONFIG_HOME, type EnvMap, ensureDir, fileExists, type PostgresMode, writeConfigFiles } from "../config.js";
 import { assertDockerRunning, runDockerCompose, waitForHealthy } from "../docker.js";
+import { collectJudgeKey } from "../judge.js";
 import {
 	collectCredentials,
 	collectProvider,
@@ -118,6 +119,24 @@ function validatePort(value: string | undefined): string | undefined {
 	return valid ? undefined : "Must be an integer between 1 and 65535";
 }
 
+function toPublicUrl(value: string): URL | undefined {
+	const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+	try {
+		return new URL(withScheme);
+	} catch {
+		return undefined;
+	}
+}
+
+function validatePublicUrl(value: string | undefined): string | undefined {
+	if (!value) return "Required";
+	const url = toPublicUrl(value.trim());
+	if (!url?.hostname.includes(".")) return "Enter a domain, e.g. elmo.example.com";
+	// Auth trusts only this origin, so Elmo can't be served from a subpath.
+	if (url.pathname !== "/") return "Must not include a path";
+	return undefined;
+}
+
 async function configureProvidersInteractive(env: EnvMap): Promise<"recommended" | "custom"> {
 	p.note(
 		[
@@ -127,6 +146,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 			`     • ${pc.cyan("Cloro")}      — most reliable, every surface, ~$0.65/mo per prompt ($30/mo min)`,
 			`     • ${pc.cyan("BrightData")} — pay-as-you-go and cheaper, but slower, ~$0.45/mo per prompt`,
 			`     • ${pc.cyan("Oxylabs")}    — cheapest per run, no Gemini/Copilot, $49/mo min`,
+			`     • ${pc.cyan("SearchApi")}  — flat per-search, every surface, ~$1.20/mo per prompt ($40/mo min)`,
 			`     • ${pc.cyan("Olostep")}    — premium, built for high volume, ~$2.25/mo per prompt`,
 			`     • ${pc.cyan("DataForSEO")} — pay-as-you-go, scrapers + direct APIs, ~$1.20/mo per prompt`,
 			"",
@@ -161,13 +181,16 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 	const targets: string[] = [];
 
-	// ── Scraper ─────────────────────────────────────────────────────────────
 	const scraper = await p.select({
 		message: "Scraper (tracks ChatGPT + Google AI Mode)",
 		options: [
 			{ value: "cloro" as const, label: "Cloro — most reliable, every surface (~$0.65/mo per prompt, $30/mo min)" },
 			{ value: "brightdata" as const, label: "BrightData — pay-as-you-go, cheaper but slower (~$0.45/mo per prompt)" },
 			{ value: "oxylabs" as const, label: "Oxylabs — cheapest per run, no Gemini/Copilot ($49/mo min)" },
+			{
+				value: "searchapi" as const,
+				label: "SearchApi — flat per-search, every surface (~$1.20/mo per prompt, $40/mo min)",
+			},
 			{ value: "olostep" as const, label: "Olostep — premium, built for high volume (~$2.25/mo per prompt)" },
 			{
 				value: "dataforseo" as const,
@@ -182,9 +205,8 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 		targets.push(formatScrapeTarget({ model, provider: scraper, webSearch: true }));
 	}
 
-	// ── Direct API ──────────────────────────────────────────────────────────
 	const direct = await p.select({
-		message: "Direct LLM API (powers onboarding analysis + sentiment scoring)",
+		message: "Direct LLM API (powers onboarding analysis + the Opportunities report)",
 		options: [
 			{ value: "openrouter" as const, label: "OpenRouter — one key, all major models (recommended)" },
 			{ value: "anthropic" as const, label: "Anthropic — direct Claude" },
@@ -256,86 +278,7 @@ async function doStart(configDir: string): Promise<void> {
 	console.log(`  ${pc.bold("elmo compose down")}`);
 }
 
-export async function runInit(options: InitOptions, version: string): Promise<void> {
-	printBanner();
-	p.intro(pc.bold("Setting up Elmo"));
-
-	// Said before the wizard asks for anything, not after: someone who would
-	// rather buy the managed version should find that out before they have gone
-	// and opened scraper accounts. It also comes before the Docker check, so
-	// someone without Docker still sees the option that needs none.
-	p.note(
-		[
-			"Self-hosting Elmo is free, and always will be. But it does mean",
-			"running Postgres and a worker, and opening your own scraper and",
-			"model provider accounts.",
-			"",
-			`Elmo Cloud is the same open-source product, hosted by us, from`,
-			`${pc.bold(`$${CLOUD_ENTRY_PRICE_USD}/month`)} — scraper and model access included, nothing to`,
-			"keep running.",
-			"",
-			`  ${link(pc.cyan(CLOUD_PRICING_URL), CLOUD_PRICING_URL)}`,
-		].join("\n"),
-		"Prefer not to self-host?",
-	);
-
-	assertDockerRunning();
-
-	const cwd = process.cwd();
-
-	// ── Resolve config directory ─────────────────────────────────────────
-	const configDir = options.dir ? path.resolve(cwd, options.dir) : CONFIG_HOME;
-
-	const preservedDeploymentId = await confirmEnvOverwrite(configDir);
-	const { dockerDir, repoRoot } = await resolveDockerLocation(options, cwd);
-
-	// ── Data stores ──────────────────────────────────────────────────────
-	const postgresMode = await p.select({
-		message: "PostgreSQL connection",
-		options: [
-			{
-				value: "docker" as const,
-				label: "Run Postgres in Docker",
-			},
-			{
-				value: "external" as const,
-				label: "Use existing Postgres (provide DATABASE_URL)",
-			},
-		],
-		initialValue: "docker" as PostgresMode,
-	});
-	assertNotCancelled(postgresMode);
-
-	const env: EnvMap = {};
-	env.DEPLOYMENT_MODE = "local";
-	env.VITE_DEPLOYMENT_MODE = "local";
-	env.DEPLOYMENT_ID = preservedDeploymentId ?? crypto.randomUUID();
-	env.BETTER_AUTH_SECRET = generateSecret();
-	// Standard base64 (not base64url): the app decodes this with Buffer.from(key,
-	// "base64") and requires exactly 32 bytes. Enables storing provider
-	// credentials encrypted in the database via the in-app Providers UI.
-	env.ELMO_ENCRYPTION_KEY = generateSecret(32, "base64");
-	env.APP_NAME = DEFAULT_APP_NAME;
-	env.APP_ICON = DEFAULT_APP_ICON;
-	env.VITE_APP_NAME = DEFAULT_APP_NAME;
-	env.VITE_APP_ICON = DEFAULT_APP_ICON;
-
-	if (postgresMode === "external") {
-		p.note("Must be an IPv4-compatible direct connection or database pooler.", "DATABASE_URL");
-		const url = await p.password({
-			message: "DATABASE_URL",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(url);
-		env.DATABASE_URL = url;
-	} else {
-		env.DATABASE_URL = LOCAL_DATABASE_URL;
-	}
-
-	// ── AI providers ─────────────────────────────────────────────────────
-	const setupMode = await configureProvidersInteractive(env);
-
-	// ── Telemetry ───────────────────────────────────────────────────────
+async function askTelemetryConsent(env: EnvMap): Promise<void> {
 	p.note(
 		[
 			"Elmo is open source and maintained by a small team. Telemetry",
@@ -369,27 +312,127 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 	if (!telemetryEnabled) {
 		env.DISABLE_TELEMETRY = "1";
 	}
+}
 
-	// ── Product updates ─────────────────────────────────────────────────
-	const updatesEmail = await p.text({
-		message: "Enter your work email to receive product updates (optional)",
-		placeholder: "you@example.com",
+async function askAccess(): Promise<{ publicUrl: URL | undefined; port: number }> {
+	const access = await p.select({
+		message: "How will you access Elmo?",
+		options: [
+			{ value: "local" as const, label: "On this machine (localhost)" },
+			{ value: "public" as const, label: "From a domain (e.g. behind a reverse proxy)" },
+		],
+		initialValue: "local" as const,
 	});
-	const email = p.isCancel(updatesEmail) ? undefined : updatesEmail || undefined;
+	assertNotCancelled(access);
 
-	// ── Web app port ────────────────────────────────────────────────────
+	let publicUrl: URL | undefined;
+	if (access === "public") {
+		const domain = await p.text({
+			message: "Domain",
+			placeholder: "elmo.example.com",
+			validate: validatePublicUrl,
+		});
+		assertNotCancelled(domain);
+		publicUrl = toPublicUrl(domain.trim());
+	}
+
 	const portInput = await p.text({
-		message: "Web app port",
+		message: access === "public" ? "Port for your reverse proxy to forward to" : "Web app port",
 		placeholder: String(DEFAULT_APP_PORT),
 		defaultValue: String(DEFAULT_APP_PORT),
 		validate: validatePort,
 	});
 	assertNotCancelled(portInput);
 	const port = Number(portInput);
-	env.APP_URL = `http://localhost:${port}`;
+	return { publicUrl, port };
+}
+
+export async function runInit(options: InitOptions, version: string): Promise<void> {
+	printBanner();
+	p.intro(pc.bold("Setting up Elmo"));
+
+	// Before any question and the Docker check, so someone who'd rather not
+	// self-host learns of Cloud before opening scraper accounts or installing Docker.
+	p.note(
+		[
+			"Self-hosting Elmo is free, and always will be. But it does mean",
+			"running Postgres and a worker, and opening your own scraper and",
+			"model provider accounts.",
+			"",
+			`Elmo Cloud is the same open-source product, hosted by us, from`,
+			`${pc.bold(`$${CLOUD_ENTRY_PRICE_USD}/month`)} — scraper and model access included, nothing to`,
+			"keep running.",
+			"",
+			`  ${link(pc.cyan(CLOUD_PRICING_URL), CLOUD_PRICING_URL)}`,
+		].join("\n"),
+		"Prefer not to self-host?",
+	);
+
+	assertDockerRunning();
+
+	const cwd = process.cwd();
+
+	const configDir = options.dir ? path.resolve(cwd, options.dir) : CONFIG_HOME;
+
+	const preservedDeploymentId = await confirmEnvOverwrite(configDir);
+	const { dockerDir, repoRoot } = await resolveDockerLocation(options, cwd);
+
+	const postgresMode = await p.select({
+		message: "PostgreSQL connection",
+		options: [
+			{
+				value: "docker" as const,
+				label: "Run Postgres in Docker",
+			},
+			{
+				value: "external" as const,
+				label: "Use existing Postgres (provide DATABASE_URL)",
+			},
+		],
+		initialValue: "docker" as PostgresMode,
+	});
+	assertNotCancelled(postgresMode);
+
+	const env: EnvMap = {};
+	env.DEPLOYMENT_MODE = "local";
+	env.DEPLOYMENT_ID = preservedDeploymentId ?? crypto.randomUUID();
+	env.BETTER_AUTH_SECRET = generateSecret();
+	// Standard base64, not base64url: the app decodes exactly 32 bytes with Buffer.from(key, "base64").
+	env.ELMO_ENCRYPTION_KEY = generateSecret(32, "base64");
+	env.APP_NAME = DEFAULT_APP_NAME;
+	env.APP_ICON = DEFAULT_APP_ICON;
+	env.VITE_APP_NAME = DEFAULT_APP_NAME;
+	env.VITE_APP_ICON = DEFAULT_APP_ICON;
+
+	if (postgresMode === "external") {
+		p.note("Must be an IPv4-compatible direct connection or database pooler.", "DATABASE_URL");
+		const url = await p.password({
+			message: "DATABASE_URL",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(url);
+		env.DATABASE_URL = url;
+	} else {
+		env.DATABASE_URL = LOCAL_DATABASE_URL;
+	}
+
+	const setupMode = await configureProvidersInteractive(env);
+
+	await collectJudgeKey(env);
+
+	await askTelemetryConsent(env);
+
+	const updatesEmail = await p.text({
+		message: "Enter your work email to receive product updates (optional)",
+		placeholder: "you@example.com",
+	});
+	const email = p.isCancel(updatesEmail) ? undefined : updatesEmail || undefined;
+
+	const { publicUrl, port } = await askAccess();
+
+	env.APP_URL = publicUrl?.origin ?? `http://localhost:${port}`;
 	env.VITE_APP_URL = env.APP_URL;
 
-	// ── Write config ─────────────────────────────────────────────────────
 	const composeYaml = buildComposeYaml({
 		dev: Boolean(options.dev),
 		postgresMode,
@@ -427,7 +470,6 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 		p.log.info("You can start later with `elmo compose up -d`.");
 	}
 
-	// CLI telemetry — silently dropped if the user opted out above.
 	await trackCliEvent(configDir, "cli_init", {
 		version,
 		os: process.platform,
@@ -436,12 +478,17 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 		postgres_mode: postgresMode,
 		dev_mode: Boolean(options.dev),
 		setup_mode: setupMode,
-		has_scraper: Boolean(env.BRIGHTDATA_API_TOKEN || env.OLOSTEP_API_KEY || env.OXYLABS_USERNAME || env.CLORO_API_KEY),
+		has_scraper: Boolean(
+			env.BRIGHTDATA_API_TOKEN ||
+				env.SEARCHAPI_API_KEY ||
+				env.OLOSTEP_API_KEY ||
+				env.OXYLABS_USERNAME ||
+				env.CLORO_API_KEY,
+		),
 		has_direct_api: hasDirectApiConfigured(env),
 	});
 
-	// Newsletter signup is a separate, explicit opt-in and runs even when
-	// telemetry is disabled.
+	// A separate opt-in, so it runs even with telemetry disabled.
 	if (email) {
 		await submitNewsletterSignup(configDir, email);
 	}

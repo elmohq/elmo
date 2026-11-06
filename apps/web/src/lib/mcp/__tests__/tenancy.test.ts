@@ -13,6 +13,9 @@ vi.mock("@/lib/api/scope", () => ({
 	requirePromptInScope: vi.fn(async () => {
 		throw REFUSED;
 	}),
+	requirePromptBrandInScope: vi.fn(async () => {
+		throw REFUSED;
+	}),
 	isBrandInScope: vi.fn(async () => {
 		throw REFUSED;
 	}),
@@ -53,6 +56,7 @@ const scope = await import("@/lib/api/scope");
 const SCOPE_CHECKS = [
 	scope.requireBrandInScope,
 	scope.requirePromptInScope,
+	scope.requirePromptBrandInScope,
 	scope.isBrandInScope,
 	scope.brandScopeCondition,
 	scope.organizationScopeCondition,

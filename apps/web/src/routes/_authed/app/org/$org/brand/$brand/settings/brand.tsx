@@ -2,6 +2,7 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { brandSegment, brandSlugPrefix, normalizeSlug } from "@workspace/lib/app-urls";
+import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -9,12 +10,12 @@ import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useState } from "react";
 import { SlugField } from "@/components/slug-field";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useOrganization, useOrganizationsChanged } from "@/hooks/use-organizations";
 import { useBrandParams } from "@/hooks/use-route-params";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updateBrandFn } from "@/server/brands";
@@ -217,7 +218,11 @@ function BrandSettingsPage() {
 					</div>
 				</div>
 
-				{error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
+				{error && (
+					<div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+						<WriteErrorMessage message={error} />
+					</div>
+				)}
 				{success && <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">{success}</div>}
 
 				<div className="flex gap-2">

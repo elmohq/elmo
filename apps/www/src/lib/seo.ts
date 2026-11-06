@@ -1,3 +1,4 @@
+import { PLAN_KEYS, PLANS } from "@workspace/config/plans";
 import { getMarketingOgImage } from "./og";
 
 export const SITE_URL = "https://www.elmohq.com";
@@ -98,6 +99,35 @@ export function organizationJsonLd() {
 			"https://peerpush.com/p/elmo",
 			"https://devhunt.org/tool/elmo",
 		],
+		foundingDate: "2025-07",
+		founder: {
+			"@type": "Person",
+			name: "Jared Rhizor",
+			url: "https://jrhizor.dev",
+			sameAs: ["https://www.linkedin.com/in/jrhizor", "https://x.com/jaredrhizor", "https://github.com/jrhizor"],
+		},
+		address: {
+			"@type": "PostalAddress",
+			addressLocality: "San Francisco",
+			addressRegion: "CA",
+			addressCountry: "US",
+		},
+		contactPoint: [
+			{
+				"@type": "ContactPoint",
+				contactType: "customer support",
+				email: "contact@elmohq.com",
+				url: canonicalUrl("/support"),
+				availableLanguage: "English",
+			},
+			{
+				"@type": "ContactPoint",
+				contactType: "security",
+				email: "security@elmohq.com",
+				url: canonicalUrl("/support"),
+				availableLanguage: "English",
+			},
+		],
 		parentOrganization: {
 			"@type": "Organization",
 			name: "Blue Whale Software, LLC",
@@ -106,7 +136,9 @@ export function organizationJsonLd() {
 	});
 }
 
+/** The prices the homepage pricing section shows. */
 export function softwareApplicationJsonLd() {
+	const cloudPlans = PLAN_KEYS.map((key) => PLANS[key]);
 	return jsonLd({
 		"@type": "SoftwareApplication",
 		name: SITE_NAME,
@@ -114,20 +146,48 @@ export function softwareApplicationJsonLd() {
 		applicationCategory: "BusinessApplication",
 		operatingSystem: "Any",
 		offers: {
-			"@type": "Offer",
-			price: "0",
+			"@type": "AggregateOffer",
 			priceCurrency: "USD",
+			lowPrice: "0",
+			highPrice: String(Math.max(...cloudPlans.map((plan) => plan.monthlyPriceUsd))),
+			offerCount: cloudPlans.length + 1,
+			offers: [
+				{ "@type": "Offer", name: "Self-hosted", price: "0", priceCurrency: "USD" },
+				...cloudPlans.map((plan) => ({
+					"@type": "Offer",
+					name: `Elmo Cloud ${plan.name}`,
+					price: String(plan.monthlyPriceUsd),
+					priceCurrency: "USD",
+					priceSpecification: {
+						"@type": "UnitPriceSpecification",
+						price: String(plan.monthlyPriceUsd),
+						priceCurrency: "USD",
+						unitText: "MONTH",
+					},
+				})),
+			],
 		},
 		url: SITE_URL,
 	});
 }
 
-export function articleJsonLd({ title, description, path }: { title: string; description: string; path: string }) {
+export function articleJsonLd({
+	title,
+	description,
+	path,
+	dateModified,
+}: {
+	title: string;
+	description: string;
+	path: string;
+	dateModified?: string;
+}) {
 	return jsonLd({
 		"@type": "TechArticle",
 		headline: title,
 		description,
 		url: canonicalUrl(path),
+		...(dateModified && { dateModified }),
 		publisher: {
 			"@type": "Organization",
 			name: SITE_NAME,
@@ -188,9 +248,14 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
  * lift verbatim. Pair it with a visibly rendered FAQ (the <Faq> component, or
  * the blog FAQ block) so the markup and the content stay in sync.
  */
-export function faqJsonLd(items: { question: string; answer: string }[]) {
+export function faqJsonLd(
+	items: { question: string; answer: string }[],
+	page?: { path: string; dateModified?: string },
+) {
 	return jsonLd({
 		"@type": "FAQPage",
+		...(page && { url: canonicalUrl(page.path) }),
+		...(page?.dateModified && { dateModified: page.dateModified }),
 		mainEntity: items.map((item) => ({
 			"@type": "Question",
 			name: item.question,

@@ -8,7 +8,7 @@ import { IconWorld } from "@tabler/icons-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
-import { faviconUrl } from "@/lib/site-icon";
+import { faviconUrl, isLightMark } from "@/lib/site-icon";
 
 export type SiteIconSize = "xs" | "sm" | "md" | "lg";
 
@@ -30,12 +30,19 @@ const REQUESTED_SIZE = 64;
 /** Share of the box the fallback glyph fills, so it reads at every size. */
 const GLYPH_SCALE = "size-[75%]";
 
-// The service answers a domain it has no icon for with a 404 whose body is a
-// generic globe — and a 404 body renders like any other image, so it never
-// reaches the error path. That placeholder is always 16px square, well under
-// what we ask for, so an image that comes back this small is the one signal we
-// get that the icon is missing.
-const PLACEHOLDER_SIZE = 16;
+function readIsLightMark(image: HTMLImageElement): boolean {
+	const canvas = document.createElement("canvas");
+	canvas.width = image.naturalWidth;
+	canvas.height = image.naturalHeight;
+	const context = canvas.getContext("2d", { willReadFrequently: true });
+	if (!context) return false;
+	context.drawImage(image, 0, 0);
+	try {
+		return isLightMark(context.getImageData(0, 0, canvas.width, canvas.height).data);
+	} catch {
+		return false;
+	}
+}
 
 export function SiteIcon({
 	domain,
@@ -51,35 +58,28 @@ export function SiteIcon({
 	const src = faviconUrl(domain, REQUESTED_SIZE);
 
 	const [checkedSrc, setCheckedSrc] = useState<string | null>(null);
-	const [isPlaceholder, setIsPlaceholder] = useState(false);
+	const [needsBackdrop, setNeedsBackdrop] = useState(false);
 	if (checkedSrc !== src) {
 		setCheckedSrc(src);
-		setIsPlaceholder(false);
+		setNeedsBackdrop(false);
 	}
-
-	const iconSrc = isPlaceholder ? null : src;
 
 	// Square-ish rather than circular: these are site icons, not people.
 	return (
 		<Avatar aria-hidden="true" className={cn("shrink-0 rounded-[0.25rem]", box, className)}>
-			{iconSrc && (
+			{src && (
 				<AvatarImage
-					src={iconSrc}
+					src={src}
 					alt=""
 					loading="lazy"
-					// Site icons are a third-party lookup; there's no reason to tell
-					// them which page of the app the user is on.
-					referrerPolicy="no-referrer"
-					onLoad={(event) => {
-						if (event.currentTarget.naturalWidth <= PLACEHOLDER_SIZE) setIsPlaceholder(true);
-					}}
-					className="object-contain"
+					onLoad={(event) => setNeedsBackdrop(readIsLightMark(event.currentTarget))}
+					className={cn("rounded-[inherit] object-contain", needsBackdrop && "bg-foreground")}
 				/>
 			)}
 			{/* Waiting out a request in flight beats flashing the glyph on every
-			    row of a table and then swapping it for an icon. Nothing to wait
-			    for once the icon is ruled out, so those fall back at once. */}
-			<AvatarFallback delay={iconSrc ? 300 : 0} className="rounded-[inherit] bg-muted text-muted-foreground">
+			    row of a table and then swapping it for an icon. Without a domain
+			    there's nothing to wait for, so those fall back at once. */}
+			<AvatarFallback delay={src ? 300 : 0} className="rounded-[inherit] bg-muted text-muted-foreground">
 				<IconWorld className={GLYPH_SCALE} />
 			</AvatarFallback>
 		</Avatar>

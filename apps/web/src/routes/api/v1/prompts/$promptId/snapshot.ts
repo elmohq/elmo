@@ -5,18 +5,15 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { extractDomain, inDomainSet } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requirePromptInScope } from "@/lib/api/scope";
-import { extractDomain, inDomainSet, normalizeUrl } from "@/lib/domain-categories";
-import {
-	getPromptCitationUrlStats,
-	getPromptMentionSummary,
-	getPromptTopCompetitorMentions,
-} from "@/lib/postgres-read";
+import { getCitationUrlStats, getCompetitorTotals, getMentionTotals } from "@/lib/rollup-read";
+import { mentionQuality } from "@/lib/sentiment";
 
 function isValidDate(dateStr: string): boolean {
 	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -82,35 +79,26 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),
 					);
 
-					const timezone = "UTC";
+					const scope = {
+						brandId: prompt.brandId,
+						from: startDate,
+						to: endDate,
+						timezone: "UTC",
+						promptIds: [prompt.id],
+					};
 					const [mentionData, topCompetitors, citationUrlStats] = await Promise.all([
-						getPromptMentionSummary(promptId, startDate, endDate, timezone),
-						getPromptTopCompetitorMentions(promptId, startDate, endDate, timezone, kMentions),
-						getPromptCitationUrlStats(promptId, startDate, endDate, timezone),
+						getMentionTotals(scope),
+						getCompetitorTotals(scope, kMentions),
+						getCitationUrlStats(scope),
 					]);
 
-					const mentionsTopK = topCompetitors.map((row) => ({
-						entity: row.competitor_name,
-						count: Number(row.mention_count),
-					}));
-
-					const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
-					for (const { url, domain, title, count } of citationUrlStats) {
-						const normalizedUrl = normalizeUrl(url);
-						const existing = urlCounts.get(normalizedUrl);
-						if (existing) {
-							existing.count += Number(count);
-							if (!existing.title && title) existing.title = title;
-						} else {
-							urlCounts.set(normalizedUrl, { count: Number(count), title: title || undefined, domain });
-						}
-					}
+					const mentionsTopK = topCompetitors.map((row) => ({ entity: row.competitor, count: row.runs }));
 
 					let brandCitationsTotal = 0;
 					let competitorCitationsTotal = 0;
 					let citationsTotal = 0;
-					const allCitationUrls = Array.from(urlCounts.entries())
-						.map(([url, { count, title, domain }]) => {
+					const allCitationUrls = citationUrlStats
+						.map(({ url, title, domain, count }) => {
 							citationsTotal += count;
 							if (inDomainSet(domain, brandDomains)) {
 								brandCitationsTotal += count;
@@ -134,11 +122,12 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						startDate,
 						endDate,
 						mentions: {
-							mentionsTotal: Number(mentionData.brand_mentioned_count) + Number(mentionData.competitor_mentioned_count),
-							brandMentionsTotal: Number(mentionData.brand_mentioned_count),
-							competitorMentionsTotal: Number(mentionData.competitor_mentioned_count),
+							mentionsTotal: mentionData.brand_mentioned_runs + mentionData.competitor_mentions,
+							brandMentionsTotal: mentionData.brand_mentioned_runs,
+							competitorMentionsTotal: mentionData.competitor_mentions,
 							mentionsTopK,
 						},
+						...mentionQuality(mentionData),
 						citations: {
 							citationsTotal,
 							brandCitationsTotal,

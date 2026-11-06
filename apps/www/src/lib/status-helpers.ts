@@ -1,3 +1,5 @@
+import { getModelMeta } from "@workspace/config/models";
+
 export interface StatusEntry {
 	ts: string;
 	status: "pass" | "fail";
@@ -30,20 +32,7 @@ export function parseTarget(target: string) {
 }
 
 export function formatModel(model: string) {
-	const names: Record<string, string> = {
-		chatgpt: "ChatGPT",
-		claude: "Claude",
-		gemini: "Gemini",
-		grok: "Grok",
-		perplexity: "Perplexity",
-		copilot: "Copilot",
-		deepseek: "DeepSeek",
-		kimi: "Kimi",
-		mistral: "Mistral",
-		"google-ai-mode": "Google AI Mode",
-		"google-ai-overview": "Google AI Overview",
-	};
-	return names[model] || model;
+	return getModelMeta(model).label;
 }
 
 export function formatProvider(provider: string) {
@@ -51,6 +40,7 @@ export function formatProvider(provider: string) {
 		cloro: "Cloro",
 		brightdata: "BrightData",
 		oxylabs: "Oxylabs",
+		searchapi: "SearchApi",
 		olostep: "Olostep",
 		dataforseo: "DataForSEO",
 		"openai-api": "OpenAI API",
@@ -59,6 +49,23 @@ export function formatProvider(provider: string) {
 		openrouter: "OpenRouter",
 	};
 	return names[provider] || provider;
+}
+
+// Affiliate sign-up links for the third-party providers, keyed by provider id
+// or matrix category. `sid` tags the source for the programs that support it.
+const PROVIDER_AFFILIATE_URLS: Record<string, string> = {
+	cloro: "https://cloro.dev?fpr=elmo&fp_sid=status",
+	brightdata: "https://get.brightdata.com/elmo?sid=status",
+	oxylabs: "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32",
+	searchapi: "https://www.searchapi.io/?via=elmo",
+	olostep: "https://olostep.com/?ref=elmo",
+	dataforseo: "https://try.dataforseo.com/elmo",
+	"dataforseo-api": "https://try.dataforseo.com/elmo",
+	"dataforseo-scraper": "https://try.dataforseo.com/elmo",
+};
+
+export function providerAffiliateUrl(provider: string): string | undefined {
+	return PROVIDER_AFFILIATE_URLS[provider];
 }
 
 // Surfaces the one `dataforseo` provider reaches by scraping — the two Google
@@ -81,8 +88,8 @@ export function providerCategory(provider: string, model: string, version?: stri
 
 // The matrix columns split into two kinds of route: Model APIs (Direct API,
 // OpenRouter, DataForSEO API) call an LLM inference endpoint, while AI Search
-// Scrapers (Cloro, BrightData, Oxylabs, Olostep, DataForSEO Scraper) scrape a
-// live web surface.
+// Scrapers (Cloro, BrightData, Oxylabs, SearchApi, Olostep, DataForSEO Scraper)
+// scrape a live web surface.
 export const MODEL_API_CATEGORIES = ["direct-api", "openrouter", "dataforseo-api"];
 
 // Models that only exist as a scraped web surface. Google's AI Mode and AI
@@ -99,6 +106,7 @@ const PROVIDER_MODELS: Record<string, Set<string>> = {
 	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
+	searchapi: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	// Google AI Mode and AI Overview come from the SERP endpoints, ChatGPT and
 	// Gemini from the LLM Scraper API — all four scrape a live surface. There is
@@ -133,6 +141,7 @@ export const PROVIDER_FILTER_ORDER = [
 	"cloro",
 	"brightdata",
 	"oxylabs",
+	"searchapi",
 	"olostep",
 	"dataforseo-scraper",
 ];
@@ -144,6 +153,7 @@ export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	cloro: "Cloro",
 	brightdata: "BrightData",
 	oxylabs: "Oxylabs",
+	searchapi: "SearchApi",
 	olostep: "Olostep",
 	"dataforseo-scraper": "DataForSEO Scraper",
 };

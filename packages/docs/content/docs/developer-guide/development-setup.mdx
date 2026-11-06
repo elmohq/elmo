@@ -1,6 +1,7 @@
 ---
 title: Development Setup
 description: Set up a local development environment for contributing to Elmo.
+updated: 2026-10-25
 ---
 
 ## Prerequisites
@@ -48,6 +49,10 @@ Run Drizzle migrations to create the schema:
 ```bash
 pnpm --filter @workspace/lib exec drizzle-kit migrate
 ```
+
+## Mention Judge
+
+The worker judges mentions and sentiment with [Jev](/docs/developer-guide/configuration#mention-judging), so it needs `TYPESAFE_API_KEY`, or `OPENROUTER_API_KEY` to call Jev through OpenRouter. For UI work without a key, set it to `stub`: answers get placeholder judgements and nothing is sent anywhere.
 
 ## Start Development Servers
 

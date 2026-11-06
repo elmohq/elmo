@@ -1,10 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { Redis } from "@upstash/redis";
-
-const redis = new Redis({
-	url: process.env.UPSTASH_REDIS_REST_URL!,
-	token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+import { getRedis } from "./redis";
 
 const CACHE_KEY = "gh:stars:elmohq/elmo";
 const TTL_SECONDS = 60 * 60;
@@ -13,7 +8,7 @@ const FALLBACK_STARS = 0;
 
 export const getGitHubStars = createServerFn({ method: "GET" }).handler(async () => {
 	try {
-		const cached = await redis.get<number>(CACHE_KEY);
+		const cached = await getRedis().get<number>(CACHE_KEY);
 		if (typeof cached === "number") return cached;
 
 		const res = await fetch("https://api.github.com/repos/elmohq/elmo", {
@@ -24,13 +19,13 @@ export const getGitHubStars = createServerFn({ method: "GET" }).handler(async ()
 		});
 
 		if (!res.ok) {
-			await redis.set(CACHE_KEY, FALLBACK_STARS, { ex: ERROR_TTL_SECONDS });
+			await getRedis().set(CACHE_KEY, FALLBACK_STARS, { ex: ERROR_TTL_SECONDS });
 			return FALLBACK_STARS;
 		}
 
 		const data = (await res.json()) as { stargazers_count?: number };
 		const count = data.stargazers_count ?? FALLBACK_STARS;
-		await redis.set(CACHE_KEY, count, { ex: TTL_SECONDS });
+		await getRedis().set(CACHE_KEY, count, { ex: TTL_SECONDS });
 		return count;
 	} catch {
 		return FALLBACK_STARS;

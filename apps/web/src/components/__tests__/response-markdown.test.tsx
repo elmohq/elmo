@@ -108,3 +108,48 @@ describe("answer rendering across providers", () => {
 		expect(html).not.toContain("tracker.example");
 	});
 });
+
+describe("ResponseMarkdown search highlights", () => {
+	const renderWith = (markdown: string, highlight?: string) =>
+		renderToStaticMarkup(<ResponseMarkdown highlight={highlight}>{markdown}</ResponseMarkdown>);
+
+	it("marks every match regardless of case, including inside formatting", () => {
+		const html = renderWith("**Acme** beats acme-lite and ACME Pro.", "acme");
+
+		expect(html.match(/<mark /g)).toHaveLength(3);
+		expect(html).toMatch(/<strong><mark [^>]*>Acme<\/mark><\/strong>/);
+		expect(html).toMatch(/<mark [^>]*>ACME<\/mark> Pro/);
+	});
+
+	it("marks link text without touching the link target", () => {
+		const html = renderWith("See [Acme](https://acme.com/acme).", "acme");
+
+		expect(html).toContain('href="https://acme.com/acme"');
+		expect(html).toMatch(/<mark [^>]*>Acme<\/mark><\/a>/);
+	});
+
+	it("marks nothing without a search", () => {
+		expect(renderWith("**Acme** beats acme-lite.")).not.toContain("<mark");
+	});
+});
+
+describe("marking a passage", () => {
+	const markText = (html: string) =>
+		[...html.matchAll(/<mark class="x" data-passage="">(.*?)<\/mark>/g)].map((m) => m[1]).join("|");
+
+	it("marks exactly the source span, across formatting, and nothing else", () => {
+		const text = "Intro line.\n\nAcme is **the easiest** CRM to set up. Globex is pricier.";
+		const start = text.indexOf("Acme");
+		const end = text.indexOf(" Globex");
+		const html = renderToStaticMarkup(
+			<ResponseMarkdown markRange={{ start, end, className: "x" }}>{text}</ResponseMarkdown>,
+		);
+		expect(markText(html)).toBe("Acme is |the easiest| CRM to set up.");
+		expect(html).toContain("<strong><mark");
+		expect(html).not.toContain('<mark class="x" data-passage="">Intro');
+	});
+
+	it("leaves the answer unmarked without a range", () => {
+		expect(renderToStaticMarkup(<ResponseMarkdown>{"Acme is great."}</ResponseMarkdown>)).not.toContain("<mark");
+	});
+});

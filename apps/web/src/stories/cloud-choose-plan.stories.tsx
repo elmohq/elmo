@@ -1,7 +1,4 @@
 /**
- * Stories for /choose-plan — the checkout-first paywall a cloud org lands on
- * with no active subscription.
- *
  * The plan cards render straight from the plan catalog, so these stories are
  * also the fastest way to see a pricing or limit change: edit
  * packages/config/src/plans.ts and the cards follow.
@@ -13,7 +10,7 @@ import { expect, userEvent, within } from "storybook/test";
 import { Route } from "@/routes/_authed/choose-plan";
 import type { PaywallRequired } from "@/server/billing";
 import { getMockSubscriptionCalls, resetMockAuthClient, setMockSubscriptionError } from "./_mocks/auth-client";
-import { setMockLoaderData, setMockSearch } from "./_mocks/tanstack-router";
+import { setMockLoaderData, setMockRouteContext, setMockSearch } from "./_mocks/tanstack-router";
 
 const ChoosePlanPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
@@ -37,6 +34,7 @@ const meta = {
 			resetMockAuthClient();
 			setMockSearch({});
 			setMockLoaderData(NEEDS_PLAN);
+			setMockRouteContext({ session: { user: { id: "user-1", email: "owner@acme.test" } } });
 			return (
 				<Shell>
 					<Story />
@@ -81,7 +79,7 @@ export const ComparesPlansAcrossSharedRows: Story = {
 		await expect((await canvas.findAllByText(`${PREMIUM_RUNS_PER_DAY}×/day`)).length).toBeGreaterThan(0);
 
 		// The premium tier names the grounded product, not the pick.
-		await expect(await canvas.findByText("GPT-5 Search")).toBeVisible();
+		await expect(await canvas.findByText("GPT Search")).toBeVisible();
 
 		// Limits read off the catalog rather than being restated in prose.
 		await expect(await canvas.findByText("Tracked prompts")).toBeVisible();

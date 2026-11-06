@@ -16,7 +16,9 @@ permissions:
 jobs:
   test:
     name: Test Providers
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    # Private copies of this repo inherit the schedule; it only needs to run here.
+    if: github.repository == 'elmohq/elmo'
+    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     # All targets run in parallel on a single runner (they're I/O-bound waiting
     # on external provider APIs), so the job wall-clock is ~the slowest target.
     timeout-minutes: 40
@@ -33,6 +35,7 @@ jobs:
         timeout-minutes: 35
         continue-on-error: true
         env:
+          SEARCHAPI_API_KEY: ${{ secrets.SEARCHAPI_API_KEY }}
           OLOSTEP_API_KEY: ${{ secrets.OLOSTEP_API_KEY }}
           BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
           OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
@@ -80,6 +83,7 @@ jobs:
                 rawOutputBytes: r.rawOutputBytes,
                 citations: r.citations,
                 webQueries: r.webQueries,
+                realWebQueries: r.realWebQueries,
                 webSearch: r.webSearch,
                 error: r.error || null,
               });
