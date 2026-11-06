@@ -99,7 +99,7 @@ const UNAUTHORIZED: ApiAuthFailure = {
 };
 
 /** One message for every failure, so a guess cannot be told from a real key. */
-export const INVALID_KEY: ApiAuthFailure = {
+const INVALID_KEY: ApiAuthFailure = {
 	status: 401,
 	error: "Unauthorized",
 	message: "Invalid API key",
@@ -113,7 +113,7 @@ function bearerToken(request: Request): string | null {
 	return token.length > 0 ? token : null;
 }
 
-function isAdminKey(token: string): boolean {
+export function isAdminKey(token: string): boolean {
 	const keys = getAdminApiKeys();
 	return keys.length > 0 && keys.some((key) => timingSafeStringEqual(key, token));
 }

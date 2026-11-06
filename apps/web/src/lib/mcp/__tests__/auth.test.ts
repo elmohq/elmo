@@ -82,7 +82,14 @@ const INVALID_KEY: ApiAuthResult = {
 	failure: { status: 401, error: "Unauthorized", message: "Invalid API key", code: "unauthorized" },
 };
 
-afterEach(() => vi.resetAllMocks());
+const INVALID_TOKEN: ApiAuthResult = {
+	failure: { status: 401, error: "Unauthorized", message: "Invalid or expired access token", code: "unauthorized" },
+};
+
+afterEach(() => {
+	vi.resetAllMocks();
+	vi.unstubAllEnvs();
+});
 
 describe("principalScopes", () => {
 	it("gives an organization key exactly what it was issued", () => {
@@ -163,12 +170,6 @@ describe("resolveMcpAuth", () => {
 		expect(resolveApiAuth).not.toHaveBeenCalled();
 	});
 
-	it("refuses an expired access token without trying it as an API key", async () => {
-		verifyMcpAccessToken.mockRejectedValue(new Error("token expired"));
-		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
-		expect(resolveApiAuth).not.toHaveBeenCalled();
-	});
-
 	it("re-reads membership on every call rather than trusting the token", async () => {
 		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
@@ -184,7 +185,7 @@ describe("resolveMcpAuth", () => {
 		selectUser.mockResolvedValue([]);
 		selectClient.mockResolvedValue([{ disabled: false }]);
 
-		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_TOKEN);
 	});
 
 	it("refuses a banned person, whose signature is still perfectly good", async () => {
@@ -192,7 +193,7 @@ describe("resolveMcpAuth", () => {
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone", banned: true }]);
 		selectClient.mockResolvedValue([{ disabled: false }]);
 
-		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_TOKEN);
 	});
 
 	it("refuses a token whose client has been disabled", async () => {
@@ -200,7 +201,7 @@ describe("resolveMcpAuth", () => {
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
 		selectClient.mockResolvedValue([{ disabled: true }]);
 
-		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_TOKEN);
 	});
 
 	it("refuses a token whose client is gone", async () => {
@@ -208,18 +209,41 @@ describe("resolveMcpAuth", () => {
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
 		selectClient.mockResolvedValue([]);
 
-		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_TOKEN);
 	});
 
-	it("fails closed when verification throws", async () => {
-		verifyMcpAccessToken.mockRejectedValue(new Error("key set unreachable"));
+	it("fails closed when verification throws, without trying the token as an API key", async () => {
+		verifyMcpAccessToken.mockRejectedValue(new Error("token expired"));
 
-		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_TOKEN);
+		expect(resolveApiAuth).not.toHaveBeenCalled();
+	});
+
+	it("accepts an access token sent under the DPoP scheme", async () => {
+		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
+		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
+		selectClient.mockResolvedValue([{ disabled: false }]);
+		listUserOrganizations.mockResolvedValue([{ id: "org_1" }]);
+
+		const request = new Request("http://localhost/api/mcp", {
+			method: "POST",
+			headers: { Authorization: `DPoP ${ACCESS_TOKEN}` },
+		});
+		await expect(resolveMcpAuth(request)).resolves.toMatchObject({ auth: { kind: "user" } });
+		expect(resolveApiAuth).not.toHaveBeenCalled();
+	});
+
+	it("treats an admin key shaped like a token as a key", async () => {
+		vi.stubEnv("ADMIN_API_KEYS", "ops.prod.key");
+		resolveApiAuth.mockResolvedValue({ auth: adminKey });
+
+		await expect(resolveMcpAuth(bearer("ops.prod.key"))).resolves.toEqual({ auth: adminKey });
+		expect(verifyMcpAccessToken).not.toHaveBeenCalled();
 	});
 
 	it("refuses a token that names no client, since nothing holds it", async () => {
 		verifyMcpAccessToken.mockResolvedValue({ sub: "user_1", exp: TOKEN_CLAIMS.exp });
-		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_KEY);
+		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_TOKEN);
 		expect(selectUser).not.toHaveBeenCalled();
 	});
 

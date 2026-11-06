@@ -1,10 +1,10 @@
 /** An OAuth token or an API key, resolved to one principal so a tool never
  * learns which arrived. */
-import { verifyMcpAccessToken } from "@workspace/lib/auth/server";
+import { accessTokenIn, verifyMcpAccessToken } from "@workspace/lib/auth/server";
 import { db } from "@workspace/lib/db/db";
 import { oauthClient, user } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { type ApiAuthFailure, INVALID_KEY, type Principal, resolveApiAuth, type UserAuth } from "@/lib/auth/api-auth";
+import { type ApiAuthFailure, isAdminKey, type Principal, resolveApiAuth, type UserAuth } from "@/lib/auth/api-auth";
 
 export type McpAuthResult = { auth: Principal } | { failure: ApiAuthFailure };
 
@@ -59,13 +59,21 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 	};
 }
 
-function carriesJwt(request: Request): boolean {
-	const token = request.headers.get("authorization")?.trim().split(/\s+/)[1];
-	return token?.split(".").length === 3;
+const INVALID_TOKEN: ApiAuthFailure = {
+	status: 401,
+	error: "Unauthorized",
+	message: "Invalid or expired access token",
+	code: "unauthorized",
+};
+
+/** Admin keys are free-form, so one can be shaped like a token. */
+function carriesAccessToken(request: Request): boolean {
+	const token = accessTokenIn(request);
+	return token !== null && !isAdminKey(token);
 }
 
 export async function resolveMcpAuth(request: Request): Promise<McpAuthResult> {
-	if (!carriesJwt(request)) return resolveApiAuth(request);
+	if (!carriesAccessToken(request)) return resolveApiAuth(request);
 	const asUser = await resolveOAuthPrincipal(request);
-	return asUser ? { auth: asUser } : { failure: INVALID_KEY };
+	return asUser ? { auth: asUser } : { failure: INVALID_TOKEN };
 }

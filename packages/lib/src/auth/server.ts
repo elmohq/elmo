@@ -216,6 +216,12 @@ export type Auth = ReturnType<typeof createAuth>;
 /** Cache identity, so the key set is read once every few minutes. */
 const jwksCacheKey = {};
 
+export function accessTokenIn(request: Request): string | null {
+	const authorization = parseAccessTokenAuthorization(request.headers.get("authorization"));
+	if (!authorization?.token || authorization.scheme === "Unknown") return null;
+	return authorization.token.split(".").length === 3 ? authorization.token : null;
+}
+
 /**
  * `verifyAccessTokenRequest`, but reading the keys through `auth.api`: it only
  * fetches them from `jwks_uri`, which names the address clients reach the app
