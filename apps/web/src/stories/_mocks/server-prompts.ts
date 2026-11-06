@@ -23,6 +23,5 @@ export const updatePromptsFn = async ({
 		value: p.value,
 		enabled: p.enabled ?? true,
 		tags: p.tags ?? [],
-		systemTags: [] as string[],
 	}));
 export const getPromptWebQueryFn = noop;

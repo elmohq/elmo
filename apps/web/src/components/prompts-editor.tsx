@@ -20,7 +20,6 @@ interface PromptRow {
 	value: string;
 	enabled: boolean;
 	tags?: string[] | null;
-	systemTags?: string[] | null;
 	premiumModels?: string[] | null;
 }
 
@@ -47,7 +46,6 @@ function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
 			value: p.value,
 			enabled: p.enabled,
 			tags: p.tags || [],
-			systemTags: p.systemTags || [],
 			premiumModels: p.premiumModels ?? [],
 		}))
 		.sort(

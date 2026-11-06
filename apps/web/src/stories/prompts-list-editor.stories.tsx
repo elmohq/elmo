@@ -16,20 +16,12 @@ const meta = {
 export default meta;
 
 /** The table layout is `hidden md:grid` — widen the canvas past 768px to see it. */
-function Harness({
-	initial,
-	showSystemTags = true,
-	premium,
-}: {
-	initial: EditablePrompt[];
-	showSystemTags?: boolean;
-	premium?: PremiumAllowance;
-}) {
+function Harness({ initial, premium }: { initial: EditablePrompt[]; premium?: PremiumAllowance }) {
 	const [prompts, setPrompts] = useState(initial);
 
 	return (
 		<div className="p-8">
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} showSystemTags={showSystemTags} premium={premium} />
+			<PromptsListEditor prompts={prompts} onChange={setPrompts} premium={premium} />
 		</div>
 	);
 }
@@ -51,9 +43,9 @@ const pasteIntoBulkPanel =
 export const Populated = () => (
 	<Harness
 		initial={[
-			...entries(["best running shoes for flat feet"], { tags: ["footwear"], systemTags: ["unbranded"] }),
-			...entries(["is nike better than adidas"], { tags: ["comparison"], systemTags: ["branded"] }),
-			...entries(["most durable trail runners"], { enabled: false, systemTags: ["unbranded"] }),
+			...entries(["best running shoes for flat feet"], { tags: ["footwear"] }),
+			...entries(["is nike better than adidas"], { tags: ["comparison"] }),
+			...entries(["most durable trail runners"], { enabled: false }),
 		]}
 	/>
 );
@@ -83,9 +75,7 @@ export const AddMultiple: StoryObj = {
  * that fit.
  */
 export const AddMultipleOverCapacity: StoryObj = {
-	render: () => (
-		<Harness showSystemTags={false} initial={[...filler(MAX_PROMPTS - 5), ...entries(["", "", "", "", ""])]} />
-	),
+	render: () => <Harness initial={[...filler(MAX_PROMPTS - 5), ...entries(["", "", "", "", ""])]} />,
 	play: async (ctx) => {
 		await pasteIntoBulkPanel(
 			"trail shoes for wide feet\nbest marathon racing flats\nlightweight gym trainers\nbest shoes for plantar fasciitis\ncushioned recovery runners\nzero drop road shoes",
@@ -118,7 +108,7 @@ export const RemoveUnsavedRow: StoryObj = {
 };
 
 /** At the cap: both toolbar buttons are hidden and the limit message shows. */
-export const AtCapacity = () => <Harness showSystemTags={false} initial={filler(MAX_PROMPTS)} />;
+export const AtCapacity = () => <Harness initial={filler(MAX_PROMPTS)} />;
 
 // The mobile block and the desktop grid both render (one is just hidden), so a
 // row has two triggers. Selecting by what the trigger says avoids depending on

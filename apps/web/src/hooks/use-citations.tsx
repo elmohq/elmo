@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import type { PromptType } from "@workspace/lib/prompt-type";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
 import {
@@ -12,6 +13,7 @@ import {
 export interface CitationFilters {
 	lookback?: LookbackPeriod;
 	tags?: string[];
+	type?: PromptType;
 	model?: string;
 }
 
@@ -56,6 +58,7 @@ export function useGoogleShopping(
 					brandId,
 					lookback: filters?.lookback ?? "1w",
 					tags: filters?.tags?.join(","),
+					type: filters?.type,
 					model: filters?.model,
 					...query,
 				},
@@ -72,6 +75,7 @@ function filterParams(brandId: string, filters: CitationFilters | undefined, que
 		brandId,
 		lookback: filters?.lookback ?? "1w",
 		tags: filters?.tags?.join(","),
+		type: filters?.type,
 		model: filters?.model,
 		search: query.search || undefined,
 		category: query.category === "all" ? undefined : query.category,
@@ -119,6 +123,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback ?? "1w",
 					tags: filters?.tags?.join(","),
+					type: filters?.type,
 					model: filters?.model,
 				},
 			}),
@@ -147,6 +152,7 @@ export function useCitationFlow(brandId: string | undefined, filters: CitationFi
 					brandId: resolvedBrandId!,
 					lookback: filters.lookback ?? "1w",
 					tags: filters.tags?.join(","),
+					type: filters.type,
 					model: filters.model,
 					domain: domain!,
 				},

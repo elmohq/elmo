@@ -19,7 +19,6 @@ import {
 	runMentions,
 } from "@workspace/lib/db/schema";
 import { type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
-import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { and, eq, gte, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
@@ -107,24 +106,6 @@ async function queueStaleRuns(
 	return queued;
 }
 
-function sameTags(a: string[], b: string[]): boolean {
-	return a.length === b.length && a.every((tag, i) => tag === b[i]);
-}
-
-/** Prompt tags read the same brand config mentions do, so they're recomputed alongside. */
-async function recomputeSystemTags(conn: DbConnection, brand: Brand): Promise<void> {
-	const brandPrompts = await conn
-		.select({ id: prompts.id, value: prompts.value, systemTags: prompts.systemTags })
-		.from(prompts)
-		.where(eq(prompts.brandId, brand.id));
-
-	for (const prompt of brandPrompts) {
-		const nextTags = computeSystemTags(prompt.value, brand.name, brand.website);
-		if (sameTags(nextTags, prompt.systemTags)) continue;
-		await conn.update(prompts).set({ systemTags: nextTags }).where(eq(prompts.id, prompt.id));
-	}
-}
-
 /** Which prompts a brand's last full pass covered: passes skip disabled prompts' runs. */
 const PROMPTS_KEY = "prompts";
 
@@ -208,7 +189,6 @@ export async function runReprocess(
 		})
 		.where(eq(brands.id, data.brandId));
 	const queued = await queueStaleRuns(conn, boss, data.brandId, data.layers, context.current, days, brandPrompts);
-	if (data.layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
 	console.log(`[reprocess] brand ${data.brandId}: queued ${queued} runs toward ${JSON.stringify(target)}`);
 }
 

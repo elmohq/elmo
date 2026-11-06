@@ -3,7 +3,7 @@ import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
-import { brands, competitors, promptRuns, prompts, runMentions, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { brands, competitors, promptRuns, prompts, runMentions } from "@workspace/lib/db/schema";
 import {
 	assertAllowed,
 	assertPromptSaveAllowed,
@@ -11,8 +11,9 @@ import {
 	promptSaveDelta,
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
+import { matchesPromptFilter, mentionsBrand, parsePromptFilter } from "@workspace/lib/prompt-type";
 import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
-import { computeSystemTags, effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
+import { sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -43,7 +44,7 @@ import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { parseTagFilter } from "@/server/prompt-resolution";
+import { loadBrandIdentity, loadTypedPrompts, type ResolvedPrompt } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 import { toResponse } from "@/server/responses";
 
@@ -59,6 +60,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 		if (!prompt) {
 			return null;
 		}
+		const brand = await loadBrandIdentity(data.brandId);
 
 		let nextRunAt: string | null = null;
 		try {
@@ -85,21 +87,14 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			brandId: prompt.brandId,
 			value: prompt.value,
 			enabled: prompt.enabled,
-			tags: prompt.tags || [],
-			systemTags: prompt.systemTags || [],
+			tags: prompt.tags,
+			branded: mentionsBrand(prompt.value, brand),
 			nextRunAt,
 		};
 	});
 
 function summarizePrompt(
-	prompt: {
-		id: string;
-		value: string;
-		enabled: boolean;
-		createdAt: Date;
-		tags: string[] | null;
-		systemTags: string[] | null;
-	},
+	prompt: ResolvedPrompt,
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
 ) {
@@ -112,8 +107,6 @@ function summarizePrompt(
 	return {
 		id: prompt.id,
 		value: prompt.value,
-		enabled: prompt.enabled,
-		createdAt: prompt.createdAt,
 		totalRuns,
 		brandMentionPct,
 		competitorMentionPct,
@@ -121,7 +114,8 @@ function summarizePrompt(
 		hasVisibilityData: totalRuns > 0 && (brandMentionPct > 0 || competitorMentionPct > 0),
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
-		tags: effectiveTags(prompt),
+		tags: prompt.tags,
+		branded: prompt.branded,
 	};
 }
 
@@ -145,17 +139,14 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			type: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		await requireBrandSession(data.brandId);
 
-		const allPrompts = await db
-			.select()
-			.from(prompts)
-			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)))
-			.orderBy(desc(prompts.createdAt));
+		const allPrompts = await loadTypedPrompts(data.brandId);
 
 		const promptIds = allPrompts.map((p) => p.id);
 
@@ -184,27 +175,16 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const summaryMap = new Map(summaryData.map((s) => [s.prompt_id, s]));
 		const firstEvalMap = new Map(firstEvaluatedData.map((f) => [f.prompt_id, f.first_evaluated_at]));
 
-		const allUserTags = new Set<string>();
-		const tagFilter = parseTagFilter(data.tags);
-
-		const promptSummaries = allPrompts.map((p) => {
-			for (const tag of p.tags || []) allUserTags.add(tag);
-			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
-		});
-
-		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));
-		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
+		const filter = parsePromptFilter(data);
+		const promptSummaries = allPrompts
+			.filter((p) => matchesPromptFilter(p, filter))
+			.map((p) => summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id)))
+			.sort(byVisibilityThenName);
 
 		return {
-			prompts: sortedPrompts,
-			totalPrompts: promptSummaries.length,
-			availableTags: [
-				SYSTEM_TAGS.BRANDED,
-				SYSTEM_TAGS.UNBRANDED,
-				...Array.from(allUserTags)
-					.filter((tag) => tag.toLowerCase() !== SYSTEM_TAGS.BRANDED && tag.toLowerCase() !== SYSTEM_TAGS.UNBRANDED)
-					.sort(),
-			],
+			prompts: promptSummaries,
+			totalPrompts: allPrompts.length,
+			availableTags: [...new Set(allPrompts.flatMap((p) => p.tags))].sort(),
 		};
 	});
 
@@ -461,8 +441,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					.set({
 						value: prompt.value,
 						enabled: prompt.enabled,
-						tags: prompt.tags || [],
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+						tags: sanitizeUserTags(prompt.tags ?? []),
 						premiumModels: after.premiumModels,
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
@@ -480,8 +459,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						brandId: data.brandId,
 						value: prompt.value,
 						enabled: prompt.enabled,
-						tags: prompt.tags || [],
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+						tags: sanitizeUserTags(prompt.tags ?? []),
 						premiumModels: after.premiumModels,
 					})),
 				);

@@ -154,7 +154,7 @@ describe("daily visibility aggregate", () => {
 
 	beforeAll(async () => {
 		brandId = await brand();
-		branded = await createPrompt(brandId, { systemTags: ["branded"] });
+		branded = await createPrompt(brandId);
 		unbranded = await createPrompt(brandId);
 		neverRan = await createPrompt(brandId);
 		await createRun(brandId, unbranded, { at: "2026-03-02T09:00:00Z", brandMentioned: true });

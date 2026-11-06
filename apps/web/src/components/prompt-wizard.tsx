@@ -310,7 +310,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						bottom.
 					</p>
 				</div>
-				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} />
+				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} />
 			</div>
 
 			{submitError && (

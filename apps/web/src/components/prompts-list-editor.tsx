@@ -10,6 +10,7 @@ import {
 } from "@workspace/config/plans";
 import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
+import { isPromptType } from "@workspace/lib/prompt-type";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
@@ -24,6 +25,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { BulkTagsMenu, PROMPT_TYPE_TAG_ERROR } from "@/components/bulk-tags-menu";
 import { useOrganizationParams } from "@/hooks/use-route-params";
 
 export interface EditablePrompt {
@@ -32,7 +34,6 @@ export interface EditablePrompt {
 	value: string;
 	enabled: boolean;
 	tags: string[];
-	systemTags: string[];
 	premiumModels: string[];
 	suggested?: boolean;
 }
@@ -48,7 +49,6 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		value: partial?.value ?? "",
 		enabled: partial?.enabled ?? true,
 		tags: partial?.tags ?? [],
-		systemTags: partial?.systemTags ?? [],
 		premiumModels: partial?.premiumModels ?? [],
 		...(partial?.id ? { id: partial.id } : {}),
 		...(partial?.suggested ? { suggested: true } : {}),
@@ -149,17 +149,14 @@ function PremiumModelsField({
  * Every column layout the table can take, spelled out rather than assembled at
  * runtime: Tailwind only generates class names that appear literally in source.
  */
-const GRID_COLS: Record<string, string> = {
-	"system-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_2.75rem]",
-	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
-	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
+const GRID_COLS = {
+	basic: "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
+	premium: "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
 };
 
 interface PromptsListEditorProps {
 	prompts: EditablePrompt[];
 	onChange: (next: EditablePrompt[]) => void;
-	showSystemTags?: boolean;
 	/** `_key`s of rows edited since the last save, flagged with an accent rail
 	 *  so a change is findable in a list of up to {@link MAX_PROMPTS} rows. */
 	changedKeys?: ReadonlySet<string>;
@@ -169,9 +166,10 @@ interface PromptsListEditorProps {
 	pendingRows?: number;
 }
 
-function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void) {
+function useBulkPaste(filledValues: string[], onAdd: (values: string[], tags: string[]) => void) {
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
+	const [bulkTags, setBulkTags] = useState<string[]>([]);
 
 	const bulkPreview = useMemo(
 		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: MAX_PROMPTS }),
@@ -184,6 +182,7 @@ function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void)
 	const closeBulk = () => {
 		setBulkOpen(false);
 		setBulkText("");
+		setBulkTags([]);
 	};
 
 	return {
@@ -191,6 +190,8 @@ function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void)
 		setBulkOpen,
 		bulkText,
 		setBulkText,
+		bulkTags,
+		setBulkTags,
 		bulkPreview,
 		bulkNotice: bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null,
 		bulkError:
@@ -200,7 +201,7 @@ function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void)
 		closeBulk,
 		addBulk: () => {
 			if (bulkPreview.added.length === 0 || overCapacity > 0) return;
-			onAdd(bulkPreview.added);
+			onAdd(bulkPreview.added, bulkTags);
 			closeBulk();
 		},
 	};
@@ -230,14 +231,12 @@ function useRowSelection(prompts: EditablePrompt[]) {
 
 function ColumnHeader({
 	gridCols,
-	showSystemTags,
 	premium,
 	allSelected,
 	onToggleSelectAll,
 	disabled,
 }: {
 	gridCols: string;
-	showSystemTags: boolean;
 	premium?: PremiumAllowance;
 	allSelected: boolean;
 	onToggleSelectAll: () => void;
@@ -262,19 +261,6 @@ function ColumnHeader({
 					</TooltipContent>
 				</Tooltip>
 			</div>
-			{showSystemTags && (
-				<div className="hidden md:flex items-center gap-1">
-					System
-					<Tooltip>
-						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-						<TooltipContent>
-							<p className="max-w-xs">
-								Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.
-							</p>
-						</TooltipContent>
-					</Tooltip>
-				</div>
-			)}
 			<div className="flex items-center gap-1 min-w-0">
 				Tags
 				<Tooltip>
@@ -375,7 +361,6 @@ function PromptRow({
 	update,
 	remove,
 	allTagOptions,
-	showSystemTags,
 	changedKeys,
 	premium,
 	premiumAtCapacity,
@@ -389,7 +374,6 @@ function PromptRow({
 	update: (index: number, patch: Partial<EditablePrompt>) => void;
 	remove: (index: number) => void;
 	allTagOptions: { value: string }[];
-	showSystemTags: boolean;
 	changedKeys?: ReadonlySet<string>;
 	premium?: PremiumAllowance;
 	premiumAtCapacity: boolean;
@@ -397,6 +381,18 @@ function PromptRow({
 	selected: boolean;
 	onToggleSelect: () => void;
 }) {
+	const tagsInput = (
+		<TagsInput
+			value={prompt.tags}
+			onValueChange={(tags) => update(index, { tags })}
+			options={allTagOptions}
+			placeholder="Add tag..."
+			searchPlaceholder="Search or create tag..."
+			normalizeValue={(raw) => raw.toLowerCase().trim()}
+			onValidate={validateTag}
+		/>
+	);
+
 	return (
 		<div
 			className={cn(
@@ -422,14 +418,7 @@ function PromptRow({
 						/>
 					</div>
 				</div>
-				<TagsInput
-					value={prompt.tags}
-					onValueChange={(tags) => update(index, { tags })}
-					options={allTagOptions}
-					placeholder="Add tag..."
-					searchPlaceholder="Search or create tag..."
-					normalizeValue={(raw) => raw.toLowerCase().trim()}
-				/>
+				{tagsInput}
 				{premium && (
 					<PremiumModelsField
 						selected={prompt.premiumModels}
@@ -450,15 +439,7 @@ function PromptRow({
 					onValueChange={(value) => update(index, { value })}
 					onRemove={() => remove(index)}
 				/>
-				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
-				<TagsInput
-					value={prompt.tags}
-					onValueChange={(tags) => update(index, { tags })}
-					options={allTagOptions}
-					placeholder="Add tag..."
-					searchPlaceholder="Search or create tag..."
-					normalizeValue={(raw) => raw.toLowerCase().trim()}
-				/>
+				{tagsInput}
 				{premium && (
 					<div className="flex justify-center pt-1">
 						<PremiumModelsField
@@ -481,7 +462,13 @@ function PromptRow({
 	);
 }
 
-function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
+function BulkPasteBox({
+	bulk,
+	allTagOptions,
+}: {
+	bulk: ReturnType<typeof useBulkPaste>;
+	allTagOptions: { value: string }[];
+}) {
 	return (
 		<div className="space-y-2 rounded-md border bg-muted/40 p-3">
 			<Textarea
@@ -490,6 +477,16 @@ function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
 				placeholder="One prompt per line"
 				rows={6}
 				aria-label="Prompts to add, one per line"
+			/>
+			<TagsInput
+				value={bulk.bulkTags}
+				onValueChange={bulk.setBulkTags}
+				options={allTagOptions}
+				placeholder="Tags for all of these (optional)"
+				searchPlaceholder="Search or create tag..."
+				normalizeValue={(raw) => raw.toLowerCase().trim()}
+				onValidate={validateTag}
+				className="bg-background"
 			/>
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
@@ -515,10 +512,13 @@ function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
 	);
 }
 
+function validateTag(tag: string): true | string {
+	return isPromptType(tag) ? PROMPT_TYPE_TAG_ERROR : true;
+}
+
 export function PromptsListEditor({
 	prompts,
 	onChange,
-	showSystemTags = true,
 	changedKeys,
 	premium,
 	leading,
@@ -545,17 +545,18 @@ export function PromptsListEditor({
 	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
 	const atCapacity = filledValues.length >= MAX_PROMPTS;
 
-	const bulk = useBulkPaste(filledValues, (added) =>
-		onChange([...prompts, ...added.map((value) => newPromptEntry({ value }))]),
+	const bulk = useBulkPaste(filledValues, (added, tags) =>
+		onChange([...prompts, ...added.map((value) => newPromptEntry({ value, tags }))]),
 	);
 
 	const { selectedKeys, liveSelectedCount, allSelected, toggleSelect, toggleSelectAll, clearSelection } =
 		useRowSelection(prompts);
 
-	const applyEnabledToSelection = (enabled: boolean) => {
+	const updateSelection = (patch: (p: EditablePrompt) => Partial<EditablePrompt>) => {
 		if (liveSelectedCount === 0) return;
-		onChange(prompts.map((p) => (selectedKeys.has(p._key) ? { ...p, enabled } : p)));
+		onChange(prompts.map((p) => (selectedKeys.has(p._key) ? { ...p, ...patch(p) } : p)));
 	};
+	const selectedPrompts = prompts.filter((p) => selectedKeys.has(p._key));
 
 	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
 
@@ -564,8 +565,8 @@ export function PromptsListEditor({
 	const premiumUsed = premium ? premium.assignedElsewhere + premiumSlotsUsed(prompts) : 0;
 	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
 
-	// Columns: [select] [text] [system?] [tags] [premium?] [switch].
-	const gridCols = GRID_COLS[`${showSystemTags ? "system" : "plain"}-${premium ? "premium" : "basic"}`];
+	// Columns: [select] [text] [tags] [premium?] [switch].
+	const gridCols = GRID_COLS[premium ? "premium" : "basic"];
 
 	return (
 		<div className="space-y-4">
@@ -579,7 +580,7 @@ export function PromptsListEditor({
 							type="button"
 							size="sm"
 							variant="outline"
-							onClick={() => applyEnabledToSelection(true)}
+							onClick={() => updateSelection(() => ({ enabled: true }))}
 							className="cursor-pointer"
 						>
 							Enable
@@ -588,11 +589,17 @@ export function PromptsListEditor({
 							type="button"
 							size="sm"
 							variant="outline"
-							onClick={() => applyEnabledToSelection(false)}
+							onClick={() => updateSelection(() => ({ enabled: false }))}
 							className="cursor-pointer"
 						>
 							Disable
 						</Button>
+						<BulkTagsMenu
+							selectedTags={selectedPrompts.map((p) => p.tags)}
+							allTags={allTagOptions.map((o) => o.value)}
+							onAdd={(tag) => updateSelection((p) => ({ tags: p.tags.includes(tag) ? p.tags : [...p.tags, tag] }))}
+							onRemove={(tag) => updateSelection((p) => ({ tags: p.tags.filter((t) => t !== tag) }))}
+						/>
 						<Button type="button" size="sm" variant="ghost" onClick={clearSelection} className="cursor-pointer">
 							Clear
 						</Button>
@@ -618,7 +625,6 @@ export function PromptsListEditor({
 
 			<ColumnHeader
 				gridCols={gridCols}
-				showSystemTags={showSystemTags}
 				premium={premium}
 				allSelected={allSelected}
 				onToggleSelectAll={toggleSelectAll}
@@ -647,7 +653,6 @@ export function PromptsListEditor({
 							update={update}
 							remove={remove}
 							allTagOptions={allTagOptions}
-							showSystemTags={showSystemTags}
 							changedKeys={changedKeys}
 							premium={premium}
 							premiumAtCapacity={premiumAtCapacity}
@@ -684,7 +689,7 @@ export function PromptsListEditor({
 				</div>
 			)}
 
-			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} />}
+			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} allTagOptions={allTagOptions} />}
 
 			{atCapacity && (
 				<p className="text-xs text-muted-foreground">

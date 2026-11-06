@@ -49,6 +49,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			type: z.string().optional(),
 			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
@@ -60,6 +61,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 
 		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
 			tags: data.tags,
+			type: data.type,
 			search: data.search,
 		});
 		const promptIds = resolvedPrompts.map((p) => p.id);
@@ -113,6 +115,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			type: z.string().optional(),
 			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
@@ -127,7 +130,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		const result = await getBrandVisibility(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags, search: data.search },
+			{ model: data.model, tags: data.tags, type: data.type, search: data.search },
 		);
 
 		// The single place the dashboard converts the shared ratios to percentages.

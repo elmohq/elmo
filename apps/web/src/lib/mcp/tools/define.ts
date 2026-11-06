@@ -50,6 +50,11 @@ export const brandIdArg = z.string().describe("Brand id, from list_brands.");
 
 export const promptIdArg = z.string().describe("Prompt id, from list_prompts.");
 
+export const promptTypeArg = z
+	.enum(["branded", "unbranded"])
+	.optional()
+	.describe("Restrict to prompts that name the brand (branded) or don't (unbranded).");
+
 export const modelArg = z.string().optional().describe("Restrict to one model, by id from list_models.");
 
 /** Half-open `[start, end)`. A timestamp carries its own offset, so there is no
@@ -65,6 +70,7 @@ export const windowArgs = {
 		.describe("End of the window, an ISO 8601 timestamp. Exclusive, and aligned down to the quarter hour."),
 	model: modelArg,
 	tags: z.string().optional().describe("Comma-separated prompt tags; only prompts carrying one are counted."),
+	type: promptTypeArg,
 };
 
 export type WindowArgs = z.output<z.ZodObject<typeof windowArgs>>;
@@ -74,5 +80,5 @@ export function windowFor(args: WindowArgs): AnalyticsWindow {
 }
 
 export function filtersFrom(args: WindowArgs): AnalyticsFilters {
-	return { model: args.model, tags: args.tags };
+	return { model: args.model, tags: args.tags, type: args.type };
 }

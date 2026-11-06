@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { PromptType } from "@workspace/lib/prompt-type";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
 import { getFilteredVisibilityFn } from "@/server/visibility";
@@ -7,6 +8,7 @@ export interface FilteredVisibilityFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
 	tags?: string[];
+	type?: PromptType;
 	search?: string;
 }
 
@@ -20,6 +22,7 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 			filters?.lookback,
 			filters?.model,
 			filters?.tags?.join(","),
+			filters?.type,
 			filters?.search,
 		],
 		queryFn: () =>
@@ -29,6 +32,7 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 					lookback: filters?.lookback || "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					type: filters?.type,
 					search: filters?.search,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

@@ -40,7 +40,7 @@ test.describe("Responses Page", () => {
     await page.goto(RESPONSES_URL);
     await expect(answer(page, /Several platforms offer AI visibility tracking/)).toBeVisible({ timeout: 30_000 });
 
-    await page.getByRole("button", { name: "Prompts" }).click();
+    await page.getByRole("button", { name: "Prompts", exact: true }).click();
     await page.getByPlaceholder("Search prompts...").fill("optimize");
     await page.getByRole("button", { name: "How do I optimize content for LLM citations?" }).click();
 

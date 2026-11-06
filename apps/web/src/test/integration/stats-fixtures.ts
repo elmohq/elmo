@@ -58,17 +58,13 @@ export async function deleteBrand(brandId: string) {
 	await db.delete(organization).where(eq(organization.id, brandId));
 }
 
-export async function createPrompt(
-	brandId: string,
-	opts: { value?: string; tags?: string[]; systemTags?: string[]; enabled?: boolean } = {},
-) {
+export async function createPrompt(brandId: string, opts: { value?: string; tags?: string[]; enabled?: boolean } = {}) {
 	const [row] = await db
 		.insert(prompts)
 		.values({
 			brandId,
 			value: opts.value ?? `prompt ${randomUUID()}`,
 			tags: opts.tags ?? [],
-			systemTags: opts.systemTags ?? ["unbranded"],
 			enabled: opts.enabled ?? true,
 		})
 		.returning({ id: prompts.id });

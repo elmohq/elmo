@@ -1,4 +1,5 @@
 import { useSearch } from "@tanstack/react-router";
+import { isPromptType, PROMPT_TYPES, type PromptType } from "@workspace/lib/prompt-type";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
@@ -14,7 +15,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
+import { ChevronDown, Clock, Search, Shapes, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
@@ -150,6 +151,54 @@ function LookbackDropdown() {
 				/>
 			}
 		/>
+	);
+}
+
+const ALL_TYPES_VALUE = "all";
+
+const PROMPT_TYPE_LABELS: Record<PromptType | typeof ALL_TYPES_VALUE, string> = {
+	all: "All Prompts",
+	branded: "Branded",
+	unbranded: "Unbranded",
+};
+
+function PromptTypeDropdown() {
+	const urlType = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.type });
+	const setFilters = useFilterNavigate();
+	const selected = isPromptType(urlType) ? urlType : ALL_TYPES_VALUE;
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				render={
+					<FilterTriggerButton
+						icon={<Shapes className="size-3.5" />}
+						label={PROMPT_TYPE_LABELS[selected]}
+						active={selected !== ALL_TYPES_VALUE}
+					/>
+				}
+			/>
+			<DropdownMenuContent align="start" className="w-64">
+				<DropdownMenuRadioGroup
+					value={selected}
+					onValueChange={(next) => setFilters({ type: isPromptType(next) ? next : undefined })}
+				>
+					<DropdownMenuRadioItem value={ALL_TYPES_VALUE} className="cursor-pointer">
+						{PROMPT_TYPE_LABELS.all}
+					</DropdownMenuRadioItem>
+					{PROMPT_TYPES.map((type) => (
+						<DropdownMenuRadioItem key={type} value={type} className="cursor-pointer">
+							<span className="flex flex-col">
+								<span>{PROMPT_TYPE_LABELS[type]}</span>
+								<span className="text-xs text-muted-foreground">
+									{type === "branded" ? "Prompts that name your brand" : "Prompts that don't name your brand"}
+								</span>
+							</span>
+						</DropdownMenuRadioItem>
+					))}
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 
@@ -300,8 +349,9 @@ function SearchInput({
 // The count comes in as a prop so the prompts-summary query has a single owner.
 function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
 	const tags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
+	const type = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.type });
 	const q = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
-	const active = Boolean(tags) || Boolean(q);
+	const active = Boolean(tags) || Boolean(type) || Boolean(q);
 	if (!active || count === undefined) return null;
 	const showTotal = total !== undefined && total !== count;
 	return (
@@ -342,6 +392,7 @@ export function FilterBar({
 		<div className="flex flex-wrap items-center justify-between gap-2">
 			<div className="flex flex-wrap items-center gap-1.5">
 				{showModelSelector && <ModelDropdown trackedTargets={trackedTargets} />}
+				<PromptTypeDropdown />
 				<TagsDropdown availableTags={availableTags} />
 				<LookbackDropdown />
 				{extraControls}

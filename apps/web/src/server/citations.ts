@@ -19,9 +19,9 @@ import {
 } from "@workspace/lib/citations/page-classification";
 import type { CitationUrl } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { and, eq } from "drizzle-orm";
+import { brands, competitors } from "@workspace/lib/db/schema";
+import { matchesPromptFilter, parsePromptFilter } from "@workspace/lib/prompt-type";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
@@ -54,7 +54,7 @@ import {
 } from "@/lib/rollup-read";
 import { isRedditDomain, type Subreddit, summarizeSubreddits } from "@/lib/subreddits";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { parseTagFilter } from "@/server/prompt-resolution";
+import { loadTypedPrompts } from "@/server/prompt-resolution";
 
 type WhatsChangedUrl = { url: string; domain: string; count: number; promptCount: number; category: CitationCategory };
 
@@ -94,33 +94,6 @@ const MIN_COUNT_FOR_WHATS_CHANGED = 2;
 const WHATS_CHANGED_LIMIT = 10;
 
 const MAX_LIST_PAGE_SIZE = 50;
-
-/**
- * Prompt ids matching the tag filter. Branded/unbranded are derived rather than
- * stored, so they resolve through getEffectiveBrandedStatus; every other tag
- * matches against the prompt's own tags or its system tags.
- */
-function promptIdsMatchingTags(
-	allPrompts: { id: string; tags: string[] | null; systemTags: string[] | null }[],
-	tagFilter: string[],
-): string[] {
-	const wantsBranded = tagFilter.includes(SYSTEM_TAGS.BRANDED);
-	const wantsUnbranded = tagFilter.includes(SYSTEM_TAGS.UNBRANDED);
-	const userTagFilter = tagFilter.filter((tag) => tag !== SYSTEM_TAGS.BRANDED && tag !== SYSTEM_TAGS.UNBRANDED);
-
-	return allPrompts
-		.filter((prompt) => {
-			const systemTags = prompt.systemTags || [];
-			const userTags = prompt.tags || [];
-			if (wantsBranded || wantsUnbranded) {
-				const { isBranded } = getEffectiveBrandedStatus(systemTags, userTags);
-				if (isBranded ? wantsBranded : wantsUnbranded) return true;
-			}
-			const allTags = [...systemTags, ...userTags].map((tag) => tag.toLowerCase());
-			return userTagFilter.some((tag) => allTags.includes(tag));
-		})
-		.map((prompt) => prompt.id);
-}
 
 /**
  * Per-day percentage trends over the window, smoothed per prompt so a
@@ -257,6 +230,7 @@ const citationFiltersSchema = z.object({
 	brandId: z.string(),
 	lookback: lookbackSchema.default("1w"),
 	tags: z.string().optional(),
+	type: z.string().optional(),
 	model: z.string().optional(),
 });
 
@@ -271,10 +245,7 @@ async function resolveCitationScope(data: CitationFilters) {
 	const [brandResult, competitorsList, allPrompts] = await Promise.all([
 		db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
 		db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
-		db
-			.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
-			.from(prompts)
-			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+		loadTypedPrompts(data.brandId),
 	]);
 	const brand = brandResult[0];
 
@@ -284,8 +255,8 @@ async function resolveCitationScope(data: CitationFilters) {
 	const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
 	const owned: OwnedDomains = { brandDomains: [...brandDomains], competitorDomains: [...competitorDomains] };
 
-	const tagFilter = parseTagFilter(data.tags);
-	const promptIds = tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
+	const filter = parsePromptFilter(data);
+	const promptIds = allPrompts.filter((p) => matchesPromptFilter(p, filter)).map((p) => p.id);
 	const scope = {
 		brandId: data.brandId,
 		from: window.fromDateStr,
@@ -342,14 +313,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const { brand, competitorsList, allPrompts, brandDomains, competitorDomains, owned, scope, previousScope } =
 			resolved;
 
-		const userTags = new Set(allPrompts.flatMap((prompt) => prompt.tags || []));
-		const availableTags = [
-			SYSTEM_TAGS.BRANDED,
-			SYSTEM_TAGS.UNBRANDED,
-			...[...userTags]
-				.filter((tag) => tag.toLowerCase() !== SYSTEM_TAGS.BRANDED && tag.toLowerCase() !== SYSTEM_TAGS.UNBRANDED)
-				.sort(),
-		];
+		const availableTags = [...new Set(allPrompts.flatMap((prompt) => prompt.tags))].sort();
 		const competitorSummary = competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains }));
 		if (scope.promptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, resolved.days);
 

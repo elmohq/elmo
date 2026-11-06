@@ -4,9 +4,11 @@
  * Production-quality printable report (US Letter 8.5 x 11 in).
  * Uses Share of Voice as the primary metric with rich competitive analysis.
  */
+
 import { createFileRoute, notFound, useRouteContext } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import type { ClientConfig } from "@workspace/config/types";
+import { mentionsBrand } from "@workspace/lib/prompt-type";
 import {
 	analyzeByEngine,
 	analyzeCompetitorFrequency,
@@ -23,7 +25,6 @@ import {
 	type ReportPromptRun,
 	selectRepresentativePrompts,
 } from "@workspace/lib/report-metrics";
-import { isPromptBranded } from "@workspace/lib/tag-utils";
 import { BarChart3, Rocket, Target } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { PromptChartPrint } from "@/components/prompt-chart-print";
@@ -256,7 +257,9 @@ function buildReportModel(report: ReportRecord) {
 
 	const selectedPrompts = selectRepresentativePrompts(promptSoVs, (id: string) => {
 		const p = promptMap.get(id);
-		return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite, report.brandAliases) : false;
+		return p
+			? mentionsBrand(p.value, { name: report.brandName, website: report.brandWebsite, aliases: report.brandAliases })
+			: false;
 	});
 
 	const contentGaps = findContentGaps(fullRuns, 5);

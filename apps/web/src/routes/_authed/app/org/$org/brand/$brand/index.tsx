@@ -306,7 +306,7 @@ function showsOnboarding(isLoading: boolean, brand: { trackingState: BrandTracki
 function DashboardPage() {
 	const brandId = useBrandId();
 	const { data: brand, isLoading: isLoadingBrand } = useBrand();
-	const { model, lookback, tags } = useListFilters();
+	const { model, lookback, tags, type } = useListFilters();
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
 	const {
@@ -317,9 +317,10 @@ function DashboardPage() {
 		lookback,
 		model: modelParam,
 		tags,
+		type,
 	});
-	// A tag filter narrows the count, which would understate the brand's prompts.
-	useReportedPromptCount(tags.length === 0 ? summary?.totalPrompts : undefined);
+	// A tag or type filter narrows the count, which would understate the brand's prompts.
+	useReportedPromptCount(tags.length === 0 && !type ? summary?.totalPrompts : undefined);
 	const context = useRouteContext({ from: BRAND_ROUTE_ID }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 	// The footer reports what this brand actually runs, resolved server-side.
@@ -331,7 +332,7 @@ function DashboardPage() {
 	}
 
 	// No runs yet (and no filter narrowing them away): nothing to plot, so point at what to do next.
-	if (!loading && summary?.totalRuns === 0 && !modelParam && tags.length === 0) {
+	if (!loading && summary?.totalRuns === 0 && !modelParam && tags.length === 0 && !type) {
 		return (
 			<AwaitingFirstEvaluation totalPrompts={summary.totalPrompts} hasPrompts={(brand?.prompts?.length ?? 0) > 0} />
 		);

@@ -43,6 +43,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			type: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
 	)
@@ -51,8 +52,8 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const window = { from: fromDateStr, to: toDateStr, timezone };
-		const filters = { model: data.model, tags: data.tags };
-		const prompts = resolveFilteredPrompts(data.brandId, { tags: data.tags });
+		const filters = { model: data.model, tags: data.tags, type: data.type };
+		const prompts = resolveFilteredPrompts(data.brandId, { tags: data.tags, type: data.type });
 		const [landscape, promptCount, totals] = await Promise.all([
 			getCompetitiveLandscape(data.brandId, window, filters),
 			prompts.then((p) => p.length),

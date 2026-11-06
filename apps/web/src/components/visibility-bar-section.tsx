@@ -6,7 +6,7 @@ import { useListFilters } from "@/hooks/use-list-filters";
 
 /**
  * Self-contained visibility bar. Subscribes directly to the filter URL
- * keys it needs (lookback, model, tags, search) and fetches
+ * keys it needs (lookback, model, tags, type, search) and fetches
  * `useFilteredVisibility` itself, so it's a sibling of the chart section
  * rather than something the parent has to wire through. The tag + search
  * filters are resolved to prompt IDs server-side, so we pass the criteria
@@ -17,7 +17,7 @@ import { useListFilters } from "@/hooks/use-list-filters";
  * real bar comes in.
  */
 export function VisibilityBarSection({ brandId }: { brandId: string | undefined }) {
-	const { lookback, model, tags, search } = useListFilters();
+	const { lookback, model, tags, type, search } = useListFilters();
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
 	const {
@@ -27,6 +27,7 @@ export function VisibilityBarSection({ brandId }: { brandId: string | undefined 
 	} = useFilteredVisibility(brandId, {
 		lookback,
 		tags: tags.length > 0 ? tags : undefined,
+		type,
 		search: search || undefined,
 		model: modelParam,
 	});

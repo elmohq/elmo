@@ -47,6 +47,7 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			type: z.string().optional(),
 			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
@@ -58,7 +59,7 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 		const result = await getBrandShareOfVoice(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags, search: data.search },
+			{ model: data.model, tags: data.tags, type: data.type, search: data.search },
 		);
 
 		return {
@@ -79,6 +80,7 @@ export const getCompetitiveLandscapeFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			type: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
 	)
@@ -88,7 +90,7 @@ export const getCompetitiveLandscapeFn = createServerFn({ method: "GET" })
 		return getCompetitiveLandscape(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags },
+			{ model: data.model, tags: data.tags, type: data.type },
 		);
 	});
 
@@ -99,6 +101,7 @@ export const getBrandSentimentFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			type: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
 	)
@@ -108,6 +111,6 @@ export const getBrandSentimentFn = createServerFn({ method: "GET" })
 		return getBrandSentiment(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags },
+			{ model: data.model, tags: data.tags, type: data.type },
 		);
 	});

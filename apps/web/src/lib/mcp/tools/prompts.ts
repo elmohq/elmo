@@ -11,10 +11,11 @@ import {
 	listPrompts,
 	MAX_PROMPT_BATCH,
 	promptUpdateFields,
+	toPromptSummary,
 	updatePrompt,
 } from "@/server/prompts-core";
 import { listBrandTags } from "@/server/tags-core";
-import { brandIdArg, defineTool, promptIdArg } from "./define";
+import { brandIdArg, defineTool, promptIdArg, promptTypeArg } from "./define";
 
 export const listPromptsTool = defineTool({
 	name: "list_prompts",
@@ -27,6 +28,7 @@ export const listPromptsTool = defineTool({
 		brandId: brandIdArg.optional().describe("Restrict to one brand. Omit for every brand in reach."),
 		enabled: z.boolean().optional().describe("Restrict to prompts that are or aren't being sampled."),
 		tags: z.string().optional().describe("Comma-separated tags; a prompt carrying any of them matches."),
+		type: promptTypeArg,
 		q: z.string().optional().describe("Substring match on the prompt text."),
 		page: z.number().int().min(1).optional().describe("1-based page number. Defaults to 1."),
 		limit: z.number().int().min(1).max(1000).optional().describe("Prompts per page. Defaults to 100."),
@@ -40,6 +42,7 @@ export const listPromptsTool = defineTool({
 			brandId: args.brandId,
 			enabled: args.enabled,
 			tags: (args.tags ?? "").split(","),
+			type: args.type,
 			q: args.q,
 			limit,
 			offset: (page - 1) * limit,
@@ -52,7 +55,7 @@ export const listPromptTags = defineTool({
 	name: "list_prompt_tags",
 	title: "List prompt tags",
 	description:
-		"The tags in use on a brand's prompts, with how many carry each. Tags are derived: one exists exactly as long as some prompt carries it.",
+		"The tags in use on a brand's prompts, with how many carry each. Tags are derived: one exists exactly as long as some prompt carries it. Branded vs unbranded is not a tag; filter on `type` for that.",
 	scopes: ["read"],
 	readOnly: true,
 	input: { brandId: brandIdArg },
@@ -72,7 +75,8 @@ export const createPromptsTool = defineTool({
 	input: { brandId: brandIdArg, prompts: bulkPromptInputSchema.shape.prompts },
 	run: async ({ auth }, args) => {
 		const brand = await requireBrandInScope(auth, args.brandId, "body");
-		return { data: await createPrompts(brand, { prompts: args.prompts }) };
+		const created = await createPrompts(brand, { prompts: args.prompts });
+		return { data: created.map((prompt) => toPromptSummary(prompt, brand)) };
 	},
 });
 
@@ -94,6 +98,6 @@ export const updatePromptTool = defineTool({
 	run: async ({ auth }, args) => {
 		const { brand } = await requirePromptInScope(auth, args.promptId);
 		const { promptId, ...changes } = args;
-		return updatePrompt(brand, promptId, changes);
+		return toPromptSummary(await updatePrompt(brand, promptId, changes), brand);
 	},
 });

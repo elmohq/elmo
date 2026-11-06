@@ -1,51 +1,27 @@
 /**
  * There is no tag table: a tag exists as long as some prompt carries it, so
- * changing one is a prompt edit. `branded` and `unbranded` are computed from
- * the prompt text and always listed; applying one as a user tag overrides that.
+ * changing one is a prompt edit. Branded vs unbranded is the prompt type, not
+ * a tag, and never appears here.
  */
 import { db } from "@workspace/lib/db/db";
-import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { isSystemTag, normalizeTag } from "@workspace/lib/tag-utils";
+import { prompts } from "@workspace/lib/db/schema";
+import { normalizeTag } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 
 export interface Tag {
 	name: string;
 	promptCount: number;
-	system: boolean;
-}
-
-async function brandPrompts(brandId: string) {
-	return db
-		.select({ id: prompts.id, tags: prompts.tags, systemTags: prompts.systemTags })
-		.from(prompts)
-		.where(eq(prompts.brandId, brandId));
 }
 
 export async function listBrandTags(brandId: string): Promise<Tag[]> {
-	const rows = await brandPrompts(brandId);
+	const rows = await db.select({ tags: prompts.tags }).from(prompts).where(eq(prompts.brandId, brandId));
 
-	const userCounts = new Map<string, number>();
-	const systemCounts = new Map<string, number>();
+	const counts = new Map<string, number>();
 	for (const row of rows) {
-		for (const tag of new Set((row.tags ?? []).map(normalizeTag))) {
-			if (isSystemTag(tag)) systemCounts.set(tag, (systemCounts.get(tag) ?? 0) + 1);
-			else userCounts.set(tag, (userCounts.get(tag) ?? 0) + 1);
-		}
-		for (const tag of new Set((row.systemTags ?? []).map(normalizeTag))) {
-			systemCounts.set(tag, (systemCounts.get(tag) ?? 0) + 1);
-		}
+		for (const tag of new Set(row.tags.map(normalizeTag))) counts.set(tag, (counts.get(tag) ?? 0) + 1);
 	}
 
-	// The order the dashboard's filter shows, so a client building the same UI
-	// needs no sort.
-	const system = Object.values(SYSTEM_TAGS).map((name) => ({
-		name,
-		promptCount: systemCounts.get(name) ?? 0,
-		system: true,
-	}));
-	const user = [...userCounts.entries()]
+	return [...counts.entries()]
 		.sort(([a], [b]) => a.localeCompare(b))
-		.map(([name, promptCount]) => ({ name, promptCount, system: false }));
-
-	return [...system, ...user];
+		.map(([name, promptCount]) => ({ name, promptCount }));
 }
