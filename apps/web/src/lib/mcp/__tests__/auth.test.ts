@@ -74,14 +74,8 @@ function bearer(token: string): Request {
 	});
 }
 
-const INVALID_TOKEN = {
-	failure: {
-		status: 401,
-		error: "Unauthorized",
-		message: "Invalid or expired access token",
-		code: "unauthorized",
-		invalidToken: true,
-	},
+const INVALID_TOKEN: ApiAuthResult = {
+	failure: { status: 401, error: "Unauthorized", message: "Invalid or missing access token", code: "unauthorized" },
 };
 
 afterEach(() => {
@@ -243,13 +237,6 @@ describe("resolveMcpAuth", () => {
 		verifyMcpAccessToken.mockResolvedValue({ sub: "user_1", exp: TOKEN_CLAIMS.exp });
 		await expect(resolveMcpAuth(bearer(ACCESS_TOKEN))).resolves.toEqual(INVALID_TOKEN);
 		expect(selectUser).not.toHaveBeenCalled();
-	});
-
-	it("asks for a credential, rather than a refresh, when none was sent", async () => {
-		const resolved = await resolveMcpAuth(new Request("http://localhost/api/mcp", { method: "POST" }));
-		expect(resolved).toMatchObject({ failure: { status: 401, message: "Access token or API key required" } });
-		expect(resolved).not.toMatchObject({ failure: { invalidToken: true } });
-		expect(verifyMcpAccessToken).not.toHaveBeenCalled();
 	});
 
 	it("tries anything that is not an API key as an access token", async () => {

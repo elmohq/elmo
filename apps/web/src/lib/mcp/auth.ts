@@ -12,10 +12,7 @@ import {
 	type UserAuth,
 } from "@/lib/auth/api-auth";
 
-/** `invalidToken` marks an access token the client should refresh rather than
- * sign in again for. */
-export type McpAuthFailure = ApiAuthFailure & { invalidToken?: true };
-export type McpAuthResult = { auth: Principal } | { failure: McpAuthFailure };
+export type McpAuthResult = { auth: Principal } | { failure: ApiAuthFailure };
 
 /** Named in the `401` challenge so an unconfigured client can find the
  * authorization server. */
@@ -68,24 +65,15 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 	};
 }
 
-const MISSING_CREDENTIAL: McpAuthFailure = {
+const INVALID_TOKEN: ApiAuthFailure = {
 	status: 401,
 	error: "Unauthorized",
-	message: "Access token or API key required",
+	message: "Invalid or missing access token",
 	code: "unauthorized",
-};
-
-const INVALID_TOKEN: McpAuthFailure = {
-	status: 401,
-	error: "Unauthorized",
-	message: "Invalid or expired access token",
-	code: "unauthorized",
-	invalidToken: true,
 };
 
 export async function resolveMcpAuth(request: Request): Promise<McpAuthResult> {
 	if (presentsApiKey(request)) return resolveApiAuth(request);
-	if (!request.headers.get("authorization")?.trim()) return { failure: MISSING_CREDENTIAL };
 	const asUser = await resolveOAuthPrincipal(request);
 	return asUser ? { auth: asUser } : { failure: INVALID_TOKEN };
 }
