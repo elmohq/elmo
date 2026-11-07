@@ -25,7 +25,7 @@ const OLOSTEP_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemi
 
 const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview"] as const;
 
-const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"] as const;
+const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-copilot"] as const;
 
 export const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 

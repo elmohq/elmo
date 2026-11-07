@@ -107,7 +107,7 @@ standard platform** (the run policy uses the first match per model), plus a grou
 model sold in the premium tier:
 
 ```
-chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online,perplexity:openrouter:perplexity/sonar:online,bing-copilot:dataforseo:online
+chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online,perplexity:openrouter:perplexity/sonar:online,bing-copilot:cloro:online
 ```
 
 Platforms are offered to customers only when they appear in both the plan menu
@@ -132,7 +132,7 @@ whatever the live product serves its users that day.
 | Claude | Premium | `claude-haiku-5-5` with web search, via the Anthropic API |
 | Grok | Premium | `x-ai/grok-4.5` with web search, via OpenRouter |
 | Kimi | Pick (API) | `moonshotai/kimi-k2.5`, via OpenRouter |
-| Bing Copilot | Pick (scraped) | Copilot summary on Bing's live results page, via DataForSEO |
+| Bing Copilot | Pick (scraped) | Live bing.com/copilotsearch, via Cloro's Bing AI Mode |
 | Perplexity | Premium | `perplexity/sonar` with Perplexity's own search, via OpenRouter |
 
 API picks are priced against a design point of roughly **$0.004 per run**, which is why Kimi runs
@@ -181,8 +181,8 @@ paid pool, it prices the same way grounded Claude does.
 
 Perplexity is also premium only. Its consumer product sits behind a login, so no scraper reaches it.
 Microsoft Copilot went behind a login too, so Cloud sells Bing Copilot in its place: the Copilot Search
-answer Bing still shows signed-out visitors. DataForSEO reads it off Bing's results page for about
-$0.002 a run, in line with what a Copilot scrape cost. Every Sonar call searches, so there is no ungrounded
+answer Bing still shows signed-out visitors. Cloro's Bing AI Mode costs 4 credits a run, one less than
+a Copilot scrape did. Every Sonar call searches, so there is no ungrounded
 variant to sell as a pick. Base Sonar is the model Perplexity trained for its default search mode,
 so it is the closest an API gets to what most visitors to perplexity.ai see; Sonar Pro does a
 single-step search that matches neither that nor the web app's multi-step Pro Search.

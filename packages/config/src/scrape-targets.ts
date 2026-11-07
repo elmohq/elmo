@@ -21,7 +21,8 @@ export interface ModelConfig {
  * Search still answers signed-out visitors.
  */
 const LOGIN_WALLED_MODELS: Record<string, string> = {
-	copilot: "track Bing Copilot instead, with bing-copilot:searchapi:online or bing-copilot:dataforseo:online",
+	copilot:
+		"track Bing Copilot instead, with bing-copilot:cloro:online, bing-copilot:searchapi:online, or bing-copilot:dataforseo:online",
 	perplexity:
 		"track Perplexity through its Sonar model instead, with perplexity:openrouter:perplexity/sonar:online or perplexity:dataforseo:online",
 };
@@ -106,6 +107,7 @@ export const STATUS_TARGETS = [
 	"google-ai-overview:oxylabs:online",
 	"chatgpt:cloro:online",
 	"gemini:cloro:online",
+	"bing-copilot:cloro:online",
 	"google-ai-mode:cloro:online",
 	"google-ai-overview:cloro:online",
 	"google-ai-mode:dataforseo:online",

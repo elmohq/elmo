@@ -246,7 +246,7 @@ describe("provider validateTarget", () => {
 
 	describe("cloro", () => {
 		it("accepts all supported surfaces with :online", () => {
-			for (const model of ["chatgpt", "gemini", "google-ai-mode", "google-ai-overview"]) {
+			for (const model of ["chatgpt", "gemini", "google-ai-mode", "google-ai-overview", "bing-copilot"]) {
 				expect(cloro.validateTarget!(config(model, "cloro", true))).toBeNull();
 			}
 		});

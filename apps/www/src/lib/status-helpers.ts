@@ -110,7 +110,7 @@ const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "cop
 // @workspace/lib. Categories absent here (direct-api, openrouter) reach any
 // model that exposes an inference endpoint.
 const PROVIDER_MODELS: Record<string, Set<string>> = {
-	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"]),
+	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-copilot"]),
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview"]),
 	searchapi: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-copilot"]),

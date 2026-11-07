@@ -24,6 +24,7 @@ const FANOUT_SUPPORT: Record<string, FanoutSupport> = {
 
 	"claude:anthropic-api": SUPPORTED,
 
+	"bing-copilot:cloro": NEVER,
 	"bing-copilot:searchapi": NEVER,
 	"bing-copilot:dataforseo": NEVER,
 

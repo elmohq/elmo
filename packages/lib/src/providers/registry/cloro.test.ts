@@ -211,6 +211,7 @@ describe("cloro provider", () => {
 		["chatgpt", "CHATGPT", { markdown: true, searchQueries: true }],
 		["gemini", "GEMINI", { markdown: true }],
 		["google-ai-mode", "AIMODE", { markdown: true }],
+		["bing-copilot", "BING_AIMODE", { markdown: true }],
 		// The overview is one section of a SERP response, so the flag rides inside
 		// the block that asks for it rather than sitting at the top level.
 		["google-ai-overview", "GOOGLE", { aioverview: { markdown: true } }],

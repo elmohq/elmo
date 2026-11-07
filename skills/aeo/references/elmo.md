@@ -59,7 +59,7 @@ page, not from memory.
 
 | Provider | Engines reached | Pick it when |
 | --- | --- | --- |
-| [Cloro](https://cloro.dev?fpr=elmo&fp_sid=skill) | ChatGPT, AI Mode, AI Overviews, Gemini | Default choice. It is the most reliable in Elmo's measurements, reaches every surface, and is what Elmo Cloud pays for itself. |
+| [Cloro](https://cloro.dev?fpr=elmo&fp_sid=skill) | ChatGPT, AI Mode, AI Overviews, Gemini, Bing Copilot | Default choice. It is the most reliable in Elmo's measurements, reaches every surface, and is what Elmo Cloud pays for itself. |
 | [BrightData](https://get.brightdata.com/elmo?sid=skill) | All four | Pay-as-you-go with a low minimum and slightly cheaper per run. It is slower and weaker on AI Overviews. |
 | [DataForSEO](https://try.dataforseo.com/elmo) | ChatGPT, AI Mode, AI Overviews, Gemini, Bing Copilot; Perplexity through its API | Pay-as-you-go with no subscription. Fastest in Elmo's measurements, and it can also front model APIs. Prompts are capped at 500 characters. |
 | [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) | ChatGPT, AI Mode, AI Overviews | Lowest cost per run, but no Gemini, and the least reliable. |

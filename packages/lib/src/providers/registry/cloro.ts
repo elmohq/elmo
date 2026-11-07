@@ -25,6 +25,8 @@ const CLORO_TASKS: Record<string, CloroTaskConfig> = {
 	},
 	gemini: { taskType: "GEMINI", field: "prompt", include: { markdown: true } },
 	"google-ai-mode": { taskType: "AIMODE", field: "prompt", include: { markdown: true } },
+	// Cloro calls Bing's Copilot Search (bing.com/copilotsearch) "Bing AI Mode".
+	"bing-copilot": { taskType: "BING_AIMODE", field: "prompt", include: { markdown: true } },
 	"google-ai-overview": { taskType: "GOOGLE", field: "query", include: { aioverview: { markdown: true } } },
 };
 

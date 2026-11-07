@@ -27,13 +27,13 @@ Which surfaces each one reaches:
 | Google AI Mode | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Google AI Overview | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Gemini | ✅ | ✅ | – | ✅ | ✅ | ✅ |
-| Bing Copilot | – | – | – | ✅ | – | ✅ |
+| Bing Copilot | ✅ | – | – | ✅ | – | ✅ |
 | Perplexity | – | – | – | – | – | API-only |
 
 <Callout>
 Perplexity and Microsoft Copilot (copilot.microsoft.com) now require a sign-in, so no scraper can reach either app and Elmo no longer scrapes them. Elmo skips any Perplexity or Copilot scrape target left in `SCRAPE_TARGETS` and logs a warning at startup.
 
-- **Copilot:** track `bing-copilot` instead, the Copilot Search answer Bing still shows signed-out visitors. Use `bing-copilot:searchapi:online` (the same Bing Copilot Search answer SearchApi's `copilot` target already returned) or `bing-copilot:dataforseo:online` (the Copilot summary on Bing's results page). Both cost about the same per run as a Copilot scrape did.
+- **Copilot:** track `bing-copilot` instead, the Copilot Search answer Bing still shows signed-out visitors. Use `bing-copilot:cloro:online` (Cloro's Bing AI Mode), `bing-copilot:searchapi:online` (the same Bing Copilot Search answer SearchApi's `copilot` target already returned), or `bing-copilot:dataforseo:online` (the Copilot summary on Bing's results page instead of the Copilot Search page). Each costs about the same per run as a Copilot scrape did. Bing Copilot cites different sources from the Copilot app, so treat it as a new baseline rather than a continuation of your Copilot history.
 - **Perplexity:** track it through its Sonar model instead, on [OpenRouter](#direct-model-apis) or [DataForSEO](#dataforseo).
 </Callout>
 
@@ -49,7 +49,7 @@ The Query Fan-Out page shows the web searches an engine ran while answering a pr
 | Google AI Mode | – | – | – | – | – | – |
 | Google AI Overview | – | – | – | – | – | – |
 | Gemini | – | – | Not offered | – | – | – (✅ with a pinned model) |
-| Bing Copilot | Not offered | Not offered | Not offered | – | Not offered | – |
+| Bing Copilot | – | Not offered | Not offered | – | Not offered | – |
 | Perplexity | Not offered | Not offered | Not offered | Not offered | Not offered | – |
 
 | API | Query fan-out |
@@ -84,11 +84,12 @@ chatgpt:cloro:online
 gemini:cloro:online
 google-ai-mode:cloro:online
 google-ai-overview:cloro:online
+bing-copilot:cloro:online
 ```
 
 [Cloro](https://cloro.dev?fpr=elmo&fp_sid=docs) authenticates with a single bearer API key. Elmo submits each request through Cloro's [asynchronous task API](https://cloro.dev/docs/) and polls until the task completes, which also lets Cloro meter concurrency for us instead of holding a synchronous connection open. Every Cloro surface is the live web-search UI, so the `:online` suffix is required.
 
-Cloro bills [credits from a monthly plan](https://cloro.dev/pricing/), not per request, and each surface costs a different number: Gemini and Google AI Mode 4, Google AI Overview 5, ChatGPT 7. The asynchronous API Elmo uses carries no surcharge — the synchronous endpoints add 2 credits per request — and failed requests aren't charged.
+Cloro bills [credits from a monthly plan](https://cloro.dev/pricing/), not per request, and each surface costs a different number: Gemini, Google AI Mode, and Bing Copilot 4, Google AI Overview 5, ChatGPT 7. The asynchronous API Elmo uses carries no surcharge — the synchronous endpoints add 2 credits per request — and failed requests aren't charged.
 
 ### BrightData
 
