@@ -12,13 +12,13 @@ vi.mock("@/lib/auth/server", () => ({ auth: { api: { verifyApiKey } } }));
 
 const API_KEY = "test-api-key";
 
-function makeRequest(options?: { method?: string; body?: string; apiKey?: string | null }) {
+function makeRequest(options?: { method?: string; body?: string; apiKey?: string | null; search?: string }) {
 	const headers = new Headers();
 	const apiKey = options?.apiKey === undefined ? API_KEY : options.apiKey;
 	if (apiKey !== null) {
 		headers.set("Authorization", `Bearer ${apiKey}`);
 	}
-	return new Request("http://localhost/api/v1/test", {
+	return new Request(`http://localhost/api/v1/test${options?.search ?? ""}`, {
 		method: options?.method ?? "GET",
 		headers,
 		body: options?.body,
@@ -110,6 +110,29 @@ describe("createApiHandler", () => {
 		const response = await handler({ request: makeRequest(), params: { promptId } });
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ received: promptId });
+	});
+
+	it("returns 400 without running the handler when the query fails validation", async () => {
+		const handle = vi.fn();
+		const handler = createApiHandler({
+			query: z.object({ page: z.coerce.number().int().min(1) }),
+			handle,
+		});
+		const response = await handler({ request: makeRequest({ search: "?page=0" }), params: {} });
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(body.code).toBe("validation_error");
+		expect(body.message).toContain("page");
+		expect(handle).not.toHaveBeenCalled();
+	});
+
+	it("passes the parsed query to handle, reading the first of a repeated key", async () => {
+		const handler = createApiHandler({
+			query: z.object({ page: z.coerce.number(), tags: z.string() }),
+			handle: async ({ query }) => query,
+		});
+		const response = await handler({ request: makeRequest({ search: "?page=2&tags=a&tags=b" }), params: {} });
+		expect(await response.json()).toEqual({ page: 2, tags: "a" });
 	});
 
 	it("returns 400 when the body is not valid JSON", async () => {

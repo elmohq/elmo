@@ -5,8 +5,9 @@
  * paginated endpoints, and what is left is small enough to always send.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { parseAnalyticsFilters, parseAnalyticsWindow, publicRange } from "@/lib/api/analytics-range";
+import { publicRange, resolveAnalyticsWindow } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { analyticsQuery } from "@/lib/api/query";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandAnalytics } from "@/server/analytics-core";
 
@@ -14,12 +15,12 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/analytics")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				query: analyticsQuery,
 				scopes: ["read"],
-				handle: async ({ params, request, auth }) => {
+				handle: async ({ params, query: { start, end, ...filters }, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
-					const url = new URL(request.url);
-					const range = parseAnalyticsWindow(url);
-					const analytics = await getBrandAnalytics(brand.id, range, parseAnalyticsFilters(url));
+					const range = resolveAnalyticsWindow(start, end);
+					const analytics = await getBrandAnalytics(brand.id, range, filters);
 					return { brandId: brand.id, range: publicRange(range), ...analytics };
 				},
 			}),
