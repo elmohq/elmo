@@ -65,15 +65,23 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 	};
 }
 
+const MISSING_CREDENTIAL: ApiAuthFailure = {
+	status: 401,
+	error: "Unauthorized",
+	message: "Access token or API key required",
+	code: "unauthorized",
+};
+
 const INVALID_TOKEN: ApiAuthFailure = {
 	status: 401,
 	error: "Unauthorized",
-	message: "Invalid or missing access token",
+	message: "Invalid or expired access token",
 	code: "unauthorized",
 };
 
 export async function resolveMcpAuth(request: Request): Promise<McpAuthResult> {
 	if (presentsApiKey(request)) return resolveApiAuth(request);
+	if (!request.headers.get("authorization")?.trim()) return { failure: MISSING_CREDENTIAL };
 	const asUser = await resolveOAuthPrincipal(request);
 	return asUser ? { auth: asUser } : { failure: INVALID_TOKEN };
 }
