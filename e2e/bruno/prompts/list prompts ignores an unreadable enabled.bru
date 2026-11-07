@@ -1,0 +1,32 @@
+meta {
+  name: list prompts ignores an unreadable enabled
+  type: http
+  seq: 26
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}&enabled=maybe
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  brandId: {{brandId}}
+  enabled: maybe
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("anything but true or false filters nothing, rather than being refused", function() {
+    const prompts = res.getBody().data;
+    expect(prompts.map((prompt) => prompt.id)).to.include(bru.getVar("disabledPromptId"));
+    expect(prompts.some((prompt) => prompt.enabled)).to.equal(true);
+  });
+}

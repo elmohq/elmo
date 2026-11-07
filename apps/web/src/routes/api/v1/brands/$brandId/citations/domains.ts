@@ -3,44 +3,40 @@
  * compared against the equal-length window immediately before it, a page at a time.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import {
-	analyticsListPaging,
-	pagination,
-	parseAnalyticsFilters,
-	parseAnalyticsWindow,
-	publicRange,
-} from "@/lib/api/analytics-range";
+import { z } from "zod";
+import { publicRange, resolveAnalyticsWindow } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { analyticsListPaging, analyticsQuery, offsetOf, paginationOf } from "@/lib/api/query";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandCitationDomains } from "@/server/analytics-core";
+
+const listCitationDomainsQuery = analyticsQuery.extend({
+	...analyticsListPaging,
+	q: z.string().optional(),
+	category: z.string().optional(),
+});
 
 export const Route = createFileRoute("/api/v1/brands/$brandId/citations/domains")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				query: listCitationDomainsQuery,
 				scopes: ["read"],
-				handle: async ({ params, request, auth }) => {
+				handle: async ({ params, query, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
-					const url = new URL(request.url);
-					const range = parseAnalyticsWindow(url);
-					const { page, limit, offset } = analyticsListPaging(url.searchParams);
+					const range = resolveAnalyticsWindow(query.start, query.end);
 					const { domains, total, totals } = await getBrandCitationDomains(
 						brand.id,
 						range,
-						parseAnalyticsFilters(url),
-						{
-							search: url.searchParams.get("q") ?? undefined,
-							category: url.searchParams.get("category") ?? undefined,
-							limit,
-							offset,
-						},
+						{ model: query.model, tags: query.tags },
+						{ search: query.q, category: query.category, limit: query.limit, offset: offsetOf(query) },
 					);
 					return {
 						brandId: brand.id,
 						range: publicRange(range),
 						totals,
 						data: domains,
-						pagination: pagination(page, limit, total),
+						pagination: paginationOf(query, total),
 					};
 				},
 			}),

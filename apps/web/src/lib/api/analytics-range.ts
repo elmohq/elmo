@@ -36,9 +36,9 @@ function alignToBucket(instant: string): string {
 	return bucketStart(new Date(instant)).toISOString();
 }
 
-/** Over plain values, so the MCP tools and the URL parser refuse a bad window
+/** Over plain values, so the MCP tools and the query schema refuse a bad window
  * the same way. */
-export function resolveAnalyticsWindow(rawStart: string | null, rawEnd: string | null): AnalyticsWindow {
+export function resolveAnalyticsWindow(rawStart: string | undefined, rawEnd: string | undefined): AnalyticsWindow {
 	if (!rawStart || !rawEnd) {
 		invalid("A window is required: both start and end, as ISO 8601 timestamps");
 	}
@@ -57,42 +57,4 @@ export function resolveAnalyticsWindow(rawStart: string | null, rawEnd: string |
 	return { from: start, to: end, timezone: BUCKET_ZONE };
 }
 
-export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
-	return resolveAnalyticsWindow(url.searchParams.get("start"), url.searchParams.get("end"));
-}
-
 export type { AnalyticsFilters } from "@/server/analytics-core";
-
-export function parseAnalyticsFilters(url: URL): { model?: string; tags?: string } {
-	return {
-		model: url.searchParams.get("model") ?? undefined,
-		tags: url.searchParams.get("tags") ?? undefined,
-	};
-}
-
-/**
- * Clamped rather than rejected, as the shared `Limit` parameter documents: the
- * cap is there to bound a runaway query, not to refuse a caller who asked for more.
- */
-export function clampedPaging(
-	searchParams: URLSearchParams,
-	maxLimit = 100,
-	defaultLimit = 20,
-): { page: number; limit: number; offset: number } {
-	const parsed = (name: string, fallback: number) => {
-		const value = parseInt(searchParams.get(name) ?? "", 10);
-		return Number.isNaN(value) ? fallback : value;
-	};
-	const page = Math.max(1, parsed("page", 1));
-	const limit = Math.max(1, Math.min(maxLimit, parsed("limit", defaultLimit)));
-	return { page, limit, offset: (page - 1) * limit };
-}
-
-/** Most brands get every row on the first page, and a page stays well inside a response a function can return. */
-export function analyticsListPaging(searchParams: URLSearchParams) {
-	return clampedPaging(searchParams, 1000, 1000);
-}
-
-export function pagination(page: number, limit: number, total: number) {
-	return { page, limit, total, totalPages: Math.ceil(total / limit) };
-}
