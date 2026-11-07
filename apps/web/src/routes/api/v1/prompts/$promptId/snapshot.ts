@@ -11,22 +11,16 @@ import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
-import { BARE_DATE, clampedCount } from "@/lib/api/query";
+import { clampedCount } from "@/lib/api/query";
 import { requirePromptInScope } from "@/lib/api/scope";
 import { getCitationUrlStats, getCompetitorTotals, getMentionTotals } from "@/lib/rollup-read";
 import { mentionQuality } from "@/lib/sentiment";
 
-/** Any `YYYY-MM-DD` that `Date` reads, so a day past the end of its month, which it rolls over, is not refused. */
 function day() {
-	return z
-		.string({
-			error: (issue) =>
-				issue.input === undefined ? "is required (YYYY-MM-DD format)" : "must be a valid date in YYYY-MM-DD format",
-		})
-		.refine(
-			(raw) => BARE_DATE.test(raw) && !Number.isNaN(new Date(`${raw}T00:00:00Z`).getTime()),
-			"must be a valid date in YYYY-MM-DD format",
-		);
+	return z.iso.date({
+		error: (issue) =>
+			issue.input === undefined ? "is required (YYYY-MM-DD format)" : "must be a valid date in YYYY-MM-DD format",
+	});
 }
 
 /** Top-K lists are bounded so one request can't ask for the whole history. */
