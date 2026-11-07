@@ -4,8 +4,9 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { clampedPaging, parseAnalyticsWindow } from "@/lib/api/analytics-range";
+import { resolveAnalyticsWindow } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { limit, modelFilter, offsetOf, page, paginationOf, windowEnd, windowStart } from "@/lib/api/query";
 import { requirePromptBrandInScope } from "@/lib/api/scope";
 import { listPromptRuns } from "@/server/runs-core";
 
@@ -14,22 +15,21 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
 		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
+				query: z.object({ start: windowStart, end: windowEnd, model: modelFilter, page, limit }),
 				scopes: ["read"],
-				handle: async ({ params, request, auth }) => {
+				handle: async ({ params, query, auth }) => {
 					const { promptId } = params;
 					await requirePromptBrandInScope(auth, promptId);
 
-					const url = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(url.searchParams);
 					const { data, total } = await listPromptRuns({
 						promptId,
-						window: parseAnalyticsWindow(url),
-						limit,
-						offset,
-						model: url.searchParams.get("model") ?? undefined,
+						window: resolveAnalyticsWindow(query.start, query.end),
+						limit: query.limit,
+						offset: offsetOf(query),
+						model: query.model,
 					});
 
-					return { data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+					return { data, pagination: paginationOf(query, total) };
 				},
 			}),
 		}),

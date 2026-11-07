@@ -1,0 +1,22 @@
+meta {
+  name: get prompt snapshot reversed dates 400
+  type: http
+  seq: 37
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/snapshot?startDate=2026-02-01&endDate=2026-01-01
+  body: none
+  auth: inherit
+}
+
+params:query {
+  startDate: 2026-02-01
+  endDate: 2026-01-01
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq validation_error
+  res.body.message: eq startDate must be before or equal to endDate
+}

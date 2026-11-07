@@ -11,8 +11,8 @@ import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-ca
 import { competitors } from "@workspace/lib/db/schema";
 import { assertCompetitorCap, withQuotaLock } from "@workspace/lib/entitlements";
 import { z } from "zod";
-import { clampedPaging } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { offsetOf, paginationOf, paging } from "@/lib/api/query";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { listCompetitors } from "@/server/competitors-core";
 
@@ -27,16 +27,14 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				query: z.object({ brandId: z.string().optional(), ...paging }),
 				scopes: ["read"],
-				handle: async ({ request, auth }) => {
-					const { searchParams } = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(searchParams);
-
+				handle: async ({ query, auth }) => {
 					const { data, total } = await listCompetitors({
 						scope: await brandScopeCondition(auth, competitors.brandId),
-						brandId: searchParams.get("brandId") ?? undefined,
-						limit,
-						offset,
+						brandId: query.brandId,
+						limit: query.limit,
+						offset: offsetOf(query),
 					});
 
 					// Both keys hold the same array while callers move to `data`, which
@@ -45,7 +43,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 					return {
 						data,
 						competitors: data,
-						pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+						pagination: paginationOf(query, total),
 					};
 				},
 			}),
