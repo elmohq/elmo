@@ -43,7 +43,7 @@ faq:
   - question: How much does it cost to track one prompt for a month?
     answer: "At five runs a day across ChatGPT and Google AI Mode, one prompt is about 300 evaluations a month. On each provider's entry plan that comes to roughly $0.45 on Oxylabs or BrightData, $1.20 on SearchApi or DataForSEO, $1.30 on Cloro, and $2.15 on Olostep. Larger plans or slower queues bring every provider down to between $0.30 and $0.65."
   - question: Which AI surfaces can be scraped?
-    answer: "ChatGPT, Google AI Mode, Google AI Overview, and Gemini all have working scrapers. Cloro, SearchApi, Olostep, DataForSEO, and BrightData reach all four, and Oxylabs reaches every one but Gemini in Elmo. Perplexity and Microsoft Copilot now require a sign-in, so no provider scrapes them; Perplexity can still be tracked through its Sonar model API."
+    answer: "ChatGPT, Google AI Mode, Google AI Overview, and Gemini all have working scrapers. Cloro, SearchApi, Olostep, DataForSEO, and BrightData reach all four, and Oxylabs reaches every one but Gemini in Elmo. Bing Copilot is reachable through SearchApi and DataForSEO. Perplexity and the Microsoft Copilot app now require a sign-in, so no provider scrapes them; Perplexity can still be tracked through its Sonar model API."
   - question: Which LLM scraping API is the most reliable?
     answer: "Cloro and SearchApi, both at 97% of runs in Elmo's October 2026 monitoring, with Olostep close behind at 96%. DataForSEO managed 85%, Oxylabs 69%, and BrightData 61%. Google AI Overview separates them most: SearchApi, Olostep, and Cloro all cleared 97% there, against 58% for DataForSEO, 28% for BrightData, and 26% for Oxylabs."
   - question: Do I need more than one scraping provider?
@@ -56,7 +56,7 @@ faq:
 
 - Entry pricing spans about 5x for identical work. Tracking one prompt across ChatGPT and Google AI Mode for a month costs roughly $0.45 on [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) or [BrightData](https://get.brightdata.com/elmo?sid=blog) and $2.15 on [Olostep](https://olostep.com/?ref=elmo)'s smallest plan.
 - Headline per-run pricing is the wrong number to compare. If you're only tracking a handful of prompts, a free tier or a provider without a monthly minimum might be better. At scale, volume pricing reshuffles the order: [SearchApi](https://www.searchapi.io/?via=elmo)'s largest plan is the cheapest per run here.
-- Coverage is not uniform. [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog), [SearchApi](https://www.searchapi.io/?via=elmo), [Olostep](https://olostep.com/?ref=elmo), [DataForSEO](https://try.dataforseo.com/elmo), and [BrightData](https://get.brightdata.com/elmo?sid=blog) reach all four surfaces; Elmo doesn't use [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32)' Gemini scraper yet. Perplexity and Copilot now sit behind a sign-in, so no provider scrapes either.
+- Coverage is not uniform. [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog), [SearchApi](https://www.searchapi.io/?via=elmo), [Olostep](https://olostep.com/?ref=elmo), [DataForSEO](https://try.dataforseo.com/elmo), and [BrightData](https://get.brightdata.com/elmo?sid=blog) reach all four surfaces; Elmo doesn't use [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32)' Gemini scraper yet. Perplexity and the Copilot app now sit behind a sign-in, so no provider scrapes either; Bing Copilot is the Copilot surface left, through SearchApi or DataForSEO.
 - Reliability varies more than price does, and it is the variable nobody publishes. A failed scrape is a hole in your prompt's history that you cannot backfill. In October, success rates ranged from 97% to 61%.
 - Google AI Overview is where providers split. [SearchApi](https://www.searchapi.io/?via=elmo), [Olostep](https://olostep.com/?ref=elmo), and [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog) all cleared 97% on it; the other three were at 58% or below.
 - Median latency ranges from 11 seconds to over a minute, and individual runs took up to nearly 20 minutes. It rarely matters for scheduled tracking but matters enormously for anything a user is waiting on.
@@ -79,8 +79,9 @@ Not every provider reaches every surface. This is the first filter, because no a
 | Google AI Mode | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Google AI Overview | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Gemini | ✅ | ✅ | ✅ | ✅ | Not tested | ✅ |
+| Bing Copilot | – | ✅ | – | ✅ | – | – |
 
-<Callout title="Update, November 2026">Perplexity and Microsoft Copilot now require a sign-in, so no provider can scrape them and Elmo has stopped tracking either through a scraper. Perplexity can still be tracked through its Sonar model on OpenRouter or DataForSEO. The October Copilot results below are kept as measured.</Callout>
+<Callout title="Update, November 2026">Perplexity and the Microsoft Copilot app now require a sign-in, so no provider can scrape them and Elmo has stopped scraping either. Bing's Copilot Search still answers signed-out visitors, and Elmo now tracks it as Bing Copilot through [SearchApi](https://www.searchapi.io/?via=elmo) or [DataForSEO](https://try.dataforseo.com/elmo), at about the same cost per run. SearchApi's Copilot results below already came from Bing Copilot Search. Perplexity can still be tracked through its Sonar model on OpenRouter or DataForSEO. The October Copilot results below are kept as measured.</Callout>
 
 Oxylabs now sells a Gemini scraper, but Elmo doesn't integrate it yet, so it has no reliability data below.
 
@@ -207,7 +208,8 @@ October was rough. It was the least reliable provider we ran at 61% and the slow
 - **What's the best overall?** [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog). It covers everything at a reasonable price and rarely fails. It's what we use for Elmo Cloud.
 - **Need speed, or a low per-run price at volume?** [SearchApi](https://www.searchapi.io/?via=elmo). It matched Cloro's reliability with the fastest median we measured, and its largest plans are the cheapest per run here.
 - **Only tracking a handful of prompts?** [BrightData](https://get.brightdata.com/elmo?sid=blog)'s free tier covers about 16 prompts a month, and [DataForSEO](https://try.dataforseo.com/elmo)'s pay-as-you-go balance never expires.
-- **Need Perplexity or Copilot?** No scraper reaches either now that both require a sign-in. Track Perplexity through its Sonar model on OpenRouter or [DataForSEO](https://try.dataforseo.com/elmo) instead.
+- **Need Copilot?** The Copilot app requires a sign-in now, so track Bing Copilot instead through [SearchApi](https://www.searchapi.io/?via=elmo) or [DataForSEO](https://try.dataforseo.com/elmo).
+- **Need Perplexity?** No scraper reaches it now that it requires a sign-in. Track it through its Sonar model on OpenRouter or [DataForSEO](https://try.dataforseo.com/elmo) instead.
 - **Need Google AI Overview?** Use [SearchApi](https://www.searchapi.io/?via=elmo), [Olostep](https://olostep.com/?ref=elmo), or [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog). Everyone else was at 58% or below.
 
 ## How we measured this

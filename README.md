@@ -68,7 +68,7 @@ Try the live demo at **[demo.elmohq.com](https://demo.elmohq.com)** to see how E
 ## How Elmo Measures AI Visibility
 
 1. **Prompts** — the questions your buyers ask AI, generated from your website or written by hand.
-2. **Runs** — a worker runs every prompt several times a day on each engine you track. [Multi-engine tracking](https://www.elmohq.com/features/multi-engine-tracking) scrapes the real consumer apps (ChatGPT, Google AI Mode, Google AI Overviews, Gemini) and calls model APIs for Claude, Perplexity, Grok, and others; the [providers guide](https://www.elmohq.com/docs/user-guide/providers) compares the options.
+2. **Runs** — a worker runs every prompt several times a day on each engine you track. [Multi-engine tracking](https://www.elmohq.com/features/multi-engine-tracking) scrapes the real consumer apps (ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Bing Copilot) and calls model APIs for Claude, Perplexity, Grok, and others; the [providers guide](https://www.elmohq.com/docs/user-guide/providers) compares the options.
 3. **Analysis** — each answer is stored raw in PostgreSQL with its citations and fan-out searches, then [Jev](https://typesafe.ai) judges which companies it really mentions, the sentiment toward each, and the passage that shows it.
 4. **Metrics** — visibility is the share of runs that mention you; sentiment scores positive 100, neutral and mixed 50, negative 0; position averages your rank among companies named. Everything filters by prompt, tag, engine, and date.
 
@@ -87,7 +87,7 @@ Most AI visibility platforms are closed SaaS. Here is how Elmo compares to the w
 
 | Tool | ChatGPT | Google AI Mode | Google AI Overviews | Gemini | Copilot | Claude |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Elmo** | ✅ | ✅ | ✅ | ✅ | – | ✅ |
+| **Elmo** | ✅ | ✅ | ✅ | ✅ | Bing Copilot | ✅ |
 | Profound | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Peec AI | ✅ | ✅ | ✅ | ✅ | ✅ | Enterprise |
 | Otterly AI | ✅ | Add-on | ✅ | Add-on | ✅ | Add-on |
