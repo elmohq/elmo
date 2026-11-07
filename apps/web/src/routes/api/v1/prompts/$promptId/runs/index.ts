@@ -6,7 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { resolveAnalyticsWindow } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
-import { limit, modelFilter, offsetOf, page, paginationOf, windowEnd, windowStart } from "@/lib/api/query";
+import { instant, offsetOf, paginationOf, paging } from "@/lib/api/query";
 import { requirePromptBrandInScope } from "@/lib/api/scope";
 import { listPromptRuns } from "@/server/runs-core";
 
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
 		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
-				query: z.object({ start: windowStart, end: windowEnd, model: modelFilter, page, limit }),
+				query: z.object({ start: instant, end: instant, model: z.string().optional(), ...paging }),
 				scopes: ["read"],
 				handle: async ({ params, query, auth }) => {
 					const { promptId } = params;

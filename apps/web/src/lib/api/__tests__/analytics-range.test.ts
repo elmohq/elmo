@@ -50,6 +50,12 @@ describe("analytics API query parsing", () => {
 		);
 	});
 
+	it("refuses a timestamp without an offset, which would otherwise be read in the server's time zone", () => {
+		expect(() => parseAnalyticsWindow("start=2026-01-01T00:00:00&end=2026-02-01T00:00:00Z")).toThrow(
+			"must be an ISO 8601 timestamp",
+		);
+	});
+
 	it("rejects a window that runs backwards, and an empty one", () => {
 		const backwards = "start=2026-02-01T00:00:00Z&end=2026-01-01T00:00:00Z";
 		const empty = "start=2026-01-01T00:00:00Z&end=2026-01-01T00:00:00Z";
