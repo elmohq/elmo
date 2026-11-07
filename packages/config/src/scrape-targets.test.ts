@@ -162,6 +162,14 @@ describe("login-walled scrape targets", () => {
 		warn.mockRestore();
 	});
 
+	it("runs SearchApi's Copilot target as the Bing Copilot answer it always was", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		expect(parseScrapeTargets("copilot:searchapi:online").map(formatScrapeTarget)).toEqual([
+			"bing-copilot:searchapi:online",
+		]);
+		warn.mockRestore();
+	});
+
 	it("keeps Perplexity on its model APIs", () => {
 		const result = parseScrapeTargets("perplexity:openrouter:perplexity/sonar:online,perplexity:dataforseo:online");
 		expect(result).toHaveLength(2);

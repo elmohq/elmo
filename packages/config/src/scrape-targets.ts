@@ -33,7 +33,18 @@ export function isRetiredScrapeTarget(config: Pick<ModelConfig, "model" | "provi
 	return config.model in LOGIN_WALLED_MODELS && SCRAPER_PROVIDERS.has(config.provider);
 }
 
-const warnedRetired = new Set<string>();
+/** SearchApi's `copilot` target always read Bing's Copilot Search, so it carries on under the new name. */
+function renameBingCopilot(config: ModelConfig): ModelConfig {
+	return config.model === "copilot" && config.provider === "searchapi" ? { ...config, model: "bing-copilot" } : config;
+}
+
+const warned = new Set<string>();
+
+function warnOnce(entry: string, message: string): void {
+	if (warned.has(entry)) return;
+	warned.add(entry);
+	console.warn(message);
+}
 
 /**
  * Middle segments rejoin with ":", so OpenRouter variant suffixes like ":free" survive.
@@ -42,12 +53,21 @@ const warnedRetired = new Set<string>();
  * instance that still lists one keeps running everything else after upgrading.
  */
 export function parseScrapeTargets(envValue?: string): ModelConfig[] {
-	const configs = parseAllScrapeTargets(envValue);
+	const configs = parseAllScrapeTargets(envValue).map((config) => {
+		const renamed = renameBingCopilot(config);
+		if (renamed !== config) {
+			const entry = formatScrapeTarget(config);
+			warnOnce(
+				entry,
+				`SCRAPE_TARGETS: running "${entry}" as "${formatScrapeTarget(renamed)}", the Bing Copilot answer it always returned. Rename it in SCRAPE_TARGETS.`,
+			);
+		}
+		return renamed;
+	});
 	for (const config of configs.filter(isRetiredScrapeTarget)) {
 		const entry = formatScrapeTarget(config);
-		if (warnedRetired.has(entry)) continue;
-		warnedRetired.add(entry);
-		console.warn(
+		warnOnce(
+			entry,
 			`SCRAPE_TARGETS: skipping "${entry}": ${config.model} now requires a login, so no scraper can reach it. Remove it from SCRAPE_TARGETS and ${LOGIN_WALLED_MODELS[config.model]}. See ${PROVIDERS_DOCS_URL}.`,
 		);
 	}
@@ -148,7 +168,6 @@ export const RETIRED_STATUS_TARGETS = [
 	"copilot:brightdata:online",
 	"copilot:cloro:online",
 	"copilot:olostep:online",
-	"copilot:searchapi:online",
 	"perplexity:brightdata:online",
 	"perplexity:cloro:online",
 	"perplexity:olostep:online",

@@ -31,9 +31,9 @@ Which surfaces each one reaches:
 | Perplexity | – | – | – | – | – | API-only |
 
 <Callout>
-Perplexity and Microsoft Copilot (copilot.microsoft.com) now require a sign-in, so no scraper can reach either app and Elmo no longer scrapes them. Elmo skips any Perplexity or Copilot scrape target left in `SCRAPE_TARGETS` and logs a warning at startup.
+Perplexity and Microsoft Copilot (copilot.microsoft.com) now require a sign-in, so no scraper can reach either app and Elmo no longer scrapes them. Elmo skips any other Perplexity or Copilot scrape target left in `SCRAPE_TARGETS` and logs a warning at startup.
 
-- **Copilot:** track `bing-copilot` instead, the Copilot Search answer Bing still shows signed-out visitors. Use `bing-copilot:cloro:online` (Cloro's Bing AI Mode), `bing-copilot:searchapi:online` (the same Bing Copilot Search answer SearchApi's `copilot` target already returned), or `bing-copilot:dataforseo:online` (the Copilot summary on Bing's results page instead of the Copilot Search page). Each costs about the same per run as a Copilot scrape did. Bing Copilot cites different sources from the Copilot app, so treat it as a new baseline rather than a continuation of your Copilot history.
+- **Copilot:** track `bing-copilot` instead, the Copilot Search answer Bing still shows signed-out visitors. Use `bing-copilot:cloro:online` (Cloro's Bing AI Mode), `bing-copilot:searchapi:online` (the same Bing Copilot Search answer SearchApi's `copilot` target already returned, so an existing `copilot:searchapi:online` keeps running under the new name), or `bing-copilot:dataforseo:online` (the Copilot summary on Bing's results page instead of the Copilot Search page). Each costs about the same per run as a Copilot scrape did. Bing Copilot cites different sources from the Copilot app, so treat it as a new baseline rather than a continuation of your Copilot history.
 - **Perplexity:** track it through its Sonar model instead, on [OpenRouter](#direct-model-apis) or [DataForSEO](#dataforseo).
 </Callout>
 
