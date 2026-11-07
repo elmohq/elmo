@@ -95,3 +95,4 @@ export const MCP_PATH = "/api/mcp";
 export const MCP_AUTHORIZE_ENDPOINT = "/api/auth/oauth2/authorize";
 
 export const API_KEY_RATE_LIMIT_PER_MINUTE = 1_000;
+export const API_KEY_PREFIX = "elmo_";
