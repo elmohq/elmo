@@ -19,7 +19,7 @@ export type DirectApiProvider = "openrouter" | "anthropic" | "openai" | "mistral
 
 const BRIGHTDATA_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"] as const;
 
-const SEARCHAPI_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"] as const;
+const SEARCHAPI_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-copilot"] as const;
 
 const OLOSTEP_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"] as const;
 
@@ -35,6 +35,7 @@ const DATAFORSEO_TARGETS = [
 	{ model: "google-ai-overview", kind: "scraper" },
 	{ model: "chatgpt", kind: "scraper" },
 	{ model: "gemini", kind: "scraper" },
+	{ model: "bing-copilot", kind: "scraper" },
 	{ model: "perplexity", kind: "api" },
 ] as const;
 

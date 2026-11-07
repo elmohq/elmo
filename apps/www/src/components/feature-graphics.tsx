@@ -391,6 +391,7 @@ const SCRAPED_ENGINES = [
 	{ name: "AI Overviews", iconId: "google" },
 	{ name: "AI Mode", iconId: "google" },
 	{ name: "Gemini", iconId: "gemini" },
+	{ name: "Bing Copilot", iconId: "microsoft" },
 ];
 
 const API_ENGINES = [

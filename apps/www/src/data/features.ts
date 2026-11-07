@@ -118,7 +118,7 @@ export const productFeatures: ProductFeature[] = [
 		why: [
 			{
 				name: "The real apps, not just APIs",
-				text: "ChatGPT, Google AI Overviews, AI Mode, and Gemini are scraped from the interfaces your customers use, with direct APIs for everything else.",
+				text: "ChatGPT, Google AI Overviews, AI Mode, Gemini, and Bing Copilot are scraped from the interfaces your customers use, with direct APIs for everything else.",
 			},
 			{
 				name: "Open methodology",
@@ -985,9 +985,10 @@ export const productFeatures: ProductFeature[] = [
 		title: "Track your brand across every AI engine",
 		metaTitle: "Multi-Engine AI Visibility Tracking: ChatGPT, AI Overviews, Gemini & More · Elmo",
 		metaDescription:
-			"Track your brand in ChatGPT, Google AI Overviews, AI Mode, and Gemini from the real apps, plus Claude, Grok, Perplexity, Mistral, and any OpenRouter model.",
-		lede: "Most AI search happens in ChatGPT and Google, and neither offers a public API for its consumer answers. Elmo scrapes ChatGPT, Google AI Overviews, AI Mode, and Gemini from the interfaces your customers use, and calls Claude, Mistral, Grok, Perplexity, and any OpenRouter model directly.",
-		summary: "ChatGPT, Google AI Overviews, AI Mode, and Gemini from the real apps, plus any model by API.",
+			"Track your brand in ChatGPT, Google AI Overviews, AI Mode, Gemini, and Bing Copilot from the real apps, plus Claude, Grok, Perplexity, Mistral, and any OpenRouter model.",
+		lede: "Most AI search happens in ChatGPT and Google, and neither offers a public API for its consumer answers. Elmo scrapes ChatGPT, Google AI Overviews, AI Mode, Gemini, and Bing Copilot from the interfaces your customers use, and calls Claude, Mistral, Grok, Perplexity, and any OpenRouter model directly.",
+		summary:
+			"ChatGPT, Google AI Overviews, AI Mode, Gemini, and Bing Copilot from the real apps, plus any model by API.",
 		graphic: "engines",
 		steps: [
 			{
@@ -1006,7 +1007,7 @@ export const productFeatures: ProductFeature[] = [
 		metrics: [
 			{
 				term: "Scraped from the real interface",
-				definition: "ChatGPT, Google AI Overviews, Google AI Mode, and Gemini.",
+				definition: "ChatGPT, Google AI Overviews, Google AI Mode, Gemini, and Bing Copilot.",
 			},
 			{
 				term: "Direct model APIs",
@@ -1025,7 +1026,7 @@ export const productFeatures: ProductFeature[] = [
 		],
 		useCases: [
 			"Compare how ChatGPT and Google AI Overviews treat your brand, since they often disagree.",
-			"Add an engine your audience uses, like Perplexity or Claude, without switching tools.",
+			"Add an engine your audience uses, like Bing Copilot for enterprise buyers, without switching tools.",
 			"Track a specific model version alongside the consumer app to see how much they differ.",
 		],
 		why: [
@@ -1059,7 +1060,7 @@ export const productFeatures: ProductFeature[] = [
 			{
 				question: "Which AI engines does Elmo track?",
 				answer:
-					"ChatGPT, Google AI Overviews, Google AI Mode, and Gemini are scraped from their real interfaces. Claude, Mistral, and OpenAI models are called through their APIs, and any OpenRouter model, including Grok, Perplexity Sonar, DeepSeek, and Kimi, can be added.",
+					"ChatGPT, Google AI Overviews, Google AI Mode, Gemini, and Bing Copilot are scraped from their real interfaces. Claude, Mistral, and OpenAI models are called through their APIs, and any OpenRouter model, including Grok, Perplexity Sonar, DeepSeek, and Kimi, can be added.",
 			},
 			{
 				question: "Why scrape instead of using the API?",

@@ -138,7 +138,7 @@ describe("provider validateTarget", () => {
 
 	describe("searchapi", () => {
 		it("accepts every surface it can reach, online", () => {
-			for (const model of ["chatgpt", "gemini", "google-ai-mode", "google-ai-overview"]) {
+			for (const model of ["chatgpt", "gemini", "google-ai-mode", "google-ai-overview", "bing-copilot"]) {
 				expect(searchapi.validateTarget!(config(model, "searchapi", true))).toBeNull();
 			}
 		});

@@ -45,6 +45,7 @@ export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
 	claude: { access: "api", premium: true, version: "Claude Haiku 5.5", premiumVersion: "Claude Haiku 5.5" },
 	kimi: { access: "api", version: "Kimi K2.5" },
 	perplexity: { premium: true, premiumVersion: "Sonar" },
+	"bing-copilot": { access: "scraped" },
 };
 
 export const STANDARD_PLATFORM_MENU: readonly string[] = Object.entries(CLOUD_PLATFORMS)

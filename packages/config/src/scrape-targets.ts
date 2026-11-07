@@ -16,15 +16,20 @@ export interface ModelConfig {
 }
 
 /**
- * Consumer surfaces that went behind a login, so no scraper reaches them. Their
- * model APIs (Perplexity's Sonar through OpenRouter or DataForSEO) still work.
+ * Consumer apps that went behind a login, so no scraper reaches them, and what
+ * to track instead. Perplexity's Sonar model API still works, and Bing's Copilot
+ * Search still answers signed-out visitors.
  */
-const LOGIN_WALLED_MODELS = new Set(["copilot", "perplexity"]);
+const LOGIN_WALLED_MODELS: Record<string, string> = {
+	copilot: "track Bing Copilot instead, with bing-copilot:searchapi:online or bing-copilot:dataforseo:online",
+	perplexity:
+		"track Perplexity through its Sonar model instead, with perplexity:openrouter:perplexity/sonar:online or perplexity:dataforseo:online",
+};
 
 const SCRAPER_PROVIDERS = new Set(["brightdata", "cloro", "olostep", "oxylabs", "searchapi"]);
 
 export function isRetiredScrapeTarget(config: Pick<ModelConfig, "model" | "provider">): boolean {
-	return LOGIN_WALLED_MODELS.has(config.model) && SCRAPER_PROVIDERS.has(config.provider);
+	return config.model in LOGIN_WALLED_MODELS && SCRAPER_PROVIDERS.has(config.provider);
 }
 
 const warnedRetired = new Set<string>();
@@ -42,7 +47,7 @@ export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 		if (warnedRetired.has(entry)) continue;
 		warnedRetired.add(entry);
 		console.warn(
-			`SCRAPE_TARGETS: skipping "${entry}": ${config.model} now requires a login, so no scraper can reach it. Remove it from SCRAPE_TARGETS. See ${PROVIDERS_DOCS_URL}.`,
+			`SCRAPE_TARGETS: skipping "${entry}": ${config.model} now requires a login, so no scraper can reach it. Remove it from SCRAPE_TARGETS and ${LOGIN_WALLED_MODELS[config.model]}. See ${PROVIDERS_DOCS_URL}.`,
 		);
 	}
 	return configs.filter((config) => !isRetiredScrapeTarget(config));
@@ -85,6 +90,7 @@ export const STATUS_TARGETS = [
 	"google-ai-mode:searchapi:online",
 	"google-ai-overview:searchapi:online",
 	"gemini:searchapi:online",
+	"bing-copilot:searchapi:online",
 	"chatgpt:olostep:online",
 	"google-ai-mode:olostep:online",
 	"google-ai-overview:olostep:online",
@@ -107,6 +113,7 @@ export const STATUS_TARGETS = [
 	"chatgpt:dataforseo:online",
 	"gemini:dataforseo:online",
 	"perplexity:dataforseo:online",
+	"bing-copilot:dataforseo:online",
 	// Pinning a model_name routes to LLM Responses instead of the scraper, so
 	// these keep the API side of the provider monitored too.
 	"chatgpt:dataforseo:gpt-5.5:online",

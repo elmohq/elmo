@@ -230,7 +230,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 			},
 		],
 		tracking:
-			"Copilot's answers now sit behind a Microsoft sign-in, so no scraper can collect them and Elmo no longer tracks Copilot. Bing improvements still pay off across the engines that search the web, which Elmo does track.",
+			"The Copilot app now sits behind a Microsoft sign-in, but Bing's Copilot Search still answers signed-out visitors. Elmo tracks how Bing Copilot mentions and cites your brand across your prompts, so you can see the payoff from Bing-side improvements over time.",
 		related: ["chatgpt", "google-ai-overviews"],
 	},
 	{
