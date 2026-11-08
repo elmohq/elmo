@@ -56,6 +56,12 @@ describe("analytics API query parsing", () => {
 		);
 	});
 
+	it("refuses a timestamp without an offset from the MCP tools too, which pass the window as plain values", () => {
+		expect(() => resolveAnalyticsWindow("2026-01-01T00:00:00", "2026-02-01T00:00:00Z")).toThrow(
+			"start must be an ISO 8601 timestamp with an offset",
+		);
+	});
+
 	it("rejects a window that runs backwards, and an empty one", () => {
 		const backwards = "start=2026-02-01T00:00:00Z&end=2026-01-01T00:00:00Z";
 		const empty = "start=2026-01-01T00:00:00Z&end=2026-01-01T00:00:00Z";
