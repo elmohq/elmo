@@ -10,6 +10,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { deletedPromptSchema, promptSchema } from "@/lib/api/schemas/prompts";
 import { requirePromptInScope } from "@/lib/api/scope";
 import {
 	deletePrompt,
@@ -33,12 +34,14 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: promptSchema,
 				params: promptParams,
 				scopes: ["read"],
 				handle: async ({ params, auth }) => toPromptSummary((await requirePromptInScope(auth, params.promptId)).prompt),
 			}),
 
 			PATCH: createApiHandler({
+				response: promptSchema,
 				params: promptParams,
 				body: updatePromptInputSchema,
 				scopes: ["write"],
@@ -53,6 +56,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 			// at any role — so no scope grants it. Disabling frees the plan slot
 			// just the same and keeps the history.
 			DELETE: createApiHandler({
+				response: deletedPromptSchema,
 				params: promptParams,
 				adminOnly: true,
 				adminOnlyHint: "Send PATCH with `enabled: false` to stop tracking this prompt without losing its history.",
