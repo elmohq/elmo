@@ -10,8 +10,15 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
+import type * as z from "zod";
 import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
+import type {
+	brandAnalyticsSchema,
+	modelVisibilitySchema,
+	shareOfVoiceEntrySchema,
+	visibilityPointSchema,
+} from "@/lib/api/schemas/analytics";
 import { generateDateRange } from "@/lib/chart-utils";
 import {
 	getCitationDomainPage,
@@ -50,9 +57,7 @@ import {
 	type MentionQuality,
 	mentionQuality,
 	NO_ASSESSMENTS,
-	type PositionPoint,
 	type Sentiment,
-	type SentimentCounts,
 	type SentimentSummary,
 	sentimentCounts,
 	sentimentSummary,
@@ -92,10 +97,7 @@ export interface AnalyticsFilters {
 	search?: string;
 }
 
-interface VisibilityPoint {
-	date: string;
-	visibility: number | null;
-}
+type VisibilityPoint = z.infer<typeof visibilityPointSchema>;
 
 export interface BrandVisibility {
 	currentVisibility: number | null;
@@ -164,13 +166,7 @@ export async function getBrandVisibility(
 	return { currentVisibility, totalRuns, totalPrompts: promptIds.length, totalCitations, series };
 }
 
-interface ShareOfVoiceEntry extends MentionQuality {
-	name: string;
-	isBrand: boolean;
-	mentions: number;
-	prompts: number;
-	share: number;
-}
+type ShareOfVoiceEntry = z.infer<typeof shareOfVoiceEntrySchema>;
 
 export interface BrandShareOfVoice {
 	brandName: string;
@@ -261,14 +257,7 @@ export async function getBrandShareOfVoice(
 	};
 }
 
-export interface ModelVisibility extends MentionQuality {
-	model: string;
-	label: string;
-	runs: number;
-	brandMentions: number;
-	visibility: number | null;
-	citations: number;
-}
+export type ModelVisibility = z.infer<typeof modelVisibilitySchema>;
 
 async function getBrandModelBreakdown(
 	brandId: string,
@@ -559,10 +548,7 @@ export async function getBrandPromptPerformance(
 	});
 }
 
-export interface BrandMentionQuality {
-	sentiment: SentimentSummary & { series: (SentimentCounts & { date: string })[] };
-	position: { average: number | null; series: PositionPoint[] };
-}
+export type BrandMentionQuality = Pick<z.infer<typeof brandAnalyticsSchema>, "sentiment" | "position">;
 
 export async function getBrandMentionQuality(
 	brandId: string,
