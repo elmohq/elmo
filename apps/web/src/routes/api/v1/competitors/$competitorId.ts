@@ -14,6 +14,7 @@ import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { competitorSchema } from "@/lib/api/schemas/competitors";
 import { isBrandInScope } from "@/lib/api/scope";
 
 const competitorParams = z.object({ competitorId: z.uuid("Invalid competitor ID format") });
@@ -42,6 +43,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: competitorSchema,
 				params: competitorParams,
 				scopes: ["read"],
 				handle: async ({ params, auth }) => {
@@ -50,6 +52,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 			}),
 
 			PATCH: createApiHandler({
+				response: competitorSchema,
 				params: competitorParams,
 				body: updateCompetitorBody,
 				scopes: ["write"],
@@ -83,6 +86,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 			}),
 
 			DELETE: createApiHandler({
+				response: competitorSchema,
 				params: competitorParams,
 				scopes: ["write"],
 				handle: async ({ params, auth }) => {

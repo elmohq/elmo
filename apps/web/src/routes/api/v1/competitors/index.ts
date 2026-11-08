@@ -13,6 +13,7 @@ import { assertCompetitorCap, withQuotaLock } from "@workspace/lib/entitlements"
 import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { offsetOf, paginationOf, paging } from "@/lib/api/query";
+import { competitorSchema, competitorsListSchema } from "@/lib/api/schemas/competitors";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { listCompetitors } from "@/server/competitors-core";
 
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: competitorsListSchema,
 				query: z.object({ brandId: z.string().optional(), ...paging }),
 				scopes: ["read"],
 				handle: async ({ query, auth }) => {
@@ -49,6 +51,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 			}),
 
 			POST: createApiHandler({
+				response: competitorSchema,
 				body: createCompetitorBody,
 				status: 201,
 				scopes: ["write"],
