@@ -152,6 +152,26 @@ describe("cloro provider", () => {
 		expect(result.modelVersion).toBe("gpt-5-3-mini");
 	});
 
+	it("reports the credits Cloro charged for the completed task", async () => {
+		vi.useFakeTimers();
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockResolvedValueOnce(
+					jsonResponse({ success: true, task: { id: "task-c", status: "QUEUED", creditsToCharge: 7 } }),
+				)
+				.mockResolvedValueOnce(
+					jsonResponse({ task: { id: "task-c", status: "COMPLETED", creditsCharged: 7 }, response: CHATGPT_RESPONSE }),
+				),
+		);
+
+		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
+		await vi.runAllTimersAsync();
+
+		expect((await promise).billedCredits).toBe(7);
+	});
+
 	it("maps Google AI Overview onto the Google Search task and unwraps the overview", async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi
