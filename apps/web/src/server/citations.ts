@@ -21,7 +21,7 @@ import type { CitationUrl } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
@@ -52,6 +52,7 @@ import {
 	type PerPromptCitationDomainRow,
 	type PerPromptDailyCitationClassRow,
 } from "@/lib/rollup-read";
+import { sharedRead } from "@/lib/shared-read";
 import { isRedditDomain, type Subreddit, summarizeSubreddits } from "@/lib/subreddits";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
@@ -268,15 +269,22 @@ async function resolveCitationScope(data: CitationFilters) {
 	const endDate = customRangeEnd(data.lookback);
 	const window = citationDateWindow(endDate ? new Date(`${endDate}T00:00:00Z`) : new Date(), days);
 
-	const [brandResult, competitorsList, allPrompts] = await Promise.all([
+	const [brandResult, competitorsList, brandPrompts] = await Promise.all([
 		db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
 		db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
 		db
-			.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
+			.select({
+				id: prompts.id,
+				value: prompts.value,
+				tags: prompts.tags,
+				systemTags: prompts.systemTags,
+				enabled: prompts.enabled,
+			})
 			.from(prompts)
-			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+			.where(eq(prompts.brandId, data.brandId)),
 	]);
 	const brand = brandResult[0];
+	const allPrompts = brandPrompts.filter((prompt) => prompt.enabled);
 
 	const brandDomains = new Set(
 		[extractDomain(brand?.website || ""), ...(brand?.additionalDomains || []).map(extractDomain)].filter(Boolean),
@@ -292,6 +300,8 @@ async function resolveCitationScope(data: CitationFilters) {
 		to: window.toDateStr,
 		timezone: "UTC",
 		promptIds,
+		excludedPromptIds:
+			tagFilter.length > 0 ? undefined : brandPrompts.filter((prompt) => !prompt.enabled).map((prompt) => prompt.id),
 		model: data.model,
 	};
 	return {
@@ -306,6 +316,26 @@ async function resolveCitationScope(data: CitationFilters) {
 		scope,
 		previousScope: { ...scope, from: window.prevFromDateStr, to: window.prevToDateStr },
 	};
+}
+
+/** Google AI Mode's Shopping products and search queries, built once for the summary and both lists. */
+function getGoogleModule({
+	scope,
+	brand,
+	competitorsList,
+	allPrompts,
+}: Awaited<ReturnType<typeof resolveCitationScope>>) {
+	const brandName = brand?.name ?? "";
+	const competitorNames = competitorsList.map((c) => ({ id: c.id, name: c.name }));
+	return sharedRead(`google-module:${JSON.stringify([scope, brandName, competitorNames])}`, async () => {
+		const promptsById = new Map(allPrompts.map((prompt) => [prompt.id, prompt.value]));
+		return buildGoogleModule(
+			scope.promptIds.length > 0 ? await getPerPromptGooglePages(scope) : [],
+			brandName,
+			competitorNames,
+			(id) => promptsById.get(id),
+		);
+	});
 }
 
 /**
@@ -353,13 +383,13 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const competitorSummary = competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains }));
 		if (scope.promptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, resolved.days);
 
-		const [summary, perPromptDailyClasses, googlePages, promptDomains] = await Promise.all([
+		const [summary, perPromptDailyClasses, googleModule, promptDomains] = await Promise.all([
 			getCitationSummary(scope, previousScope, owned, {
 				minCount: MIN_COUNT_FOR_WHATS_CHANGED,
 				limit: WHATS_CHANGED_LIMIT,
 			}),
 			getPerPromptDailyCitationClasses(scope, owned),
-			getPerPromptGooglePages(scope),
+			getGoogleModule(resolved),
 			getPerPromptCitationDomains(scope),
 		]);
 
@@ -368,18 +398,8 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const { categoryCounts, totalCitations, pageTypeDistribution } = tallyClasses(summary.classes);
 		const whatsChanged = buildWhatsChanged(summary, brandDomains, competitorDomains, categorizeDomain);
 
-		// Google AI Mode module: Shopping products (brand vs competitor) + search
-		// queries, each tied to the prompts that triggered them.
 		const promptsById = new Map(allPrompts.map((prompt) => [prompt.id, prompt]));
 		const promptValue = (id: string) => promptsById.get(id)?.value;
-		const googleModule = googleModuleTotals(
-			buildGoogleModule(
-				googlePages,
-				brand?.name ?? "",
-				competitorsList.map((c) => ({ id: c.id, name: c.name })),
-				promptValue,
-			),
-		);
 
 		const timeSeriesArgs = {
 			rows: perPromptDailyClasses,
@@ -405,7 +425,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			uniqueDomains: summary.uniqueDomains,
 			categoryCounts,
 			pageTypeDistribution,
-			googleModule,
+			googleModule: googleModuleTotals(googleModule),
 			subreddits: summarizeSubreddits(
 				summary.redditPages.map((page) => ({
 					url: page.url,
@@ -520,14 +540,7 @@ export const getGoogleShoppingFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }) => {
 		await requireBrandSession(data.brandId);
-		const { scope, brand, competitorsList, allPrompts } = await resolveCitationScope(data);
-		const promptsById = new Map(allPrompts.map((prompt) => [prompt.id, prompt.value]));
-		const googleModule = buildGoogleModule(
-			scope.promptIds.length > 0 ? await getPerPromptGooglePages(scope) : [],
-			brand?.name ?? "",
-			competitorsList.map((c) => ({ id: c.id, name: c.name })),
-			(id) => promptsById.get(id),
-		);
+		const googleModule = await getGoogleModule(await resolveCitationScope(data));
 		const list =
 			data.list === "products" ? { kind: "products" as const, filter: data.attribution } : { kind: "queries" as const };
 		return pageGoogleList(googleModule, list, data.page * data.pageSize, data.pageSize);
