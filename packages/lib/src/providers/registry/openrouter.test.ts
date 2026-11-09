@@ -59,6 +59,22 @@ describe("openrouter run", () => {
 		expect(sentBody(fetchMock).model).toBe("openai/gpt-5-mini:online");
 	});
 
+	it("runs Grok at minimal reasoning effort to hold down the cost of a grounded answer", async () => {
+		const fetchMock = stubFetch();
+
+		await openrouter.run("grok", "prompt", { webSearch: true, version: "x-ai/grok-4.7" });
+
+		expect(sentBody(fetchMock).reasoning).toEqual({ effort: "minimal" });
+	});
+
+	it("leaves reasoning effort to the model's default elsewhere", async () => {
+		const fetchMock = stubFetch();
+
+		await openrouter.run("claude", "prompt", { webSearch: true, version: "anthropic/claude-haiku-5.5" });
+
+		expect(sentBody(fetchMock).reasoning).toBeUndefined();
+	});
+
 	it("logs a warning when the response stops on the output cap", async () => {
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		stubFetch({ choices: [{ message: { content: "clipped" }, finish_reason: "length" }] });
