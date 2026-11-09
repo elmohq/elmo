@@ -15,36 +15,53 @@ export interface ModelConfig {
 	webSearch: boolean;
 }
 
-/**
- * Consumer apps that went behind a login, so no scraper reaches them, and what
- * to track instead. Perplexity's Sonar model API still works, and Bing's Copilot
- * Search still answers signed-out visitors.
- */
-const LOGIN_WALLED_MODELS: Record<string, string> = {
-	copilot:
-		"track Bing Copilot instead, with bing-copilot:cloro:online, bing-copilot:searchapi:online, or bing-copilot:dataforseo:online",
-	perplexity:
-		"track Perplexity through its Sonar model instead, with perplexity:openrouter:perplexity/sonar:online or perplexity:dataforseo:online",
-};
-
-const SCRAPER_PROVIDERS = new Set(["brightdata", "cloro", "olostep", "oxylabs", "searchapi"]);
-
-export function isRetiredScrapeTarget(config: Pick<ModelConfig, "model" | "provider">): boolean {
-	return config.model in LOGIN_WALLED_MODELS && SCRAPER_PROVIDERS.has(config.provider);
+export interface RetiredScrapeTarget {
+	target: string;
+	reason: string;
+	replacements: string[];
 }
 
-/** SearchApi's `copilot` target always read Bing's Copilot Search, so it carries on under the new name. */
-function renameBingCopilot(config: ModelConfig): ModelConfig {
-	return config.model === "copilot" && config.provider === "searchapi" ? { ...config, model: "bing-copilot" } : config;
+const SCRAPERS = ["brightdata", "cloro", "olostep", "oxylabs", "searchapi"];
+
+/**
+ * Perplexity and the Copilot app went behind a login, so no scraper reaches
+ * them. Perplexity's Sonar model API still works. `copilot` carries on as Bing's
+ * Copilot Search, which still answers signed-out visitors, on the providers
+ * that can read it.
+ */
+const RETIRED_SCRAPES: Record<string, { providers: string[]; reason: string; replacements: string[] }> = {
+	perplexity: {
+		providers: SCRAPERS,
+		reason: "Perplexity now requires a login, so no scraper can reach it, but its Sonar model API still works.",
+		replacements: ["perplexity:openrouter:perplexity/sonar:online", "perplexity:dataforseo:online"],
+	},
+	copilot: {
+		providers: ["brightdata", "olostep"],
+		reason: "The Copilot app now requires a login, and this provider cannot reach Bing Copilot.",
+		replacements: ["copilot:cloro:online", "copilot:searchapi:online", "copilot:dataforseo:online"],
+	},
+};
+
+function isRetiredScrapeTarget(config: ModelConfig): boolean {
+	return RETIRED_SCRAPES[config.model]?.providers.includes(config.provider) ?? false;
+}
+
+/** True for a model that may have vanished from the parsed targets without the operator removing it. */
+export function hasRetiredScrapeTargets(model: string): boolean {
+	return model in RETIRED_SCRAPES;
+}
+
+/** The SCRAPE_TARGETS entries `parseScrapeTargets` skips, with what to run in their place. */
+export function retiredScrapeTargets(envValue?: string): RetiredScrapeTarget[] {
+	return parseAllScrapeTargets(envValue)
+		.filter(isRetiredScrapeTarget)
+		.map((config) => {
+			const { reason, replacements } = RETIRED_SCRAPES[config.model];
+			return { target: formatScrapeTarget(config), reason, replacements };
+		});
 }
 
 const warned = new Set<string>();
-
-function warnOnce(entry: string, message: string): void {
-	if (warned.has(entry)) return;
-	warned.add(entry);
-	console.warn(message);
-}
 
 /**
  * Middle segments rejoin with ":", so OpenRouter variant suffixes like ":free" survive.
@@ -53,25 +70,14 @@ function warnOnce(entry: string, message: string): void {
  * instance that still lists one keeps running everything else after upgrading.
  */
 export function parseScrapeTargets(envValue?: string): ModelConfig[] {
-	const configs = parseAllScrapeTargets(envValue).map((config) => {
-		const renamed = renameBingCopilot(config);
-		if (renamed !== config) {
-			const entry = formatScrapeTarget(config);
-			warnOnce(
-				entry,
-				`SCRAPE_TARGETS: running "${entry}" as "${formatScrapeTarget(renamed)}", the Bing Copilot answer it always returned. Rename it in SCRAPE_TARGETS.`,
-			);
-		}
-		return renamed;
-	});
-	for (const config of configs.filter(isRetiredScrapeTarget)) {
-		const entry = formatScrapeTarget(config);
-		warnOnce(
-			entry,
-			`SCRAPE_TARGETS: skipping "${entry}": ${config.model} now requires a login, so no scraper can reach it. Remove it from SCRAPE_TARGETS and ${LOGIN_WALLED_MODELS[config.model]}. See ${PROVIDERS_DOCS_URL}.`,
+	for (const { target, reason, replacements } of retiredScrapeTargets(envValue)) {
+		if (warned.has(target)) continue;
+		warned.add(target);
+		console.warn(
+			`SCRAPE_TARGETS: skipping "${target}". ${reason} Replace it with ${replacements.join(" or ")}. See ${PROVIDERS_DOCS_URL}.`,
 		);
 	}
-	return configs.filter((config) => !isRetiredScrapeTarget(config));
+	return parseAllScrapeTargets(envValue).filter((config) => !isRetiredScrapeTarget(config));
 }
 
 function parseAllScrapeTargets(envValue?: string): ModelConfig[] {
@@ -111,7 +117,7 @@ export const STATUS_TARGETS = [
 	"google-ai-mode:searchapi:online",
 	"google-ai-overview:searchapi:online",
 	"gemini:searchapi:online",
-	"bing-copilot:searchapi:online",
+	"copilot:searchapi:online",
 	"chatgpt:olostep:online",
 	"google-ai-mode:olostep:online",
 	"google-ai-overview:olostep:online",
@@ -127,7 +133,7 @@ export const STATUS_TARGETS = [
 	"google-ai-overview:oxylabs:online",
 	"chatgpt:cloro:online",
 	"gemini:cloro:online",
-	"bing-copilot:cloro:online",
+	"copilot:cloro:online",
 	"google-ai-mode:cloro:online",
 	"google-ai-overview:cloro:online",
 	"google-ai-mode:dataforseo:online",
@@ -135,7 +141,7 @@ export const STATUS_TARGETS = [
 	"chatgpt:dataforseo:online",
 	"gemini:dataforseo:online",
 	"perplexity:dataforseo:online",
-	"bing-copilot:dataforseo:online",
+	"copilot:dataforseo:online",
 	// Pinning a model_name routes to LLM Responses instead of the scraper, so
 	// these keep the API side of the provider monitored too.
 	"chatgpt:dataforseo:gpt-5.5:online",
@@ -163,9 +169,6 @@ export const STATUS_TARGETS = [
 
 /** No longer tested, but still listed on the status page so the change is visible. */
 export const RETIRED_STATUS_TARGETS = [
-	"copilot:brightdata:online",
-	"copilot:cloro:online",
-	"copilot:olostep:online",
 	"perplexity:brightdata:online",
 	"perplexity:cloro:online",
 	"perplexity:olostep:online",

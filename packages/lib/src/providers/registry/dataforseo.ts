@@ -62,7 +62,7 @@ const SCRAPER_CALLS = {
 // AI Overview comes from the Organic SERP endpoint, not AI Mode's, so it has its own runner.
 const AI_OVERVIEW_MODEL = "google-ai-overview";
 // Bing's Copilot Search summary rides on its Organic SERP the same way.
-const BING_COPILOT_MODEL = "bing-copilot";
+const BING_COPILOT_MODEL = "copilot";
 const SUPPORTED_MODELS = new Set([...SERP_MODELS, AI_OVERVIEW_MODEL, BING_COPILOT_MODEL, ...Object.keys(LLM_MODELS)]);
 
 /** Must agree with `run()`'s dispatch: the settings page labels targets from it. */
@@ -154,6 +154,7 @@ async function attemptGoogleAiOverview(
 }
 
 async function runBingCopilot(prompt: string): Promise<ScrapeResult> {
+	assertPromptLength(prompt);
 	const api = createDfsSerpApi();
 	const response = await api.bingOrganicLiveAdvanced([
 		new client.SerpBingOrganicLiveAdvancedRequestInfo({

@@ -37,6 +37,7 @@ export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
 	chatgpt: { access: "scraped", premium: true, premiumVersion: "GPT-6 Luna" },
 	"google-ai-mode": { access: "scraped" },
 	"google-ai-overview": { access: "scraped" },
+	copilot: { access: "scraped" },
 	gemini: { access: "scraped" },
 	qwen: { access: "api", version: "Qwen3 235B A22B 2507" },
 	deepseek: { access: "api", version: "DeepSeek V3.2" },
@@ -45,7 +46,6 @@ export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
 	claude: { access: "api", premium: true, version: "Claude Haiku 5.5", premiumVersion: "Claude Haiku 5.5" },
 	kimi: { access: "api", version: "Kimi K2.5" },
 	perplexity: { premium: true, premiumVersion: "Sonar" },
-	"bing-copilot": { access: "scraped" },
 };
 
 export const STANDARD_PLATFORM_MENU: readonly string[] = Object.entries(CLOUD_PLATFORMS)

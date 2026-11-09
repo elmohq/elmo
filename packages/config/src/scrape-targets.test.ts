@@ -4,6 +4,7 @@ import {
 	type ModelConfig,
 	parseScrapeTargets,
 	providersByModel,
+	retiredScrapeTargets,
 	STATUS_TARGETS,
 } from "./scrape-targets";
 
@@ -152,7 +153,7 @@ describe("providersByModel", () => {
 });
 
 describe("login-walled scrape targets", () => {
-	it("skips scraped Perplexity and Copilot with a warning, so the rest keep running", () => {
+	it("skips scraped Perplexity and the Copilot app with a warning, so the rest keep running", () => {
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		const result = parseScrapeTargets(
 			"chatgpt:cloro:online,perplexity:cloro:online,copilot:brightdata:online,gemini:olostep:online",
@@ -162,16 +163,22 @@ describe("login-walled scrape targets", () => {
 		warn.mockRestore();
 	});
 
-	it("runs SearchApi's Copilot target as the Bing Copilot answer it always was", () => {
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-		expect(parseScrapeTargets("copilot:searchapi:online").map(formatScrapeTarget)).toEqual([
-			"bing-copilot:searchapi:online",
-		]);
-		warn.mockRestore();
+	it("keeps Copilot targets on the providers that reach Bing Copilot", () => {
+		const targets = "copilot:cloro:online,copilot:searchapi:online,copilot:dataforseo:online";
+		expect(parseScrapeTargets(targets).map(formatScrapeTarget).join(",")).toBe(targets);
+		expect(retiredScrapeTargets(targets)).toEqual([]);
 	});
 
 	it("keeps Perplexity on its model APIs", () => {
 		const result = parseScrapeTargets("perplexity:openrouter:perplexity/sonar:online,perplexity:dataforseo:online");
 		expect(result).toHaveLength(2);
+	});
+
+	it("names a working replacement for every skipped target", () => {
+		const retired = retiredScrapeTargets("chatgpt:cloro:online,perplexity:oxylabs:online,copilot:olostep:online");
+		expect(retired.map((entry) => entry.target)).toEqual(["perplexity:oxylabs:online", "copilot:olostep:online"]);
+		for (const { replacements } of retired) {
+			expect(parseScrapeTargets(replacements.join(",")).map(formatScrapeTarget)).toEqual(replacements);
+		}
 	});
 });

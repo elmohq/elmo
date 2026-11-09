@@ -6,7 +6,7 @@
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
-import type { ModelConfig } from "@workspace/config/scrape-targets";
+import { hasRetiredScrapeTargets, type ModelConfig } from "@workspace/config/scrape-targets";
 import type { DeploymentMode } from "@workspace/config/types";
 import { getRunsPerPrompt } from "../constants";
 import { isGroundedApiTarget } from "../providers";
@@ -46,7 +46,12 @@ function intervalForRate(runsPerDay: number): number {
 
 function unlimitedRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
 	const interval = input.brand.delayOverrideHours ?? input.defaultDelayHours;
-	const targets = selectTargetsForBrand(input.scrapeTargets, input.brand.enabledModels).map((config) => ({
+	// A retired scrape target is skipped when SCRAPE_TARGETS is parsed, so a pick
+	// for it outlives its target. The brand's other picks should keep running.
+	const configured = new Set(input.scrapeTargets.map((target) => target.model));
+	const picks =
+		input.brand.enabledModels?.filter((model) => configured.has(model) || !hasRetiredScrapeTargets(model)) ?? null;
+	const targets = selectTargetsForBrand(input.scrapeTargets, picks).map((config) => ({
 		config,
 		intervalHours: interval,
 		replication: getRunsPerPrompt(),

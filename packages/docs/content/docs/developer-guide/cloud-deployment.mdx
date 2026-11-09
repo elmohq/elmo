@@ -107,7 +107,7 @@ standard platform** (the run policy uses the first match per model), plus a grou
 model sold in the premium tier:
 
 ```
-chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.7:online,claude:anthropic-api:claude-haiku-5-5:online,perplexity:openrouter:perplexity/sonar:online,bing-copilot:cloro:online
+chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:cloro:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.7:online,claude:anthropic-api:claude-haiku-5-5:online,perplexity:openrouter:perplexity/sonar:online
 ```
 
 Platforms are offered to customers only when they appear in both the plan menu
@@ -124,6 +124,7 @@ whatever the live product serves its users that day.
 | ChatGPT | Premium | `gpt-6-luna` with web search, via the OpenAI API |
 | Google AI Mode | Pick (scraped) | Live product |
 | Google AI Overviews | Pick (scraped) | Live product |
+| Bing Copilot | Pick (scraped) | Live bing.com/copilotsearch, via Cloro's Bing AI Mode |
 | Gemini | Pick (scraped) | Live gemini.google.com |
 | Qwen | Pick (API) | `qwen/qwen3-235b-a22b-2507`, via OpenRouter |
 | DeepSeek | Pick (API) | `deepseek/deepseek-v3.2`, via OpenRouter |
@@ -132,7 +133,6 @@ whatever the live product serves its users that day.
 | Claude | Premium | `claude-haiku-5-5` with web search, via the Anthropic API |
 | Grok | Premium | `x-ai/grok-4.7` with web search and minimal reasoning, via OpenRouter |
 | Kimi | Pick (API) | `moonshotai/kimi-k2.5`, via OpenRouter |
-| Bing Copilot | Pick (scraped) | Live bing.com/copilotsearch, via Cloro's Bing AI Mode |
 | Perplexity | Premium | `perplexity/sonar` with Perplexity's own search, via OpenRouter |
 
 API picks are priced against a design point of roughly **$0.004 per run**, which is why Kimi runs
@@ -180,12 +180,15 @@ times a day, would cost more than the scraped surface it displaced. Metered once
 paid pool, it prices the same way grounded Claude does.
 
 Perplexity is also premium only. Its consumer product sits behind a login, so no scraper reaches it.
-Microsoft Copilot went behind a login too, so Cloud sells Bing Copilot in its place: the Copilot Search
-answer Bing still shows signed-out visitors. Cloro's Bing AI Mode costs 4 credits a run, one less than
-a Copilot scrape did. Every Sonar call searches, so there is no ungrounded
-variant to sell as a pick. Base Sonar is the model Perplexity trained for its default search mode,
-so it is the closest an API gets to what most visitors to perplexity.ai see; Sonar Pro does a
-single-step search that matches neither that nor the web app's multi-step Pro Search.
+Every Sonar call searches, so there is no ungrounded variant to sell as a pick. Base Sonar is the
+model Perplexity trained for its default search mode, so it is the closest an API gets to what most
+visitors to perplexity.ai see; Sonar Pro does a single-step search that matches neither that nor the
+web app's multi-step Pro Search.
+
+The Copilot app went behind a login too, so the `copilot` pick now tracks Bing Copilot: the Copilot
+Search answer Bing still shows signed-out visitors. The model id is unchanged, so a brand that picked
+Copilot keeps its pick and its history. Cloro's Bing AI Mode costs 4 credits a run, one less than a
+Copilot scrape did.
 
 The customer-facing version of this distinction is how the LLM settings page is laid out: three cards
 — **Scraped Engines**, **LLM APIs** and **Premium** — each explaining in its own

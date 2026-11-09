@@ -295,13 +295,13 @@ describe("dataforseo provider", () => {
 	it("reads Bing Copilot's summary from Bing's organic SERP", async () => {
 		dataforseoClient.bingOrganicLiveAdvanced.mockResolvedValueOnce(AI_OVERVIEW_OK);
 
-		const result = await dataforseo.run("bing-copilot", "What is a well-reviewed speaker?", { webSearch: true });
+		const result = await dataforseo.run("copilot", "What is a well-reviewed speaker?", { webSearch: true });
 
 		const [payload] = dataforseoClient.bingOrganicLiveAdvanced.mock.calls[0];
 		expect(payload[0]).toMatchObject({ keyword: "What is a well-reviewed speaker?", location_code: 2840 });
 		expect(stored(result).textContent).toContain("Sonos Era 300");
 		expect(stored(result).citations[0].domain).toBe("whathifi.com");
-		expect(dataforseo.validateTarget!({ model: "bing-copilot", provider: "dataforseo", webSearch: true })).toBeNull();
+		expect(dataforseo.validateTarget!({ model: "copilot", provider: "dataforseo", webSearch: true })).toBeNull();
 	});
 
 	it("retries the AI Overview request when DataForSEO returns a transient server error", async () => {

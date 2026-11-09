@@ -30,6 +30,7 @@ const CLOUD_TARGETS = parseScrapeTargets(
 		"chatgpt:brightdata:online",
 		"google-ai-mode:brightdata:online",
 		"google-ai-overview:brightdata:online",
+		"copilot:cloro:online",
 		"gemini:brightdata:online",
 		"qwen:openrouter:qwen/qwen3-235b",
 		"deepseek:openrouter:deepseek/deepseek-v3.2",
@@ -96,6 +97,13 @@ describe("resolvePromptRunPlan: non-cloud legacy equivalence", () => {
 		).toThrow(/nope/);
 	});
 
+	it("keeps running a brand's other picks when one was for a retired scrape target", () => {
+		const plan = resolvePromptRunPlan(
+			localInput({ brand: { enabledModels: ["chatgpt", "perplexity"], delayOverrideHours: null } }),
+		);
+		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt"]);
+	});
+
 	it("every unmetered deployment mode resolves the same plan", () => {
 		// The policy reads "unmetered" off the entitlements rather than off a
 		// separately-passed mode, so local, whitelabel and demo reach it by the
@@ -131,7 +139,7 @@ describe("defaultPlatformPicks", () => {
 			"chatgpt",
 			"google-ai-mode",
 			"google-ai-overview",
-			"gemini",
+			"copilot",
 		]);
 	});
 
@@ -141,6 +149,7 @@ describe("defaultPlatformPicks", () => {
 			"chatgpt",
 			"google-ai-mode",
 			"google-ai-overview",
+			"copilot",
 			"gemini",
 			"qwen",
 			"deepseek",
@@ -385,7 +394,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 			"chatgpt",
 			"google-ai-mode",
 			"google-ai-overview",
-			"gemini",
+			"copilot",
 		]);
 	});
 
