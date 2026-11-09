@@ -66,18 +66,22 @@ export const openrouter: Provider = {
 		schema,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
-		// Raw fetch (no AI SDK) so we can attach the OpenRouter `plugins` field
-		// — the AI SDK's OpenAI-compat path doesn't pass it through.
+		// Raw fetch (no AI SDK) so we can attach OpenRouter's server tool and
+		// provider routing, which the AI SDK's OpenAI-compat path doesn't pass through.
 		const body: Record<string, unknown> = {
 			model: DEFAULT_RESEARCH_MODEL,
 			messages: [{ role: "user", content: prompt }],
 			response_format: jsonSchemaResponseFormat(schema),
 		};
-		// `engine: "native"` runs the underlying provider's real web-search tool
-		// (e.g. Anthropic's web_search_20250305) instead of the Exa fallback. This
-		// stays on the deprecated plugin: with the openrouter:web_search tool the
-		// model often answers in prose and ignores response_format.
-		if (webSearch) body.plugins = [{ id: "web", engine: "native" }];
+		if (webSearch) {
+			// `engine: "native"` runs Anthropic's own web search instead of the Exa fallback.
+			body.tools = [{ type: "openrouter:web_search", parameters: { engine: "native" } }];
+			// OpenRouter routes the answer written after a search without regard to
+			// response_format, and Claude Platform on AWS doesn't enforce the schema,
+			// so it answers in prose. Anthropic is the one host with native search
+			// that does.
+			body.provider = { only: ["anthropic"] };
+		}
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
 			headers: openrouterHeaders(),

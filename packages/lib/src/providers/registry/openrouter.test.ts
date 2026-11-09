@@ -123,7 +123,7 @@ describe("openrouter run", () => {
 });
 
 describe("openrouter structured research", () => {
-	it("searches with the model provider's native web search and returns the parsed object", async () => {
+	it("searches with Anthropic's native web search on the one host that enforces the schema", async () => {
 		const fetchMock = stubFetch({ choices: [{ message: { content: JSON.stringify({ name: "Acme" }) } }] });
 
 		const result = await openrouter.runStructuredResearch!({
@@ -132,7 +132,10 @@ describe("openrouter structured research", () => {
 		});
 
 		expect(result.object).toEqual({ name: "Acme" });
-		expect(sentBody(fetchMock).plugins).toEqual([{ id: "web", engine: "native" }]);
+		const body = sentBody(fetchMock);
+		expect(body.tools).toEqual([{ type: "openrouter:web_search", parameters: { engine: "native" } }]);
+		expect(body.provider).toEqual({ only: ["anthropic"] });
+		expect(body.plugins).toBeUndefined();
 	});
 
 	it("doesn't search when research doesn't need the web", async () => {
@@ -144,6 +147,8 @@ describe("openrouter structured research", () => {
 			webSearch: false,
 		});
 
-		expect(sentBody(fetchMock).plugins).toBeUndefined();
+		const body = sentBody(fetchMock);
+		expect(body.tools).toBeUndefined();
+		expect(body.provider).toBeUndefined();
 	});
 });
