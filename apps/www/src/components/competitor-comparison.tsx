@@ -340,8 +340,8 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 				<div className="mx-auto max-w-3xl px-4 text-center md:px-6">
 					<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Ready to track your AI visibility?</h2>
 					<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
-						Deploy Elmo in minutes and start monitoring how ChatGPT, Google AI Overviews, Gemini, Perplexity, Claude, and
-						more talk about your brand.
+						Deploy Elmo in minutes and start monitoring how ChatGPT, Google AI Overviews, Gemini, Perplexity, Claude,
+						and more talk about your brand.
 					</p>
 					<div className="mt-8 flex flex-wrap justify-center gap-3">
 						<Link {...SELF_HOST_LINK} className={buttonVariants({ size: "sm" })}>

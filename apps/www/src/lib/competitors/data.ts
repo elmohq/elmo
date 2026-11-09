@@ -8982,18 +8982,18 @@ export function getComparisonSlug(competitor: Competitor): string {
  */
 const aeoPopularityRanking: string[] = [
 	// --- Tier A: Category leaders with major funding, customers, and recognition ---
-	"profound", // Category leader: $96M Series C at a $1B valuation (Feb 2026), enterprise roster, G2 AEO Leader
-	"peec-ai", // $21M Series A (Singular), 3,500+ brands, ten engines scraped from the real UIs
+	"profound", // Category leader: $180M Series D at a $1.8B valuation (Sept 2026), enterprise roster
+	"peec-ai", // $21M Series A (Singular), 4,000+ brands, up to 13 models on Enterprise
 	"airops", // $40M Series B / $225M val (Greylock), Ramp/Chime/Wiz/Carta, repositioned as AI-search platform
 	"scrunch", // $19M (Mayfield/Decibel), G2 category leader, broadest engine coverage, SOC2+HIPAA
 	"athenahq", // Broad engine coverage incl. all ten tracked engines, API + MCP, widely listed in best-AEO roundups
-	"otterly-ai", // Gartner Cool Vendor 2025, 30k+ users, 2026 European Search Award
+	"otterly-ai", // Gartner Cool Vendor 2025, 40k+ users, 2026 European Search Award
 
 	// --- Tier B: Well-funded or widely adopted AEO tools ---
 	"brandlight", // $30M Series A (Feb 2026, Pelion); Kimberly-Clark, LG, Estée Lauder
 	"bluefish-ai", // $43M Series B (Apr 2026), ~$68M raised, claims ~10% of the Fortune 500
-	"evertune", // $15M Series A, 700+ advertisers and agencies, EverPanel consumer data, self-serve plans
-	"promptwatch", // €6M seed (Jul 2026), ~€2M ARR, 1,780+ brands, UI scraping
+	"evertune", // $20M raised, 700+ advertisers and agencies, EverPanel consumer data, self-serve plans
+	"promptwatch", // €6M seed (Jul 2026), ~€2M ARR, 1,780+ brands, UI scraping for live-search engines
 	"writesonic", // 120M AI conversation dataset, major brand, combined tracking + content
 	"rankscale", // 17+ engines in one plan, 240+ countries, 94 technical checks, DR 63 with case studies + partners
 	"se-ranking", // Large established platform with dedicated AI Overviews + ChatGPT trackers
@@ -9034,7 +9034,7 @@ const aeoPopularityRanking: string[] = [
 	"allmo", // Query Fan-Out + crawler indexing + citation intelligence, 4.8/5 OMR Reviews
 	"gauge", // End-to-end tracking + analysis + content platform
 	"azoma", // Enterprise agentic commerce — Rufus/Sparky/Alexa coverage and SKU-level revenue metrics
-	"passionfruit", // Stanford/CMU founders, unified SEO+GEO+AEO + managed service
+	"passionfruit", // Stanford/CMU founders, managed SEO/GEO service on its own tracker
 	"daydream", // 12% of Forbes AI 50 as clients, a16z citation, Shorty Award; managed service not software
 
 	// --- Tier D: Niche / emerging AEO tools with some traction ---
@@ -9090,7 +9090,7 @@ const aeoPopularityRanking: string[] = [
 	"essio", // Agency-delivered, link-building emphasis; DR 8
 
 	// --- Tier F: Early, small, or minimal-traction tools ---
-	"algomizer", // Service engagement rather than software; DR 33 but no product access
+	"algomizer", // Performance-priced agency rather than software; DR 33 but no product access
 	"rank-ai", // AI content creation + rank tracking
 	"rank-plus-plus", // Nine tools for solo founders; free tier, narrow scope
 	"engenius", // Page-level GEO optimizer with a light monitor attached
