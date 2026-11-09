@@ -14,8 +14,6 @@ describe("formatPostDate", () => {
 		expect(formatPostDate("not-a-date")).toBe("not-a-date");
 		expect(formatPostDate("2026-13-01")).toBe("2026-13-01");
 		expect(formatPostDate("2026-5-3")).toBe("2026-5-3");
-		expect(formatPostDate("2026-05-30T12:00:00Z")).toBe(
-			"2026-05-30T12:00:00Z",
-		);
+		expect(formatPostDate("2026-05-30T12:00:00Z")).toBe("2026-05-30T12:00:00Z");
 	});
 });
