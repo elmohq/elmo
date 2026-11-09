@@ -45,6 +45,7 @@ interface WizardData {
 	prompts: EditablePrompt[];
 }
 
+const DOMAIN_PASTE_SPLITTER = /[\n,\t]+/;
 const normalizeDomain = (raw: string) => cleanAndValidateDomain(raw) ?? raw.trim();
 
 const EditableTagsInput = memo(
@@ -54,6 +55,7 @@ const EditableTagsInput = memo(
 		placeholder = "Add item...",
 		maxItems = 10,
 		normalizeValue,
+		pasteSplitter,
 		onValidate,
 	}: {
 		items: string[];
@@ -61,7 +63,8 @@ const EditableTagsInput = memo(
 		placeholder?: string;
 		maxItems?: number;
 		normalizeValue?: (raw: string) => string;
-		onValidate?: (value: string) => true | string;
+		pasteSplitter?: RegExp;
+		onValidate?: (value: string, current: string[]) => true | string;
 	}) => (
 		<div className="space-y-2">
 			<TagsInput
@@ -71,6 +74,7 @@ const EditableTagsInput = memo(
 				searchPlaceholder={placeholder}
 				maxItems={maxItems}
 				normalizeValue={normalizeValue}
+				pasteSplitter={pasteSplitter}
 				onValidate={onValidate}
 			/>
 			<p className="text-xs text-muted-foreground">
@@ -165,8 +169,9 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const updatePrompts = useCallback((prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })), []);
 
 	const validateDomain = useCallback(
-		(val: string) => validateAdditionalDomain(val, [data.website.trim() || brand?.website, ...data.additionalDomains]),
-		[data.website, brand?.website, data.additionalDomains],
+		(val: string, current: string[]) =>
+			validateAdditionalDomain(val, [data.website.trim() || brand?.website, ...current]),
+		[data.website, brand?.website],
 	);
 
 	const previewCounts = useMemo(() => {
@@ -295,6 +300,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							placeholder="Add domain..."
 							maxItems={10}
 							normalizeValue={normalizeDomain}
+							pasteSplitter={DOMAIN_PASTE_SPLITTER}
 							onValidate={validateDomain}
 						/>
 					</div>

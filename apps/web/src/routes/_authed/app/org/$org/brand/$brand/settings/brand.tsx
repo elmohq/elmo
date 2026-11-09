@@ -52,8 +52,8 @@ function BrandSettingsPage() {
 	}
 
 	const validateDomain = useCallback(
-		(val: string) => validateAdditionalDomain(val, [brand?.website, ...additionalDomains]),
-		[brand?.website, additionalDomains],
+		(val: string, current: string[]) => validateAdditionalDomain(val, [brand?.website, ...current]),
+		[brand?.website],
 	);
 	const handleAliasesChange = useCallback((values: string[]) => setAliases(values), []);
 
@@ -187,6 +187,7 @@ function BrandSettingsPage() {
 							value={additionalDomains}
 							onValueChange={setAdditionalDomains}
 							placeholder="Add domain..."
+							pasteSplitter={/[\n,\t]+/}
 							searchPlaceholder="Add domain..."
 							maxItems={10}
 							normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}

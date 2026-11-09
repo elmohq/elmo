@@ -88,3 +88,23 @@ export const RejectsTheWebsite: Story = {
 		await expect(documentBody.findByText(/is already tracked/i)).resolves.toBeVisible();
 	},
 };
+
+export const PasteSkipsCoveredDomains: Story = {
+	render: () => {
+		setMockBrand(MOCK_BRAND);
+		return <BrandSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const documentBody = await openDomains(canvasElement);
+
+		await userEvent.click(await documentBody.findByPlaceholderText("Add domain..."));
+		await userEvent.paste("blog.acme.com, acme.io, shop.acme.io, notacme.com");
+
+		await expect(documentBody.findByText(/"blog\.acme\.com" is already covered by acme\.com/i)).resolves.toBeVisible();
+		await expect(canvas.findByText("acme.io")).resolves.toBeVisible();
+		expect(canvas.getByText("notacme.com")).toBeVisible();
+		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+		expect(canvas.queryByText("shop.acme.io")).toBeNull();
+	},
+};
