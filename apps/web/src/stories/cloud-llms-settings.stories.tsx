@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
 import { PLATFORM_TIER_LABELS, STANDARD_PLATFORM_MENU } from "@workspace/config/plans";
-import { parseScrapeTargets } from "@workspace/config/scrape-targets";
+import { parseScrapeTargets, retiredScrapeTargets } from "@workspace/config/scrape-targets";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
@@ -117,6 +117,7 @@ function standardPicker(overrides: Partial<ModelPickerState> = {}): ModelPickerS
 		upgradeOptions: [],
 		costBasis: null,
 		unconfiguredPlatforms: [],
+		retiredTargets: [],
 		...overrides,
 	};
 }
@@ -131,6 +132,7 @@ function unmeteredPicker(available: PlatformOption[], overrides: Partial<ModelPi
 		upgradeOptions: [],
 		costBasis: null,
 		unconfiguredPlatforms: [],
+		retiredTargets: [],
 		...overrides,
 	};
 }
@@ -236,6 +238,7 @@ export const StarterSinglePlatform: Story = {
 			upgradeOptions: PICKABLE.filter((option) => option.model !== "chatgpt"),
 			costBasis: null,
 			unconfiguredPlatforms: [],
+			retiredTargets: [],
 		});
 		return <LlmsSettingsPage />;
 	},
@@ -262,6 +265,7 @@ export const UpgradeableMidPlan: Story = {
 			upgradeOptions: PICKABLE.filter((option) => !menu.includes(option.model)),
 			costBasis: null,
 			unconfiguredPlatforms: [],
+			retiredTargets: [],
 		});
 		return <LlmsSettingsPage />;
 	},
@@ -404,6 +408,26 @@ export const SelfHostedTotalFollowsTheSelection: Story = {
 	},
 };
 
+/** An upgraded instance still listing a login-walled scrape target is told so here, not only in the server log. */
+export const SelfHostedFlagsRetiredTargets: Story = {
+	render: () => {
+		loader(
+			unmeteredPicker(optionsByModel(true, { excludePremium: false }), {
+				costBasis: { enabledPrompts: 12, runsPerDay: 1, replication: 5 },
+				retiredTargets: retiredScrapeTargets("chatgpt:cloro:online,perplexity:cloro:online,copilot:brightdata:online"),
+			}),
+		);
+		return <LlmsSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("perplexity:cloro:online")).toBeVisible();
+		await expect(await canvas.findByText("perplexity:openrouter:perplexity/sonar:online")).toBeVisible();
+		await expect(await canvas.findByText("copilot:brightdata:online")).toBeVisible();
+		await expect(await canvas.findByText("copilot:cloro:online")).toBeVisible();
+	},
+};
+
 /** Cloud hides the estimates entirely — they are internal attribution figures. */
 export const CloudHidesCostEstimates: Story = {
 	render: () => {
@@ -534,6 +558,7 @@ export const Whitelabel: Story = {
 			upgradeOptions: [],
 			costBasis: null,
 			unconfiguredPlatforms: [],
+			retiredTargets: [],
 		});
 		return <LlmsSettingsPage />;
 	},
@@ -565,6 +590,7 @@ export const DemoIsNotEditable: Story = {
 			upgradeOptions: [],
 			costBasis: null,
 			unconfiguredPlatforms: [],
+			retiredTargets: [],
 		});
 		return <LlmsSettingsPage />;
 	},
