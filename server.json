@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.elmohq/elmo",
+  "title": "Elmo",
+  "description": "Track how ChatGPT, Claude, Perplexity, Gemini, and AI Overviews mention and cite your brand.",
+  "version": "0.7.8",
+  "websiteUrl": "https://www.elmohq.com/docs/api/mcp",
+  "repository": {
+    "url": "https://github.com/elmohq/elmo",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://app.elmohq.com/api/mcp"
+    }
+  ]
+}
