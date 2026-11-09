@@ -1,6 +1,7 @@
 # Elmo MCP Server
 
-[Elmo](https://www.elmohq.com) tracks how AI answer engines — ChatGPT, Claude, Perplexity, Gemini,
+[Elmo](https://www.elmohq.com) is an open-source AI visibility and answer engine optimization (AEO)
+platform. It tracks how AI answer engines — ChatGPT, Claude, Perplexity, Gemini,
 Google AI Overviews, and others — mention, cite, and describe your brand. Its MCP server lets an AI
 client read that data and manage the prompts Elmo tracks, so you can ask how a brand is doing and
 why without copying numbers between windows.

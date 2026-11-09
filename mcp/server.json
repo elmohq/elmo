@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.elmohq/elmo",
-  "title": "Elmo",
-  "description": "See how ChatGPT, Claude, Perplexity, Gemini, and AI Overviews mention and cite your brand, and why.",
+  "title": "Elmo AI Visibility",
+  "description": "AI visibility & AEO: how ChatGPT, Claude, Perplexity, and AI Overviews mention and cite your brand.",
   "version": "1.0.0",
   "websiteUrl": "https://www.elmohq.com",
   "repository": {
