@@ -42,24 +42,53 @@ interface PromptContext {
 
 async function scheduleNextRun(promptId: string, delayHours: number, consecutiveFailures: number): Promise<void> {
 	const startAfterSeconds = Math.round(delayHours * 60 * 60);
+	const data: ProcessPromptData = { promptId, consecutiveFailures };
+	const baseOptions = {
+		singletonKey: promptSingletonKey(promptId),
+		startAfter: startAfterSeconds,
+		...PROMPT_JOB_OPTIONS,
+	};
+	const reason = consecutiveFailures > 0 ? ` (backing off after ${consecutiveFailures} failed cycle(s))` : "";
 
 	try {
-		await getBoss().send(
-			PROCESS_PROMPT_QUEUE,
-			{ promptId, consecutiveFailures },
-			{
-				singletonKey: promptSingletonKey(promptId),
-				singletonSeconds: startAfterSeconds, // Prevent duplicates until the next attempt is due
-				startAfter: startAfterSeconds,
-				...PROMPT_JOB_OPTIONS,
-			},
-		);
-		const reason = consecutiveFailures > 0 ? ` (backing off after ${consecutiveFailures} failed cycle(s))` : "";
+		// Prevent duplicates until the next attempt is due.
+		const jobId = await getBoss().send(PROCESS_PROMPT_QUEUE, data, {
+			...baseOptions,
+			singletonSeconds: startAfterSeconds,
+		});
+		if (!jobId) {
+			// pg-boss places the dedup slot at send time rather than at startAfter,
+			// and active and finished jobs keep occupying it, so the job running
+			// right now can be what rejects its own follow-up. send() reports that
+			// only by returning null, and the failure streak would go with it:
+			// maintenance revives the chain later with no streak, which keeps a
+			// broken provider on the shortest backoff step forever. Only a job
+			// still waiting to run is a real duplicate.
+			if (await hasQueuedPromptJob(promptId)) {
+				console.log(`Next run for prompt ${promptId} is already queued; not scheduling another`);
+				return;
+			}
+			if (!(await getBoss().send(PROCESS_PROMPT_QUEUE, data, baseOptions))) {
+				console.error(`Failed to schedule next run for prompt ${promptId}: pg-boss rejected the job`);
+				return;
+			}
+		}
 		console.log(`Scheduled next run for prompt ${promptId} in ${delayHours}h${reason}`);
 	} catch (error) {
 		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
 		// The cycle's runs are already saved; a failed reschedule shouldn't fail the job.
 	}
+}
+
+async function hasQueuedPromptJob(promptId: string): Promise<boolean> {
+	const result = await db.execute(sql`
+		SELECT 1 FROM pgboss.job
+		WHERE name = ${PROCESS_PROMPT_QUEUE}
+		  AND state IN ('created', 'retry')
+		  AND data->>'promptId' = ${promptId}
+		LIMIT 1
+	`);
+	return result.rows.length > 0;
 }
 
 async function getPromptContext(promptId: string): Promise<PromptContext | null> {
