@@ -360,10 +360,9 @@ export const competitors: Competitor[] = [
 			googleAiMode: true,
 			gemini: true,
 			perplexity: true,
-			copilot: true,
 			claude: true,
-			grok: true,
 			deepseek: true,
+			metaAi: true,
 			uiCapture: true,
 			visibilityScore: true,
 			citationAnalytics: true,
@@ -534,6 +533,7 @@ export const competitors: Competitor[] = [
 			copilot: true,
 			claude: true,
 			grok: true,
+			metaAi: true,
 			byoKeys: true,
 			visibilityScore: true,
 			citationAnalytics: true,
@@ -585,6 +585,7 @@ export const competitors: Competitor[] = [
 			claude: true,
 			grok: true,
 			deepseek: true,
+			metaAi: true,
 			uiCapture: true,
 			visibilityScore: true,
 			citationAnalytics: true,
@@ -1734,7 +1735,7 @@ export const competitors: Competitor[] = [
 		tagline: "Agentic marketing platform for how AI describes Fortune 500 brands",
 		description:
 			"Bluefish is an enterprise AI visibility platform for large brands, sold through demos with no public pricing. It tracks ChatGPT, Gemini, Google AI Overviews, Claude, Perplexity, and Amazon's Rufus and Alexa for Shopping, and scores visibility, favorability, safety, and factual accuracy against brand-supplied facts. It uses a fixed set of synthetic prompts and added paid-media briefs for Google and ChatGPT ads in October 2026.",
-		category: "tracking",
+		category: "ecommerce",
 		ahrefsDR: 46,
 		ahrefsTraffic: 445,
 		status: "active",
@@ -3021,7 +3022,6 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
-			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
 			contentGeneration: true,
@@ -3103,7 +3103,6 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
-			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -5218,7 +5217,6 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
-			whiteLabelAgency: true,
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
@@ -8046,8 +8044,12 @@ export const competitors: Competitor[] = [
 			"Leverage reports how a brand appears across ChatGPT, Gemini, Perplexity, Claude, and Google AI Overviews, pairing visibility reports with optimization recommendations against competitors. Entry is a free visibility report or a demo request, and it publishes developer-facing documentation alongside the marketing site.",
 		category: "tracking",
 		ahrefsDR: 0.1,
-		status: "active",
-		checkedAt: "2026-08-12",
+		status: "defunct",
+		checkedAt: "2026-11-09",
+		fate: {
+			date: "2026-11",
+			summary: "The marketing site no longer loads, returning only a Cloudflare error.",
+		},
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -9143,7 +9145,6 @@ const aeoPopularityRanking: string[] = [
 	"local-glyph", // Local SEO platform first; AI visibility is one module. Beta, 70+ agencies
 	"flip-aeo", // AEO tracking + optimization
 	"llmeo", // Four models, unlimited competitors, 30-day trial; DR 1.4
-	"leverage", // Five engines with free report; DR 0.1, minimal public detail
 	"llmclicks", // Search-Console-for-AI positioning — GSC integration + 120-point audit
 	"foglift", // Free no-signup technical audit + 5-engine monitoring, CLI/API/MCP; DR 18 but only ~100 sites analyzed
 	"prominara", // Complete audit/generate/validate loop and a candid methodology page, but no disclosed customers
@@ -9225,6 +9226,7 @@ export const graveyardRanking: string[] = [
 	"peasy",
 	"allsearch",
 	"anvil",
+	"leverage",
 	"chatgeo",
 	"searchone",
 	"genrankengine",
