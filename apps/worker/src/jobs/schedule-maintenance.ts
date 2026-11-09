@@ -172,7 +172,7 @@ async function loadLastRuns(plans: Map<string, PromptRunPlan>): Promise<Map<stri
 			model: promptRuns.model,
 			provider: promptRuns.provider,
 			webSearchEnabled: promptRuns.webSearchEnabled,
-			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+			lastRunAt: sql<string>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
 		.where(gt(promptRuns.createdAt, windowStart))

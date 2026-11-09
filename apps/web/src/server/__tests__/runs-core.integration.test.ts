@@ -94,6 +94,16 @@ describe("run assessments", () => {
 	});
 });
 
+describe("run timestamps", () => {
+	it("lists a run at the same RFC 3339 instant its detail reports", async () => {
+		const { data } = await listPromptRuns({ promptId, window, limit: 10, offset: 0 });
+		const listed = data.find((run) => run.id === judgedRunId);
+		const detail = await findRunDetail(promptId, judgedRunId);
+		expect(JSON.parse(JSON.stringify(listed)).createdAt).toBe("2026-03-01T10:00:00.000Z");
+		expect(listed?.createdAt).toEqual(detail?.createdAt);
+	});
+});
+
 describe("mention quality", () => {
 	it("totals the brand's sentiment and position over the window, day by day", async () => {
 		const { sentiment, position } = await getBrandMentionQuality(brandId, window);

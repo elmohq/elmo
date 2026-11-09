@@ -741,7 +741,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 			model: rollupPromptRuns.model,
 			provider: rollupPromptRuns.provider,
 			webSearchEnabled: rollupPromptRuns.webSearchEnabled,
-			lastRunAt: sql<Date>`max(${rollupPromptRuns.lastRunAt})`.as("last_run_at"),
+			lastRunAt: sql<string>`max(${rollupPromptRuns.lastRunAt})`.as("last_run_at"),
 		})
 		.from(rollupPromptRuns)
 		.groupBy(

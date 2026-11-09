@@ -120,7 +120,7 @@ async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number
 			model: promptRuns.model,
 			provider: promptRuns.provider,
 			webSearchEnabled: promptRuns.webSearchEnabled,
-			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+			lastRunAt: sql<string>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
 		.where(and(eq(promptRuns.promptId, promptId), gt(promptRuns.createdAt, windowStart)))

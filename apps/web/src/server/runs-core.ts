@@ -73,7 +73,7 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 			assessments: publicAssessments(row.assessments),
 			webQueries: row.web_queries,
 			citationCount: row.citation_count,
-			createdAt: row.created_at,
+			createdAt: new Date(row.created_at),
 		})),
 		total,
 	};

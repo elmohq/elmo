@@ -65,7 +65,7 @@ export interface PromptRunRow {
 	assessments: RunMentionAssessments | null;
 	web_queries: string[];
 	citation_count: number;
-	created_at: Date;
+	created_at: string;
 }
 
 /** Here rather than in the route so the window goes through the same
