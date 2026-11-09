@@ -66,20 +66,15 @@ export const openrouter: Provider = {
 		schema,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
-		// Raw fetch (no AI SDK) so we can attach OpenRouter's server tool and
-		// provider routing, which the AI SDK's OpenAI-compat path doesn't pass through.
+		// Raw fetch: the AI SDK's OpenAI-compat path drops `tools` and `provider`.
 		const body: Record<string, unknown> = {
 			model: DEFAULT_RESEARCH_MODEL,
 			messages: [{ role: "user", content: prompt }],
 			response_format: jsonSchemaResponseFormat(schema),
 		};
 		if (webSearch) {
-			// `engine: "native"` runs Anthropic's own web search instead of the Exa fallback.
 			body.tools = [{ type: "openrouter:web_search", parameters: { engine: "native" } }];
-			// OpenRouter routes the answer written after a search without regard to
-			// response_format, and Claude Platform on AWS doesn't enforce the schema,
-			// so it answers in prose. Anthropic is the one host with native search
-			// that does.
+			// The only host with native search that enforces response_format after searching.
 			body.provider = { only: ["anthropic"] };
 		}
 		const res = await fetch(OPENROUTER_API_URL, {
@@ -111,7 +106,6 @@ export const openrouter: Provider = {
 			);
 		}
 
-		// OpenRouter deprecated the ":online" suffix, so one left on a pinned slug is dropped.
 		const modelSlug = version.replace(/:online$/, "");
 
 		const body: Record<string, unknown> = {
@@ -119,10 +113,7 @@ export const openrouter: Provider = {
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
 		};
-		// With the engine unset OpenRouter routes to the model provider's native web
-		// search (Exa only as a fallback), which is the consumer surface Elmo tracks.
-		// Perplexity's models search on every request and OpenRouter serves them no
-		// tool use, so they get no tool.
+		// Perplexity always searches and has no tool-use endpoint.
 		if (options?.webSearch && !modelSlug.startsWith("perplexity/")) {
 			body.tools = [{ type: "openrouter:web_search" }];
 		}
