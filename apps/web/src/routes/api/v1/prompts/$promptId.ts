@@ -20,8 +20,6 @@ import {
 	updatePromptInputSchema,
 } from "@/server/prompts-core";
 
-// z.uuid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
-// always used; z.uuid() enforces RFC version bits and rejects existing IDs.
 const promptParams = z.object({ promptId: z.uuid("Invalid prompt ID format") });
 
 /** The writes re-check under their own lock, so a prompt that a concurrent
