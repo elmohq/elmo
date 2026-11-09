@@ -9,7 +9,7 @@ import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { clampedCount, DEFAULT_LIMIT, offsetOf, page, paginationOf } from "@/lib/api/query";
 import { promptListSchema, promptSchema } from "@/lib/api/schemas/prompts";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
-import { createPrompts, listPrompts } from "@/server/prompts-core";
+import { createPrompts, listPrompts, toPromptSummary } from "@/server/prompts-core";
 
 const listPromptsQuery = z.object({
 	brandId: z.string().optional(),
@@ -65,7 +65,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					const [created] = await createPrompts(brand, {
 						prompts: [{ value: body.value, tags: body.tags, enabled: true }],
 					});
-					return created;
+					return toPromptSummary(created);
 				},
 			}),
 		}),

@@ -18,7 +18,7 @@ import type {
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 
-export type RunSummary = z.infer<typeof runSummarySchema>;
+export type RunSummary = Omit<z.infer<typeof runSummarySchema>, "createdAt"> & { createdAt: Date };
 export type MentionAssessment = z.infer<typeof mentionAssessmentSchema>;
 export type RunAssessments = NonNullable<z.infer<typeof runAssessmentsSchema>>;
 
