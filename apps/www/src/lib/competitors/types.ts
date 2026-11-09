@@ -389,7 +389,7 @@ export const ELMO_FEATURES: Record<FeatureKey, boolean> = {
 	multiLanguage: false,
 	actionRecommendations: true,
 	contentGapAnalysis: true,
-	siteAudits: false,
+	siteAudits: true,
 	keywordResearch: true,
 	emailAlerts: false,
 	dataExportApi: true,
