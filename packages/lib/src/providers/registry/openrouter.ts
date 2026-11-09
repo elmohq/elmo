@@ -117,6 +117,9 @@ export const openrouter: Provider = {
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
 		};
+		// xAI ignores OpenRouter's search caps and runs eight or more searches per
+		// grounded answer, so reasoning effort is the only lever on Grok's cost.
+		if (modelSlug.startsWith("x-ai/")) body.reasoning = { effort: "minimal" };
 
 		// Raw fetch: the SDK's ChatAssistantMessage schema strips the annotations
 		// that carry web search citations.
