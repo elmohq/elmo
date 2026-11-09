@@ -40,7 +40,7 @@ export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
 	gemini: { access: "scraped" },
 	qwen: { access: "api", version: "Qwen3 235B A22B 2507" },
 	deepseek: { access: "api", version: "DeepSeek V3.2" },
-	grok: { premium: true, premiumVersion: "Grok 4.5" },
+	grok: { premium: true, premiumVersion: "Grok 4.7" },
 	mistral: { access: "api", version: "Mistral Medium 3.1" },
 	claude: { access: "api", premium: true, version: "Claude Haiku 5.5", premiumVersion: "Claude Haiku 5.5" },
 	kimi: { access: "api", version: "Kimi K2.5" },

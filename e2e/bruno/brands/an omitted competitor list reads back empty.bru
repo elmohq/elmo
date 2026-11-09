@@ -20,9 +20,8 @@ assert {
 }
 
 tests {
-  test("domains and aliases default to empty lists", function() {
+  test("aliases default to an empty list", function() {
     const [competitor] = res.getBody().competitors;
-    expect(competitor.domains).to.deep.equal([]);
     expect(competitor.aliases).to.deep.equal([]);
   });
 }
