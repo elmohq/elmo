@@ -14,6 +14,7 @@ import {
 	isRetired,
 	sortedCompetitors,
 } from "@/lib/competitors";
+import { CloudSignupCTA, SelfHostCTA } from "./cta-buttons";
 import { FeatureMark } from "./feature-mark";
 
 const visibleCompetitors = sortedCompetitors.filter((c) => !isRetired(c) && c.category !== "other");
@@ -90,18 +91,9 @@ export function CompetitorDirectory() {
 					<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
 						Open source, self-hosted, and transparent. Track AI visibility without vendor lock-in or inflated pricing.
 					</p>
-					<div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-						<Link to="/docs" className={buttonVariants({ size: "sm" })}>
-							Read the Docs
-						</Link>
-						<a
-							href="https://github.com/elmohq/elmo"
-							target="_blank"
-							rel="noopener noreferrer"
-							className={buttonVariants({ variant: "outline", size: "sm" })}
-						>
-							View on GitHub
-						</a>
+					<div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+						<CloudSignupCTA from="marketing-directory" />
+						<SelfHostCTA from="marketing-directory" />
 					</div>
 				</div>
 			</section>

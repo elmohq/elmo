@@ -1,6 +1,7 @@
 import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
 import { bookDemoUrl, cloudAppUrl, demoSiteUrl, type ReferralSource } from "@workspace/config/referrals";
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
+import { trackCta } from "@/lib/analytics";
 import { externalRel } from "@/lib/external-link";
 
 export const DISCORD_INVITE_URL = "https://discord.gg/s24nubCtKz";
@@ -31,12 +32,17 @@ export function Closing({ from = "marketing-closing" }: { from?: ReferralSource 
 					Start tracking your brand in minutes. Plans start at ${CLOUD_ENTRY_PRICE_USD}/mo.
 				</p>
 				<div className="mt-9 flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:items-center">
-					<a href={cloudUrl} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
+					<a
+						href={cloudUrl}
+						onClick={() => trackCta("cloud-signup", from)}
+						className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}
+					>
 						Get started
 						<ArrowRight className="size-4" aria-hidden="true" />
 					</a>
 					<a
 						href={demoUrl}
+						onClick={() => trackCta("live-demo", from)}
 						target="_blank"
 						rel={externalRel(demoUrl)}
 						className={`${BUTTON} bg-white text-zinc-950 ring-1 ring-inset ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300`}
@@ -55,7 +61,7 @@ export function Closing({ from = "marketing-closing" }: { from?: ReferralSource 
 				</ul>
 				<p className="mt-8 text-sm text-zinc-500">
 					Want a walkthrough first?{" "}
-					<a href={BOOK_URL} className={QUIET}>
+					<a href={BOOK_URL} onClick={() => trackCta("book-demo", "marketing-cta")} className={QUIET}>
 						Book a 30-minute tour
 					</a>
 					.

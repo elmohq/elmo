@@ -29,6 +29,11 @@ export type ReferralSource =
 	| "marketing-about"
 	| "marketing-support"
 	| "marketing-webmcp"
+	| "marketing-blog"
+	| "marketing-docs"
+	| "marketing-directory"
+	| "marketing-comparison"
+	| "marketing-glossary"
 	| "demo-chat"
 	| "demo-header"
 	| "demo-read-only"
@@ -58,6 +63,10 @@ export function cloudAppUrl(ref: ReferralSource): string {
 
 export function cloudSignupUrl(ref: ReferralSource): string {
 	return tagged(`${CLOUD_APP_URL}/auth/register`, ref);
+}
+
+export function cloudLoginUrl(ref: ReferralSource): string {
+	return tagged(`${CLOUD_APP_URL}/auth/login`, ref);
 }
 
 export function cloudPricingUrl(ref: ReferralSource): string {

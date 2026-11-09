@@ -1,5 +1,5 @@
 import { Link, useLoaderData } from "@tanstack/react-router";
-import { cloudAppUrl } from "@workspace/config/referrals";
+import { cloudAppUrl, cloudLoginUrl } from "@workspace/config/referrals";
 import { Button } from "@workspace/ui/components/button";
 import {
 	NavigationMenu,
@@ -9,12 +9,15 @@ import {
 } from "@workspace/ui/components/navigation-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { ArrowRight } from "lucide-react";
+import { trackCta } from "@/lib/analytics";
 import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
 
 const CLOUD_URL = cloudAppUrl("marketing-nav");
+const LOGIN_URL = cloudLoginUrl("marketing-nav");
 
 const navigationLinks = [
+	{ href: "/features", label: "Features" },
 	{ href: "/pricing", label: "Pricing" },
 	{ href: "/changelog", label: "Changelog" },
 	{ href: "/roadmap", label: "Roadmap" },
@@ -71,6 +74,15 @@ export function Navbar() {
 											</NavigationMenuLink>
 										</NavigationMenuItem>
 									))}
+									<NavigationMenuItem className="w-full border-t border-zinc-200 pt-1">
+										<NavigationMenuLink
+											href={LOGIN_URL}
+											onClick={() => trackCta("cloud-login", "marketing-nav")}
+											className="py-1.5"
+										>
+											Log In
+										</NavigationMenuLink>
+									</NavigationMenuItem>
 								</NavigationMenuList>
 							</PopoverContent>
 						</Popover>
@@ -125,10 +137,18 @@ export function Navbar() {
 						)}
 					</a>
 					<a
+						href={LOGIN_URL}
+						onClick={() => trackCta("cloud-login", "marketing-nav")}
+						className="hidden h-8 items-center px-2 text-sm font-medium text-zinc-600 hover:text-zinc-950 md:inline-flex"
+					>
+						Log In
+					</a>
+					<a
 						href={CLOUD_URL}
+						onClick={() => trackCta("cloud-signup", "marketing-nav")}
 						className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
 					>
-						Sign up
+						Get started
 						<ArrowRight className="size-3.5" />
 					</a>
 				</div>

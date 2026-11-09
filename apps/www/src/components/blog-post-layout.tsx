@@ -10,6 +10,7 @@ import { ArrowLeft } from "lucide-react";
 import type { ComponentPropsWithoutRef } from "react";
 import { Suspense } from "react";
 import { AuthorByline } from "@/components/author-byline";
+import { CloudCallout } from "@/components/cloud-callout";
 import { Footer } from "@/components/footer";
 import { getMDXComponents } from "@/components/mdx";
 import { Navbar } from "@/components/navbar";
@@ -102,6 +103,9 @@ export function BlogPostLayout({ data }: { data: BlogPostLoaderData }) {
 						<Suspense>{clientLoader.useContent(data.path)}</Suspense>
 						{data.faq && data.faq.length > 0 && <PostFaq items={data.faq} />}
 					</article>
+					<div className="mt-14">
+						<CloudCallout variant="blog" />
+					</div>
 				</main>
 				<Footer />
 			</div>
