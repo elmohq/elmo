@@ -10,6 +10,7 @@ import { Asset, createRootRoute, Outlet, rootRouteId, Scripts, useLocation, useT
 import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
 import { initAdTags, trackAdPageView } from "@workspace/ui/lib/ad-tags";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
+import { trackLinkClickGoals } from "@workspace/ui/lib/plausible";
 import { type ReactNode, useEffect, useState } from "react";
 import { AiReferralBanner } from "@/components/ai-referral-banner";
 import { NotFound } from "@/components/not-found";
@@ -122,7 +123,7 @@ function RootComponent() {
 		const required = isConsentRequired(consentRegion);
 		setConsentRequired(required);
 		initCrisp();
-		const stops = [initAnalytics(required), initAdTags(required), registerWebMcpTools()];
+		const stops = [initAnalytics(required), initAdTags(required), registerWebMcpTools(), trackLinkClickGoals()];
 		return () => {
 			for (const stop of stops) stop();
 		};
