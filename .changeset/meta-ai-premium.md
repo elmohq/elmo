@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Added Meta AI (Muse Spark with web search) as a premium model, tracked through OpenRouter.
+Added Meta AI (Muse Spark) as a premium model for Elmo Cloud.
