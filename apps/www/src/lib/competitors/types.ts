@@ -222,8 +222,8 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 		label: "Platform",
 		features: {
 			whiteLabelAgency: {
-				label: "White-Label / Agency",
-				description: "Multi-client dashboards and custom branding",
+				label: "White-Label",
+				description: "Custom-branded dashboards or reports for agency clients",
 				searchTerm: "White-Label AI Visibility Tools",
 			},
 			openSource: {
@@ -389,7 +389,7 @@ export const ELMO_FEATURES: Record<FeatureKey, boolean> = {
 	multiLanguage: false,
 	actionRecommendations: true,
 	contentGapAnalysis: true,
-	siteAudits: false,
+	siteAudits: true,
 	keywordResearch: true,
 	emailAlerts: false,
 	dataExportApi: true,
