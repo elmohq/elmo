@@ -16,9 +16,7 @@ import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { isBrandInScope } from "@/lib/api/scope";
 
-// z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
-// always used; z.uuid() enforces RFC version bits and rejects existing IDs.
-const competitorParams = z.object({ competitorId: z.guid("Invalid competitor ID format") });
+const competitorParams = z.object({ competitorId: z.uuid("Invalid competitor ID format") });
 
 const updateCompetitorBody = z
 	.object({
