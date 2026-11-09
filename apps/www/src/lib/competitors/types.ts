@@ -222,8 +222,8 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 		label: "Platform",
 		features: {
 			whiteLabelAgency: {
-				label: "White-Label / Agency",
-				description: "Multi-client dashboards and custom branding",
+				label: "White-Label",
+				description: "Custom-branded dashboards or reports for agency clients",
 				searchTerm: "White-Label AI Visibility Tools",
 			},
 			openSource: {
