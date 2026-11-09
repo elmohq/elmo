@@ -113,10 +113,14 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		poll: () => getAnalyzeBrandStatusFn({ data: { brandId: brandId! } }),
 		cancel: () => cancelAnalyzeBrandFn({ data: { brandId: brandId! } }),
 		onDone: ({ suggestion }) => {
+			const website = brand?.website || suggestion.website || "";
 			setData({
 				brandName: suggestion.brandName || brand?.name || "",
-				website: brand?.website || suggestion.website || "",
-				additionalDomains: suggestion.additionalDomains,
+				website,
+				additionalDomains: suggestion.additionalDomains.reduce<string[]>(
+					(kept, domain) => (validateAdditionalDomain(domain, [website, ...kept]) === true ? [...kept, domain] : kept),
+					[],
+				),
 				aliases: suggestion.aliases,
 				competitors: suggestion.competitors.map((c) =>
 					newCompetitorEntry({

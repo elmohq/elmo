@@ -228,6 +228,28 @@ export const ReviewRejectsCoveredDomain: StoryObj = {
 	},
 };
 
+export const ReviewDropsCoveredSuggestions: StoryObj = {
+	render: () => {
+		useWizardSetup({
+			brand: MOCK_BRAND,
+			suggestion: { ...RICH_SUGGESTION, additionalDomains: ["acme.co.uk", "blog.acme.com", "eu.acme.co.uk"] },
+		});
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByText("Brand details");
+		await expect(canvas.findByText("acme.co.uk")).resolves.toBeVisible();
+		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+		expect(canvas.queryByText("eu.acme.co.uk")).toBeNull();
+	},
+};
+
 /**
  * The provider/stack detail stays server-side and is never forwarded to the
  * browser, so the wizard shows a generic message.
