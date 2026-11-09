@@ -20,9 +20,9 @@ import {
 	updatePromptInputSchema,
 } from "@/server/prompts-core";
 
-// z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
+// z.uuid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
 // always used; z.uuid() enforces RFC version bits and rejects existing IDs.
-const promptParams = z.object({ promptId: z.guid("Invalid prompt ID format") });
+const promptParams = z.object({ promptId: z.uuid("Invalid prompt ID format") });
 
 /** The writes re-check under their own lock, so a prompt that a concurrent
  * delete takes between the scope check and the write reads as 404 here rather

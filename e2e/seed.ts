@@ -39,14 +39,14 @@ import {
 } from "./fixtures";
 
 const RUN_IDS = [
-  "00000000-0000-0000-0000-200000000001",
-  "00000000-0000-0000-0000-200000000002",
-  "00000000-0000-0000-0000-200000000003",
-  "00000000-0000-0000-0000-200000000004",
-  "00000000-0000-0000-0000-200000000005",
-  "00000000-0000-0000-0000-200000000006",
-  "00000000-0000-0000-0000-200000000007",
-  "00000000-0000-0000-0000-200000000008",
+  "00000000-0000-4000-8000-200000000001",
+  "00000000-0000-4000-8000-200000000002",
+  "00000000-0000-4000-8000-200000000003",
+  "00000000-0000-4000-8000-200000000004",
+  "00000000-0000-4000-8000-200000000005",
+  "00000000-0000-4000-8000-200000000006",
+  "00000000-0000-4000-8000-200000000007",
+  "00000000-0000-4000-8000-200000000008",
 ];
 
 /** Reproduced from better-auth so keys can be seeded without a running app. */
@@ -612,7 +612,7 @@ async function seed(connectionString: string) {
       );
     }
 
-    const nikeRunId = "00000000-0000-0000-0000-420000000001";
+    const nikeRunId = "00000000-0000-4000-8000-420000000001";
     const nikeAnswer = "Nike Metcon and Romaleos are top picks; Adidas Powerlift is an alternative.";
     await client.query(
       `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, provider, version, web_search_enabled, raw_output, web_queries, created_at)

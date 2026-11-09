@@ -37,7 +37,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
+				params: z.object({ promptId: z.uuid("Invalid prompt ID format") }),
 				query: snapshotQuery,
 				scopes: ["read"],
 				handle: async ({ params, query, auth }) => {
