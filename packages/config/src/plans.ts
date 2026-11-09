@@ -61,7 +61,7 @@ const PREMIUM_LABELS: Record<string, string> = {
 	claude: "Claude (web)",
 	chatgpt: "GPT Search",
 	grok: "Grok (web)",
-	meta: "Meta AI (web)",
+	meta: "Meta (web)",
 };
 
 export function premiumModelLabel(model: string): string {
