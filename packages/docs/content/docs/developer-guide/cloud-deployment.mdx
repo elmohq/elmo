@@ -107,7 +107,7 @@ standard platform** (the run policy uses the first match per model), plus a grou
 model sold in the premium tier:
 
 ```
-chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online
+chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online,meta-ai:meta-api:muse-spark-1.1:online
 ```
 
 Platforms are offered to customers only when they appear in both the plan menu
@@ -134,6 +134,7 @@ whatever the live product serves its users that day.
 | Claude | Premium | `claude-haiku-5-5` with web search, via the Anthropic API |
 | Grok | Premium | `x-ai/grok-4.5` with web search, via OpenRouter |
 | Kimi | Pick (API) | `moonshotai/kimi-k2.5`, via OpenRouter |
+| Meta AI | Premium | `muse-spark-1.1` with web search, via the Meta Model API |
 
 API picks are priced against a design point of roughly **$0.004 per run**, which is why Kimi runs
 K2.5 rather than K3: K3's output tokens cost several times that per answer. Check a new model's

@@ -17,6 +17,7 @@ export const KNOWN_MODELS: Record<string, ModelMeta> = {
 	deepseek: { label: "DeepSeek", iconId: "deepseek" },
 	kimi: { label: "Kimi", iconId: "moonshotai" },
 	qwen: { label: "Qwen", iconId: "qwen" },
+	"meta-ai": { label: "Meta AI", iconId: "meta" },
 };
 
 export function getModelMeta(model: string): ModelMeta {
