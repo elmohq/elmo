@@ -1,6 +1,7 @@
 import { getModelMeta } from "@workspace/config/models";
 import { Button } from "@workspace/ui/components/button";
 import { PlatformPicker } from "@/components/platform-picker";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import type { OnboardingPlatformState } from "@/server/platform-picks";
 
 interface PlatformSelectionStepProps {
@@ -57,7 +58,11 @@ export function PlatformSelectionStep({
 				</p>
 			)}
 
-			{error && <p className="text-sm text-destructive">{error}</p>}
+			{error && (
+				<p className="text-sm text-destructive">
+					<WriteErrorMessage message={error} />
+				</p>
+			)}
 
 			<div className="flex gap-2">
 				<Button type="button" variant="outline" onClick={onBack} disabled={disabled}>

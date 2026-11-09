@@ -1,6 +1,7 @@
 ---
 title: Cloud Deployment
 description: Operating Elmo Cloud — Stripe billing, plan entitlements, and the scheduling policy.
+updated: 2026-10-28
 ---
 
 `DEPLOYMENT_MODE=cloud` runs the managed, multi-tenant SaaS offering: self-serve signup, one umbrella
@@ -106,7 +107,7 @@ standard platform** (the run policy uses the first match per model), plus a grou
 model sold in the premium tier:
 
 ```
-chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-haiku-5-5:online
+chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b-2507,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-haiku-5-5,kimi:openrouter:moonshotai/kimi-k2.5,chatgpt:openai-api:gpt-6-luna:online,grok:openrouter:x-ai/grok-4.7:online,claude:anthropic-api:claude-haiku-5-5:online
 ```
 
 Platforms are offered to customers only when they appear in both the plan menu
@@ -131,7 +132,7 @@ whatever the live product serves its users that day.
 | Mistral | Pick (API) | `mistralai/mistral-medium-3.1`, via OpenRouter |
 | Claude | Pick (API) | `claude-haiku-5-5`, via the Anthropic API |
 | Claude | Premium | `claude-haiku-5-5` with web search, via the Anthropic API |
-| Grok | Premium | `x-ai/grok-4.5` with web search, via OpenRouter |
+| Grok | Premium | `x-ai/grok-4.7` with web search and minimal reasoning, via OpenRouter |
 | Kimi | Pick (API) | `moonshotai/kimi-k2.5`, via OpenRouter |
 
 API picks are priced against a design point of roughly **$0.004 per run**, which is why Kimi runs

@@ -2,43 +2,24 @@ export type DeploymentMode = "whitelabel" | "local" | "demo" | "cloud";
 
 export interface FeaturesConfig {
 	readOnly: boolean;
+	/** Elmo's hosted demo, not a self-hosted install made read-only with READ_ONLY=true. */
+	promotesCloud: boolean;
 	showOptimizeButton: boolean;
-	/**
-	 * Whether the user can create new brands from the UI. True in local and
-	 * cloud modes — whitelabel brands come from the admin API, demo is read-only.
-	 */
+	/** Off in whitelabel, whose brands come from the admin API, and in demo. */
 	canCreateBrands: boolean;
 	canCreateOrganizations: boolean;
 	canEditOrganizations: boolean;
-	/**
-	 * Whether public self-serve registration is available. True only in cloud
-	 * mode. Local allows a single bootstrap signup (see ClientConfig.canRegister);
-	 * demo/whitelabel never expose signup.
-	 */
+	/** Cloud only; local allows just the bootstrap signup (see ClientConfig.canRegister). */
 	selfServeSignup: boolean;
-	/**
-	 * Whether Stripe subscription billing is active. True only in cloud mode.
-	 * Gates the billing/usage surfaces and plan enforcement.
-	 */
+	/** Cloud only. Gates the billing surfaces and plan enforcement. */
 	billing: boolean;
-	/**
-	 * Whether the one-time report generator is available. True everywhere except
-	 * cloud, where reports are disabled entirely (no worker scheduling, no UI
-	 * entry points, and the per-user hasReportGeneratorAccess flag is ignored).
-	 */
+	/** Off in cloud, where even the per-user hasReportGeneratorAccess flag is ignored. */
 	reportGeneration: boolean;
-	/**
-	 * Whether the deployment owns its own team roster, which gates the team page
-	 * and every membership write. True only in cloud — local is single-user by
-	 * design, whitelabel memberships come from Auth0, demo is read-only.
-	 */
+	/** Cloud only: local is single-user and whitelabel memberships come from Auth0. */
 	teamInvites: boolean;
 	/**
-	 * Whether the viewer picks which platforms a brand is tracked on. False in
-	 * whitelabel (the agency picks, and pays the provider bills) and demo.
-	 *
-	 * Matches `canCreateBrands` in every mode today, but kept separate: creating a
-	 * brand and choosing what it costs to run are sold as different things.
+	 * Off in whitelabel, where the agency picks and pays the provider bills. Kept
+	 * apart from `canCreateBrands` because the two are sold as different things.
 	 */
 	platformPicksEditable: boolean;
 }
@@ -79,11 +60,7 @@ export interface ClientConfig {
 	analytics: AnalyticsConfig;
 	/** Prompt cadence in hours when a brand has no override. */
 	defaultDelayHours: number;
-	/**
-	 * Whether /auth/register should be reachable. True in cloud mode (self-serve
-	 * signup) and in local mode before the first user is bootstrapped.
-	 * Demo/whitelabel always false.
-	 */
+	/** Cloud, and local until the first user is bootstrapped. */
 	canRegister: boolean;
 	hasUsers: boolean;
 	turnstileSiteKey?: string;

@@ -1,4 +1,3 @@
-/** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
@@ -13,7 +12,7 @@ import {
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
 import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
-import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { computeSystemTags, effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -47,12 +46,7 @@ import { resolveBrandLookbackDays } from "@/server/brand-window";
 import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 import { toResponse } from "@/server/responses";
-// Server Functions
-// ============================================================================
 
-/**
- * Get metadata for a single prompt
- */
 export const getPromptMetadataFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string(), promptId: z.string() }))
 	.handler(async ({ data }) => {
@@ -97,9 +91,6 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Get prompts summary for a brand (visibility scores, tags, etc.)
- */
 function summarizePrompt(
 	prompt: {
 		id: string;
@@ -112,15 +103,10 @@ function summarizePrompt(
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
 ) {
-	const userTags = prompt.tags || [];
-	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
-	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
 	const totalRuns = stats?.runs ?? 0;
-	// The API publishes these ratios unrounded; the dashboard renders
-	// percentages, and this is where it rounds.
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
-	const brandMentionRate = Math.round(ratio(stats?.brand_mentioned_runs) * 100);
-	const competitorMentionRate = Math.round(ratio(stats?.competitor_runs) * 100);
+	const brandMentionPct = Math.round(ratio(stats?.brand_mentioned_runs) * 100);
+	const competitorMentionPct = Math.round(ratio(stats?.competitor_runs) * 100);
 	const weightedMentions = (stats?.brand_mentioned_runs ?? 0) * 2 + (stats?.competitor_mentions ?? 0);
 
 	return {
@@ -129,15 +115,13 @@ function summarizePrompt(
 		enabled: prompt.enabled,
 		createdAt: prompt.createdAt,
 		totalRuns,
-		brandMentionRate,
-		competitorMentionRate,
+		brandMentionPct,
+		competitorMentionPct,
 		averageWeightedMentions: totalRuns > 0 ? weightedMentions / totalRuns : 0,
-		hasVisibilityData: totalRuns > 0 && (brandMentionRate > 0 || competitorMentionRate > 0),
+		hasVisibilityData: totalRuns > 0 && (brandMentionPct > 0 || competitorMentionPct > 0),
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
-		// Exactly one effective system tag, so branded and unbranded filters use
-		// the same status the UI shows.
-		tags: userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag],
+		tags: effectiveTags(prompt),
 	};
 }
 
@@ -200,7 +184,6 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const summaryMap = new Map(summaryData.map((s) => [s.prompt_id, s]));
 		const firstEvalMap = new Map(firstEvaluatedData.map((f) => [f.prompt_id, f.first_evaluated_at]));
 
-		// Collect all user tags (system tags are added separately)
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
 
@@ -209,8 +192,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
 		});
 
-		const filteredPrompts =
-			tagFilter.length > 0 ? promptSummaries.filter((p) => tagFilter.some((t) => p.tags.includes(t))) : promptSummaries;
+		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));
 		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
 		return {
@@ -226,13 +208,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Mirrors the brand-wide citations view (server/citations.ts) at the single-
- * prompt level: classify each citation at the URL level, pull Google AI Mode
- * search/shopping surfaces OUT of the source mix into a dedicated Google
- * Shopping module, and rebuild the domain distribution from the URL data.
- * Undefined when the prompt has nothing citable.
- */
+/** The brand-wide citations view (server/citations.ts), for one prompt. */
 function computePromptCitationStats(input: {
 	urlStats: CitationUrlStats[];
 	promptId: string;
@@ -245,9 +221,7 @@ function computePromptCitationStats(input: {
 	const { urlStats } = input;
 	if (urlStats.length === 0) return undefined;
 
-	// Google AI Mode module: Shopping products (brand vs competitor) + search
-	// queries. Built from the raw URL rows (it picks out the Google surfaces);
-	// the rollup below drops those same surfaces from the source mix.
+	// From the raw rows: the rollup below drops these Google surfaces from the source mix.
 	const googleModule = buildGoogleModule(
 		urlStats.map((u) => ({
 			prompt_id: input.promptId,
@@ -278,8 +252,7 @@ function computePromptCitationStats(input: {
 	};
 }
 
-/** Run window for the prompt detail endpoints: the last `days` up to now, or —
- *  for a custom range — the `days` UTC calendar days ending on `endDate`. */
+/** The last `days` up to now, or for a custom range the `days` UTC calendar days ending on `endDate`. */
 function promptRunWindow(days: number, endDate?: string): { fromDate: Date; toDate: Date } {
 	if (!endDate) {
 		const toDate = new Date();
@@ -294,10 +267,6 @@ function promptRunWindow(days: number, endDate?: string): { fromDate: Date; toDa
 	return { fromDate, toDate };
 }
 
-/**
- * Get stats for a single prompt (mentions, web queries, citations)
- * Replicates: apps/web/src/app/api/prompts/[promptId]/stats/route.ts
- */
 export const getPromptStatsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
@@ -336,7 +305,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			db.select({ name: competitors.name }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
 
-		// ---- Process mention stats ----
 		const mentionStats: { name: string; count: number }[] = [];
 
 		const brandName = brandResult[0]?.name;
@@ -357,7 +325,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 		mentionStats.sort((a, b) => (a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count));
 
-		// ---- Citation stats ----
 		const [brandInfo, competitorsList] = await Promise.all([
 			db
 				.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })
@@ -397,9 +364,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Get paginated prompt runs
- */
 export const getPromptRunsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
@@ -450,9 +414,6 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Update prompts for a brand (add/edit/delete)
- */
 export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({

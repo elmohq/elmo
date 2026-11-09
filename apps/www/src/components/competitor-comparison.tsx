@@ -18,6 +18,7 @@ import {
 	isLowDR,
 } from "@/lib/competitors";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
+import { DataProvenance } from "./data-provenance";
 import { Faq } from "./faq";
 import { FeatureMark } from "./feature-mark";
 
@@ -125,19 +126,19 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 			<section className="border-b border-zinc-200 bg-zinc-50 py-8">
 				<div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-4 md:px-6">
 					<div>
-						<h3 className="mb-1 text-lg font-semibold text-zinc-950">Elmo</h3>
+						<h2 className="mb-1 text-lg font-semibold text-zinc-950">Elmo</h2>
 						<div className="mt-2 flex flex-wrap gap-2">
 							<Badge variant="secondary">Open Source</Badge>
 							<Badge variant="secondary">Self-Hosted</Badge>
 							<Badge variant="secondary">White-Label</Badge>
 						</div>
 						<p className="mt-3 text-sm text-zinc-600">
-							Open-source AEO platform. Self-host for free, forever. Track AI visibility across ChatGPT, Claude, and
-							Google AI Overviews with full transparency.
+							Open-source AEO platform. Self-host for free, forever. Track AI visibility across ChatGPT, Google AI
+							Overviews and AI Mode, Gemini, Perplexity, Copilot, Claude, and more with full transparency.
 						</p>
 					</div>
 					<div>
-						<h3 className="mb-1 text-lg font-semibold text-zinc-950">{competitor.name}</h3>
+						<h2 className="mb-1 text-lg font-semibold text-zinc-950">{competitor.name}</h2>
 						<div className="mt-2 flex flex-wrap gap-2">
 							<Badge variant="secondary">{CATEGORY_LABELS[competitor.category]}</Badge>
 							{competitor.pricing?.hasFree && <Badge variant="secondary">Free Tier</Badge>}
@@ -236,6 +237,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 							</tbody>
 						</table>
 					</div>
+					<DataProvenance tools={[competitor]} className="mt-6" />
 				</div>
 			</section>
 
@@ -338,8 +340,8 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 				<div className="mx-auto max-w-3xl px-4 text-center md:px-6">
 					<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Ready to track your AI visibility?</h2>
 					<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
-						Deploy Elmo in minutes and start monitoring how ChatGPT, Claude, and Google AI Overviews talk about your
-						brand.
+						Deploy Elmo in minutes and start monitoring how ChatGPT, Google AI Overviews, Gemini, Perplexity, Claude,
+						and more talk about your brand.
 					</p>
 					<div className="mt-8 flex flex-wrap justify-center gap-3">
 						<Link {...SELF_HOST_LINK} className={buttonVariants({ size: "sm" })}>

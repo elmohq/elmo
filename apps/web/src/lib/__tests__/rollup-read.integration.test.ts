@@ -483,7 +483,7 @@ describe("query fan-out", () => {
 		expect(await getFanoutModelTotals(scope())).toEqual([
 			{ model: "chatgpt", runs: 3, fanout_runs: 2, total_queries: 3 },
 		]);
-		expect(await getFanoutPromptTotals(scope())).toEqual([{ prompt_id: promptId, runs: 2 }]);
+		expect(await getFanoutPromptTotals(scope())).toEqual([{ prompt_id: promptId, fanout_runs: 2 }]);
 	});
 
 	it("pages through queries most run first, with totals over all of them, and searches past the first page", async () => {

@@ -1,6 +1,6 @@
 {
 	"name": "@elmohq/cli",
-	"version": "0.7.7",
+	"version": "0.7.8",
 	"license": "MIT",
 	"keywords": [
 		"marketing",
@@ -33,18 +33,31 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@ai-sdk/anthropic": "catalog:",
+		"@ai-sdk/openai": "catalog:",
+		"@anthropic-ai/sdk": "catalog:",
+		"@brightdata/sdk": "catalog:",
 		"@clack/prompts": "^1.8.1",
+		"ai": "catalog:",
 		"commander": "^15.0.0",
+		"dataforseo-client": "catalog:",
 		"dotenv": "18.0.9",
+		"linkedom": "catalog:",
+		"marked": "^14.1.4",
+		"olostep": "catalog:",
 		"picocolors": "^1.1.1",
 		"posthog-node": "catalog:",
-		"semver": "^7.8.5"
+		"robots-parser": "catalog:",
+		"semver": "^7.8.5",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@types/node": "catalog:",
 		"@types/semver": "^7.8.0",
 		"@workspace/config": "workspace:*",
-		"rolldown": "^1.2.15",
+		"@workspace/lib": "workspace:*",
+		"@workspace/site-audit": "workspace:*",
+		"rolldown": "^1.2.16",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	}

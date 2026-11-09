@@ -20,17 +20,11 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 import type { RunMentionAssessments } from "../mentions";
-// `organization` is referenced by the brands FK below; the re-export makes it
-// (and the rest of the auth schema) visible to `import * as schema` consumers.
 import { organization } from "./schema-auth";
 
-// Better-auth tables & relations — re-exported so `import * as schema` sees everything.
-// Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
+// Re-exported so `import * as schema` sees the auth tables. That file is
+// generated: run `pnpm run generate:auth-schema` to refresh it.
 export * from "./schema-auth";
-
-// ============================================================================
-// Application tables
-// ============================================================================
 
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 
@@ -52,10 +46,8 @@ export const brands = pgTable(
 		 * Null for brands that predate stamping until the worker adopts today's stamps.
 		 */
 		analysisVersions: jsonb("analysis_versions").$type<Record<string, string>>().default({}),
-		// Hard tenancy scope. Every brand belongs to exactly one better-auth
-		// organization; org membership (the `member` table) is the access-control
-		// mechanism. Brand and organization ids are independent, so billing and
-		// entitlement joins must use this key.
+		// The tenancy scope. Brand and organization ids are independent, so billing
+		// and entitlement joins must use this key.
 		organizationId: text("organization_id")
 			.references(() => organization.id)
 			.notNull(),
@@ -83,10 +75,7 @@ export const prompts = pgTable(
 			.notNull(),
 		value: text("value").notNull(),
 		enabled: boolean("enabled").default(true).notNull(),
-		/**
-		 * Premium models this prompt is tracked on, grounded: one org premium slot
-		 * per entry (see PREMIUM_MODELS). Empty = standard tracking only.
-		 */
+		/** Tracked grounded, one org premium slot per entry. */
 		premiumModels: text("premium_models").array().notNull().default([]),
 		tags: text("tags").array().notNull().default([]),
 		systemTags: text("system_tags").array().notNull().default([]),
@@ -233,9 +222,8 @@ export const reports = pgTable(
 	}),
 ).enableRLS();
 
-// One row per generated Opportunities report, per brand — append-only history
-// (every generation is kept, not overwritten). The page reads the latest row and
-// regenerates only when it's stale; see apps/web/src/server/opportunities.ts.
+// Every generation is kept; the page reads the latest row and regenerates only
+// when it's stale.
 export const brandOpportunities = pgTable(
 	"brand_opportunities",
 	{
@@ -288,21 +276,17 @@ export const SYSTEM_TAGS = {
 export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];
 
 /**
- * Cloud billing/entitlement state we own per organization (as opposed to the
- * better-auth-managed `subscription` table). One optional row per org:
- * - entitlementOverrides: sparse custom-plan overrides (see
- *   entitlementOverridesSchema in @workspace/config/entitlements) — the
- *   config-only lever for custom plans
- * - premiumAddonQuantity: purchased extra premium slots, synced from Stripe
- *   subscription items by the billing webhook
- * Absent row = no overrides, no add-on. Unused outside cloud.
+ * Cloud billing state Elmo owns, beside the better-auth-managed `subscription`
+ * table. An org without a row has no overrides and no add-on; unused outside cloud.
  */
 export const organizationSettings = pgTable("organization_settings", {
 	organizationId: text("organization_id")
 		.primaryKey()
 		.notNull()
 		.references(() => organization.id),
+	/** Sparse custom-plan overrides, shaped by `entitlementOverridesSchema`. */
 	entitlementOverrides: jsonb("entitlement_overrides"),
+	/** Extra premium slots, synced from Stripe subscription items by the billing webhook. */
 	premiumAddonQuantity: integer("premium_addon_quantity").notNull().default(0),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -313,14 +297,7 @@ export const organizationSettings = pgTable("organization_settings", {
 
 export type OrganizationSettings = typeof organizationSettings.$inferSelect;
 
-/**
- * Billing-grade usage attribution: one row per provider call the
- * worker makes, so every run is attributable to an org with an estimated
- * cost. Written in every mode (self-hosted operators get the same spend
- * visibility); estimated costs come from the tunable table in
- * src/usage/cost.ts and are validated against provider invoices, not treated
- * as ground truth.
- */
+/** One row per provider call, in every mode. Costs are estimates (src/usage/cost.ts), not ground truth. */
 export const usageEvents = pgTable(
 	"usage_events",
 	{
@@ -492,11 +469,8 @@ export const rollupCitationUrls = pgTable(
 ).enableRLS();
 
 /**
- * The pages a brand has cited, copied from `cited_pages` so a brand's reads find
- * them together instead of one lookup apiece across every tenant's pages. A
- * rebuild refreshes the copies of the pages its range cites, so a page's change
- * reaches a brand when the brand next cites it; reclassification updates every
- * copy at once.
+ * Copied from `cited_pages` so a brand's reads find its pages together. A page's
+ * change reaches a brand when it next cites it; reclassification updates every copy.
  */
 export const rollupCitationPages = pgTable(
 	"rollup_citation_pages",

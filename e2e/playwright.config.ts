@@ -1,18 +1,9 @@
-/**
- * One Playwright project per deployment mode.
- *
- * A container serves a single DEPLOYMENT_MODE, so the stack runs one per mode,
- * each on its own port: `--project=cloud` addresses the cloud container (see
- * e2e/modes.yaml and .github/workflows/e2e.yaml). Each mode runs the shared
- * specs — the behaviour every deployment owes its users — plus the specs for
- * what makes that mode different.
- */
+/** One project per deployment mode, each addressing that mode's container (see e2e/modes.yaml). */
 import { defineConfig, devices } from "@playwright/test";
 import { authStatePath, DEPLOYMENT_MODES, modeUrl, WHITELABEL } from "./fixtures";
 import type { ConsoleErrorOptions } from "./test";
 
-// Each mode run writes its own HTML report so the CI passes don't overwrite
-// each other's output.
+// Set per CI pass, so the passes don't overwrite each other's report.
 const HTML_REPORT_DIR = process.env.PLAYWRIGHT_HTML_REPORT || "playwright-report";
 
 const modeProjects = DEPLOYMENT_MODES.flatMap((mode) => [
@@ -25,9 +16,7 @@ const modeProjects = DEPLOYMENT_MODES.flatMap((mode) => [
     name: mode,
     dependencies: [`${mode}:setup`],
     testMatch: ["shared/**/*.spec.ts", `${mode}/**/*.spec.ts`],
-    // Playwright wipes the output dir of every project it runs, so each mode
-    // keeps its own — a shared one would delete the previous pass's traces
-    // before CI uploads them.
+    // Playwright wipes a project's output dir, so a shared one would delete the previous pass's traces.
     outputDir: `test-results-${mode}`,
     use: {
       ...devices["Desktop Chrome"],
@@ -42,11 +31,7 @@ export default defineConfig<ConsoleErrorOptions>({
   testDir: "./tests",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  // A test that needed its retry fails the job. Four had been failing their
-  // first attempt for months behind a silent retry, each costing a whole
-  // timeout; a suite that needs one is telling you something it used to be
-  // able to swallow. The retry still runs, but it no longer forgives the
-  // failure — it is what produces the trace below.
+  // A silent retry hides a flaky test, so needing one fails the job; it still runs to produce a trace.
   failOnFlakyTests: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 4,
@@ -66,12 +51,8 @@ export default defineConfig<ConsoleErrorOptions>({
 
   projects: [
     ...modeProjects,
-    // Run explicitly by the CI worker phase (--project=worker) once the worker
-    // container is up; the mode projects stay worker-free so a bare local run
-    // doesn't hang on (or feed a paid job to) whatever worker happens to be
-    // running. The timeout leaves room for the spec's 120s poll (worker
-    // startup + one pg-boss retry). It needs no session — the spec drives the
-    // public API with a bearer key.
+    // Only run explicitly once the worker is up, so a bare local run never feeds
+    // a paid job to whatever worker is running. Room for the spec's 120s poll.
     {
       name: "worker",
       testMatch: /worker\.spec\.ts/,

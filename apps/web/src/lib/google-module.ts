@@ -21,7 +21,7 @@ import {
  *  `PerPromptCitationPageRow`). */
 export interface GoogleModulePageRow {
 	prompt_id: string;
-	url: string | null;
+	url: string;
 	domain: string;
 	title: string | null;
 	count: number;
@@ -85,7 +85,6 @@ function tallyGooglePages(
 	const queryByKey = new Map<string, QueryAgg>();
 
 	for (const row of pages) {
-		if (!row.url) continue;
 		const count = Number(row.count);
 
 		if (isGoogleShoppingUrl(row.url)) {

@@ -72,6 +72,8 @@ export interface Competitor {
 	ahrefsDR: number;
 	ahrefsTraffic?: number;
 	status: "active" | "beta" | "acquired" | "shutting-down" | "defunct" | "pivoted";
+	/** ISO date this entry was last checked against the tool's own site. Bump it whenever you re-verify, even if nothing changed. */
+	checkedAt: string;
 	/** What happened to a tool that shut down, pivoted, or was acquired. Shown in the AEO Graveyard. */
 	fate?: { date: string; summary: string; source?: string };
 	/** Set when the screenshot is mostly dark, so the graveyard inverts it to read as engraved. */
@@ -220,8 +222,8 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 		label: "Platform",
 		features: {
 			whiteLabelAgency: {
-				label: "White-Label / Agency",
-				description: "Multi-client dashboards and custom branding",
+				label: "White-Label",
+				description: "Custom-branded dashboards or reports for agency clients",
 				searchTerm: "White-Label AI Visibility Tools",
 			},
 			openSource: {
@@ -387,7 +389,7 @@ export const ELMO_FEATURES: Record<FeatureKey, boolean> = {
 	multiLanguage: false,
 	actionRecommendations: true,
 	contentGapAnalysis: true,
-	siteAudits: false,
+	siteAudits: true,
 	keywordResearch: true,
 	emailAlerts: false,
 	dataExportApi: true,

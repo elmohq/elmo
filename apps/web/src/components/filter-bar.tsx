@@ -26,26 +26,15 @@ import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 
 import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@workspace/config/model-filter";
-// Filter state lives in the URL, validated by the `$brand` layout route's
-// search schema (see `validateBrandFilterSearch`). The widgets here keep
-// per-key `useSearch` selectors so one filter's click doesn't re-render the
-// others, and write through `useFilterNavigate` (replace, no scroll reset).
-// The router commits search updates synchronously within the interaction, so
-// the URL itself is the authoritative filter state.
+// Filter state lives only in the URL. Each widget selects just its own search
+// key so one filter's click doesn't re-render the others.
 import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
 import { getAvailableModels, groupTrackedTargets, type TrackedTarget } from "@/lib/model-filter";
 
-/** The model filter's trigger glyph. `all` is the no-filter sentinel; every
- *  other value names one of the brand's targets, whose logo is decided by
- *  @workspace/config/models. */
 function iconForModel(model: string, className = "size-3.5") {
 	if (model === ALL_MODELS_VALUE) return <MdSelectAll className={className} />;
 	return <ModelIcon iconId={iconIdForModelFilter(model)} className={className} />;
 }
-
-// ------------------------------------------------------------------
-// Trigger button (used by every dropdown)
-// ------------------------------------------------------------------
 
 type FilterTriggerButtonProps = {
 	icon: ReactNode;
@@ -54,11 +43,8 @@ type FilterTriggerButtonProps = {
 	badgeCount?: number;
 } & React.ComponentProps<"button">;
 
-// Props forward to the underlying Button so a trigger's `render` prop can hand
-// its ref and state straight to the button element (wrapping in a div would
-// leave the trigger targeting the div instead).
-// Exported so page-specific bar controls (e.g. the prompts sort dropdown)
-// share the same trigger look without re-implementing it.
+// Props reach the Button itself so a trigger's `render` prop can hand it the ref;
+// a wrapping div would become the trigger instead.
 export function FilterTriggerButton({
 	icon,
 	label,
@@ -88,10 +74,6 @@ export function FilterTriggerButton({
 	);
 }
 
-// ------------------------------------------------------------------
-// Model dropdown — subscribes to only the "model" URL key.
-// ------------------------------------------------------------------
-
 function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) {
 	const availableModels = getAvailableModels(trackedTargets);
 	const defaultModel = availableModels.includes(ALL_MODELS_VALUE)
@@ -99,9 +81,7 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 		: (availableModels[0] ?? ALL_MODELS_VALUE);
 	const urlModel = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.model });
 	const setFilters = useFilterNavigate();
-	// If the URL has a model that isn't valid for this brand (e.g. stale deep
-	// link after a deployment change), fall back to the default rather than
-	// showing a trigger with an unknown value.
+	// A stale deep link can name a model this brand no longer tracks.
 	const selected = urlModel && availableModels.includes(urlModel) ? urlModel : defaultModel;
 
 	const handleChange = (next: string) => {
@@ -110,9 +90,7 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 
 	if (availableModels.length <= 1) return null;
 	const isFiltered = selected !== ALL_MODELS_VALUE;
-	// Grouped the way the LLM settings page groups them: a scraped surface, a
-	// bare API call and a grounded one answer different questions, and the list
-	// is long enough that a flat run of thirteen reads as undifferentiated.
+	// Scraped, API and grounded answer different questions, so they're grouped as on the LLMs page.
 	const groups = groupTrackedTargets(trackedTargets);
 	return (
 		<DropdownMenu>
@@ -148,10 +126,6 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 	);
 }
 
-// ------------------------------------------------------------------
-// Lookback dropdown — subscribes to only the "lookback" URL key.
-// ------------------------------------------------------------------
-
 function LookbackDropdown() {
 	const { data: brand } = useBrand();
 	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
@@ -178,12 +152,6 @@ function LookbackDropdown() {
 		/>
 	);
 }
-
-// ------------------------------------------------------------------
-// Tags dropdown — subscribes to only the "tags" URL key.
-// Consumer passes `availableTags` (derived from prompts summary) so the
-// dropdown doesn't need to fetch.
-// ------------------------------------------------------------------
 
 function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 	const urlTags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
@@ -255,12 +223,6 @@ function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 		</Popover>
 	);
 }
-
-// ------------------------------------------------------------------
-// Search input — subscribes to only the "q" URL key.
-// Debounces keystrokes and uses an effect-based sync (no render-time
-// setState) to avoid flashing back when the URL echo races with typing.
-// ------------------------------------------------------------------
 
 function SearchInput({
 	placeholder = "Search prompts...",
@@ -335,12 +297,7 @@ function SearchInput({
 	);
 }
 
-// ------------------------------------------------------------------
-// Result count — subscribes only to the two URL keys that gate its
-// visibility (tags + q). Parent passes the count as a prop so the
-// prompts-summary query is read once by a single owner.
-// ------------------------------------------------------------------
-
+// The count comes in as a prop so the prompts-summary query has a single owner.
 function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
 	const tags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
 	const q = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
@@ -354,10 +311,6 @@ function ResultCount({ count, total }: { count: number | undefined; total?: numb
 		</span>
 	);
 }
-
-// ------------------------------------------------------------------
-// Composed FilterBar
-// ------------------------------------------------------------------
 
 export function FilterBar({
 	availableTags,

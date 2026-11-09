@@ -90,8 +90,9 @@ function formatZodError(error: z.ZodError): string {
 		.join("; ");
 }
 
-export interface ApiHandlerContext<P, B> {
+export interface ApiHandlerContext<P, Q, B> {
 	params: P;
+	query: Q;
 	body: B;
 	request: Request;
 	auth: ApiAuth;
@@ -107,6 +108,8 @@ export interface ApiHandlerMeta {
 	kind: "endpoint" | "method-guard";
 	scopes: readonly ApiScope[];
 	adminOnly: boolean;
+	/** What the route answers when it works, where it states it. */
+	reply?: { status: number; schema: z.ZodType };
 }
 
 function brand<T extends object>(handler: T, meta: ApiHandlerMeta): T {
@@ -124,30 +127,63 @@ export function apiHandlerMeta(value: unknown): ApiHandlerMeta | undefined {
 	return (value as unknown as Record<symbol, ApiHandlerMeta | undefined>)[API_HANDLER];
 }
 
-/** Params then body, short-circuiting on the first that fails validation. */
-async function parseInputs<P, B>(
-	opts: { params?: z.ZodType<P>; body?: z.ZodType<B> },
+/** The first value of each key, as `URLSearchParams.get` reads it. */
+function queryOf(request: Request): Record<string, string> {
+	const query: Record<string, string> = {};
+	for (const [key, value] of new URL(request.url).searchParams) {
+		if (!(key in query)) query[key] = value;
+	}
+	return query;
+}
+
+/** Params, query, then body, short-circuiting on the first that fails validation. */
+async function parseInputs<P, Q, B>(
+	opts: { params?: z.ZodType<P>; query?: z.ZodType<Q>; body?: z.ZodType<B> },
 	request: Request,
 	params: Record<string, string>,
-): Promise<{ response: Response } | { params: P; body: B }> {
+): Promise<{ response: Response } | { params: P; query: Q; body: B }> {
 	const parsedParams = opts.params ? parseAgainst(opts.params, params) : { data: params as P };
 	if ("response" in parsedParams) return { response: parsedParams.response };
+
+	const parsedQuery = opts.query ? parseAgainst(opts.query, queryOf(request)) : { data: undefined as Q };
+	if ("response" in parsedQuery) return { response: parsedQuery.response };
 
 	const parsedBody = opts.body ? await parseJsonBody(opts.body, request) : { data: undefined as B };
 	if ("response" in parsedBody) return { response: parsedBody.response };
 
-	return { params: parsedParams.data, body: parsedBody.data };
+	return { params: parsedParams.data, query: parsedQuery.data, body: parsedBody.data };
 }
 
-export function createApiHandler<P = Record<string, string>, B = undefined>(opts: {
+/**
+ * A value `Response.json` writes as `T`: it sends a `Date` as its ISO string,
+ * which is how a timestamp read from the database reaches the wire.
+ */
+type Sent<T> = T extends string
+	? T | Date
+	: T extends readonly (infer E)[]
+		? readonly Sent<E>[]
+		: T extends object
+			? { [K in keyof T]: Sent<T[K]> }
+			: T;
+
+export function createApiHandler<
+	P = Record<string, string>,
+	Q = undefined,
+	B = undefined,
+	R extends z.ZodType | undefined = undefined,
+>(opts: {
 	params?: z.ZodType<P>;
+	query?: z.ZodType<Q>;
 	body?: z.ZodType<B>;
 	status?: number;
 	scopes?: ApiScope[];
 	adminOnly?: boolean;
 	adminOnlyHint?: string;
 	mapError?: (err: unknown) => ApiError | undefined;
-	handle: (ctx: ApiHandlerContext<P, B>) => Promise<Response | object>;
+	/** The reply `handle` returns. Read by types and tests only: nothing parses it. */
+	response?: R;
+	/** Checked against `response` where the route states one. A `Response` is the route's own word. */
+	handle: (ctx: ApiHandlerContext<P, Q, B>) => Promise<Response | (R extends z.ZodType ? Sent<z.input<R>> : object)>;
 }) {
 	const handler = async ({
 		request,
@@ -167,7 +203,13 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 		if ("response" in parsed) return withRateLimit(parsed.response, auth);
 
 		try {
-			const result = await opts.handle({ params: parsed.params, body: parsed.body, request, auth });
+			const result = await opts.handle({
+				params: parsed.params,
+				query: parsed.query,
+				body: parsed.body,
+				request,
+				auth,
+			});
 			const response = result instanceof Response ? result : Response.json(result, { status: opts.status ?? 200 });
 			return withRateLimit(response, auth);
 		} catch (err) {
@@ -179,6 +221,7 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 		kind: "endpoint",
 		scopes: opts.scopes ?? [],
 		adminOnly: opts.adminOnly === true,
+		...(opts.response ? { reply: { status: opts.status ?? 200, schema: opts.response } } : {}),
 	});
 }
 

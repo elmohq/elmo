@@ -168,7 +168,7 @@ function OfferCard({ question, offer, className = "" }: { question: string; offe
 				href={offer.href}
 				className={cn(
 					buttonVariants({ variant: "ghost", size: "sm" }),
-					"bg-accent text-accent-foreground hover:underline dark:bg-accent/50",
+					"bg-accent text-accent-foreground hover:underline",
 				)}
 				{...(offer.newTab ? { target: "_blank", rel: "noopener" } : {})}
 			>

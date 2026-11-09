@@ -5,9 +5,9 @@ import { Footer } from "@/components/footer";
 import { Closing } from "@/components/home/closing";
 import { Faq } from "@/components/home/faq";
 import { Hero } from "@/components/home/hero";
-import { HowItWorks } from "@/components/home/how-it-works";
+import { HOW_IT_WORKS_STEPS, HowItWorks } from "@/components/home/how-it-works";
 import { LogoStrip } from "@/components/home/logos";
-import { ModelCoverage } from "@/components/home/models";
+import { ModelCoverage, TRACKED_ENGINES } from "@/components/home/models";
 import { Pricing } from "@/components/home/pricing";
 import { Reviews } from "@/components/home/reviews";
 import { SelfHost } from "@/components/home/self-host";
@@ -17,7 +17,15 @@ import { Navbar } from "@/components/navbar";
 import { getHeroVariant } from "@/data/hero-variants";
 import { useAiReferral } from "@/lib/ai-referral";
 import { HOME_FAQS } from "@/lib/faqs";
-import { canonicalUrl, faqJsonLd, ogMeta, SITE_NAME, softwareApplicationJsonLd } from "@/lib/seo";
+import {
+	canonicalUrl,
+	faqJsonLd,
+	howToJsonLd,
+	itemListJsonLd,
+	ogMeta,
+	SITE_NAME,
+	softwareApplicationJsonLd,
+} from "@/lib/seo";
 
 const title = `${SITE_NAME} · Open Source AEO & AI Visibility Tracker`;
 // The shared SITE_DESCRIPTION is a terse fallback for pages without their own
@@ -41,7 +49,15 @@ export const Route = createFileRoute("/")({
 			}),
 		],
 		links: [{ rel: "canonical", href: canonicalUrl("/") }],
-		scripts: [softwareApplicationJsonLd(), faqJsonLd(HOME_FAQS)],
+		scripts: [
+			softwareApplicationJsonLd(),
+			howToJsonLd({
+				name: "Track your brand's AI visibility with Elmo",
+				steps: HOW_IT_WORKS_STEPS.map((step) => ({ name: step.title, text: step.body })),
+			}),
+			itemListJsonLd(TRACKED_ENGINES.map((engine) => ({ name: engine.name }))),
+			faqJsonLd(HOME_FAQS),
+		],
 	}),
 	component: HomePage,
 });

@@ -283,7 +283,7 @@ test.describe("MCP", () => {
 
     await page.getByLabel("Email").fill(TEST_USER.email);
     await page.getByLabel("Password").fill(TEST_USER.password);
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.getByRole("button", { name: "Sign In", exact: true }).click();
 
     await page.waitForURL(/\/auth\/authorize/);
     await expect(page.getByText("Playwright Signed-out Client").first()).toBeVisible();

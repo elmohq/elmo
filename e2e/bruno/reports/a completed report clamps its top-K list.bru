@@ -1,0 +1,29 @@
+meta {
+  name: a completed report clamps its top-K list
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reports/{{completedReportId}}?kMentions=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  kMentions: 0
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq completed
+}
+
+tests {
+  test("a count below 1 is read as 1, not answered empty", function() {
+    // One seeded prompt mentions two competitors, so it shows whether the
+    // count was clamped.
+    const lengths = res.getBody().prompts.map((prompt) => prompt.mentions.mentionsTopK.length);
+    expect(Math.max(...lengths)).to.equal(1);
+  });
+}
