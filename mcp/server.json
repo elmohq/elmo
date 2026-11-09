@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.elmohq/elmo",
   "title": "Elmo",
-  "description": "AI visibility & AEO: how ChatGPT, Claude, Perplexity, and AI Overviews mention and cite your brand.",
+  "description": "Track prompts on ChatGPT/Claude and all other models to measure AI visibility and perform AEO.",
   "version": "1.0.0",
   "websiteUrl": "https://www.elmohq.com",
   "repository": {
