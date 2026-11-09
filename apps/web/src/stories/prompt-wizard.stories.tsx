@@ -225,6 +225,40 @@ export const ReviewRejectsCoveredDomain: StoryObj = {
 
 		await expect(documentBody.findByText(/already covered by acme\.com/i)).resolves.toBeVisible();
 		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+
+		await userEvent.clear(search);
+		await userEvent.type(search, "acme.io");
+		await userEvent.keyboard("{Enter}");
+
+		await expect(canvas.findByText("acme.io")).resolves.toBeVisible();
+		expect(documentBody.queryByText(/already covered/i)).toBeNull();
+	},
+};
+
+export const ReviewPasteSkipsCoveredDomains: StoryObj = {
+	render: () => {
+		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const documentBody = within(canvasElement.ownerDocument.body);
+
+		await canvas.findByText("Brand details");
+		const [domainsInput] = canvas.getAllByRole("combobox");
+		await userEvent.click(domainsInput);
+		await userEvent.click(await documentBody.findByPlaceholderText("Add domain..."));
+		await userEvent.paste("blog.acme.com, acme.io, shop.acme.io");
+
+		await expect(documentBody.findByText(/"blog\.acme\.com" is already covered by acme\.com/i)).resolves.toBeVisible();
+		await expect(canvas.findByText("acme.io")).resolves.toBeVisible();
+		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+		expect(canvas.queryByText("shop.acme.io")).toBeNull();
 	},
 };
 

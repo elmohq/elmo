@@ -71,6 +71,14 @@ export const RejectsCoveredDomain: Story = {
 
 		await expect(documentBody.findByText(/already covered by acme\.com/i)).resolves.toBeVisible();
 		expect(within(canvasElement).queryByText("blog.acme.com")).toBeNull();
+
+		const search = documentBody.getByPlaceholderText("Add domain...");
+		await userEvent.clear(search);
+		await userEvent.type(search, "acme.io");
+		await userEvent.keyboard("{Enter}");
+
+		await expect(within(canvasElement).findByText("acme.io")).resolves.toBeVisible();
+		expect(documentBody.queryByText(/already covered/i)).toBeNull();
 	},
 };
 
