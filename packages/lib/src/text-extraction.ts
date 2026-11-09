@@ -620,7 +620,6 @@ const EXTRACTORS: Record<string, Extractor> = {
 	"anthropic-api": ANTHROPIC,
 	anthropic: ANTHROPIC,
 	claude: ANTHROPIC,
-	"meta-api": OPENAI,
 	"mistral-api": { text: extractTextFromMistral, citations: extractCitationsFromMistral },
 	dataforseo: DATAFORSEO,
 	google: DATAFORSEO,

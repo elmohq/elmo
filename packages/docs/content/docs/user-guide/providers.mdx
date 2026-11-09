@@ -50,7 +50,6 @@ The Query Fan-Out page shows the web searches an engine ran while answering a pr
 | OpenAI API | ✅ |
 | Anthropic API | ✅ |
 | Mistral API | ✅ |
-| Meta Model API | Unknown |
 | OpenRouter | – |
 
 {/* fanout-support:end */}
@@ -218,7 +217,6 @@ These hit the provider API directly — cheaper per token than scrapers, but the
 | **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$4–5 per tracked model |
 | **OpenAI API** (`OPENAI_API_KEY`) | `gpt-6-luna` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
 | **Mistral API** (`MISTRAL_API_KEY`) | Mistral Small / Medium / Large, optional web search via the beta Conversations API | pass-through |
-| **Meta Model API** (`META_API_KEY`) | Meta AI's Muse Spark models, optional web search | pass-through |
 | **OpenRouter** (`OPENROUTER_API_KEY`) | Any OpenRouter-hosted model (Claude, Llama, Mistral, etc.) | pass-through |
 | **DataForSEO** (`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`) | ChatGPT, Gemini, or Perplexity through its LLM Responses API — see [Pinning a model](#pinning-a-model) | pass-through |
 
@@ -230,14 +228,14 @@ Example scrape targets:
 claude:anthropic-api:claude-haiku-5-5
 chatgpt:openai-api:gpt-6-luna:online
 mistral:mistral-api:mistral-medium-latest:online
-meta-ai:meta-api:muse-spark-1.1:online
 claude:openrouter:anthropic/claude-haiku-5.5
 grok:openrouter:x-ai/grok-4.5:online
+meta-ai:openrouter:meta/muse-spark-1.3:online
 kimi:openrouter:moonshotai/kimi-k2.5
 perplexity:openrouter:perplexity/sonar:online
 ```
 
-OpenAI/Anthropic/Mistral/Meta/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
+OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
 
 DataForSEO straddles both halves of this page. Left alone it scrapes, but pinning a `model_name` switches ChatGPT or Gemini to a model API instead, and Perplexity always goes that way because no Perplexity scraper exists. See [DataForSEO](#dataforseo) above.
 
@@ -283,8 +281,8 @@ model:provider[:version][:online]
 ```
 
 - `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`, `meta-ai`).
-- `provider` — how to reach it (`cloro`, `brightdata`, `oxylabs`, `searchapi`, `olostep`, `dataforseo`, `openai-api`, `anthropic-api`, `mistral-api`, `meta-api`, `openrouter`).
-- `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `meta-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here, or a DataForSEO `model_name` to switch that target to the LLM Responses API).
+- `provider` — how to reach it (`cloro`, `brightdata`, `oxylabs`, `searchapi`, `olostep`, `dataforseo`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`).
+- `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here, or a DataForSEO `model_name` to switch that target to the LLM Responses API).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
 
 Entries are comma-separated.

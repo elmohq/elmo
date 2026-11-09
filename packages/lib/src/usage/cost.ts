@@ -14,7 +14,6 @@ const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {
 	"openai-api": 0.01,
 	"anthropic-api": 0.01,
 	"mistral-api": 0.005,
-	"meta-api": 0.01,
 	openrouter: 0.005,
 	stub: 0,
 };

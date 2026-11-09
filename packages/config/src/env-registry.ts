@@ -136,13 +136,6 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Mistral API key.",
 	},
 	{
-		name: "META_API_KEY",
-		scope: "server",
-		requiredBy: "dynamic-scrape-targets",
-		provider: "meta-api",
-		description: "Meta Model API key.",
-	},
-	{
 		name: "SCRAPE_TARGETS",
 		scope: "server",
 		requiredBy: VALIDATED_MODES,

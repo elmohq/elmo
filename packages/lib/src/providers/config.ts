@@ -27,7 +27,6 @@ export const API_PROVIDER_MAX_OUTPUT_TOKENS: Record<string, number> = {
 	"openai-api": 8000,
 	openrouter: 8000,
 	"mistral-api": 8000,
-	"meta-api": 8000,
 };
 
 /** A clipped answer stores as a real-looking run, so log it (without failing) to tune the caps. */
@@ -72,7 +71,6 @@ export function validateScrapeTargets(
 			(config.provider === "openai-api" ||
 				config.provider === "anthropic-api" ||
 				config.provider === "mistral-api" ||
-				config.provider === "meta-api" ||
 				config.provider === "openrouter") &&
 			!config.version
 		)
