@@ -88,6 +88,19 @@ export function cleanAndValidateDomain(input: string): string | null {
 	return cleaned;
 }
 
+// Brand matching is suffix-based, so a subdomain of a tracked domain is already the brand's.
+export function validateAdditionalDomain(value: string, tracked: (string | null | undefined)[]): true | string {
+	const cleaned = cleanAndValidateDomain(value);
+	if (!cleaned) return `"${value}" is not a valid domain`;
+	for (const entry of tracked) {
+		const domain = entry && cleanAndValidateDomain(entry);
+		if (!domain) continue;
+		if (cleaned === domain) return `"${cleaned}" is already tracked`;
+		if (cleaned.endsWith(`.${domain}`)) return `"${cleaned}" is already covered by ${domain}`;
+	}
+	return true;
+}
+
 export function dedupeDomains(values: string[]): string[] {
 	const out: string[] = [];
 	const seen = new Set<string>();

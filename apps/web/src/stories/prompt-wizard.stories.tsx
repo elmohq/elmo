@@ -200,6 +200,90 @@ export const Review: StoryObj = {
 	},
 };
 
+export const ReviewRejectsCoveredDomain: StoryObj = {
+	render: () => {
+		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const documentBody = within(canvasElement.ownerDocument.body);
+
+		await canvas.findByText("Brand details");
+		// Brand name and website are plain inputs, so domains is the first combobox.
+		const [domainsInput] = canvas.getAllByRole("combobox");
+		await userEvent.click(domainsInput);
+
+		const search = await documentBody.findByPlaceholderText("Add domain...");
+		await userEvent.type(search, "blog.acme.com");
+		await userEvent.keyboard("{Enter}");
+
+		await expect(documentBody.findByText(/already covered by acme\.com/i)).resolves.toBeVisible();
+		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+
+		await userEvent.clear(search);
+		await userEvent.type(search, "acme.io");
+		await userEvent.keyboard("{Enter}");
+
+		await expect(canvas.findByText("acme.io")).resolves.toBeVisible();
+		expect(documentBody.queryByText(/already covered/i)).toBeNull();
+	},
+};
+
+export const ReviewPasteSkipsCoveredDomains: StoryObj = {
+	render: () => {
+		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const documentBody = within(canvasElement.ownerDocument.body);
+
+		await canvas.findByText("Brand details");
+		const [domainsInput] = canvas.getAllByRole("combobox");
+		await userEvent.click(domainsInput);
+		await userEvent.click(await documentBody.findByPlaceholderText("Add domain..."));
+		await userEvent.paste("blog.acme.com, acme.io, shop.acme.io");
+
+		await expect(documentBody.findByText(/"blog\.acme\.com" is already covered by acme\.com/i)).resolves.toBeVisible();
+		await expect(canvas.findByText("acme.io")).resolves.toBeVisible();
+		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+		expect(canvas.queryByText("shop.acme.io")).toBeNull();
+	},
+};
+
+export const ReviewDropsCoveredSuggestions: StoryObj = {
+	render: () => {
+		useWizardSetup({
+			brand: MOCK_BRAND,
+			suggestion: { ...RICH_SUGGESTION, additionalDomains: ["acme.co.uk", "blog.acme.com", "eu.acme.co.uk"] },
+		});
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByText("Brand details");
+		await expect(canvas.findByText("acme.co.uk")).resolves.toBeVisible();
+		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+		expect(canvas.queryByText("eu.acme.co.uk")).toBeNull();
+	},
+};
+
 /**
  * The provider/stack detail stays server-side and is never forwarded to the
  * browser, so the wizard shows a generic message.

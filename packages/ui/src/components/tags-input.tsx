@@ -30,8 +30,11 @@ export interface TagsInputProps {
   normalizeValue?: (raw: string) => string;
   /** Splits clipboard text into values. Providing this also handles single-value pastes. */
   pasteSplitter?: RegExp;
-  /** Return `true` to accept the value, or an error string to reject it and show inline. */
-  onValidate?: (value: string) => true | string;
+  /**
+   * Return `true` to accept the value, or an error string to reject it and show inline.
+   * `current` is the list the value would join, including values added earlier in the same paste.
+   */
+  onValidate?: (value: string, current: string[]) => true | string;
   maxItems?: number;
   minItems?: number;
   disabled?: boolean;
@@ -85,7 +88,7 @@ export function TagsInput({
 
   function validate(val: string): boolean {
     if (!onValidate) return true;
-    const result = onValidate(val);
+    const result = onValidate(val, value);
     if (result === true) {
       setValidationError("");
       return true;
@@ -104,14 +107,20 @@ export function TagsInput({
   function addMany(rawValues: string[]) {
     const next = [...value];
     const seen = new Set(next);
+    let firstError = "";
     for (const raw of rawValues) {
       if (next.length >= max) break;
       const val = normalize(raw);
       if (!val || seen.has(val)) continue;
-      if (onValidate && onValidate(val) !== true) continue;
+      const result = onValidate ? onValidate(val, next) : true;
+      if (result !== true) {
+        firstError ||= result;
+        continue;
+      }
       next.push(val);
       seen.add(val);
     }
+    setValidationError(firstError);
     if (next.length !== value.length) onValueChange(next);
   }
 

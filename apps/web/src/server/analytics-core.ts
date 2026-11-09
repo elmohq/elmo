@@ -19,6 +19,7 @@ import type {
 	shareOfVoiceEntrySchema,
 	visibilityPointSchema,
 } from "@/lib/api/schemas/analytics";
+import type { promptPerformanceSchema } from "@/lib/api/schemas/prompt-performance";
 import { generateDateRange } from "@/lib/chart-utils";
 import {
 	getCitationDomainPage,
@@ -502,16 +503,7 @@ function emptyFanout(): FanoutAnalysis {
 	};
 }
 
-export interface PromptPerformance extends MentionQuality {
-	promptId: string;
-	value: string;
-	tags: string[];
-	totalRuns: number;
-	brandMentionRate: number;
-	competitorMentionRate: number;
-	lastRunAt: string | null;
-	firstEvaluatedAt: string | null;
-}
+export type PromptPerformance = z.infer<typeof promptPerformanceSchema>;
 
 /** Only prompts that ran appear, which is why no row carries an `enabled` flag. */
 export async function getBrandPromptPerformance(
