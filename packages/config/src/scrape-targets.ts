@@ -104,8 +104,6 @@ export const STATUS_TARGETS = [
 	"grok:openrouter:x-ai/grok-4.7",
 	"grok:openrouter:x-ai/grok-4.7:online",
 	"mistral:openrouter:mistralai/mistral-medium-3.1",
-	// Sonar runs Perplexity's own search on every request, so the provider sends
-	// it no OpenRouter search tool.
 	"perplexity:openrouter:perplexity/sonar:online",
 	"mistral:mistral-api:mistral-medium-latest",
 	"mistral:mistral-api:mistral-medium-latest:online",
