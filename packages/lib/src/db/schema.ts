@@ -20,7 +20,7 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 import type { RunMentionAssessments } from "../mentions";
-import { organization } from "./schema-auth";
+import { organization, user } from "./schema-auth";
 
 // Re-exported so `import * as schema` sees the auth tables. That file is
 // generated: run `pnpm run generate:auth-schema` to refresh it.
@@ -319,6 +319,25 @@ export const usageEvents = pgTable(
 ).enableRLS();
 
 export type UsageEvent = typeof usageEvents.$inferSelect;
+
+export const userSignupAttribution = pgTable("user_signup_attribution", {
+	userId: text("user_id")
+		.primaryKey()
+		.references(() => user.id, { onDelete: "cascade" }),
+	ref: text("ref"),
+	utmSource: text("utm_source"),
+	utmMedium: text("utm_medium"),
+	utmCampaign: text("utm_campaign"),
+	utmTerm: text("utm_term"),
+	utmContent: text("utm_content"),
+	clickIds: jsonb("click_ids").$type<Record<string, string>>(),
+	landingPage: text("landing_page"),
+	referrer: text("referrer"),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}).enableRLS();
+
+export type UserSignupAttribution = typeof userSignupAttribution.$inferSelect;
+export type NewUserSignupAttribution = typeof userSignupAttribution.$inferInsert;
 
 // Encrypted overrides for credential environment variables, keyed by the env-var
 // name they stand in for. Separate table, strictest access.
