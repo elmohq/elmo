@@ -88,6 +88,19 @@ export function cleanAndValidateDomain(input: string): string | null {
 	return cleaned;
 }
 
+// Brand matching is suffix-based, so a subdomain of a tracked domain is already the brand's.
+export function validateAdditionalDomain(value: string, tracked: (string | null | undefined)[]): true | string {
+	const cleaned = cleanAndValidateDomain(value);
+	if (!cleaned) return `"${value}" is not a valid domain`;
+	for (const entry of tracked) {
+		const domain = entry && cleanAndValidateDomain(entry);
+		if (!domain) continue;
+		if (cleaned === domain) return `"${cleaned}" is already tracked`;
+		if (cleaned.endsWith(`.${domain}`)) return `"${cleaned}" is already covered by ${domain}`;
+	}
+	return true;
+}
+
 export function dedupeDomains(values: string[]): string[] {
 	const out: string[] = [];
 	const seen = new Set<string>();
@@ -302,24 +315,14 @@ export const FORUM_DOMAINS = new Set([
 ]);
 
 /** Walks parent suffixes so lookups stay O(labels) however large the set. */
-function coveringDomain(domain: string, set: Set<string>): string | null {
+export function inDomainSet(domain: string, set: Set<string>): boolean {
 	let d = domain;
 	while (true) {
-		if (set.has(d)) return d;
+		if (set.has(d)) return true;
 		const dot = d.indexOf(".");
-		if (dot === -1) return null;
+		if (dot === -1) return false;
 		d = d.slice(dot + 1);
 	}
-}
-
-export function inDomainSet(domain: string, set: Set<string>): boolean {
-	return coveringDomain(domain, set) !== null;
-}
-
-export function redundantDomainReason(domain: string, tracked: (string | null)[]): string | null {
-	const covering = coveringDomain(domain, new Set(tracked.filter((d): d is string => d !== null)));
-	if (!covering) return null;
-	return covering === domain ? "is already tracked" : `is already covered by ${covering}`;
 }
 
 export function isForumDomain(host: string): boolean {

@@ -7,7 +7,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { cleanAndValidateDomain, redundantDomainReason } from "@workspace/lib/citations/domain-categories";
+import { cleanAndValidateDomain, validateAdditionalDomain } from "@workspace/lib/citations/domain-categories";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Separator } from "@workspace/ui/components/separator";
@@ -44,6 +44,8 @@ interface WizardData {
 	competitors: CompetitorEntry[];
 	prompts: EditablePrompt[];
 }
+
+const normalizeDomain = (raw: string) => cleanAndValidateDomain(raw) ?? raw.trim();
 
 const EditableTagsInput = memo(
 	({
@@ -159,14 +161,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const updatePrompts = useCallback((prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })), []);
 
 	const validateDomain = useCallback(
-		(val: string): true | string => {
-			const cleaned = cleanAndValidateDomain(val);
-			if (!cleaned) return `"${val}" is not a valid domain`;
-			const reason = redundantDomainReason(cleaned, [cleanAndValidateDomain(data.website), ...data.additionalDomains]);
-			if (reason) return `"${cleaned}" ${reason}`;
-			return true;
-		},
-		[data.additionalDomains, data.website],
+		(val: string) => validateAdditionalDomain(val, [data.website.trim() || brand?.website, ...data.additionalDomains]),
+		[data.website, brand?.website, data.additionalDomains],
 	);
 
 	const previewCounts = useMemo(() => {
@@ -294,7 +290,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							onValueChange={updateAdditionalDomains}
 							placeholder="Add domain..."
 							maxItems={10}
-							normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
+							normalizeValue={normalizeDomain}
 							onValidate={validateDomain}
 						/>
 					</div>

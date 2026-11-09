@@ -9,8 +9,8 @@ import {
 	isGoogleSurfaceUrl,
 	parseGoogleProductName,
 	parseGoogleSearchQuery,
-	redundantDomainReason,
 	resolvePageType,
+	validateAdditionalDomain,
 } from "./domain-categories";
 import { CURATED_DOMAIN_LISTS, categorizeDomain, classifyUrl } from "./domain-lists";
 
@@ -367,31 +367,32 @@ describe("isForumDomain", () => {
 	});
 });
 
-describe("redundantDomainReason", () => {
-	it("names the domain that already covers the one being added", () => {
-		expect(redundantDomainReason("blog.acme.com", ["acme.com"])).toBe("is already covered by acme.com");
-		expect(redundantDomainReason("eu.blog.acme.com", ["acme.com"])).toBe("is already covered by acme.com");
+describe("validateAdditionalDomain", () => {
+	it("rejects a subdomain of a tracked domain, naming the domain that covers it", () => {
+		expect(validateAdditionalDomain("blog.acme.com", ["https://acme.com"])).toBe(
+			'"blog.acme.com" is already covered by acme.com',
+		);
+		expect(validateAdditionalDomain("https://www.eu.blog.acme.de/path", ["acme.com", "acme.de"])).toBe(
+			'"eu.blog.acme.de" is already covered by acme.de',
+		);
 	});
 
-	it("says a domain already in the list is tracked", () => {
-		expect(redundantDomainReason("acme.com", ["acme.com"])).toBe("is already tracked");
+	it("rejects a domain that is already tracked, however it was stored", () => {
+		expect(validateAdditionalDomain("acme.de", ["acme.com", "www.Acme.de"])).toBe('"acme.de" is already tracked');
 	});
 
-	it("stays quiet for a domain nothing covers", () => {
-		expect(redundantDomainReason("acme.io", ["acme.com", "acme.co.uk"])).toBeNull();
-	});
-
-	it("stays quiet when the domain is the broader one", () => {
-		expect(redundantDomainReason("acme.com", ["blog.acme.com"])).toBeNull();
+	it("accepts domains nothing covers, including the broader one", () => {
+		expect(validateAdditionalDomain("acme.io", ["acme.com", "acme.co.uk"])).toBe(true);
+		expect(validateAdditionalDomain("acme.com", ["blog.acme.com"])).toBe(true);
 	});
 
 	it("requires a label boundary, so a shared suffix is not coverage", () => {
-		expect(redundantDomainReason("notacme.com", ["acme.com"])).toBeNull();
-		expect(redundantDomainReason("fake-acme.com", ["acme.com"])).toBeNull();
+		expect(validateAdditionalDomain("notacme.com", ["acme.com"])).toBe(true);
+		expect(validateAdditionalDomain("fake-acme.com", ["acme.com"])).toBe(true);
 	});
 
-	it("ignores nulls in the tracked list", () => {
-		expect(redundantDomainReason("blog.acme.com", [null, "acme.com"])).toBe("is already covered by acme.com");
-		expect(redundantDomainReason("blog.acme.com", [null])).toBeNull();
+	it("skips empty tracked entries and rejects invalid input", () => {
+		expect(validateAdditionalDomain("blog.acme.com", [undefined, null, ""])).toBe(true);
+		expect(validateAdditionalDomain("not a domain", ["acme.com"])).toBe('"not a domain" is not a valid domain');
 	});
 });
