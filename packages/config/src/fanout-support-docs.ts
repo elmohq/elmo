@@ -21,6 +21,7 @@ const APIS = [
 	["openai-api", "OpenAI API"],
 	["anthropic-api", "Anthropic API"],
 	["mistral-api", "Mistral API"],
+	["meta-api", "Meta Model API"],
 	["openrouter", "OpenRouter"],
 ] as const;
 

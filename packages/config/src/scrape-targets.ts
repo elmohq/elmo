@@ -109,6 +109,7 @@ export const STATUS_TARGETS = [
 	"perplexity:openrouter:perplexity/sonar:online",
 	"mistral:mistral-api:mistral-medium-latest",
 	"mistral:mistral-api:mistral-medium-latest:online",
+	"meta-ai:meta-api:muse-spark-1.1:online",
 ];
 
 /** Derived from STATUS_TARGETS so it only offers combinations the scheduled provider tests exercise. */
