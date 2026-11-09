@@ -52,6 +52,13 @@ const loaded = await Promise.all(
 	})),
 );
 
+const replies = loaded.flatMap((route) =>
+	HTTP_METHODS.flatMap((method) => {
+		const reply = apiHandlerMeta(route.handlers[method])?.reply;
+		return reply ? [[`${method} ${route.path}`, route.path, method, reply] as const] : [];
+	}),
+);
+
 function documentedOperations(): string[] {
 	const operations: string[] = [];
 	for (const [path, methods] of Object.entries(spec.paths as Record<string, Record<string, unknown>>)) {
@@ -259,18 +266,18 @@ describe("/api/v1 route conformance", () => {
 		},
 	);
 
-	it.each(
-		loaded.flatMap((route) =>
-			HTTP_METHODS.flatMap((method) => {
-				const reply = apiHandlerMeta(route.handlers[method])?.reply;
-				return reply ? [[`${method} ${route.path}`, route.path, method, reply] as const] : [];
-			}),
-		),
-	)("%s replies in the shape its spec documents", (_name, path, method, reply) => {
+	it.each(replies)("%s replies in the shape its spec documents", (_name, path, method, reply) => {
 		const documented = (spec.paths as Record<string, Record<string, DocumentedOperation>>)[path]?.[method.toLowerCase()]
 			?.responses[String(reply.status)]?.content?.["application/json"]?.schema;
 		expect(documented, `no ${reply.status} JSON reply documented`).toBeDefined();
 		expect(zodShape(reply.schema)).toEqual(documentedShape(documented));
+	});
+
+	it("states the reply of every operation it documents", () => {
+		// The shape check above skips a route that states no reply, so without
+		// this a new route would pass it by leaving `response` out.
+		const stated = new Set<string>(replies.map(([operation]) => operation));
+		expect(documentedOperations().filter((operation) => !stated.has(operation))).toEqual([]);
 	});
 
 	it("documents exactly the operations it implements", () => {
