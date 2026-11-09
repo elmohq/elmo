@@ -16,6 +16,7 @@ import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { competitorSchema } from "@/lib/api/schemas/competitors";
 import { isBrandInScope } from "@/lib/api/scope";
+import { toCompetitorSummary } from "@/server/competitors-core";
 
 const competitorParams = z.object({ competitorId: z.uuid("Invalid competitor ID format") });
 
@@ -47,7 +48,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 				params: competitorParams,
 				scopes: ["read"],
 				handle: async ({ params, auth }) => {
-					return await loadInScope(auth, params.competitorId);
+					return toCompetitorSummary(await loadInScope(auth, params.competitorId));
 				},
 			}),
 
@@ -81,7 +82,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 					if (!updated) {
 						throw new ApiError(404, "Not Found", `Competitor with ID '${competitorId}' not found`);
 					}
-					return updated;
+					return toCompetitorSummary(updated);
 				},
 			}),
 
@@ -95,7 +96,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 					if (!deleted) {
 						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
 					}
-					return deleted;
+					return toCompetitorSummary(deleted);
 				},
 			}),
 		}),

@@ -15,7 +15,7 @@ import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { offsetOf, paginationOf, paging } from "@/lib/api/query";
 import { competitorSchema, competitorsListSchema } from "@/lib/api/schemas/competitors";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
-import { listCompetitors } from "@/server/competitors-core";
+import { listCompetitors, toCompetitorSummary } from "@/server/competitors-core";
 
 const createCompetitorBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
@@ -75,7 +75,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 							})
 							.returning();
 
-						return inserted;
+						return toCompetitorSummary(inserted);
 					});
 				},
 			}),
