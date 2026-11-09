@@ -103,7 +103,7 @@ export const STATUS_TARGETS = [
 	"kimi:openrouter:moonshotai/kimi-k2.5",
 	"grok:openrouter:x-ai/grok-4.5",
 	"grok:openrouter:x-ai/grok-4.5:online",
-	"meta-ai:openrouter:meta/muse-spark-1.3:online",
+	"meta:openrouter:meta/muse-spark-1.3:online",
 	"mistral:openrouter:mistralai/mistral-medium-3.1",
 	// Perplexity's own search, not OpenRouter's Exa fallback: with the plugin
 	// engine left unset, OpenRouter routes Perplexity slugs to native search.

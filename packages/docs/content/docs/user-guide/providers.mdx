@@ -230,7 +230,7 @@ chatgpt:openai-api:gpt-6-luna:online
 mistral:mistral-api:mistral-medium-latest:online
 claude:openrouter:anthropic/claude-haiku-5.5
 grok:openrouter:x-ai/grok-4.5:online
-meta-ai:openrouter:meta/muse-spark-1.3:online
+meta:openrouter:meta/muse-spark-1.3:online
 kimi:openrouter:moonshotai/kimi-k2.5
 perplexity:openrouter:perplexity/sonar:online
 ```
@@ -280,7 +280,7 @@ SCRAPE_TARGETS=chatgpt:dataforseo:online,google-ai-mode:dataforseo:online
 model:provider[:version][:online]
 ```
 
-- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`, `meta-ai`).
+- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`, `meta`).
 - `provider` — how to reach it (`cloro`, `brightdata`, `oxylabs`, `searchapi`, `olostep`, `dataforseo`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`).
 - `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here, or a DataForSEO `model_name` to switch that target to the LLM Responses API).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
