@@ -15,7 +15,7 @@ function ToolCard({ competitor }: { competitor: Competitor }) {
 			</div>
 			<div className="mt-2 flex flex-wrap gap-1.5">
 				<Badge variant="secondary">{CATEGORY_LABELS[competitor.category]}</Badge>
-				{competitor.pricing?.hasFree && <Badge variant="secondary">Free tier</Badge>}
+				{competitor.pricing?.hasFree && <Badge variant="secondary">Free Tier</Badge>}
 				{competitor.pricing?.startingPrice && (
 					<Badge variant="secondary">From {competitor.pricing.startingPrice}</Badge>
 				)}
@@ -27,7 +27,7 @@ function ToolCard({ competitor }: { competitor: Competitor }) {
 					params={{ slug: getComparisonSlug(competitor) }}
 					className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:text-blue-900"
 				>
-					Compare with Elmo
+					Compare With Elmo
 					<ArrowRight className="h-3.5 w-3.5" />
 				</Link>
 				<a

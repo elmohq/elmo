@@ -49,9 +49,11 @@ export {
 export {
 	type CompetitorPricing,
 	type CompetitorProfile,
+	type CompetitorReview,
 	competitorProfiles,
 	getCompetitorProfile,
 	type ProfileSection,
+	reviewedSlugs,
 } from "./profiles";
 export {
 	CATEGORY_LABELS,

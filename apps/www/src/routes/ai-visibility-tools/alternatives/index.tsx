@@ -51,7 +51,7 @@ function AlternativesHub() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					title="Alternatives to every AI visibility tool"
+					title="Alternatives to Every AI Visibility Tool"
 					lead="Shopping for a replacement, or just want to know your options? Pick a tool to see its closest alternatives, including the open-source, self-hosted option you can run for free."
 				/>
 				{indexableCategories.map((category) => (

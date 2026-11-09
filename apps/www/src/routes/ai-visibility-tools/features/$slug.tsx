@@ -70,10 +70,10 @@ function FeaturePage() {
 			<main>
 				<DirectoryBackLink />
 				<DirectoryHero
-					title={`AI visibility tools with ${featurePhrase(featureKey)}`}
+					title={`AI Visibility Tools with ${featurePhrase(featureKey)}`}
 					lead={getFeatureVerdict(featureKey, tools)}
 				/>
-				<DirectorySection title="Tools that offer this feature">
+				<DirectorySection title="Tools That Offer This Feature">
 					<ToolGrid competitors={tools} />
 				</DirectorySection>
 				<Faq items={getFeatureFaqs(featureKey, tools)} />
