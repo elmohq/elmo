@@ -6,7 +6,7 @@ import { z } from "zod";
 import { publicRange, resolveAnalyticsWindow } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { analyticsListPaging, analyticsQuery, offsetOf, paginationOf } from "@/lib/api/query";
-import { queryFanoutSchema } from "@/lib/api/schemas/query-fanout";
+import { brandQueryFanoutSchema } from "@/lib/api/schemas/query-fanout";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandFanoutQueries } from "@/server/analytics-core";
 
@@ -19,8 +19,8 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/query-fanout")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: brandQueryFanoutSchema,
 				query: queryFanoutQuery,
-				response: queryFanoutSchema,
 				scopes: ["read"],
 				handle: async ({ params, query, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);

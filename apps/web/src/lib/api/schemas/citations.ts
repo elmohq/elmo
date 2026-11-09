@@ -1,20 +1,9 @@
+import { CITATION_CATEGORIES, CITATION_PAGE_TYPES } from "@workspace/lib/citations/domain-categories";
 import * as z from "zod";
 import { dateRangeSchema } from "./date-range";
 import { paginationSchema } from "./pagination";
 
-const citationCategorySchema = z.enum([
-	"brand",
-	"competitor",
-	"editorial",
-	"reviews",
-	"ecommerce",
-	"social",
-	"developer",
-	"pr",
-	"reference",
-	"institutional",
-	"other",
-]);
+const citationCategorySchema = z.enum(CITATION_CATEGORIES);
 
 const citationTotalsSchema = z.object({
 	citations: z.int(),
@@ -50,22 +39,7 @@ export const citationUrlListSchema = z.object({
 			domain: z.string(),
 			title: z.string().nullable(),
 			category: citationCategorySchema,
-			pageType: z.enum([
-				"homepage",
-				"article",
-				"listicle",
-				"howto",
-				"comparison",
-				"review",
-				"forum",
-				"video",
-				"doc",
-				"product",
-				"info",
-				"search",
-				"shopping",
-				"other",
-			]),
+			pageType: z.enum(CITATION_PAGE_TYPES),
 			count: z.int(),
 			promptCount: z.int(),
 			isNew: z.boolean(),

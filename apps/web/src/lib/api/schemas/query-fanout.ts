@@ -2,7 +2,7 @@ import * as z from "zod";
 import { dateRangeSchema } from "./date-range";
 import { paginationSchema } from "./pagination";
 
-export const queryFanoutSchema = z.object({
+export const brandQueryFanoutSchema = z.object({
 	brandId: z.string(),
 	range: dateRangeSchema,
 	totalQueries: z.int(),

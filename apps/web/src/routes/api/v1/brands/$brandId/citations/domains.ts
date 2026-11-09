@@ -21,8 +21,8 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/citations/domains"
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				query: listCitationDomainsQuery,
 				response: citationDomainListSchema,
+				query: listCitationDomainsQuery,
 				scopes: ["read"],
 				handle: async ({ params, query, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);

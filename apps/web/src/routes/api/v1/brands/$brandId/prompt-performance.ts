@@ -12,8 +12,8 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/prompt-performance
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				query: analyticsQuery,
 				response: promptPerformanceListSchema,
+				query: analyticsQuery,
 				scopes: ["read"],
 				handle: async ({ params, query: { start, end, ...filters }, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
