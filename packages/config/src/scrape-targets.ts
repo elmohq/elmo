@@ -104,8 +104,8 @@ export const STATUS_TARGETS = [
 	"grok:openrouter:x-ai/grok-4.7",
 	"grok:openrouter:x-ai/grok-4.7:online",
 	"mistral:openrouter:mistralai/mistral-medium-3.1",
-	// Perplexity's own search, not OpenRouter's Exa fallback: with the plugin
-	// engine left unset, OpenRouter routes Perplexity slugs to native search.
+	// Sonar runs Perplexity's own search on every request, so the provider sends
+	// it no OpenRouter search tool.
 	"perplexity:openrouter:perplexity/sonar:online",
 	"mistral:mistral-api:mistral-medium-latest",
 	"mistral:mistral-api:mistral-medium-latest:online",

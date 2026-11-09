@@ -74,7 +74,9 @@ export const openrouter: Provider = {
 			response_format: jsonSchemaResponseFormat(schema),
 		};
 		// `engine: "native"` runs the underlying provider's real web-search tool
-		// (e.g. Anthropic's web_search_20250305) instead of the Exa fallback.
+		// (e.g. Anthropic's web_search_20250305) instead of the Exa fallback. This
+		// stays on the deprecated plugin: with the openrouter:web_search tool the
+		// model often answers in prose and ignores response_format.
 		if (webSearch) body.plugins = [{ id: "web", engine: "native" }];
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
@@ -97,26 +99,29 @@ export const openrouter: Provider = {
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		let modelSlug = options?.version;
-		if (!modelSlug) {
+		const version = options?.version;
+		if (!version) {
 			throw new Error(
 				`OpenRouter requires a version slug in SCRAPE_TARGETS. ` +
 					`Example: ${model}:openrouter:openai/gpt-5-mini:online`,
 			);
 		}
 
-		// ":online" is exactly equivalent to plugins: [{ id: "web" }], and with the
-		// engine unset OpenRouter routes to the model provider's native web search
-		// (Exa only as a fallback) — which is the consumer surface Elmo tracks.
-		if (options?.webSearch && !modelSlug.includes(":online")) {
-			modelSlug = `${modelSlug}:online`;
-		}
+		// OpenRouter deprecated the ":online" suffix, so one left on a pinned slug is dropped.
+		const modelSlug = version.replace(/:online$/, "");
 
 		const body: Record<string, unknown> = {
 			model: modelSlug,
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
 		};
+		// With the engine unset OpenRouter routes to the model provider's native web
+		// search (Exa only as a fallback), which is the consumer surface Elmo tracks.
+		// Perplexity's models search on every request and OpenRouter serves them no
+		// tool use, so they get no tool.
+		if (options?.webSearch && !modelSlug.startsWith("perplexity/")) {
+			body.tools = [{ type: "openrouter:web_search" }];
+		}
 		// xAI ignores OpenRouter's search caps and runs eight or more searches per
 		// grounded answer, so reasoning effort is the only lever on Grok's cost.
 		if (modelSlug.startsWith("x-ai/")) body.reasoning = { effort: "minimal" };
@@ -143,7 +148,7 @@ export const openrouter: Provider = {
 			rawOutput: data,
 			// OpenRouter doesn't expose the search queries the model made internally.
 			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
-			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
+			modelVersion: data?.model ?? modelSlug,
 		};
 	},
 };
