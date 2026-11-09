@@ -10,8 +10,10 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
+import type * as z from "zod";
 import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
+import type { promptPerformanceSchema } from "@/lib/api/schemas/prompt-performance";
 import { generateDateRange } from "@/lib/chart-utils";
 import {
 	getCitationDomainPage,
@@ -513,16 +515,7 @@ function emptyFanout(): FanoutAnalysis {
 	};
 }
 
-export interface PromptPerformance extends MentionQuality {
-	promptId: string;
-	value: string;
-	tags: string[];
-	totalRuns: number;
-	brandMentionRate: number;
-	competitorMentionRate: number;
-	lastRunAt: string | null;
-	firstEvaluatedAt: string | null;
-}
+export type PromptPerformance = z.infer<typeof promptPerformanceSchema>;
 
 /** Only prompts that ran appear, which is why no row carries an `enabled` flag. */
 export async function getBrandPromptPerformance(
