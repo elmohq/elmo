@@ -178,9 +178,10 @@ function BrandSettingsPage() {
 							<Tooltip>
 								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
-									Other domains your brand owns (e.g. blog.example.com, shop.example.com). Citations from these domains
-									will be counted as your brand&apos;s citations. <strong>Updates retroactively</strong> &mdash;
-									existing citations will be reclassified immediately.
+									Other domains your brand owns (e.g. example.co.uk, example-group.com). Subdomains of your website and
+									of these domains are already covered. Citations from these domains will be counted as your
+									brand&apos;s citations. <strong>Updates retroactively</strong> &mdash; existing citations will be
+									reclassified immediately.
 								</TooltipContent>
 							</Tooltip>
 						</Label>
