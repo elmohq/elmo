@@ -67,11 +67,17 @@ async function askKey(message: string): Promise<string> {
 
 /**
  * Onboarding and the Opportunities report pick the first configured direct API, and OpenRouter
- * outranks Anthropic and Mistral, so a key added only for Jev would quietly take them over.
+ * outranks Anthropic, Mistral, and Gemini, so a key added only for Jev would quietly take them over.
  */
 function keepOnboardingProvider(env: EnvMap): void {
 	if (env.ONBOARDING_LLM_TARGET?.trim() || env.OPENAI_API_KEY?.trim()) return;
-	const current = env.ANTHROPIC_API_KEY?.trim() ? "anthropic" : env.MISTRAL_API_KEY?.trim() ? "mistral" : undefined;
+	const current = env.ANTHROPIC_API_KEY?.trim()
+		? "anthropic"
+		: env.MISTRAL_API_KEY?.trim()
+			? "mistral"
+			: env.GEMINI_API_KEY?.trim()
+				? "gemini"
+				: undefined;
 	const target = current && providerSpec(current).target;
 	if (target) env.ONBOARDING_LLM_TARGET = formatScrapeTarget({ ...target, webSearch: false });
 }

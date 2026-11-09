@@ -61,6 +61,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "catalog:",
+		"@ai-sdk/google": "^4.0.93",
 		"@ai-sdk/openai": "catalog:",
 		"@anthropic-ai/sdk": "catalog:",
 		"@better-auth/api-key": "1.7.14",
