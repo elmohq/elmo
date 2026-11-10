@@ -106,10 +106,7 @@ function cloroTaskState(payload: CloroTaskResponse): TaskState {
 	return status && CLORO_QUEUED_STATUSES.has(status) ? "queued" : "running";
 }
 
-async function runAsyncTask(
-	taskType: string,
-	payload: Record<string, any>,
-): Promise<{ taskId: string; response: Record<string, any> }> {
+async function runAsyncTask(taskType: string, payload: Record<string, any>): Promise<Record<string, any>> {
 	const submitted = await submitTask(taskType, payload);
 	const taskId = submitted.id!;
 
@@ -124,19 +121,10 @@ async function runAsyncTask(
 		runningTimeoutMs: CLORO_GENERATION_TIMEOUT_MS,
 	});
 
-	return { taskId, response: settled?.response ?? {} };
+	return settled?.response ?? {};
 }
 
 const CLORO_QUERY_KEYS = ["searchQueries", "mapSearchQueries"] as const;
-
-/**
- * Cloro sometimes completes a Bing AI Mode task while the answer is still
- * generating, and returns the page's organic results as the text, with no error.
- * Stored as an answer, every brand in a result snippet would read as a mention.
- */
-function isBingSearchResults(answer: Record<string, any>): boolean {
-	return /^(#+\s*)?Search results\s*\n/.test(String(answer.markdown ?? answer.text ?? "").trimStart());
-}
 
 export const cloro: Provider = {
 	id: "cloro",
@@ -170,11 +158,8 @@ export const cloro: Provider = {
 			...task.params,
 		};
 
-		const { taskId, response } = await runAsyncTask(task.taskType, payload);
+		const response = await runAsyncTask(task.taskType, payload);
 		const answer = cloroAnswer(response) ?? {};
-		if (model === "bing-ai-mode" && isBingSearchResults(answer)) {
-			throw new Error(`Cloro task ${taskId} returned Bing's search results instead of an AI Mode answer`);
-		}
 
 		const citations: Citation[] = extractCitationsFromCloro(response);
 		const webQueries = queriesFromKeys(answer, CLORO_QUERY_KEYS);

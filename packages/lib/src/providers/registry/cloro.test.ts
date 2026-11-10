@@ -266,7 +266,9 @@ describe("cloro provider", () => {
 		await assertion;
 	});
 
-	it("rejects a Bing AI Mode run that came back as plain search results", async () => {
+	// Bing AI Mode answers some prompts with a list of results and no written
+	// answer. That is what the visitor saw, so it is tracked like any other run.
+	it("keeps a Bing AI Mode run that Bing answered with search results only", async () => {
 		vi.useFakeTimers();
 		const searchResults = {
 			text: "Search results\n\nWhat Hi-Fi?\n\nSonos Era 300 review",
@@ -282,11 +284,11 @@ describe("cloro provider", () => {
 		vi.stubGlobal("fetch", fetchMock);
 
 		const promise = cloro.run("bing-ai-mode", "What is a well-reviewed speaker?");
-		const assertion = expect(promise).rejects.toThrow(
-			"Cloro task task-bing returned Bing's search results instead of an AI Mode answer",
-		);
 		await vi.runAllTimersAsync();
-		await assertion;
+		const result = await promise;
+
+		expect(stored(result).textContent).toContain("Sonos Era 300 review");
+		expect(stored(result).citations.map((c) => c.domain)).toEqual(["whathifi.com"]);
 	});
 
 	it("surfaces task submission errors", async () => {
