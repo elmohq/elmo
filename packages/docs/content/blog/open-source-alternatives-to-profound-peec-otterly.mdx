@@ -12,12 +12,6 @@ itemList:
   - name: Elmo
     url: https://github.com/elmohq/elmo
     description: "MIT-licensed AI visibility platform covering the same core job as Profound, Peec AI, and OtterlyAI: mentions, citations, share of voice, and sentiment across ChatGPT, Google AI Mode, AI Overviews, Gemini, Copilot, Claude, and Grok. Free to self-host, or managed cloud from $29/mo."
-  - name: Canonry
-    url: https://github.com/Canonry/canonry
-    description: "MIT-licensed, agent-first AEO platform that calls model APIs and ingests server logs."
-  - name: OneGlanse
-    url: https://github.com/oneglanse/oneglanse
-    description: "MIT-licensed tracker that drives the engines' web interfaces with your own accounts."
 faq:
   - question: Is there an open-source alternative to Profound, Peec AI, and OtterlyAI?
     answer: "Yes. Elmo is an MIT-licensed AI visibility platform that does the core job of all three: it runs your prompts through ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Copilot, Claude, and Grok, and tracks mentions, citations, competitor share of voice, and sentiment over time. You can self-host it for free or use Elmo Cloud from $29/mo."
@@ -35,13 +29,13 @@ faq:
 
 **Yes, there is an open-source alternative to Profound, Peec AI, and OtterlyAI.** [Elmo](https://www.elmohq.com/) is an MIT-licensed AI visibility platform that does the job all three are mostly bought for: run your buyers' prompts through the answer engines on a schedule, then track whether you're mentioned, who is cited, how you compare to competitors, and how that changes over time. You can self-host it for free or use Elmo Cloud from $29/mo, and every metric is computed by code you can read.
 
-This post is published by Elmo, so we are an interested party. Every price and engine claim below was checked against each vendor's own site in November 2026, and every open-source project links to its public repository so you can check it yourself.
+This post is published by Elmo, so we are an interested party. Every price and engine claim below was checked against each vendor's own site in November 2026.
 
 **Key takeaways**
 
 - Profound, Peec AI, and OtterlyAI are closed, hosted subscriptions. Profound is custom Enterprise pricing after a 7-day trial, Peec AI starts at $95/mo, and OtterlyAI starts at $29/mo for 15 prompts.
 - Elmo replaces the core of all three: mention tracking, citations, competitor share of voice, sentiment, and query fan-out across ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Copilot, Claude, and Grok.
-- Other open-source options exist (Canonry and OneGlanse), and each makes a real tradeoff. Both started in 2026.
+- Other open-source trackers exist, but each fits a narrower case than replacing a commercial subscription.
 - No open-source tool replaces prompt-volume estimates, shopping tracking, geographic breakdowns, or content generation.
 - Free to self-host is not free to run. You pay for model or scraper API calls and the infrastructure.
 
@@ -66,15 +60,9 @@ Prices change. Check each vendor before you buy, and see the [Profound](/ai-visi
 
 **Replacing OtterlyAI.** OtterlyAI is the cheapest of the three, but its $29 plan is 15 prompts, and Gemini, AI Mode, and Claude cost extra. Elmo Cloud's $29 Starter plan covers 50 prompts on ChatGPT, and self-hosted Elmo covers every engine with no add-ons.
 
-## The Open-Source Options Compared
+## Other Open-Source Options
 
-Elmo is not the only open-source AI visibility project. The others below are real and maintained, and each fits a narrower case. Our [open-source AI visibility tools](/ai-visibility-tools/category/open-source) roundup has the full GitHub data.
-
-| Project | License | Managed cloud | Tradeoff |
-|---|---|---|---|
-| [Elmo](https://github.com/elmohq/elmo) | MIT | Yes, from $29/mo | Doesn't do prompt volumes or content generation |
-| [Canonry](https://github.com/Canonry/canonry) | MIT | No | Built for AI agents and YAML config rather than a dashboard; calls model APIs, not the consumer apps |
-| [OneGlanse](https://github.com/oneglanse/oneglanse) | MIT | No | Scrapes the engines with your own accounts, so it breaks when their interfaces change |
+Elmo is not the only open-source AI visibility project, but the others fit narrower cases. Canonry is built for AI agents and YAML configuration rather than a dashboard, and it calls model APIs instead of capturing the consumer apps your buyers use. OneGlanse scrapes the engines with your own logged-in accounts, so it costs nothing to run but breaks whenever their interfaces change. Our [open-source AI visibility tools](/ai-visibility-tools/category/open-source) roundup compares them in full.
 
 For a team replacing a commercial subscription, Elmo is the closest match: it has the dashboard, the multi-engine coverage, and the reporting a marketing team expects from Profound, Peec AI, or OtterlyAI, plus an open-source cloud if you don't want to run it.
 
