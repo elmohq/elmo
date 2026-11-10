@@ -282,7 +282,9 @@ describe("cloro provider", () => {
 		vi.stubGlobal("fetch", fetchMock);
 
 		const promise = cloro.run("bing-ai-mode", "What is a well-reviewed speaker?");
-		const assertion = expect(promise).rejects.toThrow(/search results instead of an AI Mode answer/);
+		const assertion = expect(promise).rejects.toThrow(
+			"Cloro task task-bing returned Bing's search results instead of an AI Mode answer",
+		);
 		await vi.runAllTimersAsync();
 		await assertion;
 	});
