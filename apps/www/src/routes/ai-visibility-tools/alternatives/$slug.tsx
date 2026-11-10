@@ -19,6 +19,7 @@ import {
 	getComparisonSlug,
 	getCompetitorBySlug,
 	hasOwnPages,
+	isMostReplaced,
 } from "@/lib/competitors";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
@@ -92,6 +93,18 @@ function AlternativesPage() {
 				) : null}
 
 				<DirectorySection title={`Other ${competitor.name} alternatives`}>
+					{isMostReplaced(competitor) ? (
+						<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">
+							Comparing more than one? See{" "}
+							<a
+								className="underline underline-offset-2 hover:text-zinc-950"
+								href="/blog/open-source-alternatives-to-profound-peec-otterly"
+							>
+								open-source alternatives to Profound, Peec AI, and OtterlyAI
+							</a>
+							.
+						</p>
+					) : null}
 					<ToolGrid competitors={alternatives} />
 				</DirectorySection>
 

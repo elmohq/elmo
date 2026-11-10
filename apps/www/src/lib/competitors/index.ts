@@ -40,6 +40,7 @@ export {
 	indexableFeatureKeys,
 	indexedCompetitors,
 	isIndexed,
+	isMostReplaced,
 	lastChecked,
 	MIN_TOOLS_FOR_FEATURE_PAGE,
 	openSourceTools,

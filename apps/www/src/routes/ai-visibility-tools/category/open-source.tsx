@@ -15,7 +15,7 @@ const description =
 const path = "/ai-visibility-tools/category/open-source";
 
 const lead =
-	"Elmo is the longest-running open-source AI visibility and answer engine optimization platform: MIT-licensed, free to self-host, and auditable down to how each metric is computed, with 36 releases since July 2025. The field grew fast in 2026: Ansvisor has drawn the most contributors, and Canonry, Limelit, and OneGlanse each take a different approach. Licenses differ more than features do, so check them first.";
+	"Elmo is the longest-running open-source AI visibility and answer engine optimization platform: MIT-licensed, free to self-host, and auditable down to how each metric is computed, with 36 releases since July 2025. It is the open-source alternative to Profound, Peec AI, and OtterlyAI. The field grew fast in 2026: Ansvisor has drawn the most contributors, and Canonry, Limelit, and OneGlanse each take a different approach. Licenses differ more than features do, so check them first.";
 
 // Public GitHub data, captured 17 October 2026. Kept as a dated snapshot rather
 // than fetched live: the point is a like-for-like comparison across projects at
@@ -50,9 +50,9 @@ const FAQS: FaqItem[] = [
 			"Yes. Elmo is an open-source AI visibility platform released under the MIT license. You can self-host it for free or use Elmo Cloud, and because the code is open you can read exactly how every metric is built and extend it yourself.",
 	},
 	{
-		question: "Is there an open-source alternative to Profound or enterprise AEO tools?",
+		question: "Is there an open-source alternative to Profound, Peec AI, or OtterlyAI?",
 		answer:
-			"Yes. Elmo is an open-source alternative to enterprise platforms like Profound. It tracks how AI answer engines mention and cite your brand, benchmarks competitors, and exports your data, all under the MIT license with every metric computed by code you can read. Self-host it for free with your own API keys, or use Elmo Cloud for a hosted version without the enterprise price.",
+			"Yes. Elmo is an open-source alternative to Profound, Peec AI, and OtterlyAI. It tracks how AI answer engines mention and cite your brand, benchmarks competitors, and exports your data, all under the MIT license with every metric computed by code you can read. Self-host it for free with your own API keys, or use Elmo Cloud for a hosted version without the enterprise price.",
 	},
 	{
 		question: "Should I use GetCito or Elmo?",
@@ -615,8 +615,15 @@ function OpenSourcePage() {
 							<a className="underline underline-offset-2 hover:text-zinc-950" href="/blog/free-ai-visibility-tools">
 								free AI visibility tools
 							</a>{" "}
-							guide for what a zero-budget setup can and cannot do. Whatever you pick, you want the same thing: a
-							reliable, repeatable read on whether AI answers cite you, from a tool whose workings you can inspect.
+							guide for what a zero-budget setup can and cannot do. Replacing a specific subscription? See{" "}
+							<a
+								className="underline underline-offset-2 hover:text-zinc-950"
+								href="/blog/open-source-alternatives-to-profound-peec-otterly"
+							>
+								open-source alternatives to Profound, Peec AI, and OtterlyAI
+							</a>
+							. Whatever you pick, you want the same thing: a reliable, repeatable read on whether AI answers cite you,
+							from a tool whose workings you can inspect.
 						</p>
 					</div>
 				</DirectorySection>
