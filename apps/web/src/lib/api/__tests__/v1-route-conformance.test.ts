@@ -3,55 +3,50 @@
  * `createApiHandler` applies: grepping the source would pass a file that calls
  * it and exports something else.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
 import spec from "@workspace/api-spec";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
 import { type ApiHandlerMeta, apiHandlerMeta } from "../handler";
 
-const V1_ROOT = join(import.meta.dirname, "../../../routes/api/v1");
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+const CATCH_ALL = "$.ts";
 
-function routeFiles(dir: string): string[] {
-	return readdirSync(dir).flatMap((entry) => {
-		const full = join(dir, entry);
-		if (statSync(full).isDirectory()) return routeFiles(full);
-		if (!entry.endsWith(".ts") && !entry.endsWith(".tsx")) return [];
-		return readFileSync(full, "utf8").includes("handlers:") ? [full] : [];
-	});
-}
+type RouteModule = Record<string, { options?: { server?: { handlers?: unknown } } }>;
 
-function pathForRoute(file: string): string {
-	const route = relative(V1_ROOT, file)
-		.replaceAll(sep, "/")
-		.replace(/\.tsx?$/, "");
+const routeSources = import.meta.glob<string>("./**/*.{ts,tsx}", {
+	base: "../../../routes/api/v1",
+	query: "?raw",
+	import: "default",
+	eager: true,
+});
+const routeModules = import.meta.glob<RouteModule>("./**/*.{ts,tsx}", { base: "../../../routes/api/v1" });
+
+function pathForRoute(name: string): string {
+	const route = name.replace(/\.tsx?$/, "");
 	const trimmed = route.replace(/\/index$/, "").replace(/^index$/, "");
 	return trimmed === "" ? "" : `/${trimmed}`.replace(/\$(\w+)/g, "{$1}");
 }
 
-async function handlersOf(file: string): Promise<Record<string, unknown>> {
-	const mod = (await import(/* @vite-ignore */ file)) as Record<
-		string,
-		{ options?: { server?: { handlers?: unknown } } }
-	>;
+function handlersOf(name: string, mod: RouteModule): Record<string, unknown> {
 	for (const value of Object.values(mod)) {
 		const handlers = value?.options?.server?.handlers;
 		if (handlers && typeof handlers === "object") return handlers as Record<string, unknown>;
 	}
-	throw new Error(`${file} exports no server handlers`);
+	throw new Error(`${name} exports no server handlers`);
 }
 
-const files = routeFiles(V1_ROOT);
-const CATCH_ALL = join(V1_ROOT, "$.ts");
-
 const loaded = await Promise.all(
-	files.map(async (file) => ({
-		name: file.slice(V1_ROOT.length + 1),
-		file,
-		path: pathForRoute(file),
-		handlers: await handlersOf(file),
-	})),
+	Object.entries(routeSources)
+		.filter(([, source]) => source.includes("handlers:"))
+		.map(async ([key, source]) => {
+			const name = key.slice(2);
+			return {
+				name,
+				source,
+				path: pathForRoute(name),
+				handlers: handlersOf(name, await routeModules[key]()),
+			};
+		}),
 );
 
 const replies = loaded.flatMap((route) =>
@@ -203,7 +198,7 @@ describe("/api/v1 route conformance", () => {
 	it("finds the routes at all", () => {
 		// Otherwise the suite passes when the directory moves and every check
 		// below iterates an empty list.
-		expect(files.length).toBeGreaterThan(10);
+		expect(loaded.length).toBeGreaterThan(10);
 	});
 
 	it.each(loaded.map((route) => [route.name, route] as const))(
@@ -223,7 +218,7 @@ describe("/api/v1 route conformance", () => {
 		},
 	);
 
-	it.each(loaded.filter((route) => route.file !== CATCH_ALL).map((route) => [route.name, route] as const))(
+	it.each(loaded.filter((route) => route.name !== CATCH_ALL).map((route) => [route.name, route] as const))(
 		"%s enforces the authorization its spec documents",
 		(_name, route) => {
 			// An empty list is a real answer — /me and /platforms are reachable by
@@ -260,7 +255,7 @@ describe("/api/v1 route conformance", () => {
 			// Reads source, because "the rows this returned belong to the caller"
 			// isn't visible in the handler map. Catches a route that forgot; the
 			// Bruno suite is what demonstrates the rows are actually filtered.
-			const source = readFileSync(route.file, "utf8");
+			const { source } = route;
 			if (!source.includes('from "@workspace/lib/db/db"')) return;
 			const scoped = source.includes('from "@/lib/api/scope"');
 			const adminOnly = Object.values(route.handlers).some((h) => apiHandlerMeta(h)?.adminOnly === true);
@@ -284,7 +279,7 @@ describe("/api/v1 route conformance", () => {
 
 	it("documents exactly the operations it implements", () => {
 		const implemented = loaded
-			.filter((route) => route.file !== CATCH_ALL)
+			.filter((route) => route.name !== CATCH_ALL)
 			.flatMap((route) =>
 				Object.entries(route.handlers)
 					.filter(([, handler]) => apiHandlerMeta(handler)?.kind === "endpoint")
