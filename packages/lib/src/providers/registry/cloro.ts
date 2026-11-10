@@ -126,6 +126,14 @@ async function runAsyncTask(taskType: string, payload: Record<string, any>): Pro
 
 const CLORO_QUERY_KEYS = ["searchQueries", "mapSearchQueries"] as const;
 
+/**
+ * When Bing serves no AI answer, Cloro returns the page's organic results as the
+ * text. Stored as an answer, every brand in a result snippet would read as a mention.
+ */
+function isBingSearchResults(answer: Record<string, any>): boolean {
+	return /^(#+\s*)?Search results\s*\n/.test(String(answer.markdown ?? answer.text ?? "").trimStart());
+}
+
 export const cloro: Provider = {
 	id: "cloro",
 	name: "Cloro",
@@ -160,6 +168,9 @@ export const cloro: Provider = {
 
 		const response = await runAsyncTask(task.taskType, payload);
 		const answer = cloroAnswer(response) ?? {};
+		if (model === "bing-ai-mode" && isBingSearchResults(answer)) {
+			throw new Error("Cloro returned Bing's search results instead of an AI Mode answer");
+		}
 
 		const citations: Citation[] = extractCitationsFromCloro(response);
 		const webQueries = queriesFromKeys(answer, CLORO_QUERY_KEYS);

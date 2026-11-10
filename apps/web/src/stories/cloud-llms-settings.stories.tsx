@@ -414,7 +414,7 @@ export const SelfHostedFlagsRetiredTargets: Story = {
 		loader(
 			unmeteredPicker(optionsByModel(true, { excludePremium: false }), {
 				costBasis: { enabledPrompts: 12, runsPerDay: 1, replication: 5 },
-				retiredTargets: retiredScrapeTargets("chatgpt:cloro:online,perplexity:cloro:online,copilot:brightdata:online"),
+				retiredTargets: retiredScrapeTargets("chatgpt:cloro:online,perplexity:cloro:online,copilot:cloro:online"),
 			}),
 		);
 		return <LlmsSettingsPage />;
@@ -423,7 +423,7 @@ export const SelfHostedFlagsRetiredTargets: Story = {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("perplexity:cloro:online")).toBeVisible();
 		await expect(await canvas.findByText("perplexity:openrouter:perplexity/sonar:online")).toBeVisible();
-		await expect(await canvas.findByText("copilot:brightdata:online")).toBeVisible();
+		await expect(await canvas.findByText("copilot:cloro:online")).toBeVisible();
 		await expect(await canvas.findByText("bing-ai-mode:cloro:online")).toBeVisible();
 	},
 };

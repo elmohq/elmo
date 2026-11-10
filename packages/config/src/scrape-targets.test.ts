@@ -163,25 +163,14 @@ describe("login-walled scrape targets", () => {
 		warn.mockRestore();
 	});
 
-	it("runs a Copilot target as Bing AI Mode on the providers that reach it", () => {
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-		const targets = "copilot:cloro:online,copilot:searchapi:online";
-		expect(parseScrapeTargets(targets).map(formatScrapeTarget)).toEqual([
-			"bing-ai-mode:cloro:online",
-			"bing-ai-mode:searchapi:online",
-		]);
-		expect(retiredScrapeTargets(targets)).toEqual([]);
-		warn.mockRestore();
-	});
-
 	it("keeps Perplexity on its model APIs", () => {
 		const result = parseScrapeTargets("perplexity:openrouter:perplexity/sonar:online,perplexity:dataforseo:online");
 		expect(result).toHaveLength(2);
 	});
 
 	it("names a working replacement for every skipped target", () => {
-		const retired = retiredScrapeTargets("chatgpt:cloro:online,perplexity:oxylabs:online,copilot:olostep:online");
-		expect(retired.map((entry) => entry.target)).toEqual(["perplexity:oxylabs:online", "copilot:olostep:online"]);
+		const retired = retiredScrapeTargets("chatgpt:cloro:online,perplexity:oxylabs:online,copilot:cloro:online");
+		expect(retired.map((entry) => entry.target)).toEqual(["perplexity:oxylabs:online", "copilot:cloro:online"]);
 		for (const { replacements } of retired) {
 			expect(parseScrapeTargets(replacements.join(",")).map(formatScrapeTarget)).toEqual(replacements);
 		}

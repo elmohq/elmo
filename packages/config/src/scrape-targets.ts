@@ -35,8 +35,8 @@ const RETIRED_SCRAPES: Record<string, { providers: string[]; reason: string; rep
 		replacements: ["perplexity:openrouter:perplexity/sonar:online", "perplexity:dataforseo:online"],
 	},
 	copilot: {
-		providers: ["brightdata", "olostep"],
-		reason: "The Copilot app now requires a login, and this provider cannot reach Bing AI Mode.",
+		providers: SCRAPERS,
+		reason: "The Copilot app now requires a login, so no scraper can reach it. Bing AI Mode is still open to scrapers.",
 		replacements: ["bing-ai-mode:cloro:online", "bing-ai-mode:searchapi:online"],
 	},
 };
@@ -55,22 +55,7 @@ export function retiredScrapeTargets(envValue?: string): RetiredScrapeTarget[] {
 		});
 }
 
-/**
- * A `copilot` target on a provider that reaches Bing AI Mode runs as that, so
- * tracking carries on after an upgrade. SearchApi's always read this surface.
- */
-function asBingAiMode(config: ModelConfig): ModelConfig {
-	const reachesBing = config.provider === "cloro" || config.provider === "searchapi";
-	return config.model === "copilot" && reachesBing ? { ...config, model: "bing-ai-mode" } : config;
-}
-
 const warned = new Set<string>();
-
-function warnOnce(key: string, message: string): void {
-	if (warned.has(key)) return;
-	warned.add(key);
-	console.warn(message);
-}
 
 /**
  * Middle segments rejoin with ":", so OpenRouter variant suffixes like ":free" survive.
@@ -80,24 +65,13 @@ function warnOnce(key: string, message: string): void {
  */
 export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 	for (const { target, reason, replacements } of retiredScrapeTargets(envValue)) {
-		warnOnce(
-			target,
+		if (warned.has(target)) continue;
+		warned.add(target);
+		console.warn(
 			`SCRAPE_TARGETS: skipping "${target}". ${reason} Replace it with ${replacements.join(" or ")}. See ${PROVIDERS_DOCS_URL}.`,
 		);
 	}
-	return parseAllScrapeTargets(envValue)
-		.filter((config) => !isRetiredScrapeTarget(config))
-		.map((config) => {
-			const renamed = asBingAiMode(config);
-			if (renamed !== config) {
-				const target = formatScrapeTarget(config);
-				warnOnce(
-					target,
-					`SCRAPE_TARGETS: running "${target}" as "${formatScrapeTarget(renamed)}". Rename it in SCRAPE_TARGETS.`,
-				);
-			}
-			return renamed;
-		});
+	return parseAllScrapeTargets(envValue).filter((config) => !isRetiredScrapeTarget(config));
 }
 
 function parseAllScrapeTargets(envValue?: string): ModelConfig[] {
@@ -192,6 +166,7 @@ export const RETIRED_STATUS_TARGETS = [
 	"copilot:brightdata:online",
 	"copilot:cloro:online",
 	"copilot:olostep:online",
+	"copilot:searchapi:online",
 	"perplexity:brightdata:online",
 	"perplexity:cloro:online",
 	"perplexity:olostep:online",

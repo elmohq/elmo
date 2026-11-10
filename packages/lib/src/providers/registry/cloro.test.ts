@@ -266,6 +266,27 @@ describe("cloro provider", () => {
 		await assertion;
 	});
 
+	it("rejects a Bing AI Mode run that came back as plain search results", async () => {
+		vi.useFakeTimers();
+		const searchResults = {
+			text: "Search results\n\nWhat Hi-Fi?\n\nSonos Era 300 review",
+			markdown:
+				"## Search results\n\nWhat Hi-Fi?\n\n[Sonos Era 300 review](https://www.whathifi.com/reviews/sonos-era-300)",
+			sources: [{ position: 1, url: "https://www.whathifi.com/reviews/sonos-era-300", label: "Sonos Era 300 review" }],
+			citationPills: [],
+		};
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-bing", status: "QUEUED" } }))
+			.mockResolvedValueOnce(jsonResponse({ task: { id: "task-bing", status: "COMPLETED" }, response: searchResults }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = cloro.run("bing-ai-mode", "What is a well-reviewed speaker?");
+		const assertion = expect(promise).rejects.toThrow(/search results instead of an AI Mode answer/);
+		await vi.runAllTimersAsync();
+		await assertion;
+	});
+
 	it("surfaces task submission errors", async () => {
 		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ error: "Invalid or missing API key" }, 401));
 		vi.stubGlobal("fetch", fetchMock);

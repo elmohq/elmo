@@ -33,7 +33,7 @@ Which surfaces each one reaches:
 <Callout>
 Perplexity and the Microsoft Copilot app (copilot.microsoft.com) now require a sign-in, so no scraper can reach either one.
 
-- **Copilot:** track `bing-ai-mode` instead, the AI answer at bing.com/copilotsearch that Bing still shows signed-out visitors. Use `bing-ai-mode:cloro:online` or `bing-ai-mode:searchapi:online`; each costs about the same per run as a Copilot scrape did. An existing `copilot:cloro:online` or `copilot:searchapi:online` target keeps running as Bing AI Mode until you rename it. BrightData and Olostep can't reach Bing AI Mode, so a `copilot` target on either is skipped. Past Copilot runs stay under Microsoft Copilot, and Bing AI Mode starts its own history.
+- **Copilot:** track `bing-ai-mode` instead, the AI answer at bing.com/copilotsearch that Bing still shows signed-out visitors. Use `bing-ai-mode:cloro:online` or `bing-ai-mode:searchapi:online`; each costs about the same per run as a Copilot scrape did. Every `copilot` scrape target is skipped, so nothing is collected for it until you replace it. Brands that picked Copilot are moved to Bing AI Mode, which starts its own history; past Copilot runs are kept but no longer appear in the model filter.
 - **Perplexity:** track it through its Sonar model instead, on [OpenRouter](#direct-model-apis) or [DataForSEO](#dataforseo).
 
 Elmo skips a retired target left in `SCRAPE_TARGETS` and keeps running the rest. It logs a warning at startup, and the LLMs settings page lists each skipped target with its replacement.
