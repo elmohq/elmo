@@ -325,6 +325,15 @@ const CATEGORY_BLURB: Record<CompetitorCategory, string> = {
 
 // --- Alternatives ------------------------------------------------------------
 
+const MOST_REPLACED = new Set(["profound", "peec-ai", "otterly-ai"]);
+
+const MOST_REPLACED_LINE =
+	"Elmo is an open-source alternative to Profound, Peec AI, and OtterlyAI, so the same setup replaces whichever of the three you use today.";
+
+export function isMostReplaced(c: Competitor): boolean {
+	return MOST_REPLACED.has(c.slug);
+}
+
 export function getAlternativesVerdict(c: Competitor): string {
 	const noun = CATEGORY_NOUN[c.category];
 	const fate = graveyardFate(c);
@@ -337,7 +346,8 @@ export function getAlternativesVerdict(c: Competitor): string {
 	if (open) {
 		return `The best open-source alternative to ${c.name} is Elmo: a free, self-hostable AI visibility platform you can read, run, and audit. Like ${c.name} it is open source, and it focuses on transparent, independently verifiable tracking of how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand, with white-label support for agencies.`;
 	}
-	return `The best free, open-source alternative to ${c.name} is Elmo. ${c.name} is ${indefiniteArticle(noun)} ${noun} tool, and like most of the field it is closed-source and hosted. Elmo you self-host for free: no license fee and no per-seat pricing, and you can audit exactly how every visibility metric is built while keeping your prompts and data in-house.`;
+	const verdict = `The best free, open-source alternative to ${c.name} is Elmo. ${c.name} is ${indefiniteArticle(noun)} ${noun} tool, and like most of the field it is closed-source and hosted. Elmo you self-host for free: no license fee and no per-seat pricing, and you can audit exactly how every visibility metric is built while keeping your prompts and data in-house.`;
+	return MOST_REPLACED.has(c.slug) ? `${verdict} ${MOST_REPLACED_LINE}` : verdict;
 }
 
 export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[] {
@@ -356,7 +366,7 @@ export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[
 			question: `Is there an open-source alternative to ${c.name}?`,
 			answer: open
 				? `${c.name} is itself open source, and so is Elmo. Elmo is built specifically for self-hosted, independently verifiable AI visibility tracking, so you can audit how each metric is calculated and run it on your own infrastructure.`
-				: `Yes. Elmo is an open-source, self-hostable AI visibility platform. You can read every line of code, run it on your own infrastructure, and verify each metric, which a closed product like ${c.name} cannot offer.`,
+				: `Yes. Elmo is an open-source, self-hostable AI visibility platform. You can read every line of code, run it on your own infrastructure, and verify each metric, which a closed product like ${c.name} cannot offer.${MOST_REPLACED.has(c.slug) ? ` ${MOST_REPLACED_LINE}` : ""}`,
 		},
 		{
 			question: `Why switch from ${c.name} to Elmo?`,
