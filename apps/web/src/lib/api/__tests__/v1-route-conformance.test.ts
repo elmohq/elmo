@@ -4,7 +4,7 @@
  * it and exports something else.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import spec from "@workspace/api-spec";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
@@ -23,7 +23,9 @@ function routeFiles(dir: string): string[] {
 }
 
 function pathForRoute(file: string): string {
-	const route = file.slice(V1_ROOT.length + 1).replace(/\.tsx?$/, "");
+	const route = relative(V1_ROOT, file)
+		.replaceAll(sep, "/")
+		.replace(/\.tsx?$/, "");
 	const trimmed = route.replace(/\/index$/, "").replace(/^index$/, "");
 	return trimmed === "" ? "" : `/${trimmed}`.replace(/\$(\w+)/g, "{$1}");
 }
