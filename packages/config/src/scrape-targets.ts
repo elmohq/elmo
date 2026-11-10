@@ -180,6 +180,7 @@ export const STATUS_TARGETS = [
 	"kimi:openrouter:moonshotai/kimi-k2.5",
 	"grok:openrouter:x-ai/grok-4.7",
 	"grok:openrouter:x-ai/grok-4.7:online",
+	"meta:openrouter:meta/muse-spark-1.3:online",
 	"mistral:openrouter:mistralai/mistral-medium-3.1",
 	"perplexity:openrouter:perplexity/sonar:online",
 	"mistral:mistral-api:mistral-medium-latest",

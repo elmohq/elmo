@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { clampedCount } from "@/lib/api/query";
+import { promptSnapshotSchema } from "@/lib/api/schemas/snapshots";
 import { requirePromptInScope } from "@/lib/api/scope";
 import { getCitationUrlStats, getCompetitorTotals, getMentionTotals } from "@/lib/rollup-read";
 import { mentionQuality } from "@/lib/sentiment";
@@ -37,7 +38,8 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
+				response: promptSnapshotSchema,
+				params: z.object({ promptId: z.uuid("Invalid prompt ID format") }),
 				query: snapshotQuery,
 				scopes: ["read"],
 				handle: async ({ params, query, auth }) => {

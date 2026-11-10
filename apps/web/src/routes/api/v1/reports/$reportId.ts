@@ -11,14 +11,16 @@ import { computeReportUnstableStats } from "@workspace/lib/report-metrics";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { clampedCount } from "@/lib/api/query";
+import { reportSchema } from "@/lib/api/schemas/reports";
 import { findReport } from "@/server/reports-core";
 
 export const Route = createFileRoute("/api/v1/reports/$reportId")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: reportSchema,
 				adminOnly: true,
-				params: z.object({ reportId: z.guid("Invalid report ID format") }),
+				params: z.object({ reportId: z.uuid("Invalid report ID format") }),
 				query: z.object({ kMentions: clampedCount(50, 5) }),
 				handle: async ({ params, query }) => {
 					const { reportId } = params;
