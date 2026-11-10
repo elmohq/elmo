@@ -4,7 +4,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { CRISP_WEBSITE_ID } from "@workspace/config/constants";
 import { getDeploymentModeFromEnv, getEnvValidationState } from "@workspace/config/env";
-import type { ClientConfig } from "@workspace/config/types";
+import type { ClientConfig, DeploymentMode } from "@workspace/config/types";
 import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { countUsers } from "@workspace/lib/db/provisioning";
@@ -25,9 +25,10 @@ export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
  */
 const POSTHOG_PUBLIC_KEY = "phc_Jhx9LnI9cTDFHpQmpOzJSDTW127qD9pFU65KRnYym6z";
 
-function resolvePosthogKey(): string | undefined {
+export function resolvePosthogKey(mode: DeploymentMode): string | undefined {
 	if (process.env.DISABLE_TELEMETRY) return undefined;
-	return process.env.VITE_POSTHOG_KEY ?? POSTHOG_PUBLIC_KEY;
+	const defaultKey = mode === "local" || mode === "demo" ? undefined : POSTHOG_PUBLIC_KEY;
+	return process.env.VITE_POSTHOG_KEY ?? defaultKey;
 }
 
 export function resolveCrispWebsiteId(): string | undefined {
@@ -55,7 +56,7 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 		analytics: {
 			plausibleDomain: process.env.VITE_PLAUSIBLE_DOMAIN,
 			clarityProjectId: process.env.VITE_CLARITY_PROJECT_ID,
-			posthogKey: resolvePosthogKey(),
+			posthogKey: resolvePosthogKey(deployment.mode),
 			crispWebsiteId: resolveCrispWebsiteId(),
 		},
 		defaultDelayHours: getDefaultDelayHours(),
