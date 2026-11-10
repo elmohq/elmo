@@ -61,13 +61,11 @@ const SCRAPER_CALLS = {
 
 // AI Overview comes from the Organic SERP endpoint, not AI Mode's, so it has its own runner.
 const AI_OVERVIEW_MODEL = "google-ai-overview";
-// Bing's Copilot Search summary rides on its Organic SERP the same way.
-const BING_COPILOT_MODEL = "copilot";
-const SUPPORTED_MODELS = new Set([...SERP_MODELS, AI_OVERVIEW_MODEL, BING_COPILOT_MODEL, ...Object.keys(LLM_MODELS)]);
+const SUPPORTED_MODELS = new Set([...SERP_MODELS, AI_OVERVIEW_MODEL, ...Object.keys(LLM_MODELS)]);
 
 /** Must agree with `run()`'s dispatch: the settings page labels targets from it. */
 function dataforseoAccess({ model, version }: ModelConfig): ProviderAccess {
-	if (SERP_MODELS.has(model) || model === AI_OVERVIEW_MODEL || model === BING_COPILOT_MODEL) return "scraped";
+	if (SERP_MODELS.has(model) || model === AI_OVERVIEW_MODEL) return "scraped";
 	return !version && model in SCRAPER_CALLS ? "scraped" : "api";
 }
 
@@ -151,28 +149,6 @@ async function attemptGoogleAiOverview(
 	} catch (error) {
 		return { error: error instanceof Error ? error.message : String(error) };
 	}
-}
-
-async function runBingCopilot(prompt: string): Promise<ScrapeResult> {
-	assertPromptLength(prompt);
-	const api = createDfsSerpApi();
-	const response = await api.bingOrganicLiveAdvanced([
-		new client.SerpBingOrganicLiveAdvancedRequestInfo({
-			keyword: prompt,
-			location_code: DFS_LOCATION_CODE,
-			language_code: DFS_LANGUAGE_CODE,
-			depth: 10,
-		}),
-	]);
-	dfsFirstResult(response);
-
-	// Same `ai_overview` item shape as Google's, so the Google extractors read it.
-	const citations = extractCitationsFromGoogle(response);
-	return {
-		rawOutput: sanitizeForJson(response),
-		webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
-		modelVersion: "dataforseo",
-	};
 }
 
 /**
@@ -289,9 +265,6 @@ export const dataforseo: Provider = {
 		}
 		if (model === AI_OVERVIEW_MODEL) {
 			return runGoogleAiOverview(prompt);
-		}
-		if (model === BING_COPILOT_MODEL) {
-			return runBingCopilot(prompt);
 		}
 		if (!options?.version && model in SCRAPER_CALLS) {
 			return runLlmScraper(model as keyof typeof SCRAPER_CALLS, prompt);

@@ -163,10 +163,15 @@ describe("login-walled scrape targets", () => {
 		warn.mockRestore();
 	});
 
-	it("keeps Copilot targets on the providers that reach Bing Copilot", () => {
-		const targets = "copilot:cloro:online,copilot:searchapi:online,copilot:dataforseo:online";
-		expect(parseScrapeTargets(targets).map(formatScrapeTarget).join(",")).toBe(targets);
+	it("runs a Copilot target as Bing AI Mode on the providers that reach it", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const targets = "copilot:cloro:online,copilot:searchapi:online";
+		expect(parseScrapeTargets(targets).map(formatScrapeTarget)).toEqual([
+			"bing-ai-mode:cloro:online",
+			"bing-ai-mode:searchapi:online",
+		]);
 		expect(retiredScrapeTargets(targets)).toEqual([]);
+		warn.mockRestore();
 	});
 
 	it("keeps Perplexity on its model APIs", () => {

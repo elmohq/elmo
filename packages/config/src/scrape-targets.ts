@@ -25,9 +25,8 @@ const SCRAPERS = ["brightdata", "cloro", "olostep", "oxylabs", "searchapi"];
 
 /**
  * Perplexity and the Copilot app went behind a login, so no scraper reaches
- * them. Perplexity's Sonar model API still works. `copilot` carries on as Bing's
- * Copilot Search, which still answers signed-out visitors, on the providers
- * that can read it.
+ * them. Perplexity's Sonar model API still works, and Bing AI Mode is the
+ * Microsoft answer signed-out visitors still get.
  */
 const RETIRED_SCRAPES: Record<string, { providers: string[]; reason: string; replacements: string[] }> = {
 	perplexity: {
@@ -37,18 +36,13 @@ const RETIRED_SCRAPES: Record<string, { providers: string[]; reason: string; rep
 	},
 	copilot: {
 		providers: ["brightdata", "olostep"],
-		reason: "The Copilot app now requires a login, and this provider cannot reach Bing Copilot.",
-		replacements: ["copilot:cloro:online", "copilot:searchapi:online", "copilot:dataforseo:online"],
+		reason: "The Copilot app now requires a login, and this provider cannot reach Bing AI Mode.",
+		replacements: ["bing-ai-mode:cloro:online", "bing-ai-mode:searchapi:online"],
 	},
 };
 
 function isRetiredScrapeTarget(config: ModelConfig): boolean {
 	return RETIRED_SCRAPES[config.model]?.providers.includes(config.provider) ?? false;
-}
-
-/** True for a model that may have vanished from the parsed targets without the operator removing it. */
-export function hasRetiredScrapeTargets(model: string): boolean {
-	return model in RETIRED_SCRAPES;
 }
 
 /** The SCRAPE_TARGETS entries `parseScrapeTargets` skips, with what to run in their place. */
@@ -61,7 +55,22 @@ export function retiredScrapeTargets(envValue?: string): RetiredScrapeTarget[] {
 		});
 }
 
+/**
+ * A `copilot` target on a provider that reaches Bing AI Mode runs as that, so
+ * tracking carries on after an upgrade. SearchApi's always read this surface.
+ */
+function asBingAiMode(config: ModelConfig): ModelConfig {
+	const reachesBing = config.provider === "cloro" || config.provider === "searchapi";
+	return config.model === "copilot" && reachesBing ? { ...config, model: "bing-ai-mode" } : config;
+}
+
 const warned = new Set<string>();
+
+function warnOnce(key: string, message: string): void {
+	if (warned.has(key)) return;
+	warned.add(key);
+	console.warn(message);
+}
 
 /**
  * Middle segments rejoin with ":", so OpenRouter variant suffixes like ":free" survive.
@@ -71,13 +80,24 @@ const warned = new Set<string>();
  */
 export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 	for (const { target, reason, replacements } of retiredScrapeTargets(envValue)) {
-		if (warned.has(target)) continue;
-		warned.add(target);
-		console.warn(
+		warnOnce(
+			target,
 			`SCRAPE_TARGETS: skipping "${target}". ${reason} Replace it with ${replacements.join(" or ")}. See ${PROVIDERS_DOCS_URL}.`,
 		);
 	}
-	return parseAllScrapeTargets(envValue).filter((config) => !isRetiredScrapeTarget(config));
+	return parseAllScrapeTargets(envValue)
+		.filter((config) => !isRetiredScrapeTarget(config))
+		.map((config) => {
+			const renamed = asBingAiMode(config);
+			if (renamed !== config) {
+				const target = formatScrapeTarget(config);
+				warnOnce(
+					target,
+					`SCRAPE_TARGETS: running "${target}" as "${formatScrapeTarget(renamed)}". Rename it in SCRAPE_TARGETS.`,
+				);
+			}
+			return renamed;
+		});
 }
 
 function parseAllScrapeTargets(envValue?: string): ModelConfig[] {
@@ -117,7 +137,7 @@ export const STATUS_TARGETS = [
 	"google-ai-mode:searchapi:online",
 	"google-ai-overview:searchapi:online",
 	"gemini:searchapi:online",
-	"copilot:searchapi:online",
+	"bing-ai-mode:searchapi:online",
 	"chatgpt:olostep:online",
 	"google-ai-mode:olostep:online",
 	"google-ai-overview:olostep:online",
@@ -133,7 +153,7 @@ export const STATUS_TARGETS = [
 	"google-ai-overview:oxylabs:online",
 	"chatgpt:cloro:online",
 	"gemini:cloro:online",
-	"copilot:cloro:online",
+	"bing-ai-mode:cloro:online",
 	"google-ai-mode:cloro:online",
 	"google-ai-overview:cloro:online",
 	"google-ai-mode:dataforseo:online",
@@ -141,7 +161,6 @@ export const STATUS_TARGETS = [
 	"chatgpt:dataforseo:online",
 	"gemini:dataforseo:online",
 	"perplexity:dataforseo:online",
-	"copilot:dataforseo:online",
 	// Pinning a model_name routes to LLM Responses instead of the scraper, so
 	// these keep the API side of the provider monitored too.
 	"chatgpt:dataforseo:gpt-5.5:online",
@@ -169,6 +188,9 @@ export const STATUS_TARGETS = [
 
 /** No longer tested, but still listed on the status page so the change is visible. */
 export const RETIRED_STATUS_TARGETS = [
+	"copilot:brightdata:online",
+	"copilot:cloro:online",
+	"copilot:olostep:online",
 	"perplexity:brightdata:online",
 	"perplexity:cloro:online",
 	"perplexity:olostep:online",

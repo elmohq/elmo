@@ -424,7 +424,7 @@ export const SelfHostedFlagsRetiredTargets: Story = {
 		await expect(await canvas.findByText("perplexity:cloro:online")).toBeVisible();
 		await expect(await canvas.findByText("perplexity:openrouter:perplexity/sonar:online")).toBeVisible();
 		await expect(await canvas.findByText("copilot:brightdata:online")).toBeVisible();
-		await expect(await canvas.findByText("copilot:cloro:online")).toBeVisible();
+		await expect(await canvas.findByText("bing-ai-mode:cloro:online")).toBeVisible();
 	},
 };
 

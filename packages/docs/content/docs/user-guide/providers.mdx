@@ -27,13 +27,13 @@ Which surfaces each one reaches:
 | Google AI Mode | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Google AI Overview | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Gemini | ✅ | ✅ | – | ✅ | ✅ | ✅ |
-| Bing Copilot | ✅ | – | – | ✅ | – | ✅ |
+| Bing AI Mode | ✅ | – | – | ✅ | – | – |
 | Perplexity | – | – | – | – | – | API-only |
 
 <Callout>
 Perplexity and the Microsoft Copilot app (copilot.microsoft.com) now require a sign-in, so no scraper can reach either one.
 
-- **Copilot:** the `copilot` model now tracks Bing Copilot, the Copilot Search answer Bing still shows signed-out visitors. `copilot:searchapi:online` always returned that answer and is unchanged. `copilot:cloro:online` keeps running and now reads it through Cloro's Bing AI Mode. `copilot:dataforseo:online` is new, and reads the Copilot summary on Bing's results page instead of the Copilot Search page. BrightData and Olostep can't reach Bing Copilot, so replace `copilot:brightdata:online` or `copilot:olostep:online` with one of those three. Each costs about the same per run as a Copilot scrape did. Bing Copilot cites different sources from the Copilot app, so expect a step in your Copilot charts on the day you upgrade if you tracked it through Cloro, BrightData, or Olostep.
+- **Copilot:** track `bing-ai-mode` instead, the AI answer at bing.com/copilotsearch that Bing still shows signed-out visitors. Use `bing-ai-mode:cloro:online` or `bing-ai-mode:searchapi:online`; each costs about the same per run as a Copilot scrape did. An existing `copilot:cloro:online` or `copilot:searchapi:online` target keeps running as Bing AI Mode until you rename it. BrightData and Olostep can't reach Bing AI Mode, so a `copilot` target on either is skipped. Past Copilot runs stay under Microsoft Copilot, and Bing AI Mode starts its own history.
 - **Perplexity:** track it through its Sonar model instead, on [OpenRouter](#direct-model-apis) or [DataForSEO](#dataforseo).
 
 Elmo skips a retired target left in `SCRAPE_TARGETS` and keeps running the rest. It logs a warning at startup, and the LLMs settings page lists each skipped target with its replacement.
@@ -51,7 +51,7 @@ The Query Fan-Out page shows the web searches an engine ran while answering a pr
 | Google AI Mode | – | – | – | – | – | – |
 | Google AI Overview | – | – | – | – | – | – |
 | Gemini | – | – | Not offered | – | – | – (✅ with a pinned model) |
-| Bing Copilot | – | Not offered | Not offered | – | Not offered | – |
+| Bing AI Mode | – | Not offered | Not offered | – | Not offered | Not offered |
 | Perplexity | Not offered | Not offered | Not offered | Not offered | Not offered | – |
 
 | API | Query fan-out |
@@ -83,7 +83,7 @@ Supported scrape targets:
 
 ```
 chatgpt:cloro:online
-copilot:cloro:online
+bing-ai-mode:cloro:online
 gemini:cloro:online
 google-ai-mode:cloro:online
 google-ai-overview:cloro:online
@@ -91,7 +91,7 @@ google-ai-overview:cloro:online
 
 [Cloro](https://cloro.dev?fpr=elmo&fp_sid=docs) authenticates with a single bearer API key. Elmo submits each request through Cloro's [asynchronous task API](https://cloro.dev/docs/) and polls until the task completes, which also lets Cloro meter concurrency for us instead of holding a synchronous connection open. Every Cloro surface is the live web-search UI, so the `:online` suffix is required.
 
-Cloro bills [credits from a monthly plan](https://cloro.dev/pricing/), not per request, and each surface costs a different number: Gemini, Google AI Mode, and Bing Copilot 4, Google AI Overview 5, ChatGPT 7. The asynchronous API Elmo uses carries no surcharge — the synchronous endpoints add 2 credits per request — and failed requests aren't charged.
+Cloro bills [credits from a monthly plan](https://cloro.dev/pricing/), not per request, and each surface costs a different number: Gemini, Google AI Mode, and Bing AI Mode 4, Google AI Overview 5, ChatGPT 7. The asynchronous API Elmo uses carries no surcharge — the synchronous endpoints add 2 credits per request — and failed requests aren't charged.
 
 ### BrightData
 
@@ -141,7 +141,7 @@ Supported scrape targets:
 ```
 chatgpt:searchapi:online
 chatgpt:searchapi
-copilot:searchapi:online
+bing-ai-mode:searchapi:online
 gemini:searchapi:online
 google-ai-mode:searchapi:online
 google-ai-overview:searchapi:online
@@ -181,7 +181,6 @@ chatgpt:dataforseo:online
 gemini:dataforseo:online
 google-ai-mode:dataforseo:online
 google-ai-overview:dataforseo:online
-copilot:dataforseo:online
 perplexity:dataforseo:online
 ```
 
@@ -192,7 +191,6 @@ One account reaches three different DataForSEO products, and the target picks be
 | `chatgpt`, `gemini` | [AI Optimization "LLM Scraper"](https://docs.dataforseo.com/v3/ai_optimization-chat_gpt-llm_scraper-live-advanced/) — drives chatgpt.com and gemini.google.com |
 | `google-ai-mode` | SERP Google AI Mode endpoint |
 | `google-ai-overview` | Google Organic SERP endpoint with `load_async_ai_overview` on |
-| `copilot` | Bing Organic SERP endpoint, reading its Copilot Search summary |
 | `perplexity` | [AI Optimization "LLM Responses"](https://docs.dataforseo.com/v3/ai_optimization-llm_responses-overview/) — no Perplexity scraper exists |
 
 The scraped ChatGPT and Gemini runs return what a real user sees, including product cards and tables, and ChatGPT reports its query fan-out. They take roughly a minute, since a live session has to finish.
@@ -283,7 +281,7 @@ SCRAPE_TARGETS=chatgpt:dataforseo:online,google-ai-mode:dataforseo:online
 model:provider[:version][:online]
 ```
 
-- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `copilot`, `perplexity`, `grok`, `kimi`).
+- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `bing-ai-mode`, `perplexity`, `grok`, `kimi`).
 - `provider` — how to reach it (`cloro`, `brightdata`, `oxylabs`, `searchapi`, `olostep`, `dataforseo`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`).
 - `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here, or a DataForSEO `model_name` to switch that target to the LLM Responses API).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.

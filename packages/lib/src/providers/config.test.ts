@@ -126,26 +126,19 @@ describe("provider validateTarget", () => {
 		return { model, provider, version, webSearch };
 	}
 
-	it("no scraper reaches login-walled Perplexity", () => {
+	it("no scraper reaches the login-walled Perplexity and Copilot apps", () => {
 		for (const provider of [searchapi, olostep, brightdata, oxylabs, cloro]) {
-			expect(provider.validateTarget!(config("perplexity", provider.id, true)), provider.id).toMatch(
-				/does not support/,
-			);
-		}
-	});
-
-	it("only the providers that read Bing Copilot accept a Copilot target", () => {
-		for (const provider of [searchapi, cloro, dataforseo]) {
-			expect(provider.validateTarget!(config("copilot", provider.id, true)), provider.id).toBeNull();
-		}
-		for (const provider of [olostep, brightdata, oxylabs]) {
-			expect(provider.validateTarget!(config("copilot", provider.id, true)), provider.id).toMatch(/does not support/);
+			for (const model of ["perplexity", "copilot"]) {
+				expect(provider.validateTarget!(config(model, provider.id, true)), `${model}:${provider.id}`).toMatch(
+					/does not support/,
+				);
+			}
 		}
 	});
 
 	describe("searchapi", () => {
 		it("accepts every surface it can reach, online", () => {
-			for (const model of ["chatgpt", "gemini", "google-ai-mode", "google-ai-overview", "copilot"]) {
+			for (const model of ["chatgpt", "gemini", "google-ai-mode", "google-ai-overview", "bing-ai-mode"]) {
 				expect(searchapi.validateTarget!(config(model, "searchapi", true))).toBeNull();
 			}
 		});
@@ -211,7 +204,7 @@ describe("provider validateTarget", () => {
 		});
 
 		it("rejects unsupported models", () => {
-			expect(dataforseo.validateTarget!(config("grok", "dataforseo", true))).toMatch(/only supports/);
+			expect(dataforseo.validateTarget!(config("copilot", "dataforseo", true))).toMatch(/only supports/);
 		});
 
 		it("accepts chatgpt/perplexity/gemini with :online", () => {
@@ -253,7 +246,7 @@ describe("provider validateTarget", () => {
 
 	describe("cloro", () => {
 		it("accepts all supported surfaces with :online", () => {
-			for (const model of ["chatgpt", "gemini", "google-ai-mode", "google-ai-overview", "copilot"]) {
+			for (const model of ["chatgpt", "gemini", "google-ai-mode", "google-ai-overview", "bing-ai-mode"]) {
 				expect(cloro.validateTarget!(config(model, "cloro", true))).toBeNull();
 			}
 		});

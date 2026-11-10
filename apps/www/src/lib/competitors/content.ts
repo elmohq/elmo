@@ -150,7 +150,7 @@ export function getComparisonVerdict(competitor: Competitor): string {
 	}
 
 	if (isOpenSource(competitor)) {
-		return `Elmo and ${name} are both open-source AI visibility tools you can self-host and audit. Elmo's focus is transparent, independently verifiable tracking across ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing Copilot, and Claude — with white-label support for agencies and a documented methodology behind every number.`;
+		return `Elmo and ${name} are both open-source AI visibility tools you can self-host and audit. Elmo's focus is transparent, independently verifiable tracking across ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing AI Mode, and Claude — with white-label support for agencies and a documented methodology behind every number.`;
 	}
 
 	const noun = CATEGORY_NOUN[competitor.category];
@@ -189,7 +189,7 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 			},
 			{
 				question: `Is Elmo a free, open-source alternative to ${name}?`,
-				answer: `Yes. Elmo is free to self-host under MIT, with unlimited prompts and every model, covering ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing Copilot, Claude, and more. Unlike ${name}, it has not been thrown out and rewritten twice in a year.`,
+				answer: `Yes. Elmo is free to self-host under MIT, with unlimited prompts and every model, covering ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing AI Mode, Claude, and more. Unlike ${name}, it has not been thrown out and rewritten twice in a year.`,
 			},
 		];
 	}
@@ -203,7 +203,7 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 
 	faqs.push({
 		question: `Is Elmo a free, open-source alternative to ${name}?`,
-		answer: `Yes. Elmo is a free, open-source alternative to ${name}. You can self-host the full platform at no cost, read every line of code, and track your AI visibility across ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing Copilot, Claude, and more without per-seat or per-prompt fees.`,
+		answer: `Yes. Elmo is a free, open-source alternative to ${name}. You can self-host the full platform at no cost, read every line of code, and track your AI visibility across ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing AI Mode, Claude, and more without per-seat or per-prompt fees.`,
 	});
 
 	faqs.push({

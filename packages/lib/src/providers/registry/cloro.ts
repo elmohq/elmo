@@ -23,9 +23,8 @@ const CLORO_TASKS: Record<string, CloroTaskConfig> = {
 		include: { markdown: true, searchQueries: true },
 		params: { legacy: true },
 	},
-	// Bing's Copilot Search (bing.com/copilotsearch), which Cloro calls "Bing AI Mode".
-	// Its COPILOT task reads the Copilot app, which now requires a login.
-	copilot: { taskType: "BING_AIMODE", field: "prompt", include: { markdown: true } },
+	// bing.com/copilotsearch. Cloro's COPILOT task reads the Copilot app, which now requires a login.
+	"bing-ai-mode": { taskType: "BING_AIMODE", field: "prompt", include: { markdown: true } },
 	gemini: { taskType: "GEMINI", field: "prompt", include: { markdown: true } },
 	"google-ai-mode": { taskType: "AIMODE", field: "prompt", include: { markdown: true } },
 	"google-ai-overview": { taskType: "GOOGLE", field: "query", include: { aioverview: { markdown: true } } },

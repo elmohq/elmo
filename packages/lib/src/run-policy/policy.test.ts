@@ -30,7 +30,7 @@ const CLOUD_TARGETS = parseScrapeTargets(
 		"chatgpt:brightdata:online",
 		"google-ai-mode:brightdata:online",
 		"google-ai-overview:brightdata:online",
-		"copilot:cloro:online",
+		"bing-ai-mode:cloro:online",
 		"gemini:brightdata:online",
 		"qwen:openrouter:qwen/qwen3-235b",
 		"deepseek:openrouter:deepseek/deepseek-v3.2",
@@ -139,7 +139,7 @@ describe("defaultPlatformPicks", () => {
 			"chatgpt",
 			"google-ai-mode",
 			"google-ai-overview",
-			"copilot",
+			"bing-ai-mode",
 		]);
 	});
 
@@ -149,7 +149,7 @@ describe("defaultPlatformPicks", () => {
 			"chatgpt",
 			"google-ai-mode",
 			"google-ai-overview",
-			"copilot",
+			"bing-ai-mode",
 			"gemini",
 			"qwen",
 			"deepseek",
@@ -394,7 +394,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 			"chatgpt",
 			"google-ai-mode",
 			"google-ai-overview",
-			"copilot",
+			"bing-ai-mode",
 		]);
 	});
 

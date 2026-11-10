@@ -69,11 +69,11 @@ export function providerAffiliateUrl(provider: string): string | undefined {
 	return PROVIDER_AFFILIATE_URLS[provider];
 }
 
-// Surfaces the one `dataforseo` provider reaches by scraping — the Google and
-// Bing SERP endpoints plus the LLM Scraper's ChatGPT and Gemini. Copied rather than
+// Surfaces the one `dataforseo` provider reaches by scraping — the two Google
+// SERP endpoints plus the LLM Scraper's ChatGPT and Gemini. Copied rather than
 // imported because this site does not depend on @workspace/lib; the provider
 // itself decides the same thing in `dataforseoAccess`.
-const DATAFORSEO_SCRAPED_MODELS = new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini", "copilot"]);
+const DATAFORSEO_SCRAPED_MODELS = new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini"]);
 
 // The three first-party API providers collapse into one "Direct API" filter.
 export function providerCategory(provider: string, model: string, version?: string) {
@@ -94,9 +94,9 @@ export function providerCategory(provider: string, model: string, version?: stri
 export const MODEL_API_CATEGORIES = ["direct-api", "openrouter", "dataforseo-api"];
 
 // Models that only exist as a scraped web surface. Google AI Mode, AI Overview,
-// and Bing Copilot are search features — none expose an inference endpoint, so
-// a Model API can't reach them at all.
-const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "copilot"]);
+// and Bing AI Mode are search features and Copilot is a consumer assistant —
+// none expose an inference endpoint, so a Model API can't reach them at all.
+const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "copilot", "bing-ai-mode"]);
 
 // Which models each provider category has a collector for. A model missing from
 // a category's set can't be reached through it — a hard capability gap, not
@@ -104,21 +104,23 @@ const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "cop
 // @workspace/lib. Categories absent here (direct-api, openrouter) reach any
 // model that exposes an inference endpoint.
 const PROVIDER_MODELS: Record<string, Set<string>> = {
-	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot"]),
+	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-ai-mode"]),
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview"]),
-	searchapi: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot"]),
+	searchapi: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-ai-mode"]),
 	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"]),
 	// Google AI Mode and AI Overview come from the SERP endpoints, ChatGPT and
 	// Gemini from the LLM Scraper API — all four scrape a live surface. There is
 	// no Perplexity scraper on either.
-	"dataforseo-scraper": new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini", "copilot"]),
+	"dataforseo-scraper": new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini"]),
 	// Claude is reachable via LLM Responses but Elmo doesn't track it there.
 	"dataforseo-api": new Set(["chatgpt", "perplexity", "gemini", "claude"]),
 };
 
 // The model APIs that still serve these surfaces keep reporting as usual.
 const RETIRED_SURFACES: Record<string, string> = {
+	copilot:
+		"Microsoft Copilot now requires a sign-in, so scrapers can no longer reach it. Elmo tracks Bing AI Mode, which still answers signed-out visitors, instead.",
 	perplexity:
 		"Perplexity now requires a sign-in, so scrapers can no longer reach it. Elmo tracks Perplexity through its Sonar API instead.",
 };

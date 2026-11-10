@@ -37,7 +37,7 @@ export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
 	chatgpt: { access: "scraped", premium: true, premiumVersion: "GPT-6 Luna" },
 	"google-ai-mode": { access: "scraped" },
 	"google-ai-overview": { access: "scraped" },
-	copilot: { access: "scraped" },
+	"bing-ai-mode": { access: "scraped" },
 	gemini: { access: "scraped" },
 	qwen: { access: "api", version: "Qwen3 235B A22B 2507" },
 	deepseek: { access: "api", version: "DeepSeek V3.2" },
