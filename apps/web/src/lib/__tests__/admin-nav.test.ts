@@ -1,14 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { adminNavItems } from "@/lib/admin-nav";
 
-const asPairs = (items: ReturnType<typeof adminNavItems>) =>
-	items.map((item) => [item.title, item.link.to]);
+const asPairs = (items: ReturnType<typeof adminNavItems>) => items.map((item) => [item.title, item.link.to]);
 
 describe("adminNavItems", () => {
 	it("shows an admin Brands, Reports, Workflows and Tools, in that order", () => {
-		expect(
-			asPairs(adminNavItems({ isAdmin: true, hasReportAccess: false, reportsEnabled: true })),
-		).toEqual([
+		expect(asPairs(adminNavItems({ isAdmin: true, hasReportAccess: false, reportsEnabled: true }))).toEqual([
 			["Brands", "/admin"],
 			["Reports", "/reports"],
 			["Workflows", "/admin/workflows"],
@@ -17,9 +14,7 @@ describe("adminNavItems", () => {
 	});
 
 	it("hides Reports from an admin when reports are turned off, keeping the rest in order", () => {
-		expect(
-			asPairs(adminNavItems({ isAdmin: true, hasReportAccess: false, reportsEnabled: false })),
-		).toEqual([
+		expect(asPairs(adminNavItems({ isAdmin: true, hasReportAccess: false, reportsEnabled: false }))).toEqual([
 			["Brands", "/admin"],
 			["Workflows", "/admin/workflows"],
 			["Tools", "/admin/tools"],
@@ -27,35 +22,25 @@ describe("adminNavItems", () => {
 	});
 
 	it("never needs hasReportAccess for an admin to see Reports", () => {
-		expect(
-			asPairs(adminNavItems({ isAdmin: true, hasReportAccess: true, reportsEnabled: true })),
-		).toEqual([
+		expect(asPairs(adminNavItems({ isAdmin: true, hasReportAccess: true, reportsEnabled: true }))).toEqual([
 			["Brands", "/admin"],
 			["Reports", "/reports"],
 			["Workflows", "/admin/workflows"],
 			["Tools", "/admin/tools"],
 		]);
-		expect(
-			adminNavItems({ isAdmin: true, hasReportAccess: true, reportsEnabled: false }),
-		).not.toContainEqual(expect.objectContaining({ title: "Reports" }));
+		expect(adminNavItems({ isAdmin: true, hasReportAccess: true, reportsEnabled: false })).not.toContainEqual(expect.objectContaining({ title: "Reports" }));
 	});
 
 	it("shows a non-admin with report access only Reports, when reports are enabled", () => {
-		expect(
-			asPairs(adminNavItems({ isAdmin: false, hasReportAccess: true, reportsEnabled: true })),
-		).toEqual([["Reports", "/reports"]]);
+		expect(asPairs(adminNavItems({ isAdmin: false, hasReportAccess: true, reportsEnabled: true }))).toEqual([["Reports", "/reports"]]);
 	});
 
 	it("shows a non-admin nothing when reports are off", () => {
-		expect(
-			adminNavItems({ isAdmin: false, hasReportAccess: true, reportsEnabled: false }),
-		).toEqual([]);
+		expect(adminNavItems({ isAdmin: false, hasReportAccess: true, reportsEnabled: false })).toEqual([]);
 	});
 
 	it("shows a non-admin nothing without report access, even when reports are on", () => {
-		expect(
-			adminNavItems({ isAdmin: false, hasReportAccess: false, reportsEnabled: true }),
-		).toEqual([]);
+		expect(adminNavItems({ isAdmin: false, hasReportAccess: false, reportsEnabled: true })).toEqual([]);
 	});
 
 	it("never shows a non-admin an /admin link", () => {
