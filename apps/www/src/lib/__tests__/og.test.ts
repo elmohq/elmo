@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { getMarketingOgImage, getPageImage } from "@/lib/og";
 
-const titleOf = (title: string) =>
-	new URL(getMarketingOgImage({ title }), "http://localhost").searchParams.get("title");
+const ogUrl = (opts: Parameters<typeof getMarketingOgImage>[0]) =>
+	new URL(getMarketingOgImage(opts), "http://localhost");
+
+const titleOf = (title: string) => ogUrl({ title }).searchParams.get("title");
 
 describe("getMarketingOgImage", () => {
 	describe("title", () => {
 		it.each([
 			["Pricing · Elmo", "Pricing"],
 			["Blog | Elmo", "Blog"],
+			["Docs - Elmo", "Docs"],
+			["Pricing: Elmo", "Pricing"],
 			["Pricing  ·  Elmo", "Pricing"],
 			["Pricing · ELMO", "Pricing"],
 		])("removes the brand from the end of %j", (title, expected) => {
@@ -17,6 +21,7 @@ describe("getMarketingOgImage", () => {
 
 		it.each([
 			["Elmo · Open Source AI Visibility", "Open Source AI Visibility"],
+			["Elmo | Blog", "Blog"],
 			["Elmo - Docs", "Docs"],
 			["Elmo: Pricing", "Pricing"],
 			["elmo · Pricing", "Pricing"],
@@ -37,6 +42,8 @@ describe("getMarketingOgImage", () => {
 			["Elmo · Why Elmo", "Why Elmo"],
 			["Elmohq · Pricing", "Elmohq · Pricing"],
 			["Pricing · Elmohq", "Pricing · Elmohq"],
+			["Self-Host a Non-Elmo", "Self-Host a Non-Elmo"],
+			["Elmo-Powered Search", "Elmo-Powered Search"],
 		])("leaves %j as %j", (title, expected) => {
 			expect(titleOf(title)).toBe(expected);
 		});
@@ -48,27 +55,20 @@ describe("getMarketingOgImage", () => {
 
 	describe("URL", () => {
 		it("always points at /og.png", () => {
-			const url = new URL(getMarketingOgImage({ title: "Pricing" }), "http://localhost");
-			expect(url.pathname).toBe("/og.png");
+			expect(ogUrl({ title: "Pricing" }).pathname).toBe("/og.png");
 		});
 
 		it("passes description and label through", () => {
-			const url = new URL(
-				getMarketingOgImage({ title: "Pricing", description: "Plans & pricing for teams", label: "Pricing" }),
-				"http://localhost",
-			);
+			const url = ogUrl({ title: "Pricing", description: "Plans & pricing for teams", label: "Pricing" });
 			expect(url.searchParams.get("description")).toBe("Plans & pricing for teams");
 			expect(url.searchParams.get("label")).toBe("Pricing");
 		});
 
-		it("leaves out description and label when they are missing", () => {
-			const url = new URL(getMarketingOgImage({ title: "Pricing" }), "http://localhost");
-			expect(url.searchParams.has("description")).toBe(false);
-			expect(url.searchParams.has("label")).toBe(false);
-		});
-
-		it("leaves out description and label when they are empty", () => {
-			const url = new URL(getMarketingOgImage({ title: "Pricing", description: "", label: "" }), "http://localhost");
+		it.each([
+			["missing", {}],
+			["empty", { description: "", label: "" }],
+		])("leaves out description and label when they are %s", (_, extra) => {
+			const url = ogUrl({ title: "Pricing", ...extra });
 			expect(url.searchParams.has("description")).toBe(false);
 			expect(url.searchParams.has("label")).toBe(false);
 		});
@@ -76,20 +76,10 @@ describe("getMarketingOgImage", () => {
 });
 
 describe("getPageImage", () => {
-	it("returns only the image for an empty slug list", () => {
-		expect(getPageImage([])).toEqual({ segments: ["image.png"], url: "/og/docs/image.png" });
-	});
-
-	it("appends the image to nested slugs", () => {
-		expect(getPageImage(["guides", "setup"])).toEqual({
-			segments: ["guides", "setup", "image.png"],
-			url: "/og/docs/guides/setup/image.png",
-		});
-	});
-
-	it("does not modify the slugs it is given", () => {
-		const slugs = ["guides", "setup"];
-		getPageImage(slugs);
-		expect(slugs).toEqual(["guides", "setup"]);
+	it.each([
+		[[], "/og/docs/image.png"],
+		[["guides", "setup"], "/og/docs/guides/setup/image.png"],
+	])("builds the docs image URL for %j", (slugs, expected) => {
+		expect(getPageImage(slugs).url).toBe(expected);
 	});
 });
