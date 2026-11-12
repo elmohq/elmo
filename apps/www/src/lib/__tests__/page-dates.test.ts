@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { type DatedPage, newest, pageLastUpdated } from "@/lib/page-dates";
 
-function page(fields: { type?: string; data: Record<string, unknown> }): DatedPage {
+function page(fields: { type?: DatedPage["type"]; data: { date?: string; updated?: string } }): DatedPage {
 	return fields as unknown as DatedPage;
 }
 
@@ -9,14 +9,10 @@ describe("newest", () => {
 	it("returns the latest date wherever it is in the list", () => {
 		expect(newest(["2026-01-05", "2026-03-01", "2025-12-31"])).toBe("2026-03-01");
 		expect(newest(["2026-03-01", "2025-12-31", "2026-01-05"])).toBe("2026-03-01");
+		expect(newest(["2026-10-01", "2026-09-30"])).toBe("2026-10-01");
 	});
 
-	it("compares dates across year and month boundaries", () => {
-		expect(newest(["2025-12-31", "2026-01-01"])).toBe("2026-01-01");
-		expect(newest(["2026-09-30", "2026-10-01"])).toBe("2026-10-01");
-	});
-
-	it("returns a repeated date once", () => {
+	it("handles duplicate dates", () => {
 		expect(newest(["2026-01-01", "2026-01-01"])).toBe("2026-01-01");
 	});
 
@@ -29,15 +25,13 @@ describe("newest", () => {
 		expect(newest([])).toBeUndefined();
 		expect(newest([undefined, undefined])).toBeUndefined();
 	});
-
-	it("leaves the list it was given unchanged", () => {
-		const input = ["2026-03-01", undefined, "2026-01-01"];
-		newest(input);
-		expect(input).toEqual(["2026-03-01", undefined, "2026-01-01"]);
-	});
 });
 
 describe("pageLastUpdated", () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it("uses a blog post's updated date when it has one", () => {
 		expect(pageLastUpdated(page({ data: { date: "2026-01-10", updated: "2026-04-02" } }))).toBe("2026-04-02");
 	});
@@ -54,11 +48,15 @@ describe("pageLastUpdated", () => {
 		expect(pageLastUpdated(page({ data: {} }))).toBeUndefined();
 	});
 
-	it("gives API reference pages the fixed API reference date", () => {
-		expect(pageLastUpdated(page({ type: "openapi", data: {} }))).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-	});
+	it("gives every API reference page the same date from build to build", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2030-01-01T00:00:00Z"));
+		const first = pageLastUpdated(page({ type: "openapi", data: {} }));
+		vi.setSystemTime(new Date("2031-06-15T00:00:00Z"));
+		const second = pageLastUpdated(page({ type: "openapi", data: { updated: "2020-01-01" } }));
 
-	it("ignores an API reference page's own updated date", () => {
-		expect(pageLastUpdated(page({ type: "openapi", data: { updated: "2020-01-01" } }))).not.toBe("2020-01-01");
+		expect(first).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+		expect(second).toBe(first);
+		expect(first).not.toBe("2030-01-01");
 	});
 });

@@ -3,8 +3,9 @@ import { pageSchema } from "fumadocs-core/source/schema";
 import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 import { z } from "zod";
 
+// Dates are compared as strings when picking the newest, so they must be zero-padded YYYY-MM-DD.
 const frontmatterDate = z
-	.union([z.string(), z.date()])
+	.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a YYYY-MM-DD date"), z.date()])
 	.transform((value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value));
 
 export const docs = defineDocs({
