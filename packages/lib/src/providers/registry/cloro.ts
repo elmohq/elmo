@@ -23,8 +23,8 @@ const CLORO_TASKS: Record<string, CloroTaskConfig> = {
 		include: { markdown: true, searchQueries: true },
 		params: { legacy: true },
 	},
-	perplexity: { taskType: "PERPLEXITY", field: "prompt", include: { markdown: true } },
-	copilot: { taskType: "COPILOT", field: "prompt", include: { markdown: true } },
+	// bing.com/copilotsearch. Cloro's COPILOT task reads the Copilot app, which now requires a login.
+	"bing-ai-mode": { taskType: "BING_AIMODE", field: "prompt", include: { markdown: true } },
 	gemini: { taskType: "GEMINI", field: "prompt", include: { markdown: true } },
 	"google-ai-mode": { taskType: "AIMODE", field: "prompt", include: { markdown: true } },
 	"google-ai-overview": { taskType: "GOOGLE", field: "query", include: { aioverview: { markdown: true } } },
@@ -124,10 +124,7 @@ async function runAsyncTask(taskType: string, payload: Record<string, any>): Pro
 	return settled?.response ?? {};
 }
 
-// Perplexity echoes the prompt as its query; that is stored as reported and the
-// fan-out read path drops it. Its `related_queries` are suggested follow-ups, not
-// searches it ran.
-const CLORO_QUERY_KEYS = ["searchQueries", "search_model_queries", "mapSearchQueries"] as const;
+const CLORO_QUERY_KEYS = ["searchQueries", "mapSearchQueries"] as const;
 
 export const cloro: Provider = {
 	id: "cloro",

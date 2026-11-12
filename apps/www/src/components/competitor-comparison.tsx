@@ -134,7 +134,7 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						</div>
 						<p className="mt-3 text-sm text-zinc-600">
 							Open-source AEO platform. Self-host for free, forever. Track AI visibility across ChatGPT, Google AI
-							Overviews and AI Mode, Gemini, Perplexity, Copilot, Claude, and more with full transparency.
+							Overviews and AI Mode, Gemini, Perplexity, Bing AI Mode, Claude, and more with full transparency.
 						</p>
 					</div>
 					<div>

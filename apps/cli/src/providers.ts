@@ -17,29 +17,15 @@ const DATAFORSEO_AFFILIATE = "https://try.dataforseo.com/elmo";
 export type RecommendedScraper = "cloro" | "brightdata" | "oxylabs" | "searchapi" | "olostep" | "dataforseo";
 export type DirectApiProvider = "openrouter" | "anthropic" | "openai" | "mistral";
 
-const BRIGHTDATA_MODELS = [
-	"chatgpt",
-	"google-ai-mode",
-	"google-ai-overview",
-	"perplexity",
-	"copilot",
-	"gemini",
-] as const;
+const BRIGHTDATA_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"] as const;
 
-const SEARCHAPI_MODELS = [
-	"chatgpt",
-	"google-ai-mode",
-	"google-ai-overview",
-	"perplexity",
-	"copilot",
-	"gemini",
-] as const;
+const SEARCHAPI_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-ai-mode"] as const;
 
-const OLOSTEP_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity", "copilot", "gemini"] as const;
+const OLOSTEP_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"] as const;
 
-const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"] as const;
+const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview"] as const;
 
-const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity", "copilot", "gemini"] as const;
+const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-ai-mode"] as const;
 
 export const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 
@@ -176,7 +162,7 @@ export const PROVIDER_PROMPTS: ProviderSpec[] = [
 		id: "oxylabs",
 		kind: "scraper",
 		label: "Oxylabs",
-		costHint: "cheapest per run, no Gemini/Copilot — $49/mo min",
+		costHint: "cheapest per run, no Gemini — $49/mo min",
 		confirmDefault: false,
 		signup: { message: "Sign up and create Web Scraper API credentials", url: OXYLABS_AFFILIATE },
 		credentials: [

@@ -43,7 +43,7 @@ example:
 ```bash
 CLORO_API_KEY=...
 OPENROUTER_API_KEY=...
-SCRAPE_TARGETS=chatgpt:cloro:online,google-ai-mode:cloro:online,google-ai-overview:cloro:online,perplexity:cloro:online
+SCRAPE_TARGETS=chatgpt:cloro:online,google-ai-mode:cloro:online,google-ai-overview:cloro:online,perplexity:openrouter:perplexity/sonar:online
 ```
 
 ### Choosing a scraping provider
@@ -59,12 +59,12 @@ page, not from memory.
 
 | Provider | Engines reached | Pick it when |
 | --- | --- | --- |
-| [Cloro](https://cloro.dev?fpr=elmo&fp_sid=skill) | ChatGPT, AI Mode, AI Overviews, Gemini, Perplexity, Copilot | Default choice. It is the most reliable in Elmo's measurements, reaches every surface, and is what Elmo Cloud pays for itself. |
-| [BrightData](https://get.brightdata.com/elmo?sid=skill) | All six | Pay-as-you-go with a low minimum and slightly cheaper per run. It is slower and weaker on AI Overviews. |
+| [Cloro](https://cloro.dev?fpr=elmo&fp_sid=skill) | ChatGPT, AI Mode, AI Overviews, Gemini, Bing AI Mode | Default choice. It is the most reliable in Elmo's measurements, reaches every surface, and is what Elmo Cloud pays for itself. |
+| [BrightData](https://get.brightdata.com/elmo?sid=skill) | All four | Pay-as-you-go with a low minimum and slightly cheaper per run. It is slower and weaker on AI Overviews. |
 | [DataForSEO](https://try.dataforseo.com/elmo) | ChatGPT, AI Mode, AI Overviews, Gemini; Perplexity through its API | Pay-as-you-go with no subscription. Fastest in Elmo's measurements, and it can also front model APIs. Prompts are capped at 500 characters. |
-| [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) | ChatGPT, AI Mode, AI Overviews, Perplexity | Lowest cost per run, but no Gemini or Copilot, and the least reliable. |
-| [SearchApi](https://www.searchapi.io/?via=elmo) | All six | Flat price per search on every engine, synchronous and simple. |
-| [Olostep](https://olostep.com/?ref=elmo) | All six | High-volume pay-as-you-go. Slowest, and reliability varies. |
+| [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) | ChatGPT, AI Mode, AI Overviews | Lowest cost per run, but no Gemini, and the least reliable. |
+| [SearchApi](https://www.searchapi.io/?via=elmo) | ChatGPT, AI Mode, AI Overviews, Gemini, Bing AI Mode | Flat price per search on every engine, synchronous and simple. |
+| [Olostep](https://olostep.com/?ref=elmo) | All four | High-volume pay-as-you-go. Slowest, and reliability varies. |
 
 Current prices and every target string are in the providers guide:
 <https://www.elmohq.com/docs/user-guide/providers?ref=aeo-skill>.

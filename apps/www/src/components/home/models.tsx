@@ -9,7 +9,7 @@ export const TRACKED_ENGINES = [
 	{ name: "Perplexity", iconId: "perplexity" },
 	{ name: "AI Overviews", iconId: "google" },
 	{ name: "AI Mode", iconId: "google" },
-	{ name: "Copilot", iconId: "microsoft" },
+	{ name: "Bing AI Mode", iconId: "microsoft" },
 	{ name: "Grok", iconId: "x" },
 	{ name: "DeepSeek", iconId: "deepseek" },
 	{ name: "Mistral", iconId: "mistral" },

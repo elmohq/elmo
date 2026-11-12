@@ -12,7 +12,7 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "What is Elmo?",
 		answer:
-			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO) — an alternative to tools like Profound, Peec, and Otterly that you can self-host for free or run on Elmo Cloud. It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Claude, and Copilot — mention and describe your brand, which competitors appear alongside you, and which sources each model cites.",
+			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO) — an alternative to tools like Profound, Peec, and Otterly that you can self-host for free or run on Elmo Cloud. It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, and Claude — mention and describe your brand, which competitors appear alongside you, and which sources each model cites.",
 	},
 	{
 		question: "What is Answer Engine Optimization (AEO)?",
@@ -27,7 +27,7 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "Which AI models does Elmo track?",
 		answer:
-			"Elmo tracks ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, and Claude, plus models like Grok, Mistral, DeepSeek, Qwen, and Kimi. Consumer products like ChatGPT and Google AI Mode are scraped from the real interface your customers see, not approximated through an API. For each answer, Elmo records whether your brand appears, which competitors show up alongside it, and which sources the model cites.",
+			"Elmo tracks ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, and Claude, plus models like Grok, Mistral, DeepSeek, Qwen, and Kimi. Consumer products like ChatGPT and Google AI Mode are scraped from the real interface your customers see, not approximated through an API. For each answer, Elmo records whether your brand appears, which competitors show up alongside it, and which sources the model cites.",
 	},
 	{
 		question: "How is AI visibility measured?",

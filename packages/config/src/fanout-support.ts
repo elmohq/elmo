@@ -24,10 +24,8 @@ const FANOUT_SUPPORT: Record<string, FanoutSupport> = {
 
 	"claude:anthropic-api": SUPPORTED,
 
-	"copilot:cloro": SUPPORTED,
-	"copilot:brightdata": NEVER,
-	"copilot:olostep": NEVER,
-	"copilot:searchapi": NEVER,
+	"bing-ai-mode:cloro": NEVER,
+	"bing-ai-mode:searchapi": NEVER,
 
 	"gemini:dataforseo:pinned": SUPPORTED,
 	"gemini:dataforseo": NEVER,
@@ -50,9 +48,6 @@ const FANOUT_SUPPORT: Record<string, FanoutSupport> = {
 	"google-ai-overview:oxylabs": NEVER,
 	"google-ai-overview:searchapi": NEVER,
 
-	"perplexity:cloro": SUPPORTED,
-	"perplexity:olostep": SUPPORTED,
-	"perplexity:oxylabs": discontinued("2026-08-04"),
 	"perplexity:dataforseo": NEVER,
 
 	"mistral:mistral-api": SUPPORTED,

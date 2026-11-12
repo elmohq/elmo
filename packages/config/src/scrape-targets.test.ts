@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	formatScrapeTarget,
 	type ModelConfig,
 	parseScrapeTargets,
 	providersByModel,
+	retiredScrapeTargets,
 	STATUS_TARGETS,
 } from "./scrape-targets";
 
@@ -148,5 +149,30 @@ describe("providersByModel", () => {
 	it("covers every model STATUS_TARGETS names, and nothing else", () => {
 		const fromTargets = new Set(parseScrapeTargets(STATUS_TARGETS.join(",")).map((t) => t.model));
 		expect(new Set(providersByModel().keys())).toEqual(fromTargets);
+	});
+});
+
+describe("login-walled scrape targets", () => {
+	it("skips scraped Perplexity and the Copilot app with a warning, so the rest keep running", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const result = parseScrapeTargets(
+			"chatgpt:cloro:online,perplexity:cloro:online,copilot:brightdata:online,gemini:olostep:online",
+		);
+		expect(result.map(formatScrapeTarget)).toEqual(["chatgpt:cloro:online", "gemini:olostep:online"]);
+		expect(warn.mock.calls.map(([message]) => message).join("\n")).toMatch(/perplexity:cloro:online.*login/);
+		warn.mockRestore();
+	});
+
+	it("keeps Perplexity on its model APIs", () => {
+		const result = parseScrapeTargets("perplexity:openrouter:perplexity/sonar:online,perplexity:dataforseo:online");
+		expect(result).toHaveLength(2);
+	});
+
+	it("names a working replacement for every skipped target", () => {
+		const retired = retiredScrapeTargets("chatgpt:cloro:online,perplexity:oxylabs:online,copilot:cloro:online");
+		expect(retired.map((entry) => entry.target)).toEqual(["perplexity:oxylabs:online", "copilot:cloro:online"]);
+		for (const { replacements } of retired) {
+			expect(parseScrapeTargets(replacements.join(",")).map(formatScrapeTarget)).toEqual(replacements);
+		}
 	});
 });

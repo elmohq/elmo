@@ -15,7 +15,7 @@ const SCRAPERS = [
 	["dataforseo", "DataForSEO"],
 ] as const;
 
-const SURFACES = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "perplexity", "copilot"];
+const SURFACES = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-ai-mode", "perplexity"];
 
 const APIS = [
 	["openai-api", "OpenAI API"],
