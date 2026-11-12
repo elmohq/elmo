@@ -130,6 +130,31 @@ export function retiredSurfaceReason(model: string): string | undefined {
 	return RETIRED_SURFACES[model];
 }
 
+export interface RetiredNoticeText {
+	kind: "walled" | "moved";
+	label: string;
+	reason: string;
+}
+
+// SearchApi's Copilot engine never read the Copilot app, so its row wasn't walled
+// off: it moved to the Bing AI Mode row under that model's name.
+const RETIRED_TARGET_NOTICES: Record<string, RetiredNoticeText> = {
+	"copilot:searchapi:online": {
+		kind: "moved",
+		label: "Moved.",
+		reason:
+			"SearchApi's Copilot engine always returned Bing AI Mode, not the Copilot app. Elmo now tracks it as Bing AI Mode.",
+	},
+};
+
+export function retiredTargetNotice(target: string): RetiredNoticeText | undefined {
+	if (!isRetiredTarget(target)) return undefined;
+	const override = RETIRED_TARGET_NOTICES[target];
+	if (override) return override;
+	const reason = retiredSurfaceReason(parseTarget(target).model);
+	return reason ? { kind: "walled", label: "Login-walled.", reason } : undefined;
+}
+
 export function isRetiredTarget(target: string): boolean {
 	return RETIRED_STATUS_TARGETS.includes(target);
 }

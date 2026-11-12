@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
-import { ArrowUpRight, Tombstone } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Tombstone } from "lucide-react";
 import { type CSSProperties, Fragment, type ReactNode, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { Footer } from "@/components/footer";
@@ -19,7 +19,6 @@ import {
 	formatModel,
 	formatProvider,
 	getLatest,
-	isRetiredTarget,
 	type MatrixCell,
 	type MetricStats,
 	MODEL_API_CATEGORIES,
@@ -35,6 +34,7 @@ import {
 	type RunStats,
 	rateTier,
 	retiredSurfaceReason,
+	retiredTargetNotice,
 	runStats,
 	type StatusEntry,
 	type TargetStatus,
@@ -622,14 +622,25 @@ function ProviderName({
 	);
 }
 
-function RetiredNotice({ reason, compact }: { reason: string; compact?: boolean }) {
+function RetiredNotice({
+	label = "Login-walled.",
+	reason,
+	compact,
+	moved,
+}: {
+	label?: string;
+	reason: string;
+	compact?: boolean;
+	moved?: boolean;
+}) {
+	const Icon = moved ? ArrowRight : Tombstone;
 	return (
 		<span
 			className={`flex items-center gap-2 rounded-sm bg-zinc-100 text-left text-zinc-500 ${compact ? "h-9 justify-center px-3 text-[11px]" : "px-3 py-2.5 text-xs"}`}
 		>
-			<Tombstone className="size-4 shrink-0 text-zinc-400" aria-hidden />
+			<Icon className="size-4 shrink-0 text-zinc-400" aria-hidden />
 			<span className={compact ? "truncate" : undefined}>
-				<span className="font-medium text-zinc-600">Login-walled.</span>{" "}
+				<span className="font-medium text-zinc-600">{label}</span>{" "}
 				{compact ? "Scrapers can no longer reach it." : reason}
 			</span>
 		</span>
@@ -657,13 +668,13 @@ function ProviderTitle({ provider, rest }: { provider: string; rest: string }) {
 }
 
 function ProviderRow({ data }: { data: TargetStatus }) {
-	const { model, provider, rest } = parseTarget(data.target);
-	const retiredReason = isRetiredTarget(data.target) ? retiredSurfaceReason(model) : undefined;
-	if (retiredReason) {
+	const { provider, rest } = parseTarget(data.target);
+	const notice = retiredTargetNotice(data.target);
+	if (notice) {
 		return (
 			<div className="space-y-2 rounded-md border border-zinc-200 bg-zinc-50 p-4">
 				<ProviderTitle provider={provider} rest={rest} />
-				<RetiredNotice reason={retiredReason} />
+				<RetiredNotice label={notice.label} reason={notice.reason} moved={notice.kind === "moved"} />
 			</div>
 		);
 	}
