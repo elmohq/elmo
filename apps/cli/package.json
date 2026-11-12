@@ -39,7 +39,7 @@
 		"@brightdata/sdk": "catalog:",
 		"@clack/prompts": "^1.8.1",
 		"ai": "catalog:",
-		"commander": "^15.0.0",
+		"commander": "^15.1.0",
 		"dataforseo-client": "catalog:",
 		"dotenv": "18.0.9",
 		"linkedom": "catalog:",
@@ -48,7 +48,7 @@
 		"picocolors": "^1.1.1",
 		"posthog-node": "catalog:",
 		"robots-parser": "catalog:",
-		"semver": "^7.8.5",
+		"semver": "^7.8.6",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
@@ -57,7 +57,7 @@
 		"@workspace/config": "workspace:*",
 		"@workspace/lib": "workspace:*",
 		"@workspace/site-audit": "workspace:*",
-		"rolldown": "^1.2.16",
+		"rolldown": "^1.3.0",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	}
