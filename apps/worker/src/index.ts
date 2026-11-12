@@ -11,6 +11,7 @@ import { startCredentialRefresh } from "@workspace/lib/secrets";
 import type { PgBoss } from "pg-boss";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
+import { createErrorThrottle } from "./error-throttle";
 import { registerHandlers } from "./handlers";
 import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS, reprocessDays, requestUnjudgedRuns } from "./jobs/derive-runs";
 import {
@@ -59,10 +60,17 @@ async function main() {
 	const { judgeVersion } = configureMentionAnalyzer();
 	console.log(`Judging mentions with ${judgeVersion}`);
 
+	const throttleBossError = createErrorThrottle();
 	boss.on("error", (error) => {
-		console.error("pg-boss error:", error);
+		const report = throttleBossError(error);
+		if (!report) return;
+		console.error(
+			report.suppressed > 0 ? `pg-boss error (${report.suppressed} repeats suppressed):` : "pg-boss error:",
+			error,
+		);
 		Sentry.withScope((scope) => {
 			scope.setTag("source", "pg-boss-internal");
+			scope.setExtra("suppressed", report.suppressed);
 			Sentry.captureException(error);
 		});
 	});
