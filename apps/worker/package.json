@@ -12,7 +12,7 @@
 		"test:integration": "vitest run --project=integration"
 	},
 	"dependencies": {
-		"@sentry/node": "^11.10.0",
+		"@sentry/node": "^11.11.0",
 		"@workspace/config": "workspace:*",
 		"@workspace/deployment": "workspace:*",
 		"@workspace/lib": "workspace:*",
