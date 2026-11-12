@@ -121,6 +121,61 @@ elmo compose up -d
 
 See the [getting started guide](https://www.elmohq.com/docs/getting-started) for the full walkthrough and the [providers guide](https://www.elmohq.com/docs/user-guide/providers) for other scrapers and model APIs.
 
+## MCP Server
+
+Elmo's MCP server lets an AI client read your visibility data and manage the prompts Elmo tracks. Full setup for every client is in the [MCP docs](https://www.elmohq.com/docs/api/mcp).
+
+- **Endpoint:** `https://app.elmohq.com/api/mcp` on Elmo Cloud, or `<APP_URL>/api/mcp` on a self-hosted instance
+- **Transport:** Streamable HTTP (remote server, nothing to install locally)
+- **Authentication:** sign in from the client with OAuth (no app to register), or send an API key from **Settings → API Keys** as `Authorization: Bearer elmo_...`. A key can be read-only and limited to selected brands.
+
+| Tool | What It Does |
+| --- | --- |
+| `whoami` | What this connection is and what it can access |
+| `list_models` | The AI models this instance knows about and which it tracks |
+| `list_brands`, `get_brand` | Brands you track and their domains, aliases, models, and cadence |
+| `list_competitors` | Competitors tracked for a brand |
+| `list_prompts`, `list_prompt_tags` | Tracked prompts and their tags |
+| `get_analytics` | Visibility, share of voice, sentiment, and position over a time window |
+| `get_prompt_performance` | The same metrics broken down by prompt |
+| `get_citations` | The pages and domains AI answers cite |
+| `get_query_fanout` | The web searches models ran before answering |
+| `get_opportunities` | The latest opportunities report: what to write, what to fix, and the risks found |
+| `list_runs`, `get_run` | Recorded answers for a prompt, and one answer's full text and citations |
+| `get_billing` | Plan and usage |
+| `create_prompts`, `update_prompt` | Add and edit tracked prompts (needs write access) |
+
+A connection is only offered the tools its access allows. No tool deletes data.
+
+**Claude Code** — then run `/mcp` and choose **Authenticate**:
+
+```bash
+claude mcp add --transport http elmo https://app.elmohq.com/api/mcp
+```
+
+With an API key instead:
+
+```bash
+claude mcp add --transport http elmo https://app.elmohq.com/api/mcp \
+  --header "Authorization: Bearer elmo_..."
+```
+
+**VS Code** — run `code --add-mcp '{"name":"elmo","type":"http","url":"https://app.elmohq.com/api/mcp"}'`, or add it to `mcp.json` (omit `headers` to sign in with OAuth instead):
+
+```json
+{
+  "servers": {
+    "elmo": {
+      "type": "http",
+      "url": "https://app.elmohq.com/api/mcp",
+      "headers": { "Authorization": "Bearer elmo_..." }
+    }
+  }
+}
+```
+
+**Cursor, Codex, Claude.ai, ChatGPT, and others** — see the [MCP docs](https://www.elmohq.com/docs/api/mcp), or configure every client on your machine at once with `npx add-mcp https://app.elmohq.com/api/mcp --name elmo`.
+
 ## Skill
 
 The [`aeo` skill](skills/aeo/SKILL.md) teaches Claude Code, Cursor, Codex, and other coding agents an evidence-based answer engine optimization workflow: measure, diagnose, fix, then measure again. It works with or without Elmo, and it can read Elmo's data over MCP.
