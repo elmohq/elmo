@@ -36,7 +36,7 @@ export interface ResolvedPrompt {
  */
 export async function resolveFilteredPrompts(
 	brandId: string,
-	opts: { tags?: string; search?: string },
+	opts: { tags?: string; search?: string; prompts?: string },
 ): Promise<ResolvedPrompt[]> {
 	const allPrompts = await db
 		.select({
@@ -50,9 +50,15 @@ export async function resolveFilteredPrompts(
 
 	const tagFilter = parseTagFilter(opts.tags);
 	const search = opts.search?.toLowerCase();
+	const picked = parsePromptFilter(opts.prompts);
 
 	return allPrompts
-		.filter((p) => matchesTagFilter(effectiveTags(p), tagFilter) && (!search || p.value.toLowerCase().includes(search)))
+		.filter(
+			(p) =>
+				matchesTagFilter(effectiveTags(p), tagFilter) &&
+				(!search || p.value.toLowerCase().includes(search)) &&
+				(picked.size === 0 || picked.has(p.id)),
+		)
 		.map((p) => ({
 			id: p.id,
 			value: p.value,
@@ -63,4 +69,8 @@ export async function resolveFilteredPrompts(
 
 export function parseTagFilter(tags: string | undefined): string[] {
 	return tags?.split(",").filter(Boolean) || [];
+}
+
+export function parsePromptFilter(prompts: string | undefined): Set<string> {
+	return new Set(parseTagFilter(prompts));
 }

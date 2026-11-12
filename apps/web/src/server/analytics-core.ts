@@ -96,6 +96,7 @@ export interface AnalyticsFilters {
 	model?: string;
 	tags?: string;
 	search?: string;
+	prompts?: string;
 }
 
 type VisibilityPoint = z.infer<typeof visibilityPointSchema>;
@@ -118,7 +119,11 @@ function analyticsScope(
 }
 
 async function resolveScope(brandId: string, filters: AnalyticsFilters) {
-	const resolved = await resolveFilteredPrompts(brandId, { tags: filters.tags, search: filters.search });
+	const resolved = await resolveFilteredPrompts(brandId, {
+		tags: filters.tags,
+		search: filters.search,
+		prompts: filters.prompts,
+	});
 	return {
 		promptIds: resolved.map((prompt) => prompt.id),
 		brandedPromptIds: resolved

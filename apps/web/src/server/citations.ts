@@ -54,7 +54,7 @@ import {
 } from "@/lib/rollup-read";
 import { isRedditDomain, type Subreddit, summarizeSubreddits } from "@/lib/subreddits";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { parseTagFilter } from "@/server/prompt-resolution";
+import { parsePromptFilter, parseTagFilter } from "@/server/prompt-resolution";
 
 type WhatsChangedUrl = { url: string; domain: string; count: number; promptCount: number; category: CitationCategory };
 
@@ -257,6 +257,7 @@ const citationFiltersSchema = z.object({
 	brandId: z.string(),
 	lookback: lookbackSchema.default("1w"),
 	tags: z.string().optional(),
+	prompts: z.string().optional(),
 	model: z.string().optional(),
 });
 
@@ -285,7 +286,9 @@ async function resolveCitationScope(data: CitationFilters) {
 	const owned: OwnedDomains = { brandDomains: [...brandDomains], competitorDomains: [...competitorDomains] };
 
 	const tagFilter = parseTagFilter(data.tags);
-	const promptIds = tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
+	const taggedIds = tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
+	const picked = parsePromptFilter(data.prompts);
+	const promptIds = picked.size > 0 ? taggedIds.filter((id) => picked.has(id)) : taggedIds;
 	const scope = {
 		brandId: data.brandId,
 		from: window.fromDateStr,

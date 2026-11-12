@@ -1,41 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { cn } from "@workspace/ui/lib/utils";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { ListPagination } from "@/components/list-pagination";
 import { FilterSection, PageHeader } from "@/components/page-header";
-import { PromptsFilterDropdown } from "@/components/prompts-filter-dropdown";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SentimentFilterCard } from "@/components/sentiment-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { useCrispChat } from "@/hooks/use-crisp-chat";
-import { joinTags, splitTags, useListFilters } from "@/hooks/use-list-filters";
+import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useResponseSearch, useResponseSentimentCounts } from "@/hooks/use-responses";
-import { type SentimentSearch, useSentimentSearch, validateSentimentSearch } from "@/hooks/use-sentiment-search";
+import { useSentimentSearch, validateSentimentSearch } from "@/hooks/use-sentiment-search";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/responses")({
 	staticData: { crumb: "Responses" },
-	// Comma-joined IDs, like `tags`, so a filtered view stays linkable.
-	validateSearch: (search: Record<string, unknown>): ResponsesSearch => ({
-		prompts: typeof search.prompts === "string" && search.prompts ? search.prompts : undefined,
-		...validateSentimentSearch(search),
-	}),
+	validateSearch: validateSentimentSearch,
 	head: pageHead({ description: "Read and search every AI answer to your prompts." }),
 	component: ResponsesPage,
 });
 
-interface ResponsesSearch extends SentimentSearch {
-	prompts?: string;
-}
-
 function ResponsesPage() {
 	const brandId = useBrandId();
-	const { model, lookback, tags, search: query } = useListFilters();
+	const { model, lookback, tags, promptIds, search: query } = useListFilters();
 
 	const { data: brand } = useBrand(brandId);
 	const { launcher } = useCrispChat();
@@ -45,16 +36,6 @@ function ResponsesPage() {
 
 	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
 	const availableTags = promptsSummary?.availableTags ?? [];
-
-	const promptsParam = Route.useSearch({ select: (s) => s.prompts });
-	const promptIds = useMemo(() => splitTags(promptsParam), [promptsParam]);
-	const navigate = Route.useNavigate();
-	const setPromptIds = (next: string[]) =>
-		navigate({
-			search: (prev) => ({ ...prev, prompts: joinTags(next) }),
-			replace: true,
-			resetScroll: false,
-		});
 
 	const { sentiment, sort, setSentiment, setSort } = useSentimentSearch();
 
@@ -130,17 +111,11 @@ function ResponsesPage() {
 			<FilterSection>
 				<FilterBar
 					availableTags={availableTags}
+					promptOptions={promptsSummary?.prompts ?? []}
 					trackedTargets={trackedTargets}
 					showSearch
 					searchPlaceholder="Search responses..."
 					showModelSelector
-					extraControls={
-						<PromptsFilterDropdown
-							prompts={promptsSummary?.prompts ?? []}
-							selected={promptIds}
-							onChange={setPromptIds}
-						/>
-					}
 					resultCount={data?.matchedRuns}
 					resultTotal={data?.totalRuns}
 					searching={isPlaceholderData}

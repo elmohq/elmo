@@ -95,6 +95,29 @@ describe("brand visibility", () => {
 		expect(brandedOnly.series.map((point) => point.visibility)).toEqual([0, 1, 1]);
 	});
 
+	it("narrows to the prompts picked by ID, together with any tag filter", async () => {
+		expect(await getBrandVisibility(brandId, window, { prompts: pricing })).toMatchObject({
+			totalRuns: 2,
+			totalPrompts: 1,
+		});
+		expect(await getBrandVisibility(brandId, window, { prompts: `${pricing},${branded}` })).toMatchObject({
+			totalRuns: 4,
+			totalPrompts: 2,
+		});
+		expect(
+			await getBrandVisibility(brandId, window, { prompts: `${pricing},${branded}`, tags: "pricing" }),
+		).toMatchObject({ totalRuns: 2, totalPrompts: 1 });
+	});
+
+	it("reads an empty prompt filter as every prompt, and an unknown ID as none", async () => {
+		expect(await getBrandVisibility(brandId, window, { prompts: "" })).toMatchObject({ totalPrompts: 3 });
+		expect(
+			await getBrandVisibility(brandId, window, { prompts: "00000000-0000-0000-0000-000000000000" }),
+		).toMatchObject({
+			totalPrompts: 0,
+		});
+	});
+
 	it("returns an empty result when no prompt is in scope", async () => {
 		expect(await getBrandVisibility(brandId, window, { search: "no prompt says this" })).toEqual({
 			currentVisibility: null,
@@ -116,6 +139,16 @@ describe("share of voice", () => {
 			{ name: "Acme", isBrand: true, mentions: 2, prompts: 2, share: 0.5, ...UNJUDGED },
 			{ name: "Globex", isBrand: false, mentions: 1, prompts: 1, share: 0.25, ...UNJUDGED },
 			{ name: "Initech", isBrand: false, mentions: 1, prompts: 1, share: 0.25, ...UNJUDGED },
+		]);
+	});
+
+	it("counts only the prompts picked by ID", async () => {
+		const sov = await getBrandShareOfVoice(brandId, window, { prompts: branded });
+		expect(sov.totalRuns).toBe(2);
+		expect(sov.entries.map((entry) => [entry.name, entry.mentions])).toEqual([
+			["Acme", 1],
+			["Globex", 1],
+			["Initech", 1],
 		]);
 	});
 
