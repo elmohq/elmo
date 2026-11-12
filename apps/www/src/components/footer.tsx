@@ -93,7 +93,7 @@ export function Footer() {
 					</div>
 				</div>
 
-				<div className="grid grid-cols-2 gap-10 py-16 sm:grid-cols-3 lg:grid-cols-5">
+				<div className="grid grid-cols-2 gap-10 pt-16 pb-12 sm:grid-cols-3 lg:grid-cols-5">
 					{cols.map((col) => (
 						<div key={col.heading}>
 							<h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">{col.heading}</h3>
@@ -121,49 +121,48 @@ export function Footer() {
 					))}
 				</div>
 
-				<div className="flex flex-col gap-4 border-t border-zinc-200/80 py-6 text-xs text-zinc-500">
-					<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-						<div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
-							<p className="whitespace-nowrap font-mono text-[11px]">
-								&copy; {new Date().getFullYear()}{" "}
-								<a
-									href={BLUEWHALE_URL}
-									target="_blank"
-									rel={externalRel(BLUEWHALE_URL)}
-									className="hover:text-zinc-950 hover:underline"
-								>
-									Blue Whale Software, LLC
-								</a>
-							</p>
-							<nav aria-label="Legal" className="flex flex-wrap items-center gap-x-4 gap-y-2">
-								{legalLinks.map((link) => (
-									<a key={link.href} href={link.href} className="hover:text-zinc-950">
-										{link.label}
-									</a>
-								))}
-								<button type="button" onClick={openCookiePreferences} className="hover:text-zinc-950">
-									Cookie Preferences
-								</button>
-							</nav>
-						</div>
-						<a
-							href="https://github.com/elmohq/elmo"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="group inline-flex h-7 w-fit items-center gap-1.5 whitespace-nowrap rounded-full bg-white pl-1 pr-2.5 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
-						>
-							<span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-zinc-100 px-2 font-mono text-[11px] text-zinc-700">
-								<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
-							</span>
-							Open Source
-							<span className="sr-only"> on GitHub</span>
-							<ArrowUpRight
-								className="size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-								aria-hidden="true"
-							/>
-						</a>
-					</div>
+				<div className="flex flex-col gap-4 pb-8 sm:flex-row sm:items-center sm:justify-between">
+					<a
+						href="https://github.com/elmohq/elmo"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="group inline-flex h-7 w-fit items-center gap-1.5 whitespace-nowrap rounded-full text-xs bg-white pl-1 pr-2.5 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
+					>
+						<span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-zinc-100 px-2 font-mono text-[11px] text-zinc-700">
+							<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
+						</span>
+						Open Source
+						<span className="sr-only"> on GitHub</span>
+						<ArrowUpRight
+							className="size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+							aria-hidden="true"
+						/>
+					</a>
 					<SocialLinks className="gap-4 text-zinc-400" linkClassName="transition-colors hover:text-zinc-950" />
+				</div>
+
+				<div className="flex flex-col gap-3 border-t border-zinc-200/80 py-6 text-xs text-zinc-500 md:flex-row md:items-center md:justify-between md:gap-6">
+					<p className="whitespace-nowrap font-mono text-[11px]">
+						&copy; {new Date().getFullYear()}{" "}
+						<a
+							href={BLUEWHALE_URL}
+							target="_blank"
+							rel={externalRel(BLUEWHALE_URL)}
+							className="hover:text-zinc-950 hover:underline"
+						>
+							Blue Whale Software, LLC
+						</a>
+					</p>
+					<nav aria-label="Legal" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+						{legalLinks.map((link) => (
+							<a key={link.href} href={link.href} className="hover:text-zinc-950">
+								{link.label}
+							</a>
+						))}
+						<button type="button" onClick={openCookiePreferences} className="hover:text-zinc-950">
+							Cookie Preferences
+						</button>
+					</nav>
 				</div>
 			</div>
 			{/* Deliberately oversized and cropped by the page edge. */}
