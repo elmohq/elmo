@@ -21,26 +21,29 @@ pnpm install
 
 ## Configure Environment
 
-Copy the example environment file and fill in your values:
+Create a `.env` file at the repo root. This config runs local mode with no API keys: the `stub` provider returns placeholder answers and judgements, which is enough for UI work.
 
 ```bash
-cp .env.example .env
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/elmo
+DEPLOYMENT_MODE=local
+BETTER_AUTH_SECRET=any-random-string
+# Generate with: openssl rand -base64 32
+ELMO_ENCRYPTION_KEY=
+APP_URL=http://localhost:3000
+VITE_APP_URL=http://localhost:3000
+DISABLE_TELEMETRY=1
+SCRAPE_TARGETS=stub:stub
+ONBOARDING_LLM_TARGET=stub:stub
+TYPESAFE_API_KEY=stub
 ```
 
-At minimum, you need:
+Then copy it into the web app, since Vite reads `.env` from `apps/web` and the worker loads that copy too:
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `BETTER_AUTH_SECRET` | Any random string for session encryption |
-| `ELMO_ENCRYPTION_KEY` | Key for provider credentials stored in the database — `openssl rand -base64 32` |
+```bash
+cp .env apps/web/.env
+```
 
-Add AI provider API keys if you want to test visibility tracking:
-
-| Variable | Description |
-|----------|-------------|
-| `OPENAI_API_KEY` | For ChatGPT tracking |
-| `ANTHROPIC_API_KEY` | For Claude tracking |
+To track real answer engines, replace the stub values: point `SCRAPE_TARGETS` at the engines you want and add each provider's keys, add one direct LLM key (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, or `MISTRAL_API_KEY`) for onboarding and the Opportunities report, and set `TYPESAFE_API_KEY` for the [mention judge](#mention-judge). [Configuration](/docs/developer-guide/configuration#environment-variables) lists every variable.
 
 ## Database Setup
 
