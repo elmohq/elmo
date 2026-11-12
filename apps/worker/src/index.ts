@@ -203,7 +203,10 @@ main().catch(async (error) => {
 // Exits rather than stopping pg-boss gracefully, which needs the database this
 // pool can no longer reach. Jobs it held are retried once they expire.
 async function exitOnUnhealthyDatabase(pool: string, lastError: unknown): Promise<void> {
-	console.error(`The ${pool} database pool has been unreachable for too long, exiting so the worker restarts:`, lastError);
+	console.error(
+		`The ${pool} database pool has been unreachable for too long, exiting so the worker restarts:`,
+		lastError,
+	);
 	Sentry.withScope((scope) => {
 		scope.setTag("source", "db-watchdog");
 		scope.setTag("pool", pool);
