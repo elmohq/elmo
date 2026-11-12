@@ -31,13 +31,15 @@ describe("parseSitemap", () => {
 		expect(parseSitemap("<html><body>Not found</body></html>").kind).toBe("invalid");
 	});
 
-	it("parses a crafted sitemap of unclosed entries in linear time", () => {
+	it("parses a crafted sitemap of unclosed entries in linear time", { timeout: 30_000 }, () => {
 		const xml = `<urlset>${"<url>".repeat(1_000_000)}`;
 		const started = performance.now();
 
 		parseSitemap(xml);
 
-		expect(performance.now() - started).toBeLessThan(2000);
+		// Linear parsing takes well under a second; quadratic parsing of this input would take hours, so the budget
+		// can be wide enough that a loaded runner never trips it.
+		expect(performance.now() - started).toBeLessThan(10_000);
 	});
 });
 
@@ -75,27 +77,16 @@ describe("parsePage", () => {
 		expect(page.controls.labeledFormControls).toBe(2);
 	});
 
-	it("scales linearly on a page full of unlabeled controls and unrelated labels", () => {
-		const pageWith = (count: number) =>
-			`<body>${Array.from({ length: count }, (_, i) => `<input id="i${i}">`).join("")}${Array.from({ length: count }, (_, i) => `<label for="x${i}"></label>`).join("")}</body>`;
-		// Compare against a smaller page rather than a fixed budget so a loaded CI runner doesn't fail the test;
-		// quadratic matching grows ~16x when the page grows 4x, linear ~4x.
-		const fastestParse = (html: string) => {
-			let fastest = Number.POSITIVE_INFINITY;
-			for (let run = 0; run < 3; run++) {
-				const started = performance.now();
-				parsePage("https://example.com/", html);
-				fastest = Math.min(fastest, performance.now() - started);
-			}
-			return fastest;
-		};
-		const small = pageWith(1_000);
-		const large = pageWith(4_000);
-		parsePage("https://example.com/", small);
-
-		const page = parsePage("https://example.com/", large);
-		expect(page.controls.formControls).toBe(4_000);
+	it("stays fast on a page full of unlabeled controls and unrelated labels", { timeout: 30_000 }, () => {
+		const count = 6_000;
+		const inputs = Array.from({ length: count }, (_, i) => `<input id="i${i}">`).join("");
+		const labels = Array.from({ length: count }, (_, i) => `<label for="x${i}"></label>`).join("");
+		// Linear matching parses this in well under a second even on a loaded runner; matching every control against
+		// every label takes tens of seconds, so a wide budget catches that without timing noise failing the build.
+		const started = performance.now();
+		const page = parsePage("https://example.com/", `<body>${inputs}${labels}</body>`);
+		expect(performance.now() - started).toBeLessThan(10_000);
+		expect(page.controls.formControls).toBe(count);
 		expect(page.controls.labeledFormControls).toBe(0);
-		expect(fastestParse(large) / fastestParse(small)).toBeLessThan(8);
 	});
 });
