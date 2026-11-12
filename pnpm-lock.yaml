@@ -388,8 +388,8 @@ importers:
         specifier: 'catalog:'
         version: 0.18.15
       marked:
-        specifier: ^14.1.4
-        version: 14.1.4
+        specifier: ^18.1.3
+        version: 18.1.3
       olostep:
         specifier: 'catalog:'
         version: 1.2.2
@@ -7949,9 +7949,9 @@ packages:
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
 
-  marked@14.1.4:
-    resolution: {integrity: sha512-vkVZ8ONmUdPnjCKc5uTRvmkRbx4EAi2OkTOXmfTDhZz3OFqMNBM1oTTWwTr4HY4uAEojhzPf+Fy8F1DWa3Sndg==}
-    engines: {node: '>= 18'}
+  marked@18.1.3:
+    resolution: {integrity: sha512-9ChMH8EVVgjgID49nsL6IWxWk5c6GtAsq/xw7U1ggkjkU5AGuv68oLTVlFRtvcUYZtpbNyjyvGo3YDu0fGapiw==}
+    engines: {node: '>= 20'}
     hasBin: true
 
   math-intrinsics@1.1.0:
@@ -17704,7 +17704,7 @@ snapshots:
 
   markdown-table@3.0.4: {}
 
-  marked@14.1.4: {}
+  marked@18.1.3: {}
 
   math-intrinsics@1.1.0: {}
 
