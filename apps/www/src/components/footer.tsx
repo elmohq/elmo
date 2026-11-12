@@ -121,9 +121,9 @@ export function Footer() {
 					))}
 				</div>
 
-				<div className="flex flex-col gap-4 border-t border-zinc-200/80 py-6 text-xs text-zinc-500 md:flex-row md:items-center md:justify-between">
+				<div className="flex flex-col gap-4 border-t border-zinc-200/80 py-6 text-xs text-zinc-500">
 					<div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
-						<p className="font-mono text-[11px]">
+						<p className="whitespace-nowrap font-mono text-[11px]">
 							&copy; {new Date().getFullYear()}{" "}
 							<a
 								href={BLUEWHALE_URL}
@@ -145,12 +145,12 @@ export function Footer() {
 							</button>
 						</nav>
 					</div>
-					<div className="flex items-center gap-5">
+					<div className="flex flex-wrap items-center gap-x-5 gap-y-4">
 						<a
 							href="https://github.com/elmohq/elmo"
 							target="_blank"
 							rel="noopener noreferrer"
-							className="group inline-flex h-7 items-center gap-1.5 rounded-full bg-white pl-1 pr-2.5 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
+							className="group inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full bg-white pl-1 pr-2.5 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
 						>
 							<span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-zinc-100 px-2 font-mono text-[11px] text-zinc-700">
 								<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
