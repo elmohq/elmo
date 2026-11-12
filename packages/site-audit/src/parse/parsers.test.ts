@@ -75,14 +75,27 @@ describe("parsePage", () => {
 		expect(page.controls.labeledFormControls).toBe(2);
 	});
 
-	it("stays fast on a page full of unlabeled controls and unrelated labels", () => {
-		const count = 20_000;
-		const inputs = Array.from({ length: count }, (_, i) => `<input id="i${i}">`).join("");
-		const labels = Array.from({ length: count }, (_, i) => `<label for="x${i}"></label>`).join("");
-		const started = performance.now();
-		const page = parsePage("https://example.com/", `<body>${inputs}${labels}</body>`);
-		expect(page.controls.formControls).toBe(count);
+	it("scales linearly on a page full of unlabeled controls and unrelated labels", () => {
+		const pageWith = (count: number) =>
+			`<body>${Array.from({ length: count }, (_, i) => `<input id="i${i}">`).join("")}${Array.from({ length: count }, (_, i) => `<label for="x${i}"></label>`).join("")}</body>`;
+		// Compare against a smaller page rather than a fixed budget so a loaded CI runner doesn't fail the test;
+		// quadratic matching grows ~16x when the page grows 4x, linear ~4x.
+		const fastestParse = (html: string) => {
+			let fastest = Number.POSITIVE_INFINITY;
+			for (let run = 0; run < 3; run++) {
+				const started = performance.now();
+				parsePage("https://example.com/", html);
+				fastest = Math.min(fastest, performance.now() - started);
+			}
+			return fastest;
+		};
+		const small = pageWith(1_000);
+		const large = pageWith(4_000);
+		parsePage("https://example.com/", small);
+
+		const page = parsePage("https://example.com/", large);
+		expect(page.controls.formControls).toBe(4_000);
 		expect(page.controls.labeledFormControls).toBe(0);
-		expect(performance.now() - started).toBeLessThan(5000);
+		expect(fastestParse(large) / fastestParse(small)).toBeLessThan(8);
 	});
 });
