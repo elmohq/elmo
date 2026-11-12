@@ -110,8 +110,8 @@ describe("shareOfVoiceTimeSeriesLVCF", () => {
 	it("carries each prompt's last values forward across gap days", () => {
 		const series = shareOfVoiceTimeSeriesLVCF(
 			[
-				{ promptId: "p1", date: "2026-01-01", brandMentions: 2, competitorMentions: 2 },
-				{ promptId: "p1", date: "2026-01-03", brandMentions: 1, competitorMentions: 3 },
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-01", brandMentions: 2, competitorMentions: 2 },
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-03", brandMentions: 1, competitorMentions: 3 },
 			],
 			["2026-01-01", "2026-01-02", "2026-01-03"],
 		);
@@ -122,8 +122,8 @@ describe("shareOfVoiceTimeSeriesLVCF", () => {
 	it("aggregates across prompts and yields null for days with no data", () => {
 		const series = shareOfVoiceTimeSeriesLVCF(
 			[
-				{ promptId: "a", date: "2026-01-02", brandMentions: 1, competitorMentions: 0 },
-				{ promptId: "b", date: "2026-01-02", brandMentions: 0, competitorMentions: 1 },
+				{ promptId: "a", model: "chatgpt", date: "2026-01-02", brandMentions: 1, competitorMentions: 0 },
+				{ promptId: "b", model: "chatgpt", date: "2026-01-02", brandMentions: 0, competitorMentions: 1 },
 			],
 			["2026-01-01", "2026-01-02"],
 		);
@@ -138,15 +138,15 @@ describe("shareOfVoiceLeaderboardLVCF", () => {
 	it("carries each prompt's last standings forward and sums per competitor", () => {
 		const r = shareOfVoiceLeaderboardLVCF(
 			[
-				{ promptId: "p1", date: "2026-01-01", brand: 2 },
-				{ promptId: "p1", date: "2026-01-03", brand: 1 },
-				{ promptId: "p2", date: "2026-01-02", brand: 0 },
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-01", brand: 2 },
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-03", brand: 1 },
+				{ promptId: "p2", model: "chatgpt", date: "2026-01-02", brand: 0 },
 			],
 			[
-				{ promptId: "p1", date: "2026-01-01", competitor: "A", mentions: 1 },
-				{ promptId: "p1", date: "2026-01-01", competitor: "B", mentions: 1 },
-				{ promptId: "p1", date: "2026-01-03", competitor: "A", mentions: 3 },
-				{ promptId: "p2", date: "2026-01-02", competitor: "A", mentions: 2 },
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-01", competitor: "A", mentions: 1 },
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-01", competitor: "B", mentions: 1 },
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-03", competitor: "A", mentions: 3 },
+				{ promptId: "p2", model: "chatgpt", date: "2026-01-02", competitor: "A", mentions: 2 },
 			],
 			["2026-01-01", "2026-01-02", "2026-01-03"],
 		);
@@ -159,14 +159,29 @@ describe("shareOfVoiceLeaderboardLVCF", () => {
 		const fromLeaderboard = computeShareOfVoice({ name: "you", mentions: r.brandMentions }, r.competitors).brandShare;
 		const trend = shareOfVoiceTimeSeriesLVCF(
 			[
-				{ promptId: "p1", date: "2026-01-01", brandMentions: 2, competitorMentions: 2 },
-				{ promptId: "p1", date: "2026-01-03", brandMentions: 1, competitorMentions: 3 },
-				{ promptId: "p2", date: "2026-01-02", brandMentions: 0, competitorMentions: 2 },
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-01", brandMentions: 2, competitorMentions: 2 },
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-03", brandMentions: 1, competitorMentions: 3 },
+				{ promptId: "p2", model: "chatgpt", date: "2026-01-02", brandMentions: 0, competitorMentions: 2 },
 			],
 			["2026-01-01", "2026-01-02", "2026-01-03"],
 		);
 		// Both are exact ratios, so this is equality rather than agreement after rounding.
 		expect(fromLeaderboard).toBe(trend[trend.length - 1].share);
+	});
+
+	it("keeps each model's latest answer when a prompt's models answer on different days", () => {
+		const r = shareOfVoiceLeaderboardLVCF(
+			[
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-01", brand: 1 },
+				{ promptId: "p1", model: "gemini", date: "2026-01-02", brand: 1 },
+			],
+			[
+				{ promptId: "p1", model: "chatgpt", date: "2026-01-01", competitor: "A", mentions: 1 },
+				{ promptId: "p1", model: "gemini", date: "2026-01-02", competitor: "A", mentions: 1 },
+			],
+			["2026-01-01", "2026-01-02"],
+		);
+		expect(r).toEqual({ brandMentions: 2, brandPrompts: 1, competitors: [{ name: "A", mentions: 2, prompts: 1 }] });
 	});
 
 	it("returns empty for an empty date range", () => {
@@ -184,15 +199,15 @@ describe("share-of-voice percentage consistency across computation methods", () 
 
 		// Trend (per-prompt LVCF time series): rounds brand / (brand + competitor).
 		const trend = shareOfVoiceTimeSeriesLVCF(
-			[{ promptId: "p1", date: "2026-01-01", brandMentions: 235, competitorMentions: 767 }],
+			[{ promptId: "p1", model: "chatgpt", date: "2026-01-01", brandMentions: 235, competitorMentions: 767 }],
 			dateRange,
 		);
 		const trendShare = trend[trend.length - 1].share;
 
 		// Leaderboard -> computeShareOfVoice (the source for the table + donut).
 		const standings = shareOfVoiceLeaderboardLVCF(
-			[{ promptId: "p1", date: "2026-01-01", brand: 235 }],
-			[{ promptId: "p1", date: "2026-01-01", competitor: "X", mentions: 767 }],
+			[{ promptId: "p1", model: "chatgpt", date: "2026-01-01", brand: 235 }],
+			[{ promptId: "p1", model: "chatgpt", date: "2026-01-01", competitor: "X", mentions: 767 }],
 			dateRange,
 		);
 		const { entries, brandShare } = computeShareOfVoice(
