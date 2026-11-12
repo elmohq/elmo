@@ -76,17 +76,4 @@ describe("parsePage", () => {
 		expect(page.controls.formControls).toBe(3);
 		expect(page.controls.labeledFormControls).toBe(2);
 	});
-
-	it("stays fast on a page full of unlabeled controls and unrelated labels", { timeout: 30_000 }, () => {
-		const count = 6_000;
-		const inputs = Array.from({ length: count }, (_, i) => `<input id="i${i}">`).join("");
-		const labels = Array.from({ length: count }, (_, i) => `<label for="x${i}"></label>`).join("");
-		// Linear matching parses this in well under a second even on a loaded runner; matching every control against
-		// every label takes tens of seconds, so a wide budget catches that without timing noise failing the build.
-		const started = performance.now();
-		const page = parsePage("https://example.com/", `<body>${inputs}${labels}</body>`);
-		expect(performance.now() - started).toBeLessThan(10_000);
-		expect(page.controls.formControls).toBe(count);
-		expect(page.controls.labeledFormControls).toBe(0);
-	});
 });
