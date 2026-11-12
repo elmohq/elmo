@@ -1,5 +1,13 @@
 # e2e
 
+## 0.7.9
+
+### Patch Changes
+
+- Updated dependencies [ed4432f]
+- Updated dependencies [ed4432f]
+  - @workspace/lib@0.7.9
+
 ## 0.7.8
 
 ### Patch Changes

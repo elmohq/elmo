@@ -1,5 +1,29 @@
 # @workspace/web
 
+## 0.7.9
+
+### Patch Changes
+
+- ed4432f: The Microsoft Copilot app now requires a sign-in, so Elmo no longer scrapes it and tracks Bing AI Mode, the AI answer Bing still shows signed-out visitors, in its place. Brands that picked Copilot now track Bing AI Mode, which starts its own history. Past Copilot runs are kept and still count under "All models", but Copilot is no longer an option in the model filter. For self-hosted users, every `copilot` scrape target is skipped after upgrading, so replace it in `SCRAPE_TARGETS` with `bing-ai-mode:cloro:online` or `bing-ai-mode:searchapi:online` to keep collecting. The LLMs settings page lists any skipped scrape target with its replacement until you do.
+- 880f913: Elmo Cloud's premium Grok tracking moved from Grok 4.5 at default reasoning effort to Grok 4.7 at minimal reasoning effort. On self-hosted deployments, Grok targets through OpenRouter now use minimal reasoning effort, which reduces their cost per run; the Grok version stays whatever your `SCRAPE_TARGETS` pins.
+- a4d8390: Fixed the MCP analytics tools reading a `start` or `end` without an offset in the server's time zone; they now reject it, as the API does.
+- 7de432f: Added Meta AI (Muse Spark) as a premium model for Elmo Cloud. Self-hosted users can track it by adding `meta:openrouter:meta/muse-spark-1.3:online` to `SCRAPE_TARGETS`.
+- a9aa769: With OpenRouter, onboarding and opportunities research now return structured results more reliably.
+- a9aa769: Web search through OpenRouter now uses OpenRouter's web search tool in place of the deprecated `:online` alias, which also saves money on Perplexity runs.
+- ed4432f: Elmo Cloud now offers Perplexity Sonar as a premium model.
+- 7650f38: Fixed a spurious "Invalid API key" error logged for MCP requests signed in with OAuth.
+- 2590faf: Additional domains in brand settings and onboarding now skip domains your website or another listed domain already covers, and accept pasted lists.
+- ed4432f: Perplexity now requires a sign-in, so no scraping provider can reach it and Elmo no longer scrapes it. On Elmo Cloud, Perplexity is no longer a scraped engine: brands that picked it have an open slot to fill under Settings → LLMs, and Perplexity is tracked through Sonar as a premium model instead. For self-hosted users, every scraped `perplexity` target is skipped after upgrading, so replace it in `SCRAPE_TARGETS` with `perplexity:openrouter:perplexity/sonar:online` or `perplexity:dataforseo:online` to keep collecting. The LLMs settings page lists any skipped scrape target with its replacement until you do. Sonar API runs cost 2-5x what a scrape did, and Sonar Pro and Sonar Reasoning Pro cost more still. Past Perplexity runs are kept.
+- 8d854f3: Fixed a bug in `/api/v1/prompts/{promptId}/runs` and the `list_runs` MCP tool, where `createdAt` values were Postgres-formatted strings instead of valid RFC 3339 timestamps.
+- Updated dependencies [ed4432f]
+- Updated dependencies [ed4432f]
+  - @workspace/lib@0.7.9
+  - @workspace/deployment@0.7.9
+  - @workspace/api-spec@0.7.9
+  - @workspace/config@0.7.9
+  - @workspace/og@0.7.9
+  - @workspace/ui@0.7.9
+
 ## 0.7.8
 
 ### Patch Changes
