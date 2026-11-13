@@ -135,8 +135,6 @@ test.describe("MCP", () => {
   });
 
   test("the endpoint refuses to open a stream it would never write to", async ({ request }) => {
-    // A 200 with an empty stream looks to a client like one that dropped, and it
-    // reconnects on a timer for as long as the session lives.
     for (const token of [undefined, API_KEYS.orgFull.token]) {
       const response = await request.get(MCP_PATH, {
         headers: {

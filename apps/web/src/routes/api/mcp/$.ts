@@ -24,8 +24,7 @@ function unauthorized(message: string): Response {
 }
 
 const NOT_FOUND = -32601;
-/** Implementation-defined, per JSON-RPC's reserved range: no code means "the
- * transport declines this HTTP method". */
+/** JSON-RPC defines no code for a refused HTTP method, so this is from its implementation-defined range. */
 const SERVER_ERROR = -32000;
 
 async function handleMcp({ request }: { request: Request }): Promise<Response> {
@@ -59,12 +58,9 @@ function dispatch({
 }
 
 /**
- * The transport is stateless, so there is never a server-initiated message to
- * deliver on the standalone stream a GET would open. 405 is the answer the
- * protocol defines for that; handing back an empty stream instead reads to a
- * client as a stream that dropped, and it reconnects forever.
- *
- * Answered before auth: there is nothing here to authorize either way.
+ * The transport is stateless and never has a message to push, and a client reads the
+ * empty stream a GET would open as one that dropped and reconnects forever. Answered
+ * before auth, so a client that loops anyway costs no lookup.
  */
 function methodNotAllowed(): Response {
 	return Response.json(
