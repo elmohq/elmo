@@ -7,23 +7,18 @@ import { Fragment, useState } from "react";
 import { formatUrlForDisplay } from "@/components/citations/shared";
 import { SiteIcon } from "@/components/site-icon";
 import { type CitationFilters, useCitationChannels } from "@/hooks/use-citations";
-import type { ChannelMix } from "@/lib/citation-channels";
+import { type ChannelMix, OWNED_CHANNEL } from "@/lib/citation-channels";
 
 type Channel = ChannelMix["channels"][number];
+type Subject = ChannelMix["subjects"][number];
 
 const HEAT_RGB = "37, 99, 235";
+/** Below this many citations a channel's rates are too noisy to shade at full strength. */
+const FULL_SHADE_CITATIONS = 20;
 
-const MIN_LEADER_CITATIONS = 5;
-const MIN_LEADER_SHARE = 0.02;
-
-/**
- * Shaded against the row's leader, so each row reads as who owns that channel.
- * The leader has to be sizeable next to the table's largest cell to earn the
- * full shade; otherwise one stray citation would look like owning a channel.
- */
-function heatStyle(citations: number, rowMax: number, tableMax: number) {
-	const leader = Math.max(rowMax, MIN_LEADER_CITATIONS, tableMax * MIN_LEADER_SHARE);
-	return { backgroundColor: `rgba(${HEAT_RGB}, ${(0.08 + 0.42 * (citations / leader)).toFixed(2)})` };
+function heatStyle(rate: number, channelCitations: number) {
+	const confidence = Math.min(1, channelCitations / FULL_SHADE_CITATIONS);
+	return { backgroundColor: `rgba(${HEAT_RGB}, ${(0.5 * rate * confidence).toFixed(2)})` };
 }
 
 const formatShare = (count: number, total: number) => {
@@ -32,18 +27,11 @@ const formatShare = (count: number, total: number) => {
 	return share > 0 && share < 1 ? "<1%" : `${Math.round(share)}%`;
 };
 
+const subjectLabel = (subject: Subject) => (subject.kind === "brand" ? "You" : subject.name);
+
 const ZERO = <span className="text-muted-foreground/60">0</span>;
 
-function ChannelPageRows({ channel, subjects }: { channel: Channel; subjects: ChannelMix["subjects"] }) {
-	if (channel.topPages.length === 0) {
-		return (
-			<tr>
-				<td colSpan={subjects.length + 2} className="py-2 pl-5 text-xs text-muted-foreground">
-					No cited pages here name a tracked company.
-				</td>
-			</tr>
-		);
-	}
+function ChannelPageRows({ channel, subjects }: { channel: Channel; subjects: Subject[] }) {
 	return channel.topPages.map((page) => (
 		<tr key={page.url} className="text-xs">
 			<td className="max-w-0 py-1 pr-3 pl-5">
@@ -61,14 +49,10 @@ function ChannelPageRows({ channel, subjects }: { channel: Channel; subjects: Ch
 				<span className="ml-1.5 inline-block w-9" />
 			</td>
 			{subjects.map((subject) => {
-				const named = page.subjectIds.includes(subject.id);
+				const count = page.bySubject[subject.id] ?? 0;
 				return (
-					<td
-						key={subject.id}
-						className="rounded px-2 py-1 text-right tabular-nums"
-						style={named ? { backgroundColor: `rgba(${HEAT_RGB}, 0.08)` } : undefined}
-					>
-						{named ? page.count.toLocaleString() : ZERO}
+					<td key={subject.id} className="px-2 py-1 text-right text-muted-foreground tabular-nums">
+						{count > 0 ? count.toLocaleString() : ZERO}
 					</td>
 				);
 			})}
@@ -76,32 +60,23 @@ function ChannelPageRows({ channel, subjects }: { channel: Channel; subjects: Ch
 	));
 }
 
-function SubjectCell({
-	subject,
-	channel,
-	rowMax,
-	tableMax,
-}: {
-	subject: ChannelMix["subjects"][number];
-	channel: Channel;
-	rowMax: number;
-	tableMax: number;
-}) {
-	const cell = channel.bySubject[subject.id];
-	const citations = cell?.citations ?? 0;
-	const pages = cell?.pages ?? 0;
-	if (citations === 0) {
-		return <td className="rounded px-2 py-1.5 text-right tabular-nums">{ZERO}</td>;
-	}
+function RateCell({ subject, channel }: { subject: Subject; channel: Channel }) {
+	const citations = channel.bySubject[subject.id] ?? 0;
+	if (citations === 0) return <td className="rounded px-2 py-1.5 text-right tabular-nums">{ZERO}</td>;
+	const counts = `${citations.toLocaleString()} of ${channel.citations.toLocaleString()}`;
 	return (
-		<td className="rounded px-2 py-1.5 text-right tabular-nums" style={heatStyle(citations, rowMax, tableMax)}>
+		<td
+			className="rounded px-2 py-1.5 text-right tabular-nums"
+			style={heatStyle(citations / channel.citations, channel.citations)}
+		>
 			<Tooltip>
-				<TooltipTrigger render={<span className="cursor-default" />}>{citations.toLocaleString()}</TooltipTrigger>
-				<TooltipContent className="text-xs font-normal">
-					{subject.kind === "brand" ? "You" : subject.name} · {channel.label}: {citations.toLocaleString()}{" "}
-					{citations === 1 ? "citation" : "citations"}
-					{pages > 0 && ` across ${pages.toLocaleString()} ${pages === 1 ? "page" : "pages"}`} (
-					{formatShare(citations, channel.citations)} of the channel)
+				<TooltipTrigger render={<span className="cursor-default" />}>
+					{formatShare(citations, channel.citations)}
+				</TooltipTrigger>
+				<TooltipContent className="max-w-xs text-xs font-normal">
+					{channel.key === OWNED_CHANNEL
+						? `${counts} Own Website citations point to ${subject.kind === "brand" ? "your" : `${subject.name}'s`} domains`
+						: `${counts} ${channel.label} citations came from answers that mention ${subject.kind === "brand" ? "you" : subject.name}`}
 				</TooltipContent>
 			</Tooltip>
 		</td>
@@ -139,11 +114,7 @@ export function RemoteChannelMixCard({ source }: { source?: { brandId: string; f
 
 function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 	const [expanded, setExpanded] = useState<string | null>(null);
-	const { subjects, channels, totalCitations } = channelMix;
-	const tableMax = Math.max(
-		0,
-		...channels.flatMap((channel) => Object.values(channel.bySubject).map((cell) => cell.citations)),
-	);
+	const { subjects, channels, overall, totalCitations } = channelMix;
 
 	return (
 		<Card>
@@ -153,15 +124,15 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 					<Tooltip>
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Citations on a company&apos;s own domains count toward Own Website. Everywhere else, a cited page counts
-							for a company when its title or URL names it, so a comparison page can count for several. Each row is
-							shaded against its leader, and rows where no company has many citations stay faint. Use the model filter
-							to see one AI ecosystem at a time.
+							Each cell is the share of a channel&apos;s citations that came from answers mentioning that company.
+							Compare a row with All Channels to see where a company shows up more or less than usual. Own Website is
+							the share of citations pointing to each company&apos;s own domains. Use the model filter to see one AI
+							ecosystem at a time.
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					The 10 channels AI models cite most, and where you and your competitors show up in each
+					The 10 channels AI models cite most, and how often answers citing each one mention you and your competitors
 				</CardDescription>
 			</CardHeader>
 			<Separator />
@@ -177,8 +148,8 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 										<Tooltip>
 											<TooltipTrigger render={<IconInfoCircle className="h-3 w-3 cursor-help" />} />
 											<TooltipContent className="max-w-xs text-xs font-normal">
-												Every citation to a source in this channel, whether or not it involves a tracked company, and
-												its share of all citations.
+												Every citation to a source in this channel, whether or not the answer mentions a tracked
+												company, and its share of all citations.
 											</TooltipContent>
 										</Tooltip>
 									</span>
@@ -187,16 +158,27 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 									<th key={subject.id} className="min-w-24 px-2 pb-2 font-medium">
 										<span className="flex items-center justify-end gap-1.5">
 											<SiteIcon domain={subject.domain} size="xs" />
-											<span className="max-w-28 truncate">{subject.kind === "brand" ? "You" : subject.name}</span>
+											<span className="max-w-28 truncate">{subjectLabel(subject)}</span>
 										</span>
 									</th>
 								))}
 							</tr>
 						</thead>
 						<tbody>
+							<tr className="text-muted-foreground">
+								<td className="py-1.5 pr-3 pl-5 font-medium whitespace-nowrap">All Channels</td>
+								<td className="py-1.5 pr-3 text-right whitespace-nowrap tabular-nums">
+									{totalCitations.toLocaleString()}
+									<span className="ml-1.5 inline-block w-9" />
+								</td>
+								{subjects.map((subject) => (
+									<td key={subject.id} className="px-2 py-1.5 text-right tabular-nums">
+										{formatShare(overall[subject.id] ?? 0, totalCitations)}
+									</td>
+								))}
+							</tr>
 							{channels.map((channel) => {
 								const isExpanded = expanded === channel.key;
-								const rowMax = Math.max(0, ...subjects.map((s) => channel.bySubject[s.id]?.citations ?? 0));
 								return (
 									<Fragment key={channel.key}>
 										<tr>
@@ -220,13 +202,7 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 												</span>
 											</td>
 											{subjects.map((subject) => (
-												<SubjectCell
-													key={subject.id}
-													subject={subject}
-													channel={channel}
-													rowMax={rowMax}
-													tableMax={tableMax}
-												/>
+												<RateCell key={subject.id} subject={subject} channel={channel} />
 											))}
 										</tr>
 										{isExpanded && <ChannelPageRows channel={channel} subjects={subjects} />}

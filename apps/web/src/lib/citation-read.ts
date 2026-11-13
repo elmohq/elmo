@@ -6,7 +6,7 @@ import {
 import { GOOGLE_STATIC_CATEGORY, type StaticCategory } from "@workspace/lib/citations/page-classification";
 import { type SQL, sql } from "drizzle-orm";
 import { type AnalyticsScope, queryPg, scopeFilter } from "@/lib/analytics-sql";
-import type { ChannelDomainRow, ChannelPageRow } from "@/lib/citation-channels";
+import type { ChannelRows } from "@/lib/citation-channels";
 import type { CitationFlowRow } from "@/lib/citation-flow";
 
 export type CitationOwner = "brand" | "competitor";
@@ -403,54 +403,89 @@ export async function getCitationDomainPage(
 	}));
 }
 
-const MAX_CHANNEL_PAGES = 20_000;
+const CHANNEL_PAGES_PER_DOMAIN = 8;
+const MAX_CHANNEL_PAGES = 5000;
+
+/** Every rollup shares this key, which in practice holds one run: one answer and what it cited. */
+const RUN_KEY = sql`brand_id, bucket, prompt_id, model, provider, web_search_enabled`;
 
 /**
- * Per-domain totals for every cited page, Google surfaces aside, plus the pages
- * that could belong to or name a tracked company: those on an owned domain or
- * carrying one of `terms` in their title or URL.
+ * Citations by domain, Google surfaces aside, with how many came from answers
+ * that mention the brand and each competitor, plus each domain's most cited pages.
  */
-export async function getCitationChannelRows(
-	scope: AnalyticsScope,
-	owned: OwnedDomains,
-	terms: string[],
-): Promise<{ domains: ChannelDomainRow[]; pages: ChannelPageRow[] }> {
-	const ownedDomains = [...owned.brandDomains, ...owned.competitorDomains];
-	const patterns = textList(terms.map(containing));
-	const [row] = await queryPg<{ domains: ChannelDomainRow[] | null; pages: ChannelPageRow[] | null }>(sql`
+export async function getCitationChannelRows(scope: AnalyticsScope): Promise<ChannelRows> {
+	const [row] = await queryPg<{ [K in keyof ChannelRows]: ChannelRows[K] | null }>(sql`
 		WITH
 			cited AS (
-				SELECT page_id, sum(citations)::int AS count
-				FROM rollup_citation_urls
-				WHERE ${rollupScope(scope)}
-				GROUP BY page_id
+				SELECT
+					r.bucket, r.prompt_id, r.model, r.provider, r.web_search_enabled, r.page_id, r.citations,
+					coalesce(pr.brand_mentioned_runs, 0) > 0 AS brand_mentioned
+				FROM rollup_citation_urls r
+				LEFT JOIN rollup_prompt_runs pr USING (${RUN_KEY})
+				WHERE ${rollupScope(scope, "r")}
+			),
+			page_competitors AS (
+				SELECT c.page_id, m.competitor_name, sum(c.citations)::int AS count
+				FROM cited c
+				JOIN rollup_competitor_mentions m ON m.brand_id = ${scope.brandId} AND m.bucket = c.bucket
+					AND m.prompt_id = c.prompt_id AND m.model = c.model AND m.provider = c.provider
+					AND m.web_search_enabled = c.web_search_enabled AND m.runs > 0
+				GROUP BY c.page_id, m.competitor_name
 			),
 			pages AS (
-				SELECT j.url, j.domain, j.title, j.static_category, c.count
-				FROM cited c
-				JOIN rollup_citation_pages j ON j.brand_id = ${scope.brandId} AND j.page_id = c.page_id
+				SELECT t.page_id, j.url, j.domain, j.title, j.static_category, t.count, t.brand_count
+				FROM (
+					SELECT
+						page_id,
+						sum(citations)::int AS count,
+						coalesce(sum(citations) FILTER (WHERE brand_mentioned), 0)::int AS brand_count
+					FROM cited
+					GROUP BY page_id
+				) t
+				JOIN rollup_citation_pages j ON j.brand_id = ${scope.brandId} AND j.page_id = t.page_id
 				WHERE j.static_category <> ${GOOGLE_STATIC_CATEGORY}
+			),
+			top_pages AS (
+				SELECT * FROM (
+					SELECT p.*, row_number() OVER (PARTITION BY domain, static_category ORDER BY count DESC, url) AS rank
+					FROM pages p
+				) ranked
+				WHERE rank <= ${CHANNEL_PAGES_PER_DOMAIN}
+				ORDER BY count DESC, url
+				LIMIT ${MAX_CHANNEL_PAGES}
 			)
 		SELECT
 			(
 				SELECT json_agg(d) FROM (
-					SELECT domain, static_category, sum(count)::int AS count FROM pages GROUP BY domain, static_category
+					SELECT domain, static_category, sum(count)::int AS count, sum(brand_count)::int AS brand_count
+					FROM pages
+					GROUP BY domain, static_category
 				) d
 			) AS domains,
 			(
-				SELECT json_agg(p) FROM (
-					SELECT url, domain, title, static_category, count
-					FROM pages
-					WHERE lower(title) LIKE ANY(${patterns})
-						OR lower(url) LIKE ANY(${patterns})
-						OR domain = ANY(${textList(ownedDomains)})
-						OR domain LIKE ANY(${textList(ownedDomains.map((domain) => `%.${escapeLike(domain)}`))})
-					ORDER BY count DESC, url
-					LIMIT ${MAX_CHANNEL_PAGES}
-				) p
+				SELECT json_agg(c) FROM (
+					SELECT p.domain, p.static_category, pc.competitor_name, sum(pc.count)::int AS count
+					FROM page_competitors pc
+					JOIN pages p ON p.page_id = pc.page_id
+					GROUP BY p.domain, p.static_category, pc.competitor_name
+				) c
+			) AS competitors,
+			(
+				SELECT json_agg(t) FROM (
+					SELECT
+						tp.url, tp.domain, tp.title, tp.static_category, tp.count, tp.brand_count,
+						coalesce(pc.competitors, '{}'::json) AS competitors
+					FROM top_pages tp
+					LEFT JOIN (
+						SELECT page_id, json_object_agg(competitor_name, count) AS competitors
+						FROM page_competitors
+						GROUP BY page_id
+					) pc ON pc.page_id = tp.page_id
+					ORDER BY tp.count DESC, tp.url
+				) t
 			) AS pages
 	`);
-	return { domains: row?.domains ?? [], pages: row?.pages ?? [] };
+	return { domains: row?.domains ?? [], competitors: row?.competitors ?? [], pages: row?.pages ?? [] };
 }
 
 export async function getCitationTotals(

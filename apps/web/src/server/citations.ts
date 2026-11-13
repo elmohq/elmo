@@ -25,13 +25,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
-import {
-	BRAND_SUBJECT_ID,
-	buildChannelMix,
-	type ChannelMix,
-	type ChannelSubjectInput,
-	channelSearchTerms,
-} from "@/lib/citation-channels";
+import { buildChannelMix, type ChannelMix } from "@/lib/citation-channels";
 import type { CitationFlowRow } from "@/lib/citation-flow";
 import {
 	type CitationClassTotalRow,
@@ -441,22 +435,14 @@ export const getCitationChannelsFn = createServerFn({ method: "GET" })
 	.validator(citationFiltersSchema)
 	.handler(async ({ data }): Promise<ChannelMix> => {
 		await requireBrandSession(data.brandId);
-		const { scope, owned, brand, brandDomains, competitorsList } = await resolveCitationScope(data);
-		if (scope.promptIds.length === 0) return { totalCitations: 0, subjects: [], channels: [] };
+		const { scope, brand, brandDomains, competitorsList } = await resolveCitationScope(data);
+		if (scope.promptIds.length === 0) return { totalCitations: 0, subjects: [], overall: {}, channels: [] };
 
-		const channelBrand = { name: brand?.name ?? "", aliases: brand?.aliases ?? [], domains: [...brandDomains] };
-		const channelCompetitors: ChannelSubjectInput[] = competitorsList.map((c) => ({
-			id: c.id,
-			name: c.name,
-			aliases: c.aliases,
-			domains: c.domains,
-		}));
-		const rows = await getCitationChannelRows(
-			scope,
-			owned,
-			channelSearchTerms([{ ...channelBrand, id: BRAND_SUBJECT_ID }, ...channelCompetitors]),
-		);
-		return buildChannelMix({ ...rows, brand: channelBrand, competitors: channelCompetitors });
+		return buildChannelMix({
+			rows: await getCitationChannelRows(scope),
+			brand: { name: brand?.name ?? "", domains: [...brandDomains] },
+			competitors: competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains })),
+		});
 	});
 
 const listPageSchema = {

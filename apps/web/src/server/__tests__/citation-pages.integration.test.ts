@@ -191,17 +191,55 @@ describe("citation pages", () => {
 });
 
 describe("citation channel rows", () => {
-	it("totals every cited domain but reads only pages on owned domains or carrying a search term", async () => {
-		const { current } = scopes();
-		const { domains, pages } = await getCitationChannelRows(current, owned, ["halved"]);
-		expect(Object.fromEntries(domains.map((row) => [row.domain, row.count]))).toEqual({
-			"docs.acme.example": 1,
-			"review.example": 3,
-			"notacme.example": 1,
-		});
-		expect(pages.map((row) => row.url).sort()).toEqual([
-			"https://docs.acme.example/a",
-			"https://review.example/halved",
+	let channelBrandId: string;
+	let scope: { brandId: string; timezone: string; promptIds: string[]; from: string; to: string };
+
+	beforeAll(async () => {
+		channelBrandId = await createBrand({ name: "Acme", website: "https://acme.example" });
+		const prompt = await createPrompt(channelBrandId, { value: "best crm" });
+		const answer = async (at: string, mentions: { brand: boolean; competitors: string[] }, urls: string[]) => {
+			const run = await createRun(channelBrandId, prompt, {
+				at,
+				brandMentioned: mentions.brand,
+				competitors: mentions.competitors,
+			});
+			for (const url of urls) await createCitation(run, url);
+		};
+		await answer("2026-03-09T10:00:00Z", { brand: true, competitors: ["Rival"] }, [
+			"https://video.example/a",
+			"https://review.example/b",
+			GOOGLE_SEARCH,
 		]);
+		await answer("2026-03-10T10:00:00Z", { brand: false, competitors: ["Rival"] }, ["https://video.example/a"]);
+		await answer("2026-03-11T10:00:00Z", { brand: false, competitors: [] }, ["https://video.example/c"]);
+		await rebuildRollups(channelBrandId);
+		scope = { brandId: channelBrandId, timezone: "UTC", promptIds: [prompt], from: "2026-03-08", to: "2026-03-14" };
+	});
+
+	afterAll(async () => {
+		await deleteBrand(channelBrandId);
+	});
+
+	it("counts each domain's citations, and those from answers mentioning the brand and each competitor", async () => {
+		const { domains, competitors } = await getCitationChannelRows(scope);
+		expect(Object.fromEntries(domains.map((row) => [row.domain, [row.count, row.brand_count]]))).toEqual({
+			"video.example": [3, 1],
+			"review.example": [1, 1],
+		});
+		expect(Object.fromEntries(competitors.map((row) => [row.domain, [row.competitor_name, row.count]]))).toEqual({
+			"video.example": ["Rival", 2],
+			"review.example": ["Rival", 1],
+		});
+	});
+
+	it("returns each domain's pages, most cited first, with who their answers mention", async () => {
+		const { pages } = await getCitationChannelRows(scope);
+		expect(pages.map(({ url, count, brand_count, competitors }) => ({ url, count, brand_count, competitors }))).toEqual(
+			[
+				{ url: "https://video.example/a", count: 2, brand_count: 1, competitors: { Rival: 2 } },
+				{ url: "https://review.example/b", count: 1, brand_count: 1, competitors: { Rival: 1 } },
+				{ url: "https://video.example/c", count: 1, brand_count: 0, competitors: {} },
+			],
+		);
 	});
 });

@@ -306,30 +306,16 @@ function buildCitationData(): CitationData {
 	};
 }
 
-type ChannelMixFixture = ChannelMix;
-
 const channelRow = (
 	key: string,
 	label: string,
 	citations: number,
 	[brand, c1, c2, c3 = 0, c4 = 0]: number[],
-	topPages: ChannelMixFixture["channels"][number]["topPages"] = [],
-) => ({
-	key,
-	label,
-	citations,
-	bySubject: {
-		brand: { citations: brand, pages: Math.ceil(brand / 6) },
-		c1: { citations: c1, pages: Math.ceil(c1 / 6) },
-		c2: { citations: c2, pages: Math.ceil(c2 / 6) },
-		c3: { citations: c3, pages: Math.ceil(c3 / 6) },
-		c4: { citations: c4, pages: Math.ceil(c4 / 6) },
-	},
-	topPages,
-});
+	topPages: ChannelMix["channels"][number]["topPages"] = [],
+) => ({ key, label, citations, bySubject: { brand, c1, c2, c3, c4 }, topPages });
 
-export const CHANNEL_MIX: ChannelMixFixture = {
-	totalCitations: 2410,
+export const CHANNEL_MIX: ChannelMix = {
+	totalCitations: 2450,
 	subjects: [
 		{ id: "brand", name: "Acme", kind: "brand", domain: "acme.com" },
 		{ id: "c1", name: "HubSpot", kind: "competitor", domain: "hubspot.com" },
@@ -337,34 +323,35 @@ export const CHANNEL_MIX: ChannelMixFixture = {
 		{ id: "c3", name: "Salesforce", kind: "competitor", domain: "salesforce.com" },
 		{ id: "c4", name: "Zoho", kind: "competitor", domain: "zoho.com" },
 	],
+	overall: { brand: 910, c1: 1390, c2: 640, c3: 980, c4: 300 },
 	channels: [
-		channelRow("owned", "Own Website", 1180, [640, 410, 130, 88, 41]),
-		channelRow("reviews", "Review Sites", 420, [96, 148, 71, 60, 12]),
-		channelRow("editorial", "Editorial", 310, [34, 88, 22, 51, 0]),
+		channelRow("owned", "Own Website", 1180, [640, 410, 130]),
+		channelRow("reviews", "Review Sites", 420, [150, 290, 170, 230, 60]),
+		channelRow("editorial", "Editorial", 310, [90, 210, 80, 190, 40]),
 		channelRow(
 			"youtube",
 			"YouTube",
 			190,
-			[0, 12, 104],
+			[20, 70, 150, 40, 10],
 			[
 				{
 					url: "https://www.youtube.com/shorts/a1",
-					title: "Pipedrive in 60 seconds: pipeline setup",
+					title: "Pipeline setup in 60 seconds",
 					count: 41,
-					subjectIds: ["c2"],
+					bySubject: { c2: 38, c1: 9 },
 				},
 				{
 					url: "https://www.youtube.com/watch?v=b2",
-					title: "Pipedrive vs HubSpot for small sales teams",
+					title: "Choosing a CRM for a small sales team",
 					count: 12,
-					subjectIds: ["c1", "c2"],
+					bySubject: { brand: 3, c1: 8, c2: 10, c3: 5 },
 				},
 			],
 		),
-		channelRow("reddit", "Reddit", 140, [18, 37, 9, 14, 6]),
-		channelRow("linkedin", "LinkedIn", 60, [4, 21, 0, 19, 2]),
-		channelRow("other", "Other Websites", 110, [7, 15, 3]),
-		channelRow("reference", "Reference", 40, [1, 0, 0, 0, 1]),
+		channelRow("reddit", "Reddit", 140, [40, 80, 30, 60, 50]),
+		channelRow("linkedin", "LinkedIn", 60, [10, 40, 5, 35, 4]),
+		channelRow("other", "Other Websites", 110, [30, 60, 20, 40, 10]),
+		channelRow("reference", "Reference", 40, [8, 22, 4, 20, 2]),
 	],
 };
 

@@ -13,7 +13,7 @@ interface MockDomain {
 let _citations: unknown;
 let _domains: MockDomain[] = [];
 let _urls: { url: string; domain: string; count: number; category: string; title?: string }[] = [];
-let _channels: unknown = { totalCitations: 0, subjects: [], channels: [] };
+let _channels: unknown = { totalCitations: 0, subjects: [], overall: {}, channels: [] };
 let _flowRows: CitationFlowRow[] = [];
 
 export function setMockCitations(data: unknown) {
