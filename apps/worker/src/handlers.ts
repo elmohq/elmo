@@ -80,6 +80,7 @@ const MAINTENANCE_MONITOR = {
 		maxRuntime: 10,
 		failureIssueThreshold: 2,
 		recoveryThreshold: 1,
+		isolateTrace: true,
 	},
 } satisfies JobTracing["monitor"];
 
@@ -121,7 +122,8 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		{ localConcurrency: 1 },
 		withSentry("schedule-maintenance", scheduleMaintenanceJob, {
 			sampleRate: JOB_TRACE_RATE.cron,
-			monitor: MAINTENANCE_MONITOR,
+			// A development worker comes and goes, and each stop would read as an outage.
+			monitor: process.env.NODE_ENV === "production" ? MAINTENANCE_MONITOR : undefined,
 		}),
 	);
 	console.log("Registered handler: schedule-maintenance");

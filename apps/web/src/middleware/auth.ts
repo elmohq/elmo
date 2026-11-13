@@ -23,7 +23,7 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(asyn
 	const deployment = getDeployment();
 	const headers = getRequestHeaders();
 	const session = await auth.api.getSession({ headers });
-	if (session?.user) Sentry.setUser({ id: session.user.id });
+	Sentry.setUser(session?.user ? { id: session.user.id } : null);
 
 	return next({
 		context: {

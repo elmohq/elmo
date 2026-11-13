@@ -13,6 +13,9 @@ export function nameServerFnTransaction(functionName: string | undefined): void 
 	const activeSpan = Sentry.getActiveSpan();
 	const rootSpan = activeSpan && Sentry.getRootSpan(activeSpan);
 	if (rootSpan && Sentry.spanToJSON(rootSpan).attributes?.["sentry.op"] === "http.server") {
-		Sentry.updateSpanName(rootSpan, `${request.method} /_serverFn/${functionName}`);
+		const name = `${request.method} /_serverFn/${functionName}`;
+		Sentry.updateSpanName(rootSpan, name);
+		rootSpan.setAttribute("sentry.segment.name.source", "route");
+		Sentry.getCurrentScope().setTransactionName(name);
 	}
 }

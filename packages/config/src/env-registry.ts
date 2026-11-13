@@ -362,7 +362,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: "optional",
 		description:
-			"Share of requests and jobs traced in Sentry, from 0 to 1. Unset, the web app traces every request and the worker traces a per-queue share of jobs. The web app reads it at build time for the browser.",
+			"Scales how much is traced in Sentry, from 0 to 1 (default 1). The web app traces this share of requests; the worker multiplies its per-queue rates by it. The web app also reads it at build time for the browser.",
 	},
 	{
 		name: "SENTRY_ORG",
