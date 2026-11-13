@@ -30,6 +30,7 @@ import { Route as DotwellKnownOauthProtectedResourceSplatRouteImport } from './r
 import { Route as AuthedAcceptInvitationInvitationIdRouteImport } from './routes/_authed/accept-invitation/$invitationId'
 import { Route as AuthedAdminIndexRouteImport } from './routes/_authed/admin/index'
 import { Route as AuthedAdminToolsRouteImport } from './routes/_authed/admin/tools'
+import { Route as AuthedAdminUsersRouteImport } from './routes/_authed/admin/users'
 import { Route as AuthedAdminWorkflowsRouteImport } from './routes/_authed/admin/workflows'
 import { Route as AuthedAppIndexRouteImport } from './routes/_authed/app/index'
 import { Route as AuthedAppNewRouteImport } from './routes/_authed/app/new'
@@ -209,6 +210,11 @@ const AuthedAdminIndexRoute = AuthedAdminIndexRouteImport.update({
 const AuthedAdminToolsRoute = AuthedAdminToolsRouteImport.update({
   id: '/tools',
   path: '/tools',
+  getParentRoute: () => AuthedAdminRoute,
+} as any)
+const AuthedAdminUsersRoute = AuthedAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
   getParentRoute: () => AuthedAdminRoute,
 } as any)
 const AuthedAdminWorkflowsRoute = AuthedAdminWorkflowsRouteImport.update({
@@ -621,6 +627,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource/$': typeof DotwellKnownOauthProtectedResourceSplatRoute
   '/accept-invitation/$invitationId': typeof AuthedAcceptInvitationInvitationIdRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
+  '/admin/users': typeof AuthedAdminUsersRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -710,6 +717,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource/$': typeof DotwellKnownOauthProtectedResourceSplatRoute
   '/accept-invitation/$invitationId': typeof AuthedAcceptInvitationInvitationIdRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
+  '/admin/users': typeof AuthedAdminUsersRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -801,6 +809,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource/$': typeof DotwellKnownOauthProtectedResourceSplatRoute
   '/_authed/accept-invitation/$invitationId': typeof AuthedAcceptInvitationInvitationIdRoute
   '/_authed/admin/tools': typeof AuthedAdminToolsRoute
+  '/_authed/admin/users': typeof AuthedAdminUsersRoute
   '/_authed/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/_authed/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -895,6 +904,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource/$'
     | '/accept-invitation/$invitationId'
     | '/admin/tools'
+    | '/admin/users'
     | '/admin/workflows'
     | '/app/new'
     | '/api/auth/$'
@@ -984,6 +994,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource/$'
     | '/accept-invitation/$invitationId'
     | '/admin/tools'
+    | '/admin/users'
     | '/admin/workflows'
     | '/app/new'
     | '/api/auth/$'
@@ -1074,6 +1085,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource/$'
     | '/_authed/accept-invitation/$invitationId'
     | '/_authed/admin/tools'
+    | '/_authed/admin/users'
     | '/_authed/admin/workflows'
     | '/_authed/app/new'
     | '/api/auth/$'
@@ -1336,6 +1348,13 @@ declare module '@tanstack/react-router' {
       path: '/tools'
       fullPath: '/admin/tools'
       preLoaderRoute: typeof AuthedAdminToolsRouteImport
+      parentRoute: typeof AuthedAdminRoute
+    }
+    '/_authed/admin/users': {
+      id: '/_authed/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthedAdminUsersRouteImport
       parentRoute: typeof AuthedAdminRoute
     }
     '/_authed/admin/workflows': {
@@ -1833,12 +1852,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthedAdminRouteChildren {
   AuthedAdminToolsRoute: typeof AuthedAdminToolsRoute
+  AuthedAdminUsersRoute: typeof AuthedAdminUsersRoute
   AuthedAdminWorkflowsRoute: typeof AuthedAdminWorkflowsRoute
   AuthedAdminIndexRoute: typeof AuthedAdminIndexRoute
 }
 
 const AuthedAdminRouteChildren: AuthedAdminRouteChildren = {
   AuthedAdminToolsRoute: AuthedAdminToolsRoute,
+  AuthedAdminUsersRoute: AuthedAdminUsersRoute,
   AuthedAdminWorkflowsRoute: AuthedAdminWorkflowsRoute,
   AuthedAdminIndexRoute: AuthedAdminIndexRoute,
 }

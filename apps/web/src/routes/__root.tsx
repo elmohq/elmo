@@ -14,6 +14,7 @@ import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner
 import { initAdTags, trackAdPageView } from "@workspace/ui/lib/ad-tags";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
 import { useEffect, useState } from "react";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { usesWordmarkFont } from "@/components/logo";
 import MissingEnvPage from "@/components/missing-env-page";
 import { NotFoundPage } from "@/components/not-found-page";
@@ -202,6 +203,7 @@ function RootComponent() {
 			</head>
 			<body className="font-sans antialiased">
 				<Outlet />
+				<ImpersonationBanner />
 				{asksForConsent && consentRequired !== null && (
 					<CookieConsentBanner consentRequired={consentRequired} policyHref={legalUrl("cookies")} />
 				)}
