@@ -30,10 +30,10 @@ export function ImpersonationBanner() {
 	return (
 		<div
 			role="status"
-			className="fixed top-2 left-1/2 z-50 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-3 rounded-full border border-amber-500/40 bg-amber-50 py-1 pr-1 pl-3 text-sm text-amber-900 shadow-lg"
+			className="fixed top-2 right-2 z-50 flex max-w-[calc(100vw-1rem)] items-center sm:right-auto sm:left-1/2 sm:-translate-x-1/2 gap-3 rounded-full border border-amber-500/40 bg-amber-50 py-1 pr-1 pl-3 text-sm text-amber-900 shadow-lg"
 		>
 			<IconUserScan className="size-4 shrink-0" />
-			<span className="truncate">
+			<span className={error ? "truncate" : "hidden truncate sm:inline"}>
 				{error ?? (
 					<>
 						Viewing as <strong className="font-medium">{label}</strong>

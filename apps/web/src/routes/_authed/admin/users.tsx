@@ -34,6 +34,7 @@ function AdminUsers() {
 	const [search, setSearch] = useState("");
 	const [page, setPage] = useState(0);
 	const [target, setTarget] = useState<AdminUser | null>(null);
+	const [confirming, setConfirming] = useState(false);
 	const debouncedSearch = useDebouncedValue(search);
 
 	const { data, error, isPending, isPlaceholderData } = useQuery({
@@ -100,7 +101,10 @@ function AdminUsers() {
 												key={row.id}
 												user={row}
 												isViewer={row.id === viewer?.id}
-												onImpersonate={() => setTarget(row)}
+												onImpersonate={() => {
+													setTarget(row);
+													setConfirming(true);
+												}}
 											/>
 										))}
 									</TableBody>
@@ -112,7 +116,7 @@ function AdminUsers() {
 				</CardContent>
 			</Card>
 
-			<ImpersonateDialog user={target} onClose={() => setTarget(null)} />
+			<ImpersonateDialog user={target} open={confirming} onClose={() => setConfirming(false)} />
 		</div>
 	);
 }
@@ -153,7 +157,7 @@ function UserRow({ user, isViewer, onImpersonate }: { user: AdminUser; isViewer:
 	);
 }
 
-function ImpersonateDialog({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
+function ImpersonateDialog({ user, open, onClose }: { user: AdminUser | null; open: boolean; onClose: () => void }) {
 	const [starting, setStarting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -176,7 +180,7 @@ function ImpersonateDialog({ user, onClose }: { user: AdminUser | null; onClose:
 	};
 
 	return (
-		<Dialog open={user !== null} onOpenChange={(open) => !open && !starting && close()}>
+		<Dialog open={open} onOpenChange={(next) => !next && !starting && close()}>
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Impersonate {user?.name || user?.email}?</DialogTitle>
