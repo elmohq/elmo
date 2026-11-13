@@ -364,6 +364,7 @@ export const CHANNEL_MIX: ChannelMixFixture = {
 		channelRow("reddit", "Reddit", 140, [18, 37, 9, 14, 6]),
 		channelRow("linkedin", "LinkedIn", 60, [4, 21, 0, 19, 2]),
 		channelRow("other", "Other Websites", 110, [7, 15, 3]),
+		channelRow("reference", "Reference", 40, [1, 0, 0, 0, 1]),
 	],
 };
 

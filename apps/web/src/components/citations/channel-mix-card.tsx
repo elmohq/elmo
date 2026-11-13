@@ -13,9 +13,17 @@ type Channel = ChannelMix["channels"][number];
 
 const HEAT_RGB = "37, 99, 235";
 
-/** Shaded against the row's leader, so each row reads as who owns that channel. */
-function heatStyle(citations: number, rowMax: number) {
-	return { backgroundColor: `rgba(${HEAT_RGB}, ${(0.08 + 0.42 * (citations / rowMax)).toFixed(2)})` };
+const MIN_LEADER_CITATIONS = 5;
+const MIN_LEADER_SHARE = 0.02;
+
+/**
+ * Shaded against the row's leader, so each row reads as who owns that channel.
+ * The leader has to be sizeable next to the table's largest cell to earn the
+ * full shade; otherwise one stray citation would look like owning a channel.
+ */
+function heatStyle(citations: number, rowMax: number, tableMax: number) {
+	const leader = Math.max(rowMax, MIN_LEADER_CITATIONS, tableMax * MIN_LEADER_SHARE);
+	return { backgroundColor: `rgba(${HEAT_RGB}, ${(0.08 + 0.42 * (citations / leader)).toFixed(2)})` };
 }
 
 const formatShare = (count: number, total: number) => {
@@ -72,10 +80,12 @@ function SubjectCell({
 	subject,
 	channel,
 	rowMax,
+	tableMax,
 }: {
 	subject: ChannelMix["subjects"][number];
 	channel: Channel;
 	rowMax: number;
+	tableMax: number;
 }) {
 	const cell = channel.bySubject[subject.id];
 	const citations = cell?.citations ?? 0;
@@ -84,7 +94,7 @@ function SubjectCell({
 		return <td className="rounded px-2 py-1.5 text-right tabular-nums">{ZERO}</td>;
 	}
 	return (
-		<td className="rounded px-2 py-1.5 text-right tabular-nums" style={heatStyle(citations, rowMax)}>
+		<td className="rounded px-2 py-1.5 text-right tabular-nums" style={heatStyle(citations, rowMax, tableMax)}>
 			<Tooltip>
 				<TooltipTrigger render={<span className="cursor-default" />}>{citations.toLocaleString()}</TooltipTrigger>
 				<TooltipContent className="text-xs font-normal">
@@ -130,6 +140,10 @@ export function RemoteChannelMixCard({ source }: { source?: { brandId: string; f
 function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 	const [expanded, setExpanded] = useState<string | null>(null);
 	const { subjects, channels, totalCitations } = channelMix;
+	const tableMax = Math.max(
+		0,
+		...channels.flatMap((channel) => Object.values(channel.bySubject).map((cell) => cell.citations)),
+	);
 
 	return (
 		<Card>
@@ -141,7 +155,8 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							Citations on a company&apos;s own domains count toward Own Website. Everywhere else, a cited page counts
 							for a company when its title or URL names it, so a comparison page can count for several. Each row is
-							shaded against its leader. Use the model filter to see one AI ecosystem at a time.
+							shaded against its leader, and rows where no company has many citations stay faint. Use the model filter
+							to see one AI ecosystem at a time.
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
@@ -205,7 +220,13 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 												</span>
 											</td>
 											{subjects.map((subject) => (
-												<SubjectCell key={subject.id} subject={subject} channel={channel} rowMax={rowMax} />
+												<SubjectCell
+													key={subject.id}
+													subject={subject}
+													channel={channel}
+													rowMax={rowMax}
+													tableMax={tableMax}
+												/>
 											))}
 										</tr>
 										{isExpanded && <ChannelPageRows channel={channel} subjects={subjects} />}
