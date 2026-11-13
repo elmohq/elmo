@@ -49,7 +49,6 @@ function AuthedLayout() {
 
 	useEffect(() => {
 		const user = context.session?.user;
-		// An impersonated session is an admin looking around, not the user.
 		if (!user || impersonating || identifiedRef.current === user.id) return;
 		identifiedRef.current = user.id;
 

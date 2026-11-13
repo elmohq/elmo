@@ -1,7 +1,3 @@
-/**
- * /admin/users - Find a user and sign in as them
- */
-
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { authClient } from "@workspace/lib/auth/client";
@@ -176,7 +172,6 @@ function ImpersonateDialog({ user, onClose }: { user: AdminUser | null; onClose:
 			setStarting(false);
 			return;
 		}
-		// A full load, so nothing fetched as the admin survives.
 		window.location.assign("/app");
 	};
 

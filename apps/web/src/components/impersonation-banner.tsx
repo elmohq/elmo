@@ -6,10 +6,6 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { useState } from "react";
 import { viewerQuery } from "@/lib/viewer/queries";
 
-/**
- * Reads the viewer from the query cache rather than route context so it stays
- * on screen for pages that render outside the signed-in layout, such as a 404.
- */
 export function ImpersonationBanner() {
 	const { data: viewer } = useQuery({ ...viewerQuery, enabled: false });
 	const [stopping, setStopping] = useState(false);
@@ -28,7 +24,6 @@ export function ImpersonationBanner() {
 			setStopping(false);
 			return;
 		}
-		// A full load, so nothing fetched as the impersonated user survives.
 		window.location.assign("/admin/users");
 	};
 
