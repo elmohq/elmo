@@ -17,7 +17,7 @@ type Source = {
 };
 
 function mix(sources: Source[]) {
-	const rows: ChannelRows = { domains: [], competitors: [], pages: [] };
+	const rows: ChannelRows = { domains: [], competitors: [] };
 	for (const source of sources) {
 		const row = {
 			domain: new URL(source.url).hostname.replace(/^www\./, ""),
@@ -28,13 +28,6 @@ function mix(sources: Source[]) {
 		for (const [competitor_name, count] of Object.entries(source.mentions ?? {})) {
 			rows.competitors.push({ ...row, competitor_name, count });
 		}
-		rows.pages.push({
-			...row,
-			brand_count: source.brand ?? 0,
-			url: source.url,
-			title: null,
-			competitors: source.mentions ?? {},
-		});
 	}
 	const result = buildChannelMix({ rows, brand, competitors });
 	return { ...result, channel: (key: string) => result.channels.find((c) => c.key === key) };
@@ -72,17 +65,6 @@ describe("channel mix", () => {
 		]);
 		expect(totalCitations).toBe(10);
 		expect(overall).toEqual({ brand: 3, rival: 10 });
-	});
-
-	it("lists a channel's most cited pages with the companies their answers mention", () => {
-		const { channel } = mix([
-			{ url: "https://www.reddit.com/r/sales/1", count: 2, category: "social", brand: 1 },
-			{ url: "https://www.reddit.com/r/sales/2", count: 9, category: "social", mentions: { "Rival Co": 4 } },
-		]);
-		expect(channel("reddit")?.topPages.map(({ url, count, bySubject }) => ({ url, count, bySubject }))).toEqual([
-			{ url: "https://www.reddit.com/r/sales/2", count: 9, bySubject: { rival: 4 } },
-			{ url: "https://www.reddit.com/r/sales/1", count: 2, bySubject: { brand: 1 } },
-		]);
 	});
 
 	it("groups sources outside the named platforms by their source category", () => {

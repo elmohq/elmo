@@ -13,7 +13,6 @@ export const BRAND_SUBJECT_ID = "brand";
 export const OWNED_CHANNEL = "owned";
 const MAX_COMPETITORS = 4;
 const MAX_CHANNELS = 10;
-const MAX_PAGES_PER_CHANNEL = 8;
 
 const PLATFORM_CHANNELS: { key: string; label: string; domains: string[] }[] = [
 	{ key: "youtube", label: "YouTube", domains: ["youtube.com", "youtu.be"] },
@@ -85,7 +84,6 @@ export interface ChannelRows {
 	domains: ChannelDomainRow[];
 	/** Citations from answers that mention the competitor. */
 	competitors: (Omit<ChannelDomainRow, "brand_count"> & { competitor_name: string })[];
-	pages: (ChannelDomainRow & { url: string; title: string | null; competitors: Record<string, number> })[];
 }
 
 /** Citations per subject id. */
@@ -101,7 +99,6 @@ export interface ChannelMix {
 		label: string;
 		citations: number;
 		bySubject: SubjectCounts;
-		topPages: { url: string; title?: string; count: number; bySubject: SubjectCounts }[];
 	}[];
 }
 
@@ -122,27 +119,12 @@ function channelTally() {
 			const key = owner ? OWNED_CHANNEL : channelFor(row.domain, row.static_category);
 			let entry = channels.get(key);
 			if (!entry) {
-				entry = { key, label: CHANNEL_LABELS[key], citations: 0, bySubject: {}, topPages: [] };
+				entry = { key, label: CHANNEL_LABELS[key], citations: 0, bySubject: {} };
 				channels.set(key, entry);
 			}
 			return entry;
 		},
 	};
-}
-
-function pageCredit(
-	page: ChannelRows["pages"][number],
-	owner: string | undefined,
-	idByName: Map<string, string>,
-): SubjectCounts {
-	const bySubject: SubjectCounts = {};
-	if (owner) {
-		add(bySubject, owner, page.count);
-		return bySubject;
-	}
-	add(bySubject, BRAND_SUBJECT_ID, page.brand_count);
-	for (const [name, count] of Object.entries(page.competitors)) add(bySubject, idByName.get(name), count);
-	return bySubject;
 }
 
 export function buildChannelMix(args: {
@@ -175,16 +157,6 @@ export function buildChannelMix(args: {
 		const owner = ownerOf(row.domain);
 		if (!owner) add(tally.of(row, owner).bySubject, id, row.count);
 	}
-	for (const page of args.rows.pages) {
-		const owner = ownerOf(page.domain);
-		tally.of(page, owner).topPages.push({
-			url: page.url,
-			title: page.title ?? undefined,
-			count: page.count,
-			bySubject: pageCredit(page, owner, idByName),
-		});
-	}
-
 	return shapeChannelMix(subjects, [...tally.channels.values()], overall, totalCitations);
 }
 
@@ -214,13 +186,6 @@ function shapeChannelMix(
 			.filter((entry) => entry.citations > 0)
 			.sort((a, b) => b.citations - a.citations || a.label.localeCompare(b.label))
 			.slice(0, MAX_CHANNELS)
-			.map((entry) => ({
-				...entry,
-				bySubject: only(entry.bySubject, shown),
-				topPages: entry.topPages
-					.sort((a, b) => b.count - a.count || a.url.localeCompare(b.url))
-					.slice(0, MAX_PAGES_PER_CHANNEL)
-					.map((page) => ({ ...page, bySubject: only(page.bySubject, shown) })),
-			})),
+			.map((entry) => ({ ...entry, bySubject: only(entry.bySubject, shown) })),
 	};
 }

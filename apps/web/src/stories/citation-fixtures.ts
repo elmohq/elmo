@@ -306,13 +306,12 @@ function buildCitationData(): CitationData {
 	};
 }
 
-const channelRow = (
-	key: string,
-	label: string,
-	citations: number,
-	[brand, c1, c2, c3 = 0, c4 = 0]: number[],
-	topPages: ChannelMix["channels"][number]["topPages"] = [],
-) => ({ key, label, citations, bySubject: { brand, c1, c2, c3, c4 }, topPages });
+const channelRow = (key: string, label: string, citations: number, [brand, c1, c2, c3 = 0, c4 = 0]: number[]) => ({
+	key,
+	label,
+	citations,
+	bySubject: { brand, c1, c2, c3, c4 },
+});
 
 export const CHANNEL_MIX: ChannelMix = {
 	totalCitations: 2450,
@@ -328,26 +327,7 @@ export const CHANNEL_MIX: ChannelMix = {
 		channelRow("owned", "Own Website", 1180, [640, 410, 130]),
 		channelRow("reviews", "Review Sites", 420, [150, 290, 170, 230, 60]),
 		channelRow("editorial", "Editorial", 310, [90, 210, 80, 190, 40]),
-		channelRow(
-			"youtube",
-			"YouTube",
-			190,
-			[20, 70, 150, 40, 10],
-			[
-				{
-					url: "https://www.youtube.com/shorts/a1",
-					title: "Pipeline setup in 60 seconds",
-					count: 41,
-					bySubject: { c2: 38, c1: 9 },
-				},
-				{
-					url: "https://www.youtube.com/watch?v=b2",
-					title: "Choosing a CRM for a small sales team",
-					count: 12,
-					bySubject: { brand: 3, c1: 8, c2: 10, c3: 5 },
-				},
-			],
-		),
+		channelRow("youtube", "YouTube", 190, [20, 70, 150, 40, 10]),
 		channelRow("reddit", "Reddit", 140, [40, 80, 30, 60, 50]),
 		channelRow("linkedin", "LinkedIn", 60, [10, 40, 5, 35, 4]),
 		channelRow("other", "Other Websites", 110, [30, 60, 20, 40, 10]),

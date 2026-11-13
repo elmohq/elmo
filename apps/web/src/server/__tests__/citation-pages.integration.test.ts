@@ -231,15 +231,4 @@ describe("citation channel rows", () => {
 			"review.example": ["Rival", 1],
 		});
 	});
-
-	it("returns each domain's pages, most cited first, with who their answers mention", async () => {
-		const { pages } = await getCitationChannelRows(scope);
-		expect(pages.map(({ url, count, brand_count, competitors }) => ({ url, count, brand_count, competitors }))).toEqual(
-			[
-				{ url: "https://video.example/a", count: 2, brand_count: 1, competitors: { Rival: 2 } },
-				{ url: "https://review.example/b", count: 1, brand_count: 1, competitors: { Rival: 1 } },
-				{ url: "https://video.example/c", count: 1, brand_count: 0, competitors: {} },
-			],
-		);
-	});
 });

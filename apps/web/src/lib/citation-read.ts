@@ -403,15 +403,12 @@ export async function getCitationDomainPage(
 	}));
 }
 
-const CHANNEL_PAGES_PER_DOMAIN = 8;
-const MAX_CHANNEL_PAGES = 5000;
-
 /** Every rollup shares this key, which in practice holds one run: one answer and what it cited. */
 const RUN_KEY = sql`brand_id, bucket, prompt_id, model, provider, web_search_enabled`;
 
 /**
  * Citations by domain, Google surfaces aside, with how many came from answers
- * that mention the brand and each competitor, plus each domain's most cited pages.
+ * that mention the brand and each competitor.
  */
 export async function getCitationChannelRows(scope: AnalyticsScope): Promise<ChannelRows> {
 	const [row] = await queryPg<{ [K in keyof ChannelRows]: ChannelRows[K] | null }>(sql`
@@ -444,15 +441,6 @@ export async function getCitationChannelRows(scope: AnalyticsScope): Promise<Cha
 				) t
 				JOIN rollup_citation_pages j ON j.brand_id = ${scope.brandId} AND j.page_id = t.page_id
 				WHERE j.static_category <> ${GOOGLE_STATIC_CATEGORY}
-			),
-			top_pages AS (
-				SELECT * FROM (
-					SELECT p.*, row_number() OVER (PARTITION BY domain, static_category ORDER BY count DESC, url) AS rank
-					FROM pages p
-				) ranked
-				WHERE rank <= ${CHANNEL_PAGES_PER_DOMAIN}
-				ORDER BY count DESC, url
-				LIMIT ${MAX_CHANNEL_PAGES}
 			)
 		SELECT
 			(
@@ -469,23 +457,9 @@ export async function getCitationChannelRows(scope: AnalyticsScope): Promise<Cha
 					JOIN pages p ON p.page_id = pc.page_id
 					GROUP BY p.domain, p.static_category, pc.competitor_name
 				) c
-			) AS competitors,
-			(
-				SELECT json_agg(t) FROM (
-					SELECT
-						tp.url, tp.domain, tp.title, tp.static_category, tp.count, tp.brand_count,
-						coalesce(pc.competitors, '{}'::json) AS competitors
-					FROM top_pages tp
-					LEFT JOIN (
-						SELECT page_id, json_object_agg(competitor_name, count) AS competitors
-						FROM page_competitors
-						GROUP BY page_id
-					) pc ON pc.page_id = tp.page_id
-					ORDER BY tp.count DESC, tp.url
-				) t
-			) AS pages
+			) AS competitors
 	`);
-	return { domains: row?.domains ?? [], competitors: row?.competitors ?? [], pages: row?.pages ?? [] };
+	return { domains: row?.domains ?? [], competitors: row?.competitors ?? [] };
 }
 
 export async function getCitationTotals(

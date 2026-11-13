@@ -1,10 +1,8 @@
-import { IconChevronDown, IconInfoCircle } from "@tabler/icons-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Fragment, useState } from "react";
-import { formatUrlForDisplay } from "@/components/citations/shared";
 import { SiteIcon } from "@/components/site-icon";
 import { type CitationFilters, useCitationChannels } from "@/hooks/use-citations";
 import { type ChannelMix, OWNED_CHANNEL } from "@/lib/citation-channels";
@@ -30,35 +28,6 @@ const formatShare = (count: number, total: number) => {
 const subjectLabel = (subject: Subject) => (subject.kind === "brand" ? "You" : subject.name);
 
 const ZERO = <span className="text-muted-foreground/60">0</span>;
-
-function ChannelPageRows({ channel, subjects }: { channel: Channel; subjects: Subject[] }) {
-	return channel.topPages.map((page) => (
-		<tr key={page.url} className="text-xs">
-			<td className="max-w-0 py-1 pr-3 pl-5">
-				<a
-					href={page.url}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="block truncate text-muted-foreground hover:text-foreground hover:underline"
-				>
-					{page.title || formatUrlForDisplay(page.url)}
-				</a>
-			</td>
-			<td className="py-1 pr-3 text-right whitespace-nowrap text-muted-foreground tabular-nums">
-				{page.count.toLocaleString()}
-				<span className="ml-1.5 inline-block w-9" />
-			</td>
-			{subjects.map((subject) => {
-				const count = page.bySubject[subject.id] ?? 0;
-				return (
-					<td key={subject.id} className="px-2 py-1 text-right text-muted-foreground tabular-nums">
-						{count > 0 ? count.toLocaleString() : ZERO}
-					</td>
-				);
-			})}
-		</tr>
-	));
-}
 
 function RateCell({ subject, channel }: { subject: Subject; channel: Channel }) {
 	const citations = channel.bySubject[subject.id] ?? 0;
@@ -100,7 +69,7 @@ function ChannelMixSkeleton() {
 	);
 }
 
-/** Loads apart from the rest of the page, so reading every cited page never holds the page up. */
+/** Loads apart from the rest of the page, so joining citations to mentions never holds the page up. */
 export function RemoteChannelMixCard({ source }: { source?: { brandId: string; filters?: CitationFilters } }) {
 	const query = useCitationChannels(source);
 	if (query.isLoading) return <ChannelMixSkeleton />;
@@ -113,7 +82,6 @@ export function RemoteChannelMixCard({ source }: { source?: { brandId: string; f
 }
 
 function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
-	const [expanded, setExpanded] = useState<string | null>(null);
 	const { subjects, channels, overall, totalCitations } = channelMix;
 
 	return (
@@ -132,7 +100,8 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					The 10 channels AI models cite most, and how often answers citing each one mention you and your competitors
+					Find the channels where competitors get mentioned more than usual and you don&apos;t. Each cell is how often
+					answers citing that channel mention the company; compare it with the All Channels row.
 				</CardDescription>
 			</CardHeader>
 			<Separator />
@@ -166,7 +135,7 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 						</thead>
 						<tbody>
 							<tr className="text-muted-foreground">
-								<td className="py-1.5 pr-3 pl-5 font-medium whitespace-nowrap">All Channels</td>
+								<td className="py-1.5 pr-3 font-medium whitespace-nowrap">All Channels</td>
 								<td className="py-1.5 pr-3 text-right whitespace-nowrap tabular-nums">
 									{totalCitations.toLocaleString()}
 									<span className="ml-1.5 inline-block w-9" />
@@ -177,38 +146,20 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 									</td>
 								))}
 							</tr>
-							{channels.map((channel) => {
-								const isExpanded = expanded === channel.key;
-								return (
-									<Fragment key={channel.key}>
-										<tr>
-											<td className="py-1.5 pr-3">
-												<button
-													type="button"
-													onClick={() => setExpanded(isExpanded ? null : channel.key)}
-													aria-expanded={isExpanded}
-													className="group flex cursor-pointer items-center gap-1.5 text-left"
-												>
-													<IconChevronDown
-														className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`}
-													/>
-													<span className="font-medium whitespace-nowrap group-hover:underline">{channel.label}</span>
-												</button>
-											</td>
-											<td className="py-1.5 pr-3 text-right whitespace-nowrap tabular-nums">
-												{channel.citations.toLocaleString()}
-												<span className="ml-1.5 inline-block w-9 text-xs text-muted-foreground">
-													{formatShare(channel.citations, totalCitations)}
-												</span>
-											</td>
-											{subjects.map((subject) => (
-												<RateCell key={subject.id} subject={subject} channel={channel} />
-											))}
-										</tr>
-										{isExpanded && <ChannelPageRows channel={channel} subjects={subjects} />}
-									</Fragment>
-								);
-							})}
+							{channels.map((channel) => (
+								<tr key={channel.key}>
+									<td className="py-1.5 pr-3 font-medium whitespace-nowrap">{channel.label}</td>
+									<td className="py-1.5 pr-3 text-right whitespace-nowrap tabular-nums">
+										{channel.citations.toLocaleString()}
+										<span className="ml-1.5 inline-block w-9 text-xs text-muted-foreground">
+											{formatShare(channel.citations, totalCitations)}
+										</span>
+									</td>
+									{subjects.map((subject) => (
+										<RateCell key={subject.id} subject={subject} channel={channel} />
+									))}
+								</tr>
+							))}
 						</tbody>
 					</table>
 				</div>
