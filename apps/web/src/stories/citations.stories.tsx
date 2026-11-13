@@ -3,13 +3,14 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/citations";
 import {
+	setMockCitationChannels,
 	setMockCitationDomains,
 	setMockCitationFlowRows,
 	setMockCitations,
 	setMockCitationUrls,
 } from "./_mocks/server-citations";
 import { setMockBrand } from "./_mocks/use-brands";
-import { ALL_FLOW_ROWS, MODELS, mockCitationData } from "./citation-fixtures";
+import { ALL_FLOW_ROWS, CHANNEL_MIX, MODELS, mockCitationData } from "./citation-fixtures";
 
 // The route file exports only `Route`; render its component via the route options.
 const CitationsPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
@@ -56,6 +57,7 @@ const meta = {
 			setMockCitations({ ...summary, availableTags: ["branded", "unbranded"], days: 30 });
 			setMockCitationDomains(domainDistribution);
 			setMockCitationUrls(specificUrls);
+			setMockCitationChannels(CHANNEL_MIX);
 			setMockCitationFlowRows(ALL_FLOW_ROWS);
 			return (
 				<Shell>
