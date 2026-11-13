@@ -31,11 +31,11 @@ const ZERO = <span className="text-muted-foreground/60">0</span>;
 
 function RateCell({ subject, channel }: { subject: Subject; channel: Channel }) {
 	const citations = channel.bySubject[subject.id] ?? 0;
-	if (citations === 0) return <td className="rounded px-2 py-1.5 text-right tabular-nums">{ZERO}</td>;
+	if (citations === 0) return <td className="rounded px-2 py-1.5 text-center tabular-nums">{ZERO}</td>;
 	const counts = `${citations.toLocaleString()} of ${channel.citations.toLocaleString()}`;
 	return (
 		<td
-			className="rounded px-2 py-1.5 text-right tabular-nums"
+			className="rounded px-2 py-1.5 text-center tabular-nums"
 			style={heatStyle(citations / channel.citations, channel.citations)}
 		>
 			<Tooltip>
@@ -107,10 +107,17 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 			<Separator />
 			<CardContent>
 				<div className="overflow-x-auto">
-					<table className="w-full border-separate border-spacing-x-0.5 border-spacing-y-0.5 text-sm">
+					<table
+						className="w-full table-fixed border-separate border-spacing-x-0.5 border-spacing-y-0.5 text-sm"
+						style={{ minWidth: `${22 + subjects.length * 5.5}rem` }}
+					>
+						<colgroup>
+							<col className="w-44" />
+							<col className="w-36" />
+						</colgroup>
 						<thead>
 							<tr className="text-xs text-muted-foreground">
-								<th className="w-full pb-2 text-left font-medium">Channel</th>
+								<th className="pb-2 text-left font-medium">Channel</th>
 								<th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
 									<span className="inline-flex items-center gap-1">
 										Channel Total
@@ -124,10 +131,10 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 									</span>
 								</th>
 								{subjects.map((subject) => (
-									<th key={subject.id} className="min-w-24 px-2 pb-2 font-medium">
-										<span className="flex items-center justify-end gap-1.5">
+									<th key={subject.id} className="px-2 pb-2 font-medium">
+										<span className="flex items-center justify-center gap-1.5">
 											<SiteIcon domain={subject.domain} size="xs" />
-											<span className="max-w-28 truncate">{subjectLabel(subject)}</span>
+											<span className="truncate">{subjectLabel(subject)}</span>
 										</span>
 									</th>
 								))}
@@ -141,7 +148,7 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 									<span className="ml-1.5 inline-block w-9" />
 								</td>
 								{subjects.map((subject) => (
-									<td key={subject.id} className="px-2 py-1.5 text-right tabular-nums">
+									<td key={subject.id} className="px-2 py-1.5 text-center tabular-nums">
 										{formatShare(overall[subject.id] ?? 0, totalCitations)}
 									</td>
 								))}

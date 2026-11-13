@@ -11,7 +11,7 @@ import type { StaticCategory } from "@workspace/lib/citations/page-classificatio
 
 export const BRAND_SUBJECT_ID = "brand";
 export const OWNED_CHANNEL = "owned";
-const MAX_COMPETITORS = 4;
+const MAX_COMPETITORS = 7;
 const MAX_CHANNELS = 10;
 
 const PLATFORM_CHANNELS: { key: string; label: string; domains: string[] }[] = [

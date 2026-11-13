@@ -306,11 +306,13 @@ function buildCitationData(): CitationData {
 	};
 }
 
-const channelRow = (key: string, label: string, citations: number, [brand, c1, c2, c3 = 0, c4 = 0]: number[]) => ({
+const CHANNEL_SUBJECT_IDS = ["brand", "c1", "c2", "c3", "c4", "c5", "c6", "c7"];
+
+const channelRow = (key: string, label: string, citations: number, counts: number[]) => ({
 	key,
 	label,
 	citations,
-	bySubject: { brand, c1, c2, c3, c4 },
+	bySubject: Object.fromEntries(counts.map((count, i) => [CHANNEL_SUBJECT_IDS[i], count])),
 });
 
 export const CHANNEL_MIX: ChannelMix = {
@@ -321,17 +323,20 @@ export const CHANNEL_MIX: ChannelMix = {
 		{ id: "c2", name: "Pipedrive", kind: "competitor", domain: "pipedrive.com" },
 		{ id: "c3", name: "Salesforce", kind: "competitor", domain: "salesforce.com" },
 		{ id: "c4", name: "Zoho", kind: "competitor", domain: "zoho.com" },
+		{ id: "c5", name: "Monday", kind: "competitor", domain: "monday.com" },
+		{ id: "c6", name: "Attio", kind: "competitor", domain: "attio.com" },
+		{ id: "c7", name: "Close", kind: "competitor", domain: "close.com" },
 	],
-	overall: { brand: 910, c1: 1390, c2: 640, c3: 980, c4: 300 },
+	overall: { brand: 910, c1: 1390, c2: 640, c3: 980, c4: 300, c5: 270, c6: 190, c7: 120 },
 	channels: [
 		channelRow("owned", "Own Website", 1180, [640, 410, 130]),
-		channelRow("reviews", "Review Sites", 420, [150, 290, 170, 230, 60]),
-		channelRow("editorial", "Editorial", 310, [90, 210, 80, 190, 40]),
-		channelRow("youtube", "YouTube", 190, [20, 70, 150, 40, 10]),
-		channelRow("reddit", "Reddit", 140, [40, 80, 30, 60, 50]),
-		channelRow("linkedin", "LinkedIn", 60, [10, 40, 5, 35, 4]),
-		channelRow("other", "Other Websites", 110, [30, 60, 20, 40, 10]),
-		channelRow("reference", "Reference", 40, [8, 22, 4, 20, 2]),
+		channelRow("reviews", "Review Sites", 420, [150, 290, 170, 230, 60, 44, 30, 21]),
+		channelRow("editorial", "Editorial", 310, [90, 210, 80, 190, 40, 36, 28, 9]),
+		channelRow("youtube", "YouTube", 190, [20, 70, 150, 40, 10, 31, 6, 4]),
+		channelRow("reddit", "Reddit", 140, [40, 80, 30, 60, 50, 12, 38, 16]),
+		channelRow("linkedin", "LinkedIn", 60, [10, 40, 5, 35, 4, 9, 14, 3]),
+		channelRow("other", "Other Websites", 110, [30, 60, 20, 40, 10, 12, 8, 5]),
+		channelRow("reference", "Reference", 40, [8, 22, 4, 20, 2, 3, 1, 1]),
 	],
 };
 
