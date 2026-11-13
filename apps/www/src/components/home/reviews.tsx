@@ -30,6 +30,8 @@ type Review =
 			kind: "person";
 			name: string;
 			role?: string;
+			/** Followed link on the role, for customers we've agreed to link to. */
+			roleUrl?: string;
 			photo?: string;
 			quote: string;
 	  };
@@ -123,16 +125,25 @@ const PEOPLE = {
 		quote:
 			"Elmo has been fantastic to use for tracking AI visibility of my sports management platform RecordRanks. I highly recommend it, I think it's genuinely worth it!",
 	},
+	sharan: {
+		kind: "person",
+		name: "Sharan J.",
+		role: "Founder, Cura",
+		roleUrl: "https://cura.inc/?ref=elmo",
+		photo: "/testimonials/sharan.jpg",
+		quote:
+			"I had no idea how many opportunities we were missing! Elmo showed us where AI answers recommend other VC portfolio management tools instead of Cura and surfaced quick wins we could act on immediately.",
+	},
 } satisfies Record<string, Review>;
 
 // Laid out by hand, column by column, so placement is chosen rather than left
 // to the browser's column balancing. Narrower screens read it row by row.
 const COLUMNS: Review[][] = [
 	[AI_REVIEWS.chatgpt, PEOPLE.james, PEOPLE.borys],
-	[PEOPLE.nolan, AI_REVIEWS.gemini, PEOPLE.deni],
+	[PEOPLE.nolan, AI_REVIEWS.gemini, PEOPLE.deni, PEOPLE.sharan],
 	[AI_REVIEWS.claude, PEOPLE.viveka, AI_REVIEWS.perplexity],
 ];
-const ROW_ORDER = [0, 1, 2].flatMap((row) => COLUMNS.map((column) => column[row]));
+const ROW_ORDER = [0, 1, 2, 3].flatMap((row) => COLUMNS.flatMap((column) => column[row] ?? []));
 
 function Initials({ name }: { name: string }) {
 	const letters = name
@@ -182,6 +193,15 @@ function ReviewCard({ review }: { review: Review }) {
 					<p className="text-[15px] font-semibold text-zinc-950">{review.name}</p>
 					{review.kind === "ai" ? (
 						<AnswerDetails review={review} />
+					) : review.role && review.roleUrl ? (
+						<a
+							href={review.roleUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="block truncate text-sm text-zinc-500 hover:text-zinc-900 hover:underline"
+						>
+							{review.role}
+						</a>
 					) : review.role ? (
 						<p className="truncate text-sm text-zinc-500">{review.role}</p>
 					) : null}
