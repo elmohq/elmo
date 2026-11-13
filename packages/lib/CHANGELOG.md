@@ -1,5 +1,12 @@
 # @workspace/lib
 
+## 0.7.10
+
+### Patch Changes
+
+- 3db9f08: Answers and citations containing a stray NUL character are now processed instead of failing.
+- @workspace/config@0.7.10
+
 ## 0.7.9
 
 ### Patch Changes

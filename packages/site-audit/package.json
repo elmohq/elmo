@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/site-audit",
-	"version": "0.7.9",
+	"version": "0.7.10",
 	"private": true,
 	"license": "MIT",
 	"type": "module",
