@@ -41,13 +41,15 @@ export const Route = createFileRoute("/_authed")({
 function AuthedLayout() {
 	const context = useRouteContext({ strict: false }) as {
 		session?: { user: { id: string; name?: string; email?: string } } | null;
+		impersonating?: boolean;
 		clientConfig?: ClientConfig;
 	};
 	const identifiedRef = useRef<string | null>(null);
+	const impersonating = context.impersonating ?? false;
 
 	useEffect(() => {
 		const user = context.session?.user;
-		if (!user || identifiedRef.current === user.id) return;
+		if (!user || impersonating || identifiedRef.current === user.id) return;
 		identifiedRef.current = user.id;
 
 		identifyUser(user.id, {
@@ -59,7 +61,7 @@ function AuthedLayout() {
 			deployment_mode: context.clientConfig?.mode,
 		});
 		identifyCrispUser({ id: user.id, email: user.email, name: user.name });
-	}, [context.session?.user, context.clientConfig?.mode]);
+	}, [context.session?.user, context.clientConfig?.mode, impersonating]);
 
 	return <Shell />;
 }
