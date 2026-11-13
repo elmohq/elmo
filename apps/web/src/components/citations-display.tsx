@@ -7,7 +7,7 @@ import {
 	PAGE_TYPE_CONFIG,
 } from "@workspace/lib/citations/domain-categories";
 import { useMemo, useState } from "react";
-import { ChannelMixCard } from "@/components/citations/channel-mix-card";
+import { RemoteChannelMixCard } from "@/components/citations/channel-mix-card";
 import { CITATION_FLOW_ID } from "@/components/citations/citation-flow-card";
 import { CitationFlowSection, type CitationFlowSource } from "@/components/citations/citation-flow-section";
 import {
@@ -235,7 +235,7 @@ export function CitationsDisplay({
 
 			<ChangesAndGapsRow whatsChanged={whatsChanged} contentGaps={contentGaps} days={days} />
 
-			<ChannelMixCard channelMix={citationData.channelMix} />
+			<RemoteChannelMixCard source={listSource} />
 
 			{citationData.domainDistribution
 				? citationData.domainDistribution.length > 0 && (

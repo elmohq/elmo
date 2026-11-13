@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
 import {
+	getCitationChannelsFn,
 	getCitationDomainsFn,
 	getCitationFlowFn,
 	getCitationsFn,
@@ -78,6 +79,24 @@ function filterParams(brandId: string, filters: CitationFilters | undefined, que
 		page: query.page,
 		pageSize: query.pageSize,
 	};
+}
+
+export function useCitationChannels(source: { brandId: string; filters?: CitationFilters } | undefined) {
+	return useQuery({
+		enabled: !!source,
+		queryKey: [...citationKeys.all, source?.brandId, source?.filters, "channels"] as const,
+		queryFn: () =>
+			getCitationChannelsFn({
+				data: {
+					brandId: source!.brandId,
+					lookback: source!.filters?.lookback ?? "1w",
+					tags: source!.filters?.tags?.join(","),
+					model: source!.filters?.model,
+				},
+			}),
+		staleTime: 60_000,
+		placeholderData: keepPreviousData,
+	});
 }
 
 export function useCitationUrls(brandId: string, filters: CitationFilters | undefined, query: CitationListQuery) {

@@ -1,10 +1,12 @@
 import { IconChevronDown, IconInfoCircle } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Fragment, useState } from "react";
 import { formatUrlForDisplay } from "@/components/citations/shared";
 import { SiteIcon } from "@/components/site-icon";
+import { type CitationFilters, useCitationChannels } from "@/hooks/use-citations";
 import type { ChannelMix } from "@/lib/citation-channels";
 
 type Channel = ChannelMix["channels"][number];
@@ -96,9 +98,37 @@ function SubjectCell({
 	);
 }
 
-export function ChannelMixCard({ channelMix }: { channelMix?: ChannelMix }) {
+function ChannelMixSkeleton() {
+	return (
+		<Card>
+			<CardHeader>
+				<Skeleton className="h-5 w-28" />
+				<Skeleton className="h-4 w-96 max-w-full" />
+			</CardHeader>
+			<Separator />
+			<CardContent className="space-y-2">
+				{["a", "b", "c", "d", "e", "f"].map((row) => (
+					<Skeleton key={row} className="h-8 w-full" />
+				))}
+			</CardContent>
+		</Card>
+	);
+}
+
+/** Loads apart from the rest of the page, so reading every cited page never holds the page up. */
+export function RemoteChannelMixCard({ source }: { source?: { brandId: string; filters?: CitationFilters } }) {
+	const query = useCitationChannels(source);
+	if (query.isLoading) return <ChannelMixSkeleton />;
+	if (!query.data || query.data.channels.length === 0) return null;
+	return (
+		<div className={`transition-opacity ${query.isPlaceholderData ? "opacity-60" : ""}`}>
+			<ChannelMixCard channelMix={query.data} />
+		</div>
+	);
+}
+
+function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 	const [expanded, setExpanded] = useState<string | null>(null);
-	if (!channelMix || channelMix.channels.length === 0) return null;
 	const { subjects, channels, totalCitations } = channelMix;
 
 	return (

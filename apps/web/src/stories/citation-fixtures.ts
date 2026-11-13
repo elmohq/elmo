@@ -10,6 +10,7 @@ import {
 	emptyCategoryCounts,
 } from "@workspace/lib/citations/domain-categories";
 import type { CitationData } from "@/components/citations/types";
+import type { ChannelMix } from "@/lib/citation-channels";
 import { type CitationFlowRow, matchesDomain } from "@/lib/citation-flow";
 
 export const MODELS = ["chatgpt", "perplexity", "google-ai-mode", "gemini", "claude"];
@@ -302,11 +303,10 @@ function buildCitationData(): CitationData {
 		],
 		competitorOnlyPrompts: [],
 		subreddits: [],
-		channelMix: CHANNEL_MIX,
 	};
 }
 
-type ChannelMixFixture = NonNullable<CitationData["channelMix"]>;
+type ChannelMixFixture = ChannelMix;
 
 const channelRow = (
 	key: string,
@@ -328,7 +328,7 @@ const channelRow = (
 	topPages,
 });
 
-const CHANNEL_MIX: ChannelMixFixture = {
+export const CHANNEL_MIX: ChannelMixFixture = {
 	totalCitations: 2410,
 	subjects: [
 		{ id: "brand", name: "Acme", kind: "brand", domain: "acme.com" },

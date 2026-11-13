@@ -26,6 +26,7 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import {
+	BRAND_SUBJECT_ID,
 	buildChannelMix,
 	type ChannelMix,
 	type ChannelSubjectInput,
@@ -91,7 +92,6 @@ interface CitationsResult {
 	competitors: { id: string; name: string; domains: string[] }[];
 	competitorOnlyPrompts: { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[];
 	whatsChanged: WhatsChanged;
-	channelMix: ChannelMix;
 	/** How many days the window spans, which "all" only settles on the server. */
 	days: number;
 }
@@ -339,7 +339,6 @@ function emptyCitationsResult(
 		competitors: competitorSummary,
 		competitorOnlyPrompts: [],
 		whatsChanged: { newUrls: [], droppedUrls: [], newDomains: [], droppedDomains: [] },
-		channelMix: { totalCitations: 0, subjects: [], channels: [] },
 	};
 }
 
@@ -362,19 +361,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const competitorSummary = competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains }));
 		if (scope.promptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary, resolved.days);
 
-		const channelBrand = {
-			name: brand?.name ?? "",
-			aliases: brand?.aliases ?? [],
-			domains: [...brandDomains],
-		};
-		const channelCompetitors: ChannelSubjectInput[] = competitorsList.map((c) => ({
-			id: c.id,
-			name: c.name,
-			aliases: c.aliases,
-			domains: c.domains,
-		}));
-
-		const [summary, perPromptDailyClasses, googlePages, promptDomains, channelRows] = await Promise.all([
+		const [summary, perPromptDailyClasses, googlePages, promptDomains] = await Promise.all([
 			getCitationSummary(scope, previousScope, owned, {
 				minCount: MIN_COUNT_FOR_WHATS_CHANGED,
 				limit: WHATS_CHANGED_LIMIT,
@@ -382,11 +369,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			getPerPromptDailyCitationClasses(scope, owned),
 			getPerPromptGooglePages(scope),
 			getPerPromptCitationDomains(scope),
-			getCitationChannelRows(
-				scope,
-				owned,
-				channelSearchTerms([{ ...channelBrand, id: "brand" }, ...channelCompetitors]),
-			),
 		]);
 
 		const categorizeDomain = (domain: string): CitationCategory =>
@@ -452,8 +434,29 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 				categorizeDomain,
 			}),
 			whatsChanged,
-			channelMix: buildChannelMix({ ...channelRows, brand: channelBrand, competitors: channelCompetitors }),
 		};
+	});
+
+export const getCitationChannelsFn = createServerFn({ method: "GET" })
+	.validator(citationFiltersSchema)
+	.handler(async ({ data }): Promise<ChannelMix> => {
+		await requireBrandSession(data.brandId);
+		const { scope, owned, brand, brandDomains, competitorsList } = await resolveCitationScope(data);
+		if (scope.promptIds.length === 0) return { totalCitations: 0, subjects: [], channels: [] };
+
+		const channelBrand = { name: brand?.name ?? "", aliases: brand?.aliases ?? [], domains: [...brandDomains] };
+		const channelCompetitors: ChannelSubjectInput[] = competitorsList.map((c) => ({
+			id: c.id,
+			name: c.name,
+			aliases: c.aliases,
+			domains: c.domains,
+		}));
+		const rows = await getCitationChannelRows(
+			scope,
+			owned,
+			channelSearchTerms([{ ...channelBrand, id: BRAND_SUBJECT_ID }, ...channelCompetitors]),
+		);
+		return buildChannelMix({ ...rows, brand: channelBrand, competitors: channelCompetitors });
 	});
 
 const listPageSchema = {

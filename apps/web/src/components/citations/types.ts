@@ -1,5 +1,4 @@
 import type { CitationCategory, CitationPageType } from "@workspace/lib/citations/domain-categories";
-import type { ChannelMix } from "@/lib/citation-channels";
 import type { Subreddit } from "@/lib/subreddits";
 
 interface GoogleProductRow {
@@ -72,7 +71,6 @@ export interface CitationData {
 	googleModule?: GoogleModuleData;
 	citationTimeSeries?: Array<{ date: string } & Partial<Record<CitationCategory, number>>>;
 	pageTypeTimeSeries?: Array<{ date: string } & Partial<Record<CitationPageType, number>>>;
-	channelMix?: ChannelMix;
 	competitors?: Array<{ id: string; name: string; domains: string[] }>;
 	competitorOnlyPrompts?: Array<{
 		id: string;
