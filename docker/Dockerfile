@@ -110,4 +110,4 @@ COPY --from=worker-deploy --chown=worker:nodejs /deploy/worker ./
 USER worker
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["./node_modules/.bin/tsx", "src/index.ts"]
+CMD ["./node_modules/.bin/tsx", "--import", "./src/instrument.ts", "src/index.ts"]
