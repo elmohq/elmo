@@ -364,8 +364,15 @@ const EXTRACTION_FAILURE_SENTINELS: ReadonlySet<string> = new Set([
 
 /** An answer worth storing, or null for a blank answer or an extraction placeholder. */
 export function storableText(text: unknown): string | null {
-	if (typeof text !== "string" || !text.trim() || EXTRACTION_FAILURE_SENTINELS.has(text)) return null;
-	return text;
+	if (typeof text !== "string") return null;
+	const storable = withoutNul(text);
+	if (!storable.trim() || EXTRACTION_FAILURE_SENTINELS.has(storable)) return null;
+	return storable;
+}
+
+/** Postgres text columns can't hold NUL, and providers occasionally pass one through from a page. */
+function withoutNul(text: string): string {
+	return text.replaceAll("\u0000", "");
 }
 
 export function tryExtractTextContent(rawOutput: unknown, providerOrEngine: string): string | null {
@@ -382,9 +389,11 @@ export type Citation = {
 export const CITATION_TITLE_MAX_LENGTH = 256;
 
 export function normalizeCitationTitle(title: unknown): string | undefined {
-	if (typeof title !== "string" || !title) return undefined;
-	const chars = Array.from(title);
-	return chars.length > CITATION_TITLE_MAX_LENGTH ? chars.slice(0, CITATION_TITLE_MAX_LENGTH).join("") : title;
+	if (typeof title !== "string") return undefined;
+	const storable = withoutNul(title);
+	if (!storable) return undefined;
+	const chars = Array.from(storable);
+	return chars.length > CITATION_TITLE_MAX_LENGTH ? chars.slice(0, CITATION_TITLE_MAX_LENGTH).join("") : storable;
 }
 
 function parseCitationUrl(url: string, title: string | undefined, idx: number): Citation | null {

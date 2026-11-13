@@ -1,0 +1,6 @@
+---
+"@workspace/lib": patch
+"@workspace/worker": patch
+---
+
+Answers and citations containing a stray NUL character are now processed instead of failing.
