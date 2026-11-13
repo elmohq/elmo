@@ -1,5 +1,17 @@
 # @workspace/web
 
+## 0.7.11
+
+### Patch Changes
+
+- 1102815: The MCP endpoint no longer hands connected clients an empty event stream they reconnect to every second, which could add tens of thousands of requests a day per client.
+- @workspace/api-spec@0.7.11
+  - @workspace/config@0.7.11
+  - @workspace/deployment@0.7.11
+  - @workspace/lib@0.7.11
+  - @workspace/og@0.7.11
+  - @workspace/ui@0.7.11
+
 ## 0.7.10
 
 ### Patch Changes

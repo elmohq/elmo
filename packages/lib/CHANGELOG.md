@@ -1,5 +1,11 @@
 # @workspace/lib
 
+## 0.7.11
+
+### Patch Changes
+
+- @workspace/config@0.7.11
+
 ## 0.7.10
 
 ### Patch Changes
