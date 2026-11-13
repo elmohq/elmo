@@ -24,6 +24,8 @@ function unauthorized(message: string): Response {
 }
 
 const NOT_FOUND = -32601;
+/** JSON-RPC defines no code for a refused HTTP method, so this is from its implementation-defined range. */
+const SERVER_ERROR = -32000;
 
 async function handleMcp({ request }: { request: Request }): Promise<Response> {
 	const resolved = await resolveMcpAuth(request);
@@ -55,11 +57,23 @@ function dispatch({
 	return Response.json({ jsonrpc: "2.0", id: null, error: { code: NOT_FOUND, message: "Not Found" } }, { status: 404 });
 }
 
+/**
+ * The transport is stateless and never has a message to push, and a client reads the
+ * empty stream a GET would open as one that dropped and reconnects forever. Answered
+ * before auth, so a client that loops anyway costs no lookup.
+ */
+function methodNotAllowed(): Response {
+	return Response.json(
+		{ jsonrpc: "2.0", id: null, error: { code: SERVER_ERROR, message: "Method Not Allowed" } },
+		{ status: 405, headers: { Allow: "POST, DELETE" } },
+	);
+}
+
 export const Route = createFileRoute("/api/mcp/$")({
 	server: {
 		handlers: {
 			POST: dispatch,
-			GET: dispatch,
+			GET: methodNotAllowed,
 			DELETE: dispatch,
 		},
 	},
