@@ -365,6 +365,11 @@ describe("text-extraction", () => {
 			expect(storableText("")).toBeNull();
 			expect(storableText(undefined)).toBeNull();
 		});
+
+		it("drops NUL characters, which Postgres text columns reject", () => {
+			expect(storableText("Acme\u0000 leads.")).toBe("Acme leads.");
+			expect(storableText("\u0000")).toBeNull();
+		});
 	});
 
 	describe("extractRun", () => {
@@ -877,6 +882,11 @@ describe("text-extraction", () => {
 			expect(normalizeCitationTitle(undefined)).toBeUndefined();
 			expect(normalizeCitationTitle("")).toBeUndefined();
 			expect(normalizeCitationTitle(12345)).toBeUndefined();
+		});
+
+		it("drops NUL characters, which Postgres text columns reject", () => {
+			expect(normalizeCitationTitle("Importing Contacts \u0000")).toBe("Importing Contacts ");
+			expect(normalizeCitationTitle("\u0000")).toBeUndefined();
 		});
 
 		it("bounds titles so an oversized one cannot fail the citation insert", () => {
