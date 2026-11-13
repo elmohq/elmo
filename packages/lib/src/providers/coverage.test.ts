@@ -11,7 +11,12 @@
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
 import { KNOWN_MODELS } from "@workspace/config/models";
 import { PREMIUM_MODELS } from "@workspace/config/plans";
-import { parseScrapeTargets, providersByModel, STATUS_TARGETS } from "@workspace/config/scrape-targets";
+import {
+	parseScrapeTargets,
+	providersByModel,
+	RETIRED_STATUS_TARGETS,
+	STATUS_TARGETS,
+} from "@workspace/config/scrape-targets";
 import { describe, expect, it } from "vitest";
 import { describeProvider, getAllProviders, isGroundedApiTarget, resolveProviderAccess } from "./index";
 
@@ -19,7 +24,9 @@ describe("provider coverage", () => {
 	const byModel = providersByModel();
 
 	it("monitors every model we ship display metadata for", () => {
-		const unmonitored = Object.keys(KNOWN_MODELS).filter((model) => !byModel.has(model));
+		// A retired surface keeps its metadata so its past runs still display.
+		const retired = new Set(RETIRED_STATUS_TARGETS.map((target) => target.split(":")[0]));
+		const unmonitored = Object.keys(KNOWN_MODELS).filter((model) => !byModel.has(model) && !retired.has(model));
 		expect(unmonitored).toEqual([]);
 	});
 

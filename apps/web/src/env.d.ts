@@ -4,8 +4,6 @@
 // (enforced by env-registry.test.ts).
 
 interface ImportMetaEnv {
-	// Deployment mode
-
 	// Branding (whitelabel only - local/demo use server-side defaults)
 	readonly VITE_APP_NAME?: string;
 	readonly VITE_APP_ICON?: string;
@@ -20,23 +18,22 @@ interface ImportMetaEnv {
 	readonly VITE_AUTH0_DOMAIN?: string;
 	readonly VITE_AUTH0_CLIENT_ID?: string;
 
-	// Analytics
 	readonly VITE_PLAUSIBLE_DOMAIN?: string;
 	readonly VITE_CLARITY_PROJECT_ID?: string;
 	readonly VITE_POSTHOG_KEY?: string;
-
-	// Sentry
+	readonly VITE_TURNSTILE_SITE_KEY?: string;
 	readonly VITE_SENTRY_DSN?: string;
+	// Set by Vite `define` from the server's ENVIRONMENT and SENTRY_TRACES_SAMPLE_RATE.
+	readonly VITE_SENTRY_ENVIRONMENT?: string;
+	readonly VITE_SENTRY_TRACES_SAMPLE_RATE?: number;
 }
 
 interface ImportMeta {
 	readonly env: ImportMetaEnv;
 }
 
-// Server-side environment variables (accessed via process.env in server functions)
-// and Vite define globals
 declare global {
-	// App version injected by Vite define
+	// Injected by Vite `define`.
 	const __APP_VERSION__: string;
 	namespace NodeJS {
 		interface ProcessEnv {
@@ -54,6 +51,8 @@ declare global {
 			readonly OXYLABS_USERNAME?: string;
 			readonly OXYLABS_PASSWORD?: string;
 			readonly CLORO_API_KEY?: string;
+			readonly TYPESAFE_API_KEY?: string;
+			readonly REPROCESS_DAYS?: string;
 			readonly JINA_API_KEY?: string;
 			readonly ONBOARDING_LLM_TARGET?: string;
 			readonly ELMO_ENCRYPTION_KEY?: string;
@@ -76,6 +75,7 @@ declare global {
 			readonly SENTRY_ORG?: string;
 			readonly SENTRY_PROJECT?: string;
 			readonly SENTRY_AUTH_TOKEN?: string;
+			readonly SENTRY_TRACES_SAMPLE_RATE?: string;
 			readonly DISABLE_TELEMETRY?: string;
 			readonly STRIPE_SECRET_KEY?: string;
 			readonly STRIPE_WEBHOOK_SECRET?: string;
@@ -83,6 +83,7 @@ declare global {
 			readonly GOOGLE_CLIENT_ID?: string;
 			readonly GOOGLE_CLIENT_SECRET?: string;
 			readonly RESEND_FROM_EMAIL?: string;
+			readonly TURNSTILE_SECRET_KEY?: string;
 		}
 	}
 }

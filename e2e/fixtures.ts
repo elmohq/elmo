@@ -1,11 +1,6 @@
-/**
- * Shared E2E fixture constants — the single place the seeder, auth setup, and
- * Playwright specs agree on IDs and credentials. Unlike seed.ts this module
- * has no side effects, so specs can import from it freely.
- */
+/** IDs and credentials the seeder, auth setup and specs share. Unlike seed.ts, importing this has no side effects. */
 import path from "node:path";
 
-/** Directory this file lives in, so paths don't depend on the caller's cwd. */
 const E2E_DIR = import.meta.dirname;
 
 // Always localhost, so the destructive seeder can never point at a production
@@ -14,9 +9,7 @@ function databaseUrl(name: string): string {
   return `postgres://postgres:postgres@localhost:5432/${name}`;
 }
 
-// The env override lets CI workflows pass their own credentials (e.g.
-// `elmo`/`elmo` for the scheduling-policy job's postgres service) — the first
-// one to set DATABASE_URL in a given step wins.
+// CI jobs with their own postgres service override this.
 export const DATABASE_URL = process.env.DATABASE_URL ?? databaseUrl("elmo");
 
 // Must match ADMIN_API_KEYS in the CI-patched .env (.github/workflows/e2e.yaml)
@@ -53,41 +46,40 @@ export const RENAMEABLE_BRAND_NAME = "Test Rename";
 export const TEST_BRAND_WEBSITE = "https://example.com";
 
 export const PROMPT_IDS = {
-  branded1: "00000000-0000-0000-0000-000000000001",
-  branded2: "00000000-0000-0000-0000-000000000002",
-  unbranded1: "00000000-0000-0000-0000-000000000003",
-  branded3: "00000000-0000-0000-0000-000000000004",
-  unbranded2: "00000000-0000-0000-0000-000000000005",
+  branded1: "00000000-0000-4000-8000-000000000001",
+  branded2: "00000000-0000-4000-8000-000000000002",
+  unbranded1: "00000000-0000-4000-8000-000000000003",
+  branded3: "00000000-0000-4000-8000-000000000004",
+  unbranded2: "00000000-0000-4000-8000-000000000005",
 } as const;
 
 export const COMPETITOR_IDS = {
-  competitorA: "00000000-0000-0000-0000-100000000001",
-  competitorB: "00000000-0000-0000-0000-100000000002",
+  competitorA: "00000000-0000-4000-8000-100000000001",
+  competitorB: "00000000-0000-4000-8000-100000000002",
 } as const;
 
 export const REPORT_IDS = {
-  completed: "00000000-0000-0000-0000-300000000001",
-  pending: "00000000-0000-0000-0000-300000000002",
-  processing: "00000000-0000-0000-0000-300000000003",
-  failed: "00000000-0000-0000-0000-300000000004",
+  completed: "00000000-0000-4000-8000-300000000001",
+  pending: "00000000-0000-4000-8000-300000000002",
+  processing: "00000000-0000-4000-8000-300000000003",
+  failed: "00000000-0000-4000-8000-300000000004",
 } as const;
 
-// Second tenant — a brand in an org the E2E user is NOT a member of.
+// A tenant the E2E user is not a member of.
 export const NIKE_ORG_ID = "nike";
 export const NIKE_BRAND_ID = "nike";
 /** In the tenant the E2E user cannot see, so no dashboard spec's list changes. */
 export const NIKE_SECOND_BRAND_ID = "nike-jordan";
 export const NIKE_PROMPT_IDS = {
-  training: "00000000-0000-0000-0000-400000000001",
-  lifestyle: "00000000-0000-0000-0000-400000000002",
+  training: "00000000-0000-4000-8000-400000000001",
+  lifestyle: "00000000-0000-4000-8000-400000000002",
 } as const;
 export const NIKE_COMPETITOR_IDS = {
-  adidas: "00000000-0000-0000-0000-410000000001",
-  puma: "00000000-0000-0000-0000-410000000002",
+  adidas: "00000000-0000-4000-8000-410000000001",
+  puma: "00000000-0000-4000-8000-410000000002",
 } as const;
 
-/** Tiny limits, so a write can be pushed past one without seeding hundreds of
- * rows. Config-only, so no Stripe subscription is needed. */
+/** Tiny limits, so a write can exceed one without seeding hundreds of rows. */
 export const CAPPED_ORG_ID = "capped";
 export const CAPPED_BRAND_ID = "capped";
 export const CAPPED_ENTITLEMENT_OVERRIDES = {
@@ -101,12 +93,9 @@ export const CAPPED_PROMPT_COUNT = 5;
 export const UNPAID_ORG_ID = "unpaid";
 export const UNPAID_BRAND_ID = "unpaid";
 
-/** One key per access pattern, seeded straight into `apikey` so the suite needs
- * no session. */
 export const API_SCOPES = ["read", "write"] as const;
 
 export type ApiScope = (typeof API_SCOPES)[number];
-
 
 export interface ApiKeyFixture {
   token: string;
@@ -118,6 +107,7 @@ export interface ApiKeyFixture {
   expiresInMs?: number;
 }
 
+/** One key per access pattern, seeded straight into `apikey` so the suite needs no session. */
 export const API_KEYS = {
   orgFull: {
     token: "elmo_e2e_org_full",
@@ -194,26 +184,11 @@ export const API_KEYS = {
   },
 } as const satisfies Record<string, ApiKeyFixture>;
 
-// ---------------------------------------------------------------------------
-// Deployment modes
-// ---------------------------------------------------------------------------
-
 /**
- * The deployment modes the E2E suite covers. Each one is a Playwright project
- * that runs the shared specs plus its own.
- *
- * A container serves one mode for its lifetime, so the stack runs one per mode
- * (see e2e/modes.yaml) rather than recreating a single container between
- * phases. The ports and databases here are what that file publishes.
- *
- * Cloud and whitelabel get a database of their own. Cloud signs accounts up and
- * deletes them again, so on one shared database every phase had to re-seed to
- * undo the phase before it, and the order they ran in was load-bearing.
- *
- * Local and demo share one on purpose: demo has no signup, so the account its
- * specs sign in with has to be the one the local phase bootstrapped, and demo
- * is READ_ONLY so it cannot write back. That mirrors how the public demo is
- * deployed, and is the one ordering the workflow still keeps.
+ * What e2e/modes.yaml publishes: one container per mode. Cloud signs accounts up
+ * and deletes them, so it gets a database of its own. Demo shares local's on
+ * purpose: it has no signup and is read-only, so it signs in with the account
+ * local bootstrapped, as the public demo is deployed.
  */
 const MODE_STACKS = {
   local: { port: 1515, database: "elmo" },
@@ -230,13 +205,10 @@ export function modeUrl(mode: DeploymentMode): string {
   return process.env.BASE_URL ?? `http://localhost:${MODE_STACKS[mode].port}`;
 }
 
-/** The database a mode's container writes to, which is where a spec checking
- * whether a write landed has to look. */
 export function modeDatabaseUrl(mode: DeploymentMode): string {
   return databaseUrl(MODE_STACKS[mode].database);
 }
 
-/** Every database the stack seeds, each named once however many modes read it. */
 export function seededDatabaseUrls(): string[] {
   return [...new Set(DEPLOYMENT_MODES.map(modeDatabaseUrl))];
 }
@@ -250,16 +222,10 @@ export function authStatePath(mode: DeploymentMode): string {
   return path.join(E2E_DIR, ".auth", `${mode}.json`);
 }
 
-/**
- * The generated deployment config `elmo init --dev` writes. Read for the
- * BETTER_AUTH_SECRET the whitelabel setup needs to mint a session cookie.
- */
+/** Written by `elmo init --dev`; whitelabel setup reads its BETTER_AUTH_SECRET to mint a session cookie. */
 export const GENERATED_ENV_PATH = path.join(E2E_DIR, ".elmo", ".env");
 
-/**
- * Whitelabel branding, mirroring `web-whitelabel` in e2e/modes.yaml. Kept here
- * so specs assert against the same values the container is configured with.
- */
+/** Mirrors `web-whitelabel` in e2e/modes.yaml. */
 export const WHITELABEL = {
   appName: "Acme AI Search",
   appIcon: "https://cdn.example.test/acme-icon.png",
@@ -271,10 +237,8 @@ export const WHITELABEL = {
 } as const;
 
 /**
- * Cloud signup fixtures, mirroring CLOUD_SIGNUP_ALLOWLIST in e2e/modes.yaml.
- * The allowlist admits `allowedDomain` and the disposable domain, so the
- * disposable-address rejection is reached on its own merits rather than being
- * masked by the invite-only gate.
+ * Mirrors CLOUD_SIGNUP_ALLOWLIST in e2e/modes.yaml, which also admits the
+ * disposable domain so its rejection isn't masked by the invite-only gate.
  */
 export const CLOUD_SIGNUP = {
   allowedDomain: "e2e-allowed.test",

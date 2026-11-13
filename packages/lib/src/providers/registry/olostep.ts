@@ -26,16 +26,6 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 		urlTemplate: (q) => `https://gemini.google.com/?q=${encodeURIComponent(q)}`,
 		credits: 3,
 	},
-	copilot: {
-		parserId: "@olostep/microsoft-copilot-results",
-		urlTemplate: (q) => `https://copilot.microsoft.com/chats?q=${encodeURIComponent(q)}`,
-		credits: 3,
-	},
-	perplexity: {
-		parserId: "@olostep/perplexity-results",
-		urlTemplate: (q) => `https://www.perplexity.ai/?q=${encodeURIComponent(q)}`,
-		credits: 3,
-	},
 };
 
 let _client: Olostep | null = null;
@@ -49,14 +39,6 @@ function getClient(): Olostep {
 		_clientApiKey = apiKey;
 	}
 	return _client;
-}
-
-function extractTextFromOlostep(data: any): string {
-	if (data?.result?.markdown_content) return data.result.markdown_content;
-	if (data?.answer_markdown) return data.answer_markdown;
-	if (data?.result?.text_content) return data.result.text_content;
-	if (typeof data?.answer === "string") return data.answer;
-	return "No text content found in Olostep response.";
 }
 
 function extractCitationsFromOlostep(data: any): Citation[] {
@@ -146,11 +128,7 @@ export const olostep: Provider = {
 			// Store the parsed content directly instead of the full retrieved
 			// wrapper (which double-encodes json_content as a string).
 			rawOutput: parsed,
-			textContent: extractTextFromOlostep(parsed),
-			// Mark as "unavailable" only when citations prove a search happened
-			// but the API didn't expose the query strings
 			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
-			citations,
 			modelVersion: parsed?.model ?? undefined,
 		};
 	},

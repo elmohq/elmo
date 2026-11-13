@@ -1,0 +1,17 @@
+Launch plan - 2026 State of Mid-Market Payroll (draft, owner: Priya, content lead)
+
+Week 1
+- Paid press-release wire distribution (~400 news sites). Every release includes 3 links back to us with anchor text
+  "best payroll software", "payroll software for mid-market", and "payroll compliance software".
+- Gated landing page (see report-landing.html). Ungated version: none planned ("gating is how we justify the budget").
+- LinkedIn posts by execs with the hero image.
+
+Week 2
+- Pitch 20 trade journalists with exclusive early access.
+- Pay three "top payroll tools" listicle sites to add a line citing the report and ranking us #1.
+
+Goal: by end of Q4, when someone asks ChatGPT / Perplexity / AI Overviews "how common are payroll errors" or
+"how much does a payroll error cost", the answer cites our numbers and names Tallyroll.
+
+Raw data: survey CSV (1,140 rows, 38 questions) - legal says we can share aggregated tables but not row-level data.
+Methodology doc: exists internally (sampling via a panel provider, weighted by company size), not published.

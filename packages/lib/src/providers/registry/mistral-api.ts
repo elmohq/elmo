@@ -1,5 +1,4 @@
 import { getCredential } from "../../secrets";
-import { type Citation, extractCitationsFromMistral } from "../../text-extraction";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, configuredWhen, warnIfOutputCapped } from "../config";
 import type {
 	Provider,
@@ -12,9 +11,7 @@ import { jsonSchemaResponseFormat, parseSchemaJson } from "./ai-sdk";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
-// `mistral-large-latest` aliases to Mistral Large 3 (released Dec 2025).
-// Tracked as `-latest` so the alias rolls forward when newer Large
-// generations ship.
+// The `-latest` alias rolls forward as new Large generations ship.
 const DEFAULT_RESEARCH_MODEL = "mistral-large-latest";
 
 async function mistralPost(path: string, body: object): Promise<any> {
@@ -37,11 +34,7 @@ function asList(value: unknown): any[] {
 	return Array.isArray(value) ? value : [];
 }
 
-/**
- * Search queries the model ran. Tool-execution entries carry the query as a
- * JSON-encoded string in `arguments` — best-effort, since webQueries is a
- * reporting signal and a malformed payload shouldn't fail the response.
- */
+/** Best-effort: the query is JSON inside `arguments`, and a malformed one shouldn't fail the response. */
 function conversationWebQueries(data: any): string[] {
 	const queries: string[] = [];
 	for (const entry of asList(data?.outputs)) {
@@ -56,11 +49,7 @@ function conversationWebQueries(data: any): string[] {
 	return queries;
 }
 
-/**
- * The answer text. Conversations returns message content as either a plain
- * string (single-shot replies) or an array of typed chunks (when tools cite
- * sources).
- */
+/** Content is a plain string for single-shot replies and typed chunks when tools cite sources. */
 function conversationText(data: any): string {
 	const texts: string[] = [];
 	for (const entry of asList(data?.outputs)) {
@@ -75,12 +64,8 @@ function conversationText(data: any): string {
 	return texts.join("\n");
 }
 
-function parseConversationsResponse(data: any): { textContent: string; citations: Citation[]; webQueries: string[] } {
-	return {
-		textContent: conversationText(data),
-		citations: extractCitationsFromMistral(data),
-		webQueries: conversationWebQueries(data),
-	};
+function parseConversationsResponse(data: any): { textContent: string; webQueries: string[] } {
+	return { textContent: conversationText(data), webQueries: conversationWebQueries(data) };
 }
 
 export const mistralApi: Provider = {
@@ -95,18 +80,15 @@ export const mistralApi: Provider = {
 		const version = options?.version ?? DEFAULT_MODEL;
 
 		if (options?.webSearch) {
-			// Mistral's web_search connector has no per-call search-count knob, so the
-			// token cap (completion_args.max_tokens on this endpoint) is the only budget
-			// bound. The conversations response carries no finish_reason, so unlike the
-			// chat-completions path below there's no truncation signal to log here.
+			// The web_search connector has no search-count knob, so the token cap is the
+			// only budget. This endpoint reports no finish_reason to log truncation from.
 			const data = await mistralPost("/v1/conversations", {
 				model: version,
 				inputs: prompt,
 				tools: [{ type: "web_search" }],
 				completion_args: { max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["mistral-api"] },
 			});
-			const parsed = parseConversationsResponse(data);
-			return { ...parsed, rawOutput: data, modelVersion: data?.model ?? version };
+			return { rawOutput: data, webQueries: conversationWebQueries(data), modelVersion: data?.model ?? version };
 		}
 
 		const data = await mistralPost("/v1/chat/completions", {
@@ -117,9 +99,7 @@ export const mistralApi: Provider = {
 		warnIfOutputCapped("mistral-api", version, data?.choices?.[0]?.finish_reason);
 		return {
 			rawOutput: data,
-			textContent: data?.choices?.[0]?.message?.content ?? "",
 			webQueries: [],
-			citations: [],
 			modelVersion: data?.model ?? version,
 		};
 	},
@@ -142,9 +122,7 @@ export const mistralApi: Provider = {
 				modelVersion: data?.model ?? DEFAULT_RESEARCH_MODEL,
 			};
 		}
-		// /v1/conversations forwards completion_args.response_format through to
-		// the underlying chat completion, so we can have web_search AND
-		// server-validated json_schema output in a single call.
+		// Conversations forwards response_format, so one call gets web search and a validated schema.
 		const data = await mistralPost("/v1/conversations", {
 			model: DEFAULT_RESEARCH_MODEL,
 			inputs: prompt,

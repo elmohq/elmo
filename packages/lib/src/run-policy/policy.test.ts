@@ -30,8 +30,7 @@ const CLOUD_TARGETS = parseScrapeTargets(
 		"chatgpt:brightdata:online",
 		"google-ai-mode:brightdata:online",
 		"google-ai-overview:brightdata:online",
-		"copilot:brightdata:online",
-		"perplexity:brightdata:online",
+		"bing-ai-mode:cloro:online",
 		"gemini:brightdata:online",
 		"qwen:openrouter:qwen/qwen3-235b",
 		"deepseek:openrouter:deepseek/deepseek-v3.2",
@@ -98,6 +97,13 @@ describe("resolvePromptRunPlan: non-cloud legacy equivalence", () => {
 		).toThrow(/nope/);
 	});
 
+	it("keeps running a brand's other picks when one was for a retired scrape target", () => {
+		const plan = resolvePromptRunPlan(
+			localInput({ brand: { enabledModels: ["chatgpt", "perplexity"], delayOverrideHours: null } }),
+		);
+		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt"]);
+	});
+
 	it("every unmetered deployment mode resolves the same plan", () => {
 		// The policy reads "unmetered" off the entitlements rather than off a
 		// separately-passed mode, so local, whitelabel and demo reach it by the
@@ -133,7 +139,7 @@ describe("defaultPlatformPicks", () => {
 			"chatgpt",
 			"google-ai-mode",
 			"google-ai-overview",
-			"copilot",
+			"bing-ai-mode",
 		]);
 	});
 
@@ -143,8 +149,7 @@ describe("defaultPlatformPicks", () => {
 			"chatgpt",
 			"google-ai-mode",
 			"google-ai-overview",
-			"copilot",
-			"perplexity",
+			"bing-ai-mode",
 			"gemini",
 			"qwen",
 			"deepseek",
@@ -181,7 +186,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 	function cloudInput(overrides?: Partial<ResolveRunPlanInput>): ResolveRunPlanInput {
 		return {
 			scrapeTargets: CLOUD_TARGETS,
-			brand: { enabledModels: ["chatgpt", "perplexity"], delayOverrideHours: null },
+			brand: { enabledModels: ["chatgpt", "gemini"], delayOverrideHours: null },
 			prompt: { premiumModels: [] },
 			entitlements: cloudEntitlements("pro"),
 			defaultDelayHours: 24,
@@ -191,7 +196,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 
 	it("runs picked standard platforms at the plan cadence with replication 1", () => {
 		const plan = resolvePromptRunPlan(cloudInput());
-		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt", "perplexity"]);
+		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt", "gemini"]);
 		for (const target of plan.targets) {
 			expect(target.intervalHours).toBe(6); // 4×/day
 			expect(target.replication).toBe(1);
@@ -245,7 +250,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 		const plan = resolvePromptRunPlan(
 			cloudInput({
 				entitlements: cloudEntitlements("starter"), // menu: chatgpt only, 1 pick
-				brand: { enabledModels: ["perplexity", "chatgpt", "gemini"], delayOverrideHours: null },
+				brand: { enabledModels: ["deepseek", "chatgpt", "gemini"], delayOverrideHours: null },
 			}),
 		);
 		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt"]);
@@ -267,26 +272,26 @@ describe("resolvePromptRunPlan: cloud", () => {
 		// The two tiers are independent: picks run on all prompts, premium models
 		// run on the prompts that name them, and neither implies the other.
 		const targets = parseScrapeTargets(
-			"chatgpt:brightdata:online,perplexity:brightdata:online,grok:openrouter:x-ai/grok-4.5:online",
+			"chatgpt:brightdata:online,gemini:brightdata:online,grok:openrouter:x-ai/grok-4.5:online",
 		);
 		const plan = resolvePromptRunPlan(
 			cloudInput({
 				scrapeTargets: targets,
-				brand: { enabledModels: ["chatgpt", "perplexity"], delayOverrideHours: null },
+				brand: { enabledModels: ["chatgpt", "gemini"], delayOverrideHours: null },
 				prompt: { premiumModels: ["grok"] },
 			}),
 		);
-		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt", "perplexity", "grok"]);
+		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt", "gemini", "grok"]);
 	});
 
 	it("runs the brand's picks on a prompt that spends no premium slots", () => {
 		const plan = resolvePromptRunPlan(
 			cloudInput({
-				brand: { enabledModels: ["chatgpt", "perplexity"], delayOverrideHours: null },
+				brand: { enabledModels: ["chatgpt", "gemini"], delayOverrideHours: null },
 				prompt: { premiumModels: [] },
 			}),
 		);
-		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt", "perplexity"]);
+		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt", "gemini"]);
 	});
 
 	it("a premium assignment adds the grounded target on top of the picks", () => {
@@ -380,7 +385,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 		// slots ran out and the picks should still run.
 		const trimmed = resolvePromptRunPlan(cloudInput({ prompt: { premiumModels: [] } }));
 		expect(trimmed.targets.every((t) => !(t.config.model === "claude" && t.config.webSearch))).toBe(true);
-		expect(trimmed.targets.map((t) => t.config.model)).toEqual(["chatgpt", "perplexity"]);
+		expect(trimmed.targets.map((t) => t.config.model)).toEqual(["chatgpt", "gemini"]);
 	});
 
 	it("null picks default to the first available menu platforms", () => {
@@ -389,7 +394,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 			"chatgpt",
 			"google-ai-mode",
 			"google-ai-overview",
-			"copilot",
+			"bing-ai-mode",
 		]);
 	});
 

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { brightdata, extractWebQueries, readAnswer } from "./brightdata";
+import { extractRun } from "../../text-extraction";
+import { brightdata, extractWebQueries, readAnswer, storedRecord } from "./brightdata";
 
 const { cancelSnapshot } = vi.hoisted(() => ({ cancelSnapshot: vi.fn() }));
 
@@ -57,6 +58,18 @@ describe("extractWebQueries", () => {
 	});
 });
 
+describe("storedRecord", () => {
+	it("drops the HTML when the answer lives in a structured field", () => {
+		const stored = storedRecord({ answer_text: "Acme leads.", answer_html: "<p>Acme leads.</p>", response_raw: "raw" });
+		expect(stored).toEqual({ answer_text: "Acme leads." });
+	});
+
+	it("keeps response_raw when it is the only answer, so a replay still finds the text", () => {
+		const stored = storedRecord({ response_raw: "Acme leads.", answer_html: "<p>Acme leads.</p>" });
+		expect(extractRun(stored, "brightdata").textContent).toBe("Acme leads.");
+	});
+});
+
 describe("readAnswer", () => {
 	it("reads the answer the chatbot gave, preferring the markdown form", () => {
 		expect(readAnswer({ answer_text_markdown: "  **Yes**  ", answer_text: "Yes" }, "chatgpt snapshot sd_1")).toBe(
@@ -106,7 +119,7 @@ describe("brightdata polling", () => {
 				),
 		);
 
-		const promise = brightdata.run("perplexity", "What is a well-reviewed speaker?", { webSearch: true });
+		const promise = brightdata.run("gemini", "What is a well-reviewed speaker?", { webSearch: true });
 		const settled: Promise<Error> = promise.then(
 			() => {
 				throw new Error("expected the run to reject");

@@ -3,6 +3,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { runSchema } from "@/lib/api/schemas/runs";
 import { isBrandInScope } from "@/lib/api/scope";
 import { findRunDetail } from "@/server/runs-core";
 
@@ -10,9 +11,10 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/$runId")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: runSchema,
 				params: z.object({
-					promptId: z.guid("Invalid prompt ID format"),
-					runId: z.guid("Invalid run ID format"),
+					promptId: z.uuid("Invalid prompt ID format"),
+					runId: z.uuid("Invalid run ID format"),
 				}),
 				scopes: ["read"],
 				handle: async ({ params, auth }) => {

@@ -1,11 +1,7 @@
 /**
- * The deployment-mode gate is unit-tested as a pure function; this adds that the
- * running server honours it, which a config or root-route change could break
- * while the unit tests still pass.
- *
- * Requests to Crisp are aborted for the whole suite (see e2e/test.ts), so CI
- * never reaches them. The route below is this spec's own, layered on top to
- * count what a mode that should stay quiet tried to fetch.
+ * The mode gate is unit-tested; this checks the running server honours it.
+ * Crisp is aborted suite-wide (see e2e/test.ts); this spec's own route counts
+ * what a quiet mode still tried to fetch.
  */
 import { CRISP_HOSTS, expect, test } from "../../test";
 import { TEST_BRAND_ID, brandUrl, isDeploymentMode } from "../../fixtures";
@@ -36,10 +32,16 @@ test.describe("Support chat", () => {
         loaderScripts: document.querySelectorAll('script[src*="crisp.chat"]').length,
       }));
 
+    const supportButton = page.getByRole("button", { name: /^Support chat/ });
+
     if (mode === "cloud" || mode === "demo") {
       await expect.poll(readLoader, { timeout: 15_000 }).toEqual({ websiteId: expect.any(String), loaderScripts: 1 });
+      // The demo keeps Crisp's own floating launcher instead.
+      if (mode === "cloud") await expect(supportButton).toBeVisible();
+      else await expect(supportButton).toHaveCount(0);
     } else {
       expect(await readLoader()).toEqual({ websiteId: null, loaderScripts: 0 });
+      await expect(supportButton).toHaveCount(0);
       expect(requestedCrisp, "a deployment we do not operate must not call Crisp").toBe(false);
     }
   });

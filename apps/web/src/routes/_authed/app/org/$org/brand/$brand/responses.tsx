@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { extractTextContent } from "@workspace/lib/text-extraction";
+import { cn } from "@workspace/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
@@ -7,29 +7,38 @@ import { ListPagination } from "@/components/list-pagination";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { PromptsFilterDropdown } from "@/components/prompts-filter-dropdown";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
+import { SentimentFilterCard } from "@/components/sentiment-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
+import { useCrispChat } from "@/hooks/use-crisp-chat";
 import { joinTags, splitTags, useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
-import { useResponseSearch } from "@/hooks/use-responses";
+import { useResponseSearch, useResponseSentimentCounts } from "@/hooks/use-responses";
+import { type SentimentSearch, useSentimentSearch, validateSentimentSearch } from "@/hooks/use-sentiment-search";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/responses")({
 	staticData: { crumb: "Responses" },
 	// Comma-joined IDs, like `tags`, so a filtered view stays linkable.
-	validateSearch: (search: Record<string, unknown>): { prompts?: string } => ({
+	validateSearch: (search: Record<string, unknown>): ResponsesSearch => ({
 		prompts: typeof search.prompts === "string" && search.prompts ? search.prompts : undefined,
+		...validateSentimentSearch(search),
 	}),
 	head: pageHead({ description: "Read and search every AI answer to your prompts." }),
 	component: ResponsesPage,
 });
+
+interface ResponsesSearch extends SentimentSearch {
+	prompts?: string;
+}
 
 function ResponsesPage() {
 	const brandId = useBrandId();
 	const { model, lookback, tags, search: query } = useListFilters();
 
 	const { data: brand } = useBrand(brandId);
+	const { launcher } = useCrispChat();
 	const { domainFor } = useSiteIcons(brandId);
 	const trackedTargets = brand?.trackedTargets ?? [];
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
@@ -47,8 +56,10 @@ function ResponsesPage() {
 			resetScroll: false,
 		});
 
+	const { sentiment, sort, setSentiment, setSort } = useSentimentSearch();
+
 	// A new search starts from its first page.
-	const filterKey = JSON.stringify([query, lookback, modelParam, tags, promptIds]);
+	const filterKey = JSON.stringify([query, lookback, modelParam, tags, promptIds, sentiment, sort]);
 	const [paging, setPaging] = useState({ filterKey, page: 0 });
 	const page = paging.filterKey === filterKey ? paging.page : 0;
 	const setPage = (next: number) => {
@@ -57,14 +68,14 @@ function ResponsesPage() {
 	};
 
 	// Placeholder data is the previous page or search, still on screen while the next one loads.
+	const search = { query, lookback, model: modelParam, tags, promptIds };
 	const { data, isLoading, isPlaceholderData, error } = useResponseSearch(brandId, {
-		query,
-		lookback,
-		model: modelParam,
-		tags,
-		promptIds,
+		...search,
+		sentiment,
+		sort,
 		page,
 	});
+	const { data: sentimentFilterCounts } = useResponseSentimentCounts(brandId, search);
 
 	const infoContent = (
 		<p>
@@ -73,30 +84,28 @@ function ResponsesPage() {
 		</p>
 	);
 
+	const empty = emptyMessage(data, error, sentimentFilterCounts?.all);
 	let content: React.ReactNode;
 	if (isLoading && !data) {
 		content = <ResponseCardSkeletons count={3} />;
-	} else if (error && !data) {
-		content = <EmptyState message="Couldn't load responses right now. Reload the page to try again." />;
-	} else if (!data || data.totalRuns === 0) {
-		content = (
-			<EmptyState message="No responses for the selected filters yet. Responses appear once your prompts have been run." />
-		);
-	} else if (data.matches.length === 0) {
-		content = <EmptyState message={`No responses contain "${data.query}" in this period.`} />;
+	} else if (empty || !data) {
+		content = <EmptyState message={empty ?? ""} />;
 	} else {
 		content = (
-			// Bottom padding keeps the pager clear of the floating support chat button.
 			<div
-				className={`space-y-4 pb-20 transition-opacity ${isPlaceholderData ? "opacity-50" : ""}`}
+				// Bottom padding keeps the pager clear of the floating support chat button.
+				className={cn(
+					"space-y-4 transition-opacity",
+					launcher === "floating" && "pb-20",
+					isPlaceholderData && "opacity-50",
+				)}
 				aria-busy={isPlaceholderData}
 			>
 				{data.matches.map((match) => (
 					<ResponseCard
 						key={match.id}
 						run={match}
-						// Older rows predate the provider column; the model name is the extractor's other accepted key.
-						text={extractTextContent(match.rawOutput, match.provider ?? match.model)}
+						text={match.textContent}
 						highlight={data.query ?? undefined}
 						prompt={
 							<BrandPromptLink
@@ -137,9 +146,36 @@ function ResponsesPage() {
 					searching={isPlaceholderData}
 				/>
 			</FilterSection>
-			{content}
+			<div className="space-y-4">
+				{sentimentFilterCounts && sentimentFilterCounts.all > 0 && (
+					<SentimentFilterCard
+						counts={sentimentFilterCounts}
+						value={sentiment}
+						onChange={setSentiment}
+						sort={sort}
+						onSortChange={setSort}
+					/>
+				)}
+				{content}
+			</div>
 		</PageHeader>
 	);
+}
+
+function emptyMessage(
+	data: { totalRuns: number; matches: unknown[]; query: string | null } | undefined,
+	error: unknown,
+	/** Answers the search finds before the sentiment filter; with some, it's the filter that left none. */
+	searchMatches: number | undefined,
+): string | null {
+	if (error && !data) return "Couldn't load responses right now. Reload the page to try again.";
+	if (!data || data.totalRuns === 0) {
+		return "No responses for the selected filters yet. Responses appear once your prompts have been run.";
+	}
+	if (data.matches.length > 0) return null;
+	return data.query && !searchMatches
+		? `No responses contain "${data.query}" in this period.`
+		: "No responses match the selected filters in this period.";
 }
 
 function EmptyState({ message }: { message: string }) {

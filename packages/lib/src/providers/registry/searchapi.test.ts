@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractRun } from "../../text-extraction";
 import { searchapi } from "./searchapi";
+
+/** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
+const stored = (result: { rawOutput: unknown }) => extractRun(result.rawOutput, "searchapi");
 
 const CHATGPT_RESPONSE = {
 	markdown: "The **Marshall Stockwell III** is a well-reviewed portable speaker.",
@@ -72,12 +76,15 @@ describe("searchapi provider", () => {
 		expect(url.searchParams.get("web_search")).toBe("true");
 		expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe("Bearer test-key");
 
-		expect(result.textContent).toContain("Marshall Stockwell III");
+		expect(stored(result).textContent).toContain("Marshall Stockwell III");
 		expect(result.webQueries).toEqual(["best speakers released August 2026"]);
 		expect(result.modelVersion).toBe("gpt-5-6");
 		// `web_results` is what ChatGPT retrieved, not what it cited.
-		expect(result.citations.map((c) => c.url)).toEqual(["https://www.techradar.com/stockwell-iii"]);
-		expect(result.citations[0]).toMatchObject({ domain: "techradar.com", title: "Marshall Stockwell III review" });
+		expect(stored(result).citations.map((c) => c.url)).toEqual(["https://www.techradar.com/stockwell-iii"]);
+		expect(stored(result).citations[0]).toMatchObject({
+			domain: "techradar.com",
+			title: "Marshall Stockwell III review",
+		});
 	});
 
 	it("leaves ChatGPT's web search off unless the target asks for it", async () => {
@@ -101,7 +108,7 @@ describe("searchapi provider", () => {
 		const result = await searchapi.run("chatgpt", "What is a well-reviewed speaker?", { webSearch: false });
 
 		expect(result.webQueries).toEqual([]);
-		expect(result.citations).toHaveLength(1);
+		expect(stored(result).citations).toHaveLength(1);
 	});
 
 	it("reads Google AI Overview off the result page and stores only the overview", async () => {
@@ -113,7 +120,7 @@ describe("searchapi provider", () => {
 		expect(requestedUrl(fetchMock).searchParams.get("engine")).toBe("google");
 		expect(requestedUrl(fetchMock).searchParams.get("link")).toBe("resolved");
 
-		expect(result.textContent).toContain("Brooks Ghost");
+		expect(stored(result).textContent).toContain("Brooks Ghost");
 		expect(Object.keys(result.rawOutput as object)).not.toContain("organic_results");
 		expect((result.rawOutput as any).ai_overview.markdown).toContain("Brooks Ghost");
 		// Google searched, but the overview never reports the queries behind it.
@@ -125,7 +132,7 @@ describe("searchapi provider", () => {
 
 		const result = await searchapi.run("google-ai-overview", "best running shoes for beginners", { webSearch: true });
 
-		expect(result.citations.map((c) => c.domain)).toEqual(["runnersworld.com", "google.com"]);
+		expect(stored(result).citations.map((c) => c.domain)).toEqual(["runnersworld.com", "google.com"]);
 	});
 
 	it("fails a query Google answered without an AI Overview", async () => {
@@ -165,8 +172,8 @@ describe("searchapi provider", () => {
 		expect(followUp.get("page_token")).toBe("L2FzeW5jL2Zv");
 		expect(followUp.get("link")).toBe("resolved");
 
-		expect(result.textContent).toContain("Tesla Model 3");
-		expect(result.citations.map((c) => c.domain)).toEqual(["caranddriver.com"]);
+		expect(stored(result).textContent).toContain("Tesla Model 3");
+		expect(stored(result).citations.map((c) => c.domain)).toEqual(["caranddriver.com"]);
 		expect(Object.keys(result.rawOutput as object)).not.toContain("organic_results");
 	});
 

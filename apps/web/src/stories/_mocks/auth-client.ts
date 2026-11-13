@@ -12,6 +12,9 @@ type SubscriptionResult = { error: { message?: string } | null };
 let _delayMs = 0;
 let _error: string | null = null;
 let _ssoError: string | null = null;
+let _hasPassword = true;
+let _emailSignIn: "succeed" | "hang" | { error: string } = "succeed";
+let _lastLoginMethod: string | null = null;
 const _calls: { method: string; args: unknown }[] = [];
 
 /** Hold the call open so a story can show the in-flight spinner. */
@@ -33,10 +36,25 @@ export function setMockSsoError(message: string | null) {
 	_ssoError = message;
 }
 
+export function setMockEmailSignIn(outcome: "hang" | { error: string }) {
+	_emailSignIn = outcome;
+}
+
+export function setMockHasPassword(hasPassword: boolean) {
+	_hasPassword = hasPassword;
+}
+
+export function setMockLastLoginMethod(method: string | null) {
+	_lastLoginMethod = method;
+}
+
 export function resetMockAuthClient() {
+	_hasPassword = true;
 	_delayMs = 0;
 	_error = null;
 	_ssoError = null;
+	_emailSignIn = "succeed";
+	_lastLoginMethod = null;
 	_calls.length = 0;
 }
 
@@ -47,6 +65,7 @@ async function respond(method: string, args: unknown): Promise<SubscriptionResul
 }
 
 export const authClient = {
+	getLastUsedLoginMethod: () => _lastLoginMethod,
 	subscription: {
 		upgrade: (args: unknown) => respond("upgrade", args),
 		billingPortal: (args: unknown) => respond("billingPortal", args),
@@ -55,13 +74,22 @@ export const authClient = {
 		list: async () => ({ data: [], error: null }),
 	},
 	signIn: {
-		email: async () => ({ error: null }),
+		email: async () => {
+			if (_emailSignIn === "hang") return new Promise<never>(() => {});
+			if (_emailSignIn !== "succeed") return { error: { message: _emailSignIn.error } };
+			return { error: null };
+		},
 		social: async () => ({ error: null }),
 		sso: async () => ({ error: _ssoError ? { message: _ssoError } : null }),
 	},
 	signUp: { email: async () => ({ error: null }) },
 	requestPasswordReset: async () => ({ error: null }),
 	resetPassword: async () => ({ error: null }),
+	changePassword: (args: unknown) => respond("changePassword", args),
+	listAccounts: async () => ({
+		data: [{ providerId: _hasPassword ? "credential" : "google" }],
+		error: null,
+	}),
 	sendVerificationEmail: async () => ({ error: null }),
 	signOut: async () => ({ error: null }),
 	useSession: () => ({ data: null, isPending: false }),

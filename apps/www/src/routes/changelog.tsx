@@ -139,8 +139,7 @@ function ChangelogPage() {
 			<Navbar />
 			<main className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-20">
 				<header className="mb-12 max-w-3xl">
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ CHANGELOG</p>
-					<h1 className="mt-4 text-4xl font-semibold tracking-tight text-zinc-950 lg:text-5xl">Changelog</h1>
+					<h1 className="text-4xl font-semibold tracking-tight text-zinc-950 lg:text-5xl">Changelog</h1>
 					<p className="mt-5 max-w-[58ch] text-pretty text-lg text-zinc-600">
 						Latest releases, completed work, and improvements shipped to Elmo.
 					</p>

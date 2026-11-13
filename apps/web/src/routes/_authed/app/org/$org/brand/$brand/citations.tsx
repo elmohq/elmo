@@ -1,14 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useMemo } from "react";
 import { CitationsDisplay } from "@/components/citations-display";
 import { ALL_MODELS_VALUE } from "@/components/filter-bar";
 import { FilteredListShell } from "@/components/filtered-list-shell";
 import { PageHeader } from "@/components/page-header";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { brandKeys, useBrand } from "@/hooks/use-brands";
-import { useCitations } from "@/hooks/use-citations";
+import { citationKeys, useCitations } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { useBrandParams } from "@/hooks/use-route-params";
@@ -31,16 +33,24 @@ function CitationsPage() {
 	const trackedTargets = brand?.trackedTargets ?? [];
 
 	const modelParam = filters.model === ALL_MODELS_VALUE ? undefined : filters.model;
-	const {
-		data: citationData,
-		isLoading,
-		error: citationsError,
-		refetch: refetchCitations,
-	} = useCitations(brandId, {
+	const citationFilters = {
 		lookback: filters.lookback,
 		tags: filters.tags.length > 0 ? filters.tags : undefined,
 		model: modelParam,
-	});
+	};
+	const { data: citationData, isLoading, error: citationsError } = useCitations(brandId, citationFilters);
+	const tagsKey = filters.tags.join(",");
+	const competitors = citationData?.competitors;
+	const flowSource = useMemo(
+		() => ({
+			brandId,
+			filters: { lookback: filters.lookback, tags: tagsKey ? tagsKey.split(",") : undefined, model: modelParam },
+			brandDomains: [brand?.website ?? "", ...(brand?.additionalDomains ?? [])].map(extractDomain).filter(Boolean),
+			competitorDomains: (competitors ?? []).flatMap((c) => c.domains.map(extractDomain)),
+			modelOrder: [...new Set((brand?.trackedTargets ?? []).map((target) => target.model))],
+		}),
+		[brandId, filters.lookback, tagsKey, modelParam, brand, competitors],
+	);
 
 	const infoContent = (
 		<>
@@ -118,8 +128,10 @@ function CitationsPage() {
 						maxDomains={10}
 						maxUrls={20}
 						days={citationData.days}
+						listSource={{ brandId, filters: citationFilters }}
+						flowSource={flowSource}
 						onCompetitorAdded={() => {
-							refetchCitations();
+							queryClient.invalidateQueries({ queryKey: citationKeys.all });
 							queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 							queryClient.invalidateQueries({ queryKey: brandKeys.competitors(brandId) });
 							queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });

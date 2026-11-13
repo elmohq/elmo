@@ -1,0 +1,27 @@
+meta {
+  name: an omitted prompt tag list reads back empty
+  type: http
+  seq: 35
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{listsBrandId}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  brandId: {{listsBrandId}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.prompts: length 1
+}
+
+tests {
+  test("tags default to an empty list", function() {
+    const [prompt] = res.getBody().prompts;
+    expect(prompt.tags).to.deep.equal([]);
+  });
+}

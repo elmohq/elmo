@@ -1,4 +1,4 @@
-export { getComparisonFaqs, getComparisonVerdict } from "./content";
+export { getComparisonFaqs, getComparisonVerdict, getSoundbite } from "./content";
 
 export {
 	competitors,
@@ -14,7 +14,11 @@ export {
 	comparePairs,
 	compareSetSlug,
 	compareSets,
+	competitorsWithOwnPages,
 	FEATURE_SLUGS,
+	featurePhrase,
+	formatFateDate,
+	type GraveyardFate,
 	getAlternatives,
 	getAlternativesFaqs,
 	getAlternativesVerdict,
@@ -28,10 +32,16 @@ export {
 	getFeatureFaqs,
 	getFeatureKeyBySlug,
 	getFeatureVerdict,
+	graveyardFate,
+	graveyardTools,
+	hasComparisonPage,
+	hasOwnPages,
 	indexableCategories,
 	indexableFeatureKeys,
 	indexedCompetitors,
 	isIndexed,
+	isMostReplaced,
+	lastChecked,
 	MIN_TOOLS_FOR_FEATURE_PAGE,
 	openSourceTools,
 	toolsInCategory,
@@ -45,7 +55,9 @@ export {
 	FEATURE_CATEGORIES,
 	type FeatureKey,
 	getFeatureLabel,
+	getFeaturePhrase,
 	getFeatureSearchTerm,
 	getScreenshotUrl,
 	isLowDR,
+	isRetired,
 } from "./types";

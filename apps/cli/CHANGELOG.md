@@ -1,5 +1,93 @@
 # @elmohq/cli
 
+## 0.7.10
+
+No changes in this release.
+
+## 0.7.9
+
+### Patch Changes
+
+- ed4432f: The Microsoft Copilot app now requires a sign-in, so Elmo no longer scrapes it and tracks Bing AI Mode, the AI answer Bing still shows signed-out visitors, in its place. Brands that picked Copilot now track Bing AI Mode, which starts its own history. Past Copilot runs are kept and still count under "All models", but Copilot is no longer an option in the model filter. For self-hosted users, every `copilot` scrape target is skipped after upgrading, so replace it in `SCRAPE_TARGETS` with `bing-ai-mode:cloro:online` or `bing-ai-mode:searchapi:online` to keep collecting. The LLMs settings page lists any skipped scrape target with its replacement until you do.
+- ed4432f: Perplexity now requires a sign-in, so no scraping provider can reach it and Elmo no longer scrapes it. On Elmo Cloud, Perplexity is no longer a scraped engine: brands that picked it have an open slot to fill under Settings → LLMs, and Perplexity is tracked through Sonar as a premium model instead. For self-hosted users, every scraped `perplexity` target is skipped after upgrading, so replace it in `SCRAPE_TARGETS` with `perplexity:openrouter:perplexity/sonar:online` or `perplexity:dataforseo:online` to keep collecting. The LLMs settings page lists any skipped scrape target with its replacement until you do. Sonar API runs cost 2-5x what a scrape did, and Sonar Pro and Sonar Reasoning Pro cost more still. Past Perplexity runs are kept.
+
+## 0.7.8
+
+### Patch Changes
+
+- 034c475: Add `elmo lab audit`, which checks how well AI agents and crawlers can reach, read, and understand a website.
+- 1e7b8db: Add `elmo lab` commands that generate tracking prompts, evaluate them across providers, and suggest AEO improvements as one-off runs.
+
+## 0.7.7
+
+No changes in this release.
+
+## 0.7.6
+
+No changes in this release.
+
+## 0.7.5
+
+### Patch Changes
+
+- c3884e8: Call Jev through OpenRouter when no TypeSafe key is set: `elmo init` asks which to use, and can reuse your OpenRouter key.
+
+## 0.7.4
+
+No changes in this release.
+
+## 0.7.3
+
+No changes in this release.
+
+## 0.7.2
+
+No changes in this release.
+
+## 0.7.1
+
+No changes in this release.
+
+## 0.7.0
+
+### Minor Changes
+
+- f5b579c: **Jev (TypeSafe) is now a required dependency of Elmo: the worker won't start without `TYPESAFE_API_KEY`.** Jev judges mentions and sentiment, which is far more accurate toward your brand and each competitor. It costs very roughly $0.15–0.35 per 1,000 answers that name a tracked company, more for long answers that name many. Upgrading re-judges the last 90 days of answers once, about three months' worth of that cost; set `REPROCESS_DAYS=all` before upgrading to re-judge your whole history instead.
+
+## 0.6.2
+
+No changes in this release.
+
+## 0.6.1
+
+No changes in this release.
+
+## 0.6.0
+
+### Patch Changes
+
+- 1334ce8: Default the OpenAI and Anthropic model targets to `gpt-6-luna` and `claude-haiku-5-5` (`openai/gpt-6-luna` and `anthropic/claude-haiku-5.5` on OpenRouter); existing installs keep their configured models, so consider updating `SCRAPE_TARGETS` to switch from `gpt-5-mini` and `claude-sonnet-5`.
+
+## 0.5.2
+
+No changes in this release.
+
+## 0.5.1
+
+No changes in this release.
+
+## 0.5.0
+
+No changes in this release.
+
+## 0.4.6
+
+No changes in this release.
+
+## 0.4.5
+
+No changes in this release.
+
 ## 0.4.4
 
 No changes in this release.

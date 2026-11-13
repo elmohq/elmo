@@ -1,4 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { DataProvenance } from "@/components/data-provenance";
 import {
 	DirectoryBackLink,
 	DirectoryElmoBanner,
@@ -17,14 +18,15 @@ import {
 	getAlternativesVerdict,
 	getComparisonSlug,
 	getCompetitorBySlug,
-	isIndexed,
+	hasOwnPages,
+	isMostReplaced,
 } from "@/lib/competitors";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")({
 	loader: ({ params }) => {
 		const c = getCompetitorBySlug(params.slug);
-		if (!c || !isIndexed(c)) throw notFound();
+		if (!c || !hasOwnPages(c)) throw notFound();
 		const alternatives = getAlternatives(c);
 		return { competitor: c, alternatives, faqs: getAlternativesFaqs(c, alternatives) };
 	},
@@ -43,7 +45,7 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: `${c.name} alternatives`, path },
 				]),
-				faqJsonLd(faqs),
+				faqJsonLd(faqs, { path, dateModified: c.checkedAt }),
 			],
 		};
 	},
@@ -60,11 +62,7 @@ function AlternativesPage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero
-					eyebrow="Alternatives"
-					title={`${competitor.name} alternatives`}
-					lead={getAlternativesVerdict(competitor)}
-				/>
+				<DirectoryHero title={`${competitor.name} alternatives`} lead={getAlternativesVerdict(competitor)} />
 
 				<DirectoryElmoBanner
 					pitch="Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
@@ -90,14 +88,27 @@ function AlternativesPage() {
 								</div>
 							))}
 						</div>
+						<DataProvenance tools={[competitor]} className="mt-8" />
 					</DirectorySection>
 				) : null}
 
 				<DirectorySection title={`Other ${competitor.name} alternatives`}>
+					{isMostReplaced(competitor) ? (
+						<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">
+							Comparing more than one? See{" "}
+							<a
+								className="underline underline-offset-2 hover:text-zinc-950"
+								href="/blog/open-source-alternatives-to-profound-peec-otterly"
+							>
+								open-source alternatives to Profound, Peec AI, and OtterlyAI
+							</a>
+							.
+						</p>
+					) : null}
 					<ToolGrid competitors={alternatives} />
 				</DirectorySection>
 
-				<Faq items={getAlternativesFaqs(competitor, alternatives)} eyebrow="/ FAQ" />
+				<Faq items={getAlternativesFaqs(competitor, alternatives)} />
 				<ElmoCta />
 			</main>
 			<Footer />

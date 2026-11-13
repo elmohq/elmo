@@ -12,11 +12,9 @@ import { jsonSchemaResponseFormat, parseSchemaJson } from "./ai-sdk";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
-// Default to GPT-5 Mini via OpenRouter — supports OpenRouter's *native*
-// web-search plugin (vs the Exa fallback) and produced the best brand-info
-// recall + cheapest cost in our compare-onboarding runs. Other families that
-// support native search per the docs: Anthropic, Perplexity, xAI.
-const DEFAULT_RESEARCH_MODEL = "openai/gpt-5-mini";
+// Must be a family with OpenRouter's *native* web-search plugin (vs the Exa
+// fallback); per the docs that's OpenAI, Anthropic, Perplexity, and xAI.
+const DEFAULT_RESEARCH_MODEL = "anthropic/claude-sonnet-5.5";
 
 function openrouterHeaders(): Record<string, string> {
 	return {
@@ -25,24 +23,6 @@ function openrouterHeaders(): Record<string, string> {
 		"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
 		"X-Title": "Elmo AEO",
 	};
-}
-
-/** The Responses-style shape, where text lives in `output[].content[].text`. */
-function responsesApiTexts(output: unknown): string[] {
-	if (!Array.isArray(output)) return [];
-	return output
-		.filter((item: any) => item?.type === "message")
-		.flatMap((msg: any) => msg.content ?? [])
-		.filter((c: any) => c?.type === "output_text" && c.text)
-		.map((c: any) => c.text as string);
-}
-
-function extractTextFromOpenRouterResponse(data: any): string {
-	const chatContent = data?.choices?.[0]?.message?.content;
-	if (chatContent) return chatContent;
-
-	const texts = responsesApiTexts(data?.output);
-	return texts.length > 0 ? texts.join("\n") : "No text content found in OpenRouter response.";
 }
 
 function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
@@ -86,16 +66,17 @@ export const openrouter: Provider = {
 		schema,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
-		// Raw fetch (no AI SDK) so we can attach the OpenRouter `plugins` field
-		// — the AI SDK's OpenAI-compat path doesn't pass it through.
+		// Raw fetch: the AI SDK's OpenAI-compat path drops `tools` and `provider`.
 		const body: Record<string, unknown> = {
 			model: DEFAULT_RESEARCH_MODEL,
 			messages: [{ role: "user", content: prompt }],
 			response_format: jsonSchemaResponseFormat(schema),
 		};
-		// `engine: "native"` runs the underlying provider's real web-search tool
-		// (e.g. Anthropic's web_search_20250305) instead of the Exa fallback.
-		if (webSearch) body.plugins = [{ id: "web", engine: "native" }];
+		if (webSearch) {
+			body.tools = [{ type: "openrouter:web_search", parameters: { engine: "native" } }];
+			// The only host with native search that enforces response_format after searching.
+			body.provider = { only: ["anthropic"] };
+		}
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
 			headers: openrouterHeaders(),
@@ -111,40 +92,37 @@ export const openrouter: Provider = {
 		}
 		return {
 			object: parseSchemaJson(schema, content),
-			// Report the alias we sent, not OpenRouter's resolved version
-			// (e.g. "openai/gpt-5-mini" vs "openai/gpt-5-mini-2025-08-07") —
-			// matches what openai-api and anthropic-api do.
+			// The alias we sent, not the dated version OpenRouter resolved, as the other direct APIs report.
 			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		let modelSlug = options?.version;
-		if (!modelSlug) {
+		const version = options?.version;
+		if (!version) {
 			throw new Error(
 				`OpenRouter requires a version slug in SCRAPE_TARGETS. ` +
 					`Example: ${model}:openrouter:openai/gpt-5-mini:online`,
 			);
 		}
 
-		// ":online" is exactly equivalent to plugins: [{ id: "web" }], and with the
-		// engine unset OpenRouter routes to the model provider's native web search
-		// (Exa only as a fallback) — which is the consumer surface Elmo tracks.
-		if (options?.webSearch && !modelSlug.includes(":online")) {
-			modelSlug = `${modelSlug}:online`;
-		}
+		const modelSlug = version.replace(/:online$/, "");
 
 		const body: Record<string, unknown> = {
 			model: modelSlug,
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
 		};
+		// Perplexity always searches and has no tool-use endpoint.
+		if (options?.webSearch && !modelSlug.startsWith("perplexity/")) {
+			body.tools = [{ type: "openrouter:web_search" }];
+		}
+		// xAI ignores OpenRouter's search caps and runs eight or more searches per
+		// grounded answer, so reasoning effort is the only lever on Grok's cost.
+		if (modelSlug.startsWith("x-ai/")) body.reasoning = { effort: "minimal" };
 
-		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema
-		// strips annotations from responses, which contain web search citations.
-		// The SDK's Responses API (client.responses.send()) does preserve annotations
-		// via ResponseOutputText, but it's currently in beta. Consider switching to
-		// the Responses API + SDK when it's stable.
+		// Raw fetch: the SDK's ChatAssistantMessage schema strips the annotations
+		// that carry web search citations.
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
 			headers: openrouterHeaders(),
@@ -163,11 +141,9 @@ export const openrouter: Provider = {
 
 		return {
 			rawOutput: data,
-			textContent: extractTextFromOpenRouterResponse(data),
 			// OpenRouter doesn't expose the search queries the model made internally.
 			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
-			citations,
-			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
+			modelVersion: data?.model ?? modelSlug,
 		};
 	},
 };

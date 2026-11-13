@@ -3,38 +3,45 @@
  * exposing that would make its shape part of this contract.
  */
 import { db } from "@workspace/lib/db/db";
+import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
-import { extractTextContent } from "@workspace/lib/text-extraction";
+import type { RunMentionAssessments, MentionAssessment as StoredAssessment } from "@workspace/lib/mentions";
+import { extractorFor, extractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq } from "drizzle-orm";
+import type * as z from "zod";
+import type {
+	mentionAssessmentSchema,
+	runAssessmentsSchema,
+	runSchema,
+	runSummarySchema,
+} from "@/lib/api/schemas/runs";
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 
-export interface RunSummary {
-	id: string;
-	promptId: string;
-	brandId: string;
-	model: string;
-	provider: string | null;
-	webSearchEnabled: boolean | null;
-	brandMentioned: boolean | null;
-	competitorsMentioned: unknown;
-	webQueries: unknown;
-	citationCount: number;
-	createdAt: Date | string;
+export type RunSummary = Omit<z.infer<typeof runSummarySchema>, "createdAt"> & { createdAt: Date };
+export type MentionAssessment = z.infer<typeof mentionAssessmentSchema>;
+export type RunAssessments = NonNullable<z.infer<typeof runAssessmentsSchema>>;
+
+const publicAssessment = (record: StoredAssessment): MentionAssessment => ({
+	mentioned: record.mentioned,
+	probability: record.probability,
+	reason: record.reason ?? null,
+	sentiment: record.sentiment ?? null,
+	sentimentProbabilities: record.sentimentProbabilities ?? null,
+	position: record.position ?? null,
+	mentionCount: record.mentionCount ?? null,
+});
+
+/** Fingerprints and passage offsets stay internal. */
+function publicAssessments(stored: RunMentionAssessments | null): RunAssessments | null {
+	if (!stored) return null;
+	return {
+		brand: stored.brand ? publicAssessment(stored.brand) : null,
+		competitors: Object.fromEntries(Object.entries(stored.competitors).map(([name, r]) => [name, publicAssessment(r)])),
+	};
 }
 
-interface RunCitation {
-	url: string;
-	domain: string;
-	title: string | null;
-	citationIndex: number | null;
-}
-
-export interface RunDetail extends Omit<RunSummary, "citationCount"> {
-	citationCount: number;
-	answer: { text: string | null };
-	citations: RunCitation[];
-}
+export type RunDetail = Omit<z.infer<typeof runSchema>, "createdAt"> & { createdAt: Date };
 
 export interface ListRunsOptions {
 	promptId: string;
@@ -63,9 +70,10 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 			webSearchEnabled: row.web_search_enabled,
 			brandMentioned: row.brand_mentioned,
 			competitorsMentioned: row.competitors_mentioned,
+			assessments: publicAssessments(row.assessments),
 			webQueries: row.web_queries,
 			citationCount: row.citation_count,
-			createdAt: row.created_at,
+			createdAt: new Date(row.created_at),
 		})),
 		total,
 	};
@@ -73,9 +81,7 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 
 /** Addressed through its prompt, so a run id cannot be read under another. */
 export async function findRunDetail(promptId: string, runId: string): Promise<RunDetail | null> {
-	const [run] = await db
-		.select()
-		.from(promptRuns)
+	const [run] = await selectRuns(db)
 		.where(and(eq(promptRuns.id, runId), eq(promptRuns.promptId, promptId)))
 		.limit(1);
 	if (!run) return null;
@@ -91,9 +97,8 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 		.where(eq(citations.promptRunId, run.id))
 		.orderBy(asc(citations.citationIndex));
 
-	// Older rows predate the provider column; the model name is the extractor's
-	// other accepted key.
-	const text = extractTextContent(run.rawOutput, run.provider ?? run.model);
+	const text =
+		run.textContent ?? extractTextContent((await loadRawOutputs(db, [run.id])).get(run.id), extractorFor(run));
 
 	return {
 		id: run.id,
@@ -104,6 +109,7 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 		webSearchEnabled: run.webSearchEnabled,
 		brandMentioned: run.brandMentioned,
 		competitorsMentioned: run.competitorsMentioned,
+		assessments: publicAssessments(run.mentionAssessments),
 		webQueries: run.webQueries,
 		citationCount: cited.length,
 		createdAt: run.createdAt,

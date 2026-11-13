@@ -1,23 +1,12 @@
 /**
- * Schedule-time run policy: which targets a prompt should run, at what
- * per-target cadence, with what replication — resolved fresh on every firing
- * so subscription changes, plan changes, and platform-pick edits apply without
- * touching queued jobs.
- *
- * Two halves, both pure:
- *  - resolvePromptRunPlan: the prompt's target set + intervals.
- *  - selectDueTargets: which of those targets are actually due, metered
- *    against real prompt_runs history. Metering against history (rather than
- *    trusting the job cadence) is what makes per-target cadence work with the
- *    existing one-job-per-prompt scheduler, keeps in-flight jobs from before
- *    an upgrade valid, and structurally prevents duplicate-fire oversampling
- *    (a maintenance expedite re-runs only what is due).
- *
- * Non-cloud modes resolve exactly today's behavior: every brand-selected
- * target at the brand cadence, replicated RUNS_PER_PROMPT times.
+ * Resolved fresh on every firing, so plan and pick changes apply without touching
+ * queued jobs. Due targets are metered against prompt_runs history rather than the
+ * job cadence, so one job serves targets with different cadences and a duplicate
+ * firing re-runs only what is due.
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
+import { KNOWN_MODELS } from "@workspace/config/models";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { DeploymentMode } from "@workspace/config/types";
 import { getRunsPerPrompt } from "../constants";
@@ -36,30 +25,18 @@ export function slowestIntervalHours(targets: readonly TargetPlan[]): number {
 
 export interface PromptRunPlan {
 	targets: TargetPlan[];
-	/**
-	 * Hours until the prompt next runs (min target interval). Null means queue
-	 * nothing: there is nothing to run, because the org is unentitled, the brand
-	 * picked no platforms, or the prompt is outside its plan's pool.
-	 * schedule-maintenance starts the prompt again within one pass of the plan
-	 * producing targets.
-	 */
+	/** Null queues nothing; schedule-maintenance restarts the prompt once the plan produces targets. */
 	rescheduleHours: number | null;
 }
 
 export interface ResolveRunPlanInput {
 	scrapeTargets: ModelConfig[];
 	brand: { enabledModels: string[] | null; delayOverrideHours: number | null };
-	/**
-	 * Premium models this prompt is tracked on, grounded — one pool slot each,
-	 * already trimmed by the caller to what the org's pool covers.
-	 */
+	/** Already trimmed by the caller to what the org's pool covers. */
 	prompt: { premiumModels: string[] };
 	entitlements: Entitlements;
 	defaultDelayHours: number;
-	/**
-	 * Whether this prompt is inside the org's tracked-prompt pool (oldest
-	 * enabled prompts win after a downgrade). Unmetered callers omit it.
-	 */
+	/** Unmetered callers omit it. */
 	withinPromptPool?: boolean;
 }
 
@@ -68,10 +45,14 @@ function intervalForRate(runsPerDay: number): number {
 	return 24 / Math.max(1, runsPerDay);
 }
 
-/** Unmetered deployments run every target the brand selects, at the brand cadence. */
 function unlimitedRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
 	const interval = input.brand.delayOverrideHours ?? input.defaultDelayHours;
-	const targets = selectTargetsForBrand(input.scrapeTargets, input.brand.enabledModels).map((config) => ({
+	// A pick can outlive its target: a retired scrape target is skipped when
+	// SCRAPE_TARGETS is parsed. The brand's other picks should keep running, so
+	// only a name Elmo has never tracked still fails.
+	const configured = new Set(input.scrapeTargets.map((target) => target.model));
+	const picks = input.brand.enabledModels?.filter((model) => configured.has(model) || !(model in KNOWN_MODELS)) ?? null;
+	const targets = selectTargetsForBrand(input.scrapeTargets, picks).map((config) => ({
 		config,
 		intervalHours: interval,
 		replication: getRunsPerPrompt(),
@@ -79,11 +60,7 @@ function unlimitedRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
 	return { targets, rescheduleHours: targets.length > 0 ? interval : null };
 }
 
-/**
- * A pick always means the ungrounded target: the grounded one is sold from the
- * premium pool, so picking a premium model must not quietly buy the expensive
- * call. A picked platform that isn't configured on this instance drops out.
- */
+/** A pick always means the ungrounded target, so picking a premium model can't quietly buy the grounded call. */
 function standardTargets(input: ResolveRunPlanInput, intervalHours: number, replication: number): TargetPlan[] {
 	return resolveBrandPicks(input.entitlements, input.brand, input.scrapeTargets)
 		.map((model) => input.scrapeTargets.find((t) => t.model === model && !isGroundedApiTarget(t)))
@@ -91,11 +68,6 @@ function standardTargets(input: ResolveRunPlanInput, intervalHours: number, repl
 		.map((config) => ({ config, intervalHours, replication }));
 }
 
-/**
- * Each prompt/model pair the org has spent a pool slot on runs the model's
- * grounded target, which costs an order of magnitude more than the same model
- * ungrounded and so is never a platform pick.
- */
 function premiumTargets(input: ResolveRunPlanInput, intervalHours: number): TargetPlan[] {
 	if (input.entitlements.premiumPool <= 0) return [];
 	return input.prompt.premiumModels
@@ -107,23 +79,17 @@ function premiumTargets(input: ResolveRunPlanInput, intervalHours: number): Targ
 export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
 	const { entitlements } = input;
 
-	// Read "unmetered" off the entitlements rather than a separately-passed
-	// deployment mode: the two came from different places (one from
-	// @workspace/deployment, one from the environment the entitlement query
-	// read), and a worker whose mode said "not cloud" while the org's
-	// entitlements said otherwise would quietly run a paying customer on every
-	// configured platform instead of the four they bought.
+	// Metering follows the entitlements, never a separately-passed deployment
+	// mode: if the two disagreed, a paying org would run on every configured
+	// platform instead of the ones it bought.
 	if (entitlements.unlimited) return unlimitedRunPlan(input);
 
 	if (!entitlements.trackingActive || input.withinPromptPool === false) {
 		return { targets: [], rescheduleHours: null };
 	}
 
-	// A cadence override may only slow sampling below the plan rate. The write
-	// path enforces the same floor, but a stored override can be faster than
-	// the plan after a downgrade — clamp it here so it never speeds anything up.
-	// The brand's one override governs both rates: it is the customer saying
-	// "sample me less often", which is not a statement about a particular tier.
+	// A stored override can be faster than the plan after a downgrade, so it is
+	// clamped here too. It governs both tiers: it only ever means "sample me less".
 	const overrideHours = input.brand.delayOverrideHours;
 	const slowerOf = (planInterval: number) => Math.max(overrideHours ?? planInterval, planInterval);
 
@@ -141,15 +107,8 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 }
 
 /**
- * Which standard platforms a metered brand is tracked on: its own picks,
- * clamped to what the plan sells and to how many it may run at once — or the
- * plan's defaults when it has never chosen.
- *
- * The single answer to "what is this brand tracked on", because three surfaces
- * asked it independently and a brand with no stored picks got a different
- * answer from each: the run policy applied the plan defaults while the LLM
- * settings page and the prompts view both read null as "every configured
- * target", showing ten platforms to a brand running four.
+ * The run policy, the LLM settings page and the prompts view all ask this, so a
+ * brand with no stored picks reads as its plan defaults everywhere.
  */
 export function resolveBrandPicks(
 	entitlements: Entitlements,
@@ -164,15 +123,9 @@ export function resolveBrandPicks(
 	return picks.slice(0, entitlements.platformPicks ?? picks.length);
 }
 
-/**
- * Default platform picks for a cloud brand that hasn't chosen yet: the first
- * available menu platforms up to the plan's pick count. Written explicitly at
- * brand creation (and applied implicitly by the run policy when picks are
- * null) so a paying org is never silently untracked.
- */
+/** Written at brand creation, and applied by the run policy when picks are null. */
 export function defaultPlatformPicks(entitlements: Entitlements, scrapeTargets: ModelConfig[]): string[] {
-	// A grounded target belongs to the premium pool and must never be picked as a
-	// platform, so a model only counts as available if it has an ungrounded target.
+	// Only an ungrounded target makes a model pickable; grounded ones belong to the premium pool.
 	const available = new Set(scrapeTargets.filter((t) => !isGroundedApiTarget(t)).map((t) => t.model));
 	return (entitlements.platformMenu ?? [])
 		.filter((model) => available.has(model))
@@ -180,21 +133,9 @@ export function defaultPlatformPicks(entitlements: Entitlements, scrapeTargets: 
 }
 
 /**
- * Key for per-target run history.
- *
- * The provider is part of the identity, not just the model and its web-search
- * flag: a brand can track ChatGPT scraped off the consumer product *and*
- * grounded through an API, and both are `chatgpt` with web search on. Keyed on
- * model alone the two shared a cadence slot, so the scraped target's four runs
- * a day kept the premium one looking fresh and it never came due.
- *
- * Changing this shape costs no reprocessing, because keys are never stored:
- * both sides compute one from (model, provider, web_search_enabled), and
- * prompt_runs has recorded all three since the run was written. A deploy
- * therefore matches existing history rather than treating every target as
- * never-run. The one case that does re-fire once is an operator pointing a
- * model at a different provider — which is a different data source, so
- * restarting its cadence is the right answer.
+ * Includes the provider: ChatGPT scraped and grounded are both `chatgpt` with web
+ * search on, and sharing a slot would keep the grounded one from coming due. Keys
+ * are computed, never stored, so changing this shape needs no reprocessing.
  */
 export function targetKey(config: Pick<ModelConfig, "model" | "provider" | "webSearch">): string {
 	return `${config.model}::${config.provider}::${config.webSearch ? "web" : "base"}`;
@@ -220,11 +161,7 @@ export function lastRunsByTargetKey(rows: readonly LastRunRow[]): Map<string, Da
 	return byKey;
 }
 
-/**
- * Tolerance for cadence jitter: a job that fires slightly early still runs
- * its targets instead of skipping a whole cycle. Capped so long cadences
- * don't open a wide double-run window.
- */
+/** A slightly early job still runs instead of skipping a cycle; capped so long cadences can't double-run. */
 export function dueToleranceMs(intervalHours: number): number {
 	return Math.min(30 * 60 * 1000, intervalHours * 3600 * 1000 * 0.25);
 }
@@ -242,16 +179,9 @@ export interface TargetOverdueStatus {
 }
 
 /**
- * Whether a target has missed its cadence — the single definition of "overdue",
- * shared by the maintenance sweep, the Sentry alert, and the admin dashboard.
- *
- * Distinct from `isTargetDue`, which asks whether to run now (and so leans
- * early, with jitter tolerance). This asks whether something is wrong, and so
- * leans late: a target is overdue only once it is a whole interval past its last
- * run, plus whatever grace the caller wants. A target that has never run is
- * overdue once the prompt itself is past the grace window — failed runs record
- * no row, so a target broken on one provider shows up even while its siblings
- * stay fresh.
+ * Unlike `isTargetDue`, which leans early, this leans late: it asks whether
+ * something is wrong. Failed runs record no row, so a target broken on one
+ * provider shows up even while its siblings stay fresh.
  */
 export function targetOverdueStatus(input: {
 	intervalHours: number;
@@ -274,12 +204,7 @@ export function selectDueTargets(targets: TargetPlan[], lastRunAtByKey: Map<stri
 	return targets.filter((plan) => isTargetDue(plan, lastRunAtByKey.get(targetKey(plan.config)), now));
 }
 
-/**
- * Runaway-tenant ceiling: the theoretical daily maximum the plan
- * can produce, with headroom for pick changes and retries. Null = no ceiling.
- * Deliberately derived from plan limits (not current usage) so it's stable
- * and generous: it stops runaway scheduling without limiting legitimate runs.
- */
+/** From plan limits rather than usage, with headroom, so it stops runaways without limiting real runs. */
 export function dailyRunCeiling(entitlements: Entitlements): number | null {
 	if (entitlements.unlimited) return null;
 	const standard =

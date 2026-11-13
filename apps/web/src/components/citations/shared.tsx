@@ -33,15 +33,6 @@ export function formatPeriodLabel(days: number): string {
 	return `${days} days`;
 }
 
-export const extractSubreddit = (url: string): string | null => {
-	try {
-		const match = url.match(/reddit\.com\/r\/([^/?#]+)/i);
-		return match ? `r/${match[1]}` : null;
-	} catch {
-		return null;
-	}
-};
-
 export const extractFilenameFromUrl = (url: string) => {
 	try {
 		const urlObj = new URL(url);

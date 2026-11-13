@@ -1,0 +1,32 @@
+meta {
+  name: the snapshot clamps its top-K lists
+  type: http
+  seq: 38
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/snapshot?startDate=2000-01-01&endDate=2100-01-01&kMentions=0&kCitations=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  startDate: 2000-01-01
+  endDate: 2100-01-01
+  kMentions: 0
+  kCitations: 0
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("a count below 1 is read as 1, not refused or answered empty", function() {
+    // The seeded prompt mentions two competitors and cites several URLs, so
+    // anything but 1 here means the count was not clamped.
+    const body = res.getBody();
+    expect(body.mentions.mentionsTopK).to.have.lengthOf(1);
+    expect(body.citations.citedUrlsTopK).to.have.lengthOf(1);
+  });
+}

@@ -1,11 +1,15 @@
+import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import type { ReactNode } from "react";
+import { cn } from "@workspace/ui/lib/utils";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
-import { HIGHLIGHT_CLASS, splitHighlights } from "@/lib/highlight";
+import { HIGHLIGHT_CLASS, type MarkRange, splitHighlights } from "@/lib/highlight";
+import { passageRange } from "@/lib/passage";
+import { isSentiment, SENTIMENT_STYLES, type Sentiment } from "@/lib/sentiment";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 
@@ -16,6 +20,8 @@ export interface ResponseCardRun {
 	webQueries: string[] | null;
 	brandMentioned: boolean;
 	competitorsMentioned: string[] | null;
+	/** Null when mentions came from substring matching, or when `text` isn't the stored text the offsets index. */
+	mentionAssessments: RunMentionAssessments | null;
 	rawOutput: unknown;
 }
 
@@ -39,6 +45,14 @@ export function ResponseCard({
 	brandName?: string;
 	domainFor: (name: string) => string | undefined;
 }) {
+	const [selected, setSelected] = useState<string | null>(null);
+	const companies = mentionedCompanies(run, text, brandName);
+	const markRange = passageMark(companies.find((c) => c.name === selected));
+	const answerRef = useRef<HTMLDivElement>(null);
+	// The passage can sit below the answer box's fold, where marking it alone would show nothing.
+	useEffect(() => {
+		if (selected) answerRef.current?.querySelector("[data-passage]")?.scrollIntoView({ block: "nearest" });
+	}, [selected]);
 	return (
 		<Card>
 			<CardHeader className="pb-0 gap-y-0">
@@ -48,7 +62,7 @@ export function ResponseCard({
 						{prompt}
 					</div>
 				)}
-				<div className="grid grid-cols-3 gap-x-4 text-sm">
+				<div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
 					<div>
 						<span className="text-muted-foreground block text-xs mb-0.5">Model</span>
 						<span>{getModelDisplayName(run.model)}</span>
@@ -57,7 +71,7 @@ export function ResponseCard({
 						<span className="text-muted-foreground block text-xs mb-0.5">Version</span>
 						<span>{run.version}</span>
 					</div>
-					<div>
+					<div className="col-span-2 sm:col-span-1">
 						<span className="text-muted-foreground block text-xs mb-0.5">Evaluated</span>
 						<span>{formatDate(run.createdAt)}</span>
 					</div>
@@ -70,7 +84,11 @@ export function ResponseCard({
 						<span className="text-xs text-muted-foreground block mb-1.5">Web Queries</span>
 						<div className="flex flex-wrap gap-1.5">
 							{[...new Set<string>(run.webQueries)].map((query) => (
-								<Badge key={query} variant="outline" className="text-xs font-normal">
+								<Badge
+									key={query}
+									variant="outline"
+									className="h-auto max-w-full whitespace-normal text-left text-xs font-normal"
+								>
 									{query}
 								</Badge>
 							))}
@@ -80,29 +98,15 @@ export function ResponseCard({
 
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
-					<div className="flex flex-wrap gap-1.5">
-						{run.brandMentioned && brandName && (
-							<Badge className="text-xs font-normal">
-								<SiteIcon domain={domainFor(brandName)} size="xs" />
-								{brandName}
-							</Badge>
-						)}
-						{[...new Set<string>(run.competitorsMentioned ?? [])].map((competitor) => (
-							<Badge key={competitor} variant="outline" className="text-xs font-normal">
-								<SiteIcon domain={domainFor(competitor)} size="xs" />
-								{competitor}
-							</Badge>
-						))}
-						{!run.brandMentioned && (!run.competitorsMentioned || run.competitorsMentioned.length === 0) && (
-							<span className="text-xs text-muted-foreground">None</span>
-						)}
-					</div>
+					<MentionedBrands companies={companies} selected={selected} onSelect={setSelected} domainFor={domainFor} />
 				</div>
 
 				<div>
 					<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
-					<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
-						<ResponseMarkdown highlight={highlight}>{text}</ResponseMarkdown>
+					<div ref={answerRef} className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
+						<ResponseMarkdown highlight={highlight} markRange={markRange}>
+							{text}
+						</ResponseMarkdown>
 					</div>
 				</div>
 
@@ -121,6 +125,123 @@ export function ResponseCard({
 			</CardContent>
 		</Card>
 	);
+}
+
+interface MentionedCompany {
+	name: string;
+	isBrand: boolean;
+	record?: MentionAssessment;
+	sentiment?: Sentiment;
+	passage: { start: number; end: number } | null;
+}
+
+/** The brand first, then competitors in the order the answer names them. */
+function mentionedCompanies(run: ResponseCardRun, text: string, brandName?: string): MentionedCompany[] {
+	const company = (name: string, isBrand: boolean, record?: MentionAssessment): MentionedCompany => ({
+		name,
+		isBrand,
+		record,
+		sentiment: isSentiment(record?.sentiment) ? record.sentiment : undefined,
+		passage: record ? passageRange(text, record) : null,
+	});
+	return [
+		...(run.brandMentioned && brandName ? [company(brandName, true, run.mentionAssessments?.brand)] : []),
+		...[...new Set(run.competitorsMentioned ?? [])].map((name) =>
+			company(name, false, run.mentionAssessments?.competitors[name]),
+		),
+	];
+}
+
+const ordinal = (n: number) => {
+	const suffix = ["th", "st", "nd", "rd"][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? "th";
+	return `${n}${suffix}`;
+};
+
+function badgeTip(company: MentionedCompany): string {
+	const parts: string[] = [];
+	if (company.record?.position) parts.push(`Named ${ordinal(company.record.position)} among the tracked companies.`);
+	if (company.passage) parts.push("Click to mark the passage this rests on.");
+	return parts.join(" ");
+}
+
+/**
+ * A badge per company with its position and the answer's sentiment toward it. Clicking one marks the
+ * passage its assessment rests on in the answer below; clicking it again clears the mark.
+ */
+function MentionedBrands({
+	companies,
+	selected,
+	onSelect,
+	domainFor,
+}: {
+	companies: MentionedCompany[];
+	selected: string | null;
+	onSelect: (name: string | null) => void;
+	domainFor: (name: string) => string | undefined;
+}) {
+	if (companies.length === 0) return <span className="text-xs text-muted-foreground">None</span>;
+	return (
+		<div className="flex flex-wrap items-center gap-1.5">
+			{companies.map((company) => {
+				const { sentiment } = company;
+				const canShow = company.passage !== null;
+				const active = selected === company.name;
+				const tip = badgeTip(company);
+				const content = (
+					<>
+						<SiteIcon domain={domainFor(company.name)} size="xs" />
+						{company.name}
+						{company.record?.position !== undefined && (
+							<span className="tabular-nums text-muted-foreground">#{company.record.position}</span>
+						)}
+						{sentiment && (
+							<>
+								<span className="h-3 w-px bg-border" />
+								<span className={cn("font-medium", SENTIMENT_STYLES[sentiment].text)}>
+									{SENTIMENT_STYLES[sentiment].label}
+								</span>
+							</>
+						)}
+					</>
+				);
+				const className = cn(
+					"inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors",
+					company.isBrand && "border-foreground/30 font-medium",
+				);
+				// Only a badge with a passage to mark is a control; the rest are plain labels.
+				if (!canShow) {
+					return (
+						<span key={company.name} title={tip || undefined} className={className}>
+							{content}
+						</span>
+					);
+				}
+				return (
+					<button
+						key={company.name}
+						type="button"
+						aria-pressed={active}
+						title={tip || undefined}
+						onClick={() => onSelect(active ? null : company.name)}
+						className={cn(
+							className,
+							"cursor-pointer hover:bg-muted/60",
+							active && sentiment && cn("border-transparent", SENTIMENT_STYLES[sentiment].soft),
+							active && !sentiment && "border-transparent bg-muted",
+						)}
+					>
+						{content}
+					</button>
+				);
+			})}
+		</div>
+	);
+}
+
+function passageMark(company?: MentionedCompany): MarkRange | undefined {
+	if (!company?.passage) return undefined;
+	const tint = company.sentiment ? SENTIMENT_STYLES[company.sentiment].soft : "bg-muted";
+	return { ...company.passage, className: cn("rounded-sm px-0.5 text-inherit", tint) };
 }
 
 function Highlighted({ text, term }: { text: string; term?: string }) {

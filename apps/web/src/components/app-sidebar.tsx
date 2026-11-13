@@ -11,14 +11,16 @@ import {
 	IconLink,
 	IconListDetails,
 	IconMessages,
+	IconMoodSmile,
 	IconPlugConnected,
+	IconSchool,
 	IconSitemap,
 	IconSpeakerphone,
 	IconTarget,
 	IconUsers,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import type { FeaturesConfig } from "@workspace/config/types";
+import type { DeploymentMode, FeaturesConfig } from "@workspace/config/types";
 import { brandLinkParams, orgLinkParams } from "@workspace/lib/app-urls";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
@@ -38,14 +40,18 @@ import { NavAppInfo } from "@/components/nav-app-info";
 import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
-import { useViewer } from "@/hooks/use-route-context";
+import { useLooseRouteContext, useViewer } from "@/hooks/use-route-context";
 import { adminNavItems } from "@/lib/admin-nav";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import type { ShellScope } from "@/lib/shell-scope";
 
 export type AppSidebarProps = ShellScope;
 
-function organizationGroups(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup[] {
+function organizationGroups(
+	organization: OrganizationSummary,
+	features?: FeaturesConfig,
+	mode?: DeploymentMode,
+): NavGroup[] {
 	const params = orgLinkParams(organization);
 	const items: NavItem[] = [
 		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase, exact: true },
@@ -62,15 +68,19 @@ function organizationGroups(organization: OrganizationSummary, features?: Featur
 
 	items.push({ title: "API Keys", link: { to: "/app/org/$org/settings/api-keys", params }, icon: IconKey });
 
+	const docs: NavItem[] = [
+		{ title: "API", link: { to: "/app/org/$org/settings/api", params }, icon: IconCode },
+		{ title: "MCP", link: { to: "/app/org/$org/settings/mcp", params }, icon: IconPlugConnected },
+	];
+
+	// The skill is Elmo's, and whitelabel deployments never point users at Elmo.
+	if (mode !== "whitelabel") {
+		docs.push({ title: "Skill", link: { to: "/app/org/$org/settings/skill", params }, icon: IconSchool });
+	}
+
 	return [
 		{ label: "Organization Settings", items },
-		{
-			label: "Docs",
-			items: [
-				{ title: "API", link: { to: "/app/org/$org/settings/api", params }, icon: IconCode },
-				{ title: "MCP", link: { to: "/app/org/$org/settings/mcp", params }, icon: IconPlugConnected },
-			],
-		},
+		{ label: "Docs", items: docs },
 	];
 }
 
@@ -88,6 +98,7 @@ function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts)
 				link: { to: "/app/org/$org/brand/$brand/share-of-voice", params },
 				icon: IconSpeakerphone,
 			},
+			{ title: "Sentiment", link: { to: "/app/org/$org/brand/$brand/sentiment", params }, icon: IconMoodSmile },
 			{ title: "Responses", link: { to: "/app/org/$org/brand/$brand/responses", params }, icon: IconMessages },
 			{ title: "Query Fan-Out", link: { to: "/app/org/$org/brand/$brand/query-fan-out", params }, icon: IconSitemap },
 			{ title: "Citations", link: { to: "/app/org/$org/brand/$brand/citations", params }, icon: IconLink },
@@ -124,6 +135,7 @@ export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
 	const { isAdmin, hasReportAccess } = useViewer();
 	const features = useDeploymentFeatures();
+	const mode = useLooseRouteContext().clientConfig?.mode;
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = features?.reportGeneration ?? true;
 
@@ -133,7 +145,7 @@ export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 
 	const groups: NavGroup[] = [
 		...(section === "brand" && organization && brand ? brandGroups(organization, brand) : []),
-		...(section === "organization" && organization ? organizationGroups(organization, features) : []),
+		...(section === "organization" && organization ? organizationGroups(organization, features, mode) : []),
 		...(section === "admin" && adminItems.length > 0 ? [{ label: "Admin", items: adminItems }] : []),
 	];
 	const brandmark = (

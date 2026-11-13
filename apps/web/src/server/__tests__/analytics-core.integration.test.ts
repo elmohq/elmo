@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
 	getBrandAnalytics,
-	getBrandCitations,
+	getBrandCitationDomains,
+	getBrandCitationUrls,
 	getBrandPromptPerformance,
 	getBrandShareOfVoice,
 	getBrandVisibility,
+	getCompetitiveLandscape,
 } from "@/server/analytics-core";
 import {
 	createBrand,
@@ -13,9 +15,16 @@ import {
 	createPrompt,
 	createRun,
 	deleteBrand,
+	rebuildRollups,
 } from "@/test/integration/stats-fixtures";
 
 const window = { from: "2026-03-01", to: "2026-03-03", timezone: "UTC" };
+
+/** These runs were matched by name, before the judge, so they carry no sentiment or position. */
+const UNJUDGED = {
+	sentiment: { positive: 0, neutral: 0, negative: 0, mixed: 0, score: null },
+	position: { average: null },
+};
 
 let brandId: string;
 let pricing: string;
@@ -53,6 +62,7 @@ beforeAll(async () => {
 
 	const hidden = await createRun(brandId, disabled, { at: "2026-03-02T10:00:00Z", brandMentioned: true });
 	await createCitation(hidden, "https://hidden.example/");
+	await rebuildRollups(brandId);
 });
 
 afterAll(async () => {
@@ -103,9 +113,9 @@ describe("share of voice", () => {
 		expect(sov.totalRuns).toBe(4);
 		expect(sov.brandShare).toBe(0.5);
 		expect(sov.entries).toEqual([
-			{ name: "Acme", isBrand: true, mentions: 2, prompts: 2, share: 0.5 },
-			{ name: "Globex", isBrand: false, mentions: 1, prompts: 1, share: 0.25 },
-			{ name: "Initech", isBrand: false, mentions: 1, prompts: 1, share: 0.25 },
+			{ name: "Acme", isBrand: true, mentions: 2, prompts: 2, share: 0.5, ...UNJUDGED },
+			{ name: "Globex", isBrand: false, mentions: 1, prompts: 1, share: 0.25, ...UNJUDGED },
+			{ name: "Initech", isBrand: false, mentions: 1, prompts: 1, share: 0.25, ...UNJUDGED },
 		]);
 	});
 
@@ -119,8 +129,10 @@ describe("share of voice", () => {
 });
 
 describe("citations", () => {
+	const everything = { limit: 100, offset: 0 };
+
 	it("merges URL variants and classifies brand and competitor pages", async () => {
-		const { urls, totals } = await getBrandCitations(brandId, window);
+		const { urls, totals } = await getBrandCitationUrls(brandId, window, {}, everything);
 		expect(totals).toEqual({ citations: 5, uniqueDomains: 3, uniqueUrls: 3 });
 		expect(urls).toEqual(
 			expect.arrayContaining([
@@ -137,8 +149,19 @@ describe("citations", () => {
 		);
 	});
 
+	it("pages through URLs, with totals over all of them, and searches past the first page", async () => {
+		const firstPage = await getBrandCitationUrls(brandId, window, {}, { limit: 1, offset: 0 });
+		expect(firstPage.urls).toHaveLength(1);
+		expect(firstPage.total).toBe(3);
+		expect(firstPage.totals).toEqual({ citations: 5, uniqueDomains: 3, uniqueUrls: 3 });
+
+		const searched = await getBrandCitationUrls(brandId, window, {}, { search: "globex", limit: 1, offset: 0 });
+		expect(searched.urls.map((url) => url.url)).toEqual(["https://globex.example/x"]);
+		expect(searched.total).toBe(1);
+	});
+
 	it("compares each domain with the preceding window of the same length", async () => {
-		const { domains } = await getBrandCitations(brandId, window);
+		const { domains } = await getBrandCitationDomains(brandId, window, {}, everything);
 		const byDomain = Object.fromEntries(domains.map((domain) => [domain.domain, domain]));
 		expect(byDomain["review.example"]).toMatchObject({ count: 2, previousCount: 1, changeFactor: 2, promptCount: 2 });
 		expect(byDomain["acme.example"]).toMatchObject({ count: 2, share: 0.4, previousCount: 0, changeFactor: null });
@@ -170,7 +193,25 @@ describe("brand analytics", () => {
 		expect(analytics.visibility.current).toBe(1);
 		expect(analytics.shareOfVoice.brand).toBe(0.5);
 		expect(analytics.models).toEqual([
-			{ model: "chatgpt", label: "ChatGPT", runs: 4, brandMentions: 3, visibility: 0.75, citations: 5 },
+			{ model: "chatgpt", label: "ChatGPT", runs: 4, brandMentions: 3, visibility: 0.75, citations: 5, ...UNJUDGED },
 		]);
+	});
+});
+
+describe("competitive landscape", () => {
+	it("gives the brand the same figures as the visibility and share-of-voice pages, day by day", async () => {
+		const [landscape, visibility, sov] = await Promise.all([
+			getCompetitiveLandscape(brandId, window),
+			getBrandVisibility(brandId, window),
+			getBrandShareOfVoice(brandId, window),
+		]);
+		const acme = landscape.companies[0];
+		expect(acme.series.visibility).toEqual(visibility.series.map((point) => point.visibility));
+		expect(acme.series.share).toEqual(sov.series.map((point) => point.share));
+		expect(acme.totals.visibility).toBe(visibility.currentVisibility);
+		expect(acme.totals.share).toBe(sov.brandShare);
+		expect(acme.byModel.chatgpt?.visibility).toBe(visibility.currentVisibility);
+		// Only tracked competitors are listed; a company the answers name but nobody tracks isn't.
+		expect(landscape.companies.map((c) => c.name)).toEqual(["Acme", "Globex"]);
 	});
 });

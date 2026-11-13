@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Tombstone } from "lucide-react";
 import { type CSSProperties, Fragment, type ReactNode, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { Footer } from "@/components/footer";
@@ -33,6 +33,8 @@ import {
 	type RateTier,
 	type RunStats,
 	rateTier,
+	retiredSurfaceReason,
+	retiredTargetNotice,
 	runStats,
 	type StatusEntry,
 	type TargetStatus,
@@ -620,8 +622,67 @@ function ProviderName({
 	);
 }
 
+function RetiredNotice({
+	label = "Login-walled.",
+	reason,
+	compact,
+	moved,
+}: {
+	label?: string;
+	reason: string;
+	compact?: boolean;
+	moved?: boolean;
+}) {
+	const Icon = moved ? ArrowRight : Tombstone;
+	return (
+		<span
+			className={`flex items-center gap-2 rounded-sm bg-zinc-100 text-left text-zinc-500 ${compact ? "h-9 justify-center px-3 text-[11px]" : "px-3 py-2.5 text-xs"}`}
+		>
+			<Icon className="size-4 shrink-0 text-zinc-400" aria-hidden />
+			<span className={compact ? "truncate" : undefined}>
+				<span className="font-medium text-zinc-600">{label}</span>{" "}
+				{compact ? "Scrapers can no longer reach it." : reason}
+			</span>
+		</span>
+	);
+}
+
+function ProviderTitle({ provider, rest }: { provider: string; rest: string }) {
+	return (
+		<div>
+			<ProviderName provider={provider} className="font-medium text-zinc-950">
+				{formatProvider(provider)}
+			</ProviderName>
+			{rest && (
+				<span className="text-zinc-500">
+					{" "}
+					(
+					{["openrouter", "openai-api", "anthropic-api", "mistral-api"].includes(provider)
+						? rest
+						: rest.replace(/online/g, "web search")}
+					)
+				</span>
+			)}
+		</div>
+	);
+}
+
 function ProviderRow({ data }: { data: TargetStatus }) {
-	const { model, provider, rest } = parseTarget(data.target);
+	const { provider, rest } = parseTarget(data.target);
+	const notice = retiredTargetNotice(data.target);
+	if (notice) {
+		return (
+			<div className="space-y-2 rounded-md border border-zinc-200 bg-zinc-50 p-4">
+				<ProviderTitle provider={provider} rest={rest} />
+				<RetiredNotice label={notice.label} reason={notice.reason} moved={notice.kind === "moved"} />
+			</div>
+		);
+	}
+	return <LiveProviderRow data={data} />;
+}
+
+function LiveProviderRow({ data }: { data: TargetStatus }) {
+	const { provider, rest } = parseTarget(data.target);
 	const deduped = dedupeEntries(data.entries);
 	const latest = getLatest(deduped);
 	const uptime = passRate([data]);
@@ -635,21 +696,7 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 	return (
 		<div className="space-y-2 rounded-md border border-zinc-200 bg-white p-4">
 			<div className="flex items-center justify-between">
-				<div>
-					<ProviderName provider={provider} className="font-medium text-zinc-950">
-						{formatProvider(provider)}
-					</ProviderName>
-					{rest && (
-						<span className="text-zinc-500">
-							{" "}
-							(
-							{["openrouter", "openai-api", "anthropic-api", "mistral-api"].includes(provider)
-								? rest
-								: rest.replace(/online/g, "web search")}
-							)
-						</span>
-					)}
-				</div>
+				<ProviderTitle provider={provider} rest={rest} />
 				<UptimeBadge entries={deduped} />
 			</div>
 			<UptimeBar entries={deduped} />
@@ -677,7 +724,7 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 function filterPillClass(active: boolean) {
-	return `rounded-full border px-3 py-1 text-xs transition-colors ${
+	return `rounded-full border px-2.5 py-1 text-xs transition-colors ${
 		active ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
 	}`;
 }
@@ -696,8 +743,8 @@ function FilterRow({
 	onClear: () => void;
 }) {
 	return (
-		<div className="flex flex-wrap items-center gap-1.5">
-			<span className="w-20 shrink-0 text-xs font-medium text-zinc-500">{label}</span>
+		<div className="flex flex-wrap items-center gap-1">
+			<span className="w-16 shrink-0 text-xs font-medium text-zinc-500">{label}</span>
 			<button type="button" onClick={onClear} className={filterPillClass(selected.size === 0)}>
 				All
 			</button>
@@ -939,6 +986,10 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 						<span className="size-3 rounded-sm bg-zinc-100" style={{ backgroundImage: HATCH_BG }} />
 						not available
 					</span>
+					<span className="flex items-center gap-1.5">
+						<Tombstone className="size-3 text-zinc-400" aria-hidden />
+						login-walled
+					</span>
 				</div>
 			</CardHeader>
 			<CardContent>
@@ -972,22 +1023,52 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 						))}
 						<div />
 						<div />
-						{matrix.models.map((model) => (
-							<Fragment key={model}>
-								<div className="flex items-center pr-2 text-sm font-medium text-zinc-700">{formatModel(model)}</div>
-								{renderProviderCells((p) => (
-									<MatrixCellView
-										key={p}
-										model={model}
-										provider={p}
-										cell={matrix.cell(model, p)}
-										availability={matrix.availability(model, p)}
+						{matrix.models.map((model) => {
+							const cellView = (p: string) => (
+								<MatrixCellView
+									key={p}
+									model={model}
+									provider={p}
+									cell={matrix.cell(model, p)}
+									availability={matrix.availability(model, p)}
+								/>
+							);
+							const retiredReason = retiredSurfaceReason(model);
+							return (
+								<Fragment key={model}>
+									<div className="flex items-center pr-2 text-sm font-medium text-zinc-700">{formatModel(model)}</div>
+									{retiredReason ? (
+										<>
+											{apiProviders.map(cellView)}
+											{grouped && <div />}
+											<div style={{ gridColumn: `span ${scraperProviders.length}` }}>
+												<HoverTip
+													tip={
+														<>
+															<TipHeader
+																title="No Longer Available"
+																subtitle={`${formatModel(model)} · AI Search Scrapers`}
+															/>
+															<div className="text-zinc-600">{retiredReason}</div>
+														</>
+													}
+													className="block"
+												>
+													<RetiredNotice reason={retiredReason} compact />
+												</HoverTip>
+											</div>
+										</>
+									) : (
+										renderProviderCells(cellView)
+									)}
+									<div />
+									<MatrixSummaryCell
+										title={`${formatModel(model)} · All Providers`}
+										targets={matrix.rowTargets(model)}
 									/>
-								))}
-								<div />
-								<MatrixSummaryCell title={`${formatModel(model)} · All Providers`} targets={matrix.rowTargets(model)} />
-							</Fragment>
-						))}
+								</Fragment>
+							);
+						})}
 						<div className="col-span-full h-2" />
 						<div />
 						{renderProviderCells((p) => (
@@ -998,7 +1079,7 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 							/>
 						))}
 						<div />
-						<MatrixSummaryCell title="All Models and Providers" targets={data} solid />
+						<MatrixSummaryCell title="All Models and Providers" targets={matrix.liveTargets} solid />
 					</div>
 				</div>
 			</CardContent>
@@ -1051,7 +1132,6 @@ function StatusPage() {
 			<Navbar />
 			<main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
 				<div className="mb-8">
-					<p className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ STATUS</p>
 					<h1 className="font-heading text-3xl text-zinc-950 md:text-4xl">Provider Status</h1>
 					<p className="mt-2 text-zinc-600">
 						Status of the third-party AI providers and scraping services Elmo uses to track your brand's visibility and

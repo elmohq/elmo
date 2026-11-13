@@ -10,15 +10,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { computeReportUnstableStats } from "@workspace/lib/report-metrics";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { clampedCount } from "@/lib/api/query";
+import { reportSchema } from "@/lib/api/schemas/reports";
 import { findReport } from "@/server/reports-core";
 
 export const Route = createFileRoute("/api/v1/reports/$reportId")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: reportSchema,
 				adminOnly: true,
-				params: z.object({ reportId: z.guid("Invalid report ID format") }),
-				handle: async ({ params, request }) => {
+				params: z.object({ reportId: z.uuid("Invalid report ID format") }),
+				query: z.object({ kMentions: clampedCount(50, 5) }),
+				handle: async ({ params, query }) => {
 					const { reportId } = params;
 
 					const report = await findReport(reportId);
@@ -40,11 +44,8 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 						};
 					}
 
-					const { searchParams } = new URL(request.url);
-
 					// Top-K params applied to each prompt's snapshot
-					const kMentionsParam = Number.parseInt(searchParams.get("kMentions") || "5", 10);
-					const kMentions = Number.isNaN(kMentionsParam) ? 5 : Math.max(1, Math.min(50, kMentionsParam));
+					const { kMentions } = query;
 
 					const rawOutput = report.rawOutput as {
 						competitors: Array<{ name: string; domain: string }>;

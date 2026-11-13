@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractRun } from "../../text-extraction";
 import { oxylabs } from "./oxylabs";
+
+/** What a run stores: extraction reads the payload, so a provider is right only if its payload yields this. */
+const stored = (result: { rawOutput: unknown }) => extractRun(result.rawOutput, "oxylabs");
 
 const RESULT_PAYLOAD = {
 	results: [
@@ -9,20 +13,6 @@ const RESULT_PAYLOAD = {
 				citations: [{ url: "https://www.whathifi.com/reviews/sonos-era-300", title: "Sonos Era 300 review" }],
 				search_queries: ["recent speaker reviews"],
 				llm_model: "gpt-5",
-			},
-		},
-	],
-};
-
-// Perplexity exposes no searches of its own, only the follow-up questions it
-// suggests below an answer.
-const PERPLEXITY_PAYLOAD = {
-	results: [
-		{
-			content: {
-				markdown_text: "The Sonos Era 300 is a well-reviewed speaker released recently.",
-				citations: [{ url: "https://www.whathifi.com/reviews/sonos-era-300", title: "Sonos Era 300 review" }],
-				related_queries: ["What about the JBL Charge 6", "Which is better for a pool party"],
 			},
 		},
 	],
@@ -79,28 +69,10 @@ describe("oxylabs provider", () => {
 		});
 		expect(fetchMock.mock.calls[1][0]).toBe("https://data.oxylabs.io/v1/queries/job-123");
 		expect(fetchMock.mock.calls[3][0]).toBe("https://data.oxylabs.io/v1/queries/job-123/results");
-		expect(result.textContent).toContain("Sonos Era 300");
-		expect(result.citations).toHaveLength(1);
+		expect(stored(result).textContent).toContain("Sonos Era 300");
+		expect(stored(result).citations).toHaveLength(1);
 		expect(result.webQueries).toEqual(["recent speaker reviews"]);
 		expect(result.modelVersion).toBe("gpt-5");
-	});
-
-	it("does not count Perplexity's suggested follow-ups as searches", async () => {
-		vi.useFakeTimers();
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(jsonResponse({ id: "job-pplx", status: "pending" }, 202))
-			.mockResolvedValueOnce(jsonResponse({ id: "job-pplx", status: "done" }))
-			.mockResolvedValueOnce(jsonResponse(PERPLEXITY_PAYLOAD));
-		vi.stubGlobal("fetch", fetchMock);
-
-		const promise = oxylabs.run("perplexity", "What is a well-reviewed speaker?", { webSearch: true });
-		await vi.runAllTimersAsync();
-		const result = await promise;
-
-		// Citations prove a search ran, but Oxylabs never reports what was searched.
-		expect(result.citations).toHaveLength(1);
-		expect(result.webQueries).toEqual(["unavailable"]);
 	});
 
 	it("uses the same asynchronous flow for Google AI Mode", async () => {
@@ -137,7 +109,7 @@ describe("oxylabs provider", () => {
 		const result = await promise;
 
 		expect(fetchMock).toHaveBeenCalledTimes(5);
-		expect(result.textContent).toContain("Sonos Era 300");
+		expect(stored(result).textContent).toContain("Sonos Era 300");
 	});
 
 	it("fails a faulted asynchronous job without requesting results", async () => {

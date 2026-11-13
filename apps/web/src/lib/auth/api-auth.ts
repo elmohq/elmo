@@ -1,4 +1,4 @@
-import { API_KEY_RATE_LIMIT_PER_MINUTE } from "@workspace/config/constants";
+import { API_KEY_PREFIX, API_KEY_RATE_LIMIT_PER_MINUTE } from "@workspace/config/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -118,6 +118,11 @@ function isAdminKey(token: string): boolean {
 	return keys.length > 0 && keys.some((key) => timingSafeStringEqual(key, token));
 }
 
+export function presentsApiKey(request: Request): boolean {
+	const token = bearerToken(request);
+	return token !== null && (token.startsWith(API_KEY_PREFIX) || isAdminKey(token));
+}
+
 /**
  * `metadata` is client-writable, so nothing read from it may widen a key. This
  * one is safe only because it is intersected with the key's organization below.
@@ -173,6 +178,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 	const key = result?.key;
 	if (!result?.valid || !key) {
 		if (result?.error?.code === "RATE_LIMITED") {
+			// Milliseconds, like the window the plugin is configured with.
 			const tryAgainIn = (result.error as { details?: { tryAgainIn?: unknown } }).details?.tryAgainIn;
 			return {
 				failure: {
@@ -180,7 +186,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 					error: "Too Many Requests",
 					message: "Rate limit exceeded for this API key",
 					code: "rate_limited",
-					retryAfterSeconds: typeof tryAgainIn === "number" ? Math.max(1, Math.ceil(tryAgainIn)) : 60,
+					retryAfterSeconds: typeof tryAgainIn === "number" ? Math.max(1, Math.ceil(tryAgainIn / 1000)) : 60,
 				},
 			};
 		}

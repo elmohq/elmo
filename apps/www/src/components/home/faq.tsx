@@ -1,4 +1,6 @@
 import { Plus } from "lucide-react";
+import type { ReactNode } from "react";
+import { externalRel } from "@/lib/external-link";
 import type { FaqItem } from "@/lib/faqs";
 import { DISCORD_INVITE_URL } from "./closing";
 import { SectionHeading } from "./ui";
@@ -33,7 +35,9 @@ export function Faq({ items }: { items: FaqItem[] }) {
 										<Plus className="size-3" strokeWidth={2.5} aria-hidden="true" />
 									</span>
 								</summary>
-								<p className="-mt-1 max-w-[68ch] pb-6 pr-10 text-pretty text-[15px]/7 text-zinc-600">{item.answer}</p>
+								<p className="-mt-1 max-w-[68ch] pb-6 pr-10 text-pretty text-[15px]/7 text-zinc-600">
+									<FaqAnswer item={item} />
+								</p>
 							</details>
 						))}
 					</div>
@@ -41,4 +45,28 @@ export function Faq({ items }: { items: FaqItem[] }) {
 			</div>
 		</section>
 	);
+}
+
+function FaqAnswer({ item }: { item: FaqItem }) {
+	let parts: ReactNode[] = [item.answer];
+	for (const link of item.links ?? []) {
+		parts = parts.flatMap((part) => {
+			if (typeof part !== "string" || !part.includes(link.text)) return [part];
+			const [before, ...rest] = part.split(link.text);
+			return [
+				before,
+				<a
+					key={link.href}
+					href={link.href}
+					target="_blank"
+					rel={externalRel(link.href)}
+					className="font-medium text-zinc-950 underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-950"
+				>
+					{link.text}
+				</a>,
+				rest.join(link.text),
+			];
+		});
+	}
+	return <>{parts}</>;
 }

@@ -1,0 +1,83 @@
+---
+title: "Open-Source Alternatives to Profound, Peec AI, and OtterlyAI"
+description: "The open-source alternatives to Profound, Peec AI, and OtterlyAI, what each one replaces, what none of them replace, and what self-hosting actually costs."
+date: "2026-11-10"
+author: ai
+metaTitle: "Open-Source Alternatives to Profound, Peec AI & Otterly (2026)"
+tags:
+  - ai-visibility
+  - tools
+  - open-source
+itemList:
+  - name: Elmo
+    url: https://github.com/elmohq/elmo
+    description: "MIT-licensed AI visibility platform covering the same core job as Profound, Peec AI, and OtterlyAI: mentions, citations, share of voice, and sentiment across ChatGPT, Google AI Mode, AI Overviews, Gemini, Bing AI Mode, Claude, and Grok. Free to self-host, or managed cloud from $29/mo."
+faq:
+  - question: Is there an open-source alternative to Profound, Peec AI, and OtterlyAI?
+    answer: "Yes. Elmo is an MIT-licensed AI visibility platform that does the core job of all three: it runs your prompts through ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Bing AI Mode, Claude, and Grok, and tracks mentions, citations, competitor share of voice, and sentiment over time. You can self-host it for free or use Elmo Cloud from $29/mo."
+  - question: What is the best open-source alternative to Profound?
+    answer: "Elmo. Profound sells custom Enterprise contracts after a 7-day trial. Elmo covers the same visibility, citation, share-of-voice, and query fan-out metrics, is free to self-host under the MIT license, and every metric is computed by code you can read. It does not replicate Profound's prompt volumes, shopping tracking, crawler analytics, or content agents."
+  - question: What is the best open-source alternative to Peec AI?
+    answer: "Elmo. Peec AI starts at $95/mo, and its self-serve plans pick three of six engines, with Claude and Grok reserved for Enterprise. Self-hosted Elmo has no engine gating and no prompt cap, and you pay only for your own infrastructure and API usage. On Elmo Cloud, the $99/mo Basic plan picks any four engines for 50 prompts."
+  - question: What is the best open-source alternative to OtterlyAI?
+    answer: "Elmo. OtterlyAI's $29/mo Lite plan covers 15 prompts, and Gemini, AI Mode, and Claude are paid add-ons. Self-hosted Elmo tracks every supported engine with no prompt limit. On Elmo Cloud, the $29/mo Starter plan covers 50 prompts on ChatGPT, and the $99/mo Basic plan picks any four engines."
+  - question: Is self-hosting an AI visibility tool really free?
+    answer: "The software is free; running it is not. Measuring AI visibility means sending real prompts to the engines, so you pay your scraper or model API provider for every run, plus the server and database. For most teams that still lands well below a commercial subscription, and you own all the data."
+  - question: What can't open-source tools replace in Profound or Peec AI?
+    answer: "Prompt-volume estimates, which rely on proprietary clickstream or panel data, plus shopping-result tracking, geographic breakdowns, and built-in content generation. If those are central to your workflow, an open-source tracker will not cover them today."
+---
+
+**Yes, there is an open-source alternative to Profound, Peec AI, and OtterlyAI.** [Elmo](https://www.elmohq.com/) is an MIT-licensed AI visibility platform that does the job all three are mostly bought for: run your buyers' prompts through the answer engines on a schedule, then track whether you're mentioned, who is cited, how you compare to competitors, and how that changes over time. You can self-host it for free or use Elmo Cloud from $29/mo, and every metric is computed by code you can read.
+
+This post is published by Elmo, so we are an interested party. Every price and engine claim below was checked against each vendor's own site in November 2026.
+
+**Key takeaways**
+
+- Profound, Peec AI, and OtterlyAI are closed, hosted subscriptions. Profound is custom Enterprise pricing after a 7-day trial, Peec AI starts at $95/mo, and OtterlyAI starts at $29/mo for 15 prompts.
+- Elmo replaces the core of all three: mention tracking, citations, competitor share of voice, sentiment, and query fan-out across ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Bing AI Mode, Claude, and Grok.
+- Other open-source trackers exist, but each fits a narrower case than replacing a commercial subscription.
+- No open-source tool replaces prompt-volume estimates, shopping tracking, geographic breakdowns, or content generation.
+- Free to self-host is not free to run. You pay for model or scraper API calls and the infrastructure.
+
+## What Profound, Peec AI, and OtterlyAI Cost
+
+The three tools people most often want to replace sit at very different price points, and each gates something important behind a higher tier.
+
+| Tool | Entry price | Engines on the entry plan | Source code |
+|---|---|---|---|
+| **Profound** | Custom Enterprise contract after a 7-day trial | Up to nine engines on Enterprise | Closed |
+| **Peec AI** | $95/mo | Three of six engines; Claude and Grok are Enterprise-only | Closed |
+| **OtterlyAI** | $29/mo for 15 prompts | ChatGPT, AI Overviews, Copilot, and more; Gemini, AI Mode, and Claude are add-ons | Closed |
+| **Elmo** | Free to self-host; cloud from $29/mo for 50 prompts | Self-hosted: ChatGPT, AI Mode, AI Overviews, Gemini, Bing AI Mode, Claude, Grok, and any OpenRouter model. Cloud: ChatGPT at $29, any four engines from $99 | MIT |
+
+Prices change. Check each vendor before you buy, and see the [Profound](/ai-visibility-tools/alternatives/profound), [Peec AI](/ai-visibility-tools/alternatives/peec-ai), and [OtterlyAI](/ai-visibility-tools/alternatives/otterly-ai) alternatives pages for the full feature breakdowns.
+
+## Which Open-Source Tool Replaces Each One
+
+**Replacing Profound.** Teams leave Profound mostly over price and weight: a custom Enterprise contract and a suite that now spans agents, content, shopping, and ads. Elmo does the measurement part, meaning visibility, share of voice, citations, query fan-out, and ranked recommendations, with a REST API, TypeScript and Python SDKs, and an MCP server. It does not do prompt volumes, crawler analytics, shopping, or content agents.
+
+**Replacing Peec AI.** Peec AI starts at $95/mo, its self-serve plans pick three of six engines, and Claude and Grok are Enterprise-only. Self-hosted Elmo has no engine gating and no prompt cap; you pay your API provider per run instead. On Elmo Cloud, the $99/mo Basic plan picks any four engines.
+
+**Replacing OtterlyAI.** OtterlyAI is the cheapest of the three, but its $29 plan is 15 prompts, and Gemini, AI Mode, and Claude cost extra. Elmo Cloud's $29 Starter plan covers 50 prompts on ChatGPT, and self-hosted Elmo covers every engine with no add-ons.
+
+## Other Open-Source Options
+
+Elmo is not the only open-source AI visibility project, but the others fit narrower cases. Canonry is built for AI agents and YAML configuration rather than a dashboard, and it calls model APIs instead of capturing the consumer apps your buyers use. OneGlanse scrapes the engines with your own logged-in accounts, so it costs nothing to run but breaks whenever their interfaces change. Our [open-source AI visibility tools](/ai-visibility-tools/category/open-source) roundup compares them in full.
+
+For a team replacing a commercial subscription, Elmo is the closest match: it has the dashboard, the multi-engine coverage, and the reporting a marketing team expects from Profound, Peec AI, or OtterlyAI, plus an open-source cloud if you don't want to run it.
+
+## What Open Source Doesn't Replace
+
+Be clear about the gaps before you switch.
+
+- **Prompt volumes.** Profound, Peec AI, and OtterlyAI estimate how often a prompt is asked using proprietary data. No open-source tool can do that, because the data isn't public.
+- **Shopping and geography.** Product-carousel tracking and per-country breakdowns are commercial-only today.
+- **Content generation.** The commercial suites increasingly write and publish content. Elmo tells you what to change and leaves the writing to you.
+
+If those features are why you bought the tool, an open-source tracker will not replace it. If you bought it to know whether AI answers mention and cite you, it will.
+
+## What Self-Hosting Actually Costs
+
+The software is free under the MIT license. Running it is not. Measuring AI visibility means sending real prompts to real engines, so you pay your scraper or model API provider for every run, plus a small server and a PostgreSQL database. You also own upgrades.
+
+In exchange you get unlimited prompts and engines, your prompts and history stay in your own database, and you can read exactly how each number was produced. If you'd rather not run anything, [Elmo Cloud](/pricing) runs the same code, and you can move between the two at any time.

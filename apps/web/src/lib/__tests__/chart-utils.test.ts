@@ -7,6 +7,7 @@ import {
 	generateDateRange,
 	getDaysFromLookback,
 	getDefaultLookbackPeriod,
+	toBatchChartData,
 } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
 
@@ -159,6 +160,46 @@ describe("filterAndCompleteChartData with a custom range", () => {
 			{ date: "2026-03-02" },
 			{ date: "2026-03-03", brand: 60 },
 			{ date: "2026-03-04" },
+		]);
+	});
+});
+
+describe("toBatchChartData", () => {
+	const day = (prompt_id: string, date: string, runs: number, brand_mentioned_runs: number) => ({
+		prompt_id,
+		date,
+		runs,
+		brand_mentioned_runs,
+		competitor_runs: 0,
+		competitor_mentions: 0,
+	});
+
+	it("attaches each competitor's runs to the same prompt and day", () => {
+		const points = toBatchChartData(
+			[day("p1", "2026-03-01", 4, 1), day("p1", "2026-03-02", 2, 2), day("p2", "2026-03-01", 3, 0)],
+			[
+				{ prompt_id: "p1", date: "2026-03-01", competitor: "Globex", runs: 2 },
+				{ prompt_id: "p1", date: "2026-03-01", competitor: "Initech", runs: 1 },
+				{ prompt_id: "p2", date: "2026-03-01", competitor: "Globex", runs: 3 },
+			],
+		);
+
+		expect(points).toEqual([
+			{
+				prompt_id: "p1",
+				date: "2026-03-01",
+				total_runs: 4,
+				brand_mentioned_count: 1,
+				competitor_counts: { Globex: 2, Initech: 1 },
+			},
+			{ prompt_id: "p1", date: "2026-03-02", total_runs: 2, brand_mentioned_count: 2, competitor_counts: {} },
+			{
+				prompt_id: "p2",
+				date: "2026-03-01",
+				total_runs: 3,
+				brand_mentioned_count: 0,
+				competitor_counts: { Globex: 3 },
+			},
 		]);
 	});
 });

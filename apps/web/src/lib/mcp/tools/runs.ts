@@ -9,7 +9,7 @@ export const listRuns = defineTool({
 	name: "list_runs",
 	title: "List answers recorded for a prompt",
 	description:
-		"Metadata for the answers recorded for one prompt, newest first. The answer text lives on get_run, which keeps this list small enough to page through.",
+		"Metadata for the answers recorded for one prompt, newest first, including the mention judge's assessment, sentiment and position (experimental) for the brand and each competitor named. The answer text lives on get_run, which keeps this list small enough to page through.",
 	scopes: ["read"],
 	readOnly: true,
 	input: {
@@ -39,7 +39,7 @@ export const getRun = defineTool({
 	name: "get_run",
 	title: "Get one answer in full",
 	description:
-		"One recorded answer: the model's reply as text, and every page it cited. Read this when you need to know *how* a model described the brand, not just whether it did.",
+		"One recorded answer: the model's reply as text, every page it cited, and for the brand and each competitor named, whether it counts as a mention, the sentiment toward it, and its position among the tracked companies named (experimental). Read this when you need to know *how* a model described the brand, not just whether it did.",
 	scopes: ["read"],
 	readOnly: true,
 	input: {

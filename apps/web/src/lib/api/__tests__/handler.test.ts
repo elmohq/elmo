@@ -1,3 +1,4 @@
+import spec from "@workspace/api-spec";
 import { resetDeploymentCache } from "@workspace/deployment";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -11,13 +12,13 @@ vi.mock("@/lib/auth/server", () => ({ auth: { api: { verifyApiKey } } }));
 
 const API_KEY = "test-api-key";
 
-function makeRequest(options?: { method?: string; body?: string; apiKey?: string | null }) {
+function makeRequest(options?: { method?: string; body?: string; apiKey?: string | null; search?: string }) {
 	const headers = new Headers();
 	const apiKey = options?.apiKey === undefined ? API_KEY : options.apiKey;
 	if (apiKey !== null) {
 		headers.set("Authorization", `Bearer ${apiKey}`);
 	}
-	return new Request("http://localhost/api/v1/test", {
+	return new Request(`http://localhost/api/v1/test${options?.search ?? ""}`, {
 		method: options?.method ?? "GET",
 		headers,
 		body: options?.body,
@@ -80,7 +81,7 @@ describe("createApiHandler", () => {
 
 	it("returns 400 when params fail validation", async () => {
 		const handler = createApiHandler({
-			params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
+			params: z.object({ promptId: z.uuid("Invalid prompt ID format") }),
 			handle: async () => ({ ok: true }),
 		});
 		const response = await handler({ request: makeRequest(), params: { promptId: "not-a-uuid" } });
@@ -93,22 +94,34 @@ describe("createApiHandler", () => {
 	it("passes validated params to handle", async () => {
 		const promptId = "123e4567-e89b-12d3-a456-426614174000";
 		const handler = createApiHandler({
-			params: z.object({ promptId: z.guid() }),
+			params: z.object({ promptId: z.uuid() }),
 			handle: async ({ params }) => ({ received: params.promptId }),
 		});
 		const response = await handler({ request: makeRequest(), params: { promptId } });
 		expect(await response.json()).toEqual({ received: promptId });
 	});
 
-	it("accepts IDs without RFC version bits, like the old isValidUUID regex", async () => {
-		const promptId = "00000000-0000-0000-0000-000000000001";
+	it("returns 400 without running the handler when the query fails validation", async () => {
+		const handle = vi.fn();
 		const handler = createApiHandler({
-			params: z.object({ promptId: z.guid() }),
-			handle: async ({ params }) => ({ received: params.promptId }),
+			query: z.object({ page: z.coerce.number().int().min(1) }),
+			handle,
 		});
-		const response = await handler({ request: makeRequest(), params: { promptId } });
-		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ received: promptId });
+		const response = await handler({ request: makeRequest({ search: "?page=0" }), params: {} });
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(body.code).toBe("validation_error");
+		expect(body.message).toContain("page");
+		expect(handle).not.toHaveBeenCalled();
+	});
+
+	it("passes the parsed query to handle, reading the first of a repeated key", async () => {
+		const handler = createApiHandler({
+			query: z.object({ page: z.coerce.number(), tags: z.string() }),
+			handle: async ({ query }) => query,
+		});
+		const response = await handler({ request: makeRequest({ search: "?page=2&tags=a&tags=b" }), params: {} });
+		expect(await response.json()).toEqual({ page: 2, tags: "a" });
 	});
 
 	it("returns 400 when the body is not valid JSON", async () => {
@@ -230,7 +243,7 @@ describe("createApiHandler", () => {
 
 	it("checks auth before validating params", async () => {
 		const handler = createApiHandler({
-			params: z.object({ promptId: z.guid() }),
+			params: z.object({ promptId: z.uuid() }),
 			handle: async () => ({ ok: true }),
 		});
 		const response = await handler({
@@ -238,5 +251,95 @@ describe("createApiHandler", () => {
 			params: { promptId: "not-a-uuid" },
 		});
 		expect(response.status).toBe(401);
+	});
+});
+
+interface DocumentedHeader {
+	required?: boolean;
+	schema: { type: string };
+}
+
+const RATE_LIMIT_HEADERS = (spec.components.responses.RateLimitError as { headers: Record<string, DocumentedHeader> })
+	.headers;
+
+describe("createApiHandler, for a key over its rate limit", () => {
+	beforeEach(() => {
+		vi.stubEnv("ADMIN_API_KEYS", API_KEY);
+		vi.stubEnv("DEPLOYMENT_MODE", "local");
+		resetDeploymentCache();
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		resetDeploymentCache();
+	});
+
+	// What better-auth's verifyApiKey answers once a key's window is spent. It
+	// counts the window in milliseconds, so `tryAgainIn` is milliseconds too.
+	async function overLimit(tryAgainIn?: number): Promise<Response> {
+		verifyApiKey.mockResolvedValueOnce({
+			valid: false,
+			key: null,
+			error: {
+				message: "Rate limit exceeded.",
+				code: "RATE_LIMITED",
+				...(tryAgainIn === undefined ? {} : { details: { tryAgainIn } }),
+			},
+		});
+		const handler = createApiHandler({ handle: async () => ({ ok: true }) });
+		return handler({ request: makeRequest({ apiKey: "elmo_spent" }), params: {} });
+	}
+
+	it("answers 429 without running the handler", async () => {
+		const handle = vi.fn();
+		verifyApiKey.mockResolvedValueOnce({ valid: false, key: null, error: { code: "RATE_LIMITED" } });
+		const handler = createApiHandler({ handle });
+		const response = await handler({ request: makeRequest({ apiKey: "elmo_spent" }), params: {} });
+
+		expect(response.status).toBe(429);
+		expect(await response.json()).toEqual({
+			error: "Too Many Requests",
+			message: "Rate limit exceeded for this API key",
+			code: "rate_limited",
+		});
+		expect(handle).not.toHaveBeenCalled();
+	});
+
+	it("tells the caller how many seconds are left in the window", async () => {
+		const response = await overLimit(41_250);
+
+		expect(response.headers.get("Retry-After")).toBe("42");
+	});
+
+	it("asks for the full window when the key was just limited", async () => {
+		const response = await overLimit(60_000);
+
+		expect(response.headers.get("Retry-After")).toBe("60");
+	});
+
+	it("asks for at least a second when the window is about to reset", async () => {
+		const response = await overLimit(1);
+
+		expect(response.headers.get("Retry-After")).toBe("1");
+	});
+
+	it("asks for a full window when better-auth does not say how long", async () => {
+		const response = await overLimit();
+
+		expect(response.headers.get("Retry-After")).toBe("60");
+	});
+
+	it.each([
+		["with a wait from better-auth", 30_000],
+		["without one", undefined],
+	])("sends the headers the API reference documents for a 429, %s", async (_, tryAgainIn) => {
+		const response = await overLimit(tryAgainIn);
+
+		const sent = [...response.headers.keys()].filter((name) => name !== "content-type");
+		expect(sent).toEqual(Object.keys(RATE_LIMIT_HEADERS).map((name) => name.toLowerCase()));
+		for (const [name, header] of Object.entries(RATE_LIMIT_HEADERS)) {
+			if (header.required) expect(response.headers.has(name)).toBe(true);
+			if (header.schema.type === "integer") expect(response.headers.get(name)).toMatch(/^[1-9]\d*$/);
+		}
 	});
 });

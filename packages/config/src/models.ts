@@ -1,12 +1,4 @@
-/**
- * Display metadata for the models Elmo can track: the label a customer sees and
- * which brand logo represents it.
- *
- * Lives in config rather than with the providers because the model *names* do
- * (STANDARD_PLATFORM_MENU, SCRAPE_TARGETS), and because the marketing site needs
- * to name platforms without depending on the database-backed lib package.
- * Rendering an iconId is each app's business; this only says which one applies.
- */
+/** In config so the marketing site can name platforms without the database-backed lib package. */
 export interface ModelMeta {
 	label: string;
 	iconId: string;
@@ -18,13 +10,15 @@ export const KNOWN_MODELS: Record<string, ModelMeta> = {
 	"google-ai-mode": { label: "Google AI Mode", iconId: "google" },
 	"google-ai-overview": { label: "Google AI Overview", iconId: "google" },
 	gemini: { label: "Gemini", iconId: "google" },
-	copilot: { label: "Copilot", iconId: "microsoft" },
+	copilot: { label: "Microsoft Copilot", iconId: "microsoft" },
+	"bing-ai-mode": { label: "Bing AI Mode", iconId: "microsoft" },
 	perplexity: { label: "Perplexity", iconId: "perplexity" },
 	grok: { label: "Grok", iconId: "x" },
 	mistral: { label: "Mistral", iconId: "mistral" },
 	deepseek: { label: "DeepSeek", iconId: "deepseek" },
 	kimi: { label: "Kimi", iconId: "moonshotai" },
 	qwen: { label: "Qwen", iconId: "qwen" },
+	meta: { label: "Meta", iconId: "meta" },
 };
 
 export function getModelMeta(model: string): ModelMeta {

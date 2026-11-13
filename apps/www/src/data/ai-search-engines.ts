@@ -1,5 +1,7 @@
 export interface AiSearchEngine {
 	slug: string;
+	/** YYYY-MM-DD of the last substantive edit; the page\'s sitemap lastmod and dateModified. */
+	updated: string;
 	name: string;
 	vendor: string;
 	/** One-sentence summary, used on the index, in meta, and in JSON-LD. */
@@ -16,9 +18,11 @@ export interface AiSearchEngine {
 export const aiSearchEngines: AiSearchEngine[] = [
 	{
 		slug: "chatgpt",
+		updated: "2026-10-17",
 		name: "ChatGPT",
 		vendor: "OpenAI",
-		short: "Get your brand mentioned and cited in ChatGPT, across both its base model and its live web search.",
+		short:
+			"Get your brand mentioned and cited in OpenAI's ChatGPT, across both its base model and its live web search.",
 		intro: [
 			"ChatGPT answers from two places: what it learned during training, and what it fetches from the web when it browses. The base model reflects how your brand was described across the internet up to its training cutoff. ChatGPT Search, the browsing path, pulls in current pages and cites them.",
 			"The split matters because each path needs a different fix. A brand can be missing from the base model yet show up once ChatGPT searches. Earning durable mentions on trusted sources shapes the trained view, while clear, current, well-structured pages help you get retrieved and cited live.",
@@ -51,6 +55,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 	},
 	{
 		slug: "perplexity",
+		updated: "2026-09-11",
 		name: "Perplexity",
 		vendor: "Perplexity AI",
 		short: "Become a cited source in Perplexity, the AI search engine that shows its citations on every answer.",
@@ -86,6 +91,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 	},
 	{
 		slug: "google-ai-overviews",
+		updated: "2026-09-11",
 		name: "Google AI Overviews",
 		vendor: "Google",
 		short: "Appear in the AI-generated summaries Google shows above its search results for many queries.",
@@ -121,6 +127,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 	},
 	{
 		slug: "gemini",
+		updated: "2026-07-24",
 		name: "Google Gemini",
 		vendor: "Google",
 		short: "Show up in Google's Gemini app and AI Mode, the conversational surfaces powered by its Gemini models.",
@@ -156,6 +163,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 	},
 	{
 		slug: "claude",
+		updated: "2026-07-24",
 		name: "Claude",
 		vendor: "Anthropic",
 		short: "Track how Claude describes and cites your brand, including when it searches the web for an answer.",
@@ -191,6 +199,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 	},
 	{
 		slug: "copilot",
+		updated: "2026-07-24",
 		name: "Microsoft Copilot",
 		vendor: "Microsoft",
 		short: "Appear in Microsoft Copilot, which pairs OpenAI models with Bing's web index to answer and cite.",
@@ -221,11 +230,12 @@ export const aiSearchEngines: AiSearchEngine[] = [
 			},
 		],
 		tracking:
-			"Elmo tracks how Microsoft Copilot mentions and cites your brand across your prompts, so you can see the payoff from Bing-side improvements over time.",
+			"The Copilot app now sits behind a Microsoft sign-in, but Bing's AI Mode still answers signed-out visitors. Elmo tracks how Bing AI Mode mentions and cites your brand across your prompts, so you can see the payoff from Bing-side improvements over time.",
 		related: ["chatgpt", "google-ai-overviews"],
 	},
 	{
 		slug: "grok",
+		updated: "2026-07-24",
 		name: "Grok",
 		vendor: "xAI",
 		short: "Track your brand in Grok, xAI's assistant integrated with X and tuned for real-time information.",

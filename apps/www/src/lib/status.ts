@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { STATUS_TARGETS } from "@workspace/config/scrape-targets";
+import { RETIRED_STATUS_TARGETS, STATUS_TARGETS } from "@workspace/config/scrape-targets";
 import { getRedis } from "./redis";
 import type { StatusEntry, TargetStatus } from "./status-helpers";
 
@@ -11,7 +11,7 @@ export async function loadStatusData(): Promise<TargetStatus[]> {
 	const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
 	return Promise.all(
-		STATUS_TARGETS.map(async (target) => {
+		[...STATUS_TARGETS, ...RETIRED_STATUS_TARGETS].map(async (target) => {
 			const key = `provider-status:${target}`;
 			const raw: string[] = await getRedis().zrange(key, sevenDaysAgo, "+inf", {
 				byScore: true,
