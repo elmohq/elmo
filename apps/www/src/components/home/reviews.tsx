@@ -30,7 +30,6 @@ type Review =
 			kind: "person";
 			name: string;
 			role?: string;
-			/** Followed link on the role, for customers we've agreed to link to. */
 			roleUrl?: string;
 			photo?: string;
 			quote: string;
