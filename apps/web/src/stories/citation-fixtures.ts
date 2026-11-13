@@ -302,7 +302,65 @@ function buildCitationData(): CitationData {
 		],
 		competitorOnlyPrompts: [],
 		subreddits: [],
+		channelMix: CHANNEL_MIX,
 	};
 }
+
+type ChannelMixFixture = NonNullable<CitationData["channelMix"]>;
+
+const channelRow = (
+	key: string,
+	label: string,
+	citations: number,
+	[brand, c1, c2]: number[],
+	topPages: ChannelMixFixture["channels"][number]["topPages"] = [],
+) => ({
+	key,
+	label,
+	citations,
+	bySubject: {
+		brand: { citations: brand, pages: Math.ceil(brand / 6) },
+		c1: { citations: c1, pages: Math.ceil(c1 / 6) },
+		c2: { citations: c2, pages: Math.ceil(c2 / 6) },
+	},
+	topPages,
+});
+
+const CHANNEL_MIX: ChannelMixFixture = {
+	totalCitations: 2410,
+	subjects: [
+		{ id: "brand", name: "Acme", kind: "brand" },
+		{ id: "c1", name: "HubSpot", kind: "competitor" },
+		{ id: "c2", name: "Pipedrive", kind: "competitor" },
+	],
+	channels: [
+		channelRow("owned", "Own Website", 1180, [640, 410, 130]),
+		channelRow("reviews", "Review Sites", 420, [96, 148, 71]),
+		channelRow("editorial", "Editorial", 310, [34, 88, 22]),
+		channelRow(
+			"youtube",
+			"YouTube",
+			190,
+			[0, 12, 104],
+			[
+				{
+					url: "https://www.youtube.com/shorts/a1",
+					title: "Pipedrive in 60 seconds: pipeline setup",
+					count: 41,
+					subjectIds: ["c2"],
+				},
+				{
+					url: "https://www.youtube.com/watch?v=b2",
+					title: "Pipedrive vs HubSpot for small sales teams",
+					count: 12,
+					subjectIds: ["c1", "c2"],
+				},
+			],
+		),
+		channelRow("reddit", "Reddit", 140, [18, 37, 9]),
+		channelRow("linkedin", "LinkedIn", 60, [4, 21, 0]),
+		channelRow("other", "Other Websites", 110, [7, 15, 3]),
+	],
+};
 
 export const mockCitationData = buildCitationData();

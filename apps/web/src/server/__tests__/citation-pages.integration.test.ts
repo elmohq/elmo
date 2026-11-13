@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getCitationDomainPage, getCitationSummary, getCitationUrlPage } from "@/lib/citation-read";
+import {
+	getCitationChannelRows,
+	getCitationDomainPage,
+	getCitationSummary,
+	getCitationUrlPage,
+} from "@/lib/citation-read";
 import {
 	getPerPromptCitationDomains,
 	getPerPromptDailyCitationClasses,
@@ -182,5 +187,21 @@ describe("citation pages", () => {
 			byOwner[row.owner ?? "neither"] = (byOwner[row.owner ?? "neither"] ?? 0) + row.count;
 		}
 		expect(byOwner).toEqual({ brand: 1, competitor: 2, neither: 1 });
+	});
+});
+
+describe("citation channel rows", () => {
+	it("totals every cited domain but reads only pages on owned domains or carrying a search term", async () => {
+		const { current } = scopes();
+		const { domains, pages } = await getCitationChannelRows(current, owned, ["halved"]);
+		expect(Object.fromEntries(domains.map((row) => [row.domain, row.count]))).toEqual({
+			"docs.acme.example": 1,
+			"review.example": 3,
+			"notacme.example": 1,
+		});
+		expect(pages.map((row) => row.url).sort()).toEqual([
+			"https://docs.acme.example/a",
+			"https://review.example/halved",
+		]);
 	});
 });

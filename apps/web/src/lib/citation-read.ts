@@ -6,6 +6,7 @@ import {
 import { GOOGLE_STATIC_CATEGORY, type StaticCategory } from "@workspace/lib/citations/page-classification";
 import { type SQL, sql } from "drizzle-orm";
 import { type AnalyticsScope, queryPg, scopeFilter } from "@/lib/analytics-sql";
+import type { ChannelDomainRow, ChannelPageRow } from "@/lib/citation-channels";
 import type { CitationFlowRow } from "@/lib/citation-flow";
 
 export type CitationOwner = "brand" | "competitor";
@@ -90,7 +91,8 @@ const idList = (ids: readonly number[]) =>
 	)}]`;
 
 /** For ILIKE, so a search for `100%` or `my_site` matches those characters literally. */
-export const containing = (search: string) => `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+const escapeLike = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
+export const containing = (search: string) => `%${escapeLike(search)}%`;
 
 /**
  * The brand's or a competitor's when the domain or a parent of it is theirs, as
@@ -399,6 +401,56 @@ export async function getCitationDomainPage(
 		rows: rows.map(({ top_count: _count, top_url: _url, ...row }) => row),
 		total,
 	}));
+}
+
+const MAX_CHANNEL_PAGES = 20_000;
+
+/**
+ * Per-domain totals for every cited page, Google surfaces aside, plus the pages
+ * that could belong to or name a tracked company: those on an owned domain or
+ * carrying one of `terms` in their title or URL.
+ */
+export async function getCitationChannelRows(
+	scope: AnalyticsScope,
+	owned: OwnedDomains,
+	terms: string[],
+): Promise<{ domains: ChannelDomainRow[]; pages: ChannelPageRow[] }> {
+	const ownedDomains = [...owned.brandDomains, ...owned.competitorDomains];
+	const patterns = textList(terms.map(containing));
+	const [row] = await queryPg<{ domains: ChannelDomainRow[] | null; pages: ChannelPageRow[] | null }>(sql`
+		WITH
+			cited AS (
+				SELECT page_id, sum(citations)::int AS count
+				FROM rollup_citation_urls
+				WHERE ${rollupScope(scope)}
+				GROUP BY page_id
+			),
+			pages AS (
+				SELECT j.url, j.domain, j.title, j.static_category, c.count
+				FROM cited c
+				JOIN rollup_citation_pages j ON j.brand_id = ${scope.brandId} AND j.page_id = c.page_id
+				WHERE j.static_category <> ${GOOGLE_STATIC_CATEGORY}
+			)
+		SELECT
+			(
+				SELECT json_agg(d) FROM (
+					SELECT domain, static_category, sum(count)::int AS count FROM pages GROUP BY domain, static_category
+				) d
+			) AS domains,
+			(
+				SELECT json_agg(p) FROM (
+					SELECT url, domain, title, static_category, count
+					FROM pages
+					WHERE lower(title) LIKE ANY(${patterns})
+						OR lower(url) LIKE ANY(${patterns})
+						OR domain = ANY(${textList(ownedDomains)})
+						OR domain LIKE ANY(${textList(ownedDomains.map((domain) => `%.${escapeLike(domain)}`))})
+					ORDER BY count DESC, url
+					LIMIT ${MAX_CHANNEL_PAGES}
+				) p
+			) AS pages
+	`);
+	return { domains: row?.domains ?? [], pages: row?.pages ?? [] };
 }
 
 export async function getCitationTotals(
