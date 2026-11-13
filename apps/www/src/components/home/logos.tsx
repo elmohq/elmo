@@ -104,9 +104,9 @@ export function LogoStrip() {
 						Used by 250+ brands to optimize their AI visibility
 					</h2>
 				</div>
-				<ul className="mt-10 flex flex-wrap justify-center gap-y-8">
+				<ul className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-6 md:gap-x-14">
 					{customers.map((c) => (
-						<li key={c.name} className="flex h-6 w-1/2 items-center justify-center px-3 sm:w-1/4 lg:w-auto lg:flex-1">
+						<li key={c.name} className="flex h-6 items-center">
 							<a
 								href={c.url}
 								target="_blank"
