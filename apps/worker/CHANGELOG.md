@@ -1,5 +1,13 @@
 # @workspace/worker
 
+## 0.7.12
+
+### Patch Changes
+
+- @workspace/config@0.7.12
+  - @workspace/deployment@0.7.12
+  - @workspace/lib@0.7.12
+
 ## 0.7.11
 
 ### Patch Changes

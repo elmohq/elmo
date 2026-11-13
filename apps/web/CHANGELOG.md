@@ -1,5 +1,18 @@
 # @workspace/web
 
+## 0.7.12
+
+### Patch Changes
+
+- 0e36796: Admins can now impersonate other users.
+- f167423: The citations page now has a table showing which channels (own website, YouTube, Reddit, review sites, etc) AI models cite and how often answers citing each one mention you and each competitor.
+- @workspace/api-spec@0.7.12
+  - @workspace/config@0.7.12
+  - @workspace/deployment@0.7.12
+  - @workspace/lib@0.7.12
+  - @workspace/og@0.7.12
+  - @workspace/ui@0.7.12
+
 ## 0.7.11
 
 ### Patch Changes

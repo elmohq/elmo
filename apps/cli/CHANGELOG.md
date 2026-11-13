@@ -1,5 +1,9 @@
 # @elmohq/cli
 
+## 0.7.12
+
+No changes in this release.
+
 ## 0.7.11
 
 No changes in this release.
