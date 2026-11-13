@@ -272,7 +272,8 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "ENVIRONMENT",
 		scope: "server",
 		requiredBy: "optional",
-		description: "Environment name reported to Sentry (e.g. production).",
+		description:
+			"Environment name reported to Sentry (e.g. production). Defaults to NODE_ENV. The web app also reads it at build time for the browser.",
 	},
 	{
 		name: "VITE_APP_NAME",
@@ -355,6 +356,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: "optional",
 		description: "Sentry DSN for server-side error reporting.",
+	},
+	{
+		name: "SENTRY_TRACES_SAMPLE_RATE",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Share of requests and jobs traced in Sentry, from 0 to 1. Unset, the web app traces every request and the worker traces a per-queue share of jobs. The web app reads it at build time for the browser.",
 	},
 	{
 		name: "SENTRY_ORG",

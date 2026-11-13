@@ -11,12 +11,21 @@ import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
 
+// The browser bundle can't read the server's environment at runtime, so the values the server
+// reports to Sentry with are fixed here at build time.
+const sentryEnvironment = process.env.ENVIRONMENT || "";
+const sentryTracesSampleRate = Number.parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE ?? "");
+
 export default defineConfig({
 	build: {
 		sourcemap: "hidden",
 	},
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version),
+		"import.meta.env.VITE_SENTRY_ENVIRONMENT": JSON.stringify(sentryEnvironment),
+		"import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE": JSON.stringify(
+			sentryTracesSampleRate >= 0 && sentryTracesSampleRate <= 1 ? sentryTracesSampleRate : 1,
+		),
 	},
 	resolve: {
 		tsconfigPaths: true,
