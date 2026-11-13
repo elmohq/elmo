@@ -91,8 +91,7 @@ const idList = (ids: readonly number[]) =>
 	)}]`;
 
 /** For ILIKE, so a search for `100%` or `my_site` matches those characters literally. */
-const escapeLike = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
-export const containing = (search: string) => `%${escapeLike(search)}%`;
+export const containing = (search: string) => `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 /**
  * The brand's or a competitor's when the domain or a parent of it is theirs, as
@@ -430,7 +429,7 @@ export async function getCitationChannelRows(scope: AnalyticsScope): Promise<Cha
 				GROUP BY c.page_id, m.competitor_name
 			),
 			pages AS (
-				SELECT t.page_id, j.url, j.domain, j.title, j.static_category, t.count, t.brand_count
+				SELECT t.page_id, j.domain, j.static_category, t.count, t.brand_count
 				FROM (
 					SELECT
 						page_id,

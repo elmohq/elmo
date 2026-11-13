@@ -9,7 +9,7 @@
 import { extractDomain, inDomainSet } from "@workspace/lib/citations/domain-categories";
 import type { StaticCategory } from "@workspace/lib/citations/page-classification";
 
-export const BRAND_SUBJECT_ID = "brand";
+const BRAND_SUBJECT_ID = "brand";
 export const OWNED_CHANNEL = "owned";
 const MAX_COMPETITORS = 7;
 const MAX_CHANNELS = 10;
@@ -66,13 +66,13 @@ function platformFor(domain: string): string | undefined {
 const channelFor = (domain: string, staticCategory: StaticCategory): string =>
 	platformFor(domain) ?? (staticCategory in CATEGORY_CHANNEL_LABELS ? staticCategory : "other");
 
-export interface ChannelSubjectInput {
+interface ChannelSubjectInput {
 	id: string;
 	name: string;
 	domains: string[];
 }
 
-export interface ChannelDomainRow {
+interface ChannelDomainRow {
 	domain: string;
 	static_category: StaticCategory;
 	count: number;
@@ -86,7 +86,6 @@ export interface ChannelRows {
 	competitors: (Omit<ChannelDomainRow, "brand_count"> & { competitor_name: string })[];
 }
 
-/** Citations per subject id. */
 type SubjectCounts = Record<string, number>;
 
 export interface ChannelMix {
