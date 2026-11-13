@@ -75,6 +75,21 @@ const customers: Customer[] = [
 			/>
 		),
 	},
+	{
+		name: "Cura",
+		url: "https://cura.inc/?ref=elmo",
+		linkClass: "group/cura flex h-6 items-center",
+		render: () => (
+			<img
+				src="/cura-logo.svg"
+				width={64}
+				height={18}
+				alt=""
+				aria-hidden="true"
+				className="block h-[18px] w-auto opacity-60 transition-opacity duration-150 group-hover/cura:opacity-100"
+			/>
+		),
+	},
 ];
 
 export function LogoStrip() {
