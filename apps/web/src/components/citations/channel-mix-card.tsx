@@ -31,11 +31,11 @@ const ZERO = <span className="text-muted-foreground/60">0</span>;
 
 function RateCell({ subject, channel }: { subject: Subject; channel: Channel }) {
 	const citations = channel.bySubject[subject.id] ?? 0;
-	if (citations === 0) return <td className="rounded px-2 py-1.5 text-center tabular-nums">{ZERO}</td>;
+	if (citations === 0) return <td className="px-2 py-1.5 text-center tabular-nums">{ZERO}</td>;
 	const counts = `${citations.toLocaleString()} of ${channel.citations.toLocaleString()}`;
 	return (
 		<td
-			className="rounded px-2 py-1.5 text-center tabular-nums"
+			className="rounded border-x border-transparent bg-clip-padding px-2 py-1.5 text-center tabular-nums"
 			style={heatStyle(citations / channel.citations, channel.citations)}
 		>
 			<Tooltip>
@@ -108,7 +108,7 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 			<CardContent>
 				<div className="overflow-x-auto">
 					<table
-						className="w-full table-fixed border-separate border-spacing-x-0.5 border-spacing-y-0.5 text-sm"
+						className="w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-0.5 text-sm"
 						style={{ minWidth: `${22 + subjects.length * 5.5}rem` }}
 					>
 						<colgroup>
@@ -117,7 +117,7 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 						</colgroup>
 						<thead>
 							<tr className="text-xs text-muted-foreground">
-								<th className="pb-2 text-left font-medium">Channel</th>
+								<th className="pb-2 pl-2 text-left font-medium">Channel</th>
 								<th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
 									<span className="inline-flex items-center gap-1">
 										Channel Total
@@ -141,21 +141,24 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 							</tr>
 						</thead>
 						<tbody>
-							<tr className="text-muted-foreground">
-								<td className="py-1.5 pr-3 font-medium whitespace-nowrap">All Channels</td>
-								<td className="py-1.5 pr-3 text-right whitespace-nowrap tabular-nums">
+							<tr className="font-semibold [&>td]:border-y [&>td]:border-foreground/30">
+								<td className="rounded-l-md border-l py-2 pr-3 pl-2 whitespace-nowrap">
+									All Channels
+									<span className="ml-2 text-xs font-normal text-muted-foreground">Baseline</span>
+								</td>
+								<td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">
 									{totalCitations.toLocaleString()}
 									<span className="ml-1.5 inline-block w-9" />
 								</td>
 								{subjects.map((subject) => (
-									<td key={subject.id} className="px-2 py-1.5 text-center tabular-nums">
+									<td key={subject.id} className="px-2 py-2 text-center tabular-nums last:rounded-r-md last:border-r">
 										{formatShare(overall[subject.id] ?? 0, totalCitations)}
 									</td>
 								))}
 							</tr>
 							{channels.map((channel) => (
 								<tr key={channel.key}>
-									<td className="py-1.5 pr-3 font-medium whitespace-nowrap">{channel.label}</td>
+									<td className="py-1.5 pr-3 pl-2 font-medium whitespace-nowrap">{channel.label}</td>
 									<td className="py-1.5 pr-3 text-right whitespace-nowrap tabular-nums">
 										{channel.citations.toLocaleString()}
 										<span className="ml-1.5 inline-block w-9 text-xs text-muted-foreground">
