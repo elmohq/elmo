@@ -100,8 +100,7 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					Find the channels where competitors get mentioned more than usual and you don&apos;t. Each cell is how often
-					answers citing that channel mention the company; compare it with the All Channels row.
+					How often answers citing each channel mention you and your competitors, compared with all channels
 				</CardDescription>
 			</CardHeader>
 			<Separator />
@@ -141,17 +140,14 @@ function ChannelMixCard({ channelMix }: { channelMix: ChannelMix }) {
 							</tr>
 						</thead>
 						<tbody>
-							<tr className="font-semibold [&>td]:border-y [&>td]:border-foreground/30">
-								<td className="rounded-l-md border-l py-2 pr-3 pl-2 whitespace-nowrap">
-									All Channels
-									<span className="ml-2 text-xs font-normal text-muted-foreground">Baseline</span>
-								</td>
+							<tr className="font-semibold [&>td]:bg-muted">
+								<td className="rounded-l-md py-2 pr-3 pl-2 whitespace-nowrap">All Channels</td>
 								<td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">
 									{totalCitations.toLocaleString()}
 									<span className="ml-1.5 inline-block w-9" />
 								</td>
 								{subjects.map((subject) => (
-									<td key={subject.id} className="px-2 py-2 text-center tabular-nums last:rounded-r-md last:border-r">
+									<td key={subject.id} className="px-2 py-2 text-center tabular-nums last:rounded-r-md">
 										{formatShare(overall[subject.id] ?? 0, totalCitations)}
 									</td>
 								))}
