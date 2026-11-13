@@ -116,7 +116,7 @@ export function ChannelMixCard({ channelMix }: { channelMix?: ChannelMix }) {
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					Which channels AI models cite, and where you and your competitors show up in each
+					The 10 channels AI models cite most, and where you and your competitors show up in each
 				</CardDescription>
 			</CardHeader>
 			<Separator />

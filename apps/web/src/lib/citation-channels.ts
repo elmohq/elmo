@@ -13,6 +13,7 @@ import { normalizeDomain, wholeWordPattern } from "@workspace/lib/mentions";
 export const BRAND_SUBJECT_ID = "brand";
 const OWNED_CHANNEL = "owned";
 const MAX_COMPETITORS = 4;
+const MAX_CHANNELS = 10;
 const MAX_PAGES_PER_CHANNEL = 8;
 
 const PLATFORM_CHANNELS: { key: string; label: string; domains: string[] }[] = [
@@ -245,6 +246,7 @@ function shapeChannelMix(
 					.sort((a, b) => b.count - a.count || a.url.localeCompare(b.url))
 					.slice(0, MAX_PAGES_PER_CHANNEL),
 			}))
-			.sort((a, b) => b.citations - a.citations || a.label.localeCompare(b.label)),
+			.sort((a, b) => b.citations - a.citations || a.label.localeCompare(b.label))
+			.slice(0, MAX_CHANNELS),
 	};
 }

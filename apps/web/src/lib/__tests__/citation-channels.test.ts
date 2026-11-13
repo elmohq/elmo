@@ -82,6 +82,25 @@ describe("channel mix", () => {
 		expect(subjects.map((s) => s.id)).toEqual(["brand", "rival"]);
 	});
 
+	it("keeps the 10 most cited channels", () => {
+		const hosts = [
+			"youtube.com",
+			"reddit.com",
+			"linkedin.com",
+			"x.com",
+			"tiktok.com",
+			"instagram.com",
+			"facebook.com",
+			"pinterest.com",
+			"quora.com",
+			"medium.com",
+			"substack.com",
+		];
+		const { channels } = mix(hosts.map((host, i) => page(`https://${host}/p`, null, 20 - i, "social")));
+		expect(channels).toHaveLength(10);
+		expect(channels.map((c) => c.key)).not.toContain("substack");
+	});
+
 	it("narrows the pages to read by the longest unbroken run of each name", () => {
 		expect(channelSearchTerms([{ id: "brand", ...brand }, ...competitors]).sort()).toEqual(["acme", "quiet", "rival"]);
 	});
