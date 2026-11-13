@@ -19,17 +19,10 @@ import {
 	REQUEST_REPROCESSES_QUEUE,
 	requestStaleReprocesses,
 } from "./jobs/reprocess";
+import { MAINTENANCE_CRON } from "./jobs/schedule-maintenance";
 import { configureMentionAnalyzer, mentionAnalyzer } from "./mention-judge";
 import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
-
-if (process.env.SENTRY_DSN) {
-	Sentry.init({
-		dsn: process.env.SENTRY_DSN,
-		environment: process.env.ENVIRONMENT || "development",
-		tracesSampleRate: 1.0,
-	});
-}
 
 /** createQueue leaves an existing queue's policy alone, so a changed policy needs updateQueue too. */
 async function createOrUpdateQueue(
@@ -128,7 +121,7 @@ async function main() {
 	});
 	console.log("Queues created");
 
-	await boss.schedule("schedule-maintenance", "*/5 * * * *", { source: "scheduled" }, { tz: "UTC" });
+	await boss.schedule("schedule-maintenance", MAINTENANCE_CRON, { source: "scheduled" }, { tz: "UTC" });
 	console.log("Scheduled maintenance job (every 5 minutes)");
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
