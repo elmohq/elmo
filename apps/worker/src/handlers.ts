@@ -33,27 +33,9 @@ function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promis
 				scope.setTag("queue", queueName);
 				Sentry.captureException(error);
 			});
-			throw withoutNul(error);
+			throw error;
 		}
 	};
-}
-
-/**
- * pg-boss saves a failed job's error as jsonb, which rejects NUL, so an error quoting a NUL (a query's
- * params, say) would leave the job unsettled. Strips them in place, keeping the error's type and fields.
- */
-export function withoutNul<T>(value: T, seen = new WeakSet<object>()): T {
-	if (typeof value === "string") return value.replaceAll("\u0000", "") as T;
-	if (typeof value !== "object" || value === null || seen.has(value)) return value;
-	seen.add(value);
-	const target = value as Record<string, unknown>;
-	const keys = value instanceof Error ? ["message", "stack", "cause", ...Object.keys(value)] : Object.keys(value);
-	for (const key of new Set(keys)) {
-		const field = target[key];
-		const cleaned = withoutNul(field, seen);
-		if (cleaned !== field) target[key] = cleaned;
-	}
-	return value;
 }
 
 export async function registerHandlers(boss: PgBoss): Promise<void> {
