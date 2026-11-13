@@ -87,7 +87,7 @@ export interface ChannelPageRow extends ChannelDomainRow {
 
 export interface ChannelMix {
 	totalCitations: number;
-	subjects: { id: string; name: string; kind: "brand" | "competitor" }[];
+	subjects: { id: string; name: string; kind: "brand" | "competitor"; domain?: string }[];
 	channels: {
 		key: string;
 		label: string;
@@ -176,6 +176,7 @@ export function buildChannelMix(args: {
 	const subjects = [{ ...args.brand, id: BRAND_SUBJECT_ID }, ...args.competitors].map((subject) => ({
 		id: subject.id,
 		name: subject.name,
+		domain: subject.domains.map(normalizeDomain).find(Boolean),
 		matcher: subjectMatcher(subject),
 	}));
 	const ownerOf = (domain: string) => subjects.find((subject) => subject.matcher.owns(domain))?.id;
@@ -210,19 +211,18 @@ export function buildChannelMix(args: {
 		entry.topPages.push({ url: page.url, title: page.title ?? undefined, count, subjectIds });
 	}
 
-	return shapeChannelMix(args.brand.name, subjects, [...tally.channels.values()], totalCitations);
+	return shapeChannelMix(subjects, [...tally.channels.values()], totalCitations);
 }
 
 function shapeChannelMix(
-	brandName: string,
-	subjects: { id: string; name: string }[],
+	subjects: { id: string; name: string; domain?: string }[],
 	channels: ChannelMix["channels"],
 	totalCitations: number,
 ): ChannelMix {
 	const subjectTotal = (id: string) => channels.reduce((sum, entry) => sum + (entry.bySubject[id]?.citations ?? 0), 0);
 	const shownCompetitors = subjects
 		.slice(1)
-		.map((subject) => ({ id: subject.id, name: subject.name, total: subjectTotal(subject.id) }))
+		.map(({ id, name, domain }) => ({ id, name, domain, total: subjectTotal(id) }))
 		.filter((subject) => subject.total > 0)
 		.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
 		.slice(0, MAX_COMPETITORS);
@@ -231,8 +231,8 @@ function shapeChannelMix(
 	return {
 		totalCitations,
 		subjects: [
-			{ id: BRAND_SUBJECT_ID, name: brandName, kind: "brand" },
-			...shownCompetitors.map(({ id, name }) => ({ id, name, kind: "competitor" as const })),
+			{ id: BRAND_SUBJECT_ID, name: subjects[0].name, domain: subjects[0].domain, kind: "brand" },
+			...shownCompetitors.map(({ id, name, domain }) => ({ id, name, domain, kind: "competitor" as const })),
 		],
 		channels: channels
 			.filter((entry) => entry.citations > 0)

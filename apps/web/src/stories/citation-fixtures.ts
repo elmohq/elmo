@@ -329,9 +329,9 @@ const channelRow = (
 const CHANNEL_MIX: ChannelMixFixture = {
 	totalCitations: 2410,
 	subjects: [
-		{ id: "brand", name: "Acme", kind: "brand" },
-		{ id: "c1", name: "HubSpot", kind: "competitor" },
-		{ id: "c2", name: "Pipedrive", kind: "competitor" },
+		{ id: "brand", name: "Acme", kind: "brand", domain: "acme.com" },
+		{ id: "c1", name: "HubSpot", kind: "competitor", domain: "hubspot.com" },
+		{ id: "c2", name: "Pipedrive", kind: "competitor", domain: "pipedrive.com" },
 	],
 	channels: [
 		channelRow("owned", "Own Website", 1180, [640, 410, 130]),

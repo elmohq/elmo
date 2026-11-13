@@ -4,6 +4,7 @@ import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Fragment, useState } from "react";
 import { formatUrlForDisplay } from "@/components/citations/shared";
+import { SiteIcon } from "@/components/site-icon";
 import type { ChannelMix } from "@/lib/citation-channels";
 
 type Channel = ChannelMix["channels"][number];
@@ -114,10 +115,24 @@ export function ChannelMixCard({ channelMix }: { channelMix?: ChannelMix }) {
 						<thead>
 							<tr className="text-xs text-muted-foreground">
 								<th className="pb-2 text-left font-medium">Channel</th>
-								<th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">All Citations</th>
+								<th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
+									<span className="inline-flex items-center gap-1">
+										Channel Total
+										<Tooltip>
+											<TooltipTrigger render={<IconInfoCircle className="h-3 w-3 cursor-help" />} />
+											<TooltipContent className="max-w-xs text-xs font-normal">
+												Every citation to a source in this channel, whether or not it involves a tracked company, and
+												its share of all citations.
+											</TooltipContent>
+										</Tooltip>
+									</span>
+								</th>
 								{subjects.map((subject) => (
-									<th key={subject.id} className="max-w-28 min-w-20 truncate px-2 pb-2 text-right font-medium">
-										{subject.kind === "brand" ? "You" : subject.name}
+									<th key={subject.id} className="min-w-24 px-2 pb-2 font-medium">
+										<span className="flex items-center justify-end gap-1.5">
+											<SiteIcon domain={subject.domain} size="xs" />
+											<span className="max-w-28 truncate">{subject.kind === "brand" ? "You" : subject.name}</span>
+										</span>
 									</th>
 								))}
 							</tr>
