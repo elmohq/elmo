@@ -12,7 +12,7 @@ import { normalizeDomain, wholeWordPattern } from "@workspace/lib/mentions";
 
 export const BRAND_SUBJECT_ID = "brand";
 const OWNED_CHANNEL = "owned";
-const MAX_COMPETITORS = 6;
+const MAX_COMPETITORS = 4;
 const MAX_PAGES_PER_CHANNEL = 8;
 
 const PLATFORM_CHANNELS: { key: string; label: string; domains: string[] }[] = [

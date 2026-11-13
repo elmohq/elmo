@@ -312,7 +312,7 @@ const channelRow = (
 	key: string,
 	label: string,
 	citations: number,
-	[brand, c1, c2]: number[],
+	[brand, c1, c2, c3 = 0, c4 = 0]: number[],
 	topPages: ChannelMixFixture["channels"][number]["topPages"] = [],
 ) => ({
 	key,
@@ -322,6 +322,8 @@ const channelRow = (
 		brand: { citations: brand, pages: Math.ceil(brand / 6) },
 		c1: { citations: c1, pages: Math.ceil(c1 / 6) },
 		c2: { citations: c2, pages: Math.ceil(c2 / 6) },
+		c3: { citations: c3, pages: Math.ceil(c3 / 6) },
+		c4: { citations: c4, pages: Math.ceil(c4 / 6) },
 	},
 	topPages,
 });
@@ -332,11 +334,13 @@ const CHANNEL_MIX: ChannelMixFixture = {
 		{ id: "brand", name: "Acme", kind: "brand", domain: "acme.com" },
 		{ id: "c1", name: "HubSpot", kind: "competitor", domain: "hubspot.com" },
 		{ id: "c2", name: "Pipedrive", kind: "competitor", domain: "pipedrive.com" },
+		{ id: "c3", name: "Salesforce", kind: "competitor", domain: "salesforce.com" },
+		{ id: "c4", name: "Zoho", kind: "competitor", domain: "zoho.com" },
 	],
 	channels: [
-		channelRow("owned", "Own Website", 1180, [640, 410, 130]),
-		channelRow("reviews", "Review Sites", 420, [96, 148, 71]),
-		channelRow("editorial", "Editorial", 310, [34, 88, 22]),
+		channelRow("owned", "Own Website", 1180, [640, 410, 130, 88, 41]),
+		channelRow("reviews", "Review Sites", 420, [96, 148, 71, 60, 12]),
+		channelRow("editorial", "Editorial", 310, [34, 88, 22, 51, 0]),
 		channelRow(
 			"youtube",
 			"YouTube",
@@ -357,8 +361,8 @@ const CHANNEL_MIX: ChannelMixFixture = {
 				},
 			],
 		),
-		channelRow("reddit", "Reddit", 140, [18, 37, 9]),
-		channelRow("linkedin", "LinkedIn", 60, [4, 21, 0]),
+		channelRow("reddit", "Reddit", 140, [18, 37, 9, 14, 6]),
+		channelRow("linkedin", "LinkedIn", 60, [4, 21, 0, 19, 2]),
 		channelRow("other", "Other Websites", 110, [7, 15, 3]),
 	],
 };

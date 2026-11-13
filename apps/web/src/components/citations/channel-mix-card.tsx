@@ -22,32 +22,48 @@ const formatShare = (count: number, total: number) => {
 	return share > 0 && share < 1 ? "<1%" : `${Math.round(share)}%`;
 };
 
-function ChannelPages({ channel, subjects }: { channel: Channel; subjects: ChannelMix["subjects"] }) {
-	const nameOf = new Map(subjects.map((subject) => [subject.id, subject.kind === "brand" ? "You" : subject.name]));
+const ZERO = <span className="text-muted-foreground/60">0</span>;
+
+function ChannelPageRows({ channel, subjects }: { channel: Channel; subjects: ChannelMix["subjects"] }) {
 	if (channel.topPages.length === 0) {
-		return <p className="py-2 pl-5 text-xs text-muted-foreground">No cited pages here name a tracked company.</p>;
+		return (
+			<tr>
+				<td colSpan={subjects.length + 2} className="py-2 pl-5 text-xs text-muted-foreground">
+					No cited pages here name a tracked company.
+				</td>
+			</tr>
+		);
 	}
-	return (
-		<div className="space-y-0.5 py-1 pl-5">
-			{channel.topPages.map((page) => (
+	return channel.topPages.map((page) => (
+		<tr key={page.url} className="text-xs">
+			<td className="max-w-0 py-1 pr-3 pl-5">
 				<a
-					key={page.url}
 					href={page.url}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="group flex items-center justify-between gap-3 py-1 text-xs"
+					className="block truncate text-muted-foreground hover:text-foreground hover:underline"
 				>
-					<span className="min-w-0 truncate text-muted-foreground group-hover:text-foreground group-hover:underline">
-						{page.title || formatUrlForDisplay(page.url)}
-					</span>
-					<span className="flex shrink-0 items-center gap-3 text-muted-foreground">
-						<span className="max-w-48 truncate">{page.subjectIds.map((id) => nameOf.get(id)).join(", ")}</span>
-						<span className="w-10 text-right tabular-nums">{page.count.toLocaleString()}</span>
-					</span>
+					{page.title || formatUrlForDisplay(page.url)}
 				</a>
-			))}
-		</div>
-	);
+			</td>
+			<td className="py-1 pr-3 text-right whitespace-nowrap text-muted-foreground tabular-nums">
+				{page.count.toLocaleString()}
+				<span className="ml-1.5 inline-block w-9" />
+			</td>
+			{subjects.map((subject) => {
+				const named = page.subjectIds.includes(subject.id);
+				return (
+					<td
+						key={subject.id}
+						className="rounded px-2 py-1 text-right tabular-nums"
+						style={named ? { backgroundColor: `rgba(${HEAT_RGB}, 0.08)` } : undefined}
+					>
+						{named ? page.count.toLocaleString() : ZERO}
+					</td>
+				);
+			})}
+		</tr>
+	));
 }
 
 function SubjectCell({
@@ -63,11 +79,7 @@ function SubjectCell({
 	const citations = cell?.citations ?? 0;
 	const pages = cell?.pages ?? 0;
 	if (citations === 0) {
-		return (
-			<td className="rounded px-2 py-1.5 text-right">
-				<span className="text-muted-foreground/60">–</span>
-			</td>
-		);
+		return <td className="rounded px-2 py-1.5 text-right tabular-nums">{ZERO}</td>;
 	}
 	return (
 		<td className="rounded px-2 py-1.5 text-right tabular-nums" style={heatStyle(citations, rowMax)}>
@@ -88,7 +100,6 @@ export function ChannelMixCard({ channelMix }: { channelMix?: ChannelMix }) {
 	const [expanded, setExpanded] = useState<string | null>(null);
 	if (!channelMix || channelMix.channels.length === 0) return null;
 	const { subjects, channels, totalCitations } = channelMix;
-	const columnCount = subjects.length + 2;
 
 	return (
 		<Card>
@@ -114,7 +125,7 @@ export function ChannelMixCard({ channelMix }: { channelMix?: ChannelMix }) {
 					<table className="w-full border-separate border-spacing-x-0.5 border-spacing-y-0.5 text-sm">
 						<thead>
 							<tr className="text-xs text-muted-foreground">
-								<th className="pb-2 text-left font-medium">Channel</th>
+								<th className="w-full pb-2 text-left font-medium">Channel</th>
 								<th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
 									<span className="inline-flex items-center gap-1">
 										Channel Total
@@ -167,13 +178,7 @@ export function ChannelMixCard({ channelMix }: { channelMix?: ChannelMix }) {
 												<SubjectCell key={subject.id} subject={subject} channel={channel} rowMax={rowMax} />
 											))}
 										</tr>
-										{isExpanded && (
-											<tr>
-												<td colSpan={columnCount}>
-													<ChannelPages channel={channel} subjects={subjects} />
-												</td>
-											</tr>
-										)}
+										{isExpanded && <ChannelPageRows channel={channel} subjects={subjects} />}
 									</Fragment>
 								);
 							})}
