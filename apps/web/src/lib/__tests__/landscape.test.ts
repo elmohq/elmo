@@ -75,6 +75,7 @@ describe("buildLandscape", () => {
 
 	it("plots a short window day by day", () => {
 		const landscape = buildLandscape(input);
+		expect(landscape.trendBuckets).toEqual(input.dates.map((date) => ({ start: date, end: date })));
 		expect(landscape.companies[0].trend).toEqual(landscape.companies[0].series);
 	});
 
@@ -87,8 +88,9 @@ describe("buildLandscape", () => {
 			runs: [run("p1", "chatgpt", dates[0], 10, 2, 0), run("p1", "chatgpt", dates[69], 10, 9, 0)],
 			competitorRuns: [],
 		});
+		expect(landscape.trendBuckets).toHaveLength(10);
+		expect(landscape.trendBuckets.at(-1)).toEqual({ start: dates[63], end: dates[69] });
 		const [acme] = landscape.companies;
-		expect(acme.trend.visibility).toHaveLength(10);
 		expect(acme.trend.visibility[0]).toBeCloseTo(0.2);
 		expect(acme.trend.visibility.at(-1)).toBeCloseTo((6 * 2 + 9) / 70);
 		expect(acme.totals.visibility).toBeCloseTo(0.9);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bucketAnchorIndexes, bucketChartData, bucketDayIndexes, RUNS_KEY } from "@/lib/chart-buckets";
+import { bucketChartData, bucketDates, bucketOfPoint, formatBucket, RUNS_KEY } from "@/lib/chart-buckets";
 import { generateDateRange } from "@/lib/chart-utils";
 
 const days = (count: number) => {
@@ -9,10 +9,7 @@ const days = (count: number) => {
 	return generateDateRange(start, end);
 };
 
-const bucketDates = (dates: string[]) =>
-	bucketDayIndexes(dates.length).map(({ from, to }) => ({ start: dates[from], end: dates[to - 1] }));
-
-describe("bucketDayIndexes", () => {
+describe("bucketDates", () => {
 	it("keeps a point per day for a week or a month", () => {
 		expect(bucketDates(days(7))).toHaveLength(7);
 		const month = bucketDates(days(30));
@@ -81,23 +78,14 @@ describe("bucketChartData", () => {
 		expect(bucketed[0].brand).toBeNull();
 		expect(bucketed.at(-1)?.brand).toBe(40);
 	});
-});
 
-describe("bucketAnchorIndexes", () => {
-	it("draws a point on every day of a daily range", () => {
-		expect(bucketAnchorIndexes(30)).toEqual(Array.from({ length: 30 }, (_, i) => i));
-	});
-
-	it("spans the chart edge to edge, each point within the days it stands for", () => {
-		for (const count of [36, 90, 365, 730]) {
-			const anchors = bucketAnchorIndexes(count);
-			const ranges = bucketDayIndexes(count);
-			expect(anchors[0]).toBe(0);
-			expect(anchors.at(-1)).toBe(count - 1);
-			anchors.forEach((day, i) => {
-				expect(day).toBeGreaterThanOrEqual(ranges[i].from);
-				expect(day).toBeLessThan(ranges[i].to);
-			});
-		}
+	it("labels a bucketed point with the days it spans", () => {
+		const bucketed = bucketChartData(
+			points(90, () => ({ brand: 50 })),
+			["brand"],
+		);
+		const last = bucketed[bucketed.length - 1];
+		expect(formatBucket(bucketOfPoint(last))).toBe("Jun 24 – Jun 30");
+		expect(formatBucket(bucketOfPoint({ date: "2026-06-30", brand: 50 }))).toBe("Jun 30");
 	});
 });

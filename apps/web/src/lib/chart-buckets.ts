@@ -1,4 +1,10 @@
-import type { ChartDataPoint } from "@/lib/chart-utils";
+import { type ChartDataPoint, formatShortDate } from "@/lib/chart-utils";
+
+/** The span of days one chart point stands for; a single day when `start` equals `end`. */
+export interface DateBucket {
+	start: string;
+	end: string;
+}
 
 const LONGEST_DAILY_RANGE = 35;
 const LONGEST_WEEKLY_RANGE = 548;
@@ -10,15 +16,15 @@ export function bucketDaysForRange(dayCount: number): 1 | 7 | 30 {
 }
 
 /**
- * Splits a range of days into the half-open index ranges each chart point covers. Buckets
+ * Splits `dates` into the half-open index ranges each chart point covers. Buckets
  * are counted back from the last day so the newest point is always a full one,
  * rather than a partial calendar week that jumps around as it fills in. Leftover
  * days at the start join the oldest bucket when they're too few to stand alone.
  */
-export function bucketDayIndexes(dayCount: number): { from: number; to: number }[] {
-	const size = bucketDaysForRange(dayCount);
+export function bucketDateIndexes(dates: string[]): { from: number; to: number }[] {
+	const size = bucketDaysForRange(dates.length);
 	const ranges: { from: number; to: number }[] = [];
-	for (let to = dayCount; to > 0; to -= size) ranges.unshift({ from: Math.max(0, to - size), to });
+	for (let to = dates.length; to > 0; to -= size) ranges.unshift({ from: Math.max(0, to - size), to });
 	if (ranges.length > 1 && ranges[0].to - ranges[0].from < size / 2) {
 		ranges[1].from = 0;
 		ranges.shift();
@@ -26,22 +32,25 @@ export function bucketDayIndexes(dayCount: number): { from: number; to: number }
 	return ranges;
 }
 
-/**
- * The day each bucket's point is drawn on, when the points share an axis with
- * every day of the range: spread evenly from the first day to the last so the
- * line spans the chart, and never outside the bucket it stands for.
- */
-export function bucketAnchorIndexes(dayCount: number): number[] {
-	const ranges = bucketDayIndexes(dayCount);
-	return ranges.map(({ from, to }, i) => {
-		if (ranges.length === 1) return to - 1;
-		const even = Math.round((i * (dayCount - 1)) / (ranges.length - 1));
-		return Math.min(to - 1, Math.max(from, even));
-	});
+export function bucketDates(dates: string[]): DateBucket[] {
+	return bucketDateIndexes(dates).map(({ from, to }) => ({ start: dates[from], end: dates[to - 1] }));
 }
 
+export function formatBucket(bucket: DateBucket): string {
+	return bucket.start === bucket.end
+		? formatShortDate(bucket.end)
+		: `${formatShortDate(bucket.start)} – ${formatShortDate(bucket.end)}`;
+}
+
+/** Where a bucketed point keeps its first day; its `date` is the last. */
+export const BUCKET_START_KEY = "_bucketStart";
 /** A day's run count, so a bucket weighs its days by how much they observed. */
 export const RUNS_KEY = "_runs";
+
+export function bucketOfPoint(point: ChartDataPoint): DateBucket {
+	const start = point[BUCKET_START_KEY];
+	return { start: typeof start === "string" ? start : point.date, end: point.date };
+}
 
 function weightedMean(days: ChartDataPoint[], key: string): number | null {
 	let weighted = 0;
@@ -64,9 +73,9 @@ function weightedMean(days: ChartDataPoint[], key: string): number | null {
  */
 export function bucketChartData(points: ChartDataPoint[], keys: string[]): ChartDataPoint[] {
 	if (bucketDaysForRange(points.length) === 1) return points;
-	return bucketDayIndexes(points.length).map(({ from, to }) => {
+	return bucketDateIndexes(points.map((point) => point.date)).map(({ from, to }) => {
 		const days = points.slice(from, to);
-		const bucketed: ChartDataPoint = { date: days[days.length - 1].date };
+		const bucketed: ChartDataPoint = { date: days[days.length - 1].date, [BUCKET_START_KEY]: days[0].date };
 		for (const key of keys) bucketed[key] = weightedMean(days, key);
 		return bucketed;
 	});

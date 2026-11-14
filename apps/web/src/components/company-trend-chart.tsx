@@ -1,31 +1,28 @@
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import { cn } from "@workspace/ui/lib/utils";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
-import { bucketAnchorIndexes } from "@/lib/chart-buckets";
+import { type DateBucket, formatBucket } from "@/lib/chart-buckets";
 import { formatShortDate } from "@/lib/chart-utils";
 
 export interface CompanyTrend {
 	name: string;
 	isBrand: boolean;
 	color: string;
-	/** One value per entry of `dates`: what hovering a day reports. */
-	daily: (number | null)[];
-	/** The line itself, one value per bucket of `dates`; the same as `daily` on a short range. */
-	trend: (number | null)[];
+	/** One value per entry of `buckets`. */
+	values: (number | null)[];
 }
 
 /** Series keys are indexes rather than names, which can hold characters a CSS variable can't. */
 const keyOf = (index: number) => `c${index}`;
-const trendKeyOf = (index: number) => `${keyOf(index)}_trend`;
 
 export function CompanyTrendChart({
-	dates,
+	buckets,
 	companies,
 	format,
 	lowerIsBetter = false,
 	height = 260,
 }: {
-	dates: string[];
+	buckets: DateBucket[];
 	companies: CompanyTrend[];
 	format: (value: number) => string;
 	/** Flips the axis so an improving line still rises. */
@@ -37,15 +34,11 @@ export function CompanyTrendChart({
 	const config: ChartConfig = Object.fromEntries(
 		companies.map((c, i) => [keyOf(i), { label: c.name, color: c.color }]),
 	);
-	const data: Record<string, string | number | null>[] = dates.map((date, d) => ({
-		date,
-		...Object.fromEntries(companies.map((c, i) => [keyOf(i), c.daily[d]])),
+	const bucketByEnd = new Map(buckets.map((bucket) => [bucket.end, bucket]));
+	const data = buckets.map((bucket, d) => ({
+		date: bucket.end,
+		...Object.fromEntries(companies.map((c, i) => [keyOf(i), c.values[d]])),
 	}));
-	bucketAnchorIndexes(dates.length).forEach((day, bucket) => {
-		companies.forEach((c, i) => {
-			data[day][trendKeyOf(i)] = c.trend[bucket] ?? null;
-		});
-	});
 	return (
 		<div className={cn(fill && "flex h-full flex-col")}>
 			<ChartContainer
@@ -79,7 +72,10 @@ export function CompanyTrendChart({
 						content={
 							<ChartTooltipContent
 								indicator="dot"
-								labelFormatter={(value) => formatShortDate(String(value))}
+								labelFormatter={(value) => {
+									const end = String(value);
+									return formatBucket(bucketByEnd.get(end) ?? { start: end, end });
+								}}
 								// A custom formatter replaces the stock row, swatch included, so it draws its own.
 								formatter={(value, name) => (
 									<>
@@ -98,8 +94,8 @@ export function CompanyTrendChart({
 					/>
 					{companies.map((c, i) => (
 						<Line
-							key={`${c.name}-trend`}
-							dataKey={trendKeyOf(i)}
+							key={c.name}
+							dataKey={keyOf(i)}
 							type="bump"
 							stroke={`var(--color-${keyOf(i)})`}
 							strokeWidth={c.isBrand ? 3 : 2}
@@ -108,20 +104,7 @@ export function CompanyTrendChart({
 									? { r: 3, fill: `var(--color-${keyOf(i)})`, strokeWidth: 0 }
 									: { r: 2.25, fill: "var(--card)", stroke: `var(--color-${keyOf(i)})`, strokeWidth: 1.5 }
 							}
-							activeDot={false}
-							tooltipType="none"
 							connectNulls
-							isAnimationActive={false}
-						/>
-					))}
-					{/* Undrawn: these carry each day's own value to the tooltip and the hover dot, wherever the line's points fall. */}
-					{companies.map((c, i) => (
-						<Line
-							key={`${c.name}-daily`}
-							dataKey={keyOf(i)}
-							stroke="none"
-							dot={false}
-							activeDot={{ r: 4, fill: `var(--color-${keyOf(i)})`, stroke: "var(--card)", strokeWidth: 1.5 }}
 							isAnimationActive={false}
 						/>
 					))}
