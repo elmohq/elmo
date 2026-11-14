@@ -7,6 +7,8 @@ export function createDb(url: string) {
 			connectionString: url,
 			connectionTimeoutMillis: 15_000,
 			idleTimeoutMillis: 5_000,
+			keepAlive: true,
+			keepAliveInitialDelayMillis: 10_000,
 		},
 		schema,
 	});

@@ -204,6 +204,9 @@ function buildWorkerService(options: {
 	// it mid-evaluation and waste a provider call already paid for.
 	lines.push("  stop_grace_period: 35s");
 
+	// The worker exits when its database connection can't recover.
+	lines.push("  restart: unless-stopped");
+
 	if (options.dependsOn.length > 0) {
 		lines.push("  depends_on:");
 		for (const service of options.dependsOn) {
