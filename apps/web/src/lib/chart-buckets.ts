@@ -36,6 +36,18 @@ export function bucketDates(dates: string[]): DateBucket[] {
 	return bucketDateIndexes(dates).map(({ from, to }) => ({ start: dates[from], end: dates[to - 1] }));
 }
 
+/**
+ * The days a drag across a chart takes in, whichever way it was dragged: from the
+ * first day of the earlier point to the last day of the later one. A drag that
+ * never left its starting point selects nothing.
+ */
+export function draggedRange(buckets: DateBucket[], anchorEnd: string, currentEnd: string): DateBucket | null {
+	if (anchorEnd === currentEnd) return null;
+	const [earlier, later] = anchorEnd < currentEnd ? [anchorEnd, currentEnd] : [currentEnd, anchorEnd];
+	const first = buckets.find((bucket) => bucket.end === earlier);
+	return first ? { start: first.start, end: later } : null;
+}
+
 export function formatBucket(bucket: DateBucket): string {
 	return bucket.start === bucket.end
 		? formatShortDate(bucket.end)

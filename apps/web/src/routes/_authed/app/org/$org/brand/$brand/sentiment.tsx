@@ -19,7 +19,7 @@ import { SentimentBar } from "@/components/sentiment-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrandSentiment } from "@/hooks/use-brand-sentiment";
 import { useBrand } from "@/hooks/use-brands";
-import { useListFilters } from "@/hooks/use-list-filters";
+import { useListFilters, useZoomToDateRange } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { useCompetitiveLandscape } from "@/hooks/use-share-of-voice";
@@ -57,6 +57,7 @@ function TitleWithInfo({ title, children }: { title: string; children: React.Rea
 /** The top row's two cards; they sit in the page's grid so their columns line up with the row below. */
 function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors: Map<string, string> }) {
 	const brand = brandOf(landscape);
+	const zoomToRange = useZoomToDateRange();
 	return (
 		<>
 			<Card>
@@ -87,6 +88,7 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 				</CardHeader>
 				<CardContent>
 					<CompanyTrendChart
+						onSelectRange={zoomToRange}
 						buckets={landscape.trendBuckets}
 						companies={chartedCompanies(landscape, "sentiment").map((c) => ({
 							name: c.name,

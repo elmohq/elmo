@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bucketChartData, bucketDates, bucketOfPoint, formatBucket, RUNS_KEY } from "@/lib/chart-buckets";
+import { bucketChartData, bucketDates, bucketOfPoint, draggedRange, formatBucket, RUNS_KEY } from "@/lib/chart-buckets";
 import { generateDateRange } from "@/lib/chart-utils";
 
 const days = (count: number) => {
@@ -87,5 +87,23 @@ describe("bucketChartData", () => {
 		const last = bucketed[bucketed.length - 1];
 		expect(formatBucket(bucketOfPoint(last))).toBe("Jun 24 – Jun 30");
 		expect(formatBucket(bucketOfPoint({ date: "2026-06-30", brand: 50 }))).toBe("Jun 30");
+	});
+});
+
+describe("draggedRange", () => {
+	const weeks = bucketDates(days(90));
+	const last = weeks[weeks.length - 1];
+	const earlier = weeks[weeks.length - 3];
+
+	it("takes in every day from the earlier point's first to the later point's last", () => {
+		expect(draggedRange(weeks, earlier.end, last.end)).toEqual({ start: earlier.start, end: last.end });
+	});
+
+	it("selects the same days when dragged right to left", () => {
+		expect(draggedRange(weeks, last.end, earlier.end)).toEqual({ start: earlier.start, end: last.end });
+	});
+
+	it("selects nothing when the drag never left its starting point", () => {
+		expect(draggedRange(weeks, last.end, last.end)).toBeNull();
 	});
 });

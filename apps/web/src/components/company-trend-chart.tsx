@@ -1,6 +1,7 @@
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import { cn } from "@workspace/ui/lib/utils";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, ReferenceArea, XAxis, YAxis } from "recharts";
+import { useChartRangeSelect } from "@/hooks/use-chart-range-select";
 import { type DateBucket, formatBucket } from "@/lib/chart-buckets";
 import { formatShortDate } from "@/lib/chart-utils";
 
@@ -21,6 +22,7 @@ export function CompanyTrendChart({
 	format,
 	lowerIsBetter = false,
 	height = 260,
+	onSelectRange,
 }: {
 	buckets: DateBucket[];
 	companies: CompanyTrend[];
@@ -29,7 +31,10 @@ export function CompanyTrendChart({
 	lowerIsBetter?: boolean;
 	/** "fill" stretches to the parent's height, which must be bounded. */
 	height?: number | "fill";
+	/** Called with the days a drag across the chart takes in. */
+	onSelectRange?: (range: DateBucket) => void;
 }) {
+	const { handlers, selection } = useChartRangeSelect(buckets, onSelectRange);
 	const fill = height === "fill";
 	const config: ChartConfig = Object.fromEntries(
 		companies.map((c, i) => [keyOf(i), { label: c.name, color: c.color }]),
@@ -43,10 +48,10 @@ export function CompanyTrendChart({
 		<div className={cn(fill && "flex h-full flex-col")}>
 			<ChartContainer
 				config={config}
-				className={cn("aspect-auto w-full", fill && "min-h-0 flex-1")}
+				className={cn("aspect-auto w-full", fill && "min-h-0 flex-1", onSelectRange && "cursor-crosshair select-none")}
 				style={fill ? undefined : { height }}
 			>
-				<LineChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: 0 }}>
+				<LineChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: 0 }} {...handlers}>
 					<CartesianGrid vertical={false} />
 					<XAxis
 						dataKey="date"
@@ -108,6 +113,7 @@ export function CompanyTrendChart({
 							isAnimationActive={false}
 						/>
 					))}
+					{selection && <ReferenceArea {...selection} fill="var(--foreground)" fillOpacity={0.08} />}
 				</LineChart>
 			</ChartContainer>
 			<div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2">

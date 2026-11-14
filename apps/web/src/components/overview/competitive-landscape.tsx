@@ -8,6 +8,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { CompanyTrendChart } from "@/components/company-trend-chart";
 import { SiteIcon } from "@/components/site-icon";
+import { useZoomToDateRange } from "@/hooks/use-list-filters";
 import { useCompanyColors } from "@/lib/company-colors";
 import {
 	CHARTED_COMPETITORS,
@@ -254,6 +255,7 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 	const [metric, setMetric] = useState<LandscapeMetric>("visibility");
 	const colors = useCompanyColors(landscape);
 	const meta = METRIC_META[metric];
+	const zoomToRange = useZoomToDateRange();
 	return (
 		// On wide screens the page fits the viewport, so the card takes what's left and the grid scrolls within it.
 		<Card className="gap-0 xl:min-h-0 xl:flex-1 border-slate-200 bg-slate-50/70 py-0 shadow-none">
@@ -270,6 +272,7 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 						<Skeleton className="h-full w-full" />
 					) : (
 						<CompanyTrendChart
+							onSelectRange={zoomToRange}
 							buckets={landscape.trendBuckets}
 							companies={chartedCompanies(landscape, metric).map((c) => ({
 								name: c.name,

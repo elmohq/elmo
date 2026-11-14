@@ -3,7 +3,7 @@ import { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 import { useCallback, useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
 import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
-import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
+import { formatCustomLookback, type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
 import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
 /** The shared dashboard filter params. Validated once at the `$brand` layout
@@ -63,6 +63,16 @@ export function useFilterNavigate() {
 				replace: true,
 				resetScroll: false,
 			}),
+		[navigate],
+	);
+}
+
+/** Narrows the date filter to a span of days picked out on a chart. */
+export function useZoomToDateRange() {
+	const navigate = useFilterNavigate();
+	return useCallback(
+		(range: { start: string; end: string }) =>
+			navigate({ lookback: formatCustomLookback({ from: range.start, to: range.end }) }),
 		[navigate],
 	);
 }
