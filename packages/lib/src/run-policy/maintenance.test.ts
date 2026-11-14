@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	computeMaintenanceDecisions,
 	computePoolPositions,
+	isPromptOverdueForAlert,
 	lastRunQueryWindowMs,
 	type MaintenancePromptState,
 } from "./maintenance";
@@ -273,5 +274,41 @@ describe("lastRunQueryWindowMs", () => {
 	it("covers twice the slowest cadence plus grace", () => {
 		expect(lastRunQueryWindowMs(24)).toBeGreaterThan(48 * HOUR);
 		expect(lastRunQueryWindowMs(24)).toBeLessThan(50 * HOUR);
+	});
+});
+
+describe("isPromptOverdueForAlert", () => {
+	const ranAgo = (hours: number, target = CHATGPT) =>
+		new Map([[targetKey(target), new Date(NOW.getTime() - hours * HOUR)]]);
+
+	it("flags a prompt whose last run is past its cadence and the grace", () => {
+		expect(isPromptOverdueForAlert(state({ promptId: "p1", lastRunAtByKey: ranAgo(25) }), NOW)).toBe(true);
+	});
+
+	it("gives a run a grace period past its cadence before flagging it", () => {
+		expect(isPromptOverdueForAlert(state({ promptId: "p1", lastRunAtByKey: ranAgo(24.25) }), NOW)).toBe(false);
+	});
+
+	it("flags a prompt that has never run once the grace has passed, as when the worker never started", () => {
+		expect(isPromptOverdueForAlert(state({ promptId: "p1" }), NOW)).toBe(true);
+		expect(
+			isPromptOverdueForAlert(
+				state({ promptId: "p1", promptCreatedAt: new Date(NOW.getTime() - 10 * 60 * 1000) }),
+				NOW,
+			),
+		).toBe(false);
+	});
+
+	it("flags a prompt when one of its targets stops running while another stays fresh", () => {
+		const lastRunAtByKey = new Map([...ranAgo(2), ...ranAgo(30, PERPLEXITY)]);
+		expect(
+			isPromptOverdueForAlert(state({ promptId: "p1", plan: plan(24, [CHATGPT, PERPLEXITY]), lastRunAtByKey }), NOW),
+		).toBe(true);
+	});
+
+	it("never flags a prompt that is meant to be stopped", () => {
+		expect(isPromptOverdueForAlert(state({ promptId: "p1", plan: { targets: [], rescheduleHours: null } }), NOW)).toBe(
+			false,
+		);
 	});
 });
