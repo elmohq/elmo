@@ -81,18 +81,18 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 			<Card>
 				<CardHeader>
 					<TitleWithInfo title="Sentiment Trends">
-						Your sentiment score each day beside your closest competitors'. A company only has a score on days when an
-						answer mentions it.
+						Your sentiment score over time beside your closest competitors'. A company only has a score when an answer
+						mentions it.
 					</TitleWithInfo>
 				</CardHeader>
 				<CardContent>
 					<CompanyTrendChart
-						dates={landscape.dates}
+						buckets={landscape.trendBuckets}
 						companies={chartedCompanies(landscape, "sentiment").map((c) => ({
 							name: c.name,
 							isBrand: c.isBrand,
 							color: colors.get(c.name) ?? "#94a3b8",
-							values: c.series.sentiment,
+							values: c.trend.sentiment,
 						}))}
 						format={METRIC_META.sentiment.format}
 						height={220}

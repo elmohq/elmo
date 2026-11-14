@@ -5,10 +5,10 @@ import { Badge } from "@workspace/ui/components/badge";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { bucketChartData, bucketOfPoint, formatBucket } from "@/lib/chart-buckets";
 import {
 	type ChartDataPoint,
 	type ChartSubject,
-	dotScaleForPointCount,
 	extendLinesToChartEdges,
 	filterAndCompleteChartData,
 	isExtendedDataPoint,
@@ -164,7 +164,7 @@ export function BaseChart({
 		(key: string, size: number, id: string) =>
 		({ cx, cy, payload, value }: any) => {
 			// Recharts' dot render prop must return an element, so a hidden dot is an empty <g>.
-			if (size <= 0 || !payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
+			if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
 				return <g key={`${id}-empty-${key}-${cx}`} />;
 			}
 			return <circle key={`${id}-${key}-${cx}`} cx={cx} cy={cy} {...dotProps(key, size)} />;
@@ -191,7 +191,7 @@ export function BaseChart({
 						return value !== null && value !== undefined;
 					});
 				})
-			: extendLinesToChartEdges(completeData, dataKeys).map((point) => {
+			: extendLinesToChartEdges(bucketChartData(completeData, dataKeys), dataKeys).map((point) => {
 					const newPoint = { ...point };
 					for (const key of dataKeys) {
 						if (isExtendedDataPoint(point, key)) {
@@ -202,8 +202,6 @@ export function BaseChart({
 					}
 					return newPoint;
 				});
-
-	const dotScale = dotScaleForPointCount(chartData.length);
 
 	return (
 		<div className="flex-1 space-y-2">
@@ -342,7 +340,7 @@ export function BaseChart({
 							<ChartTooltip
 								isAnimationActive={false}
 								cursor={false}
-								content={({ active, payload, label }) => {
+								content={({ active, payload }) => {
 									if (!active || !payload?.length) return null;
 
 									// Dashed extensions are visual continuity, not observed values.
@@ -356,12 +354,7 @@ export function BaseChart({
 
 									if (filteredPayload.length === 0) return null;
 
-									const [year, month, day] = (label as string).split("-").map(Number);
-									const date = new Date(year, month - 1, day);
-									const formattedDate = date.toLocaleDateString("en-US", {
-										month: "short",
-										day: "numeric",
-									});
+									const formattedDate = formatBucket(bucketOfPoint(filteredPayload[0].payload));
 
 									return (
 										<div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
@@ -414,7 +407,7 @@ export function BaseChart({
 									stroke={`var(--color-${key})`}
 									strokeWidth={strokeWidthFor(key)}
 									strokeOpacity={opacityFor(key)}
-									dot={renderDot(key, 3 * dotScale, "dot")}
+									dot={renderDot(key, 3, "dot")}
 									activeDot={renderDot(key, 5, "activedot")}
 									connectNulls={true}
 									isAnimationActive={isAnimationActive}

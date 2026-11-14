@@ -6,16 +6,6 @@ import type { PerPromptDailyCompetitorRow, PerPromptDailyRuns } from "@/lib/roll
 export const formatShortDate = (date: string) =>
 	new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
-/** How large a line chart's per-point dots should be, as a fraction of full size.
- *  Past a month of daily points the dots crowd into a beaded band that hides the
- *  line's shape, so they shrink, and past a quarter they're dropped entirely —
- *  the hover dot still marks the point under the cursor. */
-export function dotScaleForPointCount(pointCount: number): number {
-	if (pointCount <= 35) return 1;
-	if (pointCount <= 100) return 0.6;
-	return 0;
-}
-
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
 export interface ChartSubject {
 	id: string;

@@ -1,13 +1,14 @@
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import { cn } from "@workspace/ui/lib/utils";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
-import { dotScaleForPointCount, formatShortDate } from "@/lib/chart-utils";
+import { type DateBucket, formatBucket } from "@/lib/chart-buckets";
+import { formatShortDate } from "@/lib/chart-utils";
 
 export interface CompanyTrend {
 	name: string;
 	isBrand: boolean;
 	color: string;
-	/** One value per entry of `dates`. */
+	/** One value per entry of `buckets`. */
 	values: (number | null)[];
 }
 
@@ -15,13 +16,13 @@ export interface CompanyTrend {
 const keyOf = (index: number) => `c${index}`;
 
 export function CompanyTrendChart({
-	dates,
+	buckets,
 	companies,
 	format,
 	lowerIsBetter = false,
 	height = 260,
 }: {
-	dates: string[];
+	buckets: DateBucket[];
 	companies: CompanyTrend[];
 	format: (value: number) => string;
 	/** Flips the axis so an improving line still rises. */
@@ -33,11 +34,11 @@ export function CompanyTrendChart({
 	const config: ChartConfig = Object.fromEntries(
 		companies.map((c, i) => [keyOf(i), { label: c.name, color: c.color }]),
 	);
-	const data = dates.map((date, d) => ({
-		date,
+	const bucketByEnd = new Map(buckets.map((bucket) => [bucket.end, bucket]));
+	const data = buckets.map((bucket, d) => ({
+		date: bucket.end,
 		...Object.fromEntries(companies.map((c, i) => [keyOf(i), c.values[d]])),
 	}));
-	const dotScale = dotScaleForPointCount(dates.length);
 	return (
 		<div className={cn(fill && "flex h-full flex-col")}>
 			<ChartContainer
@@ -71,7 +72,10 @@ export function CompanyTrendChart({
 						content={
 							<ChartTooltipContent
 								indicator="dot"
-								labelFormatter={(value) => formatShortDate(String(value))}
+								labelFormatter={(value) => {
+									const end = String(value);
+									return formatBucket(bucketByEnd.get(end) ?? { start: end, end });
+								}}
 								// A custom formatter replaces the stock row, swatch included, so it draws its own.
 								formatter={(value, name) => (
 									<>
@@ -96,16 +100,9 @@ export function CompanyTrendChart({
 							stroke={`var(--color-${keyOf(i)})`}
 							strokeWidth={c.isBrand ? 3 : 2}
 							dot={
-								dotScale === 0
-									? false
-									: c.isBrand
-										? { r: 3 * dotScale, fill: `var(--color-${keyOf(i)})`, strokeWidth: 0 }
-										: {
-												r: 2.25 * dotScale,
-												fill: "var(--card)",
-												stroke: `var(--color-${keyOf(i)})`,
-												strokeWidth: 1.5 * dotScale,
-											}
+								c.isBrand
+									? { r: 3, fill: `var(--color-${keyOf(i)})`, strokeWidth: 0 }
+									: { r: 2.25, fill: "var(--card)", stroke: `var(--color-${keyOf(i)})`, strokeWidth: 1.5 }
 							}
 							connectNulls
 							isAnimationActive={false}
