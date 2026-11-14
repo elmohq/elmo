@@ -1,7 +1,7 @@
 import { Button } from "@workspace/ui/components/button";
 import { Inbox } from "lucide-react";
 import type { ReactNode } from "react";
-import { FilterBar } from "@/components/filter-bar";
+import { FilterBar, type PromptOption } from "@/components/filter-bar";
 import { FilterSection } from "@/components/page-header";
 import type { ListFilterState } from "@/hooks/use-list-filters";
 import type { TrackedTarget } from "@/lib/model-filter";
@@ -10,6 +10,7 @@ interface FilteredListShellProps {
 	/** The page's `useListFilters()` result. */
 	filters: ListFilterState;
 	availableTags: readonly string[];
+	promptOptions?: readonly PromptOption[];
 	trackedTargets: TrackedTarget[];
 	showSearch?: boolean;
 	showModelSelector?: boolean;
@@ -47,6 +48,7 @@ interface FilteredListShellProps {
 export function FilteredListShell({
 	filters,
 	availableTags,
+	promptOptions,
 	trackedTargets,
 	showSearch = false,
 	showModelSelector = true,
@@ -95,6 +97,7 @@ export function FilteredListShell({
 			<FilterSection>
 				<FilterBar
 					availableTags={availableTags}
+					promptOptions={promptOptions}
 					trackedTargets={trackedTargets}
 					showSearch={showSearch}
 					showModelSelector={showModelSelector}

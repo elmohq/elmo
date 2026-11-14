@@ -7,6 +7,7 @@ export interface QueryFanoutFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
 	tags?: string[];
+	promptIds?: string[];
 	/** Scope to one prompt (prompt-details Web Queries tab) — lists come back uncapped. */
 	promptId?: string;
 }
@@ -28,6 +29,7 @@ export function useQueryFanout(brandId?: string, filters?: QueryFanoutFilters) {
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					prompts: filters?.promptIds?.join(","),
 					promptId: filters?.promptId,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

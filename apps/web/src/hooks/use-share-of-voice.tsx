@@ -8,6 +8,7 @@ export interface ShareOfVoiceFilters {
 	model?: string;
 	/** Tag filter (resolved to prompt IDs server-side, like the visibility page). */
 	tags?: string[];
+	promptIds?: string[];
 }
 
 const shareOfVoiceKeys = {
@@ -27,6 +28,7 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					prompts: filters?.promptIds?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
@@ -54,6 +56,7 @@ export function useCompetitiveLandscape(brandId?: string, filters?: ShareOfVoice
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					prompts: filters?.promptIds?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

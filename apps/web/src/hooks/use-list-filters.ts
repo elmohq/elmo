@@ -15,6 +15,7 @@ export type BrandFilterSearch = {
 	model?: string;
 	lookback?: string;
 	tags?: string;
+	prompts?: string;
 	q?: string;
 };
 
@@ -32,6 +33,7 @@ export function validateBrandFilterSearch(search: Record<string, unknown>): Bran
 		model: asString(search.model),
 		lookback: asString(search.lookback),
 		tags: Array.isArray(search.tags) ? search.tags.map(String).join(",") : asString(search.tags),
+		prompts: asString(search.prompts),
 		q: asString(search.q),
 	};
 }
@@ -84,18 +86,20 @@ export function useListFilters() {
 
 	const model = urlFilters.model ?? ALL_MODELS_VALUE;
 	const tags = useMemo(() => splitTags(urlFilters.tags), [urlFilters.tags]);
+	const promptIds = useMemo(() => splitTags(urlFilters.prompts), [urlFilters.prompts]);
 	const search = urlFilters.q ?? "";
 
 	return {
 		model,
 		lookback: coerceLookback(urlFilters.lookback, defaultLookback),
 		tags,
+		promptIds,
 		search,
 		/** True when any narrowing filter is active (lookback never narrows to
 		 *  zero on its own, so it doesn't count). Gates which empty state a
 		 *  page shows: "no data" vs "no matches for your filters". */
-		isFiltered: Boolean(search) || tags.length > 0 || model !== ALL_MODELS_VALUE,
-		clearFilters: () => setFilters({ q: undefined, tags: undefined, model: undefined }),
+		isFiltered: Boolean(search) || tags.length > 0 || promptIds.length > 0 || model !== ALL_MODELS_VALUE,
+		clearFilters: () => setFilters({ q: undefined, tags: undefined, prompts: undefined, model: undefined }),
 	};
 }
 

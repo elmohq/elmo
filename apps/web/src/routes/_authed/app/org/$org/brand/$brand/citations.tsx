@@ -13,6 +13,7 @@ import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { citationKeys, useCitations } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useListFilters } from "@/hooks/use-list-filters";
+import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { pageHead } from "@/lib/route-head";
 
@@ -33,23 +34,31 @@ function CitationsPage() {
 	const trackedTargets = brand?.trackedTargets ?? [];
 
 	const modelParam = filters.model === ALL_MODELS_VALUE ? undefined : filters.model;
+	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback: filters.lookback, model: modelParam });
 	const citationFilters = {
 		lookback: filters.lookback,
 		tags: filters.tags.length > 0 ? filters.tags : undefined,
+		promptIds: filters.promptIds.length > 0 ? filters.promptIds : undefined,
 		model: modelParam,
 	};
 	const { data: citationData, isLoading, error: citationsError } = useCitations(brandId, citationFilters);
 	const tagsKey = filters.tags.join(",");
+	const promptsKey = filters.promptIds.join(",");
 	const competitors = citationData?.competitors;
 	const flowSource = useMemo(
 		() => ({
 			brandId,
-			filters: { lookback: filters.lookback, tags: tagsKey ? tagsKey.split(",") : undefined, model: modelParam },
+			filters: {
+				lookback: filters.lookback,
+				tags: tagsKey ? tagsKey.split(",") : undefined,
+				promptIds: promptsKey ? promptsKey.split(",") : undefined,
+				model: modelParam,
+			},
 			brandDomains: [brand?.website ?? "", ...(brand?.additionalDomains ?? [])].map(extractDomain).filter(Boolean),
 			competitorDomains: (competitors ?? []).flatMap((c) => c.domains.map(extractDomain)),
 			modelOrder: [...new Set((brand?.trackedTargets ?? []).map((target) => target.model))],
 		}),
-		[brandId, filters.lookback, tagsKey, modelParam, brand, competitors],
+		[brandId, filters.lookback, tagsKey, promptsKey, modelParam, brand, competitors],
 	);
 
 	const infoContent = (
@@ -79,6 +88,7 @@ function CitationsPage() {
 			<FilteredListShell
 				filters={filters}
 				availableTags={citationData?.availableTags || []}
+				promptOptions={promptsSummary?.prompts ?? []}
 				trackedTargets={trackedTargets}
 				showModelSelector
 				isLoading={showFullSkeleton}
