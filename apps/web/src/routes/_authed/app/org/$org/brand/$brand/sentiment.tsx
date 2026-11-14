@@ -19,7 +19,7 @@ import { SentimentBar } from "@/components/sentiment-filter";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrandSentiment } from "@/hooks/use-brand-sentiment";
 import { useBrand } from "@/hooks/use-brands";
-import { useListFilters } from "@/hooks/use-list-filters";
+import { useListFilters, useZoomToDateRange } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { useCompetitiveLandscape } from "@/hooks/use-share-of-voice";
@@ -57,6 +57,7 @@ function TitleWithInfo({ title, children }: { title: string; children: React.Rea
 /** The top row's two cards; they sit in the page's grid so their columns line up with the row below. */
 function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors: Map<string, string> }) {
 	const brand = brandOf(landscape);
+	const zoomToRange = useZoomToDateRange();
 	return (
 		<>
 			<Card>
@@ -81,18 +82,19 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 			<Card>
 				<CardHeader>
 					<TitleWithInfo title="Sentiment Trends">
-						Your sentiment score each day beside your closest competitors'. A company only has a score on days when an
-						answer mentions it.
+						Your sentiment score over time beside your closest competitors'. A company only has a score when an answer
+						mentions it.
 					</TitleWithInfo>
 				</CardHeader>
 				<CardContent>
 					<CompanyTrendChart
-						dates={landscape.dates}
+						onSelectRange={zoomToRange}
+						buckets={landscape.trendBuckets}
 						companies={chartedCompanies(landscape, "sentiment").map((c) => ({
 							name: c.name,
 							isBrand: c.isBrand,
 							color: colors.get(c.name) ?? "#94a3b8",
-							values: c.series.sentiment,
+							values: c.trend.sentiment,
 						}))}
 						format={METRIC_META.sentiment.format}
 						height={220}
