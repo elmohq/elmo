@@ -35,7 +35,7 @@ Elmo is an open-source, self-hosted platform for optimizing your AI visibility, 
 
 Buyers increasingly ask AI before they search or visit a website. Elmo tracks how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention, cite, and describe your brand, so you can benchmark competitors, uncover citation gaps, and win more recommendations in AI answers.
 
-It's an open-source alternative to tools like [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound), [Peec](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai), and [Otterly](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai). You can run it on your own infrastructure, own your data, and audit exactly how every metric is calculated.
+It's an open-source alternative to tools like [Profound](https://www.elmohq.com/ai-visibility-tools/alternatives/profound), [Peec](https://www.elmohq.com/ai-visibility-tools/alternatives/peec-ai), and [Otterly](https://www.elmohq.com/ai-visibility-tools/alternatives/otterly-ai). You can run it on your own infrastructure, own your data, and audit exactly how every metric is calculated.
 
 ## Demo
 
