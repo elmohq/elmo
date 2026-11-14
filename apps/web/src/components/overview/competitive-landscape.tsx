@@ -270,12 +270,13 @@ export function CompetitiveLandscape({ landscape, loading }: { landscape?: Lands
 						<Skeleton className="h-full w-full" />
 					) : (
 						<CompanyTrendChart
-							buckets={landscape.trendBuckets}
+							dates={landscape.dates}
 							companies={chartedCompanies(landscape, metric).map((c) => ({
 								name: c.name,
 								isBrand: c.isBrand,
 								color: colors.get(c.name) ?? "#94a3b8",
-								values: c.trend[metric],
+								daily: c.series[metric],
+								trend: c.trend[metric],
 							}))}
 							format={meta.format}
 							lowerIsBetter={lowerIsBetter(metric)}

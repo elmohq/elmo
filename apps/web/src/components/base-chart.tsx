@@ -5,12 +5,13 @@ import { Badge } from "@workspace/ui/components/badge";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
-import { bucketChartData, bucketOfPoint, formatBucket } from "@/lib/chart-buckets";
+import { bucketAnchorIndexes, bucketChartData } from "@/lib/chart-buckets";
 import {
 	type ChartDataPoint,
 	type ChartSubject,
 	extendLinesToChartEdges,
 	filterAndCompleteChartData,
+	formatShortDate,
 	isExtendedDataPoint,
 	selectCompetitorsToDisplay,
 	visibilityBadgeProps,
@@ -25,6 +26,31 @@ const COMPETITOR_STROKE_WIDTH = 2;
 const DIMMED_OPACITY = 0.25;
 /** Ring thickness on the hollow competitor dots. */
 const DOT_RING_WIDTH = 1.5;
+
+const trendKey = (key: string) => `${key}_trend`;
+const solidKey = (key: string) => `${key}_solid`;
+
+/**
+ * One row per day, each keeping its own values for the tooltip and hover dot. The
+ * line is drawn through `_trend` values, set only on the day each bucket of the
+ * range is anchored to: every day on a short range, one per week or month on a
+ * long one. `_solid` is the observed stretch of that line, and the rest fills the
+ * edges where collection started mid-period or hasn't caught up yet.
+ */
+function trendRows(days: ChartDataPoint[], dataKeys: string[]): ChartDataPoint[] {
+	const rows = days.map((day) => ({ ...day }));
+	const buckets = extendLinesToChartEdges(bucketChartData(days, dataKeys), dataKeys);
+	bucketAnchorIndexes(days.length).forEach((day, i) => {
+		const bucket = buckets[i];
+		for (const key of dataKeys) {
+			const extended = isExtendedDataPoint(bucket, key);
+			rows[day][trendKey(key)] = bucket[key] ?? null;
+			rows[day][solidKey(key)] = extended ? null : (bucket[key] ?? null);
+			if (extended) rows[day][`_extended_${key}`] = true;
+		}
+	});
+	return rows;
+}
 
 /** Legend that doubles as a way to pick a series out of the chart, since colour
  *  alone can't separate four lines for a colourblind reader.
@@ -191,17 +217,7 @@ export function BaseChart({
 						return value !== null && value !== undefined;
 					});
 				})
-			: extendLinesToChartEdges(bucketChartData(completeData, dataKeys), dataKeys).map((point) => {
-					const newPoint = { ...point };
-					for (const key of dataKeys) {
-						if (isExtendedDataPoint(point, key)) {
-							newPoint[`${key}_solid`] = null;
-						} else {
-							newPoint[`${key}_solid`] = point[key];
-						}
-					}
-					return newPoint;
-				});
+			: trendRows(completeData, dataKeys);
 
 	return (
 		<div className="flex-1 space-y-2">
@@ -343,18 +359,15 @@ export function BaseChart({
 								content={({ active, payload }) => {
 									if (!active || !payload?.length) return null;
 
-									// Dashed extensions are visual continuity, not observed values.
-									const filteredPayload = payload.filter((item: any) => {
-										const key = item.dataKey as string;
-										if (key.endsWith("_solid")) return false;
-										if (item.payload && isExtendedDataPoint(item.payload, key)) return false;
-										if (item.value === null || item.value === undefined) return false;
-										return true;
-									});
+									// Only the undrawn daily series: the line's own points stand for whole buckets of days.
+									const filteredPayload = payload.filter(
+										(item: any) =>
+											dataKeys.includes(item.dataKey as string) && item.value !== null && item.value !== undefined,
+									);
 
 									if (filteredPayload.length === 0) return null;
 
-									const formattedDate = formatBucket(bucketOfPoint(filteredPayload[0].payload));
+									const formattedDate = formatShortDate(String(filteredPayload[0].payload.date));
 
 									return (
 										<div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
@@ -386,7 +399,7 @@ export function BaseChart({
 							{dataKeys.flatMap((key) => [
 								<Line
 									key={`${key}-dashed`}
-									dataKey={key}
+									dataKey={trendKey(key)}
 									name={`${key}-dashed`}
 									type="bump"
 									stroke={`var(--color-${key})`}
@@ -401,18 +414,31 @@ export function BaseChart({
 								/>,
 								<Line
 									key={`${key}-solid`}
-									dataKey={`${key}_solid`}
-									name={key}
+									dataKey={solidKey(key)}
+									name={`${key}-solid`}
 									type="bump"
 									stroke={`var(--color-${key})`}
 									strokeWidth={strokeWidthFor(key)}
 									strokeOpacity={opacityFor(key)}
 									dot={renderDot(key, 3, "dot")}
-									activeDot={renderDot(key, 5, "activedot")}
+									activeDot={false}
 									connectNulls={true}
 									isAnimationActive={isAnimationActive}
+									legendType="none"
 								/>,
 							])}
+							{/* Undrawn: these carry each day's own value to the tooltip and the hover dot, wherever the line's points fall. */}
+							{dataKeys.map((key) => (
+								<Line
+									key={`${key}-daily`}
+									dataKey={key}
+									name={key}
+									stroke="none"
+									dot={false}
+									activeDot={renderDot(key, 5, "activedot")}
+									isAnimationActive={false}
+								/>
+							))}
 						</LineChart>
 					</ChartContainer>
 				)}

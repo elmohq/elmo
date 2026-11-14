@@ -72,12 +72,13 @@ function ShareOfVoiceOverview({
 				<CardContent>
 					{landscape ? (
 						<CompanyTrendChart
-							buckets={landscape.trendBuckets}
+							dates={landscape.dates}
 							companies={chartedCompanies(landscape, "share").map((c) => ({
 								name: c.name,
 								isBrand: c.isBrand,
 								color: colors.get(c.name) ?? "#94a3b8",
-								values: c.trend.share,
+								daily: c.series.share,
+								trend: c.trend.share,
 							}))}
 							format={METRIC_META.share.format}
 							height={220}

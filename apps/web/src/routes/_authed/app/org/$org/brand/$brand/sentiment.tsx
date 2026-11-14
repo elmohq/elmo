@@ -87,12 +87,13 @@ function SentimentOverview({ landscape, colors }: { landscape: Landscape; colors
 				</CardHeader>
 				<CardContent>
 					<CompanyTrendChart
-						buckets={landscape.trendBuckets}
+						dates={landscape.dates}
 						companies={chartedCompanies(landscape, "sentiment").map((c) => ({
 							name: c.name,
 							isBrand: c.isBrand,
 							color: colors.get(c.name) ?? "#94a3b8",
-							values: c.trend.sentiment,
+							daily: c.series.sentiment,
+							trend: c.trend.sentiment,
 						}))}
 						format={METRIC_META.sentiment.format}
 						height={220}
