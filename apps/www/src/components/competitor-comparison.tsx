@@ -15,6 +15,7 @@ import {
 	getScreenshotUrl,
 	getSoundbite,
 	graveyardFate,
+	hasOwnPages,
 	isLowDR,
 } from "@/lib/competitors";
 import { SELF_HOST_LINK } from "@/lib/self-host-link";
@@ -329,6 +330,19 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 							</p>
 						</div>
 					</div>
+					{hasOwnPages(competitor) ? (
+						<p className="mt-8 text-zinc-600">
+							Still weighing your options? See all{" "}
+							<Link
+								to="/ai-visibility-tools/alternatives/$slug"
+								params={{ slug: competitor.slug }}
+								className="underline underline-offset-2 hover:text-zinc-950"
+							>
+								{competitor.name} alternatives
+							</Link>
+							.
+						</p>
+					) : null}
 				</div>
 			</section>
 
