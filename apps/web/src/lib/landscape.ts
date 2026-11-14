@@ -138,26 +138,19 @@ function observations(input: LandscapeInput): Map<string, Map<string, Map<string
 	return byPrompt;
 }
 
-/** Each day's sums across prompts, every prompt carried at its latest result as of that day. */
+/**
+ * Each day's sums across prompts, every prompt and model carried at its latest result as of that day:
+ * a cycle's models can answer on different days.
+ */
 function carriedDays(byPrompt: Map<string, Map<string, Map<string, Observation>>>, dates: string[]) {
-	const byPromptDay = new Map<string, Map<string, Observation>>();
-	for (const [promptId, models] of byPrompt) {
-		const days = new Map<string, Observation>();
-		for (const modelDays of models.values()) {
-			for (const [date, observation] of modelDays) {
-				const day = days.get(date) ?? emptyObservation();
-				addObservation(day, observation);
-				days.set(date, day);
-			}
-		}
-		byPromptDay.set(promptId, days);
-	}
 	const totals = new Map<string, Observation>();
-	carryForward(byPromptDay, dates, (_promptId, date, carried) => {
-		const day = totals.get(date) ?? emptyObservation();
-		addObservation(day, carried);
-		totals.set(date, day);
-	});
+	for (const models of byPrompt.values()) {
+		carryForward(models, dates, (_model, date, carried) => {
+			const day = totals.get(date) ?? emptyObservation();
+			addObservation(day, carried);
+			totals.set(date, day);
+		});
+	}
 	return totals;
 }
 

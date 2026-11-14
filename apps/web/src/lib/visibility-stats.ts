@@ -134,6 +134,7 @@ export function computeShareOfVoice(
 
 export interface PerPromptDailyMentions {
 	promptId: string;
+	model: string;
 	date: string;
 	brandMentions: number;
 	competitorMentions: number;
@@ -144,11 +145,14 @@ interface MentionCounts {
 	competitor: number;
 }
 
+/** Results carry per prompt and model: a cycle's models can answer on different days. */
+const carriedKey = (row: { promptId: string; model: string }) => `${row.promptId}\u0000${row.model}`;
+
 function groupMentionsByPromptAndDate(perPrompt: PerPromptDailyMentions[]): Map<string, Map<string, MentionCounts>> {
 	const byPrompt = new Map<string, Map<string, MentionCounts>>();
 	for (const r of perPrompt) {
-		const dateMap = byPrompt.get(r.promptId) ?? new Map<string, MentionCounts>();
-		byPrompt.set(r.promptId, dateMap);
+		const dateMap = byPrompt.get(carriedKey(r)) ?? new Map<string, MentionCounts>();
+		byPrompt.set(carriedKey(r), dateMap);
 		dateMap.set(r.date, { brand: r.brandMentions, competitor: r.competitorMentions });
 	}
 	return byPrompt;
@@ -204,24 +208,27 @@ interface DailyObservation {
 	competitors: Map<string, number>;
 }
 
+type BrandDaily = { promptId: string; model: string; date: string; brand: number };
+type CompetitorDaily = { promptId: string; model: string; date: string; competitor: string; mentions: number };
+
 function groupObservations(
-	brandDaily: Array<{ promptId: string; date: string; brand: number }>,
-	competitorDaily: Array<{ promptId: string; date: string; competitor: string; mentions: number }>,
-): Map<string, Map<string, DailyObservation>> {
-	const byPrompt = new Map<string, Map<string, DailyObservation>>();
-	const observationAt = (promptId: string, date: string): DailyObservation => {
-		const dateMap = byPrompt.get(promptId) ?? new Map<string, DailyObservation>();
-		byPrompt.set(promptId, dateMap);
-		const observation = dateMap.get(date) ?? { brand: 0, competitors: new Map() };
-		dateMap.set(date, observation);
+	brandDaily: BrandDaily[],
+	competitorDaily: CompetitorDaily[],
+): Map<string, { promptId: string; days: Map<string, DailyObservation> }> {
+	const byKey = new Map<string, { promptId: string; days: Map<string, DailyObservation> }>();
+	const observationAt = (row: { promptId: string; model: string; date: string }): DailyObservation => {
+		const series = byKey.get(carriedKey(row)) ?? { promptId: row.promptId, days: new Map() };
+		byKey.set(carriedKey(row), series);
+		const observation = series.days.get(row.date) ?? { brand: 0, competitors: new Map() };
+		series.days.set(row.date, observation);
 		return observation;
 	};
 
-	for (const row of brandDaily) observationAt(row.promptId, row.date).brand = row.brand;
+	for (const row of brandDaily) observationAt(row).brand = row.brand;
 	for (const row of competitorDaily) {
-		if (row.mentions > 0) observationAt(row.promptId, row.date).competitors.set(row.competitor, row.mentions);
+		if (row.mentions > 0) observationAt(row).competitors.set(row.competitor, row.mentions);
 	}
-	return byPrompt;
+	return byKey;
 }
 
 function latestObservation(dateMap: Map<string, DailyObservation>, lastDate: string): DailyObservation | null {
@@ -240,35 +247,33 @@ function latestObservation(dateMap: Map<string, DailyObservation>, lastDate: str
  * implies equals that trend's final point rather than a whole-window aggregate.
  */
 export function shareOfVoiceLeaderboardLVCF(
-	brandDaily: Array<{ promptId: string; date: string; brand: number }>,
-	competitorDaily: Array<{ promptId: string; date: string; competitor: string; mentions: number }>,
+	brandDaily: BrandDaily[],
+	competitorDaily: CompetitorDaily[],
 	dateRange: string[],
 ): LeaderboardLVCFResult {
 	if (dateRange.length === 0) return { brandMentions: 0, brandPrompts: 0, competitors: [] };
 	const lastDate = dateRange[dateRange.length - 1];
 
-	const byPrompt = groupObservations(brandDaily, competitorDaily);
-
 	let brandMentions = 0;
-	let brandPrompts = 0;
+	const brandPrompts = new Set<string>();
 	const compMentions = new Map<string, number>();
-	const compPrompts = new Map<string, number>();
+	const compPrompts = new Map<string, Set<string>>();
 
-	for (const [, dateMap] of byPrompt) {
-		const last = latestObservation(dateMap, lastDate);
+	for (const { promptId, days } of groupObservations(brandDaily, competitorDaily).values()) {
+		const last = latestObservation(days, lastDate);
 		if (!last) continue;
 		brandMentions += last.brand;
-		if (last.brand > 0) brandPrompts++;
+		if (last.brand > 0) brandPrompts.add(promptId);
 		for (const [name, mentions] of last.competitors) {
 			if (mentions <= 0) continue;
 			compMentions.set(name, (compMentions.get(name) ?? 0) + mentions);
-			compPrompts.set(name, (compPrompts.get(name) ?? 0) + 1);
+			compPrompts.set(name, (compPrompts.get(name) ?? new Set()).add(promptId));
 		}
 	}
 
 	const competitors = [...compMentions.entries()]
-		.map(([name, mentions]) => ({ name, mentions, prompts: compPrompts.get(name) ?? 0 }))
+		.map(([name, mentions]) => ({ name, mentions, prompts: compPrompts.get(name)?.size ?? 0 }))
 		.sort((a, b) => b.mentions - a.mentions || a.name.localeCompare(b.name));
 
-	return { brandMentions, brandPrompts, competitors };
+	return { brandMentions, brandPrompts: brandPrompts.size, competitors };
 }

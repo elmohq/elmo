@@ -215,3 +215,36 @@ describe("competitive landscape", () => {
 		expect(landscape.companies.map((c) => c.name)).toEqual(["Acme", "Globex"]);
 	});
 });
+
+describe("a prompt whose models answer on different days", () => {
+	let staggered: string;
+
+	beforeAll(async () => {
+		staggered = await createBrand({ name: "Acme", website: "https://acme.example" });
+		await createCompetitor(staggered, "Globex", ["globex.example"]);
+		const prompt = await createPrompt(staggered, { value: "acme alternatives" });
+		await createRun(staggered, prompt, {
+			at: "2026-03-01T10:00:00Z",
+			brandMentioned: true,
+			competitors: ["Globex"],
+			model: "chatgpt",
+		});
+		await createRun(staggered, prompt, { at: "2026-03-02T10:00:00Z", brandMentioned: false, model: "gemini" });
+		await rebuildRollups(staggered);
+	});
+
+	afterAll(async () => {
+		await deleteBrand(staggered);
+	});
+
+	it("counts each model's latest answer in every figure", async () => {
+		const [visibility, sov, landscape] = await Promise.all([
+			getBrandVisibility(staggered, window),
+			getBrandShareOfVoice(staggered, window),
+			getCompetitiveLandscape(staggered, window),
+		]);
+		expect(visibility.series.map((point) => point.visibility)).toEqual([0.5, 0.5, 0.5]);
+		expect(sov.brandShare).toBe(0.5);
+		expect(landscape.companies[0].totals).toMatchObject({ visibility: 0.5, share: 0.5 });
+	});
+});
