@@ -58,8 +58,8 @@ const cols: { heading: string; links: FooterLink[] }[] = [
 		links: [
 			{ label: "Tool Directory", href: "/ai-visibility-tools" },
 			{ label: "Free & Open-Source Tools", href: "/ai-visibility-tools/category/open-source" },
-			{ label: "Head-to-Head Comparisons", href: "/ai-visibility-tools/compare" },
-			{ label: "Find Alternatives", href: "/ai-visibility-tools/alternatives" },
+			{ label: "Comparisons", href: "/ai-visibility-tools/compare" },
+			{ label: "Alternatives", href: "/ai-visibility-tools/alternatives" },
 		],
 	},
 	{
