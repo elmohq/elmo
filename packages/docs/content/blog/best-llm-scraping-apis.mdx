@@ -139,6 +139,10 @@ The aggregate hides the more useful finding. Broken out by surface:
 
 The most consistent provider across every surface we ran in October: 97% overall, and at least 97% everywhere except Copilot, where it managed 92%. It has good documentation and an API that is pleasant to integrate against. Requests go through an [asynchronous task API](https://cloro.dev/docs/) that you poll, which also lets Cloro meter concurrency rather than holding a connection open. Failed requests are not charged.
 
+What sets Cloro apart is that it publishes [uptime for each engine](https://status.cloro.dev/). Most scraping providers' status pages show one green dot for the whole API. That dot tells you nothing when ChatGPT scraping is broken and Google AI Mode is fine, and that is exactly how these scrapers fail. Cloro's status page tracks ChatGPT, Gemini, Google AI Mode, Google AI Overview, and Bing AI Mode separately, with incident history for each, so you can tell at a glance whether a failure is theirs or yours. It is the same data we collect for every provider on our own [status page](https://www.elmohq.com/status), published by the provider itself.
+
+This level of transparency should be the standard, not the exception. Scraping AI answer engines means chasing UIs that change without notice, so every provider breaks sometimes. The real question is whether a provider tells you when it happens. Cloro does, engine by engine, and we'd like every provider on this list to follow.
+
 It is plan-based rather than pay-as-you-go, and the $30 Lite plan works out to about $1.30 per prompt, so it stings on very small projects. From the $100 Hobby plan up, the rate halves to about $0.65. There is also a free tier of 500 credits a month for testing.
 
 It is also the provider we put our own money behind: [Cloro](https://cloro.dev?fpr=elmo&fp_sid=blog) is the primary data source for Elmo Cloud, so the numbers in the table above are the same ones our paying customers depend on. Ahrefs, Scrunch, and Evertune run on it too.
