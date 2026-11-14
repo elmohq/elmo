@@ -8,6 +8,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "rec
 import {
 	type ChartDataPoint,
 	type ChartSubject,
+	dotScaleForPointCount,
 	extendLinesToChartEdges,
 	filterAndCompleteChartData,
 	isExtendedDataPoint,
@@ -163,7 +164,7 @@ export function BaseChart({
 		(key: string, size: number, id: string) =>
 		({ cx, cy, payload, value }: any) => {
 			// Recharts' dot render prop must return an element, so a hidden dot is an empty <g>.
-			if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
+			if (size <= 0 || !payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
 				return <g key={`${id}-empty-${key}-${cx}`} />;
 			}
 			return <circle key={`${id}-${key}-${cx}`} cx={cx} cy={cy} {...dotProps(key, size)} />;
@@ -201,6 +202,8 @@ export function BaseChart({
 					}
 					return newPoint;
 				});
+
+	const dotScale = dotScaleForPointCount(chartData.length);
 
 	return (
 		<div className="flex-1 space-y-2">
@@ -411,7 +414,7 @@ export function BaseChart({
 									stroke={`var(--color-${key})`}
 									strokeWidth={strokeWidthFor(key)}
 									strokeOpacity={opacityFor(key)}
-									dot={renderDot(key, 3, "dot")}
+									dot={renderDot(key, 3 * dotScale, "dot")}
 									activeDot={renderDot(key, 5, "activedot")}
 									connectNulls={true}
 									isAnimationActive={isAnimationActive}

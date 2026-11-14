@@ -1,7 +1,7 @@
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import { cn } from "@workspace/ui/lib/utils";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
-import { formatShortDate } from "@/lib/chart-utils";
+import { dotScaleForPointCount, formatShortDate } from "@/lib/chart-utils";
 
 export interface CompanyTrend {
 	name: string;
@@ -37,6 +37,7 @@ export function CompanyTrendChart({
 		date,
 		...Object.fromEntries(companies.map((c, i) => [keyOf(i), c.values[d]])),
 	}));
+	const dotScale = dotScaleForPointCount(dates.length);
 	return (
 		<div className={cn(fill && "flex h-full flex-col")}>
 			<ChartContainer
@@ -95,9 +96,16 @@ export function CompanyTrendChart({
 							stroke={`var(--color-${keyOf(i)})`}
 							strokeWidth={c.isBrand ? 3 : 2}
 							dot={
-								c.isBrand
-									? { r: 3, fill: `var(--color-${keyOf(i)})`, strokeWidth: 0 }
-									: { r: 2.25, fill: "var(--card)", stroke: `var(--color-${keyOf(i)})`, strokeWidth: 1.5 }
+								dotScale === 0
+									? false
+									: c.isBrand
+										? { r: 3 * dotScale, fill: `var(--color-${keyOf(i)})`, strokeWidth: 0 }
+										: {
+												r: 2.25 * dotScale,
+												fill: "var(--card)",
+												stroke: `var(--color-${keyOf(i)})`,
+												strokeWidth: 1.5 * dotScale,
+											}
 							}
 							connectNulls
 							isAnimationActive={false}
