@@ -57,7 +57,8 @@
 		"./rollups/dirty": "./src/rollups/dirty.ts",
 		"./rollups/citation-pages": "./src/rollups/citation-pages.ts",
 		"./rollups/fanout": "./src/rollups/fanout.ts",
-		"./mention-judge": "./src/mention-judge/index.ts"
+		"./mention-judge": "./src/mention-judge/index.ts",
+		"./markets/translate": "./src/markets/translate.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "catalog:",

@@ -1,6 +1,7 @@
 /** Split from onboarding.ts so a client component importing a server function
  * does not transitively pull in drizzle and pg. */
 
+import { countrySchema, languageSchema } from "@workspace/config/markets";
 import { slugify } from "@workspace/lib/app-urls";
 import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
@@ -55,6 +56,9 @@ export const createBrandInputSchema = z.object({
 	aliases: z.array(z.string()).optional(),
 	competitors: z.array(competitorInputSchema).optional(),
 	prompts: z.array(promptInputSchema).optional(),
+	/** The market prompts are asked in unless they set their own. Defaults to the United States in English. */
+	country: countrySchema.optional(),
+	language: languageSchema.optional(),
 	/** Omitted, an admin key provisions a new organization — the only way to
 	 * create one over the API. */
 	organizationId: z.string().min(1).optional(),
@@ -65,6 +69,8 @@ export const updateBrandBodySchema = z.object({
 	domains: z.array(z.string()).min(1).optional(),
 	aliases: z.array(z.string()).optional(),
 	enabled: z.boolean().optional(),
+	country: countrySchema.optional(),
+	language: languageSchema.optional(),
 });
 
 export const wizardOnboardingInputSchema = z.object({
@@ -85,6 +91,8 @@ export interface CreateBrandInput {
 	aliases?: string[];
 	competitors?: CompetitorInput[];
 	prompts?: PromptInput[];
+	country?: string;
+	language?: string;
 	/** Null provisions one named after the brand id, which is right for an admin
 	 * key standing up a tenant and wrong inside an existing workspace. */
 	organizationId?: string | null;
@@ -99,6 +107,8 @@ export interface UpdateBrandInput {
 	additionalDomains?: string[];
 	aliases?: string[];
 	enabled?: boolean;
+	country?: string;
+	language?: string;
 }
 
 export type WizardOnboardingInput = z.infer<typeof wizardOnboardingInputSchema>;
@@ -113,6 +123,8 @@ export interface BrandResult {
 	onboarded: boolean;
 	enabledModels: string[] | null;
 	delayOverrideHours: number | null;
+	country: string;
+	language: string;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -142,6 +154,8 @@ export function buildBrandResult(row: typeof brands.$inferSelect): BrandResult {
 		onboarded: row.onboarded,
 		enabledModels: row.enabledModels,
 		delayOverrideHours: row.delayOverrideHours,
+		country: row.country,
+		language: row.language,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	};
@@ -171,6 +185,8 @@ export function apiCreateInputToInternal(input: z.infer<typeof createBrandInputS
 		aliases: input.aliases,
 		competitors: input.competitors,
 		prompts: input.prompts,
+		country: input.country,
+		language: input.language,
 		organizationId: input.organizationId ?? null,
 	};
 }
@@ -184,6 +200,8 @@ export function apiUpdateInputToInternal(
 		brandName: input.brandName,
 		aliases: input.aliases,
 		enabled: input.enabled,
+		country: input.country,
+		language: input.language,
 	};
 	if (input.domains !== undefined) {
 		const { website, additionalDomains } = splitDomainsForStorage(input.domains);
@@ -306,6 +324,8 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 				aliases,
 				enabled: true,
 				onboarded: true,
+				...(input.country ? { country: input.country } : {}),
+				...(input.language ? { language: input.language } : {}),
 			})
 			.onConflictDoNothing({ target: brands.id })
 			.returning({ id: brands.id });
@@ -367,6 +387,8 @@ export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult>
 	}
 	if (input.aliases !== undefined) patch.aliases = dedupeAliases(input.aliases);
 	if (input.enabled !== undefined) patch.enabled = input.enabled;
+	if (input.country !== undefined) patch.country = input.country;
+	if (input.language !== undefined) patch.language = input.language;
 
 	await db.update(brands).set(patch).where(eq(brands.id, input.brandId));
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });

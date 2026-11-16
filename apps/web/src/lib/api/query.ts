@@ -41,12 +41,13 @@ export const instant = z.iso.datetime({
 	},
 });
 
-/** What every analytics endpoint reads: the window and the two filters. */
+/** What every analytics endpoint reads: the window and the filters. */
 export const analyticsQuery = z.object({
 	start: instant,
 	end: instant,
 	model: z.string().optional(),
 	tags: z.string().optional(),
+	markets: z.string().optional(),
 });
 
 /** What every list reads to page. */

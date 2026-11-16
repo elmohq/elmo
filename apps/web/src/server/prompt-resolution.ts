@@ -11,9 +11,10 @@
  * Keeping it here, imported only inside server-fn handlers, stays strippable.
  */
 import { db } from "@workspace/lib/db/db";
-import { prompts } from "@workspace/lib/db/schema";
+import { brands, prompts } from "@workspace/lib/db/schema";
 import { effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
 import { and, eq } from "drizzle-orm";
+import { marketFilter, type PromptScope } from "@/lib/prompt-scope";
 
 export interface ResolvedPrompt {
 	id: string;
@@ -25,8 +26,9 @@ export interface ResolvedPrompt {
 /**
  * Resolve the in-scope prompts for a brand from filter criteria, entirely
  * server-side. Mirrors the filtering the visibility page applies to build its
- * prompt list — the tag filter from `getPromptsSummaryFn` plus the search box —
- * so the chart and visibility aggregates cover the same prompts the list shows.
+ * prompt list — the tag and market filters from `getPromptsSummaryFn` plus the
+ * search box — so the chart and visibility aggregates cover the same prompts the
+ * list shows.
  *
  * Resolving here (instead of having the client serialize the full prompt-id
  * list into the GET request URL) keeps the request bounded regardless of how
@@ -36,7 +38,7 @@ export interface ResolvedPrompt {
  */
 export async function resolveFilteredPrompts(
 	brandId: string,
-	opts: { tags?: string; search?: string },
+	opts: PromptScope & { search?: string },
 ): Promise<ResolvedPrompt[]> {
 	const allPrompts = await db
 		.select({
@@ -44,15 +46,29 @@ export async function resolveFilteredPrompts(
 			value: prompts.value,
 			systemTags: prompts.systemTags,
 			tags: prompts.tags,
+			country: prompts.country,
+			language: prompts.language,
+			brandCountry: brands.country,
+			brandLanguage: brands.language,
 		})
 		.from(prompts)
+		.innerJoin(brands, eq(prompts.brandId, brands.id))
 		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
 
 	const tagFilter = parseTagFilter(opts.tags);
 	const search = opts.search?.toLowerCase();
+	const [first] = allPrompts;
+	const inMarket = first
+		? marketFilter(opts.markets, { country: first.brandCountry, language: first.brandLanguage })
+		: () => true;
 
 	return allPrompts
-		.filter((p) => matchesTagFilter(effectiveTags(p), tagFilter) && (!search || p.value.toLowerCase().includes(search)))
+		.filter(
+			(p) =>
+				inMarket(p) &&
+				matchesTagFilter(effectiveTags(p), tagFilter) &&
+				(!search || p.value.toLowerCase().includes(search)),
+		)
 		.map((p) => ({
 			id: p.id,
 			value: p.value,

@@ -31,7 +31,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/citations/urls")({
 					const { urls, total, totals } = await getBrandCitationUrls(
 						brand.id,
 						range,
-						{ model: query.model, tags: query.tags },
+						{ model: query.model, tags: query.tags, markets: query.markets },
 						{
 							search: query.q,
 							category: query.category,

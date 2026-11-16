@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { countrySchema, languageSchema, type Market, resolveMarket } from "@workspace/config/markets";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
@@ -29,6 +30,7 @@ import {
 	getResponseSentimentCounts,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
+import { marketFilter, promptScopeFields } from "@/lib/prompt-scope";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -80,8 +82,20 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			// pgboss schema may not exist yet — that's fine
 		}
 
+		const [brand] = await db
+			.select({ country: brands.country, language: brands.language })
+			.from(brands)
+			.where(eq(brands.id, data.brandId));
+		if (!brand) return null;
+
 		const variants = await db
-			.select({ id: prompts.id, value: prompts.value, enabled: prompts.enabled })
+			.select({
+				id: prompts.id,
+				value: prompts.value,
+				enabled: prompts.enabled,
+				country: prompts.country,
+				language: prompts.language,
+			})
 			.from(prompts)
 			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.groupId, prompt.groupId), ne(prompts.id, prompt.id)))
 			.orderBy(prompts.createdAt, prompts.id);
@@ -94,8 +108,14 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			tags: prompt.tags || [],
 			systemTags: prompt.systemTags || [],
 			nextRunAt,
+			market: resolveMarket(prompt, brand),
+			/** False when the prompt follows the brand's market. */
+			marketOverridden: prompt.country !== null || prompt.language !== null,
 			/** The other wordings of this question. */
-			variants,
+			variants: variants.map(({ country, language, ...variant }) => ({
+				...variant,
+				market: resolveMarket({ country, language }, brand),
+			})),
 		};
 	});
 
@@ -111,6 +131,7 @@ function summarizePrompt(
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
 	group: { lead: { id: string; value: string }; size: number },
+	market: Market,
 ) {
 	const totalRuns = stats?.runs ?? 0;
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
@@ -135,6 +156,7 @@ function summarizePrompt(
 		variantOf: group.lead.id === prompt.id ? null : group.lead.value,
 		/** Other tracked prompts asking the same question. */
 		variantCount: group.size - 1,
+		market,
 	};
 }
 
@@ -157,12 +179,18 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
-			tags: z.string().optional(),
+			...promptScopeFields,
 			timezone: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		await requireBrandSession(data.brandId);
+
+		const [brand] = await db
+			.select({ country: brands.country, language: brands.language })
+			.from(brands)
+			.where(eq(brands.id, data.brandId));
+		if (!brand) throw new Error("Brand not found");
 
 		const allPrompts = await db
 			.select()
@@ -208,10 +236,18 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
-			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), groups.get(p.groupId)!);
+			return summarizePrompt(
+				p,
+				summaryMap.get(p.id),
+				firstEvalMap.get(p.id),
+				groups.get(p.groupId)!,
+				resolveMarket(p, brand),
+			);
 		});
 
-		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));
+		const inMarket = marketFilter(data.markets, brand);
+		const inMarketIds = new Set(allPrompts.filter(inMarket).map((p) => p.id));
+		const filteredPrompts = promptSummaries.filter((p) => inMarketIds.has(p.id) && matchesTagFilter(p.tags, tagFilter));
 		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
 		return {
@@ -452,6 +488,9 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					premiumModels: z.array(z.string()).optional(),
 					/** Client-minted for a new group, so a new prompt and its variants can be saved together. */
 					groupId: z.uuid().optional(),
+					/** Null follows the brand's market. */
+					country: countrySchema.nullable().optional(),
+					language: languageSchema.nullable().optional(),
 				}),
 			),
 		}),
@@ -486,6 +525,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
 						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
+						...(prompt.country !== undefined ? { country: prompt.country } : {}),
+						...(prompt.language !== undefined ? { language: prompt.language } : {}),
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
@@ -506,6 +547,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
 						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
+						country: prompt.country ?? null,
+						language: prompt.language ?? null,
 					})),
 				);
 			}

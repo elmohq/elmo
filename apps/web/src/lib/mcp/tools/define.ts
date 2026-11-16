@@ -67,6 +67,12 @@ export const windowArgs = {
 		),
 	model: modelArg,
 	tags: z.string().optional().describe("Comma-separated prompt tags; only prompts carrying one are counted."),
+	markets: z
+		.string()
+		.optional()
+		.describe(
+			"Comma-separated markets as language-country, e.g. `de-DE,fr-CH`; only prompts asked in one are counted.",
+		),
 };
 
 export type WindowArgs = z.output<z.ZodObject<typeof windowArgs>>;
@@ -76,5 +82,5 @@ export function windowFor(args: WindowArgs): AnalyticsWindow {
 }
 
 export function filtersFrom(args: WindowArgs): AnalyticsFilters {
-	return { model: args.model, tags: args.tags };
+	return { model: args.model, tags: args.tags, markets: args.markets };
 }
