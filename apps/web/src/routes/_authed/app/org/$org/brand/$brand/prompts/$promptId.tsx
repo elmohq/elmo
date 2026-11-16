@@ -18,6 +18,7 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
+import { type PromptVariant, PromptVariants } from "@/components/prompt-variants";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SentimentFilterCard } from "@/components/sentiment-filter";
 import { SiteIcon } from "@/components/site-icon";
@@ -45,6 +46,7 @@ type PromptMetadata = {
 	tags: string[];
 	systemTags: string[];
 	nextRunAt?: string | null;
+	variants: PromptVariant[];
 };
 
 type PromptRunsData = ReturnType<typeof usePromptRunsOnly>["data"];
@@ -98,10 +100,12 @@ function PromptHeader({
 	promptMeta,
 	isMetaLoading,
 	onLookbackChange,
+	tab,
 }: {
 	promptMeta: PromptMetadata | null;
 	isMetaLoading: boolean;
 	onLookbackChange: () => void;
+	tab?: PromptDetailTab;
 }) {
 	const brandParams = useBrandParams();
 	const systemTags = promptMeta?.systemTags || [];
@@ -188,6 +192,8 @@ function PromptHeader({
 					</Link>
 				</div>
 			)}
+
+			{promptMeta && <PromptVariants variants={promptMeta.variants} tab={tab} />}
 		</div>
 	);
 }
@@ -298,7 +304,12 @@ function PromptHistoryPage() {
 
 	return (
 		<div className="space-y-0">
-			<PromptHeader promptMeta={promptMeta} isMetaLoading={isMetaLoading} onLookbackChange={handleLookbackChange} />
+			<PromptHeader
+				promptMeta={promptMeta}
+				isMetaLoading={isMetaLoading}
+				onLookbackChange={handleLookbackChange}
+				tab={activeTab}
+			/>
 
 			<div className="border-b border-border">
 				<div className="flex items-end justify-between">
