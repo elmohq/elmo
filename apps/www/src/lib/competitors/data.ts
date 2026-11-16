@@ -9067,6 +9067,7 @@ const aeoPopularityRanking: string[] = [
 	"gauge", // End-to-end tracking + analysis + content platform
 	"azoma", // Enterprise agentic commerce — Rufus/Sparky/Alexa coverage and SKU-level revenue metrics
 	"passionfruit", // Stanford/CMU founders, managed SEO/GEO service on its own tracker
+	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
 	"daydream", // 12% of Forbes AI 50 as clients, a16z citation, Shorty Award; managed service not software
 
 	// --- Tier D: Niche / emerging AEO tools with some traction ---
@@ -9078,7 +9079,6 @@ const aeoPopularityRanking: string[] = [
 	"superlines", // 9-platform GEO tracker, customers incl. Supabase/Publicis, Google for AI Startups
 	"rocketblue", // Samsung/monday.com/Lloyds/Publicis logos despite DR 11; autopilot publishing + MCP
 	"emberos", // Five-module agentic platform, Share-of-Prompt/TAVI metrics; no disclosed customers
-	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
 	"genrank", // Ad-spend visibility per prompt plus social sentiment; no disclosed traction
 	"mentions", // Eight models incl. Llama, crawler analytics, DR 34
 	"sellm", // Five engines with paired SEO/AI SEO scores; thin public detail
@@ -9097,6 +9097,7 @@ const aeoPopularityRanking: string[] = [
 	"attensira", // Deliberately narrow 10-20 prompt sets with prioritized fixes; YC-backed startups cited
 	"indexly", // Unified Google + AI tracker, broad feature set
 	"llm-seo-monitor", // Keyword-ranking model, part of the Findable toolkit, 5.0 on Product Hunt
+	"ai-peekaboo", // White-label GEO reports for agencies and brand+agency partnerships, DR 45
 	"highlighted", // Narrow AI Overviews + ChatGPT tracker sold white-label to SEO agencies
 	"rankshift", // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
 	"opttab", // Very broad suite (bot pages, commerce, ads) but DR 11 and no disclosed customers
