@@ -14,7 +14,7 @@ import {
 import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
-import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, lt, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
@@ -80,6 +80,12 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			// pgboss schema may not exist yet — that's fine
 		}
 
+		const variants = await db
+			.select({ id: prompts.id, value: prompts.value, enabled: prompts.enabled })
+			.from(prompts)
+			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.groupId, prompt.groupId), ne(prompts.id, prompt.id)))
+			.orderBy(prompts.createdAt, prompts.id);
+
 		return {
 			id: prompt.id,
 			brandId: prompt.brandId,
@@ -88,6 +94,8 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			tags: prompt.tags || [],
 			systemTags: prompt.systemTags || [],
 			nextRunAt,
+			/** The other wordings of this question. */
+			variants,
 		};
 	});
 
@@ -102,6 +110,7 @@ function summarizePrompt(
 	},
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
+	group: { lead: { id: string; value: string }; size: number },
 ) {
 	const totalRuns = stats?.runs ?? 0;
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
@@ -122,6 +131,10 @@ function summarizePrompt(
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
 		tags: effectiveTags(prompt),
+		/** The prompt this one is another wording of; null for the lead of its group. */
+		variantOf: group.lead.id === prompt.id ? null : group.lead.value,
+		/** Other tracked prompts asking the same question. */
+		variantCount: group.size - 1,
 	};
 }
 
@@ -187,9 +200,15 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
 
+		// Newest first, so the last prompt seen for a group is its oldest: the lead.
+		const groups = new Map<string, { lead: { id: string; value: string }; size: number }>();
+		for (const p of allPrompts) {
+			groups.set(p.groupId, { lead: p, size: (groups.get(p.groupId)?.size ?? 0) + 1 });
+		}
+
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
-			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
+			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), groups.get(p.groupId)!);
 		});
 
 		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));
@@ -431,6 +450,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					 * premium slots each.
 					 */
 					premiumModels: z.array(z.string()).optional(),
+					/** Client-minted for a new group, so a new prompt and its variants can be saved together. */
+					groupId: z.uuid().optional(),
 				}),
 			),
 		}),
@@ -464,6 +485,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						tags: prompt.tags || [],
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
+						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
@@ -483,6 +505,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						tags: prompt.tags || [],
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
+						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
 					})),
 				);
 			}

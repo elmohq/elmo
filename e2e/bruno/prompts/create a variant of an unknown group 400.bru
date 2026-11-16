@@ -1,0 +1,25 @@
+meta {
+  name: create a variant of an unknown group 400
+  type: http
+  seq: 32
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "x",
+    "groupId": "{{missingUuid}}"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error: eq Validation Error
+  res.body.message: contains groupId
+}

@@ -1,0 +1,22 @@
+meta {
+  name: move a variant into its own group
+  type: http
+  seq: 20
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{variantPromptId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "groupId": null
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.groupId: neq {{seededGroupId}}
+}

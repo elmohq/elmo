@@ -1,0 +1,28 @@
+meta {
+  name: create a variant
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "Bruno E2E variant — another wording",
+    "groupId": "{{seededGroupId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.groupId: eq {{seededGroupId}}
+}
+
+script:post-response {
+  bru.setVar("variantPromptId", res.getBody().id);
+}

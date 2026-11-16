@@ -49,6 +49,11 @@
 						"type": "string",
 						"description": "The actual prompt text"
 					},
+					"groupId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Shared by the variants of one question: prompts that ask the same thing in different words. Each variant is tracked and billed as its own prompt. A prompt with no variants has a group to itself."
+					},
 					"enabled": {
 						"type": "boolean",
 						"description": "Whether the prompt is currently enabled"
@@ -89,6 +94,7 @@
 					"id",
 					"brandId",
 					"value",
+					"groupId",
 					"enabled",
 					"tags",
 					"systemTags",
@@ -116,6 +122,11 @@
 							"type": "string"
 						},
 						"description": "User-defined tags for categorizing this prompt"
+					},
+					"groupId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "The `groupId` of an existing prompt in the same brand, to add this prompt as a variant of that question. Omit to start a new group."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -146,6 +157,11 @@
 							"type": "string"
 						},
 						"description": "Replaces the prompt's grounded models. Checked against the organization's premium pool."
+					},
+					"groupId": {
+						"type": ["string", "null"],
+						"format": "uuid",
+						"description": "Moves the prompt into the group of another prompt in the same brand. Null moves it into a group of its own."
 					}
 				}
 			},
@@ -3565,6 +3581,15 @@
 						"description": "Comma-separated tags. A prompt matches if it carries any of them.",
 						"schema": {
 							"type": "string"
+						}
+					},
+					{
+						"name": "groupId",
+						"in": "query",
+						"description": "Only the variants of one question.",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
 						}
 					},
 					{

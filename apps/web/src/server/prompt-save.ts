@@ -6,6 +6,8 @@ export interface SubmittedPrompt {
 	enabled: boolean;
 	tags?: string[];
 	premiumModels?: string[];
+	/** Omitted, an insert starts a group of its own and an update stays where it is. */
+	groupId?: string;
 }
 
 export interface StoredPrompt {
