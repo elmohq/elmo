@@ -40,6 +40,7 @@ import {
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import type { TrackedTarget } from "@/lib/model-filter";
+import { getBrandEarliestRunDate } from "@/lib/rollup-read";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
 /**
@@ -125,23 +126,32 @@ function getDefaultBrandDomains(): string[] {
 async function getBrandWithPromptsFromDb(
 	brandId: string,
 	entitlements?: Entitlements,
-): Promise<(BrandWithPrompts & { trackedTargets: TrackedTarget[]; trackingState: BrandTrackingState }) | undefined> {
+): Promise<
+	| (BrandWithPrompts & {
+			trackedTargets: TrackedTarget[];
+			trackingState: BrandTrackingState;
+			earliestDataDate: string | null;
+	  })
+	| undefined
+> {
 	try {
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, brandId),
 		});
 		if (!brand) return undefined;
 
-		const [brandPrompts, brandCompetitors, resolved] = await Promise.all([
+		const [brandPrompts, brandCompetitors, resolved, earliestDataDate] = await Promise.all([
 			db.query.prompts.findMany({ where: eq(prompts.brandId, brandId) }),
 			db.query.competitors.findMany({ where: eq(competitors.brandId, brandId) }),
 			entitlements ?? getOrgEntitlements(brand.organizationId),
+			getBrandEarliestRunDate(brandId),
 		]);
 
 		return {
 			...brand,
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
+			earliestDataDate,
 			trackedTargets: computeTrackedTargets(brand, brandPrompts, resolved),
 			trackingState: brandTrackingState(brand, resolved),
 		};

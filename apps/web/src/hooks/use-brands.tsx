@@ -6,7 +6,8 @@ import type { TrackedTarget } from "@/lib/model-filter";
 import { getBrand, getCompetitors } from "@/server/brands";
 
 type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
-	earliestDataDate?: string | null;
+	/** When the brand's first run happened; null until it has one. */
+	earliestDataDate: string | null;
 	trackingState: BrandTrackingState;
 	/**
 	 * What this brand's results can be broken down by, resolved server-side so
