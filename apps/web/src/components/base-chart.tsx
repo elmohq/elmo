@@ -10,6 +10,7 @@ import {
 	type ChartSubject,
 	extendLinesToChartEdges,
 	filterAndCompleteChartData,
+	formatShortDate,
 	isExtendedDataPoint,
 	selectCompetitorsToDisplay,
 	visibilityBadgeProps,
@@ -230,16 +231,7 @@ export function BaseChart({
 								minTickGap={32}
 								domain={["dataMin", "dataMax"]}
 								type="category"
-								tickFormatter={(value) => {
-									// Fix: Parse date string directly to avoid double timezone conversion
-									// value is already a properly bucketed date string like "2025-07-21"
-									const [year, month, day] = value.split("-").map(Number);
-									const date = new Date(year, month - 1, day); // Create local date
-									return date.toLocaleDateString("en-US", {
-										month: "short",
-										day: "numeric",
-									});
-								}}
+								tickFormatter={formatShortDate}
 							/>
 							<YAxis
 								domain={[0, "auto"]}
@@ -256,14 +248,7 @@ export function BaseChart({
 								cursor={false}
 								content={
 									<ChartTooltipContent
-										labelFormatter={(value) => {
-											const [year, month, day] = String(value).split("-").map(Number);
-											const date = new Date(year, month - 1, day);
-											return date.toLocaleDateString("en-US", {
-												month: "short",
-												day: "numeric",
-											});
-										}}
+										labelFormatter={(value) => formatShortDate(String(value))}
 										indicator="dot"
 										formatter={(value, name, item, index) => {
 											const indicatorColor = chartConfig[name as string]?.color;
@@ -315,16 +300,7 @@ export function BaseChart({
 								minTickGap={32}
 								domain={["dataMin", "dataMax"]}
 								type="category"
-								tickFormatter={(value) => {
-									// Fix: Parse date string directly to avoid double timezone conversion
-									// value is already a properly bucketed date string like "2025-07-21"
-									const [year, month, day] = value.split("-").map(Number);
-									const date = new Date(year, month - 1, day); // Create local date
-									return date.toLocaleDateString("en-US", {
-										month: "short",
-										day: "numeric",
-									});
-								}}
+								tickFormatter={formatShortDate}
 							/>
 							<YAxis
 								domain={[0, "auto"]}
@@ -353,12 +329,7 @@ export function BaseChart({
 
 									if (filteredPayload.length === 0) return null;
 
-									const [year, month, day] = (label as string).split("-").map(Number);
-									const date = new Date(year, month - 1, day);
-									const formattedDate = date.toLocaleDateString("en-US", {
-										month: "short",
-										day: "numeric",
-									});
+									const formattedDate = formatShortDate(label as string);
 
 									return (
 										<div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
