@@ -74,6 +74,8 @@ export const prompts = pgTable(
 			.references(() => brands.id)
 			.notNull(),
 		value: text("value").notNull(),
+		/** Shared by the variants of one question. No table behind it, and only meaningful within a brand. */
+		groupId: uuid("group_id").defaultRandom().notNull(),
 		enabled: boolean("enabled").default(true).notNull(),
 		/** Tracked grounded, one org premium slot per entry. */
 		premiumModels: text("premium_models").array().notNull().default([]),
