@@ -41,6 +41,9 @@ export const brands = pgTable(
 		onboarded: boolean("onboarded").default(false).notNull(),
 		delayOverrideHours: integer("delay_override_hours"),
 		enabledModels: text("enabled_models").array(),
+		/** The market a prompt is asked in unless it sets its own. */
+		country: text("country").notNull().default("US"),
+		language: text("language").notNull().default("en"),
 		/**
 		 * Analysis name -> the stamp this brand's run history was last reprocessed to.
 		 * Null for brands that predate stamping until the worker adopts today's stamps.
@@ -76,6 +79,9 @@ export const prompts = pgTable(
 		value: text("value").notNull(),
 		/** Shared by the variants of one question. No table behind it, and only meaningful within a brand. */
 		groupId: uuid("group_id").defaultRandom().notNull(),
+		/** Null follows the brand's market; set, each overrides its half of it. */
+		country: text("country"),
+		language: text("language"),
 		enabled: boolean("enabled").default(true).notNull(),
 		/** Tracked grounded, one org premium slot per entry. */
 		premiumModels: text("premium_models").array().notNull().default([]),
@@ -131,6 +137,13 @@ export const promptRuns = pgTable(
 		provider: text("provider"),
 		version: text("version").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
+		/**
+		 * What the provider was asked to answer as: null where it was sent nothing,
+		 * so a run never claims a market it wasn't asked from. Runs older than
+		 * markets are null and were asked as the United States in English.
+		 */
+		country: text("country"),
+		language: text("language"),
 		rawOutput: json("raw_output").notNull(),
 		/**
 		 * The searches the provider reported running. Kept with the raw response
@@ -242,6 +255,28 @@ export const brandOpportunities = pgTable(
 	(table) => ({
 		brandCreatedIdx: index("brand_opportunities_brand_id_created_at_idx").on(table.brandId, table.createdAt),
 	}),
+).enableRLS();
+
+/**
+ * A prompt translated for a market, kept so asking again for the same text costs
+ * no second model call. The prompt a translation becomes is edited freely; this
+ * only remembers what the model returned.
+ */
+export const promptTranslations = pgTable(
+	"prompt_translations",
+	{
+		brandId: text("brand_id")
+			.notNull()
+			.references(() => brands.id, { onDelete: "cascade" }),
+		/** `marketId` of the market translated for. */
+		market: text("market").notNull(),
+		/** SHA-256 of the source text, whitespace-normalized. */
+		sourceHash: text("source_hash").notNull(),
+		translation: text("translation").notNull(),
+		model: text("model"),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => [primaryKey({ name: "prompt_translations_pk", columns: [table.brandId, table.market, table.sourceHash] })],
 ).enableRLS();
 
 export type BrandOpportunity = typeof brandOpportunities.$inferSelect;

@@ -246,6 +246,13 @@
       "when": 1794852026882,
       "tag": "0034_prompt_variants",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794852715565,
+      "tag": "0035_prompt_markets",
+      "breakpoints": true
     }
   ]
 }
