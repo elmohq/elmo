@@ -14,20 +14,6 @@ export interface ChartSubject {
 	name: string;
 }
 
-/** Use a stable one-month default while history loads, then shorten it for brands with less than a week of data. */
-export function getDefaultLookbackPeriod(earliestDataDate: string | null | undefined): LookbackPeriod {
-	if (!earliestDataDate) {
-		return "1m";
-	}
-
-	const earliestDate = new Date(earliestDataDate);
-	const now = new Date();
-	const diffInMs = now.getTime() - earliestDate.getTime();
-	const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
-
-	return diffInDays > 7 ? "1m" : "1w";
-}
-
 export function getDaysFromLookback(lookback: LookbackPeriod): number {
 	const custom = parseCustomLookback(lookback);
 	if (custom?.from) return daysInRange({ from: custom.from, to: getLookbackEndDate(lookback) });
