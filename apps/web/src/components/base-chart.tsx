@@ -4,7 +4,7 @@ import type { Competitor } from "@workspace/lib/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import * as React from "react";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
 	type ChartDataPoint,
 	type ChartSubject,
@@ -16,15 +16,7 @@ import {
 	visibilityBadgeProps,
 } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
-
-/** The brand's own line is the one people are looking for, so it carries more
- *  weight than the competitors it's plotted against. */
-const BRAND_STROKE_WIDTH = 3;
-const COMPETITOR_STROKE_WIDTH = 2;
-/** How far the other series recede while one is singled out. */
-const DIMMED_OPACITY = 0.25;
-/** Ring thickness on the hollow competitor dots. */
-const DOT_RING_WIDTH = 1.5;
+import { DIMMED_OPACITY, LineChart } from "./line-chart";
 
 /** Legend that doubles as a way to pick a series out of the chart, since colour
  *  alone can't separate four lines for a colourblind reader.
@@ -89,7 +81,6 @@ interface BaseChartProps {
 	showBadge?: boolean;
 	brand: ChartSubject;
 	competitors: Competitor[];
-	isAnimationActive?: boolean;
 	chartType?: "bar" | "line";
 	chartColors?: string[];
 	chartHeight?: string;
@@ -104,7 +95,6 @@ export function BaseChart({
 	showBadge = false,
 	brand,
 	competitors,
-	isAnimationActive = false,
 	chartType = "line",
 	chartColors: chartColorsProp,
 	chartHeight = "250px",
@@ -145,30 +135,7 @@ export function BaseChart({
 	// Render the brand last so it remains visible when dots overlap.
 	const dataKeys = [...sortedSelectedCompetitors.map((c) => c.id), brand.id];
 
-	const strokeWidthFor = (key: string) => (key === brand.id ? BRAND_STROKE_WIDTH : COMPETITOR_STROKE_WIDTH);
-	/** Solid dot for the brand, hollow for competitors — a second, quiet cue for
-	 *  which line is yours. Radii are picked so both read the same diameter; only
-	 *  the centre differs. */
-	const dotProps = (key: string, size: number) =>
-		key === brand.id
-			? { r: size, fill: `var(--color-${key})`, opacity: opacityFor(key) }
-			: {
-					r: size - DOT_RING_WIDTH / 2,
-					fill: "var(--card)",
-					stroke: `var(--color-${key})`,
-					strokeWidth: DOT_RING_WIDTH,
-					opacity: opacityFor(key),
-				};
 	const opacityFor = (key: string) => (activeSeries && activeSeries !== key ? DIMMED_OPACITY : 1);
-	const renderDot =
-		(key: string, size: number, id: string) =>
-		({ cx, cy, payload, value }: any) => {
-			// Recharts' dot render prop must return an element, so a hidden dot is an empty <g>.
-			if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
-				return <g key={`${id}-empty-${key}-${cx}`} />;
-			}
-			return <circle key={`${id}-${key}-${cx}`} cx={cx} cy={cy} {...dotProps(key, size)} />;
-		};
 
 	// Each series has solid and dashed lines, but the legend should list it once.
 	const legendPayload = [
@@ -289,107 +256,16 @@ export function BaseChart({
 						</BarChart>
 					</ChartContainer>
 				) : (
-					<ChartContainer config={chartConfig} className="aspect-auto min-h-0 w-full flex-1">
-						<LineChart data={chartData}>
-							<CartesianGrid vertical={false} />
-							<XAxis
-								dataKey="date"
-								tickLine={false}
-								axisLine={false}
-								tickMargin={8}
-								minTickGap={32}
-								domain={["dataMin", "dataMax"]}
-								type="category"
-								tickFormatter={formatShortDate}
-							/>
-							<YAxis
-								domain={[0, "auto"]}
-								type="number"
-								allowDataOverflow={false}
-								tickLine={false}
-								axisLine={false}
-								tickMargin={8}
-								tickCount={6}
-								tickFormatter={(value) => `${value}%`}
-							/>
-							<ChartTooltip
-								isAnimationActive={false}
-								cursor={false}
-								content={({ active, payload, label }) => {
-									if (!active || !payload?.length) return null;
-
-									// Dashed extensions are visual continuity, not observed values.
-									const filteredPayload = payload.filter((item: any) => {
-										const key = item.dataKey as string;
-										if (key.endsWith("_solid")) return false;
-										if (item.payload && isExtendedDataPoint(item.payload, key)) return false;
-										if (item.value === null || item.value === undefined) return false;
-										return true;
-									});
-
-									if (filteredPayload.length === 0) return null;
-
-									const formattedDate = formatShortDate(label as string);
-
-									return (
-										<div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
-											<div className="font-medium">{formattedDate}</div>
-											<div className="grid gap-1.5">
-												{filteredPayload.map((item: any) => {
-													const indicatorColor = chartConfig[item.dataKey as string]?.color;
-													return (
-														<div key={item.dataKey} className="flex w-full items-center gap-2">
-															<div
-																className="shrink-0 rounded-[2px] h-2.5 w-2.5"
-																style={{ backgroundColor: indicatorColor }}
-															/>
-															<div className="flex flex-1 justify-between gap-4 leading-none items-center">
-																<span className="text-muted-foreground">
-																	{chartConfig[item.dataKey as string]?.label || item.dataKey}
-																</span>
-																<span className="text-foreground font-mono font-xs tabular-nums">{item.value}%</span>
-															</div>
-														</div>
-													);
-												})}
-											</div>
-										</div>
-									);
-								}}
-							/>
-							{/* Dashed extensions provide continuity; solid overlays mark observed data. */}
-							{dataKeys.flatMap((key) => [
-								<Line
-									key={`${key}-dashed`}
-									dataKey={key}
-									name={`${key}-dashed`}
-									type="bump"
-									stroke={`var(--color-${key})`}
-									strokeWidth={strokeWidthFor(key)}
-									strokeOpacity={opacityFor(key)}
-									strokeDasharray="4 4"
-									dot={false}
-									activeDot={false}
-									connectNulls={true}
-									isAnimationActive={isAnimationActive}
-									legendType="none"
-								/>,
-								<Line
-									key={`${key}-solid`}
-									dataKey={`${key}_solid`}
-									name={key}
-									type="bump"
-									stroke={`var(--color-${key})`}
-									strokeWidth={strokeWidthFor(key)}
-									strokeOpacity={opacityFor(key)}
-									dot={renderDot(key, 3, "dot")}
-									activeDot={renderDot(key, 5, "activedot")}
-									connectNulls={true}
-									isAnimationActive={isAnimationActive}
-								/>,
-							])}
-						</LineChart>
-					</ChartContainer>
+					<LineChart
+						data={chartData}
+						activeSeries={activeSeries}
+						series={dataKeys.map((key) => ({
+							id: key,
+							label: String(chartConfig[key]?.label ?? key),
+							color: chartConfig[key]?.color ?? "currentColor",
+							primary: key === brand.id,
+						}))}
+					/>
 				)}
 				<SeriesLegend
 					payload={legendPayload}
